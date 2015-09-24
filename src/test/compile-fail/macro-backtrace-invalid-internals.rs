@@ -10,25 +10,25 @@
 
 // Macros in statement vs expression position handle backtraces differently.
 
-macro_rules! fake_method_stmt { //~ NOTE in expansion of
+macro_rules! fake_method_stmt {
      () => {
           1.fake() //~ ERROR no method named `fake` found
      }
 }
 
-macro_rules! fake_field_stmt { //~ NOTE in expansion of
+macro_rules! fake_field_stmt {
      () => {
           1.fake //~ ERROR no field with that name
      }
 }
 
-macro_rules! fake_anon_field_stmt { //~ NOTE in expansion of
+macro_rules! fake_anon_field_stmt {
      () => {
           (1).0 //~ ERROR type was not a tuple
      }
 }
 
-macro_rules! fake_method_expr { //~ NOTE in expansion of
+macro_rules! fake_method_expr {
      () => {
           1.fake() //~ ERROR no method named `fake` found
      }
@@ -47,11 +47,13 @@ macro_rules! fake_anon_field_expr {
 }
 
 fn main() {
-    fake_method_stmt!(); //~ NOTE expansion site
-    fake_field_stmt!(); //~ NOTE expansion site
-    fake_anon_field_stmt!(); //~ NOTE expansion site
+    fake_method_stmt!(); //~ NOTE in this expansion of
+    fake_field_stmt!(); //~ NOTE in this expansion of
+    fake_anon_field_stmt!(); //~ NOTE in this expansion of
 
-    let _ = fake_method_expr!(); //~ NOTE expansion site
+    let _ = fake_method_expr!(); //~ NOTE in this expansion of
     let _ = fake_field_expr!(); //~ ERROR no field with that name
+                                //~^ NOTE in this expansion of
     let _ = fake_anon_field_expr!(); //~ ERROR type was not a tuple
+                                     //~^ NOTE in this expansion of
 }

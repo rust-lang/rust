@@ -46,7 +46,6 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::attr::AttrMetaMethods;
-use rustc_front::attr::AttrMetaMethods as FrontAttrMetaMethods;
 
 use rustc_front::hir;
 
@@ -543,7 +542,11 @@ fn link_binary_output(sess: &Session,
         }
     }
 
-    let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
+    let tmpdir = match TempDir::new("rustc") {
+        Ok(tmpdir) => tmpdir,
+        Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
+    };
+
     match crate_type {
         config::CrateTypeRlib => {
             link_rlib(sess, Some(trans), &objects, &out_filename,
@@ -967,7 +970,9 @@ fn link_args(cmd: &mut Linker,
     // default. Note that this does not happen for windows because windows pulls
     // in some large number of libraries and I couldn't quite figure out which
     // subset we wanted.
-    cmd.no_default_libraries();
+    if t.options.no_default_libraries {
+        cmd.no_default_libraries();
+    }
 
     // Take careful note of the ordering of the arguments we pass to the linker
     // here. Linkers will assume that things on the left depend on things to the

@@ -1,12 +1,12 @@
 -include ../tools.mk
 
-EXTRAFLAGS := $(EXTRACFLAGS)
-
 # FIXME: ignore freebsd
 ifneq ($(shell uname),FreeBSD)
 all:
 	$(RUSTC) foo.rs
-	$(CC) bar.c -lfoo -o $(call RUN_BINFILE,bar) $(EXTRAFLAGS) $(EXTRACXXFLAGS)
+	cp $(TMPDIR)/libfoo.a $(call NATIVE_STATICLIB,foo2)
+	$(CC) bar.c $(call NATIVE_STATICLIB,foo2) $(call OUT_EXE,bar) \
+		$(EXTRACFLAGS) $(EXTRACXXFLAGS)
 	$(call RUN,bar)
 	rm $(call STATICLIB,foo*)
 	$(call RUN,bar)

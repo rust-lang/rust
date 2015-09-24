@@ -37,7 +37,7 @@ use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitByteStr};
 use ast::{LitStr, LitInt, Local};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
-use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchSource};
+use ast::{MutImmutable, MutMutable, Mac_, MatchSource};
 use ast::{MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
 use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatQPath, PatMac, PatRange};
@@ -1263,7 +1263,7 @@ impl<'a> Parser<'a> {
     pub fn parse_ret_ty(&mut self) -> PResult<FunctionRetTy> {
         if try!(self.eat(&token::RArrow) ){
             if try!(self.eat(&token::Not) ){
-                Ok(NoReturn(self.span))
+                Ok(NoReturn(self.last_span))
             } else {
                 Ok(Return(try!(self.parse_ty_nopanic())))
             }
@@ -1381,7 +1381,7 @@ impl<'a> Parser<'a> {
                                                      seq_sep_none(),
                                                      |p| p.parse_token_tree()));
                 let hi = self.span.hi;
-                TyMac(spanned(lo, hi, MacInvocTT(path, tts, EMPTY_CTXT)))
+                TyMac(spanned(lo, hi, Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT }))
             } else {
                 // NAMED TYPE
                 TyPath(None, path)
@@ -2203,9 +2203,7 @@ impl<'a> Parser<'a> {
 
                         return Ok(self.mk_mac_expr(lo,
                                                    hi,
-                                                   MacInvocTT(pth,
-                                                              tts,
-                                                              EMPTY_CTXT)));
+                                                   Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT }));
                     }
                     if self.check(&token::OpenDelim(token::Brace)) {
                         // This is a struct literal, unless we're prohibited
@@ -2229,14 +2227,6 @@ impl<'a> Parser<'a> {
                                 try!(self.commit_expr(&*fields.last().unwrap().expr,
                                                  &[token::Comma],
                                                  &[token::CloseDelim(token::Brace)]));
-                            }
-
-                            if fields.is_empty() && base.is_none() {
-                                let last_span = self.last_span;
-                                self.span_err(last_span,
-                                              "structure literal must either \
-                                              have at least one field or use \
-                                              structure update syntax");
                             }
 
                             hi = self.span.hi;
@@ -3297,7 +3287,7 @@ impl<'a> Parser<'a> {
                         let delim = try!(self.expect_open_delim());
                         let tts = try!(self.parse_seq_to_end(&token::CloseDelim(delim),
                                 seq_sep_none(), |p| p.parse_token_tree()));
-                        let mac = MacInvocTT(path, tts, EMPTY_CTXT);
+                        let mac = Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT };
                         pat = PatMac(codemap::Spanned {node: mac, span: self.span});
                     } else {
                         // Parse ident @ pat
@@ -3565,7 +3555,7 @@ impl<'a> Parser<'a> {
                 spanned(lo, hi,
                         StmtMac(P(spanned(lo,
                                           hi,
-                                          MacInvocTT(pth, tts, EMPTY_CTXT))),
+                                          Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT })),
                                   style))
             } else {
                 // if it has a special ident, it's definitely an item
@@ -3584,7 +3574,8 @@ impl<'a> Parser<'a> {
                     P(spanned(lo, hi, DeclItem(
                         self.mk_item(
                             lo, hi, id /*id is good here*/,
-                            ItemMac(spanned(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT))),
+                            ItemMac(spanned(lo, hi,
+                                            Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT })),
                             Inherited, Vec::new(/*no attrs*/))))),
                     ast::DUMMY_NODE_ID))
             }
@@ -4532,7 +4523,7 @@ impl<'a> Parser<'a> {
             let tts = try!(self.parse_seq_to_end(&token::CloseDelim(delim),
                                             seq_sep_none(),
                                             |p| p.parse_token_tree()));
-            let m_ = ast::MacInvocTT(pth, tts, EMPTY_CTXT);
+            let m_ = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m_,
                                                 span: mk_sp(self.span.lo,
                                                             self.span.hi) };
@@ -4713,14 +4704,14 @@ impl<'a> Parser<'a> {
                 (Vec::new(), Some(ast::DUMMY_NODE_ID))
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
-                (try!(self.parse_record_struct_body(&class_name)), None)
+                (try!(self.parse_record_struct_body()), None)
             }
         // No `where` so: `struct Foo<T>;`
         } else if try!(self.eat(&token::Semi) ){
             (Vec::new(), Some(ast::DUMMY_NODE_ID))
         // Record-style struct definition
         } else if self.token == token::OpenDelim(token::Brace) {
-            let fields = try!(self.parse_record_struct_body(&class_name));
+            let fields = try!(self.parse_record_struct_body());
             (fields, None)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
@@ -4740,18 +4731,11 @@ impl<'a> Parser<'a> {
          None))
     }
 
-    pub fn parse_record_struct_body(&mut self,
-                                    class_name: &ast::Ident) -> PResult<Vec<StructField>> {
+    pub fn parse_record_struct_body(&mut self) -> PResult<Vec<StructField>> {
         let mut fields = Vec::new();
         if try!(self.eat(&token::OpenDelim(token::Brace)) ){
             while self.token != token::CloseDelim(token::Brace) {
                 fields.push(try!(self.parse_struct_decl_field(true)));
-            }
-
-            if fields.is_empty() {
-                return Err(self.fatal(&format!("unit-like struct definition should be \
-                    written as `struct {};`",
-                    class_name)));
             }
 
             try!(self.bump());
@@ -4858,7 +4842,7 @@ impl<'a> Parser<'a> {
         let hi = if self.span == codemap::DUMMY_SP {
             inner_lo
         } else {
-            self.span.lo
+            self.last_span.hi
         };
 
         Ok(ast::Mod {
@@ -5052,9 +5036,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a function declaration from a foreign module
-    fn parse_item_foreign_fn(&mut self, vis: ast::Visibility,
+    fn parse_item_foreign_fn(&mut self, vis: ast::Visibility, lo: BytePos,
                              attrs: Vec<Attribute>) -> PResult<P<ForeignItem>> {
-        let lo = self.span.lo;
         try!(self.expect_keyword(keywords::Fn));
 
         let (ident, mut generics) = try!(self.parse_fn_header());
@@ -5073,10 +5056,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a static item from a foreign module
-    fn parse_item_foreign_static(&mut self, vis: ast::Visibility,
+    fn parse_item_foreign_static(&mut self, vis: ast::Visibility, lo: BytePos,
                                  attrs: Vec<Attribute>) -> PResult<P<ForeignItem>> {
-        let lo = self.span.lo;
-
         try!(self.expect_keyword(keywords::Static));
         let mutbl = try!(self.eat_keyword(keywords::Mut));
 
@@ -5116,12 +5097,19 @@ impl<'a> Parser<'a> {
         try!(self.expect(&token::Semi));
 
         let last_span = self.last_span;
+
+        if visibility == ast::Public {
+            self.span_warn(mk_sp(lo, last_span.hi),
+                           "`pub extern crate` does not work as expected and should not be used. \
+                            Likely to become an error. Prefer `extern crate` and `pub use`.");
+        }
+
         Ok(self.mk_item(lo,
-                     last_span.hi,
-                     ident,
-                     ItemExternCrate(maybe_path),
-                     visibility,
-                     attrs))
+                        last_span.hi,
+                        ident,
+                        ItemExternCrate(maybe_path),
+                        visibility,
+                        attrs))
     }
 
     /// Parse `extern` for foreign ABIs
@@ -5200,13 +5188,10 @@ impl<'a> Parser<'a> {
             let variant_attrs = self.parse_outer_attributes();
             let vlo = self.span.lo;
 
-            let vis = try!(self.parse_visibility());
-
-            let ident;
             let kind;
             let mut args = Vec::new();
             let mut disr_expr = None;
-            ident = try!(self.parse_ident());
+            let ident = try!(self.parse_ident());
             if try!(self.eat(&token::OpenDelim(token::Brace)) ){
                 // Parse a struct variant.
                 all_nullary = false;
@@ -5248,7 +5233,6 @@ impl<'a> Parser<'a> {
                 kind: kind,
                 id: ast::DUMMY_NODE_ID,
                 disr_expr: disr_expr,
-                vis: vis,
             };
             variants.push(P(spanned(vlo, self.last_span.hi, vr)));
 
@@ -5569,11 +5553,11 @@ impl<'a> Parser<'a> {
 
         if self.check_keyword(keywords::Static) {
             // FOREIGN STATIC ITEM
-            return Ok(Some(try!(self.parse_item_foreign_static(visibility, attrs))));
+            return Ok(Some(try!(self.parse_item_foreign_static(visibility, lo, attrs))));
         }
         if self.check_keyword(keywords::Fn) || self.check_keyword(keywords::Unsafe) {
             // FOREIGN FUNCTION ITEM
-            return Ok(Some(try!(self.parse_item_foreign_fn(visibility, attrs))));
+            return Ok(Some(try!(self.parse_item_foreign_fn(visibility, lo, attrs))));
         }
 
         // FIXME #5668: this will occur for a macro invocation:
@@ -5621,7 +5605,7 @@ impl<'a> Parser<'a> {
                                             seq_sep_none(),
                                             |p| p.parse_token_tree()));
             // single-variant-enum... :
-            let m = ast::MacInvocTT(pth, tts, EMPTY_CTXT);
+            let m = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m,
                                              span: mk_sp(self.span.lo,
                                                          self.span.hi) };

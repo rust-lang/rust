@@ -17,10 +17,8 @@ use super::{
     demand,
     method,
     FnCtxt,
-    structurally_resolved_type,
 };
 use middle::def_id::DefId;
-use middle::traits;
 use middle::ty::{Ty, HasTypeFlags, PreferMutLvalue};
 use syntax::ast;
 use syntax::parse::token;
@@ -34,34 +32,24 @@ pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                    lhs_expr: &'tcx hir::Expr,
                                    rhs_expr: &'tcx hir::Expr)
 {
-    let tcx = fcx.ccx.tcx;
-
     check_expr_with_lvalue_pref(fcx, lhs_expr, PreferMutLvalue);
-    check_expr(fcx, rhs_expr);
 
-    let lhs_ty = structurally_resolved_type(fcx, lhs_expr.span, fcx.expr_ty(lhs_expr));
-    let rhs_ty = structurally_resolved_type(fcx, rhs_expr.span, fcx.expr_ty(rhs_expr));
+    let lhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
+    let (rhs_ty, return_ty) =
+        check_overloaded_binop(fcx, expr, lhs_expr, lhs_ty, rhs_expr, op, IsAssign::Yes);
+    let rhs_ty = fcx.resolve_type_vars_if_possible(rhs_ty);
 
-    if is_builtin_binop(lhs_ty, rhs_ty, op) {
+    if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
         enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
         fcx.write_nil(expr.id);
     } else {
-        // error types are considered "builtin"
-        assert!(!lhs_ty.references_error() || !rhs_ty.references_error());
-        span_err!(tcx.sess, lhs_expr.span, E0368,
-                  "binary assignment operation `{}=` cannot be applied to types `{}` and `{}`",
-                  hir_util::binop_to_string(op.node),
-                  lhs_ty,
-                  rhs_ty);
-        fcx.write_error(expr.id);
+        fcx.write_ty(expr.id, return_ty);
     }
 
     let tcx = fcx.tcx();
     if !tcx.expr_is_lval(lhs_expr) {
         span_err!(tcx.sess, lhs_expr.span, E0067, "invalid left-hand side expression");
     }
-
-    fcx.require_expr_have_sized_type(lhs_expr, traits::AssignmentLhsSized);
 }
 
 /// Check a potentially overloaded binary operator.
@@ -95,7 +83,7 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             // overloaded. This is the way to be most flexible w/r/t
             // types that get inferred.
             let (rhs_ty, return_ty) =
-                check_overloaded_binop(fcx, expr, lhs_expr, lhs_ty, rhs_expr, op);
+                check_overloaded_binop(fcx, expr, lhs_expr, lhs_ty, rhs_expr, op, IsAssign::No);
 
             // Supply type inference hints if relevant. Probably these
             // hints should be enforced during select as part of the
@@ -167,14 +155,16 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                     lhs_expr: &'tcx hir::Expr,
                                     lhs_ty: Ty<'tcx>,
                                     rhs_expr: &'tcx hir::Expr,
-                                    op: hir::BinOp)
+                                    op: hir::BinOp,
+                                    is_assign: IsAssign)
                                     -> (Ty<'tcx>, Ty<'tcx>)
 {
-    debug!("check_overloaded_binop(expr.id={}, lhs_ty={:?})",
+    debug!("check_overloaded_binop(expr.id={}, lhs_ty={:?}, is_assign={:?})",
            expr.id,
-           lhs_ty);
+           lhs_ty,
+           is_assign);
 
-    let (name, trait_def_id) = name_and_trait_def_id(fcx, op);
+    let (name, trait_def_id) = name_and_trait_def_id(fcx, op, is_assign);
 
     // NB: As we have not yet type-checked the RHS, we don't have the
     // type at hand. Make a variable to represent it. The whole reason
@@ -191,10 +181,17 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         Err(()) => {
             // error types are considered "builtin"
             if !lhs_ty.references_error() {
-                span_err!(fcx.tcx().sess, lhs_expr.span, E0369,
-                          "binary operation `{}` cannot be applied to type `{}`",
-                          hir_util::binop_to_string(op.node),
-                          lhs_ty);
+                if let IsAssign::Yes = is_assign {
+                    span_err!(fcx.tcx().sess, lhs_expr.span, E0368,
+                              "binary assignment operation `{}=` cannot be applied to type `{}`",
+                              hir_util::binop_to_string(op.node),
+                              lhs_ty);
+                } else {
+                    span_err!(fcx.tcx().sess, lhs_expr.span, E0369,
+                              "binary operation `{}` cannot be applied to type `{}`",
+                              hir_util::binop_to_string(op.node),
+                              lhs_ty);
+                }
             }
             fcx.tcx().types.err
         }
@@ -231,27 +228,51 @@ pub fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
-fn name_and_trait_def_id(fcx: &FnCtxt, op: hir::BinOp) -> (&'static str, Option<DefId>) {
+fn name_and_trait_def_id(fcx: &FnCtxt,
+                         op: hir::BinOp,
+                         is_assign: IsAssign)
+                         -> (&'static str, Option<DefId>) {
     let lang = &fcx.tcx().lang_items;
-    match op.node {
-        hir::BiAdd => ("add", lang.add_trait()),
-        hir::BiSub => ("sub", lang.sub_trait()),
-        hir::BiMul => ("mul", lang.mul_trait()),
-        hir::BiDiv => ("div", lang.div_trait()),
-        hir::BiRem => ("rem", lang.rem_trait()),
-        hir::BiBitXor => ("bitxor", lang.bitxor_trait()),
-        hir::BiBitAnd => ("bitand", lang.bitand_trait()),
-        hir::BiBitOr => ("bitor", lang.bitor_trait()),
-        hir::BiShl => ("shl", lang.shl_trait()),
-        hir::BiShr => ("shr", lang.shr_trait()),
-        hir::BiLt => ("lt", lang.ord_trait()),
-        hir::BiLe => ("le", lang.ord_trait()),
-        hir::BiGe => ("ge", lang.ord_trait()),
-        hir::BiGt => ("gt", lang.ord_trait()),
-        hir::BiEq => ("eq", lang.eq_trait()),
-        hir::BiNe => ("ne", lang.eq_trait()),
-        hir::BiAnd | hir::BiOr => {
-            fcx.tcx().sess.span_bug(op.span, "&& and || are not overloadable")
+
+    if let IsAssign::Yes = is_assign {
+        match op.node {
+            hir::BiAdd => ("add_assign", lang.add_assign_trait()),
+            hir::BiSub => ("sub_assign", lang.sub_assign_trait()),
+            hir::BiMul => ("mul_assign", lang.mul_assign_trait()),
+            hir::BiDiv => ("div_assign", lang.div_assign_trait()),
+            hir::BiRem => ("rem_assign", lang.rem_assign_trait()),
+            hir::BiBitXor => ("bitxor_assign", lang.bitxor_assign_trait()),
+            hir::BiBitAnd => ("bitand_assign", lang.bitand_assign_trait()),
+            hir::BiBitOr => ("bitor_assign", lang.bitor_assign_trait()),
+            hir::BiShl => ("shl_assign", lang.shl_assign_trait()),
+            hir::BiShr => ("shr_assign", lang.shr_assign_trait()),
+            hir::BiLt | hir::BiLe | hir::BiGe | hir::BiGt | hir::BiEq | hir::BiNe | hir::BiAnd |
+            hir::BiOr => {
+                fcx.tcx().sess.span_bug(op.span, &format!("impossible assignment operation: {}=",
+                                        hir_util::binop_to_string(op.node)))
+            }
+        }
+    } else {
+        match op.node {
+            hir::BiAdd => ("add", lang.add_trait()),
+            hir::BiSub => ("sub", lang.sub_trait()),
+            hir::BiMul => ("mul", lang.mul_trait()),
+            hir::BiDiv => ("div", lang.div_trait()),
+            hir::BiRem => ("rem", lang.rem_trait()),
+            hir::BiBitXor => ("bitxor", lang.bitxor_trait()),
+            hir::BiBitAnd => ("bitand", lang.bitand_trait()),
+            hir::BiBitOr => ("bitor", lang.bitor_trait()),
+            hir::BiShl => ("shl", lang.shl_trait()),
+            hir::BiShr => ("shr", lang.shr_trait()),
+            hir::BiLt => ("lt", lang.ord_trait()),
+            hir::BiLe => ("le", lang.ord_trait()),
+            hir::BiGe => ("ge", lang.ord_trait()),
+            hir::BiGt => ("gt", lang.ord_trait()),
+            hir::BiEq => ("eq", lang.eq_trait()),
+            hir::BiNe => ("ne", lang.eq_trait()),
+            hir::BiAnd | hir::BiOr => {
+                fcx.tcx().sess.span_bug(op.span, "&& and || are not overloadable")
+            }
         }
     }
 }
@@ -360,6 +381,13 @@ impl BinOpCategory {
                 BinOpCategory::Shortcircuit,
         }
     }
+}
+
+/// Whether the binary operation is an assignment (`a += b`), or not (`a + b`)
+#[derive(Clone, Copy, Debug)]
+enum IsAssign {
+    No,
+    Yes,
 }
 
 /// Returns true if this is a built-in arithmetic operation (e.g. u32

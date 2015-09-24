@@ -12,10 +12,10 @@
 use front::map as ast_map;
 use session::{config, Session};
 use syntax::ast::NodeId;
-use rustc_front::hir::{Item, ItemFn};
-use rustc_front::attr;
+use syntax::attr;
 use syntax::codemap::Span;
 use syntax::entry::EntryPointType;
+use rustc_front::hir::{Item, ItemFn};
 use rustc_front::visit;
 use rustc_front::visit::Visitor;
 
@@ -85,7 +85,7 @@ fn entry_point_type(item: &Item, depth: usize) -> EntryPointType {
                 EntryPointType::Start
             } else if attr::contains_name(&item.attrs, "main") {
                 EntryPointType::MainAttr
-            } else if item.ident.name == "main" {
+            } else if item.name == "main" {
                 if depth == 1 {
                     // This is a top-level function so can be 'main'
                     EntryPointType::MainNamed

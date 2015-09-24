@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test #9383
-
 // shouldn't affect evaluation of $ex:
 macro_rules! bad_macro {
     ($ex:expr) => ({(|_x| { $ex }) (9) })

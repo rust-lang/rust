@@ -294,6 +294,59 @@ fn test_extend_ref() {
     assert_eq!(a[&3], "three");
 }
 
+#[test]
+fn test_zst() {
+    let mut m = BTreeMap::new();
+    assert_eq!(m.len(), 0);
+
+    assert_eq!(m.insert((), ()), None);
+    assert_eq!(m.len(), 1);
+
+    assert_eq!(m.insert((), ()), Some(()));
+    assert_eq!(m.len(), 1);
+    assert_eq!(m.iter().count(), 1);
+
+    m.clear();
+    assert_eq!(m.len(), 0);
+
+    for _ in 0..100 {
+        m.insert((), ());
+    }
+
+    assert_eq!(m.len(), 1);
+    assert_eq!(m.iter().count(), 1);
+}
+
+// This test's only purpose is to ensure that zero-sized keys with nonsensical orderings
+// do not cause segfaults when used with zero-sized values. All other map behavior is
+// undefined.
+#[test]
+fn test_bad_zst() {
+    use std::cmp::Ordering;
+
+    struct Bad;
+
+    impl PartialEq for Bad {
+        fn eq(&self, _: &Self) -> bool { false }
+    }
+
+    impl Eq for Bad {}
+
+    impl PartialOrd for Bad {
+        fn partial_cmp(&self, _: &Self) -> Option<Ordering> { Some(Ordering::Less) }
+    }
+
+    impl Ord for Bad {
+        fn cmp(&self, _: &Self) -> Ordering { Ordering::Less }
+    }
+
+    let mut m = BTreeMap::new();
+
+    for _ in 0..100 {
+        m.insert(Bad, Bad);
+    }
+}
+
 mod bench {
     use std::collections::BTreeMap;
     use std::__rand::{Rng, thread_rng};

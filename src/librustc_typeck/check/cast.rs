@@ -44,12 +44,13 @@ use super::FnCtxt;
 use super::structurally_resolved_type;
 
 use lint;
-use middle::cast::{CastKind, CastTy};
 use middle::def_id::DefId;
 use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::cast::{CastKind, CastTy};
 use syntax::codemap::Span;
 use rustc_front::hir;
-use rustc_front::hir::UintTy::TyU8;
+use syntax::ast;
+use syntax::ast::UintTy::TyU8;
 
 
 /// Reifies a cast check to be checked once we have full type information for
@@ -226,8 +227,8 @@ impl<'tcx> CastCheck<'tcx> {
     /// can return Ok and create type errors in the fcx rather than returning
     /// directly. coercion-cast is handled in check instead of here.
     fn do_check<'a>(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<CastKind, CastError> {
-        use middle::cast::IntTy::*;
-        use middle::cast::CastTy::*;
+        use middle::ty::cast::IntTy::*;
+        use middle::ty::cast::CastTy::*;
 
         let (t_from, t_cast) = match (CastTy::from_ty(self.expr_ty),
                                       CastTy::from_ty(self.cast_ty)) {
@@ -245,7 +246,7 @@ impl<'tcx> CastCheck<'tcx> {
             (_, Int(Bool)) => Err(CastError::CastToBool),
 
             // * -> Char
-            (Int(U(hir::TyU8)), Int(Char)) => Ok(CastKind::U8CharCast), // u8-char-cast
+            (Int(U(ast::TyU8)), Int(Char)) => Ok(CastKind::U8CharCast), // u8-char-cast
             (_, Int(Char)) => Err(CastError::CastToChar),
 
             // prim -> float,ptr

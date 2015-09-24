@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(negate_unsigned)]
+
 pub fn main() {
     let a = 1;
     let a_neg: i8 = -a;

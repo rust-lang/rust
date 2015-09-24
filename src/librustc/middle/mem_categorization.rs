@@ -77,6 +77,7 @@ use front::map as ast_map;
 use middle::infer;
 use middle::check_const;
 use middle::def;
+use middle::ty::adjustment;
 use middle::ty::{self, Ty};
 
 use rustc_front::hir::{MutImmutable, MutMutable};
@@ -421,16 +422,16 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
 
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AdjustDerefRef(
-                        ty::AutoDerefRef {
+                    adjustment::AdjustDerefRef(
+                        adjustment::AutoDerefRef {
                             autoref: None, unsize: None, autoderefs, ..}) => {
                         // Equivalent to *expr or something similar.
                         self.cat_expr_autoderefd(expr, autoderefs)
                     }
 
-                    ty::AdjustReifyFnPointer |
-                    ty::AdjustUnsafeFnPointer |
-                    ty::AdjustDerefRef(_) => {
+                    adjustment::AdjustReifyFnPointer |
+                    adjustment::AdjustUnsafeFnPointer |
+                    adjustment::AdjustDerefRef(_) => {
                         debug!("cat_expr({:?}): {:?}",
                                adjustment,
                                expr);
@@ -473,7 +474,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                    expr.id,
                    expr,
                    base_cmt);
-            Ok(self.cat_field(expr, base_cmt, f_name.node.name, expr_ty))
+            Ok(self.cat_field(expr, base_cmt, f_name.node, expr_ty))
           }
 
           hir::ExprTupField(ref base, idx) => {
@@ -516,10 +517,6 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
           hir::ExprPath(..) => {
             let def = self.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
             self.cat_def(expr.id, expr.span, expr_ty, def)
-          }
-
-          hir::ExprParen(ref e) => {
-            self.cat_expr(&**e)
           }
 
           hir::ExprAddrOf(..) | hir::ExprCall(..) |
@@ -1275,7 +1272,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             // {f1: p1, ..., fN: pN}
             for fp in field_pats {
                 let field_ty = try!(self.pat_ty(&*fp.node.pat)); // see (*2)
-                let cmt_field = self.cat_field(pat, cmt.clone(), fp.node.ident.name, field_ty);
+                let cmt_field = self.cat_field(pat, cmt.clone(), fp.node.name, field_ty);
                 try!(self.cat_pattern_(cmt_field, &*fp.node.pat, op));
             }
           }

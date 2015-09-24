@@ -15,8 +15,9 @@ use super::type_variable::{EqTo};
 
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
-use middle::ty_relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 
+/// Ensures `a` is made equal to `b`. Returns `a` on success.
 pub struct Equate<'a, 'tcx: 'a> {
     fields: CombineFields<'a, 'tcx>
 }
@@ -68,7 +69,8 @@ impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
             }
 
             _ => {
-                combine::super_combine_tys(self.fields.infcx, self, a, b)
+                try!(combine::super_combine_tys(self.fields.infcx, self, a, b));
+                Ok(a)
             }
         }
     }

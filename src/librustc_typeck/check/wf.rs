@@ -17,7 +17,7 @@ use middle::region;
 use middle::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
 use middle::traits;
 use middle::ty::{self, Ty};
-use middle::ty_fold::{TypeFolder, TypeFoldable, super_fold_ty};
+use middle::ty::fold::{TypeFolder, TypeFoldable, super_fold_ty};
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -324,7 +324,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 -> ty::ParamTy
     {
         let name = match space {
-            TypeSpace => ast_generics.ty_params[index].ident.name,
+            TypeSpace => ast_generics.ty_params[index].name,
             SelfSpace => special_idents::type_self.name,
             FnSpace => self.tcx().sess.bug("Fn space occupied?"),
         };

@@ -1559,30 +1559,41 @@ impl<T: Eq> Eq for [T] {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Ord for [T] {
     fn cmp(&self, other: &[T]) -> Ordering {
-        self.iter().cmp(other.iter())
+        let l = cmp::min(self.len(), other.len());
+
+        // Slice to the loop iteration range to enable bound check
+        // elimination in the compiler
+        let lhs = &self[..l];
+        let rhs = &other[..l];
+
+        for i in 0..l {
+            match lhs[i].cmp(&rhs[i]) {
+                Ordering::Equal => (),
+                non_eq => return non_eq,
+            }
+        }
+
+        self.len().cmp(&other.len())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for [T] {
-    #[inline]
     fn partial_cmp(&self, other: &[T]) -> Option<Ordering> {
-        self.iter().partial_cmp(other.iter())
-    }
-    #[inline]
-    fn lt(&self, other: &[T]) -> bool {
-        self.iter().lt(other.iter())
-    }
-    #[inline]
-    fn le(&self, other: &[T]) -> bool {
-        self.iter().le(other.iter())
-    }
-    #[inline]
-    fn ge(&self, other: &[T]) -> bool {
-        self.iter().ge(other.iter())
-    }
-    #[inline]
-    fn gt(&self, other: &[T]) -> bool {
-        self.iter().gt(other.iter())
+        let l = cmp::min(self.len(), other.len());
+
+        // Slice to the loop iteration range to enable bound check
+        // elimination in the compiler
+        let lhs = &self[..l];
+        let rhs = &other[..l];
+
+        for i in 0..l {
+            match lhs[i].partial_cmp(&rhs[i]) {
+                Some(Ordering::Equal) => (),
+                non_eq => return non_eq,
+            }
+        }
+
+        self.len().partial_cmp(&other.len())
     }
 }

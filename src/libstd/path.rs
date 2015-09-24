@@ -965,8 +965,10 @@ impl PathBuf {
     /// * if `path` has a prefix but no root, it replaces `self`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push<P: AsRef<Path>>(&mut self, path: P) {
-        let path = path.as_ref();
+        self._push(path.as_ref())
+    }
 
+    fn _push(&mut self, path: &Path) {
         // in general, a separator is needed if the rightmost byte is not a separator
         let mut need_sep = self.as_mut_vec().last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
 
@@ -1033,11 +1035,15 @@ impl PathBuf {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_file_name<S: AsRef<OsStr>>(&mut self, file_name: S) {
+        self._set_file_name(file_name.as_ref())
+    }
+
+    fn _set_file_name(&mut self, file_name: &OsStr) {
         if self.file_name().is_some() {
             let popped = self.pop();
             debug_assert!(popped);
         }
-        self.push(file_name.as_ref());
+        self.push(file_name);
     }
 
     /// Updates `self.extension()` to `extension`.
@@ -1048,6 +1054,10 @@ impl PathBuf {
     /// is added; otherwise it is replaced.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_extension<S: AsRef<OsStr>>(&mut self, extension: S) -> bool {
+        self._set_extension(extension.as_ref())
+    }
+
+    fn _set_extension(&mut self, extension: &OsStr) -> bool {
         if self.file_name().is_none() { return false; }
 
         let mut stem = match self.file_stem() {
@@ -1055,7 +1065,6 @@ impl PathBuf {
             None => OsString::new(),
         };
 
-        let extension = extension.as_ref();
         if !os_str_as_u8_slice(extension).is_empty() {
             stem.push(".");
             stem.push(extension);
@@ -1106,7 +1115,7 @@ impl<P: AsRef<Path>> iter::FromIterator<P> for PathBuf {
 impl<P: AsRef<Path>> iter::Extend<P> for PathBuf {
     fn extend<I: IntoIterator<Item = P>>(&mut self, iter: I) {
         for p in iter {
-            self.push(p)
+            self.push(p.as_ref())
         }
     }
 }
@@ -1452,7 +1461,11 @@ impl Path {
                issue = "23284")]
     pub fn relative_from<'a, P: ?Sized + AsRef<Path>>(&'a self, base: &'a P) -> Option<&Path>
     {
-        iter_after(self.components(), base.as_ref().components()).map(|c| c.as_path())
+        self._relative_from(base.as_ref())
+    }
+
+    fn _relative_from<'a>(&'a self, base: &'a Path) -> Option<&'a Path> {
+        iter_after(self.components(), base.components()).map(|c| c.as_path())
     }
 
     /// Determines whether `base` is a prefix of `self`.
@@ -1472,7 +1485,11 @@ impl Path {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn starts_with<P: AsRef<Path>>(&self, base: P) -> bool {
-        iter_after(self.components(), base.as_ref().components()).is_some()
+        self._starts_with(base.as_ref())
+    }
+
+    fn _starts_with(&self, base: &Path) -> bool {
+        iter_after(self.components(), base.components()).is_some()
     }
 
     /// Determines whether `child` is a suffix of `self`.
@@ -1490,7 +1507,11 @@ impl Path {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ends_with<P: AsRef<Path>>(&self, child: P) -> bool {
-        iter_after(self.components().rev(), child.as_ref().components().rev()).is_some()
+        self._ends_with(child.as_ref())
+    }
+
+    fn _ends_with(&self, child: &Path) -> bool {
+        iter_after(self.components().rev(), child.components().rev()).is_some()
     }
 
     /// Extracts the stem (non-extension) portion of `self.file_name()`.
@@ -1552,6 +1573,10 @@ impl Path {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn join<P: AsRef<Path>>(&self, path: P) -> PathBuf {
+        self._join(path.as_ref())
+    }
+
+    fn _join(&self, path: &Path) -> PathBuf {
         let mut buf = self.to_path_buf();
         buf.push(path);
         buf
@@ -1571,6 +1596,10 @@ impl Path {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_file_name<S: AsRef<OsStr>>(&self, file_name: S) -> PathBuf {
+        self._with_file_name(file_name.as_ref())
+    }
+
+    fn _with_file_name(&self, file_name: &OsStr) -> PathBuf {
         let mut buf = self.to_path_buf();
         buf.set_file_name(file_name);
         buf
@@ -1590,6 +1619,10 @@ impl Path {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
+        self._with_extension(extension.as_ref())
+    }
+
+    fn _with_extension(&self, extension: &OsStr) -> PathBuf {
         let mut buf = self.to_path_buf();
         buf.set_extension(extension);
         buf

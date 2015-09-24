@@ -61,9 +61,10 @@ pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 70;
           target_os = "dragonfly"))]
 pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 71;
 #[cfg(any(target_os = "bitrig",
-          target_os = "netbsd",
           target_os = "openbsd"))]
 pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 101;
+#[cfg(target_os = "netbsd")]
+pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 48;
 #[cfg(target_os = "android")]
 pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 0x0048;
 
@@ -131,26 +132,31 @@ extern {
 
     pub fn raise(signum: libc::c_int) -> libc::c_int;
 
+    #[cfg_attr(target_os = "netbsd", link_name = "__sigaction14")]
     pub fn sigaction(signum: libc::c_int,
                      act: *const sigaction,
                      oldact: *mut sigaction) -> libc::c_int;
 
+    #[cfg_attr(target_os = "netbsd", link_name = "__sigaltstack14")]
     pub fn sigaltstack(ss: *const sigaltstack,
                        oss: *mut sigaltstack) -> libc::c_int;
 
     #[cfg(not(target_os = "android"))]
+    #[cfg_attr(target_os = "netbsd", link_name = "__sigemptyset14")]
     pub fn sigemptyset(set: *mut sigset_t) -> libc::c_int;
 
     pub fn pthread_sigmask(how: libc::c_int, set: *const sigset_t,
                            oldset: *mut sigset_t) -> libc::c_int;
 
     #[cfg(not(target_os = "ios"))]
+    #[cfg_attr(target_os = "netbsd", link_name = "__getpwuid_r50")]
     pub fn getpwuid_r(uid: libc::uid_t,
                       pwd: *mut passwd,
                       buf: *mut libc::c_char,
                       buflen: libc::size_t,
                       result: *mut *mut passwd) -> libc::c_int;
 
+    #[cfg_attr(target_os = "netbsd", link_name = "__utimes50")]
     pub fn utimes(filename: *const libc::c_char,
                   times: *const libc::timeval) -> libc::c_int;
     pub fn gai_strerror(errcode: libc::c_int) -> *const libc::c_char;
@@ -347,12 +353,12 @@ mod signal_os {
     #[cfg(any(target_os = "macos",
               target_os = "ios"))]
     pub type sigset_t = u32;
-    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
+    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "netbsd"))]
     #[repr(C)]
     pub struct sigset_t {
         bits: [u32; 4],
     }
-    #[cfg(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"))]
+    #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
     pub type sigset_t = libc::c_uint;
 
     // This structure has more fields, but we're not all that interested in

@@ -21,13 +21,13 @@ use metadata::csearch;
 use syntax::parse::token::InternedString;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::ast;
-use syntax::ast::NodeId;
+use syntax::ast::{NodeId, Attribute};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
+use syntax::attr::{self, Stability, AttrMetaMethods};
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
 use rustc_front::hir;
-use rustc_front::hir::{FnDecl, Attribute, Block, Crate, Item, Generics, StructField, Variant};
-use rustc_front::attr::{self, Stability, AttrMetaMethods};
+use rustc_front::hir::{FnDecl, Block, Crate, Item, Generics, StructField, Variant};
 use rustc_front::visit::{self, FnKind, Visitor};
 
 use std::mem::replace;
@@ -237,7 +237,7 @@ impl<'tcx> Index<'tcx> {
         for attr in &krate.attrs {
             if &attr.name()[..] == "staged_api" {
                 match attr.node.value.node {
-                    hir::MetaWord(_) => {
+                    ast::MetaWord(_) => {
                         attr::mark_used(attr);
                         is_staged_api = true;
                     }
@@ -336,7 +336,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         // When compiling with --test we don't enforce stability on the
         // compiler-generated test module, demarcated with `DUMMY_SP` plus the
         // name `__test`
-        if item.span == DUMMY_SP && item.ident.name == "__test" { return }
+        if item.span == DUMMY_SP && item.name == "__test" { return }
 
         check_item(self.tcx, item, true,
                    &mut |id, sp, stab| self.check(id, sp, stab));
@@ -353,6 +353,12 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         check_path(self.tcx, path, id,
                    &mut |id, sp, stab| self.check(id, sp, stab));
         visit::walk_path(self, path)
+    }
+
+    fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
+        check_path_list_item(self.tcx, item,
+                   &mut |id, sp, stab| self.check(id, sp, stab));
+        visit::walk_path_list_item(self, prefix, item)
     }
 
     fn visit_pat(&mut self, pat: &hir::Pat) {
@@ -387,7 +393,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &hir::Item, warn_about_defns: bool,
 
             for impl_item in impl_items {
                 let item = trait_items.iter().find(|item| {
-                    item.name() == impl_item.ident.name
+                    item.name() == impl_item.name
                 }).unwrap();
                 if warn_about_defns {
                     maybe_do_stability_check(tcx, item.def_id(), impl_item.span, cb);
@@ -412,7 +418,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &hir::Expr,
         hir::ExprField(ref base_e, ref field) => {
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
-                ty::TyStruct(def, _) => def.struct_variant().field_named(field.node.name).did,
+                ty::TyStruct(def, _) => def.struct_variant().field_named(field.node).did,
                 _ => tcx.sess.span_bug(e.span,
                                        "stability::check_expr: named field access on non-struct")
             }
@@ -435,7 +441,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &hir::Expr,
                     // in the construction expression.
                     for field in expr_fields {
                         let did = def.struct_variant()
-                            .field_named(field.ident.node.name)
+                            .field_named(field.name.node)
                             .did;
                         maybe_do_stability_check(tcx, did, field.span, cb);
                     }
@@ -470,7 +476,17 @@ pub fn check_path(tcx: &ty::ctxt, path: &hir::Path, id: ast::NodeId,
         }
         None => {}
     }
+}
 
+pub fn check_path_list_item(tcx: &ty::ctxt, item: &hir::PathListItem,
+                  cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
+    match tcx.def_map.borrow().get(&item.node.id()).map(|d| d.full_def()) {
+        Some(def::DefPrimTy(..)) => {}
+        Some(def) => {
+            maybe_do_stability_check(tcx, def.def_id(), item.span, cb);
+        }
+        None => {}
+    }
 }
 
 pub fn check_pat(tcx: &ty::ctxt, pat: &hir::Pat,
@@ -497,7 +513,7 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &hir::Pat,
         // Foo { a, b, c }
         hir::PatStruct(_, ref pat_fields, _) => {
             for field in pat_fields {
-                let did = v.field_named(field.node.ident.name).did;
+                let did = v.field_named(field.node.name).did;
                 maybe_do_stability_check(tcx, did, field.span, cb);
             }
         }

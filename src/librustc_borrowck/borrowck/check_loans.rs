@@ -464,40 +464,36 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
             match (new_loan.kind, old_loan.kind) {
                 (ty::MutBorrow, ty::MutBorrow) => {
-                    self.bccx.span_err(
-                        new_loan.span,
-                        &format!("cannot borrow `{}`{} as mutable \
-                                more than once at a time",
-                                nl, new_loan_msg))
+                    span_err!(self.bccx, new_loan.span, E0499,
+                              "cannot borrow `{}`{} as mutable \
+                               more than once at a time",
+                              nl, new_loan_msg);
                 }
 
                 (ty::UniqueImmBorrow, _) => {
-                    self.bccx.span_err(
-                        new_loan.span,
-                        &format!("closure requires unique access to `{}` \
-                                but {} is already borrowed{}",
-                                nl, ol_pronoun, old_loan_msg));
+                    span_err!(self.bccx, new_loan.span, E0500,
+                              "closure requires unique access to `{}` \
+                               but {} is already borrowed{}",
+                              nl, ol_pronoun, old_loan_msg);
                 }
 
                 (_, ty::UniqueImmBorrow) => {
-                    self.bccx.span_err(
-                        new_loan.span,
-                        &format!("cannot borrow `{}`{} as {} because \
-                                previous closure requires unique access",
-                                nl, new_loan_msg, new_loan.kind.to_user_str()));
+                    span_err!(self.bccx, new_loan.span, E0501,
+                              "cannot borrow `{}`{} as {} because \
+                               previous closure requires unique access",
+                              nl, new_loan_msg, new_loan.kind.to_user_str());
                 }
 
                 (_, _) => {
-                    self.bccx.span_err(
-                        new_loan.span,
-                        &format!("cannot borrow `{}`{} as {} because \
-                                {} is also borrowed as {}{}",
-                                nl,
-                                new_loan_msg,
-                                new_loan.kind.to_user_str(),
-                                ol_pronoun,
-                                old_loan.kind.to_user_str(),
-                                old_loan_msg));
+                    span_err!(self.bccx, new_loan.span, E0502,
+                              "cannot borrow `{}`{} as {} because \
+                               {} is also borrowed as {}{}",
+                              nl,
+                              new_loan_msg,
+                              new_loan.kind.to_user_str(),
+                              ol_pronoun,
+                              old_loan.kind.to_user_str(),
+                              old_loan_msg);
                 }
             }
 
@@ -617,11 +613,9 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         match self.analyze_restrictions_on_use(id, copy_path, ty::ImmBorrow) {
             UseOk => { }
             UseWhileBorrowed(loan_path, loan_span) => {
-                self.bccx.span_err(
-                    span,
-                    &format!("cannot use `{}` because it was mutably borrowed",
-                            &self.bccx.loan_path_to_string(copy_path))
-                    );
+                span_err!(self.bccx, span, E0503,
+                          "cannot use `{}` because it was mutably borrowed",
+                          &self.bccx.loan_path_to_string(copy_path));
                 self.bccx.span_note(
                     loan_span,
                     &format!("borrow of `{}` occurs here",
@@ -642,18 +636,19 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         match self.analyze_restrictions_on_use(id, move_path, ty::MutBorrow) {
             UseOk => { }
             UseWhileBorrowed(loan_path, loan_span) => {
-                let err_message = match move_kind {
+                match move_kind {
                     move_data::Captured =>
-                        format!("cannot move `{}` into closure because it is borrowed",
-                                &self.bccx.loan_path_to_string(move_path)),
+                        span_err!(self.bccx, span, E0504,
+                                  "cannot move `{}` into closure because it is borrowed",
+                                  &self.bccx.loan_path_to_string(move_path)),
                     move_data::Declared |
                     move_data::MoveExpr |
                     move_data::MovePat =>
-                        format!("cannot move out of `{}` because it is borrowed",
-                                &self.bccx.loan_path_to_string(move_path))
+                        span_err!(self.bccx, span, E0505,
+                                  "cannot move out of `{}` because it is borrowed",
+                                  &self.bccx.loan_path_to_string(move_path))
                 };
 
-                self.bccx.span_err(span, &err_message[..]);
                 self.bccx.span_note(
                     loan_span,
                     &format!("borrow of `{}` occurs here",
@@ -820,10 +815,9 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                    span: Span,
                                    loan_path: &LoanPath<'tcx>,
                                    loan: &Loan) {
-        self.bccx.span_err(
-            span,
-            &format!("cannot assign to `{}` because it is borrowed",
-                    self.bccx.loan_path_to_string(loan_path)));
+        span_err!(self.bccx, span, E0506,
+                  "cannot assign to `{}` because it is borrowed",
+                  self.bccx.loan_path_to_string(loan_path));
         self.bccx.span_note(
             loan.span,
             &format!("borrow of `{}` occurs here",

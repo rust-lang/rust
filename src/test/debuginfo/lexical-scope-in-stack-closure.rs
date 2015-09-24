@@ -69,6 +69,7 @@
 // lldb-check:[...]$5 = false
 // lldb-command:continue
 
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 fn main() {

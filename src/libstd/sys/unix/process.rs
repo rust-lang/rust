@@ -452,6 +452,7 @@ mod tests {
 
     #[cfg(not(target_os = "android"))]
     extern {
+        #[cfg_attr(target_os = "netbsd", link_name = "__sigaddset14")]
         fn sigaddset(set: *mut c::sigset_t, signum: libc::c_int) -> libc::c_int;
     }
 

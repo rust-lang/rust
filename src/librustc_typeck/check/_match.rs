@@ -56,7 +56,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             // They can denote both statically and dynamically sized byte arrays
             let mut pat_ty = expr_ty;
             if let hir::ExprLit(ref lt) = lt.node {
-                if let hir::LitByteStr(_) = lt.node {
+                if let ast::LitByteStr(_) = lt.node {
                     let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
                     if let ty::TyRef(_, mt) = expected_ty.sty {
                         if let ty::TySlice(_) = mt.ty.sty {
@@ -706,25 +706,25 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
     // Typecheck each field.
     for &Spanned { node: ref field, span } in fields {
-        let field_ty = match used_fields.entry(field.ident.name) {
+        let field_ty = match used_fields.entry(field.name) {
             Occupied(occupied) => {
                 span_err!(tcx.sess, span, E0025,
                     "field `{}` bound multiple times in the pattern",
-                    field.ident);
+                    field.name);
                 span_note!(tcx.sess, *occupied.get(),
                     "field `{}` previously bound here",
-                    field.ident);
+                    field.name);
                 tcx.types.err
             }
             Vacant(vacant) => {
                 vacant.insert(span);
-                field_map.get(&field.ident.name)
+                field_map.get(&field.name)
                     .map(|f| pcx.fcx.field_ty(span, f, substs))
                     .unwrap_or_else(|| {
                         span_err!(tcx.sess, span, E0026,
                             "struct `{}` does not have a field named `{}`",
                             tcx.item_path_str(variant.did),
-                            field.ident);
+                            field.name);
                         tcx.types.err
                     })
             }

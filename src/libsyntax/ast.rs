@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::AsmDialect::*;
 pub use self::AttrStyle::*;
 pub use self::BindingMode::*;
 pub use self::BinOp_::*;
@@ -28,7 +27,6 @@ pub use self::Item_::*;
 pub use self::KleeneOp::*;
 pub use self::Lit_::*;
 pub use self::LitIntType::*;
-pub use self::Mac_::*;
 pub use self::MacStmtStyle::*;
 pub use self::MetaItem_::*;
 pub use self::Mutability::*;
@@ -153,8 +151,7 @@ pub const ILLEGAL_CTXT : SyntaxContext = 1;
 
 /// A name is a part of an identifier, representing a string or gensym. It's
 /// the result of interning.
-#[derive(Eq, Ord, PartialEq, PartialOrd, Hash,
-           RustcEncodable, RustcDecodable, Clone, Copy)]
+#[derive(Eq, Ord, PartialEq, PartialOrd, Hash, Clone, Copy)]
 pub struct Name(pub u32);
 
 impl<T: AsRef<str>> PartialEq<T> for Name {
@@ -180,6 +177,18 @@ impl Name {
 
 /// A mark represents a unique id associated with a macro expansion
 pub type Mrk = u32;
+
+impl Encodable for Name {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_str(&self.as_str())
+    }
+}
+
+impl Decodable for Name {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Name, D::Error> {
+        Ok(token::intern(&try!(d.read_str())[..]))
+    }
+}
 
 impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
@@ -1132,12 +1141,13 @@ pub type Mac = Spanned<Mac_>;
 /// is being invoked, and the vector of token-trees contains the source
 /// of the macro invocation.
 ///
-/// There's only one flavor, now, so this could presumably be simplified.
+/// NB: the additional ident for a macro_rules-style macro is actually
+/// stored in the enclosing item. Oog.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Mac_ {
-    // NB: the additional ident for a macro_rules-style macro is actually
-    // stored in the enclosing item. Oog.
-    MacInvocTT(Path, Vec<TokenTree>, SyntaxContext),   // new macro-invocation
+pub struct Mac_ {
+    pub path: Path,
+    pub tts: Vec<TokenTree>,
+    pub ctxt: SyntaxContext,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1440,8 +1450,8 @@ pub enum Ty_ {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum AsmDialect {
-    AsmAtt,
-    AsmIntel
+    Att,
+    Intel,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1614,7 +1624,6 @@ pub struct Variant_ {
     pub id: NodeId,
     /// Explicit discriminant, eg `Foo = 1`
     pub disr_expr: Option<P<Expr>>,
-    pub vis: Visibility,
 }
 
 pub type Variant = Spanned<Variant_>;

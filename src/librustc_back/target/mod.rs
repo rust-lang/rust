@@ -157,6 +157,9 @@ pub struct TargetOptions {
     /// Whether to disable linking to compiler-rt. Defaults to false, as LLVM
     /// will emit references to the functions that compiler-rt provides.
     pub no_compiler_rt: bool,
+    /// Whether to disable linking to the default libraries, typically corresponds
+    /// to `-nodefaultlibs`. Defaults to true.
+    pub no_default_libraries: bool,
     /// Dynamically linked executables can be compiled as position independent
     /// if the default relocation model of position independent code is not
     /// changed. This is a requirement to take advantage of ASLR, as otherwise
@@ -212,6 +215,7 @@ impl Default for TargetOptions {
             linker_is_gnu: false,
             has_rpath: false,
             no_compiler_rt: false,
+            no_default_libraries: true,
             position_independent_executables: false,
             pre_link_objects: Vec::new(),
             post_link_objects: Vec::new(),
@@ -319,6 +323,7 @@ impl Target {
         key!(linker_is_gnu, bool);
         key!(has_rpath, bool);
         key!(no_compiler_rt, bool);
+        key!(no_default_libraries, bool);
         key!(pre_link_args, list);
         key!(post_link_args, list);
         key!(allow_asm, bool);

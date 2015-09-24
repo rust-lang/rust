@@ -126,8 +126,7 @@ fn main() {
 
     println!("{} keys", n_keys);
 
-    // FIXME: #9970
-    println!("{}", "\nBTreeMap:");
+    println!("\nBTreeMap:");
 
     {
         let mut map: BTreeMap<usize,usize> = BTreeMap::new();
@@ -145,8 +144,7 @@ fn main() {
         vector(&mut map, n_keys, &rand);
     }
 
-    // FIXME: #9970
-    println!("{}", "\nHashMap:");
+    println!("\nHashMap:");
 
     {
         let mut map: HashMap<usize,usize> = HashMap::new();

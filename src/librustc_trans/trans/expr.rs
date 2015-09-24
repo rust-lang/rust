@@ -71,10 +71,11 @@ use trans::machine;
 use trans::meth;
 use trans::tvec;
 use trans::type_of;
-use middle::cast::{CastKind, CastTy};
-use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustUnsafeFnPointer};
+use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
+use middle::ty::adjustment::{AdjustUnsafeFnPointer, CustomCoerceUnsized};
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
+use middle::ty::cast::{CastKind, CastTy};
 use util::common::indenter;
 use trans::machine::{llsize_of, llsize_of_alloc};
 use trans::type_::Type;
@@ -82,7 +83,7 @@ use trans::type_::Type;
 use rustc_front;
 use rustc_front::hir;
 
-use syntax::{ast, codemap};
+use syntax::{ast, ast_util, codemap};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::parse::token;
@@ -118,7 +119,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
-    if bcx.tcx().tables.borrow().adjustments.contains_key(&expr.id) {
+    if adjustment_required(bcx, expr) {
         // use trans, which may be less efficient but
         // which will perform the adjustments:
         let datum = unpack_datum!(bcx, trans(bcx, expr));
@@ -333,6 +334,37 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
     }
 }
 
+fn adjustment_required<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                   expr: &hir::Expr) -> bool {
+    let adjustment = match bcx.tcx().tables.borrow().adjustments.get(&expr.id).cloned() {
+        None => { return false; }
+        Some(adj) => adj
+    };
+
+    // Don't skip a conversion from Box<T> to &T, etc.
+    if bcx.tcx().is_overloaded_autoderef(expr.id, 0) {
+        return true;
+    }
+
+    match adjustment {
+        AdjustReifyFnPointer => {
+            // FIXME(#19925) once fn item types are
+            // zero-sized, we'll need to return true here
+            false
+        }
+        AdjustUnsafeFnPointer => {
+            // purely a type-level thing
+            false
+        }
+        AdjustDerefRef(ref adj) => {
+            // We are a bit paranoid about adjustments and thus might have a re-
+            // borrow here which merely derefs and then refs again (it might have
+            // a different region or mutability, but we don't care here).
+            !(adj.autoderefs == 1 && adj.autoref.is_some() && adj.unsize.is_none())
+        }
+    }
+}
+
 /// Helper for trans that apply adjustments from `expr` to `datum`, which should be the unadjusted
 /// translation of `expr`.
 fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -514,7 +546,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
 
             let coerce_index = match kind {
-                ty::CustomCoerceUnsized::Struct(i) => i
+                CustomCoerceUnsized::Struct(i) => i
             };
             assert!(coerce_index < src_fields.len() && src_fields.len() == target_fields.len());
 
@@ -532,7 +564,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                               Rvalue::new(ByRef)));
                 } else {
                     // Otherwise, simply copy the data from the source.
-                    assert_eq!(src_ty, target_ty);
+                    assert!(src_ty.is_phantom_data() || src_ty == target_ty);
                     memcpy_ty(bcx, ll_target, ll_source, src_ty);
                 }
             }
@@ -629,14 +661,11 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_datum_unadjusted");
 
     match expr.node {
-        hir::ExprParen(ref e) => {
-            trans(bcx, &**e)
-        }
         hir::ExprPath(..) => {
             trans_def(bcx, expr, bcx.def(expr.id))
         }
-        hir::ExprField(ref base, ident) => {
-            trans_rec_field(bcx, &**base, ident.node.name)
+        hir::ExprField(ref base, name) => {
+            trans_rec_field(bcx, &**base, name.node)
         }
         hir::ExprTupField(ref base, idx) => {
             trans_rec_tup_field(bcx, &**base, idx.node)
@@ -933,9 +962,6 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
     match expr.node {
-        hir::ExprParen(ref e) => {
-            trans_into(bcx, &**e, Ignore)
-        }
         hir::ExprBreak(label_opt) => {
             controlflow::trans_break(bcx, expr, label_opt.map(|l| l.node))
         }
@@ -1023,7 +1049,20 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         hir::ExprAssignOp(op, ref dst, ref src) => {
-            trans_assign_op(bcx, expr, op, &**dst, &**src)
+            let has_method_map = bcx.tcx()
+                                    .tables
+                                    .borrow()
+                                    .method_map
+                                    .contains_key(&MethodCall::expr(expr.id));
+
+            if has_method_map {
+                let dst = unpack_datum!(bcx, trans(bcx, &**dst));
+                let src_datum = unpack_datum!(bcx, trans(bcx, &**src));
+                trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), dst,
+                                    Some((src_datum, src.id)), None, false).bcx
+            } else {
+                trans_assign_op(bcx, expr, op, &**dst, &**src)
+            }
         }
         hir::ExprInlineAsm(ref a) => {
             asm::trans_inline_asm(bcx, a)
@@ -1049,9 +1088,6 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
     match expr.node {
-        hir::ExprParen(ref e) => {
-            trans_into(bcx, &**e, dest)
-        }
         hir::ExprPath(..) => {
             trans_def_dps_unadjusted(bcx, expr, bcx.def(expr.id), dest)
         }
@@ -1078,7 +1114,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // trans. Shudder.
             fn make_field(field_name: &str, expr: P<hir::Expr>) -> hir::Field {
                 hir::Field {
-                    ident: codemap::dummy_spanned(token::str_to_ident(field_name)),
+                    name: codemap::dummy_spanned(token::str_to_ident(field_name).name),
                     expr: expr,
                     span: codemap::DUMMY_SP,
                 }
@@ -1139,7 +1175,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         hir::ExprLit(ref lit) => {
             match lit.node {
-                hir::LitStr(ref s, _) => {
+                ast::LitStr(ref s, _) => {
                     tvec::trans_lit_str(bcx, expr, (*s).clone(), dest)
                 }
                 _ => {
@@ -1215,8 +1251,11 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // Trait casts used to come this way, now they should be coercions.
             bcx.tcx().sess.span_bug(expr.span, "DPS expr_cast (residual trait cast?)")
         }
-        hir::ExprAssignOp(op, ref dst, ref src) => {
-            trans_assign_op(bcx, expr, op, &**dst, &**src)
+        hir::ExprAssignOp(op, _, _) => {
+            bcx.tcx().sess.span_bug(
+                expr.span,
+                &format!("augmented assignment `{}=` should always be a rvalue_stmt",
+                         rustc_front::util::binop_to_string(op.node)))
         }
         _ => {
             bcx.tcx().sess.span_bug(
@@ -1369,7 +1408,7 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut need_base = vec![true; vinfo.fields.len()];
 
     let numbered_fields = fields.iter().map(|field| {
-        let pos = vinfo.field_index(field.ident.node.name);
+        let pos = vinfo.field_index(field.name.node);
         need_base[pos] = false;
         (pos, &*field.expr)
     }).collect::<Vec<_>>();
@@ -1548,7 +1587,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
 fn trans_immediate_lit<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    expr: &hir::Expr,
-                                   lit: &hir::Lit)
+                                   lit: &ast::Lit)
                                    -> DatumBlock<'blk, 'tcx, Expr> {
     // must not be a string constant, that is a RvalueDpsExpr
     let _icx = push_ctxt("trans_immediate_lit");
@@ -2045,8 +2084,8 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               id: ast::NodeId)
                               -> DatumBlock<'blk, 'tcx, Expr>
 {
-    use middle::cast::CastTy::*;
-    use middle::cast::IntTy::*;
+    use middle::ty::cast::CastTy::*;
+    use middle::ty::cast::IntTy::*;
 
     fn int_cast(bcx: Block,
                 lldsttype: Type,
@@ -2380,8 +2419,8 @@ impl OverflowOpViaIntrinsic {
         bcx.ccx().get_intrinsic(&name)
     }
     fn to_intrinsic_name(&self, tcx: &ty::ctxt, ty: Ty) -> &'static str {
-        use rustc_front::hir::IntTy::*;
-        use rustc_front::hir::UintTy::*;
+        use syntax::ast::IntTy::*;
+        use syntax::ast::UintTy::*;
         use middle::ty::{TyInt, TyUint};
 
         let new_sty = match ty.sty {
@@ -2713,7 +2752,7 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
             ExprKind::RvalueDps
         }
 
-        hir::ExprLit(ref lit) if rustc_front::util::lit_is_str(&**lit) => {
+        hir::ExprLit(ref lit) if ast_util::lit_is_str(&**lit) => {
             ExprKind::RvalueDps
         }
 
@@ -2749,7 +2788,5 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
                 ExprKind::RvalueDps
             }
         }
-
-        hir::ExprParen(ref e) => expr_kind(tcx, &**e),
     }
 }

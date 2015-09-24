@@ -21,13 +21,14 @@ use middle::ty::{TyParam, TyRawPtr, TyRef, TyTuple};
 use middle::ty::TyClosure;
 use middle::ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
 use middle::ty::{self, TypeAndMut, Ty, HasTypeFlags};
-use middle::ty_fold::{self, TypeFoldable};
+use middle::ty::fold::TypeFoldable;
 
 use std::fmt;
 use syntax::abi;
+use syntax::ast;
 use syntax::parse::token;
 use syntax::ast::DUMMY_NODE_ID;
-use rustc_front::hir as ast;
+use rustc_front::hir;
 
 pub fn verbose() -> bool {
     ty::tls::with(|tcx| tcx.sess.verbose())
@@ -219,7 +220,7 @@ fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
         }
     };
 
-    let new_value = ty_fold::replace_late_bound_regions(tcx, &value, |br| {
+    let new_value = tcx.replace_late_bound_regions(&value, |br| {
         let _ = start_or_continue(f, "for<", ", ");
         ty::ReLateBound(ty::DebruijnIndex::new(1), match br {
             ty::BrNamed(_, name) => {
@@ -255,7 +256,7 @@ fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
 struct TraitAndProjections<'tcx>(ty::TraitRef<'tcx>, Vec<ty::ProjectionPredicate<'tcx>>);
 
 impl<'tcx> TypeFoldable<'tcx> for TraitAndProjections<'tcx> {
-    fn fold_with<F:ty_fold::TypeFolder<'tcx>>(&self, folder: &mut F)
+    fn fold_with<F:ty::fold::TypeFolder<'tcx>>(&self, folder: &mut F)
                                               -> TraitAndProjections<'tcx> {
         TraitAndProjections(self.0.fold_with(folder), self.1.fold_with(folder))
     }
@@ -334,7 +335,7 @@ impl<'tcx> fmt::Debug for ty::TyS<'tcx> {
 impl<'tcx> fmt::Display for ty::TypeAndMut<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}{}",
-               if self.mutbl == ast::MutMutable { "mut " } else { "" },
+               if self.mutbl == hir::MutMutable { "mut " } else { "" },
                self.ty)
     }
 }
@@ -385,6 +386,53 @@ impl<'tcx, 'container> fmt::Debug for ty::AdtDefData<'tcx, 'container> {
         ty::tls::with(|tcx| {
             write!(f, "{}", tcx.item_path_str(self.did))
         })
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::adjustment::AutoAdjustment<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ty::adjustment::AdjustReifyFnPointer => {
+                write!(f, "AdjustReifyFnPointer")
+            }
+            ty::adjustment::AdjustUnsafeFnPointer => {
+                write!(f, "AdjustUnsafeFnPointer")
+            }
+            ty::adjustment::AdjustDerefRef(ref data) => {
+                write!(f, "{:?}", data)
+            }
+        }
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::adjustment::AutoDerefRef<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "AutoDerefRef({}, unsize={:?}, {:?})",
+               self.autoderefs, self.unsize, self.autoref)
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::TraitTy<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "TraitTy({:?},{:?})",
+               self.principal,
+               self.bounds)
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ty::Predicate::Trait(ref a) => write!(f, "{:?}", a),
+            ty::Predicate::Equate(ref pair) => write!(f, "{:?}", pair),
+            ty::Predicate::RegionOutlives(ref pair) => write!(f, "{:?}", pair),
+            ty::Predicate::TypeOutlives(ref pair) => write!(f, "{:?}", pair),
+            ty::Predicate::Projection(ref pair) => write!(f, "{:?}", pair),
+            ty::Predicate::WellFormed(ty) => write!(f, "WF({:?})", ty),
+            ty::Predicate::ObjectSafe(trait_def_id) => {
+                write!(f, "ObjectSafe({:?})", trait_def_id)
+            }
+        }
     }
 }
 
@@ -452,6 +500,45 @@ impl fmt::Debug for ty::Region {
     }
 }
 
+impl<'tcx> fmt::Debug for ty::ClosureTy<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ClosureTy({},{:?},{})",
+               self.unsafety,
+               self.sig,
+               self.abi)
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ClosureUpvar({:?},{:?})",
+               self.def,
+               self.ty)
+    }
+}
+
+impl<'a, 'tcx> fmt::Debug for ty::ParameterEnvironment<'a, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ParameterEnvironment(\
+            free_substs={:?}, \
+            implicit_region_bound={:?}, \
+            caller_bounds={:?})",
+            self.free_substs,
+            self.implicit_region_bound,
+            self.caller_bounds)
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::ObjectLifetimeDefault {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ty::ObjectLifetimeDefault::Ambiguous => write!(f, "Ambiguous"),
+            ty::ObjectLifetimeDefault::BaseDefault => write!(f, "BaseDefault"),
+            ty::ObjectLifetimeDefault::Specific(ref r) => write!(f, "{:?}", r),
+        }
+    }
+}
+
 impl fmt::Display for ty::Region {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if verbose() {
@@ -483,6 +570,17 @@ impl fmt::Debug for ty::FreeRegion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ReFree({:?}, {:?})",
                self.scope, self.bound_region)
+    }
+}
+
+impl fmt::Debug for ty::Variance {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match *self {
+            ty::Covariant => "+",
+            ty::Contravariant => "-",
+            ty::Invariant => "o",
+            ty::Bivariant => "*",
+        })
     }
 }
 
@@ -567,6 +665,58 @@ impl fmt::Display for ty::BuiltinBounds {
             }
         }
         Ok(())
+    }
+}
+
+impl fmt::Debug for ty::TyVid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "_#{}t", self.index)
+    }
+}
+
+impl fmt::Debug for ty::IntVid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "_#{}i", self.index)
+    }
+}
+
+impl fmt::Debug for ty::FloatVid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "_#{}f", self.index)
+    }
+}
+
+impl fmt::Debug for ty::RegionVid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "'_#{}r", self.index)
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::FnSig<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({:?}; variadic: {})->{:?}", self.inputs, self.variadic, self.output)
+    }
+}
+
+impl fmt::Debug for ty::InferTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ty::TyVar(ref v) => v.fmt(f),
+            ty::IntVar(ref v) => v.fmt(f),
+            ty::FloatVar(ref v) => v.fmt(f),
+            ty::FreshTy(v) => write!(f, "FreshTy({:?})", v),
+            ty::FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
+            ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({:?})", v)
+        }
+    }
+}
+
+impl fmt::Debug for ty::IntVarValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ty::IntType(ref v) => v.fmt(f),
+            ty::UintType(ref v) => v.fmt(f),
+        }
     }
 }
 
@@ -676,8 +826,8 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyBox(typ) => write!(f, "Box<{}>",  typ),
             TyRawPtr(ref tm) => {
                 write!(f, "*{} {}", match tm.mutbl {
-                    ast::MutMutable => "mut",
-                    ast::MutImmutable => "const",
+                    hir::MutMutable => "mut",
+                    hir::MutImmutable => "const",
                 },  tm.ty)
             }
             TyRef(r, ref tm) => {
@@ -704,7 +854,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 write!(f, ")")
             }
             TyBareFn(opt_def_id, ref bare_fn) => {
-                if bare_fn.unsafety == ast::Unsafety::Unsafe {
+                if bare_fn.unsafety == hir::Unsafety::Unsafe {
                     try!(write!(f, "unsafe "));
                 }
 
@@ -817,10 +967,10 @@ impl fmt::Display for ty::ExplicitSelfCategory {
         f.write_str(match *self {
             ty::StaticExplicitSelfCategory => "static",
             ty::ByValueExplicitSelfCategory => "self",
-            ty::ByReferenceExplicitSelfCategory(_, ast::MutMutable) => {
+            ty::ByReferenceExplicitSelfCategory(_, hir::MutMutable) => {
                 "&mut self"
             }
-            ty::ByReferenceExplicitSelfCategory(_, ast::MutImmutable) => "&self",
+            ty::ByReferenceExplicitSelfCategory(_, hir::MutImmutable) => "&self",
             ty::ByBoxExplicitSelfCategory => "Box<self>",
         })
     }

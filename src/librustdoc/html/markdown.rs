@@ -207,9 +207,7 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
 ///
 /// Any leading or trailing whitespace will be trimmed.
 fn collapse_whitespace(s: &str) -> String {
-    s.split(|c: char| c.is_whitespace()).filter(|s| {
-        !s.is_empty()
-    }).collect::<Vec<_>>().join(" ")
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 thread_local!(static USED_HEADER_MAP: RefCell<HashMap<String, usize>> = {
@@ -277,25 +275,44 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         // Extract the text provided
         let s = if text.is_null() {
-            "".to_string()
+            "".to_owned()
         } else {
             let s = unsafe { (*text).as_bytes() };
-            str::from_utf8(s).unwrap().to_string()
+            str::from_utf8(&s).unwrap().to_owned()
         };
 
-        // Transform the contents of the header into a hyphenated string
-        let id = s.split_whitespace().map(|s| s.to_ascii_lowercase())
-            .collect::<Vec<String>>().join("-");
-
+        // Discard '<em>', '<code>' tags and some escaped characters,
+        // transform the contents of the header into a hyphenated string
+        // without non-alphanumeric characters other than '-' and '_'.
+        //
         // This is a terrible hack working around how hoedown gives us rendered
         // html for text rather than the raw text.
+        let mut id = s.clone();
+        let repl_sub = vec!["<em>", "</em>", "<code>", "</code>",
+                            "<strong>", "</strong>",
+                            "&lt;", "&gt;", "&amp;", "&#39;", "&quot;"];
+        for sub in repl_sub {
+            id = id.replace(sub, "");
+        }
+        let id = id.chars().filter_map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                if c.is_ascii() {
+                    Some(c.to_ascii_lowercase())
+                } else {
+                    Some(c)
+                }
+            } else if c.is_whitespace() && c.is_ascii() {
+                Some('-')
+            } else {
+                None
+            }
+        }).collect::<String>();
 
         let opaque = unsafe { (*data).opaque as *mut hoedown_html_renderer_state };
         let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
 
         // Make sure our hyphenated ID is unique for this page
         let id = USED_HEADER_MAP.with(|map| {
-            let id = id.replace("<code>", "").replace("</code>", "").to_string();
             let id = match map.borrow_mut().get_mut(&id) {
                 None => id,
                 Some(a) => { *a += 1; format!("{}-{}", id, *a - 1) }
@@ -304,22 +321,15 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             id
         });
 
-        let sec = match opaque.toc_builder {
-            Some(ref mut builder) => {
-                builder.push(level as u32, s.clone(), id.clone())
-            }
-            None => {""}
-        };
+
+        let sec = opaque.toc_builder.as_mut().map_or("".to_owned(), |builder| {
+            format!("{} ", builder.push(level as u32, s.clone(), id.clone()))
+        });
 
         // Render the HTML
-        let text = format!(r##"<h{lvl} id="{id}" class='section-header'><a
-                           href="#{id}">{sec}{}</a></h{lvl}>"##,
-                           s, lvl = level, id = id,
-                           sec = if sec.is_empty() {
-                               sec.to_string()
-                           } else {
-                               format!("{} ", sec)
-                           });
+        let text = format!("<h{lvl} id='{id}' class='section-header'>\
+                           <a href='#{id}'>{sec}{}</a></h{lvl}>",
+                           s, lvl = level, id = id, sec = sec);
 
         let text = CString::new(text).unwrap();
         unsafe { hoedown_buffer_puts(ob, text.as_ptr()) }
@@ -333,7 +343,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         _: *const hoedown_renderer_data,
     ) -> libc::c_int {
         let content = if text.is_null() {
-            "".to_string()
+            "".to_owned()
         } else {
             let bytes = unsafe { (*text).as_bytes() };
             let s = str::from_utf8(bytes).unwrap();
@@ -367,10 +377,9 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         hoedown_html_renderer_free(renderer);
 
-        let mut ret = match opaque.toc_builder {
-            Some(b) => write!(w, "<nav id=\"TOC\">{}</nav>", b.into_toc()),
-            None => Ok(())
-        };
+        let mut ret = opaque.toc_builder.map_or(Ok(()), |builder| {
+            write!(w, "<nav id=\"TOC\">{}</nav>", builder.into_toc())
+        });
 
         if ret.is_ok() {
             let buf = (*ob).as_bytes();
@@ -404,7 +413,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                 stripped_filtered_line(l).unwrap_or(l)
             });
             let text = lines.collect::<Vec<&str>>().join("\n");
-            tests.add_test(text.to_string(),
+            tests.add_test(text.to_owned(),
                            block_info.should_panic, block_info.no_run,
                            block_info.ignore, block_info.test_harness);
         }
@@ -560,10 +569,7 @@ pub fn plain_summary_line(md: &str) -> String {
                                 md.len() as libc::size_t);
         hoedown_document_free(document);
         let plain_slice = (*ob).as_bytes();
-        let plain = match str::from_utf8(plain_slice) {
-            Ok(s) => s.to_string(),
-            Err(_) => "".to_string(),
-        };
+        let plain = str::from_utf8(plain_slice).unwrap_or("").to_owned();
         hoedown_buffer_free(ob);
         plain
     }
@@ -572,7 +578,7 @@ pub fn plain_summary_line(md: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{LangString, Markdown};
-    use super::{collapse_whitespace, plain_summary_line};
+    use super::plain_summary_line;
 
     #[test]
     fn test_lang_string_parse() {
@@ -608,6 +614,27 @@ mod tests {
     }
 
     #[test]
+    fn test_header() {
+        fn t(input: &str, expect: &str) {
+            let output = format!("{}", Markdown(input));
+            assert_eq!(output, expect);
+        }
+
+        t("# Foo bar", "\n<h1 id='foo-bar' class='section-header'>\
+          <a href='#foo-bar'>Foo bar</a></h1>");
+        t("## Foo-bar_baz qux", "\n<h2 id='foo-bar_baz-qux' class=\'section-\
+          header'><a href='#foo-bar_baz-qux'>Foo-bar_baz qux</a></h2>");
+        t("### **Foo** *bar* baz!?!& -_qux_-%",
+          "\n<h3 id='foo-bar-baz--_qux_-' class='section-header'>\
+          <a href='#foo-bar-baz--_qux_-'><strong>Foo</strong> \
+          <em>bar</em> baz!?!&amp; -_qux_-%</a></h3>");
+        t("####**Foo?** & \\*bar?!*  _`baz`_ ❤ #qux",
+          "\n<h4 id='foo--bar--baz--qux' class='section-header'>\
+          <a href='#foo--bar--baz--qux'><strong>Foo?</strong> &amp; *bar?!*  \
+          <em><code>baz</code></em> ❤ #qux</a></h4>");
+    }
+
+    #[test]
     fn test_plain_summary_line() {
         fn t(input: &str, expect: &str) {
             let output = plain_summary_line(input);
@@ -619,19 +646,5 @@ mod tests {
         t("type `Type<'static>` ...", "type `Type<'static>` ...");
         t("# top header", "top header");
         t("## header", "header");
-    }
-
-    #[test]
-    fn test_collapse_whitespace() {
-        fn t(input: &str, expected: &str) {
-            let actual = collapse_whitespace(input);
-            assert_eq!(actual, expected);
-        }
-
-        t("foo", "foo");
-        t("foo bar baz", "foo bar baz");
-        t(" foo   bar", "foo bar");
-        t("\tfoo   bar\nbaz", "foo bar baz");
-        t("foo   bar \n   baz\t\tqux\n", "foo bar baz qux");
     }
 }

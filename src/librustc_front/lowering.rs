@@ -14,19 +14,15 @@ use hir;
 
 use syntax::ast::*;
 use syntax::ptr::P;
-use syntax::codemap::Spanned;
+use syntax::codemap::{respan, Spanned};
 use syntax::owned_slice::OwnedSlice;
 
-
-pub fn lower_meta_items(meta_items: &Vec<P<MetaItem>>) -> Vec<P<hir::MetaItem>> {
-    meta_items.iter().map(|x| lower_meta_item(x)).collect()
-}
 
 pub fn lower_view_path(view_path: &ViewPath) -> P<hir::ViewPath> {
     P(Spanned {
         node: match view_path.node {
             ViewPathSimple(ident, ref path) => {
-                hir::ViewPathSimple(ident, lower_path(path))
+                hir::ViewPathSimple(ident.name, lower_path(path))
             }
             ViewPathGlob(ref path) => {
                 hir::ViewPathGlob(lower_path(path))
@@ -39,11 +35,14 @@ pub fn lower_view_path(view_path: &ViewPath) -> P<hir::ViewPath> {
                                         PathListIdent { id, name, rename } =>
                                             hir::PathListIdent {
                                                 id: id,
-                                                name: name,
-                                                rename: rename.clone(),
+                                                name: name.name,
+                                                rename: rename.map(|x| x.name),
                                             },
                                         PathListMod { id, rename } =>
-                                            hir::PathListMod { id: id, rename: rename.clone() }
+                                            hir::PathListMod {
+                                                id: id,
+                                                rename: rename.map(|x| x.name)
+                                            }
                                     },
                                     span: path_list_ident.span
                                 }
@@ -54,13 +53,9 @@ pub fn lower_view_path(view_path: &ViewPath) -> P<hir::ViewPath> {
     })
 }
 
-pub fn lower_attrs(attrs: &Vec<Attribute>) -> Vec<hir::Attribute> {
-    attrs.iter().map(|x| lower_attribute(x)).collect()
-}
-
 pub fn lower_arm(arm: &Arm) -> hir::Arm {
     hir::Arm {
-        attrs: lower_attrs(&arm.attrs),
+        attrs: arm.attrs.clone(),
         pats: arm.pats.iter().map(|x| lower_pat(x)).collect(),
         guard: arm.guard.as_ref().map(|ref x| lower_expr(x)),
         body: lower_expr(&arm.body),
@@ -81,7 +76,7 @@ pub fn lower_decl(d: &Decl) -> P<hir::Decl> {
 }
 
 pub fn lower_ty_binding(b: &TypeBinding) -> P<hir::TypeBinding> {
-    P(hir::TypeBinding { id: b.id, ident: b.ident, ty: lower_ty(&b.ty), span: b.span })
+    P(hir::TypeBinding { id: b.id, name: b.ident.name, ty: lower_ty(&b.ty), span: b.span })
 }
 
 pub fn lower_ty(t: &Ty) -> P<hir::Ty> {
@@ -143,8 +138,8 @@ pub fn lower_variant(v: &Variant) -> P<hir::Variant> {
     P(Spanned {
         node: hir::Variant_ {
             id: v.node.id,
-            name: v.node.name,
-            attrs: lower_attrs(&v.node.attrs),
+            name: v.node.name.name,
+            attrs: v.node.attrs.clone(),
             kind: match v.node.kind {
                 TupleVariantKind(ref variant_args) => {
                     hir::TupleVariantKind(variant_args.iter().map(|ref x|
@@ -155,7 +150,6 @@ pub fn lower_variant(v: &Variant) -> P<hir::Variant> {
                 }
             },
             disr_expr: v.node.disr_expr.as_ref().map(|e| lower_expr(e)),
-            vis: lower_visibility(v.node.vis),
         },
         span: v.span,
     })
@@ -212,40 +206,15 @@ pub fn lower_local(l: &Local) -> P<hir::Local> {
         })
 }
 
-pub fn lower_attribute(at: &Attribute) -> hir::Attribute {
-    Spanned {
-        node: hir::Attribute_ {
-            id: hir::AttrId(at.node.id.0),
-            style: lower_attr_style(at.node.style),
-            value: lower_meta_item(&at.node.value),
-            is_sugared_doc: at.node.is_sugared_doc,
-        },
-        span: at.span,
-    }
-}
-
-// FIXME we should probably just unify hir and ast Attributes.
-pub fn unlower_attribute(at: &hir::Attribute) -> Attribute {
-    Spanned {
-        node: Attribute_ {
-            id: AttrId(at.node.id.0),
-            style: unlower_attr_style(at.node.style),
-            value: unlower_meta_item(&at.node.value),
-            is_sugared_doc: at.node.is_sugared_doc,
-        },
-        span: at.span,
-    }
-}
-
 pub fn lower_explicit_self_underscore(es: &ExplicitSelf_) -> hir::ExplicitSelf_ {
     match *es {
         SelfStatic => hir::SelfStatic,
-        SelfValue(v) => hir::SelfValue(v),
+        SelfValue(v) => hir::SelfValue(v.name),
         SelfRegion(ref lifetime, m, ident) => {
-            hir::SelfRegion(lower_opt_lifetime(lifetime), lower_mutability(m), ident)
+            hir::SelfRegion(lower_opt_lifetime(lifetime), lower_mutability(m), ident.name)
         }
         SelfExplicit(ref typ, ident) => {
-            hir::SelfExplicit(lower_ty(typ), ident)
+            hir::SelfExplicit(lower_ty(typ), ident.name)
         }
     }
 }
@@ -259,33 +228,6 @@ pub fn lower_mutability(m: Mutability) -> hir::Mutability {
 
 pub fn lower_explicit_self(s: &ExplicitSelf) -> hir::ExplicitSelf {
     Spanned { node: lower_explicit_self_underscore(&s.node), span: s.span }
-}
-
-
-pub fn lower_meta_item(mi: &MetaItem) -> P<hir::MetaItem> {
-    P(Spanned {
-        node: match mi.node {
-            MetaWord(ref id) => hir::MetaWord(id.clone()),
-            MetaList(ref id, ref mis) => {
-                hir::MetaList(id.clone(), mis.iter().map(|mi| lower_meta_item(mi)).collect())
-            }
-            MetaNameValue(ref id, ref s) => hir::MetaNameValue(id.clone(), lower_lit(s))
-        },
-        span: mi.span,
-    })
-}
-
-pub fn unlower_meta_item(mi: &hir::MetaItem) -> P<MetaItem> {
-    P(Spanned {
-        node: match mi.node {
-            hir::MetaWord(ref id) => MetaWord(id.clone()),
-            hir::MetaList(ref id, ref mis) => {
-                MetaList(id.clone(), mis.iter().map(|mi| unlower_meta_item(mi)).collect())
-            }
-            hir::MetaNameValue(ref id, ref s) => MetaNameValue(id.clone(), unlower_lit(s))
-        },
-        span: mi.span,
-    })
 }
 
 pub fn lower_arg(arg: &Arg) -> hir::Arg {
@@ -316,7 +258,7 @@ pub fn lower_ty_param_bound(tpb: &TyParamBound) -> hir::TyParamBound {
 pub fn lower_ty_param(tp: &TyParam) -> hir::TyParam {
     hir::TyParam {
         id: tp.id,
-        ident: tp.ident,
+        name: tp.ident.name,
         bounds: lower_bounds(&tp.bounds),
         default: tp.default.as_ref().map(|x| lower_ty(x)),
         span: tp.span,
@@ -424,14 +366,17 @@ pub fn lower_struct_field(f: &StructField) -> hir::StructField {
             id: f.node.id,
             kind: lower_struct_field_kind(&f.node.kind),
             ty: lower_ty(&f.node.ty),
-            attrs: lower_attrs(&f.node.attrs),
+            attrs: f.node.attrs.clone(),
         },
         span: f.span,
     }
 }
 
 pub fn lower_field(f: &Field) -> hir::Field {
-    hir::Field { ident: f.ident, expr: lower_expr(&f.expr), span: f.span }
+    hir::Field {
+        name: respan(f.ident.span, f.ident.node.name),
+        expr: lower_expr(&f.expr), span: f.span
+    }
 }
 
 pub fn lower_mt(mt: &MutTy) -> hir::MutTy {
@@ -527,8 +472,8 @@ pub fn lower_item_underscore(i: &Item_) -> hir::Item_ {
 pub fn lower_trait_item(i: &TraitItem) -> P<hir::TraitItem> {
     P(hir::TraitItem {
             id: i.id,
-            ident: i.ident,
-            attrs: lower_attrs(&i.attrs),
+            name: i.ident.name,
+            attrs: i.attrs.clone(),
             node: match i.node {
             ConstTraitItem(ref ty, ref default) => {
                 hir::ConstTraitItem(lower_ty(ty),
@@ -550,8 +495,8 @@ pub fn lower_trait_item(i: &TraitItem) -> P<hir::TraitItem> {
 pub fn lower_impl_item(i: &ImplItem) -> P<hir::ImplItem> {
     P(hir::ImplItem {
             id: i.id,
-            ident: i.ident,
-            attrs: lower_attrs(&i.attrs),
+            name: i.ident.name,
+            attrs: i.attrs.clone(),
             vis: lower_visibility(i.vis),
             node: match i.node  {
             ConstImplItem(ref ty, ref expr) => {
@@ -573,12 +518,10 @@ pub fn lower_mod(m: &Mod) -> hir::Mod {
 }
 
 pub fn lower_crate(c: &Crate) -> hir::Crate {
-    let config = lower_meta_items(&c.config);
-
     hir::Crate {
         module: lower_mod(&c.module),
-        attrs: lower_attrs(&c.attrs),
-        config: config,
+        attrs: c.attrs.clone(),
+        config: c.config.clone(),
         span: c.span,
         exported_macros: c.exported_macros.iter().map(|m| lower_macro_def(m)).collect(),
     }
@@ -586,11 +529,11 @@ pub fn lower_crate(c: &Crate) -> hir::Crate {
 
 pub fn lower_macro_def(m: &MacroDef) -> hir::MacroDef {
     hir::MacroDef {
-        ident: m.ident,
-        attrs: m.attrs.iter().map(|a| lower_attribute(a)).collect(),
+        name: m.ident.name,
+        attrs: m.attrs.clone(),
         id: m.id,
         span: m.span,
-        imported_from: m.imported_from,
+        imported_from: m.imported_from.map(|x| x.name),
         export: m.export,
         use_locally: m.use_locally,
         allow_internal_unstable: m.allow_internal_unstable,
@@ -609,8 +552,8 @@ pub fn lower_item_simple(i: &Item) -> hir::Item {
 
     hir::Item {
         id: i.id,
-        ident: i.ident,
-        attrs: lower_attrs(&i.attrs),
+        name: i.ident.name,
+        attrs: i.attrs.clone(),
         node: node,
         vis: lower_visibility(i.vis),
         span: i.span,
@@ -620,8 +563,8 @@ pub fn lower_item_simple(i: &Item) -> hir::Item {
 pub fn lower_foreign_item(i: &ForeignItem) -> P<hir::ForeignItem> {
     P(hir::ForeignItem {
             id: i.id,
-            ident: i.ident,
-            attrs: lower_attrs(&i.attrs),
+            name: i.ident.name,
+            attrs: i.attrs.clone(),
             node: match i.node {
             ForeignItemFn(ref fdec, ref generics) => {
                 hir::ForeignItemFn(lower_fn_decl(fdec), lower_generics(generics))
@@ -660,37 +603,6 @@ pub fn lower_constness(c: Constness) -> hir::Constness {
     }
 }
 
-pub fn lower_lit(l: &Lit) -> hir::Lit {
-    Spanned {
-        node: match l.node {
-            LitStr(ref i, s) => hir::LitStr(i.clone(), lower_string_style(s)),
-            LitByteStr(ref b) => hir::LitByteStr(b.clone()),
-            LitByte(u) => hir::LitByte(u),
-            LitChar(c) => hir::LitChar(c),
-            LitInt(u, ref t) => hir::LitInt(u, lower_lit_int_type(t)),
-            LitFloat(ref i, t) => hir::LitFloat(i.clone(), lower_float_ty(t)),
-            LitFloatUnsuffixed(ref i) => hir::LitFloatUnsuffixed(i.clone()),
-            LitBool(b) => hir::LitBool(b),
-        },
-        span: l.span,
-    }
-}
-
-pub fn unlower_lit(l: &hir::Lit) -> Lit {
-    Spanned {
-        node: match l.node {
-            hir::LitStr(ref i, s) => LitStr(i.clone(), unlower_string_style(s)),
-            hir::LitByteStr(ref b) => LitByteStr(b.clone()),
-            hir::LitByte(u) => LitByte(u),
-            hir::LitChar(c) => LitChar(c),
-            hir::LitInt(u, ref t) => LitInt(u, unlower_lit_int_type(t)),
-            hir::LitFloat(ref i, t) => LitFloat(i.clone(), unlower_float_ty(t)),
-            hir::LitFloatUnsuffixed(ref i) => LitFloatUnsuffixed(i.clone()),
-            hir::LitBool(b) => LitBool(b),
-        },
-        span: l.span,
-    }
-}
 pub fn lower_unop(u: UnOp) -> hir::UnOp {
     match u {
         UnUniq => hir::UnUniq,
@@ -753,7 +665,7 @@ pub fn lower_pat(p: &Pat) -> P<hir::Pat> {
                 let fs = fields.iter().map(|f| {
                     Spanned { span: f.span,
                               node: hir::FieldPat {
-                                  ident: f.node.ident,
+                                  name: f.node.ident.name,
                                   pat: lower_pat(&f.node.pat),
                                   is_shorthand: f.node.is_shorthand,
                               }}
@@ -798,7 +710,7 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
                 }
                 ExprMethodCall(i, ref tps, ref args) => {
                     hir::ExprMethodCall(
-                        i,
+                        respan(i.span, i.node.name),
                         tps.iter().map(|x| lower_ty(x)).collect(),
                         args.iter().map(|x| lower_expr(x)).collect())
                 }
@@ -810,7 +722,7 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
                 ExprUnary(op, ref ohs) => {
                     hir::ExprUnary(lower_unop(op), lower_expr(ohs))
                 }
-                ExprLit(ref l) => hir::ExprLit(P(lower_lit(l))),
+                ExprLit(ref l) => hir::ExprLit(P((**l).clone())),
                 ExprCast(ref expr, ref ty) => {
                     hir::ExprCast(lower_expr(expr), lower_ty(ty))
                 }
@@ -849,7 +761,7 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
                                 lower_expr(er))
                 }
                 ExprField(ref el, ident) => {
-                    hir::ExprField(lower_expr(el), ident)
+                    hir::ExprField(lower_expr(el), respan(ident.span, ident.node.name))
                 }
                 ExprTupField(ref el, ident) => {
                     hir::ExprTupField(lower_expr(el), ident)
@@ -891,11 +803,11 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
                         (c.clone(), lower_expr(out), *is_rw)
                     }).collect(),
                     asm: asm.clone(),
-                    asm_str_style: lower_string_style(asm_str_style),
+                    asm_str_style: asm_str_style,
                     clobbers: clobbers.clone(),
                     volatile: volatile,
                     alignstack: alignstack,
-                    dialect: lower_asm_dialect(dialect),
+                    dialect: dialect,
                     expn_id: expn_id,
                 }),
                 ExprStruct(ref path, ref fields, ref maybe_expr) => {
@@ -903,7 +815,9 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
                             fields.iter().map(|x| lower_field(x)).collect(),
                             maybe_expr.as_ref().map(|x| lower_expr(x)))
                 },
-                ExprParen(ref ex) => hir::ExprParen(lower_expr(ex)),
+                ExprParen(ref ex) => {
+                    return lower_expr(ex);
+                }
                 ExprIfLet(..) |
                 ExprWhileLet(..) |
                 ExprForLoop(..) |
@@ -937,20 +851,6 @@ pub fn lower_stmt(s: &Stmt) -> P<hir::Stmt> {
     }
 }
 
-pub fn lower_string_style(s: StrStyle) -> hir::StrStyle {
-    match s {
-        CookedStr => hir::CookedStr,
-        RawStr(u) => hir::RawStr(u),
-    }
-}
-
-pub fn unlower_string_style(s: hir::StrStyle) -> StrStyle {
-    match s {
-        hir::CookedStr => CookedStr,
-        hir::RawStr(u) => RawStr(u),
-    }
-}
-
 pub fn lower_match_source(m: &MatchSource) -> hir::MatchSource {
     match *m {
         MatchSource::Normal => hir::MatchSource::Normal,
@@ -966,13 +866,6 @@ pub fn lower_capture_clause(c: CaptureClause) -> hir::CaptureClause {
     match c {
         CaptureByValue => hir::CaptureByValue,
         CaptureByRef => hir::CaptureByRef,
-    }
-}
-
-pub fn lower_asm_dialect(a: AsmDialect) -> hir::AsmDialect {
-    match a {
-        AsmAtt => hir::AsmAtt,
-        AsmIntel => hir::AsmIntel,
     }
 }
 
@@ -1008,7 +901,7 @@ pub fn lower_binding_mode(b: &BindingMode) -> hir::BindingMode {
 
 pub fn lower_struct_field_kind(s: &StructFieldKind) -> hir::StructFieldKind {
     match *s {
-        NamedField(ident, vis) => hir::NamedField(ident, lower_visibility(vis)),
+        NamedField(ident, vis) => hir::NamedField(ident.name, lower_visibility(vis)),
         UnnamedField(vis) => hir::UnnamedField(lower_visibility(vis)),
     }
 }
@@ -1027,107 +920,9 @@ pub fn lower_impl_polarity(i: ImplPolarity) -> hir::ImplPolarity {
     }
 }
 
-pub fn lower_float_ty(f: FloatTy) -> hir::FloatTy {
-    match f {
-        TyF32 => hir::TyF32,
-        TyF64 => hir::TyF64,
-    }
-}
-
-pub fn unlower_float_ty(f: hir::FloatTy) -> FloatTy {
-    match f {
-        hir::TyF32 => TyF32,
-        hir::TyF64 => TyF64,
-    }
-}
-
-pub fn lower_lit_int_type(i: &LitIntType) -> hir::LitIntType {
-    match *i {
-        SignedIntLit(i, s) => hir::SignedIntLit(lower_int_ty(i), lower_sign(s)),
-        UnsignedIntLit(u) => hir::UnsignedIntLit(lower_uint_ty(u)),
-        UnsuffixedIntLit(s) => hir::UnsuffixedIntLit(lower_sign(s)),
-    }
-}
-
-pub fn unlower_lit_int_type(i: &hir::LitIntType) -> LitIntType {
-    match *i {
-        hir::SignedIntLit(i, s) => SignedIntLit(unlower_int_ty(i), unlower_sign(s)),
-        hir::UnsignedIntLit(u) => UnsignedIntLit(unlower_uint_ty(u)),
-        hir::UnsuffixedIntLit(s) => UnsuffixedIntLit(unlower_sign(s)),
-    }
-}
-
-pub fn lower_int_ty(i: IntTy) -> hir::IntTy {
-    match i {
-        TyIs => hir::TyIs,
-        TyI8 => hir::TyI8,
-        TyI16 => hir::TyI16,
-        TyI32 => hir::TyI32,
-        TyI64 => hir::TyI64,
-    }
-}
-
-pub fn unlower_int_ty(i: hir::IntTy) -> IntTy {
-    match i {
-        hir::TyIs => TyIs,
-        hir::TyI8 => TyI8,
-        hir::TyI16 => TyI16,
-        hir::TyI32 => TyI32,
-        hir::TyI64 => TyI64,
-    }
-}
-
-pub fn lower_uint_ty(u: UintTy) -> hir::UintTy {
-    match u {
-        TyUs => hir::TyUs,
-        TyU8 => hir::TyU8,
-        TyU16 => hir::TyU16,
-        TyU32 => hir::TyU32,
-        TyU64 => hir::TyU64,
-    }
-}
-
-pub fn unlower_uint_ty(u: hir::UintTy) -> UintTy {
-    match u {
-        hir::TyUs => TyUs,
-        hir::TyU8 => TyU8,
-        hir::TyU16 => TyU16,
-        hir::TyU32 => TyU32,
-        hir::TyU64 => TyU64,
-    }
-}
-
-pub fn lower_sign(f: Sign) -> hir::Sign {
-    match f {
-        Minus => hir::Minus,
-        Plus => hir::Plus,
-    }
-}
-
-pub fn unlower_sign(f: hir::Sign) -> Sign {
-    match f {
-        hir::Minus => Minus,
-        hir::Plus => Plus,
-    }
-}
-
 pub fn lower_trait_bound_modifier(f: TraitBoundModifier) -> hir::TraitBoundModifier {
     match f {
         TraitBoundModifier::None => hir::TraitBoundModifier::None,
         TraitBoundModifier::Maybe => hir::TraitBoundModifier::Maybe,
-    }
-}
-
-pub fn lower_attr_style(f: AttrStyle) -> hir::AttrStyle {
-    match f {
-        AttrOuter => hir::AttrOuter,
-        AttrInner => hir::AttrInner,
-    }
-}
-
-pub fn unlower_attr_style(f: hir::AttrStyle) -> AttrStyle {
-    match f {
-        hir::AttrOuter => AttrOuter,
-        hir::AttrInner => AttrInner,
     }
 }

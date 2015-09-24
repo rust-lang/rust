@@ -135,7 +135,7 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                    -> ValueRef {
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
-    let substs = erase_regions(ccx.tcx(), substs);
+    let substs = ccx.tcx().erase_regions(substs);
     let mono_id = MonoId {
         def: closure_id,
         params: &substs.func_substs.types

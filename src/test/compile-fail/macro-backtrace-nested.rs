@@ -19,11 +19,11 @@ macro_rules! call_nested_expr {
     () => (nested_expr!())
 }
 
-macro_rules! call_nested_expr_sum { //~ NOTE in expansion of
+macro_rules! call_nested_expr_sum {
     () => { 1 + nested_expr!(); } //~ ERROR unresolved name
 }
 
 fn main() {
     1 + call_nested_expr!(); //~ ERROR unresolved name
-    call_nested_expr_sum!(); //~ NOTE expansion site
+    call_nested_expr_sum!(); //~ NOTE in this expansion of
 }

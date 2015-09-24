@@ -38,10 +38,10 @@ use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty::MethodCall;
 
 use syntax::ast;
+use syntax::attr;
 use syntax::codemap::DUMMY_SP;
 use syntax::ptr::P;
 
-use rustc_front::attr;
 use rustc_front::visit;
 use rustc_front::hir;
 
@@ -53,7 +53,7 @@ const VTABLE_OFFSET: usize = 3;
 /// be generated once they are invoked with specific type parameters,
 /// see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 pub fn trans_impl(ccx: &CrateContext,
-                  name: ast::Ident,
+                  name: ast::Name,
                   impl_items: &[P<hir::ImplItem>],
                   generics: &hir::Generics,
                   id: ast::NodeId) {
@@ -773,7 +773,7 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 fn opaque_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>, method_ty: &ty::BareFnTy<'tcx>)
                           -> &'tcx ty::BareFnTy<'tcx> {
     let mut inputs = method_ty.sig.0.inputs.clone();
-    inputs[0] = tcx.mk_mut_ptr(tcx.mk_mach_int(hir::TyI8));
+    inputs[0] = tcx.mk_mut_ptr(tcx.mk_mach_int(ast::TyI8));
 
     tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: method_ty.unsafety,

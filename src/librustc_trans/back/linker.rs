@@ -159,12 +159,7 @@ impl<'a> Linker for GnuLinker<'a> {
     }
 
     fn no_default_libraries(&mut self) {
-        // Unfortunately right now passing -nodefaultlibs to gcc on windows
-        // doesn't work so hot (in terms of native dependencies). This if
-        // statement should hopefully be removed one day though!
-        if !self.sess.target.target.options.is_like_windows {
-            self.cmd.arg("-nodefaultlibs");
-        }
+        self.cmd.arg("-nodefaultlibs");
     }
 
     fn build_dylib(&mut self, out_filename: &Path) {

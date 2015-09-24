@@ -23,6 +23,7 @@ use tcx::rustc::middle::pat_util;
 use tcx::rustc::middle::ty::{self, Ty};
 use tcx::rustc_front::hir;
 use tcx::rustc_front::util as hir_util;
+use tcx::syntax::ast;
 use tcx::syntax::codemap::Span;
 use tcx::syntax::parse::token;
 use tcx::syntax::ptr::P;
@@ -266,8 +267,6 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
 
             // Now comes the rote stuff:
 
-            hir::ExprParen(ref p) =>
-                ExprKind::Paren { arg: p.to_ref() },
             hir::ExprRepeat(ref v, ref c) =>
                 ExprKind::Repeat { value: v.to_ref(), count: c.to_ref() },
             hir::ExprRet(ref v) =>
@@ -289,9 +288,9 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
             hir::ExprLoop(ref body, _) =>
                 ExprKind::Loop { condition: None,
                                  body: block::to_expr_ref(cx, body) },
-            hir::ExprField(ref source, ident) =>
+            hir::ExprField(ref source, name) =>
                 ExprKind::Field { lhs: source.to_ref(),
-                                  name: Field::Named(ident.node.name) },
+                                  name: Field::Named(name.node) },
             hir::ExprTupField(ref source, ident) =>
                 ExprKind::Field { lhs: source.to_ref(),
                                   name: Field::Indexed(ident.node) },
@@ -320,7 +319,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
         // Now apply adjustments, if any.
         match cx.tcx.tables.borrow().adjustments.get(&self.id) {
             None => { }
-            Some(&ty::AdjustReifyFnPointer) => {
+            Some(&ty::adjustment::AdjustReifyFnPointer) => {
                 let adjusted_ty = cx.tcx.expr_ty_adjusted(self);
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
@@ -329,7 +328,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
                     kind: ExprKind::ReifyFnPointer { source: expr.to_ref() },
                 };
             }
-            Some(&ty::AdjustUnsafeFnPointer) => {
+            Some(&ty::adjustment::AdjustUnsafeFnPointer) => {
                 let adjusted_ty = cx.tcx.expr_ty_adjusted(self);
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
@@ -338,7 +337,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
                     kind: ExprKind::UnsafeFnPointer { source: expr.to_ref() },
                 };
             }
-            Some(&ty::AdjustDerefRef(ref adj)) => {
+            Some(&ty::adjustment::AdjustDerefRef(ref adj)) => {
                 for i in 0..adj.autoderefs {
                     let i = i as u32;
                     let adjusted_ty =
@@ -372,7 +371,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
                 } else if let Some(autoref) = adj.autoref {
                     let adjusted_ty = expr.ty.adjust_for_autoref(cx.tcx, Some(autoref));
                     match autoref {
-                        ty::AutoPtr(r, m) => {
+                        ty::adjustment::AutoPtr(r, m) => {
                             expr = Expr {
                                 temp_lifetime: temp_lifetime,
                                 ty: adjusted_ty,
@@ -382,7 +381,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
                                                          arg: expr.to_ref() }
                             };
                         }
-                        ty::AutoUnsafe(m) => {
+                        ty::adjustment::AutoUnsafe(m) => {
                             // Convert this to a suitable `&foo` and
                             // then an unsafe coercion. Limit the region to be just this
                             // expression.
@@ -462,56 +461,56 @@ fn to_borrow_kind(m: hir::Mutability) -> BorrowKind {
 fn convert_literal<'a,'tcx:'a>(cx: &mut Cx<'a,'tcx>,
                                expr_span: Span,
                                expr_ty: Ty<'tcx>,
-                               literal: &hir::Lit)
+                               literal: &ast::Lit)
                                -> Literal<Cx<'a,'tcx>>
 {
     use repr::IntegralBits::*;
     match (&literal.node, &expr_ty.sty) {
-        (&hir::LitStr(ref text, _), _) =>
+        (&ast::LitStr(ref text, _), _) =>
             Literal::String { value: text.clone() },
-        (&hir::LitByteStr(ref bytes), _) =>
+        (&ast::LitByteStr(ref bytes), _) =>
             Literal::Bytes { value: bytes.clone() },
-        (&hir::LitByte(c), _) =>
+        (&ast::LitByte(c), _) =>
             Literal::Uint { bits: B8, value: c as u64 },
-        (&hir::LitChar(c), _) =>
+        (&ast::LitChar(c), _) =>
             Literal::Char { c: c },
-        (&hir::LitInt(v, _), &ty::TyUint(hir::TyU8)) =>
+        (&ast::LitInt(v, _), &ty::TyUint(ast::TyU8)) =>
             Literal::Uint { bits: B8, value: v },
-        (&hir::LitInt(v, _), &ty::TyUint(hir::TyU16)) =>
+        (&ast::LitInt(v, _), &ty::TyUint(ast::TyU16)) =>
             Literal::Uint { bits: B16, value: v },
-        (&hir::LitInt(v, _), &ty::TyUint(hir::TyU32)) =>
+        (&ast::LitInt(v, _), &ty::TyUint(ast::TyU32)) =>
             Literal::Uint { bits: B32, value: v },
-        (&hir::LitInt(v, _), &ty::TyUint(hir::TyU64)) =>
+        (&ast::LitInt(v, _), &ty::TyUint(ast::TyU64)) =>
             Literal::Uint { bits: B64, value: v },
-        (&hir::LitInt(v, _), &ty::TyUint(hir::TyUs)) =>
+        (&ast::LitInt(v, _), &ty::TyUint(ast::TyUs)) =>
             Literal::Uint { bits: BSize, value: v },
-        (&hir::LitInt(v, hir::SignedIntLit(_, hir::Sign::Minus)), &ty::TyInt(hir::TyI8)) =>
+        (&ast::LitInt(v, ast::SignedIntLit(_, ast::Sign::Minus)), &ty::TyInt(ast::TyI8)) =>
             Literal::Int { bits: B8, value: -(v as i64) },
-        (&hir::LitInt(v, hir::SignedIntLit(_, hir::Sign::Minus)), &ty::TyInt(hir::TyI16)) =>
+        (&ast::LitInt(v, ast::SignedIntLit(_, ast::Sign::Minus)), &ty::TyInt(ast::TyI16)) =>
             Literal::Int { bits: B16, value: -(v as i64) },
-        (&hir::LitInt(v, hir::SignedIntLit(_, hir::Sign::Minus)), &ty::TyInt(hir::TyI32)) =>
+        (&ast::LitInt(v, ast::SignedIntLit(_, ast::Sign::Minus)), &ty::TyInt(ast::TyI32)) =>
             Literal::Int { bits: B32, value: -(v as i64) },
-        (&hir::LitInt(v, hir::SignedIntLit(_, hir::Sign::Minus)), &ty::TyInt(hir::TyI64)) =>
+        (&ast::LitInt(v, ast::SignedIntLit(_, ast::Sign::Minus)), &ty::TyInt(ast::TyI64)) =>
             Literal::Int { bits: B64, value: -(v as i64) },
-        (&hir::LitInt(v, hir::SignedIntLit(_, hir::Sign::Minus)), &ty::TyInt(hir::TyIs)) =>
+        (&ast::LitInt(v, ast::SignedIntLit(_, ast::Sign::Minus)), &ty::TyInt(ast::TyIs)) =>
             Literal::Int { bits: BSize, value: -(v as i64) },
-        (&hir::LitInt(v, _), &ty::TyInt(hir::TyI8)) =>
+        (&ast::LitInt(v, _), &ty::TyInt(ast::TyI8)) =>
             Literal::Int { bits: B8, value: v as i64 },
-        (&hir::LitInt(v, _), &ty::TyInt(hir::TyI16)) =>
+        (&ast::LitInt(v, _), &ty::TyInt(ast::TyI16)) =>
             Literal::Int { bits: B16, value: v as i64 },
-        (&hir::LitInt(v, _), &ty::TyInt(hir::TyI32)) =>
+        (&ast::LitInt(v, _), &ty::TyInt(ast::TyI32)) =>
             Literal::Int { bits: B32, value: v as i64 },
-        (&hir::LitInt(v, _), &ty::TyInt(hir::TyI64)) =>
+        (&ast::LitInt(v, _), &ty::TyInt(ast::TyI64)) =>
             Literal::Int { bits: B64, value: v as i64 },
-        (&hir::LitInt(v, _), &ty::TyInt(hir::TyIs)) =>
+        (&ast::LitInt(v, _), &ty::TyInt(ast::TyIs)) =>
             Literal::Int { bits: BSize, value: v as i64 },
-        (&hir::LitFloat(ref v, _), &ty::TyFloat(hir::TyF32)) |
-        (&hir::LitFloatUnsuffixed(ref v), &ty::TyFloat(hir::TyF32)) =>
+        (&ast::LitFloat(ref v, _), &ty::TyFloat(ast::TyF32)) |
+        (&ast::LitFloatUnsuffixed(ref v), &ty::TyFloat(ast::TyF32)) =>
             Literal::Float { bits: FloatBits::F32, value: v.parse::<f64>().unwrap() },
-        (&hir::LitFloat(ref v, _), &ty::TyFloat(hir::TyF64)) |
-        (&hir::LitFloatUnsuffixed(ref v), &ty::TyFloat(hir::TyF64)) =>
+        (&ast::LitFloat(ref v, _), &ty::TyFloat(ast::TyF64)) |
+        (&ast::LitFloatUnsuffixed(ref v), &ty::TyFloat(ast::TyF64)) =>
             Literal::Float { bits: FloatBits::F64, value: v.parse::<f64>().unwrap() },
-        (&hir::LitBool(v), _) =>
+        (&ast::LitBool(v), _) =>
             Literal::Bool { value: v },
         (ref l, ref t) =>
             cx.tcx.sess.span_bug(

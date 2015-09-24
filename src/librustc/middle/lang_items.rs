@@ -28,7 +28,8 @@ use middle::ty;
 use middle::weak_lang_items;
 use util::nodemap::FnvHashMap;
 
-use rustc_front::attr::AttrMetaMethods;
+use syntax::ast;
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 use rustc_front::visit::Visitor;
@@ -216,7 +217,7 @@ impl<'a> LanguageItemCollector<'a> {
     }
 }
 
-pub fn extract(attrs: &[hir::Attribute]) -> Option<InternedString> {
+pub fn extract(attrs: &[ast::Attribute]) -> Option<InternedString> {
     for attribute in attrs {
         match attribute.value_str() {
             Some(ref value) if attribute.check_name("lang") => {
@@ -285,6 +286,16 @@ lets_do_this! {
     BitOrTraitLangItem,              "bitor",                   bitor_trait;
     ShlTraitLangItem,                "shl",                     shl_trait;
     ShrTraitLangItem,                "shr",                     shr_trait;
+    AddAssignTraitLangItem,          "add_assign",              add_assign_trait;
+    SubAssignTraitLangItem,          "sub_assign",              sub_assign_trait;
+    MulAssignTraitLangItem,          "mul_assign",              mul_assign_trait;
+    DivAssignTraitLangItem,          "div_assign",              div_assign_trait;
+    RemAssignTraitLangItem,          "rem_assign",              rem_assign_trait;
+    BitXorAssignTraitLangItem,       "bitxor_assign",           bitxor_assign_trait;
+    BitAndAssignTraitLangItem,       "bitand_assign",           bitand_assign_trait;
+    BitOrAssignTraitLangItem,        "bitor_assign",            bitor_assign_trait;
+    ShlAssignTraitLangItem,          "shl_assign",              shl_assign_trait;
+    ShrAssignTraitLangItem,          "shr_assign",              shr_assign_trait;
     IndexTraitLangItem,              "index",                   index_trait;
     IndexMutTraitLangItem,           "index_mut",               index_mut_trait;
     RangeStructLangItem,             "range",                   range_struct;

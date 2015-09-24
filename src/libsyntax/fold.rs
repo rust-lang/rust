@@ -450,7 +450,7 @@ pub fn noop_fold_foreign_mod<T: Folder>(ForeignMod {abi, items}: ForeignMod,
 }
 
 pub fn noop_fold_variant<T: Folder>(v: P<Variant>, fld: &mut T) -> P<Variant> {
-    v.map(|Spanned {node: Variant_ {id, name, attrs, kind, disr_expr, vis}, span}| Spanned {
+    v.map(|Spanned {node: Variant_ {id, name, attrs, kind, disr_expr}, span}| Spanned {
         node: Variant_ {
             id: fld.new_id(id),
             name: name,
@@ -465,7 +465,6 @@ pub fn noop_fold_variant<T: Folder>(v: P<Variant>, fld: &mut T) -> P<Variant> {
                 }
             },
             disr_expr: disr_expr.map(|e| fld.fold_expr(e)),
-            vis: vis,
         },
         span: fld.new_span(span),
     })
@@ -568,10 +567,10 @@ pub fn noop_fold_explicit_self<T: Folder>(Spanned {span, node}: ExplicitSelf, fl
 
 pub fn noop_fold_mac<T: Folder>(Spanned {node, span}: Mac, fld: &mut T) -> Mac {
     Spanned {
-        node: match node {
-            MacInvocTT(p, tts, ctxt) => {
-                MacInvocTT(fld.fold_path(p), fld.fold_tts(&tts), ctxt)
-            }
+        node: Mac_ {
+            path: fld.fold_path(node.path),
+            tts: fld.fold_tts(&node.tts),
+            ctxt: node.ctxt,
         },
         span: fld.new_span(span)
     }

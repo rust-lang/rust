@@ -16,14 +16,14 @@ use std::mem;
 
 use syntax::abi;
 use syntax::ast;
+use syntax::attr;
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
 use rustc::front::map as hir_map;
 use rustc::middle::def_id::DefId;
 use rustc::middle::stability;
 
-use rustc_front::attr;
-use rustc_front::attr::AttrMetaMethods;
 use rustc_front::hir;
 
 use core;
@@ -39,7 +39,7 @@ use doctree::*;
 
 pub struct RustdocVisitor<'a, 'tcx: 'a> {
     pub module: Module,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub cx: &'a core::DocContext<'a, 'tcx>,
     pub analysis: Option<&'a core::CrateAnalysis>,
     view_item_stack: HashSet<ast::NodeId>,
@@ -83,7 +83,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     pub fn visit_struct_def(&mut self, item: &hir::Item,
-                            name: ast::Ident, sd: &hir::StructDef,
+                            name: ast::Name, sd: &hir::StructDef,
                             generics: &hir::Generics) -> Struct {
         debug!("Visiting struct");
         let struct_type = struct_type_from_def(&*sd);
@@ -101,7 +101,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     pub fn visit_enum_def(&mut self, it: &hir::Item,
-                          name: ast::Ident, def: &hir::EnumDef,
+                          name: ast::Name, def: &hir::EnumDef,
                           params: &hir::Generics) -> Enum {
         debug!("Visiting enum");
         Enum {
@@ -109,7 +109,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             variants: def.variants.iter().map(|v| Variant {
                 name: v.node.name,
                 attrs: v.node.attrs.clone(),
-                vis: v.node.vis,
                 stab: self.stability(v.node.id),
                 id: v.node.id,
                 kind: v.node.kind.clone(),
@@ -125,7 +124,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     pub fn visit_fn(&mut self, item: &hir::Item,
-                    name: ast::Ident, fd: &hir::FnDecl,
+                    name: ast::Name, fd: &hir::FnDecl,
                     unsafety: &hir::Unsafety,
                     constness: hir::Constness,
                     abi: &abi::Abi,
@@ -146,10 +145,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
     }
 
-    pub fn visit_mod_contents(&mut self, span: Span, attrs: Vec<hir::Attribute> ,
+    pub fn visit_mod_contents(&mut self, span: Span, attrs: Vec<ast::Attribute> ,
                               vis: hir::Visibility, id: ast::NodeId,
                               m: &hir::Mod,
-                              name: Option<ast::Ident>) -> Module {
+                              name: Option<ast::Name>) -> Module {
         let mut om = Module::new(name);
         om.where_outer = span;
         om.where_inner = m.inner;
@@ -200,7 +199,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     }
 
-    fn resolve_id(&mut self, id: ast::NodeId, renamed: Option<ast::Ident>,
+    fn resolve_id(&mut self, id: ast::NodeId, renamed: Option<ast::Name>,
                   glob: bool, om: &mut Module, please_inline: bool) -> bool {
         let tcx = match self.cx.tcx_opt() {
             Some(tcx) => tcx,
@@ -242,9 +241,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     pub fn visit_item(&mut self, item: &hir::Item,
-                      renamed: Option<ast::Ident>, om: &mut Module) {
+                      renamed: Option<ast::Name>, om: &mut Module) {
         debug!("Visiting item {:?}", item);
-        let name = renamed.unwrap_or(item.ident);
+        let name = renamed.unwrap_or(item.name);
         match item.node {
             hir::ItemExternCrate(ref p) => {
                 let path = match *p {
@@ -399,7 +398,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         Macro {
             id: def.id,
             attrs: def.attrs.clone(),
-            name: def.ident,
+            name: def.name,
             whence: def.span,
             stab: self.stability(def.id),
             imported_from: def.imported_from,

@@ -24,7 +24,7 @@
 // - It's not possible to take the address of a static item with unsafe interior. This is enforced
 // by borrowck::gather_loans
 
-use middle::cast::{CastKind};
+use middle::ty::cast::{CastKind};
 use middle::const_eval;
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::def;
@@ -39,6 +39,7 @@ use util::nodemap::NodeMap;
 use rustc_front::hir;
 use syntax::ast;
 use syntax::codemap::Span;
+use syntax::feature_gate::UnstableFeatures;
 use rustc_front::visit::{self, FnKind, Visitor};
 
 use std::collections::hash_map::Entry;
@@ -499,9 +500,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 if self.qualif.intersects(ConstQualif::MUTABLE_MEM) && tc.interior_unsafe() {
                     outer = outer | ConstQualif::NOT_CONST;
                     if self.mode != Mode::Var {
-                        self.tcx.sess.span_err(ex.span,
-                            "cannot borrow a constant which contains \
-                             interior mutability, create a static instead");
+                        span_err!(self.tcx.sess, ex.span, E0492,
+                                  "cannot borrow a constant which contains \
+                                   interior mutability, create a static instead");
                     }
                 }
                 // If the reference has to be 'static, avoid in-place initialization
@@ -548,9 +549,9 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         ty::TyEnum(def, _) if def.has_dtor() => {
             v.add_qualif(ConstQualif::NEEDS_DROP);
             if v.mode != Mode::Var {
-                v.tcx.sess.span_err(e.span,
-                                    &format!("{}s are not allowed to have destructors",
-                                             v.msg()));
+                span_err!(v.tcx.sess, e.span, E0493,
+                          "{}s are not allowed to have destructors",
+                          v.msg());
             }
         }
         _ => {}
@@ -678,7 +679,6 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             let mut callee = &**callee;
             loop {
                 callee = match callee.node {
-                    hir::ExprParen(ref inner) => &**inner,
                     hir::ExprBlock(ref block) => match block.expr {
                         Some(ref tail) => &**tail,
                         None => break
@@ -710,10 +710,21 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             if !is_const {
                 v.add_qualif(ConstQualif::NOT_CONST);
                 if v.mode != Mode::Var {
-                    span_err!(v.tcx.sess, e.span, E0015,
-                              "function calls in {}s are limited to \
-                               constant functions, \
-                               struct and enum constructors", v.msg());
+                    // FIXME(#24111) Remove this check when const fn stabilizes
+                    if let UnstableFeatures::Disallow = v.tcx.sess.opts.unstable_features {
+                        span_err!(v.tcx.sess, e.span, E0015,
+                                  "function calls in {}s are limited to \
+                                   struct and enum constructors", v.msg());
+                        v.tcx.sess.span_note(e.span,
+                                             "a limited form of compile-time function \
+                                              evaluation is available on a nightly \
+                                              compiler via `const fn`");
+                    } else {
+                        span_err!(v.tcx.sess, e.span, E0015,
+                                  "function calls in {}s are limited to \
+                                   constant functions, \
+                                   struct and enum constructors", v.msg());
+                    }
                 }
             }
         }
@@ -763,7 +774,6 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         hir::ExprField(..) |
         hir::ExprTupField(..) |
         hir::ExprVec(_) |
-        hir::ExprParen(..) |
         hir::ExprTup(..) => {}
 
         // Conditional control flow (possible to implement).
@@ -798,8 +808,13 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
 /// Check the adjustments of an expression
 fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr) {
     match v.tcx.tables.borrow().adjustments.get(&e.id) {
-        None | Some(&ty::AdjustReifyFnPointer) | Some(&ty::AdjustUnsafeFnPointer) => {}
-        Some(&ty::AdjustDerefRef(ty::AutoDerefRef { autoderefs, .. })) => {
+        None |
+        Some(&ty::adjustment::AdjustReifyFnPointer) |
+        Some(&ty::adjustment::AdjustUnsafeFnPointer) => {}
+
+        Some(&ty::adjustment::AdjustDerefRef(
+            ty::adjustment::AutoDerefRef { autoderefs, .. }
+        )) => {
             if (0..autoderefs as u32).any(|autoderef| {
                     v.tcx.is_overloaded_autoderef(e.id, autoderef)
             }) {
@@ -904,9 +919,9 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'tcx> {
                         // Borrowed statics can specifically *only* have their address taken,
                         // not any number of other borrows such as borrowing fields, reading
                         // elements of an array, etc.
-                        self.tcx.sess.span_err(borrow_span,
-                            "cannot refer to the interior of another \
-                             static, use a constant instead");
+                        span_err!(self.tcx.sess, borrow_span, E0494,
+                                  "cannot refer to the interior of another \
+                                   static, use a constant instead");
                     }
                     break;
                 }

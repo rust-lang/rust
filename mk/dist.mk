@@ -77,6 +77,7 @@ $(PKG_TAR): $(PKG_FILES)
          -C $(S) \
          --exclude-vcs \
          --exclude=*~ \
+         --exclude=*.pyc \
          --exclude=*/llvm/test/*/*.ll \
          --exclude=*/llvm/test/*/*.td \
          --exclude=*/llvm/test/*/*.s \

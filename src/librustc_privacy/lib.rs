@@ -128,7 +128,7 @@ impl<'v> Visitor<'v> for ParentVisitor {
         visit::walk_impl_item(self, ii);
     }
 
-    fn visit_struct_def(&mut self, s: &hir::StructDef, _: ast::Ident,
+    fn visit_struct_def(&mut self, s: &hir::StructDef, _: ast::Name,
                         _: &'v hir::Generics, n: ast::NodeId) {
         // Struct constructors are parented to their struct definitions because
         // they essentially are the struct definitions.
@@ -683,7 +683,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             hir::ItemEnum(..) => "enum",
             _ => return Some((err_span, err_msg, None))
         };
-        let msg = format!("{} `{}` is private", desc, item.ident);
+        let msg = format!("{} `{}` is private", desc, item.name);
         Some((err_span, err_msg, Some((span, msg))))
     }
 
@@ -847,35 +847,14 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             ty::ImplContainer(_) => {
                 self.check_static_method(span, method_def_id, name)
             }
-            // Trait methods are always all public. The only controlling factor
-            // is whether the trait itself is accessible or not.
-            ty::TraitContainer(trait_def_id) => {
-                self.report_error(self.ensure_public(span, trait_def_id,
-                                                     None, "source trait"));
-            }
+            // Trait methods are always accessible if the trait is in scope.
+            ty::TraitContainer(_) => {}
         }
     }
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        if let hir::ItemUse(ref vpath) = item.node {
-            if let hir::ViewPathList(ref prefix, ref list) = vpath.node {
-                for pid in list {
-                    match pid.node {
-                        hir::PathListIdent { id, name, .. } => {
-                            debug!("privacy - ident item {}", id);
-                            self.check_path(pid.span, id, name.name);
-                        }
-                        hir::PathListMod { id, .. } => {
-                            debug!("privacy - mod item {}", id);
-                            let name = prefix.segments.last().unwrap().identifier.name;
-                            self.check_path(pid.span, id, name);
-                        }
-                    }
-                }
-            }
-        }
         let orig_curitem = replace(&mut self.curitem, item.id);
         visit::walk_item(self, item);
         self.curitem = orig_curitem;
@@ -883,12 +862,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
-            hir::ExprField(ref base, ident) => {
+            hir::ExprField(ref base, name) => {
                 if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(&**base).sty {
                     self.check_field(expr.span,
                                      def,
                                      def.struct_variant(),
-                                     NamedField(ident.node.name));
+                                     NamedField(name.node));
                 }
             }
             hir::ExprTupField(ref base, idx) => {
@@ -899,11 +878,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                                      UnnamedField(idx.node));
                 }
             }
-            hir::ExprMethodCall(ident, _, _) => {
+            hir::ExprMethodCall(name, _, _) => {
                 let method_call = ty::MethodCall::expr(expr.id);
                 let method = self.tcx.tables.borrow().method_map[&method_call];
                 debug!("(privacy checking) checking impl method");
-                self.check_method(expr.span, method.def_id, ident.node.name);
+                self.check_method(expr.span, method.def_id, name.node);
             }
             hir::ExprStruct(..) => {
                 let adt = self.tcx.expr_ty(expr).ty_adt_def().unwrap();
@@ -958,7 +937,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 let variant = adt.variant_of_def(def);
                 for field in fields {
                     self.check_field(pattern.span, adt, variant,
-                                     NamedField(field.node.ident.name));
+                                     NamedField(field.node.name));
                 }
             }
 
@@ -997,8 +976,22 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_path(&mut self, path: &hir::Path, id: ast::NodeId) {
-        self.check_path(path.span, id, path.segments.last().unwrap().identifier.name);
-        visit::walk_path(self, path);
+        if !path.segments.is_empty() {
+            self.check_path(path.span, id, path.segments.last().unwrap().identifier.name);
+            visit::walk_path(self, path);
+        }
+    }
+
+    fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
+        let name = if let hir::PathListIdent { name, .. } = item.node {
+            name
+        } else if !prefix.segments.is_empty() {
+            prefix.segments.last().unwrap().identifier.name
+        } else {
+            self.tcx.sess.bug("`self` import in an import list with empty prefix");
+        };
+        self.check_path(item.span, item.node.id(), name);
+        visit::walk_path_list_item(self, prefix, item);
     }
 }
 
@@ -1075,20 +1068,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                                  instead");
             }
 
-            hir::ItemEnum(ref def, _) => {
-                for v in &def.variants {
-                    match v.node.vis {
-                        hir::Public => {
-                            if item.vis == hir::Public {
-                                span_err!(tcx.sess, v.span, E0448,
-                                          "unnecessary `pub` visibility");
-                            }
-                        }
-                        hir::Inherited => {}
-                    }
-                }
-            }
-
+            hir::ItemEnum(..) |
             hir::ItemTrait(..) | hir::ItemDefaultImpl(..) |
             hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemStruct(..) |
             hir::ItemFn(..) | hir::ItemMod(..) | hir::ItemTy(..) |
@@ -1131,14 +1111,10 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                     check_inherited(tcx, i.span, i.vis);
                 }
             }
-            hir::ItemEnum(ref def, _) => {
-                for v in &def.variants {
-                    check_inherited(tcx, v.span, v.node.vis);
-                }
-            }
 
             hir::ItemStruct(ref def, _) => check_struct(&**def),
 
+            hir::ItemEnum(..) |
             hir::ItemExternCrate(_) | hir::ItemUse(_) |
             hir::ItemTrait(..) | hir::ItemDefaultImpl(..) |
             hir::ItemStatic(..) | hir::ItemConst(..) |

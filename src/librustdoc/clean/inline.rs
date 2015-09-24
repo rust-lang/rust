@@ -13,7 +13,7 @@
 use std::collections::HashSet;
 
 use syntax::ast;
-use rustc_front::attr::AttrMetaMethods;
+use syntax::attr::AttrMetaMethods;
 use rustc_front::hir;
 
 use rustc::metadata::csearch;
@@ -43,7 +43,7 @@ use super::{Clean, ToSource};
 ///
 /// The returned value is `None` if the `id` could not be inlined, and `Some`
 /// of a vector of items if it was successfully expanded.
-pub fn try_inline(cx: &DocContext, id: ast::NodeId, into: Option<ast::Ident>)
+pub fn try_inline(cx: &DocContext, id: ast::NodeId, into: Option<ast::Name>)
                   -> Option<Vec<clean::Item>> {
     let tcx = match cx.tcx_opt() {
         Some(tcx) => tcx,

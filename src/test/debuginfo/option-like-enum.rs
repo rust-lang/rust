@@ -79,6 +79,7 @@
 // lldb-check:[...]$9 = Nope
 
 
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 // If a struct has exactly two variants, one of them is empty, and the other one

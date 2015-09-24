@@ -27,10 +27,10 @@ use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray,
                       DIDescriptor, FlagPrototyped};
 use middle::def_id::DefId;
+use middle::infer::normalize_associated_type;
 use middle::subst::{self, Substs};
 use rustc_front;
 use rustc_front::hir;
-use rustc_front::attr::IntType;
 
 use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
 use trans;
@@ -48,6 +48,7 @@ use std::rc::Rc;
 
 use syntax::codemap::{Span, Pos};
 use syntax::{abi, ast, codemap};
+use syntax::attr::IntType;
 use syntax::parse::token::{self, special_idents};
 
 pub mod gdb;
@@ -241,7 +242,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             match item.node {
                 hir::ItemFn(ref fn_decl, _, _, _, ref generics, ref top_level_block) => {
-                    (item.ident.name, fn_decl, generics, top_level_block, item.span, true)
+                    (item.name, fn_decl, generics, top_level_block, item.span, true)
                 }
                 _ => {
                     cx.sess().span_bug(item.span,
@@ -256,7 +257,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
-                    (impl_item.ident.name,
+                    (impl_item.name,
                      &sig.decl,
                      &sig.generics,
                      body,
@@ -295,7 +296,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
-                    (trait_item.ident.name,
+                    (trait_item.name,
                      &sig.decl,
                      &sig.generics,
                      body,
@@ -463,7 +464,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                          -> DIArray
     {
         let self_type = param_substs.self_ty();
-        let self_type = monomorphize::normalize_associated_type(cx.tcx(), &self_type);
+        let self_type = normalize_associated_type(cx.tcx(), &self_type);
 
         // Only true for static default methods:
         let has_self_type = self_type.is_some();
@@ -519,7 +520,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         // Handle other generic parameters
         let actual_types = param_substs.types.get_slice(subst::FnSpace);
-        for (index, &hir::TyParam{ ident, .. }) in generics.ty_params.iter().enumerate() {
+        for (index, &hir::TyParam{ name, .. }) in generics.ty_params.iter().enumerate() {
             let actual_type = actual_types[index];
             // Add actual type name to <...> clause of function name
             let actual_type_name = compute_debuginfo_type_name(cx,
@@ -534,7 +535,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // Again, only create type information if full debuginfo is enabled
             if cx.sess().opts.debuginfo == FullDebugInfo {
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
-                let name = CString::new(ident.name.as_str().as_bytes()).unwrap();
+                let name = CString::new(name.as_str().as_bytes()).unwrap();
                 let param_metadata = unsafe {
                     llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                         DIB(cx),
