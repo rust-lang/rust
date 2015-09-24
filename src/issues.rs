@@ -144,9 +144,9 @@ impl BadIssueSeeker {
                             true
                         } else {
                             false
-                        }
+                        },
                     },
-                    part: NumberPart::OpenParen
+                    part: NumberPart::OpenParen,
                 };
             }
             fixme_idx = 0;
@@ -162,9 +162,9 @@ impl BadIssueSeeker {
                             true
                         } else {
                             false
-                        }
+                        },
                     },
-                    part: NumberPart::OpenParen
+                    part: NumberPart::OpenParen,
                 };
             }
             todo_idx = 0;
