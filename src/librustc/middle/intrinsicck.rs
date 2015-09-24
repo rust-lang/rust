@@ -55,7 +55,7 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
             ty::TyBareFn(_, ref bfty) => bfty.abi == RustIntrinsic,
             _ => return false
         };
-        intrinsic && self.tcx.item_name(def_id) == "transmute"
+        intrinsic && self.tcx.item_name(def_id).as_str() == "transmute"
     }
 
     fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>, id: ast::NodeId) {

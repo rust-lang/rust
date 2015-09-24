@@ -577,21 +577,21 @@ mod tests {
     use ast::*;
     use super::*;
 
-    fn ident_to_segment(id : &Ident) -> PathSegment {
-        PathSegment {identifier: id.clone(),
+    fn ident_to_segment(id: Ident) -> PathSegment {
+        PathSegment {identifier: id,
                      parameters: PathParameters::none()}
     }
 
     #[test] fn idents_name_eq_test() {
         assert!(segments_name_eq(
-            &[Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>(),
-            &[Ident{name:Name(3),ctxt:104}, Ident{name:Name(78),ctxt:182}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()));
+            &[Ident::new(Name(3),SyntaxContext(4)), Ident::new(Name(78),SyntaxContext(82))]
+                .iter().cloned().map(ident_to_segment).collect::<Vec<PathSegment>>(),
+            &[Ident::new(Name(3),SyntaxContext(104)), Ident::new(Name(78),SyntaxContext(182))]
+                .iter().cloned().map(ident_to_segment).collect::<Vec<PathSegment>>()));
         assert!(!segments_name_eq(
-            &[Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>(),
-            &[Ident{name:Name(3),ctxt:104}, Ident{name:Name(77),ctxt:182}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()));
+            &[Ident::new(Name(3),SyntaxContext(4)), Ident::new(Name(78),SyntaxContext(82))]
+                .iter().cloned().map(ident_to_segment).collect::<Vec<PathSegment>>(),
+            &[Ident::new(Name(3),SyntaxContext(104)), Ident::new(Name(77),SyntaxContext(182))]
+                .iter().cloned().map(ident_to_segment).collect::<Vec<PathSegment>>()));
     }
 }

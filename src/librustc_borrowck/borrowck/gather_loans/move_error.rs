@@ -15,7 +15,6 @@ use rustc::middle::ty;
 use std::cell::RefCell;
 use syntax::ast;
 use syntax::codemap;
-use rustc_front::print::pprust;
 use rustc_front::hir;
 
 pub struct MoveErrorCollector<'tcx> {
@@ -159,7 +158,6 @@ fn note_move_destination(bccx: &BorrowckCtxt,
                          move_to_span: codemap::Span,
                          pat_name: ast::Name,
                          is_first_note: bool) {
-    let pat_name = pprust::name_to_string(pat_name);
     if is_first_note {
         bccx.span_note(
             move_to_span,

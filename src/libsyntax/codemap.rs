@@ -1083,7 +1083,6 @@ pub struct MalformedCodemapPositions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::rc::Rc;
 
     #[test]
     fn t1 () {

@@ -537,7 +537,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         fn get_binding(this: &mut Resolver,
                                        import_resolution: &ImportResolution,
                                        namespace: Namespace,
-                                       source: &Name)
+                                       source: Name)
                                     -> NamespaceResult {
 
                             // Import resolutions must be declared with "pub"
@@ -560,7 +560,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                     let id = import_resolution.id(namespace);
                                     // track used imports and extern crates as well
                                     this.used_imports.insert((id, namespace));
-                                    this.record_import_use(id, *source);
+                                    this.record_import_use(id, source);
                                     match target_module.def_id.get() {
                                         Some(DefId{krate: kid, ..}) => {
                                             this.used_crates.insert(kid);
@@ -578,14 +578,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                             value_result = get_binding(self.resolver,
                                                        import_resolution,
                                                        ValueNS,
-                                                       &source);
+                                                       source);
                             value_used_reexport = import_resolution.is_public;
                         }
                         if type_result.is_unknown() {
                             type_result = get_binding(self.resolver,
                                                       import_resolution,
                                                       TypeNS,
-                                                      &source);
+                                                      source);
                             type_used_reexport = import_resolution.is_public;
                         }
 
