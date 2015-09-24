@@ -2247,7 +2247,8 @@ fn lookup_indexing<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              base_expr: &'tcx hir::Expr,
                              base_ty: Ty<'tcx>,
                              idx_ty: Ty<'tcx>,
-                             lvalue_pref: LvaluePreference)
+                             lvalue_pref: LvaluePreference,
+                             is_assignment: bool)
                              -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
 {
     // FIXME(#18741) -- this is almost but not quite the same as the
@@ -2262,7 +2263,7 @@ fn lookup_indexing<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                lvalue_pref,
                                                |adj_ty, idx| {
         try_index_step(fcx, MethodCall::expr(expr.id), expr, base_expr,
-                       adj_ty, idx, false, lvalue_pref, idx_ty)
+                       adj_ty, idx, false, lvalue_pref, idx_ty, is_assignment)
     });
 
     if final_mt.is_some() {
@@ -2274,7 +2275,7 @@ fn lookup_indexing<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     if let ty::TyArray(element_ty, _) = ty.sty {
         let adjusted_ty = fcx.tcx().mk_slice(element_ty);
         try_index_step(fcx, MethodCall::expr(expr.id), expr, base_expr,
-                       adjusted_ty, autoderefs, true, lvalue_pref, idx_ty)
+                       adjusted_ty, autoderefs, true, lvalue_pref, idx_ty, is_assignment)
     } else {
         None
     }
@@ -2292,20 +2293,44 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             autoderefs: usize,
                             unsize: bool,
                             lvalue_pref: LvaluePreference,
-                            index_ty: Ty<'tcx>)
+                            index_ty: Ty<'tcx>,
+                            is_assignment: bool)
                             -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
 {
     let tcx = fcx.tcx();
     debug!("try_index_step(expr={:?}, base_expr.id={:?}, adjusted_ty={:?}, \
-                           autoderefs={}, unsize={}, index_ty={:?})",
+                           autoderefs={}, unsize={}, index_ty={:?}, is_assignment={})",
            expr,
            base_expr,
            adjusted_ty,
            autoderefs,
            unsize,
-           index_ty);
+           index_ty,
+           is_assignment);
 
     let input_ty = fcx.infcx().next_ty_var();
+
+    // Try `IndexAssign` if this is an assignment operation
+    if is_assignment {
+        return tcx.lang_items.index_assign_trait().and_then(|trait_did| {
+            let rhs_ty = fcx.infcx().next_ty_var();
+
+            method::lookup_in_trait_adjusted(fcx,
+                                             expr.span,
+                                             Some(&*base_expr),
+                                             token::intern("index_assign"),
+                                             trait_did,
+                                             autoderefs,
+                                             unsize,
+                                             adjusted_ty,
+                                             Some(vec![input_ty, rhs_ty]))
+                .map(|method| {
+                    fcx.inh.tables.borrow_mut().method_map.insert(method_call, method);
+
+                    (input_ty, rhs_ty)
+                })
+        })
+    }
 
     // First, try built-in indexing.
     match (adjusted_ty.builtin_index(), &index_ty.sty) {
@@ -3444,25 +3469,56 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.write_ty(id, fcx.infcx().next_diverging_ty_var());
       }
       hir::ExprAssign(ref lhs, ref rhs) => {
-        check_expr_with_lvalue_pref(fcx, &**lhs, PreferMutLvalue);
+        if let hir::ExprIndex(ref base, ref idx) = lhs.node {
+            let lvalue_pref = PreferMutLvalue;
 
-        let tcx = fcx.tcx();
-        if !tcx.expr_is_lval(&**lhs) {
-            span_err!(tcx.sess, expr.span, E0070,
-                "invalid left-hand side expression");
-        }
+            check_expr_with_lvalue_pref(fcx, &**base, lvalue_pref);
+            check_expr(fcx, &**idx);
 
-        let lhs_ty = fcx.expr_ty(&**lhs);
-        check_expr_coercable_to_type(fcx, &**rhs, lhs_ty);
-        let rhs_ty = fcx.expr_ty(&**rhs);
+            let base_t = structurally_resolved_type(fcx, lhs.span, fcx.expr_ty(&**base));
+            let idx_t = fcx.expr_ty(&**idx);
 
-        fcx.require_expr_have_sized_type(&**lhs, traits::AssignmentLhsSized);
+            lookup_indexing(fcx, expr, base, base_t, idx_t, lvalue_pref, true)
+                .map(|(index_ty, rhs_ty)| {
+                    demand::eqtype(fcx, idx.span, index_ty, idx_t);
+                    check_expr_coercable_to_type(fcx, &**rhs, rhs_ty);
+                    fcx.write_nil(lhs.id);
+                    fcx.write_nil(id);
 
-        if lhs_ty.references_error() || rhs_ty.references_error() {
-            fcx.write_error(id);
+                    if !tcx.sess.features.borrow().indexed_assignments {
+                        tcx.sess.span_err(
+                            expr.span,
+                            "overloaded indexed assignments are not stable");
+                        fileline_help!(
+                            tcx.sess,
+                            expr.span,
+                            "add `#![feature(indexed_assignments)]` to the crate features to \
+                             enable");
+                    }
+                })
         } else {
-            fcx.write_nil(id);
-        }
+            None
+        }.unwrap_or_else(|| {
+            check_expr_with_lvalue_pref(fcx, &**lhs, PreferMutLvalue);
+
+            let tcx = fcx.tcx();
+            if !tcx.expr_is_lval(&**lhs) {
+                span_err!(tcx.sess, expr.span, E0070,
+                    "invalid left-hand side expression");
+            }
+
+            let lhs_ty = fcx.expr_ty(&**lhs);
+            check_expr_coercable_to_type(fcx, &**rhs, lhs_ty);
+            let rhs_ty = fcx.expr_ty(&**rhs);
+
+            fcx.require_expr_have_sized_type(&**lhs, traits::AssignmentLhsSized);
+
+            if lhs_ty.references_error() || rhs_ty.references_error() {
+                fcx.write_error(id);
+            } else {
+                fcx.write_nil(id);
+            }
+        })
       }
       hir::ExprIf(ref cond, ref then_blk, ref opt_else_expr) => {
         check_then_else(fcx, &**cond, &**then_blk, opt_else_expr.as_ref().map(|e| &**e),
@@ -3665,7 +3721,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
               fcx.write_ty(id, idx_t);
           } else {
               let base_t = structurally_resolved_type(fcx, expr.span, base_t);
-              match lookup_indexing(fcx, expr, base, base_t, idx_t, lvalue_pref) {
+              match lookup_indexing(fcx, expr, base, base_t, idx_t, lvalue_pref, false) {
                   Some((index_ty, element_ty)) => {
                       let idx_expr_ty = fcx.expr_ty(idx);
                       demand::eqtype(fcx, expr.span, index_ty, idx_expr_ty);

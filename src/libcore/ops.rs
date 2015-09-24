@@ -1539,6 +1539,44 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output;
 }
 
+/// The `IndexAssign` trait is used to specify the functionality of indexed assignment
+/// operations like `arr[idx] = rhs`.
+///
+/// # Examples
+///
+/// A trivial implementation of `IndexAssign`. When `Foo[Bar] = Baz` happens, it ends up
+/// calling `index_assign`, and therefore, `main` prints `Indexed assignment!`.
+///
+/// ```
+/// #![feature(indexed_assignments)]
+/// #![feature(index_assign_trait)]
+///
+/// use std::ops::{IndexAssign};
+///
+/// #[derive(Copy, Clone)]
+/// struct Foo;
+/// struct Bar;
+/// struct Baz;
+///
+/// impl IndexAssign<Bar, Baz> for Foo {
+///     fn index_assign(&mut self, _index: Bar, _rhs: Baz) {
+///         println!("Indexed assignment!");
+///     }
+/// }
+///
+/// fn main() {
+///     Foo[Bar] = Baz;
+/// }
+/// ```
+#[cfg(not(stage0))]
+#[lang = "index_assign"]
+// TODO(japaric) update issue number
+#[unstable(feature = "index_assign_trait", reason = "recently added", issue = "0")]
+pub trait IndexAssign<Idx, Rhs> {
+    /// The method for the indexed assignment (`Foo[Bar] = Baz`) operation
+    fn index_assign(&mut self, index: Idx, rhs: Rhs);
+}
+
 /// An unbounded range.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang = "range_full"]

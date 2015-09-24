@@ -203,6 +203,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // allow `#[omit_gdb_pretty_printer_section]`
     ("omit_gdb_pretty_printer_section", "1.5.0", None, Active),
+
+    // allow overloading indexed assignment operations like `a[b] = c`
+    ("indexed_assignments", "1.5.0", None, Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -472,6 +475,7 @@ pub struct Features {
     pub type_macros: bool,
     pub cfg_target_feature: bool,
     pub augmented_assignments: bool,
+    pub indexed_assignments: bool,
 }
 
 impl Features {
@@ -501,6 +505,7 @@ impl Features {
             type_macros: false,
             cfg_target_feature: false,
             augmented_assignments: false,
+            indexed_assignments: false,
         }
     }
 }
@@ -1070,6 +1075,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         type_macros: cx.has_feature("type_macros"),
         cfg_target_feature: cx.has_feature("cfg_target_feature"),
         augmented_assignments: cx.has_feature("augmented_assignments"),
+        indexed_assignments: cx.has_feature("indexed_assignments"),
     }
 }
 

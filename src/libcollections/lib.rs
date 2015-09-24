@@ -63,6 +63,7 @@
 #![feature(decode_utf16)]
 #![feature(utf8_error)]
 #![cfg_attr(test, feature(rand, test))]
+#![cfg_attr(not(stage0), feature(index_assign_trait))]
 
 #![feature(no_std)]
 #![no_std]

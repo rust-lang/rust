@@ -692,6 +692,23 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
             visit::walk_expr(rcx, expr);
         }
 
+        // indexed assignment `a[b! = c]`
+        hir::ExprAssign(ref lhs, ref rhs) if has_method_map => {
+            if let hir::ExprIndex(ref base, ref idx) = lhs.node {
+                constrain_call(rcx, expr, Some(&**base), [idx, rhs].iter().map(|&e| &**e), false);
+
+                // NOTE we don't walk `lhs` here because for indexed assignments `a[b] is not an
+                // lvalue`
+                rcx.visit_expr(rhs);
+                rcx.visit_expr(base);
+                rcx.visit_expr(idx);
+            } else {
+                rcx.tcx().sess.span_bug(
+                    expr.span,
+                    "the only overloadable assignments are indexed assignments");
+            }
+        }
+
         hir::ExprAssignOp(_, ref lhs, ref rhs) => {
             if has_method_map {
                 constrain_call(rcx, expr, Some(&**lhs),
