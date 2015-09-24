@@ -200,7 +200,10 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
             let block_mode = tactic != ListTactic::Vertical;
             // Width restriction is only relevant in vertical mode.
             let max_width = formatting.v_width;
-            result.push_str(&rewrite_comment(comment, block_mode, max_width, formatting.indent,
+            result.push_str(&rewrite_comment(comment,
+                                             block_mode,
+                                             max_width,
+                                             formatting.indent,
                                              formatting.config));
 
             if tactic == ListTactic::Vertical {
