@@ -116,7 +116,7 @@ fn addr_of_mut(ccx: &CrateContext,
         // FIXME: this totally needs a better name generation scheme, perhaps a simple global
         // counter? Also most other uses of gensym in trans.
         let gsym = token::gensym("_");
-        let name = format!("{}{}", kind, gsym.usize());
+        let name = format!("{}{}", kind, gsym.0);
         let gv = declare::define_global(ccx, &name[..], val_ty(cv)).unwrap_or_else(||{
             ccx.sess().bug(&format!("symbol `{}` is already defined", name));
         });

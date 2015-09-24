@@ -4715,7 +4715,7 @@ impl<'a> Parser<'a> {
             (fields, None)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
-            let fields = try!(self.parse_tuple_struct_body(&class_name, &mut generics));
+            let fields = try!(self.parse_tuple_struct_body(class_name, &mut generics));
             (fields, Some(ast::DUMMY_NODE_ID))
         } else {
             let token_str = self.this_token_to_string();
@@ -4750,7 +4750,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_tuple_struct_body(&mut self,
-                                   class_name: &ast::Ident,
+                                   class_name: ast::Ident,
                                    generics: &mut ast::Generics)
                                    -> PResult<Vec<StructField>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
@@ -5780,10 +5780,10 @@ impl<'a> Parser<'a> {
                                                  Option<ast::Name>)>> {
         let ret = match self.token {
             token::Literal(token::Str_(s), suf) => {
-                (self.id_to_interned_str(s.ident()), ast::CookedStr, suf)
+                (self.id_to_interned_str(ast::Ident::with_empty_ctxt(s)), ast::CookedStr, suf)
             }
             token::Literal(token::StrRaw(s, n), suf) => {
-                (self.id_to_interned_str(s.ident()), ast::RawStr(n), suf)
+                (self.id_to_interned_str(ast::Ident::with_empty_ctxt(s)), ast::RawStr(n), suf)
             }
             _ => return Ok(None)
         };

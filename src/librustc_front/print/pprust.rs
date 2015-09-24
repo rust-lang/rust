@@ -2171,7 +2171,6 @@ impl<'a> State<'a> {
             hir::ViewPathSimple(name, ref path) => {
                 try!(self.print_path(path, false, 0));
 
-                // FIXME(#6993) can't compare identifiers directly here
                 if path.segments.last().unwrap().identifier.name != name {
                     try!(space(&mut self.s));
                     try!(self.word_space("as"));

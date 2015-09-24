@@ -482,7 +482,7 @@ impl<'a> CrateReader<'a> {
                 let span = mk_sp(lo, p.last_span.hi);
                 p.abort_if_errors();
                 macros.push(ast::MacroDef {
-                    ident: name.ident(),
+                    ident: ast::Ident::with_empty_ctxt(name),
                     attrs: attrs,
                     id: ast::DUMMY_NODE_ID,
                     span: span,

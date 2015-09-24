@@ -67,46 +67,67 @@ use std::fmt;
 use std::rc::Rc;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
-// FIXME #6993: in librustc, uses of "ident" should be replaced
-// by just "Name".
+/// A name is a part of an identifier, representing a string or gensym. It's
+/// the result of interning.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Name(pub u32);
+
+/// A SyntaxContext represents a chain of macro-expandings
+/// and renamings. Each macro expansion corresponds to
+/// a fresh u32. This u32 is a reference to a table stored
+// in thread-local storage.
+// The special value EMPTY_CTXT is used to indicate an empty
+// syntax context.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub struct SyntaxContext(pub u32);
 
 /// An identifier contains a Name (index into the interner
 /// table) and a SyntaxContext to track renaming and
-/// macro expansion per Flatt et al., "Macros
-/// That Work Together"
-#[derive(Clone, Copy, Hash, PartialOrd, Eq, Ord)]
+/// macro expansion per Flatt et al., "Macros That Work Together"
+#[derive(Clone, Copy, Eq, Hash)]
 pub struct Ident {
     pub name: Name,
     pub ctxt: SyntaxContext
 }
 
-impl Ident {
-    /// Construct an identifier with the given name and an empty context:
-    pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: EMPTY_CTXT}}
-}
-
-impl fmt::Debug for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}#{}", self.name, self.ctxt)
-    }
-}
-
-impl fmt::Display for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.name, f)
+impl Name {
+    pub fn as_str(self) -> token::InternedString {
+        token::InternedString::new_from_name(self)
     }
 }
 
 impl fmt::Debug for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let Name(nm) = *self;
-        write!(f, "{}({})", self, nm)
+        write!(f, "{}({})", self, self.0)
     }
 }
 
 impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.as_str(), f)
+    }
+}
+
+impl Encodable for Name {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_str(&self.as_str())
+    }
+}
+
+impl Decodable for Name {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Name, D::Error> {
+        Ok(token::intern(&try!(d.read_str())[..]))
+    }
+}
+
+pub const EMPTY_CTXT : SyntaxContext = SyntaxContext(0);
+
+impl Ident {
+    pub fn new(name: Name, ctxt: SyntaxContext) -> Ident {
+        Ident {name: name, ctxt: ctxt}
+    }
+    pub fn with_empty_ctxt(name: Name) -> Ident {
+        Ident {name: name, ctxt: EMPTY_CTXT}
     }
 }
 
@@ -119,74 +140,27 @@ impl PartialEq for Ident {
             // idents that have different contexts. You can't fix this without
             // knowing whether the comparison should be hygienic or non-hygienic.
             // if it should be non-hygienic (most things are), just compare the
-            // 'name' fields of the idents. Or, even better, replace the idents
-            // with Name's.
+            // 'name' fields of the idents.
             //
             // On the other hand, if the comparison does need to be hygienic,
             // one example and its non-hygienic counterpart would be:
             //      syntax::parse::token::Token::mtwt_eq
             //      syntax::ext::tt::macro_parser::token_name_eq
-            panic!("not allowed to compare these idents: {:?}, {:?}. \
-                   Probably related to issue \\#6993", self, other);
+            panic!("idents with different contexts are compared with operator `==`: \
+                {:?}, {:?}.", self, other);
         }
     }
 }
 
-/// A SyntaxContext represents a chain of macro-expandings
-/// and renamings. Each macro expansion corresponds to
-/// a fresh u32
-
-// I'm representing this syntax context as an index into
-// a table, in order to work around a compiler bug
-// that's causing unreleased memory to cause core dumps
-// and also perhaps to save some work in destructor checks.
-// the special uint '0' will be used to indicate an empty
-// syntax context.
-
-// this uint is a reference to a table stored in thread-local
-// storage.
-pub type SyntaxContext = u32;
-pub const EMPTY_CTXT : SyntaxContext = 0;
-pub const ILLEGAL_CTXT : SyntaxContext = 1;
-
-/// A name is a part of an identifier, representing a string or gensym. It's
-/// the result of interning.
-#[derive(Eq, Ord, PartialEq, PartialOrd, Hash, Clone, Copy)]
-pub struct Name(pub u32);
-
-impl<T: AsRef<str>> PartialEq<T> for Name {
-    fn eq(&self, other: &T) -> bool {
-        self.as_str() == other.as_ref()
+impl fmt::Debug for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}#{}", self.name, self.ctxt.0)
     }
 }
 
-impl Name {
-    pub fn as_str(&self) -> token::InternedString {
-        token::InternedString::new_from_name(*self)
-    }
-
-    pub fn usize(&self) -> usize {
-        let Name(nm) = *self;
-        nm as usize
-    }
-
-    pub fn ident(&self) -> Ident {
-        Ident { name: *self, ctxt: 0 }
-    }
-}
-
-/// A mark represents a unique id associated with a macro expansion
-pub type Mrk = u32;
-
-impl Encodable for Name {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self.as_str())
-    }
-}
-
-impl Decodable for Name {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Name, D::Error> {
-        Ok(token::intern(&try!(d.read_str())[..]))
+impl fmt::Display for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.name, f)
     }
 }
 
@@ -202,8 +176,8 @@ impl Decodable for Ident {
     }
 }
 
-/// Function name (not all functions have names)
-pub type FnIdent = Option<Ident>;
+/// A mark represents a unique id associated with a macro expansion
+pub type Mrk = u32;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
@@ -841,19 +815,16 @@ pub enum Expr_ {
     ///
     /// This is desugared to a `match` expression.
     ExprIfLet(P<Pat>, P<Expr>, P<Block>, Option<P<Expr>>),
-    // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     /// A while loop, with an optional label
     ///
     /// `'label: while expr { block }`
     ExprWhile(P<Expr>, P<Block>, Option<Ident>),
-    // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     /// A while-let loop, with an optional label
     ///
     /// `'label: while let pat = expr { block }`
     ///
     /// This is desugared to a combination of `loop` and `match` expressions.
     ExprWhileLet(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
-    // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     /// A for loop, with an optional label
     ///
     /// `'label: for pat in expr { block }`
@@ -863,7 +834,6 @@ pub enum Expr_ {
     /// Conditionless loop (can be exited with break, continue, or return)
     ///
     /// `'label: loop { block }`
-    // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
     /// A `match` block, with a source that indicates whether or not it is
     /// the result of a desugaring, and if so, which kind.
@@ -1221,13 +1191,6 @@ pub enum Lit_ {
 pub struct MutTy {
     pub ty: P<Ty>,
     pub mutbl: Mutability,
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct TypeField {
-    pub ident: Ident,
-    pub mt: MutTy,
-    pub span: Span,
 }
 
 /// Represents a method's signature in a trait declaration,

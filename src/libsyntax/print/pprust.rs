@@ -297,7 +297,7 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtBlock(ref e)       => block_to_string(&**e),
             token::NtStmt(ref e)        => stmt_to_string(&**e),
             token::NtPat(ref e)         => pat_to_string(&**e),
-            token::NtIdent(ref e, _)    => ident_to_string(&**e),
+            token::NtIdent(ref e, _)    => ident_to_string(**e),
             token::NtTT(ref e)          => tt_to_string(&**e),
             token::NtArm(ref e)         => arm_to_string(&*e),
             token::NtImplItem(ref e)    => impl_item_to_string(&**e),
@@ -376,8 +376,8 @@ pub fn path_to_string(p: &ast::Path) -> String {
     to_string(|s| s.print_path(p, false, 0))
 }
 
-pub fn ident_to_string(id: &ast::Ident) -> String {
-    to_string(|s| s.print_ident(*id))
+pub fn ident_to_string(id: ast::Ident) -> String {
+    to_string(|s| s.print_ident(id))
 }
 
 pub fn fun_to_string(decl: &ast::FnDecl,
@@ -2854,7 +2854,6 @@ impl<'a> State<'a> {
             ast::ViewPathSimple(ident, ref path) => {
                 try!(self.print_path(path, false, 0));
 
-                // FIXME(#6993) can't compare identifiers directly here
                 if path.segments.last().unwrap().identifier.name !=
                         ident.name {
                     try!(space(&mut self.s));

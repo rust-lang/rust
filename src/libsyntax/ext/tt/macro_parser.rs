@@ -79,7 +79,7 @@ pub use self::ParseResult::*;
 use self::TokenTreeOrTokenTreeVec::*;
 
 use ast;
-use ast::{TokenTree, Ident};
+use ast::{TokenTree, Name};
 use ast::{TtDelimited, TtSequence, TtToken};
 use codemap::{BytePos, mk_sp, Span};
 use codemap;
@@ -202,9 +202,9 @@ pub enum NamedMatch {
 }
 
 pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
-            -> HashMap<Ident, Rc<NamedMatch>> {
+            -> HashMap<Name, Rc<NamedMatch>> {
     fn n_rec(p_s: &ParseSess, m: &TokenTree, res: &[Rc<NamedMatch>],
-             ret_val: &mut HashMap<Ident, Rc<NamedMatch>>, idx: &mut usize) {
+             ret_val: &mut HashMap<Name, Rc<NamedMatch>>, idx: &mut usize) {
         match m {
             &TtSequence(_, ref seq) => {
                 for next_m in &seq.tts {
@@ -217,7 +217,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
                 }
             }
             &TtToken(sp, MatchNt(bind_name, _, _, _)) => {
-                match ret_val.entry(bind_name) {
+                match ret_val.entry(bind_name.name) {
                     Vacant(spot) => {
                         spot.insert(res[*idx].clone());
                         *idx += 1;
@@ -246,7 +246,7 @@ pub enum ParseResult<T> {
     Error(codemap::Span, String)
 }
 
-pub type NamedParseResult = ParseResult<HashMap<Ident, Rc<NamedMatch>>>;
+pub type NamedParseResult = ParseResult<HashMap<Name, Rc<NamedMatch>>>;
 pub type PositionalParseResult = ParseResult<Vec<Rc<NamedMatch>>>;
 
 /// Perform a token equality check, ignoring syntax context (that is, an

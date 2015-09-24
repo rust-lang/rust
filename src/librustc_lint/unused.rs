@@ -50,7 +50,7 @@ impl UnusedMut {
                 let name = path1.node;
                 if let hir::BindByValue(hir::MutMutable) = mode {
                     if !name.as_str().starts_with("_") {
-                        match mutables.entry(name.usize()) {
+                        match mutables.entry(name.0 as usize) {
                             Vacant(entry) => { entry.insert(vec![id]); },
                             Occupied(mut entry) => { entry.get_mut().push(id); },
                         }

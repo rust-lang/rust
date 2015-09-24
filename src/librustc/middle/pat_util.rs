@@ -211,7 +211,7 @@ pub fn def_to_path(tcx: &ty::ctxt, id: DefId) -> hir::Path {
     tcx.with_path(id, |path| hir::Path {
         global: false,
         segments: path.last().map(|elem| hir::PathSegment {
-            identifier: ast::Ident::new(elem.name()),
+            identifier: ast::Ident::with_empty_ctxt(elem.name()),
             parameters: hir::PathParameters::none(),
         }).into_iter().collect(),
         span: DUMMY_SP,

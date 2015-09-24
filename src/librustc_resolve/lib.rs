@@ -3710,7 +3710,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 false // Stop advancing
                             });
 
-                            if method_scope && special_names::self_ == path_name {
+                            if method_scope && special_names::self_.as_str() == &path_name[..] {
                                 resolve_error(
                                     self,
                                     expr.span,
