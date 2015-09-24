@@ -393,6 +393,18 @@ impl OpenOptions {
     /// This option, when true, will indicate that the file should be
     /// `read`-able if opened.
     ///
+    /// # Platform Notes
+    ///
+    /// Depending on platform, this function will set the following flags:
+    ///
+    /// ### Windows
+    ///
+    /// `FILE_SHARE_READ`
+    ///
+    /// ### Unix
+    ///
+    /// ''
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -409,6 +421,18 @@ impl OpenOptions {
     ///
     /// This option, when true, will indicate that the file should be
     /// `write`-able if opened.
+    ///
+    /// # Platform Notes
+    ///
+    /// Depending on platform, this function will invoke the following syscalls:
+    ///
+    /// ### Windows
+    ///
+    /// ``
+    ///
+    /// ### Unix
+    ///
+    /// ''
     ///
     /// # Examples
     ///
@@ -427,6 +451,18 @@ impl OpenOptions {
     /// This option, when true, means that writes will append to a file instead
     /// of overwriting previous contents.
     ///
+    /// # Platform Notes
+    ///
+    /// Depending on platform, this function will invoke the following syscalls:
+    ///
+    /// ### Windows
+    ///
+    /// ``
+    ///
+    /// ### Unix
+    ///
+    /// ''
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -443,6 +479,18 @@ impl OpenOptions {
     ///
     /// If a file is successfully opened with this option set it will truncate
     /// the file to 0 length if it already exists.
+    ///
+    /// # Platform Notes
+    ///
+    /// Depending on platform, this function will invoke the following syscalls:
+    ///
+    /// ### Windows
+    ///
+    /// ``
+    ///
+    /// ### Unix
+    ///
+    /// ''
     ///
     /// # Examples
     ///
@@ -461,6 +509,18 @@ impl OpenOptions {
     /// This option indicates whether a new file will be created if the file
     /// does not yet already exist.
     ///
+    /// # Platform Notes
+    ///
+    /// Depending on platform, this function will invoke the following syscalls:
+    ///
+    /// ### Windows
+    ///
+    /// ``
+    ///
+    /// ### Unix
+    ///
+    /// ''
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -474,6 +534,18 @@ impl OpenOptions {
     }
 
     /// Opens a file at `path` with the options specified by `self`.
+    ///
+    /// # Platform Notes
+    ///
+    /// Depending on platform, this function will invoke the following syscalls:
+    ///
+    /// ### Windows
+    ///
+    /// ``
+    ///
+    /// ### Unix
+    ///
+    /// ''
     ///
     /// # Errors
     ///
