@@ -61,6 +61,7 @@ pub fn opts() -> TargetOptions {
         ],
         archive_format: "gnu".to_string(),
         exe_allocation_crate: super::best_allocator(),
+        no_compiler_rt: true,
 
         .. Default::default()
     }

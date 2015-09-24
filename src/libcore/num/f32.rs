@@ -255,9 +255,21 @@ impl Float for f32 {
     #[inline]
     fn recip(self) -> f32 { 1.0 / self }
 
-    #[inline]
+    #[inline] #[cfg(not(target_env = "msvc"))]
     fn powi(self, n: i32) -> f32 {
         unsafe { intrinsics::powif32(self, n) }
+    }
+    #[inline] #[cfg(target_env = "msvc")]
+    fn powi(self, n: i32) -> f32 {
+        let (mut r, mut a) = (1., self);
+        let mut b = if n < 0 { n.wrapping_neg() as u32 } else { n as u32 };
+        loop {
+            if b & 1 != 0 { r *= a }
+            b >>= 1;
+            if b == 0 { break }
+            a *= a;
+        }
+        if n < 0 { r.recip() } else { r }
     }
 
     /// Converts to degrees, assuming the number is in radians.
