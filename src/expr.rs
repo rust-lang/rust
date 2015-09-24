@@ -153,13 +153,18 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprMac(ref mac) => {
                 rewrite_macro(mac, context, width, offset)
             }
+            ast::Expr_::ExprRet(None) => {
+                wrap_str("return".to_owned(), context.config.max_width, width, offset)
+            }
+            ast::Expr_::ExprRet(Some(ref expr)) => {
+                rewrite_unary_prefix(context, "return ", &expr, width, offset)
+            }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
             ast::Expr_::ExprBox(..) |
             ast::Expr_::ExprCast(..) |
             ast::Expr_::ExprIndex(..) |
             ast::Expr_::ExprAddrOf(..) |
-            ast::Expr_::ExprRet(..) |
             ast::Expr_::ExprInlineAsm(..) |
             ast::Expr_::ExprRepeat(..) => {
                 wrap_str(context.snippet(self.span), context.config.max_width, width, offset)
@@ -1294,6 +1299,16 @@ fn rewrite_binary_op(context: &RewriteContext,
                  rhs_result))
 }
 
+fn rewrite_unary_prefix(context: &RewriteContext,
+                        prefix: &str,
+                        expr: &ast::Expr,
+                        width: usize,
+                        offset: Indent)
+                        -> Option<String> {
+    expr.rewrite(context, try_opt!(width.checked_sub(prefix.len())), offset + prefix.len())
+        .map(|r| format!("{}{}", prefix, r))
+}
+
 fn rewrite_unary_op(context: &RewriteContext,
                     op: &ast::UnOp,
                     expr: &ast::Expr,
@@ -1307,10 +1322,7 @@ fn rewrite_unary_op(context: &RewriteContext,
         ast::UnOp::UnNot => "!",
         ast::UnOp::UnNeg => "-",
     };
-    let operator_len = operator_str.len();
-
-    expr.rewrite(context, try_opt!(width.checked_sub(operator_len)), offset + operator_len)
-        .map(|r| format!("{}{}", operator_str, r))
+    rewrite_unary_prefix(context, operator_str, expr, width, offset)
 }
 
 fn rewrite_assignment(context: &RewriteContext,
