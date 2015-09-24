@@ -304,7 +304,7 @@ fn main() {
     let (&cc, _) = (&38, 39);
 
     // unique pointer
-    let box dd = box() (40, 41, 42);
+    let box dd = box (40, 41, 42);
 
     // ref binding
     let ref ee = (43, 44, 45);

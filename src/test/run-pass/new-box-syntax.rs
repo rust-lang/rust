@@ -31,10 +31,10 @@ struct Structure {
 }
 
 pub fn main() {
-    let x: Box<isize> = box(HEAP) 2;
+    let x: Box<isize> = in HEAP { 2 };
     let y: Box<isize> = box 2;
-    let b: Box<isize> = box()(1 + 2);
-    let c = box()(3 + 4);
+    let b: Box<isize> = box (1 + 2);
+    let c = box (3 + 4);
 
     let s: Box<Structure> = box Structure {
         x: 3,

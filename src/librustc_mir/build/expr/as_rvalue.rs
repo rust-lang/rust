@@ -67,7 +67,7 @@ impl<H:Hair> Builder<H> {
                 let arg = unpack!(block = this.as_operand(block, arg));
                 block.and(Rvalue::UnaryOp(op, arg))
             }
-            ExprKind::Box { place: _, value } => {
+            ExprKind::Box { value } => {
                 let value = this.hir.mirror(value);
                 let value_ty = value.ty.clone();
                 let result = this.temp(value_ty.clone());

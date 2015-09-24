@@ -344,13 +344,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.straightline(expr, pred, [r, l].iter().map(|&e| &**e))
             }
 
-            hir::ExprBox(Some(ref l), ref r) |
             hir::ExprIndex(ref l, ref r) |
             hir::ExprBinary(_, ref l, ref r) => { // NB: && and || handled earlier
                 self.straightline(expr, pred, [l, r].iter().map(|&e| &**e))
             }
 
-            hir::ExprBox(None, ref e) |
+            hir::ExprBox(ref e) |
             hir::ExprAddrOf(_, ref e) |
             hir::ExprCast(ref e, _) |
             hir::ExprUnary(_, ref e) |
