@@ -40,9 +40,9 @@ impl LintPass for MethodsPass {
 
 impl LateLintPass for MethodsPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if let ExprMethodCall(ref ident, _, ref args) = expr.node {
+        if let ExprMethodCall(ref name, _, ref args) = expr.node {
             let (obj_ty, ptr_depth) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&args[0]));
-            if ident.node.name == "unwrap" {
+            if name.node.as_str() == "unwrap" {
                 if match_type(cx, obj_ty, &OPTION_PATH) {
                     span_lint(cx, OPTION_UNWRAP_USED, expr.span,
                               "used unwrap() on an Option value. If you don't want \
@@ -54,7 +54,7 @@ impl LateLintPass for MethodsPass {
                                of Err values is preferred");
                 }
             }
-            else if ident.node.name == "to_string" {
+            else if name.node.as_str() == "to_string" {
                 if obj_ty.sty == ty::TyStr {
                     let mut arg_str = snippet(cx, args[0].span, "_");
                     if ptr_depth > 1 {
@@ -76,7 +76,7 @@ impl LateLintPass for MethodsPass {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let ItemImpl(_, _, _, None, ref ty, ref items) = item.node {
             for implitem in items {
-                let name = implitem.ident.name;
+                let name = implitem.name;
                 if let MethodImplItem(ref sig, _) = implitem.node {
                     // check missing trait implementations
                     for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {

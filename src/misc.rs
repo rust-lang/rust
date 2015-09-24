@@ -173,10 +173,9 @@ impl LateLintPass for CmpOwned {
 
 fn check_to_owned(cx: &LateContext, expr: &Expr, other_span: Span) {
     match expr.node {
-        ExprMethodCall(Spanned{node: ref ident, ..}, _, ref args) => {
-            let name = ident.name;
-            if name == "to_string" ||
-                name == "to_owned" && is_str_arg(cx, args) {
+        ExprMethodCall(Spanned{node: ref name, ..}, _, ref args) => {
+            if name.as_str() == "to_string" ||
+                name.as_str() == "to_owned" && is_str_arg(cx, args) {
                     span_lint(cx, CMP_OWNED, expr.span, &format!(
                         "this creates an owned instance just for comparison. \
                          Consider using `{}.as_slice()` to compare without allocation",

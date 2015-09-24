@@ -24,19 +24,19 @@ impl LintPass for AttrPass {
 impl LateLintPass for AttrPass {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if is_relevant_item(item) {
-            check_attrs(cx, item.span, &item.ident, &item.attrs)
+            check_attrs(cx, item.span, &item.name, &item.attrs)
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
         if is_relevant_impl(item) {
-            check_attrs(cx, item.span, &item.ident, &item.attrs)
+            check_attrs(cx, item.span, &item.name, &item.attrs)
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         if is_relevant_trait(item) {
-            check_attrs(cx, item.span, &item.ident, &item.attrs)
+            check_attrs(cx, item.span, &item.name, &item.attrs)
         }
     }
 }
@@ -88,7 +88,7 @@ fn is_relevant_expr(expr: &Expr) -> bool {
     }
 }
 
-fn check_attrs(cx: &LateContext, span: Span, ident: &Ident,
+fn check_attrs(cx: &LateContext, span: Span, name: &Name,
         attrs: &[Attribute]) {
     if in_macro(cx, span) { return; }
 
@@ -100,7 +100,7 @@ fn check_attrs(cx: &LateContext, span: Span, ident: &Ident,
                 span_lint(cx, INLINE_ALWAYS, attr.span, &format!(
                     "you have declared `#[inline(always)]` on `{}`. This \
                      is usually a bad idea. Are you sure?",
-                    ident.name));
+                    name));
             }
         }
     }
