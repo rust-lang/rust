@@ -674,7 +674,7 @@ There are several kinds of item:
 * [modules](#modules)
 * [functions](#functions)
 * [type definitions](grammar.html#type-definitions)
-* [structures](#structures)
+* [structs](#structs)
 * [enumerations](#enumerations)
 * [constant items](#constant-items)
 * [static items](#static-items)
@@ -1156,7 +1156,7 @@ type Point = (u8, u8);
 let p: Point = (41, 68);
 ```
 
-### Structures
+### Structs
 
 A _structure_ is a nominal [structure type](#structure-types) defined with the
 keyword `struct`.
@@ -2615,7 +2615,7 @@ comma:
 ### Structure expressions
 
 There are several forms of structure expressions. A _structure expression_
-consists of the [path](#paths) of a [structure item](#structures), followed by
+consists of the [path](#paths) of a [structure item](#structs), followed by
 a brace-enclosed list of one or more comma-separated name-value pairs,
 providing the field values of a new instance of the structure. A field name
 can be any identifier, and is separated from its value expression by a colon.
@@ -2623,13 +2623,13 @@ The location denoted by a structure field is mutable if and only if the
 enclosing structure is mutable.
 
 A _tuple structure expression_ consists of the [path](#paths) of a [structure
-item](#structures), followed by a parenthesized list of one or more
+item](#structs), followed by a parenthesized list of one or more
 comma-separated expressions (in other words, the path of a structure item
 followed by a tuple expression). The structure item must be a tuple structure
 item.
 
 A _unit-like structure expression_ consists only of the [path](#paths) of a
-[structure item](#structures).
+[structure item](#structs).
 
 The following are examples of structure expressions:
 
@@ -3146,7 +3146,7 @@ if` condition is evaluated. If all `if` and `else if` conditions evaluate to
 
 A `match` expression branches on a *pattern*. The exact form of matching that
 occurs depends on the pattern. Patterns consist of some combination of
-literals, destructured arrays or enum constructors, structures and tuples,
+literals, destructured arrays or enum constructors, structs and tuples,
 variable binding specifications, wildcards (`..`), and placeholders (`_`). A
 `match` expression has a *head expression*, which is the value to compare to
 the patterns. The type of the patterns must equal the type of the head
@@ -3470,7 +3470,7 @@ named reference to an [`enum` item](#enumerations).
 ### Recursive types
 
 Nominal types &mdash; [enumerations](#enumerated-types) and
-[structures](#structure-types) &mdash; may be recursive. That is, each `enum`
+[structs](#structure-types) &mdash; may be recursive. That is, each `enum`
 constructor or `struct` field may refer, directly or indirectly, to the
 enclosing `enum` or `struct` type itself. Such recursion has restrictions:
 
@@ -3498,7 +3498,7 @@ let a: List<i32> = List::Cons(7, Box::new(List::Cons(13, Box::new(List::Nil))));
 ### Pointer types
 
 All pointers in Rust are explicit first-class values. They can be copied,
-stored into data structures, and returned from functions. There are two
+stored into data structs, and returned from functions. There are two
 varieties of pointer in Rust:
 
 * References (`&`)
