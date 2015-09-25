@@ -19,6 +19,7 @@ use sys::stdio::Stderr;
 use sys_common::backtrace;
 use sys_common::thread_info;
 use sys_common::util;
+use thread::LocalKeyState;
 
 thread_local! { pub static PANIC_COUNT: Cell<usize> = Cell::new(0) }
 
@@ -49,7 +50,11 @@ fn log_panic(obj: &(Any+Send), file: &'static str, line: u32,
         }
     };
 
-    let prev = LOCAL_STDERR.with(|s| s.borrow_mut().take());
+    let prev = if LOCAL_STDERR.state() == LocalKeyState::Destroyed {
+        None
+    } else {
+        LOCAL_STDERR.with(|s| s.borrow_mut().take())
+    };
     match (prev, err.as_mut()) {
         (Some(mut stderr), _) => {
             write(&mut *stderr);
