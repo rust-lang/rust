@@ -107,8 +107,12 @@ extern crate alloc_system;
 
 // Allow testing this library
 
-#[cfg(test)] #[macro_use] extern crate std;
-#[cfg(test)] #[macro_use] extern crate log;
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+#[cfg(test)]
+#[macro_use]
+extern crate log;
 
 // Heaps provided for low-level allocation strategies
 
@@ -123,7 +127,9 @@ pub mod heap;
 #[cfg(not(test))]
 pub mod boxed;
 #[cfg(test)]
-mod boxed { pub use std::boxed::{Box, HEAP}; }
+mod boxed {
+    pub use std::boxed::{Box, HEAP};
+}
 #[cfg(test)]
 mod boxed_test;
 pub mod arc;
