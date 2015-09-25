@@ -163,12 +163,15 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprRet(Some(ref expr)) => {
                 rewrite_unary_prefix(context, "return ", &expr, width, offset)
             }
+            ast::Expr_::ExprBox(ref expr) => {
+                rewrite_unary_prefix(context, "box ", &expr, width, offset)
+            }
             ast::Expr_::ExprAddrOf(mutability, ref expr) => {
                 rewrite_expr_addrof(context, mutability, &expr, width, offset)
             }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
-            ast::Expr_::ExprBox(..) |
+            ast::Expr_::ExprInPlace(..) |
             ast::Expr_::ExprCast(..) |
             ast::Expr_::ExprIndex(..) |
             ast::Expr_::ExprInlineAsm(..) |
@@ -1348,7 +1351,6 @@ fn rewrite_unary_op(context: &RewriteContext,
                     -> Option<String> {
     // For some reason, an UnOp is not spanned like BinOp!
     let operator_str = match *op {
-        ast::UnOp::UnUniq => "box ",
         ast::UnOp::UnDeref => "*",
         ast::UnOp::UnNot => "!",
         ast::UnOp::UnNeg => "-",
