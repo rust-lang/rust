@@ -300,7 +300,6 @@ pub enum InlineAttr {
 
 /// Determine what `#[inline]` attribute is present in `attrs`, if any.
 pub fn find_inline_attr(diagnostic: Option<&SpanHandler>, attrs: &[Attribute]) -> InlineAttr {
-    // FIXME (#2809)---validate the usage of #[inline] and #[inline]
     attrs.iter().fold(InlineAttr::None, |ia,attr| {
         match attr.node.value.node {
             MetaWord(ref n) if *n == "inline" => {
