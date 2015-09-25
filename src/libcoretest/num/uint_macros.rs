@@ -18,9 +18,9 @@ mod tests {
 
     #[test]
     fn test_overflows() {
-        assert!(MAX > 0);
-        assert!(MIN <= 0);
-        assert!((MIN + MAX).wrapping_add(1) == 0);
+        assert!($T::MAX > 0);
+        assert!($T::MIN <= 0);
+        assert!(($T::MIN + $T::MAX).wrapping_add(1) == 0);
     }
 
     #[test]
@@ -54,9 +54,9 @@ mod tests {
 
     #[test]
     fn test_count_zeros() {
-        assert!(A.count_zeros() == BITS as u32 - 3);
-        assert!(B.count_zeros() == BITS as u32 - 2);
-        assert!(C.count_zeros() == BITS as u32 - 5);
+        assert!(A.count_zeros() == $T::BITS as u32 - 3);
+        assert!(B.count_zeros() == $T::BITS as u32 - 2);
+        assert!(C.count_zeros() == $T::BITS as u32 - 5);
     }
 
     #[test]

@@ -119,6 +119,34 @@ macro_rules! int_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
+
+        // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+        // calling the `mem::size_of` function.
+        #[unstable(feature = "num_bits_bytes",
+                   reason = "may want to be an associated function",
+                   issue = "27753")]
+        #[allow(missing_docs)]
+        pub const BITS : usize = $BITS;
+        // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+        // calling the `mem::size_of` function.
+        #[unstable(feature = "num_bits_bytes",
+                   reason = "may want to be an associated function",
+                   issue = "27753")]
+        #[allow(missing_docs)]
+        pub const BYTES : usize = ($BITS / 8);
+
+        // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+        // calling the `Bounded::min_value` function.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(missing_docs)]
+        pub const MIN: $ActualT = (-1 as $ActualT) << ($BITS - 1);
+        // FIXME(#9837): Compute MIN like this so the high bits that shouldn't exist are 0.
+        // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+        // calling the `Bounded::max_value` function.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(missing_docs)]
+        pub const MAX: $ActualT = !<$ActualT>::MIN;
+
         /// Returns the smallest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
@@ -669,6 +697,25 @@ macro_rules! uint_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
+
+        #[unstable(feature = "num_bits_bytes",
+                   reason = "may want to be an associated function",
+                   issue = "27753")]
+        #[allow(missing_docs)]
+        pub const BITS : usize = $BITS;
+        #[unstable(feature = "num_bits_bytes",
+                   reason = "may want to be an associated function",
+                   issue = "27753")]
+        #[allow(missing_docs)]
+        pub const BYTES : usize = ($BITS / 8);
+
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(missing_docs)]
+        pub const MIN: $ActualT = 0 as $ActualT;
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(missing_docs)]
+        pub const MAX: $ActualT = !0 as $ActualT;
+
         /// Returns the smallest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
