@@ -98,7 +98,7 @@ macro_rules! print {
     ($($arg:tt)*) => ($crate::io::_print(format_args!($($arg)*)));
 }
 
-/// Macro for printing to the standard output.
+/// Macro for printing to the standard output, with a newline.
 ///
 /// Use the `format!` syntax to write data to the standard output.
 /// See `std::fmt` for more information.
