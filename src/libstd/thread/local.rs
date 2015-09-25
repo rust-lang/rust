@@ -389,7 +389,7 @@ mod imp {
         _tlv_atexit(dtor, t);
     }
 
-    pub unsafe extern fn destroy_value<T>(ptr: *mut u8) {
+    unsafe extern fn destroy_value<T>(ptr: *mut u8) {
         let ptr = ptr as *mut Key<T>;
         // Right before we run the user destructor be sure to flag the
         // destructor as running for this thread so calls to `get` will return
@@ -470,7 +470,7 @@ mod imp {
         }
     }
 
-    pub unsafe extern fn destroy_value<T: 'static>(ptr: *mut u8) {
+    unsafe extern fn destroy_value<T: 'static>(ptr: *mut u8) {
         // The OS TLS ensures that this key contains a NULL value when this
         // destructor starts to run. We set it back to a sentinel value of 1 to
         // ensure that any future calls to `get` for this thread will return
