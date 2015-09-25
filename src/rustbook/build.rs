@@ -23,8 +23,6 @@ use error::{err, CliResult, CommandResult};
 use book;
 use book::{Book, BookItem};
 
-use javascript;
-
 use rustdoc;
 
 struct Build;
@@ -113,26 +111,28 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
         // write the prelude to a temporary HTML file for rustdoc inclusion
         let prelude = tmp.path().join("prelude.html");
         {
-            let mut toc = BufWriter::new(try!(File::create(&prelude)));
-            try!(writeln!(&mut toc, r#"<div id="nav">
-                <button id="toggle-nav">
-                  <span class="sr-only">Toggle navigation</span>
-                  <span class="bar"></span>
-                  <span class="bar"></span>
-                  <span class="bar"></span>
-                </button>
-              </div>"#));
-            let _ = write_toc(book, &item, &mut toc);
-            try!(writeln!(&mut toc, "<div id='page-wrapper'>"));
-            try!(writeln!(&mut toc, "<div id='page'>"));
+            let mut buffer = BufWriter::new(try!(File::create(&prelude)));
+            try!(writeln!(&mut buffer, r#"
+                <div id="nav">
+                    <button id="toggle-nav">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="bar"></span>
+                        <span class="bar"></span>
+                        <span class="bar"></span>
+                    </button>
+                </div>"#));
+            let _ = write_toc(book, &item, &mut buffer);
+            try!(writeln!(&mut buffer, "<div id='page-wrapper'>"));
+            try!(writeln!(&mut buffer, "<div id='page'>"));
         }
 
         // write the postlude to a temporary HTML file for rustdoc inclusion
         let postlude = tmp.path().join("postlude.html");
         {
-            let mut toc = BufWriter::new(try!(File::create(&postlude)));
-            try!(toc.write_all(javascript::JAVASCRIPT.as_bytes()));
-            try!(writeln!(&mut toc, "</div></div>"));
+            let mut buffer = BufWriter::new(try!(File::create(&postlude)));
+            try!(writeln!(&mut buffer, "<script src='rustbook.js'></script>"));
+            try!(writeln!(&mut buffer, "<script src='playpen.js'></script>"));
+            try!(writeln!(&mut buffer, "</div></div>"));
         }
 
         try!(fs::create_dir_all(&out_path));
