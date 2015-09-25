@@ -1410,7 +1410,7 @@ impl<'a, T> ExactSizeIterator for ChunksMut<'a, T> {}
 // Free functions
 //
 
-/// Converts a pointer to A into a slice of length 1 (without copying).
+/// Converts a reference to A into a slice of length 1 (without copying).
 #[unstable(feature = "ref_slice", issue = "27774")]
 pub fn ref_slice<A>(s: &A) -> &[A] {
     unsafe {
@@ -1418,7 +1418,7 @@ pub fn ref_slice<A>(s: &A) -> &[A] {
     }
 }
 
-/// Converts a pointer to A into a slice of length 1 (without copying).
+/// Converts a reference to A into a slice of length 1 (without copying).
 #[unstable(feature = "ref_slice", issue = "27774")]
 pub fn mut_ref_slice<A>(s: &mut A) -> &mut [A] {
     unsafe {
