@@ -22,6 +22,7 @@ fn foo(b: &Bar) {
     b.foo(&0)
     //~^ ERROR the trait `Foo` is not implemented for the type `Bar`
     //~| ERROR E0038
+    //~| WARNING E0038
 }
 
 fn main() {
