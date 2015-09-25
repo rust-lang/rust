@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[inline(never)]
 pub static global: isize = 3;
 
-#[inline(never)]
 static global0: isize = 4;
 
-#[inline(never)]
 pub static global2: &'static isize = &global0;
 
 pub fn verify_same(a: &'static isize) {
