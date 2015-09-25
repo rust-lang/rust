@@ -321,7 +321,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 |o| match op {
                     UnNot => constant_not(o),
                     UnNeg => constant_negate(o),
-                    UnUniq | UnDeref => Some(o),
+                    UnDeref => Some(o),
                 }),
             ExprBinary(op, ref left, ref right) =>
                 self.binop(op, left, right),

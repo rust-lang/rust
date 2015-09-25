@@ -140,7 +140,7 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span,
             },
         PatBox(ref inner) => {
             if let Some(ref initp) = *init {
-                if let ExprBox(_, ref inner_init) = initp.node {
+                if let ExprBox(ref inner_init) = initp.node {
                     check_pat(cx, inner, &Some(&**inner_init), span, bindings);
                 } else {
                     check_pat(cx, inner, init, span, bindings);
@@ -198,10 +198,8 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx, expr.span) { return; }
     match expr.node {
         ExprUnary(_, ref e) | ExprField(ref e, _) |
-        ExprTupField(ref e, _) | ExprAddrOf(_, ref e) | ExprBox(None, ref e)
+        ExprTupField(ref e, _) | ExprAddrOf(_, ref e) | ExprBox(ref e)
             => { check_expr(cx, e, bindings) },
-        ExprBox(Some(ref place), ref e) => {
-            check_expr(cx, place, bindings); check_expr(cx, e, bindings) }
         ExprBlock(ref block) | ExprLoop(ref block, _) =>
             { check_block(cx, block, bindings) },
         //ExprCall
@@ -254,11 +252,11 @@ fn check_ty(cx: &LateContext, ty: &Ty, bindings: &mut Vec<(Name, Span)>) {
 
 fn is_self_shadow(name: Name, expr: &Expr) -> bool {
     match expr.node {
-        ExprBox(_, ref inner) |
+        ExprBox(ref inner) |
         ExprAddrOf(_, ref inner) => is_self_shadow(name, inner),
         ExprBlock(ref block) => block.stmts.is_empty() && block.expr.as_ref().
             map_or(false, |ref e| is_self_shadow(name, e)),
-        ExprUnary(op, ref inner) => (UnUniq == op || UnDeref == op) &&
+        ExprUnary(op, ref inner) => (UnDeref == op) &&
             is_self_shadow(name, inner),
         ExprPath(_, ref path) => path_eq_name(name, path),
         _ => false,
@@ -278,7 +276,7 @@ fn contains_self(name: Name, expr: &Expr) -> bool {
         ExprLit(_) => false,
         // one subexpr
         ExprUnary(_, ref e) | ExprField(ref e, _) |
-        ExprTupField(ref e, _) | ExprAddrOf(_, ref e) | ExprBox(_, ref e) |
+        ExprTupField(ref e, _) | ExprAddrOf(_, ref e) | ExprBox(ref e) |
         ExprCast(ref e, _) =>
             contains_self(name, e),
         // two subexprs
