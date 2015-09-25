@@ -12,6 +12,8 @@
 /*globals $: true, rootPath: true */
 
 document.addEventListener('DOMContentLoaded', function() {
+    'use strict';
+
     if (!window.playgroundUrl) {
         return;
     }
