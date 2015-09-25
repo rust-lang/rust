@@ -1359,6 +1359,13 @@ impl<T> AsRef<[T]> for Vec<T> {
     }
 }
 
+#[stable(feature = "vec_as_mut", since = "1.5.0")]
+impl<T> AsMut<[T]> for Vec<T> {
+    fn as_mut(&mut self) -> &mut [T] {
+        self
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Clone> From<&'a [T]> for Vec<T> {
     #[cfg(not(test))]
