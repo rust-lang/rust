@@ -38,6 +38,7 @@ mod dump_csv;
 
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: &'l ty::ctxt<'tcx>,
+    lcx: &'l lowering::LoweringContext<'tcx>,
     span_utils: SpanUtils<'l>,
 }
 
@@ -176,16 +177,18 @@ pub struct MethodCallData {
 
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
-    pub fn new(tcx: &'l ty::ctxt<'tcx>) -> SaveContext<'l, 'tcx> {
+    pub fn new(tcx: &'l ty::ctxt<'tcx>, lcx: &'l lowering::LoweringContext<'tcx>) -> SaveContext<'l, 'tcx> {
         let span_utils = SpanUtils::new(&tcx.sess);
-        SaveContext::from_span_utils(tcx, span_utils)
+        SaveContext::from_span_utils(tcx, lcx, span_utils)
     }
 
     pub fn from_span_utils(tcx: &'l ty::ctxt<'tcx>,
+                           lcx: &'l lowering::LoweringContext<'tcx>,
                            span_utils: SpanUtils<'l>)
                            -> SaveContext<'l, 'tcx> {
         SaveContext {
             tcx: tcx,
+            lcx: lcx,
             span_utils: span_utils,
         }
     }
@@ -454,7 +457,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
         match expr.node {
             ast::ExprField(ref sub_ex, ident) => {
-                let hir_node = lowering::lower_expr(sub_ex);
+                let hir_node = lowering::lower_expr(self.lcx, sub_ex);
                 let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
                 match *ty {
                     ty::TyStruct(def, _) => {
@@ -474,7 +477,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprStruct(ref path, _, _) => {
-                let hir_node = lowering::lower_expr(expr);
+                let hir_node = lowering::lower_expr(self.lcx, expr);
                 let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
                 match *ty {
                     ty::TyStruct(def, _) => {
@@ -705,10 +708,11 @@ impl<'v> Visitor<'v> for PathCollector {
     }
 }
 
-pub fn process_crate(tcx: &ty::ctxt,
-                     krate: &ast::Crate,
-                     analysis: &ty::CrateAnalysis,
-                     odir: Option<&Path>) {
+pub fn process_crate<'l, 'tcx>(tcx: &'l ty::ctxt<'tcx>,
+                               lcx: &'l lowering::LoweringContext<'tcx>,
+                               krate: &ast::Crate,
+                               analysis: &ty::CrateAnalysis,
+                               odir: Option<&Path>) {
     if generated_code(krate.span) {
         return;
     }
@@ -757,7 +761,7 @@ pub fn process_crate(tcx: &ty::ctxt,
     };
     root_path.pop();
 
-    let mut visitor = dump_csv::DumpCsvVisitor::new(tcx, analysis, output_file);
+    let mut visitor = dump_csv::DumpCsvVisitor::new(tcx, lcx, analysis, output_file);
 
     visitor.dump_crate_info(&cratename, krate);
     visit::walk_crate(&mut visitor, krate);

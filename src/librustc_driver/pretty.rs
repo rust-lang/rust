@@ -47,7 +47,7 @@ use std::str::FromStr;
 use rustc::front::map as hir_map;
 use rustc::front::map::{blocks, NodePrinter};
 use rustc_front::hir;
-use rustc_front::lowering::lower_crate;
+use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_front::print::pprust as pprust_hir;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -670,9 +670,11 @@ pub fn pretty_print_input(sess: Session,
     // There is some twisted, god-forsaken tangle of lifetimes here which makes
     // the ordering of stuff super-finicky.
     let mut hir_forest;
+    let foo = &42;
+    let lcx = LoweringContext::new(foo);
     let arenas = ty::CtxtArenas::new();
     let ast_map = if compute_ast_map {
-        hir_forest = hir_map::Forest::new(lower_crate(&krate));
+        hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate));
         let map = driver::make_map(&sess, &mut hir_forest);
         Some(map)
     } else {

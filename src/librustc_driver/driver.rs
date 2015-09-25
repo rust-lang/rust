@@ -31,7 +31,7 @@ use rustc_trans::trans;
 use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_front::hir;
-use rustc_front::lowering::lower_crate;
+use rustc_front::lowering::{lower_crate, LoweringContext};
 use super::Compilation;
 
 use serialize::json;
@@ -112,9 +112,11 @@ pub fn compile_input(sess: Session,
 
         let expanded_crate = assign_node_ids(&sess, expanded_crate);
         // Lower ast -> hir.
+        let foo = &42;
+        let lcx = LoweringContext::new(foo);
         let mut hir_forest = time(sess.time_passes(),
                                   "lowering ast -> hir",
-                                  || hir_map::Forest::new(lower_crate(&expanded_crate)));
+                                  || hir_map::Forest::new(lower_crate(&lcx, &expanded_crate)));
         let arenas = ty::CtxtArenas::new();
         let ast_map = make_map(&sess, &mut hir_forest);
 
@@ -128,7 +130,8 @@ pub fn compile_input(sess: Session,
                                                                      &ast_map,
                                                                      &expanded_crate,
                                                                      &ast_map.krate(),
-                                                                     &id[..]));
+                                                                     &id[..],
+                                                                     &lcx));
 
         time(sess.time_passes(), "attribute checking", || {
             front::check_attr::check_crate(&sess, &expanded_crate);
@@ -152,7 +155,8 @@ pub fn compile_input(sess: Session,
                                                                &expanded_crate,
                                                                tcx.map.krate(),
                                                                &analysis,
-                                                               tcx);
+                                                               tcx,
+                                                               &lcx);
                 (control.after_analysis.callback)(state);
 
                 tcx.sess.abort_if_errors();
@@ -278,6 +282,7 @@ pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
     pub ast_map: Option<&'a hir_map::Map<'ast>>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<&'a ty::ctxt<'tcx>>,
+    pub lcx: Option<&'a LoweringContext<'tcx>>,
     pub trans: Option<&'a trans::CrateTranslation>,
 }
 
@@ -299,6 +304,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
             ast_map: None,
             analysis: None,
             tcx: None,
+            lcx: None,
             trans: None,
         }
     }
@@ -333,13 +339,15 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                               ast_map: &'a hir_map::Map<'ast>,
                               krate: &'a ast::Crate,
                               hir_crate: &'a hir::Crate,
-                              crate_name: &'a str)
+                              crate_name: &'a str,
+                              lcx: &'a LoweringContext<'tcx>)
                               -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
             ast_map: Some(ast_map),
             krate: Some(krate),
             hir_crate: Some(hir_crate),
+            lcx: Some(lcx),
             .. CompileState::empty(input, session, out_dir)
         }
     }
@@ -350,13 +358,15 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                             krate: &'a ast::Crate,
                             hir_crate: &'a hir::Crate,
                             analysis: &'a ty::CrateAnalysis,
-                            tcx: &'a ty::ctxt<'tcx>)
+                            tcx: &'a ty::ctxt<'tcx>,
+                            lcx: &'a LoweringContext<'tcx>)
                             -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             analysis: Some(analysis),
             tcx: Some(tcx),
             krate: Some(krate),
             hir_crate: Some(hir_crate),
+            lcx: Some(lcx),
             .. CompileState::empty(input, session, out_dir)
         }
     }
