@@ -434,6 +434,11 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// While this does call the argument's implementation of `Drop`, it will not
 /// release any borrows, as borrows are based on lexical scope.
 ///
+/// This effectively does nothing for
+/// [types which implement `Copy`](../../book/ownership.html#copy-types),
+/// e.g. integers. Such values are copied and _then_ moved into the function,
+/// so the value persists after this function call.
+///
 /// # Examples
 ///
 /// Basic usage:
@@ -486,6 +491,21 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// let borrow = x.borrow();
 /// println!("{}", *borrow);
 /// ```
+///
+/// Integers and other types implementing `Copy` are unaffected by `drop()`
+///
+/// ```
+/// #[derive(Copy, Clone)]
+/// struct Foo(u8);
+///
+/// let x = 1;
+/// let y = Foo(2);
+/// drop(x); // a copy of `x` is moved and dropped
+/// drop(y); // a copy of `y` is moved and dropped
+///
+/// println!("x: {}, y: {}", x, y.0); // still available
+/// ```
+///
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn drop<T>(_x: T) { }
