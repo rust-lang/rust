@@ -200,11 +200,12 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
             let block_mode = tactic != ListTactic::Vertical;
             // Width restriction is only relevant in vertical mode.
             let max_width = formatting.v_width;
-            result.push_str(&rewrite_comment(comment,
-                                             block_mode,
-                                             max_width,
-                                             formatting.indent,
-                                             formatting.config));
+            let comment = try_opt!(rewrite_comment(comment,
+                                                   block_mode,
+                                                   max_width,
+                                                   formatting.indent,
+                                                   formatting.config));
+            result.push_str(&comment);
 
             if tactic == ListTactic::Vertical {
                 result.push('\n');
@@ -221,11 +222,11 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
         // Post-comments
         if tactic != ListTactic::Vertical && item.post_comment.is_some() {
             let comment = item.post_comment.as_ref().unwrap();
-            let formatted_comment = rewrite_comment(comment,
-                                                    true,
-                                                    formatting.v_width,
-                                                    Indent::empty(),
-                                                    formatting.config);
+            let formatted_comment = try_opt!(rewrite_comment(comment,
+                                                             true,
+                                                             formatting.v_width,
+                                                             Indent::empty(),
+                                                             formatting.config));
 
             result.push(' ');
             result.push_str(&formatted_comment);
@@ -246,11 +247,11 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
                               comment.trim().contains('\n') ||
                               comment.trim().len() > width;
 
-            let formatted_comment = rewrite_comment(comment,
-                                                    block_style,
-                                                    width,
-                                                    offset,
-                                                    formatting.config);
+            let formatted_comment = try_opt!(rewrite_comment(comment,
+                                                             block_style,
+                                                             width,
+                                                             offset,
+                                                             formatting.config));
 
             result.push(' ');
             result.push_str(&formatted_comment);

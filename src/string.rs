@@ -31,23 +31,23 @@ pub struct StringFormat<'a> {
 }
 
 // TODO: simplify this!
-pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> String {
+pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> Option<String> {
     // TODO if lo.col > IDEAL - 10, start a new line (need cur indent for that)
     // Strip line breaks.
     let re = Regex::new(r"(\\[:space:]+)").unwrap();
     let stripped_str = re.replace_all(s, "");
 
     let graphemes = UnicodeSegmentation::graphemes(&*stripped_str, false).collect::<Vec<&str>>();
-
     let indent = fmt.offset.to_string(fmt.config);
-    let indent = &indent;
 
     let mut cur_start = 0;
     let mut result = String::with_capacity(round_up_to_power_of_two(s.len()));
     result.push_str(fmt.opener);
 
     let ender_length = fmt.line_end.len();
-    let max_chars = fmt.width.checked_sub(fmt.opener.len() + ender_length).unwrap_or(1);
+    // If we cannot put at least a single character per line, the rewrite won't
+    // succeed.
+    let max_chars = try_opt!(fmt.width.checked_sub(fmt.opener.len() + ender_length + 1)) + 1;
 
     loop {
         let mut cur_end = cur_start + max_chars;
@@ -57,8 +57,9 @@ pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> String {
             result.push_str(line);
             break;
         }
+
         // Push cur_end left until we reach whitespace.
-        while !(graphemes[cur_end - 1].trim().len() == 0) {
+        while !graphemes[cur_end - 1].trim().is_empty() {
             cur_end -= 1;
             if cur_end - cur_start < MIN_STRING {
                 // We can't break at whitespace, fall back to splitting
@@ -71,7 +72,7 @@ pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> String {
             }
         }
         // Make sure there is no whitespace to the right of the break.
-        while cur_end < s.len() && graphemes[cur_end].trim().len() == 0 {
+        while cur_end < s.len() && graphemes[cur_end].trim().is_empty() {
             cur_end += 1;
         }
         let raw_line = graphemes[cur_start..cur_end].join("");
@@ -85,12 +86,34 @@ pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> String {
         result.push_str(line);
         result.push_str(fmt.line_end);
         result.push('\n');
-        result.push_str(indent);
+        result.push_str(&indent);
         result.push_str(fmt.line_start);
 
         cur_start = cur_end;
     }
     result.push_str(fmt.closer);
 
-    result
+    Some(result)
+}
+
+#[cfg(test)]
+mod test {
+    use super::{StringFormat, rewrite_string};
+
+    #[test]
+    fn issue343() {
+        let config = Default::default();
+        let fmt = StringFormat {
+            opener: "\"",
+            closer: "\"",
+            line_start: " ",
+            line_end: "\\",
+            width: 2,
+            offset: ::Indent::empty(),
+            trim_end: false,
+            config: &config,
+        };
+
+        rewrite_string("eq_", &fmt);
+    }
 }

@@ -21,7 +21,7 @@ pub fn rewrite_comment(orig: &str,
                        width: usize,
                        offset: Indent,
                        config: &Config)
-                       -> String {
+                       -> Option<String> {
     let s = orig.trim();
 
     // Edge case: block comments. Let's not trim their lines (for now).
@@ -47,49 +47,53 @@ pub fn rewrite_comment(orig: &str,
     let indent_str = offset.to_string(config);
     let line_breaks = s.chars().filter(|&c| c == '\n').count();
 
-    let (_, mut s) = s.lines()
-                      .enumerate()
-                      .map(|(i, mut line)| {
-                          line = line.trim();
-                          // Drop old closer.
-                          if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
-                              line = &line[..(line.len() - 2)];
-                          }
+    let lines = s.lines()
+                 .enumerate()
+                 .map(|(i, mut line)| {
+                     line = line.trim();
+                     // Drop old closer.
+                     if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
+                         line = &line[..(line.len() - 2)];
+                     }
 
-                          line.trim_right()
-                      })
-                      .map(left_trim_comment_line)
-                      .map(|line| {
-                          if line_breaks == 0 {
-                              line.trim_left()
-                          } else {
-                              line
-                          }
-                      })
-                      .fold((true, opener.to_owned()),
-                            |(first, mut acc), line| {
-                                if !first {
-                                    acc.push('\n');
-                                    acc.push_str(&indent_str);
-                                    acc.push_str(line_start);
-                                }
+                     line.trim_right()
+                 })
+                 .map(left_trim_comment_line)
+                 .map(|line| {
+                     if line_breaks == 0 {
+                         line.trim_left()
+                     } else {
+                         line
+                     }
+                 });
 
-                                if line.len() > max_chars {
-                                    acc.push_str(&rewrite_string(line, &fmt));
-                                } else {
-                                    if line.len() == 0 {
-                                        acc.pop(); // Remove space if this is an empty comment.
-                                    } else {
-                                        acc.push_str(line);
-                                    }
-                                }
+    let mut result = opener.to_owned();
+    let mut first = true;
 
-                                (false, acc)
-                            });
+    for line in lines {
+        if !first {
+            result.push('\n');
+            result.push_str(&indent_str);
+            result.push_str(line_start);
+        }
 
-    s.push_str(closer);
+        if line.len() > max_chars {
+            let rewrite = try_opt!(rewrite_string(line, &fmt));
+            result.push_str(&rewrite);
+        } else {
+            if line.len() == 0 {
+                result.pop(); // Remove space if this is an empty comment.
+            } else {
+                result.push_str(line);
+            }
+        }
 
-    s
+        first = false;
+    }
+
+    result.push_str(closer);
+
+    Some(result)
 }
 
 fn left_trim_comment_line(line: &str) -> &str {
@@ -294,33 +298,33 @@ impl<T> Iterator for CharClasses<T> where T: Iterator, T::Item: RichChar {
 #[cfg(test)]
 mod test {
     use super::{CharClasses, CodeCharKind, contains_comment, rewrite_comment, FindUncommented};
-
     use Indent;
+
     #[test]
     #[rustfmt_skip]
     fn format_comments() {
         let config = Default::default();
         assert_eq!("/* test */", rewrite_comment(" //test", true, 100, Indent::new(0, 100),
-                                                 &config));
+                                                 &config).unwrap());
         assert_eq!("// comment\n// on a", rewrite_comment("// comment on a", false, 10,
-                                                          Indent::empty(), &config));
+                                                          Indent::empty(), &config).unwrap());
 
         assert_eq!("//  A multi line comment\n            // between args.",
                    rewrite_comment("//  A multi line comment\n             // between args.",
                                    false,
                                    60,
                                    Indent::new(0, 12),
-                                   &config));
+                                   &config).unwrap());
 
         let input = "// comment";
         let expected =
             "/* com\n                                                                      \
              * men\n                                                                      \
              * t */";
-        assert_eq!(expected, rewrite_comment(input, true, 9, Indent::new(0, 69), &config));
+        assert_eq!(expected, rewrite_comment(input, true, 9, Indent::new(0, 69), &config).unwrap());
 
         assert_eq!("/* trimmed */", rewrite_comment("/*   trimmed    */", true, 100,
-                                                    Indent::new(0, 100), &config));
+                                                    Indent::new(0, 100), &config).unwrap());
     }
 
     // This is probably intended to be a non-test fn, but it is not used. I'm
