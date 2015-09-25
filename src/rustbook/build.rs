@@ -82,7 +82,7 @@ fn write_toc(book: &Book, current_page: &BookItem, out: &mut Write) -> io::Resul
 }
 
 fn render(book: &Book, tgt: &Path) -> CliResult<()> {
-    let tmp = try!(TempDir::new("rust-book"));
+    let tmp = try!(TempDir::new("rustbook"));
 
     for (_section, item) in book.iter() {
         let out_path = match item.path.parent() {
@@ -144,7 +144,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
             format!("--html-before-content={}", prelude.display()),
             format!("--html-after-content={}", postlude.display()),
             format!("--markdown-playground-url=https://play.rust-lang.org"),
-            format!("--markdown-css={}", item.path_to_root.join("rust-book.css").display()),
+            format!("--markdown-css={}", item.path_to_root.join("rustbook.css").display()),
             "--markdown-no-toc".to_string(),
         ];
         let output_result = rustdoc::main_args(rustdoc_args);
@@ -199,10 +199,10 @@ impl Subcommand for Build {
         let css = include_bytes!("static/rustbook.css");
         let js = include_bytes!("static/rustbook.js");
 
-        let mut css_file = try!(File::create(tgt.join("rust-book.css")));
+        let mut css_file = try!(File::create(tgt.join("rustbook.css")));
         try!(css_file.write_all(css));
 
-        let mut js_file = try!(File::create(tgt.join("rust-book.js")));
+        let mut js_file = try!(File::create(tgt.join("rustbook.js")));
         try!(js_file.write_all(js));
 
 

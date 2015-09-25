@@ -11,6 +11,6 @@
 // The rust-book JavaScript in string form.
 
 pub static JAVASCRIPT: &'static str = r#"
-<script type="text/javascript" src="rust-book.js"></script>
+<script type="text/javascript" src="rustbook.js"></script>
 <script type="text/javascript" src="playpen.js"></script>
 "#;
