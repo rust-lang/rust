@@ -64,7 +64,7 @@ pub fn opts() -> TargetOptions {
             // Always enable DEP (NX bit) when it is available
             "-Wl,--nxcompat".to_string(),
         ),
-        exe_allocation_crate: super::best_allocator(),
+        exe_allocation_crate: super::maybe_jemalloc(),
 
         .. Default::default()
     }
