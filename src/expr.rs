@@ -1152,9 +1152,10 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                  match *item {
                                      StructLitField::Regular(ref field) => field.span.lo,
                                      StructLitField::Base(ref expr) => {
-                                         let last_field_hi = fields.last()
-                                                                   .map_or(span.lo,
-                                                                           |field| field.span.hi);
+                                         let last_field_hi = fields.last().map_or(span.lo,
+                                                                                  |field| {
+                                                                                      field.span.hi
+                                                                                  });
                                          let snippet = context.snippet(mk_sp(last_field_hi,
                                                                              expr.span.lo));
                                          let pos = snippet.find_uncommented("..").unwrap();

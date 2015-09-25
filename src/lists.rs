@@ -214,9 +214,11 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
             }
         }
 
-        let max_width = formatting.indent.width() + formatting.v_width;
-        let item_str = wrap_str(&item.item[..], max_width, formatting.v_width, formatting.indent);
-        result.push_str(&&try_opt!(item_str));
+        let item_str = try_opt!(wrap_str(&item.item[..],
+                                         formatting.config.max_width,
+                                         formatting.v_width,
+                                         formatting.indent));
+        result.push_str(&item_str);
 
         // Post-comments
         if tactic != ListTactic::Vertical && item.post_comment.is_some() {
