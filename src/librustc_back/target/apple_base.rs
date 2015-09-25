@@ -24,7 +24,7 @@ pub fn opts() -> TargetOptions {
         dll_suffix: ".dylib".to_string(),
         archive_format: "bsd".to_string(),
         pre_link_args: Vec::new(),
-        exe_allocation_crate: super::best_allocator(),
+        exe_allocation_crate: super::maybe_jemalloc(),
         .. Default::default()
     }
 }
