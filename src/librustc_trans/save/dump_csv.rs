@@ -47,7 +47,7 @@ use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{path_to_string, ty_to_string};
 use syntax::ptr::P;
 
-use rustc_front::lowering::lower_expr;
+use rustc_front::lowering::{lower_expr, LoweringContext};
 
 use super::span_utils::SpanUtils;
 use super::recorder::{Recorder, FmtStrs};
@@ -76,6 +76,7 @@ pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
 
 impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     pub fn new(tcx: &'l ty::ctxt<'tcx>,
+               lcx: &'l LoweringContext<'tcx>,
                analysis: &'l ty::CrateAnalysis,
                output_file: Box<File>)
                -> DumpCsvVisitor<'l, 'tcx> {
@@ -83,7 +84,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         DumpCsvVisitor {
             sess: &tcx.sess,
             tcx: tcx,
-            save_ctxt: SaveContext::from_span_utils(tcx, span_utils.clone()),
+            save_ctxt: SaveContext::from_span_utils(tcx, lcx, span_utils.clone()),
             analysis: analysis,
             span: span_utils.clone(),
             fmt: FmtStrs::new(box Recorder {
@@ -1035,7 +1036,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 visit::walk_expr(self, ex);
             }
             ast::ExprStruct(ref path, ref fields, ref base) => {
-                let hir_expr = lower_expr(ex);
+                let hir_expr = lower_expr(self.save_ctxt.lcx, ex);
                 let adt = self.tcx.expr_ty(&hir_expr).ty_adt_def().unwrap();
                 let def = self.tcx.resolve_expr(&hir_expr);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_def(def), base)
@@ -1064,7 +1065,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
                 self.visit_expr(&**sub_ex);
 
-                let hir_node = lower_expr(sub_ex);
+                let hir_node = lower_expr(self.save_ctxt.lcx, sub_ex);
                 let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
                 match *ty {
                     ty::TyStruct(def, _) => {
