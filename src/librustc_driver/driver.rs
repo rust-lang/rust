@@ -129,6 +129,10 @@ pub fn compile_input(sess: Session,
                                                                      &ast_map.krate(),
                                                                      &id[..]));
 
+        time(sess.time_passes(), "attribute checking", || {
+            front::check_attr::check_crate(&sess, &expanded_crate);
+        });
+
         time(sess.time_passes(), "early lint checks", || {
             lint::check_ast_crate(&sess, &expanded_crate)
         });
