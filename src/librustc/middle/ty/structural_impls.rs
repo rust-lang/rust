@@ -417,7 +417,9 @@ impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>> Lift<'tcx> for (A, B) {
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for [T] {
     type Lifted = Vec<T::Lifted>;
     fn lift_to_tcx(&self, tcx: &ty::ctxt<'tcx>) -> Option<Self::Lifted> {
-        let mut result = Vec::with_capacity(self.len());
+        // type annotation needed to inform `projection_must_outlive`
+        let mut result : Vec<<T as Lift<'tcx>>::Lifted>
+            = Vec::with_capacity(self.len());
         for x in self {
             if let Some(value) = tcx.lift(x) {
                 result.push(value);
