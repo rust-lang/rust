@@ -126,7 +126,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         // Populate the table of destructors. It might seem a bit strange to
         // do this here, but it's actually the most convenient place, since
         // the coherence tables contain the trait -> type mappings.
-        self.populate_destructor_table();
+        self.populate_destructors();
 
         // Check to make sure implementations of `Copy` are legal.
         self.check_implementations_of_copy();
@@ -286,7 +286,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     // Destructors
     //
 
-    fn populate_destructor_table(&self) {
+    fn populate_destructors(&self) {
         let tcx = self.crate_context.tcx;
         let drop_trait = match tcx.lang_items.drop_trait() {
             Some(id) => id, None => { return }
@@ -309,9 +309,6 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 ty::TyEnum(type_def, _) |
                 ty::TyStruct(type_def, _) => {
                     type_def.set_destructor(method_def_id.def_id());
-                    tcx.destructors
-                       .borrow_mut()
-                       .insert(method_def_id.def_id());
                 }
                 _ => {
                     // Destructors only work on nominal types.
