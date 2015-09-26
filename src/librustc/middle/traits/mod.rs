@@ -37,6 +37,7 @@ pub use self::project::MismatchedProjectionTypes;
 pub use self::project::normalize;
 pub use self::project::Normalized;
 pub use self::object_safety::is_object_safe;
+pub use self::object_safety::astconv_object_safety_violations;
 pub use self::object_safety::object_safety_violations;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::object_safety::MethodViolationCode;
