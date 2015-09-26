@@ -8,9 +8,9 @@ fn main() {
 
     Foo { a: foo() /* comment*/, /* comment*/ b: bar(), ..something };
 
-    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(), b: bar(), };
+    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: f(), b: b(), };
 
-    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(), b: bar(), };
+    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: f(), b: b(), };
 
     Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo {
         // Comment
@@ -20,7 +20,7 @@ fn main() {
     };
 
     Foo { a:Bar,
-          b:foo() };
+          b:f() };
 
     Quux { x: if cond { bar(); }, y: baz() };
 
