@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(ascii)]
-#![feature(append)]
 #![feature(binary_heap_extras)]
 #![feature(box_syntax)]
 #![feature(btree_range)]
@@ -29,18 +28,14 @@
 #![feature(set_recovery)]
 #![feature(slice_bytes)]
 #![feature(slice_splits)]
-#![feature(split_off)]
 #![feature(step_by)]
 #![feature(str_char)]
 #![feature(str_escape)]
 #![feature(str_match_indices)]
-#![feature(str_split_at)]
 #![feature(str_utf16)]
-#![feature(box_str)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![feature(vec_deque_retain)]
 #![feature(vec_push_all)]
 
 #[macro_use] extern crate log;

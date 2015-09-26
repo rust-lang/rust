@@ -506,8 +506,6 @@ impl str {
     ///
     /// # Examples
     /// ```
-    /// #![feature(str_split_at)]
-    ///
     /// let s = "Löwe 老虎 Léopard";
     /// let first_space = s.find(' ').unwrap_or(s.len());
     /// let (a, b) = s.split_at(first_space);
