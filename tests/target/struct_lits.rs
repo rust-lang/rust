@@ -109,3 +109,18 @@ fn struct_exprs() {
         content_intrinsic_sizes: IntrinsicISizes { minimum_inline_size: 0 },
     };
 }
+
+fn issue123() {
+    Foo { a: b, c: d, e: f };
+
+    Foo {
+        a: bb,
+        c: dd,
+        e: ff,
+    };
+
+    Foo {
+        a: ddddddddddddddddddddd,
+        b: cccccccccccccccccccccccccccccccccccccc,
+    };
+}
