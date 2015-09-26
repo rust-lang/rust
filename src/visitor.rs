@@ -407,11 +407,12 @@ impl<'a> Rewrite for [ast::Attribute] {
                 let multi_line = a_str.starts_with("//") && comment.matches('\n').count() > 1;
                 let comment = comment.trim();
                 if !comment.is_empty() {
-                    let comment = rewrite_comment(comment,
-                                                  false,
-                                                  context.config.max_width - offset.width(),
-                                                  offset,
-                                                  context.config);
+                    let comment = try_opt!(rewrite_comment(comment,
+                                                           false,
+                                                           context.config.max_width -
+                                                           offset.width(),
+                                                           offset,
+                                                           context.config));
                     result.push_str(&indent);
                     result.push_str(&comment);
                     result.push('\n');

@@ -377,7 +377,11 @@ impl Rewrite for ast::Block {
                     // 9 = "unsafe  {".len(), 7 = "unsafe ".len()
                     let budget = try_opt!(width.checked_sub(9));
                     format!("unsafe {} ",
-                            rewrite_comment(trimmed, true, budget, offset + 7, context.config))
+                            try_opt!(rewrite_comment(trimmed,
+                                                     true,
+                                                     budget,
+                                                     offset + 7,
+                                                     context.config)))
                 } else {
                     "unsafe ".to_owned()
                 };
@@ -661,7 +665,7 @@ fn rewrite_match_arm_comment(context: &RewriteContext,
                              width: usize,
                              arm_indent: Indent,
                              arm_indent_str: &str)
-                             -> String {
+                             -> Option<String> {
     // The leading "," is not part of the arm-comment
     let missed_str = match missed_str.find_uncommented(",") {
         Some(n) => &missed_str[n+1..],
@@ -687,11 +691,17 @@ fn rewrite_match_arm_comment(context: &RewriteContext,
     }
     let missed_str = missed_str[first..].trim();
     if !missed_str.is_empty() {
+        let comment = try_opt!(rewrite_comment(&missed_str,
+                                               false,
+                                               width,
+                                               arm_indent,
+                                               context.config));
         result.push('\n');
         result.push_str(arm_indent_str);
-        result.push_str(&rewrite_comment(&missed_str, false, width, arm_indent, context.config));
+        result.push_str(&comment);
     }
-    return result;
+
+    Some(result)
 }
 
 fn rewrite_match(context: &RewriteContext,
@@ -725,11 +735,12 @@ fn rewrite_match(context: &RewriteContext,
         } else {
             context.snippet(mk_sp(arm_end_pos(&arms[i-1]), arm_start_pos(arm)))
         };
-        result.push_str(&rewrite_match_arm_comment(context,
-                                                   &missed_str,
-                                                   width,
-                                                   arm_indent,
-                                                   &arm_indent_str));
+        let comment = try_opt!(rewrite_match_arm_comment(context,
+                                                         &missed_str,
+                                                         width,
+                                                         arm_indent,
+                                                         &arm_indent_str));
+        result.push_str(&comment);
         result.push('\n');
         result.push_str(&arm_indent_str);
 
@@ -745,11 +756,12 @@ fn rewrite_match(context: &RewriteContext,
         }
     }
     let last_comment = context.snippet(mk_sp(arm_end_pos(&arms[arms.len() - 1]), span.hi));
-    result.push_str(&rewrite_match_arm_comment(context,
-                                               &last_comment,
-                                               width,
-                                               arm_indent,
-                                               &arm_indent_str));
+    let comment = try_opt!(rewrite_match_arm_comment(context,
+                                                     &last_comment,
+                                                     width,
+                                                     arm_indent,
+                                                     &arm_indent_str));
+    result.push_str(&comment);
     result.push('\n');
     result.push_str(&(context.block_indent + context.overflow_indent).to_string(context.config));
     result.push('}');
@@ -1007,7 +1019,7 @@ fn rewrite_string_lit(context: &RewriteContext,
     let string_lit = context.snippet(span);
     let str_lit = &string_lit[1..string_lit.len() - 1]; // Remove the quote characters.
 
-    Some(rewrite_string(str_lit, &fmt))
+    rewrite_string(str_lit, &fmt)
 }
 
 pub fn rewrite_call<R>(context: &RewriteContext,
