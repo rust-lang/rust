@@ -115,7 +115,8 @@ impl Indent {
 
     pub fn to_string(&self, config: &Config) -> String {
         let (num_tabs, num_spaces) = if config.hard_tabs {
-            (self.block_indent / config.tab_spaces, self.alignment)
+            (self.block_indent / config.tab_spaces,
+             self.alignment)
         } else {
             (0, self.block_indent + self.alignment)
         };
@@ -146,7 +147,8 @@ impl Sub for Indent {
     type Output = Indent;
 
     fn sub(self, rhs: Indent) -> Indent {
-        Indent::new(self.block_indent - rhs.block_indent, self.alignment - rhs.alignment)
+        Indent::new(self.block_indent - rhs.block_indent,
+                    self.alignment - rhs.alignment)
     }
 }
 

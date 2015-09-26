@@ -307,7 +307,9 @@ impl<'a> FmtVisitor<'a> {
 
         let context = self.get_context();
         let ret_str = fd.output
-                        .rewrite(&context, self.config.max_width - indent.width(), indent)
+                        .rewrite(&context,
+                                 self.config.max_width - indent.width(),
+                                 indent)
                         .unwrap();
 
         // Args.
@@ -948,7 +950,7 @@ impl<'a> FmtVisitor<'a> {
             item.item = ty;
         }
 
-        let fmt = ListFormatting::for_fn(h_budget, offset, self.config);
+        let fmt = ListFormatting::for_item(h_budget, offset, self.config);
         let list_str = try_opt!(write_list(&items, &fmt));
 
         Some(format!("<{}>", list_str))
@@ -1011,7 +1013,9 @@ impl<'a> FmtVisitor<'a> {
         // 9 = " where ".len() + " {".len()
         if density == Density::Tall || preds_str.contains('\n') ||
            indent.width() + 9 + preds_str.len() > self.config.max_width {
-            Some(format!("\n{}where {}", (indent + extra_indent).to_string(self.config), preds_str))
+            Some(format!("\n{}where {}",
+                         (indent + extra_indent).to_string(self.config),
+                         preds_str))
         } else {
             Some(format!(" where {}", preds_str))
         }
@@ -1041,7 +1045,10 @@ impl Rewrite for ast::Arg {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         if is_named_arg(self) {
             if let ast::Ty_::TyInfer = self.ty.node {
-                wrap_str(pprust::pat_to_string(&self.pat), context.config.max_width, width, offset)
+                wrap_str(pprust::pat_to_string(&self.pat),
+                         context.config.max_width,
+                         width,
+                         offset)
             } else {
                 let mut result = pprust::pat_to_string(&self.pat);
                 result.push_str(": ");

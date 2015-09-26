@@ -224,12 +224,14 @@ impl BadIssueSeeker {
 fn find_unnumbered_issue() {
     fn check_fail(text: &str, failing_pos: usize) {
         let mut seeker = BadIssueSeeker::new(ReportTactic::Unnumbered, ReportTactic::Unnumbered);
-        assert_eq!(Some(failing_pos), text.chars().position(|c| seeker.inspect(c).is_some()));
+        assert_eq!(Some(failing_pos),
+                   text.chars().position(|c| seeker.inspect(c).is_some()));
     }
 
     fn check_pass(text: &str) {
         let mut seeker = BadIssueSeeker::new(ReportTactic::Unnumbered, ReportTactic::Unnumbered);
-        assert_eq!(None, text.chars().position(|c| seeker.inspect(c).is_some()));
+        assert_eq!(None,
+                   text.chars().position(|c| seeker.inspect(c).is_some()));
     }
 
     check_fail("TODO\n", 4);
@@ -256,11 +258,17 @@ fn find_issue() {
                          ReportTactic::Always,
                          ReportTactic::Never));
 
-    assert!(!is_bad_issue("TODO: no number\n", ReportTactic::Never, ReportTactic::Always));
+    assert!(!is_bad_issue("TODO: no number\n",
+                          ReportTactic::Never,
+                          ReportTactic::Always));
 
-    assert!(is_bad_issue("This is a FIXME(#1)\n", ReportTactic::Never, ReportTactic::Always));
+    assert!(is_bad_issue("This is a FIXME(#1)\n",
+                         ReportTactic::Never,
+                         ReportTactic::Always));
 
-    assert!(!is_bad_issue("bad FIXME\n", ReportTactic::Always, ReportTactic::Never));
+    assert!(!is_bad_issue("bad FIXME\n",
+                          ReportTactic::Always,
+                          ReportTactic::Never));
 }
 
 #[test]

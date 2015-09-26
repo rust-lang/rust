@@ -89,7 +89,9 @@ fn self_tests() {
         warnings += format_report.warning_count();
     }
 
-    assert!(warnings == 0, "Rustfmt's code generated {} warnings", warnings);
+    assert!(warnings == 0,
+            "Rustfmt's code generated {} warnings",
+            warnings);
 }
 
 // For each file, run rustfmt and collect the output.
@@ -122,7 +124,8 @@ fn print_mismatches(result: HashMap<String, Vec<Mismatch>>) {
     let mut t = term::stdout().unwrap();
 
     for (file_name, diff) in result {
-        print_diff(diff, |line_num| format!("\nMismatch at {}:{}:", file_name, line_num));
+        print_diff(diff,
+                   |line_num| format!("\nMismatch at {}:{}:", file_name, line_num));
     }
 
     assert!(t.reset().unwrap());
