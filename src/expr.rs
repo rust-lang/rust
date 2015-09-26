@@ -155,11 +155,14 @@ impl Rewrite for ast::Expr {
                 rewrite_chain(self, context, width, offset)
             }
             ast::Expr_::ExprMac(ref mac) => {
-                // Failure to rewrite a marco should not imply failure to rewrite the Expr
-                rewrite_macro(mac, context, width, offset).or(wrap_str(context.snippet(self.span),
-                                                                       context.config.max_width,
-                                                                       width,
-                                                                       offset))
+                // Failure to rewrite a marco should not imply failure to
+                // rewrite the expression.
+                rewrite_macro(mac, context, width, offset).or_else(|| {
+                    wrap_str(context.snippet(self.span),
+                             context.config.max_width,
+                             width,
+                             offset)
+                })
             }
             ast::Expr_::ExprRet(None) => {
                 wrap_str("return".to_owned(),
@@ -168,10 +171,10 @@ impl Rewrite for ast::Expr {
                          offset)
             }
             ast::Expr_::ExprRet(Some(ref expr)) => {
-                rewrite_unary_prefix(context, "return ", &expr, width, offset)
+                rewrite_unary_prefix(context, "return ", expr, width, offset)
             }
             ast::Expr_::ExprBox(ref expr) => {
-                rewrite_unary_prefix(context, "box ", &expr, width, offset)
+                rewrite_unary_prefix(context, "box ", expr, width, offset)
             }
             ast::Expr_::ExprAddrOf(mutability, ref expr) => {
                 rewrite_expr_addrof(context, mutability, &expr, width, offset)
@@ -872,13 +875,8 @@ impl Rewrite for ast::Arm {
         let pats_str = format!("{}{}", pats_str, guard_str);
         // Where the next text can start.
         let mut line_start = last_line_width(&pats_str);
-        if pats_str.find('\n').is_none() {
+        if !pats_str.contains('\n') {
             line_start += offset.width();
-        }
-
-        let mut line_indent = offset + pats_width;
-        if vertical {
-            line_indent = line_indent.block_indent(context.config);
         }
 
         let comma = if let ast::ExprBlock(_) = body.node {
@@ -891,8 +889,9 @@ impl Rewrite for ast::Arm {
         // 4 = ` => `.len()
         let same_line_body = if context.config.max_width > line_start + comma.len() + 4 {
             let budget = context.config.max_width - line_start - comma.len() - 4;
-            let rewrite = nop_block_collapse(body.rewrite(context, budget, line_indent + 4),
-                                             budget);
+            let offset = Indent::new(offset.block_indent,
+                                     line_start + 4 - offset.block_indent);
+            let rewrite = nop_block_collapse(body.rewrite(context, budget, offset), budget);
 
             match rewrite {
                 Some(ref body_str) if body_str.len() <= budget || comma.is_empty() =>
@@ -907,7 +906,6 @@ impl Rewrite for ast::Arm {
             None
         };
 
-        // We have to push the body to the next line.
         if let ast::ExprBlock(_) = body.node {
             // We're trying to fit a block in, but it still failed, give up.
             return None;
@@ -926,12 +924,17 @@ impl Rewrite for ast::Arm {
                                                                                 .map(|x| &x[..])));
 
         let spacer = if break_line {
-            format!("\n{}", offset.block_indent(context.config).to_string(context.config))
+            format!("\n{}",
+                    offset.block_indent(context.config).to_string(context.config))
         } else {
             " ".to_owned()
         };
 
-        Some(format!("{}{} =>{}{},", attr_str.trim_left(), pats_str, spacer, body_str))
+        Some(format!("{}{} =>{}{},",
+                     attr_str.trim_left(),
+                     pats_str,
+                     spacer,
+                     body_str))
     }
 }
 

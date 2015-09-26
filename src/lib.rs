@@ -85,9 +85,9 @@ const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
 pub struct Indent {
     // Width of the block indent, in characters. Must be a multiple of
     // Config::tab_spaces.
-    block_indent: usize,
+    pub block_indent: usize,
     // Alignment in characters.
-    alignment: usize,
+    pub alignment: usize,
 }
 
 impl Indent {
