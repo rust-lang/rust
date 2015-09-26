@@ -8,18 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::Target;
+#[cfg(target_vendor = "x")] //~ ERROR `cfg(target_vendor)` is experimental
+#[cfg_attr(target_vendor = "x", x)] //~ ERROR `cfg(target_vendor)` is experimental
+struct Foo(u64, u64);
 
-pub fn target() -> Target {
-    let base = super::linux_base::opts();
-    Target {
-        llvm_target: "aarch64-unknown-linux-gnu".to_string(),
-        target_endian: "little".to_string(),
-        target_pointer_width: "64".to_string(),
-        target_env: "gnu".to_string(),
-        arch: "aarch64".to_string(),
-        target_os: "linux".to_string(),
-        target_vendor: "unknown".to_string(),
-        options: base,
-    }
+#[cfg(not(any(all(target_vendor = "x"))))] //~ ERROR `cfg(target_vendor)` is experimental
+fn foo() {}
+
+fn main() {
+    cfg!(target_vendor = "x");
+    //~^ ERROR `cfg(target_vendor)` is experimental and subject to change
 }

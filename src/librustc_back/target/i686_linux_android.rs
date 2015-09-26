@@ -21,6 +21,7 @@ pub fn target() -> Target {
         arch: "x86".to_string(),
         target_os: "android".to_string(),
         target_env: "gnu".to_string(),
+        target_vendor: "unknown".to_string(),
         options: base,
     }
 }

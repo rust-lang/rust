@@ -19,6 +19,7 @@ pub fn target() -> Target {
         arch: "arm".to_string(),
         target_os: "linux".to_string(),
         target_env: "gnueabihf".to_string(),
+        target_vendor: "unknown".to_string(),
 
         options: TargetOptions {
             features: "+v6,+vfp2".to_string(),

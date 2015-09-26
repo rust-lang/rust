@@ -21,6 +21,7 @@ pub fn target() -> Target {
         arch: "x86".to_string(),
         target_os: "windows".to_string(),
         target_env: "msvc".to_string(),
+        target_vendor: "pc".to_string(),
         options: base,
     }
 }
