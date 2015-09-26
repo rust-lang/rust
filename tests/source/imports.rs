@@ -44,3 +44,9 @@ use Baz::*;
 use  foo::bar::baz as baz ;
 use bar::quux  as    kaas;
 use  foo;
+
+// With aliases.
+use foo::{self as bar, baz};
+use foo::{self as bar};
+use foo::{qux as bar};
+use foo::{baz, qux as bar};
