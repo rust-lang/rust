@@ -411,6 +411,7 @@ impl Target {
             x86_64_unknown_bitrig,
             x86_64_unknown_openbsd,
             x86_64_unknown_netbsd,
+            x86_64_rumprun_netbsd,
 
             x86_64_apple_darwin,
             i686_apple_darwin,

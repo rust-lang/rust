@@ -174,7 +174,7 @@ impl Drop for Thread {
 #[cfg(all(not(target_os = "linux"),
           not(target_os = "macos"),
           not(target_os = "bitrig"),
-          not(target_os = "netbsd"),
+          not(all(target_os = "netbsd", not(target_vendor = "rumprun"))),
           not(target_os = "openbsd")))]
 pub mod guard {
     pub unsafe fn current() -> Option<usize> { None }
@@ -185,7 +185,7 @@ pub mod guard {
 #[cfg(any(target_os = "linux",
           target_os = "macos",
           target_os = "bitrig",
-          target_os = "netbsd",
+          all(target_os = "netbsd", not(target_vendor = "rumprun")),
           target_os = "openbsd"))]
 #[allow(unused_imports)]
 pub mod guard {

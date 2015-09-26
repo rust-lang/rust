@@ -204,6 +204,7 @@
 #![feature(associated_consts)]
 #![feature(borrow_state)]
 #![feature(box_syntax)]
+#![feature(cfg_target_vendor)]
 #![feature(char_from_unchecked)]
 #![feature(char_internals)]
 #![feature(clone_from_slice)]
