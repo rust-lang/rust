@@ -35,8 +35,6 @@ mod build;
 mod serve;
 mod test;
 
-mod javascript;
-
 static EXIT_STATUS: AtomicIsize = ATOMIC_ISIZE_INIT;
 
 fn main() {
