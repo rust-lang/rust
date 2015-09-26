@@ -39,7 +39,8 @@ use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::default::Default;
-use std::fmt;
+use std::error;
+use std::fmt::{self, Display, Formatter};
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufWriter, BufReader};
@@ -142,6 +143,42 @@ impl Impl {
             if let clean::ResolvedPath { did, .. } = *tr {Some(did)} else {None}
         })
     }
+}
+
+#[derive(Debug)]
+pub struct Error {
+    file: PathBuf,
+    error: io::Error,
+}
+
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        self.error.description()
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "\"{}\": {}", self.file.display(), self.error)
+    }
+}
+
+impl Error {
+    pub fn new(e: io::Error, file: &Path) -> Error {
+        Error {
+            file: file.to_path_buf(),
+            error: e,
+        }
+    }
+}
+
+macro_rules! try_err {
+    ($e:expr, $file:expr) => ({
+        match $e {
+            Ok(e) => e,
+            Err(e) => return Err(Error::new(e, $file)),
+        }
+    })
 }
 
 /// This cache is used to store information about the `clean::Crate` being
@@ -309,7 +346,7 @@ thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
 pub fn run(mut krate: clean::Crate,
            external_html: &ExternalHtml,
            dst: PathBuf,
-           passes: HashSet<String>) -> io::Result<()> {
+           passes: HashSet<String>) -> Result<(), Error> {
     let src_root = match krate.src.parent() {
         Some(p) => p.to_path_buf(),
         None => PathBuf::new(),
@@ -332,7 +369,7 @@ pub fn run(mut krate: clean::Crate,
         issue_tracker_base_url: None,
     };
 
-    try!(mkdir(&cx.dst));
+    try_err!(mkdir(&cx.dst), &cx.dst);
 
     // Crawl the crate attributes looking for attributes which control how we're
     // going to emit HTML
@@ -434,7 +471,7 @@ pub fn run(mut krate: clean::Crate,
     krate = cache.fold_crate(krate);
 
     // Build our search index
-    let index = try!(build_index(&krate, &mut cache));
+    let index = build_index(&krate, &mut cache);
 
     // Freeze the cache now that the index has been built. Put an Arc into TLS
     // for future parallelization opportunities
@@ -449,7 +486,7 @@ pub fn run(mut krate: clean::Crate,
     cx.krate(krate)
 }
 
-fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
+fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     // Build the search index from the collected metadata
     let mut nodeid_to_pathid = HashMap::new();
     let mut pathid_to_nodeid = Vec::new();
@@ -476,7 +513,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
                 },
                 None => {}
             }
-        };
+        }
 
         // Reduce `NodeId` in paths into smaller sequential numbers,
         // and prune the paths that do not appear in the index.
@@ -497,7 +534,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
 
     // Collect the index into a string
     let mut w = io::Cursor::new(Vec::new());
-    try!(write!(&mut w, r#"searchIndex['{}'] = {{"items":["#, krate.name));
+    write!(&mut w, r#"searchIndex['{}'] = {{"items":["#, krate.name).unwrap();
 
     let mut lastpath = "".to_string();
     for (i, item) in cache.search_index.iter().enumerate() {
@@ -511,58 +548,61 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
         };
 
         if i > 0 {
-            try!(write!(&mut w, ","));
+            write!(&mut w, ",").unwrap();
         }
-        try!(write!(&mut w, r#"[{},"{}","{}",{}"#,
-                    item.ty as usize, item.name, path,
-                    item.desc.to_json().to_string()));
+        write!(&mut w, r#"[{},"{}","{}",{}"#,
+               item.ty as usize, item.name, path,
+               item.desc.to_json().to_string()).unwrap();
         match item.parent {
             Some(nodeid) => {
                 let pathid = *nodeid_to_pathid.get(&nodeid).unwrap();
-                try!(write!(&mut w, ",{}", pathid));
+                write!(&mut w, ",{}", pathid).unwrap();
             }
-            None => try!(write!(&mut w, ",null"))
+            None => write!(&mut w, ",null").unwrap()
         }
         match item.search_type {
-            Some(ref t) => try!(write!(&mut w, ",{}", t)),
-            None => try!(write!(&mut w, ",null"))
+            Some(ref t) => write!(&mut w, ",{}", t).unwrap(),
+            None => write!(&mut w, ",null").unwrap()
         }
-        try!(write!(&mut w, "]"));
+        write!(&mut w, "]").unwrap();
     }
 
-    try!(write!(&mut w, r#"],"paths":["#));
+    write!(&mut w, r#"],"paths":["#).unwrap();
 
     for (i, &did) in pathid_to_nodeid.iter().enumerate() {
         let &(ref fqp, short) = cache.paths.get(&did).unwrap();
         if i > 0 {
-            try!(write!(&mut w, ","));
+            write!(&mut w, ",").unwrap();
         }
-        try!(write!(&mut w, r#"[{},"{}"]"#,
-                    short as usize, *fqp.last().unwrap()));
+        write!(&mut w, r#"[{},"{}"]"#,
+               short as usize, *fqp.last().unwrap()).unwrap();
     }
 
-    try!(write!(&mut w, "]}};"));
+    write!(&mut w, "]}};").unwrap();
 
-    Ok(String::from_utf8(w.into_inner()).unwrap())
+    String::from_utf8(w.into_inner()).unwrap()
 }
 
 fn write_shared(cx: &Context,
                 krate: &clean::Crate,
                 cache: &Cache,
-                search_index: String) -> io::Result<()> {
+                search_index: String) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
-    try!(mkdir(&cx.dst));
+    try_err!(mkdir(&cx.dst), &cx.dst);
     let _lock = ::flock::Lock::new(&cx.dst.join(".lock"));
 
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
     try!(write(cx.dst.join("jquery.js"),
                include_bytes!("static/jquery-2.1.4.min.js")));
-    try!(write(cx.dst.join("main.js"), include_bytes!("static/main.js")));
-    try!(write(cx.dst.join("playpen.js"), include_bytes!("static/playpen.js")));
-    try!(write(cx.dst.join("main.css"), include_bytes!("static/main.css")));
+    try!(write(cx.dst.join("main.js"),
+               include_bytes!("static/main.js")));
+    try!(write(cx.dst.join("playpen.js"),
+               include_bytes!("static/playpen.js")));
+    try!(write(cx.dst.join("main.css"),
+               include_bytes!("static/main.css")));
     try!(write(cx.dst.join("normalize.css"),
                include_bytes!("static/normalize.css")));
     try!(write(cx.dst.join("FiraSans-Regular.woff"),
@@ -614,18 +654,18 @@ fn write_shared(cx: &Context,
 
     // Update the search index
     let dst = cx.dst.join("search-index.js");
-    let all_indexes = try!(collect(&dst, &krate.name, "searchIndex"));
-    let mut w = try!(File::create(&dst));
-    try!(writeln!(&mut w, "var searchIndex = {{}};"));
-    try!(writeln!(&mut w, "{}", search_index));
+    let all_indexes = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
+    let mut w = try_err!(File::create(&dst), &dst);
+    try_err!(writeln!(&mut w, "var searchIndex = {{}};"), &dst);
+    try_err!(writeln!(&mut w, "{}", search_index), &dst);
     for index in &all_indexes {
-        try!(writeln!(&mut w, "{}", *index));
+        try_err!(writeln!(&mut w, "{}", *index), &dst);
     }
-    try!(writeln!(&mut w, "initSearch(searchIndex);"));
+    try_err!(writeln!(&mut w, "initSearch(searchIndex);"), &dst);
 
     // Update the list of all implementors for traits
     let dst = cx.dst.join("implementors");
-    try!(mkdir(&dst));
+    try_err!(mkdir(&dst), &dst);
     for (&did, imps) in &cache.implementors {
         // Private modules can leak through to this phase of rustdoc, which
         // could contain implementations for otherwise private types. In some
@@ -642,51 +682,53 @@ fn write_shared(cx: &Context,
         let mut mydst = dst.clone();
         for part in &remote_path[..remote_path.len() - 1] {
             mydst.push(part);
-            try!(mkdir(&mydst));
+            try_err!(mkdir(&mydst), &mydst);
         }
         mydst.push(&format!("{}.{}.js",
                             remote_item_type.to_static_str(),
                             remote_path[remote_path.len() - 1]));
-        let all_implementors = try!(collect(&mydst, &krate.name,
-                                            "implementors"));
+        let all_implementors = try_err!(collect(&mydst, &krate.name,
+                                                "implementors"),
+                                        &mydst);
 
-        try!(mkdir(mydst.parent().unwrap()));
-        let mut f = BufWriter::new(try!(File::create(&mydst)));
-        try!(writeln!(&mut f, "(function() {{var implementors = {{}};"));
+        try_err!(mkdir(mydst.parent().unwrap()),
+                 &mydst.parent().unwrap().to_path_buf());
+        let mut f = BufWriter::new(try_err!(File::create(&mydst), &mydst));
+        try_err!(writeln!(&mut f, "(function() {{var implementors = {{}};"), &mydst);
 
         for implementor in &all_implementors {
-            try!(write!(&mut f, "{}", *implementor));
+            try_err!(write!(&mut f, "{}", *implementor), &mydst);
         }
 
-        try!(write!(&mut f, r"implementors['{}'] = [", krate.name));
+        try_err!(write!(&mut f, r"implementors['{}'] = [", krate.name), &mydst);
         for imp in imps {
             // If the trait and implementation are in the same crate, then
             // there's no need to emit information about it (there's inlining
             // going on). If they're in different crates then the crate defining
             // the trait will be interested in our implementation.
             if imp.def_id.krate == did.krate { continue }
-            try!(write!(&mut f, r#""{}","#, imp.impl_));
+            try_err!(write!(&mut f, r#""{}","#, imp.impl_), &mydst);
         }
-        try!(writeln!(&mut f, r"];"));
-        try!(writeln!(&mut f, "{}", r"
+        try_err!(writeln!(&mut f, r"];"), &mydst);
+        try_err!(writeln!(&mut f, "{}", r"
             if (window.register_implementors) {
                 window.register_implementors(implementors);
             } else {
                 window.pending_implementors = implementors;
             }
-        "));
-        try!(writeln!(&mut f, r"}})()"));
+        "), &mydst);
+        try_err!(writeln!(&mut f, r"}})()"), &mydst);
     }
     Ok(())
 }
 
 fn render_sources(cx: &mut Context,
-                  krate: clean::Crate) -> io::Result<clean::Crate> {
+                  krate: clean::Crate) -> Result<clean::Crate, Error> {
     info!("emitting source files");
     let dst = cx.dst.join("src");
-    try!(mkdir(&dst));
+    try_err!(mkdir(&dst), &dst);
     let dst = dst.join(&krate.name);
-    try!(mkdir(&dst));
+    try_err!(mkdir(&dst), &dst);
     let mut folder = SourceCollector {
         dst: dst,
         seen: HashSet::new(),
@@ -699,8 +741,8 @@ fn render_sources(cx: &mut Context,
 
 /// Writes the entire contents of a string to a destination, not attempting to
 /// catch any errors.
-fn write(dst: PathBuf, contents: &[u8]) -> io::Result<()> {
-    try!(File::create(&dst)).write_all(contents)
+fn write(dst: PathBuf, contents: &[u8]) -> Result<(), Error> {
+    Ok(try_err!(try_err!(File::create(&dst), &dst).write_all(contents), &dst))
 }
 
 /// Makes a directory on the filesystem, failing the thread if an error occurs and
@@ -849,7 +891,6 @@ impl<'a> SourceCollector<'a> {
         fname.push(".html");
         cur.push(&fname[..]);
         let mut w = BufWriter::new(try!(File::create(&cur)));
-
         let title = format!("{} -- source", cur.file_name().unwrap()
                                                .to_string_lossy());
         let desc = format!("Source to the Rust file `{}`.", filename);
@@ -1166,7 +1207,7 @@ impl Context {
     ///
     /// This currently isn't parallelized, but it'd be pretty easy to add
     /// parallelization to this function.
-    fn krate(self, mut krate: clean::Crate) -> io::Result<()> {
+    fn krate(self, mut krate: clean::Crate) -> Result<(), Error> {
         let mut item = match krate.module.take() {
             Some(i) => i,
             None => return Ok(())
@@ -1192,7 +1233,7 @@ impl Context {
     /// all sub-items which need to be rendered.
     ///
     /// The rendering driver uses this closure to queue up more work.
-    fn item<F>(&mut self, item: clean::Item, mut f: F) -> io::Result<()> where
+    fn item<F>(&mut self, item: clean::Item, mut f: F) -> Result<(), Error> where
         F: FnMut(&mut Context, clean::Item),
     {
         fn render(w: File, cx: &Context, it: &clean::Item,
@@ -1279,9 +1320,9 @@ impl Context {
                 let mut item = Some(item);
                 self.recurse(name, |this| {
                     let item = item.take().unwrap();
-                    let dst = this.dst.join("index.html");
-                    let dst = try!(File::create(&dst));
-                    try!(render(dst, this, &item, false));
+                    let joint_dst = this.dst.join("index.html");
+                    let dst = try_err!(File::create(&joint_dst), &joint_dst);
+                    try_err!(render(dst, this, &item, false), &joint_dst);
 
                     let m = match item.inner {
                         clean::ModuleItem(m) => m,
@@ -1292,9 +1333,9 @@ impl Context {
                     {
                         let items = this.build_sidebar_items(&m);
                         let js_dst = this.dst.join("sidebar-items.js");
-                        let mut js_out = BufWriter::new(try!(File::create(&js_dst)));
-                        try!(write!(&mut js_out, "initSidebarItems({});",
-                                    json::as_json(&items)));
+                        let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
+                        try_err!(write!(&mut js_out, "initSidebarItems({});",
+                                    json::as_json(&items)), &js_dst);
                     }
 
                     for item in m.items {
@@ -1307,9 +1348,11 @@ impl Context {
             // Things which don't have names (like impls) don't get special
             // pages dedicated to them.
             _ if item.name.is_some() => {
-                let dst = self.dst.join(&item_path(&item));
-                let dst = try!(File::create(&dst));
-                render(dst, self, &item, true)
+                let joint_dst = self.dst.join(&item_path(&item));
+
+                let dst = try_err!(File::create(&joint_dst), &joint_dst);
+                try_err!(render(dst, self, &item, true), &joint_dst);
+                Ok(())
             }
 
             _ => Ok(())
