@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate foo;
+// no-prefer-dynamic
 
-fn main() {
-    println!("The answer is {} !", foo::FOO);
-}
+#![crate_type = "rlib"]
+
+pub static FOO: i32 = 42;
