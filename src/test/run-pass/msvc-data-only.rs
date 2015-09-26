@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "rlib"]
+// aux-build:msvc-data-only-lib.rs
 
-pub static FOO: i32 = 42;
+extern crate msvc_data_only_lib;
+
+fn main() {
+    println!("The answer is {} !", msvc_data_only_lib::FOO);
+}
