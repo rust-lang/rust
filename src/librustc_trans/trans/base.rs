@@ -2570,20 +2570,6 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<&str>) {
     unsafe {
         let mut declared = HashSet::new();
 
-        let iter_globals = |llmod| {
-            ValueIter {
-                cur: llvm::LLVMGetFirstGlobal(llmod),
-                step: llvm::LLVMGetNextGlobal,
-            }
-        };
-
-        let iter_functions = |llmod| {
-            ValueIter {
-                cur: llvm::LLVMGetFirstFunction(llmod),
-                step: llvm::LLVMGetNextFunction,
-            }
-        };
-
         // Collect all external declarations in all compilation units.
         for ccx in cx.iter() {
             for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
@@ -2623,28 +2609,73 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<&str>) {
             }
         }
     }
+}
 
+// Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.
+// This is required to satisfy `dllimport` references to static data in .rlibs
+// when using MSVC linker.  We do this only for data, as linker can fix up
+// code references on its own.
+// See #26591, #27438
+fn create_imps(cx: &SharedCrateContext) {
+    unsafe {
+        for ccx in cx.iter() {
+            let exported: Vec<_> = iter_globals(ccx.llmod())
+                .filter(|&val| llvm::LLVMGetLinkage(val) == llvm::ExternalLinkage as c_uint &&
+                               llvm::LLVMIsDeclaration(val) == 0)
+                .collect();
 
-    struct ValueIter {
-        cur: ValueRef,
-        step: unsafe extern "C" fn(ValueRef) -> ValueRef,
-    }
-
-    impl Iterator for ValueIter {
-        type Item = ValueRef;
-
-        fn next(&mut self) -> Option<ValueRef> {
-            let old = self.cur;
-            if !old.is_null() {
-                self.cur = unsafe {
-                    let step: unsafe extern "C" fn(ValueRef) -> ValueRef =
-                        mem::transmute_copy(&self.step);
-                    step(old)
-                };
-                Some(old)
-            } else {
-                None
+            let i8p_ty = Type::i8p(&ccx);
+            for val in exported {
+                let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
+                let imp_name = String::from("__imp_") +
+                               str::from_utf8(name.to_bytes()).unwrap();
+                let imp_name = CString::new(imp_name).unwrap();
+                let imp = llvm::LLVMAddGlobal(ccx.llmod(), i8p_ty.to_ref(),
+                                              imp_name.as_ptr() as *const _);
+                llvm::LLVMSetInitializer(imp, llvm::LLVMConstBitCast(val, i8p_ty.to_ref()));
+                llvm::SetLinkage(imp, llvm::ExternalLinkage);
             }
+        }
+    }
+}
+
+struct ValueIter {
+    cur: ValueRef,
+    step: unsafe extern "C" fn(ValueRef) -> ValueRef,
+}
+
+impl Iterator for ValueIter {
+    type Item = ValueRef;
+
+    fn next(&mut self) -> Option<ValueRef> {
+        let old = self.cur;
+        if !old.is_null() {
+            self.cur = unsafe {
+                let step: unsafe extern "C" fn(ValueRef) -> ValueRef =
+                    mem::transmute_copy(&self.step);
+                step(old)
+            };
+            Some(old)
+        } else {
+            None
+        }
+    }
+}
+
+fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
+    unsafe {
+        ValueIter {
+            cur: llvm::LLVMGetFirstGlobal(llmod),
+            step: llvm::LLVMGetNextGlobal,
+        }
+    }
+}
+
+fn iter_functions(llmod: llvm::ModuleRef) -> ValueIter {
+    unsafe {
+        ValueIter {
+            cur: llvm::LLVMGetFirstFunction(llmod),
+            step: llvm::LLVMGetNextFunction,
         }
     }
 }
@@ -2822,6 +2853,11 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
     if codegen_units > 1 {
         internalize_symbols(&shared_ccx,
                             &reachable_symbols.iter().map(|x| &x[..]).collect());
+    }
+
+    if sess.target.target.options.is_like_msvc &&
+       sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
+        create_imps(&shared_ccx);
     }
 
     let metadata_module = ModuleTranslation {
