@@ -2616,9 +2616,8 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<&str>) {
 // when using MSVC linker.  We do this only for data, as linker can fix up
 // code references on its own.
 // See #26591, #27438
-fn create_imps(cx: &SharedCrateContext, _reachable: &HashSet<&str>) {
+fn create_imps(cx: &SharedCrateContext) {
     unsafe {
-
         for ccx in cx.iter() {
             let exported: Vec<_> = iter_globals(ccx.llmod())
                 .filter(|&val| llvm::LLVMGetLinkage(val) == llvm::ExternalLinkage as c_uint &&
@@ -2857,9 +2856,8 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
     }
 
     if sess.target.target.options.is_like_msvc &&
-       sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib ||
-                                                 *ct == config::CrateTypeStaticlib) {
-        create_imps(&shared_ccx, &reachable_symbols.iter().map(|x| &x[..]).collect());
+       sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
+        create_imps(&shared_ccx);
     }
 
     let metadata_module = ModuleTranslation {
