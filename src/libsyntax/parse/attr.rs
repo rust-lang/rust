@@ -40,7 +40,7 @@ impl<'a> ParserAttr for Parser<'a> {
               token::DocComment(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
                     attr::mk_attr_id(),
-                    self.id_to_interned_str(s.ident()),
+                    self.id_to_interned_str(ast::Ident::with_empty_ctxt(s)),
                     self.span.lo,
                     self.span.hi
                 );
@@ -137,9 +137,8 @@ impl<'a> ParserAttr for Parser<'a> {
                 token::DocComment(s) => {
                     // we need to get the position of this token before we bump.
                     let Span { lo, hi, .. } = self.span;
-                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(),
-                                                         self.id_to_interned_str(s.ident()),
-                                                         lo, hi);
+                    let str = self.id_to_interned_str(ast::Ident::with_empty_ctxt(s));
+                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), str, lo, hi);
                     if attr.node.style == ast::AttrInner {
                         attrs.push(attr);
                         panictry!(self.bump());

@@ -354,13 +354,13 @@ pub fn empty_generics() -> Generics {
 
 // convert a span and an identifier to the corresponding
 // 1-segment path
-pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
+pub fn ident_to_path(s: Span, ident: Ident) -> Path {
     hir::Path {
         span: s,
         global: false,
         segments: vec!(
             hir::PathSegment {
-                identifier: identifier,
+                identifier: ident,
                 parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
                     lifetimes: Vec::new(),
                     types: OwnedSlice::empty(),

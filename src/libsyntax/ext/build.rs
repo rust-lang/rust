@@ -73,7 +73,6 @@ pub trait AstBuilder {
 
     fn ty_vars(&self, ty_params: &OwnedSlice<ast::TyParam>) -> Vec<P<ast::Ty>> ;
     fn ty_vars_global(&self, ty_params: &OwnedSlice<ast::TyParam>) -> Vec<P<ast::Ty>> ;
-    fn ty_field_imm(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> ast::TypeField;
 
     fn typaram(&self,
                span: Span,
@@ -441,14 +440,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                           Vec::new(),
                           vec!( ty ),
                           Vec::new()))
-    }
-
-    fn ty_field_imm(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> ast::TypeField {
-        ast::TypeField {
-            ident: name,
-            mt: ast::MutTy { ty: ty, mutbl: ast::MutImmutable },
-            span: span,
-        }
     }
 
     fn ty_infer(&self, span: Span) -> P<ast::Ty> {

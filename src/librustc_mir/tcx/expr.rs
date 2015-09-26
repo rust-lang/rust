@@ -286,9 +286,9 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
             hir::ExprField(ref source, name) =>
                 ExprKind::Field { lhs: source.to_ref(),
                                   name: Field::Named(name.node) },
-            hir::ExprTupField(ref source, ident) =>
+            hir::ExprTupField(ref source, index) =>
                 ExprKind::Field { lhs: source.to_ref(),
-                                  name: Field::Indexed(ident.node) },
+                                  name: Field::Indexed(index.node) },
             hir::ExprCast(ref source, _) =>
                 ExprKind::Cast { source: source.to_ref() },
             hir::ExprBox(ref value) =>

@@ -30,7 +30,6 @@ use hir::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use std::io::{self, Write, Read};
 
 pub enum AnnNode<'a> {
-    NodeIdent(&'a ast::Ident),
     NodeName(&'a ast::Name),
     NodeBlock(&'a hir::Block),
     NodeItem(&'a hir::Item),
@@ -264,8 +263,8 @@ pub fn path_to_string(p: &hir::Path) -> String {
     to_string(|s| s.print_path(p, false, 0))
 }
 
-pub fn ident_to_string(id: &ast::Ident) -> String {
-    to_string(|s| s.print_ident(*id))
+pub fn name_to_string(name: ast::Name) -> String {
+    to_string(|s| s.print_name(name))
 }
 
 pub fn fun_to_string(decl: &hir::FnDecl,
@@ -1346,7 +1345,7 @@ impl<'a> State<'a> {
             }
             hir::ExprWhile(ref test, ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
-                    try!(self.print_ident(ident));
+                    try!(self.print_name(ident.name));
                     try!(self.word_space(":"));
                 }
                 try!(self.head("while"));
@@ -1356,7 +1355,7 @@ impl<'a> State<'a> {
             }
             hir::ExprLoop(ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
-                    try!(self.print_ident(ident));
+                    try!(self.print_name(ident.name));
                     try!(self.word_space(":"));
                 }
                 try!(self.head("loop"));
@@ -1461,7 +1460,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "break"));
                 try!(space(&mut self.s));
                 if let Some(ident) = opt_ident {
-                    try!(self.print_ident(ident.node));
+                    try!(self.print_name(ident.node.name));
                     try!(space(&mut self.s));
                 }
             }
@@ -1469,7 +1468,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "continue"));
                 try!(space(&mut self.s));
                 if let Some(ident) = opt_ident {
-                    try!(self.print_ident(ident.node));
+                    try!(self.print_name(ident.node.name));
                     try!(space(&mut self.s))
                 }
             }
@@ -1582,11 +1581,6 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_ident(&mut self, ident: ast::Ident) -> io::Result<()> {
-        try!(word(&mut self.s, &ident.name.as_str()));
-        self.ann.post(self, NodeIdent(&ident))
-    }
-
     pub fn print_usize(&mut self, i: usize) -> io::Result<()> {
         word(&mut self.s, &i.to_string())
     }
@@ -1620,7 +1614,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "::"))
             }
 
-            try!(self.print_ident(segment.identifier));
+            try!(self.print_name(segment.identifier.name));
 
             try!(self.print_path_parameters(&segment.parameters, colons_before_params));
         }
@@ -1645,7 +1639,7 @@ impl<'a> State<'a> {
         try!(word(&mut self.s, ">"));
         try!(word(&mut self.s, "::"));
         let item_segment = path.segments.last().unwrap();
-        try!(self.print_ident(item_segment.identifier));
+        try!(self.print_name(item_segment.identifier.name));
         self.print_path_parameters(&item_segment.parameters, colons_before_params)
     }
 
@@ -1741,7 +1735,7 @@ impl<'a> State<'a> {
                         try!(self.word_nbsp("mut"));
                     }
                 }
-                try!(self.print_ident(path1.node));
+                try!(self.print_name(path1.node.name));
                 match *sub {
                     Some(ref p) => {
                         try!(word(&mut self.s, "@"));
@@ -2168,7 +2162,6 @@ impl<'a> State<'a> {
             hir::ViewPathSimple(name, ref path) => {
                 try!(self.print_path(path, false, 0));
 
-                // FIXME(#6993) can't compare identifiers directly here
                 if path.segments.last().unwrap().identifier.name != name {
                     try!(space(&mut self.s));
                     try!(self.word_space("as"));
@@ -2183,14 +2176,14 @@ impl<'a> State<'a> {
                 word(&mut self.s, "::*")
             }
 
-            hir::ViewPathList(ref path, ref idents) => {
+            hir::ViewPathList(ref path, ref segments) => {
                 if path.segments.is_empty() {
                     try!(word(&mut self.s, "{"));
                 } else {
                     try!(self.print_path(path, false, 0));
                     try!(word(&mut self.s, "::{"));
                 }
-                try!(self.commasep(Inconsistent, &idents[..], |s, w| {
+                try!(self.commasep(Inconsistent, &segments[..], |s, w| {
                     match w.node {
                         hir::PathListIdent { name, .. } => {
                             s.print_name(name)
@@ -2268,7 +2261,7 @@ impl<'a> State<'a> {
                        abi: abi::Abi,
                        unsafety: hir::Unsafety,
                        decl: &hir::FnDecl,
-                       name: Option<ast::Ident>,
+                       name: Option<ast::Name>,
                        generics: &hir::Generics,
                        opt_explicit_self: Option<&hir::ExplicitSelf_>)
                        -> io::Result<()> {
@@ -2289,7 +2282,7 @@ impl<'a> State<'a> {
                            unsafety,
                            hir::Constness::NotConst,
                            abi,
-                           name.map(|x| x.name),
+                           name,
                            &generics,
                            opt_explicit_self,
                            hir::Inherited));

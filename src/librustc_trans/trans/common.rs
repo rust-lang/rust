@@ -168,7 +168,7 @@ pub fn return_type_is_void(ccx: &CrateContext, ty: Ty) -> bool {
 /// Generates a unique symbol based off the name given. This is used to create
 /// unique symbols for things like closures.
 pub fn gensym_name(name: &str) -> PathElem {
-    let num = token::gensym(name).usize();
+    let num = token::gensym(name).0;
     // use one colon which will get translated to a period by the mangler, and
     // we're guaranteed that `num` is globally unique for this crate.
     PathName(token::gensym(&format!("{}:{}", name, num)))
@@ -829,7 +829,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
                                                 !null_terminated as Bool);
 
         let gsym = token::gensym("str");
-        let sym = format!("str{}", gsym.usize());
+        let sym = format!("str{}", gsym.0);
         let g = declare::define_global(cx, &sym[..], val_ty(sc)).unwrap_or_else(||{
             cx.sess().bug(&format!("symbol `{}` is already defined", sym));
         });

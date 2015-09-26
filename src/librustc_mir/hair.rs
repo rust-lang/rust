@@ -29,7 +29,6 @@ pub trait Hair: Sized+Debug+Clone+Eq+Hash { // (*)
     type DefId: Copy+Debug+Eq+Hash;                              // e.g., DefId
     type AdtDef: Copy+Debug+Eq+Hash;                             // e.g., AdtDef<'tcx>
     type Name: Copy+Debug+Eq+Hash;                               // e.g., ast::Name
-    type Ident: Copy+Debug+Eq+Hash;                              // e.g., ast::Ident
     type InternedString: Clone+Debug+Eq+Hash;                    // e.g., InternedString
     type Bytes: Clone+Debug+Eq+Hash;                             // e.g., Rc<Vec<u8>>
     type Span: Copy+Debug+Eq;                                    // e.g., syntax::codemap::Span
@@ -248,7 +247,7 @@ pub enum PatternKind<H:Hair> {
 
     // x, ref x, x @ P, etc
     Binding { mutability: Mutability,
-              name: H::Ident,
+              name: H::Name,
               mode: BindingMode<H>,
               var: H::VarId,
               ty: H::Ty,

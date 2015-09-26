@@ -682,7 +682,7 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
 }
 
 pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
-    debug!("check_item_type(it.id={}, it.ident={})",
+    debug!("check_item_type(it.id={}, it.name={})",
            it.id,
            ccx.tcx.item_path_str(DefId::local(it.id)));
     let _indenter = indenter();
@@ -750,7 +750,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
 }
 
 pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
-    debug!("check_item_body(it.id={}, it.ident={})",
+    debug!("check_item_body(it.id={}, it.name={})",
            it.id,
            ccx.tcx.item_path_str(DefId::local(it.id)));
     let _indenter = indenter();
@@ -838,7 +838,7 @@ fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         Position::ArgumentNamed(s) if s == "Self" => (),
                         // So is `{A}` if A is a type parameter
                         Position::ArgumentNamed(s) => match types.iter().find(|t| {
-                            t.name == s
+                            t.name.as_str() == s
                         }) {
                             Some(_) => (),
                             None => {

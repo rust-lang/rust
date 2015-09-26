@@ -138,7 +138,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
             ));
         }
     });
-    let sym = Ident::new(token::gensym(&format!(
+    let sym = Ident::with_empty_ctxt(token::gensym(&format!(
         "__register_diagnostic_{}", code
     )));
     MacEager::items(SmallVector::many(vec![

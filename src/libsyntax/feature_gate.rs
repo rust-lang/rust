@@ -35,7 +35,7 @@ use codemap::{CodeMap, Span};
 use diagnostic::SpanHandler;
 use visit;
 use visit::{FnKind, Visitor};
-use parse::token::{self, InternedString};
+use parse::token::InternedString;
 
 use std::ascii::AsciiExt;
 use std::cmp;
@@ -673,7 +673,7 @@ struct MacroVisitor<'a> {
 impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
     fn visit_mac(&mut self, mac: &ast::Mac) {
         let path = &mac.node.path;
-        let id = path.segments.last().unwrap().identifier;
+        let name = path.segments.last().unwrap().identifier.name.as_str();
 
         // Issue 22234: If you add a new case here, make sure to also
         // add code to catch the macro during or after expansion.
@@ -683,19 +683,19 @@ impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
         // catch uses of these macros within conditionally-compiled
         // code, e.g. `#[cfg]`-guarded functions.
 
-        if id == token::str_to_ident("asm") {
+        if name == "asm" {
             self.context.gate_feature("asm", path.span, EXPLAIN_ASM);
         }
 
-        else if id == token::str_to_ident("log_syntax") {
+        else if name == "log_syntax" {
             self.context.gate_feature("log_syntax", path.span, EXPLAIN_LOG_SYNTAX);
         }
 
-        else if id == token::str_to_ident("trace_macros") {
+        else if name == "trace_macros" {
             self.context.gate_feature("trace_macros", path.span, EXPLAIN_TRACE_MACROS);
         }
 
-        else if id == token::str_to_ident("concat_idents") {
+        else if name == "concat_idents" {
             self.context.gate_feature("concat_idents", path.span, EXPLAIN_CONCAT_IDENTS);
         }
     }

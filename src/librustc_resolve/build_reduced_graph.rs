@@ -281,14 +281,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     ViewPathSimple(_, ref full_path) => {
                         full_path.segments
                             .split_last().unwrap().1
-                            .iter().map(|ident| ident.identifier.name)
+                            .iter().map(|seg| seg.identifier.name)
                             .collect()
                     }
 
                     ViewPathGlob(ref module_ident_path) |
                     ViewPathList(ref module_ident_path, _) => {
                         module_ident_path.segments
-                            .iter().map(|ident| ident.identifier.name).collect()
+                            .iter().map(|seg| seg.identifier.name).collect()
                     }
                 };
 

@@ -1015,12 +1015,12 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             },
             None => None
         };
-        let (fn_decl, generics, unsafety, constness, ident, expl_self, span)
+        let (fn_decl, generics, unsafety, constness, name, expl_self, span)
                                     = node_inner.expect("expect item fn");
         let rebuilder = Rebuilder::new(self.tcx, fn_decl, expl_self,
                                        generics, same_regions, &life_giver);
         let (fn_decl, expl_self, generics) = rebuilder.rebuild();
-        self.give_expl_lifetime_param(&fn_decl, unsafety, constness, ident,
+        self.give_expl_lifetime_param(&fn_decl, unsafety, constness, name,
                                       expl_self.as_ref(), &generics, span);
     }
 }
@@ -1127,7 +1127,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                 names.push(lt_name);
             }
             names.sort();
-            let name = token::str_to_ident(&names[0]).name;
+            let name = token::intern(&names[0]);
             return (name_to_dummy_lifetime(name), Kept);
         }
         return (self.life_giver.give_lifetime(), Fresh);
@@ -1938,8 +1938,7 @@ impl LifeGiver {
             let mut s = String::from("'");
             s.push_str(&num_to_string(self.counter.get()));
             if !self.taken.contains(&s) {
-                lifetime = name_to_dummy_lifetime(
-                                    token::str_to_ident(&s[..]).name);
+                lifetime = name_to_dummy_lifetime(token::intern(&s[..]));
                 self.generated.borrow_mut().push(lifetime);
                 break;
             }

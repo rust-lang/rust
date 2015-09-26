@@ -444,7 +444,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
     fn process_const(&mut self,
                      id: ast::NodeId,
-                     ident: &ast::Ident,
+                     name: ast::Name,
                      span: Span,
                      typ: &ast::Ty,
                      expr: &ast::Expr) {
@@ -456,7 +456,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         self.fmt.static_str(span,
                             sub_span,
                             id,
-                            &ident.name.as_str(),
+                            &name.as_str(),
                             &qualname,
                             &self.span.snippet(expr.span),
                             &ty_to_string(&*typ),
@@ -988,7 +988,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
         match trait_item.node {
             ast::ConstTraitItem(ref ty, Some(ref expr)) => {
-                self.process_const(trait_item.id, &trait_item.ident,
+                self.process_const(trait_item.id, trait_item.ident.name,
                                    trait_item.span, &*ty, &*expr);
             }
             ast::MethodTraitItem(ref sig, ref body) => {
@@ -1006,7 +1006,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     fn visit_impl_item(&mut self, impl_item: &ast::ImplItem) {
         match impl_item.node {
             ast::ConstImplItem(ref ty, ref expr) => {
-                self.process_const(impl_item.id, &impl_item.ident,
+                self.process_const(impl_item.id, impl_item.ident.name,
                                    impl_item.span, &ty, &expr);
             }
             ast::MethodImplItem(ref sig, ref body) => {

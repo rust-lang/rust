@@ -699,12 +699,12 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
            rcvr_ty_generics,
            rcvr_ty_predicates);
 
-    for (sig, id, ident, vis, _span) in methods {
+    for (sig, id, name, vis, _span) in methods {
         convert_method(ccx,
                        container,
                        sig,
                        id,
-                       ident,
+                       name,
                        vis,
                        untransformed_rcvr_ty,
                        rcvr_ty_generics,

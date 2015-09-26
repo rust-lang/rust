@@ -39,12 +39,12 @@ use tcx::to_ref::ToRef;
 #[derive(Clone, Debug)]
 pub struct PatNode<'tcx> {
     pat: &'tcx hir::Pat,
-    binding_map: Option<Rc<FnvHashMap<ast::Ident, ast::NodeId>>>
+    binding_map: Option<Rc<FnvHashMap<ast::Name, ast::NodeId>>>
 }
 
 impl<'tcx> PatNode<'tcx> {
     pub fn new(pat: &'tcx hir::Pat,
-               binding_map: Option<Rc<FnvHashMap<ast::Ident, ast::NodeId>>>)
+               binding_map: Option<Rc<FnvHashMap<ast::Name, ast::NodeId>>>)
                -> PatNode<'tcx> {
         PatNode {
             pat: pat,
@@ -220,7 +220,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for PatNode<'tcx> {
             {
                 let id = match self.binding_map {
                     None => self.pat.id,
-                    Some(ref map) => map[&ident.node],
+                    Some(ref map) => map[&ident.node.name],
                 };
                 let var_ty = cx.tcx.node_id_to_type(self.pat.id);
                 let region = match var_ty.sty {
@@ -240,7 +240,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for PatNode<'tcx> {
                 PatternKind::Binding {
                     mutability: mutability,
                     mode: mode,
-                    name: ident.node,
+                    name: ident.node.name,
                     var: id,
                     ty: var_ty,
                     subpattern: self.opt_pat_ref(sub),

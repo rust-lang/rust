@@ -330,8 +330,7 @@ impl<'ast> pprust_hir::PpAnn for IdentifiedAnnotation<'ast> {
             s: &mut pprust_hir::State,
             node: pprust_hir::AnnNode) -> io::Result<()> {
         match node {
-            pprust_hir::NodeIdent(_) | pprust_hir::NodeName(_) => Ok(()),
-
+            pprust_hir::NodeName(_) => Ok(()),
             pprust_hir::NodeItem(item) => {
                 try!(pp::space(&mut s.s));
                 s.synth_comment(item.id.to_string())
@@ -381,7 +380,7 @@ impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
                 try!(pp::space(&mut s.s));
                 // FIXME #16420: this doesn't display the connections
                 // between syntax contexts
-                s.synth_comment(format!("{}#{}", nm, ctxt))
+                s.synth_comment(format!("{}#{}", nm, ctxt.0))
             }
             pprust::NodeName(&ast::Name(nm)) => {
                 try!(pp::space(&mut s.s));
