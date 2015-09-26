@@ -107,7 +107,12 @@ impl ListItem {
     }
 
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
-        ListItem { pre_comment: None, item: s.into(), post_comment: None, new_lines: false }
+        ListItem {
+            pre_comment: None,
+            item: s.into(),
+            post_comment: None,
+            new_lines: false,
+        }
     }
 }
 

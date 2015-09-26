@@ -275,7 +275,10 @@ impl<'a> FmtVisitor<'a> {
             codemap: codemap,
             buffer: StringBuffer::new(),
             last_pos: BytePos(0),
-            block_indent: Indent { block_indent: 0, alignment: 0 },
+            block_indent: Indent {
+                block_indent: 0,
+                alignment: 0,
+            },
             config: config,
         }
     }

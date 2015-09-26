@@ -212,7 +212,10 @@ enum CodeCharKind {
 
 impl<T> CharClasses<T> where T: Iterator, T::Item: RichChar {
     fn new(base: T) -> CharClasses<T> {
-        CharClasses { base: base.peekable(), status: CharClassesStatus::Normal }
+        CharClasses {
+            base: base.peekable(),
+            status: CharClassesStatus::Normal,
+        }
     }
 }
 

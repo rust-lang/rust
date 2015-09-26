@@ -101,7 +101,10 @@ pub struct BadIssueSeeker {
 impl BadIssueSeeker {
     pub fn new(report_todo: ReportTactic, report_fixme: ReportTactic) -> BadIssueSeeker {
         BadIssueSeeker {
-            state: Seeking::Issue { todo_idx: 0, fixme_idx: 0 },
+            state: Seeking::Issue {
+                todo_idx: 0,
+                fixme_idx: 0,
+            },
             report_todo: report_todo,
             report_fixme: report_fixme,
         }
@@ -121,7 +124,10 @@ impl BadIssueSeeker {
                     return None;
                 }
 
-                self.state = Seeking::Issue { todo_idx: 0, fixme_idx: 0 };
+                self.state = Seeking::Issue {
+                    todo_idx: 0,
+                    fixme_idx: 0,
+                };
 
                 if let IssueClassification::Bad(issue) = result {
                     return Some(issue);
@@ -173,7 +179,10 @@ impl BadIssueSeeker {
             fixme_idx = 0;
         }
 
-        Seeking::Issue { todo_idx: todo_idx, fixme_idx: fixme_idx }
+        Seeking::Issue {
+            todo_idx: todo_idx,
+            fixme_idx: fixme_idx,
+        }
     }
 
     fn inspect_number(&mut self,
@@ -214,7 +223,10 @@ impl BadIssueSeeker {
             NumberPart::CloseParen => {}
         }
 
-        self.state = Seeking::Number { part: part, issue: issue };
+        self.state = Seeking::Number {
+            part: part,
+            issue: issue,
+        };
 
         IssueClassification::None
     }
@@ -274,7 +286,10 @@ fn find_issue() {
 #[test]
 fn issue_type() {
     let mut seeker = BadIssueSeeker::new(ReportTactic::Always, ReportTactic::Never);
-    let expected = Some(Issue { issue_type: IssueType::Todo, missing_number: false });
+    let expected = Some(Issue {
+        issue_type: IssueType::Todo,
+        missing_number: false,
+    });
 
     assert_eq!(expected,
                "TODO(#100): more awesomeness"
@@ -284,7 +299,10 @@ fn issue_type() {
                    .unwrap());
 
     let mut seeker = BadIssueSeeker::new(ReportTactic::Never, ReportTactic::Unnumbered);
-    let expected = Some(Issue { issue_type: IssueType::Fixme, missing_number: true });
+    let expected = Some(Issue {
+        issue_type: IssueType::Fixme,
+        missing_number: true,
+    });
 
     assert_eq!(expected,
                "Test. FIXME: bad, bad, not good"
