@@ -18,6 +18,7 @@ pub fn target() -> Target {
         arch: "aarch64".to_string(),
         target_os: "android".to_string(),
         target_env: "".to_string(),
+        target_vendor: "unknown".to_string(),
         options: super::android_base::opts(),
     }
 }

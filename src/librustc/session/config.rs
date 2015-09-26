@@ -617,6 +617,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let wordsz = &sess.target.target.target_pointer_width;
     let os = &sess.target.target.target_os;
     let env = &sess.target.target.target_env;
+    let vendor = &sess.target.target.target_vendor;
 
     let fam = match sess.target.target.options.is_like_windows {
         true  => InternedString::new("windows"),
@@ -632,6 +633,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
          mk(InternedString::new("target_endian"), intern(end)),
          mk(InternedString::new("target_pointer_width"), intern(wordsz)),
          mk(InternedString::new("target_env"), intern(env)),
+         mk(InternedString::new("target_vendor"), intern(vendor)),
     ];
     if sess.opts.debug_assertions {
         ret.push(attr::mk_word_item(InternedString::new("debug_assertions")));

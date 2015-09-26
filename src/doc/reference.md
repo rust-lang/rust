@@ -2093,6 +2093,8 @@ The following configurations must be defined by the implementation:
 * `target_pointer_width = "..."` - Target pointer width in bits. This is set
   to `"32"` for targets with 32-bit pointers, and likewise set to `"64"` for
   64-bit pointers.
+* `target_vendor = "..."` - Vendor of the target, for example `apple`, `pc`, or
+  simply `"unknown"`.
 * `test` - Enabled when compiling the test harness (using the `--test` flag).
 * `unix` - See `target_family`.
 * `windows` - See `target_family`.
@@ -2269,7 +2271,7 @@ The currently implemented features of the reference compiler are:
 * `advanced_slice_patterns` - See the [match expressions](#match-expressions)
                               section for discussion; the exact semantics of
                               slice patterns are subject to change, so some types
-			      are still unstable.
+                              are still unstable.
 
 * `slice_patterns` - OK, actually, slice patterns are just scary and
                      completely unstable.
@@ -2289,6 +2291,9 @@ The currently implemented features of the reference compiler are:
 
 * `box_syntax` - Allows use of `box` expressions, the exact semantics of which
                  is subject to change.
+
+* `cfg_target_vendor` - Allows conditional compilation using the `target_vendor`
+                        matcher which is subject to change.
 
 * `concat_idents` - Allows use of the `concat_idents` macro, which is in many
                     ways insufficient for concatenating identifiers, and may be

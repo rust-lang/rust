@@ -8,18 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::Target;
+#![feature(cfg_target_vendor)]
 
-pub fn target() -> Target {
-    let base = super::linux_base::opts();
-    Target {
-        llvm_target: "aarch64-unknown-linux-gnu".to_string(),
-        target_endian: "little".to_string(),
-        target_pointer_width: "64".to_string(),
-        target_env: "gnu".to_string(),
-        arch: "aarch64".to_string(),
-        target_os: "linux".to_string(),
-        target_vendor: "unknown".to_string(),
-        options: base,
-    }
+#[cfg(target_vendor = "unknown")]
+pub fn main() {
+}
+
+#[cfg(not(target_vendor = "unknown"))]
+pub fn main() {
 }

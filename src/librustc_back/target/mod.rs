@@ -77,6 +77,8 @@ pub struct Target {
     pub target_os: String,
     /// Environment name to use for conditional compilation.
     pub target_env: String,
+    /// Vendor name to use for conditional compilation.
+    pub target_vendor: String,
     /// Architecture to use for ABI considerations. Valid options: "x86", "x86_64", "arm",
     /// "aarch64", "mips", and "powerpc". "mips" includes "mipsel".
     pub arch: String,
@@ -260,14 +262,20 @@ impl Target {
             }
         };
 
+        let get_opt_field = |name: &str, default: &str| {
+            obj.find(name).and_then(|s| s.as_string())
+               .map(|s| s.to_string())
+               .unwrap_or(default.to_string())
+        };
+
         let mut base = Target {
             llvm_target: get_req_field("llvm-target"),
             target_endian: get_req_field("target-endian"),
             target_pointer_width: get_req_field("target-pointer-width"),
             arch: get_req_field("arch"),
             target_os: get_req_field("os"),
-            target_env: obj.find("env").and_then(|s| s.as_string())
-                           .map(|s| s.to_string()).unwrap_or(String::new()),
+            target_env: get_opt_field("env", ""),
+            target_vendor: get_opt_field("vendor", "unknown"),
             options: Default::default(),
         };
 

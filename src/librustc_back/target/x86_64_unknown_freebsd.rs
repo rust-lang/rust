@@ -22,6 +22,7 @@ pub fn target() -> Target {
         arch: "x86_64".to_string(),
         target_os: "freebsd".to_string(),
         target_env: "".to_string(),
+        target_vendor: "unknown".to_string(),
         options: base,
     }
 }
