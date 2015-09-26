@@ -117,6 +117,9 @@ pub struct Foo<'a, Y: Baz>
     f: SomeType, // Comment beside a field
 }
 
+fn foo(ann: &'a (PpAnn + 'a)) {
+}
+
 fn main() {
     for i in 0i32..4 {
         println!("{}", i);
