@@ -1226,10 +1226,14 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              span_after(span, "{", context.codemap),
                              span.hi);
 
-    let tactic = match (context.config.struct_lit_style, fields.len()) {
+    let mut tactic = match (context.config.struct_lit_style, fields.len()) {
         (StructLitStyle::Visual, 1) => ListTactic::HorizontalVertical,
         _ => context.config.struct_lit_multiline_style.to_list_tactic(),
     };
+
+    if tactic == ListTactic::HorizontalVertical && fields.len() > 1 {
+        tactic = ListTactic::LimitedHorizontalVertical(context.config.struct_lit_width);
+    }
 
     let fmt = ListFormatting {
         tactic: tactic,
