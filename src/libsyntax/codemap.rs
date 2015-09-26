@@ -142,6 +142,10 @@ impl Span {
     pub fn substitute_dummy(self, other: Span) -> Span {
         if self == DUMMY_SP { other } else { self }
     }
+
+    pub fn contains(self, other: Span) -> bool {
+        self.lo <= other.lo && other.hi <= self.hi
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1011,7 +1015,7 @@ impl CodeMap {
 
                     let span_comes_from_this_expansion =
                         info.callee.span.map_or(span == info.call_site, |mac_span| {
-                            mac_span.lo <= span.lo && span.hi <= mac_span.hi
+                            mac_span.contains(span)
                         });
 
                     debug!("span_allows_unstable: span: {:?} call_site: {:?} callee: {:?}",
