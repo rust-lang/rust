@@ -1583,7 +1583,7 @@ impl Clean<Type> for hir::Ty {
                 let mut trait_path = p.clone();
                 trait_path.segments.pop();
                 Type::QPath {
-                    name: p.segments.last().unwrap().identifier.clean(cx),
+                    name: p.segments.last().unwrap().identifier.name.clean(cx),
                     self_type: box qself.ty.clean(cx),
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
@@ -2044,7 +2044,7 @@ pub struct PathSegment {
 impl Clean<PathSegment> for hir::PathSegment {
     fn clean(&self, cx: &DocContext) -> PathSegment {
         PathSegment {
-            name: self.identifier.clean(cx),
+            name: self.identifier.name.clean(cx),
             params: self.parameters.clean(cx)
         }
     }
@@ -2062,12 +2062,6 @@ fn path_to_string(p: &hir::Path) -> String {
         s.push_str(&i);
     }
     s
-}
-
-impl Clean<String> for ast::Ident {
-    fn clean(&self, _: &DocContext) -> String {
-        self.to_string()
-    }
 }
 
 impl Clean<String> for ast::Name {

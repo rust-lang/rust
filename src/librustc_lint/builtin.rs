@@ -761,9 +761,6 @@ impl LintPass for UnconditionalRecursion {
 impl LateLintPass for UnconditionalRecursion {
     fn check_fn(&mut self, cx: &LateContext, fn_kind: FnKind, _: &hir::FnDecl,
                 blk: &hir::Block, sp: Span, id: ast::NodeId) {
-        type F = for<'tcx> fn(&ty::ctxt<'tcx>,
-                              ast::NodeId, ast::NodeId, ast::Ident, ast::NodeId) -> bool;
-
         let method = match fn_kind {
             FnKind::ItemFn(..) => None,
             FnKind::Method(..) => {

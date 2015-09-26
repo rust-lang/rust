@@ -520,9 +520,9 @@ fn encode_info_for_mod(ecx: &EncodeContext,
         });
 
         if let hir::ItemImpl(..) = item.node {
-            let (ident, did) = (item.name, item.id);
+            let (name, did) = (item.name, item.id);
             debug!("(encoding info for module) ... encoding impl {} ({}/{})",
-                   ident,
+                   name,
                    did, ecx.tcx.map.node_to_string(did));
 
             rbml_w.wr_tagged_u64(tag_mod_impl, def_to_u64(DefId::local(did)));

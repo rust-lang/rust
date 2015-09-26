@@ -35,7 +35,7 @@ use syntax::parse::lexer::TokenAndSpan;
 
 fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
     fn id() -> token::Token {
-        token::Ident(ast::Ident { name: Name(0), ctxt: 0, }, token::Plain)
+        token::Ident(ast::Ident::with_empty_ctxt(Name(0))), token::Plain)
     }
 
     let mut res = HashMap::new();
@@ -75,7 +75,7 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
             "RPAREN"            => token::CloseDelim(token::Paren),
             "SLASH"             => token::BinOp(token::Slash),
             "COMMA"             => token::Comma,
-            "LIFETIME"          => token::Lifetime(ast::Ident { name: Name(0), ctxt: 0 }),
+            "LIFETIME"          => token::Lifetime(ast::Ident::with_empty_ctxt(Name(0))),
             "CARET"             => token::BinOp(token::Caret),
             "TILDE"             => token::Tilde,
             "IDENT"             => id(),
@@ -208,9 +208,9 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>, surrogate_
         token::Literal(token::ByteStr(..), n)    => token::Literal(token::ByteStr(nm), n),
         token::Literal(token::ByteStrRaw(..), n) => token::Literal(token::ByteStrRaw(fix(content),
                                                                                 count(content)), n),
-        token::Ident(..)           => token::Ident(ast::Ident { name: nm, ctxt: 0 },
+        token::Ident(..)           => token::Ident(ast::Ident::with_empty_ctxt(nm)),
                                                    token::ModName),
-        token::Lifetime(..)        => token::Lifetime(ast::Ident { name: nm, ctxt: 0 }),
+        token::Lifetime(..)        => token::Lifetime(ast::Ident::with_empty_ctxt(nm)),
         ref t => t.clone()
     };
 

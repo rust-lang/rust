@@ -375,7 +375,7 @@ pub struct BindingInfo<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-type BindingsMap<'tcx> = FnvHashMap<ast::Ident, BindingInfo<'tcx>>;
+type BindingsMap<'tcx> = FnvHashMap<ast::Name, BindingInfo<'tcx>>;
 
 struct ArmData<'p, 'blk, 'tcx: 'blk> {
     bodycx: Block<'blk, 'tcx>,
@@ -390,7 +390,7 @@ struct ArmData<'p, 'blk, 'tcx: 'blk> {
 struct Match<'a, 'p: 'a, 'blk: 'a, 'tcx: 'blk> {
     pats: Vec<&'p hir::Pat>,
     data: &'a ArmData<'p, 'blk, 'tcx>,
-    bound_ptrs: Vec<(ast::Ident, ValueRef)>,
+    bound_ptrs: Vec<(ast::Name, ValueRef)>,
     // Thread along renamings done by the check_match::StaticInliner, so we can
     // map back to original NodeIds
     pat_renaming_map: Option<&'a FnvHashMap<(NodeId, Span), NodeId>>
@@ -464,7 +464,7 @@ fn expand_nested_bindings<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         loop {
             pat = match pat.node {
                 hir::PatIdent(_, ref path, Some(ref inner)) => {
-                    bound_ptrs.push((path.node, val.val));
+                    bound_ptrs.push((path.node.name, val.val));
                     &**inner
                 },
                 _ => break
@@ -505,7 +505,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             match this.node {
                 hir::PatIdent(_, ref path, None) => {
                     if pat_is_binding(dm, &*this) {
-                        bound_ptrs.push((path.node, val.val));
+                        bound_ptrs.push((path.node.name, val.val));
                     }
                 }
                 hir::PatVec(ref before, Some(ref slice), ref after) => {
@@ -513,7 +513,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                         let subslice_val = bind_subslice_pat(
                             bcx, this.id, val,
                             before.len(), after.len());
-                        bound_ptrs.push((path.node, subslice_val));
+                        bound_ptrs.push((path.node.name, subslice_val));
                     }
                 }
                 _ => {}
@@ -943,7 +943,7 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                bindings_map: &BindingsMap<'tcx>,
                                cs: Option<cleanup::ScopeId>)
                                -> Block<'blk, 'tcx> {
-    for (&ident, &binding_info) in bindings_map {
+    for (&name, &binding_info) in bindings_map {
         let (llval, aliases_other_state) = match binding_info.trmode {
             // By value mut binding for a copy type: load from the ptr
             // into the matched value and copy to our alloca
@@ -1021,7 +1021,7 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
         debug!("binding {} to {}", binding_info.id, bcx.val_to_string(llval));
         bcx.fcx.lllocals.borrow_mut().insert(binding_info.id, datum);
-        debuginfo::create_match_binding_metadata(bcx, ident.name, binding_info);
+        debuginfo::create_match_binding_metadata(bcx, name, binding_info);
     }
     bcx
 }
@@ -1510,8 +1510,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &hir::Pat,
     let reassigned = is_discr_reassigned(bcx, discr, body);
     let mut bindings_map = FnvHashMap();
     pat_bindings(&tcx.def_map, &*pat, |bm, p_id, span, path1| {
-        let ident = path1.node;
-        let name = ident.name;
+        let name = path1.node;
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
         let tcx = bcx.tcx();
@@ -1543,7 +1542,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &hir::Pat,
                 trmode = TrByRef;
             }
         };
-        bindings_map.insert(ident, BindingInfo {
+        bindings_map.insert(name, BindingInfo {
             llmatch: llmatch,
             trmode: trmode,
             id: p_id,
@@ -1656,7 +1655,7 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         pat_bindings(&tcx.def_map, pat, |_, p_id, _, path1| {
             let scope = cleanup::var_scope(tcx, p_id);
             bcx = mk_binding_alloca(
-                bcx, p_id, path1.node.name, scope, (),
+                bcx, p_id, path1.node, scope, (),
                 "_match::store_local::create_dummy_locals",
                 |(), bcx, Datum { val: llval, ty, kind }| {
                     // Dummy-locals start out uninitialized, so set their
@@ -1693,11 +1692,11 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             //
             // In such cases, the more general path is unsafe, because
             // it assumes it is matching against a valid value.
-            match simple_identifier(&*pat) {
-                Some(ident) => {
+            match simple_name(pat) {
+                Some(name) => {
                     let var_scope = cleanup::var_scope(tcx, local.id);
                     return mk_binding_alloca(
-                        bcx, pat.id, ident.name, var_scope, (),
+                        bcx, pat.id, name, var_scope, (),
                         "_match::store_local",
                         |(), bcx, Datum { val: v, .. }| expr::trans_into(bcx, &**init_expr,
                                                                          expr::SaveIn(v)));

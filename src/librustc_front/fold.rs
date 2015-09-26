@@ -296,8 +296,8 @@ pub fn noop_fold_meta_items<T: Folder>(meta_items: Vec<P<MetaItem>>, fld: &mut T
 pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<ViewPath> {
     view_path.map(|Spanned {node, span}| Spanned {
         node: match node {
-            ViewPathSimple(ident, path) => {
-                ViewPathSimple(ident, fld.fold_path(path))
+            ViewPathSimple(name, path) => {
+                ViewPathSimple(name, fld.fold_path(path))
             }
             ViewPathGlob(path) => {
                 ViewPathGlob(fld.fold_path(path))
@@ -520,11 +520,11 @@ pub fn noop_fold_explicit_self_underscore<T: Folder>(es: ExplicitSelf_, fld: &mu
                                                      -> ExplicitSelf_ {
     match es {
         SelfStatic | SelfValue(_) => es,
-        SelfRegion(lifetime, m, ident) => {
-            SelfRegion(fld.fold_opt_lifetime(lifetime), m, ident)
+        SelfRegion(lifetime, m, name) => {
+            SelfRegion(fld.fold_opt_lifetime(lifetime), m, name)
         }
-        SelfExplicit(typ, ident) => {
-            SelfExplicit(fld.fold_ty(typ), ident)
+        SelfExplicit(typ, name) => {
+            SelfExplicit(fld.fold_ty(typ), name)
         }
     }
 }
@@ -1111,10 +1111,10 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                           respan(folder.new_span(name.span),
                                  folder.fold_name(name.node)))
             }
-            ExprTupField(el, ident) => {
+            ExprTupField(el, index) => {
                 ExprTupField(folder.fold_expr(el),
-                             respan(folder.new_span(ident.span),
-                                    folder.fold_usize(ident.node)))
+                             respan(folder.new_span(index.span),
+                                    folder.fold_usize(index.node)))
             }
             ExprIndex(el, er) => {
                 ExprIndex(folder.fold_expr(el), folder.fold_expr(er))
