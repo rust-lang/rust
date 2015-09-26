@@ -13,11 +13,11 @@ fn main() {
         ..something
     };
 
-    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(), b: bar() };
+    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: f(), b: b() };
 
-    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo {
-        a: foo(),
-        b: bar(),
+    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo {
+        a: f(),
+        b: b(),
     };
 
     Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo {
@@ -27,7 +27,7 @@ fn main() {
         b: bar(), /* Comment */
     };
 
-    Foo { a: Bar, b: foo() };
+    Foo { a: Bar, b: f() };
 
     Quux {
         x: if cond {
@@ -65,7 +65,10 @@ fn main() {
 
 fn matcher() {
     TagTerminatedByteMatcher {
-        matcher: ByteMatcher { pattern: b"<HTML", mask: b"\xFF\xDF\xDF\xDF\xDF\xFF" },
+        matcher: ByteMatcher {
+            pattern: b"<HTML",
+            mask: b"\xFF\xDF\xDF\xDF\xDF\xFF",
+        },
     };
 }
 
@@ -101,11 +104,30 @@ fn issue278() {
 
 fn struct_exprs() {
     Foo { a: 1, b: f(2) };
-    Foo { a: 1, b: f(2), ..g(3) };
+    Foo {
+        a: 1,
+        b: f(2),
+        ..g(3)
+    };
     LoooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooongStruct {
         ..base
     };
     IntrinsicISizesContribution {
         content_intrinsic_sizes: IntrinsicISizes { minimum_inline_size: 0 },
+    };
+}
+
+fn issue123() {
+    Foo { a: b, c: d, e: f };
+
+    Foo {
+        a: bb,
+        c: dd,
+        e: ff,
+    };
+
+    Foo {
+        a: ddddddddddddddddddddd,
+        b: cccccccccccccccccccccccccccccccccccccc,
     };
 }

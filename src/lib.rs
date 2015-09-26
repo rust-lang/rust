@@ -92,7 +92,10 @@ pub struct Indent {
 
 impl Indent {
     pub fn new(block_indent: usize, alignment: usize) -> Indent {
-        Indent { block_indent: block_indent, alignment: alignment }
+        Indent {
+            block_indent: block_indent,
+            alignment: alignment,
+        }
     }
 
     pub fn empty() -> Indent {
@@ -304,7 +307,10 @@ pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
 
             // Add warnings for bad todos/ fixmes
             if let Some(issue) = issue_seeker.inspect(c) {
-                errors.push(FormattingError { line: cur_line, kind: ErrorKind::BadIssue(issue) });
+                errors.push(FormattingError {
+                    line: cur_line,
+                    kind: ErrorKind::BadIssue(issue),
+                });
             }
 
             if c == '\n' {
@@ -315,7 +321,10 @@ pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
                 }
                 // Check for any line width errors we couldn't correct.
                 if line_len > config.max_width {
-                    errors.push(FormattingError { line: cur_line, kind: ErrorKind::LineOverflow });
+                    errors.push(FormattingError {
+                        line: cur_line,
+                        kind: ErrorKind::LineOverflow,
+                    });
                 }
                 line_len = 0;
                 cur_line += 1;
@@ -340,7 +349,10 @@ pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
         }
 
         for &(l, _, _) in &trims {
-            errors.push(FormattingError { line: l, kind: ErrorKind::TrailingWhitespace });
+            errors.push(FormattingError {
+                line: l,
+                kind: ErrorKind::TrailingWhitespace,
+            });
         }
 
         report.file_error_map.insert(f.to_owned(), errors);
@@ -395,7 +407,10 @@ pub fn format(args: Vec<String>, config: &Config) -> FileMap {
 
     {
         let config = Rc::new(config.clone());
-        let mut call_ctxt = RustFmtCalls { config: config, result: result.clone() };
+        let mut call_ctxt = RustFmtCalls {
+            config: config,
+            result: result.clone(),
+        };
         rustc_driver::run_compiler(&args, &mut call_ctxt);
     }
 

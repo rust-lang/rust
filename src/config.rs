@@ -218,8 +218,10 @@ create_config! {
     ideal_width: usize, "Ideal width of each line (only used for comments)",
     leeway: usize, "Leeway of line width (deprecated)",
     tab_spaces: usize, "Number of spaces per tab",
-    list_width: usize, "Maximum width in a struct literal or function \
-                        call before faling back to vertical formatting",
+    fn_call_width: usize, "Maximum width of the args of a function call\
+                           before faling back to vertical formatting",
+    struct_lit_width: usize, "Maximum width in the body of a struct lit\
+                              before faling back to vertical formatting",
     newline_style: NewlineStyle, "Unix or Windows line endings",
     fn_brace_style: BraceStyle, "Brace style for functions",
     fn_return_indent: ReturnIndent, "Location of return type in function declaration",
@@ -258,7 +260,8 @@ impl Default for Config {
             ideal_width: 80,
             leeway: 5,
             tab_spaces: 4,
-            list_width: 50,
+            fn_call_width: 50,
+            struct_lit_width: 12,
             newline_style: NewlineStyle::Unix,
             fn_brace_style: BraceStyle::SameLineWhere,
             fn_return_indent: ReturnIndent::WithArgs,

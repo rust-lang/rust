@@ -62,7 +62,7 @@ pub struct ListFormatting<'a> {
 impl<'a> ListFormatting<'a> {
     pub fn for_fn(width: usize, offset: Indent, config: &'a Config) -> ListFormatting<'a> {
         ListFormatting {
-            tactic: ListTactic::LimitedHorizontalVertical(config.list_width),
+            tactic: ListTactic::LimitedHorizontalVertical(config.fn_call_width),
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
             indent: offset,
@@ -107,7 +107,12 @@ impl ListItem {
     }
 
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
-        ListItem { pre_comment: None, item: s.into(), post_comment: None, new_lines: false }
+        ListItem {
+            pre_comment: None,
+            item: s.into(),
+            post_comment: None,
+            new_lines: false,
+        }
     }
 }
 

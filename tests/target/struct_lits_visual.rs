@@ -13,7 +13,7 @@ fn main() {
           b: bar(),
           ..something };
 
-    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(), b: bar() };
+    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: f(), b: b() };
 
     Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { // Commen
                                                                                         // t
@@ -34,7 +34,7 @@ fn main() {
                                                                                                    * n
                                                                                                    * t */ };
 
-    Foo { a: Bar, b: foo() };
+    Foo { a: Bar, b: f() };
 
     Quux { x: if cond {
                bar();
