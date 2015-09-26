@@ -1692,12 +1692,10 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                     }
                 }
                 Err(ref r) => {
-                    let subspan  =
-                        ast_ty.span.lo <= r.span.lo && r.span.hi <= ast_ty.span.hi;
                     span_err!(tcx.sess, r.span, E0250,
                               "array length constant evaluation error: {}",
                               r.description());
-                    if !subspan {
+                    if !ast_ty.span.contains(r.span) {
                         span_note!(tcx.sess, ast_ty.span, "for array length here")
                     }
                     this.tcx().types.err
