@@ -102,3 +102,6 @@ pub struct State<F: FnMut() -> time::Timespec> { now: F }
 pub struct State<F: FnMut() -> ()> { now: F }
 
 pub struct State<F: FnMut()> { now: F }
+
+struct Palette { /// A map of indizes in the palette to a count of pixels in approximately that color
+                    foo: i32}

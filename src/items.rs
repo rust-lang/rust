@@ -788,8 +788,8 @@ impl<'a> FmtVisitor<'a> {
             ends_with_newline: true,
             config: self.config,
         };
-        let list_str = write_list(&items.collect::<Vec<_>>(), &fmt).unwrap();
 
+        let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
         result.push_str(&list_str);
 
         if break_line {
@@ -819,11 +819,12 @@ impl<'a> FmtVisitor<'a> {
                                         struct_def,
                                         Some(generics),
                                         span,
-                                        indent)
-                         .unwrap();
+                                        indent);
 
-        self.buffer.push_str(&result);
-        self.last_pos = span.hi;
+        if let Some(rewrite) = result {
+            self.buffer.push_str(&rewrite);
+            self.last_pos = span.hi;
+        }
     }
 
     fn format_header(&self, item_name: &str, ident: ast::Ident, vis: ast::Visibility) -> String {
