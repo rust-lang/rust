@@ -184,6 +184,8 @@ You can define a `struct` with no members at all:
 
 ```rust
 struct Electron;
+
+let x = Electron;
 ```
 
 Such a `struct` is called ‘unit-like’ because it resembles the empty
