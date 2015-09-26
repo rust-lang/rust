@@ -2329,11 +2329,6 @@ impl<'tcx> ctxt<'tcx> {
         self.lookup_adt_def_master(did)
     }
 
-    /// Return the list of all interned ADT definitions
-    pub fn adt_defs(&self) -> Vec<AdtDef<'tcx>> {
-        self.adt_defs.borrow().values().cloned().collect()
-    }
-
     /// Given the did of an item, returns its full set of predicates.
     pub fn lookup_predicates(&self, did: DefId) -> GenericPredicates<'tcx> {
         lookup_locally_or_in_crate_store(
