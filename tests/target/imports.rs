@@ -38,3 +38,9 @@ fn test() {
 use foo::bar::baz;
 use bar::quux as kaas;
 use foo;
+
+// With aliases.
+use foo::{self as bar, baz};
+use foo as bar;
+use foo::qux as bar;
+use foo::{baz, qux as bar};

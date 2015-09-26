@@ -48,14 +48,16 @@ impl Rewrite for ast::ViewPath {
     }
 }
 
-fn rewrite_single_use_list(path_str: String, vpi: ast::PathListItem) -> String {
-    if let ast::PathListItem_::PathListIdent{ name, .. } = vpi.node {
+fn rewrite_single_use_list(path_str: String, vpi: &ast::PathListItem) -> String {
+    let path_item_str = if let ast::PathListItem_::PathListIdent{ name, .. } = vpi.node {
+        // A name.
         if path_str.is_empty() {
             name.to_string()
         } else {
             format!("{}::{}", path_str, name)
         }
     } else {
+        // `self`.
         if !path_str.is_empty() {
             path_str
         } else {
@@ -63,6 +65,31 @@ fn rewrite_single_use_list(path_str: String, vpi: ast::PathListItem) -> String {
             // leave it alone.
             "{self}".to_owned()
         }
+    };
+
+    append_alias(path_item_str, vpi)
+}
+
+fn rewrite_path_item(vpi: &&ast::PathListItem) -> String {
+    let path_item_str = match vpi.node {
+        ast::PathListItem_::PathListIdent{ name, .. } => {
+            name.to_string()
+        }
+        ast::PathListItem_::PathListMod{ .. } => {
+            "self".to_owned()
+        }
+    };
+
+    append_alias(path_item_str, vpi)
+}
+
+fn append_alias(path_item_str: String, vpi: &ast::PathListItem) -> String {
+    match vpi.node {
+        ast::PathListItem_::PathListIdent{ rename: Some(rename), .. } |
+        ast::PathListItem_::PathListMod{ rename: Some(rename), .. } => {
+            format!("{} as {}", path_item_str, rename)
+        }
+        _ => path_item_str,
     }
 }
 
@@ -80,7 +107,7 @@ pub fn rewrite_use_list(width: usize,
 
     match path_list.len() {
         0 => unreachable!(),
-        1 => return Some(rewrite_single_use_list(path_str, path_list[0])),
+        1 => return Some(rewrite_single_use_list(path_str, &path_list[0])),
         _ => (),
     }
 
@@ -117,16 +144,7 @@ pub fn rewrite_use_list(width: usize,
                                 "}",
                                 |vpi| vpi.span.lo,
                                 |vpi| vpi.span.hi,
-                                |vpi| {
-                                    match vpi.node {
-                                        ast::PathListItem_::PathListIdent{ name, .. } => {
-                                            name.to_string()
-                                        }
-                                        ast::PathListItem_::PathListMod{ .. } => {
-                                            "self".to_owned()
-                                        }
-                                    }
-                                },
+                                rewrite_path_item,
                                 span_after(span, "{", context.codemap),
                                 span.hi);
         items.extend(iter);
