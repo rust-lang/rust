@@ -1041,8 +1041,8 @@ impl ops::DerefMut for String {
 #[unstable(feature = "str_parse_error", reason = "may want to be replaced with \
                                                   Void if it ever exists",
            issue = "27734")]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct ParseError(());
+#[derive(Copy)]
+pub enum ParseError {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for String {
@@ -1052,6 +1052,26 @@ impl FromStr for String {
         Ok(String::from(s))
     }
 }
+
+impl Clone for ParseError {
+    fn clone(&self) -> ParseError {
+        match *self {}
+    }
+}
+
+impl fmt::Debug for ParseError {
+    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
+        match *self {}
+    }
+}
+
+impl PartialEq for ParseError {
+    fn eq(&self, _: &ParseError) -> bool {
+        match *self {}
+    }
+}
+
+impl Eq for ParseError {}
 
 /// A generic trait for converting a value to a string
 #[stable(feature = "rust1", since = "1.0.0")]
