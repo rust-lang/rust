@@ -15,7 +15,7 @@ use Indent;
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
 use string::{StringFormat, rewrite_string};
-use utils::{span_after, extra_offset, first_line_width, last_line_width, wrap_str, binary_search};
+use utils::{span_after, extra_offset, last_line_width, wrap_str, binary_search};
 use visitor::FmtVisitor;
 use config::{StructLitStyle, MultilineStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment};
@@ -352,9 +352,9 @@ fn rewrite_closure(capture: ast::CaptureClause,
     Some(format!("{} {}", prefix, try_opt!(body_rewrite)))
 }
 
-fn nop_block_collapse(block_str: Option<String>) -> Option<String> {
+fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String> {
     block_str.map(|block_str| {
-        if block_str.starts_with("{") &&
+        if block_str.starts_with("{") && budget >= 2 &&
            (block_str[1..].find(|c: char| !c.is_whitespace()).unwrap() == block_str.len() - 2) {
             "{}".to_owned()
         } else {
@@ -889,36 +889,64 @@ impl Rewrite for ast::Arm {
 
         // Let's try and get the arm body on the same line as the condition.
         // 4 = ` => `.len()
-        if context.config.max_width > line_start + comma.len() + 4 {
+        let same_line_body = if context.config.max_width > line_start + comma.len() + 4 {
             let budget = context.config.max_width - line_start - comma.len() - 4;
-            if let Some(ref body_str) = nop_block_collapse(body.rewrite(context,
-                                                                        budget,
-                                                                        line_indent + 4)) {
-                if first_line_width(body_str) <= budget {
+            let rewrite = nop_block_collapse(body.rewrite(context, budget, line_indent + 4),
+                                             budget);
+
+            match rewrite {
+                Some(ref body_str) if body_str.len() <= budget || comma.is_empty() =>
                     return Some(format!("{}{} => {}{}",
                                         attr_str.trim_left(),
                                         pats_str,
                                         body_str,
-                                        comma));
-                }
+                                        comma)),
+                _ => rewrite,
             }
-        }
+        } else {
+            None
+        };
 
         // We have to push the body to the next line.
-        if comma.is_empty() {
+        if let ast::ExprBlock(_) = body.node {
             // We're trying to fit a block in, but it still failed, give up.
             return None;
         }
 
         let body_budget = try_opt!(width.checked_sub(context.config.tab_spaces));
-        let body_str = try_opt!(nop_block_collapse(body.rewrite(context,
-                                                                body_budget,
-                                                                context.block_indent)));
-        Some(format!("{}{} =>\n{}{},",
-                     attr_str.trim_left(),
-                     pats_str,
-                     offset.block_indent(context.config).to_string(context.config),
-                     body_str))
+        let next_line_body = nop_block_collapse(body.rewrite(context,
+                                                             body_budget,
+                                                             context.block_indent
+                                                                    .block_indent(context.config)),
+                                                body_budget);
+
+        let (body_str, break_line) = try_opt!(match_arm_heuristic(same_line_body.as_ref()
+                                                                                .map(|x| &x[..]),
+                                                                  next_line_body.as_ref()
+                                                                                .map(|x| &x[..])));
+
+        let spacer = if break_line {
+            format!("\n{}", offset.block_indent(context.config).to_string(context.config))
+        } else {
+            " ".to_owned()
+        };
+
+        Some(format!("{}{} =>{}{},", attr_str.trim_left(), pats_str, spacer, body_str))
+    }
+}
+
+// Takes two possible rewrites for the match arm body and chooses the "nicest".
+// Bool marks break line or no.
+fn match_arm_heuristic<'a>(former: Option<&'a str>,
+                           latter: Option<&'a str>)
+                           -> Option<(&'a str, bool)> {
+    match (former, latter) {
+        (Some(f), None) => Some((f, false)),
+        (Some(f), Some(l)) if f.chars().filter(|&c| c == '\n').count() <=
+                              l.chars().filter(|&c| c == '\n').count() => {
+            Some((f, false))
+        }
+        (_, l) => l.map(|s| (s, true)),
     }
 }
 
