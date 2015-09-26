@@ -162,7 +162,10 @@ impl Rewrite for ast::Expr {
                                                                        offset))
             }
             ast::Expr_::ExprRet(None) => {
-                wrap_str("return".to_owned(), context.config.max_width, width, offset)
+                wrap_str("return".to_owned(),
+                         context.config.max_width,
+                         width,
+                         offset)
             }
             ast::Expr_::ExprRet(Some(ref expr)) => {
                 rewrite_unary_prefix(context, "return ", &expr, width, offset)
@@ -652,7 +655,10 @@ fn single_line_if_else(context: &RewriteContext,
         let fits_line = fixed_cost + pat_expr_str.len() + if_str.len() + else_str.len() <= width;
 
         if fits_line && !if_str.contains('\n') && !else_str.contains('\n') {
-            return Some(format!("if {} {{ {} }} else {{ {} }}", pat_expr_str, if_str, else_str));
+            return Some(format!("if {} {{ {} }} else {{ {} }}",
+                                pat_expr_str,
+                                if_str,
+                                else_str));
         }
     }
 

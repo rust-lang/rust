@@ -26,7 +26,7 @@ pub enum ListTactic {
     Horizontal,
     // Try Horizontal layout, if that fails then vertical
     HorizontalVertical,
-    // HorizontalVertical with a soft limit.
+    // HorizontalVertical with a soft limit of n characters.
     LimitedHorizontalVertical(usize),
     // Pack as many items as possible per row over (possibly) many rows.
     Mixed,
