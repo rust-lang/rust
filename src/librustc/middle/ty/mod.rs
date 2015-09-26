@@ -1695,7 +1695,6 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     }
 
     pub fn set_destructor(&self, dtor: DefId) {
-        assert!(self.destructor.get().is_none());
         self.destructor.set(Some(dtor));
     }
 
