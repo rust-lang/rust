@@ -33,6 +33,7 @@ impl<'a> SpanUtils<'a> {
     }
 
     // Standard string for extents/location.
+    #[rustfmt_skip]
     pub fn extent_str(&self, span: Span) -> String {
         let lo_loc = self.sess.codemap().lookup_char_pos(span.lo);
         let hi_loc = self.sess.codemap().lookup_char_pos(span.hi);
