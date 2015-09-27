@@ -693,11 +693,6 @@ fn rewrite_match_arm_comment(context: &RewriteContext,
         Some(n) => &missed_str[n+1..],
         None => &missed_str[..],
     };
-    // Nor the trailing "}" which closes the match
-    let missed_str = match missed_str.find_uncommented("}") {
-        Some(n) => &missed_str[..n-1],
-        None => &missed_str[..],
-    };
 
     let mut result = String::new();
     // any text not preceeded by a newline is pushed unmodified to the block
@@ -777,7 +772,10 @@ fn rewrite_match(context: &RewriteContext,
             result.push_str(&snippet);
         }
     }
-    let last_comment = context.snippet(mk_sp(arm_end_pos(&arms[arms.len() - 1]), span.hi));
+    // BytePos(1) = closing match brace.
+    let last_span = mk_sp(arm_end_pos(&arms[arms.len() - 1]),
+                          span.hi - BytePos(1));
+    let last_comment = context.snippet(last_span);
     let comment = try_opt!(rewrite_match_arm_comment(context,
                                                      &last_comment,
                                                      width,
