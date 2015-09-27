@@ -56,12 +56,15 @@ use serialize::{Encodable, Encoder, Decoder};
 pub struct Lifetime {
     pub id: NodeId,
     pub span: Span,
-    pub name: Name
+    pub name: Name,
 }
 
 impl fmt::Debug for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "lifetime({}: {})", self.id, pprust::lifetime_to_string(self))
+        write!(f,
+               "lifetime({}: {})",
+               self.id,
+               pprust::lifetime_to_string(self))
     }
 }
 
@@ -69,7 +72,7 @@ impl fmt::Debug for Lifetime {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct LifetimeDef {
     pub lifetime: Lifetime,
-    pub bounds: Vec<Lifetime>
+    pub bounds: Vec<Lifetime>,
 }
 
 /// A "Path" is essentially Rust's notion of a name; for instance:
@@ -161,7 +164,8 @@ impl PathParameters {
                 data.types.iter().collect()
             }
             ParenthesizedParameters(ref data) => {
-                data.inputs.iter()
+                data.inputs
+                    .iter()
                     .chain(data.output.iter())
                     .collect()
             }
@@ -229,7 +233,7 @@ pub struct ParenthesizedParameterData {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum TyParamBound {
     TraitTyParamBound(PolyTraitRef, TraitBoundModifier),
-    RegionTyParamBound(Lifetime)
+    RegionTyParamBound(Lifetime),
 }
 
 /// A modifier on a bound, currently this is only used for `?Sized`, where the
@@ -248,7 +252,7 @@ pub struct TyParam {
     pub id: NodeId,
     pub bounds: TyParamBounds,
     pub default: Option<P<Ty>>,
-    pub span: Span
+    pub span: Span,
 }
 
 /// Represents lifetimes and type parameters attached to a declaration
@@ -287,7 +291,7 @@ pub enum WherePredicate {
     /// A lifetime predicate, e.g. `'a: 'b+'c`
     RegionPredicate(WhereRegionPredicate),
     /// An equality predicate (unsupported)
-    EqPredicate(WhereEqPredicate)
+    EqPredicate(WhereEqPredicate),
 }
 
 /// A type bound, eg `for<'c> Foo: Send+Clone+'c`
@@ -496,7 +500,7 @@ pub enum UnOp {
     /// The `!` operator for logical inversion
     UnNot,
     /// The `-` operator for negation
-    UnNeg
+    UnNeg,
 }
 
 /// A statement
@@ -506,7 +510,8 @@ impl fmt::Debug for Stmt_ {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Sadness.
         let spanned = codemap::dummy_spanned(self.clone());
-        write!(f, "stmt({}: {})",
+        write!(f,
+               "stmt({}: {})",
                util::stmt_id(&spanned),
                pprust::stmt_to_string(&spanned))
     }
@@ -709,13 +714,15 @@ pub enum Expr_ {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct QSelf {
     pub ty: P<Ty>,
-    pub position: usize
+    pub position: usize,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum MatchSource {
     Normal,
-    IfLetDesugar { contains_else_clause: bool },
+    IfLetDesugar {
+        contains_else_clause: bool,
+    },
     WhileLetDesugar,
     ForLoopDesugar,
 }
@@ -815,7 +822,7 @@ pub enum PrimTy {
     TyFloat(FloatTy),
     TyStr,
     TyBool,
-    TyChar
+    TyChar,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -823,7 +830,7 @@ pub struct BareFnTy {
     pub unsafety: Unsafety,
     pub abi: Abi,
     pub lifetimes: Vec<LifetimeDef>,
-    pub decl: P<FnDecl>
+    pub decl: P<FnDecl>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -839,7 +846,7 @@ pub enum Ty_ {
     /// A bare function (e.g. `fn(usize) -> bool`)
     TyBareFn(P<BareFnTy>),
     /// A tuple (`(A, B, C, D,...)`)
-    TyTup(Vec<P<Ty>> ),
+    TyTup(Vec<P<Ty>>),
     /// A path (`module::module::...::Type`), optionally
     /// "qualified", e.g. `<Vec<T> as SomeTrait>::SomeType`.
     ///
@@ -881,7 +888,10 @@ pub struct Arg {
 
 impl Arg {
     pub fn new_self(span: Span, mutability: Mutability, self_ident: Ident) -> Arg {
-        let path = Spanned{span:span,node:self_ident};
+        let path = Spanned {
+            span: span,
+            node: self_ident,
+        };
         Arg {
             // HACK(eddyb) fake type for the self argument.
             ty: P(Ty {
@@ -892,9 +902,9 @@ impl Arg {
             pat: P(Pat {
                 id: DUMMY_NODE_ID,
                 node: PatIdent(BindByValue(mutability), path, None),
-                span: span
+                span: span,
             }),
-            id: DUMMY_NODE_ID
+            id: DUMMY_NODE_ID,
         }
     }
 }
@@ -904,7 +914,7 @@ impl Arg {
 pub struct FnDecl {
     pub inputs: Vec<Arg>,
     pub output: FunctionRetTy,
-    pub variadic: bool
+    pub variadic: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -922,9 +932,10 @@ pub enum Constness {
 impl fmt::Display for Unsafety {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(match *self {
-            Unsafety::Normal => "normal",
-            Unsafety::Unsafe => "unsafe",
-        }, f)
+                              Unsafety::Normal => "normal",
+                              Unsafety::Unsafe => "unsafe",
+                          },
+                          f)
     }
 }
 
@@ -966,7 +977,7 @@ impl FunctionRetTy {
         match *self {
             NoReturn(span) => span,
             DefaultReturn(span) => span,
-            Return(ref ty) => ty.span
+            Return(ref ty) => ty.span,
         }
     }
 }
@@ -1038,19 +1049,19 @@ pub enum PathListItem_ {
         name: Name,
         /// renamed in list, eg `use foo::{bar as baz};`
         rename: Option<Name>,
-        id: NodeId
+        id: NodeId,
     },
     PathListMod {
         /// renamed in list, eg `use foo::{self as baz};`
         rename: Option<Name>,
-        id: NodeId
-    }
+        id: NodeId,
+    },
 }
 
 impl PathListItem_ {
     pub fn id(&self) -> NodeId {
         match *self {
-            PathListIdent { id, .. } | PathListMod { id, .. } => id
+            PathListIdent { id, .. } | PathListMod { id, .. } => id,
         }
     }
 
@@ -1063,7 +1074,7 @@ impl PathListItem_ {
 
     pub fn rename(&self) -> Option<Name> {
         match *self {
-            PathListIdent { rename, .. } | PathListMod { rename, .. } => rename
+            PathListIdent { rename, .. } | PathListMod { rename, .. } => rename,
         }
     }
 }
@@ -1086,7 +1097,7 @@ pub enum ViewPath_ {
     ViewPathGlob(Path),
 
     /// `foo::bar::{a,b,c}`
-    ViewPathList(Path, Vec<PathListItem>)
+    ViewPathList(Path, Vec<PathListItem>),
 }
 
 /// TraitRef's appear in impls.
@@ -1122,7 +1133,7 @@ impl Visibility {
     pub fn inherit_from(&self, parent_visibility: Visibility) -> Visibility {
         match self {
             &Inherited => parent_visibility,
-            &Public => *self
+            &Public => *self,
         }
     }
 }
@@ -1139,7 +1150,7 @@ impl StructField_ {
     pub fn name(&self) -> Option<Name> {
         match self.kind {
             NamedField(name, _) => Some(name),
-            UnnamedField(_) => None
+            UnnamedField(_) => None,
         }
     }
 }
@@ -1214,10 +1225,7 @@ pub enum Item_ {
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
     ItemStruct(P<StructDef>, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(Unsafety,
-              Generics,
-              TyParamBounds,
-              Vec<P<TraitItem>>),
+    ItemTrait(Unsafety, Generics, TyParamBounds, Vec<P<TraitItem>>),
 
     // Default trait implementations
     ///
@@ -1247,7 +1255,7 @@ impl Item_ {
             ItemStruct(..) => "struct",
             ItemTrait(..) => "trait",
             ItemImpl(..) |
-            ItemDefaultImpl(..) => "item"
+            ItemDefaultImpl(..) => "item",
         }
     }
 }
@@ -1276,7 +1284,7 @@ impl ForeignItem_ {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
             ForeignItemFn(..) => "foreign function",
-            ForeignItemStatic(..) => "foreign static item"
+            ForeignItemStatic(..) => "foreign static item",
         }
     }
 }
