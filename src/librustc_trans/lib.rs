@@ -28,6 +28,8 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
+#![feature(custom_attribute)]
+#![allow(unused_attributes)]
 #![feature(iter_cmp)]
 #![feature(iter_arith)]
 #![feature(libc)]
