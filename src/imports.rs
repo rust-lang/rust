@@ -36,7 +36,8 @@ impl Rewrite for ast::ViewPath {
             ast::ViewPath_::ViewPathSimple(ident, ref path) => {
                 let ident_str = ident.to_string();
                 // 4 = " as ".len()
-                let path_str = try_opt!(path.rewrite(context, width - ident_str.len() - 4, offset));
+                let budget = try_opt!(width.checked_sub(ident_str.len() + 4));
+                let path_str = try_opt!(path.rewrite(context, budget, offset));
 
                 Some(if path.segments.last().unwrap().identifier == ident {
                     path_str
@@ -103,7 +104,8 @@ pub fn rewrite_use_list(width: usize,
                         context: &RewriteContext)
                         -> Option<String> {
     // 1 = {}
-    let path_str = try_opt!(path.rewrite(context, width - 1, offset));
+    let budget = try_opt!(width.checked_sub(1));
+    let path_str = try_opt!(path.rewrite(context, budget, offset));
 
     match path_list.len() {
         0 => unreachable!(),

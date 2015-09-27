@@ -15,7 +15,7 @@ use syntax::codemap::{self, Span, BytePos, CodeMap};
 use Indent;
 use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
-use utils::{extra_offset, span_after, format_mutability};
+use utils::{extra_offset, span_after, format_mutability, wrap_str};
 
 impl Rewrite for ast::Path {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
@@ -49,7 +49,7 @@ pub fn rewrite_path(context: &RewriteContext,
 
             let extra_offset = extra_offset(&result, offset);
             // 3 = ">::".len()
-            let budget = try_opt!(width.checked_sub(extra_offset)) - 3;
+            let budget = try_opt!(width.checked_sub(extra_offset + 3));
 
             result = try_opt!(rewrite_path_segments(result,
                                                     path.segments.iter().take(skip_count),
@@ -242,25 +242,28 @@ fn rewrite_segment(segment: &ast::PathSegment,
         }
         ast::PathParameters::ParenthesizedParameters(ref data) => {
             let output = match data.output {
-                Some(ref ty) => format!(" -> {}", pprust::ty_to_string(&*ty)),
+                Some(ref ty) => {
+                    let type_str = try_opt!(ty.rewrite(context, width, offset));
+                    format!(" -> {}", type_str)
+                }
                 None => String::new(),
             };
 
+            // 2 for ()
+            let budget = try_opt!(width.checked_sub(output.len() + 2));
+            // 1 for (
+            let offset = offset + 1;
             let list_lo = span_after(data.span, "(", context.codemap);
             let items = itemize_list(context.codemap,
                                      data.inputs.iter(),
                                      ")",
                                      |ty| ty.span.lo,
                                      |ty| ty.span.hi,
-                                     |ty| pprust::ty_to_string(ty),
+                                     |ty| ty.rewrite(context, budget, offset).unwrap(),
                                      list_lo,
                                      span_hi);
 
-            // 2 for ()
-            let budget = try_opt!(width.checked_sub(output.len() + 2));
-
-            // 1 for (
-            let fmt = ListFormatting::for_fn(budget, offset + 1, context.config);
+            let fmt = ListFormatting::for_fn(budget, offset, context.config);
             let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
             format!("({}){}", list_str, output)
@@ -280,6 +283,8 @@ impl Rewrite for ast::WherePredicate {
                                                                            ref bounded_ty,
                                                                            ref bounds,
                                                                            .. }) => {
+                let type_str = try_opt!(bounded_ty.rewrite(context, width, offset));
+
                 if !bound_lifetimes.is_empty() {
                     let lifetime_str = bound_lifetimes.iter()
                                                       .map(|lt| {
@@ -288,13 +293,13 @@ impl Rewrite for ast::WherePredicate {
                                                       })
                                                       .collect::<Vec<_>>()
                                                       .join(", ");
-                    let type_str = pprust::ty_to_string(bounded_ty);
                     // 8 = "for<> : ".len()
                     let used_width = lifetime_str.len() + type_str.len() + 8;
+                    let budget = try_opt!(width.checked_sub(used_width));
                     let bounds_str = bounds.iter()
                                            .map(|ty_bound| {
                                                ty_bound.rewrite(context,
-                                                                width - used_width,
+                                                                budget,
                                                                 offset + used_width)
                                                        .unwrap()
                                            })
@@ -303,13 +308,13 @@ impl Rewrite for ast::WherePredicate {
 
                     format!("for<{}> {}: {}", lifetime_str, type_str, bounds_str)
                 } else {
-                    let type_str = pprust::ty_to_string(bounded_ty);
                     // 2 = ": ".len()
                     let used_width = type_str.len() + 2;
+                    let budget = try_opt!(width.checked_sub(used_width));
                     let bounds_str = bounds.iter()
                                            .map(|ty_bound| {
                                                ty_bound.rewrite(context,
-                                                                width - used_width,
+                                                                budget,
                                                                 offset + used_width)
                                                        .unwrap()
                                            })
@@ -330,12 +335,11 @@ impl Rewrite for ast::WherePredicate {
                               .join(" + "))
             }
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { ref path, ref ty, .. }) => {
-                let ty_str = pprust::ty_to_string(ty);
+                let ty_str = try_opt!(ty.rewrite(context, width, offset));
                 // 3 = " = ".len()
                 let used_width = 3 + ty_str.len();
-                let path_str = try_opt!(path.rewrite(context,
-                                                     width - used_width,
-                                                     offset + used_width));
+                let budget = try_opt!(width.checked_sub(used_width));
+                let path_str = try_opt!(path.rewrite(context, budget, offset + used_width));
                 format!("{} = {}", path_str, ty_str)
             }
         })
@@ -365,8 +369,9 @@ impl Rewrite for ast::TyParamBound {
                 tref.rewrite(context, width, offset)
             }
             ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::Maybe) => {
+                let budget = try_opt!(width.checked_sub(1));
                 Some(format!("?{}",
-                             try_opt!(tref.rewrite(context, width - 1, offset + 1))))
+                             try_opt!(tref.rewrite(context, budget, offset + 1))))
             }
             ast::TyParamBound::RegionTyParamBound(ref l) => {
                 Some(pprust::lifetime_to_string(l))
@@ -402,7 +407,9 @@ impl Rewrite for ast::TyParam {
         }
         if let Some(ref def) = self.default {
             result.push_str(" = ");
-            result.push_str(&pprust::ty_to_string(&def));
+            let budget = try_opt!(width.checked_sub(result.len()));
+            let rewrite = try_opt!(def.rewrite(context, budget, offset + result.len()));
+            result.push_str(&rewrite);
         }
 
         Some(result)
@@ -451,30 +458,34 @@ impl Rewrite for ast::Ty {
             ast::TyRptr(ref lifetime, ref mt) => {
                 let mut_str = format_mutability(mt.mutbl);
                 let mut_len = mut_str.len();
-                Some(match lifetime {
-                    &Some(ref lifetime) => {
+                Some(match *lifetime {
+                    Some(ref lifetime) => {
                         let lt_str = pprust::lifetime_to_string(lifetime);
                         let lt_len = lt_str.len();
+                        let budget = try_opt!(width.checked_sub(2 + mut_len + lt_len));
                         format!("&{} {}{}",
                                 lt_str,
                                 mut_str,
                                 try_opt!(mt.ty.rewrite(context,
-                                                       width - (2 + mut_len + lt_len),
+                                                       budget,
                                                        offset + 2 + mut_len + lt_len)))
                     }
-                    &None => {
+                    None => {
+                        let budget = try_opt!(width.checked_sub(1 + mut_len));
                         format!("&{}{}",
                                 mut_str,
-                                try_opt!(mt.ty.rewrite(context,
-                                                       width - (1 + mut_len),
-                                                       offset + 1 + mut_len)))
+                                try_opt!(mt.ty.rewrite(context, budget, offset + 1 + mut_len)))
                     }
                 })
             }
             ast::TyParen(ref ty) => {
-                ty.rewrite(context, width - 2, offset + 1).map(|ty_str| format!("({})", ty_str))
+                let budget = try_opt!(width.checked_sub(2));
+                ty.rewrite(context, budget, offset + 1).map(|ty_str| format!("({})", ty_str))
             }
-            _ => Some(pprust::ty_to_string(self)),
+            _ => wrap_str(pprust::ty_to_string(self),
+                          context.config.max_width,
+                          width,
+                          offset),
         }
     }
 }
