@@ -445,8 +445,9 @@ impl fmt::Display for clean::Type {
             clean::Infer => write!(f, "_"),
             clean::Primitive(prim) => primitive_link(f, prim, prim.to_string()),
             clean::BareFunction(ref decl) => {
-                write!(f, "{}{}fn{}{}",
+                write!(f, "{}{}{}fn{}{}",
                        UnsafetySpace(decl.unsafety),
+                       ConstnessSpace(decl.constness),
                        match &*decl.abi {
                            "" => " extern ".to_string(),
                            "\"Rust\"" => "".to_string(),
