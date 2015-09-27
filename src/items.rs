@@ -611,10 +611,7 @@ impl<'a> FmtVisitor<'a> {
 
         let result = match field.node.kind {
             ast::VariantKind::TupleVariantKind(ref types) => {
-                let name = field.node.name.to_string();
-                self.buffer.push_str(&name);
-
-                let mut result = String::new();
+                let mut result = field.node.name.to_string();
 
                 if !types.is_empty() {
                     let items = itemize_list(self.codemap,
@@ -667,11 +664,6 @@ impl<'a> FmtVisitor<'a> {
                     result.push_str(" = ");
                     let expr_snippet = self.snippet(expr.span);
                     result.push_str(&expr_snippet);
-
-                    // Make sure we do not exceed column limit
-                    assert!(self.config.max_width >=
-                            name.len() + expr_snippet.len() + " = ,".len(),
-                            "Enum variant exceeded column limit");
                 }
 
                 result
