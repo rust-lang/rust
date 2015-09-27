@@ -221,3 +221,7 @@ fn issue280() {
         }
     }
 }
+
+fn issue383() {
+    match resolution.last_private {LastImport{..} => false, _ => true};
+}
