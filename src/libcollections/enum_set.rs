@@ -49,16 +49,7 @@ impl<E> Clone for EnumSet<E> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<E:CLike + fmt::Debug> fmt::Debug for EnumSet<E> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt, "{{"));
-        let mut first = true;
-        for e in self {
-            if !first {
-                try!(write!(fmt, ", "));
-            }
-            try!(write!(fmt, "{:?}", e));
-            first = false;
-        }
-        write!(fmt, "}}")
+        fmt.debug_set().entries(self).finish()
     }
 }
 
