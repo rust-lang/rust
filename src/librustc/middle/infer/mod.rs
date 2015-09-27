@@ -43,7 +43,7 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::{Span, DUMMY_SP};
-use util::nodemap::{FnvHashMap, NodeMap};
+use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 
 use self::combine::CombineFields;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
@@ -91,6 +91,10 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
     pub parameter_environment: ty::ParameterEnvironment<'a, 'tcx>,
 
     pub fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
+
+    // the set of predicates on which errors have been reported, to
+    // avoid reporting the same error twice.
+    pub reported_trait_errors: RefCell<FnvHashSet<traits::TraitErrorKey<'tcx>>>,
 
     // This is a temporary field used for toggling on normalization in the inference context,
     // as we move towards the approach described here:
@@ -374,6 +378,7 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
         region_vars: RegionVarBindings::new(tcx),
         parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
         fulfillment_cx: RefCell::new(traits::FulfillmentContext::new(errors_will_be_reported)),
+        reported_trait_errors: RefCell::new(FnvHashSet()),
         normalize: false,
         err_count_on_creation: tcx.sess.err_count()
     }

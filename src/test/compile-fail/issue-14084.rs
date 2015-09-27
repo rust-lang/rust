@@ -14,5 +14,4 @@
 fn main() {
     in () { 0 };
     //~^ ERROR: the trait `core::ops::Placer<_>` is not implemented
-    //~| ERROR: the trait `core::ops::Placer<_>` is not implemented
 }

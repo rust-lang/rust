@@ -1210,15 +1210,14 @@ impl LintPass for DropWithReprExtern {
 
 impl LateLintPass for DropWithReprExtern {
     fn check_crate(&mut self, ctx: &LateContext, _: &hir::Crate) {
-        for dtor_did in ctx.tcx.destructors.borrow().iter() {
-            let (drop_impl_did, dtor_self_type) =
-                if dtor_did.is_local() {
-                    let impl_did = ctx.tcx.map.get_parent_did(dtor_did.node);
-                    let ty = ctx.tcx.lookup_item_type(impl_did).ty;
-                    (impl_did, ty)
-                } else {
-                    continue;
-                };
+        let drop_trait = match ctx.tcx.lang_items.drop_trait() {
+            Some(id) => ctx.tcx.lookup_trait_def(id), None => { return }
+        };
+        drop_trait.for_each_impl(ctx.tcx, |drop_impl_did| {
+            if !drop_impl_did.is_local() {
+                return;
+            }
+            let dtor_self_type = ctx.tcx.lookup_item_type(drop_impl_did).ty;
 
             match dtor_self_type.sty {
                 ty::TyEnum(self_type_def, _) |
@@ -1244,6 +1243,6 @@ impl LateLintPass for DropWithReprExtern {
                 }
                 _ => {}
             }
-        }
+        })
     }
 }
