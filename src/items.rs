@@ -528,7 +528,7 @@ impl<'a> FmtVisitor<'a> {
 
             // 2 = `()`
             let used_space = indent.width() + result.len() + 2;
-            let max_space = self.config.ideal_width + self.config.leeway;
+            let max_space = self.config.max_width;
             debug!("compute_budgets_for_args: used_space: {}, max_space: {}",
                    used_space,
                    max_space);
@@ -542,7 +542,7 @@ impl<'a> FmtVisitor<'a> {
         // Didn't work. we must force vertical layout and put args on a newline.
         let new_indent = indent.block_indent(self.config);
         let used_space = new_indent.width() + 2; // account for `(` and `)`
-        let max_space = self.config.ideal_width + self.config.leeway;
+        let max_space = self.config.max_width;
         if used_space <= max_space {
             (0, max_space - used_space, new_indent)
         } else {
@@ -637,7 +637,7 @@ impl<'a> FmtVisitor<'a> {
                     } else {
                         0
                     };
-                    let budget = self.config.ideal_width - indent.width() - comma_cost - 1; // 1 = )
+                    let budget = self.config.max_width - indent.width() - comma_cost - 1; // 1 = )
 
                     let fmt = ListFormatting {
                         tactic: ListTactic::HorizontalVertical,
@@ -774,7 +774,7 @@ impl<'a> FmtVisitor<'a> {
         };
 
         // 1 = ,
-        let budget = self.config.ideal_width - offset.width() + self.config.tab_spaces - 1;
+        let budget = self.config.max_width - offset.width() + self.config.tab_spaces - 1;
         let fmt = ListFormatting {
             tactic: tactic,
             separator: ",",
@@ -979,7 +979,7 @@ impl<'a> FmtVisitor<'a> {
         // FIXME: if where_pred_indent != Visual, then the budgets below might
         // be out by a char or two.
 
-        let budget = self.config.ideal_width + self.config.leeway - offset.width();
+        let budget = self.config.max_width - offset.width();
         let span_start = span_for_where_pred(&where_clause.predicates[0]).lo;
         let items = itemize_list(self.codemap,
                                  where_clause.predicates.iter(),

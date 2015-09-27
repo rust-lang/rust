@@ -216,7 +216,6 @@ macro_rules! create_config {
 create_config! {
     max_width: usize, "Maximum width of each line",
     ideal_width: usize, "Ideal width of each line (only used for comments)",
-    leeway: usize, "Leeway of line width (deprecated)",
     tab_spaces: usize, "Number of spaces per tab",
     fn_call_width: usize, "Maximum width of the args of a function call\
                            before faling back to vertical formatting",
@@ -258,7 +257,6 @@ impl Default for Config {
         Config {
             max_width: 100,
             ideal_width: 80,
-            leeway: 5,
             tab_spaces: 4,
             fn_call_width: 50,
             struct_lit_width: 12,
