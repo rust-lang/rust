@@ -36,7 +36,6 @@
 #![feature(staged_api)]
 #![feature(str_char)]
 #![feature(filling_drop)]
-#![cfg_attr(test, feature(test))]
 
 extern crate serialize;
 #[macro_use] extern crate log;
