@@ -179,6 +179,7 @@ pub enum ExprKind<H:Hair> {
     Cast { source: ExprRef<H> },
     ReifyFnPointer { source: ExprRef<H> },
     UnsafeFnPointer { source: ExprRef<H> },
+    ConstFnPointer { source: ExprRef<H> },
     Unsize { source: ExprRef<H> },
     If { condition: ExprRef<H>, then: ExprRef<H>, otherwise: Option<ExprRef<H>> },
     Loop { condition: Option<ExprRef<H>>, body: ExprRef<H>, },

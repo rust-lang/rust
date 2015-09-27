@@ -234,6 +234,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
         sig: ty::Binder(fn_sig),
         unsafety: method_ty.fty.unsafety,
+        constness: method_ty.fty.constness,
         abi: method_ty.fty.abi.clone(),
     }));
 

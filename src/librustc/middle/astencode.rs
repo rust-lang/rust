@@ -793,6 +793,10 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                             |this| Ok(this.emit_auto_deref_ref(ecx, auto_deref_ref)))
                     })
                 }
+
+                adjustment::AdjustConstFnPointer => {
+                    this.emit_enum_variant("AdjustConstFnPointer", 4, 0, |_| Ok(()))
+                }
             }
         });
     }

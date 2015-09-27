@@ -1225,6 +1225,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // provide an impl, but only for suitable `fn` pointers
             ty::TyBareFn(_, &ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
+                constness: hir::Constness::NotConst,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: _,

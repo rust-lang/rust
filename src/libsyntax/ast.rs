@@ -1372,6 +1372,7 @@ pub enum PrimTy {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct BareFnTy {
     pub unsafety: Unsafety,
+    pub constness: Constness,
     pub abi: Abi,
     pub lifetimes: Vec<LifetimeDef>,
     pub decl: P<FnDecl>

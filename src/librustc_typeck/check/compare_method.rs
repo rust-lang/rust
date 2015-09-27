@@ -298,6 +298,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                  &impl_sig);
         let impl_fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: impl_m.fty.unsafety,
+            constness: impl_m.fty.constness,
             abi: impl_m.fty.abi,
             sig: ty::Binder(impl_sig)
         }));
@@ -316,6 +317,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                  &trait_sig);
         let trait_fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: trait_m.fty.unsafety,
+            constness: trait_m.fty.constness,
             abi: trait_m.fty.abi,
             sig: ty::Binder(trait_sig)
         }));

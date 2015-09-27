@@ -777,6 +777,7 @@ fn opaque_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>, method_ty: &ty::BareFnTy<'tcx>)
 
     tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: method_ty.unsafety,
+        constness: method_ty.constness,
         abi: method_ty.abi,
         sig: ty::Binder(ty::FnSig {
             inputs: inputs,

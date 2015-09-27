@@ -253,7 +253,8 @@ pub fn super_fold_bare_fn_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
 {
     ty::BareFnTy { sig: fty.sig.fold_with(this),
                    abi: fty.abi,
-                   unsafety: fty.unsafety }
+                   unsafety: fty.unsafety,
+                   constness: fty.constness }
 }
 
 pub fn super_fold_closure_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,

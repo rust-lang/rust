@@ -1034,7 +1034,8 @@ impl<'a> Parser<'a> {
     pub fn token_is_bare_fn_keyword(&mut self) -> bool {
         self.check_keyword(keywords::Fn) ||
             self.check_keyword(keywords::Unsafe) ||
-            self.check_keyword(keywords::Extern)
+            self.check_keyword(keywords::Extern) ||
+            self.check_keyword(keywords::Const)
     }
 
     pub fn get_lifetime(&mut self) -> ast::Ident {
@@ -1094,6 +1095,8 @@ impl<'a> Parser<'a> {
     /// parse a TyBareFn type:
     pub fn parse_ty_bare_fn(&mut self, lifetime_defs: Vec<ast::LifetimeDef>) -> PResult<Ty_> {
         /*
+        NOTE: Currently, `const fn` is mutually exclusive from unsafe/extern, so pointer types
+        can have two definitions.
 
         [unsafe] [extern "ABI"] fn <'lt> (S) -> T
          ^~~~^           ^~~~^     ^~~~^ ^~^    ^
@@ -1103,16 +1106,21 @@ impl<'a> Parser<'a> {
            |               |     Lifetimes
            |              ABI
         Function Style
+
+        OR
+
+        const fn <'lt> (S) -> T
+        ^~~~^    ^~~~^ ^~^    ^
+          |        |    |     |
+          |        |    |  Return type
+          |        |  Argument types
+          |    Lifetimes
+        Constness
+
         */
 
-        let unsafety = try!(self.parse_unsafety());
-        let abi = if try!(self.eat_keyword(keywords::Extern) ){
-            try!(self.parse_opt_abi()).unwrap_or(abi::C)
-        } else {
-            abi::Rust
-        };
-
-        try!(self.expect_keyword(keywords::Fn));
+        // Reuse fn item parsing to ensure only valid types are allowed as pointers.
+        let (constness, unsafety, abi) = try!(self.parse_fn_front_matter());
         let (inputs, variadic) = try!(self.parse_fn_args(false, true));
         let ret_ty = try!(self.parse_ret_ty());
         let decl = P(FnDecl {
@@ -1123,6 +1131,7 @@ impl<'a> Parser<'a> {
         Ok(TyBareFn(P(BareFnTy {
             abi: abi,
             unsafety: unsafety,
+            constness: constness,
             lifetimes: lifetime_defs,
             decl: decl
         })))

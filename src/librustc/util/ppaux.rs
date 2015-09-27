@@ -401,6 +401,9 @@ impl<'tcx> fmt::Debug for ty::adjustment::AutoAdjustment<'tcx> {
             ty::adjustment::AdjustDerefRef(ref data) => {
                 write!(f, "{:?}", data)
             }
+            ty::adjustment::AdjustConstFnPointer => {
+                write!(f, "AdjustConstFnPointer")
+            }
         }
     }
 }
@@ -856,6 +859,10 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyBareFn(opt_def_id, ref bare_fn) => {
                 if bare_fn.unsafety == hir::Unsafety::Unsafe {
                     try!(write!(f, "unsafe "));
+                }
+
+                if bare_fn.constness == hir::Constness::Const {
+                    try!(write!(f, "const "));
                 }
 
                 if bare_fn.abi != abi::Rust {

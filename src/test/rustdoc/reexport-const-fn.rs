@@ -8,22 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we can't declare a const fn in an impl -- right now it's
-// just not allowed at all, though eventually it'd make sense to allow
-// it if the trait fn is const (but right now no trait fns can be
-// const).
+// aux-build:rustdoc-const-fn.rs
 
 #![feature(const_fn)]
 
-trait Foo {
-    fn f() -> u32;
-}
+extern crate rustdoc_const_fn as ext;
 
-impl Foo for u32 {
-    const fn f() -> u32 { 22 } //~ ERROR E0379
-    //~^ ERROR method `f` has an incompatible type for trait
-    //~| expected normal fn
-    //~| found const fn
-}
+// @has reexport_const_fn/fn.foo.html //pre 'pub const fn foo'
+pub use ext::foo;
 
-fn main() { }
+// @has reexport_const_fn/struct.Bar.html //code 'const fn baz'
+pub use ext::Bar;

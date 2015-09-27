@@ -67,7 +67,7 @@ use middle::traits::{self, ObligationCause};
 use middle::traits::{predicate_for_trait_def, report_selection_error};
 use middle::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
 use middle::ty::adjustment::{AutoPtr, AutoUnsafe, AdjustReifyFnPointer};
-use middle::ty::adjustment::{AdjustUnsafeFnPointer};
+use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustConstFnPointer};
 use middle::ty::{self, LvaluePreference, TypeAndMut, Ty};
 use middle::ty::error::TypeError;
 use middle::ty::relate::RelateResult;
@@ -367,6 +367,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         let unsafe_a = self.tcx().safe_to_unsafe_fn_ty(fn_ty_a);
                         try!(self.subtype(unsafe_a, b));
                         return Ok(Some(AdjustUnsafeFnPointer));
+                    }
+                    _ => {}
+                }
+                match (fn_ty_a.constness, fn_ty_b.constness) {
+                    (hir::Constness::Const, hir::Constness::NotConst) => {
+                        let const_a = self.tcx().const_to_non_const_fn_ty(fn_ty_a);
+                        try!(self.subtype(const_a, b));
+                        return Ok(Some(AdjustConstFnPointer));
                     }
                     _ => {}
                 }

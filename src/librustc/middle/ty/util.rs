@@ -518,6 +518,7 @@ impl<'tcx> ty::ctxt<'tcx> {
                         byte!(14);
                         hash!(opt_def_id);
                         hash!(b.unsafety);
+                        hash!(b.constness);
                         hash!(b.abi);
                         fn_sig(state, &b.sig);
                         return false;

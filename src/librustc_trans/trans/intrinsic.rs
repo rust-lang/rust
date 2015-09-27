@@ -1422,6 +1422,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
     let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
+        constness: hir::Constness::NotConst,
         abi: abi::Rust,
         sig: ty::Binder(ty::FnSig {
             inputs: vec![i8p],
@@ -1433,6 +1434,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let output = ty::FnOutput::FnConverging(i8p);
     let try_fn_ty  = tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
+        constness: hir::Constness::NotConst,
         abi: abi::Rust,
         sig: ty::Binder(ty::FnSig {
             inputs: vec![fn_ty, i8p],

@@ -25,6 +25,7 @@ pub enum AutoAdjustment<'tcx> {
     AdjustReifyFnPointer,   // go from a fn-item type to a fn-pointer type
     AdjustUnsafeFnPointer,  // go from a safe fn pointer to an unsafe fn pointer
     AdjustDerefRef(AutoDerefRef<'tcx>),
+    AdjustConstFnPointer,   // go from a const fn pointer to a non-const fn pointer
 }
 
 /// Represents coercing a pointer to a different kind of pointer - where 'kind'
@@ -109,6 +110,7 @@ impl<'tcx> AutoAdjustment<'tcx> {
             AdjustReifyFnPointer |
             AdjustUnsafeFnPointer => false,
             AdjustDerefRef(ref r) => r.is_identity(),
+            AdjustConstFnPointer => false,
         }
     }
 }
@@ -165,17 +167,17 @@ impl<'tcx> ty::TyS<'tcx> {
                         }
                     }
 
-                   AdjustUnsafeFnPointer => {
+                    AdjustUnsafeFnPointer => {
                         match self.sty {
                             ty::TyBareFn(None, b) => cx.safe_to_unsafe_fn_ty(b),
                             ref b => {
                                 cx.sess.bug(
-                                    &format!("AdjustReifyFnPointer adjustment on non-fn-item: \
+                                    &format!("AdjustUnsafeFnPointer adjustment on non-fn-item: \
                                              {:?}",
                                             b));
                             }
                         }
-                   }
+                    }
 
                     AdjustDerefRef(ref adj) => {
                         let mut adjusted_ty = self;
@@ -195,6 +197,18 @@ impl<'tcx> ty::TyS<'tcx> {
                             target
                         } else {
                             adjusted_ty.adjust_for_autoref(cx, adj.autoref)
+                        }
+                    }
+
+                    AdjustConstFnPointer => {
+                        match self.sty {
+                            ty::TyBareFn(None, b) => cx.const_to_non_const_fn_ty(b),
+                            ref b => {
+                                cx.sess.bug(
+                                    &format!("AdjustConstFnPointer adjustment on non-fn-item: \
+                                              {:?}",
+                                              b));
+                            }
                         }
                     }
                 }

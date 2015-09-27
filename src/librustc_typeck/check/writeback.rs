@@ -318,6 +318,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                             unsize: self.resolve(&adj.unsize, reason),
                         })
                     }
+
+                    adjustment::AdjustConstFnPointer => {
+                        adjustment::AdjustConstFnPointer
+                    }
                 };
                 debug!("Adjustments for node {}: {:?}", id, resolved_adjustment);
                 self.tcx().tables.borrow_mut().adjustments.insert(

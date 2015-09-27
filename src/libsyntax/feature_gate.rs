@@ -986,6 +986,18 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         }
         visit::walk_impl_item(self, ii);
     }
+
+    fn visit_ty(&mut self, t: &'v ast::Ty) {
+        match t.node {
+            ast::TyBareFn(ref f) => {
+                if f.constness == ast::Constness::Const {
+                    self.gate_feature("const_fn", t.span, "const fn is unstable");
+                }
+            }
+            _ => {}
+        }
+        visit::walk_ty(self, t);
+    }
 }
 
 fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,

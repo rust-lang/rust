@@ -93,6 +93,7 @@ pub fn lower_ty(t: &Ty) -> P<hir::Ty> {
                 hir::TyBareFn(P(hir::BareFnTy {
                     lifetimes: lower_lifetime_defs(&f.lifetimes),
                     unsafety: lower_unsafety(f.unsafety),
+                    constness: lower_constness(f.constness),
                     abi: f.abi,
                     decl: lower_fn_decl(&f.decl)
                 }))

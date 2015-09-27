@@ -160,7 +160,7 @@ impl<'tcx> TypeMap<'tcx> {
         // trait (T)              -> {trait_:svh: / :node-id:_<(:param-uid:),*> }
         // closure                -> {<unsafe_> <once_> :store-sigil: |(:param-uid:),* <,_...>| -> \
         //                             :return-type-uid: : (:bounds:)*}
-        // function               -> {<unsafe_> <abi_> fn( (:param-uid:)* <,_...> ) -> \
+        // function               -> {<unsafe_> <const_> <abi_> fn( (:param-uid:)* <,_...> ) -> \
         //                             :return-type-uid:}
 
         match self.type_to_unique_id.get(&type_).cloned() {
@@ -252,9 +252,13 @@ impl<'tcx> TypeMap<'tcx> {
                                        principal.substs,
                                        &mut unique_type_id);
             },
-            ty::TyBareFn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
+            ty::TyBareFn(_, &ty::BareFnTy{ unsafety, constness, abi, ref sig } ) => {
                 if unsafety == hir::Unsafety::Unsafe {
                     unique_type_id.push_str("unsafe ");
+                }
+
+                if constness == hir::Constness::Const {
+                    unique_type_id.push_str("const ");
                 }
 
                 unique_type_id.push_str(abi.name());

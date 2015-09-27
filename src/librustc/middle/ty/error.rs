@@ -31,6 +31,7 @@ pub struct ExpectedFound<T> {
 pub enum TypeError<'tcx> {
     Mismatch,
     UnsafetyMismatch(ExpectedFound<hir::Unsafety>),
+    ConstnessMismatch(ExpectedFound<hir::Constness>),
     AbiMismatch(ExpectedFound<abi::Abi>),
     Mutability,
     BoxMutability,
@@ -89,6 +90,11 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             CyclicTy => write!(f, "cyclic type of infinite size"),
             Mismatch => write!(f, "types differ"),
             UnsafetyMismatch(values) => {
+                write!(f, "expected {} fn, found {} fn",
+                       values.expected,
+                       values.found)
+            }
+            ConstnessMismatch(values) => {
                 write!(f, "expected {} fn, found {} fn",
                        values.expected,
                        values.found)

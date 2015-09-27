@@ -72,7 +72,7 @@ use trans::meth;
 use trans::tvec;
 use trans::type_of;
 use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
-use middle::ty::adjustment::{AdjustUnsafeFnPointer, CustomCoerceUnsized};
+use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustConstFnPointer, CustomCoerceUnsized};
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use middle::ty::cast::{CastKind, CastTy};
@@ -352,7 +352,7 @@ fn adjustment_required<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // zero-sized, we'll need to return true here
             false
         }
-        AdjustUnsafeFnPointer => {
+        AdjustUnsafeFnPointer | AdjustConstFnPointer => {
             // purely a type-level thing
             false
         }
@@ -389,7 +389,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
         }
-        AdjustUnsafeFnPointer => {
+        AdjustUnsafeFnPointer | AdjustConstFnPointer => {
             // purely a type-level thing
         }
         AdjustDerefRef(ref adj) => {
