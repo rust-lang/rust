@@ -918,16 +918,13 @@ impl Rewrite for ast::Arm {
                                                                     .block_indent(context.config)),
                                                 body_budget);
 
-        let (body_str, break_line) = try_opt!(match_arm_heuristic(same_line_body.as_ref()
-                                                                                .map(|x| &x[..]),
-                                                                  next_line_body.as_ref()
-                                                                                .map(|x| &x[..])));
+        let body_str = try_opt!(match_arm_heuristic(same_line_body.as_ref().map(|x| &x[..]),
+                                                    next_line_body.as_ref().map(|x| &x[..])));
 
-        let spacer = if break_line {
-            format!("\n{}",
-                    offset.block_indent(context.config).to_string(context.config))
-        } else {
-            " ".to_owned()
+        let spacer = match same_line_body {
+            Some(ref body) if body == body_str => " ".to_owned(),
+            _ => format!("\n{}",
+                         offset.block_indent(context.config).to_string(context.config)),
         };
 
         Some(format!("{}{} =>{}{},",
@@ -939,17 +936,14 @@ impl Rewrite for ast::Arm {
 }
 
 // Takes two possible rewrites for the match arm body and chooses the "nicest".
-// Bool marks break line or no.
-fn match_arm_heuristic<'a>(former: Option<&'a str>,
-                           latter: Option<&'a str>)
-                           -> Option<(&'a str, bool)> {
+fn match_arm_heuristic<'a>(former: Option<&'a str>, latter: Option<&'a str>) -> Option<&'a str> {
     match (former, latter) {
-        (Some(f), None) => Some((f, false)),
+        (f @ Some(..), None) => f,
         (Some(f), Some(l)) if f.chars().filter(|&c| c == '\n').count() <=
                               l.chars().filter(|&c| c == '\n').count() => {
-            Some((f, false))
+            Some(f)
         }
-        (_, l) => l.map(|s| (s, true)),
+        (_, l) => l,
     }
 }
 

@@ -199,3 +199,14 @@ fn issue355() {
                                                                                 dddddddddd),
     }
 }
+
+fn issue280() {
+    {
+        match x {
+            CompressionMode::DiscardNewline | CompressionMode::CompressWhitespaceNewline =>
+                ch == '\n',
+            ast::ItemConst(ref typ, ref expr) =>
+                self.process_static_or_const_item(item, &typ, &expr),
+        }
+    }
+}
