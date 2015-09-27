@@ -43,7 +43,7 @@ impl LateLintPass for MatchPass {
                                    &format!("try\nif let {} = {} {}",
                                             snippet(cx, arms[0].pats[0].span, ".."),
                                             snippet(cx, ex.span, ".."),
-                                            expr_block(cx, &arms[0].body, "..")));
+                                            expr_block(cx, &arms[0].body, None, "..")));
             }
 
             // check preconditions for MATCH_REF_PATS
