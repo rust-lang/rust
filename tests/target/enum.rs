@@ -27,7 +27,7 @@ enum Bar {
 }
 
 enum LongVariants {
-    First(LOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONG, // comment
+    First(LOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONG, // comment
           VARIANT),
     // This is the second variant
     Second,
