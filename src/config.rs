@@ -74,6 +74,8 @@ pub enum Density {
     Compressed,
     // Use more lines.
     Tall,
+    // Try to compress if the body is empty.
+    CompressedIfEmpty,
 }
 
 impl_enum_decodable!(Density, Compressed, Tall);
@@ -82,7 +84,7 @@ impl Density {
     pub fn to_list_tactic(self) -> ListTactic {
         match self {
             Density::Compressed => ListTactic::Mixed,
-            Density::Tall => ListTactic::HorizontalVertical,
+            Density::Tall | Density::CompressedIfEmpty => ListTactic::HorizontalVertical,
         }
     }
 }
@@ -267,7 +269,7 @@ impl Default for Config {
             fn_args_density: Density::Tall,
             fn_args_layout: StructLitStyle::Visual,
             fn_arg_indent: BlockIndentStyle::Visual,
-            where_density: Density::Tall,
+            where_density: Density::CompressedIfEmpty,
             where_indent: BlockIndentStyle::Tabbed,
             where_layout: ListTactic::Vertical,
             where_pred_indent: BlockIndentStyle::Visual,
