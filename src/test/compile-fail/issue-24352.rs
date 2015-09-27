@@ -11,5 +11,4 @@
 fn main() {
     1.0f64 - 1.0;
     1.0f64 - 1 //~ ERROR: is not implemented
-    //~^ ERROR: is not implemented
 }
