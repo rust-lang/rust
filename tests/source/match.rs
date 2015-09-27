@@ -65,19 +65,24 @@ fn main() {
 // Test that one-line bodies align.
 fn main() {
     match r {
-        Variableeeeeeeeeeeeeeeeee => ("variable",
-                                      vec!("id", "name", "qualname", "value", "type", "scopeid"),
+        Variableeeeeeeeeeeeeeeeee => (    "variable",
+                                      vec!("id", "name", "qualname",
+                                           "value", "type", "scopeid"),
                                       true,
                                       true),
         Enummmmmmmmmmmmmmmmmmmmm => ("enum",
-                                     vec!("id", "qualname", "scopeid", "value"),
+                                     vec!("id","qualname","scopeid","value"),
                                      true,
                                      true),
-        Variantttttttttttttttttttttttt =>
-            ("variant",
-             vec!("id", "name", "qualname", "type", "value", "scopeid"),
-             true,
-             true),
+        Variantttttttttttttttttttttttt => ("variant",
+                                           vec!("id",
+                                                "name",
+                                                "qualname",
+                                                "type",
+                                                "value",
+                                                "scopeid"),
+                                           true,
+                                           true),
     }
 }
 
@@ -87,24 +92,31 @@ fn matches() {
         2 => 2,
         // bar
         3 => 3,
-        _ => 0, // baz
+        _ => 0 // baz
     }
 }
 
 fn issue339() {
     match a {
         b => {}
-        c => {}
-        d => {}
-        e => {}
+        c => { }
+        d => {
+        }
+        e => {
+
+
+
+        }
         // collapsing here is safe
-        ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff => {}
+        ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff => {
+        }
         // collapsing here exceeds line length
         ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffg => {
         }
         h => { // comment above block
         }
-        i => {} // comment below block
+        i => {
+        } // comment below block
         j => {
             // comment inside block
         }
@@ -118,15 +130,18 @@ fn issue339() {
         // }
         // l => {
         //     // comment with ws below
-        //
+        //     
         // }
-        m => {}
-        n => {}
-        o => {}
-        p => { // Dont collapse me
+        m => {
+        } n => { } o =>
+        {
+
         }
-        q => {}
-        r => {}
+        p => { // Dont collapse me
+        } q => { } r =>
+        {
+
+        }
         s => 0, // s comment
         // t comment
         t => 1,
@@ -163,50 +178,46 @@ fn issue355() {
         // m comment
         m => vec!(3; 4),
         // Rewrite splits macro
-        nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn =>
-            println!("a", b),
+        nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn => println!("a", b),
         // Rewrite splits macro
-        oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo =>
-            vec!(1, 2),
+        oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo => vec!(1, 2),
         // Macro support fails to recognise this macro as splitable
         // We push the whole expr to a new line, TODO split this macro as well
-        pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp =>
-            vec!(3; 4),
+        pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp => vec!(3; 4),
         // q, r and s: Rewrite splits match arm
-        qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq =>
-            println!("a", b),
-        rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr =>
-            vec!(1, 2),
-        ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss =>
-            vec!(3; 4),
+        qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq => println!("a", b),
+        rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr => vec!(1, 2),
+        ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss => vec!(3; 4),
         // Funky bracketing styles
-        t => println!{"a", b},
+        t =>      println!{"a", b},
         u => vec!{1, 2},
         v => vec!{3; 4},
         w => println!["a", b],
-        x => vec![1, 2],
-        y => vec![3; 4],
+        x =>      vec![1, 2],
+        y =>vec![3; 4],
         // Brackets with comments
         tc => println!{"a", b}, // comment
         uc => vec!{1, 2}, // comment
-        vc => vec!{3; 4}, // comment
-        wc => println!["a", b], // comment
-        xc => vec![1, 2], // comment
-        yc => vec![3; 4], // comment
-        yd => looooooooooooooooooooooooooooooooooooooooooooooooooooooooong_func(aaaaaaaaaa,
-                                                                                bbbbbbbbbb,
-                                                                                cccccccccc,
-                                                                                dddddddddd),
+        vc =>vec!{3; 4}, // comment
+        wc =>println!["a", b], // comment
+        xc => vec![1,2], // comment
+        yc =>        vec![3; 4], // comment
+        yd =>
+            looooooooooooooooooooooooooooooooooooooooooooooooooooooooong_func(aaaaaaaaaa,
+                                                                              bbbbbbbbbb,
+                                                                              cccccccccc,
+                                                                              dddddddddd),
     }
 }
 
 fn issue280() {
     {
         match x {
-            CompressionMode::DiscardNewline | CompressionMode::CompressWhitespaceNewline =>
-                ch == '\n',
-            ast::ItemConst(ref typ, ref expr) =>
-                self.process_static_or_const_item(item, &typ, &expr),
+            CompressionMode::DiscardNewline | CompressionMode::CompressWhitespaceNewline => ch ==
+                                                                                            '\n',
+            ast::ItemConst(ref typ, ref expr) => self.process_static_or_const_item(item,
+                                                                                   &typ,
+                                                                                   &expr),
         }
     }
 }

@@ -969,8 +969,8 @@ impl<'a> FmtVisitor<'a> {
 
         let extra_indent = match self.config.where_indent {
             BlockIndentStyle::Inherit => Indent::empty(),
-            BlockIndentStyle::Tabbed | BlockIndentStyle::Visual => Indent::new(config.tab_spaces,
-                                                                               0),
+            BlockIndentStyle::Tabbed | BlockIndentStyle::Visual =>
+                Indent::new(config.tab_spaces, 0),
         };
 
         let context = self.get_context();
