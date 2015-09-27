@@ -1283,6 +1283,10 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let exhaustive = chk.is_infallible() && defaults.is_empty();
     let len = opts.len();
 
+    if exhaustive && kind == Switch {
+        build::Unreachable(else_cx);
+    }
+
     // Compile subtrees for each option
     for (i, opt) in opts.iter().enumerate() {
         // In some cases of range and vector pattern matching, we need to
@@ -1293,7 +1297,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         let mut opt_cx = else_cx;
         let debug_loc = opt.debug_loc();
 
-        if !exhaustive || i + 1 < len {
+        if kind == Switch || !exhaustive || i + 1 < len {
             opt_cx = bcx.fcx.new_temp_block("match_case");
             match kind {
                 Single => Br(bcx, opt_cx.llbb, debug_loc),
