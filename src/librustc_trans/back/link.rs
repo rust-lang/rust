@@ -616,7 +616,7 @@ fn link_rlib<'a>(sess: &'a Session,
 
     for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
-            cstore::NativeStatic => ab.add_native_library(&l).unwrap(),
+            cstore::NativeStatic => ab.add_native_library(&l),
             cstore::NativeFramework | cstore::NativeUnknown => {}
         }
     }
@@ -792,7 +792,7 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
         ab.build();
     }
     if !sess.target.target.options.no_compiler_rt {
-        ab.add_native_library("compiler-rt").unwrap();
+        ab.add_native_library("compiler-rt");
     }
 
     let mut all_native_libs = vec![];
