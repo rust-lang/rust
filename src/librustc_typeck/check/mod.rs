@@ -431,9 +431,11 @@ pub fn check_item_bodies(ccx: &CrateCtxt) {
 }
 
 pub fn check_drop_impls(ccx: &CrateCtxt) {
-    for drop_method_did in ccx.tcx.destructors.borrow().iter() {
-        if drop_method_did.is_local() {
-            let drop_impl_did = ccx.tcx.map.get_parent_did(drop_method_did.node);
+    let drop_trait = match ccx.tcx.lang_items.drop_trait() {
+        Some(id) => ccx.tcx.lookup_trait_def(id), None => { return }
+    };
+    drop_trait.for_each_impl(ccx.tcx, |drop_impl_did| {
+        if drop_impl_did.is_local() {
             match dropck::check_drop_impl(ccx.tcx, drop_impl_did) {
                 Ok(()) => {}
                 Err(()) => {
@@ -441,7 +443,7 @@ pub fn check_drop_impls(ccx: &CrateCtxt) {
                 }
             }
         }
-    }
+    });
 
     ccx.tcx.sess.abort_if_errors();
 }

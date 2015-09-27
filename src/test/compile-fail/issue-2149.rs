@@ -17,7 +17,6 @@ impl<A> vec_monad<A> for Vec<A> {
         let mut r = panic!();
         for elt in self { r = r + f(*elt); }
         //~^ ERROR E0277
-        //~| ERROR E0277
    }
 }
 fn main() {
