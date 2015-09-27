@@ -1354,9 +1354,23 @@ impl<T> AsRef<Vec<T>> for Vec<T> {
     }
 }
 
+#[stable(feature = "vec_as_mut", since = "1.5.0")]
+impl<T> AsMut<Vec<T>> for Vec<T> {
+    fn as_mut(&mut self) -> &mut Vec<T> {
+        self
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> AsRef<[T]> for Vec<T> {
     fn as_ref(&self) -> &[T] {
+        self
+    }
+}
+
+#[stable(feature = "vec_as_mut", since = "1.5.0")]
+impl<T> AsMut<[T]> for Vec<T> {
+    fn as_mut(&mut self) -> &mut [T] {
         self
     }
 }
