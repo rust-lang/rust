@@ -272,6 +272,20 @@ impl<'tcx> Method<'tcx> {
     }
 }
 
+impl<'tcx> PartialEq for Method<'tcx> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool { self.def_id == other.def_id }
+}
+
+impl<'tcx> Eq for Method<'tcx> {}
+
+impl<'tcx> Hash for Method<'tcx> {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        self.def_id.hash(s)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct AssociatedConst<'tcx> {
     pub name: Name,
@@ -1681,7 +1695,6 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     }
 
     pub fn set_destructor(&self, dtor: DefId) {
-        assert!(self.destructor.get().is_none());
         self.destructor.set(Some(dtor));
     }
 
@@ -2313,11 +2326,6 @@ impl<'tcx> ctxt<'tcx> {
         // when reverse-variance goes away, a transmute::<AdtDefMaster,AdtDef>
         // woud be needed here.
         self.lookup_adt_def_master(did)
-    }
-
-    /// Return the list of all interned ADT definitions
-    pub fn adt_defs(&self) -> Vec<AdtDef<'tcx>> {
-        self.adt_defs.borrow().values().cloned().collect()
     }
 
     /// Given the did of an item, returns its full set of predicates.

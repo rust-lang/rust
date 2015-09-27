@@ -620,13 +620,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             ty::TraitContainer(trait_def_id) => {
                 callee::check_legal_trait_for_method_call(self.fcx.ccx, self.span, trait_def_id)
             }
-            ty::ImplContainer(..) => {
-                // Since `drop` is a trait method, we expect that any
-                // potential calls to it will wind up in the other
-                // arm. But just to be sure, check that the method id
-                // does not appear in the list of destructors.
-                assert!(!self.tcx().destructors.borrow().contains(&pick.item.def_id()));
-            }
+            ty::ImplContainer(..) => {}
         }
     }
 

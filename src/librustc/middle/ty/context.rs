@@ -245,9 +245,6 @@ pub struct ctxt<'tcx> {
     /// True if the variance has been computed yet; false otherwise.
     pub variance_computed: Cell<bool>,
 
-    /// A method will be in this list if and only if it is a destructor.
-    pub destructors: RefCell<DefIdSet>,
-
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
@@ -475,7 +472,6 @@ impl<'tcx> ctxt<'tcx> {
             normalized_cache: RefCell::new(FnvHashMap()),
             lang_items: lang_items,
             provided_method_sources: RefCell::new(DefIdMap()),
-            destructors: RefCell::new(DefIdSet()),
             inherent_impls: RefCell::new(DefIdMap()),
             impl_items: RefCell::new(DefIdMap()),
             used_unsafe: RefCell::new(NodeSet()),
