@@ -45,3 +45,9 @@ enum StructLikeVariants {
         a: A,
     },
 }
+
+enum X {
+    CreateWebGLPaintTask(Size2D<i32>,
+                         GLContextAttributes,
+                         IpcSender<Result<(IpcSender<CanvasMsg>, usize), String>>),
+}
