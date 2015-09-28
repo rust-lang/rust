@@ -1,6 +1,6 @@
 # 1st Report - ESOF
 
-We are 4 students of the Engineering Faculty of the University of Oporto, and we re studying this project for the course of Software Engineering.
+We are 4 students of the Engineering Faculty of the University of Oporto, and we're studying this project for the course of Software Engineering.
 
 
 ## RUST - Programming Language
