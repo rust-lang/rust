@@ -2,7 +2,6 @@
 
 We are 4 students of the Engineering Faculty of the University of Oporto, and we re studying this project for the course of Software Engineering.
 
-***
 
 ## RUST - Programming Language
 
@@ -51,5 +50,5 @@ In contrast with _Rails_, _Rust_ has unit testing built right into the language.
 
 ###### Source: _Langr, Jeff. "Test-Driven Development vs. Test-After Development." N.p., n.d. Web. 28 Sept. 2015_
 ***
-* Acording to this study **Test Driven Develompent** is the best way to develop a project (at least comparing to TAD).
-* *We agree with this judgement. In our experience we take longer to develop something without errors using TAD and write much more code, even knowing that TAD looks quicker.
+Acording to this study **Test Driven Develompent** is the best way to develop a project (at least comparing to TAD).
+We agree with this judgement. In our experience we take longer to develop something without errors using TAD and write much more code, even knowing that TAD looks quicker.
