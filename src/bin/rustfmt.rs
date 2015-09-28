@@ -85,13 +85,7 @@ fn print_usage<S: Into<String>>(reason: S) {
     println!("{}\n\r usage: rustfmt [-h Help] [--write-mode=[replace|overwrite|display|diff]] \
               <file_name>",
              reason.into());
-
-    for option in Config::get_docs() {
-        println!("{}, {}, Possible values: {}",
-                 option.option_name(),
-                 option.doc_string(),
-                 option.variant_names());
-    }
+    Config::print_docs();
 }
 
 fn determine_params<I>(args: I) -> Option<(Vec<String>, WriteMode)>
