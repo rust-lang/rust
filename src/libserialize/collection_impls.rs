@@ -10,7 +10,6 @@
 
 //! Implementations of serialization for structures found in libcollections
 
-use std::usize;
 use std::default::Default;
 use std::hash::Hash;
 use std::collections::hash_state::HashState;
