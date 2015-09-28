@@ -3901,6 +3901,8 @@ pub mod consts {
             pub const MAP_POPULATE : c_int = 0x08000;
             pub const MAP_NONBLOCK : c_int = 0x010000;
             pub const MAP_STACK : c_int = 0x020000;
+
+            pub const PATH_MAX: c_int = 4096;
         }
         #[cfg(any(target_arch = "mips",
                   target_arch = "mipsel"))]
@@ -3928,6 +3930,8 @@ pub mod consts {
             pub const MAP_POPULATE : c_int = 0x010000;
             pub const MAP_NONBLOCK : c_int = 0x020000;
             pub const MAP_STACK : c_int = 0x040000;
+
+            pub const PATH_MAX: c_int = 4096;
         }
         #[cfg(target_os = "linux")]
         pub mod sysconf {
