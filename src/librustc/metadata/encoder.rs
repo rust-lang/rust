@@ -1923,6 +1923,10 @@ fn encode_hash(rbml_w: &mut Encoder, hash: &Svh) {
     rbml_w.wr_tagged_str(tag_crate_hash, hash.as_str());
 }
 
+fn encode_rustc_version(rbml_w: &mut Encoder) {
+    rbml_w.wr_tagged_str(tag_rustc_version, &rustc_version());
+}
+
 fn encode_crate_name(rbml_w: &mut Encoder, crate_name: &str) {
     rbml_w.wr_tagged_str(tag_crate_crate_name, crate_name);
 }
@@ -2051,6 +2055,7 @@ fn encode_metadata_inner(wr: &mut Cursor<Vec<u8>>,
 
     let mut rbml_w = Encoder::new(wr);
 
+    encode_rustc_version(&mut rbml_w);
     encode_crate_name(&mut rbml_w, &ecx.link_meta.crate_name);
     encode_crate_triple(&mut rbml_w, &tcx.sess.opts.target_triple);
     encode_hash(&mut rbml_w, &ecx.link_meta.crate_hash);

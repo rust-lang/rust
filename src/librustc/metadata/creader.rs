@@ -15,6 +15,7 @@
 use back::svh::Svh;
 use session::{config, Session};
 use session::search_paths::PathKind;
+use metadata::common::rustc_version;
 use metadata::cstore;
 use metadata::cstore::{CStore, CrateSource, MetadataBlob};
 use metadata::decoder;
@@ -270,6 +271,24 @@ impl<'a> CrateReader<'a> {
         return ret;
     }
 
+    fn verify_rustc_version(&self,
+                            name: &str,
+                            span: Span,
+                            metadata: &MetadataBlob) {
+        let crate_rustc_version = decoder::crate_rustc_version(metadata.as_slice());
+        if crate_rustc_version != Some(rustc_version()) {
+            span_err!(self.sess, span, E0514,
+                      "the crate `{}` has been compiled with {}, which is \
+                       incompatible with this version of rustc",
+                      name,
+                      crate_rustc_version
+                          .as_ref().map(|s|&**s)
+                          .unwrap_or("an old version of rustc")
+            );
+            self.sess.abort_if_errors();
+        }
+    }
+
     fn register_crate(&mut self,
                       root: &Option<CratePaths>,
                       ident: &str,
@@ -279,6 +298,8 @@ impl<'a> CrateReader<'a> {
                       explicitly_linked: bool)
                       -> (ast::CrateNum, Rc<cstore::crate_metadata>,
                           cstore::CrateSource) {
+        self.verify_rustc_version(name, span, &lib.metadata);
+
         // Claim this crate number and cache it
         let cnum = self.next_crate_num;
         self.next_crate_num += 1;

@@ -259,3 +259,11 @@ pub const tag_defaulted_trait: usize = 0xa4;
 pub const tag_impl_coerce_unsized_kind: usize = 0xa5;
 
 pub const tag_items_data_item_constness: usize = 0xa6;
+
+pub const tag_rustc_version: usize = 0x10f;
+pub fn rustc_version() -> String {
+    format!(
+        "rustc {}",
+        option_env!("CFG_VERSION").unwrap_or("unknown version")
+    )
+}
