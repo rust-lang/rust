@@ -26,13 +26,17 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_syntax)]
+#![feature(const_fn)]
 #![feature(libc)]
 #![feature(quote)]
+#![feature(rt)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
+#![feature(thread_local)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
 #![feature(vec_push_all)]
+#![feature(unmarked_api)]
 
 extern crate arena;
 extern crate flate;
@@ -69,14 +73,16 @@ use rustc::lint;
 use rustc::metadata;
 use rustc::util::common::time;
 
+use std::any::Any;
 use std::cmp::Ordering::Equal;
 use std::env;
-use std::io::{self, Read, Write};
+use std::io::{self, Read};
 use std::iter::repeat;
 use std::path::PathBuf;
 use std::process;
-use std::str;
-use std::sync::{Arc, Mutex};
+use std::rt;
+use std::rt::backtrace;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 use rustc::session::early_error;
@@ -787,6 +793,62 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
     result.into_iter().collect()
 }
 
+fn emit_ice(value: &(Any+Send), file: &'static str, line: u32) {
+    let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
+
+    // a .span_bug or .bug call has already printed what
+    // it wants to print.
+    if !value.is::<diagnostic::ExplicitBug>() {
+        let panic_msg : Option<&str> = match value.downcast_ref::<&'static str>() {
+            Some(s) => Some(s),
+            None => match value.downcast_ref::<String>() {
+                Some(s) => Some(&s),
+                None => None
+            }
+        };
+        let msg = if let Some(msg) = panic_msg {
+            format!("unexpected panic at {}:{}: {}", file, line, msg)
+        } else {
+            format!("unexpected panic at {}:{}", file, line)
+        };
+        emitter.emit(None, &msg, None, diagnostic::Bug);
+    }
+
+    let xs = [
+        "the compiler unexpectedly panicked. this is a bug.".to_string(),
+        format!("we would appreciate a bug report: {}",
+                BUG_REPORT_URL),
+        ];
+    for note in &xs {
+        emitter.emit(None, &note[..], None, diagnostic::Note)
+    }
+    if backtrace::log_enabled() {
+        let _ = backtrace::write(&mut io::stderr());
+    } else {
+        emitter.emit(None, "run with `RUST_BACKTRACE=1` for a backtrace",
+                     None, diagnostic::Note);
+    }
+}
+
+#[thread_local]
+static IS_RUSTC_THREAD: AtomicBool = AtomicBool::new(false);
+
+/// The rustc panic handler. thread::spawn is not used directly to avoid
+/// depending on unwinding.
+#[inline(never)]
+#[cold]
+pub fn rustc_panic_handler(value: &(Any+Send), file: &'static str, line: u32) {
+    if !IS_RUSTC_THREAD.load(Ordering::SeqCst) {
+        return;
+    }
+
+    if !value.is::<diagnostic::FatalError>() {
+        emit_ice(value, file, line);
+    }
+
+    ::std::process::exit(101)
+}
+
 /// Run a procedure which will detect panics in the compiler and print nicer
 /// error messages rather than just failing the test.
 ///
@@ -794,17 +856,6 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
 /// errors of the compiler.
 pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
     const STACK_SIZE: usize = 8 * 1024 * 1024; // 8MB
-
-    struct Sink(Arc<Mutex<Vec<u8>>>);
-    impl Write for Sink {
-        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-            Write::write(&mut *self.0.lock().unwrap(), data)
-        }
-        fn flush(&mut self) -> io::Result<()> { Ok(()) }
-    }
-
-    let data = Arc::new(Mutex::new(Vec::new()));
-    let err = Sink(data.clone());
 
     let mut cfg = thread::Builder::new().name("rustc".to_string());
 
@@ -814,45 +865,13 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match cfg.spawn(move || { io::set_panic(box err); f() }).unwrap().join() {
-        Ok(()) => { /* fallthrough */ }
-        Err(value) => {
-            // Thread panicked without emitting a fatal diagnostic
-            if !value.is::<diagnostic::FatalError>() {
-                let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
-
-                // a .span_bug or .bug call has already printed what
-                // it wants to print.
-                if !value.is::<diagnostic::ExplicitBug>() {
-                    emitter.emit(
-                        None,
-                        "unexpected panic",
-                        None,
-                        diagnostic::Bug);
-                }
-
-                let xs = [
-                    "the compiler unexpectedly panicked. this is a bug.".to_string(),
-                    format!("we would appreciate a bug report: {}",
-                            BUG_REPORT_URL),
-                ];
-                for note in &xs {
-                    emitter.emit(None, &note[..], None, diagnostic::Note)
-                }
-                if let None = env::var_os("RUST_BACKTRACE") {
-                    emitter.emit(None, "run with `RUST_BACKTRACE=1` for a backtrace",
-                                 None, diagnostic::Note);
-                }
-
-                println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
-            }
-
-            // Panic so the process returns a failure code, but don't pollute the
-            // output with some unnecessary panic messages, we've already
-            // printed everything that we needed to.
-            io::set_panic(box io::sink());
-            panic!();
-        }
+    match cfg.spawn(move || {
+        io::set_panic(box io::sink());
+        IS_RUSTC_THREAD.store(true, Ordering::SeqCst);
+        f()
+    }).unwrap().join() {
+        Ok(_) => {}
+        Err(_) => {}
     }
 }
 
@@ -869,6 +888,7 @@ pub fn diagnostics_registry() -> diagnostics::registry::Registry {
 }
 
 pub fn main() {
+    unsafe { rt::unwind::register(rustc_panic_handler) };
     let result = run(env::args().collect());
     process::exit(result as i32);
 }
