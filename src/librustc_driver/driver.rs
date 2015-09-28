@@ -42,7 +42,7 @@ use std::ffi::{OsString, OsStr};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use syntax::ast;
+use syntax::ast::{self, NodeIdAssigner};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::diagnostics;
@@ -71,7 +71,7 @@ pub fn compile_input(sess: Session,
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (sess, result) = {
+    let result = {
         let (outputs, expanded_crate, id) = {
             let krate = phase_1_parse_input(&sess, cfg, input);
 
@@ -113,7 +113,7 @@ pub fn compile_input(sess: Session,
         let expanded_crate = assign_node_ids(&sess, expanded_crate);
         // Lower ast -> hir.
         let foo = &42;
-        let lcx = LoweringContext::new(foo);
+        let lcx = LoweringContext::new(foo, &sess, &expanded_crate);
         let mut hir_forest = time(sess.time_passes(),
                                   "lowering ast -> hir",
                                   || hir_map::Forest::new(lower_crate(&lcx, &expanded_crate)));
@@ -141,7 +141,7 @@ pub fn compile_input(sess: Session,
             lint::check_ast_crate(&sess, &expanded_crate)
         });
 
-        phase_3_run_analysis_passes(sess,
+        phase_3_run_analysis_passes(&sess,
                                     ast_map,
                                     &arenas,
                                     id,
@@ -282,7 +282,7 @@ pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
     pub ast_map: Option<&'a hir_map::Map<'ast>>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<&'a ty::ctxt<'tcx>>,
-    pub lcx: Option<&'a LoweringContext<'tcx>>,
+    pub lcx: Option<&'a LoweringContext<'a, 'tcx>>,
     pub trans: Option<&'a trans::CrateTranslation>,
 }
 
@@ -340,7 +340,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                               krate: &'a ast::Crate,
                               hir_crate: &'a hir::Crate,
                               crate_name: &'a str,
-                              lcx: &'a LoweringContext<'tcx>)
+                              lcx: &'a LoweringContext<'a, 'tcx>)
                               -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
@@ -359,7 +359,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                             hir_crate: &'a hir::Crate,
                             analysis: &'a ty::CrateAnalysis,
                             tcx: &'a ty::ctxt<'tcx>,
-                            lcx: &'a LoweringContext<'tcx>)
+                            lcx: &'a LoweringContext<'a, 'tcx>)
                             -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             analysis: Some(analysis),
@@ -659,13 +659,13 @@ pub fn make_map<'ast>(sess: &Session,
 /// Run the resolution, typechecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
-pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
+pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                ast_map: front::map::Map<'tcx>,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                name: String,
                                                make_glob_map: resolve::MakeGlobMap,
                                                f: F)
-                                               -> (Session, R)
+                                               -> R
                                                where F: for<'a> FnOnce(&'a ty::ctxt<'tcx>,
                                                                        ty::CrateAnalysis) -> R
 {
@@ -673,7 +673,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
     let krate = ast_map.krate();
 
     time(time_passes, "external crate/lib resolution", ||
-         LocalCrateReader::new(&sess, &ast_map).read_crates(krate));
+         LocalCrateReader::new(sess, &ast_map).read_crates(krate));
 
     let lang_items = time(time_passes, "language item collection", ||
                           middle::lang_items::collect_language_items(&sess, &ast_map));
@@ -687,7 +687,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
         glob_map,
     } =
         time(time_passes, "resolution",
-             || resolve::resolve_crate(&sess, &ast_map, make_glob_map));
+             || resolve::resolve_crate(sess, &ast_map, make_glob_map));
 
     // Discard MTWT tables that aren't required past resolution.
     if !sess.opts.debugging_opts.keep_mtwt_tables {
@@ -695,10 +695,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
     }
 
     let named_region_map = time(time_passes, "lifetime resolution",
-                                || middle::resolve_lifetime::krate(&sess, krate, &def_map));
+                                || middle::resolve_lifetime::krate(sess, krate, &def_map));
 
     time(time_passes, "looking for entry point",
-         || middle::entry::find_entry_point(&sess, &ast_map));
+         || middle::entry::find_entry_point(sess, &ast_map));
 
     sess.plugin_registrar_fn.set(
         time(time_passes, "looking for plugin registrar", ||
@@ -706,13 +706,13 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
                 sess.diagnostic(), krate)));
 
     let region_map = time(time_passes, "region resolution", ||
-                          middle::region::resolve_crate(&sess, krate));
+                          middle::region::resolve_crate(sess, krate));
 
     time(time_passes, "loop checking", ||
-         middle::check_loop::check_crate(&sess, krate));
+         middle::check_loop::check_crate(sess, krate));
 
     time(time_passes, "static item recursion checking", ||
-         middle::check_static_recursion::check_crate(&sess, krate, &def_map, &ast_map));
+         middle::check_static_recursion::check_crate(sess, krate, &def_map, &ast_map));
 
     ty::ctxt::create_and_enter(sess,
                                arenas,

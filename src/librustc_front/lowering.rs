@@ -14,19 +14,37 @@ use hir;
 
 use syntax::ast::*;
 use syntax::ptr::P;
-use syntax::codemap::{respan, Spanned};
+use syntax::codemap::{respan, Spanned, Span};
 use syntax::owned_slice::OwnedSlice;
+use syntax::parse::token::{self, str_to_ident};
+use syntax::std_inject;
 
-pub struct LoweringContext<'hir> {
+pub struct LoweringContext<'a, 'hir> {
     // TODO
     foo: &'hir i32,
+    id_assigner: &'a NodeIdAssigner,
+    crate_root: Option<&'static str>,
 }
 
-impl<'hir> LoweringContext<'hir> {
-    pub fn new(foo: &'hir i32) -> LoweringContext<'hir> {
+impl<'a, 'hir> LoweringContext<'a, 'hir> {
+    pub fn new(foo: &'hir i32, id_assigner: &'a NodeIdAssigner, c: &Crate) -> LoweringContext<'a, 'hir> {
+        let crate_root = if std_inject::no_core(c) {
+            None
+        } else if std_inject::no_std(c) {
+            Some("core")
+        } else {
+            Some("std")
+        };
+
         LoweringContext {
             foo: foo,
+            id_assigner: id_assigner,
+            crate_root: crate_root,
         }
+    }
+
+    fn next_id(&self) -> NodeId {
+        self.id_assigner.next_node_id()
     }
 }
 
@@ -727,105 +745,105 @@ pub fn lower_pat(_lctx: &LoweringContext, p: &Pat) -> P<hir::Pat> {
     })
 }
 
-pub fn lower_expr(_lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
+pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
     P(hir::Expr {
             id: e.id,
             node: match e.node {
                 ExprBox(ref e) => {
-                    hir::ExprBox(lower_expr(_lctx, e))
+                    hir::ExprBox(lower_expr(lctx, e))
                 }
                 ExprVec(ref exprs) => {
-                    hir::ExprVec(exprs.iter().map(|x| lower_expr(_lctx, x)).collect())
+                    hir::ExprVec(exprs.iter().map(|x| lower_expr(lctx, x)).collect())
                 }
                 ExprRepeat(ref expr, ref count) => {
-                    hir::ExprRepeat(lower_expr(_lctx, expr), lower_expr(_lctx, count))
+                    hir::ExprRepeat(lower_expr(lctx, expr), lower_expr(lctx, count))
                 }
                 ExprTup(ref elts) => {
-                    hir::ExprTup(elts.iter().map(|x| lower_expr(_lctx, x)).collect())
+                    hir::ExprTup(elts.iter().map(|x| lower_expr(lctx, x)).collect())
                 }
                 ExprCall(ref f, ref args) => {
-                    hir::ExprCall(lower_expr(_lctx, f),
-                             args.iter().map(|x| lower_expr(_lctx, x)).collect())
+                    hir::ExprCall(lower_expr(lctx, f),
+                             args.iter().map(|x| lower_expr(lctx, x)).collect())
                 }
                 ExprMethodCall(i, ref tps, ref args) => {
                     hir::ExprMethodCall(
                         respan(i.span, i.node.name),
-                        tps.iter().map(|x| lower_ty(_lctx, x)).collect(),
-                        args.iter().map(|x| lower_expr(_lctx, x)).collect())
+                        tps.iter().map(|x| lower_ty(lctx, x)).collect(),
+                        args.iter().map(|x| lower_expr(lctx, x)).collect())
                 }
                 ExprBinary(binop, ref lhs, ref rhs) => {
-                    hir::ExprBinary(lower_binop(_lctx, binop),
-                            lower_expr(_lctx, lhs),
-                            lower_expr(_lctx, rhs))
+                    hir::ExprBinary(lower_binop(lctx, binop),
+                            lower_expr(lctx, lhs),
+                            lower_expr(lctx, rhs))
                 }
                 ExprUnary(op, ref ohs) => {
-                    hir::ExprUnary(lower_unop(_lctx, op), lower_expr(_lctx, ohs))
+                    hir::ExprUnary(lower_unop(lctx, op), lower_expr(lctx, ohs))
                 }
                 ExprLit(ref l) => hir::ExprLit(P((**l).clone())),
                 ExprCast(ref expr, ref ty) => {
-                    hir::ExprCast(lower_expr(_lctx, expr), lower_ty(_lctx, ty))
+                    hir::ExprCast(lower_expr(lctx, expr), lower_ty(lctx, ty))
                 }
                 ExprAddrOf(m, ref ohs) => {
-                    hir::ExprAddrOf(lower_mutability(_lctx, m), lower_expr(_lctx, ohs))
+                    hir::ExprAddrOf(lower_mutability(lctx, m), lower_expr(lctx, ohs))
                 }
                 ExprIf(ref cond, ref tr, ref fl) => {
-                    hir::ExprIf(lower_expr(_lctx, cond),
-                           lower_block(_lctx, tr),
-                           fl.as_ref().map(|x| lower_expr(_lctx, x)))
+                    hir::ExprIf(lower_expr(lctx, cond),
+                           lower_block(lctx, tr),
+                           fl.as_ref().map(|x| lower_expr(lctx, x)))
                 }
                 ExprWhile(ref cond, ref body, opt_ident) => {
-                    hir::ExprWhile(lower_expr(_lctx, cond),
-                              lower_block(_lctx, body),
+                    hir::ExprWhile(lower_expr(lctx, cond),
+                              lower_block(lctx, body),
                               opt_ident)
                 }
                 ExprLoop(ref body, opt_ident) => {
-                    hir::ExprLoop(lower_block(_lctx, body),
+                    hir::ExprLoop(lower_block(lctx, body),
                             opt_ident)
                 }
                 ExprMatch(ref expr, ref arms, ref source) => {
-                    hir::ExprMatch(lower_expr(_lctx, expr),
-                            arms.iter().map(|x| lower_arm(_lctx, x)).collect(),
-                            lower_match_source(_lctx, source))
+                    hir::ExprMatch(lower_expr(lctx, expr),
+                            arms.iter().map(|x| lower_arm(lctx, x)).collect(),
+                            lower_match_source(lctx, source))
                 }
                 ExprClosure(capture_clause, ref decl, ref body) => {
-                    hir::ExprClosure(lower_capture_clause(_lctx, capture_clause),
-                                lower_fn_decl(_lctx, decl),
-                                lower_block(_lctx, body))
+                    hir::ExprClosure(lower_capture_clause(lctx, capture_clause),
+                                lower_fn_decl(lctx, decl),
+                                lower_block(lctx, body))
                 }
-                ExprBlock(ref blk) => hir::ExprBlock(lower_block(_lctx, blk)),
+                ExprBlock(ref blk) => hir::ExprBlock(lower_block(lctx, blk)),
                 ExprAssign(ref el, ref er) => {
-                    hir::ExprAssign(lower_expr(_lctx, el), lower_expr(_lctx, er))
+                    hir::ExprAssign(lower_expr(lctx, el), lower_expr(lctx, er))
                 }
                 ExprAssignOp(op, ref el, ref er) => {
-                    hir::ExprAssignOp(lower_binop(_lctx, op),
-                                lower_expr(_lctx, el),
-                                lower_expr(_lctx, er))
+                    hir::ExprAssignOp(lower_binop(lctx, op),
+                                lower_expr(lctx, el),
+                                lower_expr(lctx, er))
                 }
                 ExprField(ref el, ident) => {
-                    hir::ExprField(lower_expr(_lctx, el), respan(ident.span, ident.node.name))
+                    hir::ExprField(lower_expr(lctx, el), respan(ident.span, ident.node.name))
                 }
                 ExprTupField(ref el, ident) => {
-                    hir::ExprTupField(lower_expr(_lctx, el), ident)
+                    hir::ExprTupField(lower_expr(lctx, el), ident)
                 }
                 ExprIndex(ref el, ref er) => {
-                    hir::ExprIndex(lower_expr(_lctx, el), lower_expr(_lctx, er))
+                    hir::ExprIndex(lower_expr(lctx, el), lower_expr(lctx, er))
                 }
                 ExprRange(ref e1, ref e2) => {
-                    hir::ExprRange(e1.as_ref().map(|x| lower_expr(_lctx, x)),
-                              e2.as_ref().map(|x| lower_expr(_lctx, x)))
+                    hir::ExprRange(e1.as_ref().map(|x| lower_expr(lctx, x)),
+                              e2.as_ref().map(|x| lower_expr(lctx, x)))
                 }
                 ExprPath(ref qself, ref path) => {
                     let qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
                         hir::QSelf {
-                            ty: lower_ty(_lctx, ty),
+                            ty: lower_ty(lctx, ty),
                             position: position
                         }
                     });
-                    hir::ExprPath(qself, lower_path(_lctx, path))
+                    hir::ExprPath(qself, lower_path(lctx, path))
                 }
                 ExprBreak(opt_ident) => hir::ExprBreak(opt_ident),
                 ExprAgain(opt_ident) => hir::ExprAgain(opt_ident),
-                ExprRet(ref e) => hir::ExprRet(e.as_ref().map(|x| lower_expr(_lctx, x))),
+                ExprRet(ref e) => hir::ExprRet(e.as_ref().map(|x| lower_expr(lctx, x))),
                 ExprInlineAsm(InlineAsm {
                     ref inputs,
                     ref outputs,
@@ -838,10 +856,10 @@ pub fn lower_expr(_lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     expn_id,
                 }) => hir::ExprInlineAsm(hir::InlineAsm {
                     inputs: inputs.iter().map(|&(ref c, ref input)| {
-                        (c.clone(), lower_expr(_lctx, input))
+                        (c.clone(), lower_expr(lctx, input))
                     }).collect(),
                     outputs: outputs.iter().map(|&(ref c, ref out, ref is_rw)| {
-                        (c.clone(), lower_expr(_lctx, out), *is_rw)
+                        (c.clone(), lower_expr(lctx, out), *is_rw)
                     }).collect(),
                     asm: asm.clone(),
                     asm_str_style: asm_str_style,
@@ -852,17 +870,124 @@ pub fn lower_expr(_lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     expn_id: expn_id,
                 }),
                 ExprStruct(ref path, ref fields, ref maybe_expr) => {
-                    hir::ExprStruct(lower_path(_lctx, path),
-                            fields.iter().map(|x| lower_field(_lctx, x)).collect(),
-                            maybe_expr.as_ref().map(|x| lower_expr(_lctx, x)))
+                    hir::ExprStruct(lower_path(lctx, path),
+                            fields.iter().map(|x| lower_field(lctx, x)).collect(),
+                            maybe_expr.as_ref().map(|x| lower_expr(lctx, x)))
                 },
                 ExprParen(ref ex) => {
-                    return lower_expr(_lctx, ex);
+                    return lower_expr(lctx, ex);
                 }
-                ExprInPlace(..) |
-                ExprIfLet(..) |
-                ExprWhileLet(..) |
-                ExprForLoop(..) |
+                ExprInPlace(..) => {
+                    panic!("todo");
+                }
+                ExprIfLet(..) => {
+                    panic!("todo");
+                }
+                ExprWhileLet(..) => {
+                    panic!("todo");
+                }
+
+                // Desugar ExprForLoop
+                // From: `[opt_ident]: for <pat> in <head> <body>`
+                ExprForLoop(ref pat, ref head, ref body, ref opt_ident) => {
+                    // to:
+                    //
+                    //   {
+                    //     let result = match ::std::iter::IntoIterator::into_iter(<head>) {
+                    //       mut iter => {
+                    //         [opt_ident]: loop {
+                    //           match ::std::iter::Iterator::next(&mut iter) {
+                    //             ::std::option::Option::Some(<pat>) => <body>,
+                    //             ::std::option::Option::None => break
+                    //           }
+                    //         }
+                    //       }
+                    //     };
+                    //     result
+                    //   }
+
+                    // expand <head>
+                    let head = lower_expr(lctx, head);
+
+                    let iter = token::gensym_ident("iter");
+
+                    // `::std::option::Option::Some(<pat>) => <body>`
+                    let pat_arm = {
+                        let body_block = lower_block(lctx, body);
+                        let body_span = body_block.span;
+                        let body_expr = P(hir::Expr {
+                            id: lctx.next_id(),
+                            node: hir::ExprBlock(body_block),
+                            span: body_span,
+                        });
+                        let pat = lower_pat(lctx, pat);
+                        let some_pat = pat_some(lctx, e.span, pat);
+
+                        arm(vec![some_pat], body_expr)
+                    };
+
+                    // `::std::option::Option::None => break`
+                    let break_arm = {
+                        let break_expr = expr_break(lctx, e.span);
+
+                        arm(vec![pat_none(lctx, e.span)], break_expr)
+                    };
+
+                    // `match ::std::iter::Iterator::next(&mut iter) { ... }`
+                    let match_expr = {
+                        let next_path = {
+                            let strs = std_path(lctx, &["iter", "Iterator", "next"]);
+
+                            path_global(e.span, strs)
+                        };
+                        let ref_mut_iter = expr_mut_addr_of(lctx, e.span, expr_ident(lctx, e.span, iter));
+                        let next_expr =
+                            expr_call(lctx, e.span, expr_path(lctx, next_path), vec![ref_mut_iter]);
+                        let arms = vec![pat_arm, break_arm];
+
+                        expr(lctx,
+                             e.span,
+                             hir::ExprMatch(next_expr, arms, hir::MatchSource::ForLoopDesugar))
+                    };
+
+                    // `[opt_ident]: loop { ... }`
+                    let loop_block = block_expr(lctx, match_expr);
+                    let loop_expr = expr(lctx, e.span, hir::ExprLoop(loop_block, opt_ident.clone()));
+
+                    // `mut iter => { ... }`
+                    let iter_arm = {
+                        let iter_pat =
+                            pat_ident_binding_mode(lctx, e.span, iter, hir::BindByValue(hir::MutMutable));
+                        arm(vec![iter_pat], loop_expr)
+                    };
+
+                    // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
+                    let into_iter_expr = {
+                        let into_iter_path = {
+                            let strs = std_path(lctx, &["iter", "IntoIterator", "into_iter"]);
+
+                            path_global(e.span, strs)
+                        };
+
+                        expr_call(lctx, e.span, expr_path(lctx, into_iter_path), vec![head])
+                    };
+
+                    let match_expr = expr_match(lctx, e.span, into_iter_expr, vec![iter_arm]);
+
+                    // `{ let result = ...; result }`
+                    let result_ident = token::gensym_ident("result");
+                    let result = expr_block(lctx,
+                                            block_all(lctx,
+                                                      e.span,
+                                                      vec![stmt_let(lctx,
+                                                                    e.span,
+                                                                    false,
+                                                                    result_ident,
+                                                                    match_expr)],
+                                                      Some(expr_ident(lctx, e.span, result_ident))));
+                    return result;
+                }
+
                 ExprMac(_) => panic!("Shouldn't exist here"),
             },
             span: e.span,
@@ -971,4 +1096,169 @@ pub fn lower_trait_bound_modifier(_lctx: &LoweringContext,
         TraitBoundModifier::None => hir::TraitBoundModifier::None,
         TraitBoundModifier::Maybe => hir::TraitBoundModifier::Maybe,
     }
+}
+
+// Helper methods for building HIR.
+
+fn arm(pats: Vec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
+    hir::Arm {
+        attrs: vec!(),
+        pats: pats,
+        guard: None,
+        body: expr
+    }
+}
+
+fn expr_break(lctx: &LoweringContext, span: Span) -> P<hir::Expr> {
+    expr(lctx, span, hir::ExprBreak(None))
+}
+
+fn expr_call(lctx: &LoweringContext, span: Span, e: P<hir::Expr>, args: Vec<P<hir::Expr>>) -> P<hir::Expr> {
+    expr(lctx, span, hir::ExprCall(e, args))
+}
+
+fn expr_ident(lctx: &LoweringContext, span: Span, id: Ident) -> P<hir::Expr> {
+    expr_path(lctx, path_ident(span, id))
+}
+
+fn expr_mut_addr_of(lctx: &LoweringContext, span: Span, e: P<hir::Expr>) -> P<hir::Expr> {
+    expr(lctx, span, hir::ExprAddrOf(hir::MutMutable, e))
+}
+
+fn expr_path(lctx: &LoweringContext, path: hir::Path) -> P<hir::Expr> {
+    expr(lctx, path.span, hir::ExprPath(None, path))
+}
+
+fn expr_match(lctx: &LoweringContext, span: Span, arg: P<hir::Expr>, arms: Vec<hir::Arm>) -> P<hir::Expr> {
+    expr(lctx, span, hir::ExprMatch(arg, arms, hir::MatchSource::Normal))
+}
+
+fn expr_block(lctx: &LoweringContext, b: P<hir::Block>) -> P<hir::Expr> {
+    expr(lctx, b.span, hir::ExprBlock(b))
+}
+
+fn expr(lctx: &LoweringContext, span: Span, node: hir::Expr_) -> P<hir::Expr> {
+    P(hir::Expr {
+        id: lctx.next_id(),
+        node: node,
+        span: span,
+    })
+}
+
+fn stmt_let(lctx: &LoweringContext, sp: Span, mutbl: bool, ident: Ident, ex: P<hir::Expr>) -> P<hir::Stmt> {
+    let pat = if mutbl {
+        pat_ident_binding_mode(lctx, sp, ident, hir::BindByValue(hir::MutMutable))
+    } else {
+        pat_ident(lctx, sp, ident)
+    };
+    let local = P(hir::Local {
+        pat: pat,
+        ty: None,
+        init: Some(ex),
+        id: lctx.next_id(),
+        span: sp,
+    });
+    let decl = respan(sp, hir::DeclLocal(local));
+    P(respan(sp, hir::StmtDecl(P(decl), lctx.next_id())))
+}
+
+fn block_expr(lctx: &LoweringContext, expr: P<hir::Expr>) -> P<hir::Block> {
+    block_all(lctx, expr.span, Vec::new(), Some(expr))
+}
+
+fn block_all(lctx: &LoweringContext,
+             span: Span,
+             stmts: Vec<P<hir::Stmt>>,
+             expr: Option<P<hir::Expr>>) -> P<hir::Block> {
+        P(hir::Block {
+            stmts: stmts,
+            expr: expr,
+            id: lctx.next_id(),
+            rules: hir::DefaultBlock,
+            span: span,
+        })
+}
+
+fn pat_some(lctx: &LoweringContext, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
+    let some = std_path(lctx, &["option", "Option", "Some"]);
+    let path = path_global(span, some);
+    pat_enum(lctx, span, path, vec!(pat))
+}
+
+fn pat_none(lctx: &LoweringContext, span: Span) -> P<hir::Pat> {
+    let none = std_path(lctx, &["option", "Option", "None"]);
+    let path = path_global(span, none);
+    pat_enum(lctx, span, path, vec![])
+}
+
+fn pat_enum(lctx: &LoweringContext, span: Span, path: hir::Path, subpats: Vec<P<hir::Pat>>) -> P<hir::Pat> {
+    let pt = hir::PatEnum(path, Some(subpats));
+    pat(lctx, span, pt)
+}
+
+fn pat_ident(lctx: &LoweringContext, span: Span, ident: Ident) -> P<hir::Pat> {
+    pat_ident_binding_mode(lctx, span, ident, hir::BindByValue(hir::MutImmutable))
+}
+
+fn pat_ident_binding_mode(lctx: &LoweringContext,
+                          span: Span,
+                          ident: Ident,
+                          bm: hir::BindingMode) -> P<hir::Pat> {
+    let pat_ident = hir::PatIdent(bm, Spanned{span: span, node: ident}, None);
+    pat(lctx, span, pat_ident)
+}
+
+fn pat(lctx: &LoweringContext, span: Span, pat: hir::Pat_) -> P<hir::Pat> {
+    P(hir::Pat { id: lctx.next_id(), node: pat, span: span })
+}
+
+fn path_ident(span: Span, id: Ident) -> hir::Path {
+    path(span, vec!(id))
+}
+
+fn path(span: Span, strs: Vec<Ident> ) -> hir::Path {
+    path_all(span, false, strs, Vec::new(), Vec::new(), Vec::new())
+}
+
+fn path_global(span: Span, strs: Vec<Ident> ) -> hir::Path {
+    path_all(span, true, strs, Vec::new(), Vec::new(), Vec::new())
+}
+
+fn path_all(sp: Span,
+            global: bool,
+            mut idents: Vec<Ident> ,
+            lifetimes: Vec<hir::Lifetime>,
+            types: Vec<P<hir::Ty>>,
+            bindings: Vec<P<hir::TypeBinding>> )
+            -> hir::Path {
+    let last_identifier = idents.pop().unwrap();
+    let mut segments: Vec<hir::PathSegment> = idents.into_iter()
+                                                    .map(|ident| {
+        hir::PathSegment {
+            identifier: ident,
+            parameters: hir::PathParameters::none(),
+        }
+    }).collect();
+    segments.push(hir::PathSegment {
+        identifier: last_identifier,
+        parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
+            lifetimes: lifetimes,
+            types: OwnedSlice::from_vec(types),
+            bindings: OwnedSlice::from_vec(bindings),
+        })
+    });
+    hir::Path {
+        span: sp,
+        global: global,
+        segments: segments,
+    }
+}
+
+fn std_path(lctx: &LoweringContext, components: &[&str]) -> Vec<Ident> {
+    let mut v = Vec::new();
+    if let Some(s) = lctx.crate_root {
+        v.push(str_to_ident(s));
+    }
+    v.extend(components.iter().map(|s| str_to_ident(s)));
+    return v
 }

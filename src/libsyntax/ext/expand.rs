@@ -360,102 +360,10 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             fld.cx.expr(span, ast::ExprLoop(loop_block, opt_ident))
         }
 
-        // Desugar ExprForLoop
-        // From: `[opt_ident]: for <pat> in <head> <body>`
         ast::ExprForLoop(pat, head, body, opt_ident) => {
-            // to:
-            //
-            //   {
-            //     let result = match ::std::iter::IntoIterator::into_iter(<head>) {
-            //       mut iter => {
-            //         [opt_ident]: loop {
-            //           match ::std::iter::Iterator::next(&mut iter) {
-            //             ::std::option::Option::Some(<pat>) => <body>,
-            //             ::std::option::Option::None => break
-            //           }
-            //         }
-            //       }
-            //     };
-            //     result
-            //   }
-
-            push_compiler_expansion(fld, span, CompilerExpansionFormat::ForLoop);
-
-            let span = fld.new_span(span);
-
-            // expand <head>
             let head = fld.fold_expr(head);
-
-            let iter = token::gensym_ident("iter");
-
-            let pat_span = fld.new_span(pat.span);
-            // `::std::option::Option::Some(<pat>) => <body>`
-            let pat_arm = {
-                let body_expr = fld.cx.expr_block(body);
-                let pat = fld.fold_pat(pat);
-                let some_pat = fld.cx.pat_some(pat_span, pat);
-
-                fld.cx.arm(pat_span, vec![some_pat], body_expr)
-            };
-
-            // `::std::option::Option::None => break`
-            let break_arm = {
-                let break_expr = fld.cx.expr_break(span);
-
-                fld.cx.arm(span, vec![fld.cx.pat_none(span)], break_expr)
-            };
-
-            // `match ::std::iter::Iterator::next(&mut iter) { ... }`
-            let match_expr = {
-                let next_path = {
-                    let strs = fld.cx.std_path(&["iter", "Iterator", "next"]);
-
-                    fld.cx.path_global(span, strs)
-                };
-                let ref_mut_iter = fld.cx.expr_mut_addr_of(span, fld.cx.expr_ident(span, iter));
-                let next_expr =
-                    fld.cx.expr_call(span, fld.cx.expr_path(next_path), vec![ref_mut_iter]);
-                let arms = vec![pat_arm, break_arm];
-
-                fld.cx.expr(pat_span,
-                            ast::ExprMatch(next_expr, arms, ast::MatchSource::ForLoopDesugar))
-            };
-
-            // `[opt_ident]: loop { ... }`
-            let loop_block = fld.cx.block_expr(match_expr);
-            let (loop_block, opt_ident) = expand_loop_block(loop_block, opt_ident, fld);
-            let loop_expr = fld.cx.expr(span, ast::ExprLoop(loop_block, opt_ident));
-
-            // `mut iter => { ... }`
-            let iter_arm = {
-                let iter_pat =
-                    fld.cx.pat_ident_binding_mode(span, iter, ast::BindByValue(ast::MutMutable));
-                fld.cx.arm(span, vec![iter_pat], loop_expr)
-            };
-
-            // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
-            let into_iter_expr = {
-                let into_iter_path = {
-                    let strs = fld.cx.std_path(&["iter", "IntoIterator",
-                                                 "into_iter"]);
-
-                    fld.cx.path_global(span, strs)
-                };
-
-                fld.cx.expr_call(span, fld.cx.expr_path(into_iter_path), vec![head])
-            };
-
-            let match_expr = fld.cx.expr_match(span, into_iter_expr, vec![iter_arm]);
-
-            // `{ let result = ...; result }`
-            let result_ident = token::gensym_ident("result");
-            let result = fld.cx.expr_block(
-                fld.cx.block_all(
-                    span,
-                    vec![fld.cx.stmt_let(span, false, result_ident, match_expr)],
-                    Some(fld.cx.expr_ident(span, result_ident))));
-            fld.cx.bt_pop();
-            result
+            let (body, opt_ident) = expand_loop_block(body, opt_ident, fld);
+            fld.cx.expr(span, ast::ExprForLoop(pat, head, body, opt_ident))
         }
 
         ast::ExprClosure(capture_clause, fn_decl, block) => {
