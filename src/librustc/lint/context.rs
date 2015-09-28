@@ -898,12 +898,8 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
         });
     }
 
-    fn visit_opt_lifetime_ref(&mut self, sp: Span, lt: &Option<ast::Lifetime>) {
-        run_lints!(self, check_opt_lifetime_ref, early_passes, sp, lt);
-    }
-
-    fn visit_lifetime_ref(&mut self, lt: &ast::Lifetime) {
-        run_lints!(self, check_lifetime_ref, early_passes, lt);
+    fn visit_lifetime(&mut self, lt: &ast::Lifetime) {
+        run_lints!(self, check_lifetime, early_passes, lt);
     }
 
     fn visit_lifetime_def(&mut self, lt: &ast::LifetimeDef) {
