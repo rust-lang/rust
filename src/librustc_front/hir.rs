@@ -1054,6 +1054,13 @@ impl PathListItem_ {
         }
     }
 
+    pub fn name(&self) -> Option<Name> {
+        match *self {
+            PathListIdent { name, .. } => Some(name),
+            PathListMod { .. } => None,
+        }
+    }
+
     pub fn rename(&self) -> Option<Name> {
         match *self {
             PathListIdent { rename, .. } | PathListMod { rename, .. } => rename

@@ -131,7 +131,7 @@ pub trait Visitor<'v> : Sized {
 
 #[macro_export]
 macro_rules! walk_list {
-    ($visitor: ident, $method: ident, $list: expr) => {
+    ($visitor: expr, $method: ident, $list: expr) => {
         for elem in $list {
             $visitor.$method(elem)
         }
@@ -530,23 +530,22 @@ pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics
     }
 }
 
+pub fn walk_fn_ret_ty<'v, V: Visitor<'v>>(visitor: &mut V, ret_ty: &'v FunctionRetTy) {
+    if let Return(ref output_ty) = *ret_ty {
+        visitor.visit_ty(output_ty)
+    }
+}
+
 pub fn walk_fn_decl<'v, V: Visitor<'v>>(visitor: &mut V, function_declaration: &'v FnDecl) {
     for argument in &function_declaration.inputs {
         visitor.visit_pat(&argument.pat);
         visitor.visit_ty(&argument.ty)
     }
-    if let Return(ref output_ty) = function_declaration.output {
-        visitor.visit_ty(output_ty)
-    }
+    walk_fn_ret_ty(visitor, &function_declaration.output)
 }
 
-pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
-                                   function_kind: FnKind<'v>,
-                                   function_declaration: &'v FnDecl,
-                                   function_body: &'v Block,
-                                   _span: Span) {
-    walk_fn_decl(visitor, function_declaration);
-
+pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V,
+                                        function_kind: FnKind<'v>) {
     match function_kind {
         FnKind::ItemFn(_, generics, _, _, _, _) => {
             visitor.visit_generics(generics);
@@ -557,7 +556,15 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
         }
         FnKind::Closure => {}
     }
+}
 
+pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
+                                   function_kind: FnKind<'v>,
+                                   function_declaration: &'v FnDecl,
+                                   function_body: &'v Block,
+                                   _span: Span) {
+    walk_fn_decl(visitor, function_declaration);
+    walk_fn_kind(visitor, function_kind);
     visitor.visit_block(function_body)
 }
 

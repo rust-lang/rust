@@ -376,6 +376,11 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
             hir::TyFixedLengthVec(_, ref expr) => {
                 check_const_in_type(self.ccx, &**expr, self.ccx.tcx.types.usize);
             }
+            hir::TyBareFn(ref function_declaration) => {
+                visit::walk_fn_decl_nopat(self, &function_declaration.decl);
+                walk_list!(self, visit_lifetime_def, &function_declaration.lifetimes);
+                return
+            }
             _ => {}
         }
 
@@ -559,6 +564,10 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
             hir::TyFixedLengthVec(ref ty, ref count_expr) => {
                 self.visit_ty(&**ty);
                 check_expr_with_hint(self.fcx, &**count_expr, self.fcx.tcx().types.usize);
+            }
+            hir::TyBareFn(ref function_declaration) => {
+                visit::walk_fn_decl_nopat(self, &function_declaration.decl);
+                walk_list!(self, visit_lifetime_def, &function_declaration.lifetimes);
             }
             _ => visit::walk_ty(self, t)
         }
