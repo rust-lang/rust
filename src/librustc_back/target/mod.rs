@@ -458,7 +458,7 @@ impl Target {
     }
 }
 
-fn best_allocator() -> String {
+fn maybe_jemalloc() -> String {
     if cfg!(disable_jemalloc) {
         "alloc_system".to_string()
     } else {
