@@ -42,7 +42,7 @@ impl LateLintPass for MethodsPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprMethodCall(ref name, _, ref args) = expr.node {
             let (obj_ty, ptr_depth) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&args[0]));
-            if name.node == "unwrap" {
+            if name.node.as_str() == "unwrap" {
                 if match_type(cx, obj_ty, &OPTION_PATH) {
                     span_lint(cx, OPTION_UNWRAP_USED, expr.span,
                               "used unwrap() on an Option value. If you don't want \
@@ -54,7 +54,7 @@ impl LateLintPass for MethodsPass {
                                of Err values is preferred");
                 }
             }
-            else if name.node == "to_string" {
+            else if name.node.as_str() == "to_string" {
                 if obj_ty.sty == ty::TyStr {
                     let mut arg_str = snippet(cx, args[0].span, "_");
                     if ptr_depth > 1 {
@@ -82,7 +82,7 @@ impl LateLintPass for MethodsPass {
                     for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
                         if_let_chain! {
                             [
-                                name == method_name,
+                                name.as_str() == method_name,
                                 sig.decl.inputs.len() == n_args,
                                 out_type.matches(&sig.decl.output),
                                 self_kind.matches(&sig.explicit_self.node, false)

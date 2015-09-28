@@ -36,7 +36,7 @@ pub fn in_external_macro<T: LintContext>(cx: &T, span: Span) -> bool {
         opt_info.map_or(false, |info| {
             match info.callee.format {
                 ExpnFormat::CompilerExpansion(..) => {
-                    if info.callee.name() == "closure expansion" {
+                    if info.callee.name().as_str() == "closure expansion" {
                         return false;
                     }
                 },
@@ -66,7 +66,8 @@ pub fn in_external_macro<T: LintContext>(cx: &T, span: Span) -> bool {
 /// usage e.g. with
 /// `match_def_path(cx, id, &["core", "option", "Option"])`
 pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
-    cx.tcx.with_path(def_id, |iter| iter.zip(path).all(|(nm, p)| nm.name() == p))
+    cx.tcx.with_path(def_id, |iter| iter.zip(path)
+                                        .all(|(nm, p)| nm.name().as_str() == *p))
 }
 
 /// check if type is struct or enum type with given def path
@@ -98,7 +99,7 @@ pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool 
 /// `match_path(path, &["std", "rt", "begin_unwind"])`
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {
     path.segments.iter().rev().zip(segments.iter().rev()).all(
-        |(a, b)| &a.identifier.name == b)
+        |(a, b)| a.identifier.name.as_str() == *b)
 }
 
 /// get the name of the item the expression is in, if available

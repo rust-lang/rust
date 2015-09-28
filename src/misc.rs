@@ -94,7 +94,7 @@ impl LateLintPass for CmpNan {
 }
 
 fn check_nan(cx: &LateContext, path: &Path, span: Span) {
-    path.segments.last().map(|seg| if seg.identifier.name == "NAN" {
+    path.segments.last().map(|seg| if seg.identifier.name.as_str() == "NAN" {
         span_lint(cx, CMP_NAN, span,
             "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead");
     });
@@ -124,9 +124,10 @@ impl LateLintPass for FloatCmp {
                     return;
                 }
                 if let Some(name) = get_item_name(cx, expr) {
+                    let name = name.as_str();
                     if name == "eq" || name == "ne" || name == "is_nan" ||
-                            name.as_str().starts_with("eq_") ||
-                            name.as_str().ends_with("_eq") {
+                            name.starts_with("eq_") ||
+                            name.ends_with("_eq") {
                         return;
                     }
                 }
@@ -174,8 +175,8 @@ impl LateLintPass for CmpOwned {
 fn check_to_owned(cx: &LateContext, expr: &Expr, other_span: Span) {
     match expr.node {
         ExprMethodCall(Spanned{node: ref name, ..}, _, ref args) => {
-            if name == &"to_string" ||
-                name == &"to_owned" && is_str_arg(cx, args) {
+            if name.as_str() == "to_string" ||
+                name.as_str() == "to_owned" && is_str_arg(cx, args) {
                     span_lint(cx, CMP_OWNED, expr.span, &format!(
                         "this creates an owned instance just for comparison. \
                          Consider using `{}.as_slice()` to compare without allocation",

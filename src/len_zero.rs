@@ -52,7 +52,7 @@ impl LateLintPass for LenZero {
 
 fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[P<TraitItem>]) {
     fn is_named_self(item: &TraitItem, name: &str) -> bool {
-        item.name == name && if let MethodTraitItem(ref sig, _) =
+        item.name.as_str() == name && if let MethodTraitItem(ref sig, _) =
             item.node { is_self_sig(sig) } else { false }
     }
 
@@ -71,7 +71,7 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[P<TraitItem>]
 
 fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[P<ImplItem>]) {
     fn is_named_self(item: &ImplItem, name: &str) -> bool {
-        item.name == name && if let MethodImplItem(ref sig, _) =
+        item.name.as_str() == name && if let MethodImplItem(ref sig, _) =
             item.node { is_self_sig(sig) } else { false }
     }
 
@@ -98,7 +98,7 @@ fn is_self_sig(sig: &MethodSig) -> bool {
 fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) {    
     // check if we are in an is_empty() method 
     if let Some(name) = get_item_name(cx, left) {
-        if name == "is_empty" { return; }
+        if name.as_str() == "is_empty" { return; }
     }
     match (&left.node, &right.node) {
         (&ExprLit(ref lit), &ExprMethodCall(ref method, _, ref args)) =>
@@ -112,7 +112,7 @@ fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) 
 fn check_len_zero(cx: &LateContext, span: Span, name: &Name,
                   args: &[P<Expr>], lit: &Lit, op: &str) {
     if let Spanned{node: LitInt(0, _), ..} = *lit {
-        if name == &"len" && args.len() == 1 &&
+        if name.as_str() == "len" && args.len() == 1 &&
             has_is_empty(cx, &args[0]) {
                 span_lint(cx, LEN_ZERO, span, &format!(
                     "consider replacing the len comparison with `{}{}.is_empty()`",
@@ -128,7 +128,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
         if let &MethodTraitItemId(def_id) = id {
             if let ty::MethodTraitItem(ref method) =
                 cx.tcx.impl_or_trait_item(def_id) {
-                    method.name == "is_empty"
+                    method.name.as_str() == "is_empty"
                         && method.fty.sig.skip_binder().inputs.len() == 1
                 } else { false }
         } else { false }

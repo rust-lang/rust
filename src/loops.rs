@@ -110,17 +110,17 @@ impl LateLintPass for LoopsPass {
                 if args.len() == 1 {
                     let method_name = method.node;
                     // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
-                    if method_name == "iter" || method_name == "iter_mut" {
+                    if method_name.as_str() == "iter" || method_name.as_str() == "iter_mut" {
                         if is_ref_iterable_type(cx, &args[0]) {
                             let object = snippet(cx, args[0].span, "_");
                             span_lint(cx, EXPLICIT_ITER_LOOP, expr.span, &format!(
                                 "it is more idiomatic to loop over `&{}{}` instead of `{}.{}()`",
-                                if method_name == "iter_mut" { "mut " } else { "" },
+                                if method_name.as_str() == "iter_mut" { "mut " } else { "" },
                                 object, object, method_name));
                         }
                     }
                     // check for looping over Iterator::next() which is not what you want
-                    else if method_name == "next" &&
+                    else if method_name.as_str() == "next" &&
                             match_trait_method(cx, arg, &["core", "iter", "Iterator"]) {
                         span_lint(cx, ITER_NEXT_LOOP, expr.span,
                                   "you are iterating over `Iterator::next()` which is an Option; \
@@ -191,7 +191,7 @@ impl LateLintPass for LoopsPass {
     fn check_stmt(&mut self, cx: &LateContext, stmt: &Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if let ExprMethodCall(ref method, _, ref args) = expr.node {
-                if args.len() == 1 && method.node == "collect" &&
+                if args.len() == 1 && method.node.as_str() == "collect" &&
                         match_trait_method(cx, expr, &["core", "iter", "Iterator"]) {
                     span_lint(cx, UNUSED_COLLECT, expr.span, &format!(
                         "you are collect()ing an iterator and throwing away the result. \
