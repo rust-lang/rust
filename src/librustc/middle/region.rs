@@ -705,7 +705,7 @@ fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &hir::Block) {
             }
             visitor.visit_stmt(&**statement)
         }
-        visit::walk_expr_opt(visitor, &blk.expr)
+        walk_list!(visitor, visit_expr, &blk.expr);
     }
 
     visitor.cx = prev_cx;

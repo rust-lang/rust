@@ -1167,7 +1167,7 @@ fn has_nested_returns(tcx: &ty::ctxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bo
             }
             Some(hir_map::NodeBlock(blk)) if blk.id == blk_id => {
                 let mut visitor = FindNestedReturn::new();
-                visit::walk_expr_opt(&mut visitor, &blk.expr);
+                walk_list!(&mut visitor, visit_expr, &blk.expr);
                 if visitor.found {
                     return true;
                 }
