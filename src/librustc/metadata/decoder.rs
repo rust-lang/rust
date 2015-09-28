@@ -77,6 +77,11 @@ pub fn load_index(data: &[u8]) -> index::Index {
     index::Index::from_buf(index.data, index.start, index.end)
 }
 
+pub fn crate_rustc_version(data: &[u8]) -> Option<String> {
+    let doc = rbml::Doc::new(data);
+    reader::maybe_get_doc(doc, tag_rustc_version).map(|s| s.as_str())
+}
+
 #[derive(Debug, PartialEq)]
 enum Family {
     ImmStatic,             // c
