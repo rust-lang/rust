@@ -5,8 +5,7 @@
 
 # Summary
 
-Enable the compiler to cache incremental workproducts for debug
-builds.
+Enable the compiler to cache incremental workproducts.
 
 # Motivation
 
