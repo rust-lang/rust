@@ -39,5 +39,5 @@ pub fn main() {
     assert_eq!(v, 22);
 
     let v = Counter::new(22).inc().inc().get();
-    assert_eq!(v, 24);;
+    assert_eq!(v, 24);
 }
