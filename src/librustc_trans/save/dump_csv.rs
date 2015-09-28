@@ -796,6 +796,35 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             _ => visit::walk_pat(self, p),
         }
     }
+
+
+    fn process_var_decl(&mut self, p: &ast::Pat, value: String) {
+        // The local could declare multiple new vars, we must walk the
+        // pattern and collect them all.
+        let mut collector = PathCollector::new();
+        collector.visit_pat(&p);
+        self.visit_pat(&p);
+
+        for &(id, ref p, immut, _) in &collector.collected_paths {
+            let value = if immut == ast::MutImmutable {
+                value.to_string()
+            } else {
+                "<mutable>".to_string()
+            };
+            let types = self.tcx.node_types();
+            let typ = types.get(&id).unwrap().to_string();
+            // Get the span only for the name of the variable (I hope the path
+            // is only ever a variable name, but who knows?).
+            let sub_span = self.span.span_for_last_ident(p.span);
+            // Rust uses the id of the pattern for var lookups, so we'll use it too.
+            self.fmt.variable_str(p.span,
+                                  sub_span,
+                                  id,
+                                  &path_to_string(p),
+                                  &value,
+                                  &typ);
+        }
+    }
 }
 
 impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
@@ -1103,6 +1132,12 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 // walk the body
                 self.nest(ex.id, |v| v.visit_block(&**body));
             }
+            ast::ExprForLoop(ref pattern, ref subexpression, ref block, _) => {
+                let value = self.span.snippet(mk_sp(ex.span.lo, subexpression.span.hi));
+                self.process_var_decl(pattern, value);
+                visit::walk_expr(self, subexpression);
+                visit::walk_block(self, block);
+            }
             _ => {
                 visit::walk_expr(self, ex)
             }
@@ -1180,31 +1215,12 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
             return
         }
 
-        // The local could declare multiple new vars, we must walk the
-        // pattern and collect them all.
-        let mut collector = PathCollector::new();
-        collector.visit_pat(&l.pat);
-        self.visit_pat(&l.pat);
-
         let value = self.span.snippet(l.span);
-
-        for &(id, ref p, immut, _) in &collector.collected_paths {
-            let value = if immut == ast::MutImmutable {
-                value.to_string()
-            } else {
-                "<mutable>".to_string()
-            };
-            let types = self.tcx.node_types();
-            let typ = types.get(&id).unwrap().to_string();
-            // Get the span only for the name of the variable (I hope the path
-            // is only ever a variable name, but who knows?).
-            let sub_span = self.span.span_for_last_ident(p.span);
-            // Rust uses the id of the pattern for var lookups, so we'll use it too.
-            self.fmt.variable_str(p.span, sub_span, id, &path_to_string(p), &value, &typ);
-        }
+        self.process_var_decl(&l.pat, value);
 
         // Just walk the initialiser and type (don't want to walk the pattern again).
         walk_list!(self, visit_ty, &l.ty);
         walk_list!(self, visit_expr, &l.init);
     }
 }
+
