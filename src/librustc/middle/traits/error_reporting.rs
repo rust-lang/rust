@@ -216,7 +216,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                     is_warning, infcx.tcx.sess, obligation.cause.span, E0276,
                     "the requirement `{}` appears on the impl \
                      method but not on the corresponding trait method",
-                    obligation.predicate);;
+                    obligation.predicate);
             } else {
                 match obligation.predicate {
                     ty::Predicate::Trait(ref trait_predicate) => {
@@ -455,7 +455,7 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
             if !infcx.tcx.sess.has_errors() {
                 span_err!(infcx.tcx.sess, obligation.cause.span, E0284,
                         "type annotations required: cannot resolve `{}`",
-                        predicate);;
+                        predicate);
                 note_obligation_cause(infcx, obligation);
             }
         }
