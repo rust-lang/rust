@@ -786,10 +786,28 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 ExprAddrOf(m, ref ohs) => {
                     hir::ExprAddrOf(lower_mutability(lctx, m), lower_expr(lctx, ohs))
                 }
-                ExprIf(ref cond, ref tr, ref fl) => {
+                // More complicated than you might expect because the else branch
+                // might be `if let`.
+                ExprIf(ref cond, ref blk, ref else_opt) => {
+                    let else_opt = else_opt.as_ref().map(|els| match els.node {
+                        ExprIfLet(..) => {
+                            // wrap the if-let expr in a block
+                            let span = els.span;
+                            let blk = P(hir::Block {
+                                stmts: vec![],
+                                expr: Some(lower_expr(lctx, els)),
+                                id: lctx.next_id(),
+                                rules: hir::DefaultBlock,
+                                span: span
+                            });
+                            expr_block(lctx, blk)
+                        }
+                        _ => lower_expr(lctx, els)
+                    });
+
                     hir::ExprIf(lower_expr(lctx, cond),
-                           lower_block(lctx, tr),
-                           fl.as_ref().map(|x| lower_expr(lctx, x)))
+                                lower_block(lctx, blk),
+                                else_opt)
                 }
                 ExprWhile(ref cond, ref body, opt_ident) => {
                     hir::ExprWhile(lower_expr(lctx, cond),
@@ -880,16 +898,123 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 ExprInPlace(..) => {
                     panic!("todo");
                 }
-                ExprIfLet(..) => {
-                    panic!("todo");
+
+                // Desugar ExprIfLet
+                // From: `if let <pat> = <sub_expr> <body> [<else_opt>]`
+                ExprIfLet(ref pat, ref sub_expr, ref body, ref else_opt) => {
+                    // to:
+                    //
+                    //   match <sub_expr> {
+                    //     <pat> => <body>,
+                    //     [_ if <else_opt_if_cond> => <else_opt_if_body>,]
+                    //     _ => [<else_opt> | ()]
+                    //   }
+
+                    // `<pat> => <body>`
+                    let pat_arm = {
+                        let body_expr = expr_block(lctx, lower_block(lctx, body));
+                        arm(vec![lower_pat(lctx, pat)], body_expr)
+                    };
+
+                    // `[_ if <else_opt_if_cond> => <else_opt_if_body>,]`
+                    let mut else_opt = else_opt.as_ref().map(|e| lower_expr(lctx, e));
+                    let else_if_arms = {
+                        let mut arms = vec![];
+                        loop {
+                            let else_opt_continue = else_opt
+                                .and_then(|els| els.and_then(|els| match els.node {
+                                // else if
+                                hir::ExprIf(cond, then, else_opt) => {
+                                    let pat_under = pat_wild(lctx, e.span);
+                                    arms.push(hir::Arm {
+                                        attrs: vec![],
+                                        pats: vec![pat_under],
+                                        guard: Some(cond),
+                                        body: expr_block(lctx, then)
+                                    });
+                                    else_opt.map(|else_opt| (else_opt, true))
+                                }
+                                _ => Some((P(els), false))
+                            }));
+                            match else_opt_continue {
+                                Some((e, true)) => {
+                                    else_opt = Some(e);
+                                }
+                                Some((e, false)) => {
+                                    else_opt = Some(e);
+                                    break;
+                                }
+                                None => {
+                                    else_opt = None;
+                                    break;
+                                }
+                            }
+                        }
+                        arms
+                    };
+
+                    let contains_else_clause = else_opt.is_some();
+
+                    // `_ => [<else_opt> | ()]`
+                    let else_arm = {
+                        let pat_under = pat_wild(lctx, e.span);
+                        let else_expr = else_opt.unwrap_or_else(|| expr_tuple(lctx, e.span, vec![]));
+                        arm(vec![pat_under], else_expr)
+                    };
+
+                    let mut arms = Vec::with_capacity(else_if_arms.len() + 2);
+                    arms.push(pat_arm);
+                    arms.extend(else_if_arms);
+                    arms.push(else_arm);
+
+                    let match_expr = expr(lctx,
+                                          e.span,
+                                          hir::ExprMatch(lower_expr(lctx, sub_expr), arms,
+                                                 hir::MatchSource::IfLetDesugar {
+                                                     contains_else_clause: contains_else_clause,
+                                                 }));
+                    return match_expr;
                 }
-                ExprWhileLet(..) => {
-                    panic!("todo");
+
+                // Desugar ExprWhileLet
+                // From: `[opt_ident]: while let <pat> = <sub_expr> <body>`
+                ExprWhileLet(ref pat, ref sub_expr, ref body, opt_ident) => {
+                    // to:
+                    //
+                    //   [opt_ident]: loop {
+                    //     match <sub_expr> {
+                    //       <pat> => <body>,
+                    //       _ => break
+                    //     }
+                    //   }
+
+                    // `<pat> => <body>`
+                    let pat_arm = {
+                        let body_expr = expr_block(lctx, lower_block(lctx, body));
+                        arm(vec![lower_pat(lctx, pat)], body_expr)
+                    };
+
+                    // `_ => break`
+                    let break_arm = {
+                        let pat_under = pat_wild(lctx, e.span);
+                        let break_expr = expr_break(lctx, e.span);
+                        arm(vec![pat_under], break_expr)
+                    };
+
+                    // // `match <sub_expr> { ... }`
+                    let arms = vec![pat_arm, break_arm];
+                    let match_expr = expr(lctx,
+                                          e.span,
+                                          hir::ExprMatch(lower_expr(lctx, sub_expr), arms, hir::MatchSource::WhileLetDesugar));
+
+                    // `[opt_ident]: loop { ... }`
+                    let loop_block = block_expr(lctx, match_expr);
+                    return expr(lctx, e.span, hir::ExprLoop(loop_block, opt_ident));
                 }
 
                 // Desugar ExprForLoop
                 // From: `[opt_ident]: for <pat> in <head> <body>`
-                ExprForLoop(ref pat, ref head, ref body, ref opt_ident) => {
+                ExprForLoop(ref pat, ref head, ref body, opt_ident) => {
                     // to:
                     //
                     //   {
@@ -952,7 +1077,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
                     // `[opt_ident]: loop { ... }`
                     let loop_block = block_expr(lctx, match_expr);
-                    let loop_expr = expr(lctx, e.span, hir::ExprLoop(loop_block, opt_ident.clone()));
+                    let loop_expr = expr(lctx, e.span, hir::ExprLoop(loop_block, opt_ident));
 
                     // `mut iter => { ... }`
                     let iter_arm = {
@@ -976,16 +1101,14 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
                     // `{ let result = ...; result }`
                     let result_ident = token::gensym_ident("result");
-                    let result = expr_block(lctx,
-                                            block_all(lctx,
-                                                      e.span,
-                                                      vec![stmt_let(lctx,
-                                                                    e.span,
-                                                                    false,
-                                                                    result_ident,
-                                                                    match_expr)],
-                                                      Some(expr_ident(lctx, e.span, result_ident))));
-                    return result;
+                    return expr_block(lctx,
+                                      block_all(lctx,
+                                                e.span,
+                                                vec![stmt_let(lctx, e.span,
+                                                              false,
+                                                              result_ident,
+                                                              match_expr)],
+                                                Some(expr_ident(lctx, e.span, result_ident))))
                 }
 
                 ExprMac(_) => panic!("Shouldn't exist here"),
@@ -1137,6 +1260,10 @@ fn expr_block(lctx: &LoweringContext, b: P<hir::Block>) -> P<hir::Expr> {
     expr(lctx, b.span, hir::ExprBlock(b))
 }
 
+fn expr_tuple(lctx: &LoweringContext, sp: Span, exprs: Vec<P<hir::Expr>>) -> P<hir::Expr> {
+    expr(lctx, sp, hir::ExprTup(exprs))
+}
+
 fn expr(lctx: &LoweringContext, span: Span, node: hir::Expr_) -> P<hir::Expr> {
     P(hir::Expr {
         id: lctx.next_id(),
@@ -1206,6 +1333,10 @@ fn pat_ident_binding_mode(lctx: &LoweringContext,
                           bm: hir::BindingMode) -> P<hir::Pat> {
     let pat_ident = hir::PatIdent(bm, Spanned{span: span, node: ident}, None);
     pat(lctx, span, pat_ident)
+}
+
+fn pat_wild(lctx: &LoweringContext, span: Span) -> P<hir::Pat> {
+    pat(lctx, span, hir::PatWild(hir::PatWildSingle))
 }
 
 fn pat(lctx: &LoweringContext, span: Span, pat: hir::Pat_) -> P<hir::Pat> {
