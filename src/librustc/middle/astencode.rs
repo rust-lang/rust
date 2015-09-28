@@ -36,6 +36,7 @@ use middle::subst;
 use middle::ty::{self, Ty};
 
 use syntax::{ast, ast_util, codemap};
+use syntax::ast::NodeIdAssigner;
 use syntax::codemap::Span;
 use syntax::ptr::P;
 

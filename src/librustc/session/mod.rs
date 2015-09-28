@@ -15,7 +15,7 @@ use middle::dependency_format;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeMap, FnvHashMap};
 
-use syntax::ast::NodeId;
+use syntax::ast::{NodeId, NodeIdAssigner};
 use syntax::codemap::Span;
 use syntax::diagnostic::{self, Emitter};
 use syntax::diagnostics;
@@ -236,9 +236,6 @@ impl Session {
         }
         lints.insert(id, vec!((lint_id, sp, msg)));
     }
-    pub fn next_node_id(&self) -> ast::NodeId {
-        self.reserve_node_ids(1)
-    }
     pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
         let id = self.next_node_id.get();
 
@@ -314,6 +311,12 @@ impl Session {
             config::host_triple(),
             &self.opts.search_paths,
             kind)
+    }
+}
+
+impl NodeIdAssigner for Session {
+    fn next_node_id(&self) -> NodeId {
+        self.reserve_node_ids(1)
     }
 }
 

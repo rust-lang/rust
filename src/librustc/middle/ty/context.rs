@@ -219,7 +219,7 @@ pub struct ctxt<'tcx> {
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
 
-    pub sess: Session,
+    pub sess: &'tcx Session,
     pub def_map: DefMap,
 
     pub named_region_map: resolve_lifetime::NamedRegionMap,
@@ -443,7 +443,7 @@ impl<'tcx> ctxt<'tcx> {
     /// to the context. The closure enforces that the type context and any interned
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
     /// reference to the context, to allow formatting values that need it.
-    pub fn create_and_enter<F, R>(s: Session,
+    pub fn create_and_enter<F, R>(s: &'tcx Session,
                                  arenas: &'tcx CtxtArenas<'tcx>,
                                  def_map: DefMap,
                                  named_region_map: resolve_lifetime::NamedRegionMap,
@@ -452,7 +452,7 @@ impl<'tcx> ctxt<'tcx> {
                                  region_maps: RegionMaps,
                                  lang_items: middle::lang_items::LanguageItems,
                                  stability: stability::Index<'tcx>,
-                                 f: F) -> (Session, R)
+                                 f: F) -> R
                                  where F: FnOnce(&ctxt<'tcx>) -> R
     {
         let interner = RefCell::new(FnvHashMap());
@@ -556,7 +556,6 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
 
 pub mod tls {
     use middle::ty;
-    use session::Session;
 
     use std::fmt;
     use syntax::codemap;
@@ -574,17 +573,15 @@ pub mod tls {
         })
     }
 
-    pub fn enter<'tcx, F: FnOnce(&ty::ctxt<'tcx>) -> R, R>(tcx: ty::ctxt<'tcx>, f: F)
-                                                           -> (Session, R) {
-        let result = codemap::SPAN_DEBUG.with(|span_dbg| {
+    pub fn enter<'tcx, F: FnOnce(&ty::ctxt<'tcx>) -> R, R>(tcx: ty::ctxt<'tcx>, f: F) -> R {
+        codemap::SPAN_DEBUG.with(|span_dbg| {
             let original_span_debug = span_dbg.get();
             span_dbg.set(span_debug);
             let tls_ptr = &tcx as *const _ as *const ThreadLocalTyCx;
             let result = TLS_TCX.set(unsafe { &*tls_ptr }, || f(&tcx));
             span_dbg.set(original_span_debug);
             result
-        });
-        (tcx.sess, result)
+        })
     }
 
     pub fn with<F: FnOnce(&ty::ctxt) -> R, R>(f: F) -> R {

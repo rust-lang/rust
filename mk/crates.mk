@@ -80,13 +80,13 @@ DEPS_rustc_typeck := rustc syntax rustc_front rustc_platform_intrinsics
 DEPS_rustc_borrowck := rustc rustc_front log graphviz syntax
 DEPS_rustc_resolve := rustc rustc_front log syntax
 DEPS_rustc_privacy := rustc rustc_front log syntax
+DEPS_rustc_front := std syntax log serialize
 DEPS_rustc_lint := rustc log syntax
-DEPS_rustc := syntax flate arena serialize getopts rbml \
+DEPS_rustc := syntax flate arena serialize getopts rbml rustc_front\
               log graphviz rustc_llvm rustc_back rustc_data_structures
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
 DEPS_rustc_platform_intrinsics := rustc rustc_llvm
 DEPS_rustc_back := std syntax rustc_llvm rustc_front flate log libc
-DEPS_rustc_front := std syntax log serialize
 DEPS_rustc_data_structures := std log serialize
 DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
                 test rustc_lint rustc_front
