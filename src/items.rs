@@ -144,6 +144,7 @@ impl<'a> FmtVisitor<'a> {
                                                    abi::Abi::Rust,
                                                    ast::Visibility::Inherited,
                                                    span,
+                                                   false,
                                                    false);
 
                 match rewrite {
@@ -210,7 +211,8 @@ impl<'a> FmtVisitor<'a> {
                                                        abi,
                                                        vis,
                                                        span,
-                                                       newline_brace));
+                                                       newline_brace,
+                                                       true));
 
         if self.config.fn_brace_style != BraceStyle::AlwaysNextLine && !result.contains('\n') {
             newline_brace = false;
@@ -250,6 +252,7 @@ impl<'a> FmtVisitor<'a> {
                                                        sig.abi,
                                                        ast::Visibility::Inherited,
                                                        span,
+                                                       false,
                                                        false));
 
         // Re-attach semicolon
@@ -269,7 +272,8 @@ impl<'a> FmtVisitor<'a> {
                        abi: abi::Abi,
                        vis: ast::Visibility,
                        span: Span,
-                       newline_brace: bool)
+                       newline_brace: bool,
+                       has_body: bool)
                        -> Option<String> {
         // FIXME we'll lose any comments in between parts of the function decl, but anyone
         // who comments there probably deserves what they get.
@@ -407,7 +411,9 @@ impl<'a> FmtVisitor<'a> {
                                 (!result.contains('\n') ||
                                  self.config.fn_args_layout == StructLitStyle::Block)) ||
                                (self.config.fn_args_layout == StructLitStyle::Block &&
-                                ret_str.is_empty()) {
+                                ret_str.is_empty()) ||
+                               (self.config.where_density == Density::CompressedIfEmpty &&
+                                !has_body) {
             Density::Compressed
         } else {
             Density::Tall

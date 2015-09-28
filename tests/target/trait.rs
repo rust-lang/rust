@@ -15,8 +15,7 @@ trait Foo {
 
     fn increment(&mut self, x: i32);
 
-    fn read(&mut self, x: BufReader<R> /* Used to be MemReader */)
-        where R: Read;
+    fn read(&mut self, x: BufReader<R> /* Used to be MemReader */) where R: Read;
 }
 
 pub trait WriteMessage {
