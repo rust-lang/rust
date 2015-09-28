@@ -95,8 +95,8 @@ fn is_self_sig(sig: &MethodSig) -> bool {
         false } else { sig.decl.inputs.len() == 1 }
 }
 
-fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) {    
-    // check if we are in an is_empty() method 
+fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) {
+    // check if we are in an is_empty() method
     if let Some(name) = get_item_name(cx, left) {
         if name.as_str() == "is_empty" { return; }
     }

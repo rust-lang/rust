@@ -17,7 +17,7 @@ fn canon() {
 #[deny(non_ascii_literal)]
 fn uni() {
     print!("Üben!"); //~ERROR literal non-ASCII character detected
-    print!("\u{DC}ben!"); // this is okay 
+    print!("\u{DC}ben!"); // this is okay
 }
 
 fn main() {

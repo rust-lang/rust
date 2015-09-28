@@ -45,7 +45,7 @@ fn main() {
     1usize as f32; //~ERROR casting usize to f32 causes a loss of precision (usize is 32 or 64 bits wide, but f32's mantissa is only 23 bits wide)
     1isize as i32; //~ERROR casting isize to i32 may truncate the value on targets with 64-bit wide pointers
     1isize as u32; //~ERROR casting isize to u32 may lose the sign of the value
-                  //~^ERROR casting isize to u32 may truncate the value on targets with 64-bit wide pointers       
+                  //~^ERROR casting isize to u32 may truncate the value on targets with 64-bit wide pointers
     1usize as u32; //~ERROR casting usize to u32 may truncate the value on targets with 64-bit wide pointers
     1usize as i32; //~ERROR casting usize to i32 may truncate the value on targets with 64-bit wide pointers
                   //~^ERROR casting usize to i32 may wrap around the value on targets with 32-bit wide pointers
