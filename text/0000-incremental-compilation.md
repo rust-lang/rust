@@ -293,6 +293,12 @@ The nodes fall into the following categories:
       where-clauses, etc)
     - `BODY(X)` would be the body of some fn item `X`
     - and so forth
+- **Metadata nodes.** These represent portions of the metadata from
+  another crate. Each piece of metadata will include a hash of its
+  contents. When we need information about an external item, we load
+  that info out of the metadata and add it into the IR nodes below;
+  this can be represented in the graph using edges. This means that
+  incremental compilation can also work across crates.
 - **IR nodes.** Represent some portion of the computed IR. For
   example, the MIR representation of a fn body, or the `ty`
   representation of a fn signature. These also frequently correspond
