@@ -248,16 +248,12 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_fn(&mut self, fk: visit::FnKind<'ast>, fd: &'ast FnDecl,
                 b: &'ast Block, s: Span, id: NodeId) {
-        let parent_node = self.parent_node;
-        self.parent_node = id;
+        assert_eq!(self.parent_node, id);
         self.visit_fn_decl(fd);
         visit::walk_fn(self, fk, fd, b, s);
-        self.parent_node = parent_node;
     }
 
     fn visit_ty(&mut self, ty: &'ast Ty) {
-        let parent_node = self.parent_node;
-        self.parent_node = ty.id;
         match ty.node {
             TyBareFn(ref fd) => {
                 self.visit_fn_decl(&*fd.decl);
@@ -265,7 +261,6 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             _ => {}
         }
         visit::walk_ty(self, ty);
-        self.parent_node = parent_node;
     }
 
     fn visit_block(&mut self, block: &'ast Block) {
