@@ -583,6 +583,8 @@ fn get_path(f: &File) -> io::Result<PathBuf> {
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     let mut opts = OpenOptions::new();
     opts.read(true);
+    // This flag is so we can open directories too
+    opts.flags_and_attributes(c::FILE_FLAG_BACKUP_SEMANTICS);
     let f = try!(File::open(p, &opts));
     get_path(&f)
 }
