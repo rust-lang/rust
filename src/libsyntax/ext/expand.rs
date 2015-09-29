@@ -82,8 +82,18 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
         ast::ExprWhileLet(pat, expr, body, opt_ident) => {
             let pat = fld.fold_pat(pat);
             let expr = fld.fold_expr(expr);
-            let (body, opt_ident) = expand_loop_block(body, opt_ident, fld);
-            fld.cx.expr(span, ast::ExprWhileLet(pat, expr, body, opt_ident))
+
+            // Hygienic renaming of the body.
+            let ((body, opt_ident), mut rewritten_pats) =
+                rename_in_scope(vec![pat],
+                                fld,
+                                (body, opt_ident),
+                                |rename_fld, fld, (body, opt_ident)| {
+                expand_loop_block(rename_fld.fold_block(body), opt_ident, fld)
+            });
+            assert!(rewritten_pats.len() == 1);
+
+            fld.cx.expr(span, ast::ExprWhileLet(rewritten_pats.remove(0), expr, body, opt_ident))
         }
 
         ast::ExprLoop(loop_block, opt_ident) => {
@@ -93,9 +103,37 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
         ast::ExprForLoop(pat, head, body, opt_ident) => {
             let pat = fld.fold_pat(pat);
+
+            // Hygienic renaming of the for loop body (for loop binds its pattern).
+            let ((body, opt_ident), mut rewritten_pats) =
+                rename_in_scope(vec![pat],
+                                fld,
+                                (body, opt_ident),
+                                |rename_fld, fld, (body, opt_ident)| {
+                expand_loop_block(rename_fld.fold_block(body), opt_ident, fld)
+            });
+            assert!(rewritten_pats.len() == 1);
+
             let head = fld.fold_expr(head);
-            let (body, opt_ident) = expand_loop_block(body, opt_ident, fld);
-            fld.cx.expr(span, ast::ExprForLoop(pat, head, body, opt_ident))
+            fld.cx.expr(span, ast::ExprForLoop(rewritten_pats.remove(0), head, body, opt_ident))
+        }
+
+        ast::ExprIfLet(pat, sub_expr, body, else_opt) => {
+            let pat = fld.fold_pat(pat);
+
+            // Hygienic renaming of the body.
+            let (body, mut rewritten_pats) =
+                rename_in_scope(vec![pat],
+                                fld,
+                                body,
+                                |rename_fld, fld, body| {
+                fld.fold_block(rename_fld.fold_block(body))
+            });
+            assert!(rewritten_pats.len() == 1);
+
+            let else_opt = else_opt.map(|else_opt| fld.fold_expr(else_opt));
+            let sub_expr = fld.fold_expr(sub_expr);
+            fld.cx.expr(span, ast::ExprIfLet(rewritten_pats.remove(0), sub_expr, body, else_opt))
         }
 
         ast::ExprClosure(capture_clause, fn_decl, block) => {
@@ -569,24 +607,43 @@ fn expand_arm(arm: ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
     if expanded_pats.is_empty() {
         panic!("encountered match arm with 0 patterns");
     }
-    // all of the pats must have the same set of bindings, so use the
-    // first one to extract them and generate new names:
-    let idents = pattern_bindings(&*expanded_pats[0]);
-    let new_renames = idents.into_iter().map(|id| (id, fresh_name(id))).collect();
-    // apply the renaming, but only to the PatIdents:
-    let mut rename_pats_fld = PatIdentRenamer{renames:&new_renames};
-    let rewritten_pats = expanded_pats.move_map(|pat| rename_pats_fld.fold_pat(pat));
+
     // apply renaming and then expansion to the guard and the body:
-    let mut rename_fld = IdentRenamer{renames:&new_renames};
-    let rewritten_guard =
-        arm.guard.map(|g| fld.fold_expr(rename_fld.fold_expr(g)));
-    let rewritten_body = fld.fold_expr(rename_fld.fold_expr(arm.body));
+    let ((rewritten_guard, rewritten_body), rewritten_pats) =
+        rename_in_scope(expanded_pats,
+                        fld,
+                        (arm.guard, arm.body),
+                        |rename_fld, fld, (ag, ab)|{
+        let rewritten_guard = ag.map(|g| fld.fold_expr(rename_fld.fold_expr(g)));
+        let rewritten_body = fld.fold_expr(rename_fld.fold_expr(ab));
+        (rewritten_guard, rewritten_body)
+    });
+
     ast::Arm {
         attrs: fold::fold_attrs(arm.attrs, fld),
         pats: rewritten_pats,
         guard: rewritten_guard,
         body: rewritten_body,
     }
+}
+
+fn rename_in_scope<X, F>(pats: Vec<P<ast::Pat>>,
+                         fld: &mut MacroExpander,
+                         x: X,
+                         f: F)
+                         -> (X, Vec<P<ast::Pat>>)
+    where F: Fn(&mut IdentRenamer, &mut MacroExpander, X) -> X
+{
+    // all of the pats must have the same set of bindings, so use the
+    // first one to extract them and generate new names:
+    let idents = pattern_bindings(&*pats[0]);
+    let new_renames = idents.into_iter().map(|id| (id, fresh_name(id))).collect();
+    // apply the renaming, but only to the PatIdents:
+    let mut rename_pats_fld = PatIdentRenamer{renames:&new_renames};
+    let rewritten_pats = pats.move_map(|pat| rename_pats_fld.fold_pat(pat));
+
+    let mut rename_fld = IdentRenamer{ renames:&new_renames };
+    (f(&mut rename_fld, fld, x), rewritten_pats)
 }
 
 /// A visitor that extracts the PatIdent (binding) paths
