@@ -147,7 +147,6 @@ pub trait CharExt {
     fn to_digit(self, radix: u32) -> Option<u32>;
     fn escape_unicode(self) -> EscapeUnicode;
     fn escape_default(self) -> EscapeDefault;
-    fn needs_escape_default(self) -> bool;
     fn len_utf8(self) -> usize;
     fn len_utf16(self) -> usize;
     fn encode_utf8(self, dst: &mut [u8]) -> Option<usize>;
@@ -186,22 +185,11 @@ impl CharExt for char {
             '\t' => EscapeDefaultState::Backslash('t'),
             '\r' => EscapeDefaultState::Backslash('r'),
             '\n' => EscapeDefaultState::Backslash('n'),
-            '\\' => EscapeDefaultState::Backslash('\\'),
-            '\'' => EscapeDefaultState::Backslash('\''),
-            '"'  => EscapeDefaultState::Backslash('"'),
+            '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
             '\x20' ... '\x7e' => EscapeDefaultState::Char(self),
             _ => EscapeDefaultState::Unicode(self.escape_unicode())
         };
         EscapeDefault { state: init_state }
-    }
-
-    #[inline]
-    fn needs_escape_default(self) -> bool {
-        match self {
-            '\\' | '\'' | '"' => true,
-            '\x20' ... '\x7e' => false,
-            _ => true
-        }
     }
 
     #[inline]
@@ -388,6 +376,15 @@ impl Iterator for EscapeDefault {
             }
             EscapeDefaultState::Done => None,
             EscapeDefaultState::Unicode(ref mut iter) => iter.next()
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self.state {
+            EscapeDefaultState::Char(_) => (1, Some(1)),
+            EscapeDefaultState::Backslash(_) => (2, Some(2)),
+            EscapeDefaultState::Unicode(_) => (0, Some(10)),
+            _ => (0, Some(0))
         }
     }
 }

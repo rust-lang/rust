@@ -1313,11 +1313,12 @@ impl Debug for str {
         try!(f.write_char('"'));
         let mut from = 0;
         for (i, c) in self.char_indices() {
+            let esc = c.escape_default();
             // If char needs escaping, flush backlog so far and write, else skip
-            if c.needs_escape_default() {
+            if esc.size_hint().0 != 1 {
                 try!(f.write_str(&self[from..i]));
-                for e in c.escape_default() {
-                    try!(f.write_char(e));
+                for c in esc {
+                    try!(f.write_char(c));
                 }
                 from = i + c.len_utf8();
             }
