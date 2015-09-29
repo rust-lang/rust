@@ -44,7 +44,7 @@ as well, but functions are easiest to describe):
 - Object files
   - This represents the final result of running LLVM. It may be that
     the best strategy is to "cache" compiled code in the form of an
-    rlib that is progessively patched, or it may be easier to store
+    rlib that is progressively patched, or it may be easier to store
     individual `.o` files that must be relinked (anyone who has worked
     in a substantial C++ project can attest, however, that linking can
     take a non-trivial amount of time).
@@ -185,7 +185,7 @@ store an integer. So effectively the `node` field of `DefId`, which
 currently indexes into the HIR of the appropriate crate, becomes an
 index into the crate's list of paths.
 
-For the most part, these paths match up with user's intutions. So a
+For the most part, these paths match up with user's intuitions. So a
 struct `Foo` declared in a module `bar` would just have a path like
 `bar::Foo`. However, the paths are also able to express things for
 which there is no syntax, such as an item declared within a function
@@ -230,7 +230,7 @@ mod foo {               // Path: <root>::foo
 }
 ```
 
-Note that the impls were arbitarily assigned indices based on the order
+Note that the impls were arbitrarily assigned indices based on the order
 in which they appear. This does mean that reordering impls may cause
 spurious recompilations. We can try to mitigate this somewhat by making the
 path entry for an impl include some sort of hash for its header or its contents,
@@ -285,8 +285,8 @@ graph will be gradually more fine-grained.
 The nodes fall into the following categories:
 
 - **HIR nodes.** Represent some portion of the input HIR. For example,
-  the body of a fn as a HIR node (or, perhaps, HIR node). These are
-  the inputs to the entire compilation process.
+  the body of a fn as a HIR node. These are the inputs to the entire
+  compilation process.
   - Examples:
     - `SIG(X)` would represent the signature of some fn item
       `X` that the user wrote (i.e., the names of the types,
@@ -417,7 +417,7 @@ framework, you don't really have to worry.
 In general, while I described the general case of a stack of procedure
 nodes, it may be desirable to try and maintain the invariant that
 there is only ever one procedure node on the stack at a
-time. Otherwise, failing to push/pop a procdure at the right time
+time. Otherwise, failing to push/pop a procedure at the right time
 could result in edges being added to the wrong procedure. It is likely
 possible to refactor things to maintain this invariant, but that has
 to be determined as we go.
@@ -547,7 +547,7 @@ parallel codegen, but setup differently.)
 In terms of the dependency graph, we would create one IR node
 representing the codegen unit. This would have the object code as an
 associated artifact. We would also have edges from each component of
-the codegen unit. As today. generic or inlined functions would not
+the codegen unit. As today, generic or inlined functions would not
 belong to any codegen unit, but rather would be instantiated anew into
 each codegen unit in which they are (transitively) referenced.
 
@@ -571,10 +571,11 @@ worth considering how we can best test this code.
 The first and most obvious piece of infrastructure is something for
 reliable regression testing. The plan is simply to have a series of
 sources and patches. The source will have each patch applied in
-sequence, rebuilding (incrementally) at each point. We can then
-compare the result with the result of a fresh build from scratch.
-This allows us to build up tests for specific scenarios or bug
-reports, but doesn't help with *finding* bugs in the first place.
+sequence, rebuilding (incrementally) at each point. We can then check
+that (a) we only rebuilt what we expected to rebuild and (b) compare
+the result with the result of a fresh build from scratch.  This allows
+us to build up tests for specific scenarios or bug reports, but
+doesn't help with *finding* bugs in the first place.
 
 ### Replaying crates.io versions and git history
 
@@ -612,10 +613,11 @@ possible. We also describe automated testing strategies.
 
 # Alternatives
 
-This design is an evolution from a prior RFC.
+This design is an evolution from [RFC 594][].
 
 # Unresolved questions
 
 None.
 
 [1211]: https://github.com/rust-lang/rfcs/pull/1211
+[RFC 594]: https://github.com/rust-lang/rfcs/pull/594
