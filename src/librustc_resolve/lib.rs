@@ -2158,7 +2158,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                              |this| {
                     this.with_self_rib(DefSelfTy(Some(DefId::local(item.id)), None), |this| {
                         this.visit_generics(generics);
-                        visit::walk_ty_param_bounds_helper(this, bounds);
+                        walk_list!(this, visit_ty_param_bound, bounds);
 
                         for trait_item in trait_items {
                             match trait_item.node {
@@ -2542,10 +2542,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_local(&mut self, local: &Local) {
         // Resolve the type.
-        visit::walk_ty_opt(self, &local.ty);
+        walk_list!(self, visit_ty, &local.ty);
 
         // Resolve the initializer.
-        visit::walk_expr_opt(self, &local.init);
+        walk_list!(self, visit_expr, &local.init);
 
         // Resolve the pattern.
         self.resolve_pattern(&*local.pat,
@@ -2622,7 +2622,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // pat_idents are variants
         self.check_consistent_bindings(arm);
 
-        visit::walk_expr_opt(self, &arm.guard);
+        walk_list!(self, visit_expr, &arm.guard);
         self.visit_expr(&*arm.body);
 
         if !self.resolved {

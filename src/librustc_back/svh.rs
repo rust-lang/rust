@@ -177,7 +177,7 @@ mod svh_visitor {
         SawIdent(token::InternedString),
         SawStructDef(token::InternedString),
 
-        SawLifetimeRef(token::InternedString),
+        SawLifetime(token::InternedString),
         SawLifetimeDef(token::InternedString),
 
         SawMod,
@@ -193,7 +193,6 @@ mod svh_visitor {
         SawVariant,
         SawExplicitSelf,
         SawPath,
-        SawOptLifetimeRef,
         SawBlock,
         SawPat,
         SawLocal,
@@ -316,17 +315,6 @@ mod svh_visitor {
             visit::walk_variant(self, v, g)
         }
 
-        fn visit_opt_lifetime_ref(&mut self, _: Span, l: &Option<Lifetime>) {
-            SawOptLifetimeRef.hash(self.st);
-            // (This is a strange method in the visitor trait, in that
-            // it does not expose a walk function to do the subroutine
-            // calls.)
-            match *l {
-                Some(ref l) => self.visit_lifetime_ref(l),
-                None => ()
-            }
-        }
-
         // All of the remaining methods just record (in the hash
         // SipHasher) that the visitor saw that particular variant
         // (with its payload), and continue walking as the default
@@ -345,8 +333,8 @@ mod svh_visitor {
             SawIdent(name.as_str()).hash(self.st);
         }
 
-        fn visit_lifetime_ref(&mut self, l: &Lifetime) {
-            SawLifetimeRef(l.name.as_str()).hash(self.st);
+        fn visit_lifetime(&mut self, l: &Lifetime) {
+            SawLifetime(l.name.as_str()).hash(self.st);
         }
 
         fn visit_lifetime_def(&mut self, l: &LifetimeDef) {

@@ -156,8 +156,7 @@ pub trait LateLintPass: LintPass {
     fn check_struct_field(&mut self, _: &LateContext, _: &hir::StructField) { }
     fn check_variant(&mut self, _: &LateContext, _: &hir::Variant, _: &hir::Generics) { }
     fn check_variant_post(&mut self, _: &LateContext, _: &hir::Variant, _: &hir::Generics) { }
-    fn check_opt_lifetime_ref(&mut self, _: &LateContext, _: Span, _: &Option<hir::Lifetime>) { }
-    fn check_lifetime_ref(&mut self, _: &LateContext, _: &hir::Lifetime) { }
+    fn check_lifetime(&mut self, _: &LateContext, _: &hir::Lifetime) { }
     fn check_lifetime_def(&mut self, _: &LateContext, _: &hir::LifetimeDef) { }
     fn check_explicit_self(&mut self, _: &LateContext, _: &hir::ExplicitSelf) { }
     fn check_path(&mut self, _: &LateContext, _: &hir::Path, _: ast::NodeId) { }
@@ -199,11 +198,7 @@ pub trait EarlyLintPass: LintPass {
     fn check_struct_field(&mut self, _: &EarlyContext, _: &ast::StructField) { }
     fn check_variant(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
     fn check_variant_post(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
-    fn check_opt_lifetime_ref(&mut self,
-                              _: &EarlyContext,
-                              _: Span,
-                              _: &Option<ast::Lifetime>) { }
-    fn check_lifetime_ref(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
+    fn check_lifetime(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
     fn check_lifetime_def(&mut self, _: &EarlyContext, _: &ast::LifetimeDef) { }
     fn check_explicit_self(&mut self, _: &EarlyContext, _: &ast::ExplicitSelf) { }
     fn check_path(&mut self, _: &EarlyContext, _: &ast::Path, _: ast::NodeId) { }

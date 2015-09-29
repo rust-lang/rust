@@ -481,6 +481,12 @@ impl<'a> CrateReader<'a> {
                 };
                 let span = mk_sp(lo, p.last_span.hi);
                 p.abort_if_errors();
+
+                // Mark the attrs as used
+                for attr in &attrs {
+                    attr::mark_used(attr);
+                }
+
                 macros.push(ast::MacroDef {
                     ident: ast::Ident::with_empty_ctxt(name),
                     attrs: attrs,
