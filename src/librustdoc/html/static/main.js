@@ -133,7 +133,7 @@
     $(document).on("keypress", handleShortcut);
     $(document).on("keydown", handleShortcut);
     $(document).on("click", function(ev) {
-        if (!$(e.target).closest("#help > div").length) {
+        if (!$(ev.target).closest("#help > div").length) {
             $("#help").addClass("hidden");
             $("body").removeClass("blur");
         }
