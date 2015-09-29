@@ -218,7 +218,7 @@
 //! }
 //! ```
 //!
-//! ### fmt::Display vs fmt::Debug
+//! ### `fmt::Display` vs `fmt::Debug`
 //!
 //! These two formatting traits have distinct purposes:
 //!
@@ -358,24 +358,24 @@
 //! to ensure padding is applied is to format your input, then use this
 //! resulting string to pad your output.
 //!
-//! ## Sign/#/0
+//! ## Sign/`#`/`0`
 //!
 //! These can all be interpreted as flags for a particular formatter.
 //!
-//! * '+' - This is intended for numeric types and indicates that the sign
+//! * `+` - This is intended for numeric types and indicates that the sign
 //!         should always be printed. Positive signs are never printed by
 //!         default, and the negative sign is only printed by default for the
-//!         `Signed` trait. This flag indicates that the correct sign (+ or -)
+//!         `Signed` trait. This flag indicates that the correct sign (`+` or `-`)
 //!         should always be printed.
-//! * '-' - Currently not used
-//! * '#' - This flag is indicates that the "alternate" form of printing should
+//! * `-` - Currently not used
+//! * `#` - This flag is indicates that the "alternate" form of printing should
 //!         be used. The alternate forms are:
 //!     * `#?` - pretty-print the `Debug` formatting
-//!     * `#x` - precedes the argument with a "0x"
-//!     * `#X` - precedes the argument with a "0x"
-//!     * `#b` - precedes the argument with a "0b"
-//!     * `#o` - precedes the argument with a "0o"
-//! * '0' - This is used to indicate for integer formats that the padding should
+//!     * `#x` - precedes the argument with a `0x`
+//!     * `#X` - precedes the argument with a `0x`
+//!     * `#b` - precedes the argument with a `0b`
+//!     * `#o` - precedes the argument with a `0o`
+//! * `0` - This is used to indicate for integer formats that the padding should
 //!         both be done with a `0` character as well as be sign-aware. A format
 //!         like `{:08}` would yield `00000001` for the integer `1`, while the
 //!         same format would yield `-0000001` for the integer `-1`. Notice that
@@ -390,8 +390,8 @@
 //!
 //! The default fill/alignment for non-numerics is a space and left-aligned. The
 //! defaults for numeric formatters is also a space but with right-alignment. If
-//! the '0' flag is specified for numerics, then the implicit fill character is
-//! '0'.
+//! the `0` flag is specified for numerics, then the implicit fill character is
+//! `0`.
 //!
 //! The value for the width can also be provided as a `usize` in the list of
 //! parameters by using the `2$` syntax indicating that the second argument is a
