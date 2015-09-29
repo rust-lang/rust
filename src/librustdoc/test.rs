@@ -26,7 +26,7 @@ use rustc::front::map as hir_map;
 use rustc::session::{self, config};
 use rustc::session::config::{get_unstable_features_setting, OutputType};
 use rustc::session::search_paths::{SearchPaths, PathKind};
-use rustc_front::lowering::lower_crate;
+use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_back::tempdir::TempDir;
 use rustc_driver::{driver, Compilation};
 use syntax::codemap::CodeMap;
@@ -83,7 +83,9 @@ pub fn run(input: &str,
                                                      "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");
     let krate = driver::assign_node_ids(&sess, krate);
-    let krate = lower_crate(&krate);
+    let foo = &42;
+    let lcx = LoweringContext::new(foo, &sess, &krate);
+    let krate = lower_crate(&lcx, &krate);
 
     let opts = scrape_test_config(&krate);
 
@@ -91,8 +93,13 @@ pub fn run(input: &str,
     let map = hir_map::map_crate(&mut forest);
 
     let ctx = core::DocContext {
+<<<<<<< HEAD
         map: &map,
         maybe_typed: core::NotTyped(sess),
+=======
+        krate: &krate,
+        maybe_typed: core::NotTyped(&sess),
+>>>>>>> Fixes to rustdoc, etc.
         input: input,
         external_paths: RefCell::new(Some(HashMap::new())),
         external_traits: RefCell::new(None),

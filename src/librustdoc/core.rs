@@ -19,7 +19,7 @@ use rustc::lint;
 use rustc::util::nodemap::DefIdSet;
 use rustc_trans::back::link;
 use rustc_resolve as resolve;
-use rustc_front::lowering::lower_crate;
+use rustc_front::lowering::{lower_crate, LoweringContext};
 
 use syntax::{ast, codemap, diagnostic};
 use syntax::feature_gate::UnstableFeatures;
@@ -37,7 +37,7 @@ pub use rustc::session::search_paths::SearchPaths;
 /// Are we generating documentation (`Typed`) or tests (`NotTyped`)?
 pub enum MaybeTyped<'a, 'tcx: 'a> {
     Typed(&'a ty::ctxt<'tcx>),
-    NotTyped(session::Session)
+    NotTyped(&'a session::Session)
 }
 
 pub type ExternalPaths = RefCell<Option<HashMap<DefId,
@@ -135,11 +135,13 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
 
     let krate = driver::assign_node_ids(&sess, krate);
     // Lower ast -> hir.
-    let mut hir_forest = hir_map::Forest::new(lower_crate(&krate));
+    let foo = &42;
+    let lcx = LoweringContext::new(foo, &sess, &krate);
+    let mut hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate));
     let arenas = ty::CtxtArenas::new();
     let hir_map = driver::make_map(&sess, &mut hir_forest);
 
-    driver::phase_3_run_analysis_passes(sess,
+    driver::phase_3_run_analysis_passes(&sess,
                                         hir_map,
                                         &arenas,
                                         name,
@@ -194,5 +196,5 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
         *analysis.inlined.borrow_mut() = map;
         analysis.deref_trait_did = ctxt.deref_trait_did.get();
         (krate, analysis)
-    }).1
+    })
 }
