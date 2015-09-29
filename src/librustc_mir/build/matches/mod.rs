@@ -34,6 +34,15 @@ impl<H:Hair> Builder<H> {
         let discriminant_lvalue =
             unpack!(block = self.as_lvalue(block, discriminant));
 
+        // Before we do anything, create uninitialized variables with
+        // suitable extent for all of the bindings in this match. It's
+        // easiest to do this up front because some of these arms may
+        // be unreachable or reachable multiple times.
+        let var_extent = self.extent_of_innermost_scope().unwrap();
+        for arm in &arms {
+            self.declare_bindings(var_extent, arm.patterns[0].clone());
+        }
+
         let mut arm_blocks = ArmBlocks {
             blocks: arms.iter()
                         .map(|_| self.cfg.start_new_block())
@@ -52,14 +61,13 @@ impl<H:Hair> Builder<H> {
         // reverse of the order in which candidates are written in the
         // source.
         let candidates: Vec<Candidate<H>> =
-            arms.into_iter()
+            arms.iter()
                 .enumerate()
                 .rev() // highest priority comes last
                 .flat_map(|(arm_index, arm)| {
-                    let guard = arm.guard;
-                    arm.patterns.into_iter()
+                    arm.patterns.iter()
                                 .rev()
-                                .map(move |pat| (arm_index, pat, guard.clone()))
+                                .map(move |pat| (arm_index, pat.clone(), arm.guard.clone()))
                 })
                 .map(|(arm_index, pattern, guard)| {
                     Candidate {
@@ -73,8 +81,7 @@ impl<H:Hair> Builder<H> {
 
         // this will generate code to test discriminant_lvalue and
         // branch to the appropriate arm block
-        let var_extent = self.extent_of_innermost_scope().unwrap();
-        self.match_candidates(span, var_extent, &mut arm_blocks, candidates, block);
+        self.match_candidates(span, &mut arm_blocks, candidates, block);
 
         // all the arm blocks will rejoin here
         let end_block = self.cfg.start_new_block();
@@ -123,9 +130,12 @@ impl<H:Hair> Builder<H> {
                                initializer: &Lvalue<H>)
                                -> BlockAnd<()>
     {
+        // first, creating the bindings
+        self.declare_bindings(var_extent, irrefutable_pat.clone());
+
         // create a dummy candidate
         let mut candidate = Candidate::<H> {
-            match_pairs: vec![self.match_pair(initializer.clone(), irrefutable_pat)],
+            match_pairs: vec![self.match_pair(initializer.clone(), irrefutable_pat.clone())],
             bindings: vec![],
             guard: None,
             arm_index: 0, // since we don't call `match_candidates`, this field is unused
@@ -143,38 +153,38 @@ impl<H:Hair> Builder<H> {
         }
 
         // now apply the bindings, which will also declare the variables
-        self.bind_matched_candidate(block, var_extent, candidate.bindings);
+        self.bind_matched_candidate(block, candidate.bindings);
 
         block.unit()
     }
 
-    pub fn declare_uninitialized_variables(&mut self,
-                                           var_extent: H::CodeExtent,
-                                           pattern: PatternRef<H>)
+    pub fn declare_bindings(&mut self,
+                            var_extent: H::CodeExtent,
+                            pattern: PatternRef<H>)
     {
         let pattern = self.hir.mirror(pattern);
         match pattern.kind {
             PatternKind::Binding { mutability, name, mode: _, var, ty, subpattern } => {
                 self.declare_binding(var_extent, mutability, name, var, ty, pattern.span);
                 if let Some(subpattern) = subpattern {
-                    self.declare_uninitialized_variables(var_extent, subpattern);
+                    self.declare_bindings(var_extent, subpattern);
                 }
             }
             PatternKind::Array { prefix, slice, suffix } |
             PatternKind::Slice { prefix, slice, suffix } => {
                 for subpattern in prefix.into_iter().chain(slice).chain(suffix) {
-                    self.declare_uninitialized_variables(var_extent, subpattern);
+                    self.declare_bindings(var_extent, subpattern);
                 }
             }
             PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {
             }
             PatternKind::Deref { subpattern } => {
-                self.declare_uninitialized_variables(var_extent, subpattern);
+                self.declare_bindings(var_extent, subpattern);
             }
             PatternKind::Leaf { subpatterns } |
             PatternKind::Variant { subpatterns, .. } => {
                 for subpattern in subpatterns {
-                    self.declare_uninitialized_variables(var_extent, subpattern.pattern);
+                    self.declare_bindings(var_extent, subpattern.pattern);
                 }
             }
         }
@@ -249,13 +259,12 @@ struct Test<H:Hair> {
 impl<H:Hair> Builder<H> {
     fn match_candidates(&mut self,
                         span: H::Span,
-                        var_extent: H::CodeExtent,
                         arm_blocks: &mut ArmBlocks,
                         mut candidates: Vec<Candidate<H>>,
                         mut block: BasicBlock)
     {
-        debug!("matched_candidate(span={:?}, var_extent={:?}, block={:?}, candidates={:?})",
-               span, var_extent, block, candidates);
+        debug!("matched_candidate(span={:?}, block={:?}, candidates={:?})",
+               span, block, candidates);
 
         // Start by simplifying candidates. Once this process is
         // complete, all the match pairs which remain require some
@@ -275,8 +284,7 @@ impl<H:Hair> Builder<H> {
             // If so, apply any bindings, test the guard (if any), and
             // branch to the arm.
             let candidate = candidates.pop().unwrap();
-            if let Some(b) = self.bind_and_guard_matched_candidate(block, var_extent,
-                                                                   arm_blocks, candidate) {
+            if let Some(b) = self.bind_and_guard_matched_candidate(block, arm_blocks, candidate) {
                 block = b;
             } else {
                 // if None is returned, then any remaining candidates
@@ -309,7 +317,7 @@ impl<H:Hair> Builder<H> {
                                                                       candidate))
                           })
                           .collect();
-            self.match_candidates(span, var_extent, arm_blocks, applicable_candidates, target_block);
+            self.match_candidates(span, arm_blocks, applicable_candidates, target_block);
         }
     }
 
@@ -327,16 +335,15 @@ impl<H:Hair> Builder<H> {
     /// MIR).
     fn bind_and_guard_matched_candidate(&mut self,
                                         mut block: BasicBlock,
-                                        var_extent: H::CodeExtent,
                                         arm_blocks: &mut ArmBlocks,
                                         candidate: Candidate<H>)
                                         -> Option<BasicBlock> {
-        debug!("bind_and_guard_matched_candidate(block={:?}, var_extent={:?}, candidate={:?})",
-               block, var_extent, candidate);
+        debug!("bind_and_guard_matched_candidate(block={:?}, candidate={:?})",
+               block, candidate);
 
         debug_assert!(candidate.match_pairs.is_empty());
 
-        self.bind_matched_candidate(block, var_extent, candidate.bindings);
+        self.bind_matched_candidate(block, candidate.bindings);
 
         let arm_block = arm_blocks.blocks[candidate.arm_index];
 
@@ -356,26 +363,16 @@ impl<H:Hair> Builder<H> {
 
     fn bind_matched_candidate(&mut self,
                               block: BasicBlock,
-                              var_extent: H::CodeExtent,
                               bindings: Vec<Binding<H>>) {
-        debug!("bind_matched_candidate(block={:?}, var_extent={:?}, bindings={:?})",
-               block, var_extent, bindings);
+        debug!("bind_matched_candidate(block={:?}, bindings={:?})",
+               block, bindings);
 
         // Assign each of the bindings. This may trigger moves out of the candidate.
         for binding in bindings {
-            // Create a variable for the `var_id` being bound. In the
-            // case where there are multiple patterns for a single
-            // arm, it may already exist.
-            let var_index = if !self.var_indices.contains_key(&binding.var_id) {
-                self.declare_binding(var_extent,
-                                     binding.mutability,
-                                     binding.name,
-                                     binding.var_id,
-                                     binding.var_ty,
-                                     binding.span)
-            } else {
-                self.var_indices[&binding.var_id]
-            };
+            // Find the variable for the `var_id` being bound. It
+            // should have been created by a previous call to
+            // `declare_bindings`.
+            let var_index = self.var_indices[&binding.var_id];
 
             let rvalue = match binding.binding_mode {
                 BindingMode::ByValue =>
