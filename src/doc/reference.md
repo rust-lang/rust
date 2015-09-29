@@ -586,8 +586,8 @@ Rust syntax is restricted in two ways:
 # Crates and source files
 
 Although Rust, like any other language, can be implemented by an interpreter as
-well as a compiler, the only existing implementation is a compiler &mdash;
-from now on referred to as *the* Rust compiler &mdash; and the language has
+well as a compiler, the only existing implementation is a compiler,
+and the language has
 always been designed to be compiled. For these reasons, this section assumes a
 compiler.
 
