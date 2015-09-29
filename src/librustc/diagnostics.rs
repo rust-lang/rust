@@ -2074,4 +2074,5 @@ register_diagnostics! {
     E0495, // cannot infer an appropriate lifetime due to conflicting requirements
     E0496, // .. name `..` shadows a .. name that is already in scope
     E0498, // malformed plugin attribute
+    E0514, // metadata version mismatch
 }

@@ -244,7 +244,7 @@ impl OverloadedCallType {
 // can just use the tcx as the typer.
 //
 // FIXME(stage0): the :'t here is probably only important for stage0
-pub struct ExprUseVisitor<'d, 't, 'a: 't, 'tcx:'a+'d+'t> {
+pub struct ExprUseVisitor<'d, 't, 'a: 't, 'tcx:'a+'d> {
     typer: &'t infer::InferCtxt<'a, 'tcx>,
     mc: mc::MemCategorizationContext<'t, 'a, 'tcx>,
     delegate: &'d mut Delegate<'tcx>,
@@ -278,7 +278,7 @@ enum PassArgs {
 impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
     pub fn new(delegate: &'d mut Delegate<'tcx>,
                typer: &'t infer::InferCtxt<'a, 'tcx>)
-               -> ExprUseVisitor<'d,'t,'a,'tcx>
+               -> ExprUseVisitor<'d,'t,'a,'tcx> where 'tcx:'a
     {
         ExprUseVisitor {
             typer: typer,
