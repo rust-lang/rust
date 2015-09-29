@@ -34,10 +34,11 @@ impl<H:Hair> Builder<H> {
         let discriminant_lvalue =
             unpack!(block = self.as_lvalue(block, discriminant));
 
-        let arm_blocks: Vec<BasicBlock> =
-            arms.iter()
-                .map(|_| self.cfg.start_new_block())
-                .collect();
+        let mut arm_blocks = ArmBlocks {
+            blocks: arms.iter()
+                        .map(|_| self.cfg.start_new_block())
+                        .collect(),
+        };
 
         let arm_bodies: Vec<ExprRef<H>> =
             arms.iter()
@@ -52,20 +53,20 @@ impl<H:Hair> Builder<H> {
         // source.
         let candidates: Vec<Candidate<H>> =
             arms.into_iter()
-                .zip(arm_blocks.iter())
+                .enumerate()
                 .rev() // highest priority comes last
-                .flat_map(|(arm, &arm_block)| {
+                .flat_map(|(arm_index, arm)| {
                     let guard = arm.guard;
                     arm.patterns.into_iter()
                                 .rev()
-                                .map(move |pat| (arm_block, pat, guard.clone()))
+                                .map(move |pat| (arm_index, pat, guard.clone()))
                 })
-                .map(|(arm_block, pattern, guard)| {
+                .map(|(arm_index, pattern, guard)| {
                     Candidate {
                         match_pairs: vec![self.match_pair(discriminant_lvalue.clone(), pattern)],
                         bindings: vec![],
                         guard: guard,
-                        arm_block: arm_block,
+                        arm_index: arm_index,
                     }
                 })
                 .collect();
@@ -73,13 +74,13 @@ impl<H:Hair> Builder<H> {
         // this will generate code to test discriminant_lvalue and
         // branch to the appropriate arm block
         let var_extent = self.extent_of_innermost_scope().unwrap();
-        self.match_candidates(span, var_extent, candidates, block);
+        self.match_candidates(span, var_extent, &mut arm_blocks, candidates, block);
 
         // all the arm blocks will rejoin here
         let end_block = self.cfg.start_new_block();
 
-        for (arm_body, &arm_block) in arm_bodies.into_iter().zip(arm_blocks.iter()) {
-            let mut arm_block = arm_block;
+        for (arm_index, arm_body) in arm_bodies.into_iter().enumerate() {
+            let mut arm_block = arm_blocks.blocks[arm_index];
             unpack!(arm_block = self.into(destination, arm_block, arm_body));
             self.cfg.terminate(arm_block, Terminator::Goto { target: end_block });
         }
@@ -127,7 +128,7 @@ impl<H:Hair> Builder<H> {
             match_pairs: vec![self.match_pair(initializer.clone(), irrefutable_pat)],
             bindings: vec![],
             guard: None,
-            arm_block: block
+            arm_index: 0, // since we don't call `match_candidates`, this field is unused
         };
 
         // Simplify the candidate. Since the pattern is irrefutable, this should
@@ -180,6 +181,12 @@ impl<H:Hair> Builder<H> {
     }
 }
 
+/// List of blocks for each arm (and potentially other metadata in the
+/// future).
+struct ArmBlocks {
+    blocks: Vec<BasicBlock>,
+}
+
 #[derive(Clone, Debug)]
 struct Candidate<H:Hair> {
     // all of these must be satisfied...
@@ -191,8 +198,8 @@ struct Candidate<H:Hair> {
     // ...and the guard must be evaluated...
     guard: Option<ExprRef<H>>,
 
-    // ...and then we branch here.
-    arm_block: BasicBlock,
+    // ...and then we branch to arm with this index.
+    arm_index: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -243,6 +250,7 @@ impl<H:Hair> Builder<H> {
     fn match_candidates(&mut self,
                         span: H::Span,
                         var_extent: H::CodeExtent,
+                        arm_blocks: &mut ArmBlocks,
                         mut candidates: Vec<Candidate<H>>,
                         mut block: BasicBlock)
     {
@@ -267,7 +275,8 @@ impl<H:Hair> Builder<H> {
             // If so, apply any bindings, test the guard (if any), and
             // branch to the arm.
             let candidate = candidates.pop().unwrap();
-            if let Some(b) = self.bind_and_guard_matched_candidate(block, var_extent, candidate) {
+            if let Some(b) = self.bind_and_guard_matched_candidate(block, var_extent,
+                                                                   arm_blocks, candidate) {
                 block = b;
             } else {
                 // if None is returned, then any remaining candidates
@@ -300,7 +309,7 @@ impl<H:Hair> Builder<H> {
                                                                       candidate))
                           })
                           .collect();
-            self.match_candidates(span, var_extent, applicable_candidates, target_block);
+            self.match_candidates(span, var_extent, arm_blocks, applicable_candidates, target_block);
         }
     }
 
@@ -319,6 +328,7 @@ impl<H:Hair> Builder<H> {
     fn bind_and_guard_matched_candidate(&mut self,
                                         mut block: BasicBlock,
                                         var_extent: H::CodeExtent,
+                                        arm_blocks: &mut ArmBlocks,
                                         candidate: Candidate<H>)
                                         -> Option<BasicBlock> {
         debug!("bind_and_guard_matched_candidate(block={:?}, var_extent={:?}, candidate={:?})",
@@ -328,16 +338,18 @@ impl<H:Hair> Builder<H> {
 
         self.bind_matched_candidate(block, var_extent, candidate.bindings);
 
+        let arm_block = arm_blocks.blocks[candidate.arm_index];
+
         if let Some(guard) = candidate.guard {
             // the block to branch to if the guard fails; if there is no
             // guard, this block is simply unreachable
             let cond = unpack!(block = self.as_operand(block, guard));
             let otherwise = self.cfg.start_new_block();
             self.cfg.terminate(block, Terminator::If { cond: cond,
-                                                       targets: [candidate.arm_block, otherwise]});
+                                                       targets: [arm_block, otherwise]});
             Some(otherwise)
         } else {
-            self.cfg.terminate(block, Terminator::Goto { target: candidate.arm_block });
+            self.cfg.terminate(block, Terminator::Goto { target: arm_block });
             None
         }
     }
