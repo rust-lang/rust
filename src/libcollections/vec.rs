@@ -1489,7 +1489,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {}
 impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
-        for _x in self.by_ref() {}
+        for _x in self {}
 
         // RawVec handles deallocation
     }
