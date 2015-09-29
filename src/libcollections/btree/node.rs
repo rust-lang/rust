@@ -271,7 +271,7 @@ impl<T> DoubleEndedIterator for RawItems<T> {
 
 impl<T> Drop for RawItems<T> {
     fn drop(&mut self) {
-        for _ in self.by_ref() {}
+        for _ in self {}
     }
 }
 
