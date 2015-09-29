@@ -525,6 +525,13 @@ that don’t make it true 100% of the time, too. Rather than relying on the stac
 and `Drop` to clean up memory, the garbage collector deals with the heap
 instead.
 
+C, on the other hand, does nothing at all. The programmer must explicitly
+deallocate all heap-allocated memory with the `free()` function. While this
+grants him a lot of liberty as to when he allocates and deallocates data, it
+almost inevitably leads to memory leaks. Memory leaks occur when there are no
+remaining references to a not-yet-deallocated value. These leaked values often
+accumulate and can't be deallocated until the program exits.
+
 # Which to use?
 
 So if the stack is faster and easier to manage, why do we need the heap? A big
