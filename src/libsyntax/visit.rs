@@ -353,7 +353,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             walk_list!(visitor, visit_lifetime_def, &function_declaration.lifetimes);
         }
         TyPath(ref maybe_qself, ref path) => {
-            for qself in maybe_qself {
+            if let Some(ref qself) = *maybe_qself {
                 visitor.visit_ty(&qself.ty);
             }
             visitor.visit_path(path, typ.id);
@@ -428,7 +428,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
     match pattern.node {
         PatEnum(ref path, ref opt_children) => {
             visitor.visit_path(path, pattern.id);
-            for children in opt_children {
+            if let Some(ref children) = *opt_children {
                 walk_list!(visitor, visit_pat, children);
             }
         }
@@ -767,7 +767,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             walk_list!(visitor, visit_expr, end);
         }
         ExprPath(ref maybe_qself, ref path) => {
-            for qself in maybe_qself {
+            if let Some(ref qself) = *maybe_qself {
                 visitor.visit_ty(&qself.ty);
             }
             visitor.visit_path(path, expression.id)
