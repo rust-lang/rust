@@ -70,7 +70,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             let placer = fld.fold_expr(placer);
             let value_expr = fld.fold_expr(value_expr);
-            fld.cx.expr(span, ast::ExprBox(Some(placer), value_expr))
+            fld.cx.expr(span, ast::ExprInPlace(placer, value_expr))
         }
 
         ast::ExprWhile(cond, body, opt_ident) => {

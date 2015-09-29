@@ -749,12 +749,28 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
     P(hir::Expr {
             id: e.id,
             node: match e.node {
+                // Issue #22181:
+                // Eventually a desugaring for `box EXPR`
+                // (similar to the desugaring above for `in PLACE BLOCK`)
+                // should go here, desugaring
+                //
+                // to:
+                //
+                // let mut place = BoxPlace::make_place();
+                // let raw_place = Place::pointer(&mut place);
+                // let value = $value;
+                // unsafe {
+                //     ::std::ptr::write(raw_place, value);
+                //     Boxed::finalize(place)
+                // }
+                //
+                // But for now there are type-inference issues doing that.
                 ExprBox(ref e) => {
                     hir::ExprBox(lower_expr(lctx, e))
                 }
 
                 // Desugar ExprBox: `in (PLACE) EXPR`
-                ExprInPlace(Some(ref placer), ref value_expr) => {
+                ExprInPlace(ref placer, ref value_expr) => {
                     // to:
                     //
                     // let p = PLACE;
@@ -810,23 +826,43 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     };
 
                     // pop_unsafe!(EXPR));
-                    let pop_unsafe_expr = pop_unsafe_expr(lctx, value_expr, e.span);
+                    let pop_unsafe_expr =
+                        signal_block_expr(lctx,
+                                          vec![],
+                                          signal_block_expr(lctx,
+                                                            vec![],
+                                                            value_expr,
+                                                            e.span,
+                                                            hir::PopUnstableBlock),
+                                          e.span,
+                                          hir::PopUnsafeBlock(hir::CompilerGenerated));
 
                     // push_unsafe!({
-                    //     ptr::write(p_ptr, pop_unsafe!(<value_expr>));
+                    //     std::intrinsics::move_val_init(raw_place, pop_unsafe!( EXPR ));
                     //     InPlace::finalize(place)
                     // })
                     let expr = {
-                        let call_move_val_init = hir::StmtSemi(make_call(
-                            lctx, &move_val_init, vec![expr_ident(lctx, e.span, p_ptr_ident), pop_unsafe_expr]), lctx.next_id());
+                        let call_move_val_init =
+                            hir::StmtSemi(make_call(lctx,
+                                                    &move_val_init,
+                                                    vec![expr_ident(lctx, e.span, p_ptr_ident),
+                                                         pop_unsafe_expr]),
+                                          lctx.next_id());
                         let call_move_val_init = respan(e.span, call_move_val_init);
 
                         let call = make_call(lctx, &inplace_finalize, vec![expr_ident(lctx, e.span, agent_ident)]);
-                        Some(push_unsafe_expr(lctx, vec![P(call_move_val_init)], call, e.span))
+                        signal_block_expr(lctx,
+                                          vec![P(call_move_val_init)],
+                                          call,
+                                          e.span,
+                                          hir::PushUnsafeBlock(hir::CompilerGenerated))
                     };
 
-                    let block = block_all(lctx, e.span, vec![s1, s2, s3], expr);
-                    return expr_block(lctx, block);
+                    return signal_block_expr(lctx,
+                                             vec![s1, s2, s3],
+                                             expr,
+                                             e.span,
+                                             hir::PushUnstableBlock);
                 }
                 
                 ExprVec(ref exprs) => {
@@ -1475,21 +1511,9 @@ fn core_path(lctx: &LoweringContext, span: Span, components: &[&str]) -> hir::Pa
     path_global(span, idents)
 }
 
-fn push_unsafe_expr(lctx: &LoweringContext, stmts: Vec<P<hir::Stmt>>,
-                    expr: P<hir::Expr>, span: Span)
-                    -> P<hir::Expr> {
-    let rules = hir::PushUnsafeBlock(hir::CompilerGenerated);
+fn signal_block_expr(lctx: &LoweringContext, stmts: Vec<P<hir::Stmt>>, expr: P<hir::Expr>, span: Span, rule: hir::BlockCheckMode) -> P<hir::Expr> {
     expr_block(lctx, P(hir::Block {
-        rules: rules, span: span, id: lctx.next_id(),
+        rules: rule, span: span, id: lctx.next_id(),
         stmts: stmts, expr: Some(expr),
-    }))
-}
-
-fn pop_unsafe_expr(lctx: &LoweringContext, expr: P<hir::Expr>, span: Span)
-                   -> P<hir::Expr> {
-    let rules = hir::PopUnsafeBlock(hir::CompilerGenerated);
-    expr_block(lctx, P(hir::Block {
-        rules: rules, span: span, id: lctx.next_id(),
-        stmts: vec![], expr: Some(expr),
     }))
 }

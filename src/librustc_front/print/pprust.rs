@@ -1089,8 +1089,12 @@ impl<'a> State<'a> {
                                       close_box: bool)
                                       -> io::Result<()> {
         match blk.rules {
-            hir::UnsafeBlock(..) | hir::PushUnsafeBlock(..) => try!(self.word_space("unsafe")),
-            hir::DefaultBlock | hir::PopUnsafeBlock(..) => (),
+            hir::UnsafeBlock(..) => try!(self.word_space("unsafe")),
+            hir::PushUnsafeBlock(..) => try!(self.word_space("push_unsafe")),
+            hir::PopUnsafeBlock(..) => try!(self.word_space("pop_unsafe")),
+            hir::PushUnstableBlock => try!(self.word_space("push_unstable")),
+            hir::PopUnstableBlock => try!(self.word_space("pop_unstable")),
+            hir::DefaultBlock => (),
         }
         try!(self.maybe_print_comment(blk.span.lo));
         try!(self.ann.pre(self, NodeBlock(blk)));

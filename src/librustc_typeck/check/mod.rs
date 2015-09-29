@@ -269,7 +269,7 @@ impl UnsafetyState {
                         (unsafety, blk.id, self.unsafe_push_count.checked_sub(1).unwrap()),
                     hir::UnsafeBlock(..) =>
                         (hir::Unsafety::Unsafe, blk.id, self.unsafe_push_count),
-                    hir::DefaultBlock =>
+                    hir::DefaultBlock | hir::PushUnstableBlock | hir:: PopUnstableBlock =>
                         (unsafety, self.def, self.unsafe_push_count),
                 };
                 UnsafetyState{ def: def,

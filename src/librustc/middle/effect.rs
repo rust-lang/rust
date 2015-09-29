@@ -102,7 +102,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
     fn visit_block(&mut self, block: &hir::Block) {
         let old_unsafe_context = self.unsafe_context;
         match block.rules {
-            hir::DefaultBlock => {}
             hir::UnsafeBlock(source) => {
                 // By default only the outermost `unsafe` block is
                 // "used" and so nested unsafe blocks are pointless
@@ -131,6 +130,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 self.unsafe_context.push_unsafe_count =
                     self.unsafe_context.push_unsafe_count.checked_sub(1).unwrap();
             }
+            hir::DefaultBlock | hir::PushUnstableBlock | hir:: PopUnstableBlock => {}
         }
 
         visit::walk_block(self, block);
