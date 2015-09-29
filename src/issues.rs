@@ -13,17 +13,13 @@
 // associated issue number.
 
 use std::fmt;
+pub use config::ReportTactic;
 
 static TO_DO_CHARS: &'static [char] = &['T', 'O', 'D', 'O'];
 static FIX_ME_CHARS: &'static [char] = &['F', 'I', 'X', 'M', 'E'];
 
-#[derive(Clone, Copy)]
-pub enum ReportTactic {
-    Always,
-    Unnumbered,
-    Never,
-}
-
+// Enabled implementation detail is here because it is
+// irrelevant outside the issues module
 impl ReportTactic {
     fn is_enabled(&self) -> bool {
         match *self {
@@ -33,8 +29,6 @@ impl ReportTactic {
         }
     }
 }
-
-impl_enum_decodable!(ReportTactic, Always, Unnumbered, Never);
 
 #[derive(Clone, Copy)]
 enum Seeking {

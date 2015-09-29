@@ -160,8 +160,7 @@ macro_rules! impl_enum_decodable {
                 $(
                     variants.push(stringify!($x));
                 )*
-
-                variants.join(", ")
+                format!("[{}]", variants.join("|"))
             }
         }
     };
