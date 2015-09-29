@@ -726,7 +726,7 @@ impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
 }
 
 struct PostExpansionVisitor<'a> {
-    context: &'a Context<'a>
+    context: &'a Context<'a>,
 }
 
 impl<'a> PostExpansionVisitor<'a> {
