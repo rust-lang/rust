@@ -168,15 +168,18 @@ Conceptually, the idea is to change `DefId` into the pair of a crate
 and a path:
 
 ```
+DEF_ID = (CRATE, PATH)
 CRATE = <crate identifier>
-PATH = Crate(ID)
-     | PATH :: Mod(ID)
-     | PATH :: Item(ID)
-     | PATH :: TypeParameter(ID)
-     | PATH :: LifetimeParameter(ID)
-     | PATH :: Member(ID)
-     | PATH :: Impl
-     | ...
+PATH = PATH_ELEM | PATH :: PATH_ELEM
+PATH_ELEM = (PATH_ELEM_DATA, <disambiguating integer>)
+PATH_ELEM_DATA = Crate(ID)
+               | Mod(ID)
+               | Item(ID)
+               | TypeParameter(ID)
+               | LifetimeParameter(ID)
+               | Member(ID)
+               | Impl
+               | ...
 ```
 
 However, rather than actually store the path in the compiler, we will
@@ -218,15 +221,16 @@ The idea is that we will assign a path to each item as we traverse the
 HIR. If we find that a single parent has two children with the same
 name, such as two impls, then we simply assign them unique integers in
 the order that they appear in the program text. For example, the
-following program would use the paths shown:
+following program would use the paths shown (I've elided the
+disambiguating integer except where it is relevant):
 
 ```rust
 mod foo {               // Path: <root>::foo
     pub struct Type { } // Path: <root>::foo::Type
-    impl Type {         // Path: <root>::foo::<impl1>
-        fn bar() {..}   // Path: <root>::foo::<impl1>::bar
+    impl Type {         // Path: <root>::foo::(<impl>,0)
+        fn bar() {..}   // Path: <root>::foo::(<impl>,0)::bar
     }
-    impl Type { }       // Path: <root>::foo::<impl2>
+    impl Type { }       // Path: <root>::foo::(<impl>,1)
 }
 ```
 
