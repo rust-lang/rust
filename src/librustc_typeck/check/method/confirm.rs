@@ -111,6 +111,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         let fty = self.tcx().mk_fn(None, self.tcx().mk_bare_fn(ty::BareFnTy {
             sig: ty::Binder(method_sig),
             unsafety: method_ty.fty.unsafety,
+            constness: method_ty.fty.constness,
             abi: method_ty.fty.abi.clone(),
         }));
         let callee = ty::MethodCallee {

@@ -509,6 +509,7 @@ impl<'a> State<'a> {
                 };
                 try!(self.print_ty_fn(f.abi,
                                       f.unsafety,
+                                      f.constness,
                                       &*f.decl,
                                       None,
                                       &generics,
@@ -2260,6 +2261,7 @@ impl<'a> State<'a> {
     pub fn print_ty_fn(&mut self,
                        abi: abi::Abi,
                        unsafety: hir::Unsafety,
+                       constness: hir::Constness,
                        decl: &hir::FnDecl,
                        name: Option<ast::Name>,
                        generics: &hir::Generics,
@@ -2280,7 +2282,7 @@ impl<'a> State<'a> {
         };
         try!(self.print_fn(decl,
                            unsafety,
-                           hir::Constness::NotConst,
+                           constness,
                            abi,
                            name,
                            &generics,
@@ -2363,11 +2365,7 @@ impl<'a> State<'a> {
                                 vis: hir::Visibility) -> io::Result<()> {
         try!(word(&mut self.s, &visibility_qualified(vis, "")));
         try!(self.print_unsafety(unsafety));
-
-        match constness {
-            hir::Constness::NotConst => {}
-            hir::Constness::Const => try!(self.word_nbsp("const"))
-        }
+        try!(self.print_constness(constness));
 
         if abi != abi::Rust {
             try!(self.word_nbsp("extern"));
@@ -2381,6 +2379,13 @@ impl<'a> State<'a> {
         match s {
             hir::Unsafety::Normal => Ok(()),
             hir::Unsafety::Unsafe => self.word_nbsp("unsafe"),
+        }
+    }
+
+    pub fn print_constness(&mut self, s: hir::Constness) -> io::Result<()> {
+        match s {
+            hir::Constness::Const => self.word_nbsp("const"),
+            hir::Constness::NotConst => Ok(()),
         }
     }
 }

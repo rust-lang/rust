@@ -559,6 +559,9 @@ pub enum CastKind {
     /// Convert safe fn() to unsafe fn()
     UnsafeFnPointer,
 
+    /// Convert const fn() to non-const fn()
+    ConstFnPointer,
+
     /// "Unsize" -- convert a thin-or-fat pointer to a fat pointer.
     /// trans must figure out the details once full monomorphization
     /// is known. For example, this could be used to cast from a

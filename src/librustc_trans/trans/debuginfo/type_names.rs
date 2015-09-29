@@ -110,9 +110,13 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             push_item_name(cx, principal.def_id, false, output);
             push_type_params(cx, principal.substs, output);
         },
-        ty::TyBareFn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
+        ty::TyBareFn(_, &ty::BareFnTy{ unsafety, constness, abi, ref sig } ) => {
             if unsafety == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");
+            }
+
+            if constness == hir::Constness::Const {
+                output.push_str("const ");
             }
 
             if abi != ::syntax::abi::Rust {

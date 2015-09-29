@@ -1626,7 +1626,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
         hir::TyParen(ref typ) => ast_ty_to_ty(this, rscope, &**typ),
         hir::TyBareFn(ref bf) => {
             require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-            let bare_fn = ty_of_bare_fn(this, bf.unsafety, bf.abi, &*bf.decl);
+            let bare_fn = ty_of_bare_fn(this, bf.unsafety, bf.constness, bf.abi, &*bf.decl);
             tcx.mk_fn(None, tcx.mk_bare_fn(bare_fn))
         }
         hir::TyPolyTraitRef(ref bounds) => {
@@ -1748,20 +1748,26 @@ pub fn ty_of_method<'tcx>(this: &AstConv<'tcx>,
     let (bare_fn_ty, optional_explicit_self_category) =
         ty_of_method_or_bare_fn(this,
                                 sig.unsafety,
+                                sig.constness,
                                 sig.abi,
                                 self_info,
                                 &sig.decl);
     (bare_fn_ty, optional_explicit_self_category.unwrap())
 }
 
-pub fn ty_of_bare_fn<'tcx>(this: &AstConv<'tcx>, unsafety: hir::Unsafety, abi: abi::Abi,
-                                              decl: &hir::FnDecl) -> ty::BareFnTy<'tcx> {
-    let (bare_fn_ty, _) = ty_of_method_or_bare_fn(this, unsafety, abi, None, decl);
+pub fn ty_of_bare_fn<'tcx>(this: &AstConv<'tcx>,
+                           unsafety: hir::Unsafety,
+                           constness: hir::Constness,
+                           abi: abi::Abi,
+                           decl: &hir::FnDecl)
+                           -> ty::BareFnTy<'tcx> {
+    let (bare_fn_ty, _) = ty_of_method_or_bare_fn(this, unsafety, constness, abi, None, decl);
     bare_fn_ty
 }
 
 fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
                                      unsafety: hir::Unsafety,
+                                     constness: hir::Constness,
                                      abi: abi::Abi,
                                      opt_self_info: Option<SelfInfo<'a, 'tcx>>,
                                      decl: &hir::FnDecl)
@@ -1857,6 +1863,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
 
     (ty::BareFnTy {
         unsafety: unsafety,
+        constness: constness,
         abi: abi,
         sig: ty::Binder(ty::FnSig {
             inputs: self_and_input_tys,

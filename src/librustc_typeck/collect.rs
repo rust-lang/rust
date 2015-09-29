@@ -1567,9 +1567,10 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             let ty = ccx.icx(&()).to_ty(&ExplicitRscope, &**t);
             ty::TypeScheme { ty: ty, generics: ty::Generics::empty() }
         }
-        hir::ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
+        hir::ItemFn(ref decl, unsafety, constness, abi, ref generics, _) => {
             let ty_generics = ty_generics_for_fn(ccx, generics, &ty::Generics::empty());
-            let tofd = astconv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &**decl);
+            let tofd = astconv::ty_of_bare_fn(&ccx.icx(generics), unsafety, constness, abi,
+                                              &**decl);
             let ty = tcx.mk_fn(Some(DefId::local(it.id)), tcx.mk_bare_fn(tofd));
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
@@ -2262,6 +2263,7 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
         ccx.tcx.mk_bare_fn(ty::BareFnTy {
             abi: abi,
             unsafety: hir::Unsafety::Unsafe,
+            constness: hir::Constness::NotConst,
             sig: ty::Binder(ty::FnSig {inputs: input_tys,
                                        output: output,
                                        variadic: decl.variadic}),

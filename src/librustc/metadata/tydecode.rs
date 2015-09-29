@@ -541,10 +541,12 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
 
     pub fn parse_bare_fn_ty(&mut self) -> ty::BareFnTy<'tcx> {
         let unsafety = parse_unsafety(self.next());
+        let constness = parse_constness(self.next());
         let abi = self.parse_abi_set();
         let sig = self.parse_sig();
         ty::BareFnTy {
             unsafety: unsafety,
+            constness: constness,
             abi: abi,
             sig: sig
         }
@@ -748,5 +750,13 @@ fn parse_unsafety(c: char) -> hir::Unsafety {
         'u' => hir::Unsafety::Unsafe,
         'n' => hir::Unsafety::Normal,
         _ => panic!("parse_unsafety: bad unsafety {}", c)
+    }
+}
+
+fn parse_constness(c: char) -> hir::Constness {
+    match c {
+        'c' => hir::Constness::Const,
+        'n' => hir::Constness::NotConst,
+        _ => panic!("parse_constness: bad constness {}", c)
     }
 }

@@ -241,6 +241,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             }
             let se_ty = tcx.mk_fn(Some(DefId::local(main_id)), tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
+                constness: hir::Constness::NotConst,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: Vec::new(),
@@ -287,6 +288,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
 
             let se_ty = tcx.mk_fn(Some(DefId::local(start_id)), tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
+                constness: hir::Constness::NotConst,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: vec!(

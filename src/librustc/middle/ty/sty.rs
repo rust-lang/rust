@@ -423,6 +423,7 @@ impl<'tcx> ProjectionTy<'tcx> {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct BareFnTy<'tcx> {
     pub unsafety: hir::Unsafety,
+    pub constness: hir::Constness,
     pub abi: abi::Abi,
     pub sig: PolyFnSig<'tcx>,
 }

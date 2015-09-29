@@ -166,16 +166,16 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
 
 fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean::Function {
     let t = tcx.lookup_item_type(did);
-    let (decl, style, abi) = match t.ty.sty {
-        ty::TyBareFn(_, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
+    let (decl, unsafety, constness, abi) = match t.ty.sty {
+        ty::TyBareFn(_, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.constness, f.abi),
         _ => panic!("bad function"),
     };
     let predicates = tcx.lookup_predicates(did);
     clean::Function {
         decl: decl,
         generics: (&t.generics, &predicates, subst::FnSpace).clean(cx),
-        unsafety: style,
-        constness: hir::Constness::NotConst,
+        unsafety: unsafety,
+        constness: constness,
         abi: abi,
     }
 }
@@ -345,11 +345,11 @@ pub fn build_impl(cx: &DocContext,
                 let mut item = method.clean(cx);
                 item.inner = match item.inner.clone() {
                     clean::TyMethodItem(clean::TyMethod {
-                        unsafety, decl, self_, generics, abi
+                        unsafety, constness, decl, self_, generics, abi
                     }) => {
                         clean::MethodItem(clean::Method {
                             unsafety: unsafety,
-                            constness: hir::Constness::NotConst,
+                            constness: constness,
                             decl: decl,
                             self_: self_,
                             generics: generics,

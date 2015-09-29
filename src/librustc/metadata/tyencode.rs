@@ -323,6 +323,13 @@ fn enc_unsafety(w: &mut Encoder, p: hir::Unsafety) {
     }
 }
 
+fn enc_constness(w: &mut Encoder, p: hir::Constness) {
+    match p {
+        hir::Constness::Const => mywrite!(w, "c"),
+        hir::Constness::NotConst => mywrite!(w, "n"),
+    }
+}
+
 fn enc_abi(w: &mut Encoder, abi: Abi) {
     mywrite!(w, "[");
     mywrite!(w, "{}", abi.name());
@@ -332,6 +339,7 @@ fn enc_abi(w: &mut Encoder, abi: Abi) {
 pub fn enc_bare_fn_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>,
                                 ft: &ty::BareFnTy<'tcx>) {
     enc_unsafety(w, ft.unsafety);
+    enc_constness(w, ft.constness);
     enc_abi(w, ft.abi);
     enc_fn_sig(w, cx, &ft.sig);
 }

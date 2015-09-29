@@ -821,6 +821,7 @@ pub enum PrimTy {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct BareFnTy {
     pub unsafety: Unsafety,
+    pub constness: Constness,
     pub abi: Abi,
     pub lifetimes: Vec<LifetimeDef>,
     pub decl: P<FnDecl>
@@ -924,6 +925,15 @@ impl fmt::Display for Unsafety {
         fmt::Display::fmt(match *self {
             Unsafety::Normal => "normal",
             Unsafety::Unsafe => "unsafe",
+        }, f)
+    }
+}
+
+impl fmt::Display for Constness {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(match *self {
+            Constness::Const => "const",
+            Constness::NotConst => "normal",
         }, f)
     }
 }

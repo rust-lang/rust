@@ -100,6 +100,10 @@ impl<H:Hair> Builder<H> {
                 let source = unpack!(block = this.as_operand(block, source));
                 block.and(Rvalue::Cast(CastKind::UnsafeFnPointer, source, expr.ty))
             }
+            ExprKind::ConstFnPointer { source } => {
+                let source = unpack!(block = this.as_operand(block, source));
+                block.and(Rvalue::Cast(CastKind::ConstFnPointer, source, expr.ty))
+            }
             ExprKind::Unsize { source } => {
                 let source = unpack!(block = this.as_operand(block, source));
                 block.and(Rvalue::Cast(CastKind::Unsize, source, expr.ty))

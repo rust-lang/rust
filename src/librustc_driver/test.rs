@@ -265,6 +265,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         self.infcx.tcx.mk_fn(None,
             self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
+                constness: hir::Constness::NotConst,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: input_args,

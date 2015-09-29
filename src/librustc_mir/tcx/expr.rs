@@ -400,6 +400,15 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
                     }
                 }
             }
+            Some(&ty::adjustment::AdjustConstFnPointer) => {
+                let adjusted_ty = cx.tcx.expr_ty_adjusted(self);
+                expr = Expr {
+                    temp_lifetime: temp_lifetime,
+                    ty: adjusted_ty,
+                    span: self.span,
+                    kind: ExprKind::ConstFnPointer { source: expr.to_ref() },
+                };
+            }
         }
 
         // Next, wrap this up in the expr's scope.

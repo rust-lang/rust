@@ -8,22 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we can't declare a const fn in an impl -- right now it's
-// just not allowed at all, though eventually it'd make sense to allow
-// it if the trait fn is const (but right now no trait fns can be
-// const).
-
 #![feature(const_fn)]
 
-trait Foo {
-    fn f() -> u32;
-}
+pub const fn foo(x: i32) -> i32 { 0 }
 
-impl Foo for u32 {
-    const fn f() -> u32 { 22 } //~ ERROR E0379
-    //~^ ERROR method `f` has an incompatible type for trait
-    //~| expected normal fn
-    //~| found const fn
-}
-
-fn main() { }
+// @has const_fn_pointer/constant.X.html //pre 'pub const X: const fn(i32) -> i32 = foo'
+pub const X: const fn(i32) -> i32 = foo;

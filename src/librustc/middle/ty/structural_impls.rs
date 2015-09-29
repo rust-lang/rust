@@ -222,6 +222,12 @@ impl HasTypeFlags for hir::Unsafety {
     }
 }
 
+impl HasTypeFlags for hir::Constness {
+    fn has_type_flags(&self, _flags: TypeFlags) -> bool {
+        false
+    }
+}
+
 impl HasTypeFlags for ty::BuiltinBounds {
     fn has_type_flags(&self, _flags: TypeFlags) -> bool {
         false
@@ -514,7 +520,7 @@ macro_rules! CopyImpls {
     }
 }
 
-CopyImpls! { (), hir::Unsafety, abi::Abi }
+CopyImpls! { (), hir::Unsafety, hir::Constness, abi::Abi }
 
 impl<'tcx, T:TypeFoldable<'tcx>, U:TypeFoldable<'tcx>> TypeFoldable<'tcx> for (T, U) {
     fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> (T, U) {

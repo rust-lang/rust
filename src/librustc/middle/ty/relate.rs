@@ -241,9 +241,11 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::BareFnTy<'tcx> {
         where R: TypeRelation<'a,'tcx>
     {
         let unsafety = try!(relation.relate(&a.unsafety, &b.unsafety));
+        let constness = try!(relation.relate(&a.constness, &b.constness));
         let abi = try!(relation.relate(&a.abi, &b.abi));
         let sig = try!(relation.relate(&a.sig, &b.sig));
         Ok(ty::BareFnTy {unsafety: unsafety,
+                         constness: constness,
                          abi: abi,
                          sig: sig})
     }
@@ -305,6 +307,21 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ast::Unsafety {
     {
         if a != b {
             Err(TypeError::UnsafetyMismatch(expected_found(relation, a, b)))
+        } else {
+            Ok(*a)
+        }
+    }
+}
+
+impl<'a,'tcx:'a> Relate<'a,'tcx> for ast::Constness {
+    fn relate<R>(relation: &mut R,
+                 a: &ast::Constness,
+                 b: &ast::Constness)
+                 -> RelateResult<'tcx, ast::Constness>
+        where R: TypeRelation<'a,'tcx>
+    {
+        if a != b {
+            Err(TypeError::ConstnessMismatch(expected_found(relation, a, b)))
         } else {
             Ok(*a)
         }

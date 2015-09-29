@@ -38,6 +38,8 @@ constant! {
     BAZ: usize = foo()
 }
 
+const FOO_: const fn() -> usize = foo; //~ ERROR const fn is unstable
+
 fn main() {
     let x: [usize; foo()] = [];
 }

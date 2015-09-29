@@ -289,6 +289,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
         match bare_fn_ty.sty {
             ty::TyBareFn(opt_def_id,
                            &ty::BareFnTy { unsafety: hir::Unsafety::Normal,
+                                           constness: hir::Constness::NotConst,
                                            abi: synabi::Rust,
                                            ref sig }) => {
                 (opt_def_id, sig)
@@ -304,6 +305,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let tuple_fn_ty = tcx.mk_fn(opt_def_id,
         tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: hir::Unsafety::Normal,
+            constness: hir::Constness::NotConst,
             abi: synabi::RustCall,
             sig: ty::Binder(ty::FnSig {
                 inputs: vec![bare_fn_ty_maybe_ref,

@@ -1019,6 +1019,7 @@ impl Clean<Method> for hir::MethodSig {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TyMethod {
     pub unsafety: hir::Unsafety,
+    pub constness: hir::Constness,
     pub decl: FnDecl,
     pub generics: Generics,
     pub self_: SelfTy,
@@ -1041,6 +1042,7 @@ impl Clean<TyMethod> for hir::MethodSig {
         };
         TyMethod {
             unsafety: self.unsafety.clone(),
+            constness: self.constness.clone(),
             decl: decl,
             self_: self.explicit_self.node.clean(cx),
             generics: self.generics.clean(cx),
@@ -1344,17 +1346,16 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
         let inner = if provided {
             MethodItem(Method {
                 unsafety: self.fty.unsafety,
+                constness: self.fty.constness,
                 generics: generics,
                 self_: self_,
                 decl: decl,
                 abi: self.fty.abi,
-
-                // trait methods canot (currently, at least) be const
-                constness: hir::Constness::NotConst,
             })
         } else {
             TyMethodItem(TyMethod {
                 unsafety: self.fty.unsafety,
+                constness: self.fty.constness,
                 generics: generics,
                 self_: self_,
                 decl: decl,
@@ -1654,6 +1655,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             },
             ty::TyBareFn(_, ref fty) => BareFunction(box BareFunctionDecl {
                 unsafety: fty.unsafety,
+                constness: fty.constness,
                 generics: Generics {
                     lifetimes: Vec::new(),
                     type_params: Vec::new(),
@@ -2096,6 +2098,7 @@ impl Clean<Item> for doctree::Typedef {
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub struct BareFunctionDecl {
     pub unsafety: hir::Unsafety,
+    pub constness: hir::Constness,
     pub generics: Generics,
     pub decl: FnDecl,
     pub abi: String,
@@ -2105,6 +2108,7 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy {
     fn clean(&self, cx: &DocContext) -> BareFunctionDecl {
         BareFunctionDecl {
             unsafety: self.unsafety,
+            constness: self.constness,
             generics: Generics {
                 lifetimes: self.lifetimes.clean(cx),
                 type_params: Vec::new(),

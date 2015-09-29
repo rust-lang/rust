@@ -707,10 +707,23 @@ impl<'tcx> ctxt<'tcx> {
         assert_eq!(bare_fn.unsafety, hir::Unsafety::Normal);
         let unsafe_fn_ty_a = self.mk_bare_fn(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
+            constness: bare_fn.constness,
             abi: bare_fn.abi,
             sig: bare_fn.sig.clone()
         });
         self.mk_fn(None, unsafe_fn_ty_a)
+    }
+
+    /// Create a non-const fn ty based on a const fn ty.
+    pub fn const_to_non_const_fn_ty(&self, bare_fn: &BareFnTy<'tcx>) -> Ty<'tcx> {
+        assert_eq!(bare_fn.constness, hir::Constness::Const);
+        let non_const_fn_ty = self.mk_bare_fn(ty::BareFnTy {
+            unsafety: bare_fn.unsafety,
+            constness: hir::Constness::NotConst,
+            abi: bare_fn.abi,
+            sig: bare_fn.sig.clone(),
+        });
+        self.mk_fn(None, non_const_fn_ty)
     }
 
     pub fn mk_bare_fn(&self, bare_fn: BareFnTy<'tcx>) -> &'tcx BareFnTy<'tcx> {
@@ -872,6 +885,7 @@ impl<'tcx> ctxt<'tcx> {
         let input_args = input_tys.iter().cloned().collect();
         self.mk_fn(Some(def_id), self.mk_bare_fn(BareFnTy {
             unsafety: hir::Unsafety::Normal,
+            constness: hir::Constness::NotConst,
             abi: abi::Rust,
             sig: ty::Binder(ty::FnSig {
                 inputs: input_args,

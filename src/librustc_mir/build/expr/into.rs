@@ -236,6 +236,7 @@ impl<H:Hair> Builder<H> {
             ExprKind::Cast { .. } |
             ExprKind::ReifyFnPointer { .. } |
             ExprKind::UnsafeFnPointer { .. } |
+            ExprKind::ConstFnPointer { .. } |
             ExprKind::Unsize { .. } |
             ExprKind::Repeat { .. } |
             ExprKind::Borrow { .. } |
