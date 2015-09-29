@@ -611,8 +611,6 @@ trait rbml_writer_helpers<'tcx> {
     fn emit_region(&mut self, ecx: &e::EncodeContext, r: ty::Region);
     fn emit_ty<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, ty: Ty<'tcx>);
     fn emit_tys<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, tys: &[Ty<'tcx>]);
-    fn emit_type_param_def<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                               type_param_def: &ty::TypeParameterDef<'tcx>);
     fn emit_predicate<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                           predicate: &ty::Predicate<'tcx>);
     fn emit_trait_ref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
@@ -655,15 +653,6 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     fn emit_trait_ref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                           trait_ref: &ty::TraitRef<'tcx>) {
         self.emit_opaque(|this| Ok(e::write_trait_ref(ecx, this, trait_ref)));
-    }
-
-    fn emit_type_param_def<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                               type_param_def: &ty::TypeParameterDef<'tcx>) {
-        self.emit_opaque(|this| {
-            Ok(tyencode::enc_type_param_def(this,
-                                         &ecx.ty_str_ctxt(),
-                                         type_param_def))
-        });
     }
 
     fn emit_predicate<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
@@ -894,13 +883,6 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
-    if let Some(type_param_def) = tcx.ty_param_defs.borrow().get(&id) {
-        rbml_w.tag(c::tag_table_param_defs, |rbml_w| {
-            rbml_w.id(id);
-            rbml_w.emit_type_param_def(ecx, type_param_def)
-        })
-    }
-
     let method_call = ty::MethodCall::expr(id);
     if let Some(method) = tcx.tables.borrow().method_map.get(&method_call) {
         rbml_w.tag(c::tag_table_method_map, |rbml_w| {
@@ -985,8 +967,6 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                               -> ty::TraitRef<'tcx>;
     fn read_poly_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                    -> ty::PolyTraitRef<'tcx>;
-    fn read_type_param_def<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                   -> ty::TypeParameterDef<'tcx>;
     fn read_predicate<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                               -> ty::Predicate<'tcx>;
     fn read_existential_bounds<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1103,11 +1083,6 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_poly_trait_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                                    -> ty::PolyTraitRef<'tcx> {
         ty::Binder(self.read_ty_encoded(dcx, |decoder| decoder.parse_trait_ref()))
-    }
-
-    fn read_type_param_def<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                   -> ty::TypeParameterDef<'tcx> {
-        self.read_ty_encoded(dcx, |decoder| decoder.parse_type_param_def())
     }
 
     fn read_predicate<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
@@ -1350,10 +1325,6 @@ fn decode_side_tables(dcx: &DecodeContext,
                         };
                         let ub = val_dsr.read_upvar_capture(dcx);
                         dcx.tcx.tables.borrow_mut().upvar_capture_map.insert(upvar_id, ub);
-                    }
-                    c::tag_table_param_defs => {
-                        let bounds = val_dsr.read_type_param_def(dcx);
-                        dcx.tcx.ty_param_defs.borrow_mut().insert(id, bounds);
                     }
                     c::tag_table_method_map => {
                         let (autoderef, method) = val_dsr.read_method_callee(dcx);
