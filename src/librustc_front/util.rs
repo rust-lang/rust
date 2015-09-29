@@ -303,12 +303,12 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
         visit::walk_impl_item(self, ii);
     }
 
-    fn visit_lifetime_ref(&mut self, lifetime: &Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &Lifetime) {
         self.operation.visit_id(lifetime.id);
     }
 
     fn visit_lifetime_def(&mut self, def: &LifetimeDef) {
-        self.visit_lifetime_ref(&def.lifetime);
+        self.visit_lifetime(&def.lifetime);
     }
 
     fn visit_trait_ref(&mut self, trait_ref: &TraitRef) {

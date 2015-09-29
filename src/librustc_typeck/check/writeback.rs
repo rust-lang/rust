@@ -225,6 +225,10 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
                 self.visit_ty(&**ty);
                 write_ty_to_tcx(self.tcx(), count_expr.id, self.tcx().types.usize);
             }
+            hir::TyBareFn(ref function_declaration) => {
+                visit::walk_fn_decl_nopat(self, &function_declaration.decl);
+                walk_list!(self, visit_lifetime_def, &function_declaration.lifetimes);
+            }
             _ => visit::walk_ty(self, t)
         }
     }

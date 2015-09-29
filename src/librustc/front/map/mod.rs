@@ -912,12 +912,12 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         self.parent_node = parent_node;
     }
 
-    fn visit_lifetime_ref(&mut self, lifetime: &'ast Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'ast Lifetime) {
         self.insert(lifetime.id, NodeLifetime(lifetime));
     }
 
     fn visit_lifetime_def(&mut self, def: &'ast LifetimeDef) {
-        self.visit_lifetime_ref(&def.lifetime);
+        self.visit_lifetime(&def.lifetime);
     }
 }
 

@@ -1613,6 +1613,13 @@ impl PathListItem_ {
         }
     }
 
+    pub fn name(&self) -> Option<Ident> {
+        match *self {
+            PathListIdent { name, .. } => Some(name),
+            PathListMod { .. } => None,
+        }
+    }
+
     pub fn rename(&self) -> Option<Ident> {
         match *self {
             PathListIdent { rename, .. } | PathListMod { rename, .. } => rename

@@ -771,7 +771,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             }
         }
 
-        visit::walk_expr_opt(self, base)
+        walk_list!(self, visit_expr, base);
     }
 
     fn process_method_call(&mut self, ex: &ast::Expr, args: &Vec<P<ast::Expr>>) {
@@ -785,7 +785,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         }
 
         // walk receiver and args
-        visit::walk_exprs(self, &args);
+        walk_list!(self, visit_expr, args);
     }
 
     fn process_pat(&mut self, p: &ast::Pat) {
@@ -1200,7 +1200,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
         for &(id, ref path, ref_kind) in &paths_to_process {
             self.process_path(id, path, ref_kind);
         }
-        visit::walk_expr_opt(self, &arm.guard);
+        walk_list!(self, visit_expr, &arm.guard);
         self.visit_expr(&arm.body);
     }
 
@@ -1246,7 +1246,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
         }
 
         // Just walk the initialiser and type (don't want to walk the pattern again).
-        visit::walk_ty_opt(self, &l.ty);
-        visit::walk_expr_opt(self, &l.init);
+        walk_list!(self, visit_ty, &l.ty);
+        walk_list!(self, visit_expr, &l.init);
     }
 }
