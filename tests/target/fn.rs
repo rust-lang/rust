@@ -79,6 +79,9 @@ fn homura<T: Deref<Target = i32>>(_: T) {
 
 }
 
+fn issue377() -> (Box<CompositorProxy + Send>, Box<CompositorReceiver>) {
+}
+
 fn main() {
     let _ = function(move || 5);
     let _ = move || 42;

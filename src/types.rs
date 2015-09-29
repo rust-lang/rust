@@ -482,6 +482,27 @@ impl Rewrite for ast::Ty {
                 let budget = try_opt!(width.checked_sub(2));
                 ty.rewrite(context, budget, offset + 1).map(|ty_str| format!("({})", ty_str))
             }
+            ast::TyTup(ref tup_ret) => {
+                let inner = try_opt!(tup_ret.iter()
+                                            .map(|item| item.rewrite(context, width, offset))
+                                            .fold(Some("".to_owned()),
+                                                  |sum, x| {
+                                                      match (sum, x) {
+                                                          (Some(sum), Some(x)) => {
+                                                              if sum == "" {
+                                                                  // First item.
+                                                                  Some(x)
+                                                              } else {
+                                                                  Some(sum + ", " + &x)
+                                                              }
+                                                          }
+                                                          _ => None,
+                                                      }
+                                                  }));
+
+                let ret = format!("({})", inner);
+                wrap_str(ret, context.config.max_width, width, offset)
+            }
             _ => wrap_str(pprust::ty_to_string(self),
                           context.config.max_width,
                           width,
