@@ -14,7 +14,7 @@ use back::svh::Svh;
 use middle::const_eval::{self, ConstVal, ErrKind};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def_id::DefId;
-use middle::subst;
+use middle::subst::{self, Subst, Substs};
 use middle::infer;
 use middle::pat_util;
 use middle::traits;
@@ -26,6 +26,7 @@ use util::num::ToPrimitive;
 
 use std::cmp;
 use std::hash::{Hash, SipHasher, Hasher};
+use std::rc::Rc;
 use syntax::ast::{self, Name};
 use syntax::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
 use syntax::codemap::Span;
@@ -643,6 +644,58 @@ impl<'tcx> ty::ctxt<'tcx> {
 
         debug!("typ: {:?} is dtorck-safe", adt);
         false
+    }
+}
+
+#[derive(Debug)]
+pub struct ImplMethod<'tcx> {
+    pub method: Rc<ty::Method<'tcx>>,
+    pub substs: Substs<'tcx>,
+    pub is_provided: bool
+}
+
+impl<'tcx> ty::ctxt<'tcx> {
+    #[inline(never)] // is this perfy enough?
+    pub fn get_impl_method(&self,
+                           impl_def_id: DefId,
+                           substs: Substs<'tcx>,
+                           name: Name)
+                           -> ImplMethod<'tcx>
+    {
+        // there don't seem to be nicer accessors to these:
+        let impl_or_trait_items_map = self.impl_or_trait_items.borrow();
+
+        for impl_item in &self.impl_items.borrow()[&impl_def_id] {
+            if let ty::MethodTraitItem(ref meth) =
+                impl_or_trait_items_map[&impl_item.def_id()] {
+                if meth.name == name {
+                    return ImplMethod {
+                        method: meth.clone(),
+                        substs: substs,
+                        is_provided: false
+                    }
+                }
+            }
+        }
+
+        // It is not in the impl - get the default from the trait.
+        let trait_ref = self.impl_trait_ref(impl_def_id).unwrap();
+        for trait_item in self.trait_items(trait_ref.def_id).iter() {
+            if let &ty::MethodTraitItem(ref meth) = trait_item {
+                if meth.name == name {
+                    let impl_to_trait_substs = self
+                        .make_substs_for_receiver_types(&trait_ref, meth);
+                    return ImplMethod {
+                        method: meth.clone(),
+                        substs: impl_to_trait_substs.subst(self, &substs),
+                        is_provided: true
+                    }
+                }
+            }
+        }
+
+        self.sess.bug(&format!("method {:?} not found in {:?}",
+                               name, impl_def_id))
     }
 }
 

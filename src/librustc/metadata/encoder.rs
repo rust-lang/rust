@@ -609,13 +609,6 @@ fn encode_parent_sort(rbml_w: &mut Encoder, sort: char) {
     rbml_w.wr_tagged_u8(tag_item_trait_parent_sort, sort as u8);
 }
 
-fn encode_provided_source(rbml_w: &mut Encoder,
-                          source_opt: Option<DefId>) {
-    if let Some(source) = source_opt {
-        rbml_w.wr_tagged_u64(tag_item_method_provided_source, def_to_u64(source));
-    }
-}
-
 fn encode_field<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                           rbml_w: &mut Encoder,
                           field: ty::FieldDef<'tcx>,
@@ -776,7 +769,6 @@ fn encode_method_ty_fields<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         }
         _ => encode_family(rbml_w, METHOD_FAMILY)
     }
-    encode_provided_source(rbml_w, method_ty.provided_source);
 }
 
 fn encode_info_for_associated_const(ecx: &EncodeContext,
@@ -795,7 +787,6 @@ fn encode_info_for_associated_const(ecx: &EncodeContext,
     encode_name(rbml_w, associated_const.name);
     encode_visibility(rbml_w, associated_const.vis);
     encode_family(rbml_w, 'C');
-    encode_provided_source(rbml_w, associated_const.default);
 
     encode_parent_item(rbml_w, DefId::local(parent_id));
     encode_item_sort(rbml_w, 'C');
@@ -1367,13 +1358,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     encode_def_id(rbml_w, associated_const.def_id);
                     encode_visibility(rbml_w, associated_const.vis);
 
-                    encode_provided_source(rbml_w, associated_const.default);
-
                     let elem = ast_map::PathName(associated_const.name);
                     encode_path(rbml_w,
                                 path.clone().chain(Some(elem)));
 
-                    encode_item_sort(rbml_w, 'C');
                     encode_family(rbml_w, 'C');
 
                     encode_bounds_and_type_for_item(rbml_w, ecx,
@@ -1429,7 +1417,13 @@ fn encode_info_for_item(ecx: &EncodeContext,
             let trait_item = &*ms[i];
             encode_attributes(rbml_w, &trait_item.attrs);
             match trait_item.node {
-                hir::ConstTraitItem(_, _) => {
+                hir::ConstTraitItem(_, ref default) => {
+                    if default.is_some() {
+                        encode_item_sort(rbml_w, 'C');
+                    } else {
+                        encode_item_sort(rbml_w, 'c');
+                    }
+
                     encode_inlined_item(ecx, rbml_w,
                                         InlinedItemRef::TraitItem(def_id, trait_item));
                 }

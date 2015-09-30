@@ -182,7 +182,14 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 CandidateSource::ImplSource(impl_did) => {
                     // Provide the best span we can. Use the item, if local to crate, else
                     // the impl, if local to crate (item may be defaulted), else the call site.
-                    let item = impl_item(fcx.tcx(), impl_did, item_name).unwrap();
+                    let item = impl_item(fcx.tcx(), impl_did, item_name)
+                        .or_else(|| {
+                            trait_item(
+                                fcx.tcx(),
+                                fcx.tcx().impl_trait_ref(impl_did).unwrap().def_id,
+                                item_name
+                            )
+                        }).unwrap();
                     let impl_span = fcx.tcx().map.def_id_span(impl_did, span);
                     let item_span = fcx.tcx().map.def_id_span(item.def_id(), impl_span);
 

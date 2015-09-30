@@ -317,10 +317,11 @@ pub fn build_impl(cx: &DocContext,
             ty::ConstTraitItem(ref assoc_const) => {
                 let did = assoc_const.def_id;
                 let type_scheme = tcx.lookup_item_type(did);
-                let default = match assoc_const.default {
-                    Some(_) => Some(const_eval::lookup_const_by_id(tcx, did, None)
-                                               .unwrap().span.to_src(cx)),
-                    None => None,
+                let default = if assoc_const.has_value {
+                    Some(const_eval::lookup_const_by_id(tcx, did, None)
+                         .unwrap().span.to_src(cx))
+                } else {
+                    None
                 };
                 Some(clean::Item {
                     name: Some(assoc_const.name.clean(cx)),
@@ -337,9 +338,6 @@ pub fn build_impl(cx: &DocContext,
             }
             ty::MethodTraitItem(method) => {
                 if method.vis != hir::Public && associated_trait.is_none() {
-                    return None
-                }
-                if method.provided_source.is_some() {
                     return None
                 }
                 let mut item = method.clean(cx);
