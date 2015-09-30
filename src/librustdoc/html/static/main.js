@@ -715,6 +715,13 @@
         }
 
         function startSearch() {
+
+            if ($('.search-input').val().length === 0) {
+                window.history.pushState("", "std - Rust", "?search=");
+                $('#main.content').removeClass('hidden');
+                $('#search.content').addClass('hidden');
+            }
+
             var keyUpTimeout;
             $('.do-search').on('click', search);
             $('.search-input').on('keyup', function() {
@@ -892,15 +899,7 @@
 
     $(".search-input").on("keyup",function() {
         if ($(this).val().length === 0) {
-            window.history.pushState("", "std - Rust", "?search=");
-            $('#main.content').removeClass('hidden');
-            $('#search.content').addClass('hidden');
-        }
-    });
-
-    $('.search-input').on('search', function () {
-        if ($(this).val().length === 0) {
-            window.history.pushState("", "std - Rust", "?search=");
+            window.history.replaceState("", "std - Rust", "?search=");
             $('#main.content').removeClass('hidden');
             $('#search.content').addClass('hidden');
         }
