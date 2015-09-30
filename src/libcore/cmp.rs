@@ -218,7 +218,7 @@ impl PartialOrd for Ordering {
 ///
 /// The comparison must satisfy, for all `a`, `b` and `c`:
 ///
-/// - antisymmetry: if `a < b` then `!(a > b)` and vice versa; and
+/// - antisymmetry: if `a < b` then `!(a > b)`, as well as `a > b` implying `!(a < b)`; and
 /// - transitivity: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
 ///
 /// Note that these requirements mean that the trait itself must be implemented symmetrically and

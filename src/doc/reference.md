@@ -76,8 +76,13 @@ An identifier is any nonempty Unicode[^non_ascii_idents] string of the following
 [^non_ascii_idents]: Non-ASCII characters in identifiers are currently feature
   gated. This is expected to improve soon.
 
-- The first character has property `XID_start`
-- The remaining characters have property `XID_continue`
+Either
+   * The first character has property `XID_start`
+   * The remaining characters have property `XID_continue`
+Or
+   * The first character is `_`
+   * The identifier is more than one character, `_` alone is not an identifier
+   * The remaining characters have property `XID_continue`
 
 that does _not_ occur in the set of [keywords][keywords].
 
@@ -3937,11 +3942,11 @@ initialized; this is enforced by the compiler.
 The Rust compiler supports various methods to link crates together both
 statically and dynamically. This section will explore the various methods to
 link Rust crates together, and more information about native libraries can be
-found in the [ffi section of the book][ffi].
+found in the [FFI section of the book][ffi].
 
 In one session of compilation, the compiler can generate multiple artifacts
 through the usage of either command line flags or the `crate_type` attribute.
-If one or more command line flag is specified, all `crate_type` attributes will
+If one or more command line flags are specified, all `crate_type` attributes will
 be ignored in favor of only building the artifacts specified by command line.
 
 * `--crate-type=bin`, `#[crate_type = "bin"]` - A runnable executable will be
@@ -3987,7 +3992,7 @@ Note that these outputs are stackable in the sense that if multiple are
 specified, then the compiler will produce each form of output at once without
 having to recompile. However, this only applies for outputs specified by the
 same method. If only `crate_type` attributes are specified, then they will all
-be built, but if one or more `--crate-type` command line flag is specified,
+be built, but if one or more `--crate-type` command line flags are specified,
 then only those outputs will be built.
 
 With all these different kinds of outputs, if crate A depends on crate B, then
