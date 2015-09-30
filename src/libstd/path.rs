@@ -351,7 +351,6 @@ impl<'a> Prefix<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn is_separator(c: char) -> bool {
-    use ascii::*;
     c.is_ascii() && is_sep_byte(c as u8)
 }
 
