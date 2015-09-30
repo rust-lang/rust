@@ -366,120 +366,6 @@ fn encode_path<PI: Iterator<Item=PathElem>>(rbml_w: &mut Encoder, path: PI) {
     rbml_w.end_tag();
 }
 
-fn encode_reexported_static_method(rbml_w: &mut Encoder,
-                                   exp: &def::Export,
-                                   method_def_id: DefId,
-                                   method_name: Name) {
-    debug!("(encode reexported static method) {}::{}",
-            exp.name, method_name);
-    rbml_w.start_tag(tag_items_data_item_reexport);
-    rbml_w.wr_tagged_u64(tag_items_data_item_reexport_def_id,
-                         def_to_u64(method_def_id));
-    rbml_w.wr_tagged_str(tag_items_data_item_reexport_name,
-                         &format!("{}::{}", exp.name,
-                                            method_name));
-    rbml_w.end_tag();
-}
-
-fn encode_reexported_static_base_methods(ecx: &EncodeContext,
-                                         rbml_w: &mut Encoder,
-                                         exp: &def::Export)
-                                         -> bool {
-    let impl_items = ecx.tcx.impl_items.borrow();
-    match ecx.tcx.inherent_impls.borrow().get(&exp.def_id) {
-        Some(implementations) => {
-            for base_impl_did in implementations.iter() {
-                for &method_did in impl_items.get(base_impl_did).unwrap() {
-                    let impl_item = ecx.tcx.impl_or_trait_item(method_did.def_id());
-                    if let ty::MethodTraitItem(ref m) = impl_item {
-                        encode_reexported_static_method(rbml_w,
-                                                        exp,
-                                                        m.def_id,
-                                                        m.name);
-                    }
-                }
-            }
-
-            true
-        }
-        None => { false }
-    }
-}
-
-fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
-                                          rbml_w: &mut Encoder,
-                                          exp: &def::Export)
-                                          -> bool {
-    match ecx.tcx.trait_items_cache.borrow().get(&exp.def_id) {
-        Some(trait_items) => {
-            for trait_item in trait_items.iter() {
-                if let ty::MethodTraitItem(ref m) = *trait_item {
-                    encode_reexported_static_method(rbml_w,
-                                                    exp,
-                                                    m.def_id,
-                                                    m.name);
-                }
-            }
-            true
-        }
-        None => { false }
-    }
-}
-
-fn encode_reexported_static_methods(ecx: &EncodeContext,
-                                    rbml_w: &mut Encoder,
-                                    mod_path: PathElems,
-                                    exp: &def::Export) {
-    let exp_node_id = if let Some(n) = ecx.tcx.map.as_local_node_id(exp.def_id) {
-        n
-    } else {
-        // Before the refactor that introducd `as_local_node_id`, we
-        // were just extracting the node and checking into the
-        // ast-map. Since the node might have been from another crate,
-        // this was a tenuous thing to do at best. Anyway, I'm not
-        // 100% clear on why it's ok to ignore things from other
-        // crates, but it seems to be what we were doing pre-refactor.
-        // -nmatsakis
-        return;
-    };
-
-    if let Some(ast_map::NodeItem(item)) = ecx.tcx.map.find(exp_node_id) {
-        let path_differs = ecx.tcx.map.with_path(exp_node_id, |path| {
-            let (mut a, mut b) = (path, mod_path.clone());
-            loop {
-                match (a.next(), b.next()) {
-                    (None, None) => return true,
-                    (None, _) | (_, None) => return false,
-                    (Some(x), Some(y)) => if x != y { return false },
-                }
-            }
-        });
-
-        //
-        // We don't need to reexport static methods on items
-        // declared in the same module as our `pub use ...` since
-        // that's done when we encode the item itself.
-        //
-        // The only exception is when the reexport *changes* the
-        // name e.g. `pub use Foo = self::Bar` -- we have
-        // encoded metadata for static methods relative to Bar,
-        // but not yet for Foo.
-        //
-        if path_differs || item.name != exp.name {
-            if !encode_reexported_static_base_methods(ecx, rbml_w, exp) {
-                if encode_reexported_static_trait_methods(ecx, rbml_w, exp) {
-                    debug!("(encode reexported static methods) {} [trait]",
-                           item.name);
-                }
-            }
-            else {
-                debug!("(encode reexported static methods) {} [base]",
-                       item.name);
-            }
-        }
-    }
-}
-
 /// Iterates through "auxiliary node IDs", which are node IDs that describe
 /// top-level items that are sub-items of the given item. Specifically:
 ///
@@ -507,8 +393,7 @@ fn each_auxiliary_node_id<F>(item: &hir::Item, callback: F) -> bool where
 
 fn encode_reexports(ecx: &EncodeContext,
                     rbml_w: &mut Encoder,
-                    id: NodeId,
-                    path: PathElems) {
+                    id: NodeId) {
     debug!("(encoding info for module) encoding reexports for {}", id);
     match ecx.reexports.get(&id) {
         Some(exports) => {
@@ -525,7 +410,6 @@ fn encode_reexports(ecx: &EncodeContext,
                 rbml_w.wr_tagged_str(tag_items_data_item_reexport_name,
                                      &exp.name.as_str());
                 rbml_w.end_tag();
-                encode_reexported_static_methods(ecx, rbml_w, path.clone(), exp);
             }
         },
         None => debug!("(encoding info for module) found no reexports for {}", id),
@@ -576,7 +460,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
     // Encode the reexports of this module, if this module is public.
     if vis == hir::Public {
         debug!("(encoding info for module) encoding reexports for {}", id);
-        encode_reexports(ecx, rbml_w, id, path);
+        encode_reexports(ecx, rbml_w, id);
     }
     encode_attributes(rbml_w, attrs);
 
@@ -1930,7 +1814,7 @@ fn encode_misc_info(ecx: &EncodeContext,
     }
 
     // Encode reexports for the root module.
-    encode_reexports(ecx, rbml_w, 0, [].iter().cloned().chain(LinkedPath::empty()));
+    encode_reexports(ecx, rbml_w, 0);
 
     rbml_w.end_tag();
     rbml_w.end_tag();
