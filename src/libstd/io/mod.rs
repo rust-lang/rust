@@ -370,6 +370,13 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
 /// throughout `std::io` take and provide types which implement the `Read`
 /// trait.
 ///
+/// Please note that each call to `read` may involve a system call, and
+/// therefore, using something that implements [`BufRead`][bufread], such as
+/// [`BufReader`][bufreader], will be more efficient.
+///
+/// [bufread]: trait.BufRead.html
+/// [bufreader]: struct.BufReader.html
+///
 /// # Examples
 ///
 /// [`File`][file]s implement `Read`:
