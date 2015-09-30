@@ -182,7 +182,7 @@ analysis is the only way to get at the value stored inside an `Option<T>`. This
 means that you, as the programmer, must handle the case when an `Option<T>` is
 `None` instead of `Some(t)`.
 
-But wait, what about `unwrap` used in [`unwrap-double`](#code-unwrap-double)?
+But wait, what about `unwrap`,which we used [`previously`](#code-unwrap-double)?
 There was no case analysis there! Instead, the case analysis was put inside the
 `unwrap` method for you. You could define it yourself if you want:
 
@@ -211,7 +211,7 @@ that makes `unwrap` ergonomic to use. Unfortunately, that `panic!` means that
 
 ### Composing `Option<T>` values
 
-In [`option-ex-string-find`](#code-option-ex-string-find)
+In an [example from before](#code-option-ex-string-find),
 we saw how to use `find` to discover the extension in a file name. Of course,
 not all file names have a `.` in them, so it's possible that the file name has
 no extension. This *possibility of absence* is encoded into the types using
