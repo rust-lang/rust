@@ -29,7 +29,6 @@ use std::io::{self, Read};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
-use parse::token::intern;
 use ast::Name;
 
 // _____________________________________________________________________________
@@ -269,28 +268,8 @@ pub enum ExpnFormat {
     MacroAttribute(Name),
     /// e.g. `format!()`
     MacroBang(Name),
-    /// Syntax sugar expansion performed by the compiler (libsyntax::expand).
-    CompilerExpansion(CompilerExpansionFormat),
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
-pub enum CompilerExpansionFormat {
-    IfLet,
-    PlacementIn,
-    WhileLet,
-    ForLoop,
-}
-
-impl CompilerExpansionFormat {
-    pub fn name(self) -> &'static str {
-        match self {
-            CompilerExpansionFormat::IfLet => "if let expansion",
-            CompilerExpansionFormat::PlacementIn => "placement-in expansion",
-            CompilerExpansionFormat::WhileLet => "while let expansion",
-            CompilerExpansionFormat::ForLoop => "for loop expansion",
-        }
-    }
-}
 #[derive(Clone, Hash, Debug)]
 pub struct NameAndSpan {
     /// The format with which the macro was invoked.
@@ -310,7 +289,6 @@ impl NameAndSpan {
         match self.format {
             ExpnFormat::MacroAttribute(s) => s,
             ExpnFormat::MacroBang(s) => s,
-            ExpnFormat::CompilerExpansion(ce) => intern(ce.name()),
         }
     }
 }

@@ -366,7 +366,7 @@ impl EarlyLintPass for UnusedParens {
             ast::ExprIfLet(_, ref cond, _, _) => (cond, "`if let` head expression", true),
             ast::ExprWhileLet(_, ref cond, _, _) => (cond, "`while let` head expression", true),
             ast::ExprForLoop(_, ref cond, _, _) => (cond, "`for` head expression", true),
-            ast::ExprMatch(ref head, _, _) => (head, "`match` head expression", true),
+            ast::ExprMatch(ref head, _) => (head, "`match` head expression", true),
             ast::ExprRet(Some(ref value)) => (value, "`return` value", false),
             ast::ExprAssign(_, ref value) => (value, "assigned value", false),
             ast::ExprAssignOp(_, _, ref value) => (value, "assigned value", false),
