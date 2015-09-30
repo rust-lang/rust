@@ -502,3 +502,5 @@ documentation tests: the `_0` is generated for the module test, and `add_two_0`
 for the function test. These will auto increment with names like `add_two_1` as
 you add more examples.
 
+We haven’t covered all of the details with writing documentation tests. For more,
+please see the [Documentation chapter](documentation.html)
