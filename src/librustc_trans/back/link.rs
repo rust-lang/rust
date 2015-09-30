@@ -16,7 +16,7 @@ use super::msvc;
 use super::svh::Svh;
 use session::config;
 use session::config::NoDebugInfo;
-use session::config::{OutputFilenames, Input, OutputTypeBitcode, OutputTypeExe, OutputTypeObject};
+use session::config::{OutputFilenames, Input, OutputType};
 use session::search_paths::PathKind;
 use session::Session;
 use metadata::common::LinkMeta;
@@ -486,7 +486,7 @@ pub fn filename_for_input(sess: &Session,
         }
         config::CrateTypeExecutable => {
             let suffix = &sess.target.target.options.exe_suffix;
-            let out_filename = outputs.path(OutputTypeExe);
+            let out_filename = outputs.path(OutputType::Exe);
             if suffix.is_empty() {
                 out_filename.to_path_buf()
             } else {
@@ -527,10 +527,12 @@ fn link_binary_output(sess: &Session,
                       outputs: &OutputFilenames,
                       crate_name: &str) -> PathBuf {
     let objects = object_filenames(sess, outputs);
-    let out_filename = match outputs.single_output_file {
-        Some(ref file) => file.clone(),
-        None => filename_for_input(sess, crate_type, crate_name, outputs),
-    };
+    let default_filename = filename_for_input(sess, crate_type, crate_name,
+                                              outputs);
+    let out_filename = outputs.outputs.get(&OutputType::Exe)
+                              .and_then(|s| s.to_owned())
+                              .or_else(|| outputs.single_output_file.clone())
+                              .unwrap_or(default_filename);
 
     // Make sure files are writeable.  Mac, FreeBSD, and Windows system linkers
     // check this already -- however, the Linux linker will happily overwrite a
@@ -571,7 +573,7 @@ fn link_binary_output(sess: &Session,
 fn object_filenames(sess: &Session, outputs: &OutputFilenames) -> Vec<PathBuf> {
     (0..sess.opts.cg.codegen_units).map(|i| {
         let ext = format!("{}.o", i);
-        outputs.temp_path(OutputTypeObject).with_extension(&ext)
+        outputs.temp_path(OutputType::Object).with_extension(&ext)
     }).collect()
 }
 
@@ -718,7 +720,7 @@ fn link_rlib<'a>(sess: &'a Session,
                 // See the bottom of back::write::run_passes for an explanation
                 // of when we do and don't keep .0.bc files around.
                 let user_wants_numbered_bitcode =
-                        sess.opts.output_types.contains(&OutputTypeBitcode) &&
+                        sess.opts.output_types.contains_key(&OutputType::Bitcode) &&
                         sess.opts.cg.codegen_units > 1;
                 if !sess.opts.cg.save_temps && !user_wants_numbered_bitcode {
                     remove(sess, &bc_filename);
