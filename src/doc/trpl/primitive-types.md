@@ -162,13 +162,18 @@ A ‘slice’ is a reference to (or “view” into) another data structure. The
 useful for allowing safe, efficient access to a portion of an array without
 copying. For example, you might want to reference just one line of a file read
 into memory. By nature, a slice is not created directly, but from an existing
-variable. Slices have a length, can be mutable or not, and in many ways behave
-like arrays:
+variable binding. Slices have a defined length, can be mutable or immutable.
+
+## Slicing syntax
+
+You can use a combo of `&` and `[]` to create a slice from various things. The
+`&` indicates that slices are similar to references, and the `[]`s, with a
+range, let you define the length of the slice:
 
 ```rust
 let a = [0, 1, 2, 3, 4];
-let middle = &a[1..4]; // A slice of a: just the elements 1, 2, and 3
 let complete = &a[..]; // A slice containing all of the elements in a
+let middle = &a[1..4]; // A slice of a: just the elements 1, 2, and 3
 ```
 
 Slices have type `&[T]`. We’ll talk about that `T` when we cover
