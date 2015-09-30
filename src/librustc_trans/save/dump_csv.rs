@@ -1132,11 +1132,19 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 // walk the body
                 self.nest(ex.id, |v| v.visit_block(&**body));
             }
-            ast::ExprForLoop(ref pattern, ref subexpression, ref block, _) => {
+            ast::ExprForLoop(ref pattern, ref subexpression, ref block, _) |
+            ast::ExprWhileLet(ref pattern, ref subexpression, ref block, _) => {
                 let value = self.span.snippet(mk_sp(ex.span.lo, subexpression.span.hi));
                 self.process_var_decl(pattern, value);
                 visit::walk_expr(self, subexpression);
                 visit::walk_block(self, block);
+            }
+            ast::ExprIfLet(ref pattern, ref subexpression, ref block, ref opt_else) => {
+                let value = self.span.snippet(mk_sp(ex.span.lo, subexpression.span.hi));
+                self.process_var_decl(pattern, value);
+                visit::walk_expr(self, subexpression);
+                visit::walk_block(self, block);
+                opt_else.as_ref().map(|el| visit::walk_expr(self, el));
             }
             _ => {
                 visit::walk_expr(self, ex)
