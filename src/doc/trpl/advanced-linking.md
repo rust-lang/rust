@@ -94,8 +94,6 @@ $ # Build libunwind.a
 $ curl -O http://llvm.org/releases/3.7.0/llvm-3.7.0.src.tar.xz
 $ tar xf llvm-3.7.0.src.tar.xz
 $ cd llvm-3.7.0.src/projects/
-llvm-3.7.0.src/projects $ curl http://llvm.org/releases/3.7.0/libcxxabi-3.7.0.src.tar.xz | tar xJf -
-llvm-3.7.0.src/projects $ mv libcxxabi-3.7.0.src libcxxabi
 llvm-3.7.0.src/projects $ curl http://llvm.org/releases/3.7.0/libunwind-3.7.0.src.tar.xz | tar xJf -
 llvm-3.7.0.src/projects $ mv libunwind-3.7.0.src libunwind
 llvm-3.7.0.src/projects $ mkdir libunwind/build
