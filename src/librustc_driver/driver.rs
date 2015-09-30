@@ -112,8 +112,7 @@ pub fn compile_input(sess: Session,
 
         let expanded_crate = assign_node_ids(&sess, expanded_crate);
         // Lower ast -> hir.
-        let foo = &42;
-        let lcx = LoweringContext::new(foo, &sess, &expanded_crate);
+        let lcx = LoweringContext::new(&sess, &expanded_crate);
         let mut hir_forest = time(sess.time_passes(),
                                   "lowering ast -> hir",
                                   || hir_map::Forest::new(lower_crate(&lcx, &expanded_crate)));
@@ -282,7 +281,7 @@ pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
     pub ast_map: Option<&'a hir_map::Map<'ast>>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<&'a ty::ctxt<'tcx>>,
-    pub lcx: Option<&'a LoweringContext<'a, 'tcx>>,
+    pub lcx: Option<&'a LoweringContext<'a>>,
     pub trans: Option<&'a trans::CrateTranslation>,
 }
 
@@ -340,7 +339,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                               krate: &'a ast::Crate,
                               hir_crate: &'a hir::Crate,
                               crate_name: &'a str,
-                              lcx: &'a LoweringContext<'a, 'tcx>)
+                              lcx: &'a LoweringContext<'a>)
                               -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
@@ -359,7 +358,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                             hir_crate: &'a hir::Crate,
                             analysis: &'a ty::CrateAnalysis,
                             tcx: &'a ty::ctxt<'tcx>,
-                            lcx: &'a LoweringContext<'a, 'tcx>)
+                            lcx: &'a LoweringContext<'a>)
                             -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             analysis: Some(analysis),

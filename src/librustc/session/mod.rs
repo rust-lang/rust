@@ -318,6 +318,10 @@ impl NodeIdAssigner for Session {
     fn next_node_id(&self) -> NodeId {
         self.reserve_node_ids(1)
     }
+
+    fn peek_node_id(&self) -> NodeId {
+        self.next_node_id.get().checked_add(1).unwrap()
+    }
 }
 
 fn split_msg_into_multilines(msg: &str) -> Option<String> {

@@ -76,7 +76,7 @@ pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
 
 impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     pub fn new(tcx: &'l ty::ctxt<'tcx>,
-               lcx: &'l LoweringContext<'l, 'tcx>,
+               lcx: &'l LoweringContext<'l>,
                analysis: &'l ty::CrateAnalysis,
                output_file: Box<File>)
                -> DumpCsvVisitor<'l, 'tcx> {

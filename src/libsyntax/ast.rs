@@ -377,6 +377,7 @@ pub const DUMMY_NODE_ID: NodeId = !0;
 
 pub trait NodeIdAssigner {
     fn next_node_id(&self) -> NodeId;
+    fn peek_node_id(&self) -> NodeId;
 }
 
 /// The AST represents all type param bounds as types.
