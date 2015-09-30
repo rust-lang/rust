@@ -2084,6 +2084,15 @@ mod tests {
     }
 
     #[test]
+    fn canonicalize_works_simple() {
+        let tmpdir = tmpdir();
+        let tmpdir = fs::canonicalize(tmpdir.path()).unwrap();
+        let file = tmpdir.join("test");
+        File::create(&file).unwrap();
+        assert_eq!(fs::canonicalize(&file).unwrap(), file);
+    }
+
+    #[test]
     #[cfg(not(windows))]
     fn realpath_works() {
         let tmpdir = tmpdir();
