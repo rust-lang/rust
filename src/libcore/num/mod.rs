@@ -115,10 +115,38 @@ unsafe fn bswap8(x: u8) -> u8 { x }
 
 // `Int` + `SignedInt` implemented for signed integers
 macro_rules! int_impl {
-    ($ActualT:ty, $UnsignedT:ty, $BITS:expr,
+    ($SelfT:ty, $ActualT:ty, $UnsignedT:ty, $BITS:expr,
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
+
+        // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+        // calling the `mem::size_of` function.
+        #[unstable(feature = "num_bits_bytes",
+                   reason = "may want to be an associated function",
+                   issue = "27753")]
+        #[allow(missing_docs)]
+        pub const BITS : usize = $BITS;
+        // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+        // calling the `mem::size_of` function.
+        #[unstable(feature = "num_bits_bytes",
+                   reason = "may want to be an associated function",
+                   issue = "27753")]
+        #[allow(missing_docs)]
+        pub const BYTES : usize = ($BITS / 8);
+
+        // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+        // calling the `Bounded::min_value` function.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(missing_docs)]
+        pub const MIN: $SelfT = (-1 as $SelfT) << ($BITS - 1);
+        // FIXME(#9837): Compute MIN like this so the high bits that shouldn't exist are 0.
+        // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+        // calling the `Bounded::max_value` function.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(missing_docs)]
+        pub const MAX: $SelfT = !<$SelfT>::MIN;
+
         /// Returns the smallest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
@@ -611,7 +639,7 @@ macro_rules! int_impl {
 
 #[lang = "i8"]
 impl i8 {
-    int_impl! { i8, u8, 8,
+    int_impl! { i8, i8, u8, 8,
         intrinsics::i8_add_with_overflow,
         intrinsics::i8_sub_with_overflow,
         intrinsics::i8_mul_with_overflow }
@@ -619,7 +647,7 @@ impl i8 {
 
 #[lang = "i16"]
 impl i16 {
-    int_impl! { i16, u16, 16,
+    int_impl! { i16, i16, u16, 16,
         intrinsics::i16_add_with_overflow,
         intrinsics::i16_sub_with_overflow,
         intrinsics::i16_mul_with_overflow }
@@ -627,7 +655,7 @@ impl i16 {
 
 #[lang = "i32"]
 impl i32 {
-    int_impl! { i32, u32, 32,
+    int_impl! { i32, i32, u32, 32,
         intrinsics::i32_add_with_overflow,
         intrinsics::i32_sub_with_overflow,
         intrinsics::i32_mul_with_overflow }
@@ -635,7 +663,7 @@ impl i32 {
 
 #[lang = "i64"]
 impl i64 {
-    int_impl! { i64, u64, 64,
+    int_impl! { i64, i64, u64, 64,
         intrinsics::i64_add_with_overflow,
         intrinsics::i64_sub_with_overflow,
         intrinsics::i64_mul_with_overflow }
@@ -644,7 +672,7 @@ impl i64 {
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { i32, u32, 32,
+    int_impl! { isize, i32, u32, 32,
         intrinsics::i32_add_with_overflow,
         intrinsics::i32_sub_with_overflow,
         intrinsics::i32_mul_with_overflow }
@@ -653,7 +681,7 @@ impl isize {
 #[cfg(target_pointer_width = "64")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { i64, u64, 64,
+    int_impl! { isize, i64, u64, 64,
         intrinsics::i64_add_with_overflow,
         intrinsics::i64_sub_with_overflow,
         intrinsics::i64_mul_with_overflow }
@@ -661,7 +689,7 @@ impl isize {
 
 // `Int` + `UnsignedInt` implemented for signed integers
 macro_rules! uint_impl {
-    ($ActualT:ty, $BITS:expr,
+    ($SelfT:ty, $ActualT:ty, $BITS:expr,
      $ctpop:path,
      $ctlz:path,
      $cttz:path,
@@ -669,6 +697,25 @@ macro_rules! uint_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
+
+        #[unstable(feature = "num_bits_bytes",
+                   reason = "may want to be an associated function",
+                   issue = "27753")]
+        #[allow(missing_docs)]
+        pub const BITS : usize = $BITS;
+        #[unstable(feature = "num_bits_bytes",
+                   reason = "may want to be an associated function",
+                   issue = "27753")]
+        #[allow(missing_docs)]
+        pub const BYTES : usize = ($BITS / 8);
+
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(missing_docs)]
+        pub const MIN: $SelfT = 0 as $SelfT;
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(missing_docs)]
+        pub const MAX: $SelfT = !0 as $SelfT;
+
         /// Returns the smallest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
@@ -1163,7 +1210,7 @@ macro_rules! uint_impl {
 
 #[lang = "u8"]
 impl u8 {
-    uint_impl! { u8, 8,
+    uint_impl! { u8, u8, 8,
         intrinsics::ctpop8,
         intrinsics::ctlz8,
         intrinsics::cttz8,
@@ -1175,7 +1222,7 @@ impl u8 {
 
 #[lang = "u16"]
 impl u16 {
-    uint_impl! { u16, 16,
+    uint_impl! { u16, u16, 16,
         intrinsics::ctpop16,
         intrinsics::ctlz16,
         intrinsics::cttz16,
@@ -1187,7 +1234,7 @@ impl u16 {
 
 #[lang = "u32"]
 impl u32 {
-    uint_impl! { u32, 32,
+    uint_impl! { u32, u32, 32,
         intrinsics::ctpop32,
         intrinsics::ctlz32,
         intrinsics::cttz32,
@@ -1200,7 +1247,7 @@ impl u32 {
 
 #[lang = "u64"]
 impl u64 {
-    uint_impl! { u64, 64,
+    uint_impl! { u64, u64, 64,
         intrinsics::ctpop64,
         intrinsics::ctlz64,
         intrinsics::cttz64,
@@ -1213,7 +1260,7 @@ impl u64 {
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { u32, 32,
+    uint_impl! { usize, u32, 32,
         intrinsics::ctpop32,
         intrinsics::ctlz32,
         intrinsics::cttz32,
@@ -1226,7 +1273,7 @@ impl usize {
 #[cfg(target_pointer_width = "64")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { u64, 64,
+    uint_impl! { usize, u64, 64,
         intrinsics::ctpop64,
         intrinsics::ctlz64,
         intrinsics::cttz64,

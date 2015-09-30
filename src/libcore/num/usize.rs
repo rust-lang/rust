@@ -14,4 +14,4 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-uint_module! { usize, isize, ::isize::BITS }
+uint_module! { usize, isize, isize::BITS }

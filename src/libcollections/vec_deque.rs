@@ -25,7 +25,6 @@ use core::mem;
 use core::ops::{Index, IndexMut};
 use core::ptr;
 use core::slice;
-use core::usize;
 
 use core::hash::{Hash, Hasher};
 use core::cmp;

@@ -15,7 +15,6 @@ use heap;
 use super::oom;
 use super::boxed::Box;
 use core::ops::Drop;
-use core;
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating a
 /// a buffer of memory on the heap without having to worry about all the corner cases
@@ -472,8 +471,7 @@ impl<T> Drop for RawVec<T> {
 
 #[inline]
 fn alloc_guard(alloc_size: usize) {
-    if core::usize::BITS < 64 {
-        assert!(alloc_size <= ::core::isize::MAX as usize,
-                "capacity overflow");
+    if usize::BITS < 64 {
+        assert!(alloc_size <= isize::MAX as usize, "capacity overflow");
     }
 }

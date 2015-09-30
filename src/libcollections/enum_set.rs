@@ -80,7 +80,6 @@ pub trait CLike {
 }
 
 fn bit<E:CLike>(e: &E) -> usize {
-    use core::usize;
     let value = e.to_usize();
     assert!(value < usize::BITS,
             "EnumSet only supports up to {} variants.", usize::BITS - 1);

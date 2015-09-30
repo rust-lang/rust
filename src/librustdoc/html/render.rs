@@ -533,12 +533,13 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
     try!(write!(&mut w, r#"],"paths":["#));
 
     for (i, &did) in pathid_to_nodeid.iter().enumerate() {
-        let &(ref fqp, short) = cache.paths.get(&did).unwrap();
-        if i > 0 {
-            try!(write!(&mut w, ","));
+        if let Some(&(ref fqp, short)) = cache.paths.get(&did) {
+            if i > 0 {
+                try!(write!(&mut w, ","));
+            }
+            try!(write!(&mut w, r#"[{},"{}"]"#,
+                        short as usize, *fqp.last().unwrap()));
         }
-        try!(write!(&mut w, r#"[{},"{}"]"#,
-                    short as usize, *fqp.last().unwrap()));
     }
 
     try!(write!(&mut w, "]}};"));

@@ -67,6 +67,7 @@
 #![deny(missing_docs)]
 
 #![feature(allow_internal_unstable)]
+#![feature(associated_consts)]
 #![feature(associated_type_defaults)]
 #![feature(concat_idents)]
 #![feature(const_fn)]

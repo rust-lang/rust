@@ -20,7 +20,6 @@ use middle::cfg;
 use middle::cfg::CFGIndex;
 use middle::ty;
 use std::io;
-use std::usize;
 use syntax::ast;
 use syntax::ast_util::IdRange;
 use syntax::print::pp;
