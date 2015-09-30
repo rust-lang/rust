@@ -76,8 +76,13 @@ An identifier is any nonempty Unicode[^non_ascii_idents] string of the following
 [^non_ascii_idents]: Non-ASCII characters in identifiers are currently feature
   gated. This is expected to improve soon.
 
-- The first character has property `XID_start`
-- The remaining characters have property `XID_continue`
+Either
+   * The first character has property `XID_start`
+   * The remaining characters have property `XID_continue`
+Or
+   * The first character is `_`
+   * The identifier is more than one character, `_` alone is not an identifier
+   * The remaining characters have property `XID_continue`
 
 that does _not_ occur in the set of [keywords][keywords].
 
