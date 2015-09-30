@@ -45,7 +45,7 @@ Rust keeps track of these comments, and uses them when generating
 documentation. This is important when documenting things like enums:
 
 ```rust
-/// The `Option` type. See [the module level documentation](../) for more.
+/// The `Option` type. See [the module level documentation](index.html) for more.
 enum Option<T> {
     /// No value
     None,
@@ -57,7 +57,7 @@ enum Option<T> {
 The above works, but this does not:
 
 ```rust,ignore
-/// The `Option` type. See [the module level documentation](../) for more.
+/// The `Option` type. See [the module level documentation](index.html) for more.
 enum Option<T> {
     None, /// No value
     Some(T), /// Some value `T`
