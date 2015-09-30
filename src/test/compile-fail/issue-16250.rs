@@ -10,8 +10,10 @@
 
 #![deny(warnings)]
 
+pub struct Foo;
+
 extern {
-    pub fn foo(x: (isize)); //~ ERROR found Rust type `isize` in foreign module
+    pub fn foo(x: (Foo)); //~ ERROR found struct without
 }
 
 fn main() {
