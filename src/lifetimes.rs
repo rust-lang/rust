@@ -177,18 +177,10 @@ impl RefVisitor {
 }
 
 impl<'v> Visitor<'v> for RefVisitor {
-    // for lifetimes of references
-    fn visit_opt_lifetime_ref(&mut self, _: Span, lifetime: &'v Option<Lifetime>) {
-        self.record(lifetime);
-    }
-
     // for lifetimes as parameters of generics
-    fn visit_lifetime_ref(&mut self, lifetime: &'v Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         self.record(&Some(*lifetime));
     }
-
-    // for lifetime bounds; the default impl calls visit_lifetime_ref
-    fn visit_lifetime_bound(&mut self, _: &'v Lifetime) { }
 }
 
 /// Are any lifetimes mentioned in the `where` clause? If yes, we don't try to
