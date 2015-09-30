@@ -1292,7 +1292,7 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path_str = Path::new("foo.txt").to_str();
-    //// assert_eq!(path_str, Some("foo.txt"));
+    /// assert_eq!(path_str, Some("foo.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_str(&self) -> Option<&str> {
