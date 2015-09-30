@@ -364,7 +364,9 @@ SIG(bar) ----> COLLECT(bar)                   | |         v
 As you can see, this graph indicates that if the signature of either
 function changes, we will need to rebuild the MIR for `foo`. But there
 is no path from the body of `bar` to the MIR for foo, so changes there
-need not trigger a rebuild.
+need not trigger a rebuild (we are assuming here that `bar` is not
+inlined into `foo`; see the [section on optimizations](#optimization)
+for more details on how to handle those sorts of dependencies).
 
 ### Building the graph
 
