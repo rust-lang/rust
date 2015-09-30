@@ -12,6 +12,8 @@
 
 use hir;
 
+use std::collections::HashMap;
+
 use syntax::ast::*;
 use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned, Span};
@@ -19,15 +21,17 @@ use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::{self, str_to_ident};
 use syntax::std_inject;
 
-pub struct LoweringContext<'a, 'hir> {
-    // TODO
-    foo: &'hir i32,
-    id_assigner: &'a NodeIdAssigner,
+use std::cell::{Cell, RefCell};
+
+pub struct LoweringContext<'a> {
     crate_root: Option<&'static str>,
+    id_cache: RefCell<HashMap<NodeId, NodeId>>,
+    id_assigner: &'a NodeIdAssigner,
+    cached_id: Cell<u32>,
 }
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    pub fn new(foo: &'hir i32, id_assigner: &'a NodeIdAssigner, c: &Crate) -> LoweringContext<'a, 'hir> {
+impl<'a, 'hir> LoweringContext<'a> {
+    pub fn new(id_assigner: &'a NodeIdAssigner, c: &Crate) -> LoweringContext<'a> {
         let crate_root = if std_inject::no_core(c) {
             None
         } else if std_inject::no_std(c) {
@@ -37,14 +41,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         LoweringContext {
-            foo: foo,
-            id_assigner: id_assigner,
             crate_root: crate_root,
+            id_cache: RefCell::new(HashMap::new()),
+            id_assigner: id_assigner,
+            cached_id: Cell::new(0),
         }
     }
 
     fn next_id(&self) -> NodeId {
-        self.id_assigner.next_node_id()
+        let cached = self.cached_id.get();
+        if cached == 0 {
+            return self.id_assigner.next_node_id()
+        }
+
+        self.cached_id.set(cached + 1);
+        cached
     }
 }
 
@@ -745,6 +756,49 @@ pub fn lower_pat(_lctx: &LoweringContext, p: &Pat) -> P<hir::Pat> {
     })
 }
 
+// RAII utility for setting and unsetting the cached id.
+struct CachedIdSetter<'a> {
+    reset: bool,
+    lctx: &'a LoweringContext<'a>,
+}
+
+impl<'a> CachedIdSetter<'a> {
+    fn new(lctx: &'a LoweringContext, expr_id: NodeId) -> CachedIdSetter<'a> {
+        let id_cache: &mut HashMap<_, _> = &mut lctx.id_cache.borrow_mut();
+
+        if id_cache.contains_key(&expr_id) {
+            let cached_id = lctx.cached_id.get();
+            if cached_id == 0 {
+                // We're entering a node where we need to track ids, but are not
+                // yet tracking.
+                lctx.cached_id.set(id_cache[&expr_id]);
+            } else {
+                // We're already tracking - check that the tracked id is the same
+                // as the expected id.
+                assert!(cached_id == id_cache[&expr_id], "id mismatch");
+            }
+        } else {
+            id_cache.insert(expr_id, lctx.id_assigner.peek_node_id());
+        }
+
+        CachedIdSetter {
+            // Only reset the id if it was previously 0, i.e., was not cached.
+            // If it was cached, we are in a nested node, but our id count will
+            // still count towards the parent's count.
+            reset: lctx.cached_id.get() == 0,
+            lctx: lctx,
+        }
+    }
+}
+
+impl<'a> Drop for CachedIdSetter<'a> {
+    fn drop(&mut self) {
+        if self.reset {
+            self.lctx.cached_id.set(0);
+        }
+    }
+}
+
 pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
     P(hir::Expr {
             id: e.id,
@@ -780,9 +834,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     //     std::intrinsics::move_val_init(raw_place, pop_unsafe!( EXPR ));
                     //     InPlace::finalize(place)
                     // })
-
-                    // TODO
-                    println!("{}", lctx.foo);
+                    let _old_cached = CachedIdSetter::new(lctx, e.id);
 
                     let placer_expr = lower_expr(lctx, placer);
                     let value_expr = lower_expr(lctx, value_expr);
@@ -903,6 +955,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 // might be `if let`.
                 ExprIf(ref cond, ref blk, ref else_opt) => {
                     let else_opt = else_opt.as_ref().map(|els| match els.node {
+                        let _old_cached = CachedIdSetter::new(lctx, e.id);
                         ExprIfLet(..) => {
                             // wrap the if-let expr in a block
                             let span = els.span;
@@ -1019,6 +1072,8 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     //     [_ if <else_opt_if_cond> => <else_opt_if_body>,]
                     //     _ => [<else_opt> | ()]
                     //   }
+                
+                    let _old_cached = CachedIdSetter::new(lctx, e.id);
 
                     // `<pat> => <body>`
                     let pat_arm = {
@@ -1098,6 +1153,8 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     //     }
                     //   }
 
+                    let _old_cached = CachedIdSetter::new(lctx, e.id);
+
                     // `<pat> => <body>`
                     let pat_arm = {
                         let body_expr = expr_block(lctx, lower_block(lctx, body));
@@ -1140,6 +1197,8 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     //     };
                     //     result
                     //   }
+
+                    let _old_cached = CachedIdSetter::new(lctx, e.id);
 
                     // expand <head>
                     let head = lower_expr(lctx, head);

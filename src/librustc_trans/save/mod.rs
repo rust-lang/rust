@@ -38,7 +38,7 @@ mod dump_csv;
 
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: &'l ty::ctxt<'tcx>,
-    lcx: &'l lowering::LoweringContext<'l, 'tcx>,
+    lcx: &'l lowering::LoweringContext<'l>,
     span_utils: SpanUtils<'l>,
 }
 
@@ -178,14 +178,14 @@ pub struct MethodCallData {
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn new(tcx: &'l ty::ctxt<'tcx>,
-               lcx: &'l lowering::LoweringContext<'l, 'tcx>)
+               lcx: &'l lowering::LoweringContext<'l>)
                -> SaveContext<'l, 'tcx> {
         let span_utils = SpanUtils::new(&tcx.sess);
         SaveContext::from_span_utils(tcx, lcx, span_utils)
     }
 
     pub fn from_span_utils(tcx: &'l ty::ctxt<'tcx>,
-                           lcx: &'l lowering::LoweringContext<'l, 'tcx>,
+                           lcx: &'l lowering::LoweringContext<'l>,
                            span_utils: SpanUtils<'l>)
                            -> SaveContext<'l, 'tcx> {
         SaveContext {
@@ -711,7 +711,7 @@ impl<'v> Visitor<'v> for PathCollector {
 }
 
 pub fn process_crate<'l, 'tcx>(tcx: &'l ty::ctxt<'tcx>,
-                               lcx: &'l lowering::LoweringContext<'l, 'tcx>,
+                               lcx: &'l lowering::LoweringContext<'l>,
                                krate: &ast::Crate,
                                analysis: &ty::CrateAnalysis,
                                odir: Option<&Path>) {
