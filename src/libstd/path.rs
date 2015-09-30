@@ -351,7 +351,6 @@ impl<'a> Prefix<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn is_separator(c: char) -> bool {
-    use ascii::*;
     c.is_ascii() && is_sep_byte(c as u8)
 }
 
@@ -1292,7 +1291,7 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path_str = Path::new("foo.txt").to_str();
-    //// assert_eq!(path_str, Some("foo.txt"));
+    /// assert_eq!(path_str, Some("foo.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_str(&self) -> Option<&str> {
