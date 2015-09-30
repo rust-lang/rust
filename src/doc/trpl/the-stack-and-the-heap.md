@@ -41,8 +41,8 @@ and just consider the local variables we’re allocating. So in this case, when
 This is automatically handled for you, as you can see; we didn’t have to write
 any special Rust code or anything.
 
-When the function is over, its stack frame gets deallocated. This happens
-automatically, we didn’t have to do anything special here.
+When the function exits, its stack frame gets deallocated. This happens
+automatically as well.
 
 That’s all there is for this simple program. The key thing to understand here
 is that stack allocation is very, very fast. Since we know all the local
