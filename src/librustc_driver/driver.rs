@@ -881,8 +881,15 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, id: &str) {
                                    .collect();
         let mut file = try!(fs::File::create(&deps_filename));
         for path in &out_filenames {
-            try!(write!(&mut file,
+            try!(write!(file,
                         "{}: {}\n\n", path.display(), files.join(" ")));
+        }
+
+        // Emit a fake target for each input file to the compilation. This
+        // prevents `make` from spitting out an error if a file is later
+        // deleted. For more info see #28735
+        for path in files {
+            try!(writeln!(file, "{}:", path));
         }
         Ok(())
     })();
