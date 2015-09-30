@@ -307,7 +307,6 @@ pub struct ctxt<'tcx> {
 
     /// These caches are used by const_eval when decoding external constants.
     pub extern_const_statics: RefCell<DefIdMap<NodeId>>,
-    pub extern_const_variants: RefCell<DefIdMap<NodeId>>,
     pub extern_const_fns: RefCell<DefIdMap<NodeId>>,
 
     pub node_lint_levels: RefCell<FnvHashMap<(NodeId, lint::LintId),
@@ -500,7 +499,6 @@ impl<'tcx> ctxt<'tcx> {
             populated_external_types: RefCell::new(DefIdSet()),
             populated_external_primitive_impls: RefCell::new(DefIdSet()),
             extern_const_statics: RefCell::new(DefIdMap()),
-            extern_const_variants: RefCell::new(DefIdMap()),
             extern_const_fns: RefCell::new(DefIdMap()),
             node_lint_levels: RefCell::new(FnvHashMap()),
             transmute_restrictions: RefCell::new(Vec::new()),

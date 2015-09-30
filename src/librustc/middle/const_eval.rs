@@ -82,32 +82,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
             Some(_) => None
         }
     } else {
-        match tcx.extern_const_variants.borrow().get(&variant_def) {
-            Some(&ast::DUMMY_NODE_ID) => return None,
-            Some(&expr_id) => {
-                return Some(tcx.map.expect_expr(expr_id));
-            }
-            None => {}
-        }
-        let expr_id = match
-            csearch::maybe_get_item_ast(
-                tcx, enum_def,
-                Box::new(|a, b, c, d, e| astencode::decode_inlined_item(a, b, c, d, e)))
-        {
-            csearch::FoundAst::Found(&InlinedItem::Item(ref item)) => match item.node {
-                hir::ItemEnum(hir::EnumDef { .. }, _) => {
-                    tcx.sess.span_bug(
-                        item.span,
-                        &format!("cross-crate enum discr constant with enum {:?} variant {:?}",
-                                 enum_def, variant_def));
-                }
-                _ => None
-            },
-            _ => None
-        };
-        tcx.extern_const_variants.borrow_mut().insert(variant_def,
-                                                      expr_id.unwrap_or(ast::DUMMY_NODE_ID));
-        expr_id.map(|id| tcx.map.expect_expr(id))
+        None
     }
 }
 
