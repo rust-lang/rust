@@ -1862,20 +1862,12 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
 }
 
 /// An iterator with a `peek()` that returns an optional reference to the next element.
+#[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Peekable<I: Iterator> {
     iter: I,
     peeked: Option<I::Item>,
-}
-
-impl<I: Iterator + Clone> Clone for Peekable<I> where I::Item: Clone {
-    fn clone(&self) -> Peekable<I> {
-        Peekable {
-            iter: self.iter.clone(),
-            peeked: self.peeked.clone(),
-        }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
