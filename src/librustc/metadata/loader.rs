@@ -726,7 +726,7 @@ fn get_metadata_section(target: &Target, filename: &Path)
         ret = Some(get_metadata_section_imp(target, filename));
     });
     info!("reading {:?} => {:?}", filename.file_name().unwrap(), dur);
-    return ret.unwrap();;
+    ret.unwrap()
 }
 
 fn get_metadata_section_imp(target: &Target, filename: &Path)
