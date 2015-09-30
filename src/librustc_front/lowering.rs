@@ -8,7 +8,52 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Lowers the AST to the HIR
+// Lowers the AST to the HIR.
+//
+// Since the AST and HIR are fairly similar, this is mostly a simple procedure,
+// much like a fold. Where lowering involves a bit more work things get more
+// interesting and there are some invariants you should know about. These mostly
+// concern spans and ids.
+//
+// Spans are assigned to AST nodes during parsing and then are modified during
+// expansion to indicate the origin of a node and the process it went through
+// being expanded. Ids are assigned to AST nodes just before lowering.
+//
+// For the simpler lowering steps, ids and spans should be preserved. Unlike
+// expansion we do not preserve the process of lowering in the spans, so spans
+// should not be modified here. When creating a new node (as opposed to
+// 'folding' an existing one), then you create a new id using `next_id()`.
+//
+// You must ensure that ids are unique. That means that you should only use the
+// is from an AST node in a single HIR node (you can assume that AST node ids
+// are unique). Every new node must have a unique id. Avoid cloning HIR nodes.
+// If you do, you must then set one of the node's id to a fresh one.
+//
+// Lowering must be reproducable (the compiler only lowers once, but tools and
+// custom lints may lower an AST node to a HIR node to interact with the
+// compiler). The only interesting bit of this is ids - if you lower an AST node
+// and create new HIR nodes with fresh ids, when re-lowering the same node, you
+// must ensure you get the same ids! To do this, we keep track of the next id
+// when we translate a node which requires new ids. By checking this cache and
+// using node ids starting with the cached id, we ensure ids are reproducible.
+// To use this system, you just need to hold on to a CachedIdSetter object
+// whilst lowering. This is an RAII object that takes care of setting and
+// restoring the cached id, etc.
+//
+// This whole system relies on node ids being incremented one at a time and
+// all increments being for lowering. This means that you should not call any
+// non-lowering function which will use new node ids.
+//
+// Spans are used for error messages and for tools to map semantics back to
+// source code. It is therefore not as important with spans as ids to be strict
+// about use (you can't break the compiler by screwing up a span). Obviously, a
+// HIR node can only have a single span. But multiple nodes can have the same
+// span and spans don't need to be kept in order, etc. Where code is preserved
+// by lowering, it should have the same span as in the AST. Where HIR nodes are
+// new it is probably best to give a span for the whole AST node being lowered.
+// All nodes should have real spans, don't use dummy spans. Tools are likely to
+// get confused if the spans from leaf AST nodes occur in multiple places
+// in the HIR, especially for multiple identifiers.
 
 use hir;
 
@@ -25,8 +70,12 @@ use std::cell::{Cell, RefCell};
 
 pub struct LoweringContext<'a> {
     crate_root: Option<&'static str>,
+    // Map AST ids to ids used for expanded nodes.
     id_cache: RefCell<HashMap<NodeId, NodeId>>,
+    // Use if there are no cached ids for the current node.
     id_assigner: &'a NodeIdAssigner,
+    // 0 == no cached id. Must be incremented to align with previous id
+    // incrementing.
     cached_id: Cell<u32>,
 }
 
