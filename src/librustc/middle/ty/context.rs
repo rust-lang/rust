@@ -235,8 +235,6 @@ pub struct ctxt<'tcx> {
     pub ty_param_defs: RefCell<NodeMap<ty::TypeParameterDef<'tcx>>>,
     pub normalized_cache: RefCell<FnvHashMap<Ty<'tcx>, Ty<'tcx>>>,
     pub lang_items: middle::lang_items::LanguageItems,
-    /// A mapping of fake provided method def_ids to the default implementation
-    pub provided_method_sources: RefCell<DefIdMap<DefId>>,
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
@@ -471,7 +469,6 @@ impl<'tcx> ctxt<'tcx> {
             ty_param_defs: RefCell::new(NodeMap()),
             normalized_cache: RefCell::new(FnvHashMap()),
             lang_items: lang_items,
-            provided_method_sources: RefCell::new(DefIdMap()),
             inherent_impls: RefCell::new(DefIdMap()),
             impl_items: RefCell::new(DefIdMap()),
             used_unsafe: RefCell::new(NodeSet()),

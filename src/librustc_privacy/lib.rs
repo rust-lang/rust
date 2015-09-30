@@ -725,19 +725,6 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                            span: Span,
                            method_id: DefId,
                            name: ast::Name) {
-        // If the method is a default method, we need to use the def_id of
-        // the default implementation.
-        let method_id = match self.tcx.impl_or_trait_item(method_id) {
-            ty::MethodTraitItem(method_type) => {
-                method_type.provided_source.unwrap_or(method_id)
-            }
-            _ => {
-                self.tcx.sess
-                    .span_bug(span,
-                              "got non-method item in check_static_method")
-            }
-        };
-
         self.report_error(self.ensure_public(span,
                                              method_id,
                                              None,

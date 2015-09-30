@@ -180,7 +180,7 @@ pub const tag_mod_child: usize = 0x7b;
 pub const tag_misc_info: usize = 0x108; // top-level only
 pub const tag_misc_info_crate_items: usize = 0x7c;
 
-pub const tag_item_method_provided_source: usize = 0x7d;
+// GAP 0x7d
 pub const tag_item_impl_vtables: usize = 0x7e;
 
 pub const tag_impls: usize = 0x109; // top-level only
