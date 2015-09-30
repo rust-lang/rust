@@ -3946,7 +3946,7 @@ found in the [ffi section of the book][ffi].
 
 In one session of compilation, the compiler can generate multiple artifacts
 through the usage of either command line flags or the `crate_type` attribute.
-If one or more command line flag is specified, all `crate_type` attributes will
+If one or more command line flags are specified, all `crate_type` attributes will
 be ignored in favor of only building the artifacts specified by command line.
 
 * `--crate-type=bin`, `#[crate_type = "bin"]` - A runnable executable will be
@@ -3992,7 +3992,7 @@ Note that these outputs are stackable in the sense that if multiple are
 specified, then the compiler will produce each form of output at once without
 having to recompile. However, this only applies for outputs specified by the
 same method. If only `crate_type` attributes are specified, then they will all
-be built, but if one or more `--crate-type` command line flag is specified,
+be built, but if one or more `--crate-type` command line flags are specified,
 then only those outputs will be built.
 
 With all these different kinds of outputs, if crate A depends on crate B, then
