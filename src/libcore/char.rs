@@ -342,6 +342,22 @@ impl Iterator for EscapeUnicode {
             EscapeUnicodeState::Done => None,
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let mut n = 0;
+        while (self.c as usize) >> (4 * (n + 1)) != 0 {
+            n += 1;
+        }
+        let n = match self.state {
+            EscapeUnicodeState::Backslash => n + 5,
+            EscapeUnicodeState::Type => n + 4,
+            EscapeUnicodeState::LeftBrace => n + 3,
+            EscapeUnicodeState::Value(offset) => offset + 2,
+            EscapeUnicodeState::RightBrace => 1,
+            EscapeUnicodeState::Done => 0,
+        };
+        (n, Some(n))
+    }
 }
 
 /// An iterator over the characters that represent a `char`, escaped
@@ -375,7 +391,7 @@ impl Iterator for EscapeDefault {
                 Some(c)
             }
             EscapeDefaultState::Done => None,
-            EscapeDefaultState::Unicode(ref mut iter) => iter.next()
+            EscapeDefaultState::Unicode(ref mut iter) => iter.next(),
         }
     }
 
@@ -383,8 +399,8 @@ impl Iterator for EscapeDefault {
         match self.state {
             EscapeDefaultState::Char(_) => (1, Some(1)),
             EscapeDefaultState::Backslash(_) => (2, Some(2)),
-            EscapeDefaultState::Unicode(_) => (0, Some(10)),
-            _ => (0, Some(0))
+            EscapeDefaultState::Unicode(ref iter) => iter.size_hint(),
+            EscapeDefaultState::Done => (0, Some(0)),
         }
     }
 }
