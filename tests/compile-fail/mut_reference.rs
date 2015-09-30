@@ -1,7 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 fn takes_an_immutable_reference(a: &i32) {
 }
