@@ -32,6 +32,35 @@ println!("The third element of v is {}", v[2]);
 
 The indices count from `0`, so the third element is `v[2]`.
 
+It’s also important to note that you must index with the `usize` type:
+
+```ignore
+let v = vec![1, 2, 3, 4, 5];
+
+let i: usize = 0;
+let j: i32 = 0;
+
+// works
+v[i];
+
+// doesn’t
+v[j];
+```
+
+Indexing with a non-`usize` type gives an error that looks like this:
+
+```text
+error: the trait `core::ops::Index<i32>` is not implemented for the type
+`collections::vec::Vec<_>` [E0277]
+v[j];
+^~~~
+note: the type `collections::vec::Vec<_>` cannot be indexed by `i32`
+error: aborting due to previous error
+```
+
+There’s a lot of punctuation in that message, but the core of it makes sense:
+you cannot index with an `i32`.
+
 ## Iterating
 
 Once you have a vector, you can iterate through its elements with `for`. There
