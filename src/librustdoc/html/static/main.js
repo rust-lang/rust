@@ -716,11 +716,13 @@
 
         function startSearch() {
 
-            if ($('.search-input').val().length === 0) {
-                window.history.pushState("", "std - Rust", "?search=");
-                $('#main.content').removeClass('hidden');
-                $('#search.content').addClass('hidden');
-            }
+            $(".search-input").on("keyup",function() {
+                if ($(this).val().length === 0) {
+                    window.history.replaceState("", "std - Rust", "?search=");
+                    $('#main.content').removeClass('hidden');
+                    $('#search.content').addClass('hidden');
+                }
+            });
 
             var keyUpTimeout;
             $('.do-search').on('click', search);
@@ -896,14 +898,6 @@
         // note that this text is also set in the HTML template in render.rs
         return "\u2212"; // "\u2212" is '−' minus sign
     }
-
-    $(".search-input").on("keyup",function() {
-        if ($(this).val().length === 0) {
-            window.history.replaceState("", "std - Rust", "?search=");
-            $('#main.content').removeClass('hidden');
-            $('#search.content').addClass('hidden');
-        }
-    });
 
     $("#toggle-all-docs").on("click", function() {
         var toggle = $("#toggle-all-docs");
