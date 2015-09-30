@@ -955,8 +955,8 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 // might be `if let`.
                 ExprIf(ref cond, ref blk, ref else_opt) => {
                     let else_opt = else_opt.as_ref().map(|els| match els.node {
-                        let _old_cached = CachedIdSetter::new(lctx, e.id);
                         ExprIfLet(..) => {
+                            let _old_cached = CachedIdSetter::new(lctx, e.id);
                             // wrap the if-let expr in a block
                             let span = els.span;
                             let blk = P(hir::Block {
@@ -984,10 +984,10 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     hir::ExprLoop(lower_block(lctx, body),
                             opt_ident)
                 }
-                ExprMatch(ref expr, ref arms, ref source) => {
+                ExprMatch(ref expr, ref arms) => {
                     hir::ExprMatch(lower_expr(lctx, expr),
                             arms.iter().map(|x| lower_arm(lctx, x)).collect(),
-                            lower_match_source(lctx, source))
+                            hir::MatchSource::Normal)
                 }
                 ExprClosure(capture_clause, ref decl, ref body) => {
                     hir::ExprClosure(lower_capture_clause(lctx, capture_clause),
@@ -1307,17 +1307,6 @@ pub fn lower_stmt(_lctx: &LoweringContext, s: &Stmt) -> P<hir::Stmt> {
             })
         }
         StmtMac(..) => panic!("Shouldn't exist here"),
-    }
-}
-
-pub fn lower_match_source(_lctx: &LoweringContext, m: &MatchSource) -> hir::MatchSource {
-    match *m {
-        MatchSource::Normal => hir::MatchSource::Normal,
-        MatchSource::IfLetDesugar { contains_else_clause } => {
-            hir::MatchSource::IfLetDesugar { contains_else_clause: contains_else_clause }
-        }
-        MatchSource::WhileLetDesugar => hir::MatchSource::WhileLetDesugar,
-        MatchSource::ForLoopDesugar => hir::MatchSource::ForLoopDesugar,
     }
 }
 
