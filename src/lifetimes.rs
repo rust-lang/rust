@@ -89,6 +89,9 @@ fn could_use_elision(func: &FnDecl, slf: Option<&ExplicitSelf>,
     // extract lifetimes in input argument types
     for arg in &func.inputs {
         walk_ty(&mut input_visitor, &arg.ty);
+        if let TyRptr(None, _) = arg.ty.node {
+            input_visitor.record(&None);
+        }
     }
     // extract lifetimes in output type
     if let Return(ref ty) = func.output {
@@ -180,6 +183,13 @@ impl<'v> Visitor<'v> for RefVisitor {
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         self.record(&Some(*lifetime));
+    }
+
+    fn visit_ty(&mut self, ty: &'v Ty) {
+        if let TyRptr(None, _) = ty.node {
+            self.record(&None);
+        }
+        walk_ty(self, ty);
     }
 }
 

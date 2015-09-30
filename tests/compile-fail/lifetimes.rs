@@ -81,5 +81,9 @@ impl<'a> Foo<'a> {
     fn self_bound_lifetime<'b: 'a>(&self, _: &'b u8) {} // no error, bounds exist
 }
 
+fn already_elided<'a>(_: &u8, _: &'a u8) -> &'a u8 {
+    unimplemented!()
+}
+
 fn main() {
 }
