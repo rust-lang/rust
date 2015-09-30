@@ -131,12 +131,18 @@ pub fn snippet_block<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -
 }
 
 /// Like snippet_block, but add braces if the expr is not an ExprBlock
-pub fn expr_block<'a, T: LintContext>(cx: &T, expr: &Expr, default: &'a str) -> Cow<'a, str> {
+/// Also takes an Option<String> which can be put inside the braces
+pub fn expr_block<'a, T: LintContext>(cx: &T, expr: &Expr,
+                                      option: Option<String>,
+                                      default: &'a str) -> Cow<'a, str> {
     let code = snippet_block(cx, expr.span, default);
+    let string = option.map_or("".to_owned(), |s| s);
     if let ExprBlock(_) = expr.node {
-        code
-    } else {
+        Cow::Owned(format!("{}{}", code, string))
+    } else if string.is_empty() {
         Cow::Owned(format!("{{ {} }}", code))
+    } else {
+        Cow::Owned(format!("{{\n{};\n{}\n}}", code, string))
     }
 }
 

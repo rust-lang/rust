@@ -8,13 +8,6 @@ fn main() {
         if let Some(_x) = y {
             let _v = 1;
         } else {
-            break;
-        }
-    }
-    loop { //~ERROR
-        if let Some(_x) = y {
-            let _v = 1;
-        } else {
             break
         }
     }
@@ -30,12 +23,13 @@ fn main() {
             None => break
         };
     }
-    loop { // no error, match is not the only statement
-        match y {
-            Some(_x) => true,
+    loop { //~ERROR
+        let x = match y {
+            Some(x) => x,
             None => break
         };
-        let _x = 1;
+        let _x = x;
+        let _str = "foo";
     }
     loop { // no error, else branch does something other than break
         match y {

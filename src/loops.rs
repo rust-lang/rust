@@ -6,6 +6,7 @@ use rustc::middle::ty;
 use rustc::middle::def::DefLocal;
 use consts::{constant_simple, Constant};
 use rustc::front::map::Node::{NodeBlock};
+use std::borrow::Cow;
 use std::collections::{HashSet,HashMap};
 use syntax::ast::Lit_::*;
 
@@ -159,10 +160,27 @@ impl LateLintPass for LoopsPass {
             }
         }
         // check for `loop { if let {} else break }` that could be `while let`
-        // (also matches explicit "match" instead of "if let")
+        // (also matches an explicit "match" instead of "if let")
+        // (even if the "match" or "if let" is used for declaration)
         if let ExprLoop(ref block, _) = expr.node {
+            // extract the first statement (if any) in a block
+            let inner_stmt = extract_expr_from_first_stmt(block);
             // extract a single expression
-            if let Some(inner) = extract_single_expr(block) {
+            let inner_expr = extract_first_expr(block);
+            let extracted = match inner_stmt {
+                Some(_) => inner_stmt,
+                None => inner_expr,
+            };
+
+            if let Some(inner) = extracted {
+                // collect remaining expressions below the match
+                let other_stuff = block.stmts
+                                  .iter()
+                                  .skip(1)
+                                  .map(|stmt| {
+                                      format!("{}", snippet(cx, stmt.span, ".."))
+                                  }).collect::<Vec<String>>();
+
                 if let ExprMatch(ref matchexpr, ref arms, ref source) = inner.node {
                     // ensure "if let" compatible match structure
                     match *source {
@@ -174,12 +192,19 @@ impl LateLintPass for LoopsPass {
                             is_break_expr(&arms[1].body)
                         {
                             if in_external_macro(cx, expr.span) { return; }
+                            let loop_body = match inner_stmt {
+                                // FIXME: should probably be an ellipsis
+                                // tabbing and newline is probably a bad idea, especially for large blocks
+                                Some(_) => Cow::Owned(format!("{{\n    {}\n}}", other_stuff.join("\n    "))),
+                                None => expr_block(cx, &arms[0].body,
+                                                   Some(other_stuff.join("\n    ")), ".."),
+                            };
                             span_help_and_lint(cx, WHILE_LET_LOOP, expr.span,
                                                "this loop could be written as a `while let` loop",
                                                &format!("try\nwhile let {} = {} {}",
                                                         snippet(cx, arms[0].pats[0].span, ".."),
                                                         snippet(cx, matchexpr.span, ".."),
-                                                        expr_block(cx, &arms[0].body, "..")));
+                                                        loop_body));
                         },
                         _ => ()
                     }
@@ -276,23 +301,38 @@ fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
 }
 
 fn is_iterable_array(ty: ty::Ty) -> bool {
-    //IntoIterator is currently only implemented for array sizes <= 32 in rustc
+    // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.sty {
         ty::TyArray(_, 0...32) => true,
         _ => false
     }
 }
 
-/// If block consists of a single expression (with or without semicolon), return it.
-fn extract_single_expr(block: &Block) -> Option<&Expr> {
-    match (&block.stmts.len(), &block.expr) {
-        (&1, &None) => match block.stmts[0].node {
-            StmtExpr(ref expr, _) |
-            StmtSemi(ref expr, _) => Some(expr),
+/// If a block begins with a statement (possibly a `let` binding) and has an expression, return it.
+fn extract_expr_from_first_stmt(block: &Block) -> Option<&Expr> {
+    match block.expr {
+        Some(_) => None,
+        None => match block.stmts[0].node {
+            StmtDecl(ref decl, _) => match decl.node {
+                DeclLocal(ref local) => match local.init {
+                    Some(ref expr) => Some(expr),
+                    None => None,
+                },
+                _ => None,
+            },
             _ => None,
         },
-        (&0, &Some(ref expr)) => Some(expr),
-        _ => None
+    }
+}
+
+/// If a block begins with an expression (with or without semicolon), return it.
+fn extract_first_expr(block: &Block) -> Option<&Expr> {
+    match block.expr {
+        Some(ref expr) => Some(expr),
+        None => match block.stmts[0].node {
+            StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => Some(expr),
+            _ => None,
+        },
     }
 }
 
@@ -300,7 +340,8 @@ fn extract_single_expr(block: &Block) -> Option<&Expr> {
 fn is_break_expr(expr: &Expr) -> bool {
     match expr.node {
         ExprBreak(None) => true,
-        ExprBlock(ref b) => match extract_single_expr(b) {
+        // there won't be a `let <pat> = break` and so we can safely ignore the StmtDecl case
+        ExprBlock(ref b) => match extract_first_expr(b) {
             Some(ref subexpr) => is_break_expr(subexpr),
             None => false,
         },
