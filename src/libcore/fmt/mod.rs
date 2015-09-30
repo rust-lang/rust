@@ -298,7 +298,7 @@ impl<'a> Display for Arguments<'a> {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: index.html
 ///
 /// # Examples
 ///
@@ -393,7 +393,7 @@ pub trait Debug {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: index.html
 ///
 /// # Examples
 ///
@@ -435,7 +435,7 @@ pub trait Display {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: index.html
 ///
 /// # Examples
 ///
@@ -482,7 +482,7 @@ pub trait Octal {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: index.html
 ///
 /// # Examples
 ///
@@ -530,7 +530,7 @@ pub trait Binary {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: index.html
 ///
 /// # Examples
 ///
@@ -578,7 +578,7 @@ pub trait LowerHex {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: index.html
 ///
 /// # Examples
 ///
@@ -624,7 +624,7 @@ pub trait UpperHex {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: index.html
 ///
 /// # Examples
 ///
@@ -668,7 +668,7 @@ pub trait Pointer {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: index.html
 ///
 /// # Examples
 ///
@@ -711,7 +711,7 @@ pub trait LowerExp {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: index.html
 ///
 /// # Examples
 ///
