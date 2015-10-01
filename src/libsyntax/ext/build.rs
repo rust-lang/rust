@@ -1079,7 +1079,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn attribute(&self, sp: Span, mi: P<ast::MetaItem>) -> ast::Attribute {
         respan(sp, ast::Attribute_ {
             id: attr::mk_attr_id(),
-            style: ast::AttrOuter,
+            style: ast::AttrStyle::Outer,
             value: mi,
             is_sugared_doc: false,
         })

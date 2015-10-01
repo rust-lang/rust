@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::AttrStyle::*;
 pub use self::BindingMode::*;
 pub use self::BinOp_::*;
 pub use self::BlockCheckMode::*;
@@ -1019,8 +1018,8 @@ impl TokenTree {
         match *self {
             TtToken(_, token::DocComment(name)) => {
                 match doc_comment_style(&name.as_str()) {
-                    AttrOuter => 2,
-                    AttrInner => 3
+                    AttrStyle::Outer => 2,
+                    AttrStyle::Inner => 3
                 }
             }
             TtToken(_, token::SpecialVarNt(..)) => 2,
@@ -1041,7 +1040,7 @@ impl TokenTree {
                 TtToken(sp, token::Pound)
             }
             (&TtToken(sp, token::DocComment(name)), 1)
-            if doc_comment_style(&name.as_str()) == AttrInner => {
+            if doc_comment_style(&name.as_str()) == AttrStyle::Inner => {
                 TtToken(sp, token::Not)
             }
             (&TtToken(sp, token::DocComment(name)), _) => {
@@ -1658,8 +1657,8 @@ pub type Attribute = Spanned<Attribute_>;
 /// distinguished for pretty-printing.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum AttrStyle {
-    AttrOuter,
-    AttrInner,
+    Outer,
+    Inner,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
