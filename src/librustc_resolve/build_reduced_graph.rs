@@ -49,8 +49,6 @@ use rustc_front::hir::{ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaul
 use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use rustc_front::hir::{NamedField, PathListIdent, PathListMod, Public};
 use rustc_front::hir::StmtDecl;
-use rustc_front::hir::StructVariantKind;
-use rustc_front::hir::TupleVariantKind;
 use rustc_front::hir::UnnamedField;
 use rustc_front::hir::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use rustc_front::hir::Visibility;
@@ -589,9 +587,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                        item_id: DefId,
                                        parent: &Rc<Module>) {
         let name = variant.node.name;
-        let is_exported = match variant.node.kind {
-            TupleVariantKind(_) => false,
-            StructVariantKind(_) => {
+        let is_exported = match variant.node.def.ctor_id {
+            Some(_) => false,
+            None => {
                 // Not adding fields for variants as they are not accessed with a self receiver
                 let variant_def_id = self.ast_map.local_def_id(variant.node.id);
                 self.structs.insert(variant_def_id, Vec::new());

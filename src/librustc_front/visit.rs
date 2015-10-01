@@ -333,20 +333,7 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
                                         variant: &'v Variant,
                                         generics: &'v Generics) {
     visitor.visit_name(variant.span, variant.node.name);
-
-    match variant.node.kind {
-        TupleVariantKind(ref variant_arguments) => {
-            for variant_argument in variant_arguments {
-                visitor.visit_ty(&variant_argument.ty)
-            }
-        }
-        StructVariantKind(ref struct_definition) => {
-            visitor.visit_struct_def(struct_definition,
-                                     variant.node.name,
-                                     generics,
-                                     variant.node.id)
-        }
-    }
+    visitor.visit_struct_def(&variant.node.def, variant.node.name, generics, variant.node.id);
     walk_list!(visitor, visit_expr, &variant.node.disr_expr);
     walk_list!(visitor, visit_attribute, &variant.node.attrs);
 }

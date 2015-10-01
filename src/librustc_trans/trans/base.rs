@@ -2428,13 +2428,12 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
         hir_map::NodeVariant(ref v) => {
             let llfn;
-            let args = match v.node.kind {
-                hir::TupleVariantKind(ref args) => args,
-                hir::StructVariantKind(_) => {
-                    ccx.sess().bug("struct variant kind unexpected in get_item_val")
-                }
+            let fields = if v.node.def.ctor_id.is_none() {
+                ccx.sess().bug("struct variant kind unexpected in get_item_val")
+            } else {
+                &v.node.def.fields
             };
-            assert!(!args.is_empty());
+            assert!(!fields.is_empty());
             let ty = ccx.tcx().node_id_to_type(id);
             let parent = ccx.tcx().map.get_parent(id);
             let enm = ccx.tcx().map.expect_item(parent);

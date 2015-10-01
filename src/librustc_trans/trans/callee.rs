@@ -417,10 +417,9 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
             || "local item should be in ast map".to_string());
 
         match map_node {
-            hir_map::NodeVariant(v) => match v.node.kind {
-                hir::TupleVariantKind(ref args) => !args.is_empty(),
-                _ => false
-            },
+            hir_map::NodeVariant(v) => {
+                v.node.def.ctor_id.is_some() && !v.node.def.fields.is_empty()
+            }
             hir_map::NodeStructCtor(_) => true,
             _ => false
         }

@@ -1065,31 +1065,16 @@ fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                         scheme: ty::TypeScheme<'tcx>,
                                         predicates: ty::GenericPredicates<'tcx>,
                                         variants: &[P<hir::Variant>]) {
-    let tcx = ccx.tcx;
-    let icx = ccx.icx(&predicates);
-
     // fill the field types
     for (variant, ty_variant) in variants.iter().zip(def.variants.iter()) {
-        match variant.node.kind {
-            hir::TupleVariantKind(ref args) => {
-                let rs = ExplicitRscope;
-                let input_tys: Vec<_> = args.iter().map(|va| icx.to_ty(&rs, &*va.ty)).collect();
-                for (field, &ty) in ty_variant.fields.iter().zip(input_tys.iter()) {
-                    field.fulfill_ty(ty);
-                }
-            }
-
-            hir::StructVariantKind(ref struct_def) => {
-                for (f, ty_f) in struct_def.fields.iter().zip(ty_variant.fields.iter()) {
-                    convert_field(ccx, &scheme.generics, &predicates, f, ty_f)
-                }
-            }
-        };
+        for (f, ty_f) in variant.node.def.fields.iter().zip(ty_variant.fields.iter()) {
+            convert_field(ccx, &scheme.generics, &predicates, f, ty_f)
+        }
 
         // Convert the ctor, if any. This also registers the variant as
         // an item.
         convert_variant_ctor(
-            tcx,
+            ccx.tcx,
             variant.node.id,
             ty_variant,
             scheme.clone(),
@@ -1223,25 +1208,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
     {
         let did = tcx.map.local_def_id(v.node.id);
         let name = v.node.name;
-        match v.node.kind {
-            hir::TupleVariantKind(ref va) => {
-                ty::VariantDefData {
-                    did: did,
-                    name: name,
-                    disr_val: disr,
-                    fields: va.iter().map(|&hir::VariantArg { id, .. }| {
-                        ty::FieldDefData::new(
-                            tcx.map.local_def_id(id),
-                            special_idents::unnamed_field.name,
-                            hir::Visibility::Public
-                        )
-                    }).collect()
-                }
-            }
-            hir::StructVariantKind(ref def) => {
-                convert_struct_variant(tcx, did, name, disr, &def)
-            }
-        }
+        convert_struct_variant(tcx, did, name, disr, &v.node.def)
     }
     let did = tcx.map.local_def_id(it.id);
     let repr_hints = tcx.lookup_repr_hints(did);

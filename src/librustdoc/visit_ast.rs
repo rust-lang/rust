@@ -113,7 +113,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 attrs: v.node.attrs.clone(),
                 stab: self.stability(v.node.id),
                 id: v.node.id,
-                kind: v.node.kind.clone(),
+                def: v.node.def.clone(),
                 whence: v.span,
             }).collect(),
             vis: it.vis,

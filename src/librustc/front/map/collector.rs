@@ -138,22 +138,11 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                                         NodeVariant(&**v),
                                         DefPathData::EnumVariant(v.node.name));
 
-                    match v.node.kind {
-                        TupleVariantKind(ref args) => {
-                            for arg in args {
-                                self.create_def_with_parent(Some(variant_def_index),
-                                                            arg.id,
-                                                            DefPathData::PositionalField);
-                            }
-                        }
-                        StructVariantKind(ref def) => {
-                            for field in &def.fields {
-                                self.create_def_with_parent(
-                                    Some(variant_def_index),
-                                    field.node.id,
-                                    DefPathData::Field(field.node.kind));
-                            }
-                        }
+                    for field in &v.node.def.fields {
+                        self.create_def_with_parent(
+                            Some(variant_def_index),
+                            field.node.id,
+                            DefPathData::Field(field.node.kind));
                     }
                 }
             }
