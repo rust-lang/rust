@@ -700,16 +700,8 @@ impl<'a> TraitDef<'a> {
         let mut field_tys = Vec::new();
 
         for variant in &enum_def.variants {
-            match variant.node.kind {
-                ast::VariantKind::TupleVariantKind(ref args) => {
-                    field_tys.extend(args.iter()
-                        .map(|arg| arg.ty.clone()));
-                }
-                ast::VariantKind::StructVariantKind(ref args) => {
-                    field_tys.extend(args.fields.iter()
-                        .map(|field| field.node.ty.clone()));
-                }
-            }
+            field_tys.extend(variant.node.def.fields.iter()
+                .map(|field| field.node.ty.clone()));
         }
 
         let methods = self.methods.iter().map(|method_def| {
@@ -1413,14 +1405,7 @@ impl<'a> MethodDef<'a> {
         -> P<Expr> {
         let summary = enum_def.variants.iter().map(|v| {
             let ident = v.node.name;
-            let summary = match v.node.kind {
-                ast::TupleVariantKind(ref args) => {
-                    Unnamed(args.iter().map(|va| trait_.set_expn_info(cx, va.ty.span)).collect())
-                }
-                ast::StructVariantKind(ref struct_def) => {
-                    trait_.summarise_struct(cx, &**struct_def)
-                }
-            };
+            let summary = trait_.summarise_struct(cx, &v.node.def);
             (ident, v.span, summary)
         }).collect();
         self.call_substructure_method(cx, trait_, type_ident,
@@ -1560,34 +1545,7 @@ impl<'a> TraitDef<'a> {
         -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
         let variant_ident = variant.node.name;
         let variant_path = cx.path(variant.span, vec![enum_ident, variant_ident]);
-        match variant.node.kind {
-            ast::TupleVariantKind(ref variant_args) => {
-                if variant_args.is_empty() {
-                    return (cx.pat_enum(variant.span, variant_path, vec![]), vec![]);
-                }
-
-                let mut paths = Vec::new();
-                let mut ident_expr: Vec<(_, _, _, &'a [ast::Attribute])> = Vec::new();
-                for (i, va) in variant_args.iter().enumerate() {
-                    let sp = self.set_expn_info(cx, va.ty.span);
-                    let ident = cx.ident_of(&format!("{}_{}", prefix, i));
-                    let path1 = codemap::Spanned{span: sp, node: ident};
-                    paths.push(path1);
-                    let expr_path = cx.expr_path(cx.path_ident(sp, ident));
-                    let val = cx.expr(sp, ast::ExprParen(cx.expr_deref(sp, expr_path)));
-                    ident_expr.push((sp, None, val, &[]));
-                }
-
-                let subpats = self.create_subpatterns(cx, paths, mutbl);
-
-                (cx.pat_enum(variant.span, variant_path, subpats),
-                 ident_expr)
-            }
-            ast::StructVariantKind(ref struct_def) => {
-                self.create_struct_pattern(cx, variant_path, &**struct_def,
-                                           prefix, mutbl)
-            }
-        }
+        self.create_struct_pattern(cx, variant_path, &variant.node.def, prefix, mutbl)
     }
 }
 
