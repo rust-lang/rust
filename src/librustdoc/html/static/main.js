@@ -715,6 +715,15 @@
         }
 
         function startSearch() {
+
+            $(".search-input").on("keyup",function() {
+                if ($(this).val().length === 0) {
+                    window.history.replaceState("", "std - Rust", "?search=");
+                    $('#main.content').removeClass('hidden');
+                    $('#search.content').addClass('hidden');
+                }
+            });
+
             var keyUpTimeout;
             $('.do-search').on('click', search);
             $('.search-input').on('keyup', function() {
