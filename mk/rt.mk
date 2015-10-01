@@ -201,7 +201,26 @@ endif
 ################################################################################
 # compiler-rt
 ################################################################################
-
+COMPRT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
+COMPRT_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(COMPRT_NAME_$(1))
+COMPRT_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/compiler-rt
+ifeq ($$(findstring msvc,$(1)),msvc)
+$$(COMPRT_BUILD_DIR_$(1))/powisf2.obj: $(S)src/compiler-rt/lib/builtins/powisf2.c
+	@$$(call E, compile: $$@)
+	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
+		$$(RUNTIME_CFLAGS_$(1))) $$<
+$$(COMPRT_BUILD_DIR_$(1))/powidf2.obj: $(S)src/compiler-rt/lib/builtins/powidf2.c
+	@$$(call E, compile: $$@)
+	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
+		$$(RUNTIME_CFLAGS_$(1))) $$<
+$$(COMPRT_BUILD_DIR_$(1))/mulodi4.obj: $(S)src/compiler-rt/lib/builtins/mulodi4.c
+	@$$(call E, compile: $$@)
+	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
+		$$(RUNTIME_CFLAGS_$(1))) $$<
+$$(COMPRT_LIB_$(1)): $$(COMPRT_BUILD_DIR_$(1))/powisf2.obj $$(COMPRT_BUILD_DIR_$(1))/powidf2.obj $$(COMPRT_BUILD_DIR_$(1))/mulodi4.obj
+	@$$(call E, link: $$@)
+	$$(Q)$$(call CFG_CREATE_ARCHIVE_$(1),$$@) $$^
+else
 ifdef CFG_ENABLE_FAST_MAKE
 COMPRT_DEPS := $(S)/.gitmodules
 else
@@ -212,27 +231,9 @@ COMPRT_DEPS := $(wildcard \
               $(S)src/compiler-rt/*/*/*/*)
 endif
 
-COMPRT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
-COMPRT_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(COMPRT_NAME_$(1))
-COMPRT_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/compiler-rt
-
-# Note that on MSVC-targeting builds we hardwire CC/AR to gcc/ar even though
-# we're targeting MSVC. This is because although compiler-rt has a CMake build
-# config I can't actually figure out how to use it, so I'm not sure how to use
-# cl.exe to build the objects. Additionally, the compiler-rt library when built
-# with gcc has the same ABI as cl.exe, so they're largely compatible
 COMPRT_CC_$(1) := $$(CC_$(1))
 COMPRT_AR_$(1) := $$(AR_$(1))
 COMPRT_CFLAGS_$(1) := $$(CFG_GCCISH_CFLAGS_$(1))
-ifeq ($$(findstring msvc,$(1)),msvc)
-COMPRT_CC_$(1) := gcc
-COMPRT_AR_$(1) := ar
-ifeq ($$(findstring i686,$(1)),i686)
-COMPRT_CFLAGS_$(1) := $$(CFG_GCCISH_CFLAGS_$(1)) -m32
-else
-COMPRT_CFLAGS_$(1) := $$(CFG_GCCISH_CFLAGS_$(1)) -m64
-endif
-endif
 
 $$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS)
 	@$$(call E, make: compiler-rt)
@@ -246,7 +247,7 @@ $$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS)
 		TargetTriple=$(1) \
 		triple-builtins
 	$$(Q)cp $$(COMPRT_BUILD_DIR_$(1))/triple/builtins/libcompiler_rt.a $$@
-
+endif # msvc
 ################################################################################
 # libbacktrace
 #
