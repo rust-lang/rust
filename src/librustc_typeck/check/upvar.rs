@@ -73,6 +73,20 @@ pub fn closure_analyze_fn(fcx: &FnCtxt,
     assert!(fcx.inh.deferred_call_resolutions.borrow().is_empty());
 }
 
+pub fn closure_analyze_const(fcx: &FnCtxt,
+                             body: &hir::Expr)
+{
+    let mut seed = SeedBorrowKind::new(fcx);
+    seed.visit_expr(body);
+    let closures_with_inferred_kinds = seed.closures_with_inferred_kinds;
+
+    let mut adjust = AdjustBorrowKind::new(fcx, &closures_with_inferred_kinds);
+    adjust.visit_expr(body);
+
+    // it's our job to process these.
+    assert!(fcx.inh.deferred_call_resolutions.borrow().is_empty());
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // SEED BORROW KIND
 
