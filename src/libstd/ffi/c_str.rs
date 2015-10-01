@@ -206,7 +206,7 @@ impl CString {
     /// Retakes ownership of a CString that was transferred to C.
     ///
     /// The only appropriate argument is a pointer obtained by calling
-    /// `into_ptr`. The length of the string will be recalculated
+    /// `into_raw`. The length of the string will be recalculated
     /// using the pointer.
     #[unstable(feature = "cstr_memory2", reason = "recently added",
                issue = "27769")]
@@ -230,11 +230,11 @@ impl CString {
     /// Transfers ownership of the string to a C caller.
     ///
     /// The pointer must be returned to Rust and reconstituted using
-    /// `from_ptr` to be properly deallocated. Specifically, one
+    /// `from_raw` to be properly deallocated. Specifically, one
     /// should *not* use the standard C `free` function to deallocate
     /// this string.
     ///
-    /// Failure to call `from_ptr` will lead to a memory leak.
+    /// Failure to call `from_raw` will lead to a memory leak.
     #[unstable(feature = "cstr_memory2", reason = "recently added",
                issue = "27769")]
     #[deprecated(since = "1.4.0", reason = "renamed to into_raw")]
