@@ -388,8 +388,8 @@ impl ResolveReason {
                 tcx.expr_span(upvar_id.closure_expr_id)
             }
             ResolvingClosure(did) => {
-                if did.is_local() {
-                    tcx.expr_span(did.node)
+                if let Some(node_id) = tcx.map.as_local_node_id(did) {
+                    tcx.expr_span(node_id)
                 } else {
                     DUMMY_SP
                 }

@@ -16,7 +16,7 @@
 // mappings. That mapping code resides here.
 
 
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::lang_items::UnsizeTraitLangItem;
 use middle::subst::{self, Subst};
 use middle::traits;
@@ -138,7 +138,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
     fn check_implementation(&self, item: &Item) {
         let tcx = self.crate_context.tcx;
-        let impl_did = DefId::local(item.id);
+        let impl_did = tcx.map.local_def_id(item.id);
         let self_type = tcx.lookup_item_type(impl_did);
 
         // If there are no traits, then this implementation must have a
@@ -194,15 +194,16 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         match item.node {
             ItemImpl(_, _, _, _, _, ref impl_items) => {
                 impl_items.iter().map(|impl_item| {
+                    let impl_def_id = self.crate_context.tcx.map.local_def_id(impl_item.id);
                     match impl_item.node {
                         hir::ConstImplItem(..) => {
-                            ConstTraitItemId(DefId::local(impl_item.id))
+                            ConstTraitItemId(impl_def_id)
                         }
                         hir::MethodImplItem(..) => {
-                            MethodTraitItemId(DefId::local(impl_item.id))
+                            MethodTraitItemId(impl_def_id)
                         }
                         hir::TypeImplItem(_) => {
-                            TypeTraitItemId(DefId::local(impl_item.id))
+                            TypeTraitItemId(impl_def_id)
                         }
                     }
                 }).collect()
@@ -245,17 +246,15 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 }
                 _ => {
                     // Destructors only work on nominal types.
-                    if impl_did.is_local() {
-                        {
-                            match tcx.map.find(impl_did.node) {
-                                Some(hir_map::NodeItem(item)) => {
-                                    span_err!(tcx.sess, item.span, E0120,
-                                        "the Drop trait may only be implemented on structures");
-                                }
-                                _ => {
-                                    tcx.sess.bug("didn't find impl in ast \
-                                                  map");
-                                }
+                    if let Some(impl_node_id) = tcx.map.as_local_node_id(impl_did) {
+                        match tcx.map.find(impl_node_id) {
+                            Some(hir_map::NodeItem(item)) => {
+                                span_err!(tcx.sess, item.span, E0120,
+                                          "the Drop trait may only be implemented on structures");
+                            }
+                            _ => {
+                                tcx.sess.bug("didn't find impl in ast \
+                                              map");
                             }
                         }
                     } else {
@@ -281,18 +280,20 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             debug!("check_implementations_of_copy: impl_did={:?}",
                    impl_did);
 
-            if impl_did.krate != LOCAL_CRATE {
+            let impl_node_id = if let Some(n) = tcx.map.as_local_node_id(impl_did) {
+                n
+            } else {
                 debug!("check_implementations_of_copy(): impl not in this \
                         crate");
                 return
-            }
+            };
 
             let self_type = tcx.lookup_item_type(impl_did);
             debug!("check_implementations_of_copy: self_type={:?} (bound)",
                    self_type);
 
-            let span = tcx.map.span(impl_did.node);
-            let param_env = ParameterEnvironment::for_item(tcx, impl_did.node);
+            let span = tcx.map.span(impl_node_id);
+            let param_env = ParameterEnvironment::for_item(tcx, impl_node_id);
             let self_type = self_type.ty.subst(tcx, &param_env.free_substs);
             assert!(!self_type.has_escaping_regions());
 
@@ -350,11 +351,13 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             debug!("check_implementations_of_coerce_unsized: impl_did={:?}",
                    impl_did);
 
-            if impl_did.krate != LOCAL_CRATE {
+            let impl_node_id = if let Some(n) = tcx.map.as_local_node_id(impl_did) {
+                n
+            } else {
                 debug!("check_implementations_of_coerce_unsized(): impl not \
                         in this crate");
                 return;
-            }
+            };
 
             let source = tcx.lookup_item_type(impl_did).ty;
             let trait_ref = self.crate_context.tcx.impl_trait_ref(impl_did).unwrap();
@@ -362,8 +365,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (bound)",
                    source, target);
 
-            let span = tcx.map.span(impl_did.node);
-            let param_env = ParameterEnvironment::for_item(tcx, impl_did.node);
+            let span = tcx.map.span(impl_node_id);
+            let param_env = ParameterEnvironment::for_item(tcx, impl_node_id);
             let source = source.subst(tcx, &param_env.free_substs);
             let target = target.subst(tcx, &param_env.free_substs);
             assert!(!source.has_escaping_regions());
@@ -463,7 +466,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
 
             // Register an obligation for `A: Trait<B>`.
-            let cause = traits::ObligationCause::misc(span, impl_did.node);
+            let cause = traits::ObligationCause::misc(span, impl_node_id);
             let predicate = traits::predicate_for_trait_def(tcx, cause, trait_def_id,
                                                             0, source, vec![target]);
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
@@ -477,7 +480,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             let mut free_regions = FreeRegionMap::new();
             free_regions.relate_free_regions_from_predicates(tcx, &infcx.parameter_environment
                                                                         .caller_bounds);
-            infcx.resolve_regions_and_report_errors(&free_regions, impl_did.node);
+            infcx.resolve_regions_and_report_errors(&free_regions, impl_node_id);
 
             if let Some(kind) = kind {
                 tcx.custom_coerce_unsized_kinds.borrow_mut().insert(impl_did, kind);

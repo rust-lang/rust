@@ -22,8 +22,9 @@ use arena::TypedArena;
 use back::link;
 use session;
 use llvm::{self, ValueRef, get_params};
+use metadata::cstore::LOCAL_CRATE;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::infer::normalize_associated_type;
 use middle::subst;
 use middle::subst::{Substs};
@@ -139,8 +140,10 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
         match def {
             def::DefFn(did, _) if {
                 let maybe_def_id = inline::get_local_instance(bcx.ccx(), did);
-                let maybe_ast_node = maybe_def_id.and_then(|def_id| bcx.tcx().map
-                                                                             .find(def_id.node));
+                let maybe_ast_node = maybe_def_id.and_then(|def_id| {
+                    let node_id = bcx.tcx().map.as_local_node_id(def_id).unwrap();
+                    bcx.tcx().map.find(node_id)
+                });
                 match maybe_ast_node {
                     Some(hir_map::NodeStructCtor(_)) => true,
                     _ => false
@@ -161,7 +164,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                                                     ExprId(ref_expr.id),
                                                     bcx.fcx.param_substs);
                 let def_id = inline::maybe_instantiate_inline(bcx.ccx(), did);
-                Callee { bcx: bcx, data: Intrinsic(def_id.node, substs), ty: expr_ty }
+                let node_id = bcx.tcx().map.as_local_node_id(def_id).unwrap();
+                Callee { bcx: bcx, data: Intrinsic(node_id, substs), ty: expr_ty }
             }
             def::DefFn(did, _) => {
                 fn_callee(bcx, trans_fn_ref(bcx.ccx(), did, ExprId(ref_expr.id),
@@ -211,8 +215,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
             }
             def::DefMod(..) | def::DefForeignMod(..) | def::DefTrait(..) |
             def::DefTy(..) | def::DefPrimTy(..) | def::DefAssociatedTy(..) |
-            def::DefUse(..) | def::DefRegion(..) | def::DefLabel(..) |
-            def::DefTyParam(..) | def::DefSelfTy(..) => {
+            def::DefUse(..) | def::DefLabel(..) | def::DefTyParam(..) |
+            def::DefSelfTy(..) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     &format!("cannot translate def {:?} \
@@ -403,10 +407,13 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     let def_id = inline::maybe_instantiate_inline(ccx, def_id);
 
     fn is_named_tuple_constructor(tcx: &ty::ctxt, def_id: DefId) -> bool {
-        if !def_id.is_local() { return false; }
+        let node_id = match tcx.map.as_local_node_id(def_id) {
+            Some(n) => n,
+            None => { return false; }
+        };
         let map_node = session::expect(
             &tcx.sess,
-            tcx.map.find(def_id.node),
+            tcx.map.find(node_id),
             || "local item should be in ast map".to_string());
 
         match map_node {
@@ -464,9 +471,9 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 
     // Find the actual function pointer.
     let mut val = {
-        if def_id.is_local() {
+        if let Some(node_id) = ccx.tcx().map.as_local_node_id(def_id) {
             // Internal reference.
-            get_item_val(ccx, def_id.node)
+            get_item_val(ccx, node_id)
         } else {
             // External reference.
             trans_external_path(ccx, def_id, fn_type)

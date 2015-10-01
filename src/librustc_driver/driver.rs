@@ -661,7 +661,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
          LocalCrateReader::new(&sess, &ast_map).read_crates(krate));
 
     let lang_items = time(time_passes, "language item collection", ||
-                          middle::lang_items::collect_language_items(krate, &sess));
+                          middle::lang_items::collect_language_items(&sess, &ast_map));
 
     let resolve::CrateMap {
         def_map,

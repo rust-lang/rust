@@ -83,9 +83,10 @@ use self::TupleArgumentsFlag::*;
 use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv, PathParamMode};
 use check::_match::pat_ctxt;
 use fmt_macros::{Parser, Piece, Position};
+use metadata::cstore::LOCAL_CRATE;
 use middle::astconv_util::prohibit_type_params;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::infer;
 use middle::infer::type_variable;
 use middle::pat_util::{self, pat_id_map};
@@ -687,7 +688,7 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
 
     check_representable(tcx, span, id, "struct");
 
-    if tcx.lookup_simd(DefId::local(id)) {
+    if tcx.lookup_simd(ccx.tcx.map.local_def_id(id)) {
         check_simd(tcx, span, id);
     }
 }
@@ -695,7 +696,7 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
 pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
     debug!("check_item_type(it.id={}, it.name={})",
            it.id,
-           ccx.tcx.item_path_str(DefId::local(it.id)));
+           ccx.tcx.item_path_str(ccx.tcx.map.local_def_id(it.id)));
     let _indenter = indenter();
     match it.node {
       // Consts can play a role in type-checking, so they are included here.
@@ -710,7 +711,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       hir::ItemFn(..) => {} // entirely within check_item_body
       hir::ItemImpl(_, _, _, _, _, ref impl_items) => {
           debug!("ItemImpl {} with id {}", it.name, it.id);
-          match ccx.tcx.impl_trait_ref(DefId::local(it.id)) {
+          match ccx.tcx.impl_trait_ref(ccx.tcx.map.local_def_id(it.id)) {
               Some(impl_trait_ref) => {
                 check_impl_items_against_trait(ccx,
                                                it.span,
@@ -741,7 +742,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
             }
         } else {
             for item in &m.items {
-                let pty = ccx.tcx.lookup_item_type(DefId::local(item.id));
+                let pty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(item.id));
                 if !pty.generics.types.is_empty() {
                     span_err!(ccx.tcx.sess, item.span, E0044,
                         "foreign items may not have type parameters");
@@ -763,18 +764,18 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
 pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
     debug!("check_item_body(it.id={}, it.name={})",
            it.id,
-           ccx.tcx.item_path_str(DefId::local(it.id)));
+           ccx.tcx.item_path_str(ccx.tcx.map.local_def_id(it.id)));
     let _indenter = indenter();
     match it.node {
       hir::ItemFn(ref decl, _, _, _, _, ref body) => {
-        let fn_pty = ccx.tcx.lookup_item_type(DefId::local(it.id));
+        let fn_pty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(it.id));
         let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
         check_bare_fn(ccx, &**decl, &**body, it.id, it.span, fn_pty.ty, param_env);
       }
       hir::ItemImpl(_, _, _, _, _, ref impl_items) => {
         debug!("ItemImpl {} with id {}", it.name, it.id);
 
-        let impl_pty = ccx.tcx.lookup_item_type(DefId::local(it.id));
+        let impl_pty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(it.id));
 
         for impl_item in impl_items {
             match impl_item.node {
@@ -792,7 +793,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         }
       }
       hir::ItemTrait(_, _, _, ref trait_items) => {
-        let trait_def = ccx.tcx.lookup_trait_def(DefId::local(it.id));
+        let trait_def = ccx.tcx.lookup_trait_def(ccx.tcx.map.local_def_id(it.id));
         for trait_item in trait_items {
             match trait_item.node {
                 hir::ConstTraitItem(_, Some(ref expr)) => {
@@ -911,7 +912,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items {
-        let ty_impl_item = ccx.tcx.impl_or_trait_item(DefId::local(impl_item.id));
+        let ty_impl_item = ccx.tcx.impl_or_trait_item(ccx.tcx.map.local_def_id(impl_item.id));
         let ty_trait_item = trait_items.iter()
             .find(|ac| ac.name() == ty_impl_item.name())
             .unwrap_or_else(|| {
@@ -1953,7 +1954,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .unwrap_or(type_variable::Default {
                                 ty: self.infcx().next_ty_var(),
                                 origin_span: codemap::DUMMY_SP,
-                                def_id: DefId::local(0) // what do I put here?
+                                def_id: self.tcx().map.local_def_id(0) // what do I put here?
                             });
 
                     // This is to ensure that we elimnate any non-determinism from the error
@@ -3356,7 +3357,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           } else if let Some(hir::QSelf { position: 0, .. }) = *maybe_qself {
                 // Create some fake resolution that can't possibly be a type.
                 def::PathResolution {
-                    base_def: def::DefMod(DefId::local(ast::CRATE_NODE_ID)),
+                    base_def: def::DefMod(tcx.map.local_def_id(ast::CRATE_NODE_ID)),
                     last_private: LastMod(AllPublic),
                     depth: path.segments.len()
                 }
@@ -4108,7 +4109,7 @@ fn check_const<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let inh = static_inherited_fields(ccx, &tables);
     let rty = ccx.tcx.node_id_to_type(id);
     let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(rty), e.id);
-    let declty = fcx.ccx.tcx.lookup_item_type(DefId::local(id)).ty;
+    let declty = fcx.ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(id)).ty;
     check_const_with_ty(&fcx, sp, e, declty);
 }
 
@@ -4241,7 +4242,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             }
         }
 
-        let def_id = DefId::local(id);
+        let def_id = ccx.tcx.map.local_def_id(id);
 
         let variants = &ccx.tcx.lookup_adt_def(def_id).variants;
         for (v, variant) in vs.iter().zip(variants.iter()) {
@@ -4252,7 +4253,8 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 Some(i) => {
                     span_err!(ccx.tcx.sess, v.span, E0081,
                         "discriminant value `{}` already exists", disr_vals[i]);
-                    span_note!(ccx.tcx.sess, ccx.tcx.map.span(variants[i].did.node),
+                    let variant_i_node_id = ccx.tcx.map.as_local_node_id(variants[i].did).unwrap();
+                    span_note!(ccx.tcx.sess, ccx.tcx.map.span(variant_i_node_id),
                         "conflicting discriminant here")
                 }
                 None => {}
@@ -4279,8 +4281,8 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         }
     }
 
-    let hint = *ccx.tcx.lookup_repr_hints(DefId { krate: LOCAL_CRATE, node: id })
-        .get(0).unwrap_or(&attr::ReprAny);
+    let def_id = ccx.tcx.map.local_def_id(id);
+    let hint = *ccx.tcx.lookup_repr_hints(def_id).get(0).unwrap_or(&attr::ReprAny);
 
     if hint != attr::ReprAny && vs.len() <= 1 {
         if vs.len() == 1 {
@@ -4303,7 +4305,7 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                 defn: def::Def)
                                                 -> (TypeScheme<'tcx>, GenericPredicates<'tcx>) {
     match defn {
-        def::DefLocal(nid) | def::DefUpvar(nid, _, _) => {
+        def::DefLocal(_, nid) | def::DefUpvar(_, nid, _, _) => {
             let typ = fcx.local_ty(sp, nid);
             (ty::TypeScheme { generics: ty::Generics::empty(), ty: typ },
              ty::GenericPredicates::empty())
@@ -4321,7 +4323,6 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefMod(..) |
         def::DefForeignMod(..) |
         def::DefUse(..) |
-        def::DefRegion(..) |
         def::DefLabel(..) |
         def::DefSelfTy(..) => {
             fcx.ccx.tcx.sess.span_bug(sp, &format!("expected value, found {:?}", defn));
@@ -4492,7 +4493,6 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefForeignMod(..) |
         def::DefLocal(..) |
         def::DefUse(..) |
-        def::DefRegion(..) |
         def::DefLabel(..) |
         def::DefUpvar(..) => {
             segment_spaces = vec![None; segments.len()];

@@ -29,9 +29,9 @@ use trans::type_of::*;
 use trans::type_of;
 use middle::ty::{self, Ty};
 use middle::subst::Substs;
-use rustc::front::map as hir_map;
 
 use std::cmp;
+use std::iter::once;
 use libc::c_uint;
 use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
 use syntax::abi::{PlatformIntrinsic, RustIntrinsic, Rust, RustCall, Stdcall, Fastcall, System};
@@ -610,10 +610,12 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let t = tcx.node_id_to_type(id);
         let t = monomorphize::apply_param_substs(tcx, param_substs, &t);
 
-        let ps = ccx.tcx().map.with_path(id, |path| {
-            let abi = Some(hir_map::PathName(special_idents::clownshoe_abi.name));
-            link::mangle(path.chain(abi), hash)
-        });
+        let path =
+            tcx.map.def_path_from_id(id)
+                   .into_iter()
+                   .map(|e| e.data.as_interned_str())
+                   .chain(once(special_idents::clownshoe_abi.name.as_str()));
+        let ps = link::mangle(path, hash);
 
         // Compute the type that the function would have if it were just a
         // normal Rust function. This will be the type of the wrappee fn.

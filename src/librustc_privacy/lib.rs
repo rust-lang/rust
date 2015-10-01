@@ -263,19 +263,26 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                     hir::TyPath(..) => {
                         match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
                             def::DefPrimTy(..) => true,
+                            def::DefSelfTy(..) => true,
                             def => {
                                 let did = def.def_id();
-                                !did.is_local() ||
-                                 self.exported_items.contains(&did.node)
+                                if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
+                                    self.exported_items.contains(&node_id)
+                                } else {
+                                    true
+                                }
                             }
                         }
                     }
                     _ => true,
                 };
-                let tr = self.tcx.impl_trait_ref(DefId::local(item.id));
+                let tr = self.tcx.impl_trait_ref(self.tcx.map.local_def_id(item.id));
                 let public_trait = tr.clone().map_or(false, |tr| {
-                    !tr.def_id.is_local() ||
-                     self.exported_items.contains(&tr.def_id.node)
+                    if let Some(node_id) = self.tcx.map.as_local_node_id(tr.def_id) {
+                        self.exported_items.contains(&node_id)
+                    } else {
+                        true
+                    }
                 });
 
                 if public_ty || public_trait {
@@ -331,11 +338,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemTy(ref ty, _) if public_first => {
                 if let hir::TyPath(..) = ty.node {
                     match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
-                        def::DefPrimTy(..) | def::DefTyParam(..) => {},
+                        def::DefPrimTy(..) | def::DefSelfTy(..) | def::DefTyParam(..) => {},
                         def => {
                             let did = def.def_id();
-                            if did.is_local() {
-                                self.exported_items.insert(did.node);
+                            if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
+                                self.exported_items.insert(node_id);
                             }
                         }
                     }
@@ -363,8 +370,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
         if self.prev_exported {
             assert!(self.export_map.contains_key(&id), "wut {}", id);
             for export in self.export_map.get(&id).unwrap() {
-                if export.def_id.is_local() {
-                    self.reexports.insert(export.def_id.node);
+                if let Some(node_id) = self.tcx.map.as_local_node_id(export.def_id) {
+                    self.reexports.insert(node_id);
                 }
             }
         }
@@ -404,7 +411,9 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     // Determines whether the given definition is public from the point of view
     // of the current item.
     fn def_privacy(&self, did: DefId) -> PrivacyResult {
-        if !did.is_local() {
+        let node_id = if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
+            node_id
+        } else {
             if self.external_exports.contains(&did) {
                 debug!("privacy - {:?} was externally exported", did);
                 return Allowable;
@@ -496,19 +505,19 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                     ExternallyDenied
                 }
             };
-        }
+        };
 
         debug!("privacy - local {} not public all the way down",
-               self.tcx.map.node_to_string(did.node));
+               self.tcx.map.node_to_string(node_id));
         // return quickly for things in the same module
-        if self.parents.get(&did.node) == self.parents.get(&self.curitem) {
+        if self.parents.get(&node_id) == self.parents.get(&self.curitem) {
             debug!("privacy - same parent, we're done here");
             return Allowable;
         }
 
         // We now know that there is at least one private member between the
         // destination and the root.
-        let mut closest_private_id = did.node;
+        let mut closest_private_id = node_id;
         loop {
             debug!("privacy - examining {}", self.nodestr(closest_private_id));
             let vis = match self.tcx.map.find(closest_private_id) {
@@ -578,6 +587,15 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         }
     }
 
+    /// True if `id` is both local and private-accessible
+    fn local_private_accessible(&self, did: DefId) -> bool {
+        if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
+            self.private_accessible(node_id)
+        } else {
+            false
+        }
+    }
+
     /// For a local private node in the AST, this function will determine
     /// whether the node is accessible by the current module that iteration is
     /// inside.
@@ -639,11 +657,15 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             DisallowedBy(id) => id,
         };
 
-        // If we're disallowed by a particular id, then we attempt to give a
-        // nice error message to say why it was disallowed. It was either
-        // because the item itself is private or because its parent is private
-        // and its parent isn't in our ancestry.
-        let (err_span, err_msg) = if id == source_did.unwrap_or(to_check).node {
+        // If we're disallowed by a particular id, then we attempt to
+        // give a nice error message to say why it was disallowed. It
+        // was either because the item itself is private or because
+        // its parent is private and its parent isn't in our
+        // ancestry. (Both the item being checked and its parent must
+        // be local.)
+        let def_id = source_did.unwrap_or(to_check);
+        let node_id = self.tcx.map.as_local_node_id(def_id).unwrap();
+        let (err_span, err_msg) = if id == node_id {
             return Some((span, format!("{} is private", msg), None));
         } else {
             (span, format!("{} is inaccessible", msg))
@@ -663,8 +685,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                         };
                         let def = self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def();
                         let did = def.def_id();
-                        assert!(did.is_local());
-                        match self.tcx.map.get(did.node) {
+                        let node_id = self.tcx.map.as_local_node_id(did).unwrap();
+                        match self.tcx.map.get(node_id) {
                             ast_map::NodeItem(item) => item,
                             _ => self.tcx.sess.span_bug(item.span,
                                                         "path is not an item")
@@ -699,9 +721,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             }
             UnnamedField(idx) => &v.fields[idx]
         };
-        if field.vis == hir::Public ||
-            (field.did.is_local() && self.private_accessible(field.did.node)) {
-            return
+        if field.vis == hir::Public || self.local_private_accessible(field.did) {
+            return;
         }
 
         let struct_desc = match def.adt_kind() {
@@ -891,11 +912,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                         _ => expr_ty
                     }.ty_adt_def().unwrap();
                     let any_priv = def.struct_variant().fields.iter().any(|f| {
-                        f.vis != hir::Public && (
-                            !f.did.is_local() ||
-                                    !self.private_accessible(f.did.node))
-                        });
-
+                        f.vis != hir::Public && !self.local_private_accessible(f.did)
+                    });
                     if any_priv {
                         span_err!(self.tcx.sess, expr.span, E0450,
                                   "cannot invoke tuple struct constructor with private \
@@ -1131,20 +1149,21 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
     fn path_is_private_type(&self, path_id: ast::NodeId) -> bool {
         let did = match self.tcx.def_map.borrow().get(&path_id).map(|d| d.full_def()) {
             // `int` etc. (None doesn't seem to occur.)
-            None | Some(def::DefPrimTy(..)) => return false,
+            None | Some(def::DefPrimTy(..)) | Some(def::DefSelfTy(..)) => return false,
             Some(def) => def.def_id(),
         };
+
         // A path can only be private if:
         // it's in this crate...
-        if !did.is_local() {
+        if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
+            // .. and it corresponds to a private type in the AST (this returns
+            // None for type parameters)
+            match self.tcx.map.find(node_id) {
+                Some(ast_map::NodeItem(ref item)) => item.vis != hir::Public,
+                Some(_) | None => false,
+            }
+        } else {
             return false
-        }
-
-        // .. and it corresponds to a private type in the AST (this returns
-        // None for type parameters)
-        match self.tcx.map.find(did.node) {
-            Some(ast_map::NodeItem(ref item)) => item.vis != hir::Public,
-            Some(_) | None => false,
         }
     }
 
@@ -1245,7 +1264,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                                               |tr| {
                         let did = self.tcx.trait_ref_to_def_id(tr);
 
-                        !did.is_local() || self.trait_is_public(did.node)
+                        if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
+                            self.trait_is_public(node_id)
+                        } else {
+                            true // external traits must be public
+                        }
                     });
 
                 // `true` iff this is a trait impl or at least one method is public.
