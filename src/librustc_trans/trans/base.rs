@@ -2617,6 +2617,15 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<&str>) {
 // code references on its own.
 // See #26591, #27438
 fn create_imps(cx: &SharedCrateContext) {
+    // The x86 ABI seems to require that leading underscores are added to symbol
+    // names, so we need an extra underscore on 32-bit. There's also a leading
+    // '\x01' here which disables LLVM's symbol mangling (e.g. no extra
+    // underscores added in front).
+    let prefix = if cx.sess().target.target.target_pointer_width == "32" {
+        "\x01__imp__"
+    } else {
+        "\x01__imp_"
+    };
     unsafe {
         for ccx in cx.iter() {
             let exported: Vec<_> = iter_globals(ccx.llmod())
@@ -2627,12 +2636,13 @@ fn create_imps(cx: &SharedCrateContext) {
             let i8p_ty = Type::i8p(&ccx);
             for val in exported {
                 let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
-                let imp_name = String::from("__imp_") +
-                               str::from_utf8(name.to_bytes()).unwrap();
+                let mut imp_name = prefix.as_bytes().to_vec();
+                imp_name.extend(name.to_bytes());
                 let imp_name = CString::new(imp_name).unwrap();
                 let imp = llvm::LLVMAddGlobal(ccx.llmod(), i8p_ty.to_ref(),
                                               imp_name.as_ptr() as *const _);
-                llvm::LLVMSetInitializer(imp, llvm::LLVMConstBitCast(val, i8p_ty.to_ref()));
+                let init = llvm::LLVMConstBitCast(val, i8p_ty.to_ref());
+                llvm::LLVMSetInitializer(imp, init);
                 llvm::SetLinkage(imp, llvm::ExternalLinkage);
             }
         }
