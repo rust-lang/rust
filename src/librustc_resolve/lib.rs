@@ -501,19 +501,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         }
 
         // `visit::walk_variant` without the discriminant expression.
-        match variant.node.kind {
-            hir::TupleVariantKind(ref variant_arguments) => {
-                for variant_argument in variant_arguments {
-                    self.visit_ty(&*variant_argument.ty);
-                }
-            }
-            hir::StructVariantKind(ref struct_definition) => {
-                self.visit_struct_def(&**struct_definition,
-                                      variant.node.name,
-                                      generics,
-                                      variant.node.id);
-            }
-        }
+        self.visit_struct_def(&variant.node.def, variant.node.name, generics, variant.node.id);
     }
     fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem) {
         execute_callback!(hir_map::Node::NodeForeignItem(foreign_item), self);

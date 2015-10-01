@@ -267,16 +267,8 @@ pub fn lower_variant(_lctx: &LoweringContext, v: &Variant) -> P<hir::Variant> {
             id: v.node.id,
             name: v.node.name.name,
             attrs: v.node.attrs.clone(),
-            kind: {
-                if v.node.def.ctor_id.is_none() {
-                    hir::StructVariantKind(lower_struct_def(_lctx, &v.node.def))
-                } else {
-                    hir::TupleVariantKind(v.node.def.fields.iter().map(|ref field| {
-                        hir::VariantArg { id: field.node.id, ty: lower_ty(_lctx, &field.node.ty) }
-                    }).collect())
-                }
-            },
-            disr_expr: v.node.disr_expr.as_ref().map(|e| lower_expr(_lctx, e)),
+            def: lower_struct_def(_lctx, &v.node.def),
+            disr_expr: v.node.disr_expr.as_ref().map(|e| lower_expr(e)),
         },
         span: v.span,
     })

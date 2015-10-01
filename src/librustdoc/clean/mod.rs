@@ -1855,7 +1855,7 @@ impl Clean<Item> for doctree::Variant {
             stability: self.stab.clean(cx),
             def_id: cx.map.local_def_id(self.id),
             inner: VariantItem(Variant {
-                kind: self.kind.clean(cx),
+                kind: struct_def_to_variant_kind(&self.def, cx),
             }),
         }
     }
@@ -1929,6 +1929,16 @@ impl Clean<VariantKind> for hir::VariantKind {
             },
             &hir::StructVariantKind(ref sd) => StructVariant(sd.clean(cx)),
         }
+    }
+}
+
+fn struct_def_to_variant_kind(struct_def: &hir::StructDef, cx: &DocContext) -> VariantKind {
+    if struct_def.ctor_id.is_none() {
+        StructVariant(struct_def.clean(cx))
+    } else if struct_def.fields.is_empty() {
+        CLikeVariant
+    } else {
+        TupleVariant(struct_def.fields.iter().map(|x| x.node.ty.clean(cx)).collect())
     }
 }
 

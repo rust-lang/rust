@@ -475,13 +475,13 @@ impl<'ast> Map<'ast> {
         match self.find(id) {
             Some(NodeItem(i)) => {
                 match i.node {
-                    ItemStruct(ref struct_def, _) => &**struct_def,
+                    ItemStruct(ref struct_def, _) => struct_def,
                     _ => panic!("struct ID bound to non-struct")
                 }
             }
             Some(NodeVariant(variant)) => {
-                match variant.node.kind {
-                    StructVariantKind(ref struct_def) => &**struct_def,
+                match variant.node.def.ctor_id {
+                    None => &variant.node.def,
                     _ => panic!("struct ID bound to enum variant that isn't struct-like"),
                 }
             }

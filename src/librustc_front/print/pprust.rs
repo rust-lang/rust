@@ -734,7 +734,7 @@ impl<'a> State<'a> {
             }
             hir::ItemStruct(ref struct_def, ref generics) => {
                 try!(self.head(&visibility_qualified(item.vis, "struct")));
-                try!(self.print_struct(&**struct_def, generics, item.name, item.span));
+                try!(self.print_struct(&**struct_def, generics, item.name, item.span, true));
             }
 
             hir::ItemDefaultImpl(unsafety, ref trait_ref) => {
@@ -891,7 +891,8 @@ impl<'a> State<'a> {
                         struct_def: &hir::StructDef,
                         generics: &hir::Generics,
                         name: ast::Name,
-                        span: codemap::Span)
+                        span: codemap::Span,
+                        print_finalizer: bool)
                         -> io::Result<()> {
         try!(self.print_name(name));
         try!(self.print_generics(generics));
@@ -913,7 +914,9 @@ impl<'a> State<'a> {
                 try!(self.pclose());
             }
             try!(self.print_where_clause(&generics.where_clause));
-            try!(word(&mut self.s, ";"));
+            if print_finalizer {
+                try!(word(&mut self.s, ";"));
+            }
             try!(self.end());
             self.end() // close the outer-box
         } else {
@@ -943,21 +946,9 @@ impl<'a> State<'a> {
     }
 
     pub fn print_variant(&mut self, v: &hir::Variant) -> io::Result<()> {
-        match v.node.kind {
-            hir::TupleVariantKind(ref args) => {
-                try!(self.print_name(v.node.name));
-                if !args.is_empty() {
-                    try!(self.popen());
-                    try!(self.commasep(Consistent, &args[..], |s, arg| s.print_type(&*arg.ty)));
-                    try!(self.pclose());
-                }
-            }
-            hir::StructVariantKind(ref struct_def) => {
-                try!(self.head(""));
-                let generics = ::util::empty_generics();
-                try!(self.print_struct(&**struct_def, &generics, v.node.name, v.span));
-            }
-        }
+        try!(self.head(""));
+        let generics = ::util::empty_generics();
+        try!(self.print_struct(&v.node.def, &generics, v.node.name, v.span, false));
         match v.node.disr_expr {
             Some(ref d) => {
                 try!(space(&mut self.s));
