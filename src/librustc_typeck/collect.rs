@@ -599,8 +599,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     explicit_self_category,
                                     vis,
                                     def_id,
-                                    container,
-                                    None);
+                                    container);
 
     let fty = ccx.tcx.mk_fn(Some(def_id),
                             ccx.tcx.mk_bare_fn(ty_method.fty.clone()));
@@ -647,13 +646,12 @@ fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                       id: ast::NodeId,
                                       vis: hir::Visibility,
                                       ty: ty::Ty<'tcx>,
-                                      default: Option<&hir::Expr>)
+                                      has_value: bool)
 {
     ccx.tcx.predicates.borrow_mut().insert(DefId::local(id),
                                            ty::GenericPredicates::empty());
 
     write_ty_to_tcx(ccx.tcx, id, ty);
-    let default_id = default.map(|expr| DefId::local(expr.id));
 
     let associated_const = Rc::new(ty::AssociatedConst {
         name: name,
@@ -661,7 +659,7 @@ fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         def_id: DefId::local(id),
         container: container,
         ty: ty,
-        default: default_id,
+        has_value: has_value
     });
     ccx.tcx.impl_or_trait_items.borrow_mut()
        .insert(DefId::local(id), ty::ConstTraitItem(associated_const));
@@ -837,7 +835,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                     span_err!(tcx.sess, impl_item.span, E0201, "duplicate {}", desc);
                 }
 
-                if let hir::ConstImplItem(ref ty, ref expr) = impl_item.node {
+                if let hir::ConstImplItem(ref ty, _) = impl_item.node {
                     let ty = ccx.icx(&ty_predicates)
                                 .to_ty(&ExplicitRscope, &*ty);
                     tcx.register_item_type(DefId::local(impl_item.id),
@@ -848,7 +846,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                     convert_associated_const(ccx, ImplContainer(DefId::local(it.id)),
                                              impl_item.name, impl_item.id,
                                              impl_item.vis.inherit_from(parent_visibility),
-                                             ty, Some(&*expr));
+                                             ty, true /* has_value */);
                 }
             }
 
@@ -926,7 +924,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                                });
                         convert_associated_const(ccx, TraitContainer(DefId::local(it.id)),
                                                  trait_item.name, trait_item.id,
-                                                 hir::Public, ty, default.as_ref().map(|d| &**d));
+                                                 hir::Public, ty, default.is_some());
                     }
                     _ => {}
                 }

@@ -187,12 +187,6 @@ fn item_def_id(d: rbml::Doc, cdata: Cmd) -> DefId {
     translated_def_id(cdata, reader::get_doc(d, tag_def_id))
 }
 
-fn get_provided_source(d: rbml::Doc, cdata: Cmd) -> Option<DefId> {
-    reader::maybe_get_doc(d, tag_item_method_provided_source).map(|doc| {
-        translated_def_id(cdata, doc)
-    })
-}
-
 fn reexports<'a>(d: rbml::Doc<'a>) -> reader::TaggedDocsIterator<'a> {
     reader::tagged_docs(d, tag_items_data_item_reexport)
 }
@@ -276,11 +270,14 @@ fn item_to_def_like(cdata: Cmd, item: rbml::Doc, did: DefId) -> DefLike {
     match fam {
         Constant  => {
             // Check whether we have an associated const item.
-            if item_sort(item) == Some('C') {
-                DlDef(def::DefAssociatedConst(did))
-            } else {
-                // Regular const item.
-                DlDef(def::DefConst(did))
+            match item_sort(item) {
+                Some('C') | Some('c') => {
+                    DlDef(def::DefAssociatedConst(did))
+                }
+                _ => {
+                    // Regular const item.
+                    DlDef(def::DefConst(did))
+                }
             }
         }
         ImmStatic => DlDef(def::DefStatic(did, false)),
@@ -818,7 +815,7 @@ pub fn get_impl_items(cdata: Cmd, impl_id: ast::NodeId)
     reader::tagged_docs(cdata.lookup_item(impl_id), tag_item_impl_item).map(|doc| {
         let def_id = item_def_id(doc, cdata);
         match item_sort(doc) {
-            Some('C') => ty::ConstTraitItemId(def_id),
+            Some('C') | Some('c') => ty::ConstTraitItemId(def_id),
             Some('r') | Some('p') => ty::MethodTraitItemId(def_id),
             Some('t') => ty::TypeTraitItemId(def_id),
             _ => panic!("unknown impl item sort"),
@@ -864,16 +861,15 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
     let vis = item_visibility(item_doc);
 
     match item_sort(item_doc) {
-        Some('C') => {
+        sort @ Some('C') | sort @ Some('c') => {
             let ty = doc_type(item_doc, tcx, cdata);
-            let default = get_provided_source(item_doc, cdata);
             ty::ConstTraitItem(Rc::new(ty::AssociatedConst {
                 name: name,
                 ty: ty,
                 vis: vis,
                 def_id: def_id,
                 container: container,
-                default: default,
+                has_value: sort == Some('C')
             }))
         }
         Some('r') | Some('p') => {
@@ -881,7 +877,6 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
             let predicates = doc_predicates(item_doc, tcx, cdata, tag_method_ty_generics);
             let fty = doc_method_fty(item_doc, tcx, cdata);
             let explicit_self = get_explicit_self(item_doc);
-            let provided_source = get_provided_source(item_doc, cdata);
 
             ty::MethodTraitItem(Rc::new(ty::Method::new(name,
                                                         generics,
@@ -890,8 +885,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                                                         explicit_self,
                                                         vis,
                                                         def_id,
-                                                        container,
-                                                        provided_source)))
+                                                        container)))
         }
         Some('t') => {
             let ty = maybe_doc_type(item_doc, tcx, cdata);
@@ -913,7 +907,7 @@ pub fn get_trait_item_def_ids(cdata: Cmd, id: ast::NodeId)
     reader::tagged_docs(item, tag_item_trait_item).map(|mth| {
         let def_id = item_def_id(mth, cdata);
         match item_sort(mth) {
-            Some('C') => ty::ConstTraitItemId(def_id),
+            Some('C') | Some('c') => ty::ConstTraitItemId(def_id),
             Some('r') | Some('p') => ty::MethodTraitItemId(def_id),
             Some('t') => ty::TypeTraitItemId(def_id),
             _ => panic!("unknown trait item sort"),
@@ -967,18 +961,19 @@ pub fn get_associated_consts<'tcx>(intr: Rc<IdentInterner>,
             let did = item_def_id(ac_id, cdata);
             let ac_doc = cdata.lookup_item(did.node);
 
-            if item_sort(ac_doc) == Some('C') {
-                let trait_item = get_impl_or_trait_item(intr.clone(),
-                                                        cdata,
-                                                        did.node,
-                                                        tcx);
-                if let ty::ConstTraitItem(ref ac) = trait_item {
-                    Some((*ac).clone())
-                } else {
-                    None
+            match item_sort(ac_doc) {
+                Some('C') | Some('c') => {
+                    let trait_item = get_impl_or_trait_item(intr.clone(),
+                                                            cdata,
+                                                            did.node,
+                                                            tcx);
+                    if let ty::ConstTraitItem(ref ac) = trait_item {
+                        Some((*ac).clone())
+                    } else {
+                        None
+                    }
                 }
-            } else {
-                None
+                _ => None
             }
         })
     }).collect()

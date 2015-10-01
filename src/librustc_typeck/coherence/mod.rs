@@ -22,10 +22,10 @@ use middle::subst::{self, Subst};
 use middle::traits;
 use middle::ty;
 use middle::ty::RegionEscape;
-use middle::ty::{ImplContainer, ImplOrTraitItemId, ConstTraitItemId};
+use middle::ty::{ImplOrTraitItemId, ConstTraitItemId};
 use middle::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
 use middle::ty::{Ty, TyBool, TyChar, TyEnum, TyError};
-use middle::ty::{TyParam, TypeScheme, TyRawPtr};
+use middle::ty::{TyParam, TyRawPtr};
 use middle::ty::{TyRef, TyStruct, TyTrait, TyTuple};
 use middle::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
 use middle::ty::{TyUint, TyClosure, TyBox, TyBareFn};
@@ -168,65 +168,6 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         tcx.impl_items.borrow_mut().insert(impl_did, impl_items);
     }
 
-    // Creates default method IDs and performs type substitutions for an impl
-    // and trait pair. Then, for each provided method in the trait, inserts a
-    // `ProvidedMethodInfo` instance into the `provided_method_sources` map.
-    fn instantiate_default_methods(
-            &self,
-            impl_id: DefId,
-            trait_ref: &ty::TraitRef<'tcx>,
-            all_impl_items: &mut Vec<ImplOrTraitItemId>) {
-        let tcx = self.crate_context.tcx;
-        debug!("instantiate_default_methods(impl_id={:?}, trait_ref={:?})",
-               impl_id, trait_ref);
-
-        let impl_type_scheme = tcx.lookup_item_type(impl_id);
-
-        let prov = tcx.provided_trait_methods(trait_ref.def_id);
-        for trait_method in &prov {
-            // Synthesize an ID.
-            let new_id = tcx.sess.next_node_id();
-            let new_did = DefId::local(new_id);
-
-            debug!("new_did={:?} trait_method={:?}", new_did, trait_method);
-
-            // Create substitutions for the various trait parameters.
-            let new_method_ty =
-                Rc::new(subst_receiver_types_in_method_ty(
-                    tcx,
-                    impl_id,
-                    &impl_type_scheme,
-                    trait_ref,
-                    new_did,
-                    &**trait_method,
-                    Some(trait_method.def_id)));
-
-            debug!("new_method_ty={:?}", new_method_ty);
-            all_impl_items.push(MethodTraitItemId(new_did));
-
-            // construct the polytype for the method based on the
-            // method_ty.  it will have all the generics from the
-            // impl, plus its own.
-            let new_polytype = ty::TypeScheme {
-                generics: new_method_ty.generics.clone(),
-                ty: tcx.mk_fn(Some(new_did),
-                              tcx.mk_bare_fn(new_method_ty.fty.clone()))
-            };
-            debug!("new_polytype={:?}", new_polytype);
-
-            tcx.register_item_type(new_did, new_polytype);
-            tcx.predicates.borrow_mut().insert(new_did, new_method_ty.predicates.clone());
-            tcx.impl_or_trait_items
-               .borrow_mut()
-               .insert(new_did, ty::MethodTraitItem(new_method_ty));
-
-            // Pair the new synthesized ID up with the
-            // ID of the method.
-            self.crate_context.tcx.provided_method_sources.borrow_mut()
-                .insert(new_did, trait_method.def_id);
-        }
-    }
-
     fn add_inherent_impl(&self, base_def_id: DefId, impl_def_id: DefId) {
         match self.inherent_impls.borrow().get(&base_def_id) {
             Some(implementation_list) => {
@@ -252,8 +193,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     fn create_impl_from_item(&self, item: &Item) -> Vec<ImplOrTraitItemId> {
         match item.node {
             ItemImpl(_, _, _, _, _, ref impl_items) => {
-                let mut items: Vec<ImplOrTraitItemId> =
-                        impl_items.iter().map(|impl_item| {
+                impl_items.iter().map(|impl_item| {
                     match impl_item.node {
                         hir::ConstImplItem(..) => {
                             ConstTraitItemId(DefId::local(impl_item.id))
@@ -265,14 +205,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                             TypeTraitItemId(DefId::local(impl_item.id))
                         }
                     }
-                }).collect();
-
-                let def_id = DefId::local(item.id);
-                if let Some(trait_ref) = self.crate_context.tcx.impl_trait_ref(def_id) {
-                    self.instantiate_default_methods(def_id, &trait_ref, &mut items);
-                }
-
-                items
+                }).collect()
             }
             _ => {
                 self.crate_context.tcx.sess.span_bug(item.span,
@@ -573,55 +506,6 @@ fn enforce_trait_manually_implementable(tcx: &ty::ctxt, sp: Span, trait_def_id: 
     span_err!(tcx.sess, sp, E0183, "manual implementations of `{}` are experimental", trait_name);
     fileline_help!(tcx.sess, sp,
                "add `#![feature(unboxed_closures)]` to the crate attributes to enable");
-}
-
-fn subst_receiver_types_in_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                           impl_id: DefId,
-                                           impl_type_scheme: &ty::TypeScheme<'tcx>,
-                                           trait_ref: &ty::TraitRef<'tcx>,
-                                           new_def_id: DefId,
-                                           method: &ty::Method<'tcx>,
-                                           provided_source: Option<DefId>)
-                                           -> ty::Method<'tcx>
-{
-    let combined_substs = tcx.make_substs_for_receiver_types(trait_ref, method);
-
-    debug!("subst_receiver_types_in_method_ty: combined_substs={:?}",
-           combined_substs);
-
-    let method_predicates = method.predicates.subst(tcx, &combined_substs);
-    let mut method_generics = method.generics.subst(tcx, &combined_substs);
-
-    // replace the type parameters declared on the trait with those
-    // from the impl
-    for &space in &[subst::TypeSpace, subst::SelfSpace] {
-        method_generics.types.replace(
-            space,
-            impl_type_scheme.generics.types.get_slice(space).to_vec());
-        method_generics.regions.replace(
-            space,
-            impl_type_scheme.generics.regions.get_slice(space).to_vec());
-    }
-
-    debug!("subst_receiver_types_in_method_ty: method_generics={:?}",
-           method_generics);
-
-    let method_fty = method.fty.subst(tcx, &combined_substs);
-
-    debug!("subst_receiver_types_in_method_ty: method_ty={:?}",
-           method.fty);
-
-    ty::Method::new(
-        method.name,
-        method_generics,
-        method_predicates,
-        method_fty,
-        method.explicit_self,
-        method.vis,
-        new_def_id,
-        ImplContainer(impl_id),
-        provided_source
-    )
 }
 
 pub fn check_coherence(crate_context: &CrateCtxt) {

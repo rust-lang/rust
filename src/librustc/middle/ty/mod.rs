@@ -235,9 +235,6 @@ pub struct Method<'tcx> {
     pub vis: hir::Visibility,
     pub def_id: DefId,
     pub container: ImplOrTraitItemContainer,
-
-    // If this method is provided, we need to know where it came from
-    pub provided_source: Option<DefId>
 }
 
 impl<'tcx> Method<'tcx> {
@@ -248,8 +245,7 @@ impl<'tcx> Method<'tcx> {
                explicit_self: ExplicitSelfCategory,
                vis: hir::Visibility,
                def_id: DefId,
-               container: ImplOrTraitItemContainer,
-               provided_source: Option<DefId>)
+               container: ImplOrTraitItemContainer)
                -> Method<'tcx> {
        Method {
             name: name,
@@ -260,7 +256,6 @@ impl<'tcx> Method<'tcx> {
             vis: vis,
             def_id: def_id,
             container: container,
-            provided_source: provided_source
         }
     }
 
@@ -293,7 +288,7 @@ pub struct AssociatedConst<'tcx> {
     pub vis: hir::Visibility,
     pub def_id: DefId,
     pub container: ImplOrTraitItemContainer,
-    pub default: Option<DefId>,
+    pub has_value: bool
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -2105,10 +2100,6 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn provided_source(&self, id: DefId) -> Option<DefId> {
-        self.provided_method_sources.borrow().get(&id).cloned()
-    }
-
     pub fn provided_trait_methods(&self, id: DefId) -> Vec<Rc<Method<'tcx>>> {
         if id.is_local() {
             if let ItemTrait(_, _, _, ref ms) = self.map.expect_item(id.node).node {
@@ -2477,16 +2468,9 @@ impl<'tcx> ctxt<'tcx> {
             // the map. This is a bit unfortunate.
             for impl_item_def_id in &impl_items {
                 let method_def_id = impl_item_def_id.def_id();
-                match self.impl_or_trait_item(method_def_id) {
-                    MethodTraitItem(method) => {
-                        if let Some(source) = method.provided_source {
-                            self.provided_method_sources
-                                .borrow_mut()
-                                .insert(method_def_id, source);
-                        }
-                    }
-                    _ => {}
-                }
+                // load impl items eagerly for convenience
+                // FIXME: we may want to load these lazily
+                self.impl_or_trait_item(method_def_id);
             }
 
             // Store the implementation info.
