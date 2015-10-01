@@ -799,6 +799,8 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                               http://www.sourceware.org/autobook/
                               for details)",
                "TRIPLE"),
+        opt::opt("", "dep-file", "Write dep-info output to <filename>",
+                 "FILENAME"),
         opt::multi("W", "warn", "Set lint warnings", "OPT"),
         opt::multi("A", "allow", "Set lint allowed", "OPT"),
         opt::multi("D", "deny", "Set lint denied", "OPT"),
@@ -1004,7 +1006,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
     let test = matches.opt_present("test");
-    let write_dependency_info = (output_types.contains(&OutputTypeDepInfo), None);
+    let dependency_info_file = matches.opt_str("dep-file").map(|f| { PathBuf::from(&f) });
+    let write_dependency_info = (output_types.contains(&OutputTypeDepInfo),
+                                 dependency_info_file);
 
     let prints = matches.opt_strs("print").into_iter().map(|s| {
         match &*s {
