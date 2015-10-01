@@ -1700,16 +1700,6 @@ fn trans_uniq_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     immediate_rvalue_bcx(bcx, val, box_ty).to_expr_datumblock()
 }
 
-fn ref_fat_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                           lval: Datum<'tcx, Lvalue>)
-                           -> DatumBlock<'blk, 'tcx, Expr> {
-    let dest_ty = bcx.tcx().mk_imm_ref(bcx.tcx().mk_region(ty::ReStatic), lval.ty);
-    let scratch = rvalue_scratch_datum(bcx, dest_ty, "__fat_ptr");
-    memcpy_ty(bcx, scratch.val, lval.val, scratch.ty);
-
-    DatumBlock::new(bcx, scratch.to_expr_datum())
-}
-
 fn trans_addr_of<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              expr: &hir::Expr,
                              subexpr: &hir::Expr)
@@ -1717,12 +1707,13 @@ fn trans_addr_of<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_addr_of");
     let mut bcx = bcx;
     let sub_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, subexpr, "addr_of"));
+    let ty = expr_ty(bcx, expr);
     if !type_is_sized(bcx.tcx(), sub_datum.ty) {
-        // DST lvalue, close to a fat pointer
-        ref_fat_ptr(bcx, sub_datum)
+        // Always generate an lvalue datum, because this pointer doesn't own
+        // the data and cleanup is scheduled elsewhere.
+        DatumBlock::new(bcx, Datum::new(sub_datum.val, ty, LvalueExpr(sub_datum.kind)))
     } else {
         // Sized value, ref to a thin pointer
-        let ty = expr_ty(bcx, expr);
         immediate_rvalue_bcx(bcx, sub_datum.val, ty).to_expr_datumblock()
     }
 }
