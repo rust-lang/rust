@@ -1223,7 +1223,7 @@ impl<'a> State<'a> {
             }
             ast::ItemStruct(ref struct_def, ref generics) => {
                 try!(self.head(&visibility_qualified(item.vis,"struct")));
-                try!(self.print_struct(&**struct_def, generics, item.ident, item.span));
+                try!(self.print_struct(&struct_def, generics, item.ident, item.span, true));
             }
 
             ast::ItemDefaultImpl(unsafety, ref trait_ref) => {
@@ -1388,7 +1388,8 @@ impl<'a> State<'a> {
                         struct_def: &ast::StructDef,
                         generics: &ast::Generics,
                         ident: ast::Ident,
-                        span: codemap::Span) -> io::Result<()> {
+                        span: codemap::Span,
+                        print_finalizer: bool) -> io::Result<()> {
         try!(self.print_ident(ident));
         try!(self.print_generics(generics));
         if ast_util::struct_def_is_tuple_like(struct_def) {
@@ -1410,7 +1411,9 @@ impl<'a> State<'a> {
                 try!(self.pclose());
             }
             try!(self.print_where_clause(&generics.where_clause));
-            try!(word(&mut self.s, ";"));
+            if print_finalizer {
+                try!(word(&mut self.s, ";"));
+            }
             try!(self.end());
             self.end() // close the outer-box
         } else {
@@ -1505,23 +1508,9 @@ impl<'a> State<'a> {
     }
 
     pub fn print_variant(&mut self, v: &ast::Variant) -> io::Result<()> {
-        match v.node.kind {
-            ast::TupleVariantKind(ref args) => {
-                try!(self.print_ident(v.node.name));
-                if !args.is_empty() {
-                    try!(self.popen());
-                    try!(self.commasep(Consistent,
-                                       &args[..],
-                                       |s, arg| s.print_type(&*arg.ty)));
-                    try!(self.pclose());
-                }
-            }
-            ast::StructVariantKind(ref struct_def) => {
-                try!(self.head(""));
-                let generics = ast_util::empty_generics();
-                try!(self.print_struct(&**struct_def, &generics, v.node.name, v.span));
-            }
-        }
+        try!(self.head(""));
+        let generics = ast_util::empty_generics();
+        try!(self.print_struct(&v.node.def, &generics, v.node.name, v.span, false));
         match v.node.disr_expr {
             Some(ref d) => {
                 try!(space(&mut self.s));
@@ -3103,6 +3092,7 @@ mod tests {
     use ast_util;
     use codemap;
     use parse::token;
+    use ptr::P;
 
     #[test]
     fn test_fun_to_string() {
@@ -3129,7 +3119,7 @@ mod tests {
             name: ident,
             attrs: Vec::new(),
             // making this up as I go.... ?
-            kind: ast::TupleVariantKind(Vec::new()),
+            def: P(ast::StructDef { fields: Vec::new(), ctor_id: Some(ast::DUMMY_NODE_ID) }),
             id: 0,
             disr_expr: None,
         });

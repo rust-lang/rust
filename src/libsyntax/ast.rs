@@ -1594,7 +1594,7 @@ pub struct EnumDef {
 pub struct Variant_ {
     pub name: Ident,
     pub attrs: Vec<Attribute>,
-    pub kind: VariantKind,
+    pub def: P<StructDef>,
     pub id: NodeId,
     /// Explicit discriminant, eg `Foo = 1`
     pub disr_expr: Option<P<Expr>>,

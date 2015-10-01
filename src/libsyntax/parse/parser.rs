@@ -46,11 +46,11 @@ use ast::PatWildSingle;
 use ast::{PolyTraitRef, QSelf};
 use ast::{Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
-use ast::{StructVariantKind, BiSub, StrStyle};
+use ast::{BiSub, StrStyle};
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{TtDelimited, TtSequence, TtToken};
-use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
+use ast::{Ty, Ty_, TypeBinding};
 use ast::{TyMac};
 use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr};
@@ -5131,22 +5131,13 @@ impl<'a> Parser<'a> {
             let variant_attrs = self.parse_outer_attributes();
             let vlo = self.span.lo;
 
-            let kind;
-            let mut args = Vec::new();
+            let struct_def;
             let mut disr_expr = None;
             let ident = try!(self.parse_ident());
             if try!(self.eat(&token::OpenDelim(token::Brace)) ){
                 // Parse a struct variant.
                 all_nullary = false;
-                let start_span = self.span;
-                let struct_def = try!(self.parse_struct_def());
-                if struct_def.fields.is_empty() {
-                    self.span_err(start_span,
-                        &format!("unit-like struct variant should be written \
-                                 without braces, as `{},`",
-                                ident));
-                }
-                kind = StructVariantKind(struct_def);
+                struct_def = try!(self.parse_struct_def());
             } else if self.check(&token::OpenDelim(token::Paren)) {
                 all_nullary = false;
                 let arg_tys = try!(self.parse_enum_variant_seq(
@@ -5155,25 +5146,31 @@ impl<'a> Parser<'a> {
                     seq_sep_trailing_allowed(token::Comma),
                     |p| p.parse_ty_sum()
                 ));
+                let mut fields = Vec::new();
                 for ty in arg_tys {
-                    args.push(ast::VariantArg {
+                    fields.push(Spanned { span: ty.span, node: ast::StructField_ {
                         ty: ty,
+                        kind: ast::UnnamedField(ast::Inherited),
+                        attrs: Vec::new(),
                         id: ast::DUMMY_NODE_ID,
-                    });
+                    }});
                 }
-                kind = TupleVariantKind(args);
+                struct_def = P(StructDef { fields: fields,
+                                           ctor_id: Some(ast::DUMMY_NODE_ID) });
             } else if try!(self.eat(&token::Eq) ){
                 disr_expr = Some(try!(self.parse_expr_nopanic()));
                 any_disr = disr_expr.as_ref().map(|expr| expr.span);
-                kind = TupleVariantKind(args);
+                struct_def = P(StructDef { fields: Vec::new(),
+                                           ctor_id: Some(ast::DUMMY_NODE_ID) });
             } else {
-                kind = TupleVariantKind(Vec::new());
+                struct_def = P(StructDef { fields: Vec::new(),
+                                           ctor_id: Some(ast::DUMMY_NODE_ID) });
             }
 
             let vr = ast::Variant_ {
                 name: ident,
                 attrs: variant_attrs,
-                kind: kind,
+                def: struct_def,
                 id: ast::DUMMY_NODE_ID,
                 disr_expr: disr_expr,
             };

@@ -267,14 +267,13 @@ pub fn lower_variant(_lctx: &LoweringContext, v: &Variant) -> P<hir::Variant> {
             id: v.node.id,
             name: v.node.name.name,
             attrs: v.node.attrs.clone(),
-            kind: match v.node.kind {
-                TupleVariantKind(ref variant_args) => {
-                    hir::TupleVariantKind(variant_args.iter()
-                                                      .map(|ref x| lower_variant_arg(_lctx, x))
-                                                      .collect())
-                }
-                StructVariantKind(ref struct_def) => {
-                    hir::StructVariantKind(lower_struct_def(_lctx, struct_def))
+            kind: {
+                if v.node.def.ctor_id.is_none() {
+                    hir::StructVariantKind(lower_struct_def(_lctx, &v.node.def))
+                } else {
+                    hir::TupleVariantKind(v.node.def.fields.iter().map(|ref field| {
+                        hir::VariantArg { id: field.node.id, ty: lower_ty(_lctx, &field.node.ty) }
+                    }).collect())
                 }
             },
             disr_expr: v.node.disr_expr.as_ref().map(|e| lower_expr(_lctx, e)),
@@ -565,13 +564,6 @@ pub fn lower_opt_bounds(_lctx: &LoweringContext,
 
 fn lower_bounds(_lctx: &LoweringContext, bounds: &TyParamBounds) -> hir::TyParamBounds {
     bounds.iter().map(|bound| lower_ty_param_bound(_lctx, bound)).collect()
-}
-
-fn lower_variant_arg(_lctx: &LoweringContext, va: &VariantArg) -> hir::VariantArg {
-    hir::VariantArg {
-        id: va.id,
-        ty: lower_ty(_lctx, &va.ty),
-    }
 }
 
 pub fn lower_block(_lctx: &LoweringContext, b: &Block) -> P<hir::Block> {

@@ -504,40 +504,20 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             qualname.push_str("::");
             qualname.push_str(name);
             let val = self.span.snippet(variant.span);
-            match variant.node.kind {
-                ast::TupleVariantKind(ref args) => {
-                    // first ident in span is the variant's name
-                    self.fmt.tuple_variant_str(variant.span,
-                                               self.span.span_for_first_ident(variant.span),
-                                               variant.node.id,
-                                               name,
-                                               &qualname,
-                                               &enum_data.qualname,
-                                               &val,
-                                               enum_data.id);
-                    for arg in args {
-                        self.visit_ty(&*arg.ty);
-                    }
-                }
-                ast::StructVariantKind(ref struct_def) => {
-                    let ctor_id = match struct_def.ctor_id {
-                        Some(node_id) => node_id,
-                        None => ast::DUMMY_NODE_ID,
-                    };
-                    self.fmt.struct_variant_str(variant.span,
-                                                self.span.span_for_first_ident(variant.span),
-                                                variant.node.id,
-                                                ctor_id,
-                                                &qualname,
-                                                &enum_data.qualname,
-                                                &val,
-                                                enum_data.id);
 
-                    for field in &struct_def.fields {
-                        self.process_struct_field_def(field, variant.node.id);
-                        self.visit_ty(&*field.node.ty);
-                    }
-                }
+            let ctor_id = variant.node.def.ctor_id.unwrap_or(ast::DUMMY_NODE_ID);
+            self.fmt.struct_variant_str(variant.span,
+                                        self.span.span_for_first_ident(variant.span),
+                                        variant.node.id,
+                                        ctor_id,
+                                        &qualname,
+                                        &enum_data.qualname,
+                                        &val,
+                                        enum_data.id);
+
+            for field in &variant.node.def.fields {
+                self.process_struct_field_def(field, variant.node.id);
+                self.visit_ty(&*field.node.ty);
             }
         }
         self.process_generic_params(ty_params, item.span, &enum_data.qualname, enum_data.id);
