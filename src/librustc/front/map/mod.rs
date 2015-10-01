@@ -305,22 +305,6 @@ impl<'ast> Map<'ast> {
         self.definitions.borrow().as_local_node_id(def_id)
     }
 
-    /// for default methods, we create a fake node-id; this method
-    /// adds that fake node-id to the def-id tables
-    pub fn synthesize_default_method_def_id(&self,
-                                            impl_def_id: DefId,
-                                            new_method_id: NodeId,
-                                            method_name: Name)
-                                            -> DefId {
-        assert!(impl_def_id.is_local());
-        let index =
-            self.definitions.borrow_mut()
-                            .create_def_with_parent(Some(impl_def_id.index),
-                                                    new_method_id,
-                                                    DefPathData::Value(method_name));
-        DefId::local(index)
-    }
-
     fn entry_count(&self) -> usize {
         self.map.borrow().len()
     }
