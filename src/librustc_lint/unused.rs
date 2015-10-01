@@ -235,7 +235,7 @@ impl LateLintPass for PathStatements {
 }
 
 declare_lint! {
-    UNUSED_ATTRIBUTES,
+    pub UNUSED_ATTRIBUTES,
     Warn,
     "detects attributes that were not used by the compiler"
 }
