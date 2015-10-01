@@ -48,6 +48,21 @@ pub trait FromStr: Sized {
     /// If parsing succeeds, return the value inside `Ok`, otherwise
     /// when the string is ill-formatted return an error specific to the
     /// inside `Err`. The error type is specific to implementation of the trait.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage with [`i32`][ithirtytwo], a type that implements `FromStr`:
+    ///
+    /// [ithirtytwo]: ../primitive.i32.html
+    ///
+    /// ```
+    /// use std::str::FromStr;
+    ///
+    /// let s = "5";
+    /// let x = i32::from_str(s).unwrap();
+    ///
+    /// assert_eq!(5, x);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn from_str(s: &str) -> Result<Self, Self::Err>;
 }
