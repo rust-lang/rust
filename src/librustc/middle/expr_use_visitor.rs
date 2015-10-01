@@ -276,15 +276,13 @@ enum PassArgs {
 }
 
 impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
-    pub fn new(delegate: &'d mut Delegate<'tcx>,
+    pub fn new(delegate: &'d mut (Delegate<'tcx>),
                typer: &'t infer::InferCtxt<'a, 'tcx>)
                -> ExprUseVisitor<'d,'t,'a,'tcx> where 'tcx:'a
     {
-        ExprUseVisitor {
-            typer: typer,
-            mc: mc::MemCategorizationContext::new(typer),
-            delegate: delegate,
-        }
+        let mc: mc::MemCategorizationContext<'t, 'a, 'tcx> =
+            mc::MemCategorizationContext::new(typer);
+        ExprUseVisitor { typer: typer, mc: mc, delegate: delegate }
     }
 
     pub fn walk_fn(&mut self,
@@ -1160,7 +1158,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
 
         self.tcx().with_freevars(closure_expr.id, |freevars| {
             for freevar in freevars {
-                let id_var = freevar.def.def_id().node;
+                let id_var = freevar.def.var_id();
                 let upvar_id = ty::UpvarId { var_id: id_var,
                                              closure_expr_id: closure_expr.id };
                 let upvar_capture = self.typer.upvar_capture(upvar_id).unwrap();
@@ -1192,7 +1190,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                         -> mc::McResult<mc::cmt<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_id = upvar_def.def_id().node;
+        let var_id = upvar_def.var_id();
         let var_ty = try!(self.typer.node_ty(var_id));
         self.mc.cat_def(closure_id, closure_span, var_ty, upvar_def)
     }

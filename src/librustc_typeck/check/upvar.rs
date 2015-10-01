@@ -43,7 +43,6 @@
 use super::FnCtxt;
 
 use check::demand;
-use middle::def_id::DefId;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::ty::{self, Ty};
@@ -130,7 +129,7 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
                      capture_clause: hir::CaptureClause,
                      _body: &hir::Block)
     {
-        let closure_def_id = DefId::local(expr.id);
+        let closure_def_id = self.tcx().map.local_def_id(expr.id);
         if !self.fcx.inh.tables.borrow().closure_kinds.contains_key(&closure_def_id) {
             self.closures_with_inferred_kinds.insert(expr.id);
             self.fcx.inh.tables.borrow_mut().closure_kinds
@@ -141,7 +140,7 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
 
         self.tcx().with_freevars(expr.id, |freevars| {
             for freevar in freevars {
-                let var_node_id = freevar.def.local_node_id();
+                let var_node_id = freevar.def.var_id();
                 let upvar_id = ty::UpvarId { var_id: var_node_id,
                                              closure_expr_id: expr.id };
                 debug!("seed upvar_id {:?}", upvar_id);
@@ -229,7 +228,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
 
         // Now we must process and remove any deferred resolutions,
         // since we have a concrete closure kind.
-        let closure_def_id = DefId::local(id);
+        let closure_def_id = self.fcx.tcx().map.local_def_id(id);
         if self.closures_with_inferred_kinds.contains(&id) {
             let mut deferred_call_resolutions =
                 self.fcx.remove_deferred_call_resolutions(closure_def_id);
@@ -250,16 +249,16 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         tcx.with_freevars(closure_id, |freevars| {
             freevars.iter()
                     .map(|freevar| {
-                        let freevar_def_id = freevar.def.def_id();
-                        let freevar_ty = self.fcx.node_ty(freevar_def_id.node);
+                        let freevar_node_id = freevar.def.var_id();
+                        let freevar_ty = self.fcx.node_ty(freevar_node_id);
                         let upvar_id = ty::UpvarId {
-                            var_id: freevar_def_id.node,
+                            var_id: freevar_node_id,
                             closure_expr_id: closure_id
                         };
                         let capture = self.fcx.infcx().upvar_capture(upvar_id).unwrap();
 
-                        debug!("freevar_def_id={:?} freevar_ty={:?} capture={:?}",
-                               freevar_def_id, freevar_ty, capture);
+                        debug!("freevar_node_id={:?} freevar_ty={:?} capture={:?}",
+                               freevar_node_id, freevar_ty, capture);
 
                         match capture {
                             ty::UpvarCapture::ByValue => freevar_ty,
@@ -483,7 +482,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
             return;
         }
 
-        let closure_def_id = DefId::local(closure_id);
+        let closure_def_id = self.fcx.tcx().map.local_def_id(closure_id);
         let closure_kinds = &mut self.fcx.inh.tables.borrow_mut().closure_kinds;
         let existing_kind = *closure_kinds.get(&closure_def_id).unwrap();
 

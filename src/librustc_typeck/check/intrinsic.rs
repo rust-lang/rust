@@ -13,7 +13,6 @@
 
 use astconv::AstConv;
 use intrinsics;
-use middle::def_id::DefId;
 use middle::subst;
 use middle::ty::FnSig;
 use middle::ty::{self, Ty};
@@ -43,7 +42,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: &ty::ctxt<'tcx>, it: &hir::ForeignItem,
             variadic: false,
         }),
     }));
-    let i_ty = tcx.lookup_item_type(DefId::local(it.id));
+    let i_ty = tcx.lookup_item_type(tcx.map.local_def_id(it.id));
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
     if i_n_tps != n_tps {
         span_err!(tcx.sess, it.span, E0094,
@@ -365,7 +364,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
     };
 
     let tcx = ccx.tcx;
-    let i_ty = tcx.lookup_item_type(DefId::local(it.id));
+    let i_ty = tcx.lookup_item_type(tcx.map.local_def_id(it.id));
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
     let name = it.name.as_str();
 

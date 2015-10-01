@@ -21,7 +21,6 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
 use rustc::front::map as hir_map;
-use rustc::middle::def_id::DefId;
 use rustc::middle::stability;
 
 use rustc_front::hir;
@@ -63,8 +62,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     fn stability(&self, id: ast::NodeId) -> Option<attr::Stability> {
-        self.cx.tcx_opt().and_then(
-            |tcx| stability::lookup(tcx, DefId::local(id)).map(|x| x.clone()))
+        self.cx.tcx_opt().and_then(|tcx| {
+            self.cx.map.opt_local_def_id(id)
+                       .and_then(|def_id| stability::lookup(tcx, def_id))
+                       .cloned()
+        })
     }
 
     pub fn visit(&mut self, krate: &hir::Crate) {
@@ -206,16 +208,18 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             None => return false
         };
         let def = tcx.def_map.borrow()[&id].def_id();
-        if !def.is_local() { return false }
+        let def_node_id = match tcx.map.as_local_node_id(def) {
+            Some(n) => n, None => return false
+        };
         let analysis = match self.analysis {
             Some(analysis) => analysis, None => return false
         };
-        if !please_inline && analysis.public_items.contains(&def.node) {
+        if !please_inline && analysis.public_items.contains(&def) {
             return false
         }
-        if !self.view_item_stack.insert(def.node) { return false }
+        if !self.view_item_stack.insert(def_node_id) { return false }
 
-        let ret = match tcx.map.get(def.node) {
+        let ret = match tcx.map.get(def_node_id) {
             hir_map::NodeItem(it) => {
                 if glob {
                     let prev = mem::replace(&mut self.inlining_from_glob, true);
@@ -236,7 +240,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             _ => false,
         };
-        self.view_item_stack.remove(&id);
+        self.view_item_stack.remove(&def_node_id);
         return ret;
     }
 

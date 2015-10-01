@@ -551,7 +551,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
           }
           def::DefMod(_) | def::DefForeignMod(_) | def::DefUse(_) |
           def::DefTrait(_) | def::DefTy(..) | def::DefPrimTy(_) |
-          def::DefTyParam(..) | def::DefRegion(_) |
+          def::DefTyParam(..) |
           def::DefLabel(_) | def::DefSelfTy(..) |
           def::DefAssociatedTy(..) => {
               Ok(Rc::new(cmt_ {
@@ -575,7 +575,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
               }))
           }
 
-          def::DefUpvar(var_id, _, fn_node_id) => {
+          def::DefUpvar(_, var_id, _, fn_node_id) => {
               let ty = try!(self.node_ty(fn_node_id));
               match ty.sty {
                   ty::TyClosure(closure_id, _) => {
@@ -600,7 +600,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
               }
           }
 
-          def::DefLocal(vid) => {
+          def::DefLocal(_, vid) => {
             Ok(Rc::new(cmt_ {
                 id: id,
                 span: span,
