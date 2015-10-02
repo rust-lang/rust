@@ -235,7 +235,8 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         }
         let def = self.tcx.def_map.borrow().get(&ref_id).unwrap().full_def();
         match def {
-            def::DefPrimTy(_) => None,
+            def::DefPrimTy(..) => None,
+            def::DefSelfTy(..) => None,
             _ => Some(def.def_id()),
         }
     }
@@ -257,14 +258,13 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             def::DefStatic(_, _) |
             def::DefConst(_) |
             def::DefAssociatedConst(..) |
-            def::DefLocal(_) |
+            def::DefLocal(..) |
             def::DefVariant(_, _, _) |
             def::DefUpvar(..) => Some(recorder::VarRef),
 
             def::DefFn(..) => Some(recorder::FnRef),
 
             def::DefSelfTy(..) |
-            def::DefRegion(_) |
             def::DefLabel(_) |
             def::DefTyParam(..) |
             def::DefUse(_) |
@@ -721,7 +721,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                     }
                 }
             }
-            def::DefLocal(_) |
+            def::DefLocal(..) |
             def::DefStatic(_,_) |
             def::DefConst(..) |
             def::DefAssociatedConst(..) |
@@ -1170,7 +1170,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
             }
             let def = def_map.get(&id).unwrap().full_def();
             match def {
-                def::DefLocal(id) => {
+                def::DefLocal(_, id) => {
                     let value = if immut == ast::MutImmutable {
                         self.span.snippet(p.span).to_string()
                     } else {

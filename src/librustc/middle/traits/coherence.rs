@@ -17,7 +17,8 @@ use super::PredicateObligation;
 use super::project;
 use super::util;
 
-use middle::def_id::{DefId, LOCAL_CRATE};
+use metadata::cstore::LOCAL_CRATE;
+use middle::def_id::DefId;
 use middle::subst::{Subst, Substs, TypeSpace};
 use middle::ty::{self, ToPolyTraitRef, Ty};
 use middle::infer::{self, InferCtxt};

@@ -254,7 +254,7 @@ pub fn enc_region(w: &mut Encoder, cx: &ctxt, r: ty::Region) {
         }
         ty::ReEarlyBound(ref data) => {
             mywrite!(w, "B[{}|{}|{}|{}]",
-                     data.param_id,
+                     (cx.ds)(data.def_id),
                      data.space.to_uint(),
                      data.index,
                      data.name);

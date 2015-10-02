@@ -659,7 +659,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                                              doesn't point to a constant");
                     }
                 }
-                Some(def::DefLocal(_)) if v.mode == Mode::ConstFn => {
+                Some(def::DefLocal(..)) if v.mode == Mode::ConstFn => {
                     // Sadly, we can't determine whether the types are zero-sized.
                     v.add_qualif(ConstQualif::NOT_CONST | ConstQualif::NON_ZERO_SIZED);
                 }

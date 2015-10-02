@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use middle::def;
-use middle::def_id::DefId;
 use middle::infer;
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
 use middle::pat_util::pat_is_resolved_const;
@@ -202,9 +201,10 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             let path_res = if let Some(&d) = tcx.def_map.borrow().get(&pat.id) {
                 d
             } else if qself.position == 0 {
+                // This is just a sentinel for finish_resolving_def_to_ty.
+                let sentinel = fcx.tcx().map.local_def_id(ast::CRATE_NODE_ID);
                 def::PathResolution {
-                    // This is just a sentinel for finish_resolving_def_to_ty.
-                    base_def: def::DefMod(DefId::local(ast::CRATE_NODE_ID)),
+                    base_def: def::DefMod(sentinel),
                     last_private: LastMod(AllPublic),
                     depth: path.segments.len()
                 }

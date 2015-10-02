@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use middle::def;
-use middle::def_id::DefId;
 use middle::ty;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -29,7 +28,8 @@ pub enum MethodLateContext {
 }
 
 pub fn method_context(cx: &LateContext, id: ast::NodeId, span: Span) -> MethodLateContext {
-    match cx.tcx.impl_or_trait_items.borrow().get(&DefId::local(id)) {
+    let def_id = cx.tcx.map.local_def_id(id);
+    match cx.tcx.impl_or_trait_items.borrow().get(&def_id) {
         None => cx.sess().span_bug(span, "missing method descriptor?!"),
         Some(item) => match item.container() {
             ty::TraitContainer(..) => MethodLateContext::TraitDefaultImpl,
@@ -274,7 +274,7 @@ impl LateLintPass for NonSnakeCase {
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
         if let &hir::PatIdent(_, ref path1, _) = &p.node {
             let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
-            if let Some(def::DefLocal(_)) = def {
+            if let Some(def::DefLocal(..)) = def {
                 self.check_snake_case(cx, "variable", &path1.node.name.as_str(), Some(p.span));
             }
         }

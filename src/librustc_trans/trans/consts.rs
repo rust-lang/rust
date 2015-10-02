@@ -13,6 +13,7 @@ use back::abi;
 use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
+use metadata::cstore::LOCAL_CRATE;
 use middle::{check_const, def};
 use middle::const_eval::{self, ConstVal};
 use middle::const_eval::{const_int_checked_neg, const_uint_checked_neg};
@@ -25,7 +26,7 @@ use middle::const_eval::{const_int_checked_shl, const_uint_checked_shl};
 use middle::const_eval::{const_int_checked_shr, const_uint_checked_shr};
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::const_eval::eval_const_expr_partial;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
 use trans::common::*;
@@ -782,7 +783,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprPath(..) => {
             let def = cx.tcx().def_map.borrow().get(&e.id).unwrap().full_def();
             match def {
-                def::DefLocal(id) => {
+                def::DefLocal(_, id) => {
                     if let Some(val) = fn_args.and_then(|args| args.get(&id).cloned()) {
                         val
                     } else {
@@ -876,9 +877,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         },
         hir::ExprClosure(_, ref decl, ref body) => {
             match ety.sty {
-                ty::TyClosure(_, ref substs) => {
+                ty::TyClosure(def_id, ref substs) => {
                     closure::trans_closure_expr(closure::Dest::Ignore(cx), decl,
-                                                body, e.id, substs);
+                                                body, e.id, def_id, substs);
                 }
                 _ =>
                     cx.sess().span_bug(
@@ -959,6 +960,9 @@ fn get_static_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                             did: DefId,
                             ty: Ty<'tcx>)
                             -> ValueRef {
-    if did.is_local() { return base::get_item_val(ccx, did.node) }
-    base::trans_external_path(ccx, did, ty)
+    if let Some(node_id) = ccx.tcx().map.as_local_node_id(did) {
+        base::get_item_val(ccx, node_id)
+    } else {
+        base::trans_external_path(ccx, did, ty)
+    }
 }

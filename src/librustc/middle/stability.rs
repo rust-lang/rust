@@ -13,8 +13,9 @@
 
 use session::Session;
 use lint;
+use metadata::cstore::LOCAL_CRATE;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::ty;
 use middle::privacy::PublicItems;
 use metadata::csearch;
@@ -112,7 +113,8 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                             "An API can't be stabilized after it is deprecated");
                     }
 
-                    self.index.map.insert(DefId::local(id), Some(stab));
+                    let def_id = self.tcx.map.local_def_id(id);
+                    self.index.map.insert(def_id, Some(stab));
 
                     // Don't inherit #[stable(feature = "rust1", since = "1.0.0")]
                     if stab.level != attr::Stable {
@@ -128,7 +130,8 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                            use_parent, self.parent);
                     if use_parent {
                         if let Some(stab) = self.parent {
-                            self.index.map.insert(DefId::local(id), Some(stab));
+                            let def_id = self.tcx.map.local_def_id(id);
+                            self.index.map.insert(def_id, Some(stab));
                         } else if self.index.staged_api[&LOCAL_CRATE] && required
                             && self.export_map.contains(&id)
                             && !self.tcx.sess.opts.test {
@@ -380,7 +383,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &hir::Item, warn_about_defns: bool,
                 Some(cnum) => cnum,
                 None => return,
             };
-            let id = DefId { krate: cnum, node: ast::CRATE_NODE_ID };
+            let id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
             maybe_do_stability_check(tcx, id, item.span, cb);
         }
 
@@ -471,6 +474,7 @@ pub fn check_path(tcx: &ty::ctxt, path: &hir::Path, id: ast::NodeId,
                   cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
     match tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
         Some(def::DefPrimTy(..)) => {}
+        Some(def::DefSelfTy(..)) => {}
         Some(def) => {
             maybe_do_stability_check(tcx, def.def_id(), path.span, cb);
         }

@@ -102,9 +102,9 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
         self.add_exports_for_module(&mut exports, module_);
         match module_.def_id.get() {
             Some(def_id) => {
-                self.export_map.insert(def_id.node, exports);
-                debug!("(computing exports) writing exports for {} (some)",
-                       def_id.node);
+                let node_id = self.ast_map.as_local_node_id(def_id).unwrap();
+                self.export_map.insert(node_id, exports);
+                debug!("(computing exports) writing exports for {} (some)", node_id);
             }
             None => {}
         }

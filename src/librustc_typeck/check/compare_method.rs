@@ -169,8 +169,8 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     // Create a parameter environment that represents the implementation's
     // method.
-    let impl_param_env =
-        ty::ParameterEnvironment::for_item(tcx, impl_m.def_id.node);
+    let impl_m_node_id = tcx.map.as_local_node_id(impl_m.def_id).unwrap();
+    let impl_param_env = ty::ParameterEnvironment::for_item(tcx, impl_m_node_id);
 
     // Create mapping from impl to skolemized.
     let impl_to_skol_substs = &impl_param_env.free_substs;
@@ -428,8 +428,8 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     // Create a parameter environment that represents the implementation's
     // method.
-    let impl_param_env =
-        ty::ParameterEnvironment::for_item(tcx, impl_c.def_id.node);
+    let impl_c_node_id = tcx.map.as_local_node_id(impl_c.def_id).unwrap();
+    let impl_param_env = ty::ParameterEnvironment::for_item(tcx, impl_c_node_id);
 
     // Create mapping from impl to skolemized.
     let impl_to_skol_substs = &impl_param_env.free_substs;

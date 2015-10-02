@@ -167,13 +167,13 @@ impl fmt::Display for Ident {
 
 impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self.name.as_str())
+        self.name.encode(s)
     }
 }
 
 impl Decodable for Ident {
     fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
-        Ok(str_to_ident(&try!(d.read_str())[..]))
+        Ok(Ident::with_empty_ctxt(try!(Name::decode(d))))
     }
 }
 

@@ -245,7 +245,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                 let pat_ty = cx.tcx.pat_ty(p);
                 if let ty::TyEnum(edef, _) = pat_ty.sty {
                     let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
-                    if let Some(DefLocal(_)) = def {
+                    if let Some(DefLocal(..)) = def {
                         if edef.variants.iter().any(|variant|
                             variant.name == ident.node.name
                                 && variant.kind() == VariantKind::Unit

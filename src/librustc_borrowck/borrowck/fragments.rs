@@ -20,7 +20,7 @@ use borrowck::LoanPathKind::{LpVar, LpUpvar, LpDowncast, LpExtend};
 use borrowck::LoanPathElem::{LpDeref, LpInterior};
 use borrowck::move_data::InvalidMovePathIndex;
 use borrowck::move_data::{MoveData, MovePathIndex};
-use rustc::middle::def_id::{DefId, LOCAL_CRATE};
+use rustc::middle::def_id::{DefId};
 use rustc::middle::ty;
 use rustc::middle::mem_categorization as mc;
 
@@ -133,7 +133,7 @@ pub fn build_unfragmented_map(this: &mut borrowck::BorrowckCtxt,
     }
 
     let mut fraginfo_map = this.tcx.fragment_infos.borrow_mut();
-    let fn_did = DefId { krate: LOCAL_CRATE, node: id };
+    let fn_did = this.tcx.map.local_def_id(id);
     let prev = fraginfo_map.insert(fn_did, fragment_infos);
     assert!(prev.is_none());
 }
