@@ -180,7 +180,7 @@ pub fn mk_attr_id() -> AttrId {
 pub fn mk_attr_inner(id: AttrId, item: P<MetaItem>) -> Attribute {
     dummy_spanned(Attribute_ {
         id: id,
-        style: hir::AttrInner,
+        style: hir::AttrStyle::Inner,
         value: item,
         is_sugared_doc: false,
     })
@@ -190,7 +190,7 @@ pub fn mk_attr_inner(id: AttrId, item: P<MetaItem>) -> Attribute {
 pub fn mk_attr_outer(id: AttrId, item: P<MetaItem>) -> Attribute {
     dummy_spanned(Attribute_ {
         id: id,
-        style: hir::AttrOuter,
+        style: hir::AttrStyle::Outer,
         value: item,
         is_sugared_doc: false,
     })

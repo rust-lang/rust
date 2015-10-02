@@ -1119,7 +1119,7 @@ fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
                 codemap::Spanned {
                     node: ast::Attribute_ {
                         id: attr::mk_attr_id(),
-                        style: ast::AttrOuter,
+                        style: ast::AttrStyle::Outer,
                         value: meta_item,
                         is_sugared_doc: is_sugared_doc,
                     },

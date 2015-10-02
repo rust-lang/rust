@@ -660,7 +660,7 @@ fn contains_macro_use(fld: &mut MacroExpander, attrs: &[ast::Attribute]) -> bool
         if attr.check_name("macro_escape") {
             fld.cx.span_warn(attr.span, "macro_escape is a deprecated synonym for macro_use");
             is_use = true;
-            if let ast::AttrInner = attr.node.style {
+            if let ast::AttrStyle::Inner = attr.node.style {
                 fld.cx.fileline_help(attr.span, "consider an outer attribute, \
                                              #[macro_use] mod ...");
             }

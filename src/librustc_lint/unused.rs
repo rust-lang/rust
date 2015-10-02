@@ -285,10 +285,10 @@ impl LateLintPass for UnusedAttributes {
                                                     }).is_some();
             if  known_crate || plugin_crate {
                 let msg = match attr.node.style {
-                    ast::AttrOuter => "crate-level attribute should be an inner \
-                                       attribute: add an exclamation mark: #![foo]",
-                    ast::AttrInner => "crate-level attribute should be in the \
-                                       root module",
+                    ast::AttrStyle::Outer => "crate-level attribute should be an inner \
+                                              attribute: add an exclamation mark: #![foo]",
+                    ast::AttrStyle::Inner => "crate-level attribute should be in the \
+                                              root module",
                 };
                 cx.span_lint(UNUSED_ATTRIBUTES, attr.span, msg);
             }
