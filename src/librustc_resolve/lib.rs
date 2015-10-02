@@ -501,7 +501,8 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         }
 
         // `visit::walk_variant` without the discriminant expression.
-        self.visit_struct_def(&variant.node.def, variant.node.name, generics, item_id);
+        self.visit_struct_def(&variant.node.def, variant.node.name,
+                              generics, item_id, variant.span);
     }
     fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem) {
         execute_callback!(hir_map::Node::NodeForeignItem(foreign_item), self);

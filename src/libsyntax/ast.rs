@@ -1571,12 +1571,6 @@ pub struct ForeignMod {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct VariantArg {
-    pub ty: P<Ty>,
-    pub id: NodeId,
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct EnumDef {
     pub variants: Vec<P<Variant>>,
 }

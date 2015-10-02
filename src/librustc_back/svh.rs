@@ -301,7 +301,8 @@ mod svh_visitor {
     }
 
     impl<'a, 'v> Visitor<'v> for StrictVersionHashVisitor<'a> {
-        fn visit_struct_def(&mut self, s: &StructDef, name: Name, g: &Generics, _: NodeId) {
+        fn visit_struct_def(&mut self, s: &StructDef, name: Name,
+                            g: &Generics, _: NodeId, _: Span) {
             SawStructDef(name.as_str()).hash(self.st);
             visit::walk_generics(self, g);
             visit::walk_struct_def(self, s)

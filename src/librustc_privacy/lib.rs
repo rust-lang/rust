@@ -129,7 +129,7 @@ impl<'v> Visitor<'v> for ParentVisitor {
     }
 
     fn visit_struct_def(&mut self, s: &hir::StructDef, _: ast::Name,
-                        _: &'v hir::Generics, item_id: ast::NodeId) {
+                        _: &'v hir::Generics, item_id: ast::NodeId, _: Span) {
         // Struct constructors are parented to their struct definitions because
         // they essentially are the struct definitions.
         if s.kind != hir::VariantKind::Dict {

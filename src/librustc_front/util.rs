@@ -285,7 +285,8 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
                         struct_def: &StructDef,
                         _: Name,
                         _: &hir::Generics,
-                        _: NodeId) {
+                        _: NodeId,
+                        _: Span) {
         self.operation.visit_id(struct_def.id);
         visit::walk_struct_def(self, struct_def);
     }
