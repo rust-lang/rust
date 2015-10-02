@@ -133,8 +133,7 @@ enum_from_u32! {
         tag_table_method_map = 0x5f,
         // GAP 0x60
         tag_table_adjustments = 0x61,
-        // GAP 0x62, 0x63
-            // GAP 0x64, 0x65
+        // GAP 0x62, 0x63, 0x64, 0x65
         tag_table_upvar_capture_map = 0x66,
         // GAP 0x67, 0x68
         tag_table_const_qualif = 0x69,
@@ -163,22 +162,17 @@ pub const tag_lang_items_missing: usize = 0x76;
 
 pub const tag_item_unnamed_field: usize = 0x77;
 pub const tag_items_data_item_visibility: usize = 0x78;
-
-// GAP 0x79, 0x7a
-
+pub const tag_items_data_item_inherent_impl: usize = 0x79;
+// GAP 0x7a
 pub const tag_mod_child: usize = 0x7b;
 pub const tag_misc_info: usize = 0x108; // top-level only
 pub const tag_misc_info_crate_items: usize = 0x7c;
 
-// GAP 0x7d
-// GAP 0x7e
-
 pub const tag_impls: usize = 0x109; // top-level only
-pub const tag_impls_impl: usize = 0x7f;
-pub const tag_impls_impl_trait_def_id: usize = 0x8d;
+pub const tag_impls_trait: usize = 0x7d;
+pub const tag_impls_trait_impl: usize = 0x7e;
 
-pub const tag_items_data_item_inherent_impl: usize = 0x80;
-pub const tag_items_data_item_extension_impl: usize = 0x81;
+// GAP 0x7f, 0x80, 0x81
 
 pub const tag_native_libraries: usize = 0x10a; // top-level only
 pub const tag_native_libraries_lib: usize = 0x82;
@@ -208,7 +202,7 @@ pub const tag_struct_field: usize = 0x8a;
 
 pub const tag_items_data_item_struct_ctor: usize = 0x8b;
 pub const tag_attribute_is_sugared_doc: usize = 0x8c;
-
+// GAP 0x8d
 pub const tag_items_data_region: usize = 0x8e;
 
 pub const tag_region_param_def: usize = 0x8f;

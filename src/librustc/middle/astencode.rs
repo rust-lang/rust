@@ -1319,7 +1319,7 @@ fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
                 if let Some(ctor_id) = def.ctor_id {
                     let ctor_did = dcx.tcx.lookup_adt_def(orig_did)
                         .struct_variant().ctor_id;
-                    println!("copying ctor {:?}", ctor_did);
+                    debug!("copying ctor {:?}", ctor_did);
                     copy_item_type(dcx, ctor_id, ctor_did);
                 }
             }

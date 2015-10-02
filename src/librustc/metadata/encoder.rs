@@ -865,20 +865,6 @@ fn encode_inherent_implementations(ecx: &EncodeContext,
     }
 }
 
-// Encodes the implementations of a trait defined in this crate.
-fn encode_extension_implementations(ecx: &EncodeContext,
-                                    rbml_w: &mut Encoder,
-                                    trait_def_id: DefId) {
-    assert!(trait_def_id.is_local());
-    let def = ecx.tcx.lookup_trait_def(trait_def_id);
-
-    def.for_each_impl(ecx.tcx, |impl_def_id| {
-        rbml_w.start_tag(tag_items_data_item_extension_impl);
-        encode_def_id(rbml_w, impl_def_id);
-        rbml_w.end_tag();
-    });
-}
-
 fn encode_stability(rbml_w: &mut Encoder, stab_opt: Option<&attr::Stability>) {
     stab_opt.map(|stab| {
         rbml_w.start_tag(tag_items_data_item_stability);
@@ -1255,9 +1241,6 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                  def_to_u64(method_def_id.def_id()));
         }
         encode_path(rbml_w, path.clone());
-
-        // Encode the implementations of this trait.
-        encode_extension_implementations(ecx, rbml_w, def_id);
 
         // Encode inherent implementations for this trait.
         encode_inherent_implementations(ecx, rbml_w, def_id);
@@ -1763,53 +1746,44 @@ fn encode_struct_field_attrs(ecx: &EncodeContext,
 
 
 
-struct ImplVisitor<'a, 'b:'a, 'c:'a, 'tcx:'b> {
-    ecx: &'a EncodeContext<'b, 'tcx>,
-    rbml_w: &'a mut Encoder<'c>,
+struct ImplVisitor<'a, 'tcx:'a> {
+    tcx: &'a ty::ctxt<'tcx>,
+    impls: FnvHashMap<DefId, Vec<DefId>>
 }
 
-impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'b, 'c, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        if let hir::ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node {
-            let def_id = self.ecx.tcx.def_map.borrow().get(&trait_ref.ref_id).unwrap().def_id();
-
-            // Load eagerly if this is an implementation of the Drop trait
-            // or if the trait is not defined in this crate.
-            if Some(def_id) == self.ecx.tcx.lang_items.drop_trait() ||
-                    def_id.krate != LOCAL_CRATE {
-                self.rbml_w.start_tag(tag_impls_impl);
-                encode_def_id(self.rbml_w, self.ecx.tcx.map.local_def_id(item.id));
-                self.rbml_w.wr_tagged_u64(tag_impls_impl_trait_def_id, def_to_u64(def_id));
-                self.rbml_w.end_tag();
+        if let hir::ItemImpl(..) = item.node {
+            let impl_id = self.tcx.map.local_def_id(item.id);
+            if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id) {
+                self.impls.entry(trait_ref.def_id)
+                    .or_insert(vec![])
+                    .push(impl_id);
             }
         }
         visit::walk_item(self, item);
     }
 }
 
-/// Encodes implementations that are eagerly loaded.
-///
-/// None of this is necessary in theory; we can load all implementations
-/// lazily. However, in two cases the optimizations to lazily load
-/// implementations are not yet implemented. These two cases, which require us
-/// to load implementations eagerly, are:
-///
-/// * Destructors (implementations of the Drop trait).
-///
-/// * Implementations of traits not defined in this crate.
+/// Encodes an index, mapping each trait to its (local) implementations.
 fn encode_impls<'a>(ecx: &'a EncodeContext,
                     krate: &hir::Crate,
                     rbml_w: &'a mut Encoder) {
+    let mut visitor = ImplVisitor {
+        tcx: ecx.tcx,
+        impls: FnvHashMap()
+    };
+    visit::walk_crate(&mut visitor, krate);
+
     rbml_w.start_tag(tag_impls);
-
-    {
-        let mut visitor = ImplVisitor {
-            ecx: ecx,
-            rbml_w: rbml_w,
-        };
-        visit::walk_crate(&mut visitor, krate);
+    for (trait_, trait_impls) in visitor.impls {
+        rbml_w.start_tag(tag_impls_trait);
+        encode_def_id(rbml_w, trait_);
+        for impl_ in trait_impls {
+            rbml_w.wr_tagged_u64(tag_impls_trait_impl, def_to_u64(impl_));
+        }
+        rbml_w.end_tag();
     }
-
     rbml_w.end_tag();
 }
 
