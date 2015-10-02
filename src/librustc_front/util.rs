@@ -194,11 +194,6 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
                     }
                 }
             }
-            ItemEnum(ref enum_definition, _) => {
-                for variant in &enum_definition.variants {
-                    self.operation.visit_id(variant.node.id)
-                }
-            }
             _ => {}
         }
 
@@ -290,8 +285,7 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
                         struct_def: &StructDef,
                         _: Name,
                         _: &hir::Generics,
-                        id: NodeId) {
-        self.operation.visit_id(id);
+                        _: NodeId) {
         self.operation.visit_id(struct_def.id);
         visit::walk_struct_def(self, struct_def);
     }

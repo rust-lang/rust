@@ -264,7 +264,6 @@ pub fn lower_foreign_mod(_lctx: &LoweringContext, fm: &ForeignMod) -> hir::Forei
 pub fn lower_variant(_lctx: &LoweringContext, v: &Variant) -> P<hir::Variant> {
     P(Spanned {
         node: hir::Variant_ {
-            id: v.node.id,
             name: v.node.name.name,
             attrs: v.node.attrs.clone(),
             def: lower_struct_def(_lctx, &v.node.def),

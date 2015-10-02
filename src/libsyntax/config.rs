@@ -140,11 +140,10 @@ fn fold_item_underscore<F>(cx: &mut Context<F>, item: ast::Item_) -> ast::Item_ 
                 if !(cx.in_cfg)(&v.node.attrs) {
                     None
                 } else {
-                    Some(v.map(|Spanned {node: ast::Variant_ {id, name, attrs, def,
+                    Some(v.map(|Spanned {node: ast::Variant_ {name, attrs, def,
                                                               disr_expr}, span}| {
                         Spanned {
                             node: ast::Variant_ {
-                                id: id,
                                 name: name,
                                 attrs: attrs,
                                 def: fold_struct(cx, def),

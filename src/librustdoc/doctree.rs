@@ -120,7 +120,6 @@ pub struct Variant {
     pub name: Name,
     pub attrs: Vec<ast::Attribute>,
     pub def: P<hir::StructDef>,
-    pub id: ast::NodeId,
     pub stab: Option<attr::Stability>,
     pub whence: Span,
 }

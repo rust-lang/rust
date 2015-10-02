@@ -503,7 +503,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
             self.fmt.struct_variant_str(variant.span,
                                         self.span.span_for_first_ident(variant.span),
-                                        variant.node.id,
+                                        variant.node.def.id,
                                         variant.node.def.id,
                                         &qualname,
                                         &enum_data.qualname,
@@ -511,7 +511,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                         enum_data.id);
 
             for field in &variant.node.def.fields {
-                self.process_struct_field_def(field, variant.node.id);
+                self.process_struct_field_def(field, variant.node.def.id);
                 self.visit_ty(&*field.node.ty);
             }
         }

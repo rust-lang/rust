@@ -1853,7 +1853,7 @@ impl Clean<Item> for doctree::Variant {
             source: self.whence.clean(cx),
             visibility: None,
             stability: self.stab.clean(cx),
-            def_id: cx.map.local_def_id(self.id),
+            def_id: cx.map.local_def_id(self.def.id),
             inner: VariantItem(Variant {
                 kind: struct_def_to_variant_kind(&self.def, cx),
             }),

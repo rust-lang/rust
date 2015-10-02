@@ -339,7 +339,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
         }
         match item.node {
             hir::ItemEnum(ref enum_def, _) if allow_dead_code => {
-                self.worklist.extend(enum_def.variants.iter().map(|variant| variant.node.id));
+                self.worklist.extend(enum_def.variants.iter().map(|variant| variant.node.def.id));
             }
             hir::ItemTrait(_, _, _, ref trait_items) => {
                 for trait_item in trait_items {
@@ -466,7 +466,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_variant(&mut self, variant: &hir::Variant_) -> bool {
-        !self.symbol_is_live(variant.id, None)
+        !self.symbol_is_live(variant.def.id, None)
             && !has_allow_dead_code_or_lang_attr(&variant.attrs)
     }
 
@@ -542,7 +542,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
                 hir::ItemEnum(ref enum_def, _) => {
                     for variant in &enum_def.variants {
                         if self.should_warn_about_variant(&variant.node) {
-                            self.warn_dead_code(variant.node.id, variant.span,
+                            self.warn_dead_code(variant.node.def.id, variant.span,
                                                 variant.node.name, "variant");
                         }
                     }
