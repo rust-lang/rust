@@ -4658,7 +4658,7 @@ impl<'a> Parser<'a> {
             (fields, VariantKind::Dict)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
-            let fields = try!(self.parse_tuple_struct_body(class_name, &mut generics));
+            let fields = try!(self.parse_tuple_struct_body(&mut generics));
             (fields, VariantKind::Tuple)
         } else {
             let token_str = self.this_token_to_string();
@@ -4694,7 +4694,6 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_tuple_struct_body(&mut self,
-                                   class_name: ast::Ident,
                                    generics: &mut ast::Generics)
                                    -> PResult<Vec<StructField>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
@@ -4714,12 +4713,6 @@ impl<'a> Parser<'a> {
                 };
                 Ok(spanned(lo, p.span.hi, struct_field_))
             }));
-
-        if fields.is_empty() {
-            return Err(self.fatal(&format!("unit-like struct definition should be \
-                                            written as `struct {};`",
-                                           class_name)));
-        }
 
         generics.where_clause = try!(self.parse_where_clause());
         try!(self.expect(&token::Semi));
