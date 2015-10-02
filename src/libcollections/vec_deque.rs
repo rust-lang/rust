@@ -21,9 +21,11 @@
 use core::cmp::Ordering;
 use core::fmt;
 use core::iter::{repeat, FromIterator};
+use core::mem;
 use core::ops::{Index, IndexMut};
 use core::ptr;
 use core::slice;
+use core::usize;
 
 use core::hash::{Hash, Hasher};
 use core::cmp;
@@ -32,6 +34,7 @@ use alloc::raw_vec::RawVec;
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1
+const MAXIMUM_ZST_CAPACITY: usize = 1 << (usize::BITS - 1); // Largest possible power of two
 
 /// `VecDeque` is a growable ring buffer, which can be used as a
 /// double-ended queue efficiently.
@@ -83,7 +86,12 @@ impl<T> VecDeque<T> {
     /// Marginally more convenient
     #[inline]
     fn cap(&self) -> usize {
-        self.buf.cap()
+        if mem::size_of::<T>() == 0 {
+            // For zero sized types, we are always at maximum capacity
+            MAXIMUM_ZST_CAPACITY
+        } else {
+            self.buf.cap()
+        }
     }
 
     /// Turn ptr into a slice
@@ -1465,6 +1473,7 @@ impl<T: Clone> VecDeque<T> {
 #[inline]
 fn wrap_index(index: usize, size: usize) -> usize {
     // size is always a power of 2
+    debug_assert!(size.is_power_of_two());
     index & (size - 1)
 }
 
@@ -2029,6 +2038,36 @@ mod tests {
                     assert_eq!(tester, expected_self);
                     assert_eq!(result, expected_other);
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn test_zst_push() {
+        const N: usize = 8;
+
+        // Zero sized type
+        struct Zst;
+
+        // Test that for all possible sequences of push_front / push_back,
+        // we end up with a deque of the correct size
+
+        for len in 0..N {
+            let mut tester = VecDeque::with_capacity(len);
+            assert_eq!(tester.len(), 0);
+            assert!(tester.capacity() >= len);
+            for case in 0..(1 << len) {
+                assert_eq!(tester.len(), 0);
+                for bit in 0..len {
+                    if case & (1 << bit) != 0 {
+                        tester.push_front(Zst);
+                    } else {
+                        tester.push_back(Zst);
+                    }
+                }
+                assert_eq!(tester.len(), len);
+                assert_eq!(tester.iter().count(), len);
+                tester.clear();
             }
         }
     }
