@@ -13,7 +13,7 @@ use syntax::print::pprust;
 use syntax::codemap::{self, Span, BytePos, CodeMap};
 
 use Indent;
-use lists::{itemize_list, write_list, ListFormatting};
+use lists::itemize_list;
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, span_after, format_mutability, wrap_str};
 
@@ -206,9 +206,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
                                  .collect::<Vec<_>>();
 
             let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
-            let list_lo = span_after(codemap::mk_sp(*span_lo, span_hi),
-                                     "<",
-                                     context.codemap);
+            let list_lo = span_after(codemap::mk_sp(*span_lo, span_hi), "<", context.codemap);
             let separator = get_path_separator(context.codemap, *span_lo, list_lo);
 
             // 1 for <
@@ -232,9 +230,10 @@ fn rewrite_segment(segment: &ast::PathSegment,
                                      },
                                      list_lo,
                                      span_hi);
-
-            let fmt = ListFormatting::for_item(list_width, offset + extra_offset, context.config);
-            let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
+            let list_str = try_opt!(::lists::format_item_list(items,
+                                                              list_width,
+                                                              offset + extra_offset,
+                                                              context.config));
 
             // Update position of last bracket.
             *span_lo = next_span_lo;
@@ -263,9 +262,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
                                      |ty| ty.rewrite(context, budget, offset).unwrap(),
                                      list_lo,
                                      span_hi);
-
-            let fmt = ListFormatting::for_fn(budget, offset, context.config);
-            let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
+            let list_str = try_opt!(::lists::format_fn_args(items, budget, offset, context.config));
 
             format!("({}){}", list_str, output)
         }

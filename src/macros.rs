@@ -89,7 +89,12 @@ pub fn rewrite_macro(mac: &ast::Mac,
     match style {
         MacroStyle::Parens => {
             // Format macro invocation as function call.
-            rewrite_call(context, &macro_name, &expr_vec, mac.span, width, offset)
+            rewrite_call(context,
+                         &macro_name,
+                         &expr_vec,
+                         mac.span,
+                         width,
+                         offset)
         }
         MacroStyle::Brackets => {
             // Format macro invocation as array literal.

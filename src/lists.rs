@@ -14,7 +14,7 @@ use std::iter::Peekable;
 use syntax::codemap::{self, CodeMap, BytePos};
 
 use Indent;
-use utils::{round_up_to_power_of_two, wrap_str};
+use utils::wrap_str;
 use comment::{FindUncommented, rewrite_comment, find_comment_end};
 use config::Config;
 
@@ -44,46 +44,69 @@ pub enum SeparatorTactic {
 impl_enum_decodable!(SeparatorTactic, Always, Never, Vertical);
 
 // TODO having some helpful ctors for ListFormatting would be nice.
+// FIXME: this should have only 1 width param
 pub struct ListFormatting<'a> {
-    pub tactic: ListTactic,
+    pub tactic: DefinitiveListTactic,
     pub separator: &'a str,
     pub trailing_separator: SeparatorTactic,
     pub indent: Indent,
-    // Available width if we layout horizontally.
-    pub h_width: usize,
-    // Available width if we layout vertically
-    pub v_width: usize,
+    pub width: usize,
     // Non-expressions, e.g. items, will have a new line at the end of the list.
     // Important for comment styles.
     pub ends_with_newline: bool,
     pub config: &'a Config,
 }
 
-impl<'a> ListFormatting<'a> {
-    pub fn for_fn(width: usize, offset: Indent, config: &'a Config) -> ListFormatting<'a> {
-        ListFormatting {
-            tactic: ListTactic::LimitedHorizontalVertical(config.fn_call_width),
-            separator: ",",
-            trailing_separator: SeparatorTactic::Never,
-            indent: offset,
-            h_width: width,
-            v_width: width,
-            ends_with_newline: false,
-            config: config,
-        }
-    }
+pub fn format_fn_args<I>(items: I, width: usize, offset: Indent, config: &Config) -> Option<String>
+    where I: Iterator<Item = ListItem>
+{
+    list_helper(items,
+                width,
+                offset,
+                config,
+                ListTactic::LimitedHorizontalVertical(config.fn_call_width))
+}
 
-    pub fn for_item(width: usize, offset: Indent, config: &'a Config) -> ListFormatting<'a> {
-        ListFormatting {
-            tactic: ListTactic::HorizontalVertical,
-            separator: ",",
-            trailing_separator: SeparatorTactic::Never,
-            indent: offset,
-            h_width: width,
-            v_width: width,
-            ends_with_newline: false,
-            config: config,
-        }
+pub fn format_item_list<I>(items: I,
+                           width: usize,
+                           offset: Indent,
+                           config: &Config)
+                           -> Option<String>
+    where I: Iterator<Item = ListItem>
+{
+    list_helper(items,
+                width,
+                offset,
+                config,
+                ListTactic::HorizontalVertical)
+}
+
+fn list_helper<I>(items: I,
+                  width: usize,
+                  offset: Indent,
+                  config: &Config,
+                  tactic: ListTactic)
+                  -> Option<String>
+    where I: Iterator<Item = ListItem>
+{
+    let item_vec: Vec<_> = items.collect();
+    let tactic = definitive_tactic(&item_vec, tactic, width);
+    let fmt = ListFormatting {
+        tactic: tactic,
+        separator: ",",
+        trailing_separator: SeparatorTactic::Never,
+        indent: offset,
+        width: width,
+        ends_with_newline: false,
+        config: config,
+    };
+
+    write_list(&item_vec, &fmt)
+}
+
+impl AsRef<ListItem> for ListItem {
+    fn as_ref(&self) -> &ListItem {
+        self
     }
 }
 
@@ -116,76 +139,67 @@ impl ListItem {
     }
 }
 
-// Format a list of commented items into a string.
-// FIXME: this has grown into a monstrosity
-// TODO: add unit tests
-pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Option<String> {
-    if items.is_empty() {
-        return Some(String::new());
-    }
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+pub enum DefinitiveListTactic {
+    Vertical,
+    Horizontal,
+    Mixed,
+}
 
-    let mut tactic = formatting.tactic;
+pub fn definitive_tactic<'t, I, T>(items: I,
+                                   tactic: ListTactic,
+                                   width: usize)
+                                   -> DefinitiveListTactic
+    where I: IntoIterator<Item = T> + Clone,
+          T: AsRef<ListItem>
+{
+    let pre_line_comments = items.clone()
+                                 .into_iter()
+                                 .any(|item| item.as_ref().has_line_pre_comment());
 
-    // Conservatively overestimates because of the changing separator tactic.
-    let sep_count = if formatting.trailing_separator == SeparatorTactic::Always {
-        items.len()
-    } else {
-        items.len() - 1
+    let limit = match tactic {
+        _ if pre_line_comments => return DefinitiveListTactic::Vertical,
+        ListTactic::Mixed => return DefinitiveListTactic::Mixed,
+        ListTactic::Horizontal => return DefinitiveListTactic::Horizontal,
+        ListTactic::Vertical => return DefinitiveListTactic::Vertical,
+        ListTactic::LimitedHorizontalVertical(limit) => ::std::cmp::min(width, limit),
+        ListTactic::HorizontalVertical => width,
     };
+
+    let (sep_count, total_width) = calculate_width(items.clone());
+    let sep_len = ", ".len(); // FIXME: make more generic?
+    let total_sep_len = sep_len * sep_count.checked_sub(1).unwrap_or(0);
+    let real_total = total_width + total_sep_len;
+
+    if real_total <= limit && !pre_line_comments &&
+       !items.into_iter().any(|item| item.as_ref().is_multiline()) {
+        DefinitiveListTactic::Horizontal
+    } else {
+        DefinitiveListTactic::Vertical
+    }
+}
+
+// Format a list of commented items into a string.
+// TODO: add unit tests
+pub fn write_list<'b, I, T>(items: I, formatting: &ListFormatting<'b>) -> Option<String>
+    where I: IntoIterator<Item = T>,
+          T: AsRef<ListItem>
+{
+    let tactic = formatting.tactic;
     let sep_len = formatting.separator.len();
-    let total_sep_len = (sep_len + 1) * sep_count;
-    let total_width = calculate_width(items);
-    let fits_single = total_width + total_sep_len <= formatting.h_width;
-
-    // Check if we need to fallback from horizontal listing, if possible.
-    if let ListTactic::LimitedHorizontalVertical(limit) = tactic {
-        if total_width > limit {
-            tactic = ListTactic::Vertical;
-        } else {
-            tactic = ListTactic::HorizontalVertical;
-        }
-    }
-    if tactic == ListTactic::HorizontalVertical {
-        debug!("write_list: total_width: {}, total_sep_len: {}, h_width: {}",
-               total_width,
-               total_sep_len,
-               formatting.h_width);
-        tactic = if fits_single && !items.iter().any(ListItem::is_multiline) {
-            ListTactic::Horizontal
-        } else {
-            ListTactic::Vertical
-        };
-    }
-
-    // Check if we can fit everything on a single line in mixed mode.
-    // The horizontal tactic does not break after v_width columns.
-    if tactic == ListTactic::Mixed && fits_single {
-        tactic = ListTactic::Horizontal;
-    }
-
-    // Switch to vertical mode if we find non-block comments.
-    if items.iter().any(ListItem::has_line_pre_comment) {
-        tactic = ListTactic::Vertical;
-    }
 
     // Now that we know how we will layout, we can decide for sure if there
     // will be a trailing separator.
     let trailing_separator = needs_trailing_separator(formatting.trailing_separator, tactic);
-
-    // Create a buffer for the result.
-    // TODO could use a StringBuffer or rope for this
-    let alloc_width = if tactic == ListTactic::Horizontal {
-        total_width + total_sep_len
-    } else {
-        total_width + items.len() * (formatting.indent.width() + 1)
-    };
-    let mut result = String::with_capacity(round_up_to_power_of_two(alloc_width));
+    let mut result = String::new();
+    let mut iter = items.into_iter().enumerate().peekable();
 
     let mut line_len = 0;
     let indent_str = &formatting.indent.to_string(formatting.config);
-    for (i, item) in items.iter().enumerate() {
+    while let Some((i, item)) = iter.next() {
+        let item = item.as_ref();
         let first = i == 0;
-        let last = i == items.len() - 1;
+        let last = iter.peek().is_none();
         let separate = !last || trailing_separator;
         let item_sep_len = if separate {
             sep_len
@@ -195,17 +209,17 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
         let item_width = item.item.len() + item_sep_len;
 
         match tactic {
-            ListTactic::Horizontal if !first => {
+            DefinitiveListTactic::Horizontal if !first => {
                 result.push(' ');
             }
-            ListTactic::Vertical if !first => {
+            DefinitiveListTactic::Vertical if !first => {
                 result.push('\n');
                 result.push_str(indent_str);
             }
-            ListTactic::Mixed => {
+            DefinitiveListTactic::Mixed => {
                 let total_width = total_item_width(item) + item_sep_len;
 
-                if line_len > 0 && line_len + total_width > formatting.v_width {
+                if line_len > 0 && line_len + total_width > formatting.width {
                     result.push('\n');
                     result.push_str(indent_str);
                     line_len = 0;
@@ -224,9 +238,9 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
         // Pre-comments
         if let Some(ref comment) = item.pre_comment {
             // Block style in non-vertical mode.
-            let block_mode = tactic != ListTactic::Vertical;
+            let block_mode = tactic != DefinitiveListTactic::Vertical;
             // Width restriction is only relevant in vertical mode.
-            let max_width = formatting.v_width;
+            let max_width = formatting.width;
             let comment = try_opt!(rewrite_comment(comment,
                                                    block_mode,
                                                    max_width,
@@ -234,7 +248,7 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
                                                    formatting.config));
             result.push_str(&comment);
 
-            if tactic == ListTactic::Vertical {
+            if tactic == DefinitiveListTactic::Vertical {
                 result.push('\n');
                 result.push_str(indent_str);
             } else {
@@ -244,16 +258,16 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
 
         let item_str = try_opt!(wrap_str(&item.item[..],
                                          formatting.config.max_width,
-                                         formatting.v_width,
+                                         formatting.width,
                                          formatting.indent));
         result.push_str(&item_str);
 
         // Post-comments
-        if tactic != ListTactic::Vertical && item.post_comment.is_some() {
+        if tactic != DefinitiveListTactic::Vertical && item.post_comment.is_some() {
             let comment = item.post_comment.as_ref().unwrap();
             let formatted_comment = try_opt!(rewrite_comment(comment,
                                                              true,
-                                                             formatting.v_width,
+                                                             formatting.width,
                                                              Indent::empty(),
                                                              formatting.config));
 
@@ -265,9 +279,9 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
             result.push_str(formatting.separator);
         }
 
-        if tactic == ListTactic::Vertical && item.post_comment.is_some() {
+        if tactic == DefinitiveListTactic::Vertical && item.post_comment.is_some() {
             // 1 = space between item and comment.
-            let width = formatting.v_width.checked_sub(item_width + 1).unwrap_or(1);
+            let width = formatting.width.checked_sub(item_width + 1).unwrap_or(1);
             let mut offset = formatting.indent;
             offset.alignment += item_width + 1;
             let comment = item.post_comment.as_ref().unwrap();
@@ -286,7 +300,7 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
             result.push_str(&formatted_comment);
         }
 
-        if !last && tactic == ListTactic::Vertical && item.new_lines {
+        if !last && tactic == DefinitiveListTactic::Vertical && item.new_lines {
             result.push('\n');
         }
     }
@@ -449,25 +463,34 @@ pub fn itemize_list<'a, T, I, F1, F2, F3>(codemap: &'a CodeMap,
     }
 }
 
-fn needs_trailing_separator(separator_tactic: SeparatorTactic, list_tactic: ListTactic) -> bool {
+fn needs_trailing_separator(separator_tactic: SeparatorTactic,
+                            list_tactic: DefinitiveListTactic)
+                            -> bool {
     match separator_tactic {
         SeparatorTactic::Always => true,
-        SeparatorTactic::Vertical => list_tactic == ListTactic::Vertical,
+        SeparatorTactic::Vertical => list_tactic == DefinitiveListTactic::Vertical,
         SeparatorTactic::Never => false,
     }
 }
 
-fn calculate_width(items: &[ListItem]) -> usize {
-    items.iter().map(total_item_width).fold(0, |a, l| a + l)
+/// Returns the count and total width of the list items.
+fn calculate_width<'li, I, T>(items: I) -> (usize, usize)
+    where I: IntoIterator<Item = T>,
+          T: AsRef<ListItem>
+{
+    items.into_iter()
+         .map(|item| total_item_width(item.as_ref()))
+         .fold((0, 0), |acc, l| (acc.0 + 1, acc.1 + l))
 }
 
 fn total_item_width(item: &ListItem) -> usize {
-    comment_len(&item.pre_comment) + comment_len(&item.post_comment) + item.item.len()
+    comment_len(item.pre_comment.as_ref().map(|x| &(*x)[..])) +
+    comment_len(item.post_comment.as_ref().map(|x| &(*x)[..])) + item.item.len()
 }
 
-fn comment_len(comment: &Option<String>) -> usize {
-    match *comment {
-        Some(ref s) => {
+fn comment_len(comment: Option<&str>) -> usize {
+    match comment {
+        Some(s) => {
             let text_len = s.trim().len();
             if text_len > 0 {
                 // We'll put " /*" before and " */" after inline comments.

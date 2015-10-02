@@ -12,7 +12,8 @@
 
 use Indent;
 use utils::{format_mutability, format_visibility, contains_skip, span_after, end_typaram, wrap_str};
-use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
+use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic,
+            DefinitiveListTactic, definitive_tactic};
 use expr::rewrite_assign_rhs;
 use comment::FindUncommented;
 use visitor::FmtVisitor;
@@ -499,13 +500,20 @@ impl<'a> FmtVisitor<'a> {
             BlockIndentStyle::Visual => arg_indent,
         };
 
+        let tactic = definitive_tactic(&arg_items,
+                                       self.config.fn_args_density.to_list_tactic(),
+                                       one_line_budget);
+        let budget = match tactic {
+            DefinitiveListTactic::Horizontal => one_line_budget,
+            _ => multi_line_budget,
+        };
+
         let fmt = ListFormatting {
-            tactic: self.config.fn_args_density.to_list_tactic(),
+            tactic: tactic,
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
             indent: indent,
-            h_width: one_line_budget,
-            v_width: multi_line_budget,
+            width: budget,
             ends_with_newline: false,
             config: self.config,
         };
@@ -630,6 +638,7 @@ impl<'a> FmtVisitor<'a> {
                                              },
                                              span_after(field.span, "(", self.codemap),
                                              next_span_start);
+                    let item_vec = items.collect::<Vec<_>>();
 
                     result.push('(');
 
@@ -641,18 +650,20 @@ impl<'a> FmtVisitor<'a> {
                         0
                     };
                     let budget = self.config.max_width - indent.width() - comma_cost - 1; // 1 = )
+                    let tactic = definitive_tactic(&item_vec,
+                                                   ListTactic::HorizontalVertical,
+                                                   budget);
 
                     let fmt = ListFormatting {
-                        tactic: ListTactic::HorizontalVertical,
+                        tactic: tactic,
                         separator: ",",
                         trailing_separator: SeparatorTactic::Never,
                         indent: indent,
-                        h_width: budget,
-                        v_width: budget,
+                        width: budget,
                         ends_with_newline: true,
                         config: self.config,
                     };
-                    let list_str = match write_list(&items.collect::<Vec<_>>(), &fmt) {
+                    let list_str = match write_list(&item_vec, &fmt) {
                         Some(list_str) => list_str,
                         None => return,
                     };
@@ -766,9 +777,9 @@ impl<'a> FmtVisitor<'a> {
             result.push('\n');
             result.push_str(&indentation);
 
-            ListTactic::Vertical
+            DefinitiveListTactic::Vertical
         } else {
-            ListTactic::Horizontal
+            DefinitiveListTactic::Horizontal
         };
 
         // 1 = ,
@@ -778,13 +789,12 @@ impl<'a> FmtVisitor<'a> {
             separator: ",",
             trailing_separator: self.config.struct_trailing_comma,
             indent: offset.block_indent(self.config),
-            h_width: self.config.max_width,
-            v_width: budget,
+            width: budget,
             ends_with_newline: true,
             config: self.config,
         };
 
-        let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
+        let list_str = try_opt!(write_list(items, &fmt));
         result.push_str(&list_str);
 
         if break_line {
@@ -930,21 +940,15 @@ impl<'a> FmtVisitor<'a> {
         let ty_spans = tys.iter().map(span_for_ty_param);
 
         let items = itemize_list(self.codemap,
-                                 lt_spans.chain(ty_spans),
+                                 lt_spans.chain(ty_spans).zip(lt_strs.chain(ty_strs)),
                                  ">",
-                                 |sp| sp.lo,
-                                 |sp| sp.hi,
-                                 |_| String::new(),
+                                 |&(sp, _)| sp.lo,
+                                 |&(sp, _)| sp.hi,
+                                 // FIXME: don't clone
+                                 |&(_, ref str)| str.clone(),
                                  span_after(span, "<", self.codemap),
                                  span.hi);
-        let mut items = items.collect::<Vec<_>>();
-
-        for (item, ty) in items.iter_mut().zip(lt_strs.chain(ty_strs)) {
-            item.item = ty;
-        }
-
-        let fmt = ListFormatting::for_item(h_budget, offset, self.config);
-        let list_str = try_opt!(write_list(&items, &fmt));
+        let list_str = try_opt!(::lists::format_item_list(items, h_budget, offset, self.config));
 
         Some(format!("<{}>", list_str))
     }
@@ -990,18 +994,20 @@ impl<'a> FmtVisitor<'a> {
                                  |pred| pred.rewrite(&context, budget, offset).unwrap(),
                                  span_start,
                                  span_end);
+        let item_vec = items.collect::<Vec<_>>();
+        // FIXME: we don't need to collect here if the where_layout isnt horizontalVertical
+        let tactic = definitive_tactic(&item_vec, self.config.where_layout, budget);
 
         let fmt = ListFormatting {
-            tactic: self.config.where_layout,
+            tactic: tactic,
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
             indent: offset,
-            h_width: budget,
-            v_width: budget,
+            width: budget,
             ends_with_newline: true,
             config: self.config,
         };
-        let preds_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
+        let preds_str = try_opt!(write_list(&item_vec, &fmt));
 
         // 9 = " where ".len() + " {".len()
         if density == Density::Tall || preds_str.contains('\n') ||
