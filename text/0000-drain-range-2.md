@@ -28,7 +28,7 @@ elements, more efficently than any other safe API.
 - Implement `.drain()` for other collections. This is just like `.drain(..)` would be
   (drain the whole collection).
 - Ranged drain accepts all range types, currently .., a.., ..b, a..b,
-  and drain will accept inclusive end ranges ("closed ranges") if they are implemented.
+  and drain will accept inclusive end ranges ("closed ranges") when they are implemented.
 - Drain removes every element in the range.
 - Drain returns an iterator that produces the removed items by value.
 - Drain removes the whole range, regardless if you iterate the draining iterator
@@ -60,89 +60,6 @@ has other indexed methods (`.split_off()`).
 `BTreeMap` and `BTreeSet` should have arguments completely consistent the range
 method. This will be addressed separately.
 
-## `IntoCheckedRange` trait
-
-The existing trait `collections::range::RangeArgument` will be replaced by
-`IntoCheckedRange`, and will be used for `drain` methods that use a range
-parameter.
-
-`IntoCheckedRange` is designed to allow bounds checking half-open and closed
-ranges. Bounds checking before conversion allows handling otherwise tricky
-extreme values correctly. It is an `unsafe trait` so that bounds checking can
-be trusted. Below is a sketched-out implementation.
-
-```rust
-/// Convert `Self` into a half open `usize` range that slices
-/// a sequence indexed from 0 to `len`.
-/// Return `Err` with a faulty index if out of bounds.
-///
-/// Unsafe because: Implementation is trusted to bounds check correctly.
-pub unsafe trait IntoCheckedRange {
-    fn into_checked_range(self, len: usize) -> Result<Range<usize>, usize>;
-}
-
-unsafe impl IntoCheckedRange for RangeFull {
-    #[inline]
-    fn into_checked_range(self, len: usize) -> Result<Range<usize>, usize> {
-        Ok(0..len)
-    }
-}
-
-unsafe impl IntoCheckedRange for RangeFrom<usize> {
-    #[inline]
-    fn into_checked_range(self, len: usize) -> Result<Range<usize>, usize> {
-        if self.start <= len {
-            Ok(self.start..len)
-        } else { Err(self.start) }
-    }
-}
-
-unsafe impl IntoCheckedRange for RangeTo<usize> {
-    #[inline]
-    fn into_checked_range(self, len: usize) -> Result<Range<usize>, usize> {
-        if self.end <= len {
-            Ok(0..self.end)
-        } else { Err(self.end) }
-    }
-}
-
-unsafe impl IntoCheckedRange for Range<usize> {
-    #[inline]
-    fn into_checked_range(self, len: usize) -> Result<Range<usize>, usize> {
-        if self.start <= self.end && self.end <= len {
-            Ok(self.start..self.end)
-        } else { Err(cmp::max(self.start, self.end)) }
-    }
-}
-
-// For illustration, this is what a closed range impl would look like
-pub struct ClosedRangeSketch<T> {
-    pub start: T,
-    pub end: T,
-}
-
-unsafe impl IntoCheckedRange for ClosedRangeSketch<usize> {
-    fn into_checked_range(self, len: usize) -> Result<Range<usize>, usize> {
-        if self.start <= self.end && self.end < len {
-            Ok(self.start..self.end + 1)
-        } else { Err(cmp::max(self.start, self.end)) }
-    }
-}
-```
-
-Example use of `IntoCheckedRange`:
-
-```rust
-pub fn drain<R>(&mut self, range: R) -> Drain<A>
-    where R: IntoCheckedRange
-{
-    let remove_range = match range.into_checked_range(self.len()) {
-        Err(i) => panic!("drain: Index {} is out of bounds", i),
-        Ok(r) => r,
-    };
-    /* impl omitted */
-```
-
 ## Stabilization
 
 The following can be stabilized as they are:
@@ -160,8 +77,6 @@ The following will be heading towards stabilization after changes:
 
 - `VecDeque::drain`
 
-The `IntoCheckedRange` trait will not be stabilized until we have closed ranges.
-
 # Drawbacks
 
 - Collections disagree on if they are drained with a range (`Vec`) or not (`HashMap`)
@@ -177,7 +92,7 @@ The `IntoCheckedRange` trait will not be stabilized until we have closed ranges.
 
   ```rust
   fn splice<R, I>(&mut self, range: R, iter: I) -> Splice<T>
-      where R: IntoCheckedRange, I: IntoIterator<T>
+      where R: RangeArgument, I: IntoIterator<T>
   ```
 
   if the method `.splice()` would both return an iterator of the replaced elements,
