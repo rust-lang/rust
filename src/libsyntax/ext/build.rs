@@ -1011,7 +1011,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                    def: P(ast::StructDef { fields: fields,
                                            id: ast::DUMMY_NODE_ID,
                                            kind: kind }),
-                   id: ast::DUMMY_NODE_ID,
                    disr_expr: None,
                })
     }

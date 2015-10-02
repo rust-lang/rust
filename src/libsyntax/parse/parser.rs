@@ -5176,7 +5176,6 @@ impl<'a> Parser<'a> {
                 name: ident,
                 attrs: variant_attrs,
                 def: struct_def,
-                id: ast::DUMMY_NODE_ID,
                 disr_expr: disr_expr,
             };
             variants.push(P(spanned(vlo, self.last_span.hi, vr)));

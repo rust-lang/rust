@@ -3122,7 +3122,6 @@ mod tests {
             def: P(ast::StructDef { fields: Vec::new(),
                                     id: ast::DUMMY_NODE_ID,
                                     kind: ast::VariantKind::Unit }),
-            id: 0,
             disr_expr: None,
         });
 

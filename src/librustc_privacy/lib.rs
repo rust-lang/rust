@@ -82,7 +82,7 @@ impl<'v> Visitor<'v> for ParentVisitor {
                     // The parent is considered the enclosing enum because the
                     // enum will dictate the privacy visibility of this variant
                     // instead.
-                    self.parents.insert(variant.node.id, item.id);
+                    self.parents.insert(variant.node.def.id, item.id);
                 }
             }
 
@@ -129,11 +129,11 @@ impl<'v> Visitor<'v> for ParentVisitor {
     }
 
     fn visit_struct_def(&mut self, s: &hir::StructDef, _: ast::Name,
-                        _: &'v hir::Generics, n: ast::NodeId) {
+                        _: &'v hir::Generics, item_id: ast::NodeId) {
         // Struct constructors are parented to their struct definitions because
         // they essentially are the struct definitions.
         if s.kind != hir::VariantKind::Dict {
-            self.parents.insert(s.id, n);
+            self.parents.insert(s.id, item_id);
         }
 
         // While we have the id of the struct definition, go ahead and parent
@@ -233,8 +233,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             // public all variants are public unless they're explicitly priv
             hir::ItemEnum(ref def, _) if public_first => {
                 for variant in &def.variants {
-                    self.exported_items.insert(variant.node.id);
-                    self.public_items.insert(variant.node.id);
+                    self.exported_items.insert(variant.node.def.id);
+                    self.public_items.insert(variant.node.def.id);
                 }
             }
 
@@ -1430,10 +1430,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
         visit::walk_ty(self, t)
     }
 
-    fn visit_variant(&mut self, v: &hir::Variant, g: &hir::Generics) {
-        if self.exported_items.contains(&v.node.id) {
+    fn visit_variant(&mut self, v: &hir::Variant, g: &hir::Generics, item_id: ast::NodeId) {
+        if self.exported_items.contains(&v.node.def.id) {
             self.in_variant = true;
-            visit::walk_variant(self, v, g);
+            visit::walk_variant(self, v, g, item_id);
             self.in_variant = false;
         }
     }

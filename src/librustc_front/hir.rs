@@ -1030,7 +1030,6 @@ pub struct Variant_ {
     pub name: Name,
     pub attrs: Vec<Attribute>,
     pub def: P<StructDef>,
-    pub id: NodeId,
     /// Explicit discriminant, eg `Foo = 1`
     pub disr_expr: Option<P<Expr>>,
 }

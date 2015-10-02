@@ -118,14 +118,13 @@ pub trait Visitor<'v> : Sized {
     fn visit_struct_field(&mut self, s: &'v StructField) {
         walk_struct_field(self, s)
     }
-    fn visit_enum_def(&mut self, enum_definition: &'v EnumDef, generics: &'v Generics) {
-        walk_enum_def(self, enum_definition, generics)
+    fn visit_enum_def(&mut self, enum_definition: &'v EnumDef,
+                      generics: &'v Generics, item_id: NodeId) {
+        walk_enum_def(self, enum_definition, generics, item_id)
     }
-
-    fn visit_variant(&mut self, v: &'v Variant, g: &'v Generics) {
-        walk_variant(self, v, g)
+    fn visit_variant(&mut self, v: &'v Variant, g: &'v Generics, item_id: NodeId) {
+        walk_variant(self, v, g, item_id)
     }
-
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         walk_lifetime(self, lifetime)
     }
@@ -293,7 +292,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         }
         ItemEnum(ref enum_definition, ref type_parameters) => {
             visitor.visit_generics(type_parameters);
-            visitor.visit_enum_def(enum_definition, type_parameters)
+            visitor.visit_enum_def(enum_definition, type_parameters, item.id)
         }
         ItemDefaultImpl(_, ref trait_ref) => {
             visitor.visit_trait_ref(trait_ref)
@@ -310,7 +309,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         }
         ItemStruct(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
-            visitor.visit_struct_def(struct_definition, item.name, generics, item.id)
+            visitor.visit_struct_def(struct_definition, item.name, generics, item.id);
         }
         ItemTrait(_, ref generics, ref bounds, ref methods) => {
             visitor.visit_generics(generics);
@@ -323,17 +322,19 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
 
 pub fn walk_enum_def<'v, V: Visitor<'v>>(visitor: &mut V,
                                          enum_definition: &'v EnumDef,
-                                         generics: &'v Generics) {
+                                         generics: &'v Generics,
+                                         item_id: NodeId) {
     for variant in &enum_definition.variants {
-        visitor.visit_variant(variant, generics);
+        visitor.visit_variant(variant, generics, item_id);
     }
 }
 
 pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
                                         variant: &'v Variant,
-                                        generics: &'v Generics) {
+                                        generics: &'v Generics,
+                                        item_id: NodeId) {
     visitor.visit_name(variant.span, variant.node.name);
-    visitor.visit_struct_def(&variant.node.def, variant.node.name, generics, variant.node.id);
+    visitor.visit_struct_def(&variant.node.def, variant.node.name, generics, item_id);
     walk_list!(visitor, visit_expr, &variant.node.disr_expr);
     walk_list!(visitor, visit_attribute, &variant.node.attrs);
 }

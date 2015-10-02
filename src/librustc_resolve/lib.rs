@@ -491,7 +491,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         }
         visit::walk_poly_trait_ref(self, tref, m);
     }
-    fn visit_variant(&mut self, variant: &hir::Variant, generics: &Generics) {
+    fn visit_variant(&mut self, variant: &hir::Variant, generics: &Generics, item_id: ast::NodeId) {
         execute_callback!(hir_map::Node::NodeVariant(variant), self);
         if let Some(ref dis_expr) = variant.node.disr_expr {
             // resolve the discriminator expr as a constant
@@ -501,7 +501,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         }
 
         // `visit::walk_variant` without the discriminant expression.
-        self.visit_struct_def(&variant.node.def, variant.node.name, generics, variant.node.id);
+        self.visit_struct_def(&variant.node.def, variant.node.name, generics, item_id);
     }
     fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem) {
         execute_callback!(hir_map::Node::NodeForeignItem(foreign_item), self);

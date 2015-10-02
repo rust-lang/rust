@@ -1019,7 +1019,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_attributes(rbml_w, &item.attrs);
         encode_repr_attrs(rbml_w, ecx, &item.attrs);
         for v in &enum_definition.variants {
-            encode_variant_id(rbml_w, ecx.tcx.map.local_def_id(v.node.id));
+            encode_variant_id(rbml_w, ecx.tcx.map.local_def_id(v.node.def.id));
         }
         encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
         encode_path(rbml_w, path);

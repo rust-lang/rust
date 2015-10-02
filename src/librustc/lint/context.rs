@@ -665,10 +665,10 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
                         s: &hir::StructDef,
                         name: ast::Name,
                         g: &hir::Generics,
-                        id: ast::NodeId) {
-        run_lints!(self, check_struct_def, late_passes, s, name, g, id);
+                        item_id: ast::NodeId) {
+        run_lints!(self, check_struct_def, late_passes, s, name, g, item_id);
         hir_visit::walk_struct_def(self, s);
-        run_lints!(self, check_struct_def_post, late_passes, s, name, g, id);
+        run_lints!(self, check_struct_def_post, late_passes, s, name, g, item_id);
     }
 
     fn visit_struct_field(&mut self, s: &hir::StructField) {
@@ -678,10 +678,10 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
         })
     }
 
-    fn visit_variant(&mut self, v: &hir::Variant, g: &hir::Generics) {
+    fn visit_variant(&mut self, v: &hir::Variant, g: &hir::Generics, item_id: ast::NodeId) {
         self.with_lint_attrs(&v.node.attrs, |cx| {
             run_lints!(cx, check_variant, late_passes, v, g);
-            hir_visit::walk_variant(cx, v, g);
+            hir_visit::walk_variant(cx, v, g, item_id);
             run_lints!(cx, check_variant_post, late_passes, v, g);
         })
     }
@@ -814,10 +814,10 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
                         s: &ast::StructDef,
                         ident: ast::Ident,
                         g: &ast::Generics,
-                        id: ast::NodeId) {
-        run_lints!(self, check_struct_def, early_passes, s, ident, g, id);
+                        item_id: ast::NodeId) {
+        run_lints!(self, check_struct_def, early_passes, s, ident, g, item_id);
         ast_visit::walk_struct_def(self, s);
-        run_lints!(self, check_struct_def_post, early_passes, s, ident, g, id);
+        run_lints!(self, check_struct_def_post, early_passes, s, ident, g, item_id);
     }
 
     fn visit_struct_field(&mut self, s: &ast::StructField) {
@@ -827,10 +827,10 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
         })
     }
 
-    fn visit_variant(&mut self, v: &ast::Variant, g: &ast::Generics) {
+    fn visit_variant(&mut self, v: &ast::Variant, g: &ast::Generics, item_id: ast::NodeId) {
         self.with_lint_attrs(&v.node.attrs, |cx| {
             run_lints!(cx, check_variant, early_passes, v, g);
-            ast_visit::walk_variant(cx, v, g);
+            ast_visit::walk_variant(cx, v, g, item_id);
             run_lints!(cx, check_variant_post, early_passes, v, g);
         })
     }

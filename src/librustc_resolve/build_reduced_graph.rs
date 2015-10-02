@@ -590,7 +590,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         let is_exported = match variant.node.def.kind {
             hir::VariantKind::Dict => {
                 // Not adding fields for variants as they are not accessed with a self receiver
-                let variant_def_id = self.ast_map.local_def_id(variant.node.id);
+                let variant_def_id = self.ast_map.local_def_id(variant.node.def.id);
                 self.structs.insert(variant_def_id, Vec::new());
                 true
             }
@@ -603,10 +603,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         // variants are always treated as importable to allow them to be glob
         // used
         child.define_value(DefVariant(item_id,
-                                      self.ast_map.local_def_id(variant.node.id), is_exported),
+                                      self.ast_map.local_def_id(variant.node.def.id), is_exported),
                            variant.span, DefModifiers::PUBLIC | DefModifiers::IMPORTABLE);
         child.define_type(DefVariant(item_id,
-                                     self.ast_map.local_def_id(variant.node.id), is_exported),
+                                     self.ast_map.local_def_id(variant.node.def.id), is_exported),
                           variant.span, DefModifiers::PUBLIC | DefModifiers::IMPORTABLE);
     }
 

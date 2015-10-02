@@ -207,9 +207,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
                       |v| visit::walk_impl_item(v, ii), true);
     }
 
-    fn visit_variant(&mut self, var: &Variant, g: &'v Generics) {
-        self.annotate(var.node.id, true, &var.node.attrs, var.span,
-                      |v| visit::walk_variant(v, var, g), true)
+    fn visit_variant(&mut self, var: &Variant, g: &'v Generics, item_id: NodeId) {
+        self.annotate(var.node.def.id, true, &var.node.attrs, var.span,
+                      |v| visit::walk_variant(v, var, g, item_id), true)
     }
 
     fn visit_struct_field(&mut self, s: &StructField) {

@@ -1075,7 +1075,7 @@ fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // an item.
         convert_variant_ctor(
             ccx.tcx,
-            variant.node.id,
+            variant.node.def.id,
             ty_variant,
             scheme.clone(),
             predicates.clone()
@@ -1206,7 +1206,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
                                   disr: ty::Disr)
                                   -> ty::VariantDefData<'tcx, 'tcx>
     {
-        let did = tcx.map.local_def_id(v.node.id);
+        let did = tcx.map.local_def_id(v.node.def.id);
         let name = v.node.name;
         convert_struct_variant(tcx, did, name, disr, &v.node.def)
     }
