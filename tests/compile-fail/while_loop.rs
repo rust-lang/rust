@@ -1,7 +1,9 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#[deny(while_let_loop)]
+#![deny(while_let_loop)]
+#![allow(dead_code, unused)]
+
 fn main() {
     let y = Some(true);
     loop { //~ERROR
@@ -42,5 +44,20 @@ fn main() {
     }
     while let Some(x) = y { // no error, obviously
         println!("{}", x);
+    }
+}
+
+// regression test (#360)
+// this should not panic
+// it's okay if further iterations of the lint
+// cause this function to trigger it
+fn no_panic<T>(slice: &[T]) {
+    let mut iter = slice.iter();
+    loop {
+        let _ = match iter.next() {
+            Some(ele) => ele,
+            None => break
+        };
+        loop {}
     }
 }

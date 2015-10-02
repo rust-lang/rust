@@ -312,7 +312,7 @@ fn is_iterable_array(ty: ty::Ty) -> bool {
 fn extract_expr_from_first_stmt(block: &Block) -> Option<&Expr> {
     match block.expr {
         Some(_) => None,
-        None => match block.stmts[0].node {
+        None if !block.stmts.is_empty() => match block.stmts[0].node {
             StmtDecl(ref decl, _) => match decl.node {
                 DeclLocal(ref local) => match local.init {
                     Some(ref expr) => Some(expr),
@@ -322,6 +322,7 @@ fn extract_expr_from_first_stmt(block: &Block) -> Option<&Expr> {
             },
             _ => None,
         },
+        _ => None,
     }
 }
 
@@ -329,10 +330,11 @@ fn extract_expr_from_first_stmt(block: &Block) -> Option<&Expr> {
 fn extract_first_expr(block: &Block) -> Option<&Expr> {
     match block.expr {
         Some(ref expr) => Some(expr),
-        None => match block.stmts[0].node {
+        None if !block.stmts.is_empty() => match block.stmts[0].node {
             StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => Some(expr),
             _ => None,
         },
+        _ => None,
     }
 }
 
