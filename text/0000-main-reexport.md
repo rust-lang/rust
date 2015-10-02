@@ -22,7 +22,7 @@ Example:
             println!("Hello world!");
         }
     }
-    pub use foo::bar as main;
+    use foo::bar as main;
 
 Example 2:
 
@@ -32,11 +32,17 @@ Example 2:
 See also https://github.com/rust-lang/rust/issues/27640 for the corresponding
 issue discussion.
 
+The `#[main]` attribute can also be used to change the entry point of the
+generated binary. This is largely irrelevant for this RFC as this RFC tries to
+fix an inconsistency with re-exports and directly defined functions.
+Nevertheless, it can be pointed out that the `#[main]` attribute does not cover
+all the above-mentioned use cases.
+
 # Detailed design
 
 Use the symbol `main` at the top-level of a crate that is compiled as a program
 (`--crate-type=bin`) – instead of explicitly only accepting directly-defined
-functions, also allow re-exports.
+functions, also allow (possibly non-`pub`) re-exports.
 
 # Drawbacks
 
