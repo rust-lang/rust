@@ -923,13 +923,13 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let const_ty = expr_ty(bcx, ref_expr);
 
             // For external constants, we don't inline.
-            let val = if did.is_local() {
+            let val = if let Some(node_id) = bcx.tcx().map.as_local_node_id(did) {
                 // Case 1.
 
                 // The LLVM global has the type of its initializer,
                 // which may not be equal to the enum's type for
                 // non-C-like enums.
-                let val = base::get_item_val(bcx.ccx(), did.node);
+                let val = base::get_item_val(bcx.ccx(), node_id);
                 let pty = type_of::type_of(bcx.ccx(), const_ty).ptr_to();
                 PointerCast(bcx, val, pty)
             } else {
@@ -1195,14 +1195,23 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 SaveIn(lldest) => closure::Dest::SaveIn(bcx, lldest),
                 Ignore => closure::Dest::Ignore(bcx.ccx())
             };
-            let substs = match expr_ty(bcx, expr).sty {
-                ty::TyClosure(_, ref substs) => substs,
+
+            // NB. To get the id of the closure, we don't use
+            // `local_def_id(id)`, but rather we extract the closure
+            // def-id from the expr's type. This is because this may
+            // be an inlined expression from another crate, and we
+            // want to get the ORIGINAL closure def-id, since that is
+            // the key we need to find the closure-kind and
+            // closure-type etc.
+            let (def_id, substs) = match expr_ty(bcx, expr).sty {
+                ty::TyClosure(def_id, ref substs) => (def_id, substs),
                 ref t =>
                     bcx.tcx().sess.span_bug(
                         expr.span,
                         &format!("closure expr without closure type: {:?}", t)),
             };
-            closure::trans_closure_expr(dest, decl, body, expr.id, substs).unwrap_or(bcx)
+
+            closure::trans_closure_expr(dest, decl, body, expr.id, def_id, substs).unwrap_or(bcx)
         }
         hir::ExprCall(ref f, ref args) => {
             if bcx.tcx().is_method_call(expr.id) {
@@ -1358,7 +1367,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_local_var");
 
     match def {
-        def::DefUpvar(nid, _, _) => {
+        def::DefUpvar(_, nid, _, _) => {
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
             let lval = Lvalue::new_with_hint("expr::trans_local_var (upvar)",
@@ -1372,7 +1381,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
             }
         }
-        def::DefLocal(nid) => {
+        def::DefLocal(_, nid) => {
             let datum = match bcx.fcx.lllocals.borrow().get(&nid) {
                 Some(&v) => v,
                 None => {

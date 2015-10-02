@@ -10,7 +10,7 @@
 
 use check::regionck::{self, Rcx};
 
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use middle::infer;
 use middle::region;
@@ -77,11 +77,12 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     drop_impl_ty: &ty::Ty<'tcx>,
     self_type_did: DefId) -> Result<(), ()>
 {
-    assert!(drop_impl_did.is_local() && self_type_did.is_local());
+    let drop_impl_node_id = tcx.map.as_local_node_id(drop_impl_did).unwrap();
+    let self_type_node_id = tcx.map.as_local_node_id(self_type_did).unwrap();
 
     // check that the impl type can be made to match the trait type.
 
-    let impl_param_env = ty::ParameterEnvironment::for_item(tcx, self_type_did.node);
+    let impl_param_env = ty::ParameterEnvironment::for_item(tcx, self_type_node_id);
     let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(impl_param_env), true);
 
     let named_type = tcx.lookup_item_type(self_type_did).ty;
@@ -96,7 +97,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
                                    named_type, fresh_impl_self_ty) {
         span_err!(tcx.sess, drop_impl_span, E0366,
                   "Implementations of Drop cannot be specialized");
-        let item_span = tcx.map.span(self_type_did.node);
+        let item_span = tcx.map.span(self_type_node_id);
         tcx.sess.span_note(item_span,
                            "Use same sequence of generic type and region \
                             parameters that is on the struct/enum definition");
@@ -110,7 +111,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     }
 
     let free_regions = FreeRegionMap::new();
-    infcx.resolve_regions_and_report_errors(&free_regions, drop_impl_did.node);
+    infcx.resolve_regions_and_report_errors(&free_regions, drop_impl_node_id);
     Ok(())
 }
 
@@ -158,7 +159,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // absent. So we report an error that the Drop impl injected a
     // predicate that is not present on the struct definition.
 
-    assert_eq!(self_type_did.krate, LOCAL_CRATE);
+    let self_type_node_id = tcx.map.as_local_node_id(self_type_did).unwrap();
 
     let drop_impl_span = tcx.map.def_id_span(drop_impl_did, codemap::DUMMY_SP);
 
@@ -195,7 +196,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         // repeated `contains` calls.
 
         if !assumptions_in_impl_context.contains(&predicate) {
-            let item_span = tcx.map.span(self_type_did.node);
+            let item_span = tcx.map.span(self_type_node_id);
             span_err!(tcx.sess, drop_impl_span, E0367,
                       "The requirement `{}` is added only by the Drop impl.", predicate);
             tcx.sess.span_note(item_span,

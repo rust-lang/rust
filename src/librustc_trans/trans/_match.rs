@@ -1432,19 +1432,19 @@ pub fn trans_match<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn is_discr_reassigned(bcx: Block, discr: &hir::Expr, body: &hir::Expr) -> bool {
     let (vid, field) = match discr.node {
         hir::ExprPath(..) => match bcx.def(discr.id) {
-            def::DefLocal(vid) | def::DefUpvar(vid, _, _) => (vid, None),
+            def::DefLocal(_, vid) | def::DefUpvar(_, vid, _, _) => (vid, None),
             _ => return false
         },
         hir::ExprField(ref base, field) => {
             let vid = match bcx.tcx().def_map.borrow().get(&base.id).map(|d| d.full_def()) {
-                Some(def::DefLocal(vid)) | Some(def::DefUpvar(vid, _, _)) => vid,
+                Some(def::DefLocal(_, vid)) | Some(def::DefUpvar(_, vid, _, _)) => vid,
                 _ => return false
             };
             (vid, Some(mc::NamedField(field.node)))
         },
         hir::ExprTupField(ref base, field) => {
             let vid = match bcx.tcx().def_map.borrow().get(&base.id).map(|d| d.full_def()) {
-                Some(def::DefLocal(vid)) | Some(def::DefUpvar(vid, _, _)) => vid,
+                Some(def::DefLocal(_, vid)) | Some(def::DefUpvar(_, vid, _, _)) => vid,
                 _ => return false
             };
             (vid, Some(mc::PositionalField(field.node)))

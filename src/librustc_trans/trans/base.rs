@@ -37,7 +37,7 @@ use llvm;
 use metadata::{csearch, encoder, loader};
 use middle::astencode;
 use middle::cfg;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::pat_util::simple_name;
@@ -1286,7 +1286,7 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
 
     // Create the drop-flag hints for every unfragmented path in the function.
     let tcx = fcx.ccx.tcx();
-    let fn_did = DefId { krate: LOCAL_CRATE, node: fcx.id };
+    let fn_did = tcx.map.local_def_id(fcx.id);
     let mut hints = fcx.lldropflag_hints.borrow_mut();
     let fragment_infos = tcx.fragment_infos.borrow();
 
@@ -1576,7 +1576,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            param_substs);
 
     let has_env = match closure_env {
-        closure::ClosureEnv::Closure(_) => true,
+        closure::ClosureEnv::Closure(..) => true,
         closure::ClosureEnv::NotClosure => false,
     };
 
@@ -2085,7 +2085,8 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                     // error in trans. This is used to write compile-fail tests
                     // that actually test that compilation succeeds without
                     // reporting an error.
-                    if ccx.tcx().has_attr(DefId::local(item.id), "rustc_error") {
+                    let item_def_id = ccx.tcx().map.local_def_id(item.id);
+                    if ccx.tcx().has_attr(item_def_id, "rustc_error") {
                         ccx.tcx().sess.span_fatal(item.span, "compilation successful");
                     }
                 }
@@ -2252,13 +2253,14 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
                     Ok(id) => id,
                     Err(s) => { ccx.sess().fatal(&s[..]); }
                 };
-                let start_fn = if start_def_id.is_local() {
-                    get_item_val(ccx, start_def_id.node)
-                } else {
-                    let start_fn_type = csearch::get_type(ccx.tcx(),
-                                                          start_def_id).ty;
-                    trans_external_path(ccx, start_def_id, start_fn_type)
-                };
+                let start_fn =
+                    if let Some(start_node_id) = ccx.tcx().map.as_local_node_id(start_def_id) {
+                        get_item_val(ccx, start_node_id)
+                    } else {
+                        let start_fn_type = csearch::get_type(ccx.tcx(),
+                                                              start_def_id).ty;
+                        trans_external_path(ccx, start_def_id, start_fn_type)
+                    };
 
                 let args = {
                     let opaque_rust_main = llvm::LLVMBuildPointerCast(bld,
@@ -2307,10 +2309,11 @@ fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, id: ast::NodeId,
     match attr::find_export_name_attr(ccx.sess().diagnostic(), attrs) {
         // Use provided name
         Some(name) => name.to_string(),
-        _ => ccx.tcx().map.with_path(id, |path| {
+        _ => {
+            let path = ccx.tcx().map.def_path_from_id(id);
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
-                path.last().unwrap().to_string()
+                path.last().unwrap().data.to_string()
             } else {
                 match weak_lang_items::link_name(attrs) {
                     Some(name) => name.to_string(),
@@ -2320,7 +2323,7 @@ fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, id: ast::NodeId,
                     }
                 }
             }
-        })
+        }
     }
 }
 

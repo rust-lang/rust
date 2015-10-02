@@ -13,7 +13,6 @@
 use super::{check_fn, Expectation, FnCtxt};
 
 use astconv;
-use middle::def_id::DefId;
 use middle::subst;
 use middle::ty::{self, ToPolyTraitRef, Ty};
 use std::cmp;
@@ -46,7 +45,7 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                           decl: &'tcx hir::FnDecl,
                           body: &'tcx hir::Block,
                           expected_sig: Option<ty::FnSig<'tcx>>) {
-    let expr_def_id = DefId::local(expr.id);
+    let expr_def_id = fcx.tcx().map.local_def_id(expr.id);
 
     debug!("check_closure opt_kind={:?} expected_sig={:?}",
            opt_kind,

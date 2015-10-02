@@ -22,6 +22,7 @@ use std::sync::{Arc, Mutex};
 
 use testing;
 use rustc_lint;
+use rustc::front::map as hir_map;
 use rustc::session::{self, config};
 use rustc::session::config::get_unstable_features_setting;
 use rustc::session::search_paths::{SearchPaths, PathKind};
@@ -86,8 +87,11 @@ pub fn run(input: &str,
 
     let opts = scrape_test_config(&krate);
 
+    let mut forest = hir_map::Forest::new(krate);
+    let map = hir_map::map_crate(&mut forest);
+
     let ctx = core::DocContext {
-        krate: &krate,
+        map: &map,
         maybe_typed: core::NotTyped(sess),
         input: input,
         external_paths: RefCell::new(Some(HashMap::new())),
@@ -99,7 +103,7 @@ pub fn run(input: &str,
     };
 
     let mut v = RustdocVisitor::new(&ctx, None);
-    v.visit(ctx.krate);
+    v.visit(ctx.map.krate());
     let mut krate = v.clean(&ctx);
     match crate_name {
         Some(name) => krate.name = name,

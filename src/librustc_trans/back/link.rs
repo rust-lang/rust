@@ -25,7 +25,7 @@ use metadata::loader::METADATA_FILENAME;
 use metadata::{encoder, cstore, filesearch, csearch, creader};
 use middle::dependency_format::Linkage;
 use middle::ty::{self, Ty};
-use rustc::front::map::{PathElem, PathElems, PathName};
+use rustc::front::map::DefPath;
 use trans::{CrateContext, CrateTranslation, gensym_name};
 use util::common::time;
 use util::sha2::{Digest, Sha256};
@@ -36,6 +36,7 @@ use std::env;
 use std::ffi::OsString;
 use std::fs::{self, PathExt};
 use std::io::{self, Read, Write};
+use std::iter::once;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -44,7 +45,7 @@ use flate;
 use serialize::hex::ToHex;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::parse::token;
+use syntax::parse::token::{self, InternedString};
 use syntax::attr::AttrMetaMethods;
 
 use rustc_front::hir;
@@ -284,8 +285,7 @@ pub fn sanitize(s: &str) -> String {
     return result;
 }
 
-pub fn mangle<PI: Iterator<Item=PathElem>>(path: PI,
-                                           hash: Option<&str>) -> String {
+pub fn mangle<PI: Iterator<Item=InternedString>>(path: PI, hash: Option<&str>) -> String {
     // Follow C++ namespace-mangling style, see
     // http://en.wikipedia.org/wiki/Name_mangling for more info.
     //
@@ -308,8 +308,8 @@ pub fn mangle<PI: Iterator<Item=PathElem>>(path: PI,
     }
 
     // First, connect each component with <len, name> pairs.
-    for e in path {
-        push(&mut n, &e.name().as_str())
+    for data in path {
+        push(&mut n, &data);
     }
 
     match hash {
@@ -321,11 +321,13 @@ pub fn mangle<PI: Iterator<Item=PathElem>>(path: PI,
     n
 }
 
-pub fn exported_name(path: PathElems, hash: &str) -> String {
+pub fn exported_name(path: DefPath, hash: &str) -> String {
+    let path = path.into_iter()
+                   .map(|e| e.data.as_interned_str());
     mangle(path, Some(hash))
 }
 
-pub fn mangle_exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, path: PathElems,
+pub fn mangle_exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, path: DefPath,
                                       t: Ty<'tcx>, id: ast::NodeId) -> String {
     let mut hash = get_symbol_hash(ccx, t);
 
@@ -353,14 +355,17 @@ pub fn mangle_exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, path: PathEl
 pub fn mangle_internal_name_by_type_and_seq<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                       t: Ty<'tcx>,
                                                       name: &str) -> String {
-    let path = [PathName(token::intern(&t.to_string())),
-                gensym_name(name)];
+    let path = [token::intern(&t.to_string()).as_str(), gensym_name(name).as_str()];
     let hash = get_symbol_hash(ccx, t);
     mangle(path.iter().cloned(), Some(&hash[..]))
 }
 
-pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> String {
-    mangle(path.chain(Some(gensym_name(flav))), None)
+pub fn mangle_internal_name_by_path_and_seq(path: DefPath, flav: &str) -> String {
+    let names =
+        path.into_iter()
+            .map(|e| e.data.as_interned_str())
+            .chain(once(gensym_name(flav).as_str())); // append unique version of "flav"
+    mangle(names, None)
 }
 
 pub fn get_linker(sess: &Session) -> (String, Command) {
