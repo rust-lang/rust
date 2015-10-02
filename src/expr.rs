@@ -111,13 +111,6 @@ impl Rewrite for ast::Expr {
                                 offset,
                                 true)
             }
-            ast::Expr_::ExprRange(ref left, ref right) => {
-                rewrite_range(context,
-                              left.as_ref().map(|e| &**e),
-                              right.as_ref().map(|e| &**e),
-                              width,
-                              offset)
-            }
             ast::Expr_::ExprMatch(ref cond, ref arms, _) => {
                 rewrite_match(context, cond, arms, width, offset, self.span)
             }
@@ -178,13 +171,32 @@ impl Rewrite for ast::Expr {
                 rewrite_expr_addrof(context, mutability, expr, width, offset)
             }
             ast::Expr_::ExprCast(ref expr, ref ty) => {
-                rewrite_cast(expr, ty, context, width, offset)
+                rewrite_pair(&**expr, &**ty, "", " as ", "", context, width, offset)
             }
             ast::Expr_::ExprIndex(ref expr, ref index) => {
-                rewrite_index(expr, index, context, width, offset)
+                rewrite_pair(&**expr, &**index, "", "[", "]", context, width, offset)
             }
             ast::Expr_::ExprRepeat(ref expr, ref repeats) => {
-                rewrite_repeats(expr, repeats, context, width, offset)
+                rewrite_pair(&**expr, &**repeats, "[", "; ", "]", context, width, offset)
+            }
+            ast::Expr_::ExprRange(Some(ref lhs), Some(ref rhs)) => {
+                rewrite_pair(&**lhs, &**rhs, "", "..", "", context, width, offset)
+            }
+            ast::Expr_::ExprRange(None, Some(ref rhs)) => {
+                rewrite_unary_prefix(context, "..", &**rhs, width, offset)
+            }
+            ast::Expr_::ExprRange(Some(ref lhs), None) => {
+                Some(format!("{}..",
+                             try_opt!(lhs.rewrite(context,
+                                                  try_opt!(width.checked_sub(2)),
+                                                  offset))))
+            }
+            ast::Expr_::ExprRange(None, None) => {
+                if width >= 2 {
+                    Some("..".into())
+                } else {
+                    None
+                }
             }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
@@ -199,99 +211,42 @@ impl Rewrite for ast::Expr {
     }
 }
 
-fn rewrite_repeats(expr: &ast::Expr,
-                   index: &ast::Expr,
-                   context: &RewriteContext,
-                   width: usize,
-                   offset: Indent)
-                   -> Option<String> {
-    let max_width = try_opt!(width.checked_sub("[; ]".len()));
+fn rewrite_pair<LHS, RHS>(lhs: &LHS,
+                          rhs: &RHS,
+                          prefix: &str,
+                          infix: &str,
+                          suffix: &str,
+                          context: &RewriteContext,
+                          width: usize,
+                          offset: Indent)
+                          -> Option<String>
+    where LHS: Rewrite,
+          RHS: Rewrite
+{
+    let max_width = try_opt!(width.checked_sub(prefix.len() + infix.len() + suffix.len()));
 
     binary_search(1,
                   max_width,
-                  |expr_budget| {
-                      let expr_str = match expr.rewrite(context, expr_budget, offset + "[".len()) {
+                  |lhs_budget| {
+                      let lhs_offset = offset + prefix.len();
+                      let lhs_str = match lhs.rewrite(context, lhs_budget, lhs_offset) {
                           Some(result) => result,
                           None => return Err(Ordering::Greater),
                       };
 
-                      let last_line_width = last_line_width(&expr_str);
-                      let index_budget = match max_width.checked_sub(last_line_width) {
+                      let last_line_width = last_line_width(&lhs_str);
+                      let rhs_budget = match max_width.checked_sub(last_line_width) {
                           Some(b) => b,
                           None => return Err(Ordering::Less),
                       };
-                      let index_indent = offset + last_line_width + "[; ".len();
+                      let rhs_indent = offset + last_line_width + prefix.len() + infix.len();
 
-                      let index_str = match index.rewrite(context, index_budget, index_indent) {
+                      let rhs_str = match rhs.rewrite(context, rhs_budget, rhs_indent) {
                           Some(result) => result,
                           None => return Err(Ordering::Less),
                       };
 
-                      Ok(format!("[{}; {}]", expr_str, index_str))
-                  })
-}
-
-fn rewrite_index(expr: &ast::Expr,
-                 index: &ast::Expr,
-                 context: &RewriteContext,
-                 width: usize,
-                 offset: Indent)
-                 -> Option<String> {
-    let max_width = try_opt!(width.checked_sub("[]".len()));
-
-    binary_search(1,
-                  max_width,
-                  |expr_budget| {
-                      let expr_str = match expr.rewrite(context, expr_budget, offset) {
-                          Some(result) => result,
-                          None => return Err(Ordering::Greater),
-                      };
-
-                      let last_line_width = last_line_width(&expr_str);
-                      let index_budget = match max_width.checked_sub(last_line_width) {
-                          Some(b) => b,
-                          None => return Err(Ordering::Less),
-                      };
-                      let index_indent = offset + last_line_width + "[".len();
-
-                      let index_str = match index.rewrite(context, index_budget, index_indent) {
-                          Some(result) => result,
-                          None => return Err(Ordering::Less),
-                      };
-
-                      Ok(format!("{}[{}]", expr_str, index_str))
-                  })
-}
-
-fn rewrite_cast(expr: &ast::Expr,
-                ty: &ast::Ty,
-                context: &RewriteContext,
-                width: usize,
-                offset: Indent)
-                -> Option<String> {
-    let max_width = try_opt!(width.checked_sub(" as ".len()));
-
-    binary_search(1,
-                  max_width,
-                  |expr_budget| {
-                      let expr_str = match expr.rewrite(context, expr_budget, offset) {
-                          Some(result) => result,
-                          None => return Err(Ordering::Greater),
-                      };
-
-                      let last_line_width = last_line_width(&expr_str);
-                      let ty_budget = match max_width.checked_sub(last_line_width) {
-                          Some(b) => b,
-                          None => return Err(Ordering::Less),
-                      };
-                      let ty_indent = offset + last_line_width + " as ".len();
-
-                      let ty_str = match ty.rewrite(context, ty_budget, ty_indent) {
-                          Some(result) => result,
-                          None => return Err(Ordering::Less),
-                      };
-
-                      Ok(format!("{} as {}", expr_str, ty_str))
+                      Ok(format!("{}{}{}{}{}", prefix, lhs_str, infix, rhs_str, suffix))
                   })
 }
 
@@ -635,33 +590,6 @@ fn rewrite_label(label: Option<ast::Ident>) -> String {
         Some(ident) => format!("{}: ", ident),
         None => "".to_owned(),
     }
-}
-
-// FIXME: this doesn't play well with line breaks
-fn rewrite_range(context: &RewriteContext,
-                 left: Option<&ast::Expr>,
-                 right: Option<&ast::Expr>,
-                 width: usize,
-                 offset: Indent)
-                 -> Option<String> {
-    let left_string = match left {
-        Some(expr) => {
-            // 2 = ..
-            let max_width = try_opt!(width.checked_sub(2));
-            try_opt!(expr.rewrite(context, max_width, offset))
-        }
-        None => String::new(),
-    };
-
-    let right_string = match right {
-        Some(expr) => {
-            let max_width = try_opt!(width.checked_sub(left_string.len() + 2));
-            try_opt!(expr.rewrite(context, max_width, offset + 2 + left_string.len()))
-        }
-        None => String::new(),
-    };
-
-    Some(format!("{}..{}", left_string, right_string))
 }
 
 // Rewrites if-else blocks. If let Some(_) = pat, the expression is
