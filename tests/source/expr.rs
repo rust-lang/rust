@@ -184,3 +184,16 @@ fn addrof() {
     &    mut(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
     &    (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
 }
+
+fn casts() {
+    fn unpack(packed: u32) -> [u16; 2] {
+        [
+            (packed >> 16) as u16,
+            (packed >>  0) as u16,
+        ]
+    }
+
+    let some_trait_xxx = xxxxxxxxxxx + xxxxxxxxxxxxx
+        as SomeTraitXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX;
+    let slightly_longer_trait = yyyyyyyyy + yyyyyyyyyyy as SomeTraitYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY;
+}

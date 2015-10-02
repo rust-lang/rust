@@ -177,12 +177,14 @@ impl Rewrite for ast::Expr {
                 rewrite_unary_prefix(context, "box ", expr, width, offset)
             }
             ast::Expr_::ExprAddrOf(mutability, ref expr) => {
-                rewrite_expr_addrof(context, mutability, &expr, width, offset)
+                rewrite_expr_addrof(context, mutability, expr, width, offset)
+            }
+            ast::Expr_::ExprCast(ref expr, ref ty) => {
+                rewrite_cast(expr, ty, context, width, offset)
             }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
             ast::Expr_::ExprInPlace(..) |
-            ast::Expr_::ExprCast(..) |
             ast::Expr_::ExprIndex(..) |
             ast::Expr_::ExprInlineAsm(..) |
             ast::Expr_::ExprRepeat(..) => {
@@ -193,6 +195,38 @@ impl Rewrite for ast::Expr {
             }
         }
     }
+}
+
+fn rewrite_cast(expr: &ast::Expr,
+                ty: &ast::Ty,
+                context: &RewriteContext,
+                width: usize,
+                offset: Indent)
+                -> Option<String> {
+    let max_width = try_opt!(width.checked_sub(" as ".len()));
+
+    binary_search(1,
+                  max_width,
+                  |expr_budget| {
+                      let expr_str = match expr.rewrite(context, expr_budget, offset) {
+                          Some(result) => result,
+                          None => return Err(Ordering::Greater),
+                      };
+
+                      let last_line_width = last_line_width(&expr_str);
+                      let ty_budget = match max_width.checked_sub(last_line_width) {
+                          Some(b) => b,
+                          None => return Err(Ordering::Less),
+                      };
+                      let ty_indent = offset + last_line_width;
+
+                      let ty_str = match ty.rewrite(context, ty_budget, ty_indent) {
+                          Some(result) => result,
+                          None => return Err(Ordering::Less),
+                      };
+
+                      Ok(format!("{} as {}", expr_str, ty_str))
+                  })
 }
 
 pub fn rewrite_array<'a, I>(expr_iter: I,
