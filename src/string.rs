@@ -39,6 +39,7 @@ pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> Option<String> {
 
     let graphemes = UnicodeSegmentation::graphemes(&*stripped_str, false).collect::<Vec<&str>>();
     let indent = fmt.offset.to_string(fmt.config);
+    let punctuation = ":,;.";
 
     let mut cur_start = 0;
     let mut result = String::with_capacity(round_up_to_power_of_two(s.len()));
@@ -62,11 +63,18 @@ pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> Option<String> {
         while !graphemes[cur_end - 1].trim().is_empty() {
             cur_end -= 1;
             if cur_end - cur_start < MIN_STRING {
-                // We can't break at whitespace, fall back to splitting
-                // anywhere that doesn't break an escape sequence.
                 cur_end = cur_start + max_chars;
-                while graphemes[cur_end - 1] == "\\" {
+                // Look for punctuation to break on.
+                while (!punctuation.contains(graphemes[cur_end - 1])) && cur_end > 1 {
                     cur_end -= 1;
+                }
+                // We can't break at whitespace or punctuation, fall back to splitting
+                // anywhere that doesn't break an escape sequence.
+                if cur_end < cur_start + MIN_STRING {
+                    cur_end = cur_start + max_chars;
+                    while graphemes[cur_end - 1] == "\\" && cur_end > 1 {
+                        cur_end -= 1;
+                    }
                 }
                 break;
             }
