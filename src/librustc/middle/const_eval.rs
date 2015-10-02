@@ -367,6 +367,7 @@ pub enum ErrKind {
     ShiftRightWithOverflow,
     MissingStructField,
     NonConstPath,
+    UnresolvedPath,
     ExpectedConstTuple,
     ExpectedConstStruct,
     TupleIndexOutOfBounds,
@@ -403,7 +404,8 @@ impl ConstEvalErr {
             ShiftLeftWithOverflow => "attempted left shift with overflow".into_cow(),
             ShiftRightWithOverflow => "attempted right shift with overflow".into_cow(),
             MissingStructField  => "nonexistent struct field".into_cow(),
-            NonConstPath        => "non-constant path in constant expr".into_cow(),
+            NonConstPath        => "non-constant path in constant expression".into_cow(),
+            UnresolvedPath => "unresolved path in constant expression".into_cow(),
             ExpectedConstTuple => "expected constant tuple".into_cow(),
             ExpectedConstStruct => "expected constant struct".into_cow(),
             TupleIndexOutOfBounds => "tuple index out of bounds".into_cow(),
@@ -895,7 +897,20 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
       }
       hir::ExprPath(..) => {
-          let opt_def = tcx.def_map.borrow().get(&e.id).map(|d| d.full_def());
+          let opt_def = if let Some(def) = tcx.def_map.borrow().get(&e.id) {
+              // After type-checking, def_map contains definition of the
+              // item referred to by the path. During type-checking, it
+              // can contain the raw output of path resolution, which
+              // might be a partially resolved path.
+              // FIXME: There's probably a better way to make sure we don't
+              // panic here.
+              if def.depth != 0 {
+                  signal!(e, UnresolvedPath);
+              }
+              Some(def.full_def())
+          } else {
+              None
+          };
           let (const_expr, const_ty) = match opt_def {
               Some(def::DefConst(def_id)) => {
                   if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
