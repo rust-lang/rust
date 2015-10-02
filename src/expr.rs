@@ -183,11 +183,13 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprIndex(ref expr, ref index) => {
                 rewrite_index(expr, index, context, width, offset)
             }
+            ast::Expr_::ExprRepeat(ref expr, ref repeats) => {
+                rewrite_repeats(expr, repeats, context, width, offset)
+            }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
             ast::Expr_::ExprInPlace(..) |
-            ast::Expr_::ExprInlineAsm(..) |
-            ast::Expr_::ExprRepeat(..) => {
+            ast::Expr_::ExprInlineAsm(..) => {
                 wrap_str(context.snippet(self.span),
                          context.config.max_width,
                          width,
@@ -195,6 +197,38 @@ impl Rewrite for ast::Expr {
             }
         }
     }
+}
+
+fn rewrite_repeats(expr: &ast::Expr,
+                   index: &ast::Expr,
+                   context: &RewriteContext,
+                   width: usize,
+                   offset: Indent)
+                   -> Option<String> {
+    let max_width = try_opt!(width.checked_sub("[; ]".len()));
+
+    binary_search(1,
+                  max_width,
+                  |expr_budget| {
+                      let expr_str = match expr.rewrite(context, expr_budget, offset + "[".len()) {
+                          Some(result) => result,
+                          None => return Err(Ordering::Greater),
+                      };
+
+                      let last_line_width = last_line_width(&expr_str);
+                      let index_budget = match max_width.checked_sub(last_line_width) {
+                          Some(b) => b,
+                          None => return Err(Ordering::Less),
+                      };
+                      let index_indent = offset + last_line_width + "[; ".len();
+
+                      let index_str = match index.rewrite(context, index_budget, index_indent) {
+                          Some(result) => result,
+                          None => return Err(Ordering::Less),
+                      };
+
+                      Ok(format!("[{}; {}]", expr_str, index_str))
+                  })
 }
 
 fn rewrite_index(expr: &ast::Expr,

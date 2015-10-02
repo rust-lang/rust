@@ -216,3 +216,11 @@ fn indices() {
     let y = (aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb +
              cccccccccccccccc)[xxxxx + yyyyy + zzzzz];
 }
+
+fn repeats() {
+    let x = [aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccc; x +
+                                                                                                y +
+                                                                                                z];
+    let y = [aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb +
+             cccccccccccccccc; xxxxx + yyyyy + zzzzz];
+}
