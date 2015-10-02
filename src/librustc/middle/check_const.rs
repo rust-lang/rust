@@ -176,8 +176,8 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         if mode == Mode::ConstFn {
             for arg in &fd.inputs {
                 match arg.pat.node {
-                    hir::PatIdent(hir::BindByValue(hir::MutImmutable), _, None) => {}
                     hir::PatWild(_) => {}
+                    hir::PatIdent(hir::BindByValue(hir::MutImmutable), _, None) => {}
                     _ => {
                         span_err!(self.tcx.sess, arg.pat.span, E0022,
                                   "arguments of constant functions can only \
@@ -476,9 +476,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                                     self.tcx, ex, ExprTypeChecked) {
                                 Ok(_) => {}
                                 Err(msg) => {
-                                    span_err!(self.tcx.sess, msg.span, E0020,
-                                              "{} in a constant expression",
-                                              msg.description())
+                                    self.tcx.sess.add_lint(::lint::builtin::CONST_ERR, ex.id,
+                                                           msg.span,
+                                                           msg.description().into_owned())
                                 }
                             }
                         }

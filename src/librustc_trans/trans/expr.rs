@@ -133,13 +133,25 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     ) {
         if !qualif.intersects(check_const::ConstQualif::PREFER_IN_PLACE) {
             if let SaveIn(lldest) = dest {
-                let global = consts::get_const_expr_as_global(bcx.ccx(), expr, qualif,
-                                                            bcx.fcx.param_substs);
-                // Cast pointer to destination, because constants
-                // have different types.
-                let lldest = PointerCast(bcx, lldest, val_ty(global));
-                memcpy_ty(bcx, lldest, global, expr_ty_adjusted(bcx, expr));
-                return bcx;
+                match consts::get_const_expr_as_global(bcx.ccx(), expr, qualif,
+                                                       bcx.fcx.param_substs,
+                                                       consts::TrueConst::No) {
+                    Ok(global) => {
+                        // Cast pointer to destination, because constants
+                        // have different types.
+                        let lldest = PointerCast(bcx, lldest, val_ty(global));
+                        memcpy_ty(bcx, lldest, global, expr_ty_adjusted(bcx, expr));
+                        return bcx;
+                    },
+                    Err(consts::ConstEvalFailure::Runtime(_)) => {
+                        // in case const evaluation errors, translate normally
+                        // debug assertions catch the same errors
+                        // see RFC 1229
+                    },
+                    Err(consts::ConstEvalFailure::Compiletime(_)) => {
+                        return bcx;
+                    },
+                }
             }
             // Even if we don't have a value to emit, and the expression
             // doesn't have any side-effects, we still have to translate the
@@ -221,48 +233,64 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         check_const::ConstQualif::NOT_CONST |
         check_const::ConstQualif::NEEDS_DROP
     ) {
-        let global = consts::get_const_expr_as_global(bcx.ccx(), expr, qualif,
-                                                      bcx.fcx.param_substs);
+        match consts::get_const_expr_as_global(bcx.ccx(), expr, qualif,
+                                                            bcx.fcx.param_substs,
+                                                            consts::TrueConst::No) {
+            Ok(global) => {
+                if qualif.intersects(check_const::ConstQualif::HAS_STATIC_BORROWS) {
+                    // Is borrowed as 'static, must return lvalue.
 
-        if qualif.intersects(check_const::ConstQualif::HAS_STATIC_BORROWS) {
-            // Is borrowed as 'static, must return lvalue.
+                    // Cast pointer to global, because constants have different types.
+                    let const_ty = expr_ty_adjusted(bcx, expr);
+                    let llty = type_of::type_of(bcx.ccx(), const_ty);
+                    let global = PointerCast(bcx, global, llty.ptr_to());
+                    let datum = Datum::new(global, const_ty, Lvalue::new("expr::trans"));
+                    return DatumBlock::new(bcx, datum.to_expr_datum());
+                }
 
-            // Cast pointer to global, because constants have different types.
-            let const_ty = expr_ty_adjusted(bcx, expr);
-            let llty = type_of::type_of(bcx.ccx(), const_ty);
-            let global = PointerCast(bcx, global, llty.ptr_to());
-            let datum = Datum::new(global, const_ty, Lvalue::new("expr::trans"));
-            return DatumBlock::new(bcx, datum.to_expr_datum());
+                // Otherwise, keep around and perform adjustments, if needed.
+                let const_ty = if adjusted_global {
+                    expr_ty_adjusted(bcx, expr)
+                } else {
+                    expr_ty(bcx, expr)
+                };
+
+                // This could use a better heuristic.
+                Some(if type_is_immediate(bcx.ccx(), const_ty) {
+                    // Cast pointer to global, because constants have different types.
+                    let llty = type_of::type_of(bcx.ccx(), const_ty);
+                    let global = PointerCast(bcx, global, llty.ptr_to());
+                    // Maybe just get the value directly, instead of loading it?
+                    immediate_rvalue(load_ty(bcx, global, const_ty), const_ty)
+                } else {
+                    let scratch = alloc_ty(bcx, const_ty, "const");
+                    call_lifetime_start(bcx, scratch);
+                    let lldest = if !const_ty.is_structural() {
+                        // Cast pointer to slot, because constants have different types.
+                        PointerCast(bcx, scratch, val_ty(global))
+                    } else {
+                        // In this case, memcpy_ty calls llvm.memcpy after casting both
+                        // source and destination to i8*, so we don't need any casts.
+                        scratch
+                    };
+                    memcpy_ty(bcx, lldest, global, const_ty);
+                    Datum::new(scratch, const_ty, Rvalue::new(ByRef))
+                })
+            },
+            Err(consts::ConstEvalFailure::Runtime(_)) => {
+                // in case const evaluation errors, translate normally
+                // debug assertions catch the same errors
+                // see RFC 1229
+                None
+            },
+            Err(consts::ConstEvalFailure::Compiletime(_)) => {
+                // generate a dummy llvm value
+                let const_ty = expr_ty(bcx, expr);
+                let llty = type_of::type_of(bcx.ccx(), const_ty);
+                let dummy = C_undef(llty.ptr_to());
+                Some(Datum::new(dummy, const_ty, Rvalue::new(ByRef)))
+            },
         }
-
-        // Otherwise, keep around and perform adjustments, if needed.
-        let const_ty = if adjusted_global {
-            expr_ty_adjusted(bcx, expr)
-        } else {
-            expr_ty(bcx, expr)
-        };
-
-        // This could use a better heuristic.
-        Some(if type_is_immediate(bcx.ccx(), const_ty) {
-            // Cast pointer to global, because constants have different types.
-            let llty = type_of::type_of(bcx.ccx(), const_ty);
-            let global = PointerCast(bcx, global, llty.ptr_to());
-            // Maybe just get the value directly, instead of loading it?
-            immediate_rvalue(load_ty(bcx, global, const_ty), const_ty)
-        } else {
-            let scratch = alloc_ty(bcx, const_ty, "const");
-            call_lifetime_start(bcx, scratch);
-            let lldest = if !const_ty.is_structural() {
-                // Cast pointer to slot, because constants have different types.
-                PointerCast(bcx, scratch, val_ty(global))
-            } else {
-                // In this case, memcpy_ty calls llvm.memcpy after casting both
-                // source and destination to i8*, so we don't need any casts.
-                scratch
-            };
-            memcpy_ty(bcx, lldest, global, const_ty);
-            Datum::new(scratch, const_ty, Rvalue::new(ByRef))
-        })
     } else {
         None
     };
