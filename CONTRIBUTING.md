@@ -149,6 +149,11 @@ To find documentation-related issues, sort by the [A-docs label][adocs].
 
 [adocs]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AA-docs
 
+In many cases, you don't need a full `make doc`. You can use `rustdoc` directly
+to check small fixes. For example, `rustdoc src/doc/reference.md` will render
+reference to `doc/reference.html`. The CSS might be messed up, but you can
+verify that HTML is right.
+
 ## Issue Triage
 
 Sometimes, an issue will stay open, even though the bug has been fixed. And
