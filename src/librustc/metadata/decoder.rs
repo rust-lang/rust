@@ -1284,24 +1284,19 @@ pub fn each_implementation_for_trait<F>(cdata: Cmd,
                                         mut callback: F) where
     F: FnMut(DefId),
 {
-    if cdata.cnum == def_id.krate {
-        let item_doc = cdata.lookup_item(def_id.index);
-        for impl_doc in reader::tagged_docs(item_doc, tag_items_data_item_extension_impl) {
-            callback(item_def_id(impl_doc, cdata));
-        }
-        return;
-    }
-
     // Do a reverse lookup beforehand to avoid touching the crate_num
     // hash map in the loop below.
     if let Some(crate_local_did) = reverse_translate_def_id(cdata, def_id) {
         let def_id_u64 = def_to_u64(crate_local_did);
 
         let impls_doc = reader::get_doc(rbml::Doc::new(cdata.data()), tag_impls);
-        for impl_doc in reader::tagged_docs(impls_doc, tag_impls_impl) {
-            let impl_trait = reader::get_doc(impl_doc, tag_impls_impl_trait_def_id);
-            if reader::doc_as_u64(impl_trait) == def_id_u64 {
-                callback(item_def_id(impl_doc, cdata));
+        for trait_doc in reader::tagged_docs(impls_doc, tag_impls_trait) {
+            let trait_def_id = reader::get_doc(trait_doc, tag_def_id);
+            if reader::doc_as_u64(trait_def_id) != def_id_u64 {
+                continue;
+            }
+            for impl_doc in reader::tagged_docs(trait_doc, tag_impls_trait_impl) {
+                callback(translated_def_id(cdata, impl_doc));
             }
         }
     }
