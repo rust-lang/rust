@@ -156,7 +156,7 @@ impl AttributeMethods for Attribute {
                 InternedString::new("doc"),
                 token::intern_and_get_ident(&strip_doc_comment_decoration(
                         &comment)));
-            if self.node.style == ast::AttrOuter {
+            if self.node.style == ast::AttrStyle::Outer {
                 f(&mk_attr_outer(self.node.id, meta))
             } else {
                 f(&mk_attr_inner(self.node.id, meta))
@@ -203,7 +203,7 @@ pub fn mk_attr_id() -> AttrId {
 pub fn mk_attr_inner(id: AttrId, item: P<MetaItem>) -> Attribute {
     dummy_spanned(Attribute_ {
         id: id,
-        style: ast::AttrInner,
+        style: ast::AttrStyle::Inner,
         value: item,
         is_sugared_doc: false,
     })
@@ -213,7 +213,7 @@ pub fn mk_attr_inner(id: AttrId, item: P<MetaItem>) -> Attribute {
 pub fn mk_attr_outer(id: AttrId, item: P<MetaItem>) -> Attribute {
     dummy_spanned(Attribute_ {
         id: id,
-        style: ast::AttrOuter,
+        style: ast::AttrStyle::Outer,
         value: item,
         is_sugared_doc: false,
     })
