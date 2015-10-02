@@ -11,6 +11,7 @@
 #![feature(rustc_private)]
 #![feature(custom_attribute)]
 #![feature(slice_splits)]
+#![feature(slice_patterns)]
 #![feature(catch_panic)]
 #![allow(unused_attributes)]
 
