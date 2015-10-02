@@ -105,6 +105,7 @@ pub mod front {
 }
 
 pub mod middle {
+    pub mod expr_use_visitor; // STAGE0: increase glitch immunity
     pub mod astconv_util;
     pub mod astencode;
     pub mod cfg;
@@ -122,7 +123,6 @@ pub mod middle {
     pub mod dependency_format;
     pub mod effect;
     pub mod entry;
-    pub mod expr_use_visitor;
     pub mod free_region;
     pub mod intrinsicck;
     pub mod infer;
