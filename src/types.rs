@@ -42,7 +42,8 @@ pub fn rewrite_path(context: &RewriteContext,
 
     if let Some(ref qself) = qself {
         result.push('<');
-        result.push_str(&pprust::ty_to_string(&qself.ty));
+        let fmt_ty = try_opt!(qself.ty.rewrite(context, width, offset));
+        result.push_str(&fmt_ty);
 
         if skip_count > 0 {
             result.push_str(" as ");
