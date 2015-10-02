@@ -63,7 +63,7 @@ use rustc_resolve as resolve;
 use rustc_trans::back::link;
 use rustc_trans::save;
 use rustc::session::{config, Session, build_session};
-use rustc::session::config::{Input, PrintRequest};
+use rustc::session::config::{Input, PrintRequest, OutputType};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::metadata;
@@ -382,7 +382,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             control.after_analysis.stop = Compilation::Stop;
         }
 
-        if !sess.opts.output_types.iter().any(|&i| i == config::OutputTypeExe) {
+        if !sess.opts.output_types.keys().any(|&i| i == OutputType::Exe) {
             control.after_llvm.stop = Compilation::Stop;
         }
 

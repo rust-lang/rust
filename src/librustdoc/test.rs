@@ -24,7 +24,7 @@ use testing;
 use rustc_lint;
 use rustc::front::map as hir_map;
 use rustc::session::{self, config};
-use rustc::session::config::get_unstable_features_setting;
+use rustc::session::config::{get_unstable_features_setting, OutputType};
 use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_front::lowering::lower_crate;
 use rustc_back::tempdir::TempDir;
@@ -167,13 +167,15 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     // never wrap the test in `fn main() { ... }`
     let test = maketest(test, Some(cratename), as_test_harness, opts);
     let input = config::Input::Str(test.to_string());
+    let mut outputs = HashMap::new();
+    outputs.insert(OutputType::Exe, None);
 
     let sessopts = config::Options {
         maybe_sysroot: Some(env::current_exe().unwrap().parent().unwrap()
                                               .parent().unwrap().to_path_buf()),
         search_paths: libs,
         crate_types: vec!(config::CrateTypeExecutable),
-        output_types: vec!(config::OutputTypeExe),
+        output_types: outputs,
         externs: externs,
         cg: config::CodegenOptions {
             prefer_dynamic: true,
