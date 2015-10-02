@@ -609,6 +609,29 @@ match Something::NotFoo {
 ```
 "##,
 
+E0422: r##"
+You are trying to use an identifier that is either undefined or not a
+struct. For instance:
+```
+fn main () {
+    let x = Foo { x: 1, y: 2 };
+}
+```
+
+In this case, `Foo` is undefined, so it inherently isn't anything, and
+definitely not a struct.
+
+```
+fn main () {
+    let foo = 1;
+    let x = foo { x: 1, y: 2 };
+}
+```
+
+In this case, `foo` is defined, but is not a struct, so Rust can't use
+it as one.
+"##,
+
 E0423: r##"
 A `struct` variant name was used like a function name. Example of
 erroneous code:
@@ -888,7 +911,6 @@ register_diagnostics! {
     E0418, // is not an enum variant, struct or const
     E0420, // is not an associated const
     E0421, // unresolved associated const
-    E0422, // does not name a structure
     E0427, // cannot use `ref` binding mode with ...
     E0429, // `self` imports are only allowed within a { } list
     E0434, // can't capture dynamic environment in a fn item
