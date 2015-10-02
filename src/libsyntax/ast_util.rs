@@ -463,7 +463,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
                         _: &ast::Generics,
                         id: NodeId) {
         self.operation.visit_id(id);
-        struct_def.ctor_id.map(|ctor_id| self.operation.visit_id(ctor_id));
+        self.operation.visit_id(struct_def.id);
         visit::walk_struct_def(self, struct_def);
     }
 
@@ -527,12 +527,6 @@ pub fn compute_id_range_for_fn_body(fk: FnKind,
     };
     id_visitor.visit_fn(fk, decl, body, sp, id);
     id_visitor.operation.result
-}
-
-/// Returns true if the given struct def is tuple-like; i.e. that its fields
-/// are unnamed.
-pub fn struct_def_is_tuple_like(struct_def: &ast::StructDef) -> bool {
-    struct_def.ctor_id.is_some()
 }
 
 /// Returns true if the given pattern consists solely of an identifier

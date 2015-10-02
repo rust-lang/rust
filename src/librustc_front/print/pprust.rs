@@ -896,8 +896,8 @@ impl<'a> State<'a> {
                         -> io::Result<()> {
         try!(self.print_name(name));
         try!(self.print_generics(generics));
-        if ::util::struct_def_is_tuple_like(struct_def) {
-            if !struct_def.fields.is_empty() {
+        if struct_def.kind != hir::VariantKind::Dict {
+            if struct_def.kind == hir::VariantKind::Tuple {
                 try!(self.popen());
                 try!(self.commasep(Inconsistent,
                                    &struct_def.fields,

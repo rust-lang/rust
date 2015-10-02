@@ -235,7 +235,7 @@ pub struct Import {
 }
 
 pub fn struct_type_from_def(sd: &hir::StructDef) -> StructType {
-    if sd.ctor_id.is_some() {
+    if sd.kind != hir::VariantKind::Dict {
         // We are in a tuple-struct
         match sd.fields.len() {
             0 => Unit,

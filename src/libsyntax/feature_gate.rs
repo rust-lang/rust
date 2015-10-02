@@ -828,7 +828,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                         }
                     }
                 }
-                if def.fields.is_empty() && def.ctor_id.is_none() {
+                if def.fields.is_empty() && def.kind == ast::VariantKind::Dict {
                     self.gate_feature("braced_empty_structs", i.span,
                                       "empty structs with braces are unstable");
                 }

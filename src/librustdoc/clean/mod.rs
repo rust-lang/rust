@@ -1917,25 +1917,10 @@ pub enum VariantKind {
     StructVariant(VariantStruct),
 }
 
-impl Clean<VariantKind> for hir::VariantKind {
-    fn clean(&self, cx: &DocContext) -> VariantKind {
-        match self {
-            &hir::TupleVariantKind(ref args) => {
-                if args.is_empty() {
-                    CLikeVariant
-                } else {
-                    TupleVariant(args.iter().map(|x| x.ty.clean(cx)).collect())
-                }
-            },
-            &hir::StructVariantKind(ref sd) => StructVariant(sd.clean(cx)),
-        }
-    }
-}
-
 fn struct_def_to_variant_kind(struct_def: &hir::StructDef, cx: &DocContext) -> VariantKind {
-    if struct_def.ctor_id.is_none() {
+    if struct_def.kind == hir::VariantKind::Dict {
         StructVariant(struct_def.clean(cx))
-    } else if struct_def.fields.is_empty() {
+    } else if struct_def.kind == hir::VariantKind::Unit {
         CLikeVariant
     } else {
         TupleVariant(struct_def.fields.iter().map(|x| x.node.ty.clean(cx)).collect())

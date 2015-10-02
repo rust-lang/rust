@@ -492,9 +492,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             // These items live in both the type and value namespaces.
             ItemStruct(ref struct_def, _) => {
                 // Adding to both Type and Value namespaces or just Type?
-                let (forbid, ctor_id) = match struct_def.ctor_id {
-                    Some(ctor_id)   => (ForbidDuplicateTypesAndValues, Some(ctor_id)),
-                    None            => (ForbidDuplicateTypesAndModules, None)
+                let (forbid, ctor_id) = match struct_def.kind {
+                    hir::VariantKind::Dict => (ForbidDuplicateTypesAndModules, None),
+                    _                     => (ForbidDuplicateTypesAndValues, Some(struct_def.id)),
                 };
 
                 let name_bindings = self.add_child(name, parent, forbid, sp);
@@ -587,14 +587,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                        item_id: DefId,
                                        parent: &Rc<Module>) {
         let name = variant.node.name;
-        let is_exported = match variant.node.def.ctor_id {
-            Some(_) => false,
-            None => {
+        let is_exported = match variant.node.def.kind {
+            hir::VariantKind::Dict => {
                 // Not adding fields for variants as they are not accessed with a self receiver
                 let variant_def_id = self.ast_map.local_def_id(variant.node.id);
                 self.structs.insert(variant_def_id, Vec::new());
                 true
             }
+            _ => false,
         };
 
         let child = self.add_child(name, parent,

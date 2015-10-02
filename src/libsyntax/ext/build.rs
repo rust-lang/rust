@@ -993,7 +993,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn variant(&self, span: Span, name: Ident, tys: Vec<P<ast::Ty>> ) -> ast::Variant {
-        let fields = tys.into_iter().map(|ty| {
+        let fields: Vec<_> = tys.into_iter().map(|ty| {
             Spanned { span: ty.span, node: ast::StructField_ {
                 ty: ty,
                 kind: ast::UnnamedField(ast::Inherited),
@@ -1002,11 +1002,15 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             }}
         }).collect();
 
+        let kind = if fields.is_empty() { ast::VariantKind::Unit } else { ast::VariantKind::Tuple };
+
         respan(span,
                ast::Variant_ {
                    name: name,
                    attrs: Vec::new(),
-                   def: P(ast::StructDef { fields: fields, ctor_id: Some(ast::DUMMY_NODE_ID) }),
+                   def: P(ast::StructDef { fields: fields,
+                                           id: ast::DUMMY_NODE_ID,
+                                           kind: kind }),
                    id: ast::DUMMY_NODE_ID,
                    disr_expr: None,
                })

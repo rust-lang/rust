@@ -132,9 +132,8 @@ impl<'v> Visitor<'v> for ParentVisitor {
                         _: &'v hir::Generics, n: ast::NodeId) {
         // Struct constructors are parented to their struct definitions because
         // they essentially are the struct definitions.
-        match s.ctor_id {
-            Some(id) => { self.parents.insert(id, n); }
-            None => {}
+        if s.kind != hir::VariantKind::Dict {
+            self.parents.insert(s.id, n);
         }
 
         // While we have the id of the struct definition, go ahead and parent
@@ -320,9 +319,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
 
             // Struct constructors are public if the struct is all public.
             hir::ItemStruct(ref def, _) if public_first => {
-                match def.ctor_id {
-                    Some(id) => { self.exported_items.insert(id); }
-                    None => {}
+                if def.kind != hir::VariantKind::Dict {
+                    self.exported_items.insert(def.id);
                 }
                 // fields can be public or private, so lets check
                 for field in &def.fields {

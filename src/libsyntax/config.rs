@@ -168,12 +168,13 @@ fn fold_item_underscore<F>(cx: &mut Context<F>, item: ast::Item_) -> ast::Item_ 
 fn fold_struct<F>(cx: &mut Context<F>, def: P<ast::StructDef>) -> P<ast::StructDef> where
     F: FnMut(&[ast::Attribute]) -> bool
 {
-    def.map(|ast::StructDef { fields, ctor_id }| {
+    def.map(|ast::StructDef { fields, id, kind }| {
         ast::StructDef {
             fields: fields.into_iter().filter(|m| {
                 (cx.in_cfg)(&m.node.attrs)
             }).collect(),
-            ctor_id: ctor_id,
+            id: id,
+            kind: kind,
         }
     })
 }

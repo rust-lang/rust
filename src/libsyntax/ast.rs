@@ -44,7 +44,6 @@ pub use self::TyParamBound::*;
 pub use self::UintTy::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
-pub use self::VariantKind::*;
 pub use self::ViewPath_::*;
 pub use self::Visibility::*;
 pub use self::PathParameters::*;
@@ -1578,14 +1577,6 @@ pub struct VariantArg {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum VariantKind {
-    /// Tuple variant, e.g. `Foo(A, B)`
-    TupleVariantKind(Vec<VariantArg>),
-    /// Struct variant, e.g. `Foo {x: A, y: B}`
-    StructVariantKind(P<StructDef>),
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct EnumDef {
     pub variants: Vec<P<Variant>>,
 }
@@ -1756,13 +1747,21 @@ impl StructFieldKind {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum VariantKind {
+    Dict,
+    Tuple,
+    Unit,
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct StructDef {
     /// Fields, not including ctor
     pub fields: Vec<StructField>,
     /// ID of the constructor. This is only used for tuple- or enum-like
     /// structs.
-    pub ctor_id: Option<NodeId>,
+    pub id: NodeId,
+    pub kind: VariantKind,
 }
 
 /*

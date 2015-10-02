@@ -426,7 +426,9 @@ fn find_live(tcx: &ty::ctxt,
 
 fn get_struct_ctor_id(item: &hir::Item) -> Option<ast::NodeId> {
     match item.node {
-        hir::ItemStruct(ref struct_def, _) => struct_def.ctor_id,
+        hir::ItemStruct(ref struct_def, _) if struct_def.kind != hir::VariantKind::Dict => {
+            Some(struct_def.id)
+        }
         _ => None
     }
 }

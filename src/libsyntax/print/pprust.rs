@@ -1392,8 +1392,8 @@ impl<'a> State<'a> {
                         print_finalizer: bool) -> io::Result<()> {
         try!(self.print_ident(ident));
         try!(self.print_generics(generics));
-        if ast_util::struct_def_is_tuple_like(struct_def) {
-            if !struct_def.fields.is_empty() {
+        if struct_def.kind != ast::VariantKind::Dict {
+            if struct_def.kind == ast::VariantKind::Tuple {
                 try!(self.popen());
                 try!(self.commasep(
                     Inconsistent, &struct_def.fields,
@@ -3119,7 +3119,9 @@ mod tests {
             name: ident,
             attrs: Vec::new(),
             // making this up as I go.... ?
-            def: P(ast::StructDef { fields: Vec::new(), ctor_id: Some(ast::DUMMY_NODE_ID) }),
+            def: P(ast::StructDef { fields: Vec::new(),
+                                    id: ast::DUMMY_NODE_ID,
+                                    kind: ast::VariantKind::Unit }),
             id: 0,
             disr_expr: None,
         });
