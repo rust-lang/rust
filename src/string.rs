@@ -66,18 +66,14 @@ pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> Option<String> {
                 cur_end = cur_start + max_chars;
                 // Look for punctuation to break on.
                 while (!punctuation.contains(graphemes[cur_end - 1])) && cur_end > 1 {
-                    if cur_end > 1 {
-                        cur_end -= 1;
-                    }
+                    cur_end -= 1;
                 }
                 // We can't break at whitespace or punctuation, fall back to splitting
                 // anywhere that doesn't break an escape sequence.
                 if cur_end < cur_start + MIN_STRING {
                     cur_end = cur_start + max_chars;
-                    while graphemes[cur_end - 1] == "\\" {
-                        if cur_end > 1 {
-                            cur_end -= 1;
-                        }
+                    while graphemes[cur_end - 1] == "\\" && cur_end > 1 {
+                        cur_end -= 1;
                     }
                 }
                 break;
