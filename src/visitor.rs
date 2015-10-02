@@ -407,7 +407,7 @@ impl<'a> Rewrite for [ast::Attribute] {
             let a_str = context.snippet(a.span);
 
             if i > 0 {
-                let comment = context.snippet(codemap::mk_sp(self[i-1].span.hi, a.span.lo));
+                let comment = context.snippet(codemap::mk_sp(self[i - 1].span.hi, a.span.lo));
                 // This particular horror show is to preserve line breaks in between doc
                 // comments. An alternative would be to force such line breaks to start
                 // with the usual doc comment token.

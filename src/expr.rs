@@ -756,7 +756,7 @@ fn rewrite_match_arm_comment(context: &RewriteContext,
                              -> Option<String> {
     // The leading "," is not part of the arm-comment
     let missed_str = match missed_str.find_uncommented(",") {
-        Some(n) => &missed_str[n+1..],
+        Some(n) => &missed_str[n + 1..],
         None => &missed_str[..],
     };
 
@@ -816,7 +816,7 @@ fn rewrite_match(context: &RewriteContext,
         let missed_str = if i == 0 {
             context.snippet(mk_sp(open_brace_pos, arm_start_pos(arm)))
         } else {
-            context.snippet(mk_sp(arm_end_pos(&arms[i-1]), arm_start_pos(arm)))
+            context.snippet(mk_sp(arm_end_pos(&arms[i - 1]), arm_start_pos(arm)))
         };
         let comment = try_opt!(rewrite_match_arm_comment(context,
                                                          &missed_str,
