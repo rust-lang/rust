@@ -7,9 +7,10 @@
 ifneq ($(shell uname),FreeBSD)
 ifndef IS_WINDOWS
 all:
-	$(RUSTC) --emit dep-info,link --crate-type=lib lib.rs
+	cp *.rs $(TMPDIR)
+	$(RUSTC) --emit dep-info,link --crate-type=lib $(TMPDIR)/lib.rs
 	sleep 2
-	touch foo.rs
+	touch $(TMPDIR)/foo.rs
 	-rm -f $(TMPDIR)/done
 	$(MAKE) -drf Makefile.foo
 	sleep 2
@@ -17,6 +18,11 @@ all:
 	pwd
 	$(MAKE) -drf Makefile.foo
 	rm $(TMPDIR)/done && exit 1 || exit 0
+
+	# When a source file is deleted `make` should still work
+	rm $(TMPDIR)/bar.rs
+	cp $(TMPDIR)/lib2.rs $(TMPDIR)/lib.rs
+	$(MAKE) -drf Makefile.foo
 else
 all:
 
