@@ -1439,11 +1439,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_struct_field(&mut self, s: &hir::StructField) {
-        match s.node.kind {
-            hir::NamedField(_, vis) if vis == hir::Public || self.in_variant => {
-                visit::walk_struct_field(self, s);
-            }
-            _ => {}
+        let vis = match s.node.kind {
+            hir::NamedField(_, vis) | hir::UnnamedField(vis) => vis
+        };
+        if vis == hir::Public || self.in_variant {
+            visit::walk_struct_field(self, s);
         }
     }
 
