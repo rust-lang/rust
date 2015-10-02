@@ -81,12 +81,6 @@ pub fn binop_to_string(op: BinOp_) -> &'static str {
     }
 }
 
-/// Returns true if the given struct def is tuple-like; i.e. that its fields
-/// are unnamed.
-pub fn struct_def_is_tuple_like(struct_def: &hir::StructDef) -> bool {
-    struct_def.ctor_id.is_some()
-}
-
 pub fn stmt_id(s: &Stmt) -> NodeId {
     match s.node {
         StmtDecl(_, id) => id,
@@ -298,7 +292,7 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
                         _: &hir::Generics,
                         id: NodeId) {
         self.operation.visit_id(id);
-        struct_def.ctor_id.map(|ctor_id| self.operation.visit_id(ctor_id));
+        self.operation.visit_id(struct_def.id);
         visit::walk_struct_def(self, struct_def);
     }
 

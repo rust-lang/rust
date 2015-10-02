@@ -150,8 +150,8 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             }
             ItemStruct(ref struct_def, _) => {
                 // If this is a tuple-like struct, register the constructor.
-                if let Some(ctor_id) = struct_def.ctor_id {
-                    self.insert_def(ctor_id,
+                if struct_def.kind != VariantKind::Dict {
+                    self.insert_def(struct_def.id,
                                     NodeStructCtor(&**struct_def),
                                     DefPathData::StructCtor);
                 }

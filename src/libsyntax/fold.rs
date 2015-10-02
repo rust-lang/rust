@@ -820,9 +820,10 @@ pub fn noop_fold_where_predicate<T: Folder>(
 }
 
 pub fn noop_fold_struct_def<T: Folder>(struct_def: P<StructDef>, fld: &mut T) -> P<StructDef> {
-    struct_def.map(|StructDef { fields, ctor_id }| StructDef {
+    struct_def.map(|StructDef { fields, id, kind }| StructDef {
         fields: fields.move_map(|f| fld.fold_struct_field(f)),
-        ctor_id: ctor_id.map(|cid| fld.new_id(cid)),
+        id: fld.new_id(id),
+        kind: kind,
     })
 }
 

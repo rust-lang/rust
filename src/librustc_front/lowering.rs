@@ -502,7 +502,12 @@ pub fn lower_where_predicate(_lctx: &LoweringContext,
 pub fn lower_struct_def(_lctx: &LoweringContext, sd: &StructDef) -> P<hir::StructDef> {
     P(hir::StructDef {
         fields: sd.fields.iter().map(|f| lower_struct_field(_lctx, f)).collect(),
-        ctor_id: sd.ctor_id,
+        id: sd.id,
+        kind: match sd.kind {
+            VariantKind::Dict => hir::VariantKind::Dict,
+            VariantKind::Tuple => hir::VariantKind::Tuple,
+            VariantKind::Unit => hir::VariantKind::Unit,
+        }
     })
 }
 

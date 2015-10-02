@@ -381,12 +381,8 @@ fn each_auxiliary_node_id<F>(item: &hir::Item, callback: F) -> bool where
     match item.node {
         hir::ItemStruct(ref struct_def, _) => {
             // If this is a newtype struct, return the constructor.
-            match struct_def.ctor_id {
-                Some(ctor_id) if !struct_def.fields.is_empty() &&
-                        struct_def.fields[0].node.kind.is_unnamed() => {
-                    continue_ = callback(ctor_id);
-                }
-                _ => {}
+            if struct_def.kind == hir::VariantKind::Tuple {
+                continue_ = callback(struct_def.id);
             }
         }
         _ => {}
@@ -1085,9 +1081,8 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         }
 
         // If this is a tuple-like struct, encode the type of the constructor.
-        if let Some(ctor_id) = struct_def.ctor_id {
-            encode_info_for_struct_ctor(ecx, rbml_w, item.name,
-                                        ctor_id, index, item.id);
+        if struct_def.kind != hir::VariantKind::Dict {
+            encode_info_for_struct_ctor(ecx, rbml_w, item.name, struct_def.id, index, item.id);
         }
       }
       hir::ItemDefaultImpl(unsafety, _) => {

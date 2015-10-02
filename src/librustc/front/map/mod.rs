@@ -480,8 +480,8 @@ impl<'ast> Map<'ast> {
                 }
             }
             Some(NodeVariant(variant)) => {
-                match variant.node.def.ctor_id {
-                    None => &variant.node.def,
+                match variant.node.def.kind {
+                    VariantKind::Dict => &variant.node.def,
                     _ => panic!("struct ID bound to enum variant that isn't struct-like"),
                 }
             }

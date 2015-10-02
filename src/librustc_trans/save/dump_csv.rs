@@ -462,16 +462,12 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                       ty_params: &ast::Generics) {
         let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
 
-        let ctor_id = match def.ctor_id {
-            Some(node_id) => node_id,
-            None => ast::DUMMY_NODE_ID,
-        };
         let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Struct);
         self.fmt.struct_str(item.span,
                             sub_span,
                             item.id,
-                            ctor_id,
+                            def.id,
                             &qualname,
                             self.cur_scope,
                             &val);
@@ -505,11 +501,10 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             qualname.push_str(name);
             let val = self.span.snippet(variant.span);
 
-            let ctor_id = variant.node.def.ctor_id.unwrap_or(ast::DUMMY_NODE_ID);
             self.fmt.struct_variant_str(variant.span,
                                         self.span.span_for_first_ident(variant.span),
                                         variant.node.id,
-                                        ctor_id,
+                                        variant.node.def.id,
                                         &qualname,
                                         &enum_data.qualname,
                                         &val,

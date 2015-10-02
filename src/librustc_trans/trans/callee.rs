@@ -418,7 +418,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 
         match map_node {
             hir_map::NodeVariant(v) => {
-                v.node.def.ctor_id.is_some() && !v.node.def.fields.is_empty()
+                v.node.def.kind == hir::VariantKind::Tuple
             }
             hir_map::NodeStructCtor(_) => true,
             _ => false

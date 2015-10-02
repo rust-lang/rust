@@ -1014,8 +1014,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                 convert_field(ccx, &scheme.generics, &predicates, f, ty_f)
             }
 
-            if let Some(ctor_id) = struct_def.ctor_id {
-                convert_variant_ctor(tcx, ctor_id, variant, scheme, predicates);
+            if struct_def.kind != hir::VariantKind::Dict {
+                convert_variant_ctor(tcx, struct_def.id, variant, scheme, predicates);
             }
         },
         hir::ItemTy(_, ref generics) => {

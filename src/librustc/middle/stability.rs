@@ -185,9 +185,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
                       |v| visit::walk_item(v, i), required);
 
         if let hir::ItemStruct(ref sd, _) = i.node {
-            sd.ctor_id.map(|id| {
-                self.annotate(id, true, &i.attrs, i.span, |_| {}, true)
-            });
+            if sd.kind != hir::VariantKind::Dict {
+                self.annotate(sd.id, true, &i.attrs, i.span, |_| {}, true)
+            }
         }
     }
 
