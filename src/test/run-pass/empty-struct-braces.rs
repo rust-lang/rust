@@ -18,39 +18,71 @@ struct Empty2;
 struct Empty3 {}
 const Empty3: Empty3 = Empty3 {};
 
+enum E {
+    Empty4 {},
+    Empty5,
+}
+
 fn main() {
     let e1: Empty1 = Empty1 {};
     let e2: Empty2 = Empty2 {};
     let e2: Empty2 = Empty2;
     let e3: Empty3 = Empty3 {};
     let e3: Empty3 = Empty3;
+    let e4: E = E::Empty4 {};
+    // let e5: E = E::Empty5 {}; // Issue #28692
+    let e5: E = E::Empty5;
 
     match e1 {
-        Empty1 {} => ()
+        Empty1 {} => {}
     }
     match e2 {
-        Empty2 {} => ()
-    }
-    match e2 {
-        Empty2 => ()
+        Empty2 {} => {}
     }
     match e3 {
-        Empty3 {} => ()
+        Empty3 {} => {}
     }
-    match e3 {
-        Empty3 => ()
+    match e4 {
+        E::Empty4 {} => {}
+        _ => {}
     }
+    // Issue #28692
+    // match e5 {
+    //     E::Empty5 {} => {}
+    //     _ => {}
+    // }
+
     match e1 {
-        Empty1 { .. } => ()
+        Empty1 { .. } => {}
     }
     match e2 {
-        Empty2 { .. } => ()
+        Empty2 { .. } => {}
     }
     match e3 {
-        Empty3 { .. } => ()
+        Empty3 { .. } => {}
+    }
+    match e4 {
+        E::Empty4 { .. } => {}
+        _ => {}
+    }
+    // Issue #28692
+    // match e5 {
+    //     E::Empty5 { .. } => {}
+    //     _ => {}
+    // }
+
+    match e2 {
+        Empty2 => {}
+    }
+    match e3 {
+        Empty3 => {}
+    }
+    match e5 {
+        E::Empty5 => {}
+        _ => {}
     }
 
-    let e11 = Empty1 { ..e1 };
-    let e22 = Empty2 { ..e2 };
-    let e33 = Empty3 { ..e3 };
+    let e11: Empty1 = Empty1 { ..e1 };
+    let e22: Empty2 = Empty2 { ..e2 };
+    let e33: Empty3 = Empty3 { ..e3 };
 }

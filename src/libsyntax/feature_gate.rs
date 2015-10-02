@@ -196,7 +196,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     // allow `#[unwind]`
     ("unwind_attributes", "1.4.0", None, Active),
 
-    // allow empty structs/enum variants with braces
+    // allow empty structs and enum variants with braces
     ("braced_empty_structs", "1.5.0", None, Active),
 
     // allow overloading augmented assignment operations like `a += b`
@@ -486,6 +486,7 @@ pub struct Features {
     pub cfg_target_feature: bool,
     pub cfg_target_vendor: bool,
     pub augmented_assignments: bool,
+    pub braced_empty_structs: bool,
 }
 
 impl Features {
@@ -516,6 +517,7 @@ impl Features {
             cfg_target_feature: false,
             cfg_target_vendor: false,
             augmented_assignments: false,
+            braced_empty_structs: false,
         }
     }
 }
@@ -809,7 +811,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemStruct(ref def, _) => {
+            ast::ItemStruct(..) => {
                 if attr::contains_name(&i.attrs[..], "simd") {
                     self.gate_feature("simd", i.span,
                                       "SIMD types are experimental and possibly buggy");
@@ -827,10 +829,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                             }
                         }
                     }
-                }
-                if def.fields.is_empty() && def.kind == ast::VariantKind::Dict {
-                    self.gate_feature("braced_empty_structs", i.span,
-                                      "empty structs with braces are unstable");
                 }
             }
 
@@ -859,6 +857,21 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         visit::walk_item(self, i);
     }
 
+    fn visit_struct_def(&mut self, s: &'v ast::StructDef, _: ast::Ident,
+                        _: &'v ast::Generics, _: ast::NodeId, span: Span) {
+        if s.fields.is_empty() {
+            if s.kind == ast::VariantKind::Dict {
+                self.gate_feature("braced_empty_structs", span,
+                                  "empty structs and enum variants with braces are unstable");
+            } else if s.kind == ast::VariantKind::Tuple {
+                self.context.span_handler.span_err(span, "empty tuple structs and enum variants \
+                                                          are not allowed, use unit structs and \
+                                                          enum variants instead");
+            }
+        }
+        visit::walk_struct_def(self, s)
+    }
+
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
         let links_to_llvm = match attr::first_attr_value_str_by_name(&i.attrs,
                                                                      "link_name") {
@@ -880,12 +893,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   e.span,
                                   "box expression syntax is experimental; \
                                    you can call `Box::new` instead.");
-            }
-            ast::ExprStruct(_, ref fields, ref expr) => {
-                if fields.is_empty() && expr.is_none() {
-                    self.gate_feature("braced_empty_structs", e.span,
-                                      "empty structs with braces are unstable");
-                }
             }
             _ => {}
         }
@@ -910,12 +917,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 self.gate_feature("box_patterns",
                                   pattern.span,
                                   "box pattern syntax is experimental");
-            }
-            ast::PatStruct(_, ref fields, dotdot) => {
-                if fields.is_empty() && !dotdot {
-                    self.gate_feature("braced_empty_structs", pattern.span,
-                                      "empty structs with braces are unstable");
-                }
             }
             _ => {}
         }
@@ -1086,6 +1087,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         cfg_target_feature: cx.has_feature("cfg_target_feature"),
         cfg_target_vendor: cx.has_feature("cfg_target_vendor"),
         augmented_assignments: cx.has_feature("augmented_assignments"),
+        braced_empty_structs: cx.has_feature("braced_empty_structs"),
     }
 }
 

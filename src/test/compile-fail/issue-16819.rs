@@ -8,18 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Empty struct defined with braces shouldn't add names into value namespace
-
-#![feature(braced_empty_structs)]
-#![deny(warnings)]
-
-struct Empty {}
+struct TS ( //~ ERROR empty tuple structs and enum variants are not allowed
+    #[cfg(untrue)]
+    int,
+);
 
 fn main() {
-    let e = Empty {};
-
-    match e {
-        Empty => () //~ ERROR unused variable: `Empty`
-        //~^ ERROR variable `Empty` should have a snake case name such as `empty`
-    }
+    let s = S;
 }

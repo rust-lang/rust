@@ -8,12 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Empty struct defined with braces shouldn't add names into value namespace
+// Can't use empty braced struct as constant or constructor function
 
 #![feature(braced_empty_structs)]
 
-struct Empty {}
+struct Empty1 {}
+
+enum E {
+    Empty2 {}
+}
 
 fn main() {
-    let e = Empty; //~ ERROR `Empty` is the name of a struct or struct variant
+    let e1 = Empty1; //~ ERROR `Empty1` is the name of a struct or struct variant
+    let e1 = Empty1(); //~ ERROR `Empty1` is the name of a struct or struct variant
+    let e2 = E::Empty2; //~ ERROR `E::Empty2` is the name of a struct or struct variant
+    let e2 = E::Empty2(); //~ ERROR `E::Empty2` is the name of a struct or struct variant
 }
