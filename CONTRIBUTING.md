@@ -221,15 +221,16 @@ are:
 * The [Rust Internals forum][rif], a place to ask questions and
   discuss Rust's internals
 * The [generated documentation for rust's compiler][gdfrustc]
-* The [rust referance][rr], even though it doesn't specifically talk about Rust's internals, its a great reasource nontheless
+* The [rust reference][rr], even though it doesn't specifically talk about Rust's internals, it's a great resource nonetheless
 * Although out of date, [Tom Lee's great blog article][tlgba] is very helpful
 * [rustaceans.org][ro] is helpful, but mostly dedicated to IRC
 * The [Rust Compiler Testing Docs][rctd]
 * For @bors, [this cheat sheet][cheatsheet] is helpful (Remember to replace `@homu` with `@bors` in the commands that you use.)
-* **Google**!
+* **Google!** ([search only in Rust Documentation][gsearchdocs] to find types, traits, etc. quickly)
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
 [gdfrustc]: http://manishearth.github.io/rust-internals-docs/rustc/
+[gsearchdocs]: https://www.google.de/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org
 [rr]: https://doc.rust-lang.org/book/README.html
 [tlgba]: http://tomlee.co/2014/04/03/a-more-detailed-tour-of-the-rust-compiler/
