@@ -111,8 +111,6 @@ impl Rewrite for ast::Expr {
                                 offset,
                                 true)
             }
-            // We reformat it ourselves because rustc gives us a bad span
-            // for ranges, see rust#27162
             ast::Expr_::ExprRange(ref left, ref right) => {
                 rewrite_range(context,
                               left.as_ref().map(|e| &**e),
@@ -182,10 +180,12 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprCast(ref expr, ref ty) => {
                 rewrite_cast(expr, ty, context, width, offset)
             }
+            ast::Expr_::ExprIndex(ref expr, ref index) => {
+                rewrite_index(expr, index, context, width, offset)
+            }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
             ast::Expr_::ExprInPlace(..) |
-            ast::Expr_::ExprIndex(..) |
             ast::Expr_::ExprInlineAsm(..) |
             ast::Expr_::ExprRepeat(..) => {
                 wrap_str(context.snippet(self.span),
@@ -195,6 +195,38 @@ impl Rewrite for ast::Expr {
             }
         }
     }
+}
+
+fn rewrite_index(expr: &ast::Expr,
+                 index: &ast::Expr,
+                 context: &RewriteContext,
+                 width: usize,
+                 offset: Indent)
+                 -> Option<String> {
+    let max_width = try_opt!(width.checked_sub("[]".len()));
+
+    binary_search(1,
+                  max_width,
+                  |expr_budget| {
+                      let expr_str = match expr.rewrite(context, expr_budget, offset) {
+                          Some(result) => result,
+                          None => return Err(Ordering::Greater),
+                      };
+
+                      let last_line_width = last_line_width(&expr_str);
+                      let index_budget = match max_width.checked_sub(last_line_width) {
+                          Some(b) => b,
+                          None => return Err(Ordering::Less),
+                      };
+                      let index_indent = offset + last_line_width + "[".len();
+
+                      let index_str = match index.rewrite(context, index_budget, index_indent) {
+                          Some(result) => result,
+                          None => return Err(Ordering::Less),
+                      };
+
+                      Ok(format!("{}[{}]", expr_str, index_str))
+                  })
 }
 
 fn rewrite_cast(expr: &ast::Expr,
@@ -218,7 +250,7 @@ fn rewrite_cast(expr: &ast::Expr,
                           Some(b) => b,
                           None => return Err(Ordering::Less),
                       };
-                      let ty_indent = offset + last_line_width;
+                      let ty_indent = offset + last_line_width + " as ".len();
 
                       let ty_str = match ty.rewrite(context, ty_budget, ty_indent) {
                           Some(result) => result,
