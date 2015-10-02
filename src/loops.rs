@@ -501,7 +501,7 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
 
 fn var_def_id(cx: &LateContext, expr: &Expr) -> Option<NodeId> {
     if let Some(path_res) = cx.tcx.def_map.borrow().get(&expr.id) {
-        if let DefLocal(node_id) = path_res.base_def {
+        if let DefLocal(_, node_id) = path_res.base_def {
             return Some(node_id)
         }
     }
