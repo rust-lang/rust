@@ -1,4 +1,6 @@
 -include ../tools.mk
 
 all:
-	$(rustc) -o foo foo.rs
+	cp foo.rs $(TMPDIR)
+	cd $(TMPDIR) && $(RUSTC) -o foo foo.rs
+	$(call RUN,foo)
