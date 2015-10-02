@@ -271,10 +271,6 @@ pub trait Folder : Sized {
         noop_fold_opt_lifetime(o_lt, self)
     }
 
-    fn fold_variant_arg(&mut self, va: VariantArg) -> VariantArg {
-        noop_fold_variant_arg(va, self)
-    }
-
     fn fold_opt_bounds(&mut self, b: Option<OwnedSlice<TyParamBound>>)
                        -> Option<OwnedSlice<TyParamBound>> {
         noop_fold_opt_bounds(b, self)
@@ -882,14 +878,6 @@ pub fn noop_fold_opt_bounds<T: Folder>(b: Option<OwnedSlice<TyParamBound>>, fold
 fn noop_fold_bounds<T: Folder>(bounds: TyParamBounds, folder: &mut T)
                           -> TyParamBounds {
     bounds.move_map(|bound| folder.fold_ty_param_bound(bound))
-}
-
-fn noop_fold_variant_arg<T: Folder>(VariantArg {id, ty}: VariantArg, folder: &mut T)
-                                    -> VariantArg {
-    VariantArg {
-        id: folder.new_id(id),
-        ty: folder.fold_ty(ty)
-    }
 }
 
 pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {

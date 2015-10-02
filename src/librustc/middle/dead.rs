@@ -216,7 +216,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
 
     fn visit_struct_def(&mut self, def: &hir::StructDef, _: ast::Name,
-                        _: &hir::Generics, _: ast::NodeId) {
+                        _: &hir::Generics, _: ast::NodeId, _: codemap::Span) {
         let has_extern_repr = self.struct_has_extern_repr;
         let inherited_pub_visibility = self.inherited_pub_visibility;
         let live_fields = def.fields.iter().filter(|f| {

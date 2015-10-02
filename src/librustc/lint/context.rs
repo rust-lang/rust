@@ -665,7 +665,8 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
                         s: &hir::StructDef,
                         name: ast::Name,
                         g: &hir::Generics,
-                        item_id: ast::NodeId) {
+                        item_id: ast::NodeId,
+                        _: Span) {
         run_lints!(self, check_struct_def, late_passes, s, name, g, item_id);
         hir_visit::walk_struct_def(self, s);
         run_lints!(self, check_struct_def_post, late_passes, s, name, g, item_id);
@@ -814,7 +815,8 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
                         s: &ast::StructDef,
                         ident: ast::Ident,
                         g: &ast::Generics,
-                        item_id: ast::NodeId) {
+                        item_id: ast::NodeId,
+                        _: Span) {
         run_lints!(self, check_struct_def, early_passes, s, ident, g, item_id);
         ast_visit::walk_struct_def(self, s);
         run_lints!(self, check_struct_def_post, early_passes, s, ident, g, item_id);

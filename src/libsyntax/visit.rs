@@ -80,7 +80,8 @@ pub trait Visitor<'v> : Sized {
     fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef, m: &'v TraitBoundModifier) {
         walk_poly_trait_ref(self, t, m)
     }
-    fn visit_struct_def(&mut self, s: &'v StructDef, _: Ident, _: &'v Generics, _: NodeId) {
+    fn visit_struct_def(&mut self, s: &'v StructDef, _: Ident,
+                        _: &'v Generics, _: NodeId, _: Span) {
         walk_struct_def(self, s)
     }
     fn visit_struct_field(&mut self, s: &'v StructField) { walk_struct_field(self, s) }
@@ -288,7 +289,8 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         }
         ItemStruct(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
-            visitor.visit_struct_def(struct_definition, item.ident, generics, item.id);
+            visitor.visit_struct_def(struct_definition, item.ident,
+                                     generics, item.id, item.span);
         }
         ItemTrait(_, ref generics, ref bounds, ref methods) => {
             visitor.visit_generics(generics);
@@ -314,7 +316,8 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
                                         generics: &'v Generics,
                                         item_id: NodeId) {
     visitor.visit_ident(variant.span, variant.node.name);
-    visitor.visit_struct_def(&variant.node.def, variant.node.name, generics, item_id);
+    visitor.visit_struct_def(&variant.node.def, variant.node.name,
+                             generics, item_id, variant.span);
     walk_list!(visitor, visit_expr, &variant.node.disr_expr);
     walk_list!(visitor, visit_attribute, &variant.node.attrs);
 }
