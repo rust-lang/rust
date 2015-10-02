@@ -24,6 +24,7 @@ are expecting.
   `~^^^^^^^` is seven lines up.
 
 The error levels that you can have are:
+
 1. `ERROR`
 2. `WARNING`
 3. `NOTE`
