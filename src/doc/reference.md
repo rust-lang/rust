@@ -77,9 +77,12 @@ An identifier is any nonempty Unicode[^non_ascii_idents] string of the following
   gated. This is expected to improve soon.
 
 Either
+
    * The first character has property `XID_start`
    * The remaining characters have property `XID_continue`
+
 Or
+
    * The first character is `_`
    * The identifier is more than one character, `_` alone is not an identifier
    * The remaining characters have property `XID_continue`
