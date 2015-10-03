@@ -1779,6 +1779,58 @@ fn(isize, *const *const u8) -> isize;
 ```
 "##,
 
+E0163: r##"
+This error means that an attempt was made to match an enum variant as a
+struct type when the variant isn't a struct type:
+
+```
+enum Foo { B(u32) }
+
+fn bar(foo: Foo) -> u32 {
+    match foo {
+        Foo::B{i} => i // error 0163
+    }
+}
+```
+
+Try using `()` instead:
+
+```
+fn bar(foo: Foo) -> u32 {
+    match foo {
+        Foo::B(i) => i
+    }
+}
+```
+"##,
+
+E0164: r##"
+
+This error means that an attempt was made to match a struct type enum
+variant as a non-struct type:
+
+```
+enum Foo { B{ i: u32 } }
+
+fn bar(foo: Foo) -> u32 {
+    match foo {
+        Foo::B(i) => i // error 0164
+    }
+}
+```
+
+Try using `{}` isntead:
+
+```
+fn bar(foo: Foo) -> u32 {
+    match foo {
+        Foo::B{i} => i
+    }
+}
+```
+"##,
+
+
 E0166: r##"
 This error means that the compiler found a return expression in a function
 marked as diverging. A function diverges if it has `!` in the place of the
@@ -3293,8 +3345,6 @@ register_diagnostics! {
 //  E0129,
 //  E0141,
 //  E0159, // use of trait `{}` as struct constructor
-    E0163,
-    E0164,
     E0167,
 //  E0168,
 //  E0173, // manual implementations of unboxed closure traits are experimental
