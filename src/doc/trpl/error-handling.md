@@ -225,7 +225,7 @@ sense to put it into a function:
 ```rust
 # fn find(_: &str, _: char) -> Option<usize> { None }
 // Returns the extension of the given file name, where the extension is defined
-// as all characters proceding the first `.`.
+// as all characters proceeding the first `.`.
 // If `file_name` has no `.`, then `None` is returned.
 fn extension_explicit(file_name: &str) -> Option<&str> {
     match find(file_name, '.') {
@@ -272,7 +272,7 @@ to get rid of the case analysis:
 ```rust
 # fn find(_: &str, _: char) -> Option<usize> { None }
 // Returns the extension of the given file name, where the extension is defined
-// as all characters proceding the first `.`.
+// as all characters proceeding the first `.`.
 // If `file_name` has no `.`, then `None` is returned.
 fn extension(file_name: &str) -> Option<&str> {
     find(file_name, '.').map(|i| &file_name[i+1..])
@@ -755,7 +755,7 @@ fn main() {
 (N.B. The `AsRef<Path>` is used because those are the
 [same bounds used on
 `std::fs::File::open`](../std/fs/struct.File.html#method.open).
-This makes it ergnomic to use any kind of string as a file path.)
+This makes it ergonomic to use any kind of string as a file path.)
 
 There are three different errors that can occur here:
 
@@ -1552,7 +1552,7 @@ parser and a help message from a vector of options (The fact that it
 is a vector is hidden behind a struct and a set of methods). Once the
 parsing is done, we can decode the program arguments into a Rust
 struct. From there, we can get information about the flags, for
-instance, wether they were passed in, and what arguments they
+instance, whether they were passed in, and what arguments they
 had. Here's our program with the appropriate `extern crate`
 statements, and the basic argument setup for Getopts:
 
@@ -1594,7 +1594,7 @@ then store the first one, knowing that it is our program's name. Once
 that's done, we set up our argument flags, in this case a simplistic
 help message flag. Once we have the argument flags set up, we use
 `Options.parse` to parse the argument vector (starting from index one,
-becouse index 0 is the program name). If this was successful, we
+because index 0 is the program name). If this was successful, we
 assign matches to the parsed object, if not, we panic. Once past that,
 we test if the user passed in the help flag, and if so print the usage
 message. The option help messages are constructed by Getopts, so all
@@ -1896,7 +1896,7 @@ for pop in search(&data_file, &city) {
 ...
 ```
 
-In this peice of code, we take `file` (which has the type
+In this piece of code, we take `file` (which has the type
 `Option<String>`), and convert it to a type that `search` can use, in
 this case, `&Option<AsRef<Path>>`. Do do this, we take a reference of
 file, and map `Path::new` onto it. In this case, `as_ref()` converts
@@ -2120,7 +2120,7 @@ heuristics!
   and
   [`Error`](../std/error/trait.Error.html)
   impls to make the [`try!`](../std/macro.try!.html)
-  macro more ergnomic.
+  macro more ergonomic.
 * If you're writing a library and your code can produce errors, define your own
   error type and implement the
   [`std::error::Error`](../std/error/trait.Error.html)
