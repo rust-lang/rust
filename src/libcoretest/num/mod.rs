@@ -119,14 +119,22 @@ mod tests {
     }
 
     #[test]
+    fn test_leading_plus() {
+        assert_eq!("+127".parse::<u8>().ok(), Some(127u8));
+        assert_eq!("+9223372036854775807".parse::<i64>().ok(), Some(9223372036854775807i64));
+    }
+
+    #[test]
     fn test_invalid() {
         assert_eq!("--129".parse::<i8>().ok(), None);
+        assert_eq!("++129".parse::<i8>().ok(), None);
         assert_eq!("Съешь".parse::<u8>().ok(), None);
     }
 
     #[test]
     fn test_empty() {
         assert_eq!("-".parse::<i8>().ok(), None);
+        assert_eq!("+".parse::<i8>().ok(), None);
         assert_eq!("".parse::<u8>().ok(), None);
     }
 }
