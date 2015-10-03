@@ -119,7 +119,11 @@ impl fmt::Display for ParseBoolError {
 Section: Creating a string
 */
 
-/// Errors which can occur when attempting to interpret a byte slice as a `str`.
+/// Errors which can occur when attempting to interpret a sequence of `u8`
+/// as a string.
+///
+/// As such, the `from_utf8` family of functions and methods for both `String`s
+/// and `&str`s make use of this error, for example.
 #[derive(Copy, Eq, PartialEq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Utf8Error {
@@ -132,21 +136,104 @@ impl Utf8Error {
     ///
     /// It is the maximum index such that `from_utf8(input[..index])`
     /// would return `Some(_)`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(utf8_error)]
+    ///
+    /// use std::str;
+    ///
+    /// // some invalid bytes, in a vector
+    /// let sparkle_heart = vec![0, 159, 146, 150];
+    ///
+    /// // std::str::from_utf8 returns a Utf8Error
+    /// let error = str::from_utf8(&sparkle_heart).unwrap_err();
+    ///
+    /// // the first byte is invalid here
+    /// assert_eq!(1, error.valid_up_to());
+    /// ```
     #[unstable(feature = "utf8_error", reason = "method just added",
                issue = "27734")]
     pub fn valid_up_to(&self) -> usize { self.valid_up_to }
 }
 
-/// Converts a slice of bytes to a string slice without performing any
-/// allocations.
+/// Converts a slice of bytes to a string slice.
 ///
-/// Once the slice has been validated as UTF-8, it is transmuted in-place and
-/// returned as a '&str' instead of a '&[u8]'
+/// A string slice (`&str`) is made of bytes (`u8`), and a byte slice (`&[u8]`)
+/// is made of bytes, so this function converts between the two. Not all byte
+/// slices are valid string slices, however: `&str` requires that it is valid
+/// UTF-8. `from_utf8()` checks to ensure that the bytes are valid UTF-8, and
+/// then does the conversion.
+///
+/// If you are sure that the byte slice is valid UTF-8, and you don't want to
+/// incur the overhead of the validity check, there is an unsafe version of
+/// this function, [`from_utf8_unchecked()`][fromutf8], which has the same
+/// behavior but skips the check.
+///
+/// [fromutf8]: fn.from_utf8.html
+///
+/// If you need a `String` instead of a `&str`, consider
+/// [`String::from_utf8()`][string].
+///
+/// [string]: ../string/struct.String.html#method.from_utf8
+///
+/// Because you can stack-allocate a `[u8; N]`, and you can take a `&[u8]` of
+/// it, this function is one way to have a stack-allocated string. There is
+/// an example of this in the examples section below.
 ///
 /// # Failure
 ///
 /// Returns `Err` if the slice is not UTF-8 with a description as to why the
 /// provided slice is not UTF-8.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// use std::str;
+///
+/// // some bytes, in a vector
+/// let sparkle_heart = vec![240, 159, 146, 150];
+///
+/// // We know these bytes are valid, so just use `unwrap()`.
+/// let sparkle_heart = str::from_utf8(&sparkle_heart).unwrap();
+///
+/// assert_eq!("💖", sparkle_heart);
+/// ```
+///
+/// Incorrect bytes:
+///
+/// ```
+/// use std::str;
+///
+/// // some invalid bytes, in a vector
+/// let sparkle_heart = vec![0, 159, 146, 150];
+///
+/// assert!(str::from_utf8(&sparkle_heart).is_err());
+/// ```
+///
+/// See the docs for [`Utf8Error`][error] for more details on the kinds of
+/// errors that can be returned.
+///
+/// [error]: struct.Utf8Error.html
+///
+/// A "stack allocated string":
+///
+/// ```
+/// use std::str;
+///
+/// // some bytes, in a stack-allocated array
+/// let sparkle_heart = [240, 159, 146, 150];
+///
+/// // We know these bytes are valid, so just use `unwrap()`.
+/// let sparkle_heart = str::from_utf8(&sparkle_heart).unwrap();
+///
+/// assert_eq!("💖", sparkle_heart);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     try!(run_utf8_validation_iterator(&mut v.iter()));
@@ -155,6 +242,33 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
+///
+/// See the safe version, [`from_utrf8()`][fromutf8], for more.
+///
+/// [fromutf8]: fn.from_utf8.html
+///
+/// # Unsafety
+///
+/// This function is unsafe because it does not check that the bytes passed to
+/// it are valid UTF-8. If this constraint is violated, undefined behavior
+/// results, as the rest of Rust assumes that `&str`s are valid UTF-8.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// use std::str;
+///
+/// // some bytes, in a vector
+/// let sparkle_heart = vec![240, 159, 146, 150];
+///
+/// let sparkle_heart = unsafe {
+///     str::from_utf8_unchecked(&sparkle_heart)
+/// };
+///
+/// assert_eq!("💖", sparkle_heart);
+/// ```
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
