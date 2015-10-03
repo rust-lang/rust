@@ -44,14 +44,14 @@ pub const tag_items_data_parent_item: usize = 0x28;
 pub const tag_items_data_item_is_tuple_struct_ctor: usize = 0x29;
 
 pub const tag_items_closure_kind: usize = 0x2a;
-
 pub const tag_items_closure_ty: usize = 0x2b;
+pub const tag_def_key: usize = 0x2c;
 
-pub const tag_index: usize = 0x2c;
+// GAP 0x2d 0x2e
 
-pub const tag_def_key: usize = 0x2d;
-
-// GAP 0x2e
+pub const tag_index: usize = 0x110; // top-level only
+pub const tag_xref_index: usize = 0x111; // top-level only
+pub const tag_xref_data: usize = 0x112; // top-level only
 
 pub const tag_meta_item_name_value: usize = 0x2f;
 
@@ -80,8 +80,6 @@ pub const tag_crate_dep_crate_name: usize = 0x36;
 pub const tag_crate_dep_hash: usize = 0x37;
 pub const tag_crate_dep_explicitly_linked: usize = 0x38; // top-level only
 
-pub const tag_mod_impl: usize = 0x39;
-
 pub const tag_item_trait_item: usize = 0x3a;
 
 pub const tag_item_trait_ref: usize = 0x3b;
@@ -95,7 +93,6 @@ pub const tag_path_len: usize = 0x3e;
 pub const tag_path_elem_mod: usize = 0x3f;
 pub const tag_path_elem_name: usize = 0x40;
 pub const tag_item_field: usize = 0x41;
-pub const tag_item_field_origin: usize = 0x42;
 
 pub const tag_item_variances: usize = 0x43;
 /*
@@ -125,38 +122,26 @@ enum_from_u32! {
 
         tag_tree = 0x51,
 
-        tag_id_range = 0x52,
-
+        // GAP 0x52
         tag_table = 0x53,
         // GAP 0x54, 0x55
         tag_table_def = 0x56,
         tag_table_node_type = 0x57,
         tag_table_item_subst = 0x58,
         tag_table_freevars = 0x59,
-        tag_table_tcache = 0x5a,
-        tag_table_param_defs = 0x5b,
-        tag_table_mutbl = 0x5c,
-        tag_table_last_use = 0x5d,
-        tag_table_spill = 0x5e,
+        // GAP 0x5a, 0x5b, 0x5c, 0x5d, 0x5e
         tag_table_method_map = 0x5f,
-        tag_table_vtable_map = 0x60,
+        // GAP 0x60
         tag_table_adjustments = 0x61,
-        tag_table_moves_map = 0x62,
-        tag_table_capture_map = 0x63,
-            // GAP 0x64, 0x65
+        // GAP 0x62, 0x63, 0x64, 0x65
         tag_table_upvar_capture_map = 0x66,
-        tag_table_capture_modes = 0x67,
-        // GAP 0x68
+        // GAP 0x67, 0x68
         tag_table_const_qualif = 0x69,
         tag_table_cast_kinds = 0x6a,
     }
 }
 
 pub const tag_item_trait_item_sort: usize = 0x70;
-
-pub const tag_item_trait_parent_sort: usize = 0x71;
-
-pub const tag_item_impl_type_basename: usize = 0x72;
 
 pub const tag_crate_triple: usize = 0x105; // top-level only
 
@@ -177,23 +162,17 @@ pub const tag_lang_items_missing: usize = 0x76;
 
 pub const tag_item_unnamed_field: usize = 0x77;
 pub const tag_items_data_item_visibility: usize = 0x78;
-
-pub const tag_item_method_tps: usize = 0x79;
-pub const tag_item_method_fty: usize = 0x7a;
-
+pub const tag_items_data_item_inherent_impl: usize = 0x79;
+// GAP 0x7a
 pub const tag_mod_child: usize = 0x7b;
 pub const tag_misc_info: usize = 0x108; // top-level only
 pub const tag_misc_info_crate_items: usize = 0x7c;
 
-// GAP 0x7d
-pub const tag_item_impl_vtables: usize = 0x7e;
-
 pub const tag_impls: usize = 0x109; // top-level only
-pub const tag_impls_impl: usize = 0x7f;
-pub const tag_impls_impl_trait_def_id: usize = 0x8d;
+pub const tag_impls_trait: usize = 0x7d;
+pub const tag_impls_trait_impl: usize = 0x7e;
 
-pub const tag_items_data_item_inherent_impl: usize = 0x80;
-pub const tag_items_data_item_extension_impl: usize = 0x81;
+// GAP 0x7f, 0x80, 0x81
 
 pub const tag_native_libraries: usize = 0x10a; // top-level only
 pub const tag_native_libraries_lib: usize = 0x82;
@@ -220,10 +199,10 @@ pub struct LinkMeta {
 
 pub const tag_struct_fields: usize = 0x10d; // top-level only
 pub const tag_struct_field: usize = 0x8a;
-// GAP 0x8b
 
+pub const tag_items_data_item_struct_ctor: usize = 0x8b;
 pub const tag_attribute_is_sugared_doc: usize = 0x8c;
-
+// GAP 0x8d
 pub const tag_items_data_region: usize = 0x8e;
 
 pub const tag_region_param_def: usize = 0x8f;
@@ -237,9 +216,9 @@ pub const tag_type_param_def: usize = 0x94;
 pub const tag_item_generics: usize = 0x95;
 pub const tag_method_ty_generics: usize = 0x96;
 
-pub const tag_predicate: usize = 0x97;
-pub const tag_predicate_space: usize = 0x98;
-pub const tag_predicate_data: usize = 0x99;
+pub const tag_type_predicate: usize = 0x97;
+pub const tag_self_predicate: usize = 0x98;
+pub const tag_fn_predicate: usize = 0x99;
 
 pub const tag_unsafety: usize = 0x9a;
 

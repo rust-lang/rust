@@ -143,7 +143,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
         }
         let mut used_ref_id = false;
         let expr_id = match csearch::maybe_get_item_ast(tcx, def_id,
-            Box::new(|a, b, c, d, e| astencode::decode_inlined_item(a, b, c, d, e))) {
+            Box::new(astencode::decode_inlined_item)) {
             csearch::FoundAst::Found(&InlinedItem::Item(ref item)) => match item.node {
                 hir::ItemConst(_, ref const_expr) => Some(const_expr.id),
                 _ => None
@@ -199,7 +199,7 @@ fn inline_const_fn_from_external_crate(tcx: &ty::ctxt, def_id: DefId)
     }
 
     let fn_id = match csearch::maybe_get_item_ast(tcx, def_id,
-        box |a, b, c, d, e| astencode::decode_inlined_item(a, b, c, d, e)) {
+        box astencode::decode_inlined_item) {
         csearch::FoundAst::Found(&InlinedItem::Item(ref item)) => Some(item.id),
         csearch::FoundAst::Found(&InlinedItem::ImplItem(_, ref item)) => Some(item.id),
         _ => None

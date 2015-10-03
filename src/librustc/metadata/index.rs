@@ -10,7 +10,6 @@
 
 use middle::def_id::{DefId, DefIndex};
 use rbml;
-use rbml::writer::Encoder;
 use std::io::{Cursor, Write};
 use std::slice;
 use std::u32;
@@ -74,15 +73,13 @@ impl IndexData {
         }
     }
 
-    pub fn record(&mut self, def_id: DefId, encoder: &mut Encoder) {
+    pub fn record(&mut self, def_id: DefId, position: u64) {
         assert!(def_id.is_local());
-        self.record_index(def_id.index, encoder)
+        self.record_index(def_id.index, position)
     }
 
-    pub fn record_index(&mut self, item: DefIndex, encoder: &mut Encoder) {
+    pub fn record_index(&mut self, item: DefIndex, position: u64) {
         let item = item.as_usize();
-
-        let position = encoder.mark_stable_position();
 
         assert!(position < (u32::MAX as u64));
         let position = position as u32;
@@ -99,6 +96,38 @@ impl IndexData {
             write_be_u32(buf, position);
         }
     }
+}
+
+/// A dense index with integer keys. Different API from IndexData (should
+/// these be merged?)
+pub struct DenseIndex {
+    start: usize,
+    end: usize
+}
+
+impl DenseIndex {
+    pub fn lookup(&self, buf: &[u8], ix: u32) -> Option<u32> {
+        let data = bytes_to_words(&buf[self.start..self.end]);
+        data.get(ix as usize).map(|d| u32::from_be(*d))
+    }
+    pub fn from_buf(buf: &[u8], start: usize, end: usize) -> Self {
+        assert!((end-start)%4 == 0 && start <= end && end <= buf.len());
+        DenseIndex {
+            start: start,
+            end: end
+        }
+    }
+}
+
+pub fn write_dense_index(entries: Vec<u32>, buf: &mut Cursor<Vec<u8>>) {
+    let elen = entries.len();
+    assert!(elen < u32::MAX as usize);
+
+    for entry in entries {
+        write_be_u32(buf, entry);
+    }
+
+    info!("write_dense_index: {} entries", elen);
 }
 
 fn write_be_u32<W: Write>(w: &mut W, u: u32) {
