@@ -4380,11 +4380,11 @@ impl<'a> Parser<'a> {
     /// - `extern fn`
     /// - etc
     pub fn parse_fn_front_matter(&mut self) -> PResult<(ast::Constness, ast::Unsafety, abi::Abi)> {
+        let unsafety = try!(self.parse_unsafety());
         let is_const_fn = try!(self.eat_keyword(keywords::Const));
         let (constness, unsafety, abi) = if is_const_fn {
-            (Constness::Const, Unsafety::Normal, abi::Rust)
+            (Constness::Const, unsafety, abi::Rust)
         } else {
-            let unsafety = try!(self.parse_unsafety());
             let abi = if try!(self.eat_keyword(keywords::Extern)) {
                 try!(self.parse_opt_abi()).unwrap_or(abi::C)
             } else {
@@ -5399,9 +5399,14 @@ impl<'a> Parser<'a> {
             } else {
                 abi::Rust
             };
+            let constness = if abi == abi::Rust && try!(self.eat_keyword(keywords::Const) ){
+                Constness::Const
+            } else {
+                Constness::NotConst
+            };
             try!(self.expect_keyword(keywords::Fn));
             let (ident, item_, extra_attrs) =
-                try!(self.parse_item_fn(Unsafety::Unsafe, Constness::NotConst, abi));
+                try!(self.parse_item_fn(Unsafety::Unsafe, constness, abi));
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,
