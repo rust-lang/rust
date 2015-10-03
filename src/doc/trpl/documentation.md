@@ -279,6 +279,8 @@ println!("{}", x + y);
 
 Here's an explanation, rendered:
 
+-------------------------------------------------------------------------------
+
 First, we set `x` to five:
 
 ```rust
@@ -303,7 +305,11 @@ Finally, we print the sum of `x` and `y`:
 println!("{}", x + y);
 ```
 
+-------------------------------------------------------------------------------
+
 Here's the same explanation, in raw text:
+
+-------------------------------------------------------------------------------
 
 > First, we set `x` to five:
 >
@@ -328,6 +334,8 @@ Here's the same explanation, in raw text:
 > # let y = 6;
 > println!("{}", x + y);
 > ```
+
+-------------------------------------------------------------------------------
 
 By repeating all parts of the example, you can ensure that your example still
 compiles, while only showing the parts that are relevant to that part of your
