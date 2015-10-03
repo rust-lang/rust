@@ -142,7 +142,7 @@ main.exe  main.rs
 ```
 
 There are now two files: our source code, with the `.rs` extension, and the
-executable (`main.exe` on Windows, `main` everywhere else)
+executable (`main.exe` on Windows, `main` everywhere else).
 
 ```bash
 $ ./main  # or main.exe on Windows
