@@ -1559,7 +1559,12 @@ impl<A, B> Iterator for Chain<A, B> where
     #[inline]
     fn last(self) -> Option<A::Item> {
         match self.state {
-            ChainState::Both => self.b.last().or(self.a.last()),
+            ChainState::Both => {
+                // Must exhaust a before b.
+                let a_last = self.a.last();
+                let b_last = self.b.last();
+                b_last.or(a_last)
+            },
             ChainState::Front => self.a.last(),
             ChainState::Back => self.b.last()
         }
