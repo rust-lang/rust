@@ -65,6 +65,7 @@ use ptr::P;
 use std::fmt;
 use std::rc::Rc;
 use std::borrow::Cow;
+use std::hash::{Hash, Hasher};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A name is a part of an identifier, representing a string or gensym. It's
@@ -84,7 +85,7 @@ pub struct SyntaxContext(pub u32);
 /// An identifier contains a Name (index into the interner
 /// table) and a SyntaxContext to track renaming and
 /// macro expansion per Flatt et al., "Macros That Work Together"
-#[derive(Clone, Copy, Eq, Hash)]
+#[derive(Clone, Copy, Eq)]
 pub struct Ident {
     pub name: Name,
     pub ctxt: SyntaxContext
@@ -133,22 +134,35 @@ impl Ident {
 
 impl PartialEq for Ident {
     fn eq(&self, other: &Ident) -> bool {
-        if self.ctxt == other.ctxt {
-            self.name == other.name
-        } else {
-            // IF YOU SEE ONE OF THESE FAILS: it means that you're comparing
-            // idents that have different contexts. You can't fix this without
-            // knowing whether the comparison should be hygienic or non-hygienic.
-            // if it should be non-hygienic (most things are), just compare the
-            // 'name' fields of the idents.
+        if self.ctxt != other.ctxt {
+            // There's no one true way to compare Idents. They can be compared
+            // non-hygienically `id1.name == id2.name`, hygienically
+            // `mtwt::resolve(id1) == mtwt::resolve(id2)`, or even member-wise
+            // `(id1.name, id1.ctxt) == (id2.name, id2.ctxt)` depending on the situation.
+            // Ideally, PartialEq should not be implemented for Ident at all, but that
+            // would be too impractical, because many larger structures (Token, in particular)
+            // including Idents as their parts derive PartialEq and use it for non-hygienic
+            // comparisons. That's why PartialEq is implemented and defaults to non-hygienic
+            // comparison. Hash is implemented too and is consistent with PartialEq, i.e. only
+            // the name of Ident is hashed. Still try to avoid comparing idents in your code
+            // (especially as keys in hash maps), use one of the three methods listed above
+            // explicitly.
             //
-            // On the other hand, if the comparison does need to be hygienic,
-            // one example and its non-hygienic counterpart would be:
-            //      syntax::parse::token::Token::mtwt_eq
-            //      syntax::ext::tt::macro_parser::token_name_eq
+            // If you see this panic, then some idents from different contexts were compared
+            // non-hygienically. It's likely a bug. Use one of the three comparison methods
+            // listed above explicitly.
+
             panic!("idents with different contexts are compared with operator `==`: \
                 {:?}, {:?}.", self, other);
         }
+
+        self.name == other.name
+    }
+}
+
+impl Hash for Ident {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state)
     }
 }
 
