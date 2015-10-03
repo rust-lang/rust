@@ -266,7 +266,8 @@ impl Builder {
         let my_thread = Thread::new(name);
         let their_thread = my_thread.clone();
 
-        let my_packet = Arc::new(UnsafeCell::new(None));
+        let my_packet : Arc<UnsafeCell<Option<Result<T>>>>
+            = Arc::new(UnsafeCell::new(None));
         let their_packet = my_packet.clone();
 
         let main = move || {

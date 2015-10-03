@@ -26,6 +26,7 @@ struct SExpr<'x> {
 impl<'x> PartialEq for SExpr<'x> {
     fn eq(&self, other:&SExpr<'x>) -> bool {
         println!("L1: {} L2: {}", self.elements.len(), other.elements.len());
+
         let result = self.elements.len() == other.elements.len();
 
         println!("Got compare {}", result);
