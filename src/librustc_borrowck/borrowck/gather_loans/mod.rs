@@ -21,6 +21,7 @@ use borrowck::move_data::MoveData;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::infer;
 use rustc::middle::mem_categorization as mc;
+use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
 use rustc::middle::ty;
 
@@ -101,7 +102,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                cmt,
                mode);
 
-        if let mc::cat_downcast(..) = cmt.cat {
+        if let Categorization::Downcast(..) = cmt.cat {
             gather_moves::gather_match_variant(
                 self.bccx, &self.move_data, &self.move_error_collector,
                 matched_pat, cmt, mode);
@@ -263,7 +264,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         debug!("guarantee_assignment_valid(assignment_id={}, cmt={:?}) opt_lp={:?}",
                assignment_id, cmt, opt_lp);
 
-        if let mc::cat_local(..) = cmt.cat {
+        if let Categorization::Local(..) = cmt.cat {
             // Only re-assignments to locals require it to be
             // mutable - this is checked in check_loans.
         } else {
@@ -282,7 +283,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 
         match opt_lp {
             Some(lp) => {
-                if let mc::cat_local(..) = cmt.cat {
+                if let Categorization::Local(..) = cmt.cat {
                     // Only re-assignments to locals require it to be
                     // mutable - this is checked in check_loans.
                 } else {

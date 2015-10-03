@@ -45,6 +45,7 @@ use super::FnCtxt;
 use check::demand;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
+use middle::mem_categorization::Categorization;
 use middle::ty::{self, Ty};
 use middle::infer::{InferCtxt, UpvarRegion};
 use std::collections::HashSet;
@@ -294,8 +295,8 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         debug!("adjust_upvar_borrow_kind_for_consume: guarantor={:?}",
                guarantor);
         match guarantor.cat {
-            mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
-            mc::cat_deref(_, _, mc::Implicit(..)) => {
+            Categorization::Deref(_, _, mc::BorrowedPtr(..)) |
+            Categorization::Deref(_, _, mc::Implicit(..)) => {
                 match cmt.note {
                     mc::NoteUpvarRef(upvar_id) => {
                         debug!("adjust_upvar_borrow_kind_for_consume: \
@@ -334,16 +335,16 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                cmt);
 
         match cmt.cat.clone() {
-            mc::cat_deref(base, _, mc::Unique) |
-            mc::cat_interior(base, _) |
-            mc::cat_downcast(base, _) => {
+            Categorization::Deref(base, _, mc::Unique) |
+            Categorization::Interior(base, _) |
+            Categorization::Downcast(base, _) => {
                 // Interior or owned data is mutable if base is
                 // mutable, so iterate to the base.
                 self.adjust_upvar_borrow_kind_for_mut(base);
             }
 
-            mc::cat_deref(base, _, mc::BorrowedPtr(..)) |
-            mc::cat_deref(base, _, mc::Implicit(..)) => {
+            Categorization::Deref(base, _, mc::BorrowedPtr(..)) |
+            Categorization::Deref(base, _, mc::Implicit(..)) => {
                 if !self.try_adjust_upvar_deref(&cmt.note, ty::MutBorrow) {
                     // assignment to deref of an `&mut`
                     // borrowed pointer implies that the
@@ -353,11 +354,11 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                 }
             }
 
-            mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-            mc::cat_static_item |
-            mc::cat_rvalue(_) |
-            mc::cat_local(_) |
-            mc::cat_upvar(..) => {
+            Categorization::Deref(_, _, mc::UnsafePtr(..)) |
+            Categorization::StaticItem |
+            Categorization::Rvalue(_) |
+            Categorization::Local(_) |
+            Categorization::Upvar(..) => {
                 return;
             }
         }
@@ -368,16 +369,16 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                cmt);
 
         match cmt.cat.clone() {
-            mc::cat_deref(base, _, mc::Unique) |
-            mc::cat_interior(base, _) |
-            mc::cat_downcast(base, _) => {
+            Categorization::Deref(base, _, mc::Unique) |
+            Categorization::Interior(base, _) |
+            Categorization::Downcast(base, _) => {
                 // Interior or owned data is unique if base is
                 // unique.
                 self.adjust_upvar_borrow_kind_for_unique(base);
             }
 
-            mc::cat_deref(base, _, mc::BorrowedPtr(..)) |
-            mc::cat_deref(base, _, mc::Implicit(..)) => {
+            Categorization::Deref(base, _, mc::BorrowedPtr(..)) |
+            Categorization::Deref(base, _, mc::Implicit(..)) => {
                 if !self.try_adjust_upvar_deref(&cmt.note, ty::UniqueImmBorrow) {
                     // for a borrowed pointer to be unique, its
                     // base must be unique
@@ -385,11 +386,11 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                 }
             }
 
-            mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-            mc::cat_static_item |
-            mc::cat_rvalue(_) |
-            mc::cat_local(_) |
-            mc::cat_upvar(..) => {
+            Categorization::Deref(_, _, mc::UnsafePtr(..)) |
+            Categorization::StaticItem |
+            Categorization::Rvalue(_) |
+            Categorization::Local(_) |
+            Categorization::Upvar(..) => {
             }
         }
     }
