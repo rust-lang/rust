@@ -82,5 +82,3 @@ impl DefId {
         self.krate == LOCAL_CRATE
     }
 }
-
-

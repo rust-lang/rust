@@ -367,7 +367,6 @@ pub type MethodMap<'tcx> = FnvHashMap<MethodCall, MethodCallee<'tcx>>;
 pub struct CReaderCacheKey {
     pub cnum: CrateNum,
     pub pos: usize,
-    pub len: usize
 }
 
 /// A restriction that certain types must be the same size. The use of
@@ -1474,7 +1473,10 @@ pub struct VariantDefData<'tcx, 'container: 'tcx> {
     pub did: DefId,
     pub name: Name, // struct's name if this is a struct
     pub disr_val: Disr,
-    pub fields: Vec<FieldDefData<'tcx, 'container>>
+    pub fields: Vec<FieldDefData<'tcx, 'container>>,
+    /// The DefId of the variant's ctor (unless the variant is a
+    /// tuple-like struct variant, this is just the variant's def-id).
+    pub ctor_id: DefId
 }
 
 pub struct FieldDefData<'tcx, 'container: 'tcx> {
@@ -2820,4 +2822,3 @@ pub trait HasTypeFlags {
         !self.has_type_flags(TypeFlags::HAS_LOCAL_NAMES)
     }
 }
-

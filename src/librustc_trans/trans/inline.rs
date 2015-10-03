@@ -44,7 +44,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
     let csearch_result =
         csearch::maybe_get_item_ast(
             ccx.tcx(), fn_id,
-            Box::new(|a,b,c,d,e| astencode::decode_inlined_item(a, b, c, d,e)));
+            Box::new(astencode::decode_inlined_item));
 
     let inline_id = match csearch_result {
         csearch::FoundAst::NotFound => {
