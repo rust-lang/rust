@@ -31,6 +31,7 @@ use rustc::middle::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::mem_categorization as mc;
+use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
 use rustc::middle::ty::{self, Ty};
 
@@ -502,32 +503,32 @@ pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
     let new_lp = |v: LoanPathKind<'tcx>| Rc::new(LoanPath::new(v, cmt.ty));
 
     match cmt.cat {
-        mc::cat_rvalue(..) |
-        mc::cat_static_item => {
+        Categorization::Rvalue(..) |
+        Categorization::StaticItem => {
             None
         }
 
-        mc::cat_local(id) => {
+        Categorization::Local(id) => {
             Some(new_lp(LpVar(id)))
         }
 
-        mc::cat_upvar(mc::Upvar { id, .. }) => {
+        Categorization::Upvar(mc::Upvar { id, .. }) => {
             Some(new_lp(LpUpvar(id)))
         }
 
-        mc::cat_deref(ref cmt_base, _, pk) => {
+        Categorization::Deref(ref cmt_base, _, pk) => {
             opt_loan_path(cmt_base).map(|lp| {
                 new_lp(LpExtend(lp, cmt.mutbl, LpDeref(pk)))
             })
         }
 
-        mc::cat_interior(ref cmt_base, ik) => {
+        Categorization::Interior(ref cmt_base, ik) => {
             opt_loan_path(cmt_base).map(|lp| {
                 new_lp(LpExtend(lp, cmt.mutbl, LpInterior(ik.cleaned())))
             })
         }
 
-        mc::cat_downcast(ref cmt_base, variant_def_id) =>
+        Categorization::Downcast(ref cmt_base, variant_def_id) =>
             opt_loan_path(cmt_base)
             .map(|lp| {
                 new_lp(LpDowncast(lp, variant_def_id))
@@ -1004,7 +1005,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         // If it's an `FnMut` closure, the original variable was declared immutable.
                         // We need to determine which is the case here.
                         let kind = match err.cmt.upvar().unwrap().cat {
-                            mc::cat_upvar(mc::Upvar { kind, .. }) => kind,
+                            Categorization::Upvar(mc::Upvar { kind, .. }) => kind,
                             _ => unreachable!()
                         };
                         if kind == ty::FnClosureKind {
