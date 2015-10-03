@@ -1173,9 +1173,12 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
                 None
             },
             Err(err) => {
-              span_err!(tcx.sess, err.span, E0080,
-                        "constant evaluation error: {}",
-                        err.description());
+                span_err!(tcx.sess, err.span, E0080,
+                          "constant evaluation error: {}",
+                          err.description());
+                if !e.span.contains(err.span) {
+                    tcx.sess.span_note(e.span, "for enum discriminant here");
+                }
                 None
             }
         }
