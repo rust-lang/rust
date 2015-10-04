@@ -1,0 +1,64 @@
+These documentation pages include resources by third parties. This copyright
+file applies only to those resources. The following third party resources are
+included, and carry their own copyright notices and license terms:
+
+* Fira Sans (FiraSans-Regular.woff, FiraSans-Medium.woff):
+
+    Copyright (c) 2014, Mozilla Foundation https://mozilla.org/
+    with Reserved Font Name Fira Sans.
+
+    Copyright (c) 2014, Telefonica S.A.
+
+    Licensed under the SIL Open Font License, Version 1.1.
+    See FiraSans-LICENSE.txt.
+
+* Heuristica (Heuristica-Italic.woff):
+
+    Copyright 1989, 1991 Adobe Systems Incorporated. All rights reserved.
+    Utopia is either a registered trademark or trademark of Adobe Systems
+    Incorporated in the United States and/or other countries. Used under
+    license.
+
+    Copyright 2006 Han The Thanh, Vntopia font family, http://vntex.sf.net
+
+    Copyright (c) 2008-2012, Andrey V. Panov (panov@canopus.iacp.dvo.ru),
+    with Reserved Font Name Heuristica.
+
+    Licensed under the SIL Open Font License, Version 1.1.
+    See Heuristica-LICENSE.txt.
+
+* jQuery (jquery-2.1.4.min.js):
+
+    Copyright 2005, 2015 jQuery Foundation, Inc.
+    Licensed under the MIT license (see LICENSE-MIT.txt).
+
+* main.css, main.js, and playpen.js:
+
+    Copyright 2015 The Rust Developers.
+    Licensed under the Apache License, Version 2.0 (see LICENSE-APACHE.txt) or
+    the MIT license (LICENSE-MIT.txt) at your option.
+
+* normalize.css:
+
+    Copyright (c) Nicolas Gallagher and Jonathan Neal.
+    Licensed under the MIT license (see LICENSE-MIT.txt).
+
+* Source Code Pro (SourceCodePro-Regular.woff, SourceCodePro-Semibold.woff):
+
+    Copyright 2010, 2012 Adobe Systems Incorporated (http://www.adobe.com/),
+    with Reserved Font Name 'Source'. All Rights Reserved. Source is a trademark
+    of Adobe Systems Incorporated in the United States and/or other countries.
+
+    Licensed under the SIL Open Font License, Version 1.1.
+    See SourceCodePro-LICENSE.txt.
+
+* Source Serif Pro (SourceSerifPro-Regular.woff, SourceSerifPro-Bold.woff):
+
+    Copyright 2014 Adobe Systems Incorporated (http://www.adobe.com/), with
+    Reserved Font Name 'Source'. All Rights Reserved. Source is a trademark of
+    Adobe Systems Incorporated in the United States and/or other countries.
+
+    Licensed under the SIL Open Font License, Version 1.1.
+    See SourceSerifPro-LICENSE.txt.
+
+This copyright file is intended to be distributed with rustdoc output.

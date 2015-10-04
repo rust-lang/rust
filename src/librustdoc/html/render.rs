@@ -569,16 +569,30 @@ fn write_shared(cx: &Context,
                include_bytes!("static/FiraSans-Regular.woff")));
     try!(write(cx.dst.join("FiraSans-Medium.woff"),
                include_bytes!("static/FiraSans-Medium.woff")));
+    try!(write(cx.dst.join("FiraSans-LICENSE.txt"),
+               include_bytes!("static/FiraSans-LICENSE.txt")));
     try!(write(cx.dst.join("Heuristica-Italic.woff"),
                include_bytes!("static/Heuristica-Italic.woff")));
+    try!(write(cx.dst.join("Heuristica-LICENSE.txt"),
+               include_bytes!("static/Heuristica-LICENSE.txt")));
     try!(write(cx.dst.join("SourceSerifPro-Regular.woff"),
                include_bytes!("static/SourceSerifPro-Regular.woff")));
     try!(write(cx.dst.join("SourceSerifPro-Bold.woff"),
                include_bytes!("static/SourceSerifPro-Bold.woff")));
+    try!(write(cx.dst.join("SourceSerifPro-LICENSE.txt"),
+               include_bytes!("static/SourceSerifPro-LICENSE.txt")));
     try!(write(cx.dst.join("SourceCodePro-Regular.woff"),
                include_bytes!("static/SourceCodePro-Regular.woff")));
     try!(write(cx.dst.join("SourceCodePro-Semibold.woff"),
                include_bytes!("static/SourceCodePro-Semibold.woff")));
+    try!(write(cx.dst.join("SourceCodePro-LICENSE.txt"),
+               include_bytes!("static/SourceCodePro-LICENSE.txt")));
+    try!(write(cx.dst.join("LICENSE-MIT.txt"),
+               include_bytes!("static/LICENSE-MIT.txt")));
+    try!(write(cx.dst.join("LICENSE-APACHE.txt"),
+               include_bytes!("static/LICENSE-APACHE.txt")));
+    try!(write(cx.dst.join("COPYRIGHT.txt"),
+               include_bytes!("static/COPYRIGHT.txt")));
 
     fn collect(path: &Path, krate: &str,
                key: &str) -> io::Result<Vec<String>> {
