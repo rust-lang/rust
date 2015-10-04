@@ -363,13 +363,14 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         let new_loan_indices = self.loans_generated_by(node);
         debug!("new_loan_indices = {:?}", new_loan_indices);
 
-        self.each_issued_loan(node, |issued_loan| {
-            for &new_loan_index in &new_loan_indices {
+        for &new_loan_index in &new_loan_indices {
+            self.each_issued_loan(node, |issued_loan| {
                 let new_loan = &self.all_loans[new_loan_index];
-                self.report_error_if_loans_conflict(issued_loan, new_loan);
-            }
-            true
-        });
+                // Only report an error for the first issued loan that conflicts
+                // to avoid O(n^2) errors.
+                self.report_error_if_loans_conflict(issued_loan, new_loan)
+            });
+        }
 
         for (i, &x) in new_loan_indices.iter().enumerate() {
             let old_loan = &self.all_loans[x];
@@ -382,7 +383,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
     pub fn report_error_if_loans_conflict(&self,
                                           old_loan: &Loan<'tcx>,
-                                          new_loan: &Loan<'tcx>) {
+                                          new_loan: &Loan<'tcx>)
+                                          -> bool {
         //! Checks whether `old_loan` and `new_loan` can safely be issued
         //! simultaneously.
 
@@ -397,7 +399,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         self.report_error_if_loan_conflicts_with_restriction(
             old_loan, new_loan, old_loan, new_loan) &&
         self.report_error_if_loan_conflicts_with_restriction(
-            new_loan, old_loan, old_loan, new_loan);
+            new_loan, old_loan, old_loan, new_loan)
     }
 
     pub fn report_error_if_loan_conflicts_with_restriction(&self,
