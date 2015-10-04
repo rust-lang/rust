@@ -1316,11 +1316,11 @@ fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
                 {
                     debug!("astencode: copying variant {:?} => {:?}",
                            orig_variant.did, i_variant.node.id);
-                    copy_item_type(dcx, i_variant.node.id, orig_variant.did);
+                    copy_item_type(dcx, i_variant.node.def.id, orig_variant.did);
                 }
             }
             hir::ItemStruct(ref def, _) => {
-                if let Some(ctor_id) = def.ctor_id {
+                if def.kind != hir::VariantKind::Dict {
                     let ctor_did = dcx.tcx.lookup_adt_def(orig_did)
                         .struct_variant().did;
                     debug!("astencode: copying ctor {:?} => {:?}", ctor_did,

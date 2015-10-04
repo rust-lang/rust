@@ -1068,8 +1068,8 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         // Encode inherent implementations for this structure.
         encode_inherent_implementations(ecx, rbml_w, def_id);
 
-        if let Some(ctor_id) = struct_def.ctor_id {
-            let ctor_did = ecx.tcx.map.local_def_id(ctor_id);
+        if struct_def.kind != hir::VariantKind::Dict {
+            let ctor_did = ecx.tcx.map.local_def_id(struct_def.id);
             rbml_w.wr_tagged_u64(tag_items_data_item_struct_ctor,
                                  def_to_u64(ctor_did));
         }
