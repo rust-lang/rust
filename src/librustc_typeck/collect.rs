@@ -1125,8 +1125,11 @@ fn convert_struct_def<'tcx>(tcx: &ty::ctxt<'tcx>,
 {
 
     let did = tcx.map.local_def_id(it.id);
-    let ctor_id = def.ctor_id.map_or(did,
-        |ctor_id| tcx.map.local_def_id(ctor_id));
+    let ctor_id = if def.kind != hir::VariantKind::Dict {
+        tcx.map.local_def_id(def.id)
+    } else {
+        did
+    };
     tcx.intern_adt_def(
         did,
         ty::AdtKind::Struct,
@@ -1208,7 +1211,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
     {
         let did = tcx.map.local_def_id(v.node.def.id);
         let name = v.node.name;
-        convert_struct_variant(tcx, did, name, disr, &v.node.def)
+        convert_struct_variant(tcx, did, name, disr, &v.node.def, did)
     }
     let did = tcx.map.local_def_id(it.id);
     let repr_hints = tcx.lookup_repr_hints(did);
