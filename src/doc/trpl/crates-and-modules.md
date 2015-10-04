@@ -563,8 +563,8 @@ What's going on here?
 First, both `extern crate` and `use` allow renaming the thing that is being
 imported. So the crate is still called "phrases", but here we will refer
 to it as "sayings". Similarly, the first `use` statement pulls in the
-`japanese::farewells` module from the crate, but makes it available as
-`jp_farewells` as opposed to simply `farewells`. This can help to avoid
+`japanese::greetings` module from the crate, but makes it available as
+`ja_greetings` as opposed to simply `greetings`. This can help to avoid
 ambiguity when importing similarly-named items from different places.
 
 The second `use` statement uses a star glob to bring in _all_ symbols from the
