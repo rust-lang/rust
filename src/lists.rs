@@ -43,8 +43,6 @@ pub enum SeparatorTactic {
 
 impl_enum_decodable!(SeparatorTactic, Always, Never, Vertical);
 
-// TODO having some helpful ctors for ListFormatting would be nice.
-// FIXME: this should have only 1 width param
 pub struct ListFormatting<'a> {
     pub tactic: DefinitiveListTactic,
     pub separator: &'a str,
@@ -111,9 +109,11 @@ impl AsRef<ListItem> for ListItem {
 }
 
 pub struct ListItem {
+    // None for comments mean that they are not present.
     pub pre_comment: Option<String>,
-    // Item should include attributes and doc comments.
-    pub item: String,
+    // Item should include attributes and doc comments. None indicates failed
+    // rewrite.
+    pub item: Option<String>,
     pub post_comment: Option<String>,
     // Whether there is extra whitespace before this item.
     pub new_lines: bool,
@@ -121,7 +121,9 @@ pub struct ListItem {
 
 impl ListItem {
     pub fn is_multiline(&self) -> bool {
-        self.item.contains('\n') || self.pre_comment.is_some() ||
+        // FIXME: fail earlier!
+        self.item.as_ref().map(|s| s.contains('\n')).unwrap_or(false) ||
+        self.pre_comment.is_some() ||
         self.post_comment.as_ref().map(|s| s.contains('\n')).unwrap_or(false)
     }
 
@@ -132,7 +134,7 @@ impl ListItem {
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
         ListItem {
             pre_comment: None,
-            item: s.into(),
+            item: Some(s.into()),
             post_comment: None,
             new_lines: false,
         }
@@ -198,6 +200,7 @@ pub fn write_list<'b, I, T>(items: I, formatting: &ListFormatting<'b>) -> Option
     let indent_str = &formatting.indent.to_string(formatting.config);
     while let Some((i, item)) = iter.next() {
         let item = item.as_ref();
+        let inner_item = try_opt!(item.item.as_ref());
         let first = i == 0;
         let last = iter.peek().is_none();
         let separate = !last || trailing_separator;
@@ -206,7 +209,7 @@ pub fn write_list<'b, I, T>(items: I, formatting: &ListFormatting<'b>) -> Option
         } else {
             0
         };
-        let item_width = item.item.len() + item_sep_len;
+        let item_width = inner_item.len() + item_sep_len;
 
         match tactic {
             DefinitiveListTactic::Horizontal if !first => {
@@ -256,7 +259,8 @@ pub fn write_list<'b, I, T>(items: I, formatting: &ListFormatting<'b>) -> Option
             }
         }
 
-        let item_str = try_opt!(wrap_str(&item.item[..],
+        // Make sure that string actually fits.
+        let item_str = try_opt!(wrap_str(&inner_item[..],
                                          formatting.config.max_width,
                                          formatting.width,
                                          formatting.indent));
@@ -325,7 +329,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
     where I: Iterator<Item = T>,
           F1: Fn(&T) -> BytePos,
           F2: Fn(&T) -> BytePos,
-          F3: Fn(&T) -> String
+          F3: Fn(&T) -> Option<String>
 {
     type Item = ListItem;
 
@@ -449,7 +453,7 @@ pub fn itemize_list<'a, T, I, F1, F2, F3>(codemap: &'a CodeMap,
     where I: Iterator<Item = T>,
           F1: Fn(&T) -> BytePos,
           F2: Fn(&T) -> BytePos,
-          F3: Fn(&T) -> String
+          F3: Fn(&T) -> Option<String>
 {
     ListItems {
         codemap: codemap,
@@ -484,8 +488,11 @@ fn calculate_width<'li, I, T>(items: I) -> (usize, usize)
 }
 
 fn total_item_width(item: &ListItem) -> usize {
+    // FIXME: If the item has a `None` item, it may be better to fail earlier
+    // rather than later.
     comment_len(item.pre_comment.as_ref().map(|x| &(*x)[..])) +
-    comment_len(item.post_comment.as_ref().map(|x| &(*x)[..])) + item.item.len()
+    comment_len(item.post_comment.as_ref().map(|x| &(*x)[..])) +
+    item.item.as_ref().map(|str| str.len()).unwrap_or(0)
 }
 
 fn comment_len(comment: Option<&str>) -> usize {

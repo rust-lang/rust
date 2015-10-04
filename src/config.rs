@@ -90,7 +90,6 @@ configuration_option_enum! { LicensePolicy:
     FileLicense,
 }
 
-// TODO: this is not necessary any more
 configuration_option_enum! { MultilineStyle:
     // Use horizontal layout if it fits in one line, fall back to vertical
     PreferSingle,

@@ -218,18 +218,16 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
                              |item| item.span.lo,
                              |item| item.span.hi,
                              // 1 = [
-                             // FIXME(#133): itemize_list doesn't support
-                             // rewrite failure. This may not be its
-                             // responsibility, but that of write_list.
-                             |item| {
-                                 item.rewrite(context, max_item_width, offset + 1)
-                                     .unwrap_or_else(|| context.snippet(item.span))
-                             },
+                             |item| item.rewrite(context, max_item_width, offset + 1),
                              span_after(span, "[", context.codemap),
                              span.hi)
                     .collect::<Vec<_>>();
 
-    let tactic = if items.iter().any(|li| li.item.len() > 10 || li.is_multiline()) {
+    let has_long_item = try_opt!(items.iter()
+                                      .map(|li| li.item.as_ref().map(|s| s.len() > 10))
+                                      .fold(Some(false),
+                                            |acc, x| acc.and_then(|y| x.map(|x| (x || y)))));
+    let tactic = if has_long_item || items.iter().any(|li| li.is_multiline()) {
         definitive_tactic(&items, ListTactic::HorizontalVertical, max_item_width)
     } else {
         DefinitiveListTactic::Mixed
@@ -280,15 +278,7 @@ fn rewrite_closure(capture: ast::CaptureClause,
                                  "|",
                                  |arg| span_lo_for_arg(arg),
                                  |arg| span_hi_for_arg(arg),
-                                 |arg| {
-                                     // FIXME: we should just escalate failure
-                                     // here, but itemize_list doesn't allow it.
-                                     arg.rewrite(context, budget, argument_offset)
-                                        .unwrap_or_else(|| {
-                                            context.snippet(mk_sp(span_lo_for_arg(arg),
-                                                                  span_hi_for_arg(arg)))
-                                        })
-                                 },
+                                 |arg| arg.rewrite(context, budget, argument_offset),
                                  span_after(span, "|", context.codemap),
                                  body.span.lo);
     let item_vec = arg_items.collect::<Vec<_>>();
@@ -1151,11 +1141,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                              ")",
                              |item| item.span.lo,
                              |item| item.span.hi,
-                             // Take old span when rewrite fails.
-                             |item| {
-                                 item.rewrite(&inner_context, remaining_width, offset)
-                                     .unwrap_or(context.snippet(item.span))
-                             },
+                             |item| item.rewrite(&inner_context, remaining_width, offset),
                              span.lo,
                              span.hi);
 
@@ -1251,18 +1237,13 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                  match *item {
                                      StructLitField::Regular(ref field) => {
                                          rewrite_field(inner_context, &field, v_budget, indent)
-                                             .unwrap_or(context.snippet(field.span))
                                      }
                                      StructLitField::Base(ref expr) => {
                                          // 2 = ..
-                                         format!("..{}",
-                                                 v_budget.checked_sub(2)
-                                                         .and_then(|v_budget| {
-                                                             expr.rewrite(inner_context,
-                                                                          v_budget,
-                                                                          indent + 2)
-                                                         })
-                                                         .unwrap_or(context.snippet(expr.span)))
+                                         expr.rewrite(inner_context,
+                                                      try_opt!(v_budget.checked_sub(2)),
+                                                      indent + 2)
+                                             .map(|s| format!("..{}", s))
                                      }
                                  }
                              },
@@ -1365,7 +1346,6 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                              |item| {
                                  let inner_width = context.config.max_width - indent.width() - 1;
                                  item.rewrite(context, inner_width, indent)
-                                     .unwrap_or(context.snippet(item.span))
                              },
                              span.lo + BytePos(1), // Remove parens
                              span.hi - BytePos(1));

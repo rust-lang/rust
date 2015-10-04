@@ -481,7 +481,7 @@ impl<'a> FmtVisitor<'a> {
                                           ")",
                                           |arg| span_lo_for_arg(arg),
                                           |arg| arg.ty.span.hi,
-                                          |_| String::new(),
+                                          |_| None,
                                           comment_span_start,
                                           span.hi);
 
@@ -491,7 +491,7 @@ impl<'a> FmtVisitor<'a> {
         assert_eq!(arg_item_strs.len(), arg_items.len());
 
         for (item, arg) in arg_items.iter_mut().zip(arg_item_strs) {
-            item.item = arg;
+            item.item = Some(arg);
         }
 
         let indent = match self.config.fn_arg_indent {
@@ -630,11 +630,9 @@ impl<'a> FmtVisitor<'a> {
                                              |arg| arg.ty.span.hi,
                                              |arg| {
                                                  // FIXME silly width, indent
-                                                 arg.ty
-                                                    .rewrite(&self.get_context(),
-                                                             1000,
-                                                             Indent::empty())
-                                                    .unwrap()
+                                                 arg.ty.rewrite(&self.get_context(),
+                                                                1000,
+                                                                Indent::empty())
                                              },
                                              span_after(field.span, "(", self.codemap),
                                              next_span_start);
@@ -863,9 +861,14 @@ impl<'a> FmtVisitor<'a> {
     }
 
     // Field of a struct
-    fn format_field(&self, field: &ast::StructField) -> String {
+    fn format_field(&self, field: &ast::StructField) -> Option<String> {
         if contains_skip(&field.node.attrs) {
-            return self.snippet(codemap::mk_sp(field.node.attrs[0].span.lo, field.span.hi));
+            // FIXME: silly width, indent
+            return wrap_str(self.snippet(codemap::mk_sp(field.node.attrs[0].span.lo,
+                                                        field.span.hi)),
+                            self.config.max_width,
+                            1000,
+                            Indent::empty());
         }
 
         let name = match field.node.kind {
@@ -877,24 +880,23 @@ impl<'a> FmtVisitor<'a> {
             ast::StructFieldKind::UnnamedField(vis) => format_visibility(vis),
         };
         // FIXME silly width, indent
-        let typ = field.node.ty.rewrite(&self.get_context(), 1000, Indent::empty()).unwrap();
+        let typ = try_opt!(field.node.ty.rewrite(&self.get_context(), 1000, Indent::empty()));
 
         let indent = self.block_indent.block_indent(self.config);
-        let mut attr_str = field.node
-                                .attrs
-                                .rewrite(&self.get_context(),
-                                         self.config.max_width - indent.width(),
-                                         indent)
-                                .unwrap();
+        let mut attr_str = try_opt!(field.node
+                                         .attrs
+                                         .rewrite(&self.get_context(),
+                                                  self.config.max_width - indent.width(),
+                                                  indent));
         if !attr_str.is_empty() {
             attr_str.push('\n');
             attr_str.push_str(&indent.to_string(self.config));
         }
 
-        match name {
+        Some(match name {
             Some(name) => format!("{}{}{}: {}", attr_str, vis, name, typ),
             None => format!("{}{}{}", attr_str, vis, typ),
-        }
+        })
     }
 
     fn rewrite_generics(&self,
@@ -923,10 +925,8 @@ impl<'a> FmtVisitor<'a> {
 
         // Strings for the generics.
         let context = self.get_context();
-        // FIXME: don't unwrap
-        let lt_strs = lifetimes.iter().map(|lt| lt.rewrite(&context, h_budget, offset).unwrap());
-        let ty_strs = tys.iter()
-                         .map(|ty_param| ty_param.rewrite(&context, h_budget, offset).unwrap());
+        let lt_strs = lifetimes.iter().map(|lt| lt.rewrite(&context, h_budget, offset));
+        let ty_strs = tys.iter().map(|ty_param| ty_param.rewrite(&context, h_budget, offset));
 
         // Extract comments between generics.
         let lt_spans = lifetimes.iter().map(|l| {
@@ -988,10 +988,7 @@ impl<'a> FmtVisitor<'a> {
                                  "{",
                                  |pred| span_for_where_pred(pred).lo,
                                  |pred| span_for_where_pred(pred).hi,
-                                 // FIXME: we should handle failure better
-                                 // this will be taken care of when write_list
-                                 // takes Rewrite object: see issue #133
-                                 |pred| pred.rewrite(&context, budget, offset).unwrap(),
+                                 |pred| pred.rewrite(&context, budget, offset),
                                  span_start,
                                  span_end);
         let item_vec = items.collect::<Vec<_>>();
