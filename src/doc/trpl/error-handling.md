@@ -1284,7 +1284,7 @@ fn file_double<P: AsRef<Path>>(file_path: P) -> Result<i32, String> {
 
 Earlier, we promised that we could get rid of the `map_err` calls. Indeed, all
 we have to do is pick a type that `From` works with. As we saw in the previous
-section, `From` has an impl that let's it convert any error type into a
+section, `From` has an impl that lets it convert any error type into a
 `Box<Error>`:
 
 ```rust
