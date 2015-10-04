@@ -119,7 +119,6 @@ fn process() {
         println!("Thread finished with count={}",
 	    h.join().map_err(|_| "Could not join a thread!").unwrap());
     }
-    println!("done!");
 }
 ```
 
