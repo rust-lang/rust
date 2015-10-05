@@ -379,7 +379,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                 // because of the way we divide pre- and post- comments.
 
                 // Everything from the separator to the next item.
-                let test_snippet = &post_snippet[comment_end-1..];
+                let test_snippet = &post_snippet[comment_end - 1..];
                 let first_newline = test_snippet.find('\n').unwrap_or(test_snippet.len());
                 // From the end of the first line of comments.
                 let test_snippet = &test_snippet[first_newline..];

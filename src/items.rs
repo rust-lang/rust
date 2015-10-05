@@ -476,7 +476,7 @@ impl<'a> FmtVisitor<'a> {
             };
 
             let more_items = itemize_list(self.codemap,
-                                          args[min_args-1..].iter(),
+                                          args[min_args - 1..].iter(),
                                           ")",
                                           |arg| span_lo_for_arg(arg),
                                           |arg| arg.ty.span.hi,

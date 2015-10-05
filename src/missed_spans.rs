@@ -78,7 +78,7 @@ impl<'a> FmtVisitor<'a> {
                     self.buffer.push_str(&snippet[line_start..lw]);
                     self.buffer.push_str("\n");
                 } else {
-                    self.buffer.push_str(&snippet[line_start..i+1]);
+                    self.buffer.push_str(&snippet[line_start..i + 1]);
                 }
 
                 line_start = i + 1;
