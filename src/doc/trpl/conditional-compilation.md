@@ -34,7 +34,7 @@ These can nest arbitrarily:
 As for how to enable or disable these switches, if you’re using Cargo,
 they get set in the [`[features]` section][features] of your `Cargo.toml`:
 
-[features]: http://doc.crates.io/manifest.html#the-%5Bfeatures%5D-section
+[features]: http://doc.crates.io/manifest.html#the-features-section
 
 ```toml
 [features]
