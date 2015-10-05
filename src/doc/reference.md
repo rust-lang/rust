@@ -1997,7 +1997,7 @@ On `struct`s:
   list of names `#[macro_use(foo, bar)]` restricts the import to just those
   macros named.  The `extern crate` must appear at the crate root, not inside
   `mod`, which ensures proper function of the [`$crate` macro
-  variable](book/macros.html#the-variable-$crate).
+  variable](book/macros.html#the-variable-crate).
 
 - `macro_reexport` on an `extern crate` — re-export the named macros.
 
@@ -2007,7 +2007,7 @@ On `struct`s:
   link it into the output.
 
 See the [macros section of the
-book](book/macros.html#scoping-and-macro-import/export) for more information on
+book](book/macros.html#scoping-and-macro-importexport) for more information on
 macro scope.
 
 
@@ -2586,7 +2586,7 @@ Here are some examples:
 #### Moved and copied types
 
 When a [local variable](#variables) is used as an
-[rvalue](#lvalues,-rvalues-and-temporaries), the variable will be copied
+[rvalue](#lvalues-rvalues-and-temporaries), the variable will be copied
 if its type implements `Copy`. All others are moved.
 
 ### Literal expressions
@@ -2605,7 +2605,7 @@ value, or the unit value.
 ### Path expressions
 
 A [path](#paths) used as an expression context denotes either a local variable
-or an item. Path expressions are [lvalues](#lvalues,-rvalues-and-temporaries).
+or an item. Path expressions are [lvalues](#lvalues-rvalues-and-temporaries).
 
 ### Tuple expressions
 
@@ -2718,7 +2718,7 @@ foo().x;
 (Struct {a: 10, b: 20}).a;
 ```
 
-A field access is an [lvalue](#lvalues,-rvalues-and-temporaries) referring to
+A field access is an [lvalue](#lvalues-rvalues-and-temporaries) referring to
 the value of that field. When the type providing the field inherits mutability,
 it can be [assigned](#assignment-expressions) to.
 
@@ -2729,7 +2729,7 @@ fewer autoderefs to more.
 
 ### Array expressions
 
-An [array](#array,-and-slice-types) _expression_ is written by enclosing zero
+An [array](#array-and-slice-types) _expression_ is written by enclosing zero
 or more comma-separated expressions of uniform type in square brackets.
 
 In the `[expr ';' expr]` form, the expression after the `';'` must be a
@@ -2745,9 +2745,9 @@ constant expression that can be evaluated at compile time, such as a
 
 ### Index expressions
 
-[Array](#array,-and-slice-types)-typed expressions can be indexed by
+[Array](#array-and-slice-types)-typed expressions can be indexed by
 writing a square-bracket-enclosed expression (the index) after them. When the
-array is mutable, the resulting [lvalue](#lvalues,-rvalues-and-temporaries) can
+array is mutable, the resulting [lvalue](#lvalues-rvalues-and-temporaries) can
 be assigned to.
 
 Indices are zero-based, and may be of any integral type. Vector access is
@@ -2801,7 +2801,7 @@ before the expression they apply to.
 * `*`
   : Dereference. When applied to a [pointer](#pointer-types) it denotes the
     pointed-to location. For pointers to mutable locations, the resulting
-    [lvalue](#lvalues,-rvalues-and-temporaries) can be assigned to.
+    [lvalue](#lvalues-rvalues-and-temporaries) can be assigned to.
     On non-pointer types, it calls the `deref` method of the `std::ops::Deref`
     trait, or the `deref_mut` method of the `std::ops::DerefMut` trait (if
     implemented by the type and required for an outer expression that will or
@@ -2942,8 +2942,8 @@ surprising side-effects on the dynamic execution semantics.
 #### Assignment expressions
 
 An _assignment expression_ consists of an
-[lvalue](#lvalues,-rvalues-and-temporaries) expression followed by an equals
-sign (`=`) and an [rvalue](#lvalues,-rvalues-and-temporaries) expression.
+[lvalue](#lvalues-rvalues-and-temporaries) expression followed by an equals
+sign (`=`) and an [rvalue](#lvalues-rvalues-and-temporaries) expression.
 
 Evaluating an assignment expression [either copies or
 moves](#moved-and-copied-types) its right-hand operand to its left-hand
@@ -3170,7 +3170,7 @@ stands for a *single* data field, whereas a wildcard `..` stands for *all* the
 fields of a particular variant.
 
 A `match` behaves differently depending on whether or not the head expression
-is an [lvalue or an rvalue](#lvalues,-rvalues-and-temporaries). If the head
+is an [lvalue or an rvalue](#lvalues-rvalues-and-temporaries). If the head
 expression is an rvalue, it is first evaluated into a temporary location, and
 the resulting value is sequentially compared to the patterns in the arms until
 a match is found. The first arm with a matching pattern is chosen as the branch
@@ -3489,7 +3489,7 @@ enclosing `enum` or `struct` type itself. Such recursion has restrictions:
 
 * Recursive types must include a nominal type in the recursion
   (not mere [type definitions](grammar.html#type-definitions),
-   or other structural types such as [arrays](#array,-and-slice-types) or [tuples](#tuple-types)).
+   or other structural types such as [arrays](#array-and-slice-types) or [tuples](#tuple-types)).
 * A recursive `enum` item must have at least one non-recursive constructor
   (in order to give the recursion a basis case).
 * The size of a recursive type must be finite;
