@@ -14,16 +14,17 @@
 use build::Builder;
 use hair::*;
 use repr::*;
-
+use rustc::middle::ty::Ty;
 use std::u32;
+use syntax::codemap::Span;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     /// Add a new temporary value of type `ty` storing the result of
     /// evaluating `expr`.
     ///
     /// NB: **No cleanup is scheduled for this temporary.** You should
     /// call `schedule_drop` once the temporary is initialized.
-    pub fn temp(&mut self, ty: H::Ty) -> Lvalue<H> {
+    pub fn temp(&mut self, ty: Ty<'tcx>) -> Lvalue<'tcx> {
         let index = self.temp_decls.len();
         self.temp_decls.push(TempDecl { ty: ty });
         assert!(index < (u32::MAX) as usize);
@@ -35,10 +36,10 @@ impl<H:Hair> Builder<H> {
 
     pub fn push_literal(&mut self,
                         block: BasicBlock,
-                        span: H::Span,
-                        ty: H::Ty,
-                        literal: Literal<H>)
-                        -> Lvalue<H> {
+                        span: Span,
+                        ty: Ty<'tcx>,
+                        literal: Literal<'tcx>)
+                        -> Lvalue<'tcx> {
         let temp = self.temp(ty.clone());
         let constant = Constant { span: span, ty: ty, literal: literal };
         self.cfg.push_assign_constant(block, span, &temp, constant);
@@ -47,9 +48,9 @@ impl<H:Hair> Builder<H> {
 
     pub fn push_usize(&mut self,
                       block: BasicBlock,
-                      span: H::Span,
+                      span: Span,
                       value: usize)
-                      -> Lvalue<H> {
+                      -> Lvalue<'tcx> {
         let usize_ty = self.hir.usize_ty();
         let temp = self.temp(usize_ty);
         self.cfg.push_assign_constant(
@@ -64,9 +65,9 @@ impl<H:Hair> Builder<H> {
 
     pub fn push_item_ref(&mut self,
                          block: BasicBlock,
-                         span: H::Span,
-                         item_ref: ItemRef<H>)
-                         -> Lvalue<H> {
+                         span: Span,
+                         item_ref: ItemRef<'tcx>)
+                         -> Lvalue<'tcx> {
         let literal = Literal::Item { def_id: item_ref.def_id, substs: item_ref.substs };
         self.push_literal(block, span, item_ref.ty, literal)
     }

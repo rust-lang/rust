@@ -169,18 +169,18 @@ fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
                          span: Span,
                          decl: &'tcx hir::FnDecl,
                          body: &'tcx hir::Block)
-                         -> Result<Mir<Cx<'a,'tcx>>, ErrorReported> {
+                         -> Result<Mir<'tcx>, ErrorReported> {
     let arguments =
         decl.inputs
             .iter()
             .map(|arg| {
-                let ty = cx.tcx.node_id_to_type(arg.id);
+                let ty = cx.tcx().node_id_to_type(arg.id);
                 (ty, PatNode::irrefutable(&arg.pat))
             })
             .collect();
 
     let parameter_scope =
-        cx.tcx.region_maps.lookup_code_extent(
+        cx.tcx().region_maps.lookup_code_extent(
             CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body.id });
     Ok(build::construct(cx,
                         span,

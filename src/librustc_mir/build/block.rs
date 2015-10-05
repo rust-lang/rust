@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use build::{BlockAnd, Builder};
 use hair::*;
 use repr::*;
-use build::{BlockAnd, Builder};
+use rustc_front::hir;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn ast_block(&mut self,
-                     destination: &Lvalue<H>,
+                     destination: &Lvalue<'tcx>,
                      mut block: BasicBlock,
-                     ast_block: H::Block)
+                     ast_block: &'tcx hir::Block)
                      -> BlockAnd<()> {
         let this = self;
         let Block { extent, span: _, stmts, expr } = this.hir.mirror(ast_block);

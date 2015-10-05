@@ -12,15 +12,15 @@ use build::{BlockAnd, Builder};
 use hair::*;
 use repr::*;
 
-impl<H:Hair> Builder<H> {
-    pub fn stmts(&mut self, mut block: BasicBlock, stmts: Vec<StmtRef<H>>) -> BlockAnd<()> {
+impl<'a,'tcx> Builder<'a,'tcx> {
+    pub fn stmts(&mut self, mut block: BasicBlock, stmts: Vec<StmtRef<'tcx>>) -> BlockAnd<()> {
         for stmt in stmts {
             unpack!(block = self.stmt(block, stmt));
         }
         block.unit()
     }
 
-    pub fn stmt(&mut self, mut block: BasicBlock, stmt: StmtRef<H>) -> BlockAnd<()> {
+    pub fn stmt(&mut self, mut block: BasicBlock, stmt: StmtRef<'tcx>) -> BlockAnd<()> {
         let this = self;
         let Stmt { span, kind } = this.hir.mirror(stmt);
         match kind {
