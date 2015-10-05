@@ -434,7 +434,7 @@ ownership of the values it’s capturing. Primarily, the `p` variable of the
 
 Inside the thread, all we do is call `eat()` on `p`. Also note that the call to `thread::spawn` lacks a trailing semicolon, making this an expression. This distinction is important, yielding the correct return value. For more details, read [Expressions vs. Statements][es].
 
-[es]: functions.html#expressions-vs.-statements
+[es]: functions.html#expressions-vs-statements
 
 ```rust,ignore
 }).collect();

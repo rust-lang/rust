@@ -28,7 +28,7 @@ systems may want to jump around.
     * [The `Result` type](#the-result-type)
         * [Parsing integers](#parsing-integers)
         * [The `Result` type alias idiom](#the-result-type-alias-idiom)
-    * [A brief interlude: unwrapping isn't evil](#a-brief-interlude-unwrapping-isn't-evil)
+    * [A brief interlude: unwrapping isn't evil](#a-brief-interlude-unwrapping-isnt-evil)
 * [Working with multiple error types](#working-with-multiple-error-types)
     * [Composing `Option` and `Result`](#composing-option-and-result)
     * [The limits of combinators](#the-limits-of-combinators)
@@ -1470,7 +1470,7 @@ representation. But certainly, this will vary depending on use cases.
 At a minimum, you should probably implement the
 [`Error`](../std/error/trait.Error.html)
 trait. This will give users of your library some minimum flexibility for
-[composing errors](#the-real-try!-macro). Implementing the `Error` trait also
+[composing errors](#the-real-try-macro). Implementing the `Error` trait also
 means that users are guaranteed the ability to obtain a string representation
 of an error (because it requires impls for both `fmt::Debug` and
 `fmt::Display`).
