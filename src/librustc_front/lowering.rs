@@ -29,24 +29,26 @@ pub fn lower_view_path(view_path: &ViewPath) -> P<hir::ViewPath> {
             }
             ViewPathList(ref path, ref path_list_idents) => {
                 hir::ViewPathList(lower_path(path),
-                             path_list_idents.iter().map(|path_list_ident| {
-                                Spanned {
-                                    node: match path_list_ident.node {
-                                        PathListIdent { id, name, rename } =>
-                                            hir::PathListIdent {
-                                                id: id,
-                                                name: name.name,
-                                                rename: rename.map(|x| x.name),
-                                            },
-                                        PathListMod { id, rename } =>
-                                            hir::PathListMod {
-                                                id: id,
-                                                rename: rename.map(|x| x.name)
-                                            }
-                                    },
-                                    span: path_list_ident.span
-                                }
-                             }).collect())
+                                  path_list_idents.iter()
+                                                  .map(|path_list_ident| {
+                                                      Spanned {
+                                                          node: match path_list_ident.node {
+                                                              PathListIdent { id, name, rename } =>
+                                                                  hir::PathListIdent {
+                                                                  id: id,
+                                                                  name: name.name,
+                                                                  rename: rename.map(|x| x.name),
+                                                              },
+                                                              PathListMod { id, rename } =>
+                                                                  hir::PathListMod {
+                                                                  id: id,
+                                                                  rename: rename.map(|x| x.name),
+                                                              },
+                                                          },
+                                                          span: path_list_ident.span,
+                                                      }
+                                                  })
+                                                  .collect())
             }
         },
         span: view_path.span,
@@ -66,17 +68,22 @@ pub fn lower_decl(d: &Decl) -> P<hir::Decl> {
     match d.node {
         DeclLocal(ref l) => P(Spanned {
             node: hir::DeclLocal(lower_local(l)),
-            span: d.span
+            span: d.span,
         }),
         DeclItem(ref it) => P(Spanned {
             node: hir::DeclItem(lower_item(it)),
-            span: d.span
+            span: d.span,
         }),
     }
 }
 
 pub fn lower_ty_binding(b: &TypeBinding) -> P<hir::TypeBinding> {
-    P(hir::TypeBinding { id: b.id, name: b.ident.name, ty: lower_ty(&b.ty), span: b.span })
+    P(hir::TypeBinding {
+        id: b.id,
+        name: b.ident.name,
+        ty: lower_ty(&b.ty),
+        span: b.span,
+    })
 }
 
 pub fn lower_ty(t: &Ty) -> P<hir::Ty> {
@@ -94,7 +101,7 @@ pub fn lower_ty(t: &Ty) -> P<hir::Ty> {
                     lifetimes: lower_lifetime_defs(&f.lifetimes),
                     unsafety: lower_unsafety(f.unsafety),
                     abi: f.abi,
-                    decl: lower_fn_decl(&f.decl)
+                    decl: lower_fn_decl(&f.decl),
                 }))
             }
             TyTup(ref tys) => hir::TyTup(tys.iter().map(|ty| lower_ty(ty)).collect()),
@@ -103,14 +110,13 @@ pub fn lower_ty(t: &Ty) -> P<hir::Ty> {
                 let qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
                     hir::QSelf {
                         ty: lower_ty(ty),
-                        position: position
+                        position: position,
                     }
                 });
                 hir::TyPath(qself, lower_path(path))
             }
             TyObjectSum(ref ty, ref bounds) => {
-                hir::TyObjectSum(lower_ty(ty),
-                            lower_bounds(bounds))
+                hir::TyObjectSum(lower_ty(ty), lower_bounds(bounds))
             }
             TyFixedLengthVec(ref ty, ref e) => {
                 hir::TyFixedLengthVec(lower_ty(ty), lower_expr(e))
@@ -142,8 +148,9 @@ pub fn lower_variant(v: &Variant) -> P<hir::Variant> {
             attrs: v.node.attrs.clone(),
             kind: match v.node.kind {
                 TupleVariantKind(ref variant_args) => {
-                    hir::TupleVariantKind(variant_args.iter().map(|ref x|
-                        lower_variant_arg(x)).collect())
+                    hir::TupleVariantKind(variant_args.iter()
+                                                      .map(|ref x| lower_variant_arg(x))
+                                                      .collect())
                 }
                 StructVariantKind(ref struct_def) => {
                     hir::StructVariantKind(lower_struct_def(struct_def))
@@ -158,11 +165,15 @@ pub fn lower_variant(v: &Variant) -> P<hir::Variant> {
 pub fn lower_path(p: &Path) -> hir::Path {
     hir::Path {
         global: p.global,
-        segments: p.segments.iter().map(|&PathSegment {identifier, ref parameters}|
-            hir::PathSegment {
-                identifier: identifier,
-                parameters: lower_path_parameters(parameters),
-            }).collect(),
+        segments: p.segments
+                   .iter()
+                   .map(|&PathSegment { identifier, ref parameters }| {
+                       hir::PathSegment {
+                           identifier: identifier,
+                           parameters: lower_path_parameters(parameters),
+                       }
+                   })
+                   .collect(),
         span: p.span,
     }
 }
@@ -198,12 +209,12 @@ pub fn lower_parenthesized_parameter_data(data: &ParenthesizedParameterData)
 
 pub fn lower_local(l: &Local) -> P<hir::Local> {
     P(hir::Local {
-            id: l.id,
-            ty: l.ty.as_ref().map(|t| lower_ty(t)),
-            pat: lower_pat(&l.pat),
-            init: l.init.as_ref().map(|e| lower_expr(e)),
-            span: l.span,
-        })
+        id: l.id,
+        ty: l.ty.as_ref().map(|t| lower_ty(t)),
+        pat: lower_pat(&l.pat),
+        init: l.init.as_ref().map(|e| lower_expr(e)),
+        span: l.span,
+    })
 }
 
 pub fn lower_explicit_self_underscore(es: &ExplicitSelf_) -> hir::ExplicitSelf_ {
@@ -211,7 +222,9 @@ pub fn lower_explicit_self_underscore(es: &ExplicitSelf_) -> hir::ExplicitSelf_ 
         SelfStatic => hir::SelfStatic,
         SelfValue(v) => hir::SelfValue(v.name),
         SelfRegion(ref lifetime, m, ident) => {
-            hir::SelfRegion(lower_opt_lifetime(lifetime), lower_mutability(m), ident.name)
+            hir::SelfRegion(lower_opt_lifetime(lifetime),
+                            lower_mutability(m),
+                            ident.name)
         }
         SelfExplicit(ref typ, ident) => {
             hir::SelfExplicit(lower_ty(typ), ident.name)
@@ -227,11 +240,18 @@ pub fn lower_mutability(m: Mutability) -> hir::Mutability {
 }
 
 pub fn lower_explicit_self(s: &ExplicitSelf) -> hir::ExplicitSelf {
-    Spanned { node: lower_explicit_self_underscore(&s.node), span: s.span }
+    Spanned {
+        node: lower_explicit_self_underscore(&s.node),
+        span: s.span,
+    }
 }
 
 pub fn lower_arg(arg: &Arg) -> hir::Arg {
-    hir::Arg { id: arg.id, pat: lower_pat(&arg.pat), ty: lower_ty(&arg.ty) }
+    hir::Arg {
+        id: arg.id,
+        pat: lower_pat(&arg.pat),
+        ty: lower_ty(&arg.ty),
+    }
 }
 
 pub fn lower_fn_decl(decl: &FnDecl) -> P<hir::FnDecl> {
@@ -240,7 +260,7 @@ pub fn lower_fn_decl(decl: &FnDecl) -> P<hir::FnDecl> {
         output: match decl.output {
             Return(ref ty) => hir::Return(lower_ty(ty)),
             DefaultReturn(span) => hir::DefaultReturn(span),
-            NoReturn(span) => hir::NoReturn(span)
+            NoReturn(span) => hir::NoReturn(span),
         },
         variadic: decl.variadic,
     })
@@ -249,7 +269,8 @@ pub fn lower_fn_decl(decl: &FnDecl) -> P<hir::FnDecl> {
 pub fn lower_ty_param_bound(tpb: &TyParamBound) -> hir::TyParamBound {
     match *tpb {
         TraitTyParamBound(ref ty, modifier) => {
-            hir::TraitTyParamBound(lower_poly_trait_ref(ty), lower_trait_bound_modifier(modifier))
+            hir::TraitTyParamBound(lower_poly_trait_ref(ty),
+                                   lower_trait_bound_modifier(modifier))
         }
         RegionTyParamBound(ref lifetime) => hir::RegionTyParamBound(lower_lifetime(lifetime)),
     }
@@ -270,11 +291,18 @@ pub fn lower_ty_params(tps: &OwnedSlice<TyParam>) -> OwnedSlice<hir::TyParam> {
 }
 
 pub fn lower_lifetime(l: &Lifetime) -> hir::Lifetime {
-    hir::Lifetime { id: l.id, name: l.name, span: l.span }
+    hir::Lifetime {
+        id: l.id,
+        name: l.name,
+        span: l.span,
+    }
 }
 
 pub fn lower_lifetime_def(l: &LifetimeDef) -> hir::LifetimeDef {
-    hir::LifetimeDef { lifetime: lower_lifetime(&l.lifetime), bounds: lower_lifetimes(&l.bounds) }
+    hir::LifetimeDef {
+        lifetime: lower_lifetime(&l.lifetime),
+        bounds: lower_lifetimes(&l.bounds),
+    }
 }
 
 pub fn lower_lifetimes(lts: &Vec<Lifetime>) -> Vec<hir::Lifetime> {
@@ -300,8 +328,10 @@ pub fn lower_generics(g: &Generics) -> hir::Generics {
 pub fn lower_where_clause(wc: &WhereClause) -> hir::WhereClause {
     hir::WhereClause {
         id: wc.id,
-        predicates: wc.predicates.iter().map(|predicate|
-            lower_where_predicate(predicate)).collect(),
+        predicates: wc.predicates
+                      .iter()
+                      .map(|predicate| lower_where_predicate(predicate))
+                      .collect(),
     }
 }
 
@@ -315,7 +345,7 @@ pub fn lower_where_predicate(pred: &WherePredicate) -> hir::WherePredicate {
                 bound_lifetimes: lower_lifetime_defs(bound_lifetimes),
                 bounded_ty: lower_ty(bounded_ty),
                 bounds: bounds.iter().map(|x| lower_ty_param_bound(x)).collect(),
-                span: span
+                span: span,
             })
         }
         WherePredicate::RegionPredicate(WhereRegionPredicate{ ref lifetime,
@@ -324,18 +354,18 @@ pub fn lower_where_predicate(pred: &WherePredicate) -> hir::WherePredicate {
             hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
                 span: span,
                 lifetime: lower_lifetime(lifetime),
-                bounds: bounds.iter().map(|bound| lower_lifetime(bound)).collect()
+                bounds: bounds.iter().map(|bound| lower_lifetime(bound)).collect(),
             })
         }
         WherePredicate::EqPredicate(WhereEqPredicate{ id,
                                                       ref path,
                                                       ref ty,
                                                       span}) => {
-            hir::WherePredicate::EqPredicate(hir::WhereEqPredicate{
+            hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
                 id: id,
                 path: lower_path(path),
-                ty:lower_ty(ty),
-                span: span
+                ty: lower_ty(ty),
+                span: span,
             })
         }
     }
@@ -349,7 +379,10 @@ pub fn lower_struct_def(sd: &StructDef) -> P<hir::StructDef> {
 }
 
 pub fn lower_trait_ref(p: &TraitRef) -> hir::TraitRef {
-    hir::TraitRef { path: lower_path(&p.path), ref_id: p.ref_id }
+    hir::TraitRef {
+        path: lower_path(&p.path),
+        ref_id: p.ref_id,
+    }
 }
 
 pub fn lower_poly_trait_ref(p: &PolyTraitRef) -> hir::PolyTraitRef {
@@ -375,12 +408,16 @@ pub fn lower_struct_field(f: &StructField) -> hir::StructField {
 pub fn lower_field(f: &Field) -> hir::Field {
     hir::Field {
         name: respan(f.ident.span, f.ident.node.name),
-        expr: lower_expr(&f.expr), span: f.span
+        expr: lower_expr(&f.expr),
+        span: f.span,
     }
 }
 
 pub fn lower_mt(mt: &MutTy) -> hir::MutTy {
-    hir::MutTy { ty: lower_ty(&mt.ty), mutbl: lower_mutability(mt.mutbl) }
+    hir::MutTy {
+        ty: lower_ty(&mt.ty),
+        mutbl: lower_mutability(mt.mutbl),
+    }
 }
 
 pub fn lower_opt_bounds(b: &Option<OwnedSlice<TyParamBound>>)
@@ -393,7 +430,10 @@ fn lower_bounds(bounds: &TyParamBounds) -> hir::TyParamBounds {
 }
 
 fn lower_variant_arg(va: &VariantArg) -> hir::VariantArg {
-    hir::VariantArg { id: va.id, ty: lower_ty(&va.ty) }
+    hir::VariantArg {
+        id: va.id,
+        ty: lower_ty(&va.ty),
+    }
 }
 
 pub fn lower_block(b: &Block) -> P<hir::Block> {
@@ -419,14 +459,12 @@ pub fn lower_item_underscore(i: &Item_) -> hir::Item_ {
             hir::ItemConst(lower_ty(t), lower_expr(e))
         }
         ItemFn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
-            hir::ItemFn(
-                lower_fn_decl(decl),
-                lower_unsafety(unsafety),
-                lower_constness(constness),
-                abi,
-                lower_generics(generics),
-                lower_block(body)
-            )
+            hir::ItemFn(lower_fn_decl(decl),
+                        lower_unsafety(unsafety),
+                        lower_constness(constness),
+                        abi,
+                        lower_generics(generics),
+                        lower_block(body))
         }
         ItemMod(ref m) => hir::ItemMod(lower_mod(m)),
         ItemForeignMod(ref nm) => hir::ItemForeignMod(lower_foreign_mod(nm)),
@@ -434,11 +472,13 @@ pub fn lower_item_underscore(i: &Item_) -> hir::Item_ {
             hir::ItemTy(lower_ty(t), lower_generics(generics))
         }
         ItemEnum(ref enum_definition, ref generics) => {
-            hir::ItemEnum(
-                hir::EnumDef {
-                    variants: enum_definition.variants.iter().map(|x| lower_variant(x)).collect(),
-                },
-                lower_generics(generics))
+            hir::ItemEnum(hir::EnumDef {
+                              variants: enum_definition.variants
+                                                       .iter()
+                                                       .map(|x| lower_variant(x))
+                                                       .collect(),
+                          },
+                          lower_generics(generics))
         }
         ItemStruct(ref struct_def, ref generics) => {
             let struct_def = lower_struct_def(struct_def);
@@ -471,10 +511,10 @@ pub fn lower_item_underscore(i: &Item_) -> hir::Item_ {
 
 pub fn lower_trait_item(i: &TraitItem) -> P<hir::TraitItem> {
     P(hir::TraitItem {
-            id: i.id,
-            name: i.ident.name,
-            attrs: i.attrs.clone(),
-            node: match i.node {
+        id: i.id,
+        name: i.ident.name,
+        attrs: i.attrs.clone(),
+        node: match i.node {
             ConstTraitItem(ref ty, ref default) => {
                 hir::ConstTraitItem(lower_ty(ty),
                                     default.as_ref().map(|x| lower_expr(x)))
@@ -488,33 +528,35 @@ pub fn lower_trait_item(i: &TraitItem) -> P<hir::TraitItem> {
                                    default.as_ref().map(|x| lower_ty(x)))
             }
         },
-            span: i.span,
-        })
+        span: i.span,
+    })
 }
 
 pub fn lower_impl_item(i: &ImplItem) -> P<hir::ImplItem> {
     P(hir::ImplItem {
-            id: i.id,
-            name: i.ident.name,
-            attrs: i.attrs.clone(),
-            vis: lower_visibility(i.vis),
-            node: match i.node  {
+        id: i.id,
+        name: i.ident.name,
+        attrs: i.attrs.clone(),
+        vis: lower_visibility(i.vis),
+        node: match i.node {
             ConstImplItem(ref ty, ref expr) => {
                 hir::ConstImplItem(lower_ty(ty), lower_expr(expr))
             }
             MethodImplItem(ref sig, ref body) => {
-                hir::MethodImplItem(lower_method_sig(sig),
-                                    lower_block(body))
+                hir::MethodImplItem(lower_method_sig(sig), lower_block(body))
             }
             TypeImplItem(ref ty) => hir::TypeImplItem(lower_ty(ty)),
             MacImplItem(..) => panic!("Shouldn't exist any more"),
         },
-            span: i.span,
-        })
+        span: i.span,
+    })
 }
 
 pub fn lower_mod(m: &Mod) -> hir::Mod {
-    hir::Mod { inner: m.inner, items: m.items.iter().map(|x| lower_item(x)).collect() }
+    hir::Mod {
+        inner: m.inner,
+        items: m.items.iter().map(|x| lower_item(x)).collect(),
+    }
 }
 
 pub fn lower_crate(c: &Crate) -> hir::Crate {
@@ -562,10 +604,10 @@ pub fn lower_item_simple(i: &Item) -> hir::Item {
 
 pub fn lower_foreign_item(i: &ForeignItem) -> P<hir::ForeignItem> {
     P(hir::ForeignItem {
-            id: i.id,
-            name: i.ident.name,
-            attrs: i.attrs.clone(),
-            node: match i.node {
+        id: i.id,
+        name: i.ident.name,
+        attrs: i.attrs.clone(),
+        node: match i.node {
             ForeignItemFn(ref fdec, ref generics) => {
                 hir::ForeignItemFn(lower_fn_decl(fdec), lower_generics(generics))
             }
@@ -573,9 +615,9 @@ pub fn lower_foreign_item(i: &ForeignItem) -> P<hir::ForeignItem> {
                 hir::ForeignItemStatic(lower_ty(t), m)
             }
         },
-            vis: lower_visibility(i.vis),
-            span: i.span,
-        })
+        vis: lower_visibility(i.vis),
+        span: i.span,
+    })
 }
 
 pub fn lower_method_sig(sig: &MethodSig) -> hir::MethodSig {
@@ -639,18 +681,18 @@ pub fn lower_binop(b: BinOp) -> hir::BinOp {
 
 pub fn lower_pat(p: &Pat) -> P<hir::Pat> {
     P(hir::Pat {
-            id: p.id,
-            node: match p.node {
+        id: p.id,
+        node: match p.node {
             PatWild(k) => hir::PatWild(lower_pat_wild_kind(k)),
             PatIdent(ref binding_mode, pth1, ref sub) => {
                 hir::PatIdent(lower_binding_mode(binding_mode),
-                        pth1,
-                        sub.as_ref().map(|x| lower_pat(x)))
+                              pth1,
+                              sub.as_ref().map(|x| lower_pat(x)))
             }
             PatLit(ref e) => hir::PatLit(lower_expr(e)),
             PatEnum(ref pth, ref pats) => {
                 hir::PatEnum(lower_path(pth),
-                        pats.as_ref().map(|pats| pats.iter().map(|x| lower_pat(x)).collect()))
+                             pats.as_ref().map(|pats| pats.iter().map(|x| lower_pat(x)).collect()))
             }
             PatQPath(ref qself, ref pth) => {
                 let qself = hir::QSelf {
@@ -661,130 +703,126 @@ pub fn lower_pat(p: &Pat) -> P<hir::Pat> {
             }
             PatStruct(ref pth, ref fields, etc) => {
                 let pth = lower_path(pth);
-                let fs = fields.iter().map(|f| {
-                    Spanned { span: f.span,
-                              node: hir::FieldPat {
-                                  name: f.node.ident.name,
-                                  pat: lower_pat(&f.node.pat),
-                                  is_shorthand: f.node.is_shorthand,
-                              }}
-                }).collect();
+                let fs = fields.iter()
+                               .map(|f| {
+                                   Spanned {
+                                       span: f.span,
+                                       node: hir::FieldPat {
+                                           name: f.node.ident.name,
+                                           pat: lower_pat(&f.node.pat),
+                                           is_shorthand: f.node.is_shorthand,
+                                       },
+                                   }
+                               })
+                               .collect();
                 hir::PatStruct(pth, fs, etc)
             }
             PatTup(ref elts) => hir::PatTup(elts.iter().map(|x| lower_pat(x)).collect()),
             PatBox(ref inner) => hir::PatBox(lower_pat(inner)),
-            PatRegion(ref inner, mutbl) => hir::PatRegion(lower_pat(inner),
-                                                          lower_mutability(mutbl)),
+            PatRegion(ref inner, mutbl) =>
+                hir::PatRegion(lower_pat(inner), lower_mutability(mutbl)),
             PatRange(ref e1, ref e2) => {
                 hir::PatRange(lower_expr(e1), lower_expr(e2))
-            },
+            }
             PatVec(ref before, ref slice, ref after) => {
                 hir::PatVec(before.iter().map(|x| lower_pat(x)).collect(),
-                       slice.as_ref().map(|x| lower_pat(x)),
-                       after.iter().map(|x| lower_pat(x)).collect())
+                            slice.as_ref().map(|x| lower_pat(x)),
+                            after.iter().map(|x| lower_pat(x)).collect())
             }
             PatMac(_) => panic!("Shouldn't exist here"),
         },
-            span: p.span,
-        })
+        span: p.span,
+    })
 }
 
 pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
     P(hir::Expr {
-            id: e.id,
-            node: match e.node {
-                ExprBox(ref e) => {
-                    hir::ExprBox(lower_expr(e))
-                }
-                ExprVec(ref exprs) => {
-                    hir::ExprVec(exprs.iter().map(|x| lower_expr(x)).collect())
-                }
-                ExprRepeat(ref expr, ref count) => {
-                    hir::ExprRepeat(lower_expr(expr), lower_expr(count))
-                }
-                ExprTup(ref elts) => hir::ExprTup(elts.iter().map(|x| lower_expr(x)).collect()),
-                ExprCall(ref f, ref args) => {
-                    hir::ExprCall(lower_expr(f),
-                             args.iter().map(|x| lower_expr(x)).collect())
-                }
-                ExprMethodCall(i, ref tps, ref args) => {
-                    hir::ExprMethodCall(
-                        respan(i.span, i.node.name),
-                        tps.iter().map(|x| lower_ty(x)).collect(),
-                        args.iter().map(|x| lower_expr(x)).collect())
-                }
-                ExprBinary(binop, ref lhs, ref rhs) => {
-                    hir::ExprBinary(lower_binop(binop),
-                            lower_expr(lhs),
-                            lower_expr(rhs))
-                }
-                ExprUnary(op, ref ohs) => {
-                    hir::ExprUnary(lower_unop(op), lower_expr(ohs))
-                }
-                ExprLit(ref l) => hir::ExprLit(P((**l).clone())),
-                ExprCast(ref expr, ref ty) => {
-                    hir::ExprCast(lower_expr(expr), lower_ty(ty))
-                }
-                ExprAddrOf(m, ref ohs) => hir::ExprAddrOf(lower_mutability(m), lower_expr(ohs)),
-                ExprIf(ref cond, ref tr, ref fl) => {
-                    hir::ExprIf(lower_expr(cond),
-                           lower_block(tr),
-                           fl.as_ref().map(|x| lower_expr(x)))
-                }
-                ExprWhile(ref cond, ref body, opt_ident) => {
-                    hir::ExprWhile(lower_expr(cond),
-                              lower_block(body),
-                              opt_ident)
-                }
-                ExprLoop(ref body, opt_ident) => {
-                    hir::ExprLoop(lower_block(body),
-                            opt_ident)
-                }
-                ExprMatch(ref expr, ref arms, ref source) => {
-                    hir::ExprMatch(lower_expr(expr),
-                            arms.iter().map(|x| lower_arm(x)).collect(),
-                            lower_match_source(source))
-                }
-                ExprClosure(capture_clause, ref decl, ref body) => {
-                    hir::ExprClosure(lower_capture_clause(capture_clause),
-                                lower_fn_decl(decl),
-                                lower_block(body))
-                }
-                ExprBlock(ref blk) => hir::ExprBlock(lower_block(blk)),
-                ExprAssign(ref el, ref er) => {
-                    hir::ExprAssign(lower_expr(el), lower_expr(er))
-                }
-                ExprAssignOp(op, ref el, ref er) => {
-                    hir::ExprAssignOp(lower_binop(op),
-                                lower_expr(el),
-                                lower_expr(er))
-                }
-                ExprField(ref el, ident) => {
-                    hir::ExprField(lower_expr(el), respan(ident.span, ident.node.name))
-                }
-                ExprTupField(ref el, ident) => {
-                    hir::ExprTupField(lower_expr(el), ident)
-                }
-                ExprIndex(ref el, ref er) => {
-                    hir::ExprIndex(lower_expr(el), lower_expr(er))
-                }
-                ExprRange(ref e1, ref e2) => {
-                    hir::ExprRange(e1.as_ref().map(|x| lower_expr(x)),
-                              e2.as_ref().map(|x| lower_expr(x)))
-                }
-                ExprPath(ref qself, ref path) => {
-                    let qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
-                        hir::QSelf {
-                            ty: lower_ty(ty),
-                            position: position
-                        }
-                    });
-                    hir::ExprPath(qself, lower_path(path))
-                }
-                ExprBreak(opt_ident) => hir::ExprBreak(opt_ident),
-                ExprAgain(opt_ident) => hir::ExprAgain(opt_ident),
-                ExprRet(ref e) => hir::ExprRet(e.as_ref().map(|x| lower_expr(x))),
-                ExprInlineAsm(InlineAsm {
+        id: e.id,
+        node: match e.node {
+            ExprBox(ref e) => {
+                hir::ExprBox(lower_expr(e))
+            }
+            ExprVec(ref exprs) => {
+                hir::ExprVec(exprs.iter().map(|x| lower_expr(x)).collect())
+            }
+            ExprRepeat(ref expr, ref count) => {
+                hir::ExprRepeat(lower_expr(expr), lower_expr(count))
+            }
+            ExprTup(ref elts) => hir::ExprTup(elts.iter().map(|x| lower_expr(x)).collect()),
+            ExprCall(ref f, ref args) => {
+                hir::ExprCall(lower_expr(f),
+                              args.iter().map(|x| lower_expr(x)).collect())
+            }
+            ExprMethodCall(i, ref tps, ref args) => {
+                hir::ExprMethodCall(respan(i.span, i.node.name),
+                                    tps.iter().map(|x| lower_ty(x)).collect(),
+                                    args.iter().map(|x| lower_expr(x)).collect())
+            }
+            ExprBinary(binop, ref lhs, ref rhs) => {
+                hir::ExprBinary(lower_binop(binop), lower_expr(lhs), lower_expr(rhs))
+            }
+            ExprUnary(op, ref ohs) => {
+                hir::ExprUnary(lower_unop(op), lower_expr(ohs))
+            }
+            ExprLit(ref l) => hir::ExprLit(P((**l).clone())),
+            ExprCast(ref expr, ref ty) => {
+                hir::ExprCast(lower_expr(expr), lower_ty(ty))
+            }
+            ExprAddrOf(m, ref ohs) => hir::ExprAddrOf(lower_mutability(m), lower_expr(ohs)),
+            ExprIf(ref cond, ref tr, ref fl) => {
+                hir::ExprIf(lower_expr(cond),
+                            lower_block(tr),
+                            fl.as_ref().map(|x| lower_expr(x)))
+            }
+            ExprWhile(ref cond, ref body, opt_ident) => {
+                hir::ExprWhile(lower_expr(cond), lower_block(body), opt_ident)
+            }
+            ExprLoop(ref body, opt_ident) => {
+                hir::ExprLoop(lower_block(body), opt_ident)
+            }
+            ExprMatch(ref expr, ref arms, ref source) => {
+                hir::ExprMatch(lower_expr(expr),
+                               arms.iter().map(|x| lower_arm(x)).collect(),
+                               lower_match_source(source))
+            }
+            ExprClosure(capture_clause, ref decl, ref body) => {
+                hir::ExprClosure(lower_capture_clause(capture_clause),
+                                 lower_fn_decl(decl),
+                                 lower_block(body))
+            }
+            ExprBlock(ref blk) => hir::ExprBlock(lower_block(blk)),
+            ExprAssign(ref el, ref er) => {
+                hir::ExprAssign(lower_expr(el), lower_expr(er))
+            }
+            ExprAssignOp(op, ref el, ref er) => {
+                hir::ExprAssignOp(lower_binop(op), lower_expr(el), lower_expr(er))
+            }
+            ExprField(ref el, ident) => {
+                hir::ExprField(lower_expr(el), respan(ident.span, ident.node.name))
+            }
+            ExprTupField(ref el, ident) => {
+                hir::ExprTupField(lower_expr(el), ident)
+            }
+            ExprIndex(ref el, ref er) => {
+                hir::ExprIndex(lower_expr(el), lower_expr(er))
+            }
+            ExprRange(ref e1, ref e2) => {
+                hir::ExprRange(e1.as_ref().map(|x| lower_expr(x)),
+                               e2.as_ref().map(|x| lower_expr(x)))
+            }
+            ExprPath(ref qself, ref path) => {
+                let qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
+                    hir::QSelf {
+                        ty: lower_ty(ty),
+                        position: position,
+                    }
+                });
+                hir::ExprPath(qself, lower_path(path))
+            }
+            ExprBreak(opt_ident) => hir::ExprBreak(opt_ident),
+            ExprAgain(opt_ident) => hir::ExprAgain(opt_ident),
+            ExprRet(ref e) => hir::ExprRet(e.as_ref().map(|x| lower_expr(x))),
+            ExprInlineAsm(InlineAsm {
                     ref inputs,
                     ref outputs,
                     ref asm,
@@ -795,36 +833,38 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
                     dialect,
                     expn_id,
                 }) => hir::ExprInlineAsm(hir::InlineAsm {
-                    inputs: inputs.iter().map(|&(ref c, ref input)| {
-                        (c.clone(), lower_expr(input))
-                    }).collect(),
-                    outputs: outputs.iter().map(|&(ref c, ref out, ref is_rw)| {
-                        (c.clone(), lower_expr(out), *is_rw)
-                    }).collect(),
-                    asm: asm.clone(),
-                    asm_str_style: asm_str_style,
-                    clobbers: clobbers.clone(),
-                    volatile: volatile,
-                    alignstack: alignstack,
-                    dialect: dialect,
-                    expn_id: expn_id,
-                }),
-                ExprStruct(ref path, ref fields, ref maybe_expr) => {
-                    hir::ExprStruct(lower_path(path),
-                            fields.iter().map(|x| lower_field(x)).collect(),
-                            maybe_expr.as_ref().map(|x| lower_expr(x)))
-                },
-                ExprParen(ref ex) => {
-                    return lower_expr(ex);
-                }
-                ExprInPlace(..) |
-                ExprIfLet(..) |
-                ExprWhileLet(..) |
-                ExprForLoop(..) |
-                ExprMac(_) => panic!("Shouldn't exist here"),
-            },
-            span: e.span,
-        })
+                inputs: inputs.iter()
+                              .map(|&(ref c, ref input)| (c.clone(), lower_expr(input)))
+                              .collect(),
+                outputs: outputs.iter()
+                                .map(|&(ref c, ref out, ref is_rw)| {
+                                    (c.clone(), lower_expr(out), *is_rw)
+                                })
+                                .collect(),
+                asm: asm.clone(),
+                asm_str_style: asm_str_style,
+                clobbers: clobbers.clone(),
+                volatile: volatile,
+                alignstack: alignstack,
+                dialect: dialect,
+                expn_id: expn_id,
+            }),
+            ExprStruct(ref path, ref fields, ref maybe_expr) => {
+                hir::ExprStruct(lower_path(path),
+                                fields.iter().map(|x| lower_field(x)).collect(),
+                                maybe_expr.as_ref().map(|x| lower_expr(x)))
+            }
+            ExprParen(ref ex) => {
+                return lower_expr(ex);
+            }
+            ExprInPlace(..) |
+            ExprIfLet(..) |
+            ExprWhileLet(..) |
+            ExprForLoop(..) |
+            ExprMac(_) => panic!("Shouldn't exist here"),
+        },
+        span: e.span,
+    })
 }
 
 pub fn lower_stmt(s: &Stmt) -> P<hir::Stmt> {
@@ -832,22 +872,22 @@ pub fn lower_stmt(s: &Stmt) -> P<hir::Stmt> {
         StmtDecl(ref d, id) => {
             P(Spanned {
                 node: hir::StmtDecl(lower_decl(d), id),
-                span: s.span
+                span: s.span,
             })
         }
         StmtExpr(ref e, id) => {
             P(Spanned {
                 node: hir::StmtExpr(lower_expr(e), id),
-                span: s.span
+                span: s.span,
             })
         }
         StmtSemi(ref e, id) => {
             P(Spanned {
                 node: hir::StmtSemi(lower_expr(e), id),
-                span: s.span
+                span: s.span,
             })
         }
-        StmtMac(..) => panic!("Shouldn't exist here")
+        StmtMac(..) => panic!("Shouldn't exist here"),
     }
 }
 
