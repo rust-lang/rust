@@ -642,48 +642,21 @@ impl<H:Hair> Debug for Rvalue<H> {
 
 ///////////////////////////////////////////////////////////////////////////
 // Constants
+//
+// Two constants are equal if they are the same constant. Note that
+// this does not necessarily mean that they are "==" in Rust -- in
+// particular one must be wary of `NaN`!
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Constant<H:Hair> {
     pub span: H::Span,
-    pub kind: ConstantKind<H>
+    pub ty: H::Ty,
+    pub literal: Literal<H>
 }
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum ConstantKind<H:Hair> {
-    Literal(Literal<H>),
-    Aggregate(AggregateKind<H>, Vec<Constant<H>>),
-    Call(Box<Constant<H>>, Vec<Constant<H>>),
-    Cast(Box<Constant<H>>, H::Ty),
-    Repeat(Box<Constant<H>>, Box<Constant<H>>),
-    Ref(BorrowKind, Box<Constant<H>>),
-    BinaryOp(BinOp, Box<Constant<H>>, Box<Constant<H>>),
-    UnaryOp(UnOp, Box<Constant<H>>),
-    Projection(Box<ConstantProjection<H>>)
-}
-
-pub type ConstantProjection<H> =
-    Projection<H,Constant<H>,Constant<H>>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Literal<H:Hair> {
     Item { def_id: H::DefId, substs: H::Substs },
-    Projection { projection: H::Projection },
-    Int { bits: IntegralBits, value: i64 },
-    Uint { bits: IntegralBits, value: u64 },
-    Float { bits: FloatBits, value: f64 },
-    Char { c: char },
-    Bool { value: bool },
-    Bytes { value: H::Bytes },
-    String { value: H::InternedString },
+    Value { value: H::ConstVal },
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
-pub enum IntegralBits {
-    B8, B16, B32, B64, BSize
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
-pub enum FloatBits {
-    F32, F64
-}

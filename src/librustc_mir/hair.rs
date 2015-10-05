@@ -38,6 +38,7 @@ pub trait Hair: Sized+Debug+Clone+Eq+Hash { // (*)
     type Ty: Clone+Debug+Eq;                                     // e.g., ty::Ty<'tcx>
     type Region: Copy+Debug;                                     // e.g., ty::Region
     type CodeExtent: Copy+Debug+Hash+Eq;                         // e.g., region::CodeExtent
+    type ConstVal: Clone+Debug+PartialEq;                        // e.g., ConstVal
     type Pattern: Clone+Debug+Mirror<Self,Output=Pattern<Self>>; // e.g., &P<ast::Pat>
     type Expr: Clone+Debug+Mirror<Self,Output=Expr<Self>>;       // e.g., &P<ast::Expr>
     type Stmt: Clone+Debug+Mirror<Self,Output=Stmt<Self>>;       // e.g., &P<ast::Stmt>
@@ -55,8 +56,17 @@ pub trait Hair: Sized+Debug+Clone+Eq+Hash { // (*)
     /// Returns the type `usize`.
     fn usize_ty(&mut self) -> Self::Ty;
 
+    /// Returns the literal for `true`
+    fn usize_literal(&mut self, value: usize) -> Literal<Self>;
+
     /// Returns the type `bool`.
     fn bool_ty(&mut self) -> Self::Ty;
+
+    /// Returns the literal for `true`
+    fn true_literal(&mut self) -> Literal<Self>;
+
+    /// Returns the literal for `true`
+    fn false_literal(&mut self) -> Literal<Self>;
 
     /// Returns a reference to `PartialEq::<T,T>::eq`
     fn partial_eq(&mut self, ty: Self::Ty) -> ItemRef<Self>;
@@ -261,9 +271,9 @@ pub enum PatternKind<H:Hair> {
 
     Deref { subpattern: PatternRef<H> }, // box P, &P, &mut P, etc
 
-    Constant { expr: ExprRef<H> },
+    Constant { value: Literal<H> },
 
-    Range { lo: ExprRef<H>, hi: ExprRef<H> },
+    Range { lo: Literal<H>, hi: Literal<H> },
 
     // matches against a slice, checking the length and extracting elements
     Slice { prefix: Vec<PatternRef<H>>,

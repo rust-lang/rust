@@ -16,14 +16,13 @@ use tcx::Cx;
 use tcx::block;
 use tcx::pattern::PatNode;
 use tcx::rustc::front::map;
+use tcx::rustc::middle::const_eval;
 use tcx::rustc::middle::def;
 use tcx::rustc::middle::region::CodeExtent;
 use tcx::rustc::middle::pat_util;
 use tcx::rustc::middle::ty::{self, Ty};
 use tcx::rustc_front::hir;
 use tcx::rustc_front::util as hir_util;
-use tcx::syntax::ast;
-use tcx::syntax::codemap::Span;
 use tcx::syntax::parse::token;
 use tcx::syntax::ptr::P;
 use tcx::to_ref::ToRef;
@@ -83,9 +82,9 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
                 }
             }
 
-            hir::ExprLit(ref lit) => {
-                let literal = convert_literal(cx, self.span, expr_ty, lit);
-                ExprKind::Literal { literal: literal }
+            hir::ExprLit(..) => {
+                let value = const_eval::eval_const_expr(cx.tcx, self);
+                ExprKind::Literal { literal: Literal::Value { value: value } }
             }
 
             hir::ExprBinary(op, ref lhs, ref rhs) => {
@@ -449,67 +448,6 @@ fn to_borrow_kind(m: hir::Mutability) -> BorrowKind {
     match m {
         hir::MutMutable => BorrowKind::Mut,
         hir::MutImmutable => BorrowKind::Shared,
-    }
-}
-
-fn convert_literal<'a,'tcx:'a>(cx: &mut Cx<'a,'tcx>,
-                               expr_span: Span,
-                               expr_ty: Ty<'tcx>,
-                               literal: &ast::Lit)
-                               -> Literal<Cx<'a,'tcx>>
-{
-    use repr::IntegralBits::*;
-    match (&literal.node, &expr_ty.sty) {
-        (&ast::LitStr(ref text, _), _) =>
-            Literal::String { value: text.clone() },
-        (&ast::LitByteStr(ref bytes), _) =>
-            Literal::Bytes { value: bytes.clone() },
-        (&ast::LitByte(c), _) =>
-            Literal::Uint { bits: B8, value: c as u64 },
-        (&ast::LitChar(c), _) =>
-            Literal::Char { c: c },
-        (&ast::LitInt(v, _), &ty::TyUint(ast::TyU8)) =>
-            Literal::Uint { bits: B8, value: v },
-        (&ast::LitInt(v, _), &ty::TyUint(ast::TyU16)) =>
-            Literal::Uint { bits: B16, value: v },
-        (&ast::LitInt(v, _), &ty::TyUint(ast::TyU32)) =>
-            Literal::Uint { bits: B32, value: v },
-        (&ast::LitInt(v, _), &ty::TyUint(ast::TyU64)) =>
-            Literal::Uint { bits: B64, value: v },
-        (&ast::LitInt(v, _), &ty::TyUint(ast::TyUs)) =>
-            Literal::Uint { bits: BSize, value: v },
-        (&ast::LitInt(v, ast::SignedIntLit(_, ast::Sign::Minus)), &ty::TyInt(ast::TyI8)) =>
-            Literal::Int { bits: B8, value: -(v as i64) },
-        (&ast::LitInt(v, ast::SignedIntLit(_, ast::Sign::Minus)), &ty::TyInt(ast::TyI16)) =>
-            Literal::Int { bits: B16, value: -(v as i64) },
-        (&ast::LitInt(v, ast::SignedIntLit(_, ast::Sign::Minus)), &ty::TyInt(ast::TyI32)) =>
-            Literal::Int { bits: B32, value: -(v as i64) },
-        (&ast::LitInt(v, ast::SignedIntLit(_, ast::Sign::Minus)), &ty::TyInt(ast::TyI64)) =>
-            Literal::Int { bits: B64, value: -(v as i64) },
-        (&ast::LitInt(v, ast::SignedIntLit(_, ast::Sign::Minus)), &ty::TyInt(ast::TyIs)) =>
-            Literal::Int { bits: BSize, value: -(v as i64) },
-        (&ast::LitInt(v, _), &ty::TyInt(ast::TyI8)) =>
-            Literal::Int { bits: B8, value: v as i64 },
-        (&ast::LitInt(v, _), &ty::TyInt(ast::TyI16)) =>
-            Literal::Int { bits: B16, value: v as i64 },
-        (&ast::LitInt(v, _), &ty::TyInt(ast::TyI32)) =>
-            Literal::Int { bits: B32, value: v as i64 },
-        (&ast::LitInt(v, _), &ty::TyInt(ast::TyI64)) =>
-            Literal::Int { bits: B64, value: v as i64 },
-        (&ast::LitInt(v, _), &ty::TyInt(ast::TyIs)) =>
-            Literal::Int { bits: BSize, value: v as i64 },
-        (&ast::LitFloat(ref v, _), &ty::TyFloat(ast::TyF32)) |
-        (&ast::LitFloatUnsuffixed(ref v), &ty::TyFloat(ast::TyF32)) =>
-            Literal::Float { bits: FloatBits::F32, value: v.parse::<f64>().unwrap() },
-        (&ast::LitFloat(ref v, _), &ty::TyFloat(ast::TyF64)) |
-        (&ast::LitFloatUnsuffixed(ref v), &ty::TyFloat(ast::TyF64)) =>
-            Literal::Float { bits: FloatBits::F64, value: v.parse::<f64>().unwrap() },
-        (&ast::LitBool(v), _) =>
-            Literal::Bool { value: v },
-        (ref l, ref t) =>
-            cx.tcx.sess.span_bug(
-                expr_span,
-                &format!("Invalid literal/type combination: {:?},{:?}", l, t))
     }
 }
 

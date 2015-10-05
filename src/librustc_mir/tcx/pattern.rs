@@ -14,9 +14,10 @@ use repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
 use std::rc::Rc;
 use tcx::Cx;
-use tcx::rustc::middle::const_eval::lookup_const_by_id;
+use tcx::rustc::middle::const_eval;
 use tcx::rustc::middle::def;
 use tcx::rustc::middle::pat_util::{pat_is_resolved_const, pat_is_binding};
+use tcx::rustc::middle::subst::Substs;
 use tcx::rustc::middle::ty::{self, Ty};
 use tcx::rustc_front::hir;
 use tcx::syntax::ast;
@@ -145,12 +146,19 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for PatNode<'tcx> {
             hir::PatWild(..) =>
                 PatternKind::Wild,
 
-            hir::PatLit(ref lt) =>
-                PatternKind::Constant { expr: lt.to_ref() },
+            hir::PatLit(ref value) => {
+                let value = const_eval::eval_const_expr(cx.tcx, value);
+                let value = Literal::Value { value: value };
+                PatternKind::Constant { value: value }
+            },
 
-            hir::PatRange(ref begin, ref end) =>
-                PatternKind::Range { lo: begin.to_ref(),
-                                     hi: end.to_ref() },
+            hir::PatRange(ref lo, ref hi) => {
+                let lo = const_eval::eval_const_expr(cx.tcx, lo);
+                let lo = Literal::Value { value: lo };
+                let hi = const_eval::eval_const_expr(cx.tcx, hi);
+                let hi = Literal::Value { value: hi };
+                PatternKind::Range { lo: lo, hi: hi }
+            },
 
             hir::PatEnum(..) | hir::PatIdent(..) | hir::PatQPath(..)
                 if pat_is_resolved_const(&cx.tcx.def_map, self.pat) =>
@@ -158,13 +166,25 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for PatNode<'tcx> {
                 let def = cx.tcx.def_map.borrow().get(&self.pat.id).unwrap().full_def();
                 match def {
                     def::DefConst(def_id) | def::DefAssociatedConst(def_id) =>
-                        match lookup_const_by_id(cx.tcx, def_id, Some(self.pat.id)) {
-                            Some(const_expr) =>
-                                PatternKind::Constant { expr: const_expr.to_ref() },
-                            None =>
+                        match const_eval::lookup_const_by_id(cx.tcx, def_id, Some(self.pat.id)) {
+                            Some(const_expr) => {
+                                let opt_value =
+                                    const_eval::eval_const_expr_partial(
+                                        cx.tcx, const_expr,
+                                        const_eval::EvalHint::ExprTypeChecked);
+                                let literal = if let Ok(value) = opt_value {
+                                    Literal::Value { value: value }
+                                } else {
+                                    let substs = cx.tcx.mk_substs(Substs::empty());
+                                    Literal::Item { def_id: def_id, substs: substs }
+                                };
+                                PatternKind::Constant { value: literal }
+                            }
+                            None => {
                                 cx.tcx.sess.span_bug(
                                     self.pat.span,
-                                    &format!("cannot eval constant: {:?}", def_id)),
+                                    &format!("cannot eval constant: {:?}", def_id))
+                            }
                         },
                     _ =>
                         cx.tcx.sess.span_bug(
