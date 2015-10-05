@@ -31,6 +31,7 @@
 //! inferencer knows "so far".
 
 use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::FRESHEN_CACHE_SIZE;
 use middle::ty::fold::TypeFoldable;
 use middle::ty::fold::TypeFolder;
 use std::collections::hash_map::{self, Entry};
@@ -38,25 +39,33 @@ use std::collections::hash_map::{self, Entry};
 use super::InferCtxt;
 use super::unify_key::ToType;
 
+pub const TYPE_VAR : usize = 0;
+pub const INT_VAR : usize = 1;
+pub const FLOAT_VAR : usize = 2;
+
 pub struct TypeFreshener<'a, 'tcx:'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-    freshen_count: u32,
-    freshen_map: hash_map::HashMap<ty::InferTy, Ty<'tcx>>,
+    freshen_map: hash_map::HashMap<Ty<'tcx>, Ty<'tcx>>,
+
+    fresh_counts: [u32; 3],
+    fresh_vars: [[Option<Ty<'tcx>>; FRESHEN_CACHE_SIZE]; 3],
 }
 
 impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> TypeFreshener<'a, 'tcx> {
         TypeFreshener {
             infcx: infcx,
-            freshen_count: 0,
+            fresh_counts: [0; 3],
             freshen_map: hash_map::HashMap::new(),
+            fresh_vars: [[None; FRESHEN_CACHE_SIZE]; 3],
         }
     }
 
     fn freshen<F>(&mut self,
                   opt_ty: Option<Ty<'tcx>>,
-                  key: ty::InferTy,
-                  freshener: F)
+                  key: Ty<'tcx>,
+                  freshener: F,
+                  vt: usize)
                   -> Ty<'tcx> where
         F: FnOnce(u32) -> ty::InferTy,
     {
@@ -65,14 +74,47 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
             None => { }
         }
 
-        match self.freshen_map.entry(key) {
-            Entry::Occupied(entry) => *entry.get(),
-            Entry::Vacant(entry) => {
-                let index = self.freshen_count;
-                self.freshen_count += 1;
-                let t = self.infcx.tcx.mk_infer(freshener(index));
-                entry.insert(t);
-                t
+        let tcx = self.infcx.tcx;
+
+        if !self.freshen_map.is_empty() {
+            return match self.freshen_map.entry(key) {
+                Entry::Occupied(entry) => *entry.get(),
+                Entry::Vacant(entry) => {
+                    let index = self.fresh_counts[vt];
+                    self.fresh_counts[vt] += 1;
+                    let t = tcx.mk_infer(freshener(index));
+                    entry.insert(t);
+                    t
+                }
+            };
+        }
+
+        for i in 0..FRESHEN_CACHE_SIZE {
+            if self.fresh_vars[vt][i] == Some(key) {
+                return tcx.types.fresh_vars[vt][i];
+            }
+        }
+
+        if self.fresh_counts[vt] == FRESHEN_CACHE_SIZE as u32 {
+            debug!("freshen: cache overflow");
+            self.copy_vars_to_table();
+            self.freshen(None, key, freshener, vt)
+        } else {
+            self.fresh_vars[vt][self.fresh_counts[vt] as usize]
+                = Some(key);
+            let result = tcx.types.fresh_vars[vt][self.fresh_counts[vt] as usize];
+            self.fresh_counts[vt] += 1;
+            result
+        }
+    }
+
+    pub fn copy_vars_to_table(&mut self) {
+        for vt in 0..2 {
+            for i in 0..FRESHEN_CACHE_SIZE {
+                if let Some(t) = self.fresh_vars[vt][i] {
+                    self.freshen_map.insert(
+                        t, self.infcx.tcx.types.fresh_vars[vt][i]);
+                }
             }
         }
     }
@@ -114,8 +156,9 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ty::TyInfer(ty::TyVar(v)) => {
                 self.freshen(
                     self.infcx.type_variables.borrow().probe(v),
-                    ty::TyVar(v),
-                    ty::FreshTy)
+                    t,
+                    ty::FreshTy,
+                    TYPE_VAR)
             }
 
             ty::TyInfer(ty::IntVar(v)) => {
@@ -123,8 +166,9 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     self.infcx.int_unification_table.borrow_mut()
                                                     .probe(v)
                                                     .map(|v| v.to_type(tcx)),
-                    ty::IntVar(v),
-                    ty::FreshIntTy)
+                    t,
+                    ty::FreshIntTy,
+                    INT_VAR)
             }
 
             ty::TyInfer(ty::FloatVar(v)) => {
@@ -132,19 +176,40 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     self.infcx.float_unification_table.borrow_mut()
                                                       .probe(v)
                                                       .map(|v| v.to_type(tcx)),
-                    ty::FloatVar(v),
-                    ty::FreshFloatTy)
+                    t,
+                    ty::FreshFloatTy,
+                    FLOAT_VAR)
             }
 
-            ty::TyInfer(ty::FreshTy(c)) |
-            ty::TyInfer(ty::FreshIntTy(c)) |
-            ty::TyInfer(ty::FreshFloatTy(c)) => {
-                if c >= self.freshen_count {
+            ty::TyInfer(ty::FreshTy(c)) => {
+                if c >= self.fresh_counts[TYPE_VAR] {
                     tcx.sess.bug(
                         &format!("Encountered a freshend type with id {} \
                                   but our counter is only at {}",
                                  c,
-                                 self.freshen_count));
+                                 self.fresh_counts[TYPE_VAR]));
+                }
+                t
+            }
+
+            ty::TyInfer(ty::FreshIntTy(c)) => {
+                if c >= self.fresh_counts[INT_VAR] {
+                    tcx.sess.bug(
+                        &format!("Encountered a freshend int type with id {} \
+                                  but our counter is only at {}",
+                                 c,
+                                 self.fresh_counts[INT_VAR]));
+                }
+                t
+            }
+
+            ty::TyInfer(ty::FreshFloatTy(c)) => {
+                if c >= self.fresh_counts[FLOAT_VAR] {
+                    tcx.sess.bug(
+                        &format!("Encountered a freshend float type with id {} \
+                                  but our counter is only at {}",
+                                 c,
+                                 self.fresh_counts[FLOAT_VAR]));
                 }
                 t
             }
