@@ -15,20 +15,24 @@
 
 use build::{BlockAnd, Builder};
 use repr::*;
+use rustc::middle::region::CodeExtent;
+use rustc::middle::ty::{AdtDef, Ty};
 use hair::*;
+use syntax::ast::{Name, NodeId};
+use syntax::codemap::Span;
 
 // helper functions, broken out by category:
 mod simplify;
 mod test;
 mod util;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn match_expr(&mut self,
-                      destination: &Lvalue<H>,
-                      span: H::Span,
+                      destination: &Lvalue<'tcx>,
+                      span: Span,
                       mut block: BasicBlock,
-                      discriminant: ExprRef<H>,
-                      arms: Vec<Arm<H>>)
+                      discriminant: ExprRef<'tcx>,
+                      arms: Vec<Arm<'tcx>>)
                       -> BlockAnd<()>
     {
         let discriminant_lvalue =
@@ -49,7 +53,7 @@ impl<H:Hair> Builder<H> {
                         .collect(),
         };
 
-        let arm_bodies: Vec<ExprRef<H>> =
+        let arm_bodies: Vec<ExprRef<'tcx>> =
             arms.iter()
                 .map(|arm| arm.body.clone())
                 .collect();
@@ -60,7 +64,7 @@ impl<H:Hair> Builder<H> {
         // highest priority candidate comes last in the list. This the
         // reverse of the order in which candidates are written in the
         // source.
-        let candidates: Vec<Candidate<H>> =
+        let candidates: Vec<Candidate<'tcx>> =
             arms.iter()
                 .enumerate()
                 .rev() // highest priority comes last
@@ -97,9 +101,9 @@ impl<H:Hair> Builder<H> {
 
     pub fn expr_into_pattern(&mut self,
                              mut block: BasicBlock,
-                             var_extent: H::CodeExtent,          // lifetime of vars
-                             irrefutable_pat: PatternRef<H>,
-                             initializer: ExprRef<H>)
+                             var_extent: CodeExtent,          // lifetime of vars
+                             irrefutable_pat: PatternRef<'tcx>,
+                             initializer: ExprRef<'tcx>)
                              -> BlockAnd<()>
     {
         // optimize the case of `let x = ...`
@@ -125,16 +129,16 @@ impl<H:Hair> Builder<H> {
 
     pub fn lvalue_into_pattern(&mut self,
                                mut block: BasicBlock,
-                               var_extent: H::CodeExtent,
-                               irrefutable_pat: PatternRef<H>,
-                               initializer: &Lvalue<H>)
+                               var_extent: CodeExtent,
+                               irrefutable_pat: PatternRef<'tcx>,
+                               initializer: &Lvalue<'tcx>)
                                -> BlockAnd<()>
     {
         // first, creating the bindings
         self.declare_bindings(var_extent, irrefutable_pat.clone());
 
         // create a dummy candidate
-        let mut candidate = Candidate::<H> {
+        let mut candidate = Candidate::<'tcx> {
             match_pairs: vec![self.match_pair(initializer.clone(), irrefutable_pat.clone())],
             bindings: vec![],
             guard: None,
@@ -159,8 +163,8 @@ impl<H:Hair> Builder<H> {
     }
 
     pub fn declare_bindings(&mut self,
-                            var_extent: H::CodeExtent,
-                            pattern: PatternRef<H>)
+                            var_extent: CodeExtent,
+                            pattern: PatternRef<'tcx>)
     {
         let pattern = self.hir.mirror(pattern);
         match pattern.kind {
@@ -198,69 +202,69 @@ struct ArmBlocks {
 }
 
 #[derive(Clone, Debug)]
-struct Candidate<H:Hair> {
+struct Candidate<'tcx> {
     // all of these must be satisfied...
-    match_pairs: Vec<MatchPair<H>>,
+    match_pairs: Vec<MatchPair<'tcx>>,
 
     // ...these bindings established...
-    bindings: Vec<Binding<H>>,
+    bindings: Vec<Binding<'tcx>>,
 
     // ...and the guard must be evaluated...
-    guard: Option<ExprRef<H>>,
+    guard: Option<ExprRef<'tcx>>,
 
     // ...and then we branch to arm with this index.
     arm_index: usize,
 }
 
 #[derive(Clone, Debug)]
-struct Binding<H:Hair> {
-    span: H::Span,
-    source: Lvalue<H>,
-    name: H::Name,
-    var_id: H::VarId,
-    var_ty: H::Ty,
+struct Binding<'tcx> {
+    span: Span,
+    source: Lvalue<'tcx>,
+    name: Name,
+    var_id: NodeId,
+    var_ty: Ty<'tcx>,
     mutability: Mutability,
-    binding_mode: BindingMode<H>,
+    binding_mode: BindingMode,
 }
 
 #[derive(Clone, Debug)]
-struct MatchPair<H:Hair> {
+struct MatchPair<'tcx> {
     // this lvalue...
-    lvalue: Lvalue<H>,
+    lvalue: Lvalue<'tcx>,
 
     // ... must match this pattern.
-    pattern: Pattern<H>,
+    pattern: Pattern<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-enum TestKind<H:Hair> {
+enum TestKind<'tcx> {
     // test the branches of enum
-    Switch { adt_def: H::AdtDef },
+    Switch { adt_def: AdtDef<'tcx> },
 
     // test for equality
-    Eq { value: Literal<H>, ty: H::Ty },
+    Eq { value: Literal<'tcx>, ty: Ty<'tcx> },
 
     // test whether the value falls within an inclusive range
-    Range { lo: Literal<H>, hi: Literal<H>, ty: H::Ty },
+    Range { lo: Literal<'tcx>, hi: Literal<'tcx>, ty: Ty<'tcx> },
 
     // test length of the slice is equal to len
     Len { len: usize, op: BinOp },
 }
 
 #[derive(Debug)]
-struct Test<H:Hair> {
-    span: H::Span,
-    kind: TestKind<H>,
+struct Test<'tcx> {
+    span: Span,
+    kind: TestKind<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
 // Main matching algorithm
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     fn match_candidates(&mut self,
-                        span: H::Span,
+                        span: Span,
                         arm_blocks: &mut ArmBlocks,
-                        mut candidates: Vec<Candidate<H>>,
+                        mut candidates: Vec<Candidate<'tcx>>,
                         mut block: BasicBlock)
     {
         debug!("matched_candidate(span={:?}, block={:?}, candidates={:?})",
@@ -306,7 +310,7 @@ impl<H:Hair> Builder<H> {
         let target_blocks = self.perform_test(block, &match_pair.lvalue, &test);
 
         for (outcome, mut target_block) in target_blocks.into_iter().enumerate() {
-            let applicable_candidates: Vec<Candidate<H>> =
+            let applicable_candidates: Vec<Candidate<'tcx>> =
                 candidates.iter()
                           .filter_map(|candidate| {
                               unpack!(target_block =
@@ -336,7 +340,7 @@ impl<H:Hair> Builder<H> {
     fn bind_and_guard_matched_candidate(&mut self,
                                         mut block: BasicBlock,
                                         arm_blocks: &mut ArmBlocks,
-                                        candidate: Candidate<H>)
+                                        candidate: Candidate<'tcx>)
                                         -> Option<BasicBlock> {
         debug!("bind_and_guard_matched_candidate(block={:?}, candidate={:?})",
                block, candidate);
@@ -363,7 +367,7 @@ impl<H:Hair> Builder<H> {
 
     fn bind_matched_candidate(&mut self,
                               block: BasicBlock,
-                              bindings: Vec<Binding<H>>) {
+                              bindings: Vec<Binding<'tcx>>) {
         debug!("bind_matched_candidate(block={:?}, bindings={:?})",
                block, bindings);
 
@@ -386,19 +390,19 @@ impl<H:Hair> Builder<H> {
     }
 
     fn declare_binding(&mut self,
-                       var_extent: H::CodeExtent,
+                       var_extent: CodeExtent,
                        mutability: Mutability,
-                       name: H::Name,
-                       var_id: H::VarId,
-                       var_ty: H::Ty,
-                       span: H::Span)
+                       name: Name,
+                       var_id: NodeId,
+                       var_ty: Ty<'tcx>,
+                       span: Span)
                        -> u32
     {
         debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, var_extent={:?}, span={:?})",
                var_id, name, var_ty, var_extent, span);
 
         let index = self.var_decls.len();
-        self.var_decls.push(VarDecl::<H> {
+        self.var_decls.push(VarDecl::<'tcx> {
             mutability: mutability,
             name: name,
             ty: var_ty.clone(),

@@ -14,15 +14,15 @@ use repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
 use std::rc::Rc;
 use tcx::Cx;
-use tcx::rustc::middle::const_eval;
-use tcx::rustc::middle::def;
-use tcx::rustc::middle::pat_util::{pat_is_resolved_const, pat_is_binding};
-use tcx::rustc::middle::subst::Substs;
-use tcx::rustc::middle::ty::{self, Ty};
-use tcx::rustc_front::hir;
-use tcx::syntax::ast;
-use tcx::syntax::ptr::P;
 use tcx::to_ref::ToRef;
+use rustc::middle::const_eval;
+use rustc::middle::def;
+use rustc::middle::pat_util::{pat_is_resolved_const, pat_is_binding};
+use rustc::middle::subst::Substs;
+use rustc::middle::ty::{self, Ty};
+use rustc_front::hir;
+use syntax::ast;
+use syntax::ptr::P;
 
 /// When there are multiple patterns in a single arm, each one has its
 /// own node-ids for the bindings.  References to the variables always
@@ -58,15 +58,15 @@ impl<'tcx> PatNode<'tcx> {
         PatNode::new(pat, None)
     }
 
-    fn pat_ref<'a>(&self, pat: &'tcx hir::Pat) -> PatternRef<Cx<'a,'tcx>> {
+    fn pat_ref<'a>(&self, pat: &'tcx hir::Pat) -> PatternRef<'tcx> {
         PatNode::new(pat, self.binding_map.clone()).to_ref()
     }
 
-    fn pat_refs<'a>(&self, pats: &'tcx Vec<P<hir::Pat>>) -> Vec<PatternRef<Cx<'a,'tcx>>> {
+    fn pat_refs<'a>(&self, pats: &'tcx Vec<P<hir::Pat>>) -> Vec<PatternRef<'tcx>> {
         pats.iter().map(|p| self.pat_ref(p)).collect()
     }
 
-    fn opt_pat_ref<'a>(&self, pat: &'tcx Option<P<hir::Pat>>) -> Option<PatternRef<Cx<'a,'tcx>>> {
+    fn opt_pat_ref<'a>(&self, pat: &'tcx Option<P<hir::Pat>>) -> Option<PatternRef<'tcx>> {
         pat.as_ref().map(|p| self.pat_ref(p))
     }
 
@@ -76,7 +76,7 @@ impl<'tcx> PatNode<'tcx> {
                                   prefix: &'tcx Vec<P<hir::Pat>>,
                                   slice: &'tcx Option<P<hir::Pat>>,
                                   suffix: &'tcx Vec<P<hir::Pat>>)
-                                  -> PatternKind<Cx<'a,'tcx>>
+                                  -> PatternKind<'tcx>
     {
         match ty.sty {
             ty::TySlice(..) =>
@@ -107,8 +107,8 @@ impl<'tcx> PatNode<'tcx> {
 
     fn variant_or_leaf<'a>(&self,
                            cx: &mut Cx<'a, 'tcx>,
-                           subpatterns: Vec<FieldPatternRef<Cx<'a,'tcx>>>)
-                           -> PatternKind<Cx<'a,'tcx>>
+                           subpatterns: Vec<FieldPatternRef<'tcx>>)
+                           -> PatternKind<'tcx>
     {
         let def = cx.tcx.def_map.borrow().get(&self.pat.id).unwrap().full_def();
         match def {
@@ -138,10 +138,10 @@ impl<'tcx> PatNode<'tcx> {
     }
 }
 
-impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for PatNode<'tcx> {
-    type Output = Pattern<Cx<'a,'tcx>>;
+impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
+    type Output = Pattern<'tcx>;
 
-    fn make_mirror(self, cx: &mut Cx<'a,'tcx>) -> Pattern<Cx<'a,'tcx>> {
+    fn make_mirror<'a>(self, cx: &mut Cx<'a,'tcx>) -> Pattern<'tcx> {
         let kind = match self.pat.node {
             hir::PatWild(..) =>
                 PatternKind::Wild,
