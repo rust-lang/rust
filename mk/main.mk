@@ -170,7 +170,10 @@ RUST_LIB_FLAGS_ST3 += -C prefer-dynamic
 
 # Landing pads require a lot of codegen. We can get through bootstrapping faster
 # by not emitting them.
-RUSTFLAGS_STAGE0 += -Z no-landing-pads
+
+ifdef CFG_DISABLE_STAGE0_LANDING_PADS
+  RUSTFLAGS_STAGE0 += -Z no-landing-pads
+endif
 
 # Enable MIR to "always build" for crates where this works. This is
 # just temporary while MIR is being actively built up -- it's just a
