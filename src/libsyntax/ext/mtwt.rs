@@ -35,6 +35,8 @@ use std::collections::HashMap;
 pub struct SCTable {
     table: RefCell<Vec<SyntaxContext_>>,
     mark_memo: RefCell<HashMap<(SyntaxContext,Mrk),SyntaxContext>>,
+    // The pair (Name,SyntaxContext) is actually one Ident, but it needs to be hashed and
+    // compared as pair (name, ctxt) and not as an Ident
     rename_memo: RefCell<HashMap<(SyntaxContext,(Name,SyntaxContext),Name),SyntaxContext>>,
 }
 
