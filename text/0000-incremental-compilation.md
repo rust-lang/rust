@@ -246,7 +246,7 @@ appears to be working out (it is not yet complete). As a side benefit,
 I've uncovered a few fishy cases where we using the node id from
 external crates to index into the local crate's HIR map, which is
 certainly incorrect. --nmatsakis
-
+   
 <a id="depgraph">
 ## Identifying and tracking dependencies
 
@@ -525,6 +525,25 @@ We then delete the transitive closure of nodes queued for deletion
 nodes reachable from those HIR nodes). As part of the deletion
 process, we remove whatever on disk artifact that may have existed.
 
+<a id="span"></a>
+### Handling spans
+
+There are times when the precise span of an item is a significant part
+of its metadata. For example, debuginfo needs to identify line numbers
+and so forth. However, editing one fn will affect the line numbers for
+all subsequent fns in the same file, and it'd be best if we can avoid
+recompiling all of them. Our plan is to phase span support in incrementally:
+
+1. Initially, the AST hash will include the filename/line/column,
+   which does mean that later fns in the same file will have to be
+   recompiled (somewhat unnnecessarily).
+2. Eventually, it would be better to encode spans by identifying a
+   particular AST node (relative to the root of the item). Since we
+   are hashing the structure of the AST, we know the AST from the
+   previous and current compilation will match, and thus we can
+   compute the current span by finding tha corresponding AST node and
+   loading its span. This will require some refactoring and work however.
+   
 <a id="optimization"></a>
 ## Optimization and codegen units
 
