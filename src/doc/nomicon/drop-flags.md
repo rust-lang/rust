@@ -40,7 +40,7 @@ y = x;                   // y was init; Drop y, overwrite it, and make x uninit!
                          // x goes out of scope; x was uninit; do nothing.
 ```
 
-Similarly, branched code where all branches have the same behaviour with respect
+Similarly, branched code where all branches have the same behavior with respect
 to initialization has static drop semantics:
 
 ```rust
