@@ -38,6 +38,7 @@ use std::borrow::{Cow, IntoCow};
 use std::num::wrapping::OverflowingOps;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry::Vacant;
+use std::mem::transmute;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64};
 use std::rc::Rc;
 
@@ -242,7 +243,7 @@ pub fn lookup_const_fn_by_id<'tcx>(tcx: &ty::ctxt<'tcx>, def_id: DefId)
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum ConstVal {
     Float(f64),
     Int(i64),
@@ -252,6 +253,27 @@ pub enum ConstVal {
     Bool(bool),
     Struct(ast::NodeId),
     Tuple(ast::NodeId),
+}
+
+/// Note that equality for `ConstVal` means that the it is the same
+/// constant, not that the rust values are equal. In particular, `NaN
+/// == NaN` (at least if it's the same NaN; distinct encodings for NaN
+/// are considering unequal).
+impl PartialEq for ConstVal {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn eq(&self, other: &ConstVal) -> bool {
+        match (self, other) {
+            (&Float(a), &Float(b)) => unsafe{transmute::<_,u64>(a) == transmute::<_,u64>(b)},
+            (&Int(a), &Int(b)) => a == b,
+            (&Uint(a), &Uint(b)) => a == b,
+            (&Str(ref a), &Str(ref b)) => a == b,
+            (&ByteStr(ref a), &ByteStr(ref b)) => a == b,
+            (&Bool(a), &Bool(b)) => a == b,
+            (&Struct(a), &Struct(b)) => a == b,
+            (&Tuple(a), &Tuple(b)) => a == b,
+            _ => false,
+        }
+    }
 }
 
 impl ConstVal {

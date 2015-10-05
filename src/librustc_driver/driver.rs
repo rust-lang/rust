@@ -718,9 +718,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
         // passes are timed inside typeck
         typeck::check_crate(tcx, trait_map);
 
-        time(time_passes, "MIR dump", ||
-             mir::dump::dump_crate(tcx));
-
         time(time_passes, "const checking", ||
             middle::check_const::check_crate(tcx));
 
@@ -740,6 +737,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
 
         time(time_passes, "match checking", ||
             middle::check_match::check_crate(tcx));
+
+        time(time_passes, "MIR dump", ||
+             mir::dump::dump_crate(tcx));
 
         time(time_passes, "liveness checking", ||
             middle::liveness::check_crate(tcx));
