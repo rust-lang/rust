@@ -17,7 +17,7 @@ boilerplate" to drop children. If a struct has no special logic for being
 dropped other than dropping its children, then it means `Drop` doesn't need to
 be implemented at all!
 
-**There is no stable way to prevent this behaviour in Rust 1.0.**
+**There is no stable way to prevent this behavior in Rust 1.0.**
 
 Note that taking `&mut self` means that even if you could suppress recursive
 Drop, Rust will prevent you from e.g. moving fields out of self. For most types,
@@ -101,7 +101,7 @@ After we deallocate the `box`'s ptr in SuperBox's destructor, Rust will
 happily proceed to tell the box to Drop itself and everything will blow up with
 use-after-frees and double-frees.
 
-Note that the recursive drop behaviour applies to all structs and enums
+Note that the recursive drop behavior applies to all structs and enums
 regardless of whether they implement Drop. Therefore something like
 
 ```rust

@@ -10,7 +10,7 @@
 
 //! This file handles the relationships between free regions --
 //! meaning lifetime parameters. Ordinarily, free regions are
-//! unrelated to one another, but they can be related vai implied or
+//! unrelated to one another, but they can be related via implied or
 //! explicit bounds.  In that case, we track the bounds using the
 //! `TransitiveRelation` type and use that to decide when one free
 //! region outlives another and so forth.
