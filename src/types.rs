@@ -20,7 +20,7 @@ declare_lint!(pub BOX_VEC, Warn,
               "usage of `Box<Vec<T>>`, vector elements are already on the heap");
 declare_lint!(pub LINKEDLIST, Warn,
               "usage of LinkedList, usually a vector is faster, or a more specialized data \
-               structure like a RingBuf");
+               structure like a VecDeque");
 
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
@@ -43,7 +43,7 @@ impl LateLintPass for TypePass {
                 span_help_and_lint(
                     cx, LINKEDLIST, ast_ty.span,
                     "I see you're using a LinkedList! Perhaps you meant some other data structure?",
-                    "a RingBuf might work");
+                    "a VecDeque might work");
             }
         }
     }

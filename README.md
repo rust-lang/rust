@@ -32,7 +32,7 @@ name                                                                            
 [len_zero](https://github.com/Manishearth/rust-clippy/wiki#len_zero)                                   | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
 [let_and_return](https://github.com/Manishearth/rust-clippy/wiki#let_and_return)                       | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block
 [let_unit_value](https://github.com/Manishearth/rust-clippy/wiki#let_unit_value)                       | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
-[linkedlist](https://github.com/Manishearth/rust-clippy/wiki#linkedlist)                               | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a RingBuf
+[linkedlist](https://github.com/Manishearth/rust-clippy/wiki#linkedlist)                               | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a VecDeque
 [match_ref_pats](https://github.com/Manishearth/rust-clippy/wiki#match_ref_pats)                       | warn    | a match has all arms prefixed with `&`; the match expression can be dereferenced instead
 [min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                     | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
 [modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                               | warn    | taking a number modulo 1, which always returns 0
