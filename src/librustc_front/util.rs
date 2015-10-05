@@ -17,9 +17,13 @@ use syntax::codemap::Span;
 use syntax::ptr::P;
 use syntax::owned_slice::OwnedSlice;
 
-pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool where F: FnMut(&Pat) -> bool {
+pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool
+    where F: FnMut(&Pat) -> bool
+{
     // FIXME(#19596) this is a workaround, but there should be a better way
-    fn walk_pat_<G>(pat: &Pat, it: &mut G) -> bool where G: FnMut(&Pat) -> bool {
+    fn walk_pat_<G>(pat: &Pat, it: &mut G) -> bool
+        where G: FnMut(&Pat) -> bool
+    {
         if !(*it)(pat) {
             return false;
         }
@@ -40,8 +44,12 @@ pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool where F: FnMut(&Pat) -> bool {
                 slice.iter().all(|p| walk_pat_(&**p, it)) &&
                 after.iter().all(|p| walk_pat_(&**p, it))
             }
-            PatWild(_) | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
-            PatEnum(_, _) | PatQPath(_, _) => {
+            PatWild(_) |
+            PatLit(_) |
+            PatRange(_, _) |
+            PatIdent(_, _, _) |
+            PatEnum(_, _) |
+            PatQPath(_, _) => {
                 true
             }
         }
@@ -69,7 +77,7 @@ pub fn binop_to_string(op: BinOp_) -> &'static str {
         BiLe => "<=",
         BiNe => "!=",
         BiGe => ">=",
-        BiGt => ">"
+        BiGt => ">",
     }
 }
 
@@ -81,35 +89,43 @@ pub fn struct_def_is_tuple_like(struct_def: &hir::StructDef) -> bool {
 
 pub fn stmt_id(s: &Stmt) -> NodeId {
     match s.node {
-      StmtDecl(_, id) => id,
-      StmtExpr(_, id) => id,
-      StmtSemi(_, id) => id,
+        StmtDecl(_, id) => id,
+        StmtExpr(_, id) => id,
+        StmtSemi(_, id) => id,
     }
 }
 
 pub fn lazy_binop(b: BinOp_) -> bool {
     match b {
-      BiAnd => true,
-      BiOr => true,
-      _ => false
+        BiAnd => true,
+        BiOr => true,
+        _ => false,
     }
 }
 
 pub fn is_shift_binop(b: BinOp_) -> bool {
     match b {
-      BiShl => true,
-      BiShr => true,
-      _ => false
+        BiShl => true,
+        BiShr => true,
+        _ => false,
     }
 }
 
 pub fn is_comparison_binop(b: BinOp_) -> bool {
     match b {
-        BiEq | BiLt | BiLe | BiNe | BiGt | BiGe =>
-            true,
-        BiAnd | BiOr | BiAdd | BiSub | BiMul | BiDiv | BiRem |
-        BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr =>
-            false,
+        BiEq | BiLt | BiLe | BiNe | BiGt | BiGe => true,
+        BiAnd |
+        BiOr |
+        BiAdd |
+        BiSub |
+        BiMul |
+        BiDiv |
+        BiRem |
+        BiBitXor |
+        BiBitAnd |
+        BiBitOr |
+        BiShl |
+        BiShr => false,
     }
 }
 
@@ -134,7 +150,7 @@ pub fn unop_to_string(op: UnOp) -> &'static str {
     }
 }
 
-pub struct IdVisitor<'a, O:'a> {
+pub struct IdVisitor<'a, O: 'a> {
     pub operation: &'a mut O,
     pub pass_through_items: bool,
     pub visited_outermost: bool,
@@ -152,10 +168,7 @@ impl<'a, O: ast_util::IdVisitingOperation> IdVisitor<'a, O> {
 }
 
 impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
-    fn visit_mod(&mut self,
-                 module: &Mod,
-                 _: Span,
-                 node_id: NodeId) {
+    fn visit_mod(&mut self, module: &Mod, _: Span, node_id: NodeId) {
         self.operation.visit_id(node_id);
         visit::walk_mod(self, module)
     }
@@ -265,11 +278,7 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
             self.operation.visit_id(argument.id)
         }
 
-        visit::walk_fn(self,
-                       function_kind,
-                       function_declaration,
-                       block,
-                       span);
+        visit::walk_fn(self, function_kind, function_declaration, block, span);
 
         if !self.pass_through_items {
             if let FnKind::Method(..) = function_kind {
@@ -323,11 +332,8 @@ pub fn compute_id_range_for_fn_body(fk: FnKind,
                                     body: &Block,
                                     sp: Span,
                                     id: NodeId)
-                                    -> ast_util::IdRange
-{
-    let mut visitor = ast_util::IdRangeComputingVisitor {
-        result: ast_util::IdRange::max()
-    };
+                                    -> ast_util::IdRange {
+    let mut visitor = ast_util::IdRangeComputingVisitor { result: ast_util::IdRange::max() };
     let mut id_visitor = IdVisitor {
         operation: &mut visitor,
         pass_through_items: false,
@@ -338,7 +344,10 @@ pub fn compute_id_range_for_fn_body(fk: FnKind,
 }
 
 pub fn is_path(e: P<Expr>) -> bool {
-    match e.node { ExprPath(..) => true, _ => false }
+    match e.node {
+        ExprPath(..) => true,
+        _ => false,
+    }
 }
 
 pub fn empty_generics() -> Generics {
@@ -348,7 +357,7 @@ pub fn empty_generics() -> Generics {
         where_clause: WhereClause {
             id: DUMMY_NODE_ID,
             predicates: Vec::new(),
-        }
+        },
     }
 }
 
@@ -358,15 +367,13 @@ pub fn ident_to_path(s: Span, ident: Ident) -> Path {
     hir::Path {
         span: s,
         global: false,
-        segments: vec!(
-            hir::PathSegment {
-                identifier: ident,
-                parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
-                    lifetimes: Vec::new(),
-                    types: OwnedSlice::empty(),
-                    bindings: OwnedSlice::empty(),
-                })
-            }
-        ),
+        segments: vec!(hir::PathSegment {
+            identifier: ident,
+            parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
+                lifetimes: Vec::new(),
+                types: OwnedSlice::empty(),
+                bindings: OwnedSlice::empty(),
+            }),
+        }),
     }
 }
