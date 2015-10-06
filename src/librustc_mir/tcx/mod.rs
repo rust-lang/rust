@@ -17,8 +17,6 @@
 
 use hair::*;
 use repr::*;
-use std::fmt::{Debug, Formatter, Error};
-use std::hash::{Hash, Hasher};
 
 use rustc::middle::const_eval::ConstVal;
 use rustc::middle::def_id::DefId;
@@ -150,29 +148,6 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
 
         self.tcx.sess.bug(
             &format!("found no method `{}` in `{:?}`", method_name, trait_def_id));
-    }
-}
-
-// We only need this impl so that we do deriving for things that are
-// defined relative to the `Hair` trait. See `Hair` trait for more
-// details.
-impl<'a,'tcx> PartialEq for Cx<'a,'tcx> {
-    fn eq(&self, _: &Cx<'a,'tcx>) -> bool {
-        panic!("Cx should never ACTUALLY be compared for equality")
-    }
-}
-
-impl<'a,'tcx> Eq for Cx<'a,'tcx> { }
-
-impl<'a,'tcx> Hash for Cx<'a,'tcx> {
-    fn hash<H: Hasher>(&self, _: &mut H) {
-        panic!("Cx should never ACTUALLY be hashed")
-    }
-}
-
-impl<'a,'tcx> Debug for Cx<'a,'tcx> {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "Tcx")
     }
 }
 
