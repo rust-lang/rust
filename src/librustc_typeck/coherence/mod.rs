@@ -38,7 +38,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::codemap::Span;
 use syntax::parse::token;
-use syntax::ast::NodeIdAssigner;
 use util::nodemap::{DefIdMap, FnvHashMap};
 use rustc::front::map as hir_map;
 use rustc::front::map::NodeItem;

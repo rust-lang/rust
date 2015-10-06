@@ -38,7 +38,7 @@ use syntax::diagnostic::{Level, RenderSpan, Bug, Fatal, Error, Warning, Note, He
 use syntax::parse::token;
 use syntax::feature_gate::UnstableFeatures;
 
-use rustc_front::lowering::lower_crate;
+use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_front::hir;
 
 struct Env<'a, 'tcx: 'a> {
@@ -124,7 +124,8 @@ fn test_env<F>(source_string: &str,
                     .expect("phase 2 aborted");
 
     let krate = driver::assign_node_ids(&sess, krate);
-    let mut hir_forest = hir_map::Forest::new(lower_crate(&krate));
+    let lcx = LoweringContext::new(&sess, Some(&krate));
+    let mut hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate));
     let arenas = ty::CtxtArenas::new();
     let ast_map = driver::make_map(&sess, &mut hir_forest);
     let krate = ast_map.krate();
@@ -135,7 +136,7 @@ fn test_env<F>(source_string: &str,
         resolve::resolve_crate(&sess, &ast_map, resolve::MakeGlobMap::No);
     let named_region_map = resolve_lifetime::krate(&sess, krate, &def_map);
     let region_map = region::resolve_crate(&sess, krate);
-    ty::ctxt::create_and_enter(sess,
+    ty::ctxt::create_and_enter(&sess,
                                &arenas,
                                def_map,
                                named_region_map,

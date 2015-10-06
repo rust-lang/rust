@@ -80,14 +80,16 @@ pub struct LoweringContext<'a> {
 }
 
 impl<'a, 'hir> LoweringContext<'a> {
-    pub fn new(id_assigner: &'a NodeIdAssigner, c: &Crate) -> LoweringContext<'a> {
-        let crate_root = if std_inject::no_core(c) {
-            None
-        } else if std_inject::no_std(c) {
-            Some("core")
-        } else {
-            Some("std")
-        };
+    pub fn new(id_assigner: &'a NodeIdAssigner, c: Option<&Crate>) -> LoweringContext<'a> {
+        let crate_root = c.and_then(|c| {
+            if std_inject::no_core(c) {
+                None
+            } else if std_inject::no_std(c) {
+                Some("core")
+            } else {
+                Some("std")
+            }
+        });
 
         LoweringContext {
             crate_root: crate_root,
