@@ -25,13 +25,13 @@
 // 'folding' an existing one), then you create a new id using `next_id()`.
 //
 // You must ensure that ids are unique. That means that you should only use the
-// is from an AST node in a single HIR node (you can assume that AST node ids
+// id from an AST node in a single HIR node (you can assume that AST node ids
 // are unique). Every new node must have a unique id. Avoid cloning HIR nodes.
-// If you do, you must then set one of the node's id to a fresh one.
+// If you do, you must then set the new node's id to a fresh one.
 //
 // Lowering must be reproducable (the compiler only lowers once, but tools and
 // custom lints may lower an AST node to a HIR node to interact with the
-// compiler). The only interesting bit of this is ids - if you lower an AST node
+// compiler). The most interesting bit of this is ids - if you lower an AST node
 // and create new HIR nodes with fresh ids, when re-lowering the same node, you
 // must ensure you get the same ids! To do this, we keep track of the next id
 // when we translate a node which requires new ids. By checking this cache and
@@ -43,6 +43,12 @@
 // This whole system relies on node ids being incremented one at a time and
 // all increments being for lowering. This means that you should not call any
 // non-lowering function which will use new node ids.
+//
+// We must also cache gensym'ed Idents to ensure that we get the same Ident
+// every time we lower a node with gensym'ed names. One consequence of this is
+// that you can only gensym a name once in a lowering (you don't need to worry
+// about nested lowering though). That's because we cache based on the name and
+// the currently cached node id, which is unique per lowered node.
 //
 // Spans are used for error messages and for tools to map semantics back to
 // source code. It is therefore not as important with spans as ids to be strict
@@ -77,6 +83,10 @@ pub struct LoweringContext<'a> {
     // 0 == no cached id. Must be incremented to align with previous id
     // incrementing.
     cached_id: Cell<u32>,
+    // Keep track of gensym'ed idents.
+    gensym_cache: RefCell<HashMap<(NodeId, &'static str), Ident>>,
+    // A copy of cached_id, but is also set to an id while it is being cached.
+    gensym_key: Cell<u32>,
 }
 
 impl<'a, 'hir> LoweringContext<'a> {
@@ -96,6 +106,8 @@ impl<'a, 'hir> LoweringContext<'a> {
             id_cache: RefCell::new(HashMap::new()),
             id_assigner: id_assigner,
             cached_id: Cell::new(0),
+            gensym_cache: RefCell::new(HashMap::new()),
+            gensym_key: Cell::new(0),
         }
     }
 
@@ -107,6 +119,22 @@ impl<'a, 'hir> LoweringContext<'a> {
 
         self.cached_id.set(cached + 1);
         cached
+    }
+
+    fn str_to_ident(&self, s: &'static str) -> Ident {
+        let cached_id = self.gensym_key.get();
+        if cached_id == 0 {
+            return token::gensym_ident(s);
+        }
+
+        let cached = self.gensym_cache.borrow().contains_key(&(cached_id, s));
+        if cached {
+            self.gensym_cache.borrow()[&(cached_id, s)]
+        } else {
+            let result = token::gensym_ident(s);
+            self.gensym_cache.borrow_mut().insert((cached_id, s), result);
+            result
+        }
     }
 }
 
@@ -861,6 +889,11 @@ struct CachedIdSetter<'a> {
 
 impl<'a> CachedIdSetter<'a> {
     fn new(lctx: &'a LoweringContext, expr_id: NodeId) -> CachedIdSetter<'a> {
+        // Only reset the id if it was previously 0, i.e., was not cached.
+        // If it was cached, we are in a nested node, but our id count will
+        // still count towards the parent's count.
+        let reset_cached_id = lctx.cached_id.get() == 0;
+
         let id_cache: &mut HashMap<_, _> = &mut lctx.id_cache.borrow_mut();
 
         if id_cache.contains_key(&expr_id) {
@@ -869,20 +902,20 @@ impl<'a> CachedIdSetter<'a> {
                 // We're entering a node where we need to track ids, but are not
                 // yet tracking.
                 lctx.cached_id.set(id_cache[&expr_id]);
+                lctx.gensym_key.set(id_cache[&expr_id]);
             } else {
                 // We're already tracking - check that the tracked id is the same
                 // as the expected id.
                 assert!(cached_id == id_cache[&expr_id], "id mismatch");
             }
         } else {
-            id_cache.insert(expr_id, lctx.id_assigner.peek_node_id());
+            let next_id = lctx.id_assigner.peek_node_id();
+            id_cache.insert(expr_id, next_id);
+            lctx.gensym_key.set(next_id);
         }
 
         CachedIdSetter {
-            // Only reset the id if it was previously 0, i.e., was not cached.
-            // If it was cached, we are in a nested node, but our id count will
-            // still count towards the parent's count.
-            reset: lctx.cached_id.get() == 0,
+            reset: reset_cached_id,
             lctx: lctx,
         }
     }
@@ -892,6 +925,7 @@ impl<'a> Drop for CachedIdSetter<'a> {
     fn drop(&mut self) {
         if self.reset {
             self.lctx.cached_id.set(0);
+            self.lctx.gensym_key.set(0);
         }
     }
 }
@@ -936,9 +970,9 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 let placer_expr = lower_expr(lctx, placer);
                 let value_expr = lower_expr(lctx, value_expr);
 
-                let placer_ident = token::gensym_ident("placer");
-                let agent_ident = token::gensym_ident("place");
-                let p_ptr_ident = token::gensym_ident("p_ptr");
+                let placer_ident = lctx.str_to_ident("placer");
+                let agent_ident = lctx.str_to_ident("place");
+                let p_ptr_ident = lctx.str_to_ident("p_ptr");
 
                 let make_place = ["ops", "Placer", "make_place"];
                 let place_pointer = ["ops", "Place", "pointer"];
@@ -955,7 +989,13 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 let mk_stmt_let_mut = |lctx, bind, expr| stmt_let(lctx, e.span, true, bind, expr);
 
                 // let placer = <placer_expr> ;
-                let s1 = mk_stmt_let(lctx, placer_ident, placer_expr);
+                let s1 = mk_stmt_let(lctx,
+                                     placer_ident,
+                                     signal_block_expr(lctx,
+                                                       vec![],
+                                                       placer_expr,
+                                                       e.span,
+                                                       hir::PopUnstableBlock));
 
                 // let mut place = Placer::make_place(placer);
                 let s2 = {
@@ -1310,7 +1350,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 // expand <head>
                 let head = lower_expr(lctx, head);
 
-                let iter = token::gensym_ident("iter");
+                let iter = lctx.str_to_ident("iter");
 
                 // `::std::option::Option::Some(<pat>) => <body>`
                 let pat_arm = {
@@ -1385,7 +1425,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 let match_expr = expr_match(lctx, e.span, into_iter_expr, vec![iter_arm]);
 
                 // `{ let result = ...; result }`
-                let result_ident = token::gensym_ident("result");
+                let result_ident = lctx.str_to_ident("result");
                 return expr_block(lctx,
                                   block_all(lctx,
                                             e.span,
@@ -1721,4 +1761,104 @@ fn signal_block_expr(lctx: &LoweringContext,
                    stmts: stmts,
                    expr: Some(expr),
                }))
+}
+
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use syntax::ast::{self, NodeId, NodeIdAssigner};
+    use syntax::{parse, codemap};
+    use syntax::fold::Folder;
+    use std::cell::Cell;
+
+    struct MockAssigner {
+        next_id: Cell<NodeId>,
+    }
+
+    impl MockAssigner {
+        fn new() -> MockAssigner {
+            MockAssigner {
+                next_id: Cell::new(0),
+            }
+        }
+    }
+
+    trait FakeExtCtxt {
+        fn call_site(&self) -> codemap::Span;
+        fn cfg(&self) -> ast::CrateConfig;
+        fn ident_of(&self, st: &str) -> ast::Ident;
+        fn name_of(&self, st: &str) -> ast::Name;
+        fn parse_sess(&self) -> &parse::ParseSess;
+    }
+
+    impl FakeExtCtxt for parse::ParseSess {
+        fn call_site(&self) -> codemap::Span {
+            codemap::Span {
+                lo: codemap::BytePos(0),
+                hi: codemap::BytePos(0),
+                expn_id: codemap::NO_EXPANSION,
+            }
+        }
+        fn cfg(&self) -> ast::CrateConfig { Vec::new() }
+        fn ident_of(&self, st: &str) -> ast::Ident {
+            parse::token::str_to_ident(st)
+        }
+        fn name_of(&self, st: &str) -> ast::Name {
+            parse::token::intern(st)
+        }
+        fn parse_sess(&self) -> &parse::ParseSess { self }
+    }
+
+    impl NodeIdAssigner for MockAssigner {
+        fn next_node_id(&self) -> NodeId {
+            let result = self.next_id.get();
+            self.next_id.set(result + 1);
+            result
+        }
+
+        fn peek_node_id(&self) -> NodeId {
+            self.next_id.get()
+        }
+    }
+
+    impl Folder for MockAssigner {
+        fn new_id(&mut self, old_id: NodeId) -> NodeId {
+            assert_eq!(old_id, ast::DUMMY_NODE_ID);
+            self.next_node_id()
+        }
+    }
+
+    #[test]
+    fn test_preserves_ids() {
+        let cx = parse::ParseSess::new();
+        let mut assigner = MockAssigner::new();
+
+        let ast_if_let = quote_expr!(&cx, if let Some(foo) = baz { bar(foo); });
+        let ast_if_let = assigner.fold_expr(ast_if_let);
+        let ast_while_let = quote_expr!(&cx, while let Some(foo) = baz { bar(foo); });
+        let ast_while_let = assigner.fold_expr(ast_while_let);
+        let ast_for = quote_expr!(&cx, for i in 0..10 { foo(i); });
+        let ast_for = assigner.fold_expr(ast_for);
+        let ast_in = quote_expr!(&cx, in HEAP { foo() });
+        let ast_in = assigner.fold_expr(ast_in);
+
+        let lctx = LoweringContext::new(&assigner, None);
+        let hir1 = lower_expr(&lctx, &ast_if_let);
+        let hir2 = lower_expr(&lctx, &ast_if_let);
+        assert!(hir1 == hir2);
+
+        let hir1 = lower_expr(&lctx, &ast_while_let);
+        let hir2 = lower_expr(&lctx, &ast_while_let);
+        assert!(hir1 == hir2);
+
+        let hir1 = lower_expr(&lctx, &ast_for);
+        let hir2 = lower_expr(&lctx, &ast_for);
+        assert!(hir1 == hir2);
+
+        let hir1 = lower_expr(&lctx, &ast_in);
+        let hir2 = lower_expr(&lctx, &ast_in);
+        assert!(hir1 == hir2);
+    }
 }

@@ -92,13 +92,8 @@ pub fn run(input: &str,
     let map = hir_map::map_crate(&mut forest);
 
     let ctx = core::DocContext {
-<<<<<<< HEAD
         map: &map,
-        maybe_typed: core::NotTyped(sess),
-=======
-        krate: &krate,
         maybe_typed: core::NotTyped(&sess),
->>>>>>> Fixes to rustdoc, etc.
         input: input,
         external_paths: RefCell::new(Some(HashMap::new())),
         external_traits: RefCell::new(None),
