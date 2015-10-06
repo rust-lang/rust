@@ -37,10 +37,15 @@ use self::syntax::ast;
 use self::syntax::attr::AttrMetaMethods;
 use self::syntax::codemap::Span;
 
-pub fn dump_crate(tcx: &ty::ctxt) {
+pub type MirMap<'tcx> = NodeMap<Mir<'tcx>>;
+
+pub fn dump_crate<'tcx>(tcx: &ty::ctxt<'tcx>) -> MirMap<'tcx>{
     let mut map = NodeMap();
-    let mut dump = OuterDump { tcx: tcx, map: &mut map };
-    visit::walk_crate(&mut dump, tcx.map.krate());
+    {
+        let mut dump = OuterDump { tcx: tcx, map: &mut map };
+        visit::walk_crate(&mut dump, tcx.map.krate());
+    }
+    map
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -48,7 +53,7 @@ pub fn dump_crate(tcx: &ty::ctxt) {
 
 struct OuterDump<'a,'tcx:'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    map: &'a mut NodeMap<Mir<'tcx>>,
+    map: &'a mut MirMap<'tcx>,
 }
 
 impl<'a, 'tcx> OuterDump<'a, 'tcx> {
@@ -101,7 +106,7 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for OuterDump<'a, 'tcx> {
 
 struct InnerDump<'a,'m,'tcx:'a+'m> {
     tcx: &'a ty::ctxt<'tcx>,
-    map: &'m mut NodeMap<Mir<'tcx>>,
+    map: &'m mut MirMap<'tcx>,
     attr: Option<&'a ast::Attribute>,
 }
 
