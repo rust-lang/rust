@@ -30,7 +30,7 @@ extern crate rustc_front;
 extern crate syntax;
 
 pub mod build;
-pub mod dump;
+pub mod mir_map;
 pub mod hair;
 pub mod repr;
 mod graphviz;

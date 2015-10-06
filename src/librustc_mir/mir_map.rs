@@ -39,7 +39,7 @@ use self::syntax::codemap::Span;
 
 pub type MirMap<'tcx> = NodeMap<Mir<'tcx>>;
 
-pub fn dump_crate<'tcx>(tcx: &ty::ctxt<'tcx>) -> MirMap<'tcx>{
+pub fn build_mir_for_crate<'tcx>(tcx: &ty::ctxt<'tcx>) -> MirMap<'tcx>{
     let mut map = NodeMap();
     {
         let mut dump = OuterDump { tcx: tcx, map: &mut map };

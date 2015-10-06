@@ -740,7 +740,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
 
         let _mir_map =
             time(time_passes, "MIR dump", ||
-                 mir::dump::dump_crate(tcx));
+                 mir::mir_map::build_mir_for_crate(tcx));
 
         time(time_passes, "liveness checking", ||
             middle::liveness::check_crate(tcx));
