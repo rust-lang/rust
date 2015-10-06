@@ -6,7 +6,7 @@
 
 	* configure.ac: Add --enable-host-shared.
 	* configure: Regenerate.
-
+
 Copyright (C) 2013-2014 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,

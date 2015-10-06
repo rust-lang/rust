@@ -64,4 +64,3 @@ does in fact live as long as we needed. However it was *changed* while we had
 a reference into it. This is why Rust requires any references to freeze the
 referent and its owners.
 
-
