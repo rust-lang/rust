@@ -670,7 +670,7 @@ pub fn pretty_print_input(sess: Session,
     // There is some twisted, god-forsaken tangle of lifetimes here which makes
     // the ordering of stuff super-finicky.
     let mut hir_forest;
-    let lcx = LoweringContext::new(&sess, &krate);
+    let lcx = LoweringContext::new(&sess, Some(&krate));
     let arenas = ty::CtxtArenas::new();
     let ast_map = if compute_ast_map {
         hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate));

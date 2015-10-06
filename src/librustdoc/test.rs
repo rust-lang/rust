@@ -83,7 +83,7 @@ pub fn run(input: &str,
                                                      "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");
     let krate = driver::assign_node_ids(&sess, krate);
-    let lcx = LoweringContext::new(&sess, &krate);
+    let lcx = LoweringContext::new(&sess, Some(&krate));
     let krate = lower_crate(&lcx, &krate);
 
     let opts = scrape_test_config(&krate);

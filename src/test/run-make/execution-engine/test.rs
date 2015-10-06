@@ -31,7 +31,7 @@ use rustc::middle::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Input, Options};
 use rustc::session::build_session;
 use rustc_driver::driver;
-use rustc_front::lowering::lower_crate;
+use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_resolve::MakeGlobMap;
 use libc::c_void;
 
@@ -223,12 +223,13 @@ fn compile_program(input: &str, sysroot: PathBuf)
             .expect("phase_2 returned `None`");
 
         let krate = driver::assign_node_ids(&sess, krate);
-        let mut hir_forest = ast_map::Forest::new(lower_crate(&krate));
+        let lcx = LoweringContext::new(&sess, Some(&krate));
+        let mut hir_forest = ast_map::Forest::new(lower_crate(&lcx, &krate));
         let arenas = ty::CtxtArenas::new();
         let ast_map = driver::make_map(&sess, &mut hir_forest);
 
         driver::phase_3_run_analysis_passes(
-            sess, ast_map, &arenas, id, MakeGlobMap::No, |tcx, analysis| {
+            &sess, ast_map, &arenas, id, MakeGlobMap::No, |tcx, analysis| {
 
             let trans = driver::phase_4_translate_to_llvm(tcx, analysis);
 
@@ -246,7 +247,7 @@ fn compile_program(input: &str, sysroot: PathBuf)
             let modp = llmod as usize;
 
             (modp, deps)
-        }).1
+        })
     }).unwrap();
 
     match handle.join() {

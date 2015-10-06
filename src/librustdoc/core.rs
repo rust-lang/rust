@@ -135,7 +135,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
 
     let krate = driver::assign_node_ids(&sess, krate);
     // Lower ast -> hir.
-    let lcx = LoweringContext::new(&sess, &krate);
+    let lcx = LoweringContext::new(&sess, Some(&krate));
     let mut hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate));
     let arenas = ty::CtxtArenas::new();
     let hir_map = driver::make_map(&sess, &mut hir_forest);
