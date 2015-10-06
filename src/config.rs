@@ -260,9 +260,9 @@ create_config! {
     max_width: usize, 100, "Maximum width of each line";
     ideal_width: usize, 80, "Ideal width of each line";
     tab_spaces: usize, 4, "Number of spaces per tab";
-    fn_call_width: usize, 50,
+    fn_call_width: usize, 60,
         "Maximum width of the args of a function call before faling back to vertical formatting";
-    struct_lit_width: usize, 12,
+    struct_lit_width: usize, 16,
         "Maximum width in the body of a struct lit before faling back to vertical formatting";
     newline_style: NewlineStyle, NewlineStyle::Unix, "Unix or Windows line endings";
     fn_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for functions";

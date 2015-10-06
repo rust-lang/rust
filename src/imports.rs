@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use Indent;
-use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
+use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, definitive_tactic};
 use utils::span_after;
 use rewrite::{Rewrite, RewriteContext};
 
@@ -71,7 +71,7 @@ fn rewrite_single_use_list(path_str: String, vpi: &ast::PathListItem) -> String 
     append_alias(path_item_str, vpi)
 }
 
-fn rewrite_path_item(vpi: &&ast::PathListItem) -> String {
+fn rewrite_path_item(vpi: &&ast::PathListItem) -> Option<String> {
     let path_item_str = match vpi.node {
         ast::PathListItem_::PathListIdent{ name, .. } => {
             name.to_string()
@@ -81,7 +81,7 @@ fn rewrite_path_item(vpi: &&ast::PathListItem) -> String {
         }
     };
 
-    append_alias(path_item_str, vpi)
+    Some(append_alias(path_item_str, vpi))
 }
 
 fn append_alias(path_item_str: String, vpi: &ast::PathListItem) -> String {
@@ -124,20 +124,6 @@ pub fn rewrite_use_list(width: usize,
     // 1 = }
     let remaining_width = width.checked_sub(supp_indent + 1).unwrap_or(0);
 
-    let fmt = ListFormatting {
-        tactic: ListTactic::Mixed,
-        separator: ",",
-        trailing_separator: SeparatorTactic::Never,
-        indent: offset + supp_indent,
-        h_width: remaining_width,
-        // FIXME This is too conservative, and will not use all width
-        // available
-        // (loose 1 column (";"))
-        v_width: remaining_width,
-        ends_with_newline: false,
-        config: context.config,
-    };
-
     let mut items = {
         // Dummy value, see explanation below.
         let mut items = vec![ListItem::from_str("")];
@@ -156,8 +142,6 @@ pub fn rewrite_use_list(width: usize,
     // We prefixed the item list with a dummy value so that we can
     // potentially move "self" to the front of the vector without touching
     // the rest of the items.
-    // FIXME: Make more efficient by using a linked list? That would require
-    // changes to the signatures of write_list.
     let has_self = move_self_to_front(&mut items);
     let first_index = if has_self {
         0
@@ -169,6 +153,21 @@ pub fn rewrite_use_list(width: usize,
         items[1..].sort_by(|a, b| a.item.cmp(&b.item));
     }
 
+    let tactic = definitive_tactic(&items[first_index..],
+                                   ::lists::ListTactic::Mixed,
+                                   remaining_width);
+    let fmt = ListFormatting {
+        tactic: tactic,
+        separator: ",",
+        trailing_separator: SeparatorTactic::Never,
+        indent: offset + supp_indent,
+        // FIXME This is too conservative, and will not use all width
+        // available
+        // (loose 1 column (";"))
+        width: remaining_width,
+        ends_with_newline: false,
+        config: context.config,
+    };
     let list_str = try_opt!(write_list(&items[first_index..], &fmt));
 
     Some(if path_str.is_empty() {
@@ -180,7 +179,7 @@ pub fn rewrite_use_list(width: usize,
 
 // Returns true when self item was found.
 fn move_self_to_front(items: &mut Vec<ListItem>) -> bool {
-    match items.iter().position(|item| item.item == "self") {
+    match items.iter().position(|item| item.item.as_ref().map(|x| &x[..]) == Some("self")) {
         Some(pos) => {
             items[0] = items.remove(pos);
             true

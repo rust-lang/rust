@@ -12,7 +12,8 @@
 
 use Indent;
 use utils::{format_mutability, format_visibility, contains_skip, span_after, end_typaram, wrap_str};
-use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
+use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic,
+            DefinitiveListTactic, definitive_tactic};
 use expr::rewrite_assign_rhs;
 use comment::FindUncommented;
 use visitor::FmtVisitor;
@@ -311,9 +312,7 @@ impl<'a> FmtVisitor<'a> {
 
         let context = self.get_context();
         let ret_str = fd.output
-                        .rewrite(&context,
-                                 self.config.max_width - indent.width(),
-                                 indent)
+                        .rewrite(&context, self.config.max_width - indent.width(), indent)
                         .unwrap();
 
         // Args.
@@ -480,7 +479,7 @@ impl<'a> FmtVisitor<'a> {
                                           ")",
                                           |arg| span_lo_for_arg(arg),
                                           |arg| arg.ty.span.hi,
-                                          |_| String::new(),
+                                          |_| None,
                                           comment_span_start,
                                           span.hi);
 
@@ -490,7 +489,7 @@ impl<'a> FmtVisitor<'a> {
         assert_eq!(arg_item_strs.len(), arg_items.len());
 
         for (item, arg) in arg_items.iter_mut().zip(arg_item_strs) {
-            item.item = arg;
+            item.item = Some(arg);
         }
 
         let indent = match self.config.fn_arg_indent {
@@ -499,13 +498,20 @@ impl<'a> FmtVisitor<'a> {
             BlockIndentStyle::Visual => arg_indent,
         };
 
+        let tactic = definitive_tactic(&arg_items,
+                                       self.config.fn_args_density.to_list_tactic(),
+                                       one_line_budget);
+        let budget = match tactic {
+            DefinitiveListTactic::Horizontal => one_line_budget,
+            _ => multi_line_budget,
+        };
+
         let fmt = ListFormatting {
-            tactic: self.config.fn_args_density.to_list_tactic(),
+            tactic: tactic,
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
             indent: indent,
-            h_width: one_line_budget,
-            v_width: multi_line_budget,
+            width: budget,
             ends_with_newline: false,
             config: self.config,
         };
@@ -622,14 +628,13 @@ impl<'a> FmtVisitor<'a> {
                                              |arg| arg.ty.span.hi,
                                              |arg| {
                                                  // FIXME silly width, indent
-                                                 arg.ty
-                                                    .rewrite(&self.get_context(),
-                                                             1000,
-                                                             Indent::empty())
-                                                    .unwrap()
+                                                 arg.ty.rewrite(&self.get_context(),
+                                                                1000,
+                                                                Indent::empty())
                                              },
                                              span_after(field.span, "(", self.codemap),
                                              next_span_start);
+                    let item_vec = items.collect::<Vec<_>>();
 
                     result.push('(');
 
@@ -641,18 +646,20 @@ impl<'a> FmtVisitor<'a> {
                         0
                     };
                     let budget = self.config.max_width - indent.width() - comma_cost - 1; // 1 = )
+                    let tactic = definitive_tactic(&item_vec,
+                                                   ListTactic::HorizontalVertical,
+                                                   budget);
 
                     let fmt = ListFormatting {
-                        tactic: ListTactic::HorizontalVertical,
+                        tactic: tactic,
                         separator: ",",
                         trailing_separator: SeparatorTactic::Never,
                         indent: indent,
-                        h_width: budget,
-                        v_width: budget,
+                        width: budget,
                         ends_with_newline: true,
                         config: self.config,
                     };
-                    let list_str = match write_list(&items.collect::<Vec<_>>(), &fmt) {
+                    let list_str = match write_list(&item_vec, &fmt) {
                         Some(list_str) => list_str,
                         None => return,
                     };
@@ -766,9 +773,9 @@ impl<'a> FmtVisitor<'a> {
             result.push('\n');
             result.push_str(&indentation);
 
-            ListTactic::Vertical
+            DefinitiveListTactic::Vertical
         } else {
-            ListTactic::Horizontal
+            DefinitiveListTactic::Horizontal
         };
 
         // 1 = ,
@@ -778,13 +785,12 @@ impl<'a> FmtVisitor<'a> {
             separator: ",",
             trailing_separator: self.config.struct_trailing_comma,
             indent: offset.block_indent(self.config),
-            h_width: self.config.max_width,
-            v_width: budget,
+            width: budget,
             ends_with_newline: true,
             config: self.config,
         };
 
-        let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
+        let list_str = try_opt!(write_list(items, &fmt));
         result.push_str(&list_str);
 
         if break_line {
@@ -853,9 +859,14 @@ impl<'a> FmtVisitor<'a> {
     }
 
     // Field of a struct
-    fn format_field(&self, field: &ast::StructField) -> String {
+    fn format_field(&self, field: &ast::StructField) -> Option<String> {
         if contains_skip(&field.node.attrs) {
-            return self.snippet(codemap::mk_sp(field.node.attrs[0].span.lo, field.span.hi));
+            // FIXME: silly width, indent
+            return wrap_str(self.snippet(codemap::mk_sp(field.node.attrs[0].span.lo,
+                                                        field.span.hi)),
+                            self.config.max_width,
+                            1000,
+                            Indent::empty());
         }
 
         let name = match field.node.kind {
@@ -867,24 +878,23 @@ impl<'a> FmtVisitor<'a> {
             ast::StructFieldKind::UnnamedField(vis) => format_visibility(vis),
         };
         // FIXME silly width, indent
-        let typ = field.node.ty.rewrite(&self.get_context(), 1000, Indent::empty()).unwrap();
+        let typ = try_opt!(field.node.ty.rewrite(&self.get_context(), 1000, Indent::empty()));
 
         let indent = self.block_indent.block_indent(self.config);
-        let mut attr_str = field.node
-                                .attrs
-                                .rewrite(&self.get_context(),
-                                         self.config.max_width - indent.width(),
-                                         indent)
-                                .unwrap();
+        let mut attr_str = try_opt!(field.node
+                                         .attrs
+                                         .rewrite(&self.get_context(),
+                                                  self.config.max_width - indent.width(),
+                                                  indent));
         if !attr_str.is_empty() {
             attr_str.push('\n');
             attr_str.push_str(&indent.to_string(self.config));
         }
 
-        match name {
+        Some(match name {
             Some(name) => format!("{}{}{}: {}", attr_str, vis, name, typ),
             None => format!("{}{}{}", attr_str, vis, typ),
-        }
+        })
     }
 
     fn rewrite_generics(&self,
@@ -913,10 +923,8 @@ impl<'a> FmtVisitor<'a> {
 
         // Strings for the generics.
         let context = self.get_context();
-        // FIXME: don't unwrap
-        let lt_strs = lifetimes.iter().map(|lt| lt.rewrite(&context, h_budget, offset).unwrap());
-        let ty_strs = tys.iter()
-                         .map(|ty_param| ty_param.rewrite(&context, h_budget, offset).unwrap());
+        let lt_strs = lifetimes.iter().map(|lt| lt.rewrite(&context, h_budget, offset));
+        let ty_strs = tys.iter().map(|ty_param| ty_param.rewrite(&context, h_budget, offset));
 
         // Extract comments between generics.
         let lt_spans = lifetimes.iter().map(|l| {
@@ -930,21 +938,15 @@ impl<'a> FmtVisitor<'a> {
         let ty_spans = tys.iter().map(span_for_ty_param);
 
         let items = itemize_list(self.codemap,
-                                 lt_spans.chain(ty_spans),
+                                 lt_spans.chain(ty_spans).zip(lt_strs.chain(ty_strs)),
                                  ">",
-                                 |sp| sp.lo,
-                                 |sp| sp.hi,
-                                 |_| String::new(),
+                                 |&(sp, _)| sp.lo,
+                                 |&(sp, _)| sp.hi,
+                                 // FIXME: don't clone
+                                 |&(_, ref str)| str.clone(),
                                  span_after(span, "<", self.codemap),
                                  span.hi);
-        let mut items = items.collect::<Vec<_>>();
-
-        for (item, ty) in items.iter_mut().zip(lt_strs.chain(ty_strs)) {
-            item.item = ty;
-        }
-
-        let fmt = ListFormatting::for_item(h_budget, offset, self.config);
-        let list_str = try_opt!(write_list(&items, &fmt));
+        let list_str = try_opt!(::lists::format_item_list(items, h_budget, offset, self.config));
 
         Some(format!("<{}>", list_str))
     }
@@ -984,24 +986,23 @@ impl<'a> FmtVisitor<'a> {
                                  "{",
                                  |pred| span_for_where_pred(pred).lo,
                                  |pred| span_for_where_pred(pred).hi,
-                                 // FIXME: we should handle failure better
-                                 // this will be taken care of when write_list
-                                 // takes Rewrite object: see issue #133
-                                 |pred| pred.rewrite(&context, budget, offset).unwrap(),
+                                 |pred| pred.rewrite(&context, budget, offset),
                                  span_start,
                                  span_end);
+        let item_vec = items.collect::<Vec<_>>();
+        // FIXME: we don't need to collect here if the where_layout isnt horizontalVertical
+        let tactic = definitive_tactic(&item_vec, self.config.where_layout, budget);
 
         let fmt = ListFormatting {
-            tactic: self.config.where_layout,
+            tactic: tactic,
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
             indent: offset,
-            h_width: budget,
-            v_width: budget,
+            width: budget,
             ends_with_newline: true,
             config: self.config,
         };
-        let preds_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
+        let preds_str = try_opt!(write_list(&item_vec, &fmt));
 
         // 9 = " where ".len() + " {".len()
         if density == Density::Tall || preds_str.contains('\n') ||

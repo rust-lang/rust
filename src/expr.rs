@@ -13,7 +13,8 @@ use std::borrow::Borrow;
 
 use Indent;
 use rewrite::{Rewrite, RewriteContext};
-use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
+use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
+            DefinitiveListTactic, definitive_tactic, ListItem, format_fn_args};
 use string::{StringFormat, rewrite_string};
 use utils::{span_after, extra_offset, last_line_width, wrap_str, binary_search};
 use visitor::FmtVisitor;
@@ -156,10 +157,7 @@ impl Rewrite for ast::Expr {
                 })
             }
             ast::Expr_::ExprRet(None) => {
-                wrap_str("return".to_owned(),
-                         context.config.max_width,
-                         width,
-                         offset)
+                wrap_str("return".to_owned(), context.config.max_width, width, offset)
             }
             ast::Expr_::ExprRet(Some(ref expr)) => {
                 rewrite_unary_prefix(context, "return ", expr, width, offset)
@@ -266,21 +264,20 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
                              |item| item.span.lo,
                              |item| item.span.hi,
                              // 1 = [
-                             // FIXME(#133): itemize_list doesn't support
-                             // rewrite failure. This may not be its
-                             // responsibility, but that of write_list.
-                             |item| {
-                                 item.rewrite(context, max_item_width, offset + 1)
-                                     .unwrap_or_else(|| context.snippet(item.span))
-                             },
+                             |item| item.rewrite(context, max_item_width, offset + 1),
                              span_after(span, "[", context.codemap),
                              span.hi)
                     .collect::<Vec<_>>();
 
-    let tactic = if items.iter().any(|li| li.item.len() > 10 || li.is_multiline()) {
-        ListTactic::HorizontalVertical
+    let has_long_item = try_opt!(items.iter()
+                                      .map(|li| li.item.as_ref().map(|s| s.len() > 10))
+                                      .fold(Some(false),
+                                            |acc, x| acc.and_then(|y| x.map(|x| (x || y)))));
+
+    let tactic = if has_long_item || items.iter().any(ListItem::is_multiline) {
+        definitive_tactic(&items, ListTactic::HorizontalVertical, max_item_width)
     } else {
-        ListTactic::Mixed
+        DefinitiveListTactic::Mixed
     };
 
     let fmt = ListFormatting {
@@ -288,8 +285,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
         indent: offset + 1,
-        h_width: max_item_width,
-        v_width: max_item_width,
+        width: max_item_width,
         ends_with_newline: false,
         config: context.config,
     };
@@ -329,29 +325,26 @@ fn rewrite_closure(capture: ast::CaptureClause,
                                  "|",
                                  |arg| span_lo_for_arg(arg),
                                  |arg| span_hi_for_arg(arg),
-                                 |arg| {
-                                     // FIXME: we should just escalate failure
-                                     // here, but itemize_list doesn't allow it.
-                                     arg.rewrite(context, budget, argument_offset)
-                                        .unwrap_or_else(|| {
-                                            context.snippet(mk_sp(span_lo_for_arg(arg),
-                                                                  span_hi_for_arg(arg)))
-                                        })
-                                 },
+                                 |arg| arg.rewrite(context, budget, argument_offset),
                                  span_after(span, "|", context.codemap),
                                  body.span.lo);
+    let item_vec = arg_items.collect::<Vec<_>>();
+    let tactic = definitive_tactic(&item_vec, ListTactic::HorizontalVertical, horizontal_budget);
+    let budget = match tactic {
+        DefinitiveListTactic::Horizontal => horizontal_budget,
+        _ => budget,
+    };
 
     let fmt = ListFormatting {
-        tactic: ListTactic::HorizontalVertical,
+        tactic: tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
         indent: argument_offset,
-        h_width: horizontal_budget,
-        v_width: budget,
+        width: budget,
         ends_with_newline: false,
         config: context.config,
     };
-    let list_str = try_opt!(write_list(&arg_items.collect::<Vec<_>>(), &fmt));
+    let list_str = try_opt!(write_list(&item_vec, &fmt));
     let mut prefix = format!("{}|{}|", mover, list_str);
 
     if !ret_str.is_empty() {
@@ -801,8 +794,7 @@ fn rewrite_match(context: &RewriteContext,
         }
     }
     // BytePos(1) = closing match brace.
-    let last_span = mk_sp(arm_end_pos(&arms[arms.len() - 1]),
-                          span.hi - BytePos(1));
+    let last_span = mk_sp(arm_end_pos(&arms[arms.len() - 1]), span.hi - BytePos(1));
     let last_comment = context.snippet(last_span);
     let comment = try_opt!(rewrite_match_arm_comment(context,
                                                      &last_comment,
@@ -915,8 +907,7 @@ impl Rewrite for ast::Arm {
         // 4 = ` => `.len()
         let same_line_body = if context.config.max_width > line_start + comma.len() + 4 {
             let budget = context.config.max_width - line_start - comma.len() - 4;
-            let offset = Indent::new(offset.block_indent,
-                                     line_start + 4 - offset.block_indent);
+            let offset = Indent::new(offset.block_indent, line_start + 4 - offset.block_indent);
             let rewrite = nop_block_collapse(body.rewrite(context, budget, offset), budget);
 
             match rewrite {
@@ -1156,16 +1147,11 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                              ")",
                              |item| item.span.lo,
                              |item| item.span.hi,
-                             // Take old span when rewrite fails.
-                             |item| {
-                                 item.rewrite(&inner_context, remaining_width, offset)
-                                     .unwrap_or(context.snippet(item.span))
-                             },
+                             |item| item.rewrite(&inner_context, remaining_width, offset),
                              span.lo,
                              span.hi);
 
-    let fmt = ListFormatting::for_fn(remaining_width, offset, context.config);
-    let list_str = match write_list(&items.collect::<Vec<_>>(), &fmt) {
+    let list_str = match format_fn_args(items, remaining_width, offset, context.config) {
         Some(str) => str,
         None => return Err(Ordering::Less),
     };
@@ -1178,9 +1164,7 @@ fn rewrite_paren(context: &RewriteContext,
                  width: usize,
                  offset: Indent)
                  -> Option<String> {
-    debug!("rewrite_paren, width: {}, offset: {:?}",
-           width,
-           offset);
+    debug!("rewrite_paren, width: {}, offset: {:?}", width, offset);
     // 1 is for opening paren, 2 is for opening+closing, we want to keep the closing
     // paren on the same line as the subexpr.
     let subexpr_str = subexpr.rewrite(context, try_opt!(width.checked_sub(2)), offset + 1);
@@ -1196,9 +1180,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                           width: usize,
                           offset: Indent)
                           -> Option<String> {
-    debug!("rewrite_struct_lit: width {}, offset {:?}",
-           width,
-           offset);
+    debug!("rewrite_struct_lit: width {}, offset {:?}", width, offset);
     assert!(!fields.is_empty() || base.is_some());
 
     enum StructLitField<'a> {
@@ -1259,32 +1241,37 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                  match *item {
                                      StructLitField::Regular(ref field) => {
                                          rewrite_field(inner_context, &field, v_budget, indent)
-                                             .unwrap_or(context.snippet(field.span))
                                      }
                                      StructLitField::Base(ref expr) => {
                                          // 2 = ..
-                                         format!("..{}",
-                                                 v_budget.checked_sub(2)
-                                                         .and_then(|v_budget| {
-                                                             expr.rewrite(inner_context,
-                                                                          v_budget,
-                                                                          indent + 2)
-                                                         })
-                                                         .unwrap_or(context.snippet(expr.span)))
+                                         expr.rewrite(inner_context,
+                                                      try_opt!(v_budget.checked_sub(2)),
+                                                      indent + 2)
+                                             .map(|s| format!("..{}", s))
                                      }
                                  }
                              },
                              span_after(span, "{", context.codemap),
                              span.hi);
+    let item_vec = items.collect::<Vec<_>>();
 
-    let mut tactic = match (context.config.struct_lit_style, fields.len()) {
-        (StructLitStyle::Visual, 1) => ListTactic::HorizontalVertical,
-        _ => context.config.struct_lit_multiline_style.to_list_tactic(),
+    let tactic = {
+        let mut prelim_tactic = match (context.config.struct_lit_style, fields.len()) {
+            (StructLitStyle::Visual, 1) => ListTactic::HorizontalVertical,
+            _ => context.config.struct_lit_multiline_style.to_list_tactic(),
+        };
+
+        if prelim_tactic == ListTactic::HorizontalVertical && fields.len() > 1 {
+            prelim_tactic = ListTactic::LimitedHorizontalVertical(context.config.struct_lit_width);
+        };
+
+        definitive_tactic(&item_vec, prelim_tactic, h_budget)
     };
 
-    if tactic == ListTactic::HorizontalVertical && fields.len() > 1 {
-        tactic = ListTactic::LimitedHorizontalVertical(context.config.struct_lit_width);
-    }
+    let budget = match tactic {
+        DefinitiveListTactic::Horizontal => h_budget,
+        _ => v_budget,
+    };
 
     let fmt = ListFormatting {
         tactic: tactic,
@@ -1295,12 +1282,11 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
             context.config.struct_lit_trailing_comma
         },
         indent: indent,
-        h_width: h_budget,
-        v_width: v_budget,
+        width: budget,
         ends_with_newline: false,
         config: context.config,
     };
-    let fields_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
+    let fields_str = try_opt!(write_list(&item_vec, &fmt));
 
     let format_on_newline = || {
         let inner_indent = context.block_indent
@@ -1345,9 +1331,7 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                      width: usize,
                      offset: Indent)
                      -> Option<String> {
-    debug!("rewrite_tuple_lit: width: {}, offset: {:?}",
-           width,
-           offset);
+    debug!("rewrite_tuple_lit: width: {}, offset: {:?}", width, offset);
     let indent = offset + 1;
     // In case of length 1, need a trailing comma
     if items.len() == 1 {
@@ -1364,14 +1348,11 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                              |item| {
                                  let inner_width = context.config.max_width - indent.width() - 1;
                                  item.rewrite(context, inner_width, indent)
-                                     .unwrap_or(context.snippet(item.span))
                              },
                              span.lo + BytePos(1), // Remove parens
                              span.hi - BytePos(1));
-
     let budget = try_opt!(width.checked_sub(2));
-    let fmt = ListFormatting::for_fn(budget, indent, context.config);
-    let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
+    let list_str = try_opt!(format_fn_args(items, budget, indent, context.config));
 
     Some(format!("({})", list_str))
 }

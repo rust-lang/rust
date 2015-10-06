@@ -13,7 +13,7 @@ use syntax::print::pprust;
 use syntax::codemap::{self, Span, BytePos, CodeMap};
 
 use Indent;
-use lists::{itemize_list, write_list, ListFormatting};
+use lists::{format_item_list, itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, span_after, format_mutability, wrap_str};
 
@@ -206,9 +206,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
                                  .collect::<Vec<_>>();
 
             let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
-            let list_lo = span_after(codemap::mk_sp(*span_lo, span_hi),
-                                     "<",
-                                     context.codemap);
+            let list_lo = span_after(codemap::mk_sp(*span_lo, span_hi), "<", context.codemap);
             let separator = get_path_separator(context.codemap, *span_lo, list_lo);
 
             // 1 for <
@@ -221,20 +219,17 @@ fn rewrite_segment(segment: &ast::PathSegment,
                                      ">",
                                      |param| param.get_span().lo,
                                      |param| param.get_span().hi,
-                                     // FIXME(#133): write_list should call
-                                     // rewrite itself, because it has a better
-                                     // context.
                                      |seg| {
                                          seg.rewrite(context,
                                                      context.config.max_width,
                                                      offset + extra_offset)
-                                            .unwrap()
                                      },
                                      list_lo,
                                      span_hi);
-
-            let fmt = ListFormatting::for_item(list_width, offset + extra_offset, context.config);
-            let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
+            let list_str = try_opt!(format_item_list(items,
+                                                     list_width,
+                                                     offset + extra_offset,
+                                                     context.config));
 
             // Update position of last bracket.
             *span_lo = next_span_lo;
@@ -260,12 +255,10 @@ fn rewrite_segment(segment: &ast::PathSegment,
                                      ")",
                                      |ty| ty.span.lo,
                                      |ty| ty.span.hi,
-                                     |ty| ty.rewrite(context, budget, offset).unwrap(),
+                                     |ty| ty.rewrite(context, budget, offset),
                                      list_lo,
                                      span_hi);
-
-            let fmt = ListFormatting::for_fn(budget, offset, context.config);
-            let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
+            let list_str = try_opt!(format_fn_args(items, budget, offset, context.config));
 
             format!("({}){}", list_str, output)
         }
@@ -287,40 +280,39 @@ impl Rewrite for ast::WherePredicate {
                 let type_str = try_opt!(bounded_ty.rewrite(context, width, offset));
 
                 if !bound_lifetimes.is_empty() {
-                    let lifetime_str = bound_lifetimes.iter()
-                                                      .map(|lt| {
-                                                          lt.rewrite(context, width, offset)
-                                                            .unwrap()
-                                                      })
-                                                      .collect::<Vec<_>>()
-                                                      .join(", ");
+                    let lifetime_str = try_opt!(bound_lifetimes.iter()
+                                                               .map(|lt| {
+                                                                   lt.rewrite(context,
+                                                                              width,
+                                                                              offset)
+                                                               })
+                                                               .collect::<Option<Vec<_>>>())
+                                           .join(", ");
                     // 8 = "for<> : ".len()
                     let used_width = lifetime_str.len() + type_str.len() + 8;
                     let budget = try_opt!(width.checked_sub(used_width));
-                    let bounds_str = bounds.iter()
-                                           .map(|ty_bound| {
-                                               ty_bound.rewrite(context,
-                                                                budget,
-                                                                offset + used_width)
-                                                       .unwrap()
-                                           })
-                                           .collect::<Vec<_>>()
-                                           .join(" + ");
+                    let bounds_str = try_opt!(bounds.iter()
+                                                    .map(|ty_bound| {
+                                                        ty_bound.rewrite(context,
+                                                                         budget,
+                                                                         offset + used_width)
+                                                    })
+                                                    .collect::<Option<Vec<_>>>())
+                                         .join(" + ");
 
                     format!("for<{}> {}: {}", lifetime_str, type_str, bounds_str)
                 } else {
                     // 2 = ": ".len()
                     let used_width = type_str.len() + 2;
                     let budget = try_opt!(width.checked_sub(used_width));
-                    let bounds_str = bounds.iter()
-                                           .map(|ty_bound| {
-                                               ty_bound.rewrite(context,
-                                                                budget,
-                                                                offset + used_width)
-                                                       .unwrap()
-                                           })
-                                           .collect::<Vec<_>>()
-                                           .join(" + ");
+                    let bounds_str = try_opt!(bounds.iter()
+                                                    .map(|ty_bound| {
+                                                        ty_bound.rewrite(context,
+                                                                         budget,
+                                                                         offset + used_width)
+                                                    })
+                                                    .collect::<Option<Vec<_>>>())
+                                         .join(" + ");
 
                     format!("{}: {}", type_str, bounds_str)
                 }
@@ -371,8 +363,7 @@ impl Rewrite for ast::TyParamBound {
             }
             ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::Maybe) => {
                 let budget = try_opt!(width.checked_sub(1));
-                Some(format!("?{}",
-                             try_opt!(tref.rewrite(context, budget, offset + 1))))
+                Some(format!("?{}", try_opt!(tref.rewrite(context, budget, offset + 1))))
             }
             ast::TyParamBound::RegionTyParamBound(ref l) => {
                 Some(pprust::lifetime_to_string(l))
@@ -383,9 +374,9 @@ impl Rewrite for ast::TyParamBound {
 
 impl Rewrite for ast::TyParamBounds {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
-        let strs: Vec<_> = self.iter()
-                               .map(|b| b.rewrite(context, width, offset).unwrap())
-                               .collect();
+        let strs: Vec<_> = try_opt!(self.iter()
+                                        .map(|b| b.rewrite(context, width, offset))
+                                        .collect());
         Some(strs.join(" + "))
     }
 }
@@ -398,10 +389,10 @@ impl Rewrite for ast::TyParam {
         if !self.bounds.is_empty() {
             result.push_str(": ");
 
-            let bounds = self.bounds
-                             .iter()
-                             .map(|ty_bound| ty_bound.rewrite(context, width, offset).unwrap())
-                             .collect::<Vec<_>>()
+            let bounds = try_opt!(self.bounds
+                                      .iter()
+                                      .map(|ty_bound| ty_bound.rewrite(context, width, offset))
+                                      .collect::<Option<Vec<_>>>())
                              .join(" + ");
 
             result.push_str(&bounds);
@@ -421,10 +412,10 @@ impl Rewrite for ast::TyParam {
 impl Rewrite for ast::PolyTraitRef {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         if !self.bound_lifetimes.is_empty() {
-            let lifetime_str = self.bound_lifetimes
-                                   .iter()
-                                   .map(|lt| lt.rewrite(context, width, offset).unwrap())
-                                   .collect::<Vec<_>>()
+            let lifetime_str = try_opt!(self.bound_lifetimes
+                                            .iter()
+                                            .map(|lt| lt.rewrite(context, width, offset))
+                                            .collect::<Option<Vec<_>>>())
                                    .join(", ");
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;

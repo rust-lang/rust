@@ -19,7 +19,6 @@
 // keeping some scratch mem for this and running our own StrPool?
 // TODO for lint violations of names, emit a refactor script
 
-
 #[macro_use]
 extern crate log;
 
@@ -119,8 +118,7 @@ impl Indent {
 
     pub fn to_string(&self, config: &Config) -> String {
         let (num_tabs, num_spaces) = if config.hard_tabs {
-            (self.block_indent / config.tab_spaces,
-             self.alignment)
+            (self.block_indent / config.tab_spaces, self.alignment)
         } else {
             (0, self.block_indent + self.alignment)
         };
