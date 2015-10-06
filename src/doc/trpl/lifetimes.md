@@ -70,8 +70,11 @@ fn bar<'a>(x: &'a i32) {
 ```
 
 The `'a` reads ‘the lifetime a’. Technically, every reference has some lifetime
-associated with it, but the compiler lets you elide them in common cases.
+associated with it, but the compiler lets you elide (i.e. omit, see
+["Lifetime Elision"][lifetime-elision] below) them in common cases.
 Before we get to that, though, let’s break the explicit example down:
+
+[lifetime-elision]: #user-content-lifetime-elision
 
 ```rust,ignore
 fn bar<'a>(...)
