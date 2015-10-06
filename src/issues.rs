@@ -236,8 +236,7 @@ fn find_unnumbered_issue() {
 
     fn check_pass(text: &str) {
         let mut seeker = BadIssueSeeker::new(ReportTactic::Unnumbered, ReportTactic::Unnumbered);
-        assert_eq!(None,
-                   text.chars().position(|c| seeker.inspect(c).is_some()));
+        assert_eq!(None, text.chars().position(|c| seeker.inspect(c).is_some()));
     }
 
     check_fail("TODO\n", 4);
@@ -272,9 +271,7 @@ fn find_issue() {
                          ReportTactic::Never,
                          ReportTactic::Always));
 
-    assert!(!is_bad_issue("bad FIXME\n",
-                          ReportTactic::Always,
-                          ReportTactic::Never));
+    assert!(!is_bad_issue("bad FIXME\n", ReportTactic::Always, ReportTactic::Never));
 }
 
 #[test]

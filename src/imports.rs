@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use Indent;
-use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic};
+use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, definitive_tactic};
 use utils::span_after;
 use rewrite::{Rewrite, RewriteContext};
 
@@ -153,9 +153,9 @@ pub fn rewrite_use_list(width: usize,
         items[1..].sort_by(|a, b| a.item.cmp(&b.item));
     }
 
-    let tactic = ::lists::definitive_tactic(&items[first_index..],
-                                            ::lists::ListTactic::Mixed,
-                                            remaining_width);
+    let tactic = definitive_tactic(&items[first_index..],
+                                   ::lists::ListTactic::Mixed,
+                                   remaining_width);
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",

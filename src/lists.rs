@@ -19,12 +19,15 @@ use comment::{FindUncommented, rewrite_comment, find_comment_end};
 use config::Config;
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
+/// Formatting tactic for lists. This will be cast down to a
+/// DefinitiveListTactic depending on the number and length of the items and
+/// their comments.
 pub enum ListTactic {
     // One item per row.
     Vertical,
     // All items on one row.
     Horizontal,
-    // Try Horizontal layout, if that fails then vertical
+    // Try Horizontal layout, if that fails then vertical.
     HorizontalVertical,
     // HorizontalVertical with a soft limit of n characters.
     LimitedHorizontalVertical(usize),
@@ -72,11 +75,7 @@ pub fn format_item_list<I>(items: I,
                            -> Option<String>
     where I: Iterator<Item = ListItem>
 {
-    list_helper(items,
-                width,
-                offset,
-                config,
-                ListTactic::HorizontalVertical)
+    list_helper(items, width, offset, config, ListTactic::HorizontalVertical)
 }
 
 fn list_helper<I>(items: I,
@@ -111,7 +110,7 @@ impl AsRef<ListItem> for ListItem {
 pub struct ListItem {
     // None for comments mean that they are not present.
     pub pre_comment: Option<String>,
-    // Item should include attributes and doc comments. None indicates failed
+    // Item should include attributes and doc comments. None indicates a failed
     // rewrite.
     pub item: Option<String>,
     pub post_comment: Option<String>,
@@ -121,7 +120,6 @@ pub struct ListItem {
 
 impl ListItem {
     pub fn is_multiline(&self) -> bool {
-        // FIXME: fail earlier!
         self.item.as_ref().map(|s| s.contains('\n')).unwrap_or(false) ||
         self.pre_comment.is_some() ||
         self.post_comment.as_ref().map(|s| s.contains('\n')).unwrap_or(false)
@@ -142,6 +140,7 @@ impl ListItem {
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
+/// The definitive formatting tactic for lists.
 pub enum DefinitiveListTactic {
     Vertical,
     Horizontal,
@@ -488,8 +487,6 @@ fn calculate_width<'li, I, T>(items: I) -> (usize, usize)
 }
 
 fn total_item_width(item: &ListItem) -> usize {
-    // FIXME: If the item has a `None` item, it may be better to fail earlier
-    // rather than later.
     comment_len(item.pre_comment.as_ref().map(|x| &(*x)[..])) +
     comment_len(item.post_comment.as_ref().map(|x| &(*x)[..])) +
     item.item.as_ref().map(|str| str.len()).unwrap_or(0)

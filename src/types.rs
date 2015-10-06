@@ -13,7 +13,7 @@ use syntax::print::pprust;
 use syntax::codemap::{self, Span, BytePos, CodeMap};
 
 use Indent;
-use lists::itemize_list;
+use lists::{format_item_list, itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, span_after, format_mutability, wrap_str};
 
@@ -226,10 +226,10 @@ fn rewrite_segment(segment: &ast::PathSegment,
                                      },
                                      list_lo,
                                      span_hi);
-            let list_str = try_opt!(::lists::format_item_list(items,
-                                                              list_width,
-                                                              offset + extra_offset,
-                                                              context.config));
+            let list_str = try_opt!(format_item_list(items,
+                                                     list_width,
+                                                     offset + extra_offset,
+                                                     context.config));
 
             // Update position of last bracket.
             *span_lo = next_span_lo;
@@ -258,7 +258,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
                                      |ty| ty.rewrite(context, budget, offset),
                                      list_lo,
                                      span_hi);
-            let list_str = try_opt!(::lists::format_fn_args(items, budget, offset, context.config));
+            let list_str = try_opt!(format_fn_args(items, budget, offset, context.config));
 
             format!("({}){}", list_str, output)
         }
@@ -363,8 +363,7 @@ impl Rewrite for ast::TyParamBound {
             }
             ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::Maybe) => {
                 let budget = try_opt!(width.checked_sub(1));
-                Some(format!("?{}",
-                             try_opt!(tref.rewrite(context, budget, offset + 1))))
+                Some(format!("?{}", try_opt!(tref.rewrite(context, budget, offset + 1))))
             }
             ast::TyParamBound::RegionTyParamBound(ref l) => {
                 Some(pprust::lifetime_to_string(l))

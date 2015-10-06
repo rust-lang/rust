@@ -19,7 +19,6 @@
 // keeping some scratch mem for this and running our own StrPool?
 // TODO for lint violations of names, emit a refactor script
 
-
 #[macro_use]
 extern crate log;
 

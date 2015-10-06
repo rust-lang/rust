@@ -348,8 +348,7 @@ mod test {
         assert_eq!(&uncommented("abc/*...*/"), "abc");
         assert_eq!(&uncommented("// .... /* \n../* /* *** / */ */a/* // */c\n"),
                    "..ac\n");
-        assert_eq!(&uncommented("abc \" /* */\" qsdf"),
-                   "abc \" /* */\" qsdf");
+        assert_eq!(&uncommented("abc \" /* */\" qsdf"), "abc \" /* */\" qsdf");
     }
 
     #[test]

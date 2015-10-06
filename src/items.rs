@@ -312,9 +312,7 @@ impl<'a> FmtVisitor<'a> {
 
         let context = self.get_context();
         let ret_str = fd.output
-                        .rewrite(&context,
-                                 self.config.max_width - indent.width(),
-                                 indent)
+                        .rewrite(&context, self.config.max_width - indent.width(), indent)
                         .unwrap();
 
         // Args.

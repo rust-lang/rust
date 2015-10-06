@@ -2,11 +2,11 @@
 name = "rustfmt"
 version = "0.0.1"
 dependencies = [
- "diff 0.1.5 (git+https://github.com/utkarshkukreti/diff.rs.git)",
+ "diff 0.1.7 (git+https://github.com/utkarshkukreti/diff.rs.git)",
  "regex 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "strings 0.0.1 (git+https://github.com/nrc/strings.rs.git)",
- "term 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "term 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-segmentation 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -21,15 +21,15 @@ dependencies = [
 
 [[package]]
 name = "diff"
-version = "0.1.5"
-source = "git+https://github.com/utkarshkukreti/diff.rs.git#1921576a73e1b50a0ecb26c8ce62eefb26d273b4"
+version = "0.1.7"
+source = "git+https://github.com/utkarshkukreti/diff.rs.git#6edb9454bf4127087aced0fe07ab3ea6894083cb"
 
 [[package]]
 name = "kernel32-sys"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "winapi 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -84,11 +84,11 @@ dependencies = [
 
 [[package]]
 name = "term"
-version = "0.2.11"
+version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "kernel32-sys 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "winapi 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -106,7 +106,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "winapi"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]

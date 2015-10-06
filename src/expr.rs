@@ -14,7 +14,7 @@ use std::borrow::Borrow;
 use Indent;
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
-            DefinitiveListTactic, definitive_tactic};
+            DefinitiveListTactic, definitive_tactic, ListItem, format_fn_args};
 use string::{StringFormat, rewrite_string};
 use utils::{span_after, extra_offset, last_line_width, wrap_str, binary_search};
 use visitor::FmtVisitor;
@@ -148,13 +148,7 @@ impl Rewrite for ast::Expr {
                 Some(format!("break{}", id_str))
             }
             ast::Expr_::ExprClosure(capture, ref fn_decl, ref body) => {
-                rewrite_closure(capture,
-                                fn_decl,
-                                body,
-                                self.span,
-                                context,
-                                width,
-                                offset)
+                rewrite_closure(capture, fn_decl, body, self.span, context, width, offset)
             }
             ast::Expr_::ExprField(..) |
             ast::Expr_::ExprTupField(..) |
@@ -172,10 +166,7 @@ impl Rewrite for ast::Expr {
                 })
             }
             ast::Expr_::ExprRet(None) => {
-                wrap_str("return".to_owned(),
-                         context.config.max_width,
-                         width,
-                         offset)
+                wrap_str("return".to_owned(), context.config.max_width, width, offset)
             }
             ast::Expr_::ExprRet(Some(ref expr)) => {
                 rewrite_unary_prefix(context, "return ", expr, width, offset)
@@ -227,7 +218,8 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
                                       .map(|li| li.item.as_ref().map(|s| s.len() > 10))
                                       .fold(Some(false),
                                             |acc, x| acc.and_then(|y| x.map(|x| (x || y)))));
-    let tactic = if has_long_item || items.iter().any(|li| li.is_multiline()) {
+
+    let tactic = if has_long_item || items.iter().any(ListItem::is_multiline) {
         definitive_tactic(&items, ListTactic::HorizontalVertical, max_item_width)
     } else {
         DefinitiveListTactic::Mixed
@@ -282,9 +274,7 @@ fn rewrite_closure(capture: ast::CaptureClause,
                                  span_after(span, "|", context.codemap),
                                  body.span.lo);
     let item_vec = arg_items.collect::<Vec<_>>();
-    let tactic = definitive_tactic(&item_vec,
-                                   ListTactic::HorizontalVertical,
-                                   horizontal_budget);
+    let tactic = definitive_tactic(&item_vec, ListTactic::HorizontalVertical, horizontal_budget);
     let budget = match tactic {
         DefinitiveListTactic::Horizontal => horizontal_budget,
         _ => budget,
@@ -589,11 +579,7 @@ fn rewrite_if_else(context: &RewriteContext,
 
     // Try to format if-else on single line.
     if allow_single_line && context.config.single_line_if_else {
-        let trial = single_line_if_else(context,
-                                        &pat_expr_string,
-                                        if_block,
-                                        else_block_opt,
-                                        width);
+        let trial = single_line_if_else(context, &pat_expr_string, if_block, else_block_opt, width);
 
         if trial.is_some() {
             return trial;
@@ -780,8 +766,7 @@ fn rewrite_match(context: &RewriteContext,
         }
     }
     // BytePos(1) = closing match brace.
-    let last_span = mk_sp(arm_end_pos(&arms[arms.len() - 1]),
-                          span.hi - BytePos(1));
+    let last_span = mk_sp(arm_end_pos(&arms[arms.len() - 1]), span.hi - BytePos(1));
     let last_comment = context.snippet(last_span);
     let comment = try_opt!(rewrite_match_arm_comment(context,
                                                      &last_comment,
@@ -894,8 +879,7 @@ impl Rewrite for ast::Arm {
         // 4 = ` => `.len()
         let same_line_body = if context.config.max_width > line_start + comma.len() + 4 {
             let budget = context.config.max_width - line_start - comma.len() - 4;
-            let offset = Indent::new(offset.block_indent,
-                                     line_start + 4 - offset.block_indent);
+            let offset = Indent::new(offset.block_indent, line_start + 4 - offset.block_indent);
             let rewrite = nop_block_collapse(body.rewrite(context, budget, offset), budget);
 
             match rewrite {
@@ -1081,13 +1065,7 @@ pub fn rewrite_call<R>(context: &RewriteContext,
     where R: Rewrite
 {
     let closure = |callee_max_width| {
-        rewrite_call_inner(context,
-                           callee,
-                           callee_max_width,
-                           args,
-                           span,
-                           width,
-                           offset)
+        rewrite_call_inner(context, callee, callee_max_width, args, span, width, offset)
     };
 
     // 2 is for parens
@@ -1145,7 +1123,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                              span.lo,
                              span.hi);
 
-    let list_str = match ::lists::format_fn_args(items, remaining_width, offset, context.config) {
+    let list_str = match format_fn_args(items, remaining_width, offset, context.config) {
         Some(str) => str,
         None => return Err(Ordering::Less),
     };
@@ -1174,9 +1152,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                           width: usize,
                           offset: Indent)
                           -> Option<String> {
-    debug!("rewrite_struct_lit: width {}, offset {:?}",
-           width,
-           offset);
+    debug!("rewrite_struct_lit: width {}, offset {:?}", width, offset);
     assert!(!fields.is_empty() || base.is_some());
 
     enum StructLitField<'a> {
@@ -1327,9 +1303,7 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                      width: usize,
                      offset: Indent)
                      -> Option<String> {
-    debug!("rewrite_tuple_lit: width: {}, offset: {:?}",
-           width,
-           offset);
+    debug!("rewrite_tuple_lit: width: {}, offset: {:?}", width, offset);
     let indent = offset + 1;
     // In case of length 1, need a trailing comma
     if items.len() == 1 {
@@ -1350,7 +1324,7 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                              span.lo + BytePos(1), // Remove parens
                              span.hi - BytePos(1));
     let budget = try_opt!(width.checked_sub(2));
-    let list_str = try_opt!(::lists::format_fn_args(items, budget, indent, context.config));
+    let list_str = try_opt!(format_fn_args(items, budget, indent, context.config));
 
     Some(format!("({})", list_str))
 }

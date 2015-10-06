@@ -319,9 +319,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn format_mod(&mut self, m: &ast::Mod, s: Span, ident: ast::Ident) {
-        debug!("FmtVisitor::format_mod: ident: {:?}, span: {:?}",
-               ident,
-               s);
+        debug!("FmtVisitor::format_mod: ident: {:?}, span: {:?}", ident, s);
 
         // Decide whether this is an inline mod or an external mod.
         let local_file_name = self.codemap.span_to_filename(s);
@@ -359,9 +357,7 @@ impl<'a> FmtVisitor<'a> {
             overflow_indent: Indent::empty(),
         };
         // 1 = ";"
-        match vp.rewrite(&context,
-                         self.config.max_width - offset.width() - 1,
-                         offset) {
+        match vp.rewrite(&context, self.config.max_width - offset.width() - 1, offset) {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
                 let prev_span = codemap::mk_sp(self.last_pos, span.lo);
