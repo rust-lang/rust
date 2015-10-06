@@ -586,7 +586,7 @@ pub enum UnsafeSource {
 }
 
 /// An expression
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash,)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Expr {
     pub id: NodeId,
     pub node: Expr_,

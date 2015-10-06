@@ -1379,7 +1379,7 @@ impl FakeExtCtxt for parse::ParseSess {
 struct FakeNodeIdAssigner;
 
 #[cfg(test)]
-// It should go without sayingt that this may give unexpected results. Avoid
+// It should go without saying that this may give unexpected results. Avoid
 // lowering anything which needs new nodes.
 impl NodeIdAssigner for FakeNodeIdAssigner {
     fn next_node_id(&self) -> NodeId {

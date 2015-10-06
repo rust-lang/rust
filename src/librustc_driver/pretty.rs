@@ -224,12 +224,12 @@ trait HirPrinterSupport<'ast>: pprust_hir::PpAnn {
     fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn;
 }
 
-struct NoAnn<'ast, 'tcx> {
-    sess: &'tcx Session,
+struct NoAnn<'ast> {
+    sess: &'ast Session,
     ast_map: Option<hir_map::Map<'ast>>
 }
 
-impl<'ast, 'tcx> PrinterSupport<'ast> for NoAnn<'ast, 'tcx> {
+impl<'ast> PrinterSupport<'ast> for NoAnn<'ast> {
     fn sess<'a>(&'a self) -> &'a Session { self.sess }
 
     fn ast_map<'a>(&'a self) -> Option<&'a hir_map::Map<'ast>> {
@@ -239,7 +239,7 @@ impl<'ast, 'tcx> PrinterSupport<'ast> for NoAnn<'ast, 'tcx> {
     fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self }
 }
 
-impl<'ast, 'tcx> HirPrinterSupport<'ast> for NoAnn<'ast, 'tcx> {
+impl<'ast> HirPrinterSupport<'ast> for NoAnn<'ast> {
     fn sess<'a>(&'a self) -> &'a Session { self.sess }
 
     fn ast_map<'a>(&'a self) -> Option<&'a hir_map::Map<'ast>> {
@@ -249,15 +249,15 @@ impl<'ast, 'tcx> HirPrinterSupport<'ast> for NoAnn<'ast, 'tcx> {
     fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn { self }
 }
 
-impl<'ast, 'tcx> pprust::PpAnn for NoAnn<'ast, 'tcx> {}
-impl<'ast, 'tcx> pprust_hir::PpAnn for NoAnn<'ast, 'tcx> {}
+impl<'ast> pprust::PpAnn for NoAnn<'ast> {}
+impl<'ast> pprust_hir::PpAnn for NoAnn<'ast> {}
 
-struct IdentifiedAnnotation<'ast, 'tcx> {
-    sess: &'tcx Session,
+struct IdentifiedAnnotation<'ast> {
+    sess: &'ast Session,
     ast_map: Option<hir_map::Map<'ast>>,
 }
 
-impl<'ast, 'tcx> PrinterSupport<'ast> for IdentifiedAnnotation<'ast, 'tcx> {
+impl<'ast> PrinterSupport<'ast> for IdentifiedAnnotation<'ast> {
     fn sess<'a>(&'a self) -> &'a Session { self.sess }
 
     fn ast_map<'a>(&'a self) -> Option<&'a hir_map::Map<'ast>> {
@@ -267,7 +267,7 @@ impl<'ast, 'tcx> PrinterSupport<'ast> for IdentifiedAnnotation<'ast, 'tcx> {
     fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self }
 }
 
-impl<'ast, 'tcx> pprust::PpAnn for IdentifiedAnnotation<'ast, 'tcx> {
+impl<'ast> pprust::PpAnn for IdentifiedAnnotation<'ast> {
     fn pre(&self,
            s: &mut pprust::State,
            node: pprust::AnnNode) -> io::Result<()> {
@@ -307,7 +307,7 @@ impl<'ast, 'tcx> pprust::PpAnn for IdentifiedAnnotation<'ast, 'tcx> {
     }
 }
 
-impl<'ast, 'tcx> HirPrinterSupport<'ast> for IdentifiedAnnotation<'ast, 'tcx> {
+impl<'ast> HirPrinterSupport<'ast> for IdentifiedAnnotation<'ast> {
     fn sess<'a>(&'a self) -> &'a Session { self.sess }
 
     fn ast_map<'a>(&'a self) -> Option<&'a hir_map::Map<'ast>> {
@@ -317,7 +317,7 @@ impl<'ast, 'tcx> HirPrinterSupport<'ast> for IdentifiedAnnotation<'ast, 'tcx> {
     fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn { self }
 }
 
-impl<'ast, 'tcx> pprust_hir::PpAnn for IdentifiedAnnotation<'ast, 'tcx> {
+impl<'ast> pprust_hir::PpAnn for IdentifiedAnnotation<'ast> {
     fn pre(&self,
            s: &mut pprust_hir::State,
            node: pprust_hir::AnnNode) -> io::Result<()> {
@@ -356,12 +356,12 @@ impl<'ast, 'tcx> pprust_hir::PpAnn for IdentifiedAnnotation<'ast, 'tcx> {
     }
 }
 
-struct HygieneAnnotation<'ast, 'tcx> {
-    sess: &'tcx Session,
+struct HygieneAnnotation<'ast> {
+    sess: &'ast Session,
     ast_map: Option<hir_map::Map<'ast>>,
 }
 
-impl<'ast, 'tcx> PrinterSupport<'ast> for HygieneAnnotation<'ast, 'tcx> {
+impl<'ast> PrinterSupport<'ast> for HygieneAnnotation<'ast> {
     fn sess<'a>(&'a self) -> &'a Session { self.sess }
 
     fn ast_map<'a>(&'a self) -> Option<&'a hir_map::Map<'ast>> {
@@ -371,7 +371,7 @@ impl<'ast, 'tcx> PrinterSupport<'ast> for HygieneAnnotation<'ast, 'tcx> {
     fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self }
 }
 
-impl<'ast, 'tcx> pprust::PpAnn for HygieneAnnotation<'ast, 'tcx> {
+impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
     fn post(&self,
             s: &mut pprust::State,
             node: pprust::AnnNode) -> io::Result<()> {
