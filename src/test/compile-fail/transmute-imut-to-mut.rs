@@ -17,4 +17,3 @@ fn main() {
     //~^ ERROR mutating transmuted &mut T from &T may cause undefined behavior
 }
 
-
