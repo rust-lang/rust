@@ -35,7 +35,9 @@ use std::collections::HashMap;
 pub struct SCTable {
     table: RefCell<Vec<SyntaxContext_>>,
     mark_memo: RefCell<HashMap<(SyntaxContext,Mrk),SyntaxContext>>,
-    rename_memo: RefCell<HashMap<(SyntaxContext,Name,SyntaxContext,Name),SyntaxContext>>,
+    // The pair (Name,SyntaxContext) is actually one Ident, but it needs to be hashed and
+    // compared as pair (name, ctxt) and not as an Ident
+    rename_memo: RefCell<HashMap<(SyntaxContext,(Name,SyntaxContext),Name),SyntaxContext>>,
 }
 
 #[derive(PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy, Clone)]
@@ -82,7 +84,7 @@ fn apply_rename_internal(id: Ident,
                        to: Name,
                        ctxt: SyntaxContext,
                        table: &SCTable) -> SyntaxContext {
-    let key = (ctxt, id.name, id.ctxt, to);
+    let key = (ctxt, (id.name, id.ctxt), to);
 
     *table.rename_memo.borrow_mut().entry(key).or_insert_with(|| {
             SyntaxContext(idx_push(&mut *table.table.borrow_mut(), Rename(id, to, ctxt)))
