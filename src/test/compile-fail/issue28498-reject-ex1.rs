@@ -10,65 +10,39 @@
 
 // Example taken from RFC 1238 text
 
-// https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md#examples-of-code-that-will-start-to-be-rejected
+// https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
+//     #examples-of-code-that-will-start-to-be-rejected
 
 // Compare against test/run-pass/issue28498-must-work-ex2.rs
 
 use std::cell::Cell;
 
-#[derive(Copy, Clone, Debug)]
-enum Validity { Valid, Invalid }
-use self::Validity::{Valid, Invalid};
+struct Concrete<'a>(u32, Cell<Option<&'a Concrete<'a>>>);
 
-struct Abstract<T> {
-    id: u32,
-    nbor: Cell<Option<T>>,
-    valid: Validity,
-    observe: fn(&Cell<Option<T>>) -> (u32, Validity),
+struct Foo<T> { data: Vec<T> }
+
+fn potentially_specialized_wrt_t<T>(t: &T) {
+    // Hypothetical code that does one thing for generic T and then is
+    // specialized for T == Concrete (and the specialized form can
+    // then access a reference held in concrete tuple).
+    //
+    // (We don't have specialization yet, but we want to allow for it
+    // in the future.)
 }
 
-#[derive(Copy, Clone)]
-struct Neighbor<'a>(&'a Abstract<Neighbor<'a>>);
-
-fn observe(c: &Cell<Option<Neighbor>>) -> (u32, Validity) {
-    let r = c.get().unwrap().0;
-    (r.id, r.valid)
-}
-
-impl<'a> Abstract<Neighbor<'a>> {
-    fn new(id: u32) -> Self {
-        Abstract {
-            id: id,
-            nbor: Cell::new(None),
-            valid: Valid,
-            observe: observe
-        }
-    }
-}
-
-struct Foo<T> {
-    data: Vec<T>,
-}
-
-impl<T> Drop for Abstract<T> {
+impl<T> Drop for Foo<T> {
     fn drop(&mut self) {
-        let (nbor_id, nbor_valid) = (self.observe)(&self.nbor);
-        println!("dropping element {} ({:?}), observed neighbor {} ({:?})",
-                 self.id,
-                 self.valid,
-                 nbor_id,
-                 nbor_valid);
-        self.valid = Invalid;
+        potentially_specialized_wrt_t(&self.data[0])
     }
 }
 
 fn main() {
-    let mut foo: Foo<Abstract<Neighbor>> = Foo {  data: Vec::new() };
-    foo.data.push(Abstract::new(0));
-    foo.data.push(Abstract::new(1));
+    let mut foo = Foo {  data: Vec::new() };
+    foo.data.push(Concrete(0, Cell::new(None)));
+    foo.data.push(Concrete(0, Cell::new(None)));
 
-    foo.data[0].nbor.set(Some(Neighbor(&foo.data[1])));
+    foo.data[0].1.set(Some(&foo.data[1]));
     //~^ ERROR `foo.data` does not live long enough
-    foo.data[1].nbor.set(Some(Neighbor(&foo.data[0])));
+    foo.data[1].1.set(Some(&foo.data[0]));
     //~^ ERROR `foo.data` does not live long enough
 }
