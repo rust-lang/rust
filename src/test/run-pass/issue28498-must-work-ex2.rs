@@ -10,7 +10,8 @@
 
 // Example taken from RFC 1238 text
 
-// https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md#examples-of-code-that-must-continue-to-work
+// https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
+//     #examples-of-code-that-must-continue-to-work
 
 use std::cell::Cell;
 
