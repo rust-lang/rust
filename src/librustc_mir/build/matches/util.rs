@@ -27,7 +27,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                    .collect()
     }
 
-    pub fn match_pair(&mut self, lvalue: Lvalue<'tcx>, pattern: PatternRef<'tcx>) -> MatchPair<'tcx> {
+    pub fn match_pair(&mut self, lvalue: Lvalue<'tcx>, pattern: PatternRef<'tcx>)
+                      -> MatchPair<'tcx> {
         let pattern = self.hir.mirror(pattern);
         MatchPair::new(lvalue, pattern)
     }

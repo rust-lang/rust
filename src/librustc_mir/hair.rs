@@ -199,7 +199,9 @@ pub enum PatternKind<'tcx> {
               subpattern: Option<PatternRef<'tcx>> },
 
     // Foo(...) or Foo{...} or Foo, where `Foo` is a variant name from an adt with >1 variants
-    Variant { adt_def: AdtDef<'tcx>, variant_index: usize, subpatterns: Vec<FieldPatternRef<'tcx>> },
+    Variant { adt_def: AdtDef<'tcx>,
+              variant_index: usize,
+              subpatterns: Vec<FieldPatternRef<'tcx>> },
 
     // (...), Foo(...), Foo{...}, or Foo, where `Foo` is a variant name from an adt with 1 variant
     Leaf { subpatterns: Vec<FieldPatternRef<'tcx>> },

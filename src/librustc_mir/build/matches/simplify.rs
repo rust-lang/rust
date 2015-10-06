@@ -56,13 +56,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
     /// Tries to simplify `match_pair`, returning true if
     /// successful. If successful, new match pairs and bindings will
-    /// have been pushed into the candidate. On failure (if false is
-    /// returned), no changes are made to candidate.
+    /// have been pushed into the candidate. If no simplification is
+    /// possible, Err is returned and no changes are made to
+    /// candidate.
     fn simplify_match_pair(&mut self,
                            mut block: BasicBlock,
                            match_pair: MatchPair<'tcx>,
                            candidate: &mut Candidate<'tcx>)
-                           -> Result<BasicBlock, MatchPair<'tcx>> // returns Err() if cannot simplify
+                           -> Result<BasicBlock, MatchPair<'tcx>>
     {
         match match_pair.pattern.kind {
             PatternKind::Wild(..) => {
