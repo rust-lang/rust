@@ -13,7 +13,7 @@ met:
     notice, this list of conditions and the following disclaimer in
     the documentation and/or other materials provided with the
     distribution.  
-    
+
     (3) The name of the author may not be used to
     endorse or promote products derived from this software without
     specific prior written permission.
@@ -1605,7 +1605,7 @@ read_line_header (struct backtrace_state *state, struct unit *u,
 
   if (!advance (line_buf, hdrlen))
     return 0;
-  
+
   hdr->min_insn_len = read_byte (&hdr_buf);
   if (hdr->version < 4)
     hdr->max_ops_per_insn = 1;
@@ -1614,7 +1614,7 @@ read_line_header (struct backtrace_state *state, struct unit *u,
 
   /* We don't care about default_is_stmt.  */
   read_byte (&hdr_buf);
-  
+
   hdr->line_base = read_sbyte (&hdr_buf);
   hdr->line_range = read_byte (&hdr_buf);
 
