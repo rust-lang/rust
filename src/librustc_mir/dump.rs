@@ -54,19 +54,14 @@ impl<'a, 'tcx> OuterDump<'a, 'tcx> {
     {
         let mut built_mir = false;
 
+        let mut closure_dump = InnerDump { tcx: self.tcx, attr: None };
         for attr in attributes {
             if attr.check_name("rustc_mir") {
-                let mut closure_dump = InnerDump { tcx: self.tcx, attr: Some(attr) };
-                walk_op(&mut closure_dump);
-                built_mir = true;
+                closure_dump.attr = Some(attr);
             }
         }
 
-        let always_build_mir = true;
-        if !built_mir && always_build_mir {
-            let mut closure_dump = InnerDump { tcx: self.tcx, attr: None };
-            walk_op(&mut closure_dump);
-        }
+        walk_op(&mut closure_dump);
     }
 }
 
