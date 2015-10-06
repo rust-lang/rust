@@ -10,7 +10,8 @@
 
 // Example taken from RFC 1238 text
 
-// https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md#example-of-the-unguarded-escape-hatch
+// https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
+//     #example-of-the-unguarded-escape-hatch
 
 #![feature(dropck_parametricity)]
 use std::cell::Cell;
