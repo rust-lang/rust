@@ -236,13 +236,3 @@ complicated.
 Luckily, Rust offers a feature, borrowing, which helps us solve this problem.
 It’s the topic of the next section!
 
-
-
-
-
-
-
-
-
-
-
