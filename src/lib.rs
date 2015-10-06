@@ -47,6 +47,7 @@ pub mod loops;
 pub mod ranges;
 pub mod matches;
 pub mod precedence;
+pub mod mutex_atomic;
 
 mod reexport {
     pub use syntax::ast::{Name, Ident, NodeId};
@@ -88,6 +89,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box matches::MatchPass);
     reg.register_late_lint_pass(box misc::PatternPass);
     reg.register_late_lint_pass(box minmax::MinMaxPass);
+    reg.register_late_lint_pass(box mutex_atomic::MutexAtomic);
 
     reg.register_lint_group("clippy_pedantic", vec![
         methods::OPTION_UNWRAP_USED,
@@ -141,6 +143,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         misc::REDUNDANT_PATTERN,
         misc::TOPLEVEL_REF_ARG,
         mut_reference::UNNECESSARY_MUT_PASSED,
+        mutex_atomic::MUTEX_ATOMIC,
         needless_bool::NEEDLESS_BOOL,
         precedence::PRECEDENCE,
         ranges::RANGE_STEP_BY_ZERO,

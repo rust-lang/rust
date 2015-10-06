@@ -14,6 +14,7 @@ pub const RESULT_PATH: [&'static str; 3] = ["core", "result", "Result"];
 pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
 pub const VEC_PATH:    [&'static str; 3] = ["collections", "vec", "Vec"];
 pub const LL_PATH:     [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
+pub const MUTEX_PATH:  [&'static str; 4] = ["std", "sync", "mutex", "Mutex"];
 
 /// returns true this expn_info was expanded by any macro
 pub fn in_macro(cx: &LateContext, span: Span) -> bool {
