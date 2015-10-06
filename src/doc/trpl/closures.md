@@ -64,7 +64,7 @@ Small differences, but they’re similar.
 
 # Closures and their environment
 
-The environment for a closure can include bindings from it's enclosing scope in
+The environment for a closure can include bindings from its enclosing scope in
 addition to parameters and local bindings.  It looks like this:
 
 ```rust
