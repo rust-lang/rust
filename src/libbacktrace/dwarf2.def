@@ -47,27 +47,27 @@
 
 /* This file declares various DWARF-related constants using a set of
    macros which can be redefined by the including file.
-   
+
    The macros are in sections.  Each section corresponds to a single
    set of DWARF constants and has a corresponding key.  The key is
    used in all the macro names.
-   
+
    The sections are TAG (for DW_TAG_ constants), FORM (DW_FORM_), AT
    (DW_AT_), OP (DW_OP_), ATE (DW_ATE_), and CFA (DW_CFA_).
-   
+
    Using TAG as an example, the following macros may be used for each
    key:
-   
+
    DW_FIRST_TAG(name, value) - Introduce the first DW_TAG constant.
-   
+
    DW_TAG(name, value) - Define a subsequent constant.
-   
+
    DW_TAG_DUP(name, value) - Define a subsequent constant whose value
    is a duplicate of some other constant.  Not all keys use the _DUP
    macro form.  If more than one name shares a value, then the base
    (DW_TAG) form will be the preferred name and DW_TAG_DUP will hold
    any alternate names.
-   
+
    DW_END_TAG - Invoked at the end of the DW_TAG constants.  */
 
 DW_FIRST_TAG (DW_TAG_padding, 0x00)
