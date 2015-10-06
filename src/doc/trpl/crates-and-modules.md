@@ -576,11 +576,13 @@ The third `use` statement bears more explanation. It's using "brace expansion"
 globbing to compress three `use` statements into one (this sort of syntax
 may be familiar if you've written Linux shell scripts before). The
 uncompressed form of this statement would be:
+
 ```rust,ignore
 use sayings::english;
 use sayings::english::greetings as en_greetings;
 use sayings::english::farewells as en_farewells;
 ```
+
 As you can see, the curly brackets compress `use` statements for several items
 under the same path, and in this context `self` just refers back to that path.
 Note: The curly brackets cannot be nested or mixed with star globbing.
