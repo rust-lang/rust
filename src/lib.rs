@@ -33,6 +33,7 @@ pub mod eta_reduction;
 pub mod identity_op;
 pub mod minmax;
 pub mod mut_mut;
+pub mod mut_reference;
 pub mod len_zero;
 pub mod attrs;
 pub mod collapsible_if;
@@ -66,6 +67,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box eta_reduction::EtaPass);
     reg.register_late_lint_pass(box identity_op::IdentityOp);
     reg.register_late_lint_pass(box mut_mut::MutMut);
+    reg.register_late_lint_pass(box mut_reference::UnnecessaryMutPassed);
     reg.register_late_lint_pass(box len_zero::LenZero);
     reg.register_late_lint_pass(box misc::CmpOwned);
     reg.register_late_lint_pass(box attrs::AttrPass);
@@ -138,6 +140,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         misc::MODULO_ONE,
         misc::REDUNDANT_PATTERN,
         misc::TOPLEVEL_REF_ARG,
+        mut_reference::UNNECESSARY_MUT_PASSED,
         needless_bool::NEEDLESS_BOOL,
         precedence::PRECEDENCE,
         ranges::RANGE_STEP_BY_ZERO,
