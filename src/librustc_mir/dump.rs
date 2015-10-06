@@ -30,6 +30,7 @@ use self::rustc::middle::infer;
 use self::rustc::middle::region::CodeExtentData;
 use self::rustc::middle::ty::{self, Ty};
 use self::rustc::util::common::ErrorReported;
+use self::rustc::util::nodemap::NodeMap;
 use self::rustc_front::hir;
 use self::rustc_front::visit;
 use self::syntax::ast;
@@ -37,7 +38,8 @@ use self::syntax::attr::AttrMetaMethods;
 use self::syntax::codemap::Span;
 
 pub fn dump_crate(tcx: &ty::ctxt) {
-    let mut dump = OuterDump { tcx: tcx };
+    let mut map = NodeMap();
+    let mut dump = OuterDump { tcx: tcx, map: &mut map };
     visit::walk_crate(&mut dump, tcx.map.krate());
 }
 
@@ -46,21 +48,19 @@ pub fn dump_crate(tcx: &ty::ctxt) {
 
 struct OuterDump<'a,'tcx:'a> {
     tcx: &'a ty::ctxt<'tcx>,
+    map: &'a mut NodeMap<Mir<'tcx>>,
 }
 
 impl<'a, 'tcx> OuterDump<'a, 'tcx> {
-    fn visit_mir<OP>(&self, attributes: &'tcx [ast::Attribute], mut walk_op: OP)
-        where OP: FnMut(&mut InnerDump<'a,'tcx>)
+    fn visit_mir<OP>(&mut self, attributes: &'a [ast::Attribute], mut walk_op: OP)
+        where OP: for<'m> FnMut(&mut InnerDump<'a,'m,'tcx>)
     {
-        let mut built_mir = false;
-
-        let mut closure_dump = InnerDump { tcx: self.tcx, attr: None };
+        let mut closure_dump = InnerDump { tcx: self.tcx, attr: None, map: &mut *self.map };
         for attr in attributes {
             if attr.check_name("rustc_mir") {
                 closure_dump.attr = Some(attr);
             }
         }
-
         walk_op(&mut closure_dump);
     }
 }
@@ -77,22 +77,44 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for OuterDump<'a, 'tcx> {
             hir::MethodTraitItem(_, Some(_)) => {
                 self.visit_mir(&trait_item.attrs, |c| visit::walk_trait_item(c, trait_item));
             }
-            _ => { }
+            hir::MethodTraitItem(_, None) |
+            hir::ConstTraitItem(..) |
+            hir::TypeTraitItem(..) => {
+            }
         }
         visit::walk_trait_item(self, trait_item);
+    }
+
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+        match impl_item.node {
+            hir::MethodImplItem(..) => {
+                self.visit_mir(&impl_item.attrs, |c| visit::walk_impl_item(c, impl_item));
+            }
+            hir::ConstImplItem(..) | hir::TypeImplItem(..) => { }
+        }
+        visit::walk_impl_item(self, impl_item);
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////
 // InnerDump -- dumps MIR for a single fn and its contained closures
 
-struct InnerDump<'a,'tcx:'a> {
+struct InnerDump<'a,'m,'tcx:'a+'m> {
     tcx: &'a ty::ctxt<'tcx>,
+    map: &'m mut NodeMap<Mir<'tcx>>,
     attr: Option<&'a ast::Attribute>,
 }
 
-impl<'a, 'tcx> visit::Visitor<'tcx> for InnerDump<'a,'tcx> {
+impl<'a, 'm, 'tcx> visit::Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
     fn visit_item(&mut self, _: &'tcx hir::Item) {
+        // ignore nested items; they need their own graphviz annotation
+    }
+
+    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem) {
+        // ignore nested items; they need their own graphviz annotation
+    }
+
+    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) {
         // ignore nested items; they need their own graphviz annotation
     }
 
@@ -150,6 +172,9 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for InnerDump<'a,'tcx> {
                         }
                     }
                 }
+
+                let previous = self.map.insert(id, mir);
+                assert!(previous.is_none());
             }
             Err(ErrorReported) => { }
         }
