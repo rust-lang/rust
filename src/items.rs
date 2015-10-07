@@ -592,31 +592,88 @@ impl<'a> FmtVisitor<'a> {
         self.buffer.push_str(&generics_str);
 
         self.last_pos = body_start;
-        self.block_indent = self.block_indent.block_indent(self.config);
-        for (i, f) in enum_def.variants.iter().enumerate() {
-            let next_span_start: BytePos = if i == enum_def.variants.len() - 1 {
-                span.hi
-            } else {
-                enum_def.variants[i + 1].span.lo
-            };
 
-            self.visit_variant(f, i == enum_def.variants.len() - 1, next_span_start);
+        self.block_indent = self.block_indent.block_indent(self.config);
+        let variant_list = self.format_variant_list(enum_def, body_start, span.hi - BytePos(1));
+        match variant_list {
+            Some(ref body_str) => self.buffer.push_str(&body_str),
+            None => self.format_missing(span.hi - BytePos(1)),
         }
         self.block_indent = self.block_indent.block_unindent(self.config);
 
-        self.format_missing_with_indent(span.hi - BytePos(1));
+        if variant_list.is_some() {
+            self.buffer.push_str(&self.block_indent.to_string(self.config));
+        }
         self.buffer.push_str("}");
+        self.last_pos = span.hi;
+    }
+
+    // Format the body of an enum definition
+    fn format_variant_list(&self,
+                           enum_def: &ast::EnumDef,
+                           body_lo: BytePos,
+                           body_hi: BytePos)
+                           -> Option<String> {
+        if enum_def.variants.is_empty() {
+            return None;
+        }
+        let mut result = String::with_capacity(1024);
+        result.push('\n');
+        let indentation = self.block_indent.to_string(self.config);
+        result.push_str(&indentation);
+
+        let items = itemize_list(self.codemap,
+                                 enum_def.variants.iter(),
+                                 "}",
+                                 |f| {
+                                     if !f.node.attrs.is_empty() {
+                                         f.node.attrs[0].span.lo
+                                     } else {
+                                         f.span.lo
+                                     }
+                                 },
+                                 |f| f.span.hi,
+                                 |f| self.format_variant(f),
+                                 body_lo,
+                                 body_hi);
+
+        let budget = self.config.max_width - self.block_indent.width() - 2;
+        let fmt = ListFormatting {
+            tactic: DefinitiveListTactic::Vertical,
+            separator: ",",
+            trailing_separator: SeparatorTactic::Always,
+            indent: self.block_indent,
+            width: budget,
+            ends_with_newline: true,
+            config: self.config,
+        };
+
+        let list = try_opt!(write_list(items, &fmt));
+        result.push_str(&list);
+        result.push('\n');
+        Some(result)
     }
 
     // Variant of an enum.
-    fn visit_variant(&mut self, field: &ast::Variant, last_field: bool, next_span_start: BytePos) {
-        if self.visit_attrs(&field.node.attrs) {
-            return;
+    fn format_variant(&self, field: &ast::Variant) -> Option<String> {
+        if contains_skip(&field.node.attrs) {
+            let lo = field.node.attrs[0].span.lo;
+            let span = codemap::mk_sp(lo, field.span.hi);
+            return Some(self.snippet(span));
         }
 
-        self.format_missing_with_indent(field.span.lo);
+        let indent = self.block_indent;
+        let mut result = try_opt!(field.node
+                                       .attrs
+                                       .rewrite(&self.get_context(),
+                                                self.config.max_width - indent.width(),
+                                                indent));
+        if !result.is_empty() {
+            result.push('\n');
+            result.push_str(&indent.to_string(self.config));
+        }
 
-        let result = match field.node.kind {
+        let variant_body = match field.node.kind {
             ast::VariantKind::TupleVariantKind(ref types) => {
                 let mut result = field.node.name.to_string();
 
@@ -633,12 +690,12 @@ impl<'a> FmtVisitor<'a> {
                                                                 Indent::empty())
                                              },
                                              span_after(field.span, "(", self.codemap),
-                                             next_span_start);
+                                             field.span.hi);
                     let item_vec = items.collect::<Vec<_>>();
 
                     result.push('(');
 
-                    let indent = self.block_indent + field.node.name.to_string().len() + "(".len();
+                    let indent = indent + field.node.name.to_string().len() + "(".len();
 
                     let comma_cost = if self.config.enum_trailing_comma {
                         1
@@ -659,10 +716,7 @@ impl<'a> FmtVisitor<'a> {
                         ends_with_newline: true,
                         config: self.config,
                     };
-                    let list_str = match write_list(&item_vec, &fmt) {
-                        Some(list_str) => list_str,
-                        None => return,
-                    };
+                    let list_str = try_opt!(write_list(&item_vec, &fmt));
 
                     result.push_str(&list_str);
                     result.push(')');
@@ -674,31 +728,26 @@ impl<'a> FmtVisitor<'a> {
                     result.push_str(&expr_snippet);
                 }
 
-                result
+                Some(result)
             }
             ast::VariantKind::StructVariantKind(ref struct_def) => {
                 // TODO: Should limit the width, as we have a trailing comma
-                let struct_rewrite = self.format_struct("",
-                                                        field.node.name,
-                                                        ast::Visibility::Inherited,
-                                                        struct_def,
-                                                        None,
-                                                        field.span,
-                                                        self.block_indent);
-
-                match struct_rewrite {
-                    Some(struct_str) => struct_str,
-                    None => return,
-                }
+                self.format_struct("",
+                                   field.node.name,
+                                   ast::Visibility::Inherited,
+                                   struct_def,
+                                   None,
+                                   field.span,
+                                   indent)
             }
         };
-        self.buffer.push_str(&result);
 
-        if !last_field || self.config.enum_trailing_comma {
-            self.buffer.push_str(",");
+        if let Some(variant_str) = variant_body {
+            result.push_str(&variant_str);
+            Some(result)
+        } else {
+            None
         }
-
-        self.last_pos = field.span.hi + BytePos(1);
     }
 
     fn format_struct(&self,
