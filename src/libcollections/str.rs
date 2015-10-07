@@ -867,6 +867,10 @@ impl str {
     /// ```rust,ignore
     /// assert_eq!(d, &["a", "b", "c"]);
     /// ```
+    ///
+    /// Use [`.split_whitespace()`][split_whitespace] for this behavior.
+    ///
+    /// [split_whitespace]: #method.split_whitespace
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
         core_str::StrExt::split(self, pat)
