@@ -42,12 +42,12 @@ loop is just a handy way to write this `loop`/`match`/`break` construct.
 `for` loops aren't the only thing that uses iterators, however. Writing your
 own iterator involves implementing the `Iterator` trait. While doing that is
 outside of the scope of this guide, Rust provides a number of useful iterators
-to accomplish various tasks. Before we talk about those, we should talk about a
-Rust anti-pattern. And that's using ranges like this.
+to accomplish various tasks. But first, a few notes about limitations of ranges.
 
-Yes, we just talked about how ranges are cool. But ranges are also very
-primitive. For example, if you needed to iterate over the contents of a vector,
-you may be tempted to write this:
+Ranges are very primitive, and we often can use better alternatives. Consider
+following Rust anti-pattern: using ranges to emulate a C-style `for` loop. Let’s
+suppose you needed to iterate over the contents of a vector. You may be tempted
+to write this:
 
 ```rust
 let nums = vec![1, 2, 3];
@@ -281,8 +281,8 @@ If you are trying to execute a closure on an iterator for its side effects,
 just use `for` instead.
 
 There are tons of interesting iterator adapters. `take(n)` will return an
-iterator over the next `n` elements of the original iterator. Let's try it out with our infinite
-iterator from before:
+iterator over the next `n` elements of the original iterator. Let's try it out
+with an infinite iterator:
 
 ```rust
 for i in (1..).take(5) {
