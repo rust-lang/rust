@@ -9,11 +9,12 @@ use std::borrow::Cow;
 use syntax::ast::Lit_::*;
 
 // module DefPaths for certain structs/enums we check for
-pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];
-pub const RESULT_PATH: [&'static str; 3] = ["core", "result", "Result"];
-pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
-pub const VEC_PATH:    [&'static str; 3] = ["collections", "vec", "Vec"];
-pub const LL_PATH:     [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
+pub const OPTION_PATH:       [&'static str; 3] = ["core", "option", "Option"];
+pub const RESULT_PATH:       [&'static str; 3] = ["core", "result", "Result"];
+pub const STRING_PATH:       [&'static str; 3] = ["collections", "string", "String"];
+pub const VEC_PATH:          [&'static str; 3] = ["collections", "vec", "Vec"];
+pub const LL_PATH:           [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
+pub const OPEN_OPTIONS_PATH: [&'static str; 3] = ["std", "fs", "OpenOptions"];
 
 /// returns true this expn_info was expanded by any macro
 pub fn in_macro(cx: &LateContext, span: Span) -> bool {
