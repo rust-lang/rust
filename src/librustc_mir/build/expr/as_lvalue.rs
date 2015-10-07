@@ -15,13 +15,13 @@ use build::expr::category::Category;
 use hair::*;
 use repr::*;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     /// Compile `expr`, yielding an lvalue that we can move from etc.
     pub fn as_lvalue<M>(&mut self,
                         block: BasicBlock,
                         expr: M)
-                        -> BlockAnd<Lvalue<H>>
-        where M: Mirror<H, Output=Expr<H>>
+                        -> BlockAnd<Lvalue<'tcx>>
+        where M: Mirror<'tcx, Output=Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
         self.expr_as_lvalue(block, expr)
@@ -29,8 +29,8 @@ impl<H:Hair> Builder<H> {
 
     fn expr_as_lvalue(&mut self,
                       mut block: BasicBlock,
-                      expr: Expr<H>)
-                      -> BlockAnd<Lvalue<H>>
+                      expr: Expr<'tcx>)
+                      -> BlockAnd<Lvalue<'tcx>>
     {
         debug!("expr_as_lvalue(block={:?}, expr={:?})",
                block, expr);

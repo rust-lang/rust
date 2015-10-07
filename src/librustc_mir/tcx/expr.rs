@@ -15,22 +15,22 @@ use std::rc::Rc;
 use tcx::Cx;
 use tcx::block;
 use tcx::pattern::PatNode;
-use tcx::rustc::front::map;
-use tcx::rustc::middle::const_eval;
-use tcx::rustc::middle::def;
-use tcx::rustc::middle::region::CodeExtent;
-use tcx::rustc::middle::pat_util;
-use tcx::rustc::middle::ty::{self, Ty};
-use tcx::rustc_front::hir;
-use tcx::rustc_front::util as hir_util;
-use tcx::syntax::parse::token;
-use tcx::syntax::ptr::P;
 use tcx::to_ref::ToRef;
+use rustc::front::map;
+use rustc::middle::const_eval;
+use rustc::middle::def;
+use rustc::middle::region::CodeExtent;
+use rustc::middle::pat_util;
+use rustc::middle::ty::{self, Ty};
+use rustc_front::hir;
+use rustc_front::util as hir_util;
+use syntax::parse::token;
+use syntax::ptr::P;
 
-impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
-    type Output = Expr<Cx<'a,'tcx>>;
+impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
+    type Output = Expr<'tcx>;
 
-    fn make_mirror(self, cx: &mut Cx<'a,'tcx>) -> Expr<Cx<'a,'tcx>> {
+    fn make_mirror<'a>(self, cx: &mut Cx<'a,'tcx>) -> Expr<'tcx> {
         debug!("Expr::make_mirror(): id={}, span={:?}", self.id, self.span);
 
         let expr_ty = cx.tcx.expr_ty(self); // note: no adjustments (yet)!
@@ -427,7 +427,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
 fn method_callee<'a,'tcx:'a>(cx: &mut Cx<'a,'tcx>,
                              expr: &hir::Expr,
                              method_call: ty::MethodCall)
-                             -> Expr<Cx<'a,'tcx>> {
+                             -> Expr<'tcx> {
     let tables = cx.tcx.tables.borrow();
     let callee = &tables.method_map[&method_call];
     let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
@@ -451,7 +451,7 @@ fn to_borrow_kind(m: hir::Mutability) -> BorrowKind {
     }
 }
 
-fn convert_arm<'a,'tcx:'a>(cx: &Cx<'a,'tcx>, arm: &'tcx hir::Arm) -> Arm<Cx<'a,'tcx>> {
+fn convert_arm<'a,'tcx:'a>(cx: &Cx<'a,'tcx>, arm: &'tcx hir::Arm) -> Arm<'tcx> {
     let map = if arm.pats.len() == 1 {
         None
     } else {
@@ -469,7 +469,7 @@ fn convert_arm<'a,'tcx:'a>(cx: &Cx<'a,'tcx>, arm: &'tcx hir::Arm) -> Arm<Cx<'a,'
 
 fn convert_path_expr<'a,'tcx:'a>(cx: &mut Cx<'a,'tcx>,
                                  expr: &'tcx hir::Expr)
-                                 -> ExprKind<Cx<'a,'tcx>>
+                                 -> ExprKind<'tcx>
 {
     let substs = cx.tcx.mk_substs(cx.tcx.node_id_item_substs(expr.id).substs);
     match cx.tcx.def_map.borrow()[&expr.id].full_def() {
@@ -502,7 +502,7 @@ fn convert_path_expr<'a,'tcx:'a>(cx: &mut Cx<'a,'tcx>,
 fn convert_var<'a,'tcx:'a>(cx: &mut Cx<'a,'tcx>,
                            expr: &'tcx hir::Expr,
                            def: def::Def)
-                           -> ExprKind<Cx<'a,'tcx>>
+                           -> ExprKind<'tcx>
 {
     let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
 
@@ -665,9 +665,9 @@ fn overloaded_operator<'a,'tcx:'a>(cx: &mut Cx<'a,'tcx>,
                                    expr: &'tcx hir::Expr,
                                    method_call: ty::MethodCall,
                                    pass_args: PassArgs,
-                                   receiver: ExprRef<Cx<'a,'tcx>>,
+                                   receiver: ExprRef<'tcx>,
                                    args: Vec<&'tcx P<hir::Expr>>)
-                                   -> ExprKind<Cx<'a,'tcx>>
+                                   -> ExprKind<'tcx>
 {
     // the receiver has all the adjustments that are needed, so we can
     // just push a reference to it
@@ -718,9 +718,9 @@ fn overloaded_lvalue<'a,'tcx:'a>(cx: &mut Cx<'a,'tcx>,
                                  expr: &'tcx hir::Expr,
                                  method_call: ty::MethodCall,
                                  pass_args: PassArgs,
-                                 receiver: ExprRef<Cx<'a,'tcx>>,
+                                 receiver: ExprRef<'tcx>,
                                  args: Vec<&'tcx P<hir::Expr>>)
-                                 -> ExprKind<Cx<'a,'tcx>>
+                                 -> ExprKind<'tcx>
 {
     // For an overloaded *x or x[y] expression of type T, the method
     // call returns an &T and we must add the deref so that the types
@@ -754,7 +754,7 @@ fn capture_freevar<'a,'tcx:'a>(cx: &mut Cx<'a,'tcx>,
                                closure_expr: &'tcx hir::Expr,
                                freevar: &ty::Freevar,
                                freevar_ty: Ty<'tcx>)
-                               -> ExprRef<Cx<'a,'tcx>> {
+                               -> ExprRef<'tcx> {
     let id_var = freevar.def.var_id();
     let upvar_id = ty::UpvarId { var_id: id_var, closure_expr_id: closure_expr.id };
     let upvar_capture = cx.tcx.upvar_capture(upvar_id).unwrap();

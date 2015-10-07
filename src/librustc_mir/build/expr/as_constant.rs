@@ -14,17 +14,17 @@ use build::{Builder};
 use hair::*;
 use repr::*;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
     /// `expr` is a valid compile-time constant!
-    pub fn as_constant<M>(&mut self, expr: M) -> Constant<H>
-        where M: Mirror<H, Output=Expr<H>>
+    pub fn as_constant<M>(&mut self, expr: M) -> Constant<'tcx>
+        where M: Mirror<'tcx, Output=Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
         self.expr_as_constant(expr)
     }
 
-    fn expr_as_constant(&mut self, expr: Expr<H>) -> Constant<H> {
+    fn expr_as_constant(&mut self, expr: Expr<'tcx>) -> Constant<'tcx> {
         let this = self;
         let Expr { ty, temp_lifetime: _, span, kind } = expr;
         match kind {

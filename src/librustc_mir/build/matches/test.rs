@@ -19,12 +19,13 @@ use build::{BlockAnd, Builder};
 use build::matches::{Candidate, MatchPair, Test, TestKind};
 use hair::*;
 use repr::*;
+use syntax::codemap::Span;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a simplifyable pattern.
-    pub fn test(&mut self, match_pair: &MatchPair<H>) -> Test<H> {
+    pub fn test(&mut self, match_pair: &MatchPair<'tcx>) -> Test<'tcx> {
         match match_pair.pattern.kind {
             PatternKind::Variant { ref adt_def, variant_index: _, subpatterns: _ } => {
                 Test {
@@ -72,8 +73,8 @@ impl<H:Hair> Builder<H> {
     /// Generates the code to perform a test.
     pub fn perform_test(&mut self,
                         block: BasicBlock,
-                        lvalue: &Lvalue<H>,
-                        test: &Test<H>)
+                        lvalue: &Lvalue<'tcx>,
+                        test: &Test<'tcx>)
                         -> Vec<BasicBlock> {
         match test.kind.clone() {
             TestKind::Switch { adt_def } => {
@@ -149,10 +150,10 @@ impl<H:Hair> Builder<H> {
 
     fn call_comparison_fn(&mut self,
                           block: BasicBlock,
-                          span: H::Span,
-                          item_ref: ItemRef<H>,
-                          lvalue1: Lvalue<H>,
-                          lvalue2: Lvalue<H>)
+                          span: Span,
+                          item_ref: ItemRef<'tcx>,
+                          lvalue1: Lvalue<'tcx>,
+                          lvalue2: Lvalue<'tcx>)
                           -> Vec<BasicBlock> {
         let target_blocks = vec![self.cfg.start_new_block(),
                                  self.cfg.start_new_block()];
@@ -194,11 +195,11 @@ impl<H:Hair> Builder<H> {
     /// @ 22])`.
     pub fn candidate_under_assumption(&mut self,
                                       mut block: BasicBlock,
-                                      test_lvalue: &Lvalue<H>,
-                                      test_kind: &TestKind<H>,
+                                      test_lvalue: &Lvalue<'tcx>,
+                                      test_kind: &TestKind<'tcx>,
                                       test_outcome: usize,
-                                      candidate: &Candidate<H>)
-                                      -> BlockAnd<Option<Candidate<H>>> {
+                                      candidate: &Candidate<'tcx>)
+                                      -> BlockAnd<Option<Candidate<'tcx>>> {
         let candidate = candidate.clone();
         let match_pairs = candidate.match_pairs;
         let result = unpack!(block = self.match_pairs_under_assumption(block,
@@ -216,11 +217,11 @@ impl<H:Hair> Builder<H> {
     /// work of transforming the list of match pairs.
     fn match_pairs_under_assumption(&mut self,
                                     mut block: BasicBlock,
-                                    test_lvalue: &Lvalue<H>,
-                                    test_kind: &TestKind<H>,
+                                    test_lvalue: &Lvalue<'tcx>,
+                                    test_kind: &TestKind<'tcx>,
                                     test_outcome: usize,
-                                    match_pairs: Vec<MatchPair<H>>)
-                                    -> BlockAnd<Option<Vec<MatchPair<H>>>> {
+                                    match_pairs: Vec<MatchPair<'tcx>>)
+                                    -> BlockAnd<Option<Vec<MatchPair<'tcx>>>> {
         let mut result = vec![];
 
         for match_pair in match_pairs {
@@ -279,9 +280,9 @@ impl<H:Hair> Builder<H> {
     /// It is a bug to call this with a simplifyable pattern.
     pub fn consequent_match_pairs_under_assumption(&mut self,
                                                    mut block: BasicBlock,
-                                                   match_pair: MatchPair<H>,
+                                                   match_pair: MatchPair<'tcx>,
                                                    test_outcome: usize)
-                                                   -> BlockAnd<Option<Vec<MatchPair<H>>>> {
+                                                   -> BlockAnd<Option<Vec<MatchPair<'tcx>>>> {
         match match_pair.pattern.kind {
             PatternKind::Variant { adt_def, variant_index, subpatterns } => {
                 if test_outcome != variant_index {
@@ -339,7 +340,7 @@ impl<H:Hair> Builder<H> {
         }
     }
 
-    fn error_simplifyable(&mut self, match_pair: &MatchPair<H>) -> ! {
+    fn error_simplifyable(&mut self, match_pair: &MatchPair<'tcx>) -> ! {
         self.hir.span_bug(
             match_pair.pattern.span,
             &format!("simplifyable pattern found: {:?}", match_pair.pattern))

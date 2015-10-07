@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use dot;
-use hair::Hair;
 use repr::*;
 use std::borrow::IntoCow;
 
@@ -20,7 +19,7 @@ pub struct EdgeIndex {
     index: usize,
 }
 
-impl<'a,H:Hair> dot::Labeller<'a, BasicBlock, EdgeIndex> for Mir<H> {
+impl<'a,'tcx> dot::Labeller<'a, BasicBlock, EdgeIndex> for Mir<'tcx> {
     fn graph_id(&'a self) -> dot::Id<'a> {
         dot::Id::new("Mir").unwrap()
     }
@@ -62,7 +61,7 @@ impl<'a,H:Hair> dot::Labeller<'a, BasicBlock, EdgeIndex> for Mir<H> {
     }
 }
 
-impl<'a,H:Hair> dot::GraphWalk<'a, BasicBlock, EdgeIndex> for Mir<H> {
+impl<'a,'tcx> dot::GraphWalk<'a, BasicBlock, EdgeIndex> for Mir<'tcx> {
     fn nodes(&'a self) -> dot::Nodes<'a, BasicBlock> {
         self.all_basic_blocks().into_cow()
     }
