@@ -598,7 +598,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         }
     }
 
-    /// Make a new `Ref` for a optional component of the borrowed data, e.g. an
+    /// Make a new `Ref` for an optional component of the borrowed data, e.g. an
     /// enum variant.
     ///
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
@@ -668,7 +668,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         }
     }
 
-    /// Make a new `RefMut` for a optional component of the borrowed data, e.g.
+    /// Make a new `RefMut` for an optional component of the borrowed data, e.g.
     /// an enum variant.
     ///
     /// The `RefCell` is already mutably borrowed, so this cannot fail.

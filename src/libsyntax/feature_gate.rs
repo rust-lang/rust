@@ -1107,8 +1107,7 @@ pub enum UnstableFeatures {
     /// Errors are bypassed for bootstrapping. This is required any time
     /// during the build that feature-related lints are set to warn or above
     /// because the build turns on warnings-as-errors and uses lots of unstable
-    /// features. As a result, this this is always required for building Rust
-    /// itself.
+    /// features. As a result, this is always required for building Rust itself.
     Cheat
 }
 

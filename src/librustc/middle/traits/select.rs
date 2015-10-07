@@ -2394,7 +2394,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// errors as if there is no applicable impl, but rather report
     /// errors are about mismatched argument types.
     ///
-    /// Here is an example. Imagine we have an closure expression
+    /// Here is an example. Imagine we have a closure expression
     /// and we desugared it so that the type of the expression is
     /// `Closure`, and `Closure` expects an int as argument. Then it
     /// is "as if" the compiler generated this impl:

@@ -488,7 +488,7 @@ pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
         // but scaling `max_ten_kappa << e` by 10 can result in overflow.
         // thus we are being sloppy here and widen the error range by a factor of 10.
         // this will increase the false negative rate, but only very, *very* slightly;
-        // it can only matter noticably when the mantissa is bigger than 60 bits.
+        // it can only matter noticeably when the mantissa is bigger than 60 bits.
         return possibly_round(buf, 0, exp, limit, v.f / 10, (max_ten_kappa as u64) << e, err << e);
     } else if ((exp as i32 - limit as i32) as usize) < buf.len() {
         (exp - limit) as usize

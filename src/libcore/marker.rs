@@ -381,7 +381,7 @@ mod impls {
 /// ```
 ///
 /// Without the declaration `T:Reflect`, `foo` would not type check
-/// (note: as a matter of style, it would be preferable to to write
+/// (note: as a matter of style, it would be preferable to write
 /// `T:Any`, because `T:Any` implies `T:Reflect` and `T:'static`, but
 /// we use `Reflect` here to show how it works). The `Reflect` bound
 /// thus serves to alert `foo`'s caller to the fact that `foo` may

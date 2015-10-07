@@ -126,7 +126,7 @@ pub enum TypeVariants<'tcx> {
     TyRef(&'tcx Region, TypeAndMut<'tcx>),
 
     /// If the def-id is Some(_), then this is the type of a specific
-    /// fn item. Otherwise, if None(_), it a fn pointer type.
+    /// fn item. Otherwise, if None(_), it is a fn pointer type.
     ///
     /// FIXME: Conflating function pointers and the type of a
     /// function is probably a terrible idea; a function pointer is a
