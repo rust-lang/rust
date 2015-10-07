@@ -105,9 +105,9 @@ impl EmitterConfig {
             },
             true => SpanFormat {
                 single: '\u{25B2}', // BLACK UP-POINTING TRIANGLE
-                begin:  '\u{2517}', // BOX DRAWINGS HEAVY UP AND RIGHT
-                middle: '\u{2501}', // BOX DRAWINGS HEAVY HORIZONTAL
-                end:    '\u{251B}', // BOX DRAWINGS HEAVY UP AND LEFT
+                begin:  '\u{2514}', // BOX DRAWINGS LIGHT UP AND RIGHT
+                middle: '\u{2500}', // BOX DRAWINGS LIGHT HORIZONTAL
+                end:    '\u{2518}', // BOX DRAWINGS LIGHT UP AND LEFT
             },
         }
     }
