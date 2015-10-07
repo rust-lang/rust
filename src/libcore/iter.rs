@@ -2250,6 +2250,9 @@ impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> wher
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
+///
+/// These can be created through
+/// [`iter.fuse()`](trait.Iterator.html#method.fuse).
 #[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
