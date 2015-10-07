@@ -85,8 +85,9 @@ trait GenericRadix {
                 *byte = self.digit(n.to_u8()); // Store the digit in the buffer.
                 curr -= 1;
                 if x == zero {
+                    // No more digits left to accumulate.
                     break
-                };        // No more digits left to accumulate.
+                };
             }
         }
         let buf = unsafe { str::from_utf8_unchecked(&buf[curr..]) };
