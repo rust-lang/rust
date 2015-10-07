@@ -37,23 +37,31 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             PatternKind::Constant { ref value } => {
                 Test {
                     span: match_pair.pattern.span,
-                    kind: TestKind::Eq { value: value.clone(),
-                                         ty: match_pair.pattern.ty.clone() },
+                    kind: TestKind::Eq {
+                        value: value.clone(),
+                        ty: match_pair.pattern.ty.clone(),
+                    },
                 }
             }
 
             PatternKind::Range { ref lo, ref hi } => {
                 Test {
                     span: match_pair.pattern.span,
-                    kind: TestKind::Range { lo: lo.clone(),
-                                            hi: hi.clone(),
-                                            ty: match_pair.pattern.ty.clone() },
+                    kind: TestKind::Range {
+                        lo: lo.clone(),
+                        hi: hi.clone(),
+                        ty: match_pair.pattern.ty.clone(),
+                    },
                 }
             }
 
             PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
                 let len = prefix.len() + suffix.len();
-                let op = if slice.is_some() {BinOp::Ge} else {BinOp::Eq};
+                let op = if slice.is_some() {
+                    BinOp::Ge
+                } else {
+                    BinOp::Eq
+                };
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Len { len: len, op: op },
@@ -102,11 +110,17 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let hi = self.push_literal(block, test.span, ty.clone(), hi);
                 let item_ref = self.hir.partial_le(ty);
 
-                let lo_blocks =
-                    self.call_comparison_fn(block, test.span, item_ref.clone(), lo, lvalue.clone());
+                let lo_blocks = self.call_comparison_fn(block,
+                                                        test.span,
+                                                        item_ref.clone(),
+                                                        lo,
+                                                        lvalue.clone());
 
-                let hi_blocks =
-                    self.call_comparison_fn(lo_blocks[0], test.span, item_ref, lvalue.clone(), hi);
+                let hi_blocks = self.call_comparison_fn(lo_blocks[0],
+                                                        test.span,
+                                                        item_ref,
+                                                        lvalue.clone(),
+                                                        hi);
 
                 let failure = self.cfg.start_new_block();
                 self.cfg.terminate(lo_blocks[1], Terminator::Goto { target: failure });
@@ -120,20 +134,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let (actual, result) = (self.temp(usize_ty), self.temp(bool_ty));
 
                 // actual = len(lvalue)
-                self.cfg.push_assign(
-                    block, test.span,
-                    &actual, Rvalue::Len(lvalue.clone()));
+                self.cfg.push_assign(block, test.span, &actual, Rvalue::Len(lvalue.clone()));
 
                 // expected = <N>
-                let expected =
-                    self.push_usize(block, test.span, len);
+                let expected = self.push_usize(block, test.span, len);
 
                 // result = actual == expected OR result = actual < expected
-                self.cfg.push_assign(
-                    block, test.span,
-                    &result, Rvalue::BinaryOp(op,
-                                              Operand::Consume(actual),
-                                              Operand::Consume(expected)));
+                self.cfg.push_assign(block,
+                                     test.span,
+                                     &result,
+                                     Rvalue::BinaryOp(op,
+                                                      Operand::Consume(actual),
+                                                      Operand::Consume(expected)));
 
                 // branch based on result
                 let target_blocks: Vec<_> = vec![self.cfg.start_new_block(),
@@ -155,8 +167,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                           lvalue1: Lvalue<'tcx>,
                           lvalue2: Lvalue<'tcx>)
                           -> Vec<BasicBlock> {
-        let target_blocks = vec![self.cfg.start_new_block(),
-                                 self.cfg.start_new_block()];
+        let target_blocks = vec![self.cfg.start_new_block(), self.cfg.start_new_block()];
 
         let bool_ty = self.hir.bool_ty();
         let eq_result = self.temp(bool_ty);
@@ -176,7 +187,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.cfg.terminate(call_blocks[0],
                            Terminator::If {
                                cond: Operand::Consume(eq_result),
-                               targets: [target_blocks[0], target_blocks[1]]
+                               targets: [target_blocks[0], target_blocks[1]],
                            });
 
         target_blocks
@@ -209,7 +220,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                                                        match_pairs));
         block.and(match result {
             Some(match_pairs) => Some(Candidate { match_pairs: match_pairs, ..candidate }),
-            None => None
+            None => None,
         })
     }
 
@@ -341,8 +352,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     }
 
     fn error_simplifyable(&mut self, match_pair: &MatchPair<'tcx>) -> ! {
-        self.hir.span_bug(
-            match_pair.pattern.span,
-            &format!("simplifyable pattern found: {:?}", match_pair.pattern))
+        self.hir.span_bug(match_pair.pattern.span,
+                          &format!("simplifyable pattern found: {:?}", match_pair.pattern))
     }
 }

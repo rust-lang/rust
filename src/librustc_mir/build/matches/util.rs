@@ -27,7 +27,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                    .collect()
     }
 
-    pub fn match_pair(&mut self, lvalue: Lvalue<'tcx>, pattern: PatternRef<'tcx>)
+    pub fn match_pair(&mut self,
+                      lvalue: Lvalue<'tcx>,
+                      pattern: PatternRef<'tcx>)
                       -> MatchPair<'tcx> {
         let pattern = self.hir.mirror(pattern);
         MatchPair::new(lvalue, pattern)
@@ -54,17 +56,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                prefix: Vec<PatternRef<'tcx>>,
                                opt_slice: Option<PatternRef<'tcx>>,
                                suffix: Vec<PatternRef<'tcx>>)
-                               -> BlockAnd<()>
-    {
+                               -> BlockAnd<()> {
         // If there is a `..P` pattern, create a temporary `t0` for
         // the slice and then a match pair `t0 @ P`:
         if let Some(slice) = opt_slice {
             let slice = self.hir.mirror(slice);
             let prefix_len = prefix.len();
             let suffix_len = suffix.len();
-            let rvalue = Rvalue::Slice { input: lvalue.clone(),
-                                         from_start: prefix_len,
-                                         from_end: suffix_len };
+            let rvalue = Rvalue::Slice {
+                input: lvalue.clone(),
+                from_start: prefix_len,
+                from_end: suffix_len,
+            };
             let temp = self.temp(slice.ty.clone()); // no need to schedule drop, temp is always copy
             self.cfg.push_assign(block, slice.span, &temp, rvalue);
             match_pairs.push(MatchPair::new(temp, slice));
@@ -80,8 +83,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                      match_pairs: &mut Vec<MatchPair<'tcx>>,
                      lvalue: Lvalue<'tcx>,
                      prefix: Vec<PatternRef<'tcx>>,
-                     suffix: Vec<PatternRef<'tcx>>)
-    {
+                     suffix: Vec<PatternRef<'tcx>>) {
         let min_length = prefix.len() + suffix.len();
         assert!(min_length < u32::MAX as usize);
         let min_length = min_length as u32;
@@ -121,6 +123,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
 impl<'tcx> MatchPair<'tcx> {
     pub fn new(lvalue: Lvalue<'tcx>, pattern: Pattern<'tcx>) -> MatchPair<'tcx> {
-        MatchPair { lvalue: lvalue, pattern: pattern }
+        MatchPair {
+            lvalue: lvalue,
+            pattern: pattern,
+        }
     }
 }

@@ -19,8 +19,11 @@ use hair::*;
 use repr::*;
 
 pub trait EvalInto<'tcx> {
-    fn eval_into<'a>(self, builder: &mut Builder<'a,'tcx>, destination: &Lvalue<'tcx>,
-                     block: BasicBlock) -> BlockAnd<()>;
+    fn eval_into<'a>(self,
+                     builder: &mut Builder<'a, 'tcx>,
+                     destination: &Lvalue<'tcx>,
+                     block: BasicBlock)
+                     -> BlockAnd<()>;
 }
 
 impl<'a,'tcx> Builder<'a,'tcx> {
@@ -37,7 +40,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
 impl<'tcx> EvalInto<'tcx> for ExprRef<'tcx> {
     fn eval_into<'a>(self,
-                     builder: &mut Builder<'a,'tcx>,
+                     builder: &mut Builder<'a, 'tcx>,
                      destination: &Lvalue<'tcx>,
                      block: BasicBlock)
                      -> BlockAnd<()> {
@@ -48,7 +51,7 @@ impl<'tcx> EvalInto<'tcx> for ExprRef<'tcx> {
 
 impl<'tcx> EvalInto<'tcx> for Expr<'tcx> {
     fn eval_into<'a>(self,
-                     builder: &mut Builder<'a,'tcx>,
+                     builder: &mut Builder<'a, 'tcx>,
                      destination: &Lvalue<'tcx>,
                      block: BasicBlock)
                      -> BlockAnd<()> {
@@ -58,13 +61,13 @@ impl<'tcx> EvalInto<'tcx> for Expr<'tcx> {
 
 impl<'tcx> EvalInto<'tcx> for Option<ExprRef<'tcx>> {
     fn eval_into<'a>(self,
-                     builder: &mut Builder<'a,'tcx>,
+                     builder: &mut Builder<'a, 'tcx>,
                      destination: &Lvalue<'tcx>,
                      block: BasicBlock)
                      -> BlockAnd<()> {
         match self {
             Some(expr) => builder.into(destination, block, expr),
-            None => block.unit()
+            None => block.unit(),
         }
     }
 }

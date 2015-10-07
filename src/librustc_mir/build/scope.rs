@@ -101,25 +101,27 @@ pub struct Scope<'tcx> {
 
 #[derive(Clone, Debug)]
 pub struct LoopScope {
-    pub extent: CodeExtent,      // extent of the loop
+    pub extent: CodeExtent, // extent of the loop
     pub continue_block: BasicBlock, // where to go on a `loop`
-    pub break_block: BasicBlock,    // where to go on a `break
+    pub break_block: BasicBlock, // where to go on a `break
 }
 
 impl<'a,'tcx> Builder<'a,'tcx> {
     /// Start a loop scope, which tracks where `continue` and `break`
     /// should branch to. See module comment for more details.
-    pub fn in_loop_scope<F,R>(&mut self,
-                              loop_block: BasicBlock,
-                              break_block: BasicBlock,
-                              f: F)
-                              -> BlockAnd<R>
-        where F: FnOnce(&mut Builder<'a,'tcx>) -> BlockAnd<R>
+    pub fn in_loop_scope<F, R>(&mut self,
+                               loop_block: BasicBlock,
+                               break_block: BasicBlock,
+                               f: F)
+                               -> BlockAnd<R>
+        where F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>
     {
         let extent = self.extent_of_innermost_scope().unwrap();
-        let loop_scope = LoopScope { extent: extent.clone(),
-                                     continue_block: loop_block,
-                                     break_block: break_block };
+        let loop_scope = LoopScope {
+            extent: extent.clone(),
+            continue_block: loop_block,
+            break_block: break_block,
+        };
         self.loop_scopes.push(loop_scope);
         let r = f(self);
         assert!(self.loop_scopes.pop().unwrap().extent == extent);
@@ -128,12 +130,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
     /// Start a scope. The closure `f` should translate the contents
     /// of the scope. See module comment for more details.
-    pub fn in_scope<F,R>(&mut self,
-                         extent: CodeExtent,
-                         block: BasicBlock,
-                         f: F)
-                         -> BlockAnd<R>
-        where F: FnOnce(&mut Builder<'a,'tcx>) -> BlockAnd<R>
+    pub fn in_scope<F, R>(&mut self, extent: CodeExtent, block: BasicBlock, f: F) -> BlockAnd<R>
+        where F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
 
@@ -173,9 +171,15 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// exit points.
     fn graph_extent(&self, entry: ExecutionPoint, exits: Vec<ExecutionPoint>) -> GraphExtent {
         if exits.len() == 1 && entry.block == exits[0].block {
-            GraphExtent { entry: entry, exit: GraphExtentExit::Statement(exits[0].statement) }
+            GraphExtent {
+                entry: entry,
+                exit: GraphExtentExit::Statement(exits[0].statement),
+            }
         } else {
-            GraphExtent { entry: entry, exit: GraphExtentExit::Points(exits) }
+            GraphExtent {
+                entry: entry,
+                exit: GraphExtentExit::Points(exits),
+            }
         }
     }
 
@@ -204,7 +208,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
         match loop_scope {
             Some(loop_scope) => loop_scope.clone(),
-            None => self.hir.span_bug(span, "no enclosing loop scope found?")
+            None => self.hir.span_bug(span, "no enclosing loop scope found?"),
         }
     }
 
@@ -255,8 +259,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                          extent: CodeExtent,
                          kind: DropKind,
                          lvalue: &Lvalue<'tcx>,
-                         lvalue_ty: Ty<'tcx>)
-    {
+                         lvalue_ty: Ty<'tcx>) {
         if self.hir.needs_drop(lvalue_ty, span) {
             match self.scopes.iter_mut().rev().find(|s| s.extent == extent) {
                 Some(scope) => {
@@ -278,9 +281,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     }
 }
 
-fn diverge_cleanup_helper<'tcx>(cfg: &mut CFG<'tcx>,
-                                scopes: &mut [Scope<'tcx>])
-                                -> BasicBlock {
+fn diverge_cleanup_helper<'tcx>(cfg: &mut CFG<'tcx>, scopes: &mut [Scope<'tcx>]) -> BasicBlock {
     let len = scopes.len();
 
     if len == 0 {

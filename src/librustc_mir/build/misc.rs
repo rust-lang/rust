@@ -41,16 +41,16 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         literal: Literal<'tcx>)
                         -> Lvalue<'tcx> {
         let temp = self.temp(ty.clone());
-        let constant = Constant { span: span, ty: ty, literal: literal };
+        let constant = Constant {
+            span: span,
+            ty: ty,
+            literal: literal,
+        };
         self.cfg.push_assign_constant(block, span, &temp, constant);
         temp
     }
 
-    pub fn push_usize(&mut self,
-                      block: BasicBlock,
-                      span: Span,
-                      value: usize)
-                      -> Lvalue<'tcx> {
+    pub fn push_usize(&mut self, block: BasicBlock, span: Span, value: usize) -> Lvalue<'tcx> {
         let usize_ty = self.hir.usize_ty();
         let temp = self.temp(usize_ty);
         self.cfg.push_assign_constant(
@@ -68,7 +68,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                          span: Span,
                          item_ref: ItemRef<'tcx>)
                          -> Lvalue<'tcx> {
-        let literal = Literal::Item { def_id: item_ref.def_id, substs: item_ref.substs };
+        let literal = Literal::Item {
+            def_id: item_ref.def_id,
+            substs: item_ref.substs,
+        };
         self.push_literal(block, span, item_ref.ty, literal)
     }
 }

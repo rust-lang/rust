@@ -10,7 +10,7 @@
 
 //! See docs in build/expr/mod.rs
 
-use build::{Builder};
+use build::Builder;
 use hair::*;
 use repr::*;
 

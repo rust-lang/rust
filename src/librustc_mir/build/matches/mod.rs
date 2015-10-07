@@ -33,10 +33,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                       mut block: BasicBlock,
                       discriminant: ExprRef<'tcx>,
                       arms: Vec<Arm<'tcx>>)
-                      -> BlockAnd<()>
-    {
-        let discriminant_lvalue =
-            unpack!(block = self.as_lvalue(block, discriminant));
+                      -> BlockAnd<()> {
+        let discriminant_lvalue = unpack!(block = self.as_lvalue(block, discriminant));
 
         // Before we do anything, create uninitialized variables with
         // suitable extent for all of the bindings in this match. It's
@@ -101,11 +99,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
     pub fn expr_into_pattern(&mut self,
                              mut block: BasicBlock,
-                             var_extent: CodeExtent,          // lifetime of vars
+                             var_extent: CodeExtent, // lifetime of vars
                              irrefutable_pat: PatternRef<'tcx>,
                              initializer: ExprRef<'tcx>)
-                             -> BlockAnd<()>
-    {
+                             -> BlockAnd<()> {
         // optimize the case of `let x = ...`
         let irrefutable_pat = self.hir.mirror(irrefutable_pat);
         match irrefutable_pat.kind {
@@ -115,16 +112,22 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                    var,
                                    ty,
                                    subpattern: None } => {
-                let index = self.declare_binding(var_extent, mutability, name,
-                                                 var, ty, irrefutable_pat.span);
+                let index = self.declare_binding(var_extent,
+                                                 mutability,
+                                                 name,
+                                                 var,
+                                                 ty,
+                                                 irrefutable_pat.span);
                 let lvalue = Lvalue::Var(index);
                 return self.into(&lvalue, block, initializer);
             }
-            _ => { }
+            _ => {}
         }
         let lvalue = unpack!(block = self.as_lvalue(block, initializer));
-        self.lvalue_into_pattern(block, var_extent,
-                                 PatternRef::Mirror(Box::new(irrefutable_pat)), &lvalue)
+        self.lvalue_into_pattern(block,
+                                 var_extent,
+                                 PatternRef::Mirror(Box::new(irrefutable_pat)),
+                                 &lvalue)
     }
 
     pub fn lvalue_into_pattern(&mut self,
@@ -132,8 +135,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                var_extent: CodeExtent,
                                irrefutable_pat: PatternRef<'tcx>,
                                initializer: &Lvalue<'tcx>)
-                               -> BlockAnd<()>
-    {
+                               -> BlockAnd<()> {
         // first, creating the bindings
         self.declare_bindings(var_extent, irrefutable_pat.clone());
 
@@ -150,10 +152,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         unpack!(block = self.simplify_candidate(block, &mut candidate));
 
         if !candidate.match_pairs.is_empty() {
-            self.hir.span_bug(
-                candidate.match_pairs[0].pattern.span,
-                &format!("match pairs {:?} remaining after simplifying irrefutable pattern",
-                         candidate.match_pairs));
+            self.hir.span_bug(candidate.match_pairs[0].pattern.span,
+                              &format!("match pairs {:?} remaining after simplifying \
+                                        irrefutable pattern",
+                                       candidate.match_pairs));
         }
 
         // now apply the bindings, which will also declare the variables
@@ -162,10 +164,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         block.unit()
     }
 
-    pub fn declare_bindings(&mut self,
-                            var_extent: CodeExtent,
-                            pattern: PatternRef<'tcx>)
-    {
+    pub fn declare_bindings(&mut self, var_extent: CodeExtent, pattern: PatternRef<'tcx>) {
         let pattern = self.hir.mirror(pattern);
         match pattern.kind {
             PatternKind::Binding { mutability, name, mode: _, var, ty, subpattern } => {
@@ -180,8 +179,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     self.declare_bindings(var_extent, subpattern);
                 }
             }
-            PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {
-            }
+            PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {}
             PatternKind::Deref { subpattern } => {
                 self.declare_bindings(var_extent, subpattern);
             }
@@ -239,16 +237,28 @@ struct MatchPair<'tcx> {
 #[derive(Clone, Debug, PartialEq)]
 enum TestKind<'tcx> {
     // test the branches of enum
-    Switch { adt_def: AdtDef<'tcx> },
+    Switch {
+        adt_def: AdtDef<'tcx>,
+    },
 
     // test for equality
-    Eq { value: Literal<'tcx>, ty: Ty<'tcx> },
+    Eq {
+        value: Literal<'tcx>,
+        ty: Ty<'tcx>,
+    },
 
     // test whether the value falls within an inclusive range
-    Range { lo: Literal<'tcx>, hi: Literal<'tcx>, ty: Ty<'tcx> },
+    Range {
+        lo: Literal<'tcx>,
+        hi: Literal<'tcx>,
+        ty: Ty<'tcx>,
+    },
 
     // test length of the slice is equal to len
-    Len { len: usize, op: BinOp },
+    Len {
+        len: usize,
+        op: BinOp,
+    },
 }
 
 #[derive(Debug)]
@@ -416,4 +426,3 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         index
     }
 }
-
