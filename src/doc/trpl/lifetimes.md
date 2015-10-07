@@ -43,11 +43,11 @@ With that in mind, let’s learn about lifetimes.
 Lending out a reference to a resource that someone else owns can be
 complicated. For example, imagine this set of operations:
 
-- I acquire a handle to some kind of resource.
-- I lend you a reference to the resource.
-- I decide I’m done with the resource, and deallocate it, while you still have
+1. I acquire a handle to some kind of resource.
+2. I lend you a reference to the resource.
+3. I decide I’m done with the resource, and deallocate it, while you still have
   your reference.
-- You decide to use the resource.
+4. You decide to use the resource.
 
 Uh oh! Your reference is pointing to an invalid resource. This is called a
 dangling pointer or ‘use after free’, when the resource is memory.
