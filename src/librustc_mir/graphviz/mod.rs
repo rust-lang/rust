@@ -70,15 +70,18 @@ impl<'a,'tcx> dot::GraphWalk<'a, BasicBlock, EdgeIndex> for Mir<'tcx> {
         self.all_basic_blocks()
             .into_iter()
             .flat_map(|source| {
-                self.basic_block_data(source).terminator
-                                             .successors()
-                                             .iter()
-                                             .enumerate()
-                                             .map(move |(index, &target)| {
-                                                 EdgeIndex { source: source,
-                                                             target: target,
-                                                             index: index }
-                                             })
+                self.basic_block_data(source)
+                    .terminator
+                    .successors()
+                    .iter()
+                    .enumerate()
+                    .map(move |(index, &target)| {
+                        EdgeIndex {
+                            source: source,
+                            target: target,
+                            index: index,
+                        }
+                    })
             })
             .collect::<Vec<_>>()
             .into_cow()
@@ -118,7 +121,10 @@ fn all_to_subscript(header: &str, mut text: String) -> String {
     /// Returns an updated string if changes were made, else None.
     fn to_subscript1(header: &str, text: &str, offset: &mut usize) -> Option<String> {
         let a = match text[*offset..].find(header) {
-            None => { *offset = text.len(); return None; }
+            None => {
+                *offset = text.len();
+                return None;
+            }
             Some(a) => a + *offset,
         };
 
@@ -141,8 +147,12 @@ fn all_to_subscript(header: &str, mut text: String) -> String {
         result.push_str(&text[..b]);
 
         while let Some(c) = chars.next() {
-            if c == ')' { break; }
-            if !c.is_digit(10) { return None; }
+            if c == ')' {
+                break;
+            }
+            if !c.is_digit(10) {
+                return None;
+            }
 
             // 0x208 is _0 in unicode, 0x209 is _1, etc
             const SUBSCRIPTS: &'static str = "₀₁₂₃₄₅₆₇₈₉";

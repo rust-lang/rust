@@ -29,7 +29,7 @@ impl<'tcx> CFG<'tcx> {
     pub fn end_point(&self, block: BasicBlock) -> ExecutionPoint {
         ExecutionPoint {
             block: block,
-            statement: self.block_data(block).statements.len() as u32
+            statement: self.block_data(block).statements.len() as u32,
         }
     }
 

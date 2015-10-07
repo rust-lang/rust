@@ -58,7 +58,7 @@ pub enum StmtKind<'tcx> {
         scope: CodeExtent,
 
         /// expression being evaluated in this statement
-        expr: ExprRef<'tcx>
+        expr: ExprRef<'tcx>,
     },
 
     Let {
@@ -77,7 +77,7 @@ pub enum StmtKind<'tcx> {
         initializer: Option<ExprRef<'tcx>>,
 
         /// let pat = init; <STMTS>
-        stmts: Vec<StmtRef<'tcx>>
+        stmts: Vec<StmtRef<'tcx>>,
     },
 }
 
@@ -113,45 +113,128 @@ pub struct Expr<'tcx> {
 
 #[derive(Clone, Debug)]
 pub enum ExprKind<'tcx> {
-    Scope { extent: CodeExtent, value: ExprRef<'tcx> },
-    Box { value: ExprRef<'tcx> },
-    Call { fun: ExprRef<'tcx>, args: Vec<ExprRef<'tcx>> },
-    Deref { arg: ExprRef<'tcx> }, // NOT overloaded!
-    Binary { op: BinOp, lhs: ExprRef<'tcx>, rhs: ExprRef<'tcx> }, // NOT overloaded!
-    LogicalOp { op: LogicalOp, lhs: ExprRef<'tcx>, rhs: ExprRef<'tcx> },
-    Unary { op: UnOp, arg: ExprRef<'tcx> }, // NOT overloaded!
-    Cast { source: ExprRef<'tcx> },
-    ReifyFnPointer { source: ExprRef<'tcx> },
-    UnsafeFnPointer { source: ExprRef<'tcx> },
-    Unsize { source: ExprRef<'tcx> },
-    If { condition: ExprRef<'tcx>, then: ExprRef<'tcx>, otherwise: Option<ExprRef<'tcx>> },
-    Loop { condition: Option<ExprRef<'tcx>>, body: ExprRef<'tcx>, },
-    Match { discriminant: ExprRef<'tcx>, arms: Vec<Arm<'tcx>> },
-    Block { body: &'tcx hir::Block },
-    Assign { lhs: ExprRef<'tcx>, rhs: ExprRef<'tcx> },
-    AssignOp { op: BinOp, lhs: ExprRef<'tcx>, rhs: ExprRef<'tcx> },
-    Field { lhs: ExprRef<'tcx>, name: Field },
-    Index { lhs: ExprRef<'tcx>, index: ExprRef<'tcx> },
-    VarRef { id: ast::NodeId },
+    Scope {
+        extent: CodeExtent,
+        value: ExprRef<'tcx>,
+    },
+    Box {
+        value: ExprRef<'tcx>,
+    },
+    Call {
+        fun: ExprRef<'tcx>,
+        args: Vec<ExprRef<'tcx>>,
+    },
+    Deref {
+        arg: ExprRef<'tcx>,
+    }, // NOT overloaded!
+    Binary {
+        op: BinOp,
+        lhs: ExprRef<'tcx>,
+        rhs: ExprRef<'tcx>,
+    }, // NOT overloaded!
+    LogicalOp {
+        op: LogicalOp,
+        lhs: ExprRef<'tcx>,
+        rhs: ExprRef<'tcx>,
+    },
+    Unary {
+        op: UnOp,
+        arg: ExprRef<'tcx>,
+    }, // NOT overloaded!
+    Cast {
+        source: ExprRef<'tcx>,
+    },
+    ReifyFnPointer {
+        source: ExprRef<'tcx>,
+    },
+    UnsafeFnPointer {
+        source: ExprRef<'tcx>,
+    },
+    Unsize {
+        source: ExprRef<'tcx>,
+    },
+    If {
+        condition: ExprRef<'tcx>,
+        then: ExprRef<'tcx>,
+        otherwise: Option<ExprRef<'tcx>>,
+    },
+    Loop {
+        condition: Option<ExprRef<'tcx>>,
+        body: ExprRef<'tcx>,
+    },
+    Match {
+        discriminant: ExprRef<'tcx>,
+        arms: Vec<Arm<'tcx>>,
+    },
+    Block {
+        body: &'tcx hir::Block,
+    },
+    Assign {
+        lhs: ExprRef<'tcx>,
+        rhs: ExprRef<'tcx>,
+    },
+    AssignOp {
+        op: BinOp,
+        lhs: ExprRef<'tcx>,
+        rhs: ExprRef<'tcx>,
+    },
+    Field {
+        lhs: ExprRef<'tcx>,
+        name: Field,
+    },
+    Index {
+        lhs: ExprRef<'tcx>,
+        index: ExprRef<'tcx>,
+    },
+    VarRef {
+        id: ast::NodeId,
+    },
     SelfRef, // first argument, used for self in a closure
-    StaticRef { id: DefId },
-    Borrow { region: Region, borrow_kind: BorrowKind, arg: ExprRef<'tcx> },
-    Break { label: Option<CodeExtent> },
-    Continue { label: Option<CodeExtent> },
-    Return { value: Option<ExprRef<'tcx>> },
-    Repeat { value: ExprRef<'tcx>, count: ExprRef<'tcx> },
-    Vec { fields: Vec<ExprRef<'tcx>> },
-    Tuple { fields: Vec<ExprRef<'tcx>> },
-    Adt { adt_def: AdtDef<'tcx>,
-          variant_index: usize,
-          substs: &'tcx Substs<'tcx>,
-          fields: Vec<FieldExprRef<'tcx>>,
-          base: Option<ExprRef<'tcx>> },
-    Closure { closure_id: DefId,
-              substs: &'tcx ClosureSubsts<'tcx>,
-              upvars: Vec<ExprRef<'tcx>> },
-    Literal { literal: Literal<'tcx> },
-    InlineAsm { asm: &'tcx hir::InlineAsm },
+    StaticRef {
+        id: DefId,
+    },
+    Borrow {
+        region: Region,
+        borrow_kind: BorrowKind,
+        arg: ExprRef<'tcx>,
+    },
+    Break {
+        label: Option<CodeExtent>,
+    },
+    Continue {
+        label: Option<CodeExtent>,
+    },
+    Return {
+        value: Option<ExprRef<'tcx>>,
+    },
+    Repeat {
+        value: ExprRef<'tcx>,
+        count: ExprRef<'tcx>,
+    },
+    Vec {
+        fields: Vec<ExprRef<'tcx>>,
+    },
+    Tuple {
+        fields: Vec<ExprRef<'tcx>>,
+    },
+    Adt {
+        adt_def: AdtDef<'tcx>,
+        variant_index: usize,
+        substs: &'tcx Substs<'tcx>,
+        fields: Vec<FieldExprRef<'tcx>>,
+        base: Option<ExprRef<'tcx>>,
+    },
+    Closure {
+        closure_id: DefId,
+        substs: &'tcx ClosureSubsts<'tcx>,
+        upvars: Vec<ExprRef<'tcx>>,
+    },
+    Literal {
+        literal: Literal<'tcx>,
+    },
+    InlineAsm {
+        asm: &'tcx hir::InlineAsm,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -183,7 +266,7 @@ pub struct Pattern<'tcx> {
 #[derive(Copy, Clone, Debug)]
 pub enum LogicalOp {
     And,
-    Or
+    Or,
 }
 
 #[derive(Clone, Debug)]
@@ -191,36 +274,53 @@ pub enum PatternKind<'tcx> {
     Wild,
 
     // x, ref x, x @ P, etc
-    Binding { mutability: Mutability,
-              name: ast::Name,
-              mode: BindingMode,
-              var: ast::NodeId,
-              ty: Ty<'tcx>,
-              subpattern: Option<PatternRef<'tcx>> },
+    Binding {
+        mutability: Mutability,
+        name: ast::Name,
+        mode: BindingMode,
+        var: ast::NodeId,
+        ty: Ty<'tcx>,
+        subpattern: Option<PatternRef<'tcx>>,
+    },
 
     // Foo(...) or Foo{...} or Foo, where `Foo` is a variant name from an adt with >1 variants
-    Variant { adt_def: AdtDef<'tcx>,
-              variant_index: usize,
-              subpatterns: Vec<FieldPatternRef<'tcx>> },
+    Variant {
+        adt_def: AdtDef<'tcx>,
+        variant_index: usize,
+        subpatterns: Vec<FieldPatternRef<'tcx>>,
+    },
 
     // (...), Foo(...), Foo{...}, or Foo, where `Foo` is a variant name from an adt with 1 variant
-    Leaf { subpatterns: Vec<FieldPatternRef<'tcx>> },
+    Leaf {
+        subpatterns: Vec<FieldPatternRef<'tcx>>,
+    },
 
-    Deref { subpattern: PatternRef<'tcx> }, // box P, &P, &mut P, etc
+    Deref {
+        subpattern: PatternRef<'tcx>,
+    }, // box P, &P, &mut P, etc
 
-    Constant { value: Literal<'tcx> },
+    Constant {
+        value: Literal<'tcx>,
+    },
 
-    Range { lo: Literal<'tcx>, hi: Literal<'tcx> },
+    Range {
+        lo: Literal<'tcx>,
+        hi: Literal<'tcx>,
+    },
 
     // matches against a slice, checking the length and extracting elements
-    Slice { prefix: Vec<PatternRef<'tcx>>,
-            slice: Option<PatternRef<'tcx>>,
-            suffix: Vec<PatternRef<'tcx>> },
+    Slice {
+        prefix: Vec<PatternRef<'tcx>>,
+        slice: Option<PatternRef<'tcx>>,
+        suffix: Vec<PatternRef<'tcx>>,
+    },
 
     // fixed match against an array, irrefutable
-    Array { prefix: Vec<PatternRef<'tcx>>,
-            slice: Option<PatternRef<'tcx>>,
-            suffix: Vec<PatternRef<'tcx>> },
+    Array {
+        prefix: Vec<PatternRef<'tcx>>,
+        slice: Option<PatternRef<'tcx>>,
+        suffix: Vec<PatternRef<'tcx>>,
+    },
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -259,13 +359,13 @@ pub struct FieldPatternRef<'tcx> {
 pub trait Mirror<'tcx> {
     type Output;
 
-    fn make_mirror<'a>(self, cx: &mut Cx<'a,'tcx>) -> Self::Output;
+    fn make_mirror<'a>(self, cx: &mut Cx<'a, 'tcx>) -> Self::Output;
 }
 
 impl<'tcx> Mirror<'tcx> for Expr<'tcx> {
     type Output = Expr<'tcx>;
 
-    fn make_mirror<'a>(self, _: &mut Cx<'a,'tcx>) -> Expr<'tcx> {
+    fn make_mirror<'a>(self, _: &mut Cx<'a, 'tcx>) -> Expr<'tcx> {
         self
     }
 }
@@ -273,7 +373,7 @@ impl<'tcx> Mirror<'tcx> for Expr<'tcx> {
 impl<'tcx> Mirror<'tcx> for ExprRef<'tcx> {
     type Output = Expr<'tcx>;
 
-    fn make_mirror<'a>(self, hir: &mut Cx<'a,'tcx>) -> Expr<'tcx> {
+    fn make_mirror<'a>(self, hir: &mut Cx<'a, 'tcx>) -> Expr<'tcx> {
         match self {
             ExprRef::Hair(h) => h.make_mirror(hir),
             ExprRef::Mirror(m) => *m,
@@ -284,7 +384,7 @@ impl<'tcx> Mirror<'tcx> for ExprRef<'tcx> {
 impl<'tcx> Mirror<'tcx> for Stmt<'tcx> {
     type Output = Stmt<'tcx>;
 
-    fn make_mirror<'a>(self, _: &mut Cx<'a,'tcx>) -> Stmt<'tcx> {
+    fn make_mirror<'a>(self, _: &mut Cx<'a, 'tcx>) -> Stmt<'tcx> {
         self
     }
 }
@@ -292,7 +392,7 @@ impl<'tcx> Mirror<'tcx> for Stmt<'tcx> {
 impl<'tcx> Mirror<'tcx> for StmtRef<'tcx> {
     type Output = Stmt<'tcx>;
 
-    fn make_mirror<'a>(self, hir: &mut Cx<'a,'tcx>) -> Stmt<'tcx> {
+    fn make_mirror<'a>(self, hir: &mut Cx<'a, 'tcx>) -> Stmt<'tcx> {
         match self {
             StmtRef::Hair(h) => h.make_mirror(hir),
             StmtRef::Mirror(m) => *m,
@@ -303,7 +403,7 @@ impl<'tcx> Mirror<'tcx> for StmtRef<'tcx> {
 impl<'tcx> Mirror<'tcx> for Pattern<'tcx> {
     type Output = Pattern<'tcx>;
 
-    fn make_mirror<'a>(self, _: &mut Cx<'a,'tcx>) -> Pattern<'tcx> {
+    fn make_mirror<'a>(self, _: &mut Cx<'a, 'tcx>) -> Pattern<'tcx> {
         self
     }
 }
@@ -311,7 +411,7 @@ impl<'tcx> Mirror<'tcx> for Pattern<'tcx> {
 impl<'tcx> Mirror<'tcx> for PatternRef<'tcx> {
     type Output = Pattern<'tcx>;
 
-    fn make_mirror<'a>(self, hir: &mut Cx<'a,'tcx>) -> Pattern<'tcx> {
+    fn make_mirror<'a>(self, hir: &mut Cx<'a, 'tcx>) -> Pattern<'tcx> {
         match self {
             PatternRef::Hair(h) => h.make_mirror(hir),
             PatternRef::Mirror(m) => *m,
@@ -322,8 +422,7 @@ impl<'tcx> Mirror<'tcx> for PatternRef<'tcx> {
 impl<'tcx> Mirror<'tcx> for Block<'tcx> {
     type Output = Block<'tcx>;
 
-    fn make_mirror<'a>(self, _: &mut Cx<'a,'tcx>) -> Block<'tcx> {
+    fn make_mirror<'a>(self, _: &mut Cx<'a, 'tcx>) -> Block<'tcx> {
         self
     }
 }
-

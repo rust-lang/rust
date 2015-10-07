@@ -27,14 +27,17 @@ use syntax::codemap::Span;
 use syntax::parse::token::{self, special_idents};
 
 #[derive(Copy, Clone)]
-pub struct Cx<'a,'tcx:'a> {
+pub struct Cx<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    infcx: &'a InferCtxt<'a,'tcx>,
+    infcx: &'a InferCtxt<'a, 'tcx>,
 }
 
 impl<'a,'tcx> Cx<'a,'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a,'tcx>) -> Cx<'a,'tcx> {
-        Cx { tcx: infcx.tcx, infcx: infcx }
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Cx<'a, 'tcx> {
+        Cx {
+            tcx: infcx.tcx,
+            infcx: infcx,
+        }
     }
 }
 
@@ -42,7 +45,7 @@ pub use self::pattern::PatNode;
 
 impl<'a,'tcx:'a> Cx<'a, 'tcx> {
     /// Normalizes `ast` into the appropriate `mirror` type.
-    pub fn mirror<M:Mirror<'tcx>>(&mut self, ast: M) -> M::Output {
+    pub fn mirror<M: Mirror<'tcx>>(&mut self, ast: M) -> M::Output {
         ast.make_mirror(self)
     }
 
@@ -141,13 +144,11 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
                     }
                 }
                 ty::ImplOrTraitItem::ConstTraitItem(..) |
-                ty::ImplOrTraitItem::TypeTraitItem(..) => {
-                }
+                ty::ImplOrTraitItem::TypeTraitItem(..) => {}
             }
         }
 
-        self.tcx.sess.bug(
-            &format!("found no method `{}` in `{:?}`", method_name, trait_def_id));
+        self.tcx.sess.bug(&format!("found no method `{}` in `{:?}`", method_name, trait_def_id));
     }
 }
 
@@ -155,4 +156,3 @@ mod block;
 mod expr;
 mod pattern;
 mod to_ref;
-

@@ -30,18 +30,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     fn expr_as_lvalue(&mut self,
                       mut block: BasicBlock,
                       expr: Expr<'tcx>)
-                      -> BlockAnd<Lvalue<'tcx>>
-    {
-        debug!("expr_as_lvalue(block={:?}, expr={:?})",
-               block, expr);
+                      -> BlockAnd<Lvalue<'tcx>> {
+        debug!("expr_as_lvalue(block={:?}, expr={:?})", block, expr);
 
         let this = self;
         let expr_span = expr.span;
         match expr.kind {
             ExprKind::Scope { extent, value } => {
-                this.in_scope(extent, block, |this| {
-                    this.as_lvalue(block, value)
-                })
+                this.in_scope(extent, block, |this| this.as_lvalue(block, value))
             }
             ExprKind::Field { lhs, name } => {
                 let lvalue = unpack!(block = this.as_lvalue(block, lhs));
@@ -69,12 +65,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                                            idx.clone(),
                                                            Operand::Consume(len)));
 
-                let (success, failure) = (this.cfg.start_new_block(),
-                                          this.cfg.start_new_block());
+                let (success, failure) = (this.cfg.start_new_block(), this.cfg.start_new_block());
                 this.cfg.terminate(block,
                                    Terminator::If {
                                        cond: Operand::Consume(lt),
-                                       targets: [success, failure]
+                                       targets: [success, failure],
                                    });
                 this.panic(failure);
                 success.and(slice.index(idx))
