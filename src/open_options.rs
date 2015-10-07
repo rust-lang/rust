@@ -7,7 +7,7 @@ use syntax::ast::Lit_::LitBool;
 declare_lint! {
     pub NONSENSICAL_OPEN_OPTIONS,
     Warn,
-    "The options used for opening a file are nonsensical"
+    "nonsensical combination of options for opening a file"
 }
 
 
@@ -42,14 +42,14 @@ enum Argument {
 
 #[derive(Debug)]
 enum OpenOption {
-    Write(Argument),
-    Read(Argument),
-    Truncate(Argument),
-    Create(Argument),
-    Append(Argument)
+    Write,
+    Read,
+    Truncate,
+    Create,
+    Append
 }
 
-fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<OpenOption>) {
+fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOption, Argument)>) {
     if let ExprMethodCall(ref name, _, ref arguments) = argument.node {
         let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&arguments[0]));
         
@@ -73,19 +73,19 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<OpenOpt
             
             match &*name.node.as_str() {
                 "create" => {
-                    options.push(OpenOption::Create(argument_option));
+                    options.push((OpenOption::Create, argument_option));
                 },
                 "append" => {
-                    options.push(OpenOption::Append(argument_option));
+                    options.push((OpenOption::Append, argument_option));
                 },
                 "truncate" => {
-                    options.push(OpenOption::Truncate(argument_option));
+                    options.push((OpenOption::Truncate, argument_option));
                 },
                 "read" => {
-                    options.push(OpenOption::Read(argument_option));
+                    options.push((OpenOption::Read, argument_option));
                 },
                 "write" => {
-                    options.push(OpenOption::Write(argument_option));
+                    options.push((OpenOption::Write, argument_option));
                 },
                 _ => {}
             }
@@ -95,45 +95,45 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<OpenOpt
     }
 }
 
-fn check_for_duplicates(cx: &LateContext, options: &[OpenOption], span: Span) {
+fn check_for_duplicates(cx: &LateContext, options: &[(OpenOption, Argument)], span: Span) {
     // This code is almost duplicated (oh, the irony), but I haven't found a way to unify it.
-    if options.iter().filter(|o| if let OpenOption::Create(_) = **o {true} else {false}).count() > 1 {
+    if options.iter().filter(|o| if let (OpenOption::Create, _) = **o {true} else {false}).count() > 1 {
         span_lint(cx, NONSENSICAL_OPEN_OPTIONS, span, "The method \"create\" \
                                                        is called more than once");
     }
-    if options.iter().filter(|o| if let OpenOption::Append(_) = **o {true} else {false}).count() > 1 {
+    if options.iter().filter(|o| if let (OpenOption::Append, _) = **o {true} else {false}).count() > 1 {
         span_lint(cx, NONSENSICAL_OPEN_OPTIONS, span, "The method \"append\" \
                                                        is called more than once");
     }
-    if options.iter().filter(|o| if let OpenOption::Truncate(_) = **o {true} else {false}).count() > 1 {
+    if options.iter().filter(|o| if let (OpenOption::Truncate, _) = **o {true} else {false}).count() > 1 {
         span_lint(cx, NONSENSICAL_OPEN_OPTIONS, span, "The method \"truncate\" \
                                                        is called more than once");
     }
-    if options.iter().filter(|o| if let OpenOption::Read(_) = **o {true} else {false}).count() > 1 {
+    if options.iter().filter(|o| if let (OpenOption::Read, _) = **o {true} else {false}).count() > 1 {
         span_lint(cx, NONSENSICAL_OPEN_OPTIONS, span, "The method \"read\" \
                                                        is called more than once");
     }
-    if options.iter().filter(|o| if let OpenOption::Write(_) = **o {true} else {false}).count() > 1 {
+    if options.iter().filter(|o| if let (OpenOption::Write, _) = **o {true} else {false}).count() > 1 {
         span_lint(cx, NONSENSICAL_OPEN_OPTIONS, span, "The method \"write\" \
                                                        is called more than once");
     }
 }
 
-fn check_for_inconsistencies(cx: &LateContext, options: &[OpenOption], span: Span) {
+fn check_for_inconsistencies(cx: &LateContext, options: &[(OpenOption, Argument)], span: Span) {
     // Truncate + read makes no sense.
-    if options.iter().filter(|o| if let OpenOption::Read(Argument::True) = **o {true} else {false}).count() > 0 &&
-       options.iter().filter(|o| if let OpenOption::Truncate(Argument::True) = **o {true} else {false}).count() > 0 {
+    if options.iter().filter(|o| if let (OpenOption::Read, Argument::True) = **o {true} else {false}).count() > 0 &&
+       options.iter().filter(|o| if let (OpenOption::Truncate, Argument::True) = **o {true} else {false}).count() > 0 {
         span_lint(cx, NONSENSICAL_OPEN_OPTIONS, span, "File opened with \"truncate\" and \"read\"");
     }
     
     // Append + truncate makes no sense.
-    if options.iter().filter(|o| if let OpenOption::Append(Argument::True) = **o {true} else {false}).count() > 0 &&
-       options.iter().filter(|o| if let OpenOption::Truncate(Argument::True) = **o {true} else {false}).count() > 0 {
+    if options.iter().filter(|o| if let (OpenOption::Append, Argument::True) = **o {true} else {false}).count() > 0 &&
+       options.iter().filter(|o| if let (OpenOption::Truncate, Argument::True) = **o {true} else {false}).count() > 0 {
         span_lint(cx, NONSENSICAL_OPEN_OPTIONS, span, "File opened with \"append\" and \"truncate\"");
     }
 }
 
-fn check_open_options(cx: &LateContext, options: &[OpenOption], span: Span) {
+fn check_open_options(cx: &LateContext, options: &[(OpenOption, Argument)], span: Span) {
     check_for_duplicates(cx, options, span);
     check_for_inconsistencies(cx, options, span);
 }
