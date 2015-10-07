@@ -566,102 +566,25 @@ impl<'tcx> ty::ctxt<'tcx> {
         }
     }
 
-    /// Returns true if this ADT is a dtorck type, i.e. whether it being
-    /// safe for destruction requires it to be alive
+    /// Returns true if this ADT is a dtorck type, i.e. whether it
+    /// being safe for destruction requires all borrowed pointers
+    /// reachable by it to have lifetimes strictly greater than self.
     pub fn is_adt_dtorck(&self, adt: ty::AdtDef<'tcx>) -> bool {
         let dtor_method = match adt.destructor() {
             Some(dtor) => dtor,
             None => return false
         };
-        let impl_did = self.impl_of_method(dtor_method).unwrap_or_else(|| {
-            self.sess.bug(&format!("no Drop impl for the dtor of `{:?}`", adt))
-        });
-        let generics = adt.type_scheme(self).generics;
 
         // RFC 1238: if the destructor method is tagged with the
         // attribute `unsafe_destructor_blind_to_params`, then the
         // compiler is being instructed to *assume* that the
-        // destructor will not access borrowed data via a type
-        // parameter, even if such data is otherwise reachable.
-        if self.has_attr(dtor_method, "unsafe_destructor_blind_to_params") {
-            debug!("typ: {:?} assumed blind and thus is dtorck-safe", adt);
-            return false;
-        }
-
-        // In `impl<'a> Drop ...`, we automatically assume
-        // `'a` is meaningful and thus represents a bound
-        // through which we could reach borrowed data.
+        // destructor will not access borrowed data,
+        // even if such data is otherwise reachable.
         //
-        // FIXME (pnkfelix): In the future it would be good to
-        // extend the language to allow the user to express,
-        // in the impl signature, that a lifetime is not
-        // actually used (something like `where 'a: ?Live`).
-        if generics.has_region_params(subst::TypeSpace) {
-            debug!("typ: {:?} has interesting dtor due to region params",
-                   adt);
-            return true;
-        }
-
-        // RFC 1238: *any* type parameter at all makes this a dtor of
-        // interest (i.e. cannot-assume-parametricity from RFC 1238.)
-        if generics.has_type_params(subst::TypeSpace) {
-            debug!("typ: {:?} has interesting dtor due to type params",
-                   adt);
-            return true;
-        }
-
-        let mut seen_items = Vec::new();
-        let mut items_to_inspect = vec![impl_did];
-        while let Some(item_def_id) = items_to_inspect.pop() {
-            if seen_items.contains(&item_def_id) {
-                continue;
-            }
-
-            for pred in self.lookup_predicates(item_def_id).predicates {
-                let result = match pred {
-                    ty::Predicate::Equate(..) |
-                    ty::Predicate::RegionOutlives(..) |
-                    ty::Predicate::TypeOutlives(..) |
-                    ty::Predicate::WellFormed(..) |
-                    ty::Predicate::ObjectSafe(..) |
-                    ty::Predicate::Projection(..) => {
-                        // For now, assume all these where-clauses
-                        // may give drop implementation capabilty
-                        // to access borrowed data.
-                        true
-                    }
-
-                    ty::Predicate::Trait(ty::Binder(ref t_pred)) => {
-                        let def_id = t_pred.trait_ref.def_id;
-                        if self.trait_items(def_id).len() != 0 {
-                            // If trait has items, assume it adds
-                            // capability to access borrowed data.
-                            true
-                        } else {
-                            // Trait without items is itself
-                            // uninteresting from POV of dropck.
-                            //
-                            // However, may have parent w/ items;
-                            // so schedule checking of predicates,
-                            items_to_inspect.push(def_id);
-                            // and say "no capability found" for now.
-                            false
-                        }
-                    }
-                };
-
-                if result {
-                    debug!("typ: {:?} has interesting dtor due to generic preds, e.g. {:?}",
-                           adt, pred);
-                    return true;
-                }
-            }
-
-            seen_items.push(item_def_id);
-        }
-
-        debug!("typ: {:?} is dtorck-safe", adt);
-        false
+        // Such access can be in plain sight (e.g. dereferencing
+        // `*foo.0` of `Foo<'a>(&'a u32)`) or indirectly hidden
+        // (e.g. calling `foo.0.clone()` of `Foo<T:Clone>`).
+        return !self.has_attr(dtor_method, "unsafe_destructor_blind_to_params");
     }
 }
 
