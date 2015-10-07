@@ -48,7 +48,9 @@ trait GenericRadix {
     fn base(&self) -> u8;
 
     /// A radix-specific prefix string.
-    fn prefix(&self) -> &'static str { "" }
+    fn prefix(&self) -> &'static str {
+        ""
+    }
 
     /// Converts an integer to corresponding radix digit.
     fn digit(&self, x: u8) -> u8;
@@ -70,7 +72,10 @@ trait GenericRadix {
                 x = x / base;                  // Deaccumulate the number.
                 *byte = self.digit(n.to_u8()); // Store the digit in the buffer.
                 curr -= 1;
-                if x == zero { break };        // No more digits left to accumulate.
+                if x == zero {
+                    // No more digits left to accumulate.
+                    break
+                };
             }
         } else {
             // Do the same as above, but accounting for two's complement.
@@ -79,7 +84,10 @@ trait GenericRadix {
                 x = x / base;                  // Deaccumulate the number.
                 *byte = self.digit(n.to_u8()); // Store the digit in the buffer.
                 curr -= 1;
-                if x == zero { break };        // No more digits left to accumulate.
+                if x == zero {
+                    // No more digits left to accumulate.
+                    break
+                };
             }
         }
         let buf = unsafe { str::from_utf8_unchecked(&buf[curr..]) };
@@ -141,13 +149,17 @@ pub struct Radix {
 
 impl Radix {
     fn new(base: u8) -> Radix {
-        assert!(2 <= base && base <= 36, "the base must be in the range of 2..36: {}", base);
+        assert!(2 <= base && base <= 36,
+                "the base must be in the range of 2..36: {}",
+                base);
         Radix { base: base }
     }
 }
 
 impl GenericRadix for Radix {
-    fn base(&self) -> u8 { self.base }
+    fn base(&self) -> u8 {
+        self.base
+    }
     fn digit(&self, x: u8) -> u8 {
         match x {
             x @  0 ... 9 => b'0' + x,

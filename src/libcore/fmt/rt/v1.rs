@@ -53,5 +53,5 @@ pub enum Count {
 #[derive(Copy, Clone)]
 pub enum Position {
     Next,
-    At(usize)
+    At(usize),
 }

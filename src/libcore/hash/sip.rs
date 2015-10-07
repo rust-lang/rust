@@ -37,12 +37,12 @@ pub struct SipHasher {
     // and simd implementations of SipHash will use vectors
     // of v02 and v13. By placing them in this order in the struct,
     // the compiler can pick up on just a few simd optimizations by itself.
-    v0: u64,      // hash state
+    v0: u64, // hash state
     v2: u64,
     v1: u64,
     v3: u64,
     tail: u64, // unprocessed bytes le
-    ntail: usize,  // how many bytes in tail are valid
+    ntail: usize, // how many bytes in tail are valid
 }
 
 // sadly, these macro definitions can't appear later,
@@ -80,8 +80,7 @@ macro_rules! u8to64_le {
 unsafe fn load_u64_le(buf: &[u8], i: usize) -> u64 {
     debug_assert!(i + 8 <= buf.len());
     let mut data = 0u64;
-    ptr::copy_nonoverlapping(buf.get_unchecked(i),
-                             &mut data as *mut _ as *mut u8, 8);
+    ptr::copy_nonoverlapping(buf.get_unchecked(i), &mut data as *mut _ as *mut u8, 8);
     data.to_le()
 }
 
@@ -152,12 +151,12 @@ impl Hasher for SipHasher {
         if self.ntail != 0 {
             needed = 8 - self.ntail;
             if length < needed {
-                self.tail |= u8to64_le!(msg, 0, length) << 8*self.ntail;
+                self.tail |= u8to64_le!(msg, 0, length) << 8 * self.ntail;
                 self.ntail += length;
                 return
             }
 
-            let m = self.tail | u8to64_le!(msg, 0, needed) << 8*self.ntail;
+            let m = self.tail | u8to64_le!(msg, 0, needed) << 8 * self.ntail;
 
             self.v3 ^= m;
             compress!(self.v0, self.v1, self.v2, self.v3);
