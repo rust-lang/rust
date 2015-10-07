@@ -38,9 +38,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
         match expr.kind {
             ExprKind::Scope { extent, value } => {
-                this.in_scope(extent, block, |this| {
-                    this.into(destination, block, value)
-                })
+                this.in_scope(extent, block, |this| this.into(destination, block, value))
             }
             ExprKind::Block { body: ast_block } => {
                 this.ast_block(destination, block, ast_block)
@@ -204,8 +202,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                        |loop_scope| loop_scope.continue_block)
             }
             ExprKind::Break { label } => {
-                this.break_or_continue(expr_span, label, block,
-                                       |loop_scope| loop_scope.break_block)
+                this.break_or_continue(expr_span, label, block, |loop_scope| loop_scope.break_block)
             }
             ExprKind::Return { value } => {
                 unpack!(block = this.into(&Lvalue::ReturnPointer, block, value));
@@ -226,9 +223,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                        data: CallData {
                                            destination: destination.clone(),
                                            func: fun,
-                                           args: args
+                                           args: args,
                                        },
-                                       targets: [success, panic]
+                                       targets: [success, panic],
                                    });
                 success.unit()
             }

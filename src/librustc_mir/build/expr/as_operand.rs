@@ -20,11 +20,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// If `expr` is an lvalue like `x`, this will introduce a
     /// temporary `tmp = x`, so that we capture the value of `x` at
     /// this time.
-    pub fn as_operand<M>(&mut self,
-                         block: BasicBlock,
-                         expr: M)
-                         -> BlockAnd<Operand<'tcx>>
-        where M: Mirror<'tcx, Output=Expr<'tcx>>
+    pub fn as_operand<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Operand<'tcx>>
+        where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
         self.expr_as_operand(block, expr)
@@ -33,16 +30,12 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     fn expr_as_operand(&mut self,
                        mut block: BasicBlock,
                        expr: Expr<'tcx>)
-                       -> BlockAnd<Operand<'tcx>>
-    {
-        debug!("expr_as_operand(block={:?}, expr={:?})",
-               block, expr);
+                       -> BlockAnd<Operand<'tcx>> {
+        debug!("expr_as_operand(block={:?}, expr={:?})", block, expr);
         let this = self;
 
         if let ExprKind::Scope { extent, value } = expr.kind {
-            return this.in_scope(extent, block, |this| {
-                this.as_operand(block, value)
-            });
+            return this.in_scope(extent, block, |this| this.as_operand(block, value));
         }
 
         let category = Category::of(&expr.kind).unwrap();

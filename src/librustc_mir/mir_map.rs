@@ -39,10 +39,13 @@ use self::syntax::codemap::Span;
 
 pub type MirMap<'tcx> = NodeMap<Mir<'tcx>>;
 
-pub fn build_mir_for_crate<'tcx>(tcx: &ty::ctxt<'tcx>) -> MirMap<'tcx>{
+pub fn build_mir_for_crate<'tcx>(tcx: &ty::ctxt<'tcx>) -> MirMap<'tcx> {
     let mut map = NodeMap();
     {
-        let mut dump = OuterDump { tcx: tcx, map: &mut map };
+        let mut dump = OuterDump {
+            tcx: tcx,
+            map: &mut map,
+        };
         visit::walk_crate(&mut dump, tcx.map.krate());
     }
     map
@@ -51,16 +54,20 @@ pub fn build_mir_for_crate<'tcx>(tcx: &ty::ctxt<'tcx>) -> MirMap<'tcx>{
 ///////////////////////////////////////////////////////////////////////////
 // OuterDump -- walks a crate, looking for fn items and methods to build MIR from
 
-struct OuterDump<'a,'tcx:'a> {
+struct OuterDump<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     map: &'a mut MirMap<'tcx>,
 }
 
 impl<'a, 'tcx> OuterDump<'a, 'tcx> {
     fn visit_mir<OP>(&mut self, attributes: &'a [ast::Attribute], mut walk_op: OP)
-        where OP: for<'m> FnMut(&mut InnerDump<'a,'m,'tcx>)
+        where OP: for<'m> FnMut(&mut InnerDump<'a, 'm, 'tcx>)
     {
-        let mut closure_dump = InnerDump { tcx: self.tcx, attr: None, map: &mut *self.map };
+        let mut closure_dump = InnerDump {
+            tcx: self.tcx,
+            attr: None,
+            map: &mut *self.map,
+        };
         for attr in attributes {
             if attr.check_name("rustc_mir") {
                 closure_dump.attr = Some(attr);
@@ -84,8 +91,7 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for OuterDump<'a, 'tcx> {
             }
             hir::MethodTraitItem(_, None) |
             hir::ConstTraitItem(..) |
-            hir::TypeTraitItem(..) => {
-            }
+            hir::TypeTraitItem(..) => {}
         }
         visit::walk_trait_item(self, trait_item);
     }
@@ -95,7 +101,7 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for OuterDump<'a, 'tcx> {
             hir::MethodImplItem(..) => {
                 self.visit_mir(&impl_item.attrs, |c| visit::walk_impl_item(c, impl_item));
             }
-            hir::ConstImplItem(..) | hir::TypeImplItem(..) => { }
+            hir::ConstImplItem(..) | hir::TypeImplItem(..) => {}
         }
         visit::walk_impl_item(self, impl_item);
     }
@@ -104,7 +110,7 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for OuterDump<'a, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // InnerDump -- dumps MIR for a single fn and its contained closures
 
-struct InnerDump<'a,'m,'tcx:'a+'m> {
+struct InnerDump<'a, 'm, 'tcx: 'a + 'm> {
     tcx: &'a ty::ctxt<'tcx>,
     map: &'m mut MirMap<'tcx>,
     attr: Option<&'a ast::Attribute>,
@@ -136,21 +142,16 @@ impl<'a, 'm, 'tcx> visit::Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
                 (format!(""), vec![]),
         };
 
-        let param_env =
-            ty::ParameterEnvironment::for_item(self.tcx, id);
+        let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
 
-        let infcx =
-            infer::new_infer_ctxt(self.tcx,
-                                  &self.tcx.tables,
-                                  Some(param_env),
-                                  true);
+        let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, Some(param_env), true);
 
         match build_mir(Cx::new(&infcx), implicit_arg_tys, id, span, decl, body) {
             Ok(mir) => {
-                let meta_item_list =
-                    self.attr.iter()
-                             .flat_map(|a| a.meta_item_list())
-                             .flat_map(|l| l.iter());
+                let meta_item_list = self.attr
+                                         .iter()
+                                         .flat_map(|a| a.meta_item_list())
+                                         .flat_map(|l| l.iter());
                 for item in meta_item_list {
                     if item.check_name("graphviz") {
                         match item.value_str() {
@@ -181,58 +182,49 @@ impl<'a, 'm, 'tcx> visit::Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
                 let previous = self.map.insert(id, mir);
                 assert!(previous.is_none());
             }
-            Err(ErrorReported) => { }
+            Err(ErrorReported) => {}
         }
 
         visit::walk_fn(self, fk, decl, body, span);
     }
 }
 
-fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
-                         implicit_arg_tys: Vec<Ty<'tcx>>,
-                         fn_id: ast::NodeId,
-                         span: Span,
-                         decl: &'tcx hir::FnDecl,
-                         body: &'tcx hir::Block)
-                         -> Result<Mir<'tcx>, ErrorReported> {
-    let arguments =
-        decl.inputs
-            .iter()
-            .map(|arg| {
-                let ty = cx.tcx().node_id_to_type(arg.id);
-                (ty, PatNode::irrefutable(&arg.pat))
-            })
-            .collect();
+fn build_mir<'a, 'tcx: 'a>(cx: Cx<'a, 'tcx>,
+                           implicit_arg_tys: Vec<Ty<'tcx>>,
+                           fn_id: ast::NodeId,
+                           span: Span,
+                           decl: &'tcx hir::FnDecl,
+                           body: &'tcx hir::Block)
+                           -> Result<Mir<'tcx>, ErrorReported> {
+    let arguments = decl.inputs
+                        .iter()
+                        .map(|arg| {
+                            let ty = cx.tcx().node_id_to_type(arg.id);
+                            (ty, PatNode::irrefutable(&arg.pat))
+                        })
+                        .collect();
 
-    let parameter_scope =
-        cx.tcx().region_maps.lookup_code_extent(
-            CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body.id });
-    Ok(build::construct(cx,
-                        span,
-                        implicit_arg_tys,
-                        arguments,
-                        parameter_scope,
-                        body))
+    let parameter_scope = cx.tcx().region_maps.lookup_code_extent(CodeExtentData::ParameterScope {
+        fn_id: fn_id,
+        body_id: body.id,
+    });
+    Ok(build::construct(cx, span, implicit_arg_tys, arguments, parameter_scope, body))
 }
 
-fn closure_self_ty<'a,'tcx>(tcx: &ty::ctxt<'tcx>,
-                            closure_expr_id: ast::NodeId,
-                            body_id: ast::NodeId)
-                            -> Ty<'tcx>
-{
+fn closure_self_ty<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
+                             closure_expr_id: ast::NodeId,
+                             body_id: ast::NodeId)
+                             -> Ty<'tcx> {
     let closure_ty = tcx.node_id_to_type(closure_expr_id);
 
     // We're just hard-coding the idea that the signature will be
     // &self or &mut self and hence will have a bound region with
     // number 0, hokey.
-    let region =
-        ty::Region::ReFree(
-            ty::FreeRegion {
-                scope: tcx.region_maps.item_extent(body_id),
-                bound_region: ty::BoundRegion::BrAnon(0)
-            });
-    let region =
-        tcx.mk_region(region);
+    let region = ty::Region::ReFree(ty::FreeRegion {
+        scope: tcx.region_maps.item_extent(body_id),
+        bound_region: ty::BoundRegion::BrAnon(0),
+    });
+    let region = tcx.mk_region(region);
 
     match tcx.closure_kind(tcx.map.local_def_id(closure_expr_id)) {
         ty::ClosureKind::FnClosureKind =>
