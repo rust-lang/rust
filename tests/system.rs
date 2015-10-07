@@ -16,6 +16,7 @@ extern crate term;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read, BufRead, BufReader};
+use std::path::Path;
 
 use rustfmt::*;
 use rustfmt::config::{Config, ReportTactic};
@@ -232,8 +233,19 @@ fn handle_result(result: HashMap<String, String>,
 
 // Map source file paths to their target paths.
 fn get_target(file_name: &str, target: Option<&str>) -> String {
-    if file_name.starts_with("tests/source/") {
-        let base = target.unwrap_or(file_name.trim_left_matches("tests/source/"));
+    let file_path = Path::new(file_name);
+    let source_path_prefix = Path::new("tests/source/");
+    if file_path.starts_with(source_path_prefix) {
+        let mut components = file_path.components();
+        // Can't skip(2) as the resulting iterator can't as_path()
+        components.next();
+        components.next();
+
+        let new_target = match components.as_path().to_str() {
+            Some(string) => string,
+            None => file_name,
+        };
+        let base = target.unwrap_or(new_target);
 
         format!("tests/target/{}", base)
     } else {
