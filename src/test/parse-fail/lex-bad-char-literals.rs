@@ -25,8 +25,8 @@ static s: &'static str =
     "\●" //~ ERROR: unknown character escape
 ;
 
-// THIS MUST BE LAST, since unterminated character constants kill the lexer
+// THIS MUST BE LAST, since it kills the lexer
 
 static c: char =
-    '●  //~ ERROR: unterminated character constant
+    '●  //~ ERROR: character literal may only contain one codepoint
 ;
