@@ -33,15 +33,16 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn simplify_candidate(&mut self,
                               mut block: BasicBlock,
                               candidate: &mut Candidate<'tcx>)
-                              -> BlockAnd<()>
-    {
+                              -> BlockAnd<()> {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
             let match_pairs = mem::replace(&mut candidate.match_pairs, vec![]);
             let mut progress = match_pairs.len(); // count how many were simplified
             for match_pair in match_pairs {
                 match self.simplify_match_pair(block, match_pair, candidate) {
-                    Ok(b) => { block = b; }
+                    Ok(b) => {
+                        block = b;
+                    }
                     Err(match_pair) => {
                         candidate.match_pairs.push(match_pair);
                         progress -= 1; // this one was not simplified
@@ -63,8 +64,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                            mut block: BasicBlock,
                            match_pair: MatchPair<'tcx>,
                            candidate: &mut Candidate<'tcx>)
-                           -> Result<BasicBlock, MatchPair<'tcx>>
-    {
+                           -> Result<BasicBlock, MatchPair<'tcx>> {
         match match_pair.pattern.kind {
             PatternKind::Wild(..) => {
                 // nothing left to do
@@ -115,8 +115,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
             PatternKind::Leaf { subpatterns } => {
                 // tuple struct, match subpats (if any)
-                candidate.match_pairs.extend(
-                    self.field_match_pairs(match_pair.lvalue, subpatterns));
+                candidate.match_pairs
+                         .extend(self.field_match_pairs(match_pair.lvalue, subpatterns));
                 Ok(block)
             }
 
@@ -129,4 +129,3 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         }
     }
 }
-
