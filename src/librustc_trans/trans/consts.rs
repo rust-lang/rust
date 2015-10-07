@@ -630,7 +630,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 // pass. Reporting here is a bit late.
                 cx.sess().span_err(e.span,
                                    "const index-expr is out of bounds");
-                C_undef(type_of::type_of(cx, bt).element_type())
+                C_undef(val_ty(arr).element_type())
             } else {
                 const_get_elt(cx, arr, &[iv as c_uint])
             }
