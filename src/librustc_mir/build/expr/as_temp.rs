@@ -15,14 +15,14 @@ use build::expr::category::Category;
 use hair::*;
 use repr::*;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
     pub fn as_temp<M>(&mut self,
                       block: BasicBlock,
                       expr: M)
-                      -> BlockAnd<Lvalue<H>>
-        where M: Mirror<H, Output=Expr<H>>
+                      -> BlockAnd<Lvalue<'tcx>>
+        where M: Mirror<'tcx, Output=Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
         self.expr_as_temp(block, expr)
@@ -30,8 +30,8 @@ impl<H:Hair> Builder<H> {
 
     fn expr_as_temp(&mut self,
                     mut block: BasicBlock,
-                    expr: Expr<H>)
-                    -> BlockAnd<Lvalue<H>>
+                    expr: Expr<'tcx>)
+                    -> BlockAnd<Lvalue<'tcx>>
     {
         debug!("expr_as_temp(block={:?}, expr={:?})",
                block, expr);

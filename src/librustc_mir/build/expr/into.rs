@@ -15,14 +15,16 @@ use build::expr::category::{Category, RvalueFunc};
 use build::scope::LoopScope;
 use hair::*;
 use repr::*;
+use rustc::middle::region::CodeExtent;
+use syntax::codemap::Span;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
     pub fn into_expr(&mut self,
-                     destination: &Lvalue<H>,
+                     destination: &Lvalue<'tcx>,
                      mut block: BasicBlock,
-                     expr: Expr<H>)
+                     expr: Expr<'tcx>)
                      -> BlockAnd<()>
     {
         debug!("into_expr(destination={:?}, block={:?}, expr={:?})",
@@ -266,12 +268,12 @@ impl<H:Hair> Builder<H> {
     }
 
     fn break_or_continue<F>(&mut self,
-                            span: H::Span,
-                            label: Option<H::CodeExtent>,
+                            span: Span,
+                            label: Option<CodeExtent>,
                             block: BasicBlock,
                             exit_selector: F)
                             -> BlockAnd<()>
-        where F: FnOnce(&LoopScope<H>) -> BasicBlock
+        where F: FnOnce(&LoopScope) -> BasicBlock
     {
         let loop_scope = self.find_loop_scope(span, label);
         let exit_block = exit_selector(&loop_scope);

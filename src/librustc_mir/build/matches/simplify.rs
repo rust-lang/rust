@@ -29,10 +29,10 @@ use repr::*;
 
 use std::mem;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn simplify_candidate(&mut self,
                               mut block: BasicBlock,
-                              candidate: &mut Candidate<H>)
+                              candidate: &mut Candidate<'tcx>)
                               -> BlockAnd<()>
     {
         // repeatedly simplify match pairs until fixed point is reached
@@ -56,13 +56,14 @@ impl<H:Hair> Builder<H> {
 
     /// Tries to simplify `match_pair`, returning true if
     /// successful. If successful, new match pairs and bindings will
-    /// have been pushed into the candidate. On failure (if false is
-    /// returned), no changes are made to candidate.
+    /// have been pushed into the candidate. If no simplification is
+    /// possible, Err is returned and no changes are made to
+    /// candidate.
     fn simplify_match_pair(&mut self,
                            mut block: BasicBlock,
-                           match_pair: MatchPair<H>,
-                           candidate: &mut Candidate<H>)
-                           -> Result<BasicBlock, MatchPair<H>> // returns Err() if cannot simplify
+                           match_pair: MatchPair<'tcx>,
+                           candidate: &mut Candidate<'tcx>)
+                           -> Result<BasicBlock, MatchPair<'tcx>>
     {
         match match_pair.pattern.kind {
             PatternKind::Wild(..) => {
