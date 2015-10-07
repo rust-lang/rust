@@ -23,6 +23,31 @@ match x {
 
 This prints `one`.
 
+There’s one pitfall with patterns: like anything that introduces a new binding,
+they introduce shadowing. For example:
+
+```rust
+let x = 'x';
+let c = 'c';
+
+match c {
+    x => println!("x: {} c: {}", x, c),
+}
+
+println!("x: {}", x)
+```
+
+This prints:
+
+```text
+x: c c: c
+x: x
+```
+
+In other words, `x =>` matches the pattern and introduces a new binding named
+`x` that’s in scope for the match arm. Because we already have a binding named
+`x`, this new `x` shadows it.
+
 # Multiple patterns
 
 You can match multiple patterns with `|`:
