@@ -22,7 +22,7 @@ use libc;
 use sys_common::{AsInner, FromInner};
 use net::{hton, ntoh};
 
-/// An IP address, either a IPv4 or IPv6 address.
+/// An IP address, either an IPv4 or IPv6 address.
 #[unstable(feature = "ip_addr", reason = "recent addition", issue = "27801")]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash, PartialOrd, Ord)]
 pub enum IpAddr {

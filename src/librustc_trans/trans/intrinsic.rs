@@ -1221,8 +1221,8 @@ fn try_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 // MSVC's definition of the `rust_try` function. The exact implementation here
 // is a little different than the GNU (standard) version below, not only because
 // of the personality function but also because of the other fiddly bits about
-// SEH. LLVM also currently requires us to structure this a very particular way
-// as explained below.
+// SEH. LLVM also currently requires us to structure this in a very particular
+// way as explained below.
 //
 // Like with the GNU version we generate a shim wrapper
 fn trans_msvc_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,

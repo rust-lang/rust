@@ -562,7 +562,7 @@ macro_rules! derive_pattern_clone {
 }
 
 /// This macro generates two public iterator structs
-/// wrapping an private internal one that makes use of the `Pattern` API.
+/// wrapping a private internal one that makes use of the `Pattern` API.
 ///
 /// For all patterns `P: Pattern<'a>` the following items will be
 /// generated (generics omitted):

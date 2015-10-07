@@ -32,7 +32,7 @@
 //! As it processes them, it fills up `eof_eis` with items that would be valid if
 //! the macro invocation is now over, `bb_eis` with items that are waiting on
 //! a Rust nonterminal like `$e:expr`, and `next_eis` with items that are waiting
-//! on the a particular token. Most of the logic concerns moving the · through the
+//! on a particular token. Most of the logic concerns moving the · through the
 //! repetitions indicated by Kleene stars. It only advances or calls out to the
 //! real Rust parser when no `cur_eis` items remain
 //!

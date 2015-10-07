@@ -49,7 +49,7 @@ pub mod time;
 pub mod stdio;
 
 pub fn init() {
-    // By default, some platforms will send a *signal* when a EPIPE error
+    // By default, some platforms will send a *signal* when an EPIPE error
     // would otherwise be delivered. This runtime doesn't install a SIGPIPE
     // handler, causing it to kill the program, which isn't exactly what we
     // want!

@@ -48,7 +48,7 @@ struct Test5<'a, 'b:'a> { //~ ERROR regions=[[+, o];[];[]]
 
 // Invariance is a trap from which NO ONE CAN ESCAPE.
 // In other words, even though the `&'b isize` occurs in
-// a argument list (which is contravariant), that
+// an argument list (which is contravariant), that
 // argument list occurs in an invariant context.
 
 #[rustc_variance]
