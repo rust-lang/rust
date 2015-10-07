@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 60 lints included in this crate:
+There are 61 lints included in this crate:
 
 name                                                                                                   | default | meaning
 -------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -38,6 +38,7 @@ name                                                                            
 [modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                               | warn    | taking a number modulo 1, which always returns 0
 [mut_mut](https://github.com/Manishearth/rust-clippy/wiki#mut_mut)                                     | allow   | usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, or shows a fundamental misunderstanding of references)
 [mutex_atomic](https://github.com/Manishearth/rust-clippy/wiki#mutex_atomic)                           | warn    | using a Mutex where an atomic value could be used instead
+[mutex_integer](https://github.com/Manishearth/rust-clippy/wiki#mutex_integer)                         | allow   | using a Mutex for an integer type
 [needless_bool](https://github.com/Manishearth/rust-clippy/wiki#needless_bool)                         | warn    | if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
 [needless_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#needless_lifetimes)               | warn    | using explicit lifetimes for references in function arguments when elision rules would allow omitting them
 [needless_range_loop](https://github.com/Manishearth/rust-clippy/wiki#needless_range_loop)             | warn    | for-looping over a range of indices where an iterator over items would do

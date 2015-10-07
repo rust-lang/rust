@@ -17,11 +17,18 @@ declare_lint! {
     "using a Mutex where an atomic value could be used instead"
 }
 
+declare_lint! {
+    pub MUTEX_INTEGER,
+    Allow,
+    "using a Mutex for an integer type"
+}
+
 impl LintPass for MutexAtomic {
     fn get_lints(&self) -> LintArray {
-        lint_array!(MUTEX_ATOMIC)
+        lint_array!(MUTEX_ATOMIC, MUTEX_INTEGER)
     }
 }
+
 pub struct MutexAtomic;
 
 impl LateLintPass for MutexAtomic {
@@ -33,7 +40,13 @@ impl LateLintPass for MutexAtomic {
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {
                     let msg = format!("Consider using an {} instead of a \
                                        Mutex here.", atomic_name);
-                    span_lint(cx, MUTEX_ATOMIC, expr.span, &msg);
+                    match *mutex_param {
+                        ty::TyUint(t) if t != ast::TyUs =>
+                            span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        ty::TyInt(t) if t != ast::TyIs =>
+                            span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        _ => span_lint(cx, MUTEX_ATOMIC, expr.span, &msg)
+                    }
                 }
             }
         }
@@ -43,8 +56,8 @@ impl LateLintPass for MutexAtomic {
 fn get_atomic_name(ty: &ty::TypeVariants) -> Option<(&'static str)> {
     match *ty {
         ty::TyBool => Some("AtomicBool"),
-        ty::TyUint(ast::TyUs) => Some("AtomicUsize"),
-        ty::TyInt(ast::TyIs) => Some("AtomicIsize"),
+        ty::TyUint(_) => Some("AtomicUsize"),
+        ty::TyInt(_) => Some("AtomicIsize"),
         ty::TyRawPtr(_) => Some("AtomicPtr"),
         _ => None
     }

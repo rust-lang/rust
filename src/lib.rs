@@ -96,6 +96,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         methods::RESULT_UNWRAP_USED,
         methods::WRONG_PUB_SELF_CONVENTION,
         mut_mut::MUT_MUT,
+        mutex_atomic::MUTEX_INTEGER,
         ptr_arg::PTR_ARG,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
