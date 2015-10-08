@@ -57,7 +57,7 @@ pub enum TypeError<'tcx> {
     ConvergenceMismatch(ExpectedFound<bool>),
     ProjectionNameMismatched(ExpectedFound<Name>),
     ProjectionBoundsLength(ExpectedFound<usize>),
-    TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>)
+    TyParamDefaultMismatch(ExpectedFound<type_variable::UserDefault<'tcx>>)
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
