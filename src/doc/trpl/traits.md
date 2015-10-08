@@ -512,12 +512,12 @@ fn main() {
 
 However, deriving is limited to a certain set of traits:
 
-- `Clone`
-- `Copy`
-- `Debug`
-- `Default`
-- `Eq`
-- `Hash`
-- `Ord`
-- `PartialEq`
-- `PartialOrd`
+- [`Clone`](../core/clone/trait.Clone.html)
+- [`Copy`](../core/marker/trait.Copy.html)
+- [`Debug`](../core/fmt/trait.Debug.html)
+- [`Default`](../core/default/trait.Default.html)
+- [`Eq`](../core/cmp/trait.Eq.html)
+- [`Hash`](../core/hash/trait.Hash.html)
+- [`Ord`](../core/cmp/trait.Ord.html)
+- [`PartialEq`](../core/cmp/trait.PartialEq.html)
+- [`PartialOrd`](../core/cmp/trait.PartialOrd.html)
