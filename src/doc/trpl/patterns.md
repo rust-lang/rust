@@ -299,7 +299,7 @@ match x {
 ```
 
 This prints `no`, because the `if` applies to the whole of `4 | 5`, and not to
-just the `5`, In other words, the the precedence of `if` behaves like this:
+just the `5`. In other words, the precedence of `if` behaves like this:
 
 ```text
 (4 | 5) if y => ...
