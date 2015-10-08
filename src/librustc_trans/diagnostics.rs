@@ -12,6 +12,35 @@
 
 register_long_diagnostics! {
 
+E0512: r##"
+A transmute was called on types with different sizes. Erroneous code example:
+
+```
+extern "rust-intrinsic" {
+    pub fn ctpop8(x: u8) -> u8;
+}
+
+fn main() {
+    unsafe { ctpop8(::std::mem::transmute(0u16)); }
+    // error: transmute called on types with different sizes
+}
+```
+
+Please use types with same size or use the awaited type directly. Example:
+
+```
+extern "rust-intrinsic" {
+    pub fn ctpop8(x: u8) -> u8;
+}
+
+fn main() {
+    unsafe { ctpop8(::std::mem::transmute(0i8)); } // ok!
+    // or:
+    unsafe { ctpop8(0u8); } // ok!
+}
+```
+"##,
+
 E0515: r##"
 A constant index expression was out of bounds. Erroneous code example:
 
@@ -23,7 +52,7 @@ Please specify a valid index (not inferior to 0 or superior to array length).
 Example:
 
 ```
-let x = &[0, 1, 2][2]; // ok!
+let x = &[0, 1, 2][2]; // ok
 ```
 "##,
 
@@ -32,5 +61,4 @@ let x = &[0, 1, 2][2]; // ok!
 register_diagnostics! {
     E0510, // invalid use of `return_address` intrinsic: function does not use out pointer
     E0511, // invalid monomorphization of `{}` intrinsic
-    E0512, // transmute called on types with potentially different sizes...
 }
