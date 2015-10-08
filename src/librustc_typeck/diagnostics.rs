@@ -1308,8 +1308,8 @@ extern "rust-intrinsic" {
 "##,
 
 E0101: r##"
-You hit this error because the compiler the compiler lacks information
-to determine a type for this expression. Erroneous code example:
+You hit this error because the compiler lacks the information to
+determine a type for this expression. Erroneous code example:
 
 ```
 fn main() {
