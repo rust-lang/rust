@@ -809,7 +809,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let mut type_map = debug_context(cx).type_map.borrow_mut();
 
         if already_stored_in_typemap {
-            // Also make sure that we already have a TypeMap entry entry for the unique type id.
+            // Also make sure that we already have a TypeMap entry for the unique type id.
             let metadata_for_uid = match type_map.find_metadata_for_unique_id(unique_type_id) {
                 Some(metadata) => metadata,
                 None => {

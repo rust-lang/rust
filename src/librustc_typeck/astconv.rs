@@ -347,7 +347,7 @@ fn create_region_substs<'tcx>(
 {
     let tcx = this.tcx();
 
-    // If the type is parameterized by the this region, then replace this
+    // If the type is parameterized by this region, then replace this
     // region with the current anon region binding (in other words,
     // whatever & would get replaced with).
     let expected_num_region_params = decl_generics.regions.len(TypeSpace);
@@ -1238,7 +1238,7 @@ fn one_bound_for_assoc_type<'tcx>(tcx: &ty::ctxt<'tcx>,
     Ok(bounds[0].clone())
 }
 
-// Create a type from a a path to an associated type.
+// Create a type from a path to an associated type.
 // For a path A::B::C::D, ty and ty_path_def are the type and def for A::B::C
 // and item_segment is the path segment for D. We return a type and a def for
 // the whole path.

@@ -339,7 +339,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let llargs = get_params(fcx.llfn);
 
     let self_idx = fcx.arg_offset();
-    // the first argument (`self`) will be ptr to the the fn pointer
+    // the first argument (`self`) will be ptr to the fn pointer
     let llfnpointer = if is_by_ref {
         Load(bcx, llargs[self_idx])
     } else {

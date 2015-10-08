@@ -578,7 +578,7 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    /// Given a node ID, get a list of of attributes associated with the AST
+    /// Given a node ID, get a list of attributes associated with the AST
     /// corresponding to the Node ID
     pub fn attrs(&self, id: NodeId) -> &'ast [ast::Attribute] {
         let attrs = match self.find(id) {

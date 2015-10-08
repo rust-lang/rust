@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Reject mixing cyclic structure and Drop when using trait
-// objects to hide the the cross-references.
+// objects to hide the cross-references.
 //
 // (Compare against compile-fail/dropck_vec_cycle_checked.rs)
 

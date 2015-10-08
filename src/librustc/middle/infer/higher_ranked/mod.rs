@@ -567,7 +567,7 @@ pub fn plug_leaks<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
 
     // Compute a mapping from the "taint set" of each skolemized
     // region back to the `ty::BoundRegion` that it originally
-    // represented. Because `leak_check` passed, we know that that
+    // represented. Because `leak_check` passed, we know that
     // these taint sets are mutually disjoint.
     let inv_skol_map: FnvHashMap<ty::Region, ty::BoundRegion> =
         skol_map

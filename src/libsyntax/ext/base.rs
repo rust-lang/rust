@@ -600,7 +600,7 @@ impl<'a> ExtCtxt<'a> {
         self.expander().fold_expr(e)
     }
 
-    /// Returns a `Folder` for deeply expanding all macros in a AST node.
+    /// Returns a `Folder` for deeply expanding all macros in an AST node.
     pub fn expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a> {
         expand::MacroExpander::new(self)
     }

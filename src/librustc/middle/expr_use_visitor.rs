@@ -913,7 +913,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         self.consume_expr(&*arm.body);
     }
 
-    /// Walks an pat that occurs in isolation (i.e. top-level of fn
+    /// Walks a pat that occurs in isolation (i.e. top-level of fn
     /// arg or let binding.  *Not* a match arm or nested pat.)
     fn walk_irrefutable_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat) {
         let mut mode = Unknown;
@@ -1136,7 +1136,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 }
 
                 hir::PatIdent(_, _, Some(_)) => {
-                    // Do nothing; this is a binding (not a enum
+                    // Do nothing; this is a binding (not an enum
                     // variant or struct), and the cat_pattern call
                     // will visit the substructure recursively.
                 }
@@ -1145,7 +1145,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 hir::PatRegion(..) | hir::PatLit(..) | hir::PatRange(..) |
                 hir::PatVec(..) => {
                     // Similarly, each of these cases does not
-                    // correspond to a enum variant or struct, so we
+                    // correspond to an enum variant or struct, so we
                     // do not do any `matched_pat` calls for these
                     // cases either.
                 }

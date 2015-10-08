@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that a arena (TypedArena) cannot carry elements whose drop
+// Check that an arena (TypedArena) cannot carry elements whose drop
 // methods might access borrowed data of lifetime that does not
 // strictly outlive the arena itself.
 //
@@ -30,7 +30,7 @@ struct CheckId<T:HasId> { v: T }
 // In the code below, the impl of HasId for `&'a usize` does not
 // actually access the borrowed data, but the point is that the
 // interface to CheckId does not (and cannot) know that, and therefore
-// when encountering the a value V of type CheckId<S>, we must
+// when encountering a value V of type CheckId<S>, we must
 // conservatively force the type S to strictly outlive V.
 impl<T:HasId> Drop for CheckId<T> {
     fn drop(&mut self) {

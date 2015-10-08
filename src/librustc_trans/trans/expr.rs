@@ -2526,7 +2526,7 @@ impl OverflowOpViaInputCheck {
         // Note that the mask's value is derived from the LHS type
         // (since that is where the 32/64 distinction is relevant) but
         // the mask's type must match the RHS type (since they will
-        // both be fed into a and-binop)
+        // both be fed into an and-binop)
         let invert_mask = shift_mask_val(bcx, lhs_llty, rhs_llty, true);
 
         let outer_bits = And(bcx, rhs, invert_mask, binop_debug_loc);
