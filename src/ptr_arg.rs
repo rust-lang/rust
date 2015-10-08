@@ -1,6 +1,6 @@
 //! Checks for usage of &Vec[_] and &String
 //!
-//! This lint is **warn** by default
+//! This lint is **allow** by default
 
 use rustc::lint::*;
 use rustc_front::hir::*;
