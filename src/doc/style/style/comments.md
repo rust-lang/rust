@@ -85,3 +85,20 @@ Use inner doc comments _only_ to document crates and file-level modules:
 //!
 //! The core library is a something something...
 ```
+
+### Explain context.
+
+Rust doesn't have special constructors, only functions that return new
+instances.  These aren't visible in the automatically generated documentation
+for a type, so you should specifically link to them:
+
+``` rust
+/// An iterator that yields `None` forever after the underlying iterator
+/// yields `None` once.
+///
+/// These can be created through
+/// [`iter.fuse()`](trait.Iterator.html#method.fuse).
+pub struct Fuse<I> {
+    // ...
+}
+```
