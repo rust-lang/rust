@@ -64,7 +64,8 @@ pub fn rewrite_macro(mac: &ast::Mac,
 
     let wrapped_tt_vec = ForceSend(mac.node.tts.clone());
     // Wrap expression parsing logic in a thread since the libsyntax parser
-    // panicks on failure, which we do not want to propagate.
+    // panics on failure, which we do not want to propagate.
+    // The expression vector is wrapped in an Option inside a Result.
     let expr_vec_result = thread::catch_panic(move || {
         let parse_session = ParseSess::new();
         let mut parser = tts_to_parser(&parse_session, wrapped_tt_vec.0, vec![]);
@@ -80,11 +81,15 @@ pub fn rewrite_macro(mac: &ast::Mac,
             }
 
             let _ = parser.bump();
+
+            if parser.token == Token::Eof {
+                return None;
+            }
         }
 
-        expr_vec
+        Some(expr_vec)
     });
-    let expr_vec = try_opt!(expr_vec_result.ok());
+    let expr_vec = try_opt!(try_opt!(expr_vec_result.ok()));
 
     match style {
         MacroStyle::Parens => {
