@@ -174,9 +174,9 @@
 //! A static method on the types above would result in,
 //!
 //! ```{.text}
-//! StaticStruct(<ast::StructDef of A>, Named(vec![(<ident of x>, <span of x>)]))
+//! StaticStruct(<ast::VariantData of A>, Named(vec![(<ident of x>, <span of x>)]))
 //!
-//! StaticStruct(<ast::StructDef of B>, Unnamed(vec![<span of x>]))
+//! StaticStruct(<ast::VariantData of B>, Unnamed(vec![<span of x>]))
 //!
 //! StaticEnum(<ast::EnumDef of C>,
 //!            vec![(<ident of C0>, <span of C0>, Unnamed(vec![<span of i32>])),
@@ -194,7 +194,7 @@ use std::vec;
 use abi::Abi;
 use abi;
 use ast;
-use ast::{EnumDef, Expr, Ident, Generics, StructDef};
+use ast::{EnumDef, Expr, Ident, Generics, VariantData};
 use ast_util;
 use attr;
 use attr::AttrMetaMethods;
@@ -317,7 +317,7 @@ pub enum SubstructureFields<'a> {
     EnumNonMatchingCollapsed(Vec<Ident>, &'a [P<ast::Variant>], &'a [Ident]),
 
     /// A static method where `Self` is a struct.
-    StaticStruct(&'a ast::StructDef, StaticFields),
+    StaticStruct(&'a ast::VariantData, StaticFields),
     /// A static method where `Self` is an enum.
     StaticEnum(&'a ast::EnumDef, Vec<(Ident, Span, StaticFields)>),
 }
@@ -649,7 +649,7 @@ impl<'a> TraitDef<'a> {
 
     fn expand_struct_def(&self,
                          cx: &mut ExtCtxt,
-                         struct_def: &'a StructDef,
+                         struct_def: &'a VariantData,
                          type_ident: Ident,
                          generics: &Generics) -> P<ast::Item> {
         let field_tys: Vec<P<ast::Ty>> = struct_def.fields.iter()
@@ -700,7 +700,7 @@ impl<'a> TraitDef<'a> {
         let mut field_tys = Vec::new();
 
         for variant in &enum_def.variants {
-            field_tys.extend(variant.node.def.fields.iter()
+            field_tys.extend(variant.node.data.fields.iter()
                 .map(|field| field.node.ty.clone()));
         }
 
@@ -927,7 +927,7 @@ impl<'a> MethodDef<'a> {
     fn expand_struct_method_body<'b>(&self,
                                  cx: &mut ExtCtxt,
                                  trait_: &TraitDef<'b>,
-                                 struct_def: &'b StructDef,
+                                 struct_def: &'b VariantData,
                                  type_ident: Ident,
                                  self_args: &[P<Expr>],
                                  nonself_args: &[P<Expr>])
@@ -996,7 +996,7 @@ impl<'a> MethodDef<'a> {
     fn expand_static_struct_method_body(&self,
                                         cx: &mut ExtCtxt,
                                         trait_: &TraitDef,
-                                        struct_def: &StructDef,
+                                        struct_def: &VariantData,
                                         type_ident: Ident,
                                         self_args: &[P<Expr>],
                                         nonself_args: &[P<Expr>])
@@ -1405,7 +1405,7 @@ impl<'a> MethodDef<'a> {
         -> P<Expr> {
         let summary = enum_def.variants.iter().map(|v| {
             let ident = v.node.name;
-            let summary = trait_.summarise_struct(cx, &v.node.def);
+            let summary = trait_.summarise_struct(cx, &v.node.data);
             (ident, v.span, summary)
         }).collect();
         self.call_substructure_method(cx, trait_, type_ident,
@@ -1441,7 +1441,7 @@ impl<'a> TraitDef<'a> {
 
     fn summarise_struct(&self,
                         cx: &mut ExtCtxt,
-                        struct_def: &StructDef) -> StaticFields {
+                        struct_def: &VariantData) -> StaticFields {
         let mut named_idents = Vec::new();
         let mut just_spans = Vec::new();
         for field in struct_def.fields.iter(){
@@ -1477,7 +1477,7 @@ impl<'a> TraitDef<'a> {
     fn create_struct_pattern(&self,
                              cx: &mut ExtCtxt,
                              struct_path: ast::Path,
-                             struct_def: &'a StructDef,
+                             struct_def: &'a VariantData,
                              prefix: &str,
                              mutbl: ast::Mutability)
                              -> (P<ast::Pat>, Vec<(Span, Option<Ident>,
@@ -1545,7 +1545,7 @@ impl<'a> TraitDef<'a> {
         -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
         let variant_ident = variant.node.name;
         let variant_path = cx.path(variant.span, vec![enum_ident, variant_ident]);
-        self.create_struct_pattern(cx, variant_path, &variant.node.def, prefix, mutbl)
+        self.create_struct_pattern(cx, variant_path, &variant.node.data, prefix, mutbl)
     }
 }
 

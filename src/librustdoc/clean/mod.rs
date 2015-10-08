@@ -1805,7 +1805,7 @@ pub struct VariantStruct {
     pub fields_stripped: bool,
 }
 
-impl Clean<VariantStruct> for ::rustc_front::hir::StructDef {
+impl Clean<VariantStruct> for ::rustc_front::hir::VariantData {
     fn clean(&self, cx: &DocContext) -> VariantStruct {
         VariantStruct {
             struct_type: doctree::struct_type_from_def(self),
@@ -1871,7 +1871,7 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
                     self.fields.iter().map(|f| f.unsubst_ty().clean(cx)).collect()
                 )
             }
-            ty::VariantKind::Dict => {
+            ty::VariantKind::Struct => {
                 StructVariant(VariantStruct {
                     struct_type: doctree::Plain,
                     fields_stripped: false,
@@ -1917,8 +1917,8 @@ pub enum VariantKind {
     StructVariant(VariantStruct),
 }
 
-fn struct_def_to_variant_kind(struct_def: &hir::StructDef, cx: &DocContext) -> VariantKind {
-    if struct_def.kind == hir::VariantKind::Dict {
+fn struct_def_to_variant_kind(struct_def: &hir::VariantData, cx: &DocContext) -> VariantKind {
+    if struct_def.kind == hir::VariantKind::Struct {
         StructVariant(struct_def.clean(cx))
     } else if struct_def.kind == hir::VariantKind::Unit {
         CLikeVariant

@@ -857,10 +857,10 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         visit::walk_item(self, i);
     }
 
-    fn visit_struct_def(&mut self, s: &'v ast::StructDef, _: ast::Ident,
+    fn visit_variant_data(&mut self, s: &'v ast::VariantData, _: ast::Ident,
                         _: &'v ast::Generics, _: ast::NodeId, span: Span) {
         if s.fields.is_empty() {
-            if s.kind == ast::VariantKind::Dict {
+            if s.kind == ast::VariantKind::Struct {
                 self.gate_feature("braced_empty_structs", span,
                                   "empty structs and enum variants with braces are unstable");
             } else if s.kind == ast::VariantKind::Tuple {

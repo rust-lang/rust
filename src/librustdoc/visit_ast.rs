@@ -84,8 +84,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         self.module.is_crate = true;
     }
 
-    pub fn visit_struct_def(&mut self, item: &hir::Item,
-                            name: ast::Name, sd: &hir::StructDef,
+    pub fn visit_variant_data(&mut self, item: &hir::Item,
+                            name: ast::Name, sd: &hir::VariantData,
                             generics: &hir::Generics) -> Struct {
         debug!("Visiting struct");
         let struct_type = struct_type_from_def(&*sd);
@@ -111,8 +111,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             variants: def.variants.iter().map(|v| Variant {
                 name: v.node.name,
                 attrs: v.node.attrs.clone(),
-                stab: self.stability(v.node.def.id),
-                def: v.node.def.clone(),
+                stab: self.stability(v.node.data.id),
+                def: v.node.data.clone(),
                 whence: v.span,
             }).collect(),
             vis: it.vis,
@@ -298,7 +298,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemEnum(ref ed, ref gen) =>
                 om.enums.push(self.visit_enum_def(item, name, ed, gen)),
             hir::ItemStruct(ref sd, ref gen) =>
-                om.structs.push(self.visit_struct_def(item, name, &**sd, gen)),
+                om.structs.push(self.visit_variant_data(item, name, &**sd, gen)),
             hir::ItemFn(ref fd, ref unsafety, constness, ref abi, ref gen, _) =>
                 om.fns.push(self.visit_fn(item, name, &**fd, unsafety,
                                           constness, abi, gen)),

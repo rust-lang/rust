@@ -888,7 +888,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_struct(&mut self,
-                        struct_def: &hir::StructDef,
+                        struct_def: &hir::VariantData,
                         generics: &hir::Generics,
                         name: ast::Name,
                         span: codemap::Span,
@@ -896,7 +896,7 @@ impl<'a> State<'a> {
                         -> io::Result<()> {
         try!(self.print_name(name));
         try!(self.print_generics(generics));
-        if struct_def.kind != hir::VariantKind::Dict {
+        if struct_def.kind != hir::VariantKind::Struct {
             if struct_def.kind == hir::VariantKind::Tuple {
                 try!(self.popen());
                 try!(self.commasep(Inconsistent,
@@ -948,7 +948,7 @@ impl<'a> State<'a> {
     pub fn print_variant(&mut self, v: &hir::Variant) -> io::Result<()> {
         try!(self.head(""));
         let generics = ::util::empty_generics();
-        try!(self.print_struct(&v.node.def, &generics, v.node.name, v.span, false));
+        try!(self.print_struct(&v.node.data, &generics, v.node.name, v.span, false));
         match v.node.disr_expr {
             Some(ref d) => {
                 try!(space(&mut self.s));

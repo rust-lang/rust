@@ -82,7 +82,7 @@ impl<'v> Visitor<'v> for ParentVisitor {
                     // The parent is considered the enclosing enum because the
                     // enum will dictate the privacy visibility of this variant
                     // instead.
-                    self.parents.insert(variant.node.def.id, item.id);
+                    self.parents.insert(variant.node.data.id, item.id);
                 }
             }
 
@@ -128,11 +128,11 @@ impl<'v> Visitor<'v> for ParentVisitor {
         visit::walk_impl_item(self, ii);
     }
 
-    fn visit_struct_def(&mut self, s: &hir::StructDef, _: ast::Name,
+    fn visit_variant_data(&mut self, s: &hir::VariantData, _: ast::Name,
                         _: &'v hir::Generics, item_id: ast::NodeId, _: Span) {
         // Struct constructors are parented to their struct definitions because
         // they essentially are the struct definitions.
-        if s.kind != hir::VariantKind::Dict {
+        if s.kind != hir::VariantKind::Struct {
             self.parents.insert(s.id, item_id);
         }
 
@@ -233,8 +233,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             // public all variants are public unless they're explicitly priv
             hir::ItemEnum(ref def, _) if public_first => {
                 for variant in &def.variants {
-                    self.exported_items.insert(variant.node.def.id);
-                    self.public_items.insert(variant.node.def.id);
+                    self.exported_items.insert(variant.node.data.id);
+                    self.public_items.insert(variant.node.data.id);
                 }
             }
 
@@ -319,7 +319,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
 
             // Struct constructors are public if the struct is all public.
             hir::ItemStruct(ref def, _) if public_first => {
-                if def.kind != hir::VariantKind::Dict {
+                if def.kind != hir::VariantKind::Struct {
                     self.exported_items.insert(def.id);
                 }
                 // fields can be public or private, so lets check
@@ -1088,7 +1088,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                           "visibility has no effect inside functions");
             }
         }
-        let check_struct = |def: &hir::StructDef| {
+        let check_struct = |def: &hir::VariantData| {
             for f in &def.fields {
                match f.node.kind {
                     hir::NamedField(_, p) => check_inherited(tcx, f.span, p),
@@ -1431,7 +1431,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self, v: &hir::Variant, g: &hir::Generics, item_id: ast::NodeId) {
-        if self.exported_items.contains(&v.node.def.id) {
+        if self.exported_items.contains(&v.node.data.id) {
             self.in_variant = true;
             visit::walk_variant(self, v, g, item_id);
             self.in_variant = false;

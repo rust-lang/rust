@@ -44,13 +44,13 @@ pub enum Def {
              ast::NodeId), // expr node that creates the closure
 
     /// Note that if it's a tuple struct's definition, the node id of the DefId
-    /// may either refer to the item definition's id or the StructDef.ctor_id.
+    /// may either refer to the item definition's id or the VariantData.ctor_id.
     ///
     /// The cases that I have encountered so far are (this is not exhaustive):
     /// - If it's a ty_path referring to some tuple struct, then DefMap maps
     ///   it to a def whose id is the item definition's id.
     /// - If it's an ExprPath referring to some tuple struct, then DefMap maps
-    ///   it to a def whose id is the StructDef.ctor_id.
+    ///   it to a def whose id is the VariantData.ctor_id.
     DefStruct(DefId),
     DefLabel(ast::NodeId),
     DefMethod(DefId),

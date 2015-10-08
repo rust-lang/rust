@@ -1385,14 +1385,14 @@ impl<'a> State<'a> {
     }
 
     pub fn print_struct(&mut self,
-                        struct_def: &ast::StructDef,
+                        struct_def: &ast::VariantData,
                         generics: &ast::Generics,
                         ident: ast::Ident,
                         span: codemap::Span,
                         print_finalizer: bool) -> io::Result<()> {
         try!(self.print_ident(ident));
         try!(self.print_generics(generics));
-        if struct_def.kind != ast::VariantKind::Dict {
+        if struct_def.kind != ast::VariantKind::Struct {
             if struct_def.kind == ast::VariantKind::Tuple {
                 try!(self.popen());
                 try!(self.commasep(
@@ -1510,7 +1510,7 @@ impl<'a> State<'a> {
     pub fn print_variant(&mut self, v: &ast::Variant) -> io::Result<()> {
         try!(self.head(""));
         let generics = ast_util::empty_generics();
-        try!(self.print_struct(&v.node.def, &generics, v.node.name, v.span, false));
+        try!(self.print_struct(&v.node.data, &generics, v.node.name, v.span, false));
         match v.node.disr_expr {
             Some(ref d) => {
                 try!(space(&mut self.s));
@@ -3119,7 +3119,7 @@ mod tests {
             name: ident,
             attrs: Vec::new(),
             // making this up as I go.... ?
-            def: P(ast::StructDef { fields: Vec::new(),
+            data: P(ast::VariantData { fields: Vec::new(),
                                     id: ast::DUMMY_NODE_ID,
                                     kind: ast::VariantKind::Unit }),
             disr_expr: None,

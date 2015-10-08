@@ -661,8 +661,8 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
         hir_visit::walk_fn(self, fk, decl, body, span);
     }
 
-    fn visit_struct_def(&mut self,
-                        s: &hir::StructDef,
+    fn visit_variant_data(&mut self,
+                        s: &hir::VariantData,
                         name: ast::Name,
                         g: &hir::Generics,
                         item_id: ast::NodeId,
@@ -811,8 +811,8 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
         ast_visit::walk_fn(self, fk, decl, body, span);
     }
 
-    fn visit_struct_def(&mut self,
-                        s: &ast::StructDef,
+    fn visit_variant_data(&mut self,
+                        s: &ast::VariantData,
                         ident: ast::Ident,
                         g: &ast::Generics,
                         item_id: ast::NodeId,

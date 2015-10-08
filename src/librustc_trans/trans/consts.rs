@@ -818,7 +818,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         ty::VariantKind::Tuple => {
                             expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                         }
-                        ty::VariantKind::Dict => {
+                        ty::VariantKind::Struct => {
                             cx.sess().span_bug(e.span, "path-expr refers to a dict variant!")
                         }
                     }

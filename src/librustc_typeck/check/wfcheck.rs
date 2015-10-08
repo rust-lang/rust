@@ -521,7 +521,7 @@ struct AdtField<'tcx> {
 }
 
 fn struct_variant<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                            struct_def: &hir::StructDef)
+                            struct_def: &hir::VariantData)
                             -> AdtVariant<'tcx> {
     let fields =
         struct_def.fields
@@ -544,7 +544,7 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                            enum_def: &hir::EnumDef)
                            -> Vec<AdtVariant<'tcx>> {
     enum_def.variants.iter()
-        .map(|variant| struct_variant(fcx, &variant.node.def))
+        .map(|variant| struct_variant(fcx, &variant.node.data))
         .collect()
 }
 

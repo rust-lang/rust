@@ -110,13 +110,13 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
                     let ty_vs = &ccx.tcx().lookup_adt_def(parent_id).variants;
                     assert_eq!(ast_vs.len(), ty_vs.len());
                     for (ast_v, ty_v) in ast_vs.iter().zip(ty_vs.iter()) {
-                        if ty_v.did == fn_id { my_id = ast_v.node.def.id; }
-                        ccx.external().borrow_mut().insert(ty_v.did, Some(ast_v.node.def.id));
+                        if ty_v.did == fn_id { my_id = ast_v.node.data.id; }
+                        ccx.external().borrow_mut().insert(ty_v.did, Some(ast_v.node.data.id));
                     }
                 }
                 hir::ItemStruct(ref struct_def, _) => {
                     match struct_def.kind {
-                        hir::VariantKind::Dict => ccx.sess().bug("instantiate_inline: called on a \
+                        hir::VariantKind::Struct => ccx.sess().bug("instantiate_inline: called on a \
                                                                  non-tuple struct"),
                         _ => {
                             ccx.external().borrow_mut().insert(fn_id, Some(struct_def.id));

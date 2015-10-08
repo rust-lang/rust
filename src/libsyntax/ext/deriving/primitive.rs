@@ -94,7 +94,7 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure
             let mut arms = Vec::new();
 
             for variant in &enum_def.variants {
-                let def = &variant.node.def;
+                let def = &variant.node.data;
                 if def.kind != ast::VariantKind::Unit {
                     cx.span_err(trait_span, "`FromPrimitive` cannot be derived \
                                              for enums with non-unit variants");

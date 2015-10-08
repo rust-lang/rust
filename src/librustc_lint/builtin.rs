@@ -427,12 +427,12 @@ impl LateLintPass for MissingDoc {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
     }
 
-    fn check_struct_def(&mut self, _: &LateContext, _: &hir::StructDef,
+    fn check_struct_def(&mut self, _: &LateContext, _: &hir::VariantData,
                         _: ast::Name, _: &hir::Generics, item_id: ast::NodeId) {
         self.struct_def_stack.push(item_id);
     }
 
-    fn check_struct_def_post(&mut self, _: &LateContext, _: &hir::StructDef,
+    fn check_struct_def_post(&mut self, _: &LateContext, _: &hir::VariantData,
                              _: ast::Name, _: &hir::Generics, item_id: ast::NodeId) {
         let popped = self.struct_def_stack.pop().expect("empty struct_def_stack");
         assert!(popped == item_id);
@@ -527,7 +527,7 @@ impl LateLintPass for MissingDoc {
     }
 
     fn check_variant(&mut self, cx: &LateContext, v: &hir::Variant, _: &hir::Generics) {
-        self.check_missing_docs_attrs(cx, Some(v.node.def.id), &v.node.attrs, v.span, "a variant");
+        self.check_missing_docs_attrs(cx, Some(v.node.data.id), &v.node.attrs, v.span, "a variant");
         assert!(!self.in_variant);
         self.in_variant = true;
     }

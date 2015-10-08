@@ -493,7 +493,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             ItemStruct(ref struct_def, _) => {
                 // Adding to both Type and Value namespaces or just Type?
                 let (forbid, ctor_id) = match struct_def.kind {
-                    hir::VariantKind::Dict => (ForbidDuplicateTypesAndModules, None),
+                    hir::VariantKind::Struct => (ForbidDuplicateTypesAndModules, None),
                     _                     => (ForbidDuplicateTypesAndValues, Some(struct_def.id)),
                 };
 
@@ -587,10 +587,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                        item_id: DefId,
                                        parent: &Rc<Module>) {
         let name = variant.node.name;
-        let is_exported = match variant.node.def.kind {
-            hir::VariantKind::Dict => {
+        let is_exported = match variant.node.data.kind {
+            hir::VariantKind::Struct => {
                 // Not adding fields for variants as they are not accessed with a self receiver
-                let variant_def_id = self.ast_map.local_def_id(variant.node.def.id);
+                let variant_def_id = self.ast_map.local_def_id(variant.node.data.id);
                 self.structs.insert(variant_def_id, Vec::new());
                 true
             }
@@ -603,10 +603,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         // variants are always treated as importable to allow them to be glob
         // used
         child.define_value(DefVariant(item_id,
-                                      self.ast_map.local_def_id(variant.node.def.id), is_exported),
+                                      self.ast_map.local_def_id(variant.node.data.id), is_exported),
                            variant.span, DefModifiers::PUBLIC | DefModifiers::IMPORTABLE);
         child.define_type(DefVariant(item_id,
-                                     self.ast_map.local_def_id(variant.node.def.id), is_exported),
+                                     self.ast_map.local_def_id(variant.node.data.id), is_exported),
                           variant.span, DefModifiers::PUBLIC | DefModifiers::IMPORTABLE);
     }
 

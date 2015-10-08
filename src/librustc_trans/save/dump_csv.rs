@@ -458,7 +458,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
     fn process_struct(&mut self,
                       item: &ast::Item,
-                      def: &ast::StructDef,
+                      def: &ast::VariantData,
                       ty_params: &ast::Generics) {
         let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
 
@@ -503,15 +503,15 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
             self.fmt.struct_variant_str(variant.span,
                                         self.span.span_for_first_ident(variant.span),
-                                        variant.node.def.id,
-                                        variant.node.def.id,
+                                        variant.node.data.id,
+                                        variant.node.data.id,
                                         &qualname,
                                         &enum_data.qualname,
                                         &val,
                                         enum_data.id);
 
-            for field in &variant.node.def.fields {
-                self.process_struct_field_def(field, variant.node.def.id);
+            for field in &variant.node.data.fields {
+                self.process_struct_field_def(field, variant.node.data.id);
                 self.visit_ty(&*field.node.ty);
             }
         }

@@ -223,7 +223,7 @@ pub trait Folder : Sized {
         noop_fold_poly_trait_ref(p, self)
     }
 
-    fn fold_struct_def(&mut self, struct_def: P<StructDef>) -> P<StructDef> {
+    fn fold_variant_data(&mut self, struct_def: P<VariantData>) -> P<VariantData> {
         noop_fold_struct_def(struct_def, self)
     }
 
@@ -431,11 +431,11 @@ pub fn noop_fold_foreign_mod<T: Folder>(ForeignMod { abi, items }: ForeignMod,
 }
 
 pub fn noop_fold_variant<T: Folder>(v: P<Variant>, fld: &mut T) -> P<Variant> {
-    v.map(|Spanned {node: Variant_ {name, attrs, def, disr_expr}, span}| Spanned {
+    v.map(|Spanned {node: Variant_ {name, attrs, data, disr_expr}, span}| Spanned {
         node: Variant_ {
             name: name,
             attrs: fold_attrs(attrs, fld),
-            def: fld.fold_struct_def(def),
+            data: fld.fold_variant_data(data),
             disr_expr: disr_expr.map(|e| fld.fold_expr(e)),
         },
         span: fld.new_span(span),
@@ -693,9 +693,9 @@ pub fn noop_fold_where_predicate<T: Folder>(pred: WherePredicate, fld: &mut T) -
     }
 }
 
-pub fn noop_fold_struct_def<T: Folder>(struct_def: P<StructDef>, fld: &mut T) -> P<StructDef> {
-    struct_def.map(|StructDef { fields, id, kind }| {
-        StructDef {
+pub fn noop_fold_struct_def<T: Folder>(struct_def: P<VariantData>, fld: &mut T) -> P<VariantData> {
+    struct_def.map(|VariantData { fields, id, kind }| {
+        VariantData {
             fields: fields.move_map(|f| fld.fold_struct_field(f)),
             id: fld.new_id(id),
             kind: kind,
@@ -806,7 +806,7 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
                      folder.fold_generics(generics))
         }
         ItemStruct(struct_def, generics) => {
-            let struct_def = folder.fold_struct_def(struct_def);
+            let struct_def = folder.fold_variant_data(struct_def);
             ItemStruct(struct_def, folder.fold_generics(generics))
         }
         ItemDefaultImpl(unsafety, ref trait_ref) => {

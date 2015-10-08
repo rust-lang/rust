@@ -185,7 +185,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
                       |v| visit::walk_item(v, i), required);
 
         if let hir::ItemStruct(ref sd, _) = i.node {
-            if sd.kind != hir::VariantKind::Dict {
+            if sd.kind != hir::VariantKind::Struct {
                 self.annotate(sd.id, true, &i.attrs, i.span, |_| {}, true)
             }
         }
@@ -208,7 +208,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self, var: &Variant, g: &'v Generics, item_id: NodeId) {
-        self.annotate(var.node.def.id, true, &var.node.attrs, var.span,
+        self.annotate(var.node.data.id, true, &var.node.attrs, var.span,
                       |v| visit::walk_variant(v, var, g, item_id), true)
     }
 
