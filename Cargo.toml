@@ -8,18 +8,13 @@ repository = "https://github.com/nick29581/rustfmt"
 readme = "README.md"
 license = "Apache-2.0/MIT"
 
-[dependencies.strings]
-strings = "0.0.1"
-git = "https://github.com/nrc/strings.rs.git"
-
 [dependencies]
 toml = "0.1.20"
 rustc-serialize = "0.3.14"
 unicode-segmentation = "0.1.2"
 regex = "0.1.41"
 term = "0.2.11"
-
-[dependencies.diff]
-git = "https://github.com/utkarshkukreti/diff.rs.git"
+strings = { version = "0.0.1", git = "https://github.com/nrc/strings.rs.git" }
+diff = { git = "https://github.com/utkarshkukreti/diff.rs.git" }
 
 [dev-dependencies]
