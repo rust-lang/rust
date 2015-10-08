@@ -21,8 +21,8 @@ cases.
 # Detailed design
 
 For the purpose of this RFC, the definition of a marker trait is a trait with no
-associated functions, which does not inherit from any other trait. The design
-here is quite straightforward. The following code fails to compile today:
+associated items. The design here is quite straightforward. The following code
+fails to compile today:
 
 ```rust
 trait Marker<A> {}
