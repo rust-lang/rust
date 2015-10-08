@@ -1878,7 +1878,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // If there are no more fallbacks to apply at this point we have applied all possible
-            // defaults and type inference will procede as normal.
+            // defaults and type inference will proceed as normal.
             if unbound_tyvars.is_empty() {
                 break;
             }
@@ -2222,7 +2222,7 @@ fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 {
     match method {
         Some(method) => {
-            // extract method method return type, which will be &T;
+            // extract method return type, which will be &T;
             // all LB regions should have been instantiated during method lookup
             let ret_ty = method.ty.fn_ret();
             let ret_ty = fcx.tcx().no_late_bound_regions(&ret_ty).unwrap().unwrap();
@@ -4106,7 +4106,7 @@ fn check_const_with_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Gather locals in statics (because of block expressions).
     // This is technically unnecessary because locals in static items are forbidden,
     // but prevents type checking from blowing up before const checking can properly
-    // emit a error.
+    // emit an error.
     GatherLocalsVisitor { fcx: fcx }.visit_expr(e);
 
     check_expr_with_hint(fcx, e, declty);
@@ -4360,7 +4360,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     //    parameters permitted at present, but perhaps we will allow
     //    them in the future.)
     //
-    // 1b. Reference to a enum variant or tuple-like struct:
+    // 1b. Reference to an enum variant or tuple-like struct:
     //
     //        struct foo<T>(...)
     //        enum E<T> { foo(...) }

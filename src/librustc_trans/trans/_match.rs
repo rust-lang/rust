@@ -963,8 +963,8 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         // leaving the remainder of the tuple `(_,
                         // D(B))` still to be dropped in the future.
                         //
-                        // Thus, here we must must zero the place that
-                        // we are moving *from*, because we do not yet
+                        // Thus, here we must zero the place that we
+                        // are moving *from*, because we do not yet
                         // track drop flags for a fragmented parent
                         // match input expression.
                         //

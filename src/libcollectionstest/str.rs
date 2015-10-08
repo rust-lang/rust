@@ -86,7 +86,7 @@ fn test_find_str() {
     assert_eq!(data[43..86].find("iệt"), Some(77 - 43));
     assert_eq!(data[43..86].find("Nam"), Some(83 - 43));
 
-    // find every substring -- assert that it finds it, or an earlier occurence.
+    // find every substring -- assert that it finds it, or an earlier occurrence.
     let string = "Việt Namacbaabcaabaaba";
     for (i, ci) in string.char_indices() {
         let ip = i + ci.len_utf8();

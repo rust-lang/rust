@@ -195,7 +195,7 @@ our value if it's immutable, but we want to be able to mutate it, so we need
 something else to persuade the borrow checker we know what we're doing.
 
 It looks like we need some type that allows us to safely mutate a shared value,
-for example a type that that can ensure only one thread at a time is able to
+for example a type that can ensure only one thread at a time is able to
 mutate the value inside it at any one time.
 
 For that, we can use the `Mutex<T>` type!

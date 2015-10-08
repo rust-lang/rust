@@ -773,7 +773,7 @@ bound := path | lifetime
 
 ## Type kinds
 
-**FIXME:** this this probably not relevant to the grammar...
+**FIXME:** this is probably not relevant to the grammar...
 
 # Memory and concurrency models
 

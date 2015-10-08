@@ -159,7 +159,7 @@ pub struct FragmentSets {
     /// FIXME(pnkfelix) probably do not want/need
     /// `parents_of_fragments` at all, if we can avoid it.
     ///
-    /// Update: I do not see a way to to avoid it.  Maybe just remove
+    /// Update: I do not see a way to avoid it.  Maybe just remove
     /// above fixme, or at least document why doing this may be hard.
     parents_of_fragments: Vec<MovePathIndex>,
 

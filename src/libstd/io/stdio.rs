@@ -146,7 +146,7 @@ pub struct Stdin {
     inner: Arc<Mutex<BufReader<Maybe<StdinRaw>>>>,
 }
 
-/// A locked reference to the a `Stdin` handle.
+/// A locked reference to the `Stdin` handle.
 ///
 /// This handle implements both the `Read` and `BufRead` traits and is
 /// constructed via the `lock` method on `Stdin`.
@@ -323,7 +323,7 @@ pub struct Stdout {
     inner: Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>>,
 }
 
-/// A locked reference to the a `Stdout` handle.
+/// A locked reference to the `Stdout` handle.
 ///
 /// This handle implements the `Write` trait and is constructed via the `lock`
 /// method on `Stdout`.
@@ -430,7 +430,7 @@ pub struct Stderr {
     inner: Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>>,
 }
 
-/// A locked reference to the a `Stderr` handle.
+/// A locked reference to the `Stderr` handle.
 ///
 /// This handle implements the `Write` trait and is constructed via the `lock`
 /// method on `Stderr`.

@@ -153,7 +153,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         //
         // Note that this loop only searches the top-level items of the crate,
         // and this is intentional. If we were to search the entire crate for an
-        // item tagged with `#[doc(primitive)]` then we we would also have to
+        // item tagged with `#[doc(primitive)]` then we would also have to
         // search the entirety of external modules for items tagged
         // `#[doc(primitive)]`, which is a pretty inefficient process (decoding
         // all that metadata unconditionally).
