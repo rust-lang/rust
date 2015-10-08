@@ -21,7 +21,8 @@ struct Concrete<'a>(u32, Cell<Option<&'a Concrete<'a>>>);
 struct Foo<T> { data: Vec<T> }
 
 impl<T> Drop for Foo<T> {
-    #[unsafe_destructor_blind_to_params] // This is the UGEH attribute
+    // Below is the UGEH attribute
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) { }
 }
 
