@@ -123,7 +123,7 @@ impl LateLintPass for BoxPointers {
         // If it's a struct, we also have to check the fields' types
         match it.node {
             hir::ItemStruct(ref struct_def, _) => {
-                for struct_field in &struct_def.fields {
+                for struct_field in struct_def.fields() {
                     self.check_heap_type(cx, struct_field.span,
                                          cx.tcx.node_id_to_type(struct_field.node.id));
                 }

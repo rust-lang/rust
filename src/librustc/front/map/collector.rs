@@ -138,7 +138,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                                         NodeVariant(&**v),
                                         DefPathData::EnumVariant(v.node.name));
 
-                    for field in &v.node.data.fields {
+                    for field in v.node.data.fields() {
                         self.create_def_with_parent(
                             Some(variant_def_index),
                             field.node.id,
@@ -150,13 +150,13 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             }
             ItemStruct(ref struct_def, _) => {
                 // If this is a tuple-like struct, register the constructor.
-                if struct_def.kind != VariantKind::Struct {
+                if !struct_def.is_struct() {
                     self.insert_def(struct_def.id,
                                     NodeStructCtor(&**struct_def),
                                     DefPathData::StructCtor);
                 }
 
-                for field in &struct_def.fields {
+                for field in struct_def.fields() {
                     self.create_def(field.node.id, DefPathData::Field(field.node.kind));
                 }
             }

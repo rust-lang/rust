@@ -896,11 +896,11 @@ impl<'a> State<'a> {
                         -> io::Result<()> {
         try!(self.print_name(name));
         try!(self.print_generics(generics));
-        if struct_def.kind != hir::VariantKind::Struct {
-            if struct_def.kind == hir::VariantKind::Tuple {
+        if !struct_def.is_struct() {
+            if struct_def.is_tuple() {
                 try!(self.popen());
-                try!(self.commasep(Inconsistent,
-                                   &struct_def.fields,
+                try!(self.commasep_iter(Inconsistent,
+                                   struct_def.fields(),
                                    |s, field| {
                                        match field.node.kind {
                                            hir::NamedField(..) => panic!("unexpected named field"),
@@ -925,7 +925,7 @@ impl<'a> State<'a> {
             try!(self.bopen());
             try!(self.hardbreak_if_not_bol());
 
-            for field in &struct_def.fields {
+            for field in struct_def.fields() {
                 match field.node.kind {
                     hir::UnnamedField(..) => panic!("unexpected unnamed field"),
                     hir::NamedField(name, visibility) => {

@@ -524,8 +524,7 @@ fn struct_variant<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             struct_def: &hir::VariantData)
                             -> AdtVariant<'tcx> {
     let fields =
-        struct_def.fields
-        .iter()
+        struct_def.fields()
         .map(|field| {
             let field_ty = fcx.tcx().node_id_to_type(field.node.id);
             let field_ty = fcx.instantiate_type_scheme(field.span,

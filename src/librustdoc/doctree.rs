@@ -234,9 +234,9 @@ pub struct Import {
 }
 
 pub fn struct_type_from_def(sd: &hir::VariantData) -> StructType {
-    if sd.kind != hir::VariantKind::Struct {
+    if !sd.is_struct() {
         // We are in a tuple-struct
-        match sd.fields.len() {
+        match sd.fields().count() {
             0 => Unit,
             1 => Newtype,
             _ => Tuple

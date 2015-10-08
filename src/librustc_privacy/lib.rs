@@ -132,13 +132,13 @@ impl<'v> Visitor<'v> for ParentVisitor {
                         _: &'v hir::Generics, item_id: ast::NodeId, _: Span) {
         // Struct constructors are parented to their struct definitions because
         // they essentially are the struct definitions.
-        if s.kind != hir::VariantKind::Struct {
+        if !s.is_struct() {
             self.parents.insert(s.id, item_id);
         }
 
         // While we have the id of the struct definition, go ahead and parent
         // all the fields.
-        for field in &s.fields {
+        for field in s.fields() {
             self.parents.insert(field.node.id, self.curparent);
         }
         visit::walk_struct_def(self, s)
@@ -319,11 +319,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
 
             // Struct constructors are public if the struct is all public.
             hir::ItemStruct(ref def, _) if public_first => {
-                if def.kind != hir::VariantKind::Struct {
+                if !def.is_struct() {
                     self.exported_items.insert(def.id);
                 }
                 // fields can be public or private, so lets check
-                for field in &def.fields {
+                for field in def.fields() {
                     let vis = match field.node.kind {
                         hir::NamedField(_, vis) | hir::UnnamedField(vis) => vis
                     };
@@ -1089,7 +1089,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
             }
         }
         let check_struct = |def: &hir::VariantData| {
-            for f in &def.fields {
+            for f in def.fields() {
                match f.node.kind {
                     hir::NamedField(_, p) => check_inherited(tcx, f.span, p),
                     hir::UnnamedField(..) => {}

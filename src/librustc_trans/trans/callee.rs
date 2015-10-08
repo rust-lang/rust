@@ -418,7 +418,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 
         match map_node {
             hir_map::NodeVariant(v) => {
-                v.node.data.kind == hir::VariantKind::Tuple
+                v.node.data.is_tuple()
             }
             hir_map::NodeStructCtor(_) => true,
             _ => false

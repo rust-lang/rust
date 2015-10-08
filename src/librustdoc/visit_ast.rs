@@ -97,7 +97,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             stab: self.stability(item.id),
             attrs: item.attrs.clone(),
             generics: generics.clone(),
-            fields: sd.fields.clone(),
+            fields: sd.fields().cloned().collect(),
             whence: item.span
         }
     }
