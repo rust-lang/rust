@@ -984,99 +984,6 @@ The type parameters can also be explicitly supplied in a trailing
 there is not sufficient context to determine the type parameters. For example,
 `mem::size_of::<u32>() == 4`.
 
-#### Unsafety
-
-Unsafe operations are those that potentially violate the memory-safety
-guarantees of Rust's static semantics.
-
-The following language level features cannot be used in the safe subset of
-Rust:
-
-- Dereferencing a [raw pointer](#pointer-types).
-- Reading or writing a [mutable static variable](#mutable-statics).
-- Calling an unsafe function (including an intrinsic or foreign function).
-
-##### Unsafe functions
-
-Unsafe functions are functions that are not safe in all contexts and/or for all
-possible inputs. Such a function must be prefixed with the keyword `unsafe` and
-can only be called from an `unsafe` block or another `unsafe` function.
-
-##### Unsafe blocks
-
-A block of code can be prefixed with the `unsafe` keyword, to permit calling
-`unsafe` functions or dereferencing raw pointers within a safe function.
-
-When a programmer has sufficient conviction that a sequence of potentially
-unsafe operations is actually safe, they can encapsulate that sequence (taken
-as a whole) within an `unsafe` block. The compiler will consider uses of such
-code safe, in the surrounding context.
-
-Unsafe blocks are used to wrap foreign libraries, make direct use of hardware
-or implement features not directly present in the language. For example, Rust
-provides the language features necessary to implement memory-safe concurrency
-in the language but the implementation of threads and message passing is in the
-standard library.
-
-Rust's type system is a conservative approximation of the dynamic safety
-requirements, so in some cases there is a performance cost to using safe code.
-For example, a doubly-linked list is not a tree structure and can only be
-represented with reference-counted pointers in safe code. By using `unsafe`
-blocks to represent the reverse links as raw pointers, it can be implemented
-with only boxes.
-
-##### Behavior considered undefined
-
-The following is a list of behavior which is forbidden in all Rust code,
-including within `unsafe` blocks and `unsafe` functions. Type checking provides
-the guarantee that these issues are never caused by safe code.
-
-* Data races
-* Dereferencing a null/dangling raw pointer
-* Reads of [undef](http://llvm.org/docs/LangRef.html#undefined-values)
-  (uninitialized) memory
-* Breaking the [pointer aliasing
-  rules](http://llvm.org/docs/LangRef.html#pointer-aliasing-rules)
-  with raw pointers (a subset of the rules used by C)
-* `&mut` and `&` follow LLVM’s scoped [noalias] model, except if the `&T`
-  contains an `UnsafeCell<U>`. Unsafe code must not violate these aliasing
-  guarantees.
-* Mutating non-mutable data (that is, data reached through a shared reference or
-  data owned by a `let` binding), unless that data is contained within an `UnsafeCell<U>`.
-* Invoking undefined behavior via compiler intrinsics:
-  * Indexing outside of the bounds of an object with `std::ptr::offset`
-    (`offset` intrinsic), with
-    the exception of one byte past the end which is permitted.
-  * Using `std::ptr::copy_nonoverlapping_memory` (`memcpy32`/`memcpy64`
-    intrinsics) on overlapping buffers
-* Invalid values in primitive types, even in private fields/locals:
-  * Dangling/null references or boxes
-  * A value other than `false` (0) or `true` (1) in a `bool`
-  * A discriminant in an `enum` not included in the type definition
-  * A value in a `char` which is a surrogate or above `char::MAX`
-  * Non-UTF-8 byte sequences in a `str`
-* Unwinding into Rust from foreign code or unwinding from Rust into foreign
-  code. Rust's failure system is not compatible with exception handling in
-  other languages. Unwinding must be caught and handled at FFI boundaries.
-
-[noalias]: http://llvm.org/docs/LangRef.html#noalias
-
-##### Behavior not considered unsafe
-
-This is a list of behavior not considered *unsafe* in Rust terms, but that may
-be undesired.
-
-* Deadlocks
-* Leaks of memory and other resources
-* Exiting without calling destructors
-* Integer overflow
-  - Overflow is considered "unexpected" behavior and is always user-error,
-    unless the `wrapping` primitives are used. In non-optimized builds, the compiler
-    will insert debug checks that panic on overflow, but in optimized builds overflow
-    instead results in wrapped values. See [RFC 560] for the rationale and more details.
-
-[RFC 560]: https://github.com/rust-lang/rfcs/blob/master/text/0560-integer-overflow.md
-
 #### Diverging functions
 
 A special kind of function can be declared with a `!` character where the
@@ -4049,6 +3956,99 @@ dependencies will be used:
 In general, `--crate-type=bin` or `--crate-type=lib` should be sufficient for
 all compilation needs, and the other options are just available if more
 fine-grained control is desired over the output format of a Rust crate.
+
+# Unsafety
+
+Unsafe operations are those that potentially violate the memory-safety
+guarantees of Rust's static semantics.
+
+The following language level features cannot be used in the safe subset of
+Rust:
+
+- Dereferencing a [raw pointer](#pointer-types).
+- Reading or writing a [mutable static variable](#mutable-statics).
+- Calling an unsafe function (including an intrinsic or foreign function).
+
+## Unsafe functions
+
+Unsafe functions are functions that are not safe in all contexts and/or for all
+possible inputs. Such a function must be prefixed with the keyword `unsafe` and
+can only be called from an `unsafe` block or another `unsafe` function.
+
+## Unsafe blocks
+
+A block of code can be prefixed with the `unsafe` keyword, to permit calling
+`unsafe` functions or dereferencing raw pointers within a safe function.
+
+When a programmer has sufficient conviction that a sequence of potentially
+unsafe operations is actually safe, they can encapsulate that sequence (taken
+as a whole) within an `unsafe` block. The compiler will consider uses of such
+code safe, in the surrounding context.
+
+Unsafe blocks are used to wrap foreign libraries, make direct use of hardware
+or implement features not directly present in the language. For example, Rust
+provides the language features necessary to implement memory-safe concurrency
+in the language but the implementation of threads and message passing is in the
+standard library.
+
+Rust's type system is a conservative approximation of the dynamic safety
+requirements, so in some cases there is a performance cost to using safe code.
+For example, a doubly-linked list is not a tree structure and can only be
+represented with reference-counted pointers in safe code. By using `unsafe`
+blocks to represent the reverse links as raw pointers, it can be implemented
+with only boxes.
+
+## Behavior considered undefined
+
+The following is a list of behavior which is forbidden in all Rust code,
+including within `unsafe` blocks and `unsafe` functions. Type checking provides
+the guarantee that these issues are never caused by safe code.
+
+* Data races
+* Dereferencing a null/dangling raw pointer
+* Reads of [undef](http://llvm.org/docs/LangRef.html#undefined-values)
+  (uninitialized) memory
+* Breaking the [pointer aliasing
+  rules](http://llvm.org/docs/LangRef.html#pointer-aliasing-rules)
+  with raw pointers (a subset of the rules used by C)
+* `&mut` and `&` follow LLVM’s scoped [noalias] model, except if the `&T`
+  contains an `UnsafeCell<U>`. Unsafe code must not violate these aliasing
+  guarantees.
+* Mutating non-mutable data (that is, data reached through a shared reference or
+  data owned by a `let` binding), unless that data is contained within an `UnsafeCell<U>`.
+* Invoking undefined behavior via compiler intrinsics:
+  * Indexing outside of the bounds of an object with `std::ptr::offset`
+    (`offset` intrinsic), with
+    the exception of one byte past the end which is permitted.
+  * Using `std::ptr::copy_nonoverlapping_memory` (`memcpy32`/`memcpy64`
+    intrinsics) on overlapping buffers
+* Invalid values in primitive types, even in private fields/locals:
+  * Dangling/null references or boxes
+  * A value other than `false` (0) or `true` (1) in a `bool`
+  * A discriminant in an `enum` not included in the type definition
+  * A value in a `char` which is a surrogate or above `char::MAX`
+  * Non-UTF-8 byte sequences in a `str`
+* Unwinding into Rust from foreign code or unwinding from Rust into foreign
+  code. Rust's failure system is not compatible with exception handling in
+  other languages. Unwinding must be caught and handled at FFI boundaries.
+
+[noalias]: http://llvm.org/docs/LangRef.html#noalias
+
+## Behavior not considered unsafe
+
+This is a list of behavior not considered *unsafe* in Rust terms, but that may
+be undesired.
+
+* Deadlocks
+* Leaks of memory and other resources
+* Exiting without calling destructors
+* Integer overflow
+  - Overflow is considered "unexpected" behavior and is always user-error,
+    unless the `wrapping` primitives are used. In non-optimized builds, the compiler
+    will insert debug checks that panic on overflow, but in optimized builds overflow
+    instead results in wrapped values. See [RFC 560] for the rationale and more details.
+
+[RFC 560]: https://github.com/rust-lang/rfcs/blob/master/text/0560-integer-overflow.md
 
 # Appendix: Influences
 
