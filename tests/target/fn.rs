@@ -87,3 +87,9 @@ fn main() {
     let _ = move || 42;
     let _ = || unsafe { abort() };
 }
+
+// With inner attributes.
+fn inner() {
+    #![inline]
+    x
+}
