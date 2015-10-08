@@ -12,6 +12,39 @@
 
 register_long_diagnostics! {
 
+E0510: r##"
+`return_address` was used in an invalid context. Erroneous code example:
+
+```
+extern "rust-intrinsic" {
+    fn return_address() -> *const u8;
+}
+
+pub unsafe fn by_value() -> i32 {
+    let _ = return_address();
+    // error: invalid use of `return_address` intrinsic: function does
+    //        not use out pointer
+    0
+}
+```
+
+Returned values are stored in registers. In the case where the returned
+type doesn't fit in a register, the function returns `()` and has an
+additional input argument, this is a pointer where the result should
+be written. Example:
+
+```
+extern "rust-intrinsic" {
+    fn return_address() -> *const u8;
+}
+
+pub unsafe fn by_pointer() -> String {
+    let _ = return_address();
+    String::new() // ok!
+}
+```
+"##,
+
 E0512: r##"
 A transmute was called on types with different sizes. Erroneous code example:
 
@@ -59,6 +92,5 @@ let x = &[0, 1, 2][2]; // ok
 }
 
 register_diagnostics! {
-    E0510, // invalid use of `return_address` intrinsic: function does not use out pointer
     E0511, // invalid monomorphization of `{}` intrinsic
 }
