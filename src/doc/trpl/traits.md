@@ -492,3 +492,32 @@ If we forget to implement `Foo`, Rust will tell us:
 ```text
 error: the trait `main::Foo` is not implemented for the type `main::Baz` [E0277]
 ```
+
+# Deriving
+
+Implementing traits like `Debug` and `Default` over and over again can become
+quite tedious. For that reason, Rust provides an [attribute][attributes] that
+allows you to let Rust automatically implement traits for you:
+
+```rust
+#[derive(Debug)]
+struct Foo;
+
+fn main() {
+    println!("{:?}", Foo);
+}
+```
+
+[attributes]: attributes.html
+
+However, deriving is limited to a certain set of traits:
+
+- `Clone`
+- `Copy`
+- `Debug`
+- `Default`
+- `Eq`
+- `Hash`
+- `Ord`
+- `PartialEq`
+- `PartialOrd`
