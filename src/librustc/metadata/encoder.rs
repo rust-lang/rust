@@ -381,7 +381,7 @@ fn each_auxiliary_node_id<F>(item: &hir::Item, callback: F) -> bool where
     match item.node {
         hir::ItemStruct(ref struct_def, _) => {
             // If this is a newtype struct, return the constructor.
-            if struct_def.kind == hir::VariantKind::Tuple {
+            if struct_def.is_tuple() {
                 continue_ = callback(struct_def.id);
             }
         }
@@ -1068,7 +1068,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         // Encode inherent implementations for this structure.
         encode_inherent_implementations(ecx, rbml_w, def_id);
 
-        if struct_def.kind != hir::VariantKind::Struct {
+        if !struct_def.is_struct() {
             let ctor_did = ecx.tcx.map.local_def_id(struct_def.id);
             rbml_w.wr_tagged_u64(tag_items_data_item_struct_ctor,
                                  def_to_u64(ctor_did));
@@ -1081,7 +1081,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         }
 
         // If this is a tuple-like struct, encode the type of the constructor.
-        if struct_def.kind != hir::VariantKind::Struct {
+        if !struct_def.is_struct() {
             encode_info_for_struct_ctor(ecx, rbml_w, item.name, struct_def.id, index, item.id);
         }
       }

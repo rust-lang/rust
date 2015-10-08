@@ -473,7 +473,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                             &val);
 
         // fields
-        for field in &def.fields {
+        for field in def.fields() {
             self.process_struct_field_def(field, item.id);
             self.visit_ty(&field.node.ty);
         }
@@ -510,7 +510,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                         &val,
                                         enum_data.id);
 
-            for field in &variant.node.data.fields {
+            for field in variant.node.data.fields() {
                 self.process_struct_field_def(field, variant.node.data.id);
                 self.visit_ty(&*field.node.ty);
             }

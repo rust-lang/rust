@@ -65,6 +65,7 @@ use std::fmt;
 use std::rc::Rc;
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
+use std::{iter, option, slice};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A name is a part of an identifier, representing a string or gensym. It's
@@ -1740,21 +1741,42 @@ impl StructFieldKind {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum VariantKind {
-    Struct,
-    Tuple,
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum VariantData_ {
+    Struct(Vec<StructField>),
+    Tuple(Vec<StructField>),
     Unit,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct VariantData {
-    /// Fields, not including ctor
-    pub fields: Vec<StructField>,
+    pub data_: VariantData_,
     /// ID of the constructor. This is only used for tuple- or enum-like
     /// structs.
     pub id: NodeId,
-    pub kind: VariantKind,
+}
+
+pub type FieldIter<'a> = iter::FlatMap<option::IntoIter<&'a Vec<StructField>>,
+                                       slice::Iter<'a, StructField>,
+                                       fn(&Vec<StructField>) -> slice::Iter<StructField>>;
+
+impl VariantData {
+    pub fn fields(&self) -> FieldIter {
+        fn vec_iter<T>(v: &Vec<T>) -> slice::Iter<T> { v.iter() }
+        match self.data_ {
+            VariantData_::Struct(ref fields) | VariantData_::Tuple(ref fields) => Some(fields),
+            _ => None,
+        }.into_iter().flat_map(vec_iter)
+    }
+    pub fn is_struct(&self) -> bool {
+        if let VariantData_::Struct(..) = self.data_ { true } else { false }
+    }
+    pub fn is_tuple(&self) -> bool {
+        if let VariantData_::Tuple(..) = self.data_ { true } else { false }
+    }
+    pub fn is_unit(&self) -> bool {
+        if let VariantData_::Unit = self.data_ { true } else { false }
+    }
 }
 
 /*

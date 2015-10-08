@@ -694,11 +694,18 @@ pub fn noop_fold_where_predicate<T: Folder>(pred: WherePredicate, fld: &mut T) -
 }
 
 pub fn noop_fold_struct_def<T: Folder>(struct_def: P<VariantData>, fld: &mut T) -> P<VariantData> {
-    struct_def.map(|VariantData { fields, id, kind }| {
+    struct_def.map(|VariantData { data_, id }| {
         VariantData {
-            fields: fields.move_map(|f| fld.fold_struct_field(f)),
+            data_: match data_ {
+                VariantData_::Struct(fields) => {
+                    VariantData_::Struct(fields.move_map(|f| fld.fold_struct_field(f)))
+                }
+                VariantData_::Tuple(fields) => {
+                    VariantData_::Tuple(fields.move_map(|f| fld.fold_struct_field(f)))
+                }
+                VariantData_::Unit => VariantData_::Unit
+            },
             id: fld.new_id(id),
-            kind: kind,
         }
     })
 }

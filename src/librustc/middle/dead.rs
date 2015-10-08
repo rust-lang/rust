@@ -219,7 +219,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
                         _: &hir::Generics, _: ast::NodeId, _: codemap::Span) {
         let has_extern_repr = self.struct_has_extern_repr;
         let inherited_pub_visibility = self.inherited_pub_visibility;
-        let live_fields = def.fields.iter().filter(|f| {
+        let live_fields = def.fields().filter(|f| {
             has_extern_repr || inherited_pub_visibility || match f.node.kind {
                 hir::NamedField(_, hir::Public) => true,
                 _ => false
@@ -426,7 +426,7 @@ fn find_live(tcx: &ty::ctxt,
 
 fn get_struct_ctor_id(item: &hir::Item) -> Option<ast::NodeId> {
     match item.node {
-        hir::ItemStruct(ref struct_def, _) if struct_def.kind != hir::VariantKind::Struct => {
+        hir::ItemStruct(ref struct_def, _) if !struct_def.is_struct() => {
             Some(struct_def.id)
         }
         _ => None

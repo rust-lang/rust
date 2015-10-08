@@ -480,9 +480,10 @@ impl<'ast> Map<'ast> {
                 }
             }
             Some(NodeVariant(variant)) => {
-                match variant.node.data.kind {
-                    VariantKind::Struct => &variant.node.data,
-                    _ => panic!("struct ID bound to enum variant that isn't struct-like"),
+                if variant.node.data.is_struct() {
+                    &variant.node.data
+                } else {
+                    panic!("struct ID bound to enum variant that isn't struct-like")
                 }
             }
             _ => panic!(format!("expected struct, found {}", self.node_to_string(id))),

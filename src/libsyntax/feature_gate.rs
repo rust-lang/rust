@@ -859,11 +859,11 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
     fn visit_variant_data(&mut self, s: &'v ast::VariantData, _: ast::Ident,
                         _: &'v ast::Generics, _: ast::NodeId, span: Span) {
-        if s.fields.is_empty() {
-            if s.kind == ast::VariantKind::Struct {
+        if s.fields().count() == 0 {
+            if s.is_struct() {
                 self.gate_feature("braced_empty_structs", span,
                                   "empty structs and enum variants with braces are unstable");
-            } else if s.kind == ast::VariantKind::Tuple {
+            } else if s.is_tuple() {
                 self.context.span_handler.span_err(span, "empty tuple structs and enum variants \
                                                           are not allowed, use unit structs and \
                                                           enum variants instead");

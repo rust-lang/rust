@@ -629,7 +629,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
 }
 
 pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V, struct_definition: &'v VariantData) {
-    walk_list!(visitor, visit_struct_field, &struct_definition.fields);
+    walk_list!(visitor, visit_struct_field, struct_definition.fields());
 }
 
 pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V, struct_field: &'v StructField) {

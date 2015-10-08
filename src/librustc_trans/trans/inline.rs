@@ -115,13 +115,12 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
                     }
                 }
                 hir::ItemStruct(ref struct_def, _) => {
-                    match struct_def.kind {
-                        hir::VariantKind::Struct => ccx.sess().bug("instantiate_inline: called on a \
-                                                                 non-tuple struct"),
-                        _ => {
-                            ccx.external().borrow_mut().insert(fn_id, Some(struct_def.id));
-                            my_id = struct_def.id;
-                        }
+                    if struct_def.is_struct() {
+                        ccx.sess().bug("instantiate_inline: called on a \
+                                                                 non-tuple struct")
+                    } else {
+                        ccx.external().borrow_mut().insert(fn_id, Some(struct_def.id));
+                        my_id = struct_def.id;
                     }
                 }
                 _ => ccx.sess().bug("instantiate_inline: item has a \

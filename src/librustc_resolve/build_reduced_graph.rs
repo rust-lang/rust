@@ -492,9 +492,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             // These items live in both the type and value namespaces.
             ItemStruct(ref struct_def, _) => {
                 // Adding to both Type and Value namespaces or just Type?
-                let (forbid, ctor_id) = match struct_def.kind {
-                    hir::VariantKind::Struct => (ForbidDuplicateTypesAndModules, None),
-                    _                     => (ForbidDuplicateTypesAndValues, Some(struct_def.id)),
+                let (forbid, ctor_id) = if struct_def.is_struct() {
+                    (ForbidDuplicateTypesAndModules, None)
+                } else {
+                    (ForbidDuplicateTypesAndValues, Some(struct_def.id))
                 };
 
                 let name_bindings = self.add_child(name, parent, forbid, sp);
@@ -513,7 +514,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 }
 
                 // Record the def ID and fields of this struct.
-                let named_fields = struct_def.fields.iter().filter_map(|f| {
+                let named_fields = struct_def.fields().filter_map(|f| {
                     match f.node.kind {
                         NamedField(name, _) => Some(name),
                         UnnamedField(_) => None
@@ -587,14 +588,13 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                        item_id: DefId,
                                        parent: &Rc<Module>) {
         let name = variant.node.name;
-        let is_exported = match variant.node.data.kind {
-            hir::VariantKind::Struct => {
-                // Not adding fields for variants as they are not accessed with a self receiver
-                let variant_def_id = self.ast_map.local_def_id(variant.node.data.id);
-                self.structs.insert(variant_def_id, Vec::new());
-                true
-            }
-            _ => false,
+        let is_exported = if variant.node.data.is_struct() {
+            // Not adding fields for variants as they are not accessed with a self receiver
+            let variant_def_id = self.ast_map.local_def_id(variant.node.data.id);
+            self.structs.insert(variant_def_id, Vec::new());
+            true
+        } else {
+            false
         };
 
         let child = self.add_child(name, parent,
