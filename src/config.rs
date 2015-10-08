@@ -261,14 +261,14 @@ create_config! {
     ideal_width: usize, 80, "Ideal width of each line";
     tab_spaces: usize, 4, "Number of spaces per tab";
     fn_call_width: usize, 60,
-        "Maximum width of the args of a function call before faling back to vertical formatting";
+        "Maximum width of the args of a function call before falling back to vertical formatting";
     struct_lit_width: usize, 16,
-        "Maximum width in the body of a struct lit before faling back to vertical formatting";
+        "Maximum width in the body of a struct lit before falling back to vertical formatting";
     newline_style: NewlineStyle, NewlineStyle::Unix, "Unix or Windows line endings";
     fn_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for functions";
     fn_return_indent: ReturnIndent, ReturnIndent::WithArgs,
         "Location of return type in function declaration";
-    fn_args_paren_newline: bool, true, "If function argument parenthases goes on a newline";
+    fn_args_paren_newline: bool, true, "If function argument parenthesis goes on a newline";
     fn_args_density: Density, Density::Tall, "Argument density in functions";
     fn_args_layout: StructLitStyle, StructLitStyle::Visual, "Layout of function arguments";
     fn_arg_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indent on function arguments";
@@ -287,12 +287,12 @@ create_config! {
         "If there is a trailing comma on literal structs";
     struct_lit_style: StructLitStyle, StructLitStyle::Block, "Style of struct definition";
     struct_lit_multiline_style: MultilineStyle, MultilineStyle::PreferSingle,
-        "Multilline style on literal structs";
+        "Multiline style on literal structs";
     enum_trailing_comma: bool, true, "Put a trailing comma on enum declarations";
     report_todo: ReportTactic, ReportTactic::Always,
-        "Report all occurences of TODO in source file comments";
+        "Report all occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never,
-        "Report all occurences of FIXME in source file comments";
+        "Report all occurrences of FIXME in source file comments";
     // Alphabetically, case sensitive.
     reorder_imports: bool, false, "Reorder import statements alphabetically";
     single_line_if_else: bool, false, "Put else on same line as closing brace for if statements";
