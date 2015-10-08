@@ -105,3 +105,13 @@ pub struct State<F: FnMut()> { now: F }
 
 struct Palette { /// A map of indizes in the palette to a count of pixels in approximately that color
                     foo: i32}
+
+// Splitting a single line comment into a block previously had a misalignment
+// when the field had attributes
+struct FieldsWithAttributes {
+    // Pre Comment
+    #[rustfmt_skip] pub host:String, // Post comment BBBBBBBBBBBBBB BBBBBBBBBBBBBBBB BBBBBBBBBBBBBBBB BBBBBBBBBBBBBBBBB BBBBBBBBBBB
+    //Another pre comment
+    #[attr1]
+    #[attr2] pub id: usize // CCCCCCCCCCCCCCCCCCC CCCCCCCCCCCCCCCCCCC CCCCCCCCCCCCCCCC CCCCCCCCCCCCCCCCCC CCCCCCCCCCCCCC CCCCCCCCCCCC
+}

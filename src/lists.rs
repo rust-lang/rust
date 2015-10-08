@@ -208,7 +208,18 @@ pub fn write_list<'b, I, T>(items: I, formatting: &ListFormatting<'b>) -> Option
         } else {
             0
         };
-        let item_width = inner_item.len() + item_sep_len;
+
+        // Item string may be multi-line. Its length (used for block comment alignment)
+        // Should be only the length of the last line.
+        let item_last_line = if item.is_multiline() {
+            inner_item.lines().last().unwrap_or("")
+        } else {
+            inner_item.as_ref()
+        };
+        let mut item_last_line_width = item_last_line.len() + item_sep_len;
+        if item_last_line.starts_with(indent_str) {
+            item_last_line_width -= indent_str.len();
+        }
 
         match tactic {
             DefinitiveListTactic::Horizontal if !first => {
@@ -284,10 +295,12 @@ pub fn write_list<'b, I, T>(items: I, formatting: &ListFormatting<'b>) -> Option
 
         if tactic == DefinitiveListTactic::Vertical && item.post_comment.is_some() {
             // 1 = space between item and comment.
-            let width = formatting.width.checked_sub(item_width + 1).unwrap_or(1);
+            let width = formatting.width.checked_sub(item_last_line_width + 1).unwrap_or(1);
             let mut offset = formatting.indent;
-            offset.alignment += item_width + 1;
+            offset.alignment += item_last_line_width + 1;
             let comment = item.post_comment.as_ref().unwrap();
+
+            debug!("Width = {}, offset = {:?}", width, offset);
             // Use block-style only for the last item or multiline comments.
             let block_style = !formatting.ends_with_newline && last ||
                               comment.trim().contains('\n') ||
