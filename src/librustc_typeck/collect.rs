@@ -1014,7 +1014,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                 convert_field(ccx, &scheme.generics, &predicates, f, ty_f)
             }
 
-            if struct_def.kind != hir::VariantKind::Dict {
+            if struct_def.kind != hir::VariantKind::Struct {
                 convert_variant_ctor(tcx, struct_def.id, variant, scheme, predicates);
             }
         },
@@ -1039,7 +1039,7 @@ fn convert_variant_ctor<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
                                   scheme: ty::TypeScheme<'tcx>,
                                   predicates: ty::GenericPredicates<'tcx>) {
     let ctor_ty = match variant.kind() {
-        VariantKind::Unit | VariantKind::Dict => scheme.ty,
+        VariantKind::Unit | VariantKind::Struct => scheme.ty,
         VariantKind::Tuple => {
             let inputs: Vec<_> =
                 variant.fields
@@ -1067,7 +1067,7 @@ fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                         variants: &[P<hir::Variant>]) {
     // fill the field types
     for (variant, ty_variant) in variants.iter().zip(def.variants.iter()) {
-        for (f, ty_f) in variant.node.def.fields.iter().zip(ty_variant.fields.iter()) {
+        for (f, ty_f) in variant.node.data.fields.iter().zip(ty_variant.fields.iter()) {
             convert_field(ccx, &scheme.generics, &predicates, f, ty_f)
         }
 
@@ -1075,7 +1075,7 @@ fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // an item.
         convert_variant_ctor(
             ccx.tcx,
-            variant.node.def.id,
+            variant.node.data.id,
             ty_variant,
             scheme.clone(),
             predicates.clone()
@@ -1087,7 +1087,7 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
                                 did: DefId,
                                 name: ast::Name,
                                 disr_val: ty::Disr,
-                                def: &hir::StructDef) -> ty::VariantDefData<'tcx, 'tcx> {
+                                def: &hir::VariantData) -> ty::VariantDefData<'tcx, 'tcx> {
     let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap();
     let fields = def.fields.iter().map(|f| {
         let fid = tcx.map.local_def_id(f.node.id);
@@ -1120,12 +1120,12 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 fn convert_struct_def<'tcx>(tcx: &ty::ctxt<'tcx>,
                             it: &hir::Item,
-                            def: &hir::StructDef)
+                            def: &hir::VariantData)
                             -> ty::AdtDefMaster<'tcx>
 {
 
     let did = tcx.map.local_def_id(it.id);
-    let ctor_id = if def.kind != hir::VariantKind::Dict {
+    let ctor_id = if def.kind != hir::VariantKind::Struct {
         tcx.map.local_def_id(def.id)
     } else {
         did
@@ -1209,9 +1209,9 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
                                   disr: ty::Disr)
                                   -> ty::VariantDefData<'tcx, 'tcx>
     {
-        let did = tcx.map.local_def_id(v.node.def.id);
+        let did = tcx.map.local_def_id(v.node.data.id);
         let name = v.node.name;
-        convert_struct_variant(tcx, did, name, disr, &v.node.def, did)
+        convert_struct_variant(tcx, did, name, disr, &v.node.data, did)
     }
     let did = tcx.map.local_def_id(it.id);
     let repr_hints = tcx.lookup_repr_hints(did);

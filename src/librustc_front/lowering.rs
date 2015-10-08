@@ -266,7 +266,7 @@ pub fn lower_variant(_lctx: &LoweringContext, v: &Variant) -> P<hir::Variant> {
         node: hir::Variant_ {
             name: v.node.name.name,
             attrs: v.node.attrs.clone(),
-            def: lower_struct_def(_lctx, &v.node.def),
+            data: lower_struct_def(_lctx, &v.node.data),
             disr_expr: v.node.disr_expr.as_ref().map(|e| lower_expr(e)),
         },
         span: v.span,
@@ -498,12 +498,12 @@ pub fn lower_where_predicate(_lctx: &LoweringContext,
     }
 }
 
-pub fn lower_struct_def(_lctx: &LoweringContext, sd: &StructDef) -> P<hir::StructDef> {
-    P(hir::StructDef {
+pub fn lower_struct_def(sd: &VariantData) -> P<hir::VariantData> {
+    P(hir::VariantData {
         fields: sd.fields.iter().map(|f| lower_struct_field(_lctx, f)).collect(),
         id: sd.id,
         kind: match sd.kind {
-            VariantKind::Dict => hir::VariantKind::Dict,
+            VariantKind::Struct => hir::VariantKind::Struct,
             VariantKind::Tuple => hir::VariantKind::Tuple,
             VariantKind::Unit => hir::VariantKind::Unit,
         }

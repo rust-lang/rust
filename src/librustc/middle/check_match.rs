@@ -518,7 +518,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
 
         ty::TyEnum(adt, _) | ty::TyStruct(adt, _)  => {
             let v = adt.variant_of_ctor(ctor);
-            if let VariantKind::Dict = v.kind() {
+            if let VariantKind::Struct = v.kind() {
                 let field_pats: Vec<_> = v.fields.iter()
                     .zip(pats)
                     .filter(|&(_, ref pat)| pat.node != hir::PatWild(hir::PatWildSingle))

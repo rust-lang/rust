@@ -1485,7 +1485,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let var_kind = variant.kind();
-        if var_kind == ty::VariantKind::Dict {
+        if var_kind == ty::VariantKind::Struct {
             Some((adt, variant))
         } else if var_kind == ty::VariantKind::Unit {
             if !self.tcx().sess.features.borrow().braced_empty_structs {

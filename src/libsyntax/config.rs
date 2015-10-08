@@ -140,13 +140,13 @@ fn fold_item_underscore<F>(cx: &mut Context<F>, item: ast::Item_) -> ast::Item_ 
                 if !(cx.in_cfg)(&v.node.attrs) {
                     None
                 } else {
-                    Some(v.map(|Spanned {node: ast::Variant_ {name, attrs, def,
+                    Some(v.map(|Spanned {node: ast::Variant_ {name, attrs, data,
                                                               disr_expr}, span}| {
                         Spanned {
                             node: ast::Variant_ {
                                 name: name,
                                 attrs: attrs,
-                                def: fold_struct(cx, def),
+                                data: fold_struct(cx, data),
                                 disr_expr: disr_expr,
                             },
                             span: span
@@ -164,11 +164,11 @@ fn fold_item_underscore<F>(cx: &mut Context<F>, item: ast::Item_) -> ast::Item_ 
     fold::noop_fold_item_underscore(item, cx)
 }
 
-fn fold_struct<F>(cx: &mut Context<F>, def: P<ast::StructDef>) -> P<ast::StructDef> where
+fn fold_struct<F>(cx: &mut Context<F>, def: P<ast::VariantData>) -> P<ast::VariantData> where
     F: FnMut(&[ast::Attribute]) -> bool
 {
-    def.map(|ast::StructDef { fields, id, kind }| {
-        ast::StructDef {
+    def.map(|ast::VariantData { fields, id, kind }| {
+        ast::VariantData {
             fields: fields.into_iter().filter(|m| {
                 (cx.in_cfg)(&m.node.attrs)
             }).collect(),

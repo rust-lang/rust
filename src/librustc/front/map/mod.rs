@@ -124,7 +124,7 @@ pub enum Node<'ast> {
     NodeBlock(&'ast Block),
 
     /// NodeStructCtor represents a tuple struct.
-    NodeStructCtor(&'ast StructDef),
+    NodeStructCtor(&'ast VariantData),
 
     NodeLifetime(&'ast Lifetime),
     NodeTyParam(&'ast TyParam)
@@ -149,7 +149,7 @@ pub enum MapEntry<'ast> {
     EntryLocal(NodeId, &'ast Pat),
     EntryPat(NodeId, &'ast Pat),
     EntryBlock(NodeId, &'ast Block),
-    EntryStructCtor(NodeId, &'ast StructDef),
+    EntryStructCtor(NodeId, &'ast VariantData),
     EntryLifetime(NodeId, &'ast Lifetime),
     EntryTyParam(NodeId, &'ast TyParam),
 
@@ -471,7 +471,7 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    pub fn expect_struct(&self, id: NodeId) -> &'ast StructDef {
+    pub fn expect_struct(&self, id: NodeId) -> &'ast VariantData {
         match self.find(id) {
             Some(NodeItem(i)) => {
                 match i.node {
@@ -480,8 +480,8 @@ impl<'ast> Map<'ast> {
                 }
             }
             Some(NodeVariant(variant)) => {
-                match variant.node.def.kind {
-                    VariantKind::Dict => &variant.node.def,
+                match variant.node.data.kind {
+                    VariantKind::Struct => &variant.node.data,
                     _ => panic!("struct ID bound to enum variant that isn't struct-like"),
                 }
             }

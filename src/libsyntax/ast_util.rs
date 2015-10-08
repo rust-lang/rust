@@ -452,8 +452,8 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         visit::walk_struct_field(self, struct_field)
     }
 
-    fn visit_struct_def(&mut self,
-                        struct_def: &StructDef,
+    fn visit_variant_data(&mut self,
+                        struct_def: &VariantData,
                         _: ast::Ident,
                         _: &ast::Generics,
                         _: NodeId,

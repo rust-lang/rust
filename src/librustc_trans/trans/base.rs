@@ -2428,10 +2428,10 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
         hir_map::NodeVariant(ref v) => {
             let llfn;
-            let fields = if v.node.def.kind == hir::VariantKind::Dict {
+            let fields = if v.node.data.kind == hir::VariantKind::Struct {
                 ccx.sess().bug("struct variant kind unexpected in get_item_val")
             } else {
-                &v.node.def.fields
+                &v.node.data.fields
             };
             assert!(!fields.is_empty());
             let ty = ccx.tcx().node_id_to_type(id);
@@ -2455,7 +2455,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
         hir_map::NodeStructCtor(struct_def) => {
             // Only register the constructor if this is a tuple-like struct.
             let ctor_id = match struct_def.kind {
-                hir::VariantKind::Dict => {
+                hir::VariantKind::Struct => {
                     ccx.sess().bug("attempt to register a constructor of \
                                     a non-tuple-like struct")
                 }

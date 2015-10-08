@@ -1579,7 +1579,7 @@ pub struct EnumDef {
 pub struct Variant_ {
     pub name: Ident,
     pub attrs: Vec<Attribute>,
-    pub def: P<StructDef>,
+    pub data: P<VariantData>,
     /// Explicit discriminant, eg `Foo = 1`
     pub disr_expr: Option<P<Expr>>,
 }
@@ -1742,13 +1742,13 @@ impl StructFieldKind {
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum VariantKind {
-    Dict,
+    Struct,
     Tuple,
     Unit,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct StructDef {
+pub struct VariantData {
     /// Fields, not including ctor
     pub fields: Vec<StructField>,
     /// ID of the constructor. This is only used for tuple- or enum-like
@@ -1798,7 +1798,7 @@ pub enum Item_ {
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
     ItemEnum(EnumDef, Generics),
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
-    ItemStruct(P<StructDef>, Generics),
+    ItemStruct(P<VariantData>, Generics),
     /// Represents a Trait Declaration
     ItemTrait(Unsafety,
               Generics,

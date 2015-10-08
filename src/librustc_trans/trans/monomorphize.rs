@@ -246,7 +246,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         hir_map::NodeStructCtor(struct_def) => {
             let d = mk_lldecl(abi::Rust);
             attributes::inline(d, attributes::InlineAttr::Hint);
-            if struct_def.kind == hir::VariantKind::Dict {
+            if struct_def.kind == hir::VariantKind::Struct {
                 panic!("ast-mapped struct didn't have a ctor id")
             }
             base::trans_tuple_struct(ccx,

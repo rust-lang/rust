@@ -168,7 +168,7 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
         let mut discriminant_map = self.discriminant_map.borrow_mut();
         match enum_definition.variants.first() {
             None => { return; }
-            Some(variant) if discriminant_map.contains_key(&variant.node.def.id) => {
+            Some(variant) if discriminant_map.contains_key(&variant.node.data.id) => {
                 return;
             }
             _ => {}
@@ -177,7 +177,7 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
         // Go through all the variants.
         let mut variant_stack: Vec<ast::NodeId> = Vec::new();
         for variant in enum_definition.variants.iter().rev() {
-            variant_stack.push(variant.node.def.id);
+            variant_stack.push(variant.node.data.id);
             // When we find an expression, every variant currently on the stack
             // is affected by that expression.
             if let Some(ref expr) = variant.node.disr_expr {
@@ -208,7 +208,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
 
     fn visit_variant(&mut self, variant: &'ast hir::Variant,
                      _: &'ast hir::Generics, _: ast::NodeId) {
-        let variant_id = variant.node.def.id;
+        let variant_id = variant.node.data.id;
         let maybe_expr;
         if let Some(get_expr) = self.discriminant_map.borrow().get(&variant_id) {
             // This is necessary because we need to let the `discriminant_map`
