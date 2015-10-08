@@ -270,7 +270,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 }
 
 impl<'a> FmtVisitor<'a> {
-    pub fn from_codemap<'b>(codemap: &'b CodeMap, config: &'b Config) -> FmtVisitor<'b> {
+    pub fn from_codemap(codemap: &'a CodeMap, config: &'a Config) -> FmtVisitor<'a> {
         FmtVisitor {
             codemap: codemap,
             buffer: StringBuffer::new(),
@@ -301,21 +301,29 @@ impl<'a> FmtVisitor<'a> {
             return false;
         }
 
-        let first = &attrs[0];
+        if utils::contains_skip(attrs) {
+            return true;
+        }
+
+        let outers: Vec<_> = attrs.iter()
+                                  .filter(|a| a.node.style == ast::AttrStyle::Outer)
+                                  .map(|a| a.clone())
+                                  .collect();
+        if outers.is_empty() {
+            return false;
+        }
+
+        let first = &outers[0];
         self.format_missing_with_indent(first.span.lo);
 
-        if utils::contains_skip(attrs) {
-            true
-        } else {
-            let rewrite = attrs.rewrite(&self.get_context(),
-                                        self.config.max_width - self.block_indent.width(),
-                                        self.block_indent)
-                               .unwrap();
-            self.buffer.push_str(&rewrite);
-            let last = attrs.last().unwrap();
-            self.last_pos = last.span.hi;
-            false
-        }
+        let rewrite = outers.rewrite(&self.get_context(),
+                                     self.config.max_width - self.block_indent.width(),
+                                     self.block_indent)
+                            .unwrap();
+        self.buffer.push_str(&rewrite);
+        let last = outers.last().unwrap();
+        self.last_pos = last.span.hi;
+        false
     }
 
     fn format_mod(&mut self, m: &ast::Mod, s: Span, ident: ast::Ident) {
