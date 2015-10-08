@@ -415,7 +415,7 @@ The two values of the boolean type are written `true` and `false`.
 
 ### Symbols
 
-Symbols are a general class of printable [token](#tokens) that play structural
+Symbols are a general class of printable [tokens](#tokens) that play structural
 roles in a variety of grammar productions. They are catalogued here for
 completeness as the set of remaining miscellaneous printable tokens that do not
 otherwise appear as [unary operators](#unary-operator-expressions), [binary
