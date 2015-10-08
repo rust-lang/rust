@@ -76,12 +76,11 @@ fn main() {
 		}
 	});
 
-	fffffffffffffffffffffffffffffffffff(a,
-	                                    {
-		                                    SCRIPT_TASK_ROOT.with(|root| {
-			                                    *root.borrow_mut() = Some(&script_task);
-		                                    });
-	                                    });
+	fffffffffffffffffffffffffffffffffff(a, {
+		SCRIPT_TASK_ROOT.with(|root| {
+			*root.borrow_mut() = Some(&script_task);
+		});
+	});
 	a.b
 	 .c
 	 .d();
