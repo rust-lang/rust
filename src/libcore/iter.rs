@@ -935,7 +935,7 @@ pub trait Iterator {
 
     /// Creates an iterator that clones the elements it yields.
     ///
-    /// This is useful for converting an Iterator<&T> to an Iterator<T>,
+    /// This is useful for converting an `Iterator<&T>` to an`Iterator<T>`,
     /// so it's a more convenient form of `map(|&x| x)`.
     ///
     /// # Examples
