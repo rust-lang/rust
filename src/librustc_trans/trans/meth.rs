@@ -651,7 +651,9 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         C_uint(ccx, align)
     ].into_iter().chain(methods).collect();
 
-    let vtable = consts::addr_of(ccx, C_struct(ccx, &components, false), "vtable");
+    let vtable_const = C_struct(ccx, &components, false);
+    let align = machine::llalign_of_pref(ccx, val_ty(vtable_const));
+    let vtable = consts::addr_of(ccx, vtable_const, align, "vtable");
 
     ccx.vtables().borrow_mut().insert(trait_ref, vtable);
     vtable
