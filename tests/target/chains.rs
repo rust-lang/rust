@@ -30,12 +30,26 @@ fn main() {
         }
     });
 
-    fffffffffffffffffffffffffffffffffff(a,
-                                        {
-                                            SCRIPT_TASK_ROOT.with(|root| {
-                                                *root.borrow_mut() = Some(&script_task);
-                                            });
-                                        });
+    some_fuuuuuuuuunction().method_call_a(aaaaa, bbbbb, |c| {
+        let x = c;
+        x
+    });
+
+    some_fuuuuuuuuunction()
+        .method_call_a(aaaaa, bbbbb, |c| {
+            let x = c;
+            x
+        })
+        .method_call_b(aaaaa, bbbbb, |c| {
+            let x = c;
+            x
+        });
+
+    fffffffffffffffffffffffffffffffffff(a, {
+        SCRIPT_TASK_ROOT.with(|root| {
+            *root.borrow_mut() = Some(&script_task);
+        });
+    });
 
     let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum = xxxxxxx.map(|x| x + 5)
                                                                           .map(|x| x / 2)

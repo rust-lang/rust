@@ -22,16 +22,15 @@ impl<'a> FmtVisitor<'a> {
 
     pub fn format_missing_with_indent(&mut self, end: BytePos) {
         let config = self.config;
-        self.format_missing_inner(end,
-                                  |this, last_snippet, snippet| {
-                                      this.buffer.push_str(last_snippet.trim_right());
-                                      if last_snippet == snippet {
-                                          // No new lines in the snippet.
-                                          this.buffer.push_str("\n");
-                                      }
-                                      let indent = this.block_indent.to_string(config);
-                                      this.buffer.push_str(&indent);
-                                  })
+        self.format_missing_inner(end, |this, last_snippet, snippet| {
+            this.buffer.push_str(last_snippet.trim_right());
+            if last_snippet == snippet {
+                // No new lines in the snippet.
+                this.buffer.push_str("\n");
+            }
+            let indent = this.block_indent.to_string(config);
+            this.buffer.push_str(&indent);
+        })
     }
 
     fn format_missing_inner<F: Fn(&mut FmtVisitor, &str, &str)>(&mut self,

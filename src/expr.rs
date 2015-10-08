@@ -10,13 +10,14 @@
 
 use std::cmp::Ordering;
 use std::borrow::Borrow;
+use std::mem::swap;
 
 use Indent;
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
             DefinitiveListTactic, definitive_tactic, ListItem, format_fn_args};
 use string::{StringFormat, rewrite_string};
-use utils::{span_after, extra_offset, last_line_width, wrap_str, binary_search};
+use utils::{span_after, extra_offset, last_line_width, wrap_str, binary_search, first_line_width};
 use visitor::FmtVisitor;
 use config::{StructLitStyle, MultilineStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment};
@@ -223,29 +224,27 @@ fn rewrite_pair<LHS, RHS>(lhs: &LHS,
 {
     let max_width = try_opt!(width.checked_sub(prefix.len() + infix.len() + suffix.len()));
 
-    binary_search(1,
-                  max_width,
-                  |lhs_budget| {
-                      let lhs_offset = offset + prefix.len();
-                      let lhs_str = match lhs.rewrite(context, lhs_budget, lhs_offset) {
-                          Some(result) => result,
-                          None => return Err(Ordering::Greater),
-                      };
+    binary_search(1, max_width, |lhs_budget| {
+        let lhs_offset = offset + prefix.len();
+        let lhs_str = match lhs.rewrite(context, lhs_budget, lhs_offset) {
+            Some(result) => result,
+            None => return Err(Ordering::Greater),
+        };
 
-                      let last_line_width = last_line_width(&lhs_str);
-                      let rhs_budget = match max_width.checked_sub(last_line_width) {
-                          Some(b) => b,
-                          None => return Err(Ordering::Less),
-                      };
-                      let rhs_indent = offset + last_line_width + prefix.len() + infix.len();
+        let last_line_width = last_line_width(&lhs_str);
+        let rhs_budget = match max_width.checked_sub(last_line_width) {
+            Some(b) => b,
+            None => return Err(Ordering::Less),
+        };
+        let rhs_indent = offset + last_line_width + prefix.len() + infix.len();
 
-                      let rhs_str = match rhs.rewrite(context, rhs_budget, rhs_indent) {
-                          Some(result) => result,
-                          None => return Err(Ordering::Less),
-                      };
+        let rhs_str = match rhs.rewrite(context, rhs_budget, rhs_indent) {
+            Some(result) => result,
+            None => return Err(Ordering::Less),
+        };
 
-                      Ok(format!("{}{}{}{}{}", prefix, lhs_str, infix, rhs_str, suffix))
-                  })
+        Ok(format!("{}{}{}{}{}", prefix, lhs_str, infix, rhs_str, suffix))
+    })
 }
 
 pub fn rewrite_array<'a, I>(expr_iter: I,
@@ -1135,7 +1134,8 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         None => return Err(Ordering::Greater),
     };
     let offset = offset + extra_offset + 1;
-    let block_indent = if args.len() == 1 {
+    let arg_count = args.len();
+    let block_indent = if arg_count == 1 {
         context.block_indent
     } else {
         offset
@@ -1150,8 +1150,65 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                              |item| item.rewrite(&inner_context, remaining_width, offset),
                              span.lo,
                              span.hi);
+    let mut item_vec: Vec<_> = items.collect();
 
-    let list_str = match format_fn_args(items, remaining_width, offset, context.config) {
+    // Try letting the last argument overflow to the next line with block
+    // indentation. If its first line fits on one line with the other arguments,
+    // we format the function arguments horizontally.
+    let overflow_last = match args.last().map(|x| &x.node) {
+        Some(&ast::Expr_::ExprClosure(..)) |
+        Some(&ast::Expr_::ExprBlock(..)) if arg_count > 1 => true,
+        _ => false,
+    } && context.config.chains_overflow_last;
+
+    let mut orig_last = None;
+    let mut placeholder = None;
+
+    // Replace the last item with its first line to see if it fits with
+    // first arguments.
+    if overflow_last {
+        let inner_context = &RewriteContext { block_indent: context.block_indent, ..*context };
+        let rewrite = args.last().unwrap().rewrite(&inner_context, remaining_width, offset);
+
+        if let Some(rewrite) = rewrite {
+            let rewrite_first_line = Some(rewrite[..first_line_width(&rewrite)].to_owned());
+            placeholder = Some(rewrite);
+
+            swap(&mut item_vec[arg_count - 1].item, &mut orig_last);
+            item_vec[arg_count - 1].item = rewrite_first_line;
+        }
+    }
+
+    let tactic = definitive_tactic(&item_vec,
+                                   ListTactic::LimitedHorizontalVertical(context.config
+                                                                                .fn_call_width),
+                                   remaining_width);
+
+    // Replace the stub with the full overflowing last argument if the rewrite
+    // succeeded and its first line fits with the other arguments.
+    match (overflow_last, tactic, placeholder) {
+        (true, DefinitiveListTactic::Horizontal, placeholder @ Some(..)) => {
+            item_vec[arg_count - 1].item = placeholder;
+        }
+        (true, _, _) => {
+            item_vec[arg_count - 1].item = orig_last;
+        }
+        (false, _, _) => {}
+    }
+
+    let fmt = ListFormatting {
+        tactic: tactic,
+        separator: ",",
+        trailing_separator: SeparatorTactic::Never,
+        indent: offset,
+        width: width,
+        ends_with_newline: false,
+        config: context.config,
+    };
+
+    // format_fn_args(items, remaining_width, offset, context.config)
+
+    let list_str = match write_list(&item_vec, &fmt) {
         Some(str) => str,
         None => return Err(Ordering::Less),
     };
