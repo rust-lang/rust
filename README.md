@@ -65,6 +65,7 @@ the direction the language is evolving in.
 * [1214-projections-lifetimes-and-wf.md](text/1214-projections-lifetimes-and-wf.md)
 * [1219-use-group-as.md](text/1219-use-group-as.md)
 * [1228-placement-left-arrow.md](text/1228-placement-left-arrow.md)
+* [1260-main-reexport.md](text/1260-main-reexport.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
