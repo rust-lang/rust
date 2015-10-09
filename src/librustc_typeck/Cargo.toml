@@ -1,0 +1,15 @@
+[package]
+name = "rustc_typeck"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "rustc_typeck"
+path = "lib.rs"
+
+[dependencies]
+arena = { path = "../libarena" }
+fmt_macros = { path = "../libfmt_macros" }
+rustc = { path = "../librustc" }
+rustc_front = { path = "../librustc_front" }
+rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }

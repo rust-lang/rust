@@ -1,0 +1,12 @@
+[package]
+name = "rustc_data_structures"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "rustc_data_structures"
+path = "lib.rs"
+
+[dependencies]
+log = { path = "../liblog" }
+serialize = { path = "../libserialize" }

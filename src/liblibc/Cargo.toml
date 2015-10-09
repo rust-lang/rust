@@ -1,0 +1,11 @@
+[package]
+name = "libc"
+version = "1.0.0"
+authors = ["The Project Rust Developers"]
+
+[lib]
+name = "libc"
+path = "lib.rs"
+
+[dependencies.core]
+path = "../libcore"

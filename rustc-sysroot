@@ -1,0 +1,28 @@
+#!/bin/bash
+
+if [ -z "$RUSTC_SYSROOT" ]; then
+	RUSTC_SYSROOT=/dev/null
+fi
+
+if [ -z "$RUSTC_RUSTC" ]; then
+	RUSTC_RUSTC=rustc
+fi
+
+if [[ "$*" == *"build-script-build"* ]]; then
+	IS_BUILD=y
+elif [[ "$*" != *"--target"* ]]; then
+	IS_BUILD=y
+else
+	IS_BUILD=
+fi
+
+if [ -n "$IS_BUILD" ]; then
+	if [ -n "$RUSTC_NATIVE_SYSROOT" ]; then
+		exec "$RUSTC_RUSTC" --sysroot="$RUSTC_NATIVE_SYSROOT" "$@"
+	else
+		exec "$RUSTC_RUSTC" "$@"
+	fi
+else
+	DEPS=`echo "$*" | grep -Eo 'dependency=[^ ]*/deps' | sed 's/^dependency=/-L /' | head -n 1`
+	exec "$RUSTC_RUSTC" --sysroot="$RUSTC_SYSROOT" $DEPS "$@"
+fi

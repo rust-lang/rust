@@ -36,7 +36,7 @@
 
 #![feature(asm)]
 #![feature(box_syntax)]
-#![feature(duration_span)]
+#![feature(time_span)]
 #![feature(fnbox)]
 #![feature(iter_cmp)]
 #![feature(libc)]
@@ -78,7 +78,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{self, Duration};
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
@@ -1095,7 +1095,7 @@ pub fn black_box<T>(dummy: T) -> T {
 impl Bencher {
     /// Callback for benchmark functions to run in their body.
     pub fn iter<T, F>(&mut self, mut inner: F) where F: FnMut() -> T {
-        self.dur = Duration::span(|| {
+        self.dur = time::span(|| {
             let k = self.iterations;
             for _ in 0..k {
                 black_box(inner());
@@ -1146,7 +1146,7 @@ impl Bencher {
             let mut summ = None;
             let mut summ5 = None;
 
-            let loop_run = Duration::span(|| {
+            let loop_run = time::span(|| {
 
                 for p in &mut *samples {
                     self.bench_n(n, |x| f(x));

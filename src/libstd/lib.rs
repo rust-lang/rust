@@ -222,7 +222,6 @@
 #![feature(into_cow)]
 #![feature(iter_order)]
 #![feature(lang_items)]
-#![feature(libc)]
 #![feature(linkage, thread_local, asm)]
 #![feature(macro_reexport)]
 #![feature(slice_concat_ext)]
@@ -238,6 +237,7 @@
 #![feature(staged_api)]
 #![feature(str_char)]
 #![feature(str_internals)]
+#![feature(system)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
@@ -248,6 +248,7 @@
 #![feature(vec_resize)]
 #![feature(wrapping)]
 #![feature(zero_one)]
+#![cfg_attr(any(windows, unix), feature(libc))]
 #![cfg_attr(windows, feature(str_utf16))]
 #![cfg_attr(test, feature(float_from_str_radix, range_inclusive, float_extras))]
 #![cfg_attr(test, feature(test, rustc_private))]
@@ -275,7 +276,6 @@ extern crate collections as core_collections;
 #[allow(deprecated)] extern crate rand as core_rand;
 extern crate alloc;
 extern crate rustc_unicode;
-extern crate libc;
 
 // Make std testable by not duplicating lang items and other globals. See #2912
 #[cfg(test)] extern crate std as realstd;
@@ -319,7 +319,7 @@ pub use rustc_unicode::char;
 #[macro_use]
 mod macros;
 
-mod rtdeps;
+//mod rtdeps;
 
 /* The Prelude. */
 
@@ -344,8 +344,8 @@ pub use core::u16;
 pub use core::u32;
 pub use core::u64;
 
-#[path = "num/f32.rs"]   pub mod f32;
-#[path = "num/f64.rs"]   pub mod f64;
+#[path = "num/f32.rs"] pub mod f32;
+#[path = "num/f64.rs"] pub mod f64;
 
 pub mod ascii;
 
@@ -358,6 +358,13 @@ pub mod num;
 #[macro_use]
 pub mod thread;
 
+mod conv;
+
+mod rt;
+
+extern crate system as sys;
+pub use sys::os;
+
 pub mod collections;
 pub mod dynamic_lib;
 pub mod env;
@@ -365,22 +372,11 @@ pub mod ffi;
 pub mod fs;
 pub mod io;
 pub mod net;
-pub mod os;
 pub mod path;
 pub mod process;
 pub mod sync;
 pub mod time;
 
-#[macro_use]
-#[path = "sys/common/mod.rs"] mod sys_common;
-
-#[cfg(unix)]
-#[path = "sys/unix/mod.rs"] mod sys;
-#[cfg(windows)]
-#[path = "sys/windows/mod.rs"] mod sys;
-
-pub mod rt;
-mod panicking;
 mod rand;
 
 // Some external utilities of the standard library rely on randomness (aka
@@ -392,6 +388,28 @@ mod rand;
 #[unstable(feature = "rand", issue = "0")]
 pub mod __rand {
     pub use rand::{thread_rng, ThreadRng, Rng};
+}
+
+// Reexport some of our utilities which are expected by other crates.
+#[doc(hidden)]
+#[unstable(feature = "rt",
+            reason = "this public module should not exist and is highly likely \
+                      to disappear",
+            issue = "0")]
+pub mod __rt {
+    use sys::unwind::prelude::*;
+    use fmt;
+    use any::Any;
+
+    #[inline(always)]
+    pub fn begin_unwind_fmt(msg: fmt::Arguments, file_line: &(&'static str, u32)) -> ! {
+        Unwind::begin_unwind_fmt(msg, file_line)
+    }
+
+    #[inline(always)]
+    pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, u32)) -> ! {
+        Unwind::begin_unwind(msg, file_line)
+    }
 }
 
 // Include a number of private modules that exist solely to provide

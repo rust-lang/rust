@@ -1,0 +1,13 @@
+[package]
+name = "error-index-generator"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[[bin]]
+name = "error-index-generator"
+path = "main.rs"
+
+[dependencies]
+syntax = { path = "../libsyntax" }
+rustdoc = { path = "../librustdoc" }
+serialize = { path = "../libserialize" }

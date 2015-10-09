@@ -1,0 +1,11 @@
+[package]
+name = "getopts"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "getopts"
+path = "lib.rs"
+
+[dev-dependencies]
+log = { path = "../liblog" }

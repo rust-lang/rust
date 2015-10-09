@@ -1,0 +1,11 @@
+[package]
+name = "arena"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "arena"
+path = "lib.rs"
+
+[dependencies]
+alloc = { path = "../liballoc" }

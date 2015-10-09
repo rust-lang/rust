@@ -1,0 +1,16 @@
+[package]
+name = "rustc_back"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "rustc_back"
+path = "lib.rs"
+
+[dependencies]
+serialize = { path = "../libserialize" }
+libc = { path = "../liblibc" }
+log = { path = "../liblog" }
+syntax = { path = "../libsyntax" }
+rustc_llvm = { path = "../librustc_llvm" }
+rustc_front = { path = "../librustc_front" }

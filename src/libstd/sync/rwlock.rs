@@ -10,12 +10,14 @@
 
 use prelude::v1::*;
 
+use sys::sync::traits::*;
+use sys::sync::prelude as sys;
+
 use cell::UnsafeCell;
 use fmt;
 use marker;
 use ops::{Deref, DerefMut};
-use sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
-use sys_common::rwlock as sys;
+use sync::poison::{self, LockResult, TryLockError, TryLockResult};
 
 /// A reader-writer lock
 ///
@@ -101,7 +103,7 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
            reason = "may be merged with RwLock in the future",
            issue = "27717")]
 pub struct StaticRwLock {
-    lock: sys::RWLock,
+    lock: sys::RwLock,
     poison: poison::Flag,
 }
 
@@ -293,7 +295,7 @@ impl StaticRwLock {
     /// Creates a new rwlock.
     pub const fn new() -> StaticRwLock {
         StaticRwLock {
-            lock: sys::RWLock::new(),
+            lock: sys::RwLock::new(),
             poison: poison::Flag::new(),
         }
     }

@@ -1,0 +1,16 @@
+[package]
+name = "rustc_mir"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "rustc_mir"
+path = "lib.rs"
+
+[dependencies]
+rustc = { path = "../librustc" }
+rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_front = { path = "../librustc_front" }
+syntax = { path = "../libsyntax" }
+log = { path = "../liblog" }
+graphviz = { path = "../libgraphviz" }

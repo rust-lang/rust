@@ -1,0 +1,16 @@
+[package]
+name = "collections"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "collections"
+path = "lib.rs"
+
+[dependencies]
+alloc = { path = "../liballoc" }
+rustc_unicode = { path = "../librustc_unicode" }
+
+[dev-dependencies]
+std = { path = "../libstd" }
+core = { path = "../libcore" }

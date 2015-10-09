@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use sys::inner::prelude::*;
+use sys::net::traits::*;
+use sys::net::prelude as sys;
+
 use fmt;
 use io::{self, Error, ErrorKind};
 use net::{ToSocketAddrs, SocketAddr};
-use sys_common::net as net_imp;
-use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
 
 /// A User Datagram Protocol socket.
@@ -42,7 +44,7 @@ use time::Duration;
 /// # }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct UdpSocket(net_imp::UdpSocket);
+pub struct UdpSocket(sys::UdpSocket);
 
 impl UdpSocket {
     /// Creates a UDP socket from the given address.
@@ -51,14 +53,14 @@ impl UdpSocket {
     /// its documentation for concrete examples.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<UdpSocket> {
-        super::each_addr(addr, net_imp::UdpSocket::bind).map(UdpSocket)
+        super::each_addr(addr, sys::Net::bind_udp).map(UdpSocket).map_err(From::from)
     }
 
     /// Receives data from the socket. On success, returns the number of bytes
     /// read and the address from whence the data came.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        self.0.recv_from(buf)
+        self.0.recv_from(buf).map(|(s, a)| (s, FromInner::from_inner(a))).map_err(From::from)
     }
 
     /// Sends data on the socket to the given address. On success, returns the
@@ -70,7 +72,7 @@ impl UdpSocket {
     pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A)
                                      -> io::Result<usize> {
         match try!(addr.to_socket_addrs()).next() {
-            Some(addr) => self.0.send_to(buf, &addr),
+            Some(addr) => self.0.send_to(buf, &addr.into_inner()).map_err(From::from),
             None => Err(Error::new(ErrorKind::InvalidInput,
                                    "no addresses to send data to")),
         }
@@ -79,7 +81,7 @@ impl UdpSocket {
     /// Returns the socket address that this socket was created from.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        self.0.socket_addr()
+        self.0.socket_addr().map(FromInner::from_inner).map_err(From::from)
     }
 
     /// Creates a new independently owned handle to the underlying socket.
@@ -89,7 +91,7 @@ impl UdpSocket {
     /// options set on one socket will be propagated to the other.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_clone(&self) -> io::Result<UdpSocket> {
-        self.0.duplicate().map(UdpSocket)
+        self.0.duplicate().map(UdpSocket).map_err(From::from)
     }
 
     /// Sets the read timeout to the timeout specified.
@@ -105,7 +107,7 @@ impl UdpSocket {
     /// error of the kind `WouldBlock`, but Windows may return `TimedOut`.
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.0.set_read_timeout(dur)
+        self.0.set_read_timeout(dur).map_err(From::from)
     }
 
     /// Sets the write timeout to the timeout specified.
@@ -121,7 +123,7 @@ impl UdpSocket {
     /// an error of the kind `WouldBlock`, but Windows may return `TimedOut`.
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.0.set_write_timeout(dur)
+        self.0.set_write_timeout(dur).map_err(From::from)
     }
 
     /// Returns the read timeout of this socket.
@@ -129,7 +131,7 @@ impl UdpSocket {
     /// If the timeout is `None`, then `read` calls will block indefinitely.
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        self.0.read_timeout()
+        self.0.read_timeout().map_err(From::from)
     }
 
     /// Returns the write timeout of this socket.
@@ -137,27 +139,36 @@ impl UdpSocket {
     /// If the timeout is `None`, then `write` calls will block indefinitely.
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        self.0.write_timeout()
+        self.0.write_timeout().map_err(From::from)
     }
 }
 
-impl AsInner<net_imp::UdpSocket> for UdpSocket {
-    fn as_inner(&self) -> &net_imp::UdpSocket { &self.0 }
+impl AsInner<sys::UdpSocket> for UdpSocket {
+    fn as_inner(&self) -> &sys::UdpSocket { &self.0 }
 }
 
-impl FromInner<net_imp::UdpSocket> for UdpSocket {
-    fn from_inner(inner: net_imp::UdpSocket) -> UdpSocket { UdpSocket(inner) }
+impl FromInner<sys::UdpSocket> for UdpSocket {
+    fn from_inner(inner: sys::UdpSocket) -> UdpSocket { UdpSocket(inner) }
 }
 
-impl IntoInner<net_imp::UdpSocket> for UdpSocket {
-    fn into_inner(self) -> net_imp::UdpSocket { self.0 }
+impl IntoInner<sys::UdpSocket> for UdpSocket {
+    fn into_inner(self) -> sys::UdpSocket { self.0 }
 }
 
 impl fmt::Debug for UdpSocket {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+        let mut res = f.debug_struct("UdpSocket");
+
+        if let Ok(addr) = self.local_addr() {
+            res.field("addr", &addr);
+        }
+
+        let name = if cfg!(windows) {"socket"} else {"fd"};
+        res.field(name, &self.0.as_inner())
+            .finish()
     }
 }
+
 
 #[cfg(test)]
 mod tests {

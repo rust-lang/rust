@@ -57,6 +57,9 @@
 
 #![unstable(feature = "rand", issue = "0")]
 
+use sys::rand::traits::*;
+use sys::rand::prelude as sys;
+
 use cell::RefCell;
 use io;
 use mem;
@@ -70,7 +73,6 @@ use core_rand::Isaac64Rng as IsaacWordRng;
 pub use core_rand::{Rand, Rng, SeedableRng};
 pub use core_rand::{XorShiftRng, IsaacRng, Isaac64Rng};
 pub use core_rand::reseeding;
-pub use rand::os::OsRng;
 
 pub mod os;
 pub mod reader;
@@ -95,7 +97,7 @@ impl StdRng {
     /// Reading the randomness from the OS may fail, and any error is
     /// propagated via the `io::Result` return value.
     pub fn new() -> io::Result<StdRng> {
-        OsRng::new().map(|mut r| StdRng { rng: r.gen() })
+        sys::Rng::new().map(|mut r| StdRng { rng: r.gen() }).map_err(From::from)
     }
 }
 

@@ -1,0 +1,27 @@
+[package]
+name = "rustc"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "rustc"
+path = "lib.rs"
+
+[dependencies]
+arena = { path = "../libarena" }
+core = { path = "../libcore" }
+flate = { path = "../libflate" }
+fmt_macros = { path = "../libfmt_macros" }
+getopts = { path = "../libgetopts" }
+graphviz = { path = "../libgraphviz" }
+libc = { path = "../liblibc" }
+rustc_llvm = { path = "../librustc_llvm" }
+rustc_back = { path = "../librustc_back" }
+rustc_front = { path = "../librustc_front" }
+rustc_data_structures = { path = "../librustc_data_structures" }
+rbml = { path = "../librbml" }
+collections = { path = "../libcollections" }
+log = { path = "../liblog" }
+syntax = { path = "../libsyntax" }
+serialize = { path = "../libserialize" }
+rustc_bitflags = { path = "../librustc_bitflags" }

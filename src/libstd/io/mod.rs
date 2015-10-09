@@ -241,6 +241,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use sys::inner::prelude::*;
+use sys::io::prelude as sys;
+
 use cmp;
 use rustc_unicode::str as core_str;
 use error as std_error;
@@ -264,6 +267,7 @@ pub use self::stdio::{stdin, stdout, stderr, _print, Stdin, Stdout, Stderr};
 pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
+pub use self::read_uninitialized::read_to_end_uninitialized;
 
 pub mod prelude;
 mod buffered;
@@ -273,6 +277,7 @@ mod impls;
 mod lazy;
 mod util;
 mod stdio;
+mod read_uninitialized;
 
 const DEFAULT_BUF_SIZE: usize = 64 * 1024;
 
@@ -1167,6 +1172,16 @@ pub enum SeekFrom {
     /// seek before byte 0.
     #[stable(feature = "rust1", since = "1.0.0")]
     Current(i64),
+}
+
+impl IntoInner<sys::SeekFrom> for SeekFrom {
+    fn into_inner(self) -> sys::SeekFrom {
+        match self {
+            SeekFrom::Start(v) => sys::SeekFrom::Start(v),
+            SeekFrom::End(v) => sys::SeekFrom::End(v),
+            SeekFrom::Current(v) => sys::SeekFrom::Current(v),
+        }
+    }
 }
 
 fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)

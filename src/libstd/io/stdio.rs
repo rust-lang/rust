@@ -11,16 +11,18 @@
 use prelude::v1::*;
 use io::prelude::*;
 
+use sys::io::traits::*;
+use sys::stdio::traits::*;
+use sys::stdio::prelude as sys;
+use sys::io::prelude as sys_io;
+
 use cell::{RefCell, BorrowState};
 use cmp;
 use fmt;
 use io::lazy::Lazy;
-use io::{self, BufReader, LineWriter};
+use io::{self, BufReader, LineWriter, read_to_end_uninitialized};
 use sync::{Arc, Mutex, MutexGuard};
-use sys::stdio;
-use sys_common::io::{read_to_end_uninitialized};
-use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
-use libc;
+use sync::{ReentrantMutex, ReentrantMutexGuard};
 
 /// Stdout used by print! and println! macros
 thread_local! {
@@ -33,19 +35,19 @@ thread_local! {
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
 /// the `std::io::stdio::stdin_raw` function.
-struct StdinRaw(stdio::Stdin);
+type StdinRaw = sys::Stdin;
 
 /// A handle to a raw instance of the standard output stream of this process.
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
 /// the `std::io::stdio::stdout_raw` function.
-struct StdoutRaw(stdio::Stdout);
+type StdoutRaw = sys::Stdout;
 
 /// A handle to a raw instance of the standard output stream of this process.
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
 /// the `std::io::stdio::stderr_raw` function.
-struct StderrRaw(stdio::Stderr);
+type StderrRaw = sys::Stderr;
 
 /// Constructs a new raw handle to the standard input of this process.
 ///
@@ -54,7 +56,7 @@ struct StderrRaw(stdio::Stderr);
 /// handles is **not** available to raw handles returned from this function.
 ///
 /// The returned handle has no external synchronization or buffering.
-fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
+fn stdin_raw() -> io::Result<StdinRaw> { sys::Stdio::stdin().map_err(From::from) }
 
 /// Constructs a new raw handle to the standard output stream of this process.
 ///
@@ -65,7 +67,7 @@ fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
+fn stdout_raw() -> io::Result<StdoutRaw> { sys::Stdio::stdout().map_err(From::from) }
 
 /// Constructs a new raw handle to the standard error stream of this process.
 ///
@@ -74,59 +76,35 @@ fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
-
-impl Read for StdinRaw {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
-}
-impl Write for StdoutRaw {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
-}
-impl Write for StderrRaw {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
-}
+fn stderr_raw() -> io::Result<StderrRaw> { sys::Stdio::stderr().map_err(From::from) }
 
 enum Maybe<T> {
     Real(T),
     Fake,
 }
 
-impl<W: io::Write> io::Write for Maybe<W> {
+impl<W: sys_io::Write> io::Write for Maybe<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match *self {
-            Maybe::Real(ref mut w) => handle_ebadf(w.write(buf), buf.len()),
+            Maybe::Real(ref mut w) => sys::handle_ebadf::<sys::Stdio, _>(w.write(buf), buf.len()).map_err(From::from),
             Maybe::Fake => Ok(buf.len())
         }
     }
 
     fn flush(&mut self) -> io::Result<()> {
         match *self {
-            Maybe::Real(ref mut w) => handle_ebadf(w.flush(), ()),
+            Maybe::Real(ref mut w) => sys::handle_ebadf::<sys::Stdio, _>(w.flush(), ()).map_err(From::from),
             Maybe::Fake => Ok(())
         }
     }
 }
 
-impl<R: io::Read> io::Read for Maybe<R> {
+impl<R: sys_io::Read> io::Read for Maybe<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match *self {
-            Maybe::Real(ref mut r) => handle_ebadf(r.read(buf), buf.len()),
+            Maybe::Real(ref mut r) => sys::handle_ebadf::<sys::Stdio, _>(r.read(buf), buf.len()).map_err(From::from),
             Maybe::Fake => Ok(0)
         }
-    }
-}
-
-fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
-    #[cfg(windows)]
-    const ERR: libc::c_int = libc::ERROR_INVALID_HANDLE;
-    #[cfg(not(windows))]
-    const ERR: libc::c_int = libc::EBADF;
-
-    match r {
-        Err(ref e) if e.raw_os_error() == Some(ERR) => Ok(default),
-        r => r
     }
 }
 
@@ -305,7 +283,7 @@ impl<'a> BufRead for StdinLock<'a> {
 // [2]: http://www.mail-archive.com/log4net-dev@logging.apache.org/msg00661.html
 #[cfg(windows)]
 const OUT_MAX: usize = 8192;
-#[cfg(unix)]
+#[cfg(not(windows))]
 const OUT_MAX: usize = ::usize::MAX;
 
 /// A handle to the global standard output stream of the current process.
@@ -538,8 +516,9 @@ impl<'a> Write for StderrLock<'a> {
            issue = "0")]
 #[doc(hidden)]
 pub fn set_panic(sink: Box<Write + Send>) -> Option<Box<Write + Send>> {
-    use panicking::LOCAL_STDERR;
+    use rt::LOCAL_STDERR;
     use mem;
+
     LOCAL_STDERR.with(move |slot| {
         mem::replace(&mut *slot.borrow_mut(), Some(sink))
     }).and_then(|mut s| {

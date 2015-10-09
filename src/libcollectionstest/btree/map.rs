@@ -347,6 +347,7 @@ fn test_bad_zst() {
     }
 }
 
+#[cfg(test)]
 mod bench {
     use std::collections::BTreeMap;
     use std::__rand::{Rng, thread_rng};
