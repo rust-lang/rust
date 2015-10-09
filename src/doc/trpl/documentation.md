@@ -571,6 +571,13 @@ leave something undocumented. This is done by using `allow`:
 struct Undocumented;
 ```
 
+You might even want to hide items from the documentation completely:
+
+```rust
+#[doc(hidden)]
+struct Hidden;
+```
+
 ### Controlling HTML
 
 You can control a few aspects of the HTML that `rustdoc` generates through the
