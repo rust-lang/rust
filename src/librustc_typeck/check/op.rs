@@ -191,6 +191,20 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               "binary operation `{}` cannot be applied to type `{}`",
                               hir_util::binop_to_string(op.node),
                               lhs_ty);
+                    match op.node {
+                        hir::BiEq =>
+                            span_note!(fcx.tcx().sess, lhs_expr.span,
+                                       "an implementation of `std::cmp::PartialEq` might be \
+                                        missing for `{}` or one of its type paramters",
+                                        lhs_ty),
+                        hir::BiLt | hir::BiLe | hir::BiGt | hir::BiGe =>
+                            span_note!(fcx.tcx().sess, lhs_expr.span,
+                                       "an implementation of `std::cmp::PartialOrd` might be \
+                                        missing for `{}` or one of its type paramters",
+                                        lhs_ty),
+                        _ => ()
+
+                    };
                 }
             }
             fcx.tcx().types.err
