@@ -25,7 +25,6 @@ impl Drop for ScribbleOnDrop {
 struct Foo<T>(u32, T, Box<for <'r> fn(&'r T) -> String>);
 
 impl<T> Drop for Foo<T> {
-    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         // Use of `unsafe_destructor_blind_to_params` is unsound,
         // because we pass `T` to the callback in `self.2`
