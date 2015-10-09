@@ -2143,14 +2143,14 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
 /// specific behaviour is needed in case of reaching the recursion limit,
 /// `autoderef` should be used instead.
 pub fn autoderef_with_recursion_option<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
-                                 sp: Span,
-                                 base_ty: Ty<'tcx>,
-                                 opt_expr: Option<&hir::Expr>,
-                                 unresolved_type_action: UnresolvedTypeAction,
-                                 mut lvalue_pref: LvaluePreference,
-                                 recursion_option: AutoderefRecursionOption, 
-                                 mut should_stop: F,)
-                                 -> (Ty<'tcx>, usize, Option<T>)
+                                                       sp: Span,
+                                                       base_ty: Ty<'tcx>,
+                                                       opt_expr: Option<&hir::Expr>,
+                                                       unresolved_type_action: UnresolvedTypeAction,
+                                                       mut lvalue_pref: LvaluePreference,
+                                                       recursion_option: AutoderefRecursionOption, 
+                                                       mut should_stop: F)
+                                                       -> (Ty<'tcx>, usize, Option<T>)
     where F: FnMut(Ty<'tcx>, usize) -> Option<T>,
 {
     debug!("autoderef(base_ty={:?}, opt_expr={:?}, lvalue_pref={:?})",
