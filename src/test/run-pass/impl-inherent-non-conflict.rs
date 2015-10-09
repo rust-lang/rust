@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Ensure that an user-defined type admits multiple inherent methods
+// Ensure that a user-defined type admits multiple inherent methods
 // with the same name, which can be called on values that have a
 // precise enough type to allow distinguishing between the methods.
 

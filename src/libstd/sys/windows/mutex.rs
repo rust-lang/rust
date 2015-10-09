@@ -22,7 +22,7 @@
 //!    more details.
 //!
 //! 3. While CriticalSection is fair and SRWLock is not, the current Rust policy
-//!    is there there are no guarantees of fairness.
+//!    is that there are no guarantees of fairness.
 //!
 //! The downside of this approach, however, is that SRWLock is not available on
 //! Windows XP, so we continue to have a fallback implementation where

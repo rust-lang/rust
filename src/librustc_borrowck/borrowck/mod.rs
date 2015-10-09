@@ -373,7 +373,7 @@ const DOWNCAST_PRINTED_OPERATOR: &'static str = " as ";
 
 // A local, "cleaned" version of `mc::InteriorKind` that drops
 // information that is not relevant to loan-path analysis. (In
-// particular, the distinction between how precisely a array-element
+// particular, the distinction between how precisely an array-element
 // is tracked is irrelevant here.)
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InteriorKind {

@@ -74,7 +74,7 @@
 //!     [`Eq`](../cmp/trait.Eq.html),
 //!     [`Ord`](../cmp/trait.Ord.html)
 //!   }.
-//!   The comparision traits, which implement the comparison operators
+//!   The comparison traits, which implement the comparison operators
 //!   and are often seen in trait bounds.
 //! * `std::convert::`{
 //!     [`AsRef`](../convert/trait.AsRef.html),

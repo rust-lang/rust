@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we report an error if the trait ref in an qualified type
+// Test that we report an error if the trait ref in a qualified type
 // uses invalid type arguments.
 
 trait Foo<T> {

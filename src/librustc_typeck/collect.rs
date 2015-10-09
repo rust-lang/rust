@@ -507,7 +507,7 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for ty::GenericPredicates<'tcx> {
 /// Find bounds from hir::Generics. This requires scanning through the
 /// AST. We do this to avoid having to convert *all* the bounds, which
 /// would create artificial cycles. Instead we can only convert the
-/// bounds for those a type parameter `X` if `X::Foo` is used.
+/// bounds for a type parameter `X` if `X::Foo` is used.
 impl<'tcx> GetTypeParameterBounds<'tcx> for hir::Generics {
     fn get_type_parameter_bounds(&self,
                                  astconv: &AstConv<'tcx>,

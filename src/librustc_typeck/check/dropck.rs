@@ -185,7 +185,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     for predicate in predicates {
         // (We do not need to worry about deep analysis of type
         // expressions etc because the Drop impls are already forced
-        // to take on a structure that is roughly a alpha-renaming of
+        // to take on a structure that is roughly an alpha-renaming of
         // the generic parameters of the item definition.)
 
         // This path now just checks *all* predicates via the direct
