@@ -172,6 +172,18 @@ const fn arithmetic_ops<T: Int>() -> [fn(T, T) -> T; 4] {
 }
 ```
 
+`const` functions can also be unsafe, allowing construction of types that require
+invariants to be maintained (e.g. `std::ptr::Unique` requires a non-null pointer)
+```rust
+struct OptionalInt(u32);
+impl OptionalInt {
+    /// Value must be non-zero
+    unsafe const fn new(val: u32) -> OptionalInt {
+        OptionalInt(val)
+    }
+}
+```
+
 # Drawbacks
 
 * A design that is not conservative enough risks creating backwards compatibility
@@ -211,8 +223,6 @@ that a certain method of that trait is implemented as `const`.
 
 # Unresolved questions
 
-* Allow `unsafe const fn`? The implementation cost is negligible, but I am not
-certain it needs to exist.
 * Keep recursion or disallow it for now? The conservative choice of having no
 recursive `const fn`s would not affect the usecases intended for this RFC.
 If we do allow it, we probably need a recursion limit, and/or an evaluation
@@ -226,3 +236,9 @@ cannot be taken for granted, at least `if`/`else` should eventually work.
 - This RFC was accepted on 2015-04-06. The primary concerns raised in
   the discussion concerned CTFE, and whether the `const fn` strategy
   locks us into an undesirable plan there.
+
+# Updates since being accepted
+
+Since it was accepted, the RFC has been updated as follows:
+
+1. Allowed `unsafe const fn`
