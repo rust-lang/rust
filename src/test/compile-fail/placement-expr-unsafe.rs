@@ -8,11 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we get an expansion stack for `for` loops.
+// Check that placement in respects unsafe code checks.
 
-// error-pattern:in this expansion of for loop expansion
+#![feature(box_heap)]
+#![feature(placement_in_syntax)]
 
 fn main() {
-    for t in &foo {
-    }
+    use std::boxed::HEAP;
+
+    let p: *const i32 = &42;
+    let _ = in HEAP { *p }; //~ ERROR requires unsafe
+
+    let p: *const _ = &HEAP;
+    let _ = in *p { 42 }; //~ ERROR requires unsafe
 }

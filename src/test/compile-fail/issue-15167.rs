@@ -16,4 +16,17 @@ fn main() -> (){
     for n in 0..1 {
         println!("{}", f!()); //~ ERROR unresolved name `n`
     }
+
+    if let Some(n) = None {
+        println!("{}", f!()); //~ ERROR unresolved name `n`
+    }
+
+    if false {
+    } else if let Some(n) = None {
+        println!("{}", f!()); //~ ERROR unresolved name `n`
+    }
+
+    while let Some(n) = None {
+        println!("{}", f!()); //~ ERROR unresolved name `n`
+    }
 }

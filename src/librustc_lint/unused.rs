@@ -363,12 +363,10 @@ impl EarlyLintPass for UnusedParens {
         let (value, msg, struct_lit_needs_parens) = match e.node {
             ast::ExprIf(ref cond, _, _) => (cond, "`if` condition", true),
             ast::ExprWhile(ref cond, _, _) => (cond, "`while` condition", true),
-            ast::ExprMatch(ref head, _, source) => match source {
-                ast::MatchSource::Normal => (head, "`match` head expression", true),
-                ast::MatchSource::IfLetDesugar { .. } => (head, "`if let` head expression", true),
-                ast::MatchSource::WhileLetDesugar => (head, "`while let` head expression", true),
-                ast::MatchSource::ForLoopDesugar => (head, "`for` head expression", true),
-            },
+            ast::ExprIfLet(_, ref cond, _, _) => (cond, "`if let` head expression", true),
+            ast::ExprWhileLet(_, ref cond, _, _) => (cond, "`while let` head expression", true),
+            ast::ExprForLoop(_, ref cond, _, _) => (cond, "`for` head expression", true),
+            ast::ExprMatch(ref head, _) => (head, "`match` head expression", true),
             ast::ExprRet(Some(ref value)) => (value, "`return` value", false),
             ast::ExprAssign(_, ref value) => (value, "assigned value", false),
             ast::ExprAssignOp(_, _, ref value) => (value, "assigned value", false),

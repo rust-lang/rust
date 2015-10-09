@@ -37,7 +37,7 @@ use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitByteStr};
 use ast::{LitStr, LitInt, Local};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
-use ast::{MutImmutable, MutMutable, Mac_, MatchSource};
+use ast::{MutImmutable, MutMutable, Mac_};
 use ast::{MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
 use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatQPath, PatMac, PatRange};
@@ -2927,7 +2927,7 @@ impl<'a> Parser<'a> {
         }
         let hi = self.span.hi;
         try!(self.bump());
-        return Ok(self.mk_expr(lo, hi, ExprMatch(discriminant, arms, MatchSource::Normal)));
+        return Ok(self.mk_expr(lo, hi, ExprMatch(discriminant, arms)));
     }
 
     pub fn parse_arm_nopanic(&mut self) -> PResult<Arm> {

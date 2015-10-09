@@ -375,6 +375,11 @@ pub const CRATE_NODE_ID: NodeId = 0;
 /// small, positive ids.
 pub const DUMMY_NODE_ID: NodeId = !0;
 
+pub trait NodeIdAssigner {
+    fn next_node_id(&self) -> NodeId;
+    fn peek_node_id(&self) -> NodeId;
+}
+
 /// The AST represents all type param bounds as types.
 /// typeck::collect::compute_bounds matches these against
 /// the "special" built-in traits (see middle::lang_items) and
@@ -850,9 +855,8 @@ pub enum Expr_ {
     ///
     /// `'label: loop { block }`
     ExprLoop(P<Block>, Option<Ident>),
-    /// A `match` block, with a source that indicates whether or not it is
-    /// the result of a desugaring, and if so, which kind.
-    ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
+    /// A `match` block.
+    ExprMatch(P<Expr>, Vec<Arm>),
     /// A closure (for example, `move |a, b, c| {a + b + c}`)
     ExprClosure(CaptureClause, P<FnDecl>, P<Block>),
     /// A block (`{ ... }`)
@@ -929,14 +933,6 @@ pub enum Expr_ {
 pub struct QSelf {
     pub ty: P<Ty>,
     pub position: usize
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum MatchSource {
-    Normal,
-    IfLetDesugar { contains_else_clause: bool },
-    WhileLetDesugar,
-    ForLoopDesugar,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]

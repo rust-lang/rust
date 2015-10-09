@@ -1256,10 +1256,9 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                 ExprLoop(folder.fold_block(body),
                         opt_ident.map(|i| folder.fold_ident(i)))
             }
-            ExprMatch(expr, arms, source) => {
+            ExprMatch(expr, arms) => {
                 ExprMatch(folder.fold_expr(expr),
-                        arms.move_map(|x| folder.fold_arm(x)),
-                        source)
+                          arms.move_map(|x| folder.fold_arm(x)))
             }
             ExprClosure(capture_clause, decl, body) => {
                 ExprClosure(capture_clause,

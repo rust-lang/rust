@@ -737,7 +737,6 @@ impl EmitterWriter {
                         let (pre, post) = match ei.callee.format {
                             codemap::MacroAttribute(..) => ("#[", "]"),
                             codemap::MacroBang(..) => ("", "!"),
-                            codemap::CompilerExpansion(..) => ("", ""),
                         };
                         // Don't print recursive invocations
                         if ei.call_site != last_span {

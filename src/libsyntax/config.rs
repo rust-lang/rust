@@ -225,10 +225,10 @@ fn fold_expr<F>(cx: &mut Context<F>, expr: P<ast::Expr>) -> P<ast::Expr> where
         fold::noop_fold_expr(ast::Expr {
             id: id,
             node: match node {
-                ast::ExprMatch(m, arms, source) => {
+                ast::ExprMatch(m, arms) => {
                     ast::ExprMatch(m, arms.into_iter()
                                         .filter(|a| (cx.in_cfg)(&a.attrs))
-                                        .collect(), source)
+                                        .collect())
                 }
                 _ => node
             },
