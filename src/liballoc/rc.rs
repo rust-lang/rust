@@ -451,6 +451,7 @@ impl<T: ?Sized> Drop for Rc<T> {
     ///
     /// } // implicit drop
     /// ```
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         unsafe {
             let ptr = *self._ptr;

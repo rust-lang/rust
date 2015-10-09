@@ -550,6 +550,7 @@ impl<T: ?Sized> Drop for Arc<T> {
     ///
     /// } // implicit drop
     /// ```
+    #[unsafe_destructor_blind_to_params]
     #[inline]
     fn drop(&mut self) {
         // This structure has #[unsafe_no_drop_flag], so this drop glue may run
