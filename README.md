@@ -64,6 +64,7 @@ the direction the language is evolving in.
 * [1184-stabilize-no_std.md](text/1184-stabilize-no_std.md)
 * [1214-projections-lifetimes-and-wf.md](text/1214-projections-lifetimes-and-wf.md)
 * [1219-use-group-as.md](text/1219-use-group-as.md)
+* [1228-placement-left-arrow.md](text/1228-placement-left-arrow.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
