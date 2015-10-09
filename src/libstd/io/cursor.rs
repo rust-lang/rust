@@ -265,6 +265,16 @@ impl Write for Cursor<Vec<u8>> {
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
+#[stable(feature = "cursor_box_slice", since = "1.5.0")]
+impl Write for Cursor<Box<[u8]>> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let pos = cmp::min(self.pos, self.inner.len() as u64);
+        let amt = try!((&mut self.inner[(pos as usize)..]).write(buf));
+        self.pos += amt as u64;
+        Ok(amt)
+    }
+    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+}
 
 #[cfg(test)]
 mod tests {
@@ -290,6 +300,24 @@ mod tests {
         assert_eq!(writer.write(&[4, 5, 6, 7]).unwrap(), 4);
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
         assert_eq!(&writer.get_ref()[..], b);
+    }
+
+    #[test]
+    fn test_box_slice_writer() {
+        let mut writer = Cursor::new(vec![0u8; 9].into_boxed_slice());
+        assert_eq!(writer.position(), 0);
+        assert_eq!(writer.write(&[0]).unwrap(), 1);
+        assert_eq!(writer.position(), 1);
+        assert_eq!(writer.write(&[1, 2, 3]).unwrap(), 3);
+        assert_eq!(writer.write(&[4, 5, 6, 7]).unwrap(), 4);
+        assert_eq!(writer.position(), 8);
+        assert_eq!(writer.write(&[]).unwrap(), 0);
+        assert_eq!(writer.position(), 8);
+
+        assert_eq!(writer.write(&[8, 9]).unwrap(), 1);
+        assert_eq!(writer.write(&[10]).unwrap(), 0);
+        let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8];
+        assert_eq!(&**writer.get_ref(), b);
     }
 
     #[test]
@@ -354,6 +382,28 @@ mod tests {
     #[test]
     fn test_mem_reader() {
         let mut reader = Cursor::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
+        let mut buf = [];
+        assert_eq!(reader.read(&mut buf).unwrap(), 0);
+        assert_eq!(reader.position(), 0);
+        let mut buf = [0];
+        assert_eq!(reader.read(&mut buf).unwrap(), 1);
+        assert_eq!(reader.position(), 1);
+        let b: &[_] = &[0];
+        assert_eq!(buf, b);
+        let mut buf = [0; 4];
+        assert_eq!(reader.read(&mut buf).unwrap(), 4);
+        assert_eq!(reader.position(), 5);
+        let b: &[_] = &[1, 2, 3, 4];
+        assert_eq!(buf, b);
+        assert_eq!(reader.read(&mut buf).unwrap(), 3);
+        let b: &[_] = &[5, 6, 7];
+        assert_eq!(&buf[..3], b);
+        assert_eq!(reader.read(&mut buf).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_boxed_slice_reader() {
+        let mut reader = Cursor::new(vec!(0, 1, 2, 3, 4, 5, 6, 7).into_boxed_slice());
         let mut buf = [];
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
         assert_eq!(reader.position(), 0);
@@ -459,6 +509,10 @@ mod tests {
         let mut r = Cursor::new(&mut buf[..]);
         assert_eq!(r.seek(SeekFrom::Start(10)).unwrap(), 10);
         assert_eq!(r.write(&[3]).unwrap(), 0);
+
+        let mut r = Cursor::new(vec![10].into_boxed_slice());
+        assert_eq!(r.seek(SeekFrom::Start(10)).unwrap(), 10);
+        assert_eq!(r.write(&[3]).unwrap(), 0);
     }
 
     #[test]
@@ -472,6 +526,9 @@ mod tests {
 
         let mut buf = [0];
         let mut r = Cursor::new(&mut buf[..]);
+        assert!(r.seek(SeekFrom::End(-2)).is_err());
+
+        let mut r = Cursor::new(vec!(10).into_boxed_slice());
         assert!(r.seek(SeekFrom::End(-2)).is_err());
     }
 
