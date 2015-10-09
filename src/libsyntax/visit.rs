@@ -731,7 +731,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_block(block);
             walk_opt_ident(visitor, expression.span, opt_ident)
         }
-        ExprMatch(ref subexpression, ref arms, _) => {
+        ExprMatch(ref subexpression, ref arms) => {
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }

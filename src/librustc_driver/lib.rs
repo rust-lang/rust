@@ -396,6 +396,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 time(state.session.time_passes(),
                      "save analysis",
                      || save::process_crate(state.tcx.unwrap(),
+                                            state.lcx.unwrap(),
                                             state.krate.unwrap(),
                                             state.analysis.unwrap(),
                                             state.out_dir));

@@ -574,6 +574,9 @@ pub enum BlockCheckMode {
     UnsafeBlock(UnsafeSource),
     PushUnsafeBlock(UnsafeSource),
     PopUnsafeBlock(UnsafeSource),
+    // Within this block (but outside a PopUnstableBlock), we suspend checking of stability.
+    PushUnstableBlock,
+    PopUnstableBlock,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -583,7 +586,7 @@ pub enum UnsafeSource {
 }
 
 /// An expression
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash,)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Expr {
     pub id: NodeId,
     pub node: Expr_,

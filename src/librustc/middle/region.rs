@@ -377,7 +377,7 @@ impl RegionMaps {
         self.code_extents.borrow()[e.0 as usize]
     }
     pub fn each_encl_scope<E>(&self, mut e:E) where E: FnMut(&CodeExtent, &CodeExtent) {
-        for child_id in (1..self.code_extents.borrow().len()) {
+        for child_id in 1..self.code_extents.borrow().len() {
             let child = CodeExtent(child_id as u32);
             if let Some(parent) = self.opt_encl_scope(child) {
                 e(&child, &parent)

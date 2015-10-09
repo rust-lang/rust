@@ -270,7 +270,8 @@ pub fn check_unstable_api_usage(tcx: &ty::ctxt)
     let mut checker = Checker {
         tcx: tcx,
         active_features: active_features,
-        used_features: FnvHashMap()
+        used_features: FnvHashMap(),
+        in_skip_block: 0,
     };
 
     let krate = tcx.map.krate();
@@ -283,14 +284,23 @@ pub fn check_unstable_api_usage(tcx: &ty::ctxt)
 struct Checker<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     active_features: FnvHashSet<InternedString>,
-    used_features: FnvHashMap<InternedString, attr::StabilityLevel>
+    used_features: FnvHashMap<InternedString, attr::StabilityLevel>,
+    // Within a block where feature gate checking can be skipped.
+    in_skip_block: u32,
 }
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
     fn check(&mut self, id: DefId, span: Span, stab: &Option<&Stability>) {
         // Only the cross-crate scenario matters when checking unstable APIs
         let cross_crate = !id.is_local();
-        if !cross_crate { return }
+        if !cross_crate {
+            return
+        }
+
+        // We don't need to check for stability - presumably compiler generated code.
+        if self.in_skip_block > 0 {
+            return;
+        }
 
         match *stab {
             Some(&Stability { level: attr::Unstable, ref feature, ref reason, issue, .. }) => {
@@ -368,6 +378,21 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         check_pat(self.tcx, pat,
                   &mut |id, sp, stab| self.check(id, sp, stab));
         visit::walk_pat(self, pat)
+    }
+
+    fn visit_block(&mut self, b: &hir::Block) {
+        let old_skip_count = self.in_skip_block;
+        match b.rules {
+            hir::BlockCheckMode::PushUnstableBlock => {
+                self.in_skip_block += 1;
+            }
+            hir::BlockCheckMode::PopUnstableBlock => {
+                self.in_skip_block = self.in_skip_block.checked_sub(1).unwrap();
+            }
+            _ => {}
+        }
+        visit::walk_block(self, b);
+        self.in_skip_block = old_skip_count;
     }
 }
 

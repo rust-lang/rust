@@ -36,6 +36,7 @@ use middle::subst;
 use middle::ty::{self, Ty};
 
 use syntax::{ast, ast_util, codemap};
+use syntax::ast::NodeIdAssigner;
 use syntax::codemap::Span;
 use syntax::ptr::P;
 
@@ -53,8 +54,9 @@ use serialize::EncoderHelpers;
 
 #[cfg(test)] use std::io::Cursor;
 #[cfg(test)] use syntax::parse;
+#[cfg(test)] use syntax::ast::NodeId;
 #[cfg(test)] use rustc_front::print::pprust;
-#[cfg(test)] use rustc_front::lowering::lower_item;
+#[cfg(test)] use rustc_front::lowering::{lower_item, LoweringContext};
 
 struct DecodeContext<'a, 'b, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
@@ -1377,6 +1379,22 @@ impl FakeExtCtxt for parse::ParseSess {
 }
 
 #[cfg(test)]
+struct FakeNodeIdAssigner;
+
+#[cfg(test)]
+// It should go without saying that this may give unexpected results. Avoid
+// lowering anything which needs new nodes.
+impl NodeIdAssigner for FakeNodeIdAssigner {
+    fn next_node_id(&self) -> NodeId {
+        0
+    }
+
+    fn peek_node_id(&self) -> NodeId {
+        0
+    }
+}
+
+#[cfg(test)]
 fn mk_ctxt() -> parse::ParseSess {
     parse::ParseSess::new()
 }
@@ -1394,7 +1412,9 @@ fn roundtrip(in_item: P<hir::Item>) {
 #[test]
 fn test_basic() {
     let cx = mk_ctxt();
-    roundtrip(lower_item(&quote_item!(&cx,
+    let fnia = FakeNodeIdAssigner;
+    let lcx = LoweringContext::new(&fnia, None);
+    roundtrip(lower_item(&lcx, &quote_item!(&cx,
         fn foo() {}
     ).unwrap()));
 }
@@ -1402,7 +1422,9 @@ fn test_basic() {
 #[test]
 fn test_smalltalk() {
     let cx = mk_ctxt();
-    roundtrip(lower_item(&quote_item!(&cx,
+    let fnia = FakeNodeIdAssigner;
+    let lcx = LoweringContext::new(&fnia, None);
+    roundtrip(lower_item(&lcx, &quote_item!(&cx,
         fn foo() -> isize { 3 + 4 } // first smalltalk program ever executed.
     ).unwrap()));
 }
@@ -1410,7 +1432,9 @@ fn test_smalltalk() {
 #[test]
 fn test_more() {
     let cx = mk_ctxt();
-    roundtrip(lower_item(&quote_item!(&cx,
+    let fnia = FakeNodeIdAssigner;
+    let lcx = LoweringContext::new(&fnia, None);
+    roundtrip(lower_item(&lcx, &quote_item!(&cx,
         fn foo(x: usize, y: usize) -> usize {
             let z = x + y;
             return z;
@@ -1427,10 +1451,12 @@ fn test_simplification() {
             return alist {eq_fn: eq_int, data: Vec::new()};
         }
     ).unwrap();
-    let hir_item = lower_item(&item);
+    let fnia = FakeNodeIdAssigner;
+    let lcx = LoweringContext::new(&fnia, None);
+    let hir_item = lower_item(&lcx, &item);
     let item_in = InlinedItemRef::Item(&hir_item);
     let item_out = simplify_ast(item_in);
-    let item_exp = InlinedItem::Item(lower_item(&quote_item!(&cx,
+    let item_exp = InlinedItem::Item(lower_item(&lcx, &quote_item!(&cx,
         fn new_int_alist<B>() -> alist<isize, B> {
             return alist {eq_fn: eq_int, data: Vec::new()};
         }
