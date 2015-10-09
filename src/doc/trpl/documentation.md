@@ -548,8 +548,8 @@ pub use foo::bar;
 
 ## Missing documentation
 
-Sometimes you want to make sure that every single thing in your project is
-documented, especially when you are working on a library. Rust allows you to
+Sometimes you want to make sure that every single public thing in your project
+is documented, especially when you are working on a library. Rust allows you to
 to generate warnings or errors, when an item is missing documentation.
 To generate warnings you use `warn`:
 
