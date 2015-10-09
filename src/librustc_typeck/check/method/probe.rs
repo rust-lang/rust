@@ -205,7 +205,7 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                        None,
                                                        UnresolvedTypeAction::Error,
                                                        NoPreference,
-                                                       check::AutoderefRecursionOption::ValidAndReturnLastType,
+                                                       check::AutoderefRecursionOption::ReturnLastResolvedType,
                                                        |t, d| {
         steps.push(CandidateStep {
             self_ty: t,
