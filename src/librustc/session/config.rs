@@ -610,9 +610,10 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let env = &sess.target.target.target_env;
     let vendor = &sess.target.target.target_vendor;
 
-    let fam = match sess.target.target.options.is_like_windows {
-        true  => InternedString::new("windows"),
-        false => InternedString::new("unix")
+    let fam = match (&sess.target.target.options.target_family, sess.target.target.options.is_like_windows) {
+        (&Some(ref fam), _)  => intern(fam),
+        (_, true)  => InternedString::new("windows"),
+        (_, false) => InternedString::new("unix")
     };
 
     let mk = attr::mk_name_value_item_str;
