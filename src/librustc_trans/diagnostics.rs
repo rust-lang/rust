@@ -28,10 +28,11 @@ pub unsafe fn by_value() -> i32 {
 }
 ```
 
-Returned values are stored in registers. In the case where the returned
-type doesn't fit in a register, the function returns `()` and has an
-additional input argument, this is a pointer where the result should
-be written. Example:
+Return values may be stored in a return register(s) or written into a so-called
+out pointer. In case the returned value is too big (this is
+target-ABI-dependent and generally not portable or future proof) to fit into
+the return register(s), the compiler will return the value by writing it into
+space allocated in the caller's stack frame. Example:
 
 ```
 extern "rust-intrinsic" {
@@ -45,8 +46,37 @@ pub unsafe fn by_pointer() -> String {
 ```
 "##,
 
+E0511: r##"
+Invalid monomorphization of an intrinsic function was used. Erroneous code
+example:
+
+```
+extern "platform-intrinsic" {
+    fn simd_add<T>(a: T, b: T) -> T;
+}
+
+unsafe { simd_add(0, 1); }
+// error: invalid monomorphization of `simd_add` intrinsic
+```
+
+The generic type has to be a SIMD type. Example:
+
+```
+#[repr(simd)]
+#[derive(Copy, Clone)]
+struct i32x1(i32);
+
+extern "platform-intrinsic" {
+    fn simd_add<T>(a: T, b: T) -> T;
+}
+
+unsafe { simd_add(i32x1(0), i32x1(1)); } // ok!
+```
+"##,
+
 E0512: r##"
-A transmute was called on types with different sizes. Erroneous code example:
+Transmute with two differently sized types was attempted. Erroneous code
+example:
 
 ```
 extern "rust-intrinsic" {
@@ -55,11 +85,11 @@ extern "rust-intrinsic" {
 
 fn main() {
     unsafe { ctpop8(::std::mem::transmute(0u16)); }
-    // error: transmute called on types with different sizes
+    // error: transmute called with differently sized types
 }
 ```
 
-Please use types with same size or use the awaited type directly. Example:
+Please use types with same size or use the expected type directly. Example:
 
 ```
 extern "rust-intrinsic" {
@@ -89,8 +119,4 @@ let x = &[0, 1, 2][2]; // ok
 ```
 "##,
 
-}
-
-register_diagnostics! {
-    E0511, // invalid monomorphization of `{}` intrinsic
 }
