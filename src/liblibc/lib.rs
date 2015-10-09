@@ -2592,6 +2592,97 @@ pub mod types {
             }
         }
     }
+
+    #[cfg(target_os = "none")]
+    pub mod os {
+        pub mod common {
+            pub mod posix01 {
+                use types::os::arch::c95::{time_t, suseconds_t, c_long};
+
+                #[repr(C)]
+                #[derive(Copy, Clone)] pub struct timeval {
+                    pub tv_sec: time_t,
+                    pub tv_usec: suseconds_t,
+                }
+
+                #[repr(C)]
+                #[derive(Copy, Clone)] pub struct timespec {
+                    pub tv_sec: time_t,
+                    pub tv_nsec: c_long,
+                }
+
+                pub enum timezone {}
+            }
+            pub mod bsd43 { }
+            pub mod bsd44 { }
+        }
+
+        pub mod arch {
+            pub mod c95 {
+                use types::os::arch::posix88::ssize_t;
+                pub type c_char = i8;
+                pub type c_schar = i8;
+                pub type c_uchar = u8;
+                pub type c_short = i16;
+                pub type c_ushort = u16;
+                pub type c_int = i32;
+                pub type c_uint = u32;
+                pub type c_long = ssize_t;
+                pub type c_ulong = size_t;
+                pub type c_float = f32;
+                pub type c_double = f64;
+                #[cfg(target_pointer_width = "32")]
+                pub type size_t = u32;
+                #[cfg(target_pointer_width = "64")]
+                pub type size_t = u64;
+                pub type ptrdiff_t = ssize_t;
+                pub type clock_t = ssize_t;
+                pub type time_t = ssize_t;
+                pub type suseconds_t = ssize_t;
+                pub type wchar_t = i32;
+            }
+            pub mod c99 {
+                use types::os::arch::c95::size_t;
+                use types::os::arch::posix88::ssize_t;
+                pub type c_longlong = i64;
+                pub type c_ulonglong = u64;
+                pub type intptr_t = ssize_t;
+                pub type uintptr_t = size_t;
+                pub type intmax_t = i64;
+                pub type uintmax_t = u64;
+            }
+            pub mod posix88 {
+                use types::os::arch::c95::size_t;
+                pub type off_t = ssize_t;
+                pub type dev_t = u64;
+                pub type ino_t = size_t;
+
+                pub type pid_t = i32;
+                pub type uid_t = u32;
+                pub type gid_t = u32;
+                pub type useconds_t = size_t;
+
+                pub type mode_t = u32;
+                #[cfg(target_pointer_width = "32")]
+                pub type ssize_t = i32;
+                #[cfg(target_pointer_width = "64")]
+                pub type ssize_t = i64;
+            }
+            pub mod posix01 {
+                use types::os::arch::c95::time_t;
+
+                #[repr(C)]
+                #[derive(Copy, Clone)] pub struct utimbuf {
+                    pub actime: time_t,
+                    pub modtime: time_t,
+                }
+            }
+
+            pub mod posix08 { }
+            pub mod bsd44 { }
+            pub mod extra { }
+        }
+    }
 }
 
 pub mod consts {
@@ -5874,6 +5965,19 @@ pub mod consts {
             pub const _PC_PATH_MAX: c_int = 5;
         }
     }
+
+    #[cfg(target_os = "none")]
+    pub mod os {
+        pub mod c95 { }
+        pub mod c99 { }
+        pub mod posix88 { }
+
+        pub mod posix01 { }
+        pub mod posix08 { }
+        pub mod bsd44 { }
+        pub mod sysconf { }
+        pub mod extra { }
+    }
 }
 
 
@@ -6636,7 +6740,7 @@ pub mod funcs {
         }
     }
 
-    #[cfg(not(windows))]
+    #[cfg(all(not(windows), not(target_os = "none")))]
     pub mod bsd43 {
         use types::common::c95::{c_void};
         use types::os::common::bsd44::{socklen_t, sockaddr, ifaddrs};
@@ -7037,6 +7141,41 @@ pub mod funcs {
             }
         }
     }
+
+    #[cfg(target_os = "none")]
+    pub mod posix88 {
+        pub mod stat_ { }
+        pub mod stdio { }
+        pub mod net { }
+        pub mod fcntl { }
+        pub mod dirent { }
+        pub mod unistd { }
+        pub mod mman { }
+    }
+
+    #[cfg(target_os = "none")]
+    pub mod posix01 {
+        pub mod stat_ { }
+        pub mod unistd { }
+        pub mod resource { }
+        pub mod glob { }
+        pub mod mman { }
+        pub mod net { }
+    }
+
+    #[cfg(target_os = "none")]
+    pub mod posix08 {
+        pub mod unistd { }
+    }
+
+    #[cfg(target_os = "none")]
+    pub mod bsd43 { }
+
+    #[cfg(target_os = "none")]
+    pub mod bsd44 { }
+
+    #[cfg(target_os = "none")]
+    pub mod extra { }
 }
 
 #[test] fn work_on_windows() { } // FIXME #10872 needed for a happy windows
