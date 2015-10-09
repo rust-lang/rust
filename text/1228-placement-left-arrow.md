@@ -1,7 +1,7 @@
 - Feature Name: place_left_arrow_syntax
 - Start Date: 2015-07-28
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1228
+- Rust Issue: https://github.com/rust-lang/rust/issues/27779
 
 # Summary
 
@@ -161,4 +161,3 @@ let ref_2 = in arena <- value_expression;
 # Unresolved questions
 
 None
-
