@@ -566,9 +566,18 @@ impl<'tcx> ty::ctxt<'tcx> {
         }
     }
 
-    /// Returns true if this ADT is a dtorck type, i.e. whether it
-    /// being safe for destruction requires all borrowed pointers
-    /// reachable by it to have lifetimes strictly greater than self.
+    /// Returns true if this ADT is a dtorck type.
+    ///
+    /// Invoking the destructor of a dtorck type during usual cleanup
+    /// (e.g. the glue emitted for stack unwinding) requires all
+    /// lifetimes in the type-structure of `adt` to strictly outlive
+    /// the adt value itself.
+    ///
+    /// If `adt` is not dtorck, then the adt's destructor can be
+    /// invoked even when there are lifetimes in the type-structure of
+    /// `adt` that do not strictly outlive the adt value itself.
+    /// (This allows programs to make cyclic structures without
+    /// resorting to unasfe means; see RFCs 769 and 1238).
     pub fn is_adt_dtorck(&self, adt: ty::AdtDef<'tcx>) -> bool {
         let dtor_method = match adt.destructor() {
             Some(dtor) => dtor,
