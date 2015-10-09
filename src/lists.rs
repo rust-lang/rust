@@ -78,12 +78,12 @@ pub fn format_item_list<I>(items: I,
     list_helper(items, width, offset, config, ListTactic::HorizontalVertical)
 }
 
-fn list_helper<I>(items: I,
-                  width: usize,
-                  offset: Indent,
-                  config: &Config,
-                  tactic: ListTactic)
-                  -> Option<String>
+pub fn list_helper<I>(items: I,
+                      width: usize,
+                      offset: Indent,
+                      config: &Config,
+                      tactic: ListTactic)
+                      -> Option<String>
     where I: Iterator<Item = ListItem>
 {
     let item_vec: Vec<_> = items.collect();

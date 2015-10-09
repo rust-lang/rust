@@ -149,7 +149,7 @@ impl<'a> FmtVisitor<'a> {
                                                    false);
 
                 match rewrite {
-                    Some(new_fn) => {
+                    Some((new_fn, _)) => {
                         self.buffer.push_str(format_visibility(item.vis));
                         self.buffer.push_str(&new_fn);
                         self.buffer.push_str(";");
@@ -202,21 +202,23 @@ impl<'a> FmtVisitor<'a> {
                       -> Option<String> {
         let mut newline_brace = self.newline_for_brace(&generics.where_clause);
 
-        let mut result = try_opt!(self.rewrite_fn_base(indent,
-                                                       ident,
-                                                       fd,
-                                                       explicit_self,
-                                                       generics,
-                                                       unsafety,
-                                                       constness,
-                                                       abi,
-                                                       vis,
-                                                       span,
-                                                       newline_brace,
-                                                       true));
+        let (mut result, force_newline_brace) = try_opt!(self.rewrite_fn_base(indent,
+                                                                              ident,
+                                                                              fd,
+                                                                              explicit_self,
+                                                                              generics,
+                                                                              unsafety,
+                                                                              constness,
+                                                                              abi,
+                                                                              vis,
+                                                                              span,
+                                                                              newline_brace,
+                                                                              true));
 
         if self.config.fn_brace_style != BraceStyle::AlwaysNextLine && !result.contains('\n') {
             newline_brace = false;
+        } else if force_newline_brace {
+            newline_brace = true;
         }
 
         // Prepare for the function body by possibly adding a newline and
@@ -243,6 +245,7 @@ impl<'a> FmtVisitor<'a> {
         // Drop semicolon or it will be interpreted as comment
         let span = codemap::mk_sp(span.lo, span.hi - BytePos(1));
 
+        // FIXME: silly formatting of the `.0`.
         let mut result = try_opt!(self.rewrite_fn_base(indent,
                                                        ident,
                                                        &sig.decl,
@@ -254,7 +257,8 @@ impl<'a> FmtVisitor<'a> {
                                                        ast::Visibility::Inherited,
                                                        span,
                                                        false,
-                                                       false));
+                                                       false))
+                             .0;
 
         // Re-attach semicolon
         result.push(';');
@@ -262,6 +266,7 @@ impl<'a> FmtVisitor<'a> {
         Some(result)
     }
 
+    // Return type is (result, force_new_line_for_brace)
     fn rewrite_fn_base(&mut self,
                        indent: Indent,
                        ident: ast::Ident,
@@ -275,7 +280,8 @@ impl<'a> FmtVisitor<'a> {
                        span: Span,
                        newline_brace: bool,
                        has_body: bool)
-                       -> Option<String> {
+                       -> Option<(String, bool)> {
+        let mut force_new_line_for_brace = false;
         // FIXME we'll lose any comments in between parts of the function decl, but anyone
         // who comments there probably deserves what they get.
 
@@ -311,13 +317,22 @@ impl<'a> FmtVisitor<'a> {
         result.push_str(&generics_str);
 
         let context = self.get_context();
+        // Note that if the width and indent really matter, we'll re-layout the
+        // return type later anyway.
         let ret_str = fd.output
                         .rewrite(&context, self.config.max_width - indent.width(), indent)
                         .unwrap();
 
+        let multi_line_ret_str = ret_str.contains('\n');
+        let ret_str_len = if multi_line_ret_str {
+            0
+        } else {
+            ret_str.len()
+        };
+
         // Args.
-        let (one_line_budget, multi_line_budget, mut arg_indent) =
-            self.compute_budgets_for_args(&result, indent, ret_str.len(), newline_brace);
+        let (mut one_line_budget, multi_line_budget, mut arg_indent) =
+            self.compute_budgets_for_args(&result, indent, ret_str_len, newline_brace);
 
         debug!("rewrite_fn: one_line_budget: {}, multi_line_budget: {}, arg_indent: {:?}",
                one_line_budget,
@@ -341,6 +356,10 @@ impl<'a> FmtVisitor<'a> {
             result.push_str(&arg_indent.to_string(self.config));
         } else {
             result.push('(');
+        }
+
+        if multi_line_ret_str {
+            one_line_budget = 0;
         }
 
         // A conservative estimation, to goal is to be over all parens in generics
@@ -371,12 +390,18 @@ impl<'a> FmtVisitor<'a> {
             // over the max width, then put the return type on a new line.
             // Unless we are formatting args like a block, in which case there
             // should always be room for the return type.
-            if (result.contains("\n") ||
-                result.len() + indent.width() + ret_str.len() > self.config.max_width) &&
-               self.config.fn_args_layout != StructLitStyle::Block {
+            let ret_indent = if (result.contains("\n") || multi_line_ret_str ||
+                                 result.len() + indent.width() + ret_str_len >
+                                 self.config.max_width) &&
+                                self.config.fn_args_layout != StructLitStyle::Block {
                 let indent = match self.config.fn_return_indent {
                     ReturnIndent::WithWhereClause => indent + 4,
-                    // TODO: we might want to check that using the arg indent
+                    // Aligning with non-existent args looks silly.
+                    _ if arg_str.len() == 0 => {
+                        force_new_line_for_brace = true;
+                        indent + 4
+                    }
+                    // FIXME: we might want to check that using the arg indent
                     // doesn't blow our budget, and if it does, then fallback to
                     // the where clause indent.
                     _ => arg_indent,
@@ -384,10 +409,24 @@ impl<'a> FmtVisitor<'a> {
 
                 result.push('\n');
                 result.push_str(&indent.to_string(self.config));
+                indent
             } else {
                 result.push(' ');
+                Indent::new(indent.width(), result.len())
+            };
+
+            if multi_line_ret_str {
+                // Now that we know the proper indent and width, we need to
+                // re-layout the return type.
+
+                let budget = try_opt!(self.config.max_width.checked_sub(ret_indent.width()));
+                let ret_str = fd.output
+                                .rewrite(&context, budget, ret_indent)
+                                .unwrap();
+                result.push_str(&ret_str);
+            } else {
+                result.push_str(&ret_str);
             }
-            result.push_str(&ret_str);
 
             // Comment between return type and the end of the decl.
             let snippet_lo = fd.output.span().hi;
@@ -426,7 +465,7 @@ impl<'a> FmtVisitor<'a> {
                                                                   span.hi));
         result.push_str(&where_clause_str);
 
-        Some(result)
+        Some((result, force_new_line_for_brace))
     }
 
     fn rewrite_args(&self,
@@ -463,7 +502,7 @@ impl<'a> FmtVisitor<'a> {
             arg_items.push(ListItem::from_str(""));
         }
 
-        // TODO(#21): if there are no args, there might still be a comment, but
+        // FIXME(#21): if there are no args, there might still be a comment, but
         // without spans for the comment or parens, there is no chance of
         // getting it right. You also don't get to put a comment on self, unless
         // it is explicit.
@@ -559,7 +598,7 @@ impl<'a> FmtVisitor<'a> {
             (0, max_space - used_space, new_indent)
         } else {
             // Whoops! bankrupt.
-            // TODO: take evasive action, perhaps kill the indent or something.
+            // FIXME: take evasive action, perhaps kill the indent or something.
             panic!("in compute_budgets_for_args");
         }
     }
@@ -731,7 +770,7 @@ impl<'a> FmtVisitor<'a> {
                 Some(result)
             }
             ast::VariantKind::StructVariantKind(ref struct_def) => {
-                // TODO: Should limit the width, as we have a trailing comma
+                // FIXME: Should limit the width, as we have a trailing comma
                 self.format_struct("",
                                    field.node.name,
                                    ast::Visibility::Inherited,
@@ -968,7 +1007,7 @@ impl<'a> FmtVisitor<'a> {
         };
 
         let h_budget = self.config.max_width - generics_offset.width() - 2;
-        // TODO: might need to insert a newline if the generics are really long.
+        // FIXME: might need to insert a newline if the generics are really long.
 
         // Strings for the generics.
         let context = self.get_context();
