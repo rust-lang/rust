@@ -1211,7 +1211,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
     {
         let did = tcx.map.local_def_id(v.node.data.id);
         let name = v.node.name;
-        convert_struct_variant(tcx, did, name, disr, &v.node.data, did)
+        convert_struct_variant(tcx, did, name, disr, &v.node.data)
     }
     let did = tcx.map.local_def_id(it.id);
     let repr_hints = tcx.lookup_repr_hints(did);
