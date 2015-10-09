@@ -139,4 +139,5 @@ fn main() {
              abcd abcd abcd  abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd \
              abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd \
              abcd abcd";
+    let s = expand(a, b);
 }
