@@ -13,6 +13,7 @@ use self::SearchResult::*;
 use self::VacantEntryState::*;
 
 use borrow::Borrow;
+use cell::UnsafeCell;
 use clone::Clone;
 use cmp::{max, Eq, PartialEq};
 use default::Default;
@@ -25,6 +26,7 @@ use ops::{Deref, FnMut, FnOnce, Index};
 use option::Option::{self, Some, None};
 use rand::{self, Rng};
 use result::Result;
+use sync::Once;
 
 use super::table::{
     self,
@@ -1599,7 +1601,7 @@ impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
 /// instances are unlikely to produce the same result for the same values.
 #[derive(Clone)]
 #[unstable(feature = "hashmap_hasher",
-           reason = "hashing an hash maps may be altered",
+           reason = "hashing and hash maps may be altered",
            issue = "27713")]
 pub struct RandomState {
     k0: u64,
@@ -1607,20 +1609,40 @@ pub struct RandomState {
 }
 
 #[unstable(feature = "hashmap_hasher",
-           reason = "hashing an hash maps may be altered",
+           reason = "hashing and hash maps may be altered",
            issue = "27713")]
 impl RandomState {
-    /// Constructs a new `RandomState` that is initialized with random keys.
+    /// Constructs a new `RandomState`.
+    ///
+    /// This is initialized with a random seed lazily, only once during the program's lifetime.
+    /// Subsequent calls to `RandomState::new` will return the same value.
     #[inline]
     #[allow(deprecated)] // rand
     pub fn new() -> RandomState {
-        let mut r = rand::thread_rng();
-        RandomState { k0: r.gen(), k1: r.gen() }
+        static ONCE: Once = Once::new();
+
+        // This `SyncCell` is not actually `Sync` outside of this very specific scenario where
+        // access is synchronized by `ONCE`.
+        struct SyncCell(UnsafeCell<u64>);
+        unsafe impl Sync for SyncCell {}
+
+        static K0: SyncCell = SyncCell(UnsafeCell::new(0));
+        static K1: SyncCell = SyncCell(UnsafeCell::new(0));
+
+        unsafe {
+            ONCE.call_once(|| {
+                let mut r = rand::thread_rng();
+                *K0.0.get() = r.gen();
+                *K1.0.get() = r.gen();
+            });
+
+            RandomState { k0: *K0.0.get(), k1: *K1.0.get() }
+        }
     }
 }
 
 #[unstable(feature = "hashmap_hasher",
-           reason = "hashing an hash maps may be altered",
+           reason = "hashing and hash maps may be altered",
            issue = "27713")]
 impl HashState for RandomState {
     type Hasher = SipHasher;
@@ -1671,7 +1693,7 @@ impl<K, S, Q: ?Sized> super::Recover<Q> for HashMap<K, (), S>
 mod test_map {
     use prelude::v1::*;
 
-    use super::HashMap;
+    use super::{HashMap, RandomState};
     use super::Entry::{Occupied, Vacant};
     use iter::range_inclusive;
     use cell::RefCell;
@@ -2370,5 +2392,16 @@ mod test_map {
         assert_eq!(a[&1], "one");
         assert_eq!(a[&2], "two");
         assert_eq!(a[&3], "three");
+    }
+
+    #[test]
+    fn test_random_state() {
+        let state = RandomState::new();
+        assert!(state.k0 != 0);
+        assert!(state.k1 != 0);
+
+        let state2 = RandomState::new();
+        assert_eq!(state2.k0, state.k0);
+        assert_eq!(state2.k1, state.k1);
     }
 }
