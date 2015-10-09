@@ -69,4 +69,5 @@
     * [Slice Patterns](slice-patterns.md)
     * [Associated Constants](associated-constants.md)
 * [Glossary](glossary.md)
+* [Syntax Index](syntax-index.md)
 * [Bibliography](bibliography.md)
