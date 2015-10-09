@@ -2099,6 +2099,16 @@ pub enum UnresolvedTypeAction {
     Ignore
 }
 
+// TODO: Documentation
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AutoderefRecursionOption {
+    // return the last visited type
+    ValidAndReturnLastType,
+    // report an error and return error type
+    ErrorAndExitGracefully,
+}
+
+
 /// Executes an autoderef loop for the type `t`. At each step, invokes `should_stop` to decide
 /// whether to terminate the loop. Returns the final type and number of derefs that it performed.
 ///
@@ -2109,8 +2119,33 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                                  base_ty: Ty<'tcx>,
                                  opt_expr: Option<&hir::Expr>,
                                  unresolved_type_action: UnresolvedTypeAction,
+                                 lvalue_pref: LvaluePreference,
+                                 should_stop: F)
+                                 -> (Ty<'tcx>, usize, Option<T>)
+    where F: FnMut(Ty<'tcx>, usize) -> Option<T>,
+{
+    autoderef_with_recursion_option(fcx, 
+                                    sp, 
+                                    base_ty, 
+                                    opt_expr, 
+                                    unresolved_type_action,
+                                    lvalue_pref,
+                                    AutoderefRecursionOption::ErrorAndExitGracefully,
+                                    should_stop,)
+}
+
+// this really is more of an hack to enable cycles and gives the option for 
+// the recursion limit to still be a valid exit point.
+// checking for a duplicate type would be much more elegant IMHO but also more
+// costly to implement.
+pub fn autoderef_with_recursion_option<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
+                                 sp: Span,
+                                 base_ty: Ty<'tcx>,
+                                 opt_expr: Option<&hir::Expr>,
+                                 unresolved_type_action: UnresolvedTypeAction,
                                  mut lvalue_pref: LvaluePreference,
-                                 mut should_stop: F)
+                                 recursion_option: AutoderefRecursionOption, 
+                                 mut should_stop: F,)
                                  -> (Ty<'tcx>, usize, Option<T>)
     where F: FnMut(Ty<'tcx>, usize) -> Option<T>,
 {
@@ -2120,7 +2155,8 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
            lvalue_pref);
 
     let mut t = base_ty;
-    for autoderefs in 0..fcx.tcx().sess.recursion_limit.get() {
+    let recursion_limit = fcx.tcx().sess.recursion_limit.get();
+    for autoderefs in 0..recursion_limit {
         let resolved_t = match unresolved_type_action {
             UnresolvedTypeAction::Error => {
                 structurally_resolved_type(fcx, sp, t)
@@ -2140,6 +2176,14 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
         match should_stop(resolved_t, autoderefs) {
             Some(x) => return (resolved_t, autoderefs, Some(x)),
             None => {}
+        }
+
+        // don't throw error when reaching the recursion error.
+        if recursion_option == AutoderefRecursionOption::ValidAndReturnLastType 
+           && autoderefs >= recursion_limit-1  // exclusive range!
+        {
+            return (resolved_t, autoderefs, None);
+
         }
 
         // Otherwise, deref if type is derefable:
@@ -2163,6 +2207,7 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                 try_overloaded_deref(fcx, sp, method_call, None, resolved_t, lvalue_pref)
             }
         };
+
         match mt {
             Some(mt) => {
                 t = mt.ty;

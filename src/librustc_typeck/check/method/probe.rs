@@ -199,12 +199,13 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                           -> Option<Vec<CandidateStep<'tcx>>> {
     let mut steps = Vec::new();
 
-    let (final_ty, dereferences, _) = check::autoderef(fcx,
+    let (final_ty, dereferences, _) = check::autoderef_with_recursion_option(fcx,
                                                        span,
                                                        self_ty,
                                                        None,
                                                        UnresolvedTypeAction::Error,
                                                        NoPreference,
+                                                       check::AutoderefRecursionOption::ValidAndReturnLastType,
                                                        |t, d| {
         steps.push(CandidateStep {
             self_ty: t,
