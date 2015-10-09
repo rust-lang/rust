@@ -21,7 +21,7 @@
 * `match`: pattern matching.  See [Match].
 * `mod`: module declaration.  See [Crates and Modules (Defining Modules)].
 * `move`: part of closure syntax.  See [Closures (`move` closures)].
-* `mut`: denotes mutability in pointer types, pattern bindings, and `struct` fields.  See [Mutability].
+* `mut`: denotes mutability in pointer types and pattern bindings.  See [Mutability].
 * `pub`: denotes public visibility in `struct` fields, `impl` blocks, and modules.  See [Crates and Modules (Exporting a Public Interface)].
 * `ref`: by-reference binding.  See [Patterns (`ref` and `ref mut`)].
 * `return`: return from function.  See [Functions (Early Returns)].
@@ -63,7 +63,7 @@
 * `.` (`expr.ident`): member access.  See [Structs], [Method Syntax].
 * `..` (`..`, `expr..`, `..expr`, `expr..expr`): right-exclusive range literal.
 * `..` (`..expr`): struct literal update syntax.  See [Structs (Update syntax)].
-* `..` (`..ident`): "and the rest" pattern binding.  See [Patterns (Ignoring bindings)].
+* `..` (`variant(x, ..)`, `struct_type { x, .. }`): "and the rest" pattern binding.  See [Patterns (Ignoring bindings)].
 * `...` (`expr ... expr`): inclusive range pattern.  See [Patterns (Ranges)].
 * `/` (`expr / expr`): arithmetic division.  Overloadable (`Div`).
 * `/=` (`var /= expr`): arithmetic division & assignment.
@@ -83,7 +83,7 @@
 * `>=` (`var >= expr`): greater-than or equal-to comparison.  Overloadable (`Cmp`, `PartialCmp`).
 * `>>` (`expr >> expr`): right-shift.  Overloadable (`Shr`).
 * `>>=` (`var >>= expr`): right-shift & assignment.
-* `@` (`expr @ expr`): pattern binding.  See [Patterns (Bindings)].
+* `@` (`ident @ pat`): pattern binding.  See [Patterns (Bindings)].
 * `^` (`expr ^ expr`): bitwise exclusive or.  Overloadable (`BitXor`).
 * `^=` (`var ^= expr`): bitwise exclusive or & assignment.
 * `|` (`expr | expr`): bitwise or.  Overloadable (`BitOr`).
