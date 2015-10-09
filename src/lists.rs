@@ -395,7 +395,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                                      separator_index + 1)
                         }
                         // Potential *single* line comment.
-                        (_, Some(j)) => j + 1,
+                        (_, Some(j)) if j > separator_index => j + 1,
                         _ => post_snippet.len(),
                     }
                 }

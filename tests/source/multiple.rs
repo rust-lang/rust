@@ -108,4 +108,7 @@ fn main() {
     let rc = RefCell::new(42usize,remaining_width,           remaining_width);  // a comment
       let x = "Hello!!!!!!!!! abcd  abcd abcd abcd abcd abcd\n abcd abcd abcd abcd abcd abcd abcd abcd abcd \
                    abcd  abcd abcd abcd abcd abcd abcd abcd abcd abcd \
-                    abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd";  }
+                    abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd";
+           let s = expand(a
+    ,    
+    b); }
