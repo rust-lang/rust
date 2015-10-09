@@ -12,6 +12,19 @@
 
 #![stable(feature = "time", since = "1.3.0")]
 
-pub use self::duration::Duration;
+pub use core::time::Duration;
 
-mod duration;
+use sys::time::prelude::*;
+
+/// Runs a closure, returning the duration of time it took to run the
+/// closure.
+#[unstable(feature = "time_span",
+           reason = "unsure if this is the right API or whether it should \
+                     wait for a more general \"moment in time\" \
+                     abstraction",
+           issue = "27799")]
+pub fn span<F>(f: F) -> Duration where F: FnOnce() {
+    let start = SteadyTime::now().unwrap();
+    f();
+    SteadyTime::now().unwrap().delta(&start)
+}

@@ -98,6 +98,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use sys::path::traits::*;
+use sys::path::prelude as sys;
+use sys::inner::prelude::*;
+
 use ascii::*;
 use borrow::{Borrow, IntoCow, ToOwned, Cow};
 use cmp;
@@ -110,8 +114,6 @@ use fmt;
 
 use ffi::{OsStr, OsString};
 
-use self::platform::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
-
 ////////////////////////////////////////////////////////////////////////////////
 // GENERAL NOTES
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,132 +123,6 @@ use self::platform::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 // as-is.  Eventually, this transmutation should be replaced by direct uses of
 // OsStr APIs for parsing, but it will take a while for those to become
 // available.
-
-////////////////////////////////////////////////////////////////////////////////
-// Platform-specific definitions
-////////////////////////////////////////////////////////////////////////////////
-
-// The following modules give the most basic tools for parsing paths on various
-// platforms. The bulk of the code is devoted to parsing prefixes on Windows.
-
-#[cfg(unix)]
-mod platform {
-    use super::Prefix;
-    use ffi::OsStr;
-
-    #[inline]
-    pub fn is_sep_byte(b: u8) -> bool {
-        b == b'/'
-    }
-
-    #[inline]
-    pub fn is_verbatim_sep(b: u8) -> bool {
-        b == b'/'
-    }
-
-    pub fn parse_prefix(_: &OsStr) -> Option<Prefix> {
-        None
-    }
-
-    pub const MAIN_SEP_STR: &'static str = "/";
-    pub const MAIN_SEP: char = '/';
-}
-
-#[cfg(windows)]
-mod platform {
-    use ascii::*;
-
-    use super::{os_str_as_u8_slice, u8_slice_as_os_str, Prefix};
-    use ffi::OsStr;
-
-    #[inline]
-    pub fn is_sep_byte(b: u8) -> bool {
-        b == b'/' || b == b'\\'
-    }
-
-    #[inline]
-    pub fn is_verbatim_sep(b: u8) -> bool {
-        b == b'\\'
-    }
-
-    pub fn parse_prefix<'a>(path: &'a OsStr) -> Option<Prefix> {
-        use super::Prefix::*;
-        unsafe {
-            // The unsafety here stems from converting between &OsStr and &[u8]
-            // and back. This is safe to do because (1) we only look at ASCII
-            // contents of the encoding and (2) new &OsStr values are produced
-            // only from ASCII-bounded slices of existing &OsStr values.
-            let mut path = os_str_as_u8_slice(path);
-
-            if path.starts_with(br"\\") {
-                // \\
-                path = &path[2..];
-                if path.starts_with(br"?\") {
-                    // \\?\
-                    path = &path[2..];
-                    if path.starts_with(br"UNC\") {
-                        // \\?\UNC\server\share
-                        path = &path[4..];
-                        let (server, share) = match parse_two_comps(path, is_verbatim_sep) {
-                            Some((server, share)) => (u8_slice_as_os_str(server),
-                                                      u8_slice_as_os_str(share)),
-                            None => (u8_slice_as_os_str(path),
-                                     u8_slice_as_os_str(&[])),
-                        };
-                        return Some(VerbatimUNC(server, share));
-                    } else {
-                        // \\?\path
-                        let idx = path.iter().position(|&b| b == b'\\');
-                        if idx == Some(2) && path[1] == b':' {
-                            let c = path[0];
-                            if c.is_ascii() && (c as char).is_alphabetic() {
-                                // \\?\C:\ path
-                                return Some(VerbatimDisk(c.to_ascii_uppercase()));
-                            }
-                        }
-                        let slice = &path[.. idx.unwrap_or(path.len())];
-                        return Some(Verbatim(u8_slice_as_os_str(slice)));
-                    }
-                } else if path.starts_with(b".\\") {
-                    // \\.\path
-                    path = &path[2..];
-                    let pos = path.iter().position(|&b| b == b'\\');
-                    let slice = &path[..pos.unwrap_or(path.len())];
-                    return Some(DeviceNS(u8_slice_as_os_str(slice)));
-                }
-                match parse_two_comps(path, is_sep_byte) {
-                    Some((server, share)) if !server.is_empty() && !share.is_empty() => {
-                        // \\server\share
-                        return Some(UNC(u8_slice_as_os_str(server),
-                                        u8_slice_as_os_str(share)));
-                    }
-                    _ => ()
-                }
-            } else if path.len() > 1 && path[1] == b':' {
-                // C:
-                let c = path[0];
-                if c.is_ascii() && (c as char).is_alphabetic() {
-                    return Some(Disk(c.to_ascii_uppercase()));
-                }
-            }
-            return None;
-        }
-
-        fn parse_two_comps(mut path: &[u8], f: fn(u8) -> bool) -> Option<(&[u8], &[u8])> {
-            let first = match path.iter().position(|x| f(*x)) {
-                None => return None,
-                Some(x) => &path[.. x]
-            };
-            path = &path[(first.len()+1)..];
-            let idx = path.iter().position(|x| f(*x));
-            let second = &path[.. idx.unwrap_or(path.len())];
-            Some((first, second))
-        }
-    }
-
-    pub const MAIN_SEP_STR: &'static str = "\\";
-    pub const MAIN_SEP: char = '\\';
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Windows Prefixes
@@ -285,6 +161,19 @@ pub enum Prefix<'a> {
     /// Prefix `C:` for the given disk drive.
     #[stable(feature = "rust1", since = "1.0.0")]
     Disk(u8),
+}
+
+impl<'a> FromInner<sys::Prefix<'a>> for Prefix<'a> {
+    fn from_inner(p: sys::Prefix<'a>) -> Self {
+        match p {
+            sys::Prefix::Verbatim(p) => Prefix::Verbatim(FromInner::from_inner(p)),
+            sys::Prefix::VerbatimUNC(p, s) => Prefix::VerbatimUNC(FromInner::from_inner(p), FromInner::from_inner(s)),
+            sys::Prefix::VerbatimDisk(p) => Prefix::VerbatimDisk(p),
+            sys::Prefix::DeviceNS(p) => Prefix::DeviceNS(FromInner::from_inner(p)),
+            sys::Prefix::UNC(p, s) => Prefix::UNC(FromInner::from_inner(p), FromInner::from_inner(s)),
+            sys::Prefix::Disk(p) => Prefix::Disk(p),
+        }
+    }
 }
 
 impl<'a> Prefix<'a> {
@@ -351,12 +240,12 @@ impl<'a> Prefix<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn is_separator(c: char) -> bool {
-    c.is_ascii() && is_sep_byte(c as u8)
+    c.is_ascii() && sys::PathInfo::is_sep_byte(c as u8)
 }
 
 /// The primary separator for the current platform
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MAIN_SEPARATOR: char = platform::MAIN_SEP;
+pub const MAIN_SEPARATOR: char = sys::PathInfo::MAIN_SEP;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Misc helpers
@@ -397,7 +286,7 @@ unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
 /// Says whether the first byte after the prefix is a separator.
 fn has_physical_root(s: &[u8], prefix: Option<Prefix>) -> bool {
     let path = if let Some(p) = prefix { &s[p.len()..] } else { s };
-    !path.is_empty() && is_sep_byte(path[0])
+    !path.is_empty() && sys::PathInfo::is_sep_byte(path[0])
 }
 
 // basic workhorse for splitting stem and extension
@@ -524,7 +413,7 @@ impl<'a> Component<'a> {
     pub fn as_os_str(self) -> &'a OsStr {
         match self {
             Component::Prefix(p) => p.as_os_str(),
-            Component::RootDir => OsStr::new(MAIN_SEP_STR),
+            Component::RootDir => OsStr::new(sys::PathInfo::MAIN_SEP_STR),
             Component::CurDir => OsStr::new("."),
             Component::ParentDir => OsStr::new(".."),
             Component::Normal(path) => path,
@@ -621,9 +510,9 @@ impl<'a> Components<'a> {
     #[inline]
     fn is_sep_byte(&self, b: u8) -> bool {
         if self.prefix_verbatim() {
-            is_verbatim_sep(b)
+            sys::PathInfo::is_verbatim_sep(b)
         } else {
-            is_sep_byte(b)
+            sys::PathInfo::is_sep_byte(b)
         }
     }
 
@@ -969,7 +858,7 @@ impl PathBuf {
 
     fn _push(&mut self, path: &Path) {
         // in general, a separator is needed if the rightmost byte is not a separator
-        let mut need_sep = self.as_mut_vec().last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
+        let mut need_sep = self.as_mut_vec().last().map(|c| !sys::PathInfo::is_sep_byte(*c)).unwrap_or(false);
 
         // in the special case of `C:` on Windows, do *not* add a separator
         {
@@ -993,7 +882,7 @@ impl PathBuf {
 
         // `path` is a pure relative path
         } else if need_sep {
-            self.inner.push(MAIN_SEP_STR);
+            self.inner.push(sys::PathInfo::MAIN_SEP_STR);
         }
 
         self.inner.push(path);
@@ -1349,7 +1238,7 @@ impl Path {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_absolute(&self) -> bool {
         self.has_root() &&
-            (cfg!(unix) || self.prefix().is_some())
+            (!sys::PathInfo::PREFIX_IMP || self.prefix().is_some())
     }
 
     /// A path is *relative* if it is not absolute.
@@ -1644,7 +1533,8 @@ impl Path {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn components(&self) -> Components {
-        let prefix = parse_prefix(self.as_os_str());
+        let prefix = sys::PathInfo::parse_prefix(self.as_os_str().as_inner());
+        let prefix = prefix.map(FromInner::from_inner);
         Components {
             path: self.as_u8_slice(),
             prefix: prefix,

@@ -17,14 +17,18 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use sys::inner::prelude::*;
+use sys::io::traits::*;
+use sys::fs::traits::*;
+use sys::fs::prelude as sys;
+
 use fmt;
-use ffi::OsString;
-use io::{self, SeekFrom, Seek, Read, Write};
+use borrow::ToOwned;
+use ffi::{OsStr, OsString};
+use io::{self, SeekFrom, Seek, Read, Write, read_to_end_uninitialized};
 use path::{Path, PathBuf};
-use sys::fs as fs_imp;
-use sys_common::io::read_to_end_uninitialized;
-use sys_common::{AsInnerMut, FromInner, AsInner, IntoInner};
 use vec::Vec;
+use conv::conv;
 
 /// A reference to an open file on the filesystem.
 ///
@@ -51,7 +55,7 @@ use vec::Vec;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
-    inner: fs_imp::File,
+    inner: sys::File,
 }
 
 /// Metadata information about a file.
@@ -60,7 +64,7 @@ pub struct File {
 /// represents known metadata about a file such as its permissions, size,
 /// modification times, etc.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Metadata(fs_imp::FileAttr);
+pub struct Metadata(sys::FileAttr);
 
 /// Iterator over the entries in a directory.
 ///
@@ -74,7 +78,7 @@ pub struct Metadata(fs_imp::FileAttr);
 /// This `io::Result` will be an `Err` if there's some sort of intermittent
 /// IO error during iteration.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct ReadDir(fs_imp::ReadDir);
+pub struct ReadDir(sys::ReadDir);
 
 /// Entries returned by the `ReadDir` iterator.
 ///
@@ -82,7 +86,7 @@ pub struct ReadDir(fs_imp::ReadDir);
 /// filesystem. Each entry can be inspected via methods to learn about the full
 /// path or possibly other metadata through per-platform extension traits.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct DirEntry(fs_imp::DirEntry);
+pub struct DirEntry(sys::DirEntry);
 
 /// An iterator that recursively walks over the contents of a directory.
 #[unstable(feature = "fs_walk",
@@ -135,7 +139,7 @@ pub struct WalkDir {
 /// ```
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct OpenOptions(fs_imp::OpenOptions);
+pub struct OpenOptions(sys::OpenOptions);
 
 /// Representation of the various permissions on a file.
 ///
@@ -145,12 +149,12 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 /// `os::unix::PermissionsExt` trait.
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Permissions(fs_imp::FilePermissions);
+pub struct Permissions(sys::FilePermissions);
 
 /// An structure representing a type of file with accessors for each file type.
 #[stable(feature = "file_type", since = "1.1.0")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct FileType(fs_imp::FileType);
+pub struct FileType(sys::FileType);
 
 /// A builder used to create directories in various manners.
 ///
@@ -158,7 +162,7 @@ pub struct FileType(fs_imp::FileType);
 #[unstable(feature = "dir_builder", reason = "recently added API",
            issue = "27710")]
 pub struct DirBuilder {
-    inner: fs_imp::DirBuilder,
+    inner: sys::DirBuilder,
     recursive: bool,
 }
 
@@ -230,7 +234,7 @@ impl File {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn sync_all(&self) -> io::Result<()> {
-        self.inner.fsync()
+        conv(self.inner.fsync())
     }
 
     /// This function is similar to `sync_all`, except that it may not
@@ -259,7 +263,7 @@ impl File {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn sync_data(&self) -> io::Result<()> {
-        self.inner.datasync()
+        conv(self.inner.datasync())
     }
 
     /// Truncates or extends the underlying file, updating the size of
@@ -287,7 +291,7 @@ impl File {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_len(&self, size: u64) -> io::Result<()> {
-        self.inner.truncate(size)
+        conv(self.inner.truncate(size))
     }
 
     /// Queries metadata about the underlying file.
@@ -305,34 +309,34 @@ impl File {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn metadata(&self) -> io::Result<Metadata> {
-        self.inner.file_attr().map(Metadata)
+        self.inner.file_attr().map(Metadata).map_err(conv)
     }
 }
 
-impl AsInner<fs_imp::File> for File {
-    fn as_inner(&self) -> &fs_imp::File { &self.inner }
+impl AsInner<sys::File> for File {
+    fn as_inner(&self) -> &sys::File { &self.inner }
 }
-impl FromInner<fs_imp::File> for File {
-    fn from_inner(f: fs_imp::File) -> File {
+impl FromInner<sys::File> for File {
+    fn from_inner(f: sys::File) -> File {
         File { inner: f }
     }
 }
-impl IntoInner<fs_imp::File> for File {
-    fn into_inner(self) -> fs_imp::File {
+impl IntoInner<sys::File> for File {
+    fn into_inner(self) -> sys::File {
         self.inner
     }
 }
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.inner.fmt(f)
+        fmt::Debug::fmt(&self.inner, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.inner.read(buf)
+        conv(self.inner.read(buf))
     }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         unsafe { read_to_end_uninitialized(self, buf) }
@@ -341,33 +345,33 @@ impl Read for File {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for File {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.inner.write(buf)
+        conv(self.inner.write(buf))
     }
-    fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
+    fn flush(&mut self) -> io::Result<()> { conv(self.inner.flush()) }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Seek for File {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        self.inner.seek(pos)
+        conv(self.inner.seek(IntoInner::into_inner(pos)))
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Read for &'a File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.inner.read(buf)
+        conv(self.inner.read(buf))
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for &'a File {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.inner.write(buf)
+        conv(self.inner.write(buf))
     }
-    fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
+    fn flush(&mut self) -> io::Result<()> { conv(self.inner.flush()) }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Seek for &'a File {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        self.inner.seek(pos)
+        conv(self.inner.seek(IntoInner::into_inner(pos)))
     }
 }
 
@@ -385,7 +389,7 @@ impl OpenOptions {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> OpenOptions {
-        OpenOptions(fs_imp::OpenOptions::new())
+        OpenOptions(sys::OpenOptions::new())
     }
 
     /// Sets the option for read access.
@@ -498,13 +502,13 @@ impl OpenOptions {
     }
 
     fn _open(&self, path: &Path) -> io::Result<File> {
-        let inner = try!(fs_imp::File::open(path, &self.0));
+        let inner = try!(sys::File::open(conv(path), &self.0));
         Ok(File { inner: inner })
     }
 }
 
-impl AsInnerMut<fs_imp::OpenOptions> for OpenOptions {
-    fn as_inner_mut(&mut self) -> &mut fs_imp::OpenOptions { &mut self.0 }
+impl AsInnerMut<sys::OpenOptions> for OpenOptions {
+    fn as_inner_mut(&mut self) -> &mut sys::OpenOptions { &mut self.0 }
 }
 
 impl Metadata {
@@ -585,8 +589,8 @@ impl Metadata {
     }
 }
 
-impl AsInner<fs_imp::FileAttr> for Metadata {
-    fn as_inner(&self) -> &fs_imp::FileAttr { &self.0 }
+impl AsInner<sys::FileAttr> for Metadata {
+    fn as_inner(&self) -> &sys::FileAttr { &self.0 }
 }
 
 impl Permissions {
@@ -653,18 +657,18 @@ impl FileType {
     pub fn is_symlink(&self) -> bool { self.0.is_symlink() }
 }
 
-impl AsInner<fs_imp::FileType> for FileType {
-    fn as_inner(&self) -> &fs_imp::FileType { &self.0 }
+impl AsInner<sys::FileType> for FileType {
+    fn as_inner(&self) -> &sys::FileType { &self.0 }
 }
 
-impl FromInner<fs_imp::FilePermissions> for Permissions {
-    fn from_inner(f: fs_imp::FilePermissions) -> Permissions {
+impl FromInner<sys::FilePermissions> for Permissions {
+    fn from_inner(f: sys::FilePermissions) -> Permissions {
         Permissions(f)
     }
 }
 
-impl AsInner<fs_imp::FilePermissions> for Permissions {
-    fn as_inner(&self) -> &fs_imp::FilePermissions { &self.0 }
+impl AsInner<sys::FilePermissions> for Permissions {
+    fn as_inner(&self) -> &sys::FilePermissions { &self.0 }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -672,7 +676,7 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        self.0.next().map(|entry| entry.map(DirEntry))
+        self.0.next().map(|entry| entry.map(DirEntry).map_err(conv))
     }
 }
 
@@ -706,7 +710,7 @@ impl DirEntry {
     ///
     /// The exact text, of course, depends on what files you have in `.`.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn path(&self) -> PathBuf { self.0.path() }
+    pub fn path(&self) -> PathBuf { Path::new(conv(self.0.root())).join(self.file_name()) }
 
     /// Return the metadata for the file that this entry points at.
     ///
@@ -720,7 +724,7 @@ impl DirEntry {
     /// calling `symlink_metadata` on the path.
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn metadata(&self) -> io::Result<Metadata> {
-        self.0.metadata().map(Metadata)
+        self.0.metadata().map(Metadata).map_err(conv)
     }
 
     /// Return the file type for the file that this entry points at.
@@ -735,19 +739,20 @@ impl DirEntry {
     /// call to `symlink_metadata` to learn about the target file type.
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn file_type(&self) -> io::Result<FileType> {
-        self.0.file_type().map(FileType)
+        self.0.file_type().map(FileType).map_err(conv)
     }
 
     /// Returns the bare file name of this directory entry without any other
     /// leading path component.
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn file_name(&self) -> OsString {
-        self.0.file_name()
+        let name: &OsStr = conv(self.0.file_name());
+        name.to_owned()
     }
 }
 
-impl AsInner<fs_imp::DirEntry> for DirEntry {
-    fn as_inner(&self) -> &fs_imp::DirEntry { &self.0 }
+impl AsInner<sys::DirEntry> for DirEntry {
+    fn as_inner(&self) -> &sys::DirEntry { &self.0 }
 }
 
 /// Removes a file from the filesystem.
@@ -774,7 +779,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    fs_imp::unlink(path.as_ref())
+    conv(sys::Fs::unlink(conv(path.as_ref())))
 }
 
 /// Given a path, query the file system to get information about a file,
@@ -802,7 +807,7 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// is no entry in the filesystem at the provided path.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
-    fs_imp::stat(path.as_ref()).map(Metadata)
+    sys::Fs::stat(conv(path.as_ref())).map(Metadata).map_err(conv)
 }
 
 /// Query the metadata about a file without following symlinks.
@@ -820,7 +825,7 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// ```
 #[stable(feature = "symlink_metadata", since = "1.1.0")]
 pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
-    fs_imp::lstat(path.as_ref()).map(Metadata)
+    sys::Fs::lstat(conv(path.as_ref())).map(Metadata).map_err(conv)
 }
 
 /// Rename a file or directory to a new name.
@@ -846,7 +851,7 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> {
-    fs_imp::rename(from.as_ref(), to.as_ref())
+    conv(sys::Fs::rename(conv(from.as_ref()), conv(to.as_ref())))
 }
 
 /// Copies the contents of one file to another. This function will also
@@ -880,7 +885,28 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
-    fs_imp::copy(from.as_ref(), to.as_ref())
+    if sys::Fs::COPY_IMP {
+        conv(sys::Fs::copy(conv(from.as_ref()), conv(to.as_ref())))
+    } else {
+        use fs::{File, PathExt, set_permissions};
+        use io::{Error, ErrorKind};
+
+        let from = from.as_ref();
+        let to = to.as_ref();
+
+        if !from.is_file() {
+            return Err(Error::new(ErrorKind::InvalidInput,
+                                  "the source path is not an existing regular file"))
+        }
+
+        let mut reader = try!(File::open(from));
+        let mut writer = try!(File::create(to));
+        let perm = try!(reader.metadata()).permissions();
+
+        let ret = try!(io::copy(&mut reader, &mut writer));
+        try!(set_permissions(to, perm));
+        Ok(ret)
+    }
 }
 
 /// Creates a new hard link on the filesystem.
@@ -900,7 +926,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
-    fs_imp::link(src.as_ref(), dst.as_ref())
+    conv(sys::Fs::link(conv(src.as_ref()), conv(dst.as_ref())))
 }
 
 /// Creates a new symbolic link on the filesystem.
@@ -926,7 +952,7 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
                        std::os::windows::fs::{symlink_file, symlink_dir}")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
-    fs_imp::symlink(src.as_ref(), dst.as_ref())
+    conv(sys::Fs::symlink(conv(src.as_ref()), conv(dst.as_ref())))
 }
 
 /// Reads a symbolic link, returning the file that the link points to.
@@ -949,7 +975,7 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
-    fs_imp::readlink(path.as_ref())
+    conv(sys::Fs::readlink(conv(path.as_ref())))
 }
 
 /// Returns the canonical form of a path with all intermediate components
@@ -957,7 +983,7 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 #[unstable(feature = "fs_canonicalize", reason = "recently added API",
            issue = "27706")]
 pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
-    fs_imp::canonicalize(path.as_ref())
+    conv(sys::Fs::canonicalize(conv(path.as_ref())))
 }
 
 /// Creates a new, empty directory at the provided path
@@ -1026,7 +1052,7 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    fs_imp::rmdir(path.as_ref())
+    conv(sys::Fs::rmdir(conv(path.as_ref())))
 }
 
 /// Removes a directory at this path, after removing all its contents. Use
@@ -1102,7 +1128,7 @@ fn _remove_dir_all(path: &Path) -> io::Result<()> {
 /// at a non-directory file
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
-    fs_imp::readdir(path.as_ref()).map(ReadDir)
+    sys::Fs::readdir(conv(path.as_ref())).map(ReadDir).map_err(conv)
 }
 
 /// Returns an iterator that will recursively walk the directory structure
@@ -1254,7 +1280,7 @@ impl PathExt for Path {
 #[stable(feature = "set_permissions", since = "1.1.0")]
 pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions)
                                        -> io::Result<()> {
-    fs_imp::set_perm(path.as_ref(), perm.0)
+    conv(sys::Fs::set_perm(conv(path.as_ref()), perm.0))
 }
 
 #[unstable(feature = "dir_builder", reason = "recently added API",
@@ -1264,7 +1290,7 @@ impl DirBuilder {
     /// platforms and also non-recursive.
     pub fn new() -> DirBuilder {
         DirBuilder {
-            inner: fs_imp::DirBuilder::new(),
+            inner: sys::DirBuilder::new(),
             recursive: false,
         }
     }
@@ -1289,7 +1315,7 @@ impl DirBuilder {
         if self.recursive {
             self.create_dir_all(path)
         } else {
-            self.inner.mkdir(path)
+            conv(self.inner.mkdir(conv(path)))
         }
     }
 
@@ -1298,12 +1324,12 @@ impl DirBuilder {
         if let Some(p) = path.parent() {
             try!(self.create_dir_all(p))
         }
-        self.inner.mkdir(path)
+        conv(self.inner.mkdir(conv(path)))
     }
 }
 
-impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
-    fn as_inner_mut(&mut self) -> &mut fs_imp::DirBuilder {
+impl AsInnerMut<sys::DirBuilder> for DirBuilder {
+    fn as_inner_mut(&mut self) -> &mut sys::DirBuilder {
         &mut self.inner
     }
 }

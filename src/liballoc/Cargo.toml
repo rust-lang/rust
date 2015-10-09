@@ -9,4 +9,3 @@ path = "lib.rs"
 
 [dependencies]
 core = { path = "../libcore" }
-libc = { path = "../liblibc" }

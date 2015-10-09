@@ -158,12 +158,10 @@ macro_rules! debug_assert_eq {
 /// `libstd` contains a more general `try!` macro that uses `From<E>`.
 #[macro_export]
 macro_rules! try {
-    ($e:expr) => ({
-        use $crate::result::Result::{Ok, Err};
-
-        match $e {
-            Ok(e) => e,
-            Err(e) => return Err(e),
+    ($expr:expr) => (match $expr {
+        $crate::result::Result::Ok(val) => val,
+        $crate::result::Result::Err(err) => {
+            return $crate::result::Result::Err($crate::convert::From::from(err))
         }
     })
 }

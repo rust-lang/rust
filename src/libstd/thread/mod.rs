@@ -161,23 +161,21 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use prelude::v1::*;
+use sys::rt::prelude::*;
+use sys::thread::traits::*;
+use sys::unwind::prelude::*;
+use sys::thread::prelude as sys;
 
 use alloc::boxed::FnBox;
 use any::Any;
 use cell::UnsafeCell;
 use fmt;
+use mem;
 use io;
 use sync::{Mutex, Condvar, Arc};
-use sys::thread as imp;
-use sys_common::thread_info;
-use sys_common::unwind;
-use sys_common::util;
 use time::Duration;
 
-////////////////////////////////////////////////////////////////////////////////
-// Thread-local storage
-////////////////////////////////////////////////////////////////////////////////
-
+mod start;
 #[macro_use] mod local;
 #[macro_use] mod scoped_tls;
 
@@ -190,8 +188,11 @@ pub use self::local::{LocalKey, LocalKeyState};
            issue = "27715")]
 pub use self::scoped_tls::ScopedKey;
 
-#[doc(hidden)] pub use self::local::__KeyInner as __LocalKeyInner;
+// Sure wish we had macro hygiene, no?
+#[doc(hidden)] pub use sys::thread_local::prelude as __sys;
 #[doc(hidden)] pub use self::scoped_tls::__KeyInner as __ScopedKeyInner;
+
+mod info;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
@@ -261,7 +262,7 @@ impl Builder {
                                        -> io::Result<JoinInner<T>> {
         let Builder { name, stack_size } = self;
 
-        let stack_size = stack_size.unwrap_or(util::min_stack());
+        let stack_size = stack_size.unwrap_or(Runtime::min_stack());
 
         let my_thread = Thread::new(name);
         let their_thread = my_thread.clone();
@@ -270,15 +271,21 @@ impl Builder {
             = Arc::new(UnsafeCell::new(None));
         let their_packet = my_packet.clone();
 
-        let main = move || {
-            if let Some(name) = their_thread.name() {
-                imp::Thread::set_name(name);
+        unsafe extern fn main(data: usize) -> usize {
+            let f = Box::from_raw(mem::transmute::<_, *mut Box<FnBox()>>(data));
+            Runtime::run_thread(*f);
+            0
+        }
+
+        let run = move || {
+            if let Some(ref name) = their_thread.name() {
+                sys::Thread::set_name(name).unwrap();
             }
-            thread_info::set(imp::guard::current(), their_thread);
+            info::set_current_thread(their_thread);
             let mut output = None;
             let try_result = {
                 let ptr = &mut output;
-                unwind::try(move || *ptr = Some(f()))
+                Unwind::try(move || *ptr = Some(f()))
             };
             *their_packet.get() = Some(try_result.map(|()| {
                 output.unwrap()
@@ -286,7 +293,7 @@ impl Builder {
         };
 
         Ok(JoinInner {
-            native: Some(try!(imp::Thread::new(stack_size, Box::new(main)))),
+            native: Some(try!(sys::Thread::new(stack_size, main, Box::into_raw(Box::new(Box::new(run))) as usize))),
             thread: my_thread,
             packet: Packet(my_packet),
         })
@@ -321,7 +328,7 @@ pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
 /// Gets a handle to the thread that invokes it.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn current() -> Thread {
-    thread_info::current_thread().expect("use of std::thread::current() is not \
+    info::current_thread().expect("use of std::thread::current() is not \
                                           possible after the thread's local \
                                           data has been destroyed")
 }
@@ -329,14 +336,14 @@ pub fn current() -> Thread {
 /// Cooperatively gives up a timeslice to the OS scheduler.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn yield_now() {
-    imp::Thread::yield_now()
+    sys::Thread::yield_()
 }
 
 /// Determines whether the current thread is unwinding because of panic.
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn panicking() -> bool {
-    unwind::panicking()
+    Unwind::is_panicking()
 }
 
 /// Invokes a closure, capturing the cause of panic if one occurs.
@@ -385,7 +392,7 @@ pub fn catch_panic<F, R>(f: F) -> Result<R>
     let mut result = None;
     unsafe {
         let result = &mut result;
-        try!(unwind::try(move || *result = Some(f())))
+        try!(Unwind::try(move || *result = Some(f())))
     }
     Ok(result.unwrap())
 }
@@ -414,7 +421,7 @@ pub fn sleep_ms(ms: u32) {
 /// granularity of time they can sleep for.
 #[stable(feature = "thread_sleep", since = "1.4.0")]
 pub fn sleep(dur: Duration) {
-    imp::Thread::sleep(dur)
+    sys::Thread::sleep(dur).unwrap()
 }
 
 /// Blocks unless or until the current thread's token is made available.
@@ -549,11 +556,6 @@ impl fmt::Debug for Thread {
     }
 }
 
-// a hack to get around privacy restrictions
-impl thread_info::NewThread for Thread {
-    fn new(name: Option<String>) -> Thread { Thread::new(name) }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // JoinHandle
 ////////////////////////////////////////////////////////////////////////////////
@@ -583,14 +585,14 @@ unsafe impl<T: Sync> Sync for Packet<T> {}
 
 /// Inner representation for JoinHandle
 struct JoinInner<T> {
-    native: Option<imp::Thread>,
+    native: Option<sys::Thread>,
     thread: Thread,
     packet: Packet<T>,
 }
 
 impl<T> JoinInner<T> {
     fn join(&mut self) -> Result<T> {
-        self.native.take().unwrap().join();
+        try!(self.native.take().unwrap().join().map_err(|b| Box::new(b) as Box<Any + Send + 'static>));
         unsafe {
             (*self.packet.0.get()).take().unwrap()
         }

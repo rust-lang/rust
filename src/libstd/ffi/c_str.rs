@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use sys::c::prelude as libc;
 use ascii;
 use borrow::{Cow, ToOwned, Borrow};
 use boxed::Box;
@@ -17,7 +18,6 @@ use error::Error;
 use fmt::{self, Write};
 use io;
 use iter::Iterator;
-use libc;
 use mem;
 use ops::Deref;
 use option::Option::{self, Some, None};
@@ -489,8 +489,8 @@ impl ToOwned for CStr {
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;
+    use sys::c::prelude as libc;
     use super::*;
-    use libc;
     use borrow::Cow::{Borrowed, Owned};
     use hash::{SipHasher, Hash, Hasher};
 

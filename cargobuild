@@ -28,7 +28,10 @@ export CFG_COMPILER_HOST_TRIPLE="$HOST"
 export CFG_LLVM_CONFIG="$LLVM_CONFIG"
 export CFG_LLVM_STDCPP="stdc++"
 
-#cargo build --manifest-path "$ROOT/Cargo.toml" --target $TARGET --features std "$@"
+cargo build --manifest-path "$ROOT/src/libstd/Cargo.toml" --target $TARGET --no-default-features "$@"
+cargo build --manifest-path "$ROOT/Cargo.toml" --target $TARGET --features libstd "$@"
+cargo build --manifest-path "$ROOT/Cargo.toml" --target $TARGET --features libstd_light "$@"
+exit
 cargo build --manifest-path "$ROOT/Cargo.toml" --target $TARGET --features libstd "$@"
 cargo build --manifest-path "$ROOT/src/librustc_driver/Cargo.toml" --target $TARGET --bin rustc "$@"
 cargo build --manifest-path "$ROOT/src/librustdoc/Cargo.toml" --target $TARGET --bin rustdoc "$@"

@@ -5,9 +5,10 @@ authors = ["The Rust Project Developers"]
 
 [lib]
 name = "std_group"
-path = "src/libstd/deps/dummy.rs"
+path = "src/libsystem/deps/dummy.rs"
 
 [dependencies]
+system = { path = "src/libsystem", optional = true, default-features = false }
 std = { path = "src/libstd", optional = true, default-features = false }
 alloc_system = { path = "src/liballoc_system", optional = true }
 alloc_jemalloc = { path = "src/liballoc_jemalloc", optional = true }
@@ -26,5 +27,6 @@ term = { path = "src/libterm", optional = true }
 syntax = { path = "src/libsyntax", optional = true }
 
 [features]
-libstd = [ "std", "std/rust_builtin", "std/compiler-rt", "std/backtrace", "alloc_system", "alloc_jemalloc" ]
+libstd = [ "system", "std", "system/rust_builtin", "system/compiler-rt", "system/backtrace", "alloc_system", "alloc_jemalloc" ]
+libstd_light = [ "system", "std", "system/disable-backtrace", "alloc_system" ]
 deps = [ "arena", "collectionstest", "coretest", "fmt_macros", "flate", "getopts", "graphviz", "log", "rbml", "serialize", "syntax", "term" ]
