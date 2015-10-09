@@ -1470,13 +1470,12 @@ pub type VariantDefMaster<'tcx> = &'tcx VariantDefData<'tcx, 'tcx>;
 pub type FieldDefMaster<'tcx> = &'tcx FieldDefData<'tcx, 'tcx>;
 
 pub struct VariantDefData<'tcx, 'container: 'tcx> {
+    /// The variant's DefId. If this is a tuple-like struct,
+    /// this is the DefId of the struct's ctor.
     pub did: DefId,
     pub name: Name, // struct's name if this is a struct
     pub disr_val: Disr,
     pub fields: Vec<FieldDefData<'tcx, 'container>>,
-    /// The DefId of the variant's ctor (unless the variant is a
-    /// tuple-like struct variant, this is just the variant's def-id).
-    pub ctor_id: DefId
 }
 
 pub struct FieldDefData<'tcx, 'container: 'tcx> {

@@ -1102,8 +1102,7 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
                                 did: DefId,
                                 name: ast::Name,
                                 disr_val: ty::Disr,
-                                def: &hir::StructDef,
-                                ctor_id: DefId) -> ty::VariantDefData<'tcx, 'tcx> {
+                                def: &hir::StructDef) -> ty::VariantDefData<'tcx, 'tcx> {
     let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap();
     let fields = def.fields.iter().map(|f| {
         let fid = tcx.map.local_def_id(f.node.id);
@@ -1130,8 +1129,7 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
         did: did,
         name: name,
         disr_val: disr_val,
-        fields: fields,
-        ctor_id: ctor_id
+        fields: fields
     }
 }
 
@@ -1147,7 +1145,7 @@ fn convert_struct_def<'tcx>(tcx: &ty::ctxt<'tcx>,
     tcx.intern_adt_def(
         did,
         ty::AdtKind::Struct,
-        vec![convert_struct_variant(tcx, did, it.name, 0, def, ctor_id)]
+        vec![convert_struct_variant(tcx, ctor_id, it.name, 0, def)]
     )
 }
 
@@ -1237,12 +1235,11 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
                             special_idents::unnamed_field.name,
                             hir::Visibility::Public
                         )
-                    }).collect(),
-                    ctor_id: did
+                    }).collect()
                 }
             }
             hir::StructVariantKind(ref def) => {
-                convert_struct_variant(tcx, did, name, disr, &def, did)
+                convert_struct_variant(tcx, did, name, disr, &def)
             }
         }
     }
