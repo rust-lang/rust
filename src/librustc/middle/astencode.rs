@@ -1312,14 +1312,17 @@ fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
                 for (i_variant, orig_variant) in
                     def.variants.iter().zip(orig_def.variants.iter())
                 {
+                    debug!("astencode: copying variant {:?} => {:?}",
+                           orig_variant.did, i_variant.node.id);
                     copy_item_type(dcx, i_variant.node.id, orig_variant.did);
                 }
             }
             hir::ItemStruct(ref def, _) => {
                 if let Some(ctor_id) = def.ctor_id {
                     let ctor_did = dcx.tcx.lookup_adt_def(orig_did)
-                        .struct_variant().ctor_id;
-                    debug!("copying ctor {:?}", ctor_did);
+                        .struct_variant().did;
+                    debug!("astencode: copying ctor {:?} => {:?}", ctor_did,
+                           ctor_id);
                     copy_item_type(dcx, ctor_id, ctor_did);
                 }
             }

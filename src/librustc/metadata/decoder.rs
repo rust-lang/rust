@@ -388,7 +388,6 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                 did: did,
                 name: item_name(intr, item),
                 fields: get_variant_fields(intr, cdata, item, tcx),
-                ctor_id: did,
                 disr_val: disr
             }
         }).collect()
@@ -417,13 +416,11 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                                 cdata: Cmd,
                                 doc: rbml::Doc,
                                 did: DefId,
-                                ctor_id: DefId,
                                 tcx: &ty::ctxt<'tcx>) -> ty::VariantDefData<'tcx, 'tcx> {
         ty::VariantDefData {
             did: did,
             name: item_name(intr, doc),
             fields: get_variant_fields(intr, cdata, doc, tcx),
-            ctor_id: ctor_id,
             disr_val: 0
         }
     }
@@ -440,7 +437,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                 reader::maybe_get_doc(doc, tag_items_data_item_struct_ctor).
                 map_or(did, |ctor_doc| translated_def_id(cdata, ctor_doc));
             (ty::AdtKind::Struct,
-             vec![get_struct_variant(intr, cdata, doc, did, ctor_did, tcx)])
+             vec![get_struct_variant(intr, cdata, doc, ctor_did, tcx)])
         }
         _ => tcx.sess.bug(
             &format!("get_adt_def called on a non-ADT {:?} - {:?}",
