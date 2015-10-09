@@ -1,0 +1,13 @@
+[package]
+name = "compiler-rt"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+links = "compiler_rt"
+build = "build.rs"
+
+[lib]
+name = "compiler_rt"
+path = "lib.rs"
+
+[build-dependencies]
+gcc = { git = "https://github.com/alexcrichton/gcc-rs.git" }

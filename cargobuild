@@ -1,0 +1,36 @@
+#!/bin/sh
+set -eu
+
+if [ $# -lt 1 ]; then
+	echo Usage: $0 TARGET [LLVM_CONFIG]
+	echo ex: $0 x86_64-unknown-linux-gnu /usr/bin/llvm-config
+	exit 1
+fi
+
+ROOT="$PWD"
+TARGET="$1"
+
+if [ $# -lt 2 ]; then
+	LLVM_CONFIG="$ROOT/$TARGET/llvm/Release/bin/llvm-config"
+	shift 1
+else
+	LLVM_CONFIG="$2"
+	shift 2
+fi
+
+HOST=`$LLVM_CONFIG --host-target`
+
+export RUSTC="$ROOT/rustc-sysroot"
+export RUST_TARGET_PATH="$ROOT"
+export CARGO_TARGET_DIR="$ROOT/target"
+export CFG_LLVM_LINKAGE_FILE="$CARGO_TARGET_DIR/$TARGET/llvmdeps.rs"
+export CFG_COMPILER_HOST_TRIPLE="$HOST"
+export CFG_LLVM_CONFIG="$LLVM_CONFIG"
+export CFG_LLVM_STDCPP="stdc++"
+
+#cargo build --manifest-path "$ROOT/Cargo.toml" --target $TARGET --features std "$@"
+cargo build --manifest-path "$ROOT/Cargo.toml" --target $TARGET --features libstd "$@"
+cargo build --manifest-path "$ROOT/src/librustc_driver/Cargo.toml" --target $TARGET --bin rustc "$@"
+cargo build --manifest-path "$ROOT/src/librustdoc/Cargo.toml" --target $TARGET --bin rustdoc "$@"
+cargo build --manifest-path "$ROOT/src/compiletest/Cargo.toml" --target $TARGET "$@"
+cargo build --manifest-path "$ROOT/src/error-index-generator/Cargo.toml" --target $TARGET "$@"

@@ -1,0 +1,14 @@
+[package]
+name = "rustc_privacy"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "rustc_privacy"
+path = "lib.rs"
+
+[dependencies]
+rustc = { path = "../librustc" }
+rustc_front = { path = "../librustc_front" }
+log = { path = "../liblog" }
+syntax = { path = "../libsyntax" }

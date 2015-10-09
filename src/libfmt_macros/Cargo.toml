@@ -1,0 +1,8 @@
+[package]
+name = "fmt_macros"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "fmt_macros"
+path = "lib.rs"

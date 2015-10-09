@@ -1,0 +1,30 @@
+[package]
+name = "std_group"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "std_group"
+path = "src/libstd/deps/dummy.rs"
+
+[dependencies]
+std = { path = "src/libstd", optional = true, default-features = false }
+alloc_system = { path = "src/liballoc_system", optional = true }
+alloc_jemalloc = { path = "src/liballoc_jemalloc", optional = true }
+
+arena = { path = "src/libarena", optional = true }
+collectionstest = { path = "src/libcollectionstest", optional = true }
+coretest = { path = "src/libcoretest", optional = true }
+fmt_macros = { path = "src/libfmt_macros", optional = true }
+flate = { path = "src/libflate", optional = true }
+getopts = { path = "src/libgetopts", optional = true }
+graphviz = { path = "src/libgraphviz", optional = true }
+log = { path = "src/liblog", optional = true }
+rbml = { path = "src/librbml", optional = true }
+serialize = { path = "src/libserialize", optional = true }
+term = { path = "src/libterm", optional = true }
+syntax = { path = "src/libsyntax", optional = true }
+
+[features]
+libstd = [ "std", "std/rust_builtin", "std/compiler-rt", "std/backtrace", "alloc_system", "alloc_jemalloc" ]
+deps = [ "arena", "collectionstest", "coretest", "fmt_macros", "flate", "getopts", "graphviz", "log", "rbml", "serialize", "syntax", "term" ]

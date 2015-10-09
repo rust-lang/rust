@@ -1,0 +1,34 @@
+[package]
+name = "rustc_driver"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+build = "build.rs"
+
+[lib]
+name = "rustc_driver"
+path = "lib.rs"
+
+[[bin]]
+name = "rustc"
+path = "../driver/driver.rs"
+
+[dependencies]
+arena = { path = "../libarena" }
+flate = { path = "../libflate" }
+getopts = { path = "../libgetopts" }
+graphviz = { path = "../libgraphviz" }
+libc = { path = "../liblibc" }
+rustc = { path = "../librustc" }
+rustc_back = { path = "../librustc_back" }
+rustc_borrowck = { path = "../librustc_borrowck" }
+rustc_front = { path = "../librustc_front" }
+rustc_lint = { path = "../librustc_lint" }
+rustc_privacy = { path = "../librustc_privacy" }
+rustc_mir = { path = "../librustc_mir" }
+rustc_resolve = { path = "../librustc_resolve" }
+rustc_trans = { path = "../librustc_trans" }
+rustc_typeck = { path = "../librustc_typeck" }
+rustc_llvm = { path = "../librustc_llvm" }
+log = { path = "../liblog" }
+syntax = { path = "../libsyntax" }
+serialize = { path = "../libserialize" }

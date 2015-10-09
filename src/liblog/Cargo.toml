@@ -1,0 +1,8 @@
+[package]
+name = "log"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "log"
+path = "lib.rs"

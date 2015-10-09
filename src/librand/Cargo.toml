@@ -1,0 +1,15 @@
+[package]
+name = "rand"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "rand"
+path = "lib.rs"
+
+[dependencies]
+core = { path = "../libcore" }
+
+[dev-dependencies]
+std = { path = "../libstd" }
+log = { path = "../liblog" }

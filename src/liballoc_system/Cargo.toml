@@ -1,0 +1,12 @@
+[package]
+name = "alloc_system"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "alloc_system"
+path = "lib.rs"
+
+[dependencies]
+core = { path = "../libcore" }
+libc = { path = "../liblibc" }

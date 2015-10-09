@@ -1,0 +1,16 @@
+[package]
+name = "alloc_jemalloc"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+links = "jemalloc"
+build = "build.rs"
+
+[lib]
+name = "alloc_jemalloc"
+path = "lib.rs"
+
+[dependencies]
+libc = { path = "../liblibc" }
+
+[build-dependencies]
+gcc = { git = "https://github.com/alexcrichton/gcc-rs.git" }

@@ -1,0 +1,14 @@
+[package]
+name = "compiletest"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[[bin]]
+name = "compiletest"
+path = "compiletest.rs"
+
+[dependencies]
+libc = { path = "../liblibc" }
+test = { path = "../libtest" }
+getopts = { path = "../libgetopts" }
+log = { path = "../liblog" }

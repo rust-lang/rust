@@ -1,0 +1,11 @@
+[package]
+name = "term"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "term"
+path = "lib.rs"
+
+[dependencies]
+log = { path = "../liblog" }

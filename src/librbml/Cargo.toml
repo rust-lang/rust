@@ -1,0 +1,15 @@
+[package]
+name = "rbml"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "rbml"
+path = "lib.rs"
+
+[dependencies]
+serialize = { path = "../libserialize" }
+log = { path = "../liblog" }
+
+[dev-dependencies]
+test = { path = "../libtest" }

@@ -1,0 +1,12 @@
+[package]
+name = "rustc_platform_intrinsics"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "rustc_platform_intrinsics"
+path = "lib.rs"
+
+[dependencies]
+rustc = { path = "../librustc" }
+rustc_llvm = { path = "../librustc_llvm" }

@@ -1,0 +1,13 @@
+[package]
+name = "serialize"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "serialize"
+path = "lib.rs"
+
+[dependencies]
+log = { path = "../liblog" }
+rustc_unicode = { path = "../librustc_unicode" }
+collections = { path = "../libcollections" }

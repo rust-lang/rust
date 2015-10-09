@@ -1,0 +1,15 @@
+[package]
+name = "rustc_resolve"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "rustc_resolve"
+path = "lib.rs"
+
+[dependencies]
+rustc = { path = "../librustc" }
+rustc_front = { path = "../librustc_front" }
+rustc_bitflags = { path = "../librustc_bitflags" }
+log = { path = "../liblog" }
+syntax = { path = "../libsyntax" }

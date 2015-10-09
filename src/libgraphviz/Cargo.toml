@@ -1,0 +1,8 @@
+[package]
+name = "graphviz"
+version = "1.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "graphviz"
+path = "lib.rs"
