@@ -98,7 +98,7 @@ pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &ast::Lit)
         ast::LitBool(b) => C_bool(cx, b),
         ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
         ast::LitByteStr(ref data) => {
-            addr_of(cx, C_bytes(cx, &data[..]), "byte_str")
+            addr_of(cx, C_bytes(cx, &data[..]), 1, "byte_str")
         }
     }
 }
@@ -111,6 +111,7 @@ pub fn ptrcast(val: ValueRef, ty: Type) -> ValueRef {
 
 fn addr_of_mut(ccx: &CrateContext,
                cv: ValueRef,
+               align: machine::llalign,
                kind: &str)
                -> ValueRef {
     unsafe {
@@ -122,6 +123,7 @@ fn addr_of_mut(ccx: &CrateContext,
             ccx.sess().bug(&format!("symbol `{}` is already defined", name));
         });
         llvm::LLVMSetInitializer(gv, cv);
+        llvm::LLVMSetAlignment(gv, align);
         SetLinkage(gv, InternalLinkage);
         SetUnnamedAddr(gv, true);
         gv
@@ -130,13 +132,23 @@ fn addr_of_mut(ccx: &CrateContext,
 
 pub fn addr_of(ccx: &CrateContext,
                cv: ValueRef,
+               align: machine::llalign,
                kind: &str)
                -> ValueRef {
     match ccx.const_globals().borrow().get(&cv) {
-        Some(&gv) => return gv,
+        Some(&gv) => {
+            unsafe {
+                // Upgrade the alignment in cases where the same constant is used with different
+                // alignment requirements
+                if align > llvm::LLVMGetAlignment(gv) {
+                    llvm::LLVMSetAlignment(gv, align);
+                }
+            }
+            return gv;
+        }
         None => {}
     }
-    let gv = addr_of_mut(ccx, cv, kind);
+    let gv = addr_of_mut(ccx, cv, align, kind);
     unsafe {
         llvm::LLVMSetGlobalConstant(gv, True);
     }
@@ -254,11 +266,11 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         Some(&val) => return val,
         None => {}
     }
+    let ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs,
+                                              &ccx.tcx().expr_ty(expr));
     let val = if qualif.intersects(check_const::ConstQualif::NON_STATIC_BORROWS) {
         // Avoid autorefs as they would create global instead of stack
         // references, even when only the latter are correct.
-        let ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs,
-                                                  &ccx.tcx().expr_ty(expr));
         const_expr_unadjusted(ccx, expr, ty, param_substs, None)
     } else {
         const_expr(ccx, expr, param_substs, None).0
@@ -274,7 +286,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
     };
 
-    let lvalue = addr_of(ccx, val, "const");
+    let lvalue = addr_of(ccx, val, type_of::align_of(ccx, ty), "const");
     ccx.const_values().borrow_mut().insert(key, lvalue);
     lvalue
 }
@@ -314,7 +326,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 if adj.autoderefs == 0 {
                     // Don't copy data to do a deref+ref
                     // (i.e., skip the last auto-deref).
-                    llconst = addr_of(cx, llconst, "autoref");
+                    llconst = addr_of(cx, llconst, type_of::align_of(cx, ty), "autoref");
                     ty = cx.tcx().mk_imm_ref(cx.tcx().mk_region(ty::ReStatic), ty);
                 }
             } else {
@@ -720,13 +732,13 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             } else {
                 // If this isn't the address of a static, then keep going through
                 // normal constant evaluation.
-                let (v, _) = const_expr(cx, &**sub, param_substs, fn_args);
-                addr_of(cx, v, "ref")
+                let (v, ty) = const_expr(cx, &**sub, param_substs, fn_args);
+                addr_of(cx, v, type_of::align_of(cx, ty), "ref")
             }
         },
         hir::ExprAddrOf(hir::MutMutable, ref sub) => {
-            let (v, _) = const_expr(cx, &**sub, param_substs, fn_args);
-            addr_of_mut(cx, v, "ref_mut_slice")
+            let (v, ty) = const_expr(cx, &**sub, param_substs, fn_args);
+            addr_of_mut(cx, v, type_of::align_of(cx, ty), "ref_mut_slice")
         },
         hir::ExprTup(ref es) => {
             let repr = adt::represent_type(cx, ety);
@@ -934,6 +946,7 @@ pub fn trans_static(ccx: &CrateContext,
             ccx.statics_to_rauw().borrow_mut().push((g, new_g));
             new_g
         };
+        llvm::LLVMSetAlignment(g, type_of::align_of(ccx, ty));
         llvm::LLVMSetInitializer(g, v);
 
         // As an optimization, all shared statics which do not have interior
