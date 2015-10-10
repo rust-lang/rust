@@ -1,4 +1,4 @@
-% Concurrency and Paralellism
+% Concurrency and Parallelism
 
 Rust as a language doesn't *really* have an opinion on how to do concurrency or
 parallelism. The standard library exposes OS threads and blocking sys-calls
