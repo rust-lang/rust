@@ -135,7 +135,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 
             if transmute_restriction.original_from != transmute_restriction.substituted_from {
                 span_transmute_size_error(ccx.sess(), transmute_restriction.span,
-                    &format!("transmute called on types with potentially different sizes: \
+                    &format!("transmute called with differently sized types: \
                               {} (could be {} bit{}) to {} (could be {} bit{})",
                              transmute_restriction.original_from,
                              from_type_size as usize,
@@ -145,7 +145,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
                              if to_type_size == 1 {""} else {"s"}));
             } else {
                 span_transmute_size_error(ccx.sess(), transmute_restriction.span,
-                    &format!("transmute called on types with different sizes: \
+                    &format!("transmute called with differently sized types: \
                               {} ({} bit{}) to {} ({} bit{})",
                              transmute_restriction.original_from,
                              from_type_size as usize,
