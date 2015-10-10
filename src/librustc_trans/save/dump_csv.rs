@@ -467,7 +467,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         self.fmt.struct_str(item.span,
                             sub_span,
                             item.id,
-                            def.id,
+                            def.id(),
                             &qualname,
                             self.cur_scope,
                             &val);
@@ -503,15 +503,15 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
             self.fmt.struct_variant_str(variant.span,
                                         self.span.span_for_first_ident(variant.span),
-                                        variant.node.data.id,
-                                        variant.node.data.id,
+                                        variant.node.data.id(),
+                                        variant.node.data.id(),
                                         &qualname,
                                         &enum_data.qualname,
                                         &val,
                                         enum_data.id);
 
             for field in variant.node.data.fields() {
-                self.process_struct_field_def(field, variant.node.data.id);
+                self.process_struct_field_def(field, variant.node.data.id());
                 self.visit_ty(&*field.node.ty);
             }
         }

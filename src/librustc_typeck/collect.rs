@@ -1015,7 +1015,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             }
 
             if !struct_def.is_struct() {
-                convert_variant_ctor(tcx, struct_def.id, variant, scheme, predicates);
+                convert_variant_ctor(tcx, struct_def.id(), variant, scheme, predicates);
             }
         },
         hir::ItemTy(_, ref generics) => {
@@ -1075,7 +1075,7 @@ fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // an item.
         convert_variant_ctor(
             ccx.tcx,
-            variant.node.data.id,
+            variant.node.data.id(),
             ty_variant,
             scheme.clone(),
             predicates.clone()
@@ -1126,7 +1126,7 @@ fn convert_struct_def<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     let did = tcx.map.local_def_id(it.id);
     let ctor_id = if !def.is_struct() {
-        tcx.map.local_def_id(def.id)
+        tcx.map.local_def_id(def.id())
     } else {
         did
     };
@@ -1209,7 +1209,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
                                   disr: ty::Disr)
                                   -> ty::VariantDefData<'tcx, 'tcx>
     {
-        let did = tcx.map.local_def_id(v.node.data.id);
+        let did = tcx.map.local_def_id(v.node.data.id());
         let name = v.node.name;
         convert_struct_variant(tcx, did, name, disr, &v.node.data)
     }

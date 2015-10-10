@@ -458,7 +458,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
                         _: &ast::Generics,
                         _: NodeId,
                         _: Span) {
-        self.operation.visit_id(struct_def.id);
+        self.operation.visit_id(struct_def.id());
         visit::walk_struct_def(self, struct_def);
     }
 

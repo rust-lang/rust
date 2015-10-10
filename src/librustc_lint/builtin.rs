@@ -527,7 +527,8 @@ impl LateLintPass for MissingDoc {
     }
 
     fn check_variant(&mut self, cx: &LateContext, v: &hir::Variant, _: &hir::Generics) {
-        self.check_missing_docs_attrs(cx, Some(v.node.data.id), &v.node.attrs, v.span, "a variant");
+        self.check_missing_docs_attrs(cx, Some(v.node.data.id()),
+                                      &v.node.attrs, v.span, "a variant");
         assert!(!self.in_variant);
         self.in_variant = true;
     }

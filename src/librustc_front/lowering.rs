@@ -499,19 +499,16 @@ pub fn lower_where_predicate(_lctx: &LoweringContext,
 }
 
 pub fn lower_struct_def(_lctx: &LoweringContext, sd: &VariantData) -> P<hir::VariantData> {
-    P(hir::VariantData {
-        id: sd.id,
-        data_: match sd.data_ {
-            VariantData_::Struct(ref fields) => {
-                hir::VariantData_::Struct(fields.iter()
-                                                .map(|f| lower_struct_field(_lctx, f)).collect())
-            }
-            VariantData_::Tuple(ref fields) => {
-                hir::VariantData_::Tuple(fields.iter()
-                                               .map(|f| lower_struct_field(_lctx, f)).collect())
-            }
-            VariantData_::Unit => hir::VariantData_::Unit
+    P(match *sd {
+        VariantData::Struct(ref fields, id) => {
+            hir::VariantData::Struct(fields.iter()
+                                           .map(|f| lower_struct_field(_lctx, f)).collect(), id)
         }
+        VariantData::Tuple(ref fields, id) => {
+            hir::VariantData::Tuple(fields.iter()
+                                          .map(|f| lower_struct_field(_lctx, f)).collect(), id)
+        }
+        VariantData::Unit(id) => hir::VariantData::Unit(id)
     })
 }
 

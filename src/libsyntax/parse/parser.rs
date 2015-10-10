@@ -45,7 +45,7 @@ use ast::{PatRegion, PatStruct, PatTup, PatVec, PatWild, PatWildMulti};
 use ast::PatWildSingle;
 use ast::{PolyTraitRef, QSelf};
 use ast::{Return, BiShl, BiShr, Stmt, StmtDecl};
-use ast::{StmtExpr, StmtSemi, StmtMac, VariantData, StructField, VariantData_};
+use ast::{StmtExpr, StmtSemi, StmtMac, VariantData, StructField};
 use ast::{BiSub, StrStyle};
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
@@ -4640,24 +4640,25 @@ impl<'a> Parser<'a> {
         // Otherwise if we look ahead and see a paren we parse a tuple-style
         // struct.
 
-        let data_ = if self.token.is_keyword(keywords::Where) {
+        let vdata = if self.token.is_keyword(keywords::Where) {
             generics.where_clause = try!(self.parse_where_clause());
             if try!(self.eat(&token::Semi)) {
                 // If we see a: `struct Foo<T> where T: Copy;` style decl.
-                VariantData_::Unit
+                VariantData::Unit(ast::DUMMY_NODE_ID)
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
-                VariantData_::Struct(try!(self.parse_record_struct_body()))
+                VariantData::Struct(try!(self.parse_record_struct_body()), ast::DUMMY_NODE_ID)
             }
         // No `where` so: `struct Foo<T>;`
         } else if try!(self.eat(&token::Semi) ){
-            VariantData_::Unit
+            VariantData::Unit(ast::DUMMY_NODE_ID)
         // Record-style struct definition
         } else if self.token == token::OpenDelim(token::Brace) {
-            VariantData_::Struct(try!(self.parse_record_struct_body()))
+            VariantData::Struct(try!(self.parse_record_struct_body()), ast::DUMMY_NODE_ID)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
-            VariantData_::Tuple(try!(self.parse_tuple_struct_body(&mut generics)))
+            VariantData::Tuple(try!(self.parse_tuple_struct_body(&mut generics)),
+                               ast::DUMMY_NODE_ID)
         } else {
             let token_str = self.this_token_to_string();
             return Err(self.fatal(&format!("expected `where`, `{{`, `(`, or `;` after struct \
@@ -4665,11 +4666,8 @@ impl<'a> Parser<'a> {
         };
 
         Ok((class_name,
-         ItemStruct(P(ast::VariantData {
-             data_: data_,
-             id: ast::DUMMY_NODE_ID,
-         }), generics),
-         None))
+            ItemStruct(P(vdata), generics),
+            None))
     }
 
     pub fn parse_record_struct_body(&mut self) -> PResult<Vec<StructField>> {
@@ -5107,10 +5105,7 @@ impl<'a> Parser<'a> {
         }
         try!(self.bump());
 
-        Ok(P(VariantData {
-            data_: VariantData_::Struct(fields),
-            id: ast::DUMMY_NODE_ID,
-        }))
+        Ok(P(VariantData::Struct(fields, ast::DUMMY_NODE_ID)))
     }
 
     /// Parse the part of an "enum" decl following the '{'
@@ -5146,16 +5141,13 @@ impl<'a> Parser<'a> {
                         id: ast::DUMMY_NODE_ID,
                     }});
                 }
-                struct_def = P(VariantData { data_: ast::VariantData_::Tuple(fields),
-                                           id: ast::DUMMY_NODE_ID});
+                struct_def = P(ast::VariantData::Tuple(fields, ast::DUMMY_NODE_ID));
             } else if try!(self.eat(&token::Eq) ){
                 disr_expr = Some(try!(self.parse_expr_nopanic()));
                 any_disr = disr_expr.as_ref().map(|expr| expr.span);
-                struct_def = P(VariantData { data_: ast::VariantData_::Unit,
-                                           id: ast::DUMMY_NODE_ID});
+                struct_def = P(ast::VariantData::Unit(ast::DUMMY_NODE_ID));
             } else {
-                struct_def = P(VariantData { data_: ast::VariantData_::Unit,
-                                           id: ast::DUMMY_NODE_ID});
+                struct_def = P(ast::VariantData::Unit(ast::DUMMY_NODE_ID));
             }
 
             let vr = ast::Variant_ {

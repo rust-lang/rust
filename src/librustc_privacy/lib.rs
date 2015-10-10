@@ -82,7 +82,7 @@ impl<'v> Visitor<'v> for ParentVisitor {
                     // The parent is considered the enclosing enum because the
                     // enum will dictate the privacy visibility of this variant
                     // instead.
-                    self.parents.insert(variant.node.data.id, item.id);
+                    self.parents.insert(variant.node.data.id(), item.id);
                 }
             }
 
@@ -133,7 +133,7 @@ impl<'v> Visitor<'v> for ParentVisitor {
         // Struct constructors are parented to their struct definitions because
         // they essentially are the struct definitions.
         if !s.is_struct() {
-            self.parents.insert(s.id, item_id);
+            self.parents.insert(s.id(), item_id);
         }
 
         // While we have the id of the struct definition, go ahead and parent
@@ -233,8 +233,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             // public all variants are public unless they're explicitly priv
             hir::ItemEnum(ref def, _) if public_first => {
                 for variant in &def.variants {
-                    self.exported_items.insert(variant.node.data.id);
-                    self.public_items.insert(variant.node.data.id);
+                    self.exported_items.insert(variant.node.data.id());
+                    self.public_items.insert(variant.node.data.id());
                 }
             }
 
@@ -320,7 +320,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             // Struct constructors are public if the struct is all public.
             hir::ItemStruct(ref def, _) if public_first => {
                 if !def.is_struct() {
-                    self.exported_items.insert(def.id);
+                    self.exported_items.insert(def.id());
                 }
                 // fields can be public or private, so lets check
                 for field in def.fields() {
@@ -1431,7 +1431,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self, v: &hir::Variant, g: &hir::Generics, item_id: ast::NodeId) {
-        if self.exported_items.contains(&v.node.data.id) {
+        if self.exported_items.contains(&v.node.data.id()) {
             self.in_variant = true;
             visit::walk_variant(self, v, g, item_id);
             self.in_variant = false;
