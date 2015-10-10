@@ -1385,6 +1385,7 @@ impl<T: Ord> Ord for Vec<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Vec<T> {
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         // NOTE: this is currently abusing the fact that ZSTs can't impl Drop.
         // Or rather, that impl'ing Drop makes them not zero-sized. This is

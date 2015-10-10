@@ -38,7 +38,13 @@
 #![feature(ptr_as_ref)]
 #![feature(raw)]
 #![feature(staged_api)]
+#![feature(dropck_parametricity)]
 #![cfg_attr(test, feature(test))]
+
+// SNAP 1af31d4
+#![allow(unused_features)]
+// SNAP 1af31d4
+#![allow(unused_attributes)]
 
 extern crate alloc;
 
@@ -510,6 +516,7 @@ impl<T> TypedArena<T> {
 }
 
 impl<T> Drop for TypedArena<T> {
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         unsafe {
             // Determine how much was filled.

@@ -275,12 +275,14 @@ impl<T> DoubleEndedIterator for RawItems<T> {
 }
 
 impl<T> Drop for RawItems<T> {
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         for _ in self {}
     }
 }
 
 impl<K, V> Drop for Node<K, V> {
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         if self.keys.is_null() ||
             (unsafe { self.keys.get() as *const K as usize == mem::POST_DROP_USIZE })
@@ -1419,6 +1421,7 @@ impl<K, V> TraversalImpl for MoveTraversalImpl<K, V> {
 }
 
 impl<K, V> Drop for MoveTraversalImpl<K, V> {
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         // We need to cleanup the stored values manually, as the RawItems destructor would run
         // after our deallocation.
