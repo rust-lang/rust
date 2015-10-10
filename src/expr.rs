@@ -113,7 +113,7 @@ impl Rewrite for ast::Expr {
                                 offset,
                                 true)
             }
-            ast::Expr_::ExprMatch(ref cond, ref arms, _) => {
+            ast::Expr_::ExprMatch(ref cond, ref arms) => {
                 rewrite_match(context, cond, arms, width, offset, self.span)
             }
             ast::Expr_::ExprPath(ref qself, ref path) => {
