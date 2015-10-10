@@ -22,6 +22,7 @@ use trans::consts;
 use trans::debuginfo;
 use trans::debuginfo::{DebugLoc, ToDebugLoc};
 use trans::expr;
+use trans::machine;
 use trans;
 use middle::ty;
 
@@ -401,7 +402,8 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let filename = C_str_slice(ccx, filename);
     let line = C_u32(ccx, loc.line as u32);
     let expr_file_line_const = C_struct(ccx, &[v_str, filename, line], false);
-    let expr_file_line = consts::addr_of(ccx, expr_file_line_const, "panic_loc");
+    let align = machine::llalign_of_min(ccx, val_ty(expr_file_line_const));
+    let expr_file_line = consts::addr_of(ccx, expr_file_line_const, align, "panic_loc");
     let args = vec!(expr_file_line);
     let did = langcall(bcx, Some(call_info.span), "", PanicFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
@@ -433,7 +435,8 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let filename = C_str_slice(ccx,  filename);
     let line = C_u32(ccx, loc.line as u32);
     let file_line_const = C_struct(ccx, &[filename, line], false);
-    let file_line = consts::addr_of(ccx, file_line_const, "panic_bounds_check_loc");
+    let align = machine::llalign_of_min(ccx, val_ty(file_line_const));
+    let file_line = consts::addr_of(ccx, file_line_const, align, "panic_bounds_check_loc");
     let args = vec!(file_line, index, len);
     let did = langcall(bcx, Some(call_info.span), "", PanicBoundsCheckFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
