@@ -45,7 +45,7 @@ Now, let’s imagine this sequence of events:
 6. ... ? All the forks are taken, but nobody can eat!
 
 There are different ways to solve this problem. We’ll get to our solution in
-the tutorial itself. For now, let’s get started modelling the problem itself.
+the tutorial itself. For now, let’s get started modeling the problem itself.
 We’ll start with the philosophers:
 
 ```rust
