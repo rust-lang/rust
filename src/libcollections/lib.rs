@@ -32,6 +32,11 @@
 #![allow(trivial_casts)]
 #![cfg_attr(test, allow(deprecated))] // rand
 
+// SNAP 1af31d4
+#![allow(unused_features)]
+// SNAP 1af31d4
+#![allow(unused_attributes)]
+
 #![feature(alloc)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -59,6 +64,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
+#![feature(dropck_parametricity)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(decode_utf16)]
 #![feature(utf8_error)]

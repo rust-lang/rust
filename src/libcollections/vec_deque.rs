@@ -64,6 +64,7 @@ impl<T: Clone> Clone for VecDeque<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for VecDeque<T> {
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         self.clear();
         // RawVec handles deallocation

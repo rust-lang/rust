@@ -94,6 +94,11 @@
 #![feature(unboxed_closures)]
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
+// SNAP 1af31d4
+#![allow(unused_features)]
+// SNAP 1af31d4
+#![allow(unused_attributes)]
+#![feature(dropck_parametricity)]
 #![feature(unsize)]
 #![feature(core_slice_ext)]
 #![feature(core_str_ext)]

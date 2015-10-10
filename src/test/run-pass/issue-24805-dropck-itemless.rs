@@ -13,6 +13,8 @@
 
 #![allow(non_camel_case_types)]
 
+#![feature(dropck_parametricity)]
+
 trait UserDefined { }
 
 impl UserDefined for i32 { }
@@ -26,7 +28,10 @@ impl<'a, T> UserDefined for &'a T { }
 macro_rules! impl_drop {
     ($Bound:ident, $Id:ident) => {
         struct $Id<T:$Bound>(T);
-        impl <T:$Bound> Drop for $Id<T> { fn drop(&mut self) { } }
+        impl <T:$Bound> Drop for $Id<T> {
+            #[unsafe_destructor_blind_to_params]
+            fn drop(&mut self) { }
+        }
     }
 }
 
