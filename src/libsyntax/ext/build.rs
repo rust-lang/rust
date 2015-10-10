@@ -1002,18 +1002,17 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             }}
         }).collect();
 
-        let data_ = if fields.is_empty() {
-            ast::VariantData_::Unit
+        let vdata = if fields.is_empty() {
+            ast::VariantData::Unit(ast::DUMMY_NODE_ID)
         } else {
-            ast::VariantData_::Tuple(fields)
+            ast::VariantData::Tuple(fields, ast::DUMMY_NODE_ID)
         };
 
         respan(span,
                ast::Variant_ {
                    name: name,
                    attrs: Vec::new(),
-                   data: P(ast::VariantData { data_: data_,
-                                           id: ast::DUMMY_NODE_ID}),
+                   data: P(vdata),
                    disr_expr: None,
                })
     }

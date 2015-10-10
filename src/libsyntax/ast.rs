@@ -1742,18 +1742,10 @@ impl StructFieldKind {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum VariantData_ {
-    Struct(Vec<StructField>),
-    Tuple(Vec<StructField>),
-    Unit,
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct VariantData {
-    pub data_: VariantData_,
-    /// ID of the constructor. This is only used for tuple- or enum-like
-    /// structs.
-    pub id: NodeId,
+pub enum VariantData {
+    Struct(Vec<StructField>, NodeId),
+    Tuple(Vec<StructField>, NodeId),
+    Unit(NodeId),
 }
 
 pub type FieldIter<'a> = iter::FlatMap<option::IntoIter<&'a Vec<StructField>>,
@@ -1763,19 +1755,24 @@ pub type FieldIter<'a> = iter::FlatMap<option::IntoIter<&'a Vec<StructField>>,
 impl VariantData {
     pub fn fields(&self) -> FieldIter {
         fn vec_iter<T>(v: &Vec<T>) -> slice::Iter<T> { v.iter() }
-        match self.data_ {
-            VariantData_::Struct(ref fields) | VariantData_::Tuple(ref fields) => Some(fields),
+        match *self {
+            VariantData::Struct(ref fields, _) | VariantData::Tuple(ref fields, _) => Some(fields),
             _ => None,
         }.into_iter().flat_map(vec_iter)
     }
+    pub fn id(&self) -> NodeId {
+        match *self {
+            VariantData::Struct(_, id) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id
+        }
+    }
     pub fn is_struct(&self) -> bool {
-        if let VariantData_::Struct(..) = self.data_ { true } else { false }
+        if let VariantData::Struct(..) = *self { true } else { false }
     }
     pub fn is_tuple(&self) -> bool {
-        if let VariantData_::Tuple(..) = self.data_ { true } else { false }
+        if let VariantData::Tuple(..) = *self { true } else { false }
     }
     pub fn is_unit(&self) -> bool {
-        if let VariantData_::Unit = self.data_ { true } else { false }
+        if let VariantData::Unit(..) = *self { true } else { false }
     }
 }
 

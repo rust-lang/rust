@@ -250,7 +250,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 panic!("ast-mapped struct didn't have a ctor id")
             }
             base::trans_tuple_struct(ccx,
-                                     struct_def.id,
+                                     struct_def.id(),
                                      psubsts,
                                      d);
             d

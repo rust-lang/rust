@@ -134,7 +134,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             ItemEnum(ref enum_definition, _) => {
                 for v in &enum_definition.variants {
                     let variant_def_index =
-                        self.insert_def(v.node.data.id,
+                        self.insert_def(v.node.data.id(),
                                         NodeVariant(&**v),
                                         DefPathData::EnumVariant(v.node.name));
 
@@ -151,7 +151,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             ItemStruct(ref struct_def, _) => {
                 // If this is a tuple-like struct, register the constructor.
                 if !struct_def.is_struct() {
-                    self.insert_def(struct_def.id,
+                    self.insert_def(struct_def.id(),
                                     NodeStructCtor(&**struct_def),
                                     DefPathData::StructCtor);
                 }

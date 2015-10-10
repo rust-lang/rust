@@ -3131,8 +3131,7 @@ mod tests {
             name: ident,
             attrs: Vec::new(),
             // making this up as I go.... ?
-            data: P(ast::VariantData { data_: ast::VariantData_::Unit,
-                                    id: ast::DUMMY_NODE_ID}),
+            data: P(ast::VariantData::Unit(ast::DUMMY_NODE_ID)),
             disr_expr: None,
         });
 

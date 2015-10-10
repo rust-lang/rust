@@ -382,7 +382,7 @@ fn each_auxiliary_node_id<F>(item: &hir::Item, callback: F) -> bool where
         hir::ItemStruct(ref struct_def, _) => {
             // If this is a newtype struct, return the constructor.
             if struct_def.is_tuple() {
-                continue_ = callback(struct_def.id);
+                continue_ = callback(struct_def.id());
             }
         }
         _ => {}
@@ -1019,7 +1019,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_attributes(rbml_w, &item.attrs);
         encode_repr_attrs(rbml_w, ecx, &item.attrs);
         for v in &enum_definition.variants {
-            encode_variant_id(rbml_w, ecx.tcx.map.local_def_id(v.node.data.id));
+            encode_variant_id(rbml_w, ecx.tcx.map.local_def_id(v.node.data.id()));
         }
         encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
         encode_path(rbml_w, path);
@@ -1069,7 +1069,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_inherent_implementations(ecx, rbml_w, def_id);
 
         if !struct_def.is_struct() {
-            let ctor_did = ecx.tcx.map.local_def_id(struct_def.id);
+            let ctor_did = ecx.tcx.map.local_def_id(struct_def.id());
             rbml_w.wr_tagged_u64(tag_items_data_item_struct_ctor,
                                  def_to_u64(ctor_did));
         }
@@ -1082,7 +1082,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
         // If this is a tuple-like struct, encode the type of the constructor.
         if !struct_def.is_struct() {
-            encode_info_for_struct_ctor(ecx, rbml_w, item.name, struct_def.id, index, item.id);
+            encode_info_for_struct_ctor(ecx, rbml_w, item.name, struct_def.id(), index, item.id);
         }
       }
       hir::ItemDefaultImpl(unsafety, _) => {

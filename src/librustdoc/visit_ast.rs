@@ -111,7 +111,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             variants: def.variants.iter().map(|v| Variant {
                 name: v.node.name,
                 attrs: v.node.attrs.clone(),
-                stab: self.stability(v.node.data.id),
+                stab: self.stability(v.node.data.id()),
                 def: v.node.data.clone(),
                 whence: v.span,
             }).collect(),

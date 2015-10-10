@@ -2458,7 +2458,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                 ccx.sess().bug("attempt to register a constructor of \
                                   a non-tuple-like struct")
             } else {
-                struct_def.id
+                struct_def.id()
             };
             let parent = ccx.tcx().map.get_parent(id);
             let struct_item = ccx.tcx().map.expect_item(parent);
