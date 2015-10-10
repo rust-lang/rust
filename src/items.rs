@@ -377,7 +377,8 @@ impl<'a> FmtVisitor<'a> {
                                                  multi_line_budget,
                                                  indent,
                                                  arg_indent,
-                                                 args_span));
+                                                 args_span,
+                                                 fd.variadic));
         result.push_str(&arg_str);
         if self.config.fn_args_layout == StructLitStyle::Block {
             result.push('\n');
@@ -475,7 +476,8 @@ impl<'a> FmtVisitor<'a> {
                     multi_line_budget: usize,
                     indent: Indent,
                     arg_indent: Indent,
-                    span: Span)
+                    span: Span,
+                    variadic: bool)
                     -> Option<String> {
         let context = self.get_context();
         let mut arg_item_strs = try_opt!(args.iter()
@@ -506,26 +508,58 @@ impl<'a> FmtVisitor<'a> {
         // without spans for the comment or parens, there is no chance of
         // getting it right. You also don't get to put a comment on self, unless
         // it is explicit.
-        if args.len() >= min_args {
+        if args.len() >= min_args || variadic {
             let comment_span_start = if min_args == 2 {
                 span_after(span, ",", self.codemap)
             } else {
                 span.lo
             };
 
+            enum ArgumentKind<'a> {
+                Regular(&'a ast::Arg),
+                Variadic(BytePos),
+            }
+
+            let variadic_arg = if variadic {
+                let variadic_span = codemap::mk_sp(args.last().unwrap().ty.span.hi, span.hi);
+                let variadic_start = span_after(variadic_span, "...", self.codemap) - BytePos(1);
+                Some(ArgumentKind::Variadic(variadic_start))
+            } else {
+                None
+            };
+
             let more_items = itemize_list(self.codemap,
-                                          args[min_args - 1..].iter(),
+                                          args[min_args - 1..]
+                                              .iter()
+                                              .map(ArgumentKind::Regular)
+                                              .chain(variadic_arg),
                                           ")",
-                                          |arg| span_lo_for_arg(arg),
-                                          |arg| arg.ty.span.hi,
-                                          |_| None,
+                                          |arg| {
+                                              match *arg {
+                                                  ArgumentKind::Regular(arg) =>
+                                                      span_lo_for_arg(arg),
+                                                  ArgumentKind::Variadic(start) => start,
+                                              }
+                                          },
+                                          |arg| {
+                                              match *arg {
+                                                  ArgumentKind::Regular(arg) => arg.ty.span.hi,
+                                                  ArgumentKind::Variadic(start) =>
+                                                      start + BytePos(3),
+                                              }
+                                          },
+                                          |arg| {
+                                              match *arg {
+                                                  ArgumentKind::Regular(..) => None,
+                                                  ArgumentKind::Variadic(..) =>
+                                                      Some("...".to_owned()),
+                                              }
+                                          },
                                           comment_span_start,
                                           span.hi);
 
             arg_items.extend(more_items);
         }
-
-        assert_eq!(arg_item_strs.len(), arg_items.len());
 
         for (item, arg) in arg_items.iter_mut().zip(arg_item_strs) {
             item.item = Some(arg);

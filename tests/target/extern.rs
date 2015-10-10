@@ -27,3 +27,12 @@ extern "Rust" {
     // Some comment.
     pub static mut var: SomeType;
 }
+
+extern {
+    fn syscall(number: libc::c_long, // comment 1
+               // comm 2
+               ... /* sup? */)
+               -> libc::c_long;
+
+    fn foo(x: *const c_char, ...) -> libc::c_long;
+}
