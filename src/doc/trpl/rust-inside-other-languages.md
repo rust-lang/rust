@@ -347,37 +347,38 @@ In order to do FFI in Go, we first need to download the library:
 $ go get bitbucket.org/binet/go-ffi/pkg/ffi
 ```
 
-(You may need to install mercurial first).
+(You may need to install Mercurial first).
 
-After it's installed, we can use ffi:
+After it's installed, we can use `ffi`:
 
 ```go
-package main                                                                                                                                                                                                         
+package main
 
-import "bitbucket.org/binet/go-ffi/pkg/ffi"                                                                                                                                                                          
-import "fmt"                                                                                                                                                                                                         
+import "bitbucket.org/binet/go-ffi/pkg/ffi"
+import "fmt"
 
-func main() {                                                                                                                                                                                                        
-    lib, _ := ffi.NewLibrary("target/release/libembed.so")                                                                                                                                                           
-    process, _ := lib.Fct("process", ffi.Void, []ffi.Type{})                                                                                                                                                         
-    process()                                                                                                                                                                                                        
-    fmt.Println("done!")                                                                                                                                                                                             
+func main() {
+    lib, _ := ffi.NewLibrary("target/release/libembed.so")
+    process, _ := lib.Fct("process", ffi.Void, []ffi.Type{})
+    process()
+    fmt.Println("done!") 
 }
 ```
 
 This also looks a great deal like the Ruby and Node examples.
-We use the `ffi` module obtained from
-bitbucket.org/binet/go-ffi/pkg/ffi to get `ffi.NewLibrary()`, which
-loads our shared object library. We have to state the return type
-and argument types o fthe function, which are `ffi.Void` for return
-and an empty array of `ffi.Type` type to mean no arguments. However,
-here we have two choices: Executing with `go run` and compiling with
-`go build` and then running the generated binary.
+We use [the `ffi` module](https://bitbucket.org/binet/go-ffi/) to get
+`ffi.NewLibrary()`, which loads our shared object library. We have to
+state the return type and argument types of the function, which are
+`ffi.Void` for return and an empty array of `ffi.Type` type to mean
+no arguments. However, here we have two choices: Executing with 
+`go run` and compiling with `go build` and then running the generated
+binary.
 
 <!-- TODO change times to match other times in document -->
 ```bash
 $ go run embed.go
 ```
+
 Will compile and run our example, and takes about `0.250s` on my
 system.
 
@@ -385,6 +386,7 @@ system.
 $ go build embed.go
 $ ./embed
 ```
+
 Will compile and run our example in separate commands. Timing just
 execution, this takes an impressive `0.002s` on my system.
 
