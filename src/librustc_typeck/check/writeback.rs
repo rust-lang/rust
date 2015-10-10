@@ -131,7 +131,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                                 "overloaded augmented assignments are not stable");
                             fileline_help!(
                                 tcx.sess, e.span,
-                                "add #![feature(augmented_assignments)] to the crate features \
+                                "add #![feature(augmented_assignments)] to the crate root \
                                  to enable");
                         }
                     }
