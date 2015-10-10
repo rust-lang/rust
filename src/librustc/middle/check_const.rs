@@ -177,6 +177,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
             for arg in &fd.inputs {
                 match arg.pat.node {
                     hir::PatIdent(hir::BindByValue(hir::MutImmutable), _, None) => {}
+                    hir::PatWild(_) => {}
                     _ => {
                         span_err!(self.tcx.sess, arg.pat.span, E0022,
                                   "arguments of constant functions can only \
