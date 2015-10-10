@@ -112,3 +112,13 @@ fn main() {
            let s = expand(a
     ,    
     b); }
+
+fn deconstruct() -> (SocketAddr, Method, Headers,
+                     RequestUri, HttpVersion,
+                     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA) {
+}
+
+fn deconstruct(foo: Bar) -> (SocketAddr, Method, Headers,
+                     RequestUri, HttpVersion,
+                     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA) {
+}

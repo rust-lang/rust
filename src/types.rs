@@ -13,7 +13,7 @@ use syntax::print::pprust;
 use syntax::codemap::{self, Span, BytePos, CodeMap};
 
 use Indent;
-use lists::{format_item_list, itemize_list, format_fn_args};
+use lists::{format_item_list, itemize_list, format_fn_args, list_helper, ListTactic};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, span_after, format_mutability, wrap_str};
 
@@ -475,19 +475,27 @@ impl Rewrite for ast::Ty {
                 ty.rewrite(context, budget, offset + 1).map(|ty_str| format!("({})", ty_str))
             }
             ast::TyTup(ref tup_ret) => {
-                let inner = if let [ref item] = &**tup_ret {
-                    try_opt!(item.rewrite(context, width, offset)) + ","
+                let budget = try_opt!(width.checked_sub(2));
+                if tup_ret.is_empty() {
+                    Some("()".to_string())
+                } else if let [ref item] = &**tup_ret {
+                    let inner = try_opt!(item.rewrite(context, budget, offset + 1));
+                    let ret = format!("({},)", inner);
+                    wrap_str(ret, context.config.max_width, budget, offset + 1)
                 } else {
-                    let rewrites: Option<Vec<_>>;
-                    rewrites = tup_ret.iter()
-                                      .map(|item| item.rewrite(context, width, offset))
-                                      .collect();
+                    let items = itemize_list(context.codemap,
+                                             tup_ret.iter(),
+                                             ")",
+                                             |item| item.span.lo,
+                                             |item| item.span.hi,
+                                             |item| item.rewrite(context, budget, offset + 1),
+                                             tup_ret[0].span.lo,
+                                             self.span.hi);
 
-                    try_opt!(rewrites).join(", ")
-                };
 
-                let ret = format!("({})", inner);
-                wrap_str(ret, context.config.max_width, width, offset)
+                    list_helper(items, budget, offset + 1, context.config, ListTactic::Mixed)
+                        .map(|s| format!("({})", s))
+                }
             }
             _ => wrap_str(pprust::ty_to_string(self),
                           context.config.max_width,
