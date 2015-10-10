@@ -546,6 +546,38 @@ extern crate foo;
 pub use foo::bar;
 ```
 
+## Missing documentation
+
+Sometimes you want to make sure that every single public thing in your project
+is documented, especially when you are working on a library. Rust allows you to
+to generate warnings or errors, when an item is missing documentation.
+To generate warnings you use `warn`:
+
+```rust
+#![warn(missing_docs)]
+```
+
+And to generate errors you use `deny`:
+
+```rust,ignore
+#![deny(missing_docs)]
+```
+
+There are cases where you want to disable these warnings/errors to explicitly
+leave something undocumented. This is done by using `allow`:
+
+```rust
+#[allow(missing_docs)]
+struct Undocumented;
+```
+
+You might even want to hide items from the documentation completely:
+
+```rust
+#[doc(hidden)]
+struct Hidden;
+```
+
 ### Controlling HTML
 
 You can control a few aspects of the HTML that `rustdoc` generates through the
