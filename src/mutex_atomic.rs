@@ -39,7 +39,10 @@ impl LateLintPass for MutexAtomic {
                 let mutex_param = &subst.types.get(ParamSpace::TypeSpace, 0).sty;
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {
                     let msg = format!("Consider using an {} instead of a \
-                                       Mutex here.", atomic_name);
+                                       Mutex here. If you just want the \
+                                       locking behaviour and not the internal \
+                                       type, consider using Mutex<()>.",
+                                      atomic_name);
                     match *mutex_param {
                         ty::TyUint(t) if t != ast::TyUs =>
                             span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
