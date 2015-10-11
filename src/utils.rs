@@ -7,6 +7,7 @@ use rustc::middle::def_id::DefId;
 use rustc::middle::ty;
 use std::borrow::Cow;
 use syntax::ast::Lit_::*;
+use syntax::ast;
 
 // module DefPaths for certain structs/enums we check for
 pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];
@@ -15,15 +16,56 @@ pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
 pub const VEC_PATH:    [&'static str; 3] = ["collections", "vec", "Vec"];
 pub const LL_PATH:     [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
 
+/// Produce a nested chain of if-lets and ifs from the patterns:
+///
+///     if_let_chain! {
+///         [
+///             Some(y) = x,
+///             y.len() == 2,
+///             Some(z) = y,
+///         ],
+///         {
+///             block
+///         }
+///     }
+///
+/// becomes
+///
+///     if let Some(y) = x {
+///         if y.len() == 2 {
+///             if let Some(z) = y {
+///                 block
+///             }
+///         }
+///     }
+#[macro_export]
+macro_rules! if_let_chain {
+    ([let $pat:pat = $expr:expr, $($tt:tt)+], $block:block) => {
+        if let $pat = $expr {
+           if_let_chain!{ [$($tt)+], $block }
+        }
+    };
+    ([let $pat:pat = $expr:expr], $block:block) => {
+        if let $pat = $expr {
+           $block
+        }
+    };
+    ([$expr:expr, $($tt:tt)+], $block:block) => {
+        if $expr {
+           if_let_chain!{ [$($tt)+], $block }
+        }
+    };
+    ([$expr:expr], $block:block) => {
+        if $expr {
+           $block
+        }
+    };
+}
+
 /// returns true this expn_info was expanded by any macro
 pub fn in_macro(cx: &LateContext, span: Span) -> bool {
     cx.sess().codemap().with_expn_info(span.expn_id,
-            |info| info.map_or(false, |i| {
-        match i.callee.format {
-            ExpnFormat::CompilerExpansion(..) => false,
-            _ => true,
-        }
-    }))
+            |info| info.is_some())
 }
 
 /// returns true if the macro that expanded the crate was outside of
@@ -34,17 +76,9 @@ pub fn in_external_macro<T: LintContext>(cx: &T, span: Span) -> bool {
     fn in_macro_ext<T: LintContext>(cx: &T, opt_info: Option<&ExpnInfo>) -> bool {
         // no ExpnInfo = no macro
         opt_info.map_or(false, |info| {
-            match info.callee.format {
-                ExpnFormat::CompilerExpansion(..) => {
-                    if info.callee.name().as_str() == "closure expansion" {
-                        return false;
-                    }
-                },
-                ExpnFormat::MacroAttribute(..) => {
-                    // these are all plugins
-                    return true;
-                },
-                _ => (),
+            if let ExpnFormat::MacroAttribute(..) = info.callee.format {
+                // these are all plugins
+                return true;
             }
             // no span for the callee = external macro
             info.callee.span.map_or(true, |span| {
@@ -102,6 +136,13 @@ pub fn match_path(path: &Path, segments: &[&str]) -> bool {
         |(a, b)| a.identifier.name.as_str() == *b)
 }
 
+/// match a Path against a slice of segment string literals, e.g.
+/// `match_path(path, &["std", "rt", "begin_unwind"])`
+pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
+    path.segments.iter().rev().zip(segments.iter().rev()).all(
+        |(a, b)| a.identifier.name.as_str() == *b)
+}
+
 /// get the name of the item the expression is in, if available
 pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
     let parent_id = cx.tcx.map.get_parent(expr.id);
@@ -114,6 +155,24 @@ pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
         _ => None,
     }
 }
+
+/// checks if a `let` decl is from a for loop desugaring
+pub fn is_from_for_desugar(decl: &Decl) -> bool {
+    if_let_chain! {
+        [
+            let DeclLocal(ref loc) = decl.node,
+            let Some(ref expr) = loc.init,
+            // FIXME: This should check for MatchSource::ForLoop
+            // but right now there's a bug where the match source isn't
+            // set during lowering
+            // https://github.com/rust-lang/rust/pull/28973
+            let ExprMatch(_, _, _) = expr.node
+        ],
+        { return true; }
+    };
+    false
+}
+
 
 /// convert a span to a code snippet if available, otherwise use default, e.g.
 /// `snippet(cx, expr.span, "..")`
@@ -261,50 +320,4 @@ pub fn is_integer_literal(expr: &Expr, value: u64) -> bool
         }
     }
     false
-}
-
-/// Produce a nested chain of if-lets and ifs from the patterns:
-///
-///     if_let_chain! {
-///         [
-///             Some(y) = x,
-///             y.len() == 2,
-///             Some(z) = y,
-///         ],
-///         {
-///             block
-///         }
-///     }
-///
-/// becomes
-///
-///     if let Some(y) = x {
-///         if y.len() == 2 {
-///             if let Some(z) = y {
-///                 block
-///             }
-///         }
-///     }
-#[macro_export]
-macro_rules! if_let_chain {
-    ([let $pat:pat = $expr:expr, $($tt:tt)+], $block:block) => {
-        if let $pat = $expr {
-           if_let_chain!{ [$($tt)+], $block }
-        }
-    };
-    ([let $pat:pat = $expr:expr], $block:block) => {
-        if let $pat = $expr {
-           $block
-        }
-    };
-    ([$expr:expr, $($tt:tt)+], $block:block) => {
-        if $expr {
-           if_let_chain!{ [$($tt)+], $block }
-        }
-    };
-    ([$expr:expr], $block:block) => {
-        if $expr {
-           $block
-        }
-    };
 }
