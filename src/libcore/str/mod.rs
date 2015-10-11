@@ -243,7 +243,7 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
 ///
-/// See the safe version, [`from_utrf8()`][fromutf8], for more.
+/// See the safe version, [`from_utf8()`][fromutf8], for more.
 ///
 /// [fromutf8]: fn.from_utf8.html
 ///
