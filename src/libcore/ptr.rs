@@ -145,9 +145,11 @@ pub unsafe fn read_and_drop<T>(dest: *mut T) -> T {
 ///
 /// # Safety
 ///
-/// Beyond accepting a raw pointer, this operation is unsafe because it does
-/// not drop the contents of `dst`. This could leak allocations or resources,
-/// so care must be taken not to overwrite an object that should be dropped.
+/// This operation is marked unsafe because it accepts a raw pointer.
+///
+/// It does not drop the contents of `dst`. This is safe, but it could leak
+/// allocations or resources, so care must be taken not to overwrite an object
+/// that should be dropped.
 ///
 /// This is appropriate for initializing uninitialized memory, or overwriting
 /// memory that has previously been `read` from.
