@@ -163,25 +163,31 @@ impl LateLintPass for LoopsPass {
         // (also matches an explicit "match" instead of "if let")
         // (even if the "match" or "if let" is used for declaration)
         if let ExprLoop(ref block, _) = expr.node {
-            // extract the first statement (if any) in a block
-            let inner_stmt = extract_expr_from_first_stmt(block);
-            // extract a single expression
+            // extract the expression from the first statement (if any) in a block
+            let inner_stmt_expr = extract_expr_from_first_stmt(block);
+            // extract the first expression (if any) from the block
             let inner_expr = extract_first_expr(block);
-            let extracted = match inner_stmt {
-                Some(_) => inner_stmt,
-                None => inner_expr,
+            let (extracted, collect_expr) = match inner_stmt_expr {
+                Some(_) => (inner_stmt_expr, true),     // check if an expression exists in the first statement
+                None => (inner_expr, false),    // if not, let's go for the first expression in the block
             };
 
             if let Some(inner) = extracted {
-                // collect remaining expressions below the match
-                let other_stuff = block.stmts
-                                  .iter()
-                                  .skip(1)
-                                  .map(|stmt| {
-                                      format!("{}", snippet(cx, stmt.span, ".."))
-                                  }).collect::<Vec<String>>();
-
                 if let ExprMatch(ref matchexpr, ref arms, ref source) = inner.node {
+                    // collect the remaining statements below the match
+                    let mut other_stuff = block.stmts
+                                          .iter()
+                                          .skip(1)
+                                          .map(|stmt| {
+                                              format!("{}", snippet(cx, stmt.span, ".."))
+                                          }).collect::<Vec<String>>();
+                    if collect_expr {           // if we have a statement which has a match,
+                        match block.expr {      // then collect the expression (without semicolon) below it
+                            Some(ref expr) => other_stuff.push(format!("{}", snippet(cx, expr.span, ".."))),
+                            None => (),
+                        }
+                    }
+
                     // ensure "if let" compatible match structure
                     match *source {
                         MatchSource::Normal | MatchSource::IfLetDesugar{..} => if
@@ -192,7 +198,7 @@ impl LateLintPass for LoopsPass {
                             is_break_expr(&arms[1].body)
                         {
                             if in_external_macro(cx, expr.span) { return; }
-                            let loop_body = match inner_stmt {
+                            let loop_body = match inner_stmt_expr {
                                 // FIXME: should probably be an ellipsis
                                 // tabbing and newline is probably a bad idea, especially for large blocks
                                 Some(_) => Cow::Owned(format!("{{\n    {}\n}}", other_stuff.join("\n    "))),
@@ -310,9 +316,9 @@ fn is_iterable_array(ty: ty::Ty) -> bool {
 
 /// If a block begins with a statement (possibly a `let` binding) and has an expression, return it.
 fn extract_expr_from_first_stmt(block: &Block) -> Option<&Expr> {
-    match block.expr {
-        Some(_) => None,
-        None if !block.stmts.is_empty() => match block.stmts[0].node {
+    match block.stmts.is_empty() {
+        true => None,
+        false => match block.stmts[0].node {
             StmtDecl(ref decl, _) => match decl.node {
                 DeclLocal(ref local) => match local.init {
                     Some(ref expr) => Some(expr),
@@ -322,7 +328,6 @@ fn extract_expr_from_first_stmt(block: &Block) -> Option<&Expr> {
             },
             _ => None,
         },
-        _ => None,
     }
 }
 
