@@ -1422,7 +1422,11 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                               vec![head])
                 };
 
-                let match_expr = expr_match(lctx, e.span, into_iter_expr, vec![iter_arm]);
+                let match_expr = expr_match(lctx,
+                                            e.span,
+                                            into_iter_expr,
+                                            vec![iter_arm],
+                                            hir::MatchSource::ForLoopDesugar);
 
                 // `{ let result = ...; result }`
                 let result_ident = lctx.str_to_ident("result");
@@ -1574,11 +1578,12 @@ fn expr_path(lctx: &LoweringContext, path: hir::Path) -> P<hir::Expr> {
 fn expr_match(lctx: &LoweringContext,
               span: Span,
               arg: P<hir::Expr>,
-              arms: Vec<hir::Arm>)
+              arms: Vec<hir::Arm>,
+              source: hir::MatchSource)
               -> P<hir::Expr> {
     expr(lctx,
          span,
-         hir::ExprMatch(arg, arms, hir::MatchSource::Normal))
+         hir::ExprMatch(arg, arms, source))
 }
 
 fn expr_block(lctx: &LoweringContext, b: P<hir::Block>) -> P<hir::Expr> {
