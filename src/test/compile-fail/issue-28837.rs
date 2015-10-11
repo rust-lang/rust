@@ -13,48 +13,48 @@ struct A;
 fn main() {
     let a = A;
 
-    a + a; //~ ERROR binary operation `+` cannot be applied to type `A` 
-    //~^ NOTE an implementation of `std::ops::Add` might be missing for `A` or
+    a + a; //~ ERROR binary operation `+` cannot be applied to type `A`
+    //~^ NOTE an implementation of `std::ops::Add` might be missing for `A`
 
     a - a; //~ ERROR binary operation `-` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::ops::Sub` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::ops::Sub` might be missing for `A`
 
     a * a; //~ ERROR binary operation `*` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::ops::Mul` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::ops::Mul` might be missing for `A`
 
     a / a; //~ ERROR binary operation `/` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::ops::Div` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::ops::Div` might be missing for `A`
 
     a % a; //~ ERROR binary operation `%` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::ops::Rem` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::ops::Rem` might be missing for `A`
 
     a & a; //~ ERROR binary operation `&` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::ops::BitAnd` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::ops::BitAnd` might be missing for `A`
 
     a | a; //~ ERROR binary operation `|` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::ops::BitOr` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::ops::BitOr` might be missing for `A`
 
     a << a; //~ ERROR binary operation `<<` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::ops::Shl` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::ops::Shl` might be missing for `A`
 
     a >> a; //~ ERROR binary operation `>>` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::ops::Shr` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::ops::Shr` might be missing for `A`
 
     a == a; //~ ERROR binary operation `==` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::cmp::PartialEq` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::cmp::PartialEq` might be missing for `A`
 
     a != a; //~ ERROR binary operation `!=` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::cmp::PartialEq` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::cmp::PartialEq` might be missing for `A`
 
     a < a; //~ ERROR binary operation `<` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::cmp::PartialOrd` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::cmp::PartialOrd` might be missing for `A`
 
     a <= a; //~ ERROR binary operation `<=` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::cmp::PartialOrd` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::cmp::PartialOrd` might be missing for `A`
 
     a > a; //~ ERROR binary operation `>` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::cmp::PartialOrd` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::cmp::PartialOrd` might be missing for `A`
 
     a >= a; //~ ERROR binary operation `>=` cannot be applied to type `A`
-    //~^ NOTE an implementation of `std::cmp::PartialOrd` might be missing for `A` or one of
+    //~^ NOTE an implementation of `std::cmp::PartialOrd` might be missing for `A`
 }
