@@ -1,10 +1,10 @@
 use rustc::lint::*;
-use rustc_front::hir::*;
-use reexport::*;
+use syntax::ast::*;
+//use reexport::*;
 use syntax::codemap::{Span, Spanned};
-use rustc_front::visit::FnKind;
+use syntax::visit::FnKind;
 
-use utils::{span_lint, snippet, match_path, in_external_macro};
+use utils::{span_lint, snippet, match_path_ast, in_external_macro};
 
 declare_lint!(pub NEEDLESS_RETURN, Warn,
               "using a return statement like `return expr;` where an expression would suffice");
@@ -17,7 +17,7 @@ pub struct ReturnPass;
 
 impl ReturnPass {
     // Check the final stmt or expr in a block for unnecessary return.
-    fn check_block_return(&mut self, cx: &LateContext, block: &Block) {
+    fn check_block_return(&mut self, cx: &EarlyContext, block: &Block) {
         if let Some(ref expr) = block.expr {
             self.check_final_expr(cx, expr);
         } else if let Some(stmt) = block.stmts.last() {
@@ -30,7 +30,7 @@ impl ReturnPass {
     }
 
     // Check a the final expression in a block if it's a return.
-    fn check_final_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_final_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
         match expr.node {
             // simple return is always "bad"
             ExprRet(Some(ref inner)) => {
@@ -48,7 +48,7 @@ impl ReturnPass {
                 self.check_final_expr(cx, elsexpr);
             }
             // a match expr, check all arms
-            ExprMatch(_, ref arms, _) => {
+            ExprMatch(_, ref arms) => {
                 for arm in arms {
                     self.check_final_expr(cx, &arm.body);
                 }
@@ -57,7 +57,7 @@ impl ReturnPass {
         }
     }
 
-    fn emit_return_lint(&mut self, cx: &LateContext, spans: (Span, Span)) {
+    fn emit_return_lint(&mut self, cx: &EarlyContext, spans: (Span, Span)) {
         if in_external_macro(cx, spans.1) {return;}
         span_lint(cx, NEEDLESS_RETURN, spans.0, &format!(
             "unneeded return statement. Consider using `{}` \
@@ -66,7 +66,7 @@ impl ReturnPass {
     }
 
     // Check for "let x = EXPR; x"
-    fn check_let_return(&mut self, cx: &LateContext, block: &Block) {
+    fn check_let_return(&mut self, cx: &EarlyContext, block: &Block) {
         // we need both a let-binding stmt and an expr
         if_let_chain! {
             [
@@ -77,14 +77,14 @@ impl ReturnPass {
                 let Some(ref initexpr) = local.init,
                 let PatIdent(_, Spanned { node: id, .. }, _) = local.pat.node,
                 let ExprPath(_, ref path) = retexpr.node,
-                match_path(path, &[&id.name.as_str()])
+                match_path_ast(path, &[&id.name.as_str()])
             ], {
                 self.emit_let_lint(cx, retexpr.span, initexpr.span);
             }
         }
     }
 
-    fn emit_let_lint(&mut self, cx: &LateContext, lint_span: Span, note_span: Span) {
+    fn emit_let_lint(&mut self, cx: &EarlyContext, lint_span: Span, note_span: Span) {
         if in_external_macro(cx, note_span) {return;}
         span_lint(cx, LET_AND_RETURN, lint_span,
                   "returning the result of a let binding from a block. \
@@ -102,13 +102,13 @@ impl LintPass for ReturnPass {
     }
 }
 
-impl LateLintPass for ReturnPass {
-    fn check_fn(&mut self, cx: &LateContext, _: FnKind, _: &FnDecl,
+impl EarlyLintPass for ReturnPass {
+    fn check_fn(&mut self, cx: &EarlyContext, _: FnKind, _: &FnDecl,
                 block: &Block, _: Span, _: NodeId) {
         self.check_block_return(cx, block);
     }
 
-    fn check_block(&mut self, cx: &LateContext, block: &Block) {
+    fn check_block(&mut self, cx: &EarlyContext, block: &Block) {
         self.check_let_return(cx, block);
     }
 }

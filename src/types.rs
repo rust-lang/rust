@@ -9,7 +9,8 @@ use syntax::ast::IntTy::*;
 use syntax::ast::UintTy::*;
 use syntax::ast::FloatTy::*;
 
-use utils::{match_type, snippet, span_lint, span_help_and_lint, in_macro, in_external_macro};
+use utils::{match_type, snippet, span_lint, span_help_and_lint};
+use utils::{is_from_for_desugar, in_macro, in_external_macro};
 use utils::{LL_PATH, VEC_PATH};
 
 /// Handles all the linting of funky types
@@ -61,9 +62,10 @@ fn check_let_unit(cx: &LateContext, decl: &Decl) {
         if *bindtype == ty::TyTuple(vec![]) {
             if in_external_macro(cx, decl.span) ||
                 in_macro(cx, local.pat.span) { return; }
-            span_lint(cx, LET_UNIT_VALUE, decl.span, &format!(
-                "this let-binding has unit value. Consider omitting `let {} =`",
-                snippet(cx, local.pat.span, "..")));
+                if is_from_for_desugar(decl) { return; }
+                span_lint(cx, LET_UNIT_VALUE, decl.span, &format!(
+                    "this let-binding has unit value. Consider omitting `let {} =`",
+                    snippet(cx, local.pat.span, "..")));
         }
     }
 }

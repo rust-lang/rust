@@ -7,7 +7,7 @@ use rustc_front::visit::FnKind;
 use rustc::lint::*;
 use rustc::middle::def::Def::{DefVariant, DefStruct};
 
-use utils::{in_external_macro, snippet, span_lint, span_note_and_lint};
+use utils::{is_from_for_desugar, in_external_macro, snippet, span_lint, span_note_and_lint};
 
 declare_lint!(pub SHADOW_SAME, Allow,
     "rebinding a name to itself, e.g. `let mut x = &mut x`");
@@ -60,6 +60,7 @@ fn check_block(cx: &LateContext, block: &Block, bindings: &mut Vec<(Name, Span)>
 
 fn check_decl(cx: &LateContext, decl: &Decl, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx, decl.span) { return; }
+    if is_from_for_desugar(decl) { return; }
     if let DeclLocal(ref local) = decl.node {
         let Local{ ref pat, ref ty, ref init, id: _, span } = **local;
         if let &Some(ref t) = ty { check_ty(cx, t, bindings) }
