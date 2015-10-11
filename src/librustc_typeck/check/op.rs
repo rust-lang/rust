@@ -209,8 +209,7 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
                     if let Some(missing_trait) = missing_trait {
                         span_note!(fcx.tcx().sess, lhs_expr.span,
-                                   "an implementation of `{}` might be missing for `{}` \
-                                    or one of its type arguments",
+                                   "an implementation of `{}` might be missing for `{}`",
                                     missing_trait, lhs_ty);
                     }
                 }
