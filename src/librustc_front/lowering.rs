@@ -1489,8 +1489,6 @@ pub fn lower_block_check_mode(_lctx: &LoweringContext, b: &BlockCheckMode) -> hi
     match *b {
         DefaultBlock => hir::DefaultBlock,
         UnsafeBlock(u) => hir::UnsafeBlock(lower_unsafe_source(_lctx, u)),
-        PushUnsafeBlock(u) => hir::PushUnsafeBlock(lower_unsafe_source(_lctx, u)),
-        PopUnsafeBlock(u) => hir::PopUnsafeBlock(lower_unsafe_source(_lctx, u)),
     }
 }
 
