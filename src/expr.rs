@@ -256,6 +256,8 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
     where I: Iterator<Item = &'a ast::Expr>
 {
     // 2 for brackets;
+    let offset = offset + 1;
+    let inner_context = &RewriteContext { block_indent: offset, ..*context };
     let max_item_width = try_opt!(width.checked_sub(2));
     let items = itemize_list(context.codemap,
                              expr_iter,
@@ -263,7 +265,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
                              |item| item.span.lo,
                              |item| item.span.hi,
                              // 1 = [
-                             |item| item.rewrite(context, max_item_width, offset + 1),
+                             |item| item.rewrite(&inner_context, max_item_width, offset),
                              span_after(span, "[", context.codemap),
                              span.hi)
                     .collect::<Vec<_>>();
@@ -283,7 +285,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
         tactic: tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
-        indent: offset + 1,
+        indent: offset,
         width: max_item_width,
         ends_with_newline: false,
         config: context.config,
