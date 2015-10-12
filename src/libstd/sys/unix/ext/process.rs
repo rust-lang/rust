@@ -36,31 +36,18 @@ pub trait CommandExt {
     /// that the child is the leader of a new process group. The parent process
     /// remains the child reaper of the new process.
     ///
+    /// If the tty argument is not `None`, this file will be the controlling
+    /// terminal for the new session (cf. `login_tty(3)` and tty_ioctl(4),
+    /// specifically the section on `TIOCSCTTY`). Note that this does not set
+    /// that file to be the stdio handles for the child process, to do that you
+    /// must set them directly with the `stdin()` et al methods.
+    ///
     /// This is not enough to create a daemon process. The *init* process should
     /// be the child reaper of a daemon. This can be achieved if the parent
     /// process exit. Moreover, a daemon should not have a controlling terminal.
-    /// To achieve this, a session leader (the child) must spawn another process
-    /// (the daemon) in the same session.
-    ///
-    /// If a new controlling terminal has been assigned to the child, calling
-    /// this method is redundant; a new session will be created for the child
-    /// process regardless of calls to this method.
     #[unstable(feature = "process_session_leader", reason = "recently added",
                issue = "27811")]
-    fn session_leader(&mut self, on: bool) -> &mut process::Command;
-
-    /// Assign the file handle to be the controlling terminal for the child
-    /// process. Because the controlling terminal can only be changed for a
-    /// session lead, this also creates a new session for the child process.
-    /// 
-    /// Unlike login_tty(3), this does not automatically set the stdio handles
-    /// to the same handle as the controlling terminal, to do that you must set
-    /// them using `Stdio::from_raw_fd()`.
-    ///
-    /// For more information, see login_tty(3) and tty_ioctl(4), specifically
-    /// TIOCSCTTY.
-    #[unstable(feature = "process_tty", reason = "recently added")]
-    fn tty<T: AsRawFd>(&mut self, fd: &T) -> &mut process::Command;
+    fn session_leader<T: AsRawFd>(&mut self, tty: Option<&T>) -> &mut process::Command;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -75,18 +62,11 @@ impl CommandExt for process::Command {
         self
     }
 
-    fn session_leader(&mut self, on: bool) -> &mut process::Command {
-        if self.as_inner().tty.is_none() {
-            self.as_inner_mut().session_leader = on;
-        }
-        self
-    }
-
-    fn tty<T: AsRawFd>(&mut self, fd: &T) -> &mut process::Command {
+    fn session_leader<T: AsRawFd>(&mut self, tty: Option<&T>) -> &mut process::Command {
         {
             let inner = self.as_inner_mut();
-            inner.tty = Some(fd.as_raw_fd());
             inner.session_leader = true;
+            inner.tty = tty.map(T::as_raw_fd);
         }
         self
     }
