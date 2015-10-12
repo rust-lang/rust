@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 59 lints included in this crate:
+There are 60 lints included in this crate:
 
 name                                                                                                   | default | meaning
 -------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -68,6 +68,7 @@ name                                                                            
 [while_let_loop](https://github.com/Manishearth/rust-clippy/wiki#while_let_loop)                       | warn    | `loop { if let { ... } else break }` can be written as a `while let` loop
 [wrong_pub_self_convention](https://github.com/Manishearth/rust-clippy/wiki#wrong_pub_self_convention) | allow   | defining a public method named with an established prefix (like "into_") that takes `self` with the wrong convention
 [wrong_self_convention](https://github.com/Manishearth/rust-clippy/wiki#wrong_self_convention)         | warn    | defining a method named with an established prefix (like "into_") that takes `self` with the wrong convention
+[zero_divided_by_zero](https://github.com/Manishearth/rust-clippy/wiki#zero_divided_by_zero)           | warn    | usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN
 [zero_width_space](https://github.com/Manishearth/rust-clippy/wiki#zero_width_space)                   | deny    | using a zero-width space in a string literal, which is confusing
 
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!
