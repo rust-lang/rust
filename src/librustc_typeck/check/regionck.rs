@@ -592,6 +592,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
         };
 
         substs_wf_in_scope(rcx, origin, &callee.substs, expr.span, expr_region);
+        type_must_outlive(rcx, infer::ExprTypeIsNotInScope(callee.ty, expr.span),
+                          callee.ty, expr_region);
     }
 
     // Check any autoderefs or autorefs that appear.
@@ -664,6 +666,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
         }
     }
 
+    debug!("regionck::visit_expr(e={:?}, repeating_scope={}) - visiting subexprs",
+           expr, rcx.repeating_scope);
     match expr.node {
         hir::ExprPath(..) => {
             rcx.fcx.opt_node_ty_substs(expr.id, |item_substs| {
