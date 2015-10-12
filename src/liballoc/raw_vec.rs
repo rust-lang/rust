@@ -65,7 +65,10 @@ impl<T> RawVec<T> {
             };
 
             // heap::EMPTY doubles as "unallocated" and "zero-sized allocation"
-            RawVec { ptr: Unique::new(heap::EMPTY as *mut T), cap: cap }
+            RawVec {
+                ptr: Unique::new(heap::EMPTY as *mut T),
+                cap: cap,
+            }
         }
     }
 
@@ -102,7 +105,10 @@ impl<T> RawVec<T> {
                 ptr
             };
 
-            RawVec { ptr: Unique::new(ptr as *mut _), cap: cap }
+            RawVec {
+                ptr: Unique::new(ptr as *mut _),
+                cap: cap,
+            }
         }
     }
 
@@ -114,7 +120,10 @@ impl<T> RawVec<T> {
     /// capacity cannot exceed `isize::MAX` (only a concern on 32-bit systems).
     /// If the ptr and capacity come from a RawVec, then this is guaranteed.
     pub unsafe fn from_raw_parts(ptr: *mut T, cap: usize) -> Self {
-        RawVec { ptr: Unique::new(ptr), cap: cap }
+        RawVec {
+            ptr: Unique::new(ptr),
+            cap: cap,
+        }
     }
 
     /// Converts a `Box<[T]>` into a `RawVec<T>`.
@@ -398,8 +407,7 @@ impl<T> RawVec<T> {
         }
 
         // This check is my waterloo; it's the only thing Vec wouldn't have to do.
-        assert!(self.cap >= amount,
-                "Tried to shrink to a larger capacity");
+        assert!(self.cap >= amount, "Tried to shrink to a larger capacity");
 
         if amount == 0 {
             mem::replace(self, RawVec::new());
