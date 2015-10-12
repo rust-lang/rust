@@ -20,9 +20,9 @@ pub const LL_PATH:     [&'static str; 3] = ["collections", "linked_list", "Linke
 ///
 ///     if_let_chain! {
 ///         [
-///             Some(y) = x,
+///             let Some(y) = x,
 ///             y.len() == 2,
-///             Some(z) = y,
+///             let Some(z) = y,
 ///         ],
 ///         {
 ///             block
