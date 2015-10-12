@@ -1671,8 +1671,8 @@ impl<'a> State<'a> {
                                       attrs: &[ast::Attribute],
                                       close_box: bool) -> io::Result<()> {
         match blk.rules {
-            ast::UnsafeBlock(..) | ast::PushUnsafeBlock(..) => try!(self.word_space("unsafe")),
-            ast::DefaultBlock    | ast::PopUnsafeBlock(..) => ()
+            ast::UnsafeBlock(..) => try!(self.word_space("unsafe")),
+            ast::DefaultBlock => ()
         }
         try!(self.maybe_print_comment(blk.span.lo));
         try!(self.ann.pre(self, NodeBlock(blk)));
