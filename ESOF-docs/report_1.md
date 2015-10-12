@@ -32,7 +32,7 @@ Rust programming language uses **Test Driven Development - TDD** as its developi
 ***
 ### Paradigm problems
 
-In contrast with _Rails_, _Rust_ has unit testing built right into the language. However it’s just the basics: asserts and such. It's expected to have others added by the community as it grows.
+In contrast with _Rails_, _Rust_ has unit testing built right into the language (in which it is developed). However it’s just the basics: asserts and such. It's expected to have others added by the community as it grows.
 
 ### **TAD** _(Test after develpment)_ vs **TDD** _(Test driven development)_
 
