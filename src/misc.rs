@@ -165,37 +165,49 @@ impl LateLintPass for CmpOwned {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
             if is_comparison_binop(cmp.node) {
-                check_to_owned(cx, left, right.span);
-                check_to_owned(cx, right, left.span)
+                check_to_owned(cx, left, right.span, true, cmp.span);
+                check_to_owned(cx, right, left.span, false, cmp.span)
             }
         }
     }
 }
 
-fn check_to_owned(cx: &LateContext, expr: &Expr, other_span: Span) {
-    match expr.node {
-        ExprMethodCall(Spanned{node: ref name, ..}, _, ref args) => {
+fn check_to_owned(cx: &LateContext, expr: &Expr, other_span: Span, left: bool, op: Span) {
+    let snip = match expr.node {
+        ExprMethodCall(Spanned{node: ref name, ..}, _, ref args) if args.len() == 1 => {
             if name.as_str() == "to_string" ||
                 name.as_str() == "to_owned" && is_str_arg(cx, args) {
-                    span_lint(cx, CMP_OWNED, expr.span, &format!(
-                        "this creates an owned instance just for comparison. \
-                         Consider using `{}.as_slice()` to compare without allocation",
-                        snippet(cx, other_span, "..")))
+                    snippet(cx, args[0].span, "..")
+                } else {
+                    return
                 }
         },
-        ExprCall(ref path, _) => {
+        ExprCall(ref path, ref v) if v.len() == 1 => {
             if let &ExprPath(None, ref path) = &path.node {
                 if match_path(path, &["String", "from_str"]) ||
                     match_path(path, &["String", "from"]) {
-                        span_lint(cx, CMP_OWNED, expr.span, &format!(
-                            "this creates an owned instance just for comparison. \
-                             Consider using `{}.as_slice()` to compare without allocation",
-                            snippet(cx, other_span, "..")))
+                            snippet(cx, v[0].span, "..")
+                    } else {
+                        return
                     }
+            } else {
+                return
             }
         },
-        _ => ()
+        _ => return
+    };
+    if left {
+        span_lint(cx, CMP_OWNED, expr.span, &format!(
+        "this creates an owned instance just for comparison. Consider using \
+        `{} {} {}` to compare without allocation", snip,
+        snippet(cx, op, "=="), snippet(cx, other_span, "..")));
+    } else {
+        span_lint(cx, CMP_OWNED, expr.span, &format!(
+        "this creates an owned instance just for comparison. Consider using \
+        `{} {} {}` to compare without allocation",
+        snippet(cx, other_span, ".."), snippet(cx, op, "=="),  snip));
     }
+
 }
 
 fn is_str_arg(cx: &LateContext, args: &[P<Expr>]) -> bool {
