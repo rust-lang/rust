@@ -36,13 +36,16 @@ declare_lint!{ pub REVERSE_RANGE_LOOP, Warn,
 declare_lint!{ pub EXPLICIT_COUNTER_LOOP, Warn,
                "for-looping with an explicit counter when `_.enumerate()` would do" }
 
+declare_lint!{ pub EMPTY_LOOP, Warn, "empty `loop {}` detected" }
+
 #[derive(Copy, Clone)]
 pub struct LoopsPass;
 
 impl LintPass for LoopsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_RANGE_LOOP, EXPLICIT_ITER_LOOP, ITER_NEXT_LOOP,
-                    WHILE_LET_LOOP, UNUSED_COLLECT, REVERSE_RANGE_LOOP, EXPLICIT_COUNTER_LOOP)
+                    WHILE_LET_LOOP, UNUSED_COLLECT, REVERSE_RANGE_LOOP, 
+                    EXPLICIT_COUNTER_LOOP, EMPTY_LOOP)
     }
 }
 
@@ -163,6 +166,14 @@ impl LateLintPass for LoopsPass {
         // (also matches an explicit "match" instead of "if let")
         // (even if the "match" or "if let" is used for declaration)
         if let ExprLoop(ref block, _) = expr.node {
+            // also check for empty `loop {}` statements
+            if block.stmts.is_empty() && block.expr.is_none() {
+                span_lint(cx, EMPTY_LOOP, expr.span,
+                          "empty `loop {}` detected. You may want to either \
+                           use `panic!()` or add `std::thread::sleep(..);` to \
+                           the loop body.");
+            }
+            
             // extract the first statement (if any) in a block
             let inner_stmt = extract_expr_from_first_stmt(block);
             // extract a single expression

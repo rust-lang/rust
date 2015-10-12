@@ -1,7 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#![deny(while_let_loop)]
+#![deny(while_let_loop, empty_loop)]
 #![allow(dead_code, unused)]
 
 fn main() {
@@ -58,6 +58,6 @@ fn no_panic<T>(slice: &[T]) {
             Some(ele) => ele,
             None => break
         };
-        loop {}
+        loop {} //~ERROR empty `loop {}` detected.
     }
 }
