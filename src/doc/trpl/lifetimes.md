@@ -74,7 +74,7 @@ associated with it, but the compiler lets you elide (i.e. omit, see
 ["Lifetime Elision"][lifetime-elision] below) them in common cases.
 Before we get to that, though, let’s break the explicit example down:
 
-[lifetime-elision]: #user-content-lifetime-elision
+[lifetime-elision]: #lifetime-elision
 
 ```rust,ignore
 fn bar<'a>(...)
