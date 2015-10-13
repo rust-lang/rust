@@ -27,6 +27,7 @@ use vec::Vec;
 
 pub struct File { handle: Handle }
 
+#[derive(Clone)]
 pub struct FileAttr {
     data: c::WIN32_FILE_ATTRIBUTE_DATA,
     reparse_tag: libc::DWORD,
