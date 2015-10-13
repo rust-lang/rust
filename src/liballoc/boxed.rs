@@ -161,7 +161,12 @@ fn make_place<T>() -> IntermediateBox<T> {
         p
     };
 
-    IntermediateBox { ptr: p, size: size, align: align, marker: marker::PhantomData }
+    IntermediateBox {
+        ptr: p,
+        size: size,
+        align: align,
+        marker: marker::PhantomData,
+    }
 }
 
 impl<T> BoxPlace<T> for IntermediateBox<T> {
@@ -538,7 +543,10 @@ impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl<T: Clone> Clone for Box<[T]> {
     fn clone(&self) -> Self {
-        let mut new = BoxBuilder { data: RawVec::with_capacity(self.len()), len: 0 };
+        let mut new = BoxBuilder {
+            data: RawVec::with_capacity(self.len()),
+            len: 0,
+        };
 
         let mut target = new.data.ptr();
 
@@ -597,10 +605,14 @@ impl<T: ?Sized> borrow::BorrowMut<T> for Box<T> {
 
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
 impl<T: ?Sized> AsRef<T> for Box<T> {
-    fn as_ref(&self) -> &T { &**self }
+    fn as_ref(&self) -> &T {
+        &**self
+    }
 }
 
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
 impl<T: ?Sized> AsMut<T> for Box<T> {
-    fn as_mut(&mut self) -> &mut T { &mut **self }
+    fn as_mut(&mut self) -> &mut T {
+        &mut **self
+    }
 }
