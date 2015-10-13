@@ -2099,7 +2099,7 @@ pub enum UnresolvedTypeAction {
     Ignore
 }
 
-/// Desired behaviour upon reaching the recursion limit. Used in 
+/// Desired behaviour upon reaching the recursion limit. Used in
 /// `autoderef_with_recursion_option`. Default is `ErrorGracefully`
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AutoderefRecursionOption {
@@ -2128,14 +2128,14 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
     where F: FnMut(Ty<'tcx>, usize) -> Option<T>,
 {
     // call the implementation with the default behaviour.
-    autoderef_with_recursion_option(fcx, 
-                                    sp, 
-                                    base_ty, 
-                                    opt_expr, 
+    autoderef_with_recursion_option(fcx,
+                                    sp,
+                                    base_ty,
+                                    opt_expr,
                                     unresolved_type_action,
                                     lvalue_pref,
                                     AutoderefRecursionOption::ErrorGracefully,
-                                    should_stop,)
+                                    should_stop)
 }
 
 /// Actual implementation of of `autoderef`. `autoderef` calls this method with
@@ -2148,7 +2148,7 @@ pub fn autoderef_with_recursion_option<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                        opt_expr: Option<&hir::Expr>,
                                                        unresolved_type_action: UnresolvedTypeAction,
                                                        mut lvalue_pref: LvaluePreference,
-                                                       recursion_option: AutoderefRecursionOption, 
+                                                       recursion_option: AutoderefRecursionOption,
                                                        mut should_stop: F)
                                                        -> (Ty<'tcx>, usize, Option<T>)
     where F: FnMut(Ty<'tcx>, usize) -> Option<T>,
