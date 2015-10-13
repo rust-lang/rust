@@ -2139,7 +2139,7 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
 }
 
 /// Actual implementation of of `autoderef`. `autoderef` calls this method with
-/// `AutoderefRecursionOption::ErrorGracefully` as default behaviour. Unless 
+/// `AutoderefRecursionOption::ErrorGracefully` as default behaviour. Unless
 /// specific behaviour is needed in case of reaching the recursion limit,
 /// `autoderef` should be used instead.
 pub fn autoderef_with_recursion_option<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
