@@ -335,8 +335,7 @@ LLVMRustSetDataLayoutFromTargetMachine(LLVMModuleRef Module,
                                        LLVMTargetMachineRef TMR) {
     TargetMachine *Target = unwrap(TMR);
 #if LLVM_VERSION_MINOR >= 7
-    if (const DataLayout *DL = Target->getDataLayout())
-        unwrap(Module)->setDataLayout(*DL);
+    unwrap(Module)->setDataLayout(Target->createDataLayout());
 #elif LLVM_VERSION_MINOR >= 6
     if (const DataLayout *DL = Target->getSubtargetImpl()->getDataLayout())
         unwrap(Module)->setDataLayout(DL);
