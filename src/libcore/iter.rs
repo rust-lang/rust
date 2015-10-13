@@ -3032,7 +3032,52 @@ impl<A: Clone> DoubleEndedIterator for Repeat<A> {
     fn next_back(&mut self) -> Option<A> { Some(self.element.clone()) }
 }
 
-/// Creates a new iterator that endlessly repeats the element `elt`.
+/// Creates a new iterator that endlessly repeats a single element.
+///
+/// The `repeat()` function repeats a single value over and over and over and
+/// over and over and 🔁.
+///
+/// Infinite iterators like `repeat()` are often used with adapters like
+/// [`take()`], in order to make them finite.
+///
+/// [`take()`]: trait.Iterator.html#method.take
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// use std::iter;
+///
+/// // the number four 4ever:
+/// let mut fours = iter::repeat(4);
+///
+/// assert_eq!(Some(4), fours.next());
+/// assert_eq!(Some(4), fours.next());
+/// assert_eq!(Some(4), fours.next());
+/// assert_eq!(Some(4), fours.next());
+/// assert_eq!(Some(4), fours.next());
+///
+/// // yup, still four
+/// assert_eq!(Some(4), fours.next());
+/// ```
+///
+/// Going finite with [`take()`]:
+///
+/// ```
+/// use std::iter;
+///
+/// // that last example was too many fours. Let's only have four fours.
+/// let mut four_fours = iter::repeat(4).take(4);
+///
+/// assert_eq!(Some(4), four_fours.next());
+/// assert_eq!(Some(4), four_fours.next());
+/// assert_eq!(Some(4), four_fours.next());
+/// assert_eq!(Some(4), four_fours.next());
+///
+/// // ... and now we're done
+/// assert_eq!(None, four_fours.next());
+/// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
@@ -3089,6 +3134,19 @@ impl<T> Default for Empty<T> {
 }
 
 /// Creates an iterator that yields nothing.
+///
+/// # Exampes
+///
+/// Basic usage:
+///
+/// ```
+/// use std::iter;
+///
+/// // this could have been an iterator over i32, but alas, it's just not.
+/// let mut nope = iter::empty::<i32>();
+///
+/// assert_eq!(None, nope.next());
+/// ```
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub fn empty<T>() -> Empty<T> {
     Empty(marker::PhantomData)
@@ -3129,6 +3187,56 @@ impl<T> ExactSizeIterator for Once<T> {
 }
 
 /// Creates an iterator that yields an element exactly once.
+///
+/// This is commonly used to adapt a single value into a [`chain()`] of other
+/// kinds of iteration. Maybe you have an iterator that covers almost
+/// everything, but you need an extra special case. Maybe you have a function
+/// which works on iterators, but you only need to process one value.
+///
+/// [`chain()`]: trait.Iterator.html#method.chain
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// use std::iter;
+///
+/// // one is the loneliest number
+/// let mut one = iter::once(1);
+///
+/// assert_eq!(Some(1), one.next());
+///
+/// // just one, that's all we get
+/// assert_eq!(None, one.next());
+/// ```
+///
+/// Chaining together with another iterator. Let's say that we want to iterate
+/// over each file of the `.foo` directory, but also a configuration file,
+/// `.foorc`:
+///
+/// ```no_run
+/// use std::iter;
+/// use std::fs;
+/// use std::path::PathBuf;
+///
+/// let dirs = fs::read_dir(".foo").unwrap();
+///
+/// // we need to convert from an iterator of DirEntry-s to an iterator of
+/// // PathBufs, so we use map
+/// let dirs = dirs.map(|file| file.unwrap().path());
+///
+/// // now, our iterator just for our config file
+/// let config = iter::once(PathBuf::from(".foorc"));
+///
+/// // chain the two iterators together into one big iterator
+/// let files = dirs.chain(config);
+///
+/// // this will give us all of the files in .foo as well as .foorc
+/// for f in files {
+///     println!("{:?}", f);
+/// }
+/// ```
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub fn once<T>(value: T) -> Once<T> {
     Once { inner: Some(value).into_iter() }
