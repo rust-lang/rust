@@ -213,7 +213,7 @@ Let's discuss our sample example documentation:
 ```
 
 You'll notice that you don't need a `fn main()` or anything here. `rustdoc` will
-automatically add a main() wrapper around your code, and in the right place.
+automatically add a `main()` wrapper around your code, and in the right place.
 For example:
 
 ```rust
@@ -234,7 +234,7 @@ fn main() {
 }
 ```
 
-Here's the full algorithm rustdoc uses to postprocess examples:
+Here's the full algorithm rustdoc uses to preprocess examples:
 
 1. Any leading `#![foo]` attributes are left intact as crate attributes.
 2. Some common `allow` attributes are inserted, including
@@ -377,7 +377,7 @@ things, so they don’t show up in the output.
 
 ### Running documentation tests
 
-To run the tests, either
+To run the tests, either:
 
 ```bash
 $ rustdoc --test path/to/my/crate/root.rs
@@ -502,7 +502,8 @@ This `%` line needs to be the very first line of the file.
 
 ## `doc` attributes
 
-At a deeper level, documentation comments are sugar for documentation attributes:
+At a deeper level, documentation comments are syntactic sugar for documentation
+attributes:
 
 ```rust
 /// this
@@ -533,7 +534,7 @@ extern crate foo;
 pub use foo::bar;
 ```
 
-This will create documentation for bar both inside the documentation for the
+This will create documentation for `bar` both inside the documentation for the
 crate `foo`, as well as the documentation for your crate. It will use the same
 documentation in both places.
 
