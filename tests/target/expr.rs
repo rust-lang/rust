@@ -105,7 +105,7 @@ fn bar() {
 
     loop {
         if true {
-            break
+            break;
         }
     }
 
