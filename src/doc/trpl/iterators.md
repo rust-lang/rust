@@ -44,7 +44,7 @@ own iterator involves implementing the `Iterator` trait. While doing that is
 outside of the scope of this guide, Rust provides a number of useful iterators
 to accomplish various tasks. But first, a few notes about limitations of ranges.
 
-Ranges are very primitive, and we often can use better alternatives. Consider
+Ranges are very primitive, and we often can use better alternatives. Consider the
 following Rust anti-pattern: using ranges to emulate a C-style `for` loop. Let’s
 suppose you needed to iterate over the contents of a vector. You may be tempted
 to write this:
