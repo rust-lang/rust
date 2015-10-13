@@ -11,6 +11,8 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
+pub use self::StabilityLevel::*;
+
 use session::Session;
 use lint;
 use metadata::cstore::LOCAL_CRATE;
@@ -33,6 +35,18 @@ use rustc_front::visit::{self, FnKind, Visitor};
 
 use std::mem::replace;
 use std::cmp::Ordering;
+
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Copy, Debug, Eq, Hash)]
+pub enum StabilityLevel {
+    Unstable,
+    Stable,
+}
+
+impl StabilityLevel {
+    pub fn from_attr_level(level: &attr::StabilityLevel) -> Self {
+        if level.is_stable() { Stable } else { Unstable }
+    }
+}
 
 /// A stability index, giving the stability level for items and methods.
 pub struct Index<'tcx> {
@@ -67,10 +81,9 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                     // if parent is deprecated and we're not, inherit this by merging
                     // deprecated_since and its reason.
                     if let Some(parent_stab) = self.parent {
-                        if parent_stab.deprecated_since.is_some()
-                        && stab.deprecated_since.is_none() {
-                            stab.deprecated_since = parent_stab.deprecated_since.clone();
-                            stab.reason = parent_stab.reason.clone();
+                        if parent_stab.depr.is_some()
+                        && stab.depr.is_none() {
+                            stab.depr = parent_stab.depr.clone()
                         }
                     }
 
@@ -78,9 +91,9 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
 
                     // Check if deprecated_since < stable_since. If it is,
                     // this is *almost surely* an accident.
-                    let deprecated_predates_stable = match (stab.deprecated_since.as_ref(),
-                                                            stab.since.as_ref()) {
-                        (Some(dep_since), Some(stab_since)) => {
+                    let deprecated_predates_stable = match (&stab.depr, &stab.level) {
+                        (&Some(attr::Deprecation {since: ref dep_since, ..}),
+                               &attr::Stable {since: ref stab_since}) => {
                             // explicit version of iter::order::lt to handle parse errors properly
                             let mut is_less = false;
                             for (dep_v, stab_v) in dep_since.split(".").zip(stab_since.split(".")) {
@@ -117,7 +130,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                     self.index.map.insert(def_id, Some(stab));
 
                     // Don't inherit #[stable(feature = "rust1", since = "1.0.0")]
-                    if stab.level != attr::Stable {
+                    if !stab.level.is_stable() {
                         let parent = replace(&mut self.parent, Some(stab));
                         f(self);
                         self.parent = parent;
@@ -261,7 +274,7 @@ impl<'tcx> Index<'tcx> {
 /// features and possibly prints errors. Returns a list of all
 /// features used.
 pub fn check_unstable_api_usage(tcx: &ty::ctxt)
-                                -> FnvHashMap<InternedString, attr::StabilityLevel> {
+                                -> FnvHashMap<InternedString, StabilityLevel> {
     let ref active_lib_features = tcx.sess.features.borrow().declared_lib_features;
 
     // Put the active features into a map for quick lookup
@@ -284,7 +297,7 @@ pub fn check_unstable_api_usage(tcx: &ty::ctxt)
 struct Checker<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     active_features: FnvHashSet<InternedString>,
-    used_features: FnvHashMap<InternedString, attr::StabilityLevel>,
+    used_features: FnvHashMap<InternedString, StabilityLevel>,
     // Within a block where feature gate checking can be skipped.
     in_skip_block: u32,
 }
@@ -303,8 +316,8 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         }
 
         match *stab {
-            Some(&Stability { level: attr::Unstable, ref feature, ref reason, issue, .. }) => {
-                self.used_features.insert(feature.clone(), attr::Unstable);
+            Some(&Stability { level: attr::Unstable {ref reason, issue}, ref feature, .. }) => {
+                self.used_features.insert(feature.clone(), Unstable);
 
                 if !self.active_features.contains(feature) {
                     let msg = match *reason {
@@ -312,13 +325,12 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                                                &feature, &r),
                         None => format!("use of unstable library feature '{}'", &feature)
                     };
-
                     emit_feature_err(&self.tcx.sess.parse_sess.span_diagnostic,
-                                      &feature, span, GateIssue::Library(issue), &msg);
+                                      &feature, span, GateIssue::Library(Some(issue)), &msg);
                 }
             }
-            Some(&Stability { level, ref feature, .. }) => {
-                self.used_features.insert(feature.clone(), level);
+            Some(&Stability { ref level, ref feature, .. }) => {
+                self.used_features.insert(feature.clone(), StabilityLevel::from_attr_level(level));
 
                 // Stable APIs are always ok to call and deprecated APIs are
                 // handled by a lint.
@@ -636,7 +648,7 @@ fn lookup_uncached<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<&'tcx Stabil
 /// libraries, identify activated features that don't exist and error about them.
 pub fn check_unused_or_stable_features(sess: &Session,
                                        lib_features_used: &FnvHashMap<InternedString,
-                                                                      attr::StabilityLevel>) {
+                                                                      StabilityLevel>) {
     let ref declared_lib_features = sess.features.borrow().declared_lib_features;
     let mut remaining_lib_features: FnvHashMap<InternedString, Span>
         = declared_lib_features.clone().into_iter().collect();
@@ -653,7 +665,7 @@ pub fn check_unused_or_stable_features(sess: &Session,
     for (used_lib_feature, level) in lib_features_used {
         match remaining_lib_features.remove(used_lib_feature) {
             Some(span) => {
-                if *level == attr::Stable {
+                if *level == Stable {
                     sess.add_lint(lint::builtin::STABLE_FEATURES,
                                   ast::CRATE_NODE_ID,
                                   span,

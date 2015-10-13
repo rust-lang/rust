@@ -674,7 +674,7 @@ impl Stability {
             span: Span, stability: &Option<&attr::Stability>) {
         // Deprecated attributes apply in-crate and cross-crate.
         let (lint, label) = match *stability {
-            Some(&attr::Stability { deprecated_since: Some(_), .. }) =>
+            Some(&attr::Stability { depr: Some(_), .. }) =>
                 (DEPRECATED, "deprecated"),
             _ => return
         };
@@ -684,28 +684,14 @@ impl Stability {
         fn output(cx: &LateContext, span: Span, stability: &Option<&attr::Stability>,
                   lint: &'static Lint, label: &'static str) {
             let msg = match *stability {
-                Some(&attr::Stability { reason: Some(ref s), .. }) => {
-                    format!("use of {} item: {}", label, *s)
+                Some(&attr::Stability {depr: Some(attr::Deprecation {ref reason, ..}), ..}) => {
+                    format!("use of {} item: {}", label, reason)
                 }
                 _ => format!("use of {} item", label)
             };
 
             cx.span_lint(lint, span, &msg[..]);
         }
-    }
-}
-
-fn hir_to_ast_stability(stab: &attr::Stability) -> attr::Stability {
-    attr::Stability {
-        level: match stab.level {
-            attr::Unstable => attr::Unstable,
-            attr::Stable => attr::Stable,
-        },
-        feature: stab.feature.clone(),
-        since: stab.since.clone(),
-        deprecated_since: stab.deprecated_since.clone(),
-        reason: stab.reason.clone(),
-        issue: stab.issue,
     }
 }
 
@@ -719,36 +705,31 @@ impl LateLintPass for Stability {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
         stability::check_item(cx.tcx, item, false,
                               &mut |id, sp, stab|
-                                self.lint(cx, id, sp,
-                                          &stab.map(|s| hir_to_ast_stability(s)).as_ref()));
+                                self.lint(cx, id, sp, &stab));
     }
 
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         stability::check_expr(cx.tcx, e,
                               &mut |id, sp, stab|
-                                self.lint(cx, id, sp,
-                                          &stab.map(|s| hir_to_ast_stability(s)).as_ref()));
+                                self.lint(cx, id, sp, &stab));
     }
 
     fn check_path(&mut self, cx: &LateContext, path: &hir::Path, id: ast::NodeId) {
         stability::check_path(cx.tcx, path, id,
                               &mut |id, sp, stab|
-                                self.lint(cx, id, sp,
-                                          &stab.map(|s| hir_to_ast_stability(s)).as_ref()));
+                                self.lint(cx, id, sp, &stab));
     }
 
     fn check_path_list_item(&mut self, cx: &LateContext, item: &hir::PathListItem) {
         stability::check_path_list_item(cx.tcx, item,
                                          &mut |id, sp, stab|
-                                           self.lint(cx, id, sp,
-                                                &stab.map(|s| hir_to_ast_stability(s)).as_ref()));
+                                           self.lint(cx, id, sp, &stab));
     }
 
     fn check_pat(&mut self, cx: &LateContext, pat: &hir::Pat) {
         stability::check_pat(cx.tcx, pat,
                              &mut |id, sp, stab|
-                                self.lint(cx, id, sp,
-                                          &stab.map(|s| hir_to_ast_stability(s)).as_ref()));
+                                self.lint(cx, id, sp, &stab));
     }
 }
 
