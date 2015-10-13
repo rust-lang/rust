@@ -13,7 +13,7 @@ Hoare in 1985.
 > dining room, furnished with a circular table, surrounded by five chairs, each
 > labelled by the name of the philosopher who was to sit in it. They sat
 > anticlockwise around the table. To the left of each philosopher there was
-> laid a golden fork, and in the centre stood a large bowl of spaghetti, which
+> laid a golden fork, and in the center stood a large bowl of spaghetti, which
 > was constantly replenished. A philosopher was expected to spend most of
 > their time thinking; but when they felt hungry, they went to the dining
 > room, sat down in their own chair, picked up their own fork on their left,

@@ -42,7 +42,7 @@ should only panic for programming errors or *extreme* problems.
 
 Rust's unwinding strategy is not specified to be fundamentally compatible
 with any other language's unwinding. As such, unwinding into Rust from another
-language, or unwinding into another language from Rust is Undefined Behaviour.
+language, or unwinding into another language from Rust is Undefined Behavior.
 You must *absolutely* catch any panics at the FFI boundary! What you do at that
 point is up to you, but *something* must be done. If you fail to do this,
 at best, your application will crash and burn. At worst, your application *won't*

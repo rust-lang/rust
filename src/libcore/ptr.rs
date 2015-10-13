@@ -69,7 +69,7 @@ pub const fn null<T>() -> *const T { 0 as *const T }
 pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 
 /// Swaps the values at two mutable locations of the same type, without
-/// deinitialising either. They may overlap, unlike `mem::swap` which is
+/// deinitializing either. They may overlap, unlike `mem::swap` which is
 /// otherwise equivalent.
 ///
 /// # Safety
@@ -247,7 +247,7 @@ impl<T: ?Sized> *mut T {
     /// # Safety
     ///
     /// The offset must be in-bounds of the object, or one-byte-past-the-end.
-    /// Otherwise `offset` invokes Undefined Behaviour, regardless of whether
+    /// Otherwise `offset` invokes Undefined Behavior, regardless of whether
     /// the pointer is used.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]

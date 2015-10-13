@@ -135,7 +135,7 @@ pub enum Count<'a> {
 }
 
 /// The parser structure for interpreting the input format string. This is
-/// modelled as an iterator over `Piece` structures to form a stream of tokens
+/// modeled as an iterator over `Piece` structures to form a stream of tokens
 /// being output.
 ///
 /// This is a recursive-descent parser for the sake of simplicity, and if
