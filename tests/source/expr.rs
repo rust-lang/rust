@@ -70,7 +70,7 @@ fn bar() {
     let bar = 5 ;
     let nonsense = (10 .. 0)..(0..10);
 
-    loop{if true {break}}
+    loop{if true {break;}}
 
     let x = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &&
              aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,

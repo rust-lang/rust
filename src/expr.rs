@@ -812,7 +812,7 @@ fn rewrite_match(context: &RewriteContext,
 fn arm_start_pos(arm: &ast::Arm) -> BytePos {
     let &ast::Arm { ref attrs, ref pats, .. } = arm;
     if !attrs.is_empty() {
-        return attrs[0].span.lo
+        return attrs[0].span.lo;
     }
 
     pats[0].span.lo
