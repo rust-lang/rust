@@ -56,8 +56,8 @@ pub fn parse_logging_spec(spec: &str) -> (Vec<LogDirective>, Option<String>) {
                                            parts.next().map(|s| s.trim()),
                                            parts.next()) {
                 (Some(part0), None, None) => {
-                // if the single argument is a log-level string or number,
-                // treat that as a global fallback
+                    // if the single argument is a log-level string or number,
+                    // treat that as a global fallback
                     match parse_log_level(part0) {
                         Some(num) => (num, None),
                         None => (::MAX_LOG_LEVEL, Some(part0)),
