@@ -1,6 +1,6 @@
 # Compiler Test Documentation
 
-In the Rust project, we use a special set of comands embedded in
+In the Rust project, we use a special set of commands embedded in
 comments to test the Rust compiler. There are two groups of commands:
 
 1. Header commands

@@ -172,7 +172,7 @@ pub trait Copy : Clone {
 ///
 /// A somewhat surprising consequence of the definition is `&mut T` is
 /// `Sync` (if `T` is `Sync`) even though it seems that it might
-/// provide unsynchronised mutation. The trick is a mutable reference
+/// provide unsynchronized mutation. The trick is a mutable reference
 /// stored in an aliasable reference (that is, `& &mut T`) becomes
 /// read-only, as if it were a `& &T`, hence there is no risk of a data
 /// race.
@@ -195,7 +195,7 @@ pub trait Copy : Clone {
 ///
 /// Any types with interior mutability must also use the `std::cell::UnsafeCell`
 /// wrapper around the value(s) which can be mutated when behind a `&`
-/// reference; not doing this is undefined behaviour (for example,
+/// reference; not doing this is undefined behavior (for example,
 /// `transmute`-ing from `&T` to `&mut T` is invalid).
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sync"]

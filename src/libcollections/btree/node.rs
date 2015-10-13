@@ -818,7 +818,7 @@ impl<K, V, NodeRef> Handle<NodeRef, handle::Edge, handle::Internal> where
         }
     }
 
-    /// Handle an underflow in this node's child. We favour handling "to the left" because we know
+    /// Handle an underflow in this node's child. We favor handling "to the left" because we know
     /// we're empty, but our neighbour can be full. Handling to the left means when we choose to
     /// steal, we pop off the end of our neighbour (always fast) and "unshift" ourselves
     /// (always slow, but at least faster since we know we're half-empty).

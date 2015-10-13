@@ -207,7 +207,7 @@ fn test_resize_policy() {
 /// The hashes are all keyed by the thread-local random number generator
 /// on creation by default. This means that the ordering of the keys is
 /// randomized, but makes the tables more resistant to
-/// denial-of-service attacks (Hash DoS). This behaviour can be
+/// denial-of-service attacks (Hash DoS). This behavior can be
 /// overridden with one of the constructors.
 ///
 /// It is required that the keys implement the `Eq` and `Hash` traits, although
@@ -324,7 +324,7 @@ fn search_hashed<K, V, M, F>(table: M,
     F: FnMut(&K) -> bool,
 {
     // This is the only function where capacity can be zero. To avoid
-    // undefined behaviour when Bucket::new gets the raw bucket in this
+    // undefined behavior when Bucket::new gets the raw bucket in this
     // case, immediately return the appropriate search result.
     if table.capacity() == 0 {
         return TableRef(table);
