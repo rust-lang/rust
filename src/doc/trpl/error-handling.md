@@ -1898,7 +1898,7 @@ for pop in search(&data_file, &city) {
 
 In this piece of code, we take `file` (which has the type
 `Option<String>`), and convert it to a type that `search` can use, in
-this case, `&Option<AsRef<Path>>`. Do do this, we take a reference of
+this case, `&Option<AsRef<Path>>`. To do this, we take a reference of
 file, and map `Path::new` onto it. In this case, `as_ref()` converts
 the `Option<String>` into an `Option<&str>`, and from there, we can
 execute `Path::new` to the content of the optional, and return the
