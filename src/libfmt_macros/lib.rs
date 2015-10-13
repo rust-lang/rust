@@ -421,11 +421,7 @@ impl<'a> Parser<'a> {
                 break
             }
         }
-        if found {
-            Some(cur)
-        } else {
-            None
-        }
+        if found { Some(cur) } else { None }
     }
 }
 
