@@ -59,13 +59,11 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             }
             ast::Stmt_::StmtExpr(ref ex, _) | ast::Stmt_::StmtSemi(ref ex, _) => {
                 self.format_missing_with_indent(stmt.span.lo);
-                let suffix = if let ast::Stmt_::StmtExpr(..) = stmt.node {
-                    ""
-                } else {
+                let suffix = if semicolon_for_stmt(stmt) {
                     ";"
+                } else {
+                    ""
                 };
-
-                // 1 = trailing semicolon;
                 let rewrite = ex.rewrite(&self.get_context(),
                                          self.config.max_width - self.block_indent.width() -
                                          suffix.len(),
@@ -110,6 +108,10 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             Some(ref e) => {
                 self.format_missing_with_indent(e.span.lo);
                 self.visit_expr(e);
+
+                if semicolon_for_expr(e) {
+                    self.buffer.push_str(";");
+                }
             }
             None => {}
         }
@@ -215,7 +217,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             }
             ast::Item_::ItemMac(..) => {
                 self.format_missing_with_indent(item.span.lo);
-                // TODO: we cannot format these yet, because of a bad span.
+                // FIXME: we cannot format these yet, because of a bad span.
                 // See rust lang issue #28424.
                 // visit::walk_item(self, item);
             }
@@ -245,7 +247,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 self.last_pos = ti.span.hi;
             }
         }
-        // TODO: format trait types.
+        // TODO(#78): format trait types.
 
         visit::walk_trait_item(self, ti)
     }
@@ -396,6 +398,35 @@ impl<'a> FmtVisitor<'a> {
             block_indent: self.block_indent,
             overflow_indent: Indent::empty(),
         }
+    }
+}
+
+fn semicolon_for_stmt(stmt: &ast::Stmt) -> bool {
+    match stmt.node {
+        ast::Stmt_::StmtSemi(ref expr, _) => {
+            match expr.node {
+                ast::Expr_::ExprWhile(..) |
+                ast::Expr_::ExprWhileLet(..) |
+                ast::Expr_::ExprIf(..) |
+                ast::Expr_::ExprIfLet(..) |
+                ast::Expr_::ExprBlock(..) |
+                ast::Expr_::ExprLoop(..) |
+                ast::Expr_::ExprForLoop(..) |
+                ast::Expr_::ExprMatch(..) => false,
+                _ => true,
+            }
+        }
+        ast::Stmt_::StmtExpr(..) => false,
+        _ => true,
+    }
+}
+
+fn semicolon_for_expr(expr: &ast::Expr) -> bool {
+    match expr.node {
+        ast::Expr_::ExprRet(..) |
+        ast::Expr_::ExprAgain(..) |
+        ast::Expr_::ExprBreak(..) => true,
+        _ => false,
     }
 }
 
