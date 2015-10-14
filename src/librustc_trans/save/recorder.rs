@@ -15,6 +15,7 @@ use super::span_utils::SpanUtils;
 
 use metadata::cstore::LOCAL_CRATE;
 use middle::def_id::{CRATE_DEF_INDEX, DefId};
+use middle::ty;
 
 use std::io::Write;
 
@@ -51,9 +52,10 @@ impl Recorder {
     }
 }
 
-pub struct FmtStrs<'a> {
+pub struct FmtStrs<'a, 'tcx: 'a> {
     pub recorder: Box<Recorder>,
     span: SpanUtils<'a>,
+    tcx: &'a ty::ctxt<'tcx>,
 }
 
 macro_rules! s { ($e:expr) => { format!("{}", $e) }}
@@ -96,11 +98,29 @@ pub enum Row {
     FnRef,
 }
 
-impl<'a> FmtStrs<'a> {
-    pub fn new(rec: Box<Recorder>, span: SpanUtils<'a>) -> FmtStrs<'a> {
+impl<'a, 'tcx: 'a> FmtStrs<'a, 'tcx> {
+    pub fn new(rec: Box<Recorder>,
+               span: SpanUtils<'a>,
+               tcx: &'a ty::ctxt<'tcx>)
+               -> FmtStrs<'a, 'tcx> {
         FmtStrs {
             recorder: rec,
             span: span,
+            tcx: tcx,
+        }
+    }
+
+    // Emitted ids are used to cross-reference items across crates. DefIds and
+    // NodeIds do not usually correspond in any way. The strategy is to use the
+    // index from the DefId as a crate-local id. However, within a crate, DefId
+    // indices and NodeIds can overlap. So, we must adjust the NodeIds. If an
+    // item can be identified by a DefId as well as a NodeId, then we use the
+    // DefId index as the id. If it can't, then we have to use the NodeId, but
+    // need to adjust it so it will not clash with any possible DefId index.
+    fn normalize_node_id(&self, id: NodeId) -> usize {
+        match self.tcx.map.opt_local_def_id(id) {
+            Some(id) => id.index.as_usize(),
+            None => id as usize + self.tcx.map.num_local_def_ids()
         }
     }
 
@@ -321,6 +341,7 @@ impl<'a> FmtStrs<'a> {
         let mut qualname = String::from(name);
         qualname.push_str("$");
         qualname.push_str(&id.to_string());
+        let id = self.normalize_node_id(id);
         self.check_and_record(Variable,
                               span,
                               sub_span,
@@ -338,6 +359,7 @@ impl<'a> FmtStrs<'a> {
         let mut qualname = String::from(fn_name);
         qualname.push_str("::");
         qualname.push_str(name);
+        let id = self.normalize_node_id(id);
         self.check_and_record(Variable,
                               span,
                               sub_span,
@@ -354,6 +376,8 @@ impl<'a> FmtStrs<'a> {
                       value: &str,
                       typ: &str,
                       scope_id: NodeId) {
+        let id = self.normalize_node_id(id);
+        let scope_id = self.normalize_node_id(scope_id);
         self.check_and_record(Variable,
                               span,
                               sub_span,
@@ -368,6 +392,8 @@ impl<'a> FmtStrs<'a> {
                      qualname: &str,
                      typ: &str,
                      scope_id: NodeId) {
+        let id = self.normalize_node_id(id);
+        let scope_id = self.normalize_node_id(scope_id);
         self.check_and_record(Variable,
                               span,
                               sub_span,
@@ -381,6 +407,8 @@ impl<'a> FmtStrs<'a> {
                     name: &str,
                     scope_id: NodeId,
                     value: &str) {
+        let id = self.normalize_node_id(id);
+        let scope_id = self.normalize_node_id(scope_id);
         self.check_and_record(Enum, span, sub_span, svec!(id, name, scope_id, value));
     }
 
@@ -393,6 +421,8 @@ impl<'a> FmtStrs<'a> {
                              typ: &str,
                              val: &str,
                              scope_id: NodeId) {
+        let id = self.normalize_node_id(id);
+        let scope_id = self.normalize_node_id(scope_id);
         self.check_and_record(Variant,
                               span,
                               sub_span,
@@ -408,6 +438,9 @@ impl<'a> FmtStrs<'a> {
                               typ: &str,
                               val: &str,
                               scope_id: NodeId) {
+        let id = self.normalize_node_id(id);
+        let scope_id = self.normalize_node_id(scope_id);
+        let ctor_id = self.normalize_node_id(ctor_id);
         self.check_and_record(VariantStruct,
                               span,
                               sub_span,
@@ -420,6 +453,8 @@ impl<'a> FmtStrs<'a> {
                   id: NodeId,
                   name: &str,
                   scope_id: NodeId) {
+        let id = self.normalize_node_id(id);
+        let scope_id = self.normalize_node_id(scope_id);
         self.check_and_record(Function,
                               span,
                               sub_span,
@@ -433,6 +468,8 @@ impl<'a> FmtStrs<'a> {
                       name: &str,
                       decl_id: Option<DefId>,
                       scope_id: NodeId) {
+        let id = self.normalize_node_id(id);
+        let scope_id = self.normalize_node_id(scope_id);
         let values = match decl_id {
             Some(decl_id) => svec!(id,
                                    name,
@@ -450,6 +487,8 @@ impl<'a> FmtStrs<'a> {
                            id: NodeId,
                            name: &str,
                            scope_id: NodeId) {
+        let id = self.normalize_node_id(id);
+        let scope_id = self.normalize_node_id(scope_id);
         self.check_and_record(MethodDecl, span, sub_span, svec!(id, name, scope_id));
     }
 
@@ -461,6 +500,9 @@ impl<'a> FmtStrs<'a> {
                       name: &str,
                       scope_id: NodeId,
                       value: &str) {
+        let id = self.normalize_node_id(id);
+        let scope_id = self.normalize_node_id(scope_id);
+        let ctor_id = self.normalize_node_id(ctor_id);
         self.check_and_record(Struct,
                               span,
                               sub_span,
@@ -474,6 +516,8 @@ impl<'a> FmtStrs<'a> {
                      name: &str,
                      scope_id: NodeId,
                      value: &str) {
+        let id = self.normalize_node_id(id);
+        let scope_id = self.normalize_node_id(scope_id);
         self.check_and_record(Trait, span, sub_span, svec!(id, name, scope_id, value));
     }
 
@@ -484,6 +528,8 @@ impl<'a> FmtStrs<'a> {
                     ref_id: Option<DefId>,
                     trait_id: Option<DefId>,
                     scope_id: NodeId) {
+        let id = self.normalize_node_id(id);
+        let scope_id = self.normalize_node_id(scope_id);
         let ref_id = ref_id.unwrap_or(CRATE_ROOT_DEF_ID);
         let trait_id = trait_id.unwrap_or(CRATE_ROOT_DEF_ID);
         self.check_and_record(Impl,
@@ -504,6 +550,8 @@ impl<'a> FmtStrs<'a> {
                    name: &str,
                    parent: NodeId,
                    filename: &str) {
+        let id = self.normalize_node_id(id);
+        let parent = self.normalize_node_id(parent);
         self.check_and_record(Module,
                               span,
                               sub_span,
@@ -517,6 +565,8 @@ impl<'a> FmtStrs<'a> {
                          mod_id: Option<DefId>,
                          name: &str,
                          parent: NodeId) {
+        let id = self.normalize_node_id(id);
+        let parent = self.normalize_node_id(parent);
         let mod_id = mod_id.unwrap_or(CRATE_ROOT_DEF_ID);
         self.check_and_record(UseAlias,
                               span,
@@ -530,6 +580,8 @@ impl<'a> FmtStrs<'a> {
                         id: NodeId,
                         values: &str,
                         parent: NodeId) {
+        let id = self.normalize_node_id(id);
+        let parent = self.normalize_node_id(parent);
         self.check_and_record(UseGlob, span, sub_span, svec!(id, values, parent));
     }
 
@@ -541,6 +593,8 @@ impl<'a> FmtStrs<'a> {
                             name: &str,
                             loc: &str,
                             parent: NodeId) {
+        let id = self.normalize_node_id(id);
+        let parent = self.normalize_node_id(parent);
         self.check_and_record(ExternCrate,
                               span,
                               sub_span,
@@ -552,6 +606,7 @@ impl<'a> FmtStrs<'a> {
                        sub_span: Option<Span>,
                        base_id: DefId,
                        deriv_id: NodeId) {
+        let deriv_id = self.normalize_node_id(deriv_id);
         self.check_and_record(Inheritance,
                               span,
                               sub_span,
@@ -563,6 +618,7 @@ impl<'a> FmtStrs<'a> {
                        sub_span: Option<Span>,
                        id: DefId,
                        scope_id: NodeId) {
+        let scope_id = self.normalize_node_id(scope_id);
         self.check_and_record(FnCall,
                               span,
                               sub_span,
@@ -575,6 +631,7 @@ impl<'a> FmtStrs<'a> {
                          defid: Option<DefId>,
                          declid: Option<DefId>,
                          scope_id: NodeId) {
+        let scope_id = self.normalize_node_id(scope_id);
         let defid = defid.unwrap_or(CRATE_ROOT_DEF_ID);
         let (dcn, dck) = match declid {
             Some(declid) => (s!(declid.index.as_usize()), s!(declid.krate)),
@@ -587,6 +644,7 @@ impl<'a> FmtStrs<'a> {
     }
 
     pub fn sub_mod_ref_str(&mut self, span: Span, sub_span: Span, qualname: &str, parent: NodeId) {
+        let parent = self.normalize_node_id(parent);
         self.record_with_span(ModRef, span, sub_span, svec!(0, 0, qualname, parent));
     }
 
@@ -596,6 +654,7 @@ impl<'a> FmtStrs<'a> {
                        id: NodeId,
                        qualname: &str,
                        value: &str) {
+        let id = self.normalize_node_id(id);
         self.check_and_record(Typedef, span, sub_span, svec!(id, qualname, value));
     }
 
@@ -621,6 +680,7 @@ impl<'a> FmtStrs<'a> {
                    sub_span: Option<Span>,
                    id: DefId,
                    scope_id: NodeId) {
+        let scope_id = self.normalize_node_id(scope_id);
         self.check_and_record(kind,
                               span,
                               sub_span,

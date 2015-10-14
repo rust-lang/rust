@@ -69,7 +69,7 @@ pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
     analysis: &'l ty::CrateAnalysis,
 
     span: SpanUtils<'l>,
-    fmt: FmtStrs<'l>,
+    fmt: FmtStrs<'l, 'tcx>,
 
     cur_scope: NodeId,
 }
@@ -91,7 +91,8 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                   out: output_file,
                                   dump_spans: false,
                               },
-                              span_utils),
+                              span_utils,
+                              tcx),
             cur_scope: 0,
         }
     }
