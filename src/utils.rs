@@ -10,12 +10,13 @@ use syntax::ast::Lit_::*;
 use syntax::ast;
 
 // module DefPaths for certain structs/enums we check for
-pub const OPTION_PATH:       [&'static str; 3] = ["core", "option", "Option"];
-pub const RESULT_PATH:       [&'static str; 3] = ["core", "result", "Result"];
-pub const STRING_PATH:       [&'static str; 3] = ["collections", "string", "String"];
-pub const VEC_PATH:          [&'static str; 3] = ["collections", "vec", "Vec"];
-pub const LL_PATH:           [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
+pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];
+pub const RESULT_PATH: [&'static str; 3] = ["core", "result", "Result"];
+pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
+pub const VEC_PATH:    [&'static str; 3] = ["collections", "vec", "Vec"];
+pub const LL_PATH:     [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
 pub const OPEN_OPTIONS_PATH: [&'static str; 3] = ["std", "fs", "OpenOptions"];
+pub const MUTEX_PATH:  [&'static str; 4] = ["std", "sync", "mutex", "Mutex"];
 
 /// Produce a nested chain of if-lets and ifs from the patterns:
 ///
@@ -78,8 +79,8 @@ pub fn in_external_macro<T: LintContext>(cx: &T, span: Span) -> bool {
         // no ExpnInfo = no macro
         opt_info.map_or(false, |info| {
             if let ExpnFormat::MacroAttribute(..) = info.callee.format {
-                // these are all plugins
-                return true;
+                    // these are all plugins
+                    return true;
             }
             // no span for the callee = external macro
             info.callee.span.map_or(true, |span| {
@@ -321,4 +322,50 @@ pub fn is_integer_literal(expr: &Expr, value: u64) -> bool
         }
     }
     false
+}
+
+/// Produce a nested chain of if-lets and ifs from the patterns:
+///
+///     if_let_chain! {
+///         [
+///             Some(y) = x,
+///             y.len() == 2,
+///             Some(z) = y,
+///         ],
+///         {
+///             block
+///         }
+///     }
+///
+/// becomes
+///
+///     if let Some(y) = x {
+///         if y.len() == 2 {
+///             if let Some(z) = y {
+///                 block
+///             }
+///         }
+///     }
+#[macro_export]
+macro_rules! if_let_chain {
+    ([let $pat:pat = $expr:expr, $($tt:tt)+], $block:block) => {
+        if let $pat = $expr {
+           if_let_chain!{ [$($tt)+], $block }
+        }
+    };
+    ([let $pat:pat = $expr:expr], $block:block) => {
+        if let $pat = $expr {
+           $block
+        }
+    };
+    ([$expr:expr, $($tt:tt)+], $block:block) => {
+        if $expr {
+           if_let_chain!{ [$($tt)+], $block }
+        }
+    };
+    ([$expr:expr], $block:block) => {
+        if $expr {
+           $block
+        }
+    };
 }

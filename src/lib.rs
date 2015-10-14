@@ -47,6 +47,7 @@ pub mod loops;
 pub mod ranges;
 pub mod matches;
 pub mod precedence;
+pub mod mutex_atomic;
 pub mod zero_div_zero;
 pub mod open_options;
 
@@ -92,12 +93,14 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box minmax::MinMaxPass);
     reg.register_late_lint_pass(box open_options::NonSensicalOpenOptions);
     reg.register_late_lint_pass(box zero_div_zero::ZeroDivZeroPass);
+    reg.register_late_lint_pass(box mutex_atomic::MutexAtomic);
 
     reg.register_lint_group("clippy_pedantic", vec![
         methods::OPTION_UNWRAP_USED,
         methods::RESULT_UNWRAP_USED,
         methods::WRONG_PUB_SELF_CONVENTION,
         mut_mut::MUT_MUT,
+        mutex_atomic::MUTEX_INTEGER,
         ptr_arg::PTR_ARG,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
@@ -146,6 +149,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         misc::REDUNDANT_PATTERN,
         misc::TOPLEVEL_REF_ARG,
         mut_reference::UNNECESSARY_MUT_PASSED,
+        mutex_atomic::MUTEX_ATOMIC,
         needless_bool::NEEDLESS_BOOL,
         open_options::NONSENSICAL_OPEN_OPTIONS,
         precedence::PRECEDENCE,
