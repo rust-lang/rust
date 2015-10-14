@@ -50,6 +50,11 @@ fn main() {
 	        * Will it still format correctly? */ {
 	}
 
+	let chain = funktion_kall()
+		            .go_to_next_line_with_tab()
+		            .go_to_next_line_with_tab()
+		            .go_to_next_line_with_tab();
+
 	let z = [xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
 	         yyyyyyyyyyyyyyyyyyyyyyyyyyy,
 	         zzzzzzzzzzzzzzzzzz,

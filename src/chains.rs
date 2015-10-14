@@ -45,13 +45,13 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
     let parent_rewrite = try_opt!(expr.rewrite(context, width, offset));
     let (extra_indent, extend) = if !parent_rewrite.contains('\n') && is_continuable(parent) ||
                                     parent_rewrite.len() <= context.config.tab_spaces {
-        (parent_rewrite.len(), true)
+        (Indent::new(0, parent_rewrite.len()), true)
     } else {
-        (context.config.tab_spaces, false)
+        (Indent::new(context.config.tab_spaces, 0), false)
     };
     let indent = offset + extra_indent;
 
-    let max_width = try_opt!(width.checked_sub(extra_indent));
+    let max_width = try_opt!(width.checked_sub(extra_indent.width()));
     let mut rewrites = try_opt!(subexpr_list.iter()
                                             .rev()
                                             .map(|e| {
