@@ -45,12 +45,12 @@ use ast::{PatRegion, PatStruct, PatTup, PatVec, PatWild, PatWildMulti};
 use ast::PatWildSingle;
 use ast::{PolyTraitRef, QSelf};
 use ast::{Return, BiShl, BiShr, Stmt, StmtDecl};
-use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
-use ast::{StructVariantKind, BiSub, StrStyle};
+use ast::{StmtExpr, StmtSemi, StmtMac, VariantData, StructField};
+use ast::{BiSub, StrStyle};
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{TtDelimited, TtSequence, TtToken};
-use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
+use ast::{Ty, Ty_, TypeBinding};
 use ast::{TyMac};
 use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr};
@@ -4640,26 +4640,25 @@ impl<'a> Parser<'a> {
         // Otherwise if we look ahead and see a paren we parse a tuple-style
         // struct.
 
-        let (fields, ctor_id) = if self.token.is_keyword(keywords::Where) {
+        let vdata = if self.token.is_keyword(keywords::Where) {
             generics.where_clause = try!(self.parse_where_clause());
             if try!(self.eat(&token::Semi)) {
                 // If we see a: `struct Foo<T> where T: Copy;` style decl.
-                (Vec::new(), Some(ast::DUMMY_NODE_ID))
+                VariantData::Unit(ast::DUMMY_NODE_ID)
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
-                (try!(self.parse_record_struct_body()), None)
+                VariantData::Struct(try!(self.parse_record_struct_body()), ast::DUMMY_NODE_ID)
             }
         // No `where` so: `struct Foo<T>;`
         } else if try!(self.eat(&token::Semi) ){
-            (Vec::new(), Some(ast::DUMMY_NODE_ID))
+            VariantData::Unit(ast::DUMMY_NODE_ID)
         // Record-style struct definition
         } else if self.token == token::OpenDelim(token::Brace) {
-            let fields = try!(self.parse_record_struct_body());
-            (fields, None)
+            VariantData::Struct(try!(self.parse_record_struct_body()), ast::DUMMY_NODE_ID)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
-            let fields = try!(self.parse_tuple_struct_body(class_name, &mut generics));
-            (fields, Some(ast::DUMMY_NODE_ID))
+            VariantData::Tuple(try!(self.parse_tuple_struct_body(&mut generics)),
+                               ast::DUMMY_NODE_ID)
         } else {
             let token_str = self.this_token_to_string();
             return Err(self.fatal(&format!("expected `where`, `{{`, `(`, or `;` after struct \
@@ -4667,11 +4666,8 @@ impl<'a> Parser<'a> {
         };
 
         Ok((class_name,
-         ItemStruct(P(ast::StructDef {
-             fields: fields,
-             ctor_id: ctor_id,
-         }), generics),
-         None))
+            ItemStruct(P(vdata), generics),
+            None))
     }
 
     pub fn parse_record_struct_body(&mut self) -> PResult<Vec<StructField>> {
@@ -4693,7 +4689,6 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_tuple_struct_body(&mut self,
-                                   class_name: ast::Ident,
                                    generics: &mut ast::Generics)
                                    -> PResult<Vec<StructField>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
@@ -4713,12 +4708,6 @@ impl<'a> Parser<'a> {
                 };
                 Ok(spanned(lo, p.span.hi, struct_field_))
             }));
-
-        if fields.is_empty() {
-            return Err(self.fatal(&format!("unit-like struct definition should be \
-                                            written as `struct {};`",
-                                           class_name)));
-        }
 
         generics.where_clause = try!(self.parse_where_clause());
         try!(self.expect(&token::Semi));
@@ -5109,17 +5098,14 @@ impl<'a> Parser<'a> {
 
     /// Parse a structure-like enum variant definition
     /// this should probably be renamed or refactored...
-    fn parse_struct_def(&mut self) -> PResult<P<StructDef>> {
+    fn parse_struct_def(&mut self) -> PResult<P<VariantData>> {
         let mut fields: Vec<StructField> = Vec::new();
         while self.token != token::CloseDelim(token::Brace) {
             fields.push(try!(self.parse_struct_decl_field(false)));
         }
         try!(self.bump());
 
-        Ok(P(StructDef {
-            fields: fields,
-            ctor_id: None,
-        }))
+        Ok(P(VariantData::Struct(fields, ast::DUMMY_NODE_ID)))
     }
 
     /// Parse the part of an "enum" decl following the '{'
@@ -5131,22 +5117,13 @@ impl<'a> Parser<'a> {
             let variant_attrs = self.parse_outer_attributes();
             let vlo = self.span.lo;
 
-            let kind;
-            let mut args = Vec::new();
+            let struct_def;
             let mut disr_expr = None;
             let ident = try!(self.parse_ident());
             if try!(self.eat(&token::OpenDelim(token::Brace)) ){
                 // Parse a struct variant.
                 all_nullary = false;
-                let start_span = self.span;
-                let struct_def = try!(self.parse_struct_def());
-                if struct_def.fields.is_empty() {
-                    self.span_err(start_span,
-                        &format!("unit-like struct variant should be written \
-                                 without braces, as `{},`",
-                                ident));
-                }
-                kind = StructVariantKind(struct_def);
+                struct_def = try!(self.parse_struct_def());
             } else if self.check(&token::OpenDelim(token::Paren)) {
                 all_nullary = false;
                 let arg_tys = try!(self.parse_enum_variant_seq(
@@ -5155,26 +5132,28 @@ impl<'a> Parser<'a> {
                     seq_sep_trailing_allowed(token::Comma),
                     |p| p.parse_ty_sum()
                 ));
+                let mut fields = Vec::new();
                 for ty in arg_tys {
-                    args.push(ast::VariantArg {
+                    fields.push(Spanned { span: ty.span, node: ast::StructField_ {
                         ty: ty,
+                        kind: ast::UnnamedField(ast::Inherited),
+                        attrs: Vec::new(),
                         id: ast::DUMMY_NODE_ID,
-                    });
+                    }});
                 }
-                kind = TupleVariantKind(args);
+                struct_def = P(ast::VariantData::Tuple(fields, ast::DUMMY_NODE_ID));
             } else if try!(self.eat(&token::Eq) ){
                 disr_expr = Some(try!(self.parse_expr_nopanic()));
                 any_disr = disr_expr.as_ref().map(|expr| expr.span);
-                kind = TupleVariantKind(args);
+                struct_def = P(ast::VariantData::Unit(ast::DUMMY_NODE_ID));
             } else {
-                kind = TupleVariantKind(Vec::new());
+                struct_def = P(ast::VariantData::Unit(ast::DUMMY_NODE_ID));
             }
 
             let vr = ast::Variant_ {
                 name: ident,
                 attrs: variant_attrs,
-                kind: kind,
-                id: ast::DUMMY_NODE_ID,
+                data: struct_def,
                 disr_expr: disr_expr,
             };
             variants.push(P(spanned(vlo, self.last_span.hi, vr)));

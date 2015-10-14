@@ -119,8 +119,7 @@ pub struct Enum {
 pub struct Variant {
     pub name: Name,
     pub attrs: Vec<ast::Attribute>,
-    pub kind: hir::VariantKind,
-    pub id: ast::NodeId,
+    pub def: P<hir::VariantData>,
     pub stab: Option<attr::Stability>,
     pub whence: Span,
 }
@@ -234,10 +233,10 @@ pub struct Import {
     pub whence: Span,
 }
 
-pub fn struct_type_from_def(sd: &hir::StructDef) -> StructType {
-    if sd.ctor_id.is_some() {
+pub fn struct_type_from_def(sd: &hir::VariantData) -> StructType {
+    if !sd.is_struct() {
         // We are in a tuple-struct
-        match sd.fields.len() {
+        match sd.fields().count() {
             0 => Unit,
             1 => Newtype,
             _ => Tuple

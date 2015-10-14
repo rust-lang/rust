@@ -1315,17 +1315,17 @@ fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
                     def.variants.iter().zip(orig_def.variants.iter())
                 {
                     debug!("astencode: copying variant {:?} => {:?}",
-                           orig_variant.did, i_variant.node.id);
-                    copy_item_type(dcx, i_variant.node.id, orig_variant.did);
+                           orig_variant.did, i_variant.node.data.id());
+                    copy_item_type(dcx, i_variant.node.data.id(), orig_variant.did);
                 }
             }
             hir::ItemStruct(ref def, _) => {
-                if let Some(ctor_id) = def.ctor_id {
+                if !def.is_struct() {
                     let ctor_did = dcx.tcx.lookup_adt_def(orig_did)
                         .struct_variant().did;
                     debug!("astencode: copying ctor {:?} => {:?}", ctor_did,
-                           ctor_id);
-                    copy_item_type(dcx, ctor_id, ctor_did);
+                           def.id());
+                    copy_item_type(dcx, def.id(), ctor_did);
                 }
             }
             _ => {}

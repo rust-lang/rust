@@ -9,13 +9,15 @@
 // except according to those terms.
 
 // Feature gate test for empty struct with braces
+// Can't define an empty braced struct
 
-struct Empty {} //~ ERROR empty structs with braces are unstable
+struct Empty1 {} //~ ERROR empty structs and enum variants with braces are unstable
+struct Empty2;
+
+enum E {
+    Empty4 {}, //~ ERROR empty structs and enum variants with braces are unstable
+    Empty5,
+}
 
 fn main() {
-    let e = Empty {}; //~ ERROR empty structs with braces are unstable
-
-    match e {
-        Empty {} => {} //~ ERROR empty structs with braces are unstable
-    }
 }

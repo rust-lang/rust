@@ -264,19 +264,9 @@ pub fn lower_foreign_mod(_lctx: &LoweringContext, fm: &ForeignMod) -> hir::Forei
 pub fn lower_variant(_lctx: &LoweringContext, v: &Variant) -> P<hir::Variant> {
     P(Spanned {
         node: hir::Variant_ {
-            id: v.node.id,
             name: v.node.name.name,
             attrs: v.node.attrs.clone(),
-            kind: match v.node.kind {
-                TupleVariantKind(ref variant_args) => {
-                    hir::TupleVariantKind(variant_args.iter()
-                                                      .map(|ref x| lower_variant_arg(_lctx, x))
-                                                      .collect())
-                }
-                StructVariantKind(ref struct_def) => {
-                    hir::StructVariantKind(lower_struct_def(_lctx, struct_def))
-                }
-            },
+            data: lower_struct_def(_lctx, &v.node.data),
             disr_expr: v.node.disr_expr.as_ref().map(|e| lower_expr(_lctx, e)),
         },
         span: v.span,
@@ -508,10 +498,17 @@ pub fn lower_where_predicate(_lctx: &LoweringContext,
     }
 }
 
-pub fn lower_struct_def(_lctx: &LoweringContext, sd: &StructDef) -> P<hir::StructDef> {
-    P(hir::StructDef {
-        fields: sd.fields.iter().map(|f| lower_struct_field(_lctx, f)).collect(),
-        ctor_id: sd.ctor_id,
+pub fn lower_struct_def(_lctx: &LoweringContext, sd: &VariantData) -> P<hir::VariantData> {
+    P(match *sd {
+        VariantData::Struct(ref fields, id) => {
+            hir::VariantData::Struct(fields.iter()
+                                           .map(|f| lower_struct_field(_lctx, f)).collect(), id)
+        }
+        VariantData::Tuple(ref fields, id) => {
+            hir::VariantData::Tuple(fields.iter()
+                                          .map(|f| lower_struct_field(_lctx, f)).collect(), id)
+        }
+        VariantData::Unit(id) => hir::VariantData::Unit(id)
     })
 }
 
@@ -565,13 +562,6 @@ pub fn lower_opt_bounds(_lctx: &LoweringContext,
 
 fn lower_bounds(_lctx: &LoweringContext, bounds: &TyParamBounds) -> hir::TyParamBounds {
     bounds.iter().map(|bound| lower_ty_param_bound(_lctx, bound)).collect()
-}
-
-fn lower_variant_arg(_lctx: &LoweringContext, va: &VariantArg) -> hir::VariantArg {
-    hir::VariantArg {
-        id: va.id,
-        ty: lower_ty(_lctx, &va.ty),
-    }
 }
 
 pub fn lower_block(_lctx: &LoweringContext, b: &Block) -> P<hir::Block> {

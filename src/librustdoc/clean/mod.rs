@@ -1805,11 +1805,11 @@ pub struct VariantStruct {
     pub fields_stripped: bool,
 }
 
-impl Clean<VariantStruct> for ::rustc_front::hir::StructDef {
+impl Clean<VariantStruct> for ::rustc_front::hir::VariantData {
     fn clean(&self, cx: &DocContext) -> VariantStruct {
         VariantStruct {
             struct_type: doctree::struct_type_from_def(self),
-            fields: self.fields.clean(cx),
+            fields: self.fields().map(|x| x.clean(cx)).collect(),
             fields_stripped: false,
         }
     }
@@ -1853,9 +1853,9 @@ impl Clean<Item> for doctree::Variant {
             source: self.whence.clean(cx),
             visibility: None,
             stability: self.stab.clean(cx),
-            def_id: cx.map.local_def_id(self.id),
+            def_id: cx.map.local_def_id(self.def.id()),
             inner: VariantItem(Variant {
-                kind: self.kind.clean(cx),
+                kind: struct_def_to_variant_kind(&self.def, cx),
             }),
         }
     }
@@ -1871,7 +1871,7 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
                     self.fields.iter().map(|f| f.unsubst_ty().clean(cx)).collect()
                 )
             }
-            ty::VariantKind::Dict => {
+            ty::VariantKind::Struct => {
                 StructVariant(VariantStruct {
                     struct_type: doctree::Plain,
                     fields_stripped: false,
@@ -1917,18 +1917,13 @@ pub enum VariantKind {
     StructVariant(VariantStruct),
 }
 
-impl Clean<VariantKind> for hir::VariantKind {
-    fn clean(&self, cx: &DocContext) -> VariantKind {
-        match self {
-            &hir::TupleVariantKind(ref args) => {
-                if args.is_empty() {
-                    CLikeVariant
-                } else {
-                    TupleVariant(args.iter().map(|x| x.ty.clean(cx)).collect())
-                }
-            },
-            &hir::StructVariantKind(ref sd) => StructVariant(sd.clean(cx)),
-        }
+fn struct_def_to_variant_kind(struct_def: &hir::VariantData, cx: &DocContext) -> VariantKind {
+    if struct_def.is_struct() {
+        StructVariant(struct_def.clean(cx))
+    } else if struct_def.is_unit() {
+        CLikeVariant
+    } else {
+        TupleVariant(struct_def.fields().map(|x| x.node.ty.clean(cx)).collect())
     }
 }
 

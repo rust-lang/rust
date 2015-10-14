@@ -247,9 +247,9 @@ pub trait AstBuilder {
     fn item_struct_poly(&self,
                         span: Span,
                         name: Ident,
-                        struct_def: ast::StructDef,
+                        struct_def: ast::VariantData,
                         generics: Generics) -> P<ast::Item>;
-    fn item_struct(&self, span: Span, name: Ident, struct_def: ast::StructDef) -> P<ast::Item>;
+    fn item_struct(&self, span: Span, name: Ident, struct_def: ast::VariantData) -> P<ast::Item>;
 
     fn item_mod(&self, span: Span, inner_span: Span,
                 name: Ident, attrs: Vec<ast::Attribute>,
@@ -993,16 +993,26 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn variant(&self, span: Span, name: Ident, tys: Vec<P<ast::Ty>> ) -> ast::Variant {
-        let args = tys.into_iter().map(|ty| {
-            ast::VariantArg { ty: ty, id: ast::DUMMY_NODE_ID }
+        let fields: Vec<_> = tys.into_iter().map(|ty| {
+            Spanned { span: ty.span, node: ast::StructField_ {
+                ty: ty,
+                kind: ast::UnnamedField(ast::Inherited),
+                attrs: Vec::new(),
+                id: ast::DUMMY_NODE_ID,
+            }}
         }).collect();
+
+        let vdata = if fields.is_empty() {
+            ast::VariantData::Unit(ast::DUMMY_NODE_ID)
+        } else {
+            ast::VariantData::Tuple(fields, ast::DUMMY_NODE_ID)
+        };
 
         respan(span,
                ast::Variant_ {
                    name: name,
                    attrs: Vec::new(),
-                   kind: ast::TupleVariantKind(args),
-                   id: ast::DUMMY_NODE_ID,
+                   data: P(vdata),
                    disr_expr: None,
                })
     }
@@ -1020,7 +1030,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn item_struct(&self, span: Span, name: Ident,
-                   struct_def: ast::StructDef) -> P<ast::Item> {
+                   struct_def: ast::VariantData) -> P<ast::Item> {
         self.item_struct_poly(
             span,
             name,
@@ -1030,7 +1040,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn item_struct_poly(&self, span: Span, name: Ident,
-        struct_def: ast::StructDef, generics: Generics) -> P<ast::Item> {
+        struct_def: ast::VariantData, generics: Generics) -> P<ast::Item> {
         self.item(span, name, Vec::new(), ast::ItemStruct(P(struct_def), generics))
     }
 
