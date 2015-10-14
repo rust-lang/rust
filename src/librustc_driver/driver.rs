@@ -137,40 +137,40 @@ pub fn compile_input(sess: Session,
                                     control.make_glob_map,
                                     |tcx, analysis| {
 
-                                        {
-                                            let state =
-                                                CompileState::state_after_analysis(input,
-                                                                                   &tcx.sess,
-                                                                                   outdir,
-                                                                                   &expanded_crate,
-                                                                                   tcx.map.krate(),
-                                                                                   &analysis,
-                                                                                   tcx,
-                                                                                   &lcx);
-                                            (control.after_analysis.callback)(state);
+            {
+                let state =
+                    CompileState::state_after_analysis(input,
+                                                       &tcx.sess,
+                                                       outdir,
+                                                       &expanded_crate,
+                                                       tcx.map.krate(),
+                                                       &analysis,
+                                                       tcx,
+                                                       &lcx);
+                (control.after_analysis.callback)(state);
 
-                                            tcx.sess.abort_if_errors();
-                                            if control.after_analysis.stop == Compilation::Stop {
-                                                return Err(());
-                                            }
-                                        }
+                tcx.sess.abort_if_errors();
+                if control.after_analysis.stop == Compilation::Stop {
+                    return Err(());
+                }
+            }
 
-                                        if log_enabled!(::log::INFO) {
-                                            println!("Pre-trans");
-                                            tcx.print_debug_stats();
-                                        }
-                                        let trans = phase_4_translate_to_llvm(tcx, analysis);
+            if log_enabled!(::log::INFO) {
+                println!("Pre-trans");
+                tcx.print_debug_stats();
+            }
+            let trans = phase_4_translate_to_llvm(tcx, analysis);
 
-                                        if log_enabled!(::log::INFO) {
-                                            println!("Post-trans");
-                                            tcx.print_debug_stats();
-                                        }
+            if log_enabled!(::log::INFO) {
+                println!("Post-trans");
+                tcx.print_debug_stats();
+            }
 
             // Discard interned strings as they are no longer required.
-                                        token::get_ident_interner().clear();
+            token::get_ident_interner().clear();
 
-                                        Ok((outputs, trans))
-                                    })
+            Ok((outputs, trans))
+        })
     };
 
     let (outputs, trans) = if let Ok(out) = result {
@@ -708,7 +708,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                stability::Index::new(krate),
                                |tcx| {
 
-        // passes are timed inside typeck
+                                   // passes are timed inside typeck
                                    typeck::check_crate(tcx, trait_map);
 
                                    time(time_passes,
@@ -722,7 +722,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                                       external_exports)
                                        });
 
-        // Do not move this check past lint
+                                   // Do not move this check past lint
                                    time(time_passes, "stability index", || {
                                        tcx.stability.borrow_mut().build(tcx, krate, &public_items)
                                    });
@@ -755,11 +755,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                         "rvalue checking",
                                         || middle::check_rvalues::check_crate(tcx, krate));
 
-        // Avoid overwhelming user with errors if type checking failed.
-        // I'm not sure how helpful this is, to be honest, but it avoids a
-        // lot of annoying errors in the compile-fail tests (basically,
-        // lint warnings and so on -- kindck used to do this abort, but
-        // kindck is gone now). -nmatsakis
+                                   // Avoid overwhelming user with errors if type checking failed.
+                                   // I'm not sure how helpful this is, to be honest, but it avoids a
+                                   // lot of annoying errors in the compile-fail tests (basically,
+                                   // lint warnings and so on -- kindck used to do this abort, but
+                                   // kindck is gone now). -nmatsakis
                                    tcx.sess.abort_if_errors();
 
                                    let reachable_map =
@@ -787,7 +787,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                         "lint checking",
                                         || lint::check_crate(tcx, krate, &exported_items));
 
-        // The above three passes generate errors w/o aborting
+                                   // The above three passes generate errors w/o aborting
                                    tcx.sess.abort_if_errors();
 
                                    f(tcx,
@@ -859,7 +859,7 @@ pub fn phase_6_link_output(sess: &Session,
 fn escape_dep_filename(filename: &str) -> String {
     // Apparently clang and gcc *only* escape spaces:
     // http://llvm.org/klaus/clang/commit/9d50634cfc268ecc9a7250226dd5ca0e945240d4
-    filename.replace(" ", "\")
+    filename.replace(" ", "\\")
 }
 
 fn write_out_deps(sess: &Session, outputs: &OutputFilenames, id: &str) {
@@ -887,8 +887,8 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, id: &str) {
 
     let result =
         (|| -> io::Result<()> {
-        // Build a list of files used to compile the output and
-        // write Makefile-compatible dependency rules
+            // Build a list of files used to compile the output and
+            // write Makefile-compatible dependency rules
             let files: Vec<String> = sess.codemap()
                                          .files
                                          .borrow()
@@ -902,9 +902,9 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, id: &str) {
                 try!(write!(file, "{}: {}\n\n", path.display(), files.join(" ")));
             }
 
-        // Emit a fake target for each input file to the compilation. This
-        // prevents `make` from spitting out an error if a file is later
-        // deleted. For more info see #28735
+            // Emit a fake target for each input file to the compilation. This
+            // prevents `make` from spitting out an error if a file is later
+            // deleted. For more info see #28735
             for path in files {
                 try!(writeln!(file, "{}:", path));
             }
