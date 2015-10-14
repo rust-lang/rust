@@ -48,7 +48,7 @@ name                                                                            
 [nonsensical_open_options](https://github.com/Manishearth/rust-clippy/wiki#nonsensical_open_options)   | warn    | nonsensical combination of options for opening a file
 [option_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#option_unwrap_used)               | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`
 [precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                               | warn    | catches operations where precedence may be unclear. See the wiki for a list of cases caught
-[ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                     | allow   | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
+[ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                     | warn    | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
 [range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)               | warn    | using Range::step_by(0), which produces an infinite iterator
 [redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)                 | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
 [redundant_pattern](https://github.com/Manishearth/rust-clippy/wiki#redundant_pattern)                 | warn    | using `name @ _` in a pattern
