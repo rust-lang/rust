@@ -335,7 +335,7 @@ impl<'tcx> ty::ctxt<'tcx> {
     /// Returns the repeat count for a repeating vector expression.
     pub fn eval_repeat_count(&self, count_expr: &hir::Expr) -> usize {
         let hint = UncheckedExprHint(self.types.usize);
-        match const_eval::eval_const_expr_partial(self, count_expr, hint) {
+        match const_eval::eval_const_expr_partial(self, count_expr, hint, None) {
             Ok(val) => {
                 let found = match val {
                     ConstVal::Uint(count) => return count as usize,

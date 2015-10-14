@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that error in constant evaluation of enum discriminant
-// provides the context for what caused the evaluation.
+#![feature(const_fn)]
 
-struct S(i32);
-
-const CONSTANT: S = S(0);
-//~^ ERROR: constant evaluation error: non-constant path in constant expression [E0080]
-
-enum E {
-    V = CONSTANT,
-    //~^ NOTE: for enum discriminant here
+const fn add(x: usize, y: usize) -> usize {
+    x + y
 }
 
-fn main() {}
+const ARR: [i32; add(1, 2)] = [5, 6, 7];
+
+pub fn main() {}
