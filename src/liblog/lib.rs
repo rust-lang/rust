@@ -328,8 +328,7 @@ pub fn log_level() -> u32 {
 /// Replaces the thread-local logger with the specified logger, returning the old
 /// logger.
 pub fn set_logger(logger: Box<Logger + Send>) -> Option<Box<Logger + Send>> {
-    let mut l = Some(logger);
-    LOCAL_LOGGER.with(|slot| mem::replace(&mut *slot.borrow_mut(), l.take()))
+    LOCAL_LOGGER.with(|slot| mem::replace(&mut *slot.borrow_mut(), Some(logger)))
 }
 
 /// A LogRecord is created by the logging macros, and passed as the only
