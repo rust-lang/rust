@@ -8,7 +8,7 @@ extend the compiler's behavior with new syntax extensions, lint checks, etc.
 A plugin is a dynamic library crate with a designated *registrar* function that
 registers extensions with `rustc`. Other crates can load these extensions using
 the crate attribute `#![plugin(...)]`.  See the
-[`rustc::plugin`](../rustc/plugin/index.html) documentation for more about the
+[`rustc::plugin`](../1.0.0/rustc/plugin/index.html) documentation for more about the
 mechanics of defining and loading a plugin.
 
 If present, arguments passed as `#![plugin(foo(... args ...))]` are not
