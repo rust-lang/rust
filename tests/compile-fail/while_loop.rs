@@ -33,6 +33,14 @@ fn main() {
         let _x = x;
         let _str = "foo";
     }
+    loop { //~ERROR
+        let x = match y {
+            Some(x) => x,
+            None => break,
+        };
+        { let _a = "bar"; };
+        { let _b = "foobar"; }
+    }
     loop { // no error, else branch does something other than break
         match y {
             Some(_x) => true,
@@ -53,7 +61,7 @@ fn main() {
 // cause this function to trigger it
 fn no_panic<T>(slice: &[T]) {
     let mut iter = slice.iter();
-    loop {
+    loop { //~ERROR
         let _ = match iter.next() {
             Some(ele) => ele,
             None => break
