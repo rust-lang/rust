@@ -187,10 +187,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         use libc::funcs::bsd44::*;
         use libc::consts::os::extra::*;
-        let mut mib = vec![CTL_KERN as c_int,
-                           KERN_PROC as c_int,
-                           KERN_PROC_PATHNAME as c_int,
-                           -1 as c_int];
+        let mut mib = [CTL_KERN as c_int,
+                       KERN_PROC as c_int,
+                       KERN_PROC_PATHNAME as c_int,
+                       -1 as c_int];
         let mut sz: libc::size_t = 0;
         let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
                          ptr::null_mut(), &mut sz, ptr::null_mut(),
