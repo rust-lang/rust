@@ -664,10 +664,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let vinfo = VariantInfo::from_ty(cx.tcx(), bt, None);
             adt::const_get_field(cx, &*brepr, bv, vinfo.discr, idx.node)
         },
-
         hir::ExprIndex(ref base, ref index) => {
             let (bv, bt) = try!(const_expr(cx, &**base, param_substs, fn_args, trueconst));
-            let iv = match eval_const_expr_partial(cx.tcx(), &index, ExprTypeChecked) {
+            let iv = match eval_const_expr_partial(cx.tcx(), &index, ExprTypeChecked, None) {
                 Ok(ConstVal::Int(i)) => i as u64,
                 Ok(ConstVal::Uint(u)) => u,
                 _ => cx.sess().span_bug(index.span,

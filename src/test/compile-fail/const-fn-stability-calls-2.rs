@@ -17,5 +17,5 @@ extern crate const_fn_lib;
 use const_fn_lib::foo;
 
 fn main() {
-    let x: [usize; foo()] = []; //~ ERROR unsupported constant expr
+    let x: [usize; foo()] = []; //~ ERROR non-constant path in constant expr
 }

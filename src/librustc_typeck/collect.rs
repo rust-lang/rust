@@ -1148,7 +1148,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
         debug!("disr expr, checking {}", pprust::expr_to_string(e));
 
         let hint = UncheckedExprHint(repr_ty);
-        match const_eval::eval_const_expr_partial(tcx, e, hint) {
+        match const_eval::eval_const_expr_partial(tcx, e, hint, None) {
             Ok(ConstVal::Int(val)) => Some(val as ty::Disr),
             Ok(ConstVal::Uint(val)) => Some(val as ty::Disr),
             Ok(_) => {

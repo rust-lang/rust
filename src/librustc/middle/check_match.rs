@@ -272,7 +272,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
 fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
     front_util::walk_pat(pat, |p| {
         if let hir::PatLit(ref expr) = p.node {
-            match eval_const_expr_partial(cx.tcx, &**expr, ExprTypeChecked) {
+            match eval_const_expr_partial(cx.tcx, &**expr, ExprTypeChecked, None) {
                 Ok(ConstVal::Float(f)) if f.is_nan() => {
                     span_warn!(cx.tcx.sess, p.span, E0003,
                                "unmatchable NaN in pattern, \
