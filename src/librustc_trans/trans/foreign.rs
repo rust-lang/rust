@@ -27,6 +27,7 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of::*;
 use trans::type_of;
+use middle::infer;
 use middle::ty::{self, Ty};
 use middle::subst::Substs;
 
@@ -254,6 +255,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         _ => ccx.sess().bug("trans_native_call called on non-function type")
     };
     let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
+    let fn_sig = infer::normalize_associated_type(ccx.tcx(), &fn_sig);
     let llsig = foreign_signature(ccx, &fn_sig, &passed_arg_tys[..]);
     let fn_type = cabi::compute_abi_info(ccx,
                                          &llsig.llarg_tys,
@@ -558,8 +560,6 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
                                          -> ValueRef {
     let _icx = push_ctxt("foreign::register_foreign_fn");
 
-    let tys = foreign_types_for_id(ccx, node_id);
-    let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
     let t = ccx.tcx().node_id_to_type(node_id);
     let cconv = match t.sty {
         ty::TyBareFn(_, ref fn_ty) => {
@@ -567,6 +567,8 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
         }
         _ => panic!("expected bare fn in register_rust_fn_with_foreign_abi")
     };
+    let tys = foreign_types_for_fn_ty(ccx, t);
+    let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
     let llfn = base::register_fn_llvmty(ccx, sp, sym, node_id, cconv, llfn_ty);
     add_argument_attributes(&tys, llfn);
     debug!("register_rust_fn_with_foreign_abi(node_id={}, llfn_ty={}, llfn={})",
@@ -937,11 +939,6 @@ fn foreign_signature<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn foreign_types_for_id<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                  id: ast::NodeId) -> ForeignTypes<'tcx> {
-    foreign_types_for_fn_ty(ccx, ccx.tcx().node_id_to_type(id))
-}
-
 fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      ty: Ty<'tcx>) -> ForeignTypes<'tcx> {
     let fn_sig = match ty.sty {
@@ -949,6 +946,7 @@ fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         _ => ccx.sess().bug("foreign_types_for_fn_ty called on non-function type")
     };
     let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
+    let fn_sig = infer::normalize_associated_type(ccx.tcx(), &fn_sig);
     let llsig = foreign_signature(ccx, &fn_sig, &fn_sig.inputs);
     let fn_ty = cabi::compute_abi_info(ccx,
                                        &llsig.llarg_tys,
