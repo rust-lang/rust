@@ -200,8 +200,7 @@ struct TyDesc {
     align: usize,
 }
 
-trait AllTypes {    fn dummy(&self) {
-    } }
+trait AllTypes { fn dummy(&self) { } }
 impl<T:?Sized> AllTypes for T { }
 
 unsafe fn get_tydesc<T>() -> *const TyDesc {
@@ -293,8 +292,7 @@ impl<'longer_than_self> Arena<'longer_than_self> {
 
         unsafe {
             let buf = head.as_ptr();
-            (buf.offset(tydesc_start as isize),
-             buf.offset(start as isize))
+            (buf.offset(tydesc_start as isize), buf.offset(start as isize))
         }
     }
 
@@ -392,7 +390,8 @@ struct TypedArenaChunk<T> {
     next: *mut TypedArenaChunk<T>,
 
     /// The number of elements that this chunk can hold.
-    capacity: usize, // Objects follow here, suitably aligned.
+    // Objects follow here, suitably aligned.
+    capacity: usize,
 }
 
 fn calculate_size<T>(capacity: usize) -> usize {
