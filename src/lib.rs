@@ -48,6 +48,7 @@ pub mod ranges;
 pub mod matches;
 pub mod precedence;
 pub mod zero_div_zero;
+pub mod open_options;
 
 mod reexport {
     pub use syntax::ast::{Name, Ident, NodeId};
@@ -89,6 +90,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box matches::MatchPass);
     reg.register_late_lint_pass(box misc::PatternPass);
     reg.register_late_lint_pass(box minmax::MinMaxPass);
+    reg.register_late_lint_pass(box open_options::NonSensicalOpenOptions);
     reg.register_late_lint_pass(box zero_div_zero::ZeroDivZeroPass);
 
     reg.register_lint_group("clippy_pedantic", vec![
@@ -145,6 +147,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         misc::TOPLEVEL_REF_ARG,
         mut_reference::UNNECESSARY_MUT_PASSED,
         needless_bool::NEEDLESS_BOOL,
+        open_options::NONSENSICAL_OPEN_OPTIONS,
         precedence::PRECEDENCE,
         ranges::RANGE_STEP_BY_ZERO,
         returns::LET_AND_RETURN,

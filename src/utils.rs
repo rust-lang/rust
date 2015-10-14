@@ -10,11 +10,12 @@ use syntax::ast::Lit_::*;
 use syntax::ast;
 
 // module DefPaths for certain structs/enums we check for
-pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];
-pub const RESULT_PATH: [&'static str; 3] = ["core", "result", "Result"];
-pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
-pub const VEC_PATH:    [&'static str; 3] = ["collections", "vec", "Vec"];
-pub const LL_PATH:     [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
+pub const OPTION_PATH:       [&'static str; 3] = ["core", "option", "Option"];
+pub const RESULT_PATH:       [&'static str; 3] = ["core", "result", "Result"];
+pub const STRING_PATH:       [&'static str; 3] = ["collections", "string", "String"];
+pub const VEC_PATH:          [&'static str; 3] = ["collections", "vec", "Vec"];
+pub const LL_PATH:           [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
+pub const OPEN_OPTIONS_PATH: [&'static str; 3] = ["std", "fs", "OpenOptions"];
 
 /// Produce a nested chain of if-lets and ifs from the patterns:
 ///
