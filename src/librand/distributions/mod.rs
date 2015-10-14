@@ -199,6 +199,7 @@ mod ziggurat_tables;
 /// * `pdf`: the probability density function
 /// * `zero_case`: manual sampling from the tail when we chose the
 ///    bottom box (i.e. i == 0)
+
 // the perf improvement (25-50%) is definitely worth the extra code
 // size from force-inlining.
 #[inline(always)]
