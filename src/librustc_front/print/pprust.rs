@@ -734,7 +734,7 @@ impl<'a> State<'a> {
             }
             hir::ItemStruct(ref struct_def, ref generics) => {
                 try!(self.head(&visibility_qualified(item.vis, "struct")));
-                try!(self.print_struct(&**struct_def, generics, item.name, item.span));
+                try!(self.print_struct(&**struct_def, generics, item.name, item.span, true));
             }
 
             hir::ItemDefaultImpl(unsafety, ref trait_ref) => {
@@ -888,18 +888,19 @@ impl<'a> State<'a> {
     }
 
     pub fn print_struct(&mut self,
-                        struct_def: &hir::StructDef,
+                        struct_def: &hir::VariantData,
                         generics: &hir::Generics,
                         name: ast::Name,
-                        span: codemap::Span)
+                        span: codemap::Span,
+                        print_finalizer: bool)
                         -> io::Result<()> {
         try!(self.print_name(name));
         try!(self.print_generics(generics));
-        if ::util::struct_def_is_tuple_like(struct_def) {
-            if !struct_def.fields.is_empty() {
+        if !struct_def.is_struct() {
+            if struct_def.is_tuple() {
                 try!(self.popen());
-                try!(self.commasep(Inconsistent,
-                                   &struct_def.fields,
+                try!(self.commasep_iter(Inconsistent,
+                                   struct_def.fields(),
                                    |s, field| {
                                        match field.node.kind {
                                            hir::NamedField(..) => panic!("unexpected named field"),
@@ -913,7 +914,9 @@ impl<'a> State<'a> {
                 try!(self.pclose());
             }
             try!(self.print_where_clause(&generics.where_clause));
-            try!(word(&mut self.s, ";"));
+            if print_finalizer {
+                try!(word(&mut self.s, ";"));
+            }
             try!(self.end());
             self.end() // close the outer-box
         } else {
@@ -922,7 +925,7 @@ impl<'a> State<'a> {
             try!(self.bopen());
             try!(self.hardbreak_if_not_bol());
 
-            for field in &struct_def.fields {
+            for field in struct_def.fields() {
                 match field.node.kind {
                     hir::UnnamedField(..) => panic!("unexpected unnamed field"),
                     hir::NamedField(name, visibility) => {
@@ -943,21 +946,9 @@ impl<'a> State<'a> {
     }
 
     pub fn print_variant(&mut self, v: &hir::Variant) -> io::Result<()> {
-        match v.node.kind {
-            hir::TupleVariantKind(ref args) => {
-                try!(self.print_name(v.node.name));
-                if !args.is_empty() {
-                    try!(self.popen());
-                    try!(self.commasep(Consistent, &args[..], |s, arg| s.print_type(&*arg.ty)));
-                    try!(self.pclose());
-                }
-            }
-            hir::StructVariantKind(ref struct_def) => {
-                try!(self.head(""));
-                let generics = ::util::empty_generics();
-                try!(self.print_struct(&**struct_def, &generics, v.node.name, v.span));
-            }
-        }
+        try!(self.head(""));
+        let generics = ::util::empty_generics();
+        try!(self.print_struct(&v.node.data, &generics, v.node.name, v.span, false));
         match v.node.disr_expr {
             Some(ref d) => {
                 try!(space(&mut self.s));

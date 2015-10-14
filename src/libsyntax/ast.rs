@@ -44,7 +44,6 @@ pub use self::TyParamBound::*;
 pub use self::UintTy::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
-pub use self::VariantKind::*;
 pub use self::ViewPath_::*;
 pub use self::Visibility::*;
 pub use self::PathParameters::*;
@@ -66,6 +65,7 @@ use std::fmt;
 use std::rc::Rc;
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
+use std::{iter, option, slice};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A name is a part of an identifier, representing a string or gensym. It's
@@ -1572,20 +1572,6 @@ pub struct ForeignMod {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct VariantArg {
-    pub ty: P<Ty>,
-    pub id: NodeId,
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum VariantKind {
-    /// Tuple variant, e.g. `Foo(A, B)`
-    TupleVariantKind(Vec<VariantArg>),
-    /// Struct variant, e.g. `Foo {x: A, y: B}`
-    StructVariantKind(P<StructDef>),
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct EnumDef {
     pub variants: Vec<P<Variant>>,
 }
@@ -1594,8 +1580,7 @@ pub struct EnumDef {
 pub struct Variant_ {
     pub name: Ident,
     pub attrs: Vec<Attribute>,
-    pub kind: VariantKind,
-    pub id: NodeId,
+    pub data: P<VariantData>,
     /// Explicit discriminant, eg `Foo = 1`
     pub disr_expr: Option<P<Expr>>,
 }
@@ -1756,13 +1741,50 @@ impl StructFieldKind {
     }
 }
 
+/// Fields and Ids of enum variants and structs
+///
+/// For enum variants: `NodeId` represents both an Id of the variant itself (relevant for all
+/// variant kinds) and an Id of the variant's constructor (not relevant for `Struct`-variants).
+/// One shared Id can be successfully used for these two purposes.
+/// Id of the whole enum lives in `Item`.
+///
+/// For structs: `NodeId` represents an Id of the structure's constructor, so it is not actually
+/// used for `Struct`-structs (but still presents). Structures don't have an analogue of "Id of
+/// the variant itself" from enum variants.
+/// Id of the whole struct lives in `Item`.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct StructDef {
-    /// Fields, not including ctor
-    pub fields: Vec<StructField>,
-    /// ID of the constructor. This is only used for tuple- or enum-like
-    /// structs.
-    pub ctor_id: Option<NodeId>,
+pub enum VariantData {
+    Struct(Vec<StructField>, NodeId),
+    Tuple(Vec<StructField>, NodeId),
+    Unit(NodeId),
+}
+
+pub type FieldIter<'a> = iter::FlatMap<option::IntoIter<&'a Vec<StructField>>,
+                                       slice::Iter<'a, StructField>,
+                                       fn(&Vec<StructField>) -> slice::Iter<StructField>>;
+
+impl VariantData {
+    pub fn fields(&self) -> FieldIter {
+        fn vec_iter<T>(v: &Vec<T>) -> slice::Iter<T> { v.iter() }
+        match *self {
+            VariantData::Struct(ref fields, _) | VariantData::Tuple(ref fields, _) => Some(fields),
+            _ => None,
+        }.into_iter().flat_map(vec_iter)
+    }
+    pub fn id(&self) -> NodeId {
+        match *self {
+            VariantData::Struct(_, id) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id
+        }
+    }
+    pub fn is_struct(&self) -> bool {
+        if let VariantData::Struct(..) = *self { true } else { false }
+    }
+    pub fn is_tuple(&self) -> bool {
+        if let VariantData::Tuple(..) = *self { true } else { false }
+    }
+    pub fn is_unit(&self) -> bool {
+        if let VariantData::Unit(..) = *self { true } else { false }
+    }
 }
 
 /*
@@ -1806,7 +1828,7 @@ pub enum Item_ {
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
     ItemEnum(EnumDef, Generics),
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
-    ItemStruct(P<StructDef>, Generics),
+    ItemStruct(P<VariantData>, Generics),
     /// Represents a Trait Declaration
     ItemTrait(Unsafety,
               Generics,

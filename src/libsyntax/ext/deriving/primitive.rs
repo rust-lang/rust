@@ -94,45 +94,35 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure
             let mut arms = Vec::new();
 
             for variant in &enum_def.variants {
-                match variant.node.kind {
-                    ast::TupleVariantKind(ref args) => {
-                        if !args.is_empty() {
-                            cx.span_err(trait_span,
-                                        "`FromPrimitive` cannot be derived for \
-                                        enum variants with arguments");
-                            return cx.expr_fail(trait_span,
-                                                InternedString::new(""));
-                        }
-                        let span = variant.span;
-
-                        // expr for `$n == $variant as $name`
-                        let path = cx.path(span, vec![substr.type_ident, variant.node.name]);
-                        let variant = cx.expr_path(path);
-                        let ty = cx.ty_ident(span, cx.ident_of(name));
-                        let cast = cx.expr_cast(span, variant.clone(), ty);
-                        let guard = cx.expr_binary(span, ast::BiEq, n.clone(), cast);
-
-                        // expr for `Some($variant)`
-                        let body = cx.expr_some(span, variant);
-
-                        // arm for `_ if $guard => $body`
-                        let arm = ast::Arm {
-                            attrs: vec!(),
-                            pats: vec!(cx.pat_wild(span)),
-                            guard: Some(guard),
-                            body: body,
-                        };
-
-                        arms.push(arm);
-                    }
-                    ast::StructVariantKind(_) => {
-                        cx.span_err(trait_span,
-                                    "`FromPrimitive` cannot be derived for enums \
-                                    with struct variants");
-                        return cx.expr_fail(trait_span,
-                                            InternedString::new(""));
-                    }
+                let def = &variant.node.data;
+                if !def.is_unit() {
+                    cx.span_err(trait_span, "`FromPrimitive` cannot be derived \
+                                             for enums with non-unit variants");
+                    return cx.expr_fail(trait_span,
+                                        InternedString::new(""));
                 }
+
+                let span = variant.span;
+
+                // expr for `$n == $variant as $name`
+                let path = cx.path(span, vec![substr.type_ident, variant.node.name]);
+                let variant = cx.expr_path(path);
+                let ty = cx.ty_ident(span, cx.ident_of(name));
+                let cast = cx.expr_cast(span, variant.clone(), ty);
+                let guard = cx.expr_binary(span, ast::BiEq, n.clone(), cast);
+
+                // expr for `Some($variant)`
+                let body = cx.expr_some(span, variant);
+
+                // arm for `_ if $guard => $body`
+                let arm = ast::Arm {
+                    attrs: vec!(),
+                    pats: vec!(cx.pat_wild(span)),
+                    guard: Some(guard),
+                    body: body,
+                };
+
+                arms.push(arm);
             }
 
             // arm for `_ => None`

@@ -1464,7 +1464,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Return the dict-like variant corresponding to a given `Def`.
     pub fn def_struct_variant(&self,
-                              def: def::Def)
+                              def: def::Def,
+                              span: Span)
                               -> Option<(ty::AdtDef<'tcx>, ty::VariantDef<'tcx>)>
     {
         let (adt, variant) = match def {
@@ -1484,11 +1485,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let var_kind = variant.kind();
-        if var_kind == ty::VariantKind::Dict || var_kind == ty::VariantKind::Unit {
+        if var_kind == ty::VariantKind::Struct {
             Some((adt, variant))
-        } else {
-            None
-        }
+        } else if var_kind == ty::VariantKind::Unit {
+            if !self.tcx().sess.features.borrow().braced_empty_structs {
+                self.tcx().sess.span_err(span, "empty structs and enum variants \
+                                                with braces are unstable");
+                fileline_help!(self.tcx().sess, span, "add #![feature(braced_empty_structs)] to \
+                                                       the crate features to enable");
+            }
+
+             Some((adt, variant))
+         } else {
+             None
+         }
     }
 
     pub fn write_nil(&self, node_id: ast::NodeId) {
@@ -3177,7 +3187,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         // Find the relevant variant
         let def = lookup_full_def(tcx, path.span, expr.id);
-        let (adt, variant) = match fcx.def_struct_variant(def) {
+        let (adt, variant) = match fcx.def_struct_variant(def, path.span) {
             Some((adt, variant)) => (adt, variant),
             None => {
                 span_err!(fcx.tcx().sess, path.span, E0071,

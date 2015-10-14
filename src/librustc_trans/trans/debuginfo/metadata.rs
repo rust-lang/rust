@@ -1365,7 +1365,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 let sole_struct_member_description = MemberDescription {
                     name: match non_null_variant.kind() {
                         ty::VariantKind::Tuple => "__0".to_string(),
-                        ty::VariantKind::Dict => {
+                        ty::VariantKind::Struct => {
                             non_null_variant.fields[0].name.to_string()
                         }
                         ty::VariantKind::Unit => unreachable!()
@@ -1540,7 +1540,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                    .map(|(i, _)| format!("__{}", i))
                    .collect()
         }
-        ty::VariantKind::Dict => {
+        ty::VariantKind::Struct => {
             variant.fields
                    .iter()
                    .map(|f| f.name.to_string())

@@ -530,7 +530,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx hir::Pat,
     let tcx = pcx.fcx.ccx.tcx;
 
     let def = tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
-    let variant = match fcx.def_struct_variant(def) {
+    let variant = match fcx.def_struct_variant(def, path.span) {
         Some((_, variant)) => variant,
         None => {
             let name = pprust::path_to_string(path);

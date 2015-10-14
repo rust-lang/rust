@@ -82,7 +82,7 @@ impl<'v> Visitor<'v> for ParentVisitor {
                     // The parent is considered the enclosing enum because the
                     // enum will dictate the privacy visibility of this variant
                     // instead.
-                    self.parents.insert(variant.node.id, item.id);
+                    self.parents.insert(variant.node.data.id(), item.id);
                 }
             }
 
@@ -128,18 +128,17 @@ impl<'v> Visitor<'v> for ParentVisitor {
         visit::walk_impl_item(self, ii);
     }
 
-    fn visit_struct_def(&mut self, s: &hir::StructDef, _: ast::Name,
-                        _: &'v hir::Generics, n: ast::NodeId) {
+    fn visit_variant_data(&mut self, s: &hir::VariantData, _: ast::Name,
+                        _: &'v hir::Generics, item_id: ast::NodeId, _: Span) {
         // Struct constructors are parented to their struct definitions because
         // they essentially are the struct definitions.
-        match s.ctor_id {
-            Some(id) => { self.parents.insert(id, n); }
-            None => {}
+        if !s.is_struct() {
+            self.parents.insert(s.id(), item_id);
         }
 
         // While we have the id of the struct definition, go ahead and parent
         // all the fields.
-        for field in &s.fields {
+        for field in s.fields() {
             self.parents.insert(field.node.id, self.curparent);
         }
         visit::walk_struct_def(self, s)
@@ -234,8 +233,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             // public all variants are public unless they're explicitly priv
             hir::ItemEnum(ref def, _) if public_first => {
                 for variant in &def.variants {
-                    self.exported_items.insert(variant.node.id);
-                    self.public_items.insert(variant.node.id);
+                    self.exported_items.insert(variant.node.data.id());
+                    self.public_items.insert(variant.node.data.id());
                 }
             }
 
@@ -320,12 +319,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
 
             // Struct constructors are public if the struct is all public.
             hir::ItemStruct(ref def, _) if public_first => {
-                match def.ctor_id {
-                    Some(id) => { self.exported_items.insert(id); }
-                    None => {}
+                if !def.is_struct() {
+                    self.exported_items.insert(def.id());
                 }
                 // fields can be public or private, so lets check
-                for field in &def.fields {
+                for field in def.fields() {
                     let vis = match field.node.kind {
                         hir::NamedField(_, vis) | hir::UnnamedField(vis) => vis
                     };
@@ -1090,8 +1088,8 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                           "visibility has no effect inside functions");
             }
         }
-        let check_struct = |def: &hir::StructDef| {
-            for f in &def.fields {
+        let check_struct = |def: &hir::VariantData| {
+            for f in def.fields() {
                match f.node.kind {
                     hir::NamedField(_, p) => check_inherited(tcx, f.span, p),
                     hir::UnnamedField(..) => {}
@@ -1432,20 +1430,20 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
         visit::walk_ty(self, t)
     }
 
-    fn visit_variant(&mut self, v: &hir::Variant, g: &hir::Generics) {
-        if self.exported_items.contains(&v.node.id) {
+    fn visit_variant(&mut self, v: &hir::Variant, g: &hir::Generics, item_id: ast::NodeId) {
+        if self.exported_items.contains(&v.node.data.id()) {
             self.in_variant = true;
-            visit::walk_variant(self, v, g);
+            visit::walk_variant(self, v, g, item_id);
             self.in_variant = false;
         }
     }
 
     fn visit_struct_field(&mut self, s: &hir::StructField) {
-        match s.node.kind {
-            hir::NamedField(_, vis) if vis == hir::Public || self.in_variant => {
-                visit::walk_struct_field(self, s);
-            }
-            _ => {}
+        let vis = match s.node.kind {
+            hir::NamedField(_, vis) | hir::UnnamedField(vis) => vis
+        };
+        if vis == hir::Public || self.in_variant {
+            visit::walk_struct_field(self, s);
         }
     }
 

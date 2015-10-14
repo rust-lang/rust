@@ -301,18 +301,18 @@ mod svh_visitor {
     }
 
     impl<'a, 'v> Visitor<'v> for StrictVersionHashVisitor<'a> {
-        fn visit_struct_def(&mut self, s: &StructDef, name: Name,
-                            g: &Generics, _: NodeId) {
+        fn visit_variant_data(&mut self, s: &VariantData, name: Name,
+                            g: &Generics, _: NodeId, _: Span) {
             SawStructDef(name.as_str()).hash(self.st);
             visit::walk_generics(self, g);
             visit::walk_struct_def(self, s)
         }
 
-        fn visit_variant(&mut self, v: &Variant, g: &Generics) {
+        fn visit_variant(&mut self, v: &Variant, g: &Generics, item_id: NodeId) {
             SawVariant.hash(self.st);
             // walk_variant does not call walk_generics, so do it here.
             visit::walk_generics(self, g);
-            visit::walk_variant(self, v, g)
+            visit::walk_variant(self, v, g, item_id)
         }
 
         // All of the remaining methods just record (in the hash

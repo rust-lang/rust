@@ -123,7 +123,7 @@ impl LateLintPass for BoxPointers {
         // If it's a struct, we also have to check the fields' types
         match it.node {
             hir::ItemStruct(ref struct_def, _) => {
-                for struct_field in &struct_def.fields {
+                for struct_field in struct_def.fields() {
                     self.check_heap_type(cx, struct_field.span,
                                          cx.tcx.node_id_to_type(struct_field.node.id));
                 }
@@ -427,15 +427,15 @@ impl LateLintPass for MissingDoc {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
     }
 
-    fn check_struct_def(&mut self, _: &LateContext, _: &hir::StructDef,
-                        _: ast::Name, _: &hir::Generics, id: ast::NodeId) {
-        self.struct_def_stack.push(id);
+    fn check_struct_def(&mut self, _: &LateContext, _: &hir::VariantData,
+                        _: ast::Name, _: &hir::Generics, item_id: ast::NodeId) {
+        self.struct_def_stack.push(item_id);
     }
 
-    fn check_struct_def_post(&mut self, _: &LateContext, _: &hir::StructDef,
-                             _: ast::Name, _: &hir::Generics, id: ast::NodeId) {
+    fn check_struct_def_post(&mut self, _: &LateContext, _: &hir::VariantData,
+                             _: ast::Name, _: &hir::Generics, item_id: ast::NodeId) {
         let popped = self.struct_def_stack.pop().expect("empty struct_def_stack");
-        assert!(popped == id);
+        assert!(popped == item_id);
     }
 
     fn check_crate(&mut self, cx: &LateContext, krate: &hir::Crate) {
@@ -527,7 +527,8 @@ impl LateLintPass for MissingDoc {
     }
 
     fn check_variant(&mut self, cx: &LateContext, v: &hir::Variant, _: &hir::Generics) {
-        self.check_missing_docs_attrs(cx, Some(v.node.id), &v.node.attrs, v.span, "a variant");
+        self.check_missing_docs_attrs(cx, Some(v.node.data.id()),
+                                      &v.node.attrs, v.span, "a variant");
         assert!(!self.in_variant);
         self.in_variant = true;
     }
