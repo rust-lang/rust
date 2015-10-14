@@ -39,29 +39,35 @@ const MIN_ALIGN: usize = 8;
 const MIN_ALIGN: usize = 16;
 
 #[no_mangle]
-pub extern fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
+pub extern "C" fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
     unsafe { imp::allocate(size, align) }
 }
 
 #[no_mangle]
-pub extern fn __rust_deallocate(ptr: *mut u8, old_size: usize, align: usize) {
+pub extern "C" fn __rust_deallocate(ptr: *mut u8, old_size: usize, align: usize) {
     unsafe { imp::deallocate(ptr, old_size, align) }
 }
 
 #[no_mangle]
-pub extern fn __rust_reallocate(ptr: *mut u8, old_size: usize, size: usize,
-                                align: usize) -> *mut u8 {
+pub extern "C" fn __rust_reallocate(ptr: *mut u8,
+                                    old_size: usize,
+                                    size: usize,
+                                    align: usize)
+                                    -> *mut u8 {
     unsafe { imp::reallocate(ptr, old_size, size, align) }
 }
 
 #[no_mangle]
-pub extern fn __rust_reallocate_inplace(ptr: *mut u8, old_size: usize,
-                                        size: usize, align: usize) -> usize {
+pub extern "C" fn __rust_reallocate_inplace(ptr: *mut u8,
+                                            old_size: usize,
+                                            size: usize,
+                                            align: usize)
+                                            -> usize {
     unsafe { imp::reallocate_inplace(ptr, old_size, size, align) }
 }
 
 #[no_mangle]
-pub extern fn __rust_usable_size(size: usize, align: usize) -> usize {
+pub extern "C" fn __rust_usable_size(size: usize, align: usize) -> usize {
     imp::usable_size(size, align)
 }
 
@@ -80,7 +86,8 @@ mod imp {
         #[cfg(not(target_os = "android"))]
         fn posix_memalign(memptr: *mut *mut libc::c_void,
                           align: libc::size_t,
-                          size: libc::size_t) -> libc::c_int;
+                          size: libc::size_t)
+                          -> libc::c_int;
     }
 
     pub unsafe fn allocate(size: usize, align: usize) -> *mut u8 {
@@ -94,9 +101,7 @@ mod imp {
             #[cfg(not(target_os = "android"))]
             unsafe fn more_aligned_malloc(size: usize, align: usize) -> *mut u8 {
                 let mut out = ptr::null_mut();
-                let ret = posix_memalign(&mut out,
-                                         align as libc::size_t,
-                                         size as libc::size_t);
+                let ret = posix_memalign(&mut out, align as libc::size_t, size as libc::size_t);
                 if ret != 0 {
                     ptr::null_mut()
                 } else {
@@ -107,8 +112,7 @@ mod imp {
         }
     }
 
-    pub unsafe fn reallocate(ptr: *mut u8, old_size: usize, size: usize,
-                             align: usize) -> *mut u8 {
+    pub unsafe fn reallocate(ptr: *mut u8, old_size: usize, size: usize, align: usize) -> *mut u8 {
         if align <= MIN_ALIGN {
             libc::realloc(ptr as *mut libc::c_void, size as libc::size_t) as *mut u8
         } else {
@@ -119,8 +123,11 @@ mod imp {
         }
     }
 
-    pub unsafe fn reallocate_inplace(_ptr: *mut u8, old_size: usize, _size: usize,
-                                     _align: usize) -> usize {
+    pub unsafe fn reallocate_inplace(_ptr: *mut u8,
+                                     old_size: usize,
+                                     _size: usize,
+                                     _align: usize)
+                                     -> usize {
         old_size
     }
 
@@ -141,8 +148,7 @@ mod imp {
     extern "system" {
         fn GetProcessHeap() -> HANDLE;
         fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T) -> LPVOID;
-        fn HeapReAlloc(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID,
-                       dwBytes: SIZE_T) -> LPVOID;
+        fn HeapReAlloc(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID, dwBytes: SIZE_T) -> LPVOID;
         fn HeapFree(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID) -> BOOL;
     }
 
@@ -165,32 +171,45 @@ mod imp {
         if align <= MIN_ALIGN {
             HeapAlloc(GetProcessHeap(), 0, size as SIZE_T) as *mut u8
         } else {
-            let ptr = HeapAlloc(GetProcessHeap(), 0,
-                                (size + align) as SIZE_T) as *mut u8;
-            if ptr.is_null() { return ptr }
+            let ptr = HeapAlloc(GetProcessHeap(), 0, (size + align) as SIZE_T) as *mut u8;
+            if ptr.is_null() {
+                return ptr
+            }
             align_ptr(ptr, align)
         }
     }
 
-    pub unsafe fn reallocate(ptr: *mut u8, _old_size: usize, size: usize,
-                             align: usize) -> *mut u8 {
+    pub unsafe fn reallocate(ptr: *mut u8, _old_size: usize, size: usize, align: usize) -> *mut u8 {
         if align <= MIN_ALIGN {
             HeapReAlloc(GetProcessHeap(), 0, ptr as LPVOID, size as SIZE_T) as *mut u8
         } else {
             let header = get_header(ptr);
-            let new = HeapReAlloc(GetProcessHeap(), 0, header.0 as LPVOID,
+            let new = HeapReAlloc(GetProcessHeap(),
+                                  0,
+                                  header.0 as LPVOID,
                                   (size + align) as SIZE_T) as *mut u8;
-            if new.is_null() { return new }
+            if new.is_null() {
+                return new
+            }
             align_ptr(new, align)
         }
     }
 
-    pub unsafe fn reallocate_inplace(ptr: *mut u8, old_size: usize, size: usize,
-                                     align: usize) -> usize {
+    pub unsafe fn reallocate_inplace(ptr: *mut u8,
+                                     old_size: usize,
+                                     size: usize,
+                                     align: usize)
+                                     -> usize {
         if align <= MIN_ALIGN {
-            let new = HeapReAlloc(GetProcessHeap(), HEAP_REALLOC_IN_PLACE_ONLY,
-                                  ptr as LPVOID, size as SIZE_T) as *mut u8;
-            if new.is_null() { old_size } else { size }
+            let new = HeapReAlloc(GetProcessHeap(),
+                                  HEAP_REALLOC_IN_PLACE_ONLY,
+                                  ptr as LPVOID,
+                                  size as SIZE_T) as *mut u8;
+            if new.is_null() {
+                old_size
+            } else {
+                size
+            }
         } else {
             old_size
         }
