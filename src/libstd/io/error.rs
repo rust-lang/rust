@@ -17,7 +17,7 @@ use option::Option::{self, Some, None};
 use result;
 use sys;
 
-/// A specialized [`Result`](../result/enum.Result.html) type for I/O 
+/// A specialized [`Result`](../result/enum.Result.html) type for I/O
 /// operations.
 ///
 /// This type is broadly used across `std::io` for any operation which may
