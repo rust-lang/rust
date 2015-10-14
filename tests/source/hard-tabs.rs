@@ -31,6 +31,8 @@ unsafe // So this is a very long comment.
 {
 }
 
+let chain = funktion_kall().go_to_next_line_with_tab().go_to_next_line_with_tab().go_to_next_line_with_tab();
+
 let z = [xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyy, zzzzzzzzzzzzzzzzzz, q];
 
 fn generic<T>(arg: T) -> &SomeType
