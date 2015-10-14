@@ -46,7 +46,7 @@ pub fn parse_logging_spec(spec: &str) -> (Vec<LogDirective>, Option<String>) {
                  spec);
         return (dirs, None);
     }
-    mods.map(|m| {
+    if let Some(m) = mods {
         for s in m.split(',') {
             if s.is_empty() {
                 continue
@@ -83,7 +83,7 @@ pub fn parse_logging_spec(spec: &str) -> (Vec<LogDirective>, Option<String>) {
                 level: log_level,
             });
         }
-    });
+    }
 
     (dirs, filter.map(str::to_owned))
 }
