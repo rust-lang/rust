@@ -789,8 +789,7 @@ pub fn pretty_print_input(sess: Session,
             debug!("pretty printing flow graph for {:?}", opt_uii);
             let uii = opt_uii.unwrap_or_else(|| {
                 sess.fatal(&format!("`pretty flowgraph=..` needs NodeId (int) or
-                                     \
-                                     unique path suffix (b::c::d)"))
+                                    unique path suffix (b::c::d)"))
 
             });
             let ast_map = ast_map.expect("--pretty flowgraph missing ast_map");

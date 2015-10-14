@@ -153,7 +153,8 @@ pub fn run_compiler<'a>(args: &[String], callbacks: &mut CompilerCalls<'a>) {
             pretty::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile);
             return;
         }
-        None => {/* continue */
+        // continue
+        None => {
         }
     }
 
@@ -510,6 +511,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
     }
 }
 
+#[rustfmt_skip]
 fn usage(verbose: bool, include_unstable_options: bool) {
     let groups = if verbose {
         config::rustc_optgroups()
@@ -528,23 +530,20 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     };
     println!("{}\nAdditional help:
     -C help             Print codegen options
-    -W help             \
-              Print 'lint' options and default settings
-    -Z help             Print internal \
-              options for debugging rustc{}\n",
+    -W help             Print 'lint' options and default settings
+    -Z help             Print internal options for debugging rustc{}\n",
              getopts::usage(&message, &groups),
              extra_help);
 }
 
+#[rustfmt_skip]
 fn describe_lints(lint_store: &lint::LintStore, loaded_plugins: bool) {
     println!("
 Available lint options:
     -W <foo>           Warn about <foo>
-    -A <foo>           \
-              Allow <foo>
+    -A <foo>           Allow <foo>
     -D <foo>           Deny <foo>
-    -F <foo>           Forbid <foo> \
-              (deny, and deny all overrides)
+    -F <foo>           Forbid <foo> deny, and deny all overrides)
 
 ");
 
