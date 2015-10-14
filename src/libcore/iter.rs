@@ -188,16 +188,15 @@
 //!
 //! ```
 //! let values = vec![1, 2, 3, 4, 5];
+//!
 //! {
-//!     let result = match values.into_iter() {
-//!         mut iter => loop {
-//!             match iter.next() {
-//!                 Some(x) => { println!("{}", x); },
-//!                 None => break,
-//!             }
-//!         },
-//!     };
-//!     result
+//!     let mut iter = values.into_iter();
+//!     loop {
+//!         match iter.next() {
+//!             Some(x) => { println!("{}", x); },
+//!             None => break,
+//!         }
+//!     }
 //! }
 //! ```
 //!
@@ -209,7 +208,7 @@
 //! interesting implementation of [`IntoIterator`]:
 //!
 //! ```ignore
-//! impl<I> IntoIterator for I where I: Iterator
+//! impl<I: Iterator> IntoIterator for I
 //! ```
 //!
 //! In other words, all [`Iterator`]s implement [`IntoIterator`], by just
