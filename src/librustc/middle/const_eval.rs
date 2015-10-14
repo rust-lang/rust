@@ -262,7 +262,6 @@ pub enum ConstVal {
 /// == NaN` (at least if it's the same NaN; distinct encodings for NaN
 /// are considering unequal).
 impl PartialEq for ConstVal {
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn eq(&self, other: &ConstVal) -> bool {
         match (self, other) {
             (&Float(a), &Float(b)) => unsafe{transmute::<_,u64>(a) == transmute::<_,u64>(b)},
