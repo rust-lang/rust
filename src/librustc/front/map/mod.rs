@@ -528,6 +528,10 @@ impl<'ast> Map<'ast> {
             NodeTraitItem(ti) => PathName(ti.name),
             NodeVariant(v) => PathName(v.node.name),
             NodeLifetime(lt) => PathName(lt.name),
+            NodeTyParam(tp) => PathName(tp.name),
+            NodeLocal(&Pat { node: PatIdent(_,l,_), .. }) => {
+                PathName(l.node.name)
+            },
             _ => panic!("no path elem for {:?}", node)
         }
     }
@@ -988,4 +992,3 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
     }
 }
-
