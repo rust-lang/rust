@@ -2700,9 +2700,14 @@ impl Clean<Stability> for attr::Stability {
                 Some(attr::Deprecation {ref since, ..}) => since.to_string(),
                 _=> "".to_string(),
             },
-            reason: match self.level {
-                attr::Unstable {reason: Some(ref reason), ..} => reason.to_string(),
-                _ => "".to_string(),
+            reason: {
+                if let Some(ref depr) = self.depr {
+                    depr.reason.to_string()
+                } else if let attr::Unstable {reason: Some(ref reason), ..} = self.level {
+                    reason.to_string()
+                } else {
+                    "".to_string()
+                }
             },
             issue: match self.level {
                 attr::Unstable {issue, ..} => Some(issue),
