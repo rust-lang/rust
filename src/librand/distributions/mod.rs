@@ -319,7 +319,7 @@ mod tests {
             }}
         }
 
-        t!(vec!(vec!(Weighted { weight: 1, item: 10 }),
+        t!(vec!(Weighted { weight: 1, item: 10 }),
            [10]);
 
         // skip some
