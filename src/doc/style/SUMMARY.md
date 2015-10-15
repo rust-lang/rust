@@ -48,7 +48,3 @@
 * [Testing](testing/README.md)
     * [Unit testing](testing/unit.md)
 * [FFI, platform-specific code](platform.md)
-* [APIs for a changing Rust](changing/README.md)
-    * [Pre-1.0 changes](changing/pre-1-0.md)
-    * [Post-1.0 changes](changing/post-1-0.md)
-    * [Timing unclear](changing/unclear.md)
