@@ -170,7 +170,7 @@ impl ProcessTime {
   /// Panics if `earlier` is later than &self.
   /// Because ProcessTime is monotonic, the only time that `earlier` should be
   /// a later time is a bug in your code.
-  pub fn duration_from_earlier(&self, earlier: ProcessTime) -> ProcessTime;
+  pub fn duration_from_earlier(&self, earlier: ProcessTime) -> Duration;
 
   /// Panics if self is later than the current time (can happen if a ProcessTime
   /// is produced synthetically)
