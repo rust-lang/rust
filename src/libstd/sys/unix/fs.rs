@@ -27,6 +27,7 @@ use vec::Vec;
 
 pub struct File(FileDesc);
 
+#[derive(Clone)]
 pub struct FileAttr {
     stat: raw::stat,
 }

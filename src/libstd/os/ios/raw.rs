@@ -25,6 +25,7 @@ use os::unix::raw::{uid_t, gid_t};
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type time_t = c_long;
 
 #[repr(C)]
+#[derive(Clone)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
 pub struct stat {
     #[stable(feature = "raw_ext", since = "1.1.0")]
