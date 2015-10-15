@@ -12,6 +12,6 @@
 #![feature(placement_in_syntax)]
 
 fn main() {
-    in () { 0 };
+    () <- 0;
     //~^ ERROR: the trait `core::ops::Placer<_>` is not implemented
 }

@@ -14,6 +14,7 @@ use abi;
 use ast;
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast_util;
+use util::parser::AssocOp;
 use attr;
 use owned_slice::OwnedSlice;
 use attr::{AttrMetaMethods, AttributeMethods};
@@ -445,7 +446,8 @@ fn needs_parentheses(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprAssign(..) | ast::ExprBinary(..) |
         ast::ExprClosure(..) |
-        ast::ExprAssignOp(..) | ast::ExprCast(..) => true,
+        ast::ExprAssignOp(..) | ast::ExprCast(..) |
+        ast::ExprInPlace(..) => true,
         _ => false,
     }
 }
@@ -1776,8 +1778,8 @@ impl<'a> State<'a> {
                                       binop: ast::BinOp) -> bool {
         match sub_expr.node {
             ast::ExprBinary(ref sub_op, _, _) => {
-                if ast_util::operator_prec(sub_op.node) <
-                    ast_util::operator_prec(binop.node) {
+                if AssocOp::from_ast_binop(sub_op.node).precedence() <
+                    AssocOp::from_ast_binop(binop.node).precedence() {
                     true
                 } else {
                     false
@@ -1802,10 +1804,10 @@ impl<'a> State<'a> {
     fn print_expr_in_place(&mut self,
                            place: &ast::Expr,
                            expr: &ast::Expr) -> io::Result<()> {
-        try!(self.word_space("in"));
-        try!(self.print_expr(place));
+        try!(self.print_expr_maybe_paren(place));
         try!(space(&mut self.s));
-        self.print_expr(expr)
+        try!(self.word_space("<-"));
+        self.print_expr_maybe_paren(expr)
     }
 
     fn print_expr_vec(&mut self, exprs: &[P<ast::Expr>]) -> io::Result<()> {
