@@ -38,13 +38,31 @@ unsafe impl Zeroable for u64 {}
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
 pub struct NonZero<T: Zeroable>(T);
 
+#[cfg(stage0)]
+macro_rules! nonzero_new {
+    () => (
+        /// Creates an instance of NonZero with the provided value.
+        /// You must indeed ensure that the value is actually "non-zero".
+        #[inline(always)]
+        pub unsafe fn new(inner: T) -> NonZero<T> {
+            NonZero(inner)
+        }
+    )
+}
+#[cfg(not(stage0))]
+macro_rules! nonzero_new {
+    () => (
+        /// Creates an instance of NonZero with the provided value.
+        /// You must indeed ensure that the value is actually "non-zero".
+        #[inline(always)]
+        pub unsafe const fn new(inner: T) -> NonZero<T> {
+            NonZero(inner)
+        }
+    )
+}
+
 impl<T: Zeroable> NonZero<T> {
-    /// Creates an instance of NonZero with the provided value.
-    /// You must indeed ensure that the value is actually "non-zero".
-    #[inline(always)]
-    pub unsafe fn new(inner: T) -> NonZero<T> {
-        NonZero(inner)
-    }
+    nonzero_new!{}
 }
 
 impl<T: Zeroable> Deref for NonZero<T> {
