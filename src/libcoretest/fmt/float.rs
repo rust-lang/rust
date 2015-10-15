@@ -13,5 +13,7 @@ fn test_format_float() {
     assert!("1" == format!("{:.0}", 1.0f64));
     assert!("9" == format!("{:.0}", 9.4f64));
     assert!("10" == format!("{:.0}", 9.9f64));
-    assert!("9.9" == format!("{:.1}", 9.85f64));
+    assert!("9.8" == format!("{:.1}", 9.849f64));
+    assert!("9.9" == format!("{:.1}", 9.851f64));
+    assert!("1" == format!("{:.0}", 0.5f64));
 }
