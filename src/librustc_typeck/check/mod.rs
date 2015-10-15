@@ -2103,10 +2103,8 @@ pub enum UnresolvedTypeAction {
 /// `autoderef_with_recursion_option`. Default is `ErrorGracefully`
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AutoderefRecursionOption {
-    // return the last visited type
     /// Returns the last resolved type as it if were the valid end result
     ReturnLastResolvedType,
-    // report an error and return error type
     /// Error gracefully upon reaching the limit.. This is the default behaviour
     ErrorGracefully,
 }

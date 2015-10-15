@@ -215,7 +215,6 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             unsize: false
         });
         None::<()> // keep iterating until we can't anymore
-
     });
 
     match final_ty.sty {
