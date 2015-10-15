@@ -1,6 +1,6 @@
 //! Checks for usage of &Vec[_] and &String
 //!
-//! This lint is **allow** by default
+//! This lint is **warn** by default
 
 use rustc::lint::*;
 use rustc_front::hir::*;
@@ -11,7 +11,7 @@ use utils::{STRING_PATH, VEC_PATH};
 
 declare_lint! {
     pub PTR_ARG,
-    Allow,
+    Warn,
     "fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` \
      instead, respectively"
 }
