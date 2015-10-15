@@ -238,7 +238,7 @@ mod tests {
 
         b.iter(|| {
             let mut rd = &buf[..];
-            for _ in (0 .. 8) {
+            for _ in 0..8 {
                 let _ = rd.read(&mut dst);
                 test::black_box(&dst);
             }
@@ -252,7 +252,7 @@ mod tests {
 
         b.iter(|| {
             let mut wr = &mut buf[..];
-            for _ in (0 .. 8) {
+            for _ in 0..8 {
                 let _ = wr.write_all(&src);
                 test::black_box(&wr);
             }
@@ -266,7 +266,7 @@ mod tests {
 
         b.iter(|| {
             let mut rd = &buf[..];
-            for _ in (0 .. 8) {
+            for _ in 0..8 {
                 let _ = rd.read(&mut dst);
                 test::black_box(&dst);
             }
@@ -280,7 +280,7 @@ mod tests {
 
         b.iter(|| {
             let mut wr = &mut buf[..];
-            for _ in (0 .. 8) {
+            for _ in 0..8 {
                 let _ = wr.write_all(&src);
                 test::black_box(&wr);
             }

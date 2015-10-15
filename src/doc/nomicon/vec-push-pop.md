@@ -34,7 +34,7 @@ Easy! How about `pop`? Although this time the index we want to access is
 initialized, Rust won't just let us dereference the location of memory to move
 the value out, because that would leave the memory uninitialized! For this we
 need `ptr::read`, which just copies out the bits from the target address and
-intrprets it as a value of type T. This will leave the memory at this address
+interprets it as a value of type T. This will leave the memory at this address
 logically uninitialized, even though there is in fact a perfectly good instance
 of T there.
 

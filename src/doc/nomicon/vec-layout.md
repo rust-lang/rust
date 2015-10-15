@@ -93,7 +93,7 @@ pub struct Vec<T> {
 If you don't care about the null-pointer optimization, then you can use the
 stable code. However we will be designing the rest of the code around enabling
 the optimization. In particular, `Unique::new` is unsafe to call, because
-putting `null` inside of it is Undefined Behaviour. Our stable Unique doesn't
+putting `null` inside of it is Undefined Behavior. Our stable Unique doesn't
 need `new` to be unsafe because it doesn't make any interesting guarantees about
 its contents.
 

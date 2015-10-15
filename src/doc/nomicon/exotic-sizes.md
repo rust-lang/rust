@@ -20,7 +20,7 @@ information that "completes" them (more on this below).
 There are two major DSTs exposed by the language: trait objects, and slices.
 
 A trait object represents some type that implements the traits it specifies.
-The exact original type is *erased* in favour of runtime reflection
+The exact original type is *erased* in favor of runtime reflection
 with a vtable containing all the information necessary to use the type.
 This is the information that completes a trait object: a pointer to its vtable.
 
@@ -128,7 +128,7 @@ But neither of these tricks work today, so all Void types get you is
 the ability to be confident that certain situations are statically impossible.
 
 One final subtle detail about empty types is that raw pointers to them are
-actually valid to construct, but dereferencing them is Undefined Behaviour
+actually valid to construct, but dereferencing them is Undefined Behavior
 because that doesn't actually make sense. That is, you could model C's `void *`
 type with `*const Void`, but this doesn't necessarily gain anything over using
 e.g. `*const ()`, which *is* safe to randomly dereference.

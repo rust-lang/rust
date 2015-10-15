@@ -76,7 +76,7 @@ Cleanup through RAII-style destructors is more likely to work than in catch bloc
 
 ## Why aren't modules type-parametric?
 
-We want to maintain the option to parametrize at runtime. We may eventually change this limitation, but initially this is how type parameters were implemented.
+We want to maintain the option to parameterize at runtime. We may eventually change this limitation, but initially this is how type parameters were implemented.
 
 ## Why aren't values type-parametric? Why only items?
 

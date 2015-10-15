@@ -17,12 +17,12 @@ Organize module headers as follows:
 Avoid using `#[path="..."]` directives; make the file system and
 module hierarchy match, instead.
 
-### Use the module hirearchy to organize APIs into coherent sections. [FIXME]
+### Use the module hierarchy to organize APIs into coherent sections. [FIXME]
 
 > **[FIXME]** Flesh this out with examples; explain what a "coherent
 > section" is with examples.
 >
-> The module hirearchy defines both the public and internal API of your module.
+> The module hierarchy defines both the public and internal API of your module.
 > Breaking related functionality into submodules makes it understandable to both
 > users and contributors to the module.
 
@@ -82,7 +82,7 @@ io/mod.rs
 ```
 
 While it is possible to define all of `io` within a single directory,
-mirroring the module hirearchy in the directory structure makes
+mirroring the module hierarchy in the directory structure makes
 submodules of `io::net` easier to find.
 
 ### Consider top-level definitions or reexports. [FIXME: needs RFC]
@@ -104,13 +104,13 @@ while
 [`TcpStream`](https://doc.rust-lang.org/std/io/net/tcp/struct.TcpStream.html)
 is defined in `io/net/tcp.rs` and reexported in the `io` module.
 
-### Use internal module hirearchies for organization. [FIXME: needs RFC]
+### Use internal module hierarchies for organization. [FIXME: needs RFC]
 
 > **[FIXME]**
 > - Referencing internal modules from the standard library is subject to
 >   becoming outdated.
 
-Internal module hirearchies (i.e., private submodules) may be used to
+Internal module hierarchies (i.e., private submodules) may be used to
 hide implementation details that are not part of the module's API.
 
 For example, in [`std::io`](https://doc.rust-lang.org/std/io/), `mod mem`

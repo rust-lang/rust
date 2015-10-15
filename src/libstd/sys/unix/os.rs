@@ -343,7 +343,7 @@ pub fn args() -> Args {
         let args = objc_msgSend(info, arguments_sel);
 
         let cnt: usize = mem::transmute(objc_msgSend(args, count_sel));
-        for i in (0..cnt) {
+        for i in 0..cnt {
             let tmp = objc_msgSend(args, object_at_sel, i);
             let utf_c_str: *const libc::c_char =
                 mem::transmute(objc_msgSend(tmp, utf8_sel));
