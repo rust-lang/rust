@@ -33,6 +33,8 @@
 #![feature(set_stdio)]
 #![feature(staged_api)]
 #![feature(vec_push_all)]
+#![feature(custom_attribute)]
+#![allow(unused_attributes)]
 
 extern crate arena;
 extern crate flate;
