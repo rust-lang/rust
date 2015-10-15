@@ -1,7 +1,7 @@
 - Feature Name: drain-range
 - Start Date: 2015-08-14
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1257](https://github.com/rust-lang/rfcs/pull/1257)
+- Rust Issue: [rust-lang/rust#27711](https://github.com/rust-lang/rust/issues/27711)
 
 # Summary
 
@@ -106,7 +106,7 @@ The following will be heading towards stabilization after changes:
 
 - Use the name `.remove_range(a..b)` instead of `.drain(a..b)`. Since the method
   has two simultaneous roles, removing a range and yielding a range as an iterator,
-  either role could guide the name.  
+  either role could guide the name.
   This alternative name was not very popular with the rust developers I asked
   (but they are already used to what `drain` means in rust context).
 
