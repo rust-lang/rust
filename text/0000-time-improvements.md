@@ -6,8 +6,8 @@
 # Summary
 
 This RFC proposes several new types and associated APIs for working with times in Rust.
-The primary new types are `ProcessTime`, for working with monotonic time within a single
-process, and `SystemTime`, for working with times across processes on a single system
+The primary new types are `Instance`, for working with time that is guaranteed to be
+monotonic, and `SystemTime`, for working with times across processes on a single system
 (usually internally represented as a number of seconds since an epoch).
 
 # Motivations
@@ -41,10 +41,12 @@ We would like to be able to do some basic operations with these instants:
 However, there are a number of problems that arise when trying to define these
 types and operations.
 
-First of all, with the exception of instants created in the rutime of a single
-process, instants are not monotonic. A simple example of this is that if a
-program creates two files sequentially, it cannot assume that the creation time
-of the second file is later than the creation time of the first file.
+First of all, with the exception of moments in time created using system APIs that
+guarantee monotonicity (because they were created within a single process, or
+created during since the last boot), moments in time are not monotonic.
+A simple example of this is that if a program creates two files sequentially,
+it cannot assume that the creation time of the second file is later than the
+creation time of the first file.
 
 This is because NTP (the network time protocol) can arbitrarily change the
 system clock, and can even **rewind time**. This kind of time travel means that
@@ -57,8 +59,8 @@ unexpected consequences of this kind of "time travel".
 ---
 
 Leap seconds, which cannot be predicted, mean that it is impossible
-to reliably add a number of seconds to a particular instant represented as a
-human date and time ("1 million seconds from 2015-09-20 at midnight").
+to reliably add a number of seconds to a particular moment in time represented
+as a human date and time ("1 million seconds from 2015-09-20 at midnight").
 
 They also mean that seemingly simple concepts, like "1 minute", have caveats
 depending on exactly how they are used. Caveats related to leap seconds
@@ -107,7 +109,7 @@ the case in Rust's standard library). These APIs help the programmer discover
 the possibility of system clock time travel, and either handle the error explicitly,
 or at least avoid propagating the problem into other APIs (by using `unwrap`).
 
-It separates monotonic time (`ProcessTime`) from time derived from the system
+It separates monotonic time (`Instant`) from time derived from the system
 clock (`SystemTime`), which must account for the possibility of time travel.
 This allows methods related to monotonic time to be uncaveated, while working
 with the system clock has more methods that return `Result`s.
@@ -120,7 +122,7 @@ directly address time zones.
 ## Types
 
 ```rs
-pub struct ProcessTime {
+pub struct Instant {
   secs: u64,
   nanos: u32
 }
@@ -136,27 +138,27 @@ pub struct Duration {
 }
 ```
 
-### ProcessTime
+### Instant
 
-`ProcessTime` is the simplest of the instant types. It represents an opaque
-(non-serializable!) timestamp that is guaranteed to be monotonic throughout
-the timeframe of the process it was created in.
+`Instant` is the simplest of the types representing moments in time. It
+represents an opaque (non-serializable!) timestamp that is guaranteed to
+be monotonic when compared to another `Instant`.
 
 > In this context, monotonic means that a timestamp created later in real-world
 > time will always be larger than a timestamp created earlier in real-world
 > time.
 
-The `Duration` type can be used in conjunction with `ProcessTime`, and these
+The `Duration` type can be used in conjunction with `Instant`, and these
 operations have none of the usual time-related caveats.
 
-* Add a `Duration` to a `ProcessTime`, producing a new `ProcessTime`
-* compare two `ProcessTime`s to each other
-* subtract a `ProcessTime` from a later `ProcessTime`, producing a `Duration`
-* ask for an amount of time elapsed since a `ProcessTime`, producing a `Duration`
+* Add a `Duration` to a `Instant`, producing a new `Instant`
+* compare two `Instant`s to each other
+* subtract a `Instant` from a later `Instant`, producing a `Duration`
+* ask for an amount of time elapsed since a `Instant`, producing a `Duration`
 
-Asking for an amount of time elapsed from a given `ProcessTime` is a very common
+Asking for an amount of time elapsed from a given `Instant` is a very common
 operation that is guaranteed to produce a positive `Duration`. Asking for the
-difference between an earlier and a later `ProcessTime` also produces a positive
+difference between an earlier and a later `Instant` also produces a positive
 `Duration` when used correctly.
 
 This design does not assume that negative `Duration`s are never useful, but
@@ -166,29 +168,29 @@ to produce an `Err` (or `panic!`) when receiving a negative value, this design
 optimizes for the broadly useful positive `Duration`.
 
 ```rs
-impl ProcessTime {
+impl Instant {
   /// Panics if `earlier` is later than &self.
-  /// Because ProcessTime is monotonic, the only time that `earlier` should be
+  /// Because Instant is monotonic, the only time that `earlier` should be
   /// a later time is a bug in your code.
-  pub fn duration_from_earlier(&self, earlier: ProcessTime) -> Duration;
+  pub fn duration_from_earlier(&self, earlier: Instant) -> Duration;
 
-  /// Panics if self is later than the current time (can happen if a ProcessTime
+  /// Panics if self is later than the current time (can happen if a Instant
   /// is produced synthetically)
   pub fn elapsed(&self) -> Duration;
 }
 
-impl Add<Duration> for ProcessTime {
+impl Add<Duration> for Instant {
   type Output = SystemTime;
 }
 
-impl Sub<Duration> for ProcessTime {
-  type Output = ProcessTime;
+impl Sub<Duration> for Instant {
+  type Output = Instant;
 }
 
-impl PartialEq for ProcessTime;
-impl Eq for ProcessTime;
-impl PartialOrd for ProcessTime;
-impl Ord for ProcessTime;
+impl PartialEq for Instant;
+impl Eq for Instant;
+impl PartialOrd for Instant;
+impl Ord for Instant;
 ```
 
 For convenience, several new constructors are added to `Duration`. Because any
@@ -265,7 +267,7 @@ impl PartialOrd for SystemTime;
 impl Ord for SystemTime;
 ```
 
-The main difference from the design of `ProcessTime` is that it is impossible to
+The main difference from the design of `Instant` is that it is impossible to
 know for sure that a `SystemTime` is in the past, even if the operation that
 produced it happened in the past (in real time).
 
@@ -300,7 +302,7 @@ working with times that can move both forward and backward.
 # Alternatives
 
 One alternative design would be to attempt to have a single unified time
-type. The rationale for now doing so is explained under Drawbacks.
+type. The rationale for not doing so is explained under Drawbacks.
 
 Another possible alternative is to allow free math between instants,
 rather than providing operations for comparing later instants to earlier
@@ -318,7 +320,7 @@ This RFC attempts to catch mistakes related to negative `Duration`s at
 the point where they are produced, rather than requiring all APIs that
 **take** a `Duration` to guard against negative values.
 
-Because `Ord` is implemented on `SystemTime` and `ProcessTime`, it is
+Because `Ord` is implemented on `SystemTime` and `Instant`, it is
 possible to compare two arbitrary times to each other first, and then
 use `duration_from_earlier` reliably to get a positive `Duration`.
 
