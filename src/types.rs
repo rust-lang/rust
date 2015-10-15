@@ -285,9 +285,9 @@ impl LateLintPass for TypeComplexityPass {
 
     fn check_variant(&mut self, cx: &LateContext, var: &Variant, _: &Generics) {
         // StructVariant is covered by check_struct_field
-        if let TupleVariantKind(ref args) = var.node.kind {
+        if let VariantData::Tuple(ref args, _) = *var.node.data {
             for arg in args {
-                check_type(cx, &arg.ty);
+                check_type(cx, &arg.node.ty);
             }
         }
     }
