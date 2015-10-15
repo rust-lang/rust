@@ -2602,53 +2602,50 @@ impl<'a> Parser<'a> {
     pub fn parse_prefix_expr(&mut self) -> PResult<P<Expr>> {
         let lo = self.span.lo;
         let hi;
-
         // Note: when adding new unary operators, don't forget to adjust Token::can_begin_expr()
-        let ex;
-        match self.token {
-          token::Not => {
-            try!(self.bump());
-            let e = try!(self.parse_prefix_expr());
-            hi = e.span.hi;
-            ex = self.mk_unary(UnNot, e);
-          }
-          token::BinOp(token::Minus) => {
-            try!(self.bump());
-            let e = try!(self.parse_prefix_expr());
-            hi = e.span.hi;
-            ex = self.mk_unary(UnNeg, e);
-          }
-          token::BinOp(token::Star) => {
-            try!(self.bump());
-            let e = try!(self.parse_prefix_expr());
-            hi = e.span.hi;
-            ex = self.mk_unary(UnDeref, e);
-          }
-          token::BinOp(token::And) | token::AndAnd => {
-            try!(self.expect_and());
-            let m = try!(self.parse_mutability());
-            let e = try!(self.parse_prefix_expr());
-            hi = e.span.hi;
-            ex = ExprAddrOf(m, e);
-          }
-          token::Ident(..) if self.token.is_keyword(keywords::In) => {
-              try!(self.bump());
-              let place = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
-              let blk = try!(self.parse_block());
-              let span = blk.span;
-              hi = span.hi;
-              let blk_expr = self.mk_expr(span.lo, span.hi, ExprBlock(blk));
-              self.span_warn(span, "in PLACE BLOCK syntax is deprecated and will be removed soon");
-              ex = ExprInPlace(place, blk_expr);
-          }
-          token::Ident(..) if self.token.is_keyword(keywords::Box) => {
-              try!(self.bump());
-              let subexpression = try!(self.parse_prefix_expr());
-              hi = subexpression.span.hi;
-              ex = ExprBox(subexpression);
-          }
-          _ => return self.parse_dot_or_call_expr()
-        }
+        let ex = match self.token {
+            token::Not => {
+                try!(self.bump());
+                let e = try!(self.parse_prefix_expr());
+                hi = e.span.hi;
+                self.mk_unary(UnNot, e)
+            }
+            token::BinOp(token::Minus) => {
+                try!(self.bump());
+                let e = try!(self.parse_prefix_expr());
+                hi = e.span.hi;
+                self.mk_unary(UnNeg, e)
+            }
+            token::BinOp(token::Star) => {
+                try!(self.bump());
+                let e = try!(self.parse_prefix_expr());
+                hi = e.span.hi;
+                self.mk_unary(UnDeref, e)
+            }
+            token::BinOp(token::And) | token::AndAnd => {
+                try!(self.expect_and());
+                let m = try!(self.parse_mutability());
+                let e = try!(self.parse_prefix_expr());
+                hi = e.span.hi;
+                ExprAddrOf(m, e)
+            }
+            token::Ident(..) if self.token.is_keyword(keywords::In) => {
+                try!(self.bump());
+                let place = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
+                let blk = try!(self.parse_block());
+                let span = blk.span;
+                hi = span.hi;
+                let blk_expr = self.mk_expr(span.lo, span.hi, ExprBlock(blk));
+                ExprInPlace(place, blk_expr)
+            }
+            token::Ident(..) if self.token.is_keyword(keywords::Box) => {
+                try!(self.bump());
+                let subexpression = try!(self.parse_prefix_expr());
+                hi = subexpression.span.hi;
+                ExprBox(subexpression)
+            }
+            _ => return self.parse_dot_or_call_expr()
+        };
         return Ok(self.mk_expr(lo, hi, ex));
     }
 
@@ -2657,35 +2654,15 @@ impl<'a> Parser<'a> {
     /// This parses an expression accounting for associativity and precedence of the operators in
     /// the expression.
     pub fn parse_assoc_expr(&mut self) -> PResult<P<Expr>> {
-        if self.token == token::DotDot {
-            // prefix-form of range notation `..expr` and `..`
-            // This has the precedence just higher than assignment expressions (much lower than
-            // other prefix expressions) to be consistent with the postfix-form `expr..`
-            // If it isn’t clear yet, this is a hack of the worst kind (one that also probably
-            // can’t be fixed anymore because stability guarantees).
-            let lo = self.span.lo;
-            let mut hi = self.span.hi;
-            try!(self.bump());
-            let opt_end = if self.is_at_start_of_range_notation_rhs() {
-                // RHS must be parsed with more associativity than DotDot.
-                let next_prec = AssocOp::from_token(&token::DotDot).unwrap().precedence() + 1;
-                let end = try!(self.parse_assoc_expr_with(next_prec, None));
-                hi = end.span.hi;
-                Some(end)
-            } else {
-                None
-            };
-            let r = self.mk_range(None, opt_end);
-            Ok(self.mk_expr(lo, hi, r))
-        } else {
-            self.parse_assoc_expr_with(0, None)
-        }
+        self.parse_assoc_expr_with(0, None)
     }
 
     /// Parse an associative expression with operators of at least `min_prec` precedence
     pub fn parse_assoc_expr_with(&mut self, min_prec: usize, lhs: Option<P<Expr>>) -> PResult<P<Expr>> {
         let mut lhs = if lhs.is_some() {
             lhs.unwrap()
+        } else if self.token == token::DotDot {
+            return self.parse_prefix_range_expr();
         } else {
             try!(self.parse_prefix_expr())
         };
@@ -2710,13 +2687,10 @@ impl<'a> Parser<'a> {
                 continue
             } else if op == AssocOp::DotDot {
                     // If we didn’t have to handle `x..`, it would be pretty easy to generalise
-                    // here by simply doing something along the lines of
-                    //
-                    //     break_from_this_loop_after_setting_lhs = true;
-                    //     rhs = self.parse_assoc_expr_with(op.precedence() + 1, None);
+                    // it to the Fixity::None code.
                     //
                     // We have 2 alternatives here: `x..y` and `x..` The other two variants are
-                    // handled in `parse_assoc_expr`
+                    // handled with `parse_prefix_range_expr` call above.
                     let rhs = if self.is_at_start_of_range_notation_rhs() {
                         self.parse_assoc_expr_with(op.precedence() + 1, None).ok()
                     } else {
@@ -2798,6 +2772,26 @@ impl<'a> Parser<'a> {
             }
             _ => {}
         }
+    }
+
+    /// Parse prefix-forms of range notation: `..expr` and `..`
+    fn parse_prefix_range_expr(&mut self) -> PResult<P<Expr>> {
+        debug_assert!(self.token == token::DotDot);
+        let lo = self.span.lo;
+        let mut hi = self.span.hi;
+        try!(self.bump());
+        let opt_end = if self.is_at_start_of_range_notation_rhs() {
+            // RHS must be parsed with more associativity than DotDot.
+            let next_prec = AssocOp::from_token(&token::DotDot).unwrap().precedence() + 1;
+            Some(try!(self.parse_assoc_expr_with(next_prec, None).map(|x|{
+                hi = x.span.hi;
+                x
+            })))
+         } else {
+            None
+        };
+        let r = self.mk_range(None, opt_end);
+        Ok(self.mk_expr(lo, hi, r))
     }
 
     fn is_at_start_of_range_notation_rhs(&self) -> bool {
