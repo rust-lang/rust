@@ -75,7 +75,7 @@ impl IntoInner<imp::Process> for Child {
     fn into_inner(self) -> imp::Process { self.handle }
 }
 
-/// A handle to a child procesess's stdin
+/// A handle to a child process's stdin
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdin {
     inner: AnonPipe
