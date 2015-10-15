@@ -65,7 +65,7 @@ loop as long as a value matches a certain pattern. It turns code like this:
 loop {
     match option {
         Some(x) => println!("{}", x),
-        _ => break,
+        None => break,
     }
 }
 ```
