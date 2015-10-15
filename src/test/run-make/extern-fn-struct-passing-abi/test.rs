@@ -50,6 +50,8 @@ struct Huge {
 extern {
     fn byval_rect(a: i32, b: i32, c: i32, d: i32, e: i32, s: Rect);
 
+    fn byval_many_rect(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, s: Rect);
+
     fn byval_rect_floats(a: f32, b: f32, c: f64, d: f32, e: f32,
                          f: f32, g: f64, s: Rect, t: FloatRect);
 
@@ -80,6 +82,7 @@ fn main() {
 
     unsafe {
         byval_rect(1, 2, 3, 4, 5, s);
+        byval_many_rect(1, 2, 3, 4, 5, 6, s);
         byval_rect_floats(1., 2., 3., 4., 5., 6., 7., s, u);
         byval_rect_with_float(1, 2, 3.0, 4, 5, 6, s);
         split_rect(1, 2, s);
