@@ -225,7 +225,7 @@ fn main() {
     offset_momentum(&mut bodies);
     println!("{:.9}", energy(&bodies));
 
-    for _ in (0..n) {
+    for _ in 0..n {
         advance(&mut bodies, 0.01, &mut diff, &mut mag);
     }
 
