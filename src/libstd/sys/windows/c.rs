@@ -182,6 +182,7 @@ pub struct CONSOLE_SCREEN_BUFFER_INFO {
 pub type PCONSOLE_SCREEN_BUFFER_INFO = *mut CONSOLE_SCREEN_BUFFER_INFO;
 
 #[repr(C)]
+#[derive(Clone)]
 pub struct WIN32_FILE_ATTRIBUTE_DATA {
     pub dwFileAttributes: libc::DWORD,
     pub ftCreationTime: libc::FILETIME,
