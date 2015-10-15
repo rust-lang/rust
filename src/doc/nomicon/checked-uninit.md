@@ -64,7 +64,7 @@ fn main() {
         println!("{}", x);
     }
     // Don't care that there are branches where it's not initialized
-    // since we don't use the value in those branches
+    // since we don't use the value in those branches.
 }
 ```
 
@@ -98,8 +98,8 @@ uninitialized if the type of the value isn't Copy. That is:
 fn main() {
     let x = 0;
     let y = Box::new(0);
-    let z1 = x; // x is still valid because i32 is Copy
-    let z2 = y; // y is now logically uninitialized because Box isn't Copy
+    let z1 = x; // x is still valid because i32 is Copy.
+    let z2 = y; // y is now logically uninitialized because Box isn't Copy.
 }
 ```
 
@@ -109,8 +109,8 @@ mutable, as a Safe Rust program could observe that the value of `y` changed:
 ```rust
 fn main() {
     let mut y = Box::new(0);
-    let z = y; // y is now logically uninitialized because Box isn't Copy
-    y = Box::new(1); // reinitialize y
+    let z = y; // y is now logically uninitialized because Box isn't Copy.
+    y = Box::new(1); // Reinitialize y.
 }
 ```
 

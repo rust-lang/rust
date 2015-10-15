@@ -33,7 +33,7 @@ struct RawValIter<T> {
 }
 
 impl<T> RawValIter<T> {
-    // unsafe to construct because it has no associated lifetimes.
+    // Unsafe to construct because it has no associated lifetimes.
     // This is necessary to store a RawValIter in the same struct as
     // its actual allocation. OK since it's a private implementation
     // detail.
@@ -59,7 +59,7 @@ And IntoIter becomes the following:
 
 ```rust,ignore
 pub struct IntoIter<T> {
-    _buf: RawVec<T>, // we don't actually care about this. Just need it to live.
+    _buf: RawVec<T>, // We don't actually care about this, just need it to live.
     iter: RawValIter<T>,
 }
 
@@ -132,7 +132,7 @@ impl<T> Vec<T> {
         unsafe {
             let iter = RawValIter::new(&self);
 
-            // this is a mem::forget safety thing. If Drain is forgotten, we just
+            // This is a mem::forget safety thing. If Drain is forgotten, we just
             // leak the whole Vec's contents. Also we need to do this *eventually*
             // anyway, so why not do it now?
             self.len = 0;

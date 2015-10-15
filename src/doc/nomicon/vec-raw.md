@@ -22,7 +22,7 @@ impl<T> RawVec<T> {
         }
     }
 
-    // unchanged from Vec
+    // Unchanged from Vec.
     fn grow(&mut self) {
         unsafe {
             let align = mem::align_of::<T>();
@@ -40,7 +40,7 @@ impl<T> RawVec<T> {
                 (new_cap, ptr)
             };
 
-            // If allocate or reallocate fail, we'll get `null` back
+            // If allocate or reallocate fail, we'll get `null` back.
             if ptr.is_null() { oom() }
 
             self.ptr = Unique::new(ptr as *mut _);
@@ -84,13 +84,13 @@ impl<T> Vec<T> {
     // push/pop/insert/remove largely unchanged:
     // * `self.ptr -> self.ptr()`
     // * `self.cap -> self.cap()`
-    // * `self.grow -> self.buf.grow()`
+    // * `self.grow() -> self.buf.grow()`
 }
 
 impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
         while let Some(_) = self.pop() {}
-        // deallocation is handled by RawVec
+        // Deallocation is handled by RawVec.
     }
 }
 ```
@@ -99,7 +99,7 @@ And finally we can really simplify IntoIter:
 
 ```rust,ignore
 struct IntoIter<T> {
-    _buf: RawVec<T>, // we don't actually care about this. Just need it to live.
+    _buf: RawVec<T>, // We don't actually care about thi, just need it to live.
     start: *const T,
     end: *const T,
 }
@@ -108,7 +108,7 @@ struct IntoIter<T> {
 
 impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
-        // only need to ensure all our elements are read;
+        // Only need to ensure all of our elements are read;
         // buffer will clean itself up afterwards.
         for _ in &mut *self {}
     }
@@ -117,7 +117,7 @@ impl<T> Drop for IntoIter<T> {
 impl<T> Vec<T> {
     pub fn into_iter(self) -> IntoIter<T> {
         unsafe {
-            // need to use ptr::read to unsafely move the buf out since it's
+            // Need to use ptr::read to unsafely move the buf out since it's
             // not Copy, and Vec implements Drop (so we can't destructure it).
             let buf = ptr::read(&self.buf);
             let len = self.len;

@@ -75,14 +75,14 @@ Now consider the following:
 let mut vec = vec![Box::new(0); 4];
 
 {
-    // start draining, vec can no longer be accessed
+    // Start draining, vec can no longer be accessed.
     let mut drainer = vec.drain(..);
 
-    // pull out two elements and immediately drop them
+    // Pull out two elements and immediately drop them.
     drainer.next();
     drainer.next();
 
-    // get rid of drainer, but don't call its destructor
+    // Get rid of drainer, but don't call its destructor.
     mem::forget(drainer);
 }
 
@@ -157,7 +157,7 @@ impl<T> Drop for Rc<T> {
         unsafe {
             (*self.ptr).ref_count -= 1;
             if (*self.ptr).ref_count == 0 {
-                // drop the data and then free it
+                // Drop the data and then free it.
                 ptr::read(self.ptr);
                 heap::deallocate(self.ptr);
             }
@@ -218,7 +218,7 @@ let mut data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let guard = thread::scoped(move || {
             *x *= 2;
         });
-        // store the thread's guard for later
+        // Store the thread's guard for later.
         guards.push(guard);
     }
     // All guards are dropped here, forcing the threads to join
@@ -226,7 +226,7 @@ let mut data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     // Once the threads join, the borrow expires and the data becomes
     // accessible again in this thread.
 }
-// data is definitely mutated here.
+// Data is definitely mutated here.
 ```
 
 In principle, this totally works! Rust's ownership system perfectly ensures it!

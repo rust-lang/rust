@@ -24,7 +24,7 @@ impl<T> RawVec<T> {
             // !0 is usize::MAX. This branch should be stripped at compile time.
             let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
 
-            // heap::EMPTY doubles as "unallocated" and "zero-sized allocation"
+            // heap::EMPTY doubles as "unallocated" and "zero-sized allocation".
             RawVec { ptr: Unique::new(heap::EMPTY as *mut T), cap: cap }
         }
     }
@@ -33,7 +33,7 @@ impl<T> RawVec<T> {
         unsafe {
             let elem_size = mem::size_of::<T>();
 
-            // since we set the capacity to usize::MAX when elem_size is
+            // Since we set the capacity to usize::MAX when elem_size is
             // 0, getting to here necessarily means the Vec is overfull.
             assert!(elem_size != 0, "capacity overflow");
 
@@ -51,7 +51,7 @@ impl<T> RawVec<T> {
                 (new_cap, ptr)
             };
 
-            // If allocate or reallocate fail, we'll get `null` back
+            // If allocate or reallocate fail, we'll get `null` back.
             if ptr.is_null() { oom() }
 
             self.ptr = Unique::new(ptr as *mut _);
@@ -157,7 +157,7 @@ impl<T> Vec<T> {
         unsafe {
             let iter = RawValIter::new(&self);
 
-            // this is a mem::forget safety thing. If Drain is forgotten, we just
+            // This is a mem::forget safety thing. If Drain is forgotten, we just
             // leak the whole Vec's contents. Also we need to do this *eventually*
             // anyway, so why not do it now?
             self.len = 0;
@@ -173,7 +173,7 @@ impl<T> Vec<T> {
 impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
         while let Some(_) = self.pop() {}
-        // allocation is handled by RawVec
+        // Allocation is handled by RawVec.
     }
 }
 
@@ -257,7 +257,7 @@ impl<T> DoubleEndedIterator for RawValIter<T> {
 
 
 pub struct IntoIter<T> {
-    _buf: RawVec<T>, // we don't actually care about this. Just need it to live.
+    _buf: RawVec<T>, // We don't actually care about this, just need it to live.
     iter: RawValIter<T>,
 }
 
@@ -297,14 +297,14 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
 
 impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
-        // pre-drain the iter
+        // Pre-drain the iter.
         for _ in &mut self.iter {}
     }
 }
 
 /// Abort the process, we're out of memory!
 ///
-/// In practice this is probably dead code on most OSes
+/// In practice this is probably dead code on most OSes.
 fn oom() {
     ::std::process::exit(-9999);
 }

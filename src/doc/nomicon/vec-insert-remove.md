@@ -21,7 +21,7 @@ pub fn insert(&mut self, index: usize, elem: T) {
 
     unsafe {
         if index < self.len {
-            // ptr::copy(src, dest, len): "copy from source to dest len elems"
+            // ptr::copy(src, dest, len): "copy from source to dest len elems".
             ptr::copy(self.ptr.offset(index as isize),
                       self.ptr.offset(index as isize + 1),
                       len - index);
@@ -37,7 +37,7 @@ Remove behaves in the opposite manner. We need to shift all the elements from
 
 ```rust,ignore
 pub fn remove(&mut self, index: usize) -> T {
-    // Note: `<` because it's *not* valid to remove after everything
+    // Note: `<` because it's *not* valid to remove after everything.
     assert!(index < self.len, "index out of bounds");
     unsafe {
         self.len -= 1;

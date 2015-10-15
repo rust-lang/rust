@@ -39,7 +39,7 @@ impl<T> RawVec<T> {
             // !0 is usize::MAX. This branch should be stripped at compile time.
             let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
 
-            // heap::EMPTY doubles as "unallocated" and "zero-sized allocation"
+            // heap::EMPTY doubles as "unallocated" and "zero-sized allocation".
             RawVec { ptr: Unique::new(heap::EMPTY as *mut T), cap: cap }
         }
     }
@@ -48,7 +48,7 @@ impl<T> RawVec<T> {
         unsafe {
             let elem_size = mem::size_of::<T>();
 
-            // since we set the capacity to usize::MAX when elem_size is
+            // Since we set the capacity to usize::MAX when elem_size is
             // 0, getting to here necessarily means the Vec is overfull.
             assert!(elem_size != 0, "capacity overflow");
 
@@ -66,7 +66,7 @@ impl<T> RawVec<T> {
                 (new_cap, ptr)
             };
 
-            // If allocate or reallocate fail, we'll get `null` back
+            // If allocate or reallocate fail, we'll get `null` back.
             if ptr.is_null() { oom() }
 
             self.ptr = Unique::new(ptr as *mut _);
@@ -79,7 +79,7 @@ impl<T> Drop for RawVec<T> {
     fn drop(&mut self) {
         let elem_size = mem::size_of::<T>();
 
-        // don't free zero-sized allocations, as they were never allocated.
+        // Don't free zero-sized allocations, as they were never allocated.
         if self.cap != 0 && elem_size != 0 {
             let align = mem::align_of::<T>();
 

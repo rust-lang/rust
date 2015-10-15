@@ -42,10 +42,10 @@ likely desugar to the following:
 'a: {
     let x: i32 = 0;
     'b: {
-        // lifetime used is 'b because that's good enough.
+        // Lifetime used is 'b because that's good enough.
         let y: &'b i32 = &'b x;
         'c: {
-            // ditto on 'c
+            // Ditto on 'c.
             let z: &'c &'b i32 = &'c y;
         }
     }
@@ -181,7 +181,7 @@ println!("{}", x);
     let mut data: Vec<i32> = vec![1, 2, 3];
     'b: {
         // 'b is as big as we need this borrow to be
-        // (just need to get to `println!`)
+        // (just need to get to `println!`).
         let x: &'b i32 = Index::index::<'b>(&'b data, 0);
         'c: {
             // Temporary scope because we don't need the

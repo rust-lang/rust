@@ -40,7 +40,7 @@ let data = vec![1, 2, 3, 4];
 let idx = Arc::new(AtomicUsize::new(0));
 let other_idx = idx.clone();
 
-// `move` captures other_idx by-value, moving it into this thread
+// `move` captures other_idx by-value, moving it into this thread.
 thread::spawn(move || {
     // It's ok to mutate idx because this value
     // is an atomic, so it can't cause a Data Race.
@@ -68,7 +68,7 @@ let data = vec![1, 2, 3, 4];
 let idx = Arc::new(AtomicUsize::new(0));
 let other_idx = idx.clone();
 
-// `move` captures other_idx by-value, moving it into this thread
+// `move` captures other_idx by-value, moving it into this thread.
 thread::spawn(move || {
     // It's ok to mutate idx because this value
     // is an atomic, so it can't cause a Data Race.

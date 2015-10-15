@@ -43,10 +43,10 @@ of 32-bits. It will potentially become:
 ```rust
 struct A {
     a: u8,
-    _pad1: [u8; 3], // to align `b`
+    _pad1: [u8; 3], // To align `b`.
     b: u32,
     c: u16,
-    _pad2: [u8; 2], // to make overall size multiple of 4
+    _pad2: [u8; 2], // To make overall size multiple of 4.
 }
 ```
 
@@ -127,7 +127,7 @@ would be laid out as:
 
 ```rust
 struct FooRepr {
-    data: u64, // this is either a u64, u32, or u8 based on `tag`
+    data: u64, // This is either a u64, u32, or u8 based on `tag`.
     tag: u8,   // 0 = A, 1 = B, 2 = C
 }
 ```

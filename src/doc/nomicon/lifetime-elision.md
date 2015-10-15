@@ -39,26 +39,26 @@ Elision rules are as follows:
 Examples:
 
 ```rust,ignore
-fn print(s: &str);                                      // elided
-fn print<'a>(s: &'a str);                               // expanded
+fn print(s: &str);                                      // Elided.
+fn print<'a>(s: &'a str);                               // Expanded.
 
-fn debug(lvl: uint, s: &str);                           // elided
-fn debug<'a>(lvl: uint, s: &'a str);                    // expanded
+fn debug(lvl: uint, s: &str);                           // Elided.
+fn debug<'a>(lvl: uint, s: &'a str);                    // Expanded.
 
-fn substr(s: &str, until: uint) -> &str;                // elided
-fn substr<'a>(s: &'a str, until: uint) -> &'a str;      // expanded
+fn substr(s: &str, until: uint) -> &str;                // Elided.
+fn substr<'a>(s: &'a str, until: uint) -> &'a str;      // Expanded.
 
-fn get_str() -> &str;                                   // ILLEGAL
+fn get_str() -> &str;                                   // ILLEGAL.
 
-fn frob(s: &str, t: &str) -> &str;                      // ILLEGAL
+fn frob(s: &str, t: &str) -> &str;                      // ILLEGAL.
 
-fn get_mut(&mut self) -> &mut T;                        // elided
-fn get_mut<'a>(&'a mut self) -> &'a mut T;              // expanded
+fn get_mut(&mut self) -> &mut T;                        // Elided.
+fn get_mut<'a>(&'a mut self) -> &'a mut T;              // Expanded.
 
-fn args<T:ToCStr>(&mut self, args: &[T]) -> &mut Command                  // elided
-fn args<'a, 'b, T:ToCStr>(&'a mut self, args: &'b [T]) -> &'a mut Command // expanded
+fn args<T:ToCStr>(&mut self, args: &[T]) -> &mut Command                  // Elided.
+fn args<'a, 'b, T:ToCStr>(&'a mut self, args: &'b [T]) -> &'a mut Command // Expanded.
 
-fn new(buf: &mut [u8]) -> BufWriter;                    // elided
-fn new<'a>(buf: &'a mut [u8]) -> BufWriter<'a>          // expanded
+fn new(buf: &mut [u8]) -> BufWriter;                    // Elided.
+fn new<'a>(buf: &'a mut [u8]) -> BufWriter<'a>          // Expanded.
 
 ```
