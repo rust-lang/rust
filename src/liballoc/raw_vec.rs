@@ -114,7 +114,7 @@ impl<T> RawVec<T> {
 
     /// Reconstitutes a RawVec from a pointer and capacity.
     ///
-    /// # Undefined Behaviour
+    /// # Undefined Behavior
     ///
     /// The ptr must be allocated, and with the given capacity. The
     /// capacity cannot exceed `isize::MAX` (only a concern on 32-bit systems).
@@ -248,7 +248,7 @@ impl<T> RawVec<T> {
     ///
     /// If `used_cap` exceeds `self.cap()`, this may fail to actually allocate
     /// the requested space. This is not really unsafe, but the unsafe
-    /// code *you* write that relies on the behaviour of this function may break.
+    /// code *you* write that relies on the behavior of this function may break.
     ///
     /// # Panics
     ///
@@ -302,12 +302,12 @@ impl<T> RawVec<T> {
     /// Ensures that the buffer contains at least enough space to hold
     /// `used_cap + needed_extra_cap` elements. If it doesn't already have
     /// enough capacity, will reallocate enough space plus comfortable slack
-    /// space to get amortized `O(1)` behaviour. Will limit this behaviour
+    /// space to get amortized `O(1)` behavior. Will limit this behavior
     /// if it would needlessly cause itself to panic.
     ///
     /// If `used_cap` exceeds `self.cap()`, this may fail to actually allocate
     /// the requested space. This is not really unsafe, but the unsafe
-    /// code *you* write that relies on the behaviour of this function may break.
+    /// code *you* write that relies on the behavior of this function may break.
     ///
     /// This is ideal for implementing a bulk-push operation like `extend`.
     ///
@@ -430,7 +430,7 @@ impl<T> RawVec<T> {
 
     /// Converts the entire buffer into `Box<[T]>`.
     ///
-    /// While it is not *strictly* Undefined Behaviour to call
+    /// While it is not *strictly* Undefined Behavior to call
     /// this procedure while some of the RawVec is unintialized,
     /// it cetainly makes it trivial to trigger it.
     ///

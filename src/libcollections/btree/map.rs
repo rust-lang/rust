@@ -949,7 +949,7 @@ impl<'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for BTreeMap<K, V>
     }
 }
 
-/// Genericises over how to get the correct type of iterator from the correct type
+/// Genericizes over how to get the correct type of iterator from the correct type
 /// of Node ownership.
 trait Traverse<N> {
     fn traverse(node: N) -> Self;

@@ -1,6 +1,6 @@
 % Handling Zero-Sized Types
 
-It's time. We're going to fight the spectre that is zero-sized types. Safe Rust
+It's time. We're going to fight the specter that is zero-sized types. Safe Rust
 *never* needs to care about this, but Vec is very intensive on raw pointers and
 raw allocations, which are exactly the two things that care about
 zero-sized types. We need to be careful of two things:

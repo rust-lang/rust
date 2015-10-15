@@ -419,10 +419,13 @@ The two values of the boolean type are written `true` and `false`.
 ### Symbols
 
 Symbols are a general class of printable [tokens](#tokens) that play structural
-roles in a variety of grammar productions. They are cataloged here for
-completeness as the set of remaining miscellaneous printable tokens that do not
+roles in a variety of grammar productions. They are a
+set of remaining miscellaneous printable tokens that do not
 otherwise appear as [unary operators](#unary-operator-expressions), [binary
 operators](#binary-operator-expressions), or [keywords][keywords].
+They are catalogued in [the Symbols section][symbols] of the Grammar document.
+
+[symbols]: grammar.html#symbols
 
 
 ## Paths
@@ -1073,7 +1076,7 @@ let p: Point = (41, 68);
 
 ### Structs
 
-A _structure_ is a nominal [structure type](#structure-types) defined with the
+A _struct_ is a nominal [struct type](#struct-types) defined with the
 keyword `struct`.
 
 An example of a `struct` item and its use:
@@ -1084,7 +1087,7 @@ let p = Point {x: 10, y: 11};
 let px: i32 = p.x;
 ```
 
-A _tuple structure_ is a nominal [tuple type](#tuple-types), also defined with
+A _tuple struct_ is a nominal [tuple type](#tuple-types), also defined with
 the keyword `struct`. For example:
 
 ```
@@ -1093,8 +1096,8 @@ let p = Point(10, 11);
 let px: i32 = match p { Point(x, _) => x };
 ```
 
-A _unit-like struct_ is a structure without any fields, defined by leaving off
-the list of fields entirely. Such a structure implicitly defines a constant of
+A _unit-like struct_ is a struct without any fields, defined by leaving off
+the list of fields entirely. Such a struct implicitly defines a constant of
 its type with the same name. For example:
 
 ```
@@ -1112,7 +1115,7 @@ const Cookie: Cookie = Cookie {};
 let c = [Cookie, Cookie {}, Cookie, Cookie {}];
 ```
 
-The precise memory layout of a structure is not specified. One can specify a
+The precise memory layout of a struct is not specified. One can specify a
 particular layout using the [`repr` attribute](#ffi-attributes).
 
 ### Enumerations
@@ -2401,7 +2404,7 @@ items.
 
 An _item declaration statement_ has a syntactic form identical to an
 [item](#items) declaration within a module. Declaring an item &mdash; a
-function, enumeration, structure, type, static, trait, implementation or module
+function, enumeration, struct, type, static, trait, implementation or module
 &mdash; locally within a statement block is simply a way of restricting its
 scope to a narrow region containing all of its uses; it is otherwise identical
 in meaning to declaring the item outside the statement block.
@@ -2546,26 +2549,26 @@ comma:
 (0); // zero in parentheses
 ```
 
-### Structure expressions
+### Struct expressions
 
-There are several forms of structure expressions. A _structure expression_
-consists of the [path](#paths) of a [structure item](#structs), followed by
+There are several forms of struct expressions. A _struct expression_
+consists of the [path](#paths) of a [struct item](#structs), followed by
 a brace-enclosed list of one or more comma-separated name-value pairs,
-providing the field values of a new instance of the structure. A field name
+providing the field values of a new instance of the struct. A field name
 can be any identifier, and is separated from its value expression by a colon.
-The location denoted by a structure field is mutable if and only if the
-enclosing structure is mutable.
+The location denoted by a struct field is mutable if and only if the
+enclosing struct is mutable.
 
-A _tuple structure expression_ consists of the [path](#paths) of a [structure
+A _tuple struct expression_ consists of the [path](#paths) of a [struct
 item](#structs), followed by a parenthesized list of one or more
-comma-separated expressions (in other words, the path of a structure item
-followed by a tuple expression). The structure item must be a tuple structure
+comma-separated expressions (in other words, the path of a struct item
+followed by a tuple expression). The struct item must be a tuple struct
 item.
 
-A _unit-like structure expression_ consists only of the [path](#paths) of a
-[structure item](#structs).
+A _unit-like struct expression_ consists only of the [path](#paths) of a
+[struct item](#structs).
 
-The following are examples of structure expressions:
+The following are examples of struct expressions:
 
 ```
 # struct Point { x: f64, y: f64 }
@@ -2578,14 +2581,14 @@ let u = game::User {name: "Joe", age: 35, score: 100_000};
 some_fn::<Cookie>(Cookie);
 ```
 
-A structure expression forms a new value of the named structure type. Note
-that for a given *unit-like* structure type, this will always be the same
+A struct expression forms a new value of the named struct type. Note
+that for a given *unit-like* struct type, this will always be the same
 value.
 
-A structure expression can terminate with the syntax `..` followed by an
+A struct expression can terminate with the syntax `..` followed by an
 expression to denote a functional update. The expression following `..` (the
-base) must have the same structure type as the new structure type being formed.
-The entire expression denotes the result of constructing a new structure (with
+base) must have the same struct type as the new struct type being formed.
+The entire expression denotes the result of constructing a new struct (with
 the same type as the base expression) with the given values for the fields that
 were explicitly specified and the values in the base expression for all other
 fields.
@@ -2631,7 +2634,7 @@ the left-hand-side expression is an indirect [trait object](#trait-objects).
 A _field expression_ consists of an expression followed by a single dot and an
 identifier, when not immediately followed by a parenthesized expression-list
 (the latter is a [method call expression](#method-call-expressions)). A field
-expression denotes a field of a [structure](#structure-types).
+expression denotes a field of a [struct](#struct-types).
 
 ```{.ignore .field}
 mystruct.myfield;
@@ -3350,17 +3353,17 @@ As you can see, the `vec!` macro allows you to create a `Vec<T>` easily. The
 All in-bounds elements of arrays and slices are always initialized, and access
 to an array or slice is always bounds-checked.
 
-### Structure types
+### Struct types
 
 A `struct` *type* is a heterogeneous product of other types, called the
 *fields* of the type.[^structtype]
 
 [^structtype]: `struct` types are analogous to `struct` types in C,
     the *record* types of the ML family,
-    or the *structure* types of the Lisp family.
+    or the *struct* types of the Lisp family.
 
 New instances of a `struct` can be constructed with a [struct
-expression](#structure-expressions).
+expression](#struct-expressions).
 
 The memory layout of a `struct` is undefined by default to allow for compiler
 optimizations like field reordering, but it can be fixed with the
@@ -3370,14 +3373,14 @@ have the same memory layout.
 
 The fields of a `struct` may be qualified by [visibility
 modifiers](#visibility-and-privacy), to allow access to data in a
-structure outside a module.
+struct outside a module.
 
-A _tuple struct_ type is just like a structure type, except that the fields are
+A _tuple struct_ type is just like a struct type, except that the fields are
 anonymous.
 
-A _unit-like struct_ type is like a structure type, except that it has no
-fields. The one value constructed by the associated [structure
-expression](#structure-expressions) is the only value that inhabits such a
+A _unit-like struct_ type is like a struct type, except that it has no
+fields. The one value constructed by the associated [struct
+expression](#struct-expressions) is the only value that inhabits such a
 type.
 
 ### Enumerated types
@@ -3404,7 +3407,7 @@ named reference to an [`enum` item](#enumerations).
 ### Recursive types
 
 Nominal types &mdash; [enumerations](#enumerated-types) and
-[structs](#structure-types) &mdash; may be recursive. That is, each `enum`
+[structs](#struct-types) &mdash; may be recursive. That is, each `enum`
 constructor or `struct` field may refer, directly or indirectly, to the
 enclosing `enum` or `struct` type itself. Such recursion has restrictions:
 
@@ -3706,7 +3709,7 @@ repeated sub-expression is a coercion site for coercion to type `U`.
 Each sub-expression is a coercion site to the respective type, e.g. the
 zeroth sub-expression is a coercion site to type `U_0`.
 
-* Parenthesised sub-expressions (`(e)`): if the expression has type `U`, then
+* Parenthesized sub-expressions (`(e)`): if the expression has type `U`, then
 the sub-expression is a coercion site to `U`.
 
 * Blocks: if a block has type `U`, then the last expression in the block (if
@@ -4072,7 +4075,7 @@ that have since been removed):
 
 * SML, OCaml: algebraic data types, pattern matching, type inference,
   semicolon statement separation
-* C++: references, RAII, smart pointers, move semantics, monomorphisation,
+* C++: references, RAII, smart pointers, move semantics, monomorphization,
   memory model
 * ML Kit, Cyclone: region based memory management
 * Haskell (GHC): typeclasses, type families

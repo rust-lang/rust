@@ -25,7 +25,7 @@
 * `pub`: denotes public visibility in `struct` fields, `impl` blocks, and modules.  See [Crates and Modules (Exporting a Public Interface)].
 * `ref`: by-reference binding.  See [Patterns (`ref` and `ref mut`)].
 * `return`: return from function.  See [Functions (Early Returns)].
-* `Self`: implementer type alias.  See [Traits].
+* `Self`: implementor type alias.  See [Traits].
 * `self`: method subject.  See [Method Syntax (Method Calls)].
 * `static`: global variable.  See [`const` and `static` (`static`)].
 * `struct`: structure definition.  See [Structs].
@@ -68,7 +68,7 @@
 * `/` (`expr / expr`): arithmetic division.  Overloadable (`Div`).
 * `/=` (`var /= expr`): arithmetic division & assignment.
 * `:` (`pat: type`, `ident: type`): constraints.  See [Variable Bindings], [Functions], [Structs], [Traits].
-* `:` (`ident: expr`): struct field initialiser.  See [Structs].
+* `:` (`ident: expr`): struct field initializer.  See [Structs].
 * `:` (`'a: loop {…}`): loop label.  See [Loops (Loops Labels)].
 * `;`: statement and item terminator.
 * `;` (`[…; len]`): part of fixed-size array syntax.  See [Primitive Types (Arrays)].
@@ -153,12 +153,12 @@
 <!-- Various things involving parens and tuples -->
 
 * `()`: empty tuple (*a.k.a.* unit), both literal and type.
-* `(expr)`: parenthesised expression.
+* `(expr)`: parenthesized expression.
 * `(expr,)`: single-element tuple expression.  See [Primitive Types (Tuples)].
 * `(type,)`: single-element tuple type.  See [Primitive Types (Tuples)].
 * `(expr, …)`: tuple expression.  See [Primitive Types (Tuples)].
 * `(type, …)`: tuple type.  See [Primitive Types (Tuples)].
-* `expr(expr, …)`: function call expression.  Also used to initialise tuple `struct`s and tuple `enum` variants.  See [Functions].
+* `expr(expr, …)`: function call expression.  Also used to initialize tuple `struct`s and tuple `enum` variants.  See [Functions].
 * `ident!(…)`, `ident!{…}`, `ident![…]`: macro invocation.  See [Macros].
 * `expr.0`, `expr.1`, …: tuple indexing.  See [Primitive Types (Tuple Indexing)].
 
