@@ -746,72 +746,73 @@ impl<'a> FmtVisitor<'a> {
             result.push_str(&indent.to_string(self.config));
         }
 
-        let variant_body = match field.node.kind {
-            ast::VariantKind::TupleVariantKind(ref types) => {
+        let variant_body = match *field.node.data {
+            ast::VariantData::Tuple(ref types, _) => {
                 let mut result = field.node.name.to_string();
+                let items = itemize_list(self.codemap,
+                                         types.iter(),
+                                         ")",
+                                         |arg| arg.node.ty.span.lo,
+                                         |arg| arg.node.ty.span.hi,
+                                         |arg| {
+                                             // FIXME silly width, indent
+                                             arg.node
+                                                .ty
+                                                .rewrite(&self.get_context(), 1000, Indent::empty())
+                                         },
+                                         span_after(field.span, "(", self.codemap),
+                                         field.span.hi);
+                let item_vec = items.collect::<Vec<_>>();
 
-                if !types.is_empty() {
-                    let items = itemize_list(self.codemap,
-                                             types.iter(),
-                                             ")",
-                                             |arg| arg.ty.span.lo,
-                                             |arg| arg.ty.span.hi,
-                                             |arg| {
-                                                 // FIXME silly width, indent
-                                                 arg.ty.rewrite(&self.get_context(),
-                                                                1000,
-                                                                Indent::empty())
-                                             },
-                                             span_after(field.span, "(", self.codemap),
-                                             field.span.hi);
-                    let item_vec = items.collect::<Vec<_>>();
+                result.push('(');
 
-                    result.push('(');
+                let indent = indent + field.node.name.to_string().len() + "(".len();
 
-                    let indent = indent + field.node.name.to_string().len() + "(".len();
+                let comma_cost = if self.config.enum_trailing_comma {
+                    1
+                } else {
+                    0
+                };
+                let budget = self.config.max_width - indent.width() - comma_cost - 1; // 1 = )
+                let tactic = definitive_tactic(&item_vec, ListTactic::HorizontalVertical, budget);
 
-                    let comma_cost = if self.config.enum_trailing_comma {
-                        1
-                    } else {
-                        0
-                    };
-                    let budget = self.config.max_width - indent.width() - comma_cost - 1; // 1 = )
-                    let tactic = definitive_tactic(&item_vec,
-                                                   ListTactic::HorizontalVertical,
-                                                   budget);
+                let fmt = ListFormatting {
+                    tactic: tactic,
+                    separator: ",",
+                    trailing_separator: SeparatorTactic::Never,
+                    indent: indent,
+                    width: budget,
+                    ends_with_newline: true,
+                    config: self.config,
+                };
+                let list_str = try_opt!(write_list(&item_vec, &fmt));
 
-                    let fmt = ListFormatting {
-                        tactic: tactic,
-                        separator: ",",
-                        trailing_separator: SeparatorTactic::Never,
-                        indent: indent,
-                        width: budget,
-                        ends_with_newline: true,
-                        config: self.config,
-                    };
-                    let list_str = try_opt!(write_list(&item_vec, &fmt));
-
-                    result.push_str(&list_str);
-                    result.push(')');
-                }
-
-                if let Some(ref expr) = field.node.disr_expr {
-                    result.push_str(" = ");
-                    let expr_snippet = self.snippet(expr.span);
-                    result.push_str(&expr_snippet);
-                }
+                result.push_str(&list_str);
+                result.push(')');
 
                 Some(result)
             }
-            ast::VariantKind::StructVariantKind(ref struct_def) => {
+            ast::VariantData::Struct(..) => {
                 // FIXME: Should limit the width, as we have a trailing comma
                 self.format_struct("",
                                    field.node.name,
                                    ast::Visibility::Inherited,
-                                   struct_def,
+                                   &*field.node.data,
                                    None,
                                    field.span,
                                    indent)
+            }
+            ast::VariantData::Unit(..) => {
+                let tag = if let Some(ref expr) = field.node.disr_expr {
+                    format!("{} = {}", field.node.name, self.snippet(expr.span))
+                } else {
+                    field.node.name.to_string()
+                };
+
+                wrap_str(tag,
+                         self.config.max_width,
+                         self.config.max_width - indent.width(),
+                         indent)
             }
         };
 
@@ -827,7 +828,7 @@ impl<'a> FmtVisitor<'a> {
                      item_name: &str,
                      ident: ast::Ident,
                      vis: ast::Visibility,
-                     struct_def: &ast::StructDef,
+                     struct_def: &ast::VariantData,
                      generics: Option<&ast::Generics>,
                      span: Span,
                      offset: Indent)
@@ -837,14 +838,13 @@ impl<'a> FmtVisitor<'a> {
         let header_str = self.format_header(item_name, ident, vis);
         result.push_str(&header_str);
 
-        if struct_def.fields.is_empty() {
-            result.push(';');
-            return Some(result);
-        }
-
-        let is_tuple = match struct_def.fields[0].node.kind {
-            ast::StructFieldKind::NamedField(..) => false,
-            ast::StructFieldKind::UnnamedField(..) => true,
+        let (is_tuple, fields) = match *struct_def {
+            ast::VariantData::Unit(..) => {
+                result.push(';');
+                return Some(result);
+            }
+            ast::VariantData::Tuple(ref vec, _) => (true, vec),
+            ast::VariantData::Struct(ref vec, _) => (false, vec),
         };
 
         let (opener, terminator) = if is_tuple {
@@ -859,15 +859,14 @@ impl<'a> FmtVisitor<'a> {
                                               opener,
                                               offset,
                                               offset + header_str.len(),
-                                              codemap::mk_sp(span.lo,
-                                                             struct_def.fields[0].span.lo)))
+                                              codemap::mk_sp(span.lo, fields[0].span.lo)))
             }
             None => opener.to_owned(),
         };
         result.push_str(&generics_str);
 
         let items = itemize_list(self.codemap,
-                                 struct_def.fields.iter(),
+                                 fields.iter(),
                                  terminator,
                                  |field| {
                                      // Include attributes and doc comments, if present
@@ -886,7 +885,7 @@ impl<'a> FmtVisitor<'a> {
         let used_budget = offset.width() + header_str.len() + generics_str.len() + 3;
 
         // Conservative approximation
-        let single_line_cost = (span.hi - struct_def.fields[0].span.lo).0;
+        let single_line_cost = (span.hi - fields[0].span.lo).0;
         let break_line = !is_tuple || generics_str.contains('\n') ||
                          single_line_cost as usize + used_budget > self.config.max_width;
 
@@ -932,7 +931,7 @@ impl<'a> FmtVisitor<'a> {
     pub fn visit_struct(&mut self,
                         ident: ast::Ident,
                         vis: ast::Visibility,
-                        struct_def: &ast::StructDef,
+                        struct_def: &ast::VariantData,
                         generics: &ast::Generics,
                         span: Span) {
         let indent = self.block_indent;
