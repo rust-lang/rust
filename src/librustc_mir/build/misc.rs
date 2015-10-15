@@ -30,7 +30,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         assert!(index < (u32::MAX) as usize);
         let lvalue = Lvalue::Temp(index as u32);
         debug!("temp: created temp {:?} with type {:?}",
-               lvalue, self.temp_decls.last().unwrap().ty);
+               lvalue,
+               self.temp_decls.last().unwrap().ty);
         lvalue
     }
 
@@ -53,13 +54,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn push_usize(&mut self, block: BasicBlock, span: Span, value: usize) -> Lvalue<'tcx> {
         let usize_ty = self.hir.usize_ty();
         let temp = self.temp(usize_ty);
-        self.cfg.push_assign_constant(
-            block, span, &temp,
-            Constant {
-                span: span,
-                ty: self.hir.usize_ty(),
-                literal: self.hir.usize_literal(value),
-            });
+        self.cfg.push_assign_constant(block,
+                                      span,
+                                      &temp,
+                                      Constant {
+                                          span: span,
+                                          ty: self.hir.usize_ty(),
+                                          literal: self.hir.usize_literal(value),
+                                      });
         temp
     }
 

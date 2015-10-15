@@ -88,34 +88,32 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         assert!(min_length < u32::MAX as usize);
         let min_length = min_length as u32;
 
-        let prefix_pairs: Vec<_> =
-            prefix.into_iter()
-                  .enumerate()
-                  .map(|(idx, subpattern)| {
-                      let elem = ProjectionElem::ConstantIndex {
-                          offset: idx as u32,
-                          min_length: min_length,
-                          from_end: false,
-                      };
-                      let lvalue = lvalue.clone().elem(elem);
-                      self.match_pair(lvalue, subpattern)
-                  })
-                  .collect();
+        let prefix_pairs: Vec<_> = prefix.into_iter()
+                                         .enumerate()
+                                         .map(|(idx, subpattern)| {
+                                             let elem = ProjectionElem::ConstantIndex {
+                                                 offset: idx as u32,
+                                                 min_length: min_length,
+                                                 from_end: false,
+                                             };
+                                             let lvalue = lvalue.clone().elem(elem);
+                                             self.match_pair(lvalue, subpattern)
+                                         })
+                                         .collect();
 
-        let suffix_pairs: Vec<_> =
-            suffix.into_iter()
-                  .rev()
-                  .enumerate()
-                  .map(|(idx, subpattern)| {
-                      let elem = ProjectionElem::ConstantIndex {
-                          offset: (idx+1) as u32,
-                          min_length: min_length,
-                          from_end: true,
-                      };
-                      let lvalue = lvalue.clone().elem(elem);
-                      self.match_pair(lvalue, subpattern)
-                  })
-                  .collect();
+        let suffix_pairs: Vec<_> = suffix.into_iter()
+                                         .rev()
+                                         .enumerate()
+                                         .map(|(idx, subpattern)| {
+                                             let elem = ProjectionElem::ConstantIndex {
+                                                 offset: (idx + 1) as u32,
+                                                 min_length: min_length,
+                                                 from_end: true,
+                                             };
+                                             let lvalue = lvalue.clone().elem(elem);
+                                             self.match_pair(lvalue, subpattern)
+                                         })
+                                         .collect();
 
         match_pairs.extend(prefix_pairs.into_iter().chain(suffix_pairs));
     }

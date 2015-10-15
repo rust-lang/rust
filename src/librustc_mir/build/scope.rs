@@ -159,11 +159,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
         // compute the extent from start to finish and store it in the graph
         let graph_extent = self.graph_extent(start_point, scope.exits);
-        self.extents.entry(extent)
-                    .or_insert(vec![])
-                    .push(graph_extent);
+        self.extents
+            .entry(extent)
+            .or_insert(vec![])
+            .push(graph_extent);
 
-        debug!("in_scope: exiting extent={:?} fallthrough_block={:?}", extent, fallthrough_block);
+        debug!("in_scope: exiting extent={:?} fallthrough_block={:?}",
+               extent,
+               fallthrough_block);
         fallthrough_block.and(rv)
     }
 
@@ -185,26 +188,24 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
     /// Finds the loop scope for a given label. This is used for
     /// resolving `break` and `continue`.
-    pub fn find_loop_scope(&mut self,
-                           span: Span,
-                           label: Option<CodeExtent>)
-                           -> LoopScope {
-        let loop_scope =
-            match label {
-                None => {
+    pub fn find_loop_scope(&mut self, span: Span, label: Option<CodeExtent>) -> LoopScope {
+        let loop_scope = match label {
+            None => {
                     // no label? return the innermost loop scope
-                    self.loop_scopes.iter()
-                                    .rev()
-                                    .next()
-                }
-                Some(label) => {
+                self.loop_scopes
+                    .iter()
+                    .rev()
+                    .next()
+            }
+            Some(label) => {
                     // otherwise, find the loop-scope with the correct id
-                    self.loop_scopes.iter()
-                                    .rev()
-                                    .filter(|loop_scope| loop_scope.extent == label)
-                                    .next()
-                }
-            };
+                self.loop_scopes
+                    .iter()
+                    .rev()
+                    .filter(|loop_scope| loop_scope.extent == label)
+                    .next()
+            }
+        };
 
         match loop_scope {
             Some(loop_scope) => loop_scope.clone(),
@@ -221,12 +222,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                       extent: CodeExtent,
                       block: BasicBlock,
                       target: BasicBlock) {
-        let popped_scopes =
-            match self.scopes.iter().rev().position(|scope| scope.extent == extent) {
-                Some(p) => p + 1,
-                None => self.hir.span_bug(span, &format!("extent {:?} does not enclose",
-                                                              extent)),
-            };
+        let popped_scopes = match self.scopes
+                                      .iter()
+                                      .rev()
+                                      .position(|scope| scope.extent == extent) {
+            Some(p) => p + 1,
+            None => self.hir.span_bug(span, &format!("extent {:?} does not enclose", extent)),
+        };
 
         for scope in self.scopes.iter_mut().rev().take(popped_scopes) {
             for &(kind, drop_span, ref lvalue) in &scope.drops {
@@ -266,8 +268,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     scope.drops.push((kind, span, lvalue.clone()));
                     scope.cached_block = None;
                 }
-                None => self.hir.span_bug(span, &format!("extent {:?} not in scope to drop {:?}",
-                                                         extent, lvalue)),
+                None => self.hir.span_bug(span,
+                                          &format!("extent {:?} not in scope to drop {:?}",
+                                                   extent,
+                                                   lvalue)),
             }
         }
     }

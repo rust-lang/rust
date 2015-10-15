@@ -125,35 +125,36 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 //     to the same MIR as `let x = ();`.
 
                 // first process the set of fields
-                let fields: Vec<_> =
-                    fields.into_iter()
-                          .map(|f| unpack!(block = this.as_operand(block, f)))
-                          .collect();
+                let fields: Vec<_> = fields.into_iter()
+                                           .map(|f| unpack!(block = this.as_operand(block, f)))
+                                           .collect();
 
                 block.and(Rvalue::Aggregate(AggregateKind::Vec, fields))
             }
             ExprKind::Tuple { fields } => { // see (*) above
                 // first process the set of fields
-                let fields: Vec<_> =
-                    fields.into_iter()
-                          .map(|f| unpack!(block = this.as_operand(block, f)))
-                          .collect();
+                let fields: Vec<_> = fields.into_iter()
+                                           .map(|f| unpack!(block = this.as_operand(block, f)))
+                                           .collect();
 
                 block.and(Rvalue::Aggregate(AggregateKind::Tuple, fields))
             }
             ExprKind::Closure { closure_id, substs, upvars } => { // see (*) above
-                let upvars =
-                    upvars.into_iter()
-                          .map(|upvar| unpack!(block = this.as_operand(block, upvar)))
-                          .collect();
+                let upvars = upvars.into_iter()
+                                   .map(|upvar| unpack!(block = this.as_operand(block, upvar)))
+                                   .collect();
                 block.and(Rvalue::Aggregate(AggregateKind::Closure(closure_id, substs), upvars))
             }
             ExprKind::Adt { adt_def, variant_index, substs, fields, base } => { // see (*) above
                 // first process the set of fields
-                let fields_map: FnvHashMap<_, _> =
-                    fields.into_iter()
-                          .map(|f| (f.name, unpack!(block = this.as_operand(block, f.expr))))
-                          .collect();
+                let fields_map: FnvHashMap<_, _> = fields.into_iter()
+                                                         .map(|f| {
+                                                             (f.name,
+                                                              unpack!(block =
+                                                                          this.as_operand(block,
+                                                                                          f.expr)))
+                                                         })
+                                                         .collect();
 
                 let field_names = this.hir.fields(adt_def, variant_index);
 
@@ -165,13 +166,16 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // path relative to the base (which must have been
                 // supplied, or the IR is internally
                 // inconsistent).
-                let fields: Vec<_> =
-                    field_names.into_iter()
-                               .map(|n| match fields_map.get(&n) {
-                                   Some(v) => v.clone(),
-                                   None => Operand::Consume(base.clone().unwrap().field(n)),
-                               })
-                               .collect();
+                let fields: Vec<_> = field_names.into_iter()
+                                                .map(|n| {
+                                                    match fields_map.get(&n) {
+                                                        Some(v) => v.clone(),
+                                                        None => Operand::Consume(base.clone()
+                                                                                     .unwrap()
+                                                                                     .field(n)),
+                                                    }
+                                                })
+                                                .collect();
 
                 block.and(Rvalue::Aggregate(AggregateKind::Adt(adt_def, variant_index, substs),
                                             fields))

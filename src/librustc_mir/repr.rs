@@ -310,18 +310,13 @@ impl<'tcx> Debug for Terminator<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Terminator::*;
         match *self {
-            Goto { target } =>
-                write!(fmt, "goto -> {:?}", target),
-            Panic { target } =>
-                write!(fmt, "panic -> {:?}", target),
-            If { cond: ref lv, ref targets } =>
-                write!(fmt, "if({:?}) -> {:?}", lv, targets),
+            Goto { target } => write!(fmt, "goto -> {:?}", target),
+            Panic { target } => write!(fmt, "panic -> {:?}", target),
+            If { cond: ref lv, ref targets } => write!(fmt, "if({:?}) -> {:?}", lv, targets),
             Switch { discr: ref lv, ref targets } =>
                 write!(fmt, "switch({:?}) -> {:?}", lv, targets),
-            Diverge =>
-                write!(fmt, "diverge"),
-            Return =>
-                write!(fmt, "return"),
+            Diverge => write!(fmt, "diverge"),
+            Return => write!(fmt, "return"),
             Call { data: ref c, targets } => {
                 try!(write!(fmt, "{:?} = {:?}(", c.destination, c.func));
                 for (index, arg) in c.args.iter().enumerate() {
@@ -420,9 +415,9 @@ pub enum ProjectionElem<'tcx, V> {
     // [_, _, .._, _, X] => { offset: 1, min_length: 4, from_end: true },
     // ```
     ConstantIndex {
-        offset: u32,      // index or -index (in Python terms), depending on from_end
-        min_length: u32,  // thing being indexed must be at least this long
-        from_end: bool,   // counting backwards from end?
+        offset: u32, // index or -index (in Python terms), depending on from_end
+        min_length: u32, // thing being indexed must be at least this long
+        from_end: bool, // counting backwards from end?
     },
 
     // "Downcast" to a variant of an ADT. Currently, we only introduce
@@ -473,33 +468,25 @@ impl<'tcx> Debug for Lvalue<'tcx> {
         use self::Lvalue::*;
 
         match *self {
-            Var(id) =>
-                write!(fmt,"Var({:?})", id),
-            Arg(id) =>
-                write!(fmt,"Arg({:?})", id),
-            Temp(id) =>
-                write!(fmt,"Temp({:?})", id),
-            Static(id) =>
-                write!(fmt,"Static({:?})", id),
-            ReturnPointer =>
-                write!(fmt,"ReturnPointer"),
-            Projection(ref data) =>
-                match data.elem {
-                    ProjectionElem::Downcast(_, variant_index) =>
-                        write!(fmt,"({:?} as {:?})", data.base, variant_index),
-                    ProjectionElem::Deref =>
-                        write!(fmt,"(*{:?})", data.base),
-                    ProjectionElem::Field(Field::Named(name)) =>
-                        write!(fmt,"{:?}.{:?}", data.base, name),
-                    ProjectionElem::Field(Field::Indexed(index)) =>
-                        write!(fmt,"{:?}.{:?}", data.base, index),
-                    ProjectionElem::Index(ref index) =>
-                        write!(fmt,"{:?}[{:?}]", data.base, index),
-                    ProjectionElem::ConstantIndex { offset, min_length, from_end: false } =>
-                        write!(fmt,"{:?}[{:?} of {:?}]", data.base, offset, min_length),
-                    ProjectionElem::ConstantIndex { offset, min_length, from_end: true } =>
-                        write!(fmt,"{:?}[-{:?} of {:?}]", data.base, offset, min_length),
-                },
+            Var(id) => write!(fmt, "Var({:?})", id),
+            Arg(id) => write!(fmt, "Arg({:?})", id),
+            Temp(id) => write!(fmt, "Temp({:?})", id),
+            Static(id) => write!(fmt, "Static({:?})", id),
+            ReturnPointer => write!(fmt, "ReturnPointer"),
+            Projection(ref data) => match data.elem {
+                ProjectionElem::Downcast(_, variant_index) =>
+                    write!(fmt, "({:?} as {:?})", data.base, variant_index),
+                ProjectionElem::Deref => write!(fmt, "(*{:?})", data.base),
+                ProjectionElem::Field(Field::Named(name)) =>
+                    write!(fmt, "{:?}.{:?}", data.base, name),
+                ProjectionElem::Field(Field::Indexed(index)) =>
+                    write!(fmt, "{:?}.{:?}", data.base, index),
+                ProjectionElem::Index(ref index) => write!(fmt, "{:?}[{:?}]", data.base, index),
+                ProjectionElem::ConstantIndex { offset, min_length, from_end: false } =>
+                    write!(fmt, "{:?}[{:?} of {:?}]", data.base, offset, min_length),
+                ProjectionElem::ConstantIndex { offset, min_length, from_end: true } =>
+                    write!(fmt, "{:?}[-{:?} of {:?}]", data.base, offset, min_length),
+            },
         }
     }
 }

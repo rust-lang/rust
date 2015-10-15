@@ -87,13 +87,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         match test.kind.clone() {
             TestKind::Switch { adt_def } => {
                 let num_enum_variants = self.hir.num_variants(adt_def);
-                let target_blocks: Vec<_> =
-                    (0..num_enum_variants).map(|_| self.cfg.start_new_block())
-                                          .collect();
-                self.cfg.terminate(block, Terminator::Switch {
-                    discr: lvalue.clone(),
-                    targets: target_blocks.clone()
-                });
+                let target_blocks: Vec<_> = (0..num_enum_variants)
+                                                .map(|_| self.cfg.start_new_block())
+                                                .collect();
+                self.cfg.terminate(block,
+                                   Terminator::Switch {
+                                       discr: lvalue.clone(),
+                                       targets: target_blocks.clone(),
+                                   });
                 target_blocks
             }
 
@@ -150,10 +151,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // branch based on result
                 let target_blocks: Vec<_> = vec![self.cfg.start_new_block(),
                                                  self.cfg.start_new_block()];
-                self.cfg.terminate(block, Terminator::If {
-                    cond: Operand::Consume(result),
-                    targets: [target_blocks[0], target_blocks[1]]
-                });
+                self.cfg.terminate(block,
+                                   Terminator::If {
+                                       cond: Operand::Consume(result),
+                                       targets: [target_blocks[0], target_blocks[1]],
+                                   });
 
                 target_blocks
             }
@@ -302,15 +304,15 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                 let elem = ProjectionElem::Downcast(adt_def, variant_index);
                 let downcast_lvalue = match_pair.lvalue.clone().elem(elem);
-                let consequent_match_pairs =
-                    subpatterns.into_iter()
-                               .map(|subpattern| {
-                                   let lvalue =
+                let consequent_match_pairs = subpatterns.into_iter()
+                                                        .map(|subpattern| {
+                                                            let lvalue =
                                        downcast_lvalue.clone().field(
                                            subpattern.field);
-                                   self.match_pair(lvalue, subpattern.pattern)
-                               })
-                               .collect();
+                                                            self.match_pair(lvalue,
+                                                                            subpattern.pattern)
+                                                        })
+                                                        .collect();
                 block.and(Some(consequent_match_pairs))
             }
 

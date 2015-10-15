@@ -25,10 +25,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                      destination: &Lvalue<'tcx>,
                      mut block: BasicBlock,
                      expr: Expr<'tcx>)
-                     -> BlockAnd<()>
-    {
+                     -> BlockAnd<()> {
         debug!("into_expr(destination={:?}, block={:?}, expr={:?})",
-               destination, block, expr);
+               destination,
+               block,
+               expr);
 
         // since we frequently have to reference `self` from within a
         // closure, where `self` would be shadowed, it's easier to
@@ -51,10 +52,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                 let mut then_block = this.cfg.start_new_block();
                 let mut else_block = this.cfg.start_new_block();
-                this.cfg.terminate(block, Terminator::If {
-                    cond: operand,
-                    targets: [then_block, else_block]
-                });
+                this.cfg.terminate(block,
+                                   Terminator::If {
+                                       cond: operand,
+                                       targets: [then_block, else_block],
+                                   });
 
                 unpack!(then_block = this.into(destination, then_block, then_expr));
                 unpack!(else_block = this.into(destination, else_block, else_expr));
@@ -79,37 +81,46 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 //        +----------true------------+-------------------> [false_block]
 
                 let (true_block, false_block, mut else_block, join_block) =
-                    (this.cfg.start_new_block(), this.cfg.start_new_block(),
-                     this.cfg.start_new_block(), this.cfg.start_new_block());
+                    (this.cfg.start_new_block(),
+                     this.cfg.start_new_block(),
+                     this.cfg.start_new_block(),
+                     this.cfg.start_new_block());
 
                 let lhs = unpack!(block = this.as_operand(block, lhs));
                 let blocks = match op {
                     LogicalOp::And => [else_block, false_block],
                     LogicalOp::Or => [true_block, else_block],
                 };
-                this.cfg.terminate(block, Terminator::If { cond: lhs, targets: blocks });
+                this.cfg.terminate(block,
+                                   Terminator::If {
+                                       cond: lhs,
+                                       targets: blocks,
+                                   });
 
                 let rhs = unpack!(else_block = this.as_operand(else_block, rhs));
-                this.cfg.terminate(else_block, Terminator::If {
-                    cond: rhs,
-                    targets: [true_block, false_block]
-                });
+                this.cfg.terminate(else_block,
+                                   Terminator::If {
+                                       cond: rhs,
+                                       targets: [true_block, false_block],
+                                   });
 
-                this.cfg.push_assign_constant(
-                    true_block, expr_span, destination,
-                    Constant {
-                        span: expr_span,
-                        ty: this.hir.bool_ty(),
-                        literal: this.hir.true_literal(),
-                    });
+                this.cfg.push_assign_constant(true_block,
+                                              expr_span,
+                                              destination,
+                                              Constant {
+                                                  span: expr_span,
+                                                  ty: this.hir.bool_ty(),
+                                                  literal: this.hir.true_literal(),
+                                              });
 
-                this.cfg.push_assign_constant(
-                    false_block, expr_span, destination,
-                    Constant {
-                        span: expr_span,
-                        ty: this.hir.bool_ty(),
-                        literal: this.hir.false_literal(),
-                    });
+                this.cfg.push_assign_constant(false_block,
+                                              expr_span,
+                                              destination,
+                                              Constant {
+                                                  span: expr_span,
+                                                  ty: this.hir.bool_ty(),
+                                                  literal: this.hir.false_literal(),
+                                              });
 
                 this.cfg.terminate(true_block, Terminator::Goto { target: join_block });
                 this.cfg.terminate(false_block, Terminator::Goto { target: join_block });
@@ -149,7 +160,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         this.cfg.terminate(loop_block_end,
                                            Terminator::If {
                                                cond: cond,
-                                               targets: [body_block, exit_block]
+                                               targets: [body_block, exit_block],
                                            });
                     } else {
                         body_block = loop_block;
@@ -190,15 +201,17 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // we don't have to drop prior contents or anything
                 // because AssignOp is only legal for Copy types
                 // (overloaded ops should be desugared into a call).
-                this.cfg.push_assign(block, expr_span, &lhs,
-                                     Rvalue::BinaryOp(op,
-                                                      Operand::Consume(lhs.clone()),
-                                                      rhs));
+                this.cfg.push_assign(block,
+                                     expr_span,
+                                     &lhs,
+                                     Rvalue::BinaryOp(op, Operand::Consume(lhs.clone()), rhs));
 
                 block.unit()
             }
             ExprKind::Continue { label } => {
-                this.break_or_continue(expr_span, label, block,
+                this.break_or_continue(expr_span,
+                                       label,
+                                       block,
                                        |loop_scope| loop_scope.continue_block)
             }
             ExprKind::Break { label } => {
@@ -212,10 +225,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             }
             ExprKind::Call { fun, args } => {
                 let fun = unpack!(block = this.as_lvalue(block, fun));
-                let args: Vec<_> =
-                    args.into_iter()
-                        .map(|arg| unpack!(block = this.as_lvalue(block, arg)))
-                        .collect();
+                let args: Vec<_> = args.into_iter()
+                                       .map(|arg| unpack!(block = this.as_lvalue(block, arg)))
+                                       .collect();
                 let success = this.cfg.start_new_block();
                 let panic = this.diverge_cleanup();
                 this.cfg.terminate(block,
