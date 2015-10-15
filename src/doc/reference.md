@@ -3709,7 +3709,7 @@ repeated sub-expression is a coercion site for coercion to type `U`.
 Each sub-expression is a coercion site to the respective type, e.g. the
 zeroth sub-expression is a coercion site to type `U_0`.
 
-* Parenthesised sub-expressions (`(e)`): if the expression has type `U`, then
+* Parenthesized sub-expressions (`(e)`): if the expression has type `U`, then
 the sub-expression is a coercion site to `U`.
 
 * Blocks: if a block has type `U`, then the last expression in the block (if
@@ -4075,7 +4075,7 @@ that have since been removed):
 
 * SML, OCaml: algebraic data types, pattern matching, type inference,
   semicolon statement separation
-* C++: references, RAII, smart pointers, move semantics, monomorphisation,
+* C++: references, RAII, smart pointers, move semantics, monomorphization,
   memory model
 * ML Kit, Cyclone: region based memory management
 * Haskell (GHC): typeclasses, type families

@@ -1453,7 +1453,7 @@ pub trait Iterator {
 ///
 /// This is an idiosyncratic helper to try to factor out the
 /// commonalities of {max,min}{,_by}. In particular, this avoids
-/// having to implement optimisations several times.
+/// having to implement optimizations several times.
 #[inline]
 fn select_fold1<I,B, FProj, FCmp>(mut it: I,
                                   mut f_proj: FProj,

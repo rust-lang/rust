@@ -94,7 +94,7 @@ impl<T> Clone for Slice<T> {
 /// Synthesizing a trait object with mismatched types—one where the
 /// vtable does not correspond to the type of the value to which the
 /// data pointer points—is highly likely to lead to undefined
-/// behaviour.
+/// behavior.
 ///
 /// # Examples
 ///

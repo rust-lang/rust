@@ -137,7 +137,7 @@
 //! not.
 //!
 //! Slices can only be handled through some kind of *pointer*, and as
-//! such come in many flavours such as:
+//! such come in many flavors such as:
 //!
 //! * `&[T]` - *shared slice*
 //! * `&mut [T]` - *mutable slice*

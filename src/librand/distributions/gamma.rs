@@ -168,7 +168,7 @@ impl IndependentSample<f64> for GammaLargeShape {
 ///
 /// For `k > 0` integral, this distribution is the sum of the squares
 /// of `k` independent standard normal random variables. For other
-/// `k`, this uses the equivalent characterisation `χ²(k) = Gamma(k/2,
+/// `k`, this uses the equivalent characterization `χ²(k) = Gamma(k/2,
 /// 2)`.
 pub struct ChiSquared {
     repr: ChiSquaredRepr,
