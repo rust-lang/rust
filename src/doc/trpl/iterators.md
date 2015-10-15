@@ -101,10 +101,10 @@ So, now that we've established that ranges are often not what you want, let's
 talk about what you do want instead.
 
 There are three broad classes of things that are relevant here: iterators,
-*iterator adapters*, and *consumers*. Here's some definitions:
+*iterator adaptors*, and *consumers*. Here's some definitions:
 
 * *iterators* give you a sequence of values.
-* *iterator adapters* operate on an iterator, producing a new iterator with a
+* *iterator adaptors* operate on an iterator, producing a new iterator with a
   different output sequence.
 * *consumers* operate on an iterator, producing some final set of values.
 
@@ -246,12 +246,12 @@ for num in nums.iter() {
 These two basic iterators should serve you well. There are some more
 advanced iterators, including ones that are infinite.
 
-That's enough about iterators. Iterator adapters are the last concept
+That's enough about iterators. Iterator adaptors are the last concept
 we need to talk about with regards to iterators. Let's get to it!
 
-## Iterator adapters
+## Iterator adaptors
 
-*Iterator adapters* take an iterator and modify it somehow, producing
+*Iterator adaptors* take an iterator and modify it somehow, producing
 a new iterator. The simplest one is called `map`:
 
 ```rust,ignore
@@ -280,7 +280,7 @@ doesn't print any numbers:
 If you are trying to execute a closure on an iterator for its side effects,
 just use `for` instead.
 
-There are tons of interesting iterator adapters. `take(n)` will return an
+There are tons of interesting iterator adaptors. `take(n)` will return an
 iterator over the next `n` elements of the original iterator. Let's try it out
 with an infinite iterator:
 
@@ -329,7 +329,7 @@ a few times, and then consume the result. Check it out:
 
 This will give you a vector containing `6`, `12`, `18`, `24`, and `30`.
 
-This is just a small taste of what iterators, iterator adapters, and consumers
+This is just a small taste of what iterators, iterator adaptors, and consumers
 can help you with. There are a number of really useful iterators, and you can
 write your own as well. Iterators provide a safe, efficient way to manipulate
 all kinds of lists. They're a little unusual at first, but if you play with
