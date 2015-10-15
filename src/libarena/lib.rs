@@ -390,8 +390,9 @@ struct TypedArenaChunk<T> {
     next: *mut TypedArenaChunk<T>,
 
     /// The number of elements that this chunk can hold.
-    // Objects follow here, suitably aligned.
     capacity: usize,
+
+    // Objects follow here, suitably aligned.
 }
 
 fn calculate_size<T>(capacity: usize) -> usize {
