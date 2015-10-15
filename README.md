@@ -6,11 +6,13 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 64 lints included in this crate:
+There are 66 lints included in this crate:
 
 name                                                                                                   | default | meaning
 -------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 [approx_constant](https://github.com/Manishearth/rust-clippy/wiki#approx_constant)                     | warn    | the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) is found; suggests to use the constant
+[as_mut_slice](https://github.com/Manishearth/rust-clippy/wiki#as_mut_slice)                           | warn    | as_mut_slice is not stable and can be replaced by &mut v[..]see https://github.com/rust-lang/rust/issues/27729
+[as_slice](https://github.com/Manishearth/rust-clippy/wiki#as_slice)                                   | warn    | as_slice is not stable and can be replaced by & v[..]see https://github.com/rust-lang/rust/issues/27729
 [bad_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#bad_bit_mask)                           | warn    | expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
 [box_vec](https://github.com/Manishearth/rust-clippy/wiki#box_vec)                                     | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
 [cast_possible_truncation](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_truncation)   | allow   | casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`
