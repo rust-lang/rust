@@ -38,8 +38,13 @@ struct Huge {
     int32_t e;
 };
 
-// SysV ABI:
+// System V x86_64 ABI:
 // a, b, c, d, e should be in registers
+// s should be byval pointer
+//
+// Win64 ABI:
+// a, b, c, d should be in registers
+// e should be on the stack
 // s should be byval pointer
 void byval_rect(int32_t a, int32_t b, int32_t c, int32_t d, int32_t e, struct Rect s) {
     assert(a == 1);
@@ -53,10 +58,16 @@ void byval_rect(int32_t a, int32_t b, int32_t c, int32_t d, int32_t e, struct Re
     assert(s.d == 556);
 }
 
-// SysV ABI:
+// System V x86_64 ABI:
 // a, b, c, d, e, f, g should be in sse registers
 // s should be split across 2 registers
 // t should be byval pointer
+//
+// Win64 ABI:
+// a, b, c, d should be in sse registers
+// e, f, g should be on the stack
+// s should be on the stack (treated as 2 i64's)
+// t should be on the stack (treated as an i64 and a double)
 void byval_rect_floats(float a, float b, double c, float d, float e,
                        float f, double g, struct Rect s, struct FloatRect t) {
     assert(a == 1.);
@@ -75,9 +86,15 @@ void byval_rect_floats(float a, float b, double c, float d, float e,
     assert(t.c == 8.);
 }
 
-// SysV ABI:
-// a, b, d, e should be in registers
+// System V x86_64 ABI:
+// a, b, d, e, f should be in registers
 // c passed via sse registers
+// s should be byval pointer
+//
+// Win64 ABI:
+// a, b, d should be in registers
+// c passed via sse registers
+// e, f should be on the stack
 // s should be byval pointer
 void byval_rect_with_float(int32_t a, int32_t b, float c, int32_t d,
                            int32_t e, int32_t f, struct Rect s) {
@@ -93,9 +110,9 @@ void byval_rect_with_float(int32_t a, int32_t b, float c, int32_t d,
     assert(s.d == 556);
 }
 
-// SysV ABI:
+// System V x86_64 & Win64 ABI:
 // a, b should be in registers
-// s should be split across 2 registers
+// s should be split across 2 integer registers
 void split_rect(int32_t a, int32_t b, struct Rect s) {
     assert(a == 1);
     assert(b == 2);
@@ -105,9 +122,9 @@ void split_rect(int32_t a, int32_t b, struct Rect s) {
     assert(s.d == 556);
 }
 
-// SysV ABI:
+// System V x86_64 & Win64 ABI:
 // a, b should be in sse registers
-// s should be split across int32_t & sse registers
+// s should be split across integer & sse registers
 void split_rect_floats(float a, float b, struct FloatRect s) {
     assert(a == 1.);
     assert(b == 2.);
@@ -116,10 +133,16 @@ void split_rect_floats(float a, float b, struct FloatRect s) {
     assert(s.c == 8.);
 }
 
-// SysV ABI:
+// System V x86_64 ABI:
 // a, b, d, f should be in registers
 // c, e passed via sse registers
 // s should be split across 2 registers
+//
+// Win64 ABI:
+// a, b, d should be in registers
+// c passed via sse registers
+// e, f should be on the stack
+// s should be on the stack (treated as 2 i64's)
 void split_rect_with_floats(int32_t a, int32_t b, float c,
                             int32_t d, float e, int32_t f, struct Rect s) {
     assert(a == 1);
@@ -134,7 +157,7 @@ void split_rect_with_floats(int32_t a, int32_t b, float c,
     assert(s.d == 556);
 }
 
-// SysV ABI:
+// System V x86_64 & Win64 ABI:
 // a, b, c should be in registers
 // s should be split across 2 registers
 // t should be a byval pointer
@@ -152,7 +175,7 @@ void split_and_byval_rect(int32_t a, int32_t b, int32_t c, struct Rect s, struct
     assert(t.d == 556);
 }
 
-// SysV ABI:
+// System V x86_64 & Win64 ABI:
 // a, b should in registers
 // s and return should be split across 2 registers
 struct Rect split_ret_byval_struct(int32_t a, int32_t b, struct Rect s) {
@@ -165,7 +188,7 @@ struct Rect split_ret_byval_struct(int32_t a, int32_t b, struct Rect s) {
     return s;
 }
 
-// SysV ABI:
+// System V x86_64 & Win64 ABI:
 // a, b, c, d should be in registers
 // return should be in a hidden sret pointer
 // s should be a byval pointer
@@ -184,7 +207,7 @@ struct BiggerRect sret_byval_struct(int32_t a, int32_t b, int32_t c, int32_t d, 
     return t;
 }
 
-// SysV ABI:
+// System V x86_64 & Win64 ABI:
 // a, b should be in registers
 // return should be in a hidden sret pointer
 // s should be split across 2 registers
@@ -201,7 +224,7 @@ struct BiggerRect sret_split_struct(int32_t a, int32_t b, struct Rect s) {
     return t;
 }
 
-// SysV ABI:
+// System V x86_64 & Win64 ABI:
 // s should be byval pointer (since sizeof(s) > 16)
 // return should in a hidden sret pointer
 struct Huge huge_struct(struct Huge s) {

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Passing structs via FFI should work regardless of whether
-// the functions gets passed in multiple registers or is a hidden pointer
+// they get passed in multiple registers, byval pointers or the stack
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
@@ -48,66 +48,27 @@ struct Huge {
 
 #[link(name = "test", kind = "static")]
 extern {
-    // SysV ABI:
-    // a, b, c, d, e should be in registers
-    // s should be byval pointer
     fn byval_rect(a: i32, b: i32, c: i32, d: i32, e: i32, s: Rect);
 
-    // SysV ABI:
-    // a, b, c, d, e, f, g should be in sse registers
-    // s should be split across 2 registers
-    // t should be byval pointer
     fn byval_rect_floats(a: f32, b: f32, c: f64, d: f32, e: f32,
                          f: f32, g: f64, s: Rect, t: FloatRect);
 
-    // SysV ABI:
-    // a, b, d, e should be in registers
-    // c passed via sse registers
-    // s should be byval pointer
     fn byval_rect_with_float(a: i32, b: i32, c: f32, d: i32, e: i32, f: i32, s: Rect);
 
-    // SysV ABI:
-    // a, b should be in registers
-    // s should be split across 2 registers
     fn split_rect(a: i32, b: i32, s: Rect);
 
-    // SysV ABI:
-    // a, b should be in sse registers
-    // s should be split across int & sse registers
     fn split_rect_floats(a: f32, b: f32, s: FloatRect);
 
-    // SysV ABI:
-    // a, b, d, f should be in registers
-    // c, e passed via sse registers
-    // s should be split across 2 registers
     fn split_rect_with_floats(a: i32, b: i32, c: f32, d: i32, e: f32, f: i32, s: Rect);
 
-    // SysV ABI:
-    // a, b, c should be in registers
-    // s should be split across 2 registers
-    // t should be a byval pointer
     fn split_and_byval_rect(a: i32, b: i32, c: i32, s: Rect, t: Rect);
 
-    // SysV ABI:
-    // a, b should in registers
-    // s and return should be split across 2 registers
     fn split_ret_byval_struct(a: i32, b: i32, s: Rect) -> Rect;
 
-    // SysV ABI:
-    // a, b, c, d should be in registers
-    // return should be in a hidden sret pointer
-    // s should be a byval pointer
     fn sret_byval_struct(a: i32, b: i32, c: i32, d: i32, s: Rect) -> BiggerRect;
 
-    // SysV ABI:
-    // a, b should be in registers
-    // return should be in a hidden sret pointer
-    // s should be split across 2 registers
     fn sret_split_struct(a: i32, b: i32, s: Rect) -> BiggerRect;
 
-    // SysV ABI:
-    // s should be byval pointer (since sizeof(s) > 16)
-    // return should in a hidden sret pointer
     fn huge_struct(s: Huge) -> Huge;
 }
 
