@@ -41,7 +41,7 @@ If a [pattern][patterns] matches successfully, it binds any appropriate parts of
 the value to the identifiers in the pattern, then evaluates the expression. If
 the pattern doesn’t match, nothing happens.
 
-If you’d rather to do something else when the pattern does not match, you can
+If you want to do something else when the pattern does not match, you can
 use `else`:
 
 ```rust
