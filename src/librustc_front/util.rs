@@ -282,11 +282,11 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
     }
 
     fn visit_variant_data(&mut self,
-                        struct_def: &VariantData,
-                        _: Name,
-                        _: &hir::Generics,
-                        _: NodeId,
-                        _: Span) {
+                          struct_def: &VariantData,
+                          _: Name,
+                          _: &hir::Generics,
+                          _: NodeId,
+                          _: Span) {
         self.operation.visit_id(struct_def.id());
         visit::walk_struct_def(self, struct_def);
     }

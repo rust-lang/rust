@@ -1073,7 +1073,6 @@ pub type ViewPath = Spanned<ViewPath_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ViewPath_ {
-
     /// `foo::bar::baz as quux`
     ///
     /// or just
@@ -1185,25 +1184,41 @@ pub type FieldIter<'a> = iter::FlatMap<option::IntoIter<&'a Vec<StructField>>,
 
 impl VariantData {
     pub fn fields(&self) -> FieldIter {
-        fn vec_iter<T>(v: &Vec<T>) -> slice::Iter<T> { v.iter() }
+        fn vec_iter<T>(v: &Vec<T>) -> slice::Iter<T> {
+            v.iter()
+        }
         match *self {
             VariantData::Struct(ref fields, _) | VariantData::Tuple(ref fields, _) => Some(fields),
             _ => None,
-        }.into_iter().flat_map(vec_iter)
+        }
+            .into_iter()
+            .flat_map(vec_iter)
     }
     pub fn id(&self) -> NodeId {
         match *self {
-            VariantData::Struct(_, id) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id
+            VariantData::Struct(_, id) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id,
         }
     }
     pub fn is_struct(&self) -> bool {
-        if let VariantData::Struct(..) = *self { true } else { false }
+        if let VariantData::Struct(..) = *self {
+            true
+        } else {
+            false
+        }
     }
     pub fn is_tuple(&self) -> bool {
-        if let VariantData::Tuple(..) = *self { true } else { false }
+        if let VariantData::Tuple(..) = *self {
+            true
+        } else {
+            false
+        }
     }
     pub fn is_unit(&self) -> bool {
-        if let VariantData::Unit(..) = *self { true } else { false }
+        if let VariantData::Unit(..) = *self {
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -1254,7 +1269,6 @@ pub enum Item_ {
 
     // Default trait implementations
     ///
-    // `impl Trait for .. {}`
     ItemDefaultImpl(Unsafety, TraitRef),
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,

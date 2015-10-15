@@ -899,18 +899,16 @@ impl<'a> State<'a> {
         if !struct_def.is_struct() {
             if struct_def.is_tuple() {
                 try!(self.popen());
-                try!(self.commasep_iter(Inconsistent,
-                                   struct_def.fields(),
-                                   |s, field| {
-                                       match field.node.kind {
-                                           hir::NamedField(..) => panic!("unexpected named field"),
-                                           hir::UnnamedField(vis) => {
-                                               try!(s.print_visibility(vis));
-                                               try!(s.maybe_print_comment(field.span.lo));
-                                               s.print_type(&*field.node.ty)
-                                           }
-                                       }
-                                   }));
+                try!(self.commasep_iter(Inconsistent, struct_def.fields(), |s, field| {
+                    match field.node.kind {
+                        hir::NamedField(..) => panic!("unexpected named field"),
+                        hir::UnnamedField(vis) => {
+                            try!(s.print_visibility(vis));
+                            try!(s.maybe_print_comment(field.span.lo));
+                            s.print_type(&*field.node.ty)
+                        }
+                    }
+                }));
                 try!(self.pclose());
             }
             try!(self.print_where_clause(&generics.where_clause));
@@ -1489,42 +1487,35 @@ impl<'a> State<'a> {
                 try!(self.print_string(&a.asm, a.asm_str_style));
                 try!(self.word_space(":"));
 
-                try!(self.commasep(Inconsistent,
-                                   &a.outputs,
-                                   |s, &(ref co, ref o, is_rw)| {
-                                       match co.slice_shift_char() {
-                                           Some(('=', operand)) if is_rw => {
-                                               try!(s.print_string(&format!("+{}", operand),
-                                                                   ast::CookedStr))
-                                           }
-                                           _ => try!(s.print_string(&co, ast::CookedStr)),
-                                       }
-                                       try!(s.popen());
-                                       try!(s.print_expr(&**o));
-                                       try!(s.pclose());
-                                       Ok(())
-                                   }));
+                try!(self.commasep(Inconsistent, &a.outputs, |s, &(ref co, ref o, is_rw)| {
+                    match co.slice_shift_char() {
+                        Some(('=', operand)) if is_rw => {
+                            try!(s.print_string(&format!("+{}", operand), ast::CookedStr))
+                        }
+                        _ => try!(s.print_string(&co, ast::CookedStr)),
+                    }
+                    try!(s.popen());
+                    try!(s.print_expr(&**o));
+                    try!(s.pclose());
+                    Ok(())
+                }));
                 try!(space(&mut self.s));
                 try!(self.word_space(":"));
 
-                try!(self.commasep(Inconsistent,
-                                   &a.inputs,
-                                   |s, &(ref co, ref o)| {
-                                       try!(s.print_string(&co, ast::CookedStr));
-                                       try!(s.popen());
-                                       try!(s.print_expr(&**o));
-                                       try!(s.pclose());
-                                       Ok(())
-                                   }));
+                try!(self.commasep(Inconsistent, &a.inputs, |s, &(ref co, ref o)| {
+                    try!(s.print_string(&co, ast::CookedStr));
+                    try!(s.popen());
+                    try!(s.print_expr(&**o));
+                    try!(s.pclose());
+                    Ok(())
+                }));
                 try!(space(&mut self.s));
                 try!(self.word_space(":"));
 
-                try!(self.commasep(Inconsistent,
-                                   &a.clobbers,
-                                   |s, co| {
-                                       try!(s.print_string(&co, ast::CookedStr));
-                                       Ok(())
-                                   }));
+                try!(self.commasep(Inconsistent, &a.clobbers, |s, co| {
+                    try!(s.print_string(&co, ast::CookedStr));
+                    Ok(())
+                }));
 
                 let mut options = vec!();
                 if a.volatile {
@@ -1540,12 +1531,10 @@ impl<'a> State<'a> {
                 if !options.is_empty() {
                     try!(space(&mut self.s));
                     try!(self.word_space(":"));
-                    try!(self.commasep(Inconsistent,
-                                       &*options,
-                                       |s, &co| {
-                                           try!(s.print_string(co, ast::CookedStr));
-                                           Ok(())
-                                       }));
+                    try!(self.commasep(Inconsistent, &*options, |s, &co| {
+                        try!(s.print_string(co, ast::CookedStr));
+                        Ok(())
+                    }));
                 }
 
                 try!(self.pclose());
@@ -1610,7 +1599,7 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(path.span.lo));
 
         let mut first = !path.global;
-        for segment in &path.segments[..path.segments.len()-depth] {
+        for segment in &path.segments[..path.segments.len() - depth] {
             if first {
                 first = false
             } else {
@@ -1694,9 +1683,7 @@ impl<'a> State<'a> {
 
             hir::ParenthesizedParameters(ref data) => {
                 try!(word(&mut self.s, "("));
-                try!(self.commasep(Inconsistent,
-                                   &data.inputs,
-                                   |s, ty| s.print_type(&**ty)));
+                try!(self.commasep(Inconsistent, &data.inputs, |s, ty| s.print_type(&**ty)));
                 try!(word(&mut self.s, ")"));
 
                 match data.output {
@@ -2070,18 +2057,16 @@ impl<'a> State<'a> {
             ints.push(i);
         }
 
-        try!(self.commasep(Inconsistent,
-                           &ints[..],
-                           |s, &idx| {
-                               if idx < generics.lifetimes.len() {
-                                   let lifetime = &generics.lifetimes[idx];
-                                   s.print_lifetime_def(lifetime)
-                               } else {
-                                   let idx = idx - generics.lifetimes.len();
-                                   let param = &generics.ty_params[idx];
-                                   s.print_ty_param(param)
-                               }
-                           }));
+        try!(self.commasep(Inconsistent, &ints[..], |s, &idx| {
+            if idx < generics.lifetimes.len() {
+                let lifetime = &generics.lifetimes[idx];
+                s.print_lifetime_def(lifetime)
+            } else {
+                let idx = idx - generics.lifetimes.len();
+                let param = &generics.ty_params[idx];
+                s.print_ty_param(param)
+            }
+        }));
 
         try!(word(&mut self.s, ">"));
         Ok(())
@@ -2174,18 +2159,16 @@ impl<'a> State<'a> {
                     try!(self.print_path(path, false, 0));
                     try!(word(&mut self.s, "::{"));
                 }
-                try!(self.commasep(Inconsistent,
-                                   &segments[..],
-                                   |s, w| {
-                                       match w.node {
-                                           hir::PathListIdent { name, .. } => {
-                                               s.print_name(name)
-                                           }
-                                           hir::PathListMod { .. } => {
-                                               word(&mut s.s, "self")
-                                           }
-                                       }
-                                   }));
+                try!(self.commasep(Inconsistent, &segments[..], |s, w| {
+                    match w.node {
+                        hir::PathListIdent { name, .. } => {
+                            s.print_name(name)
+                        }
+                        hir::PathListMod { .. } => {
+                            word(&mut s.s, "self")
+                        }
+                    }
+                }));
                 word(&mut self.s, "}")
             }
         }
