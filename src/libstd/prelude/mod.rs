@@ -84,7 +84,7 @@
 //!   }.
 //!   Generic conversions, used by savvy API authors to create
 //!   overloaded methods.
-//! * `std::default::`[`Default`](../default/trait.Default).
+//! * `std::default::`[`Default`](../default/trait.Default.html).
 //!   Types that have default values.
 //! * `std::iter::`{
 //!     [`Iterator`](../iter/trait.Iterator.html),
