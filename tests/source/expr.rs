@@ -70,7 +70,7 @@ fn bar() {
     let bar = 5 ;
     let nonsense = (10 .. 0)..(0..10);
 
-    loop{if true {break;}}
+    loop{if true {break}}
 
     let x = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &&
              aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
@@ -225,4 +225,10 @@ fn indices() {
 fn repeats() {
     let x = [aaaaaaaaaaaaaaaaaaaaaaaaaaaa+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb+cccccccccccccccc; x + y + z ];
     let y = [aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccc; xxxxx + yyyyy + zzzzz ];
+}
+
+fn blocks() {
+    if 1 + 1 == 2 {
+        println!("yay arithmetix!");
+    };
 }

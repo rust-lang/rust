@@ -1322,7 +1322,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
 
         if prelim_tactic == ListTactic::HorizontalVertical && fields.len() > 1 {
             prelim_tactic = ListTactic::LimitedHorizontalVertical(context.config.struct_lit_width);
-        };
+        }
 
         definitive_tactic(&item_vec, prelim_tactic, h_budget)
     };
