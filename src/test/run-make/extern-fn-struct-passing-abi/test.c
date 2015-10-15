@@ -59,6 +59,28 @@ void byval_rect(int32_t a, int32_t b, int32_t c, int32_t d, int32_t e, struct Re
 }
 
 // System V x86_64 ABI:
+// a, b, c, d, e, f should be in registers
+// s should be byval pointer on the stack
+//
+// Win64 ABI:
+// a, b, c, d should be in registers
+// e, f should be on the stack
+// s should be byval pointer on the stack
+void byval_many_rect(int32_t a, int32_t b, int32_t c, int32_t d, int32_t e,
+                     int32_t f, struct Rect s) {
+    assert(a == 1);
+    assert(b == 2);
+    assert(c == 3);
+    assert(d == 4);
+    assert(e == 5);
+    assert(f == 6);
+    assert(s.a == 553);
+    assert(s.b == 554);
+    assert(s.c == 555);
+    assert(s.d == 556);
+}
+
+// System V x86_64 ABI:
 // a, b, c, d, e, f, g should be in sse registers
 // s should be split across 2 registers
 // t should be byval pointer
