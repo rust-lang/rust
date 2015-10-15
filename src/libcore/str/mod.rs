@@ -965,7 +965,7 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
 #[allow(deprecated)]
 pub struct LinesAny<'a>(Lines<'a>);
 
-/// A nameable, clonable fn type
+/// A nameable, cloneable fn type
 #[derive(Clone)]
 struct LinesAnyMap;
 

@@ -6,7 +6,7 @@ interacted with the *outlives* relationship in an inclusive manner. That is,
 when we talked about `'a: 'b`, it was ok for `'a` to live *exactly* as long as
 `'b`. At first glance, this seems to be a meaningless distinction. Nothing ever
 gets dropped at the same time as another, right? This is why we used the
-following desugarring of `let` statements:
+following desugaring of `let` statements:
 
 ```rust,ignore
 let x;

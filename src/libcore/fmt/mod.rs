@@ -94,7 +94,7 @@ pub trait Write {
         self.write_str(unsafe { str::from_utf8_unchecked(&utf_8[..bytes_written]) })
     }
 
-    /// Glue for usage of the `write!` macro with implementers of this trait.
+    /// Glue for usage of the `write!` macro with implementors of this trait.
     ///
     /// This method should generally not be invoked manually, but rather through
     /// the `write!` macro itself.
@@ -523,7 +523,7 @@ pub trait Binary {
 
 /// Format trait for the `x` character.
 ///
-/// The `LowerHex` trait should format its output as a number in hexidecimal, with `a` through `f`
+/// The `LowerHex` trait should format its output as a number in hexadecimal, with `a` through `f`
 /// in lower case.
 ///
 /// The alternate flag, `#`, adds a `0x` in front of the output.
@@ -571,7 +571,7 @@ pub trait LowerHex {
 
 /// Format trait for the `X` character.
 ///
-/// The `UpperHex` trait should format its output as a number in hexidecimal, with `A` through `F`
+/// The `UpperHex` trait should format its output as a number in hexadecimal, with `A` through `F`
 /// in upper case.
 ///
 /// The alternate flag, `#`, adds a `0x` in front of the output.
@@ -620,7 +620,7 @@ pub trait UpperHex {
 /// Format trait for the `p` character.
 ///
 /// The `Pointer` trait should format its output as a memory location. This is commonly presented
-/// as hexidecimal.
+/// as hexadecimal.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///

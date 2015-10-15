@@ -279,7 +279,7 @@ macro_rules! unreachable {
     });
 }
 
-/// A standardised placeholder for marking unfinished code. It panics with the
+/// A standardized placeholder for marking unfinished code. It panics with the
 /// message `"not yet implemented"` when executed.
 ///
 /// This can be useful if you are prototyping and are just looking to have your

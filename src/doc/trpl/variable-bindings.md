@@ -221,7 +221,7 @@ Could not compile `hello`.
 To learn more, run the command again with --verbose.
 ```
 
-Additionaly, variable bindings can be shadowed. This means that a later
+Additionally, variable bindings can be shadowed. This means that a later
 variable binding with the same name as another binding, that's currently in
 scope, will override the previous binding.
 
