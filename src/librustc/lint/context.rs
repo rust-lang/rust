@@ -435,6 +435,33 @@ pub trait LintContext: Sized {
         self.lookup_and_emit(lint, Some(span), msg);
     }
 
+    /// Emit a lint and note at the appropriate level, for a particular span.
+    fn span_lint_note(&self, lint: &'static Lint, span: Span, msg: &str,
+                      note_span: Span, note: &str) {
+        self.span_lint(lint, span, msg);
+        if self.current_level(lint) != Level::Allow {
+            if note_span == span {
+                self.sess().fileline_note(note_span, note)
+            } else {
+                self.sess().span_note(note_span, note)
+            }
+            self.sess().fileline_help(span, &format!("for further information visit \
+                https://github.com/Manishearth/rust-clippy/wiki#{}",
+                lint.name_lower()))
+        }
+    }
+
+    /// Emit a lint and help at the appropriate level, for a particular span.
+    fn span_lint_help(&self, lint: &'static Lint, span: Span,
+                      msg: &str, help: &str) {
+        self.span_lint(lint, span, msg);
+        if self.current_level(lint) != Level::Allow {
+            self.sess().fileline_help(span, &format!("{}\nfor further information \
+                visit https://github.com/Manishearth/rust-clippy/wiki#{}",
+                help, lint.name_lower()))
+        }
+    }
+
     /// Emit a lint at the appropriate level, with no associated span.
     fn lint(&self, lint: &'static Lint, msg: &str) {
         self.lookup_and_emit(lint, None, msg);
