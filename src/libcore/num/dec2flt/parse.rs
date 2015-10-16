@@ -59,7 +59,12 @@ pub fn parse_decimal(s: &str) -> ParseResult {
     let s = s.as_bytes();
     let (integral, s) = eat_digits(s);
     match s.first() {
-        None => Valid(Decimal::new(integral, b"", 0)),
+        None => {
+            if integral.is_empty() {
+                return Invalid; // No digits at all
+            }
+            Valid(Decimal::new(integral, b"", 0))
+        }
         Some(&b'e') | Some(&b'E') => {
             if integral.is_empty() {
                 return Invalid; // No digits before 'e'

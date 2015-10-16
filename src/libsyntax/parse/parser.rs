@@ -5116,12 +5116,19 @@ impl<'a> Parser<'a> {
         try!(self.expect(&token::Semi));
 
         let last_span = self.last_span;
+
+        if visibility == ast::Public {
+            self.span_warn(mk_sp(lo, last_span.hi),
+                           "`pub extern crate` does not work as expected and should not be used. \
+                            Likely to become an error. Prefer `extern crate` and `pub use`.");
+        }
+
         Ok(self.mk_item(lo,
-                     last_span.hi,
-                     ident,
-                     ItemExternCrate(maybe_path),
-                     visibility,
-                     attrs))
+                        last_span.hi,
+                        ident,
+                        ItemExternCrate(maybe_path),
+                        visibility,
+                        attrs))
     }
 
     /// Parse `extern` for foreign ABIs

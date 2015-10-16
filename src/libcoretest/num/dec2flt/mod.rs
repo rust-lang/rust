@@ -102,6 +102,18 @@ fn lonely_dot() {
 }
 
 #[test]
+fn lonely_sign() {
+    assert!("+".parse::<f32>().is_err());
+    assert!("-".parse::<f64>().is_err());
+}
+
+#[test]
+fn whitespace() {
+    assert!(" 1.0".parse::<f32>().is_err());
+    assert!("1.0 ".parse::<f64>().is_err());
+}
+
+#[test]
 fn nan() {
     assert!("NaN".parse::<f32>().unwrap().is_nan());
     assert!("NaN".parse::<f64>().unwrap().is_nan());

@@ -348,13 +348,17 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // this properly would result in the necessity of computing *type*
     // reachability, which might result in a compile time loss.
     fn mark_destructors_reachable(&mut self) {
-        for adt in self.tcx.adt_defs() {
-            if let Some(destructor_def_id) = adt.destructor() {
-                if destructor_def_id.is_local() {
-                    self.reachable_symbols.insert(destructor_def_id.node);
+        let drop_trait = match self.tcx.lang_items.drop_trait() {
+            Some(id) => self.tcx.lookup_trait_def(id), None => { return }
+        };
+        drop_trait.for_each_impl(self.tcx, |drop_impl| {
+            for destructor in &self.tcx.impl_items.borrow()[&drop_impl] {
+                let destructor_did = destructor.def_id();
+                if destructor_did.is_local() {
+                    self.reachable_symbols.insert(destructor_did.node);
                 }
             }
-        }
+        })
     }
 }
 

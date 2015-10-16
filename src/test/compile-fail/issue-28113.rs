@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+const X: u8 =
+    || -> u8 { 5 }() //~ ERROR function calls in constants are limited
+;
 
-fn foo(_: Box<FnMut()>) {}
-
-fn main() {
-    foo(loop {
-        std::process::exit(0);
-    });
-    2_usize + (loop {});
-    //~^ ERROR E0277
-}
+fn main() {}
