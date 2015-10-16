@@ -504,3 +504,5 @@ you add more examples.
 
 We haven’t covered all of the details with writing documentation tests. For more,
 please see the [Documentation chapter](documentation.html)
+
+One final note: Tests *cannot* be run on the binary (main) file. To see more on file arrangement see the [Crates and Modules](https://doc.rust-lang.org/stable/book/crates-and-modules.html) Section
