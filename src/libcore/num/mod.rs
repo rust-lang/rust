@@ -404,12 +404,12 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn checked_div(self, v: Self) -> Option<Self> {
-            match v {
-                0   => None,
+        pub fn checked_div(self, other: Self) -> Option<Self> {
+            match other {
+                0    => None,
                -1 if self == Self::min_value()
-                    => None,
-                v   => Some(self / v),
+                     => None,
+               other => Some(self / other),
             }
         }
 
@@ -973,10 +973,10 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn checked_div(self, v: Self) -> Option<Self> {
-            match v {
+        pub fn checked_div(self, other: Self) -> Option<Self> {
+            match other {
                 0 => None,
-                v => Some(self / v),
+                other => Some(self / other),
             }
         }
 
