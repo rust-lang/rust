@@ -1,7 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#![deny(while_let_loop, empty_loop)]
+#![deny(while_let_loop, empty_loop, while_let_on_iterator)]
 #![allow(dead_code, unused)]
 
 fn main() {
@@ -52,6 +52,23 @@ fn main() {
     }
     while let Some(x) = y { // no error, obviously
         println!("{}", x);
+    }
+
+
+    while let Option::Some(x) = (1..20).next() { //~ERROR this loop could be written as a `for` loop
+        println!("{}", x);
+    }
+
+    while let Some(x) = (1..20).next() { //~ERROR this loop could be written as a `for` loop
+        println!("{}", x);
+    }
+
+    while let Some(_) = (1..20).next() {} //~ERROR this loop could be written as a `for` loop
+
+    while let None = (1..20).next() {} // this is fine (if nonsensical)
+
+    if let Some(x) = (1..20).next() { // also fine
+        println!("{}", x)
     }
 }
 

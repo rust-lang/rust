@@ -38,6 +38,8 @@ declare_lint!{ pub EXPLICIT_COUNTER_LOOP, Warn,
 
 declare_lint!{ pub EMPTY_LOOP, Warn, "empty `loop {}` detected" }
 
+declare_lint!{ pub WHILE_LET_ON_ITERATOR, Warn, "using a while-let loop instead of a for loop on an iterator" }
+
 #[derive(Copy, Clone)]
 pub struct LoopsPass;
 
@@ -45,7 +47,8 @@ impl LintPass for LoopsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_RANGE_LOOP, EXPLICIT_ITER_LOOP, ITER_NEXT_LOOP,
                     WHILE_LET_LOOP, UNUSED_COLLECT, REVERSE_RANGE_LOOP,
-                    EXPLICIT_COUNTER_LOOP, EMPTY_LOOP)
+                    EXPLICIT_COUNTER_LOOP, EMPTY_LOOP,
+                    WHILE_LET_ON_ITERATOR)
     }
 }
 
@@ -225,6 +228,17 @@ impl LateLintPass for LoopsPass {
                         },
                         _ => ()
                     }
+                }
+            }
+        }
+        if let ExprMatch(ref expr, ref arms, MatchSource::WhileLetDesugar) = expr.node {
+            let pat = &arms[0].pats[0].node;
+            if let (&PatEnum(ref path, _), &ExprMethodCall(method_name, _, _)) = (pat, &expr.node) {
+                if method_name.node.as_str() == "next" &&
+                        match_trait_method(cx, expr, &["core", "iter", "Iterator"]) &&
+                        path.segments.last().unwrap().identifier.name.as_str() == "Some" {
+                    span_lint(cx, WHILE_LET_ON_ITERATOR, expr.span,
+                              "this loop could be written as a `for` loop");
                 }
             }
         }
