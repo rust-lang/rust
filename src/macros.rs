@@ -24,12 +24,15 @@ use std::thread;
 use syntax::ast;
 use syntax::parse::token::{Eof, Comma, Token};
 use syntax::parse::{ParseSess, tts_to_parser};
+use syntax::codemap::{mk_sp, BytePos};
 
 use Indent;
 use rewrite::RewriteContext;
 use expr::{rewrite_call, rewrite_array};
 use comment::FindUncommented;
-use utils::wrap_str;
+use utils::{wrap_str, span_after};
+
+static FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];
 
 // We need to pass `TokenTree`s to our expression parsing thread, but they are
 // not `Send`. We wrap them in a `Send` container to force our will.
@@ -38,10 +41,21 @@ struct ForceSend<T>(pub T);
 unsafe impl<T> Send for ForceSend<T> {}
 
 // FIXME: use the enum from libsyntax?
+#[derive(Clone, Copy)]
 enum MacroStyle {
     Parens,
     Brackets,
     Braces,
+}
+
+impl MacroStyle {
+    fn opener(&self) -> &'static str {
+        match *self {
+            MacroStyle::Parens => "(",
+            MacroStyle::Brackets => "[",
+            MacroStyle::Braces => "{",
+        }
+    }
 }
 
 pub fn rewrite_macro(mac: &ast::Mac,
@@ -49,8 +63,13 @@ pub fn rewrite_macro(mac: &ast::Mac,
                      width: usize,
                      offset: Indent)
                      -> Option<String> {
-    let style = macro_style(mac, context);
+    let original_style = macro_style(mac, context);
     let macro_name = format!("{}!", mac.node.path);
+    let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) {
+        MacroStyle::Brackets
+    } else {
+        original_style
+    };
 
     if let MacroStyle::Braces = style {
         return None;
@@ -100,10 +119,14 @@ pub fn rewrite_macro(mac: &ast::Mac,
             // Format macro invocation as array literal.
             let extra_offset = macro_name.len();
             let rewrite = try_opt!(rewrite_array(expr_vec.iter().map(|x| &**x),
-                                                 mac.span,
+                                                 mk_sp(span_after(mac.span,
+                                                                  original_style.opener(),
+                                                                  context.codemap),
+                                                       mac.span.hi - BytePos(1)),
                                                  context,
                                                  try_opt!(width.checked_sub(extra_offset)),
                                                  offset + extra_offset));
+
             Some(format!("{}{}", macro_name, rewrite))
         }
         MacroStyle::Braces => {

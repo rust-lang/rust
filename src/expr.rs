@@ -35,7 +35,7 @@ impl Rewrite for ast::Expr {
         match self.node {
             ast::Expr_::ExprVec(ref expr_vec) => {
                 rewrite_array(expr_vec.iter().map(|e| &**e),
-                              self.span,
+                              mk_sp(span_after(self.span, "[", context.codemap), self.span.hi),
                               context,
                               width,
                               offset)
@@ -266,7 +266,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
                              |item| item.span.hi,
                              // 1 = [
                              |item| item.rewrite(&inner_context, max_item_width, offset),
-                             span_after(span, "[", context.codemap),
+                             span.lo,
                              span.hi)
                     .collect::<Vec<_>>();
 
