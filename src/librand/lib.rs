@@ -36,6 +36,8 @@
 #![feature(num_bits_bytes)]
 #![feature(staged_api)]
 #![feature(step_by)]
+#![feature(custom_attribute)]
+#![allow(unused_attributes)]
 
 #![cfg_attr(test, feature(test, rand, rustc_private, iter_order))]
 
