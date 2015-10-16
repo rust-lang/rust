@@ -158,12 +158,16 @@ pub fn round_up(d: &mut [u8], n: usize) -> Option<u8> {
     match d[..n].iter().rposition(|&c| c != b'9') {
         Some(i) => { // d[i+1..n] is all nines
             d[i] += 1;
-            for j in i+1..n { d[j] = b'0'; }
+            for j in i + 1..n {
+                d[j] = b'0';
+            }
             None
         }
         None if n > 0 => { // 999..999 rounds to 1000..000 with an increased exponent
             d[0] = b'1';
-            for j in 1..n { d[j] = b'0'; }
+            for j in 1..n {
+                d[j] = b'0';
+            }
             Some(b'0')
         }
         None => { // an empty buffer rounds up (a bit strange but reasonable)
@@ -188,8 +192,21 @@ impl<'a> Part<'a> {
     pub fn len(&self) -> usize {
         match *self {
             Part::Zero(nzeroes) => nzeroes,
-            Part::Num(v) => if v < 1_000 { if v < 10 { 1 } else if v < 100 { 2 } else { 3 } }
-                            else { if v < 10_000 { 4 } else { 5 } },
+            Part::Num(v) => if v < 1_000 {
+                if v < 10 {
+                    1
+                } else if v < 100 {
+                    2
+                } else {
+                    3
+                }
+            } else {
+                if v < 10_000 {
+                    4
+                } else {
+                    5
+                }
+            },
             Part::Copy(buf) => buf.len(),
         }
     }
@@ -202,7 +219,9 @@ impl<'a> Part<'a> {
         if out.len() >= len {
             match *self {
                 Part::Zero(nzeroes) => {
-                    for c in &mut out[..nzeroes] { *c = b'0'; }
+                    for c in &mut out[..nzeroes] {
+                        *c = b'0';
+                    }
                 }
                 Part::Num(mut v) => {
                     for c in out[..len].iter_mut().rev() {
@@ -245,14 +264,20 @@ impl<'a> Formatted<'a> {
     /// Returns the number of written bytes, or `None` if the buffer is not enough.
     /// (It may still leave partially written bytes in the buffer; do not rely on that.)
     pub fn write(&self, out: &mut [u8]) -> Option<usize> {
-        if out.len() < self.sign.len() { return None; }
+        if out.len() < self.sign.len() {
+            return None;
+        }
         bytes::copy_memory(self.sign, out);
 
         let mut written = self.sign.len();
         for part in self.parts {
             match part.write(&mut out[written..]) {
-                Some(len) => { written += len; }
-                None => { return None; }
+                Some(len) => {
+                    written += len;
+                }
+                None => {
+                    return None;
+                }
             }
         }
         Some(written)
@@ -267,8 +292,11 @@ impl<'a> Formatted<'a> {
 /// it will be ignored and full digits will be printed. It is only used to print
 /// additional zeroes after rendered digits. Thus `frac_digits` of 0 means that
 /// it will only print given digits and nothing else.
-fn digits_to_dec_str<'a>(buf: &'a [u8], exp: i16, frac_digits: usize,
-                         parts: &'a mut [Part<'a>]) -> &'a [Part<'a>] {
+fn digits_to_dec_str<'a>(buf: &'a [u8],
+                         exp: i16,
+                         frac_digits: usize,
+                         parts: &'a mut [Part<'a>])
+                         -> &'a [Part<'a>] {
     assert!(!buf.is_empty());
     assert!(buf[0] > b'0');
     assert!(parts.len() >= 4);
@@ -335,8 +363,12 @@ fn digits_to_dec_str<'a>(buf: &'a [u8], exp: i16, frac_digits: usize,
 /// it will be ignored and full digits will be printed. It is only used to print
 /// additional zeroes after rendered digits. Thus `min_digits` of 0 means that
 /// it will only print given digits and nothing else.
-fn digits_to_exp_str<'a>(buf: &'a [u8], exp: i16, min_ndigits: usize, upper: bool,
-                         parts: &'a mut [Part<'a>]) -> &'a [Part<'a>] {
+fn digits_to_exp_str<'a>(buf: &'a [u8],
+                         exp: i16,
+                         min_ndigits: usize,
+                         upper: bool,
+                         parts: &'a mut [Part<'a>])
+                         -> &'a [Part<'a>] {
     assert!(!buf.is_empty());
     assert!(buf[0] > b'0');
     assert!(parts.len() >= 6);
@@ -359,10 +391,18 @@ fn digits_to_exp_str<'a>(buf: &'a [u8], exp: i16, min_ndigits: usize, upper: boo
     // 0.1234 x 10^exp = 1.234 x 10^(exp-1)
     let exp = exp as i32 - 1; // avoid underflow when exp is i16::MIN
     if exp < 0 {
-        parts[n] = Part::Copy(if upper { b"E-" } else { b"e-" });
+        parts[n] = Part::Copy(if upper {
+            b"E-"
+        } else {
+            b"e-"
+        });
         parts[n + 1] = Part::Num(-exp as u16);
     } else {
-        parts[n] = Part::Copy(if upper { b"E" } else { b"e" });
+        parts[n] = Part::Copy(if upper {
+            b"E"
+        } else {
+            b"e"
+        });
         parts[n + 1] = Part::Num(exp as u16);
     }
     &parts[..n + 2]
@@ -387,11 +427,27 @@ fn determine_sign(sign: Sign, decoded: &FullDecoded, negative: bool) -> &'static
     match (*decoded, sign) {
         (FullDecoded::Nan, _) => b"",
         (FullDecoded::Zero, Sign::Minus) => b"",
-        (FullDecoded::Zero, Sign::MinusRaw) => if negative { b"-" } else { b"" },
+        (FullDecoded::Zero, Sign::MinusRaw) => if negative {
+            b"-"
+        } else {
+            b""
+        },
         (FullDecoded::Zero, Sign::MinusPlus) => b"+",
-        (FullDecoded::Zero, Sign::MinusPlusRaw) => if negative { b"-" } else { b"+" },
-        (_, Sign::Minus) | (_, Sign::MinusRaw) => if negative { b"-" } else { b"" },
-        (_, Sign::MinusPlus) | (_, Sign::MinusPlusRaw) => if negative { b"-" } else { b"+" },
+        (FullDecoded::Zero, Sign::MinusPlusRaw) => if negative {
+            b"-"
+        } else {
+            b"+"
+        },
+        (_, Sign::Minus) | (_, Sign::MinusRaw) => if negative {
+            b"-"
+        } else {
+            b""
+        },
+        (_, Sign::MinusPlus) | (_, Sign::MinusPlusRaw) => if negative {
+            b"-"
+        } else {
+            b"+"
+        },
     }
 }
 
@@ -413,10 +469,17 @@ fn determine_sign(sign: Sign, decoded: &FullDecoded, negative: bool) -> &'static
 /// The byte buffer should be at least `MAX_SIG_DIGITS` bytes long.
 /// There should be at least 5 parts available, due to the worst case like
 /// `[+][0.][0000][45][0000]` with `frac_digits = 10`.
-pub fn to_shortest_str<'a, T, F>(mut format_shortest: F, v: T,
-                                 sign: Sign, frac_digits: usize, _upper: bool,
-                                 buf: &'a mut [u8], parts: &'a mut [Part<'a>]) -> Formatted<'a>
-        where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
+pub fn to_shortest_str<'a, T, F>(mut format_shortest: F,
+                                 v: T,
+                                 sign: Sign,
+                                 frac_digits: usize,
+                                 _upper: bool,
+                                 buf: &'a mut [u8],
+                                 parts: &'a mut [Part<'a>])
+                                 -> Formatted<'a>
+    where T: DecodableFloat,
+          F: FnMut(&Decoded, &mut [u8]) -> (usize, i16)
+{
     assert!(parts.len() >= 4);
     assert!(buf.len() >= MAX_SIG_DIGITS);
 
@@ -425,26 +488,40 @@ pub fn to_shortest_str<'a, T, F>(mut format_shortest: F, v: T,
     match full_decoded {
         FullDecoded::Nan => {
             parts[0] = Part::Copy(b"NaN");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted {
+                sign: sign,
+                parts: &parts[..1],
+            }
         }
         FullDecoded::Infinite => {
             parts[0] = Part::Copy(b"inf");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted {
+                sign: sign,
+                parts: &parts[..1],
+            }
         }
         FullDecoded::Zero => {
             if frac_digits > 0 { // [0.][0000]
                 parts[0] = Part::Copy(b"0.");
                 parts[1] = Part::Zero(frac_digits);
-                Formatted { sign: sign, parts: &parts[..2] }
+                Formatted {
+                    sign: sign,
+                    parts: &parts[..2],
+                }
             } else {
                 parts[0] = Part::Copy(b"0");
-                Formatted { sign: sign, parts: &parts[..1] }
+                Formatted {
+                    sign: sign,
+                    parts: &parts[..1],
+                }
             }
         }
         FullDecoded::Finite(ref decoded) => {
             let (len, exp) = format_shortest(decoded, buf);
-            Formatted { sign: sign,
-                        parts: digits_to_dec_str(&buf[..len], exp, frac_digits, parts) }
+            Formatted {
+                sign: sign,
+                parts: digits_to_dec_str(&buf[..len], exp, frac_digits, parts),
+            }
         }
     }
 }
@@ -468,10 +545,17 @@ pub fn to_shortest_str<'a, T, F>(mut format_shortest: F, v: T,
 /// The byte buffer should be at least `MAX_SIG_DIGITS` bytes long.
 /// There should be at least 7 parts available, due to the worst case like
 /// `[+][1][.][2345][e][-][67]`.
-pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F, v: T,
-                                     sign: Sign, dec_bounds: (i16, i16), upper: bool,
-                                     buf: &'a mut [u8], parts: &'a mut [Part<'a>]) -> Formatted<'a>
-        where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
+pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F,
+                                     v: T,
+                                     sign: Sign,
+                                     dec_bounds: (i16, i16),
+                                     upper: bool,
+                                     buf: &'a mut [u8],
+                                     parts: &'a mut [Part<'a>])
+                                     -> Formatted<'a>
+    where T: DecodableFloat,
+          F: FnMut(&Decoded, &mut [u8]) -> (usize, i16)
+{
     assert!(parts.len() >= 6);
     assert!(buf.len() >= MAX_SIG_DIGITS);
     assert!(dec_bounds.0 <= dec_bounds.1);
@@ -481,19 +565,32 @@ pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F, v: T,
     match full_decoded {
         FullDecoded::Nan => {
             parts[0] = Part::Copy(b"NaN");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted {
+                sign: sign,
+                parts: &parts[..1],
+            }
         }
         FullDecoded::Infinite => {
             parts[0] = Part::Copy(b"inf");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted {
+                sign: sign,
+                parts: &parts[..1],
+            }
         }
         FullDecoded::Zero => {
             parts[0] = if dec_bounds.0 <= 0 && 0 < dec_bounds.1 {
                 Part::Copy(b"0")
             } else {
-                Part::Copy(if upper { b"0E0" } else { b"0e0" })
+                Part::Copy(if upper {
+                    b"0E0"
+                } else {
+                    b"0e0"
+                })
             };
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted {
+                sign: sign,
+                parts: &parts[..1],
+            }
         }
         FullDecoded::Finite(ref decoded) => {
             let (len, exp) = format_shortest(decoded, buf);
@@ -503,7 +600,10 @@ pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F, v: T,
             } else {
                 digits_to_exp_str(&buf[..len], exp, 0, upper, parts)
             };
-            Formatted { sign: sign, parts: parts }
+            Formatted {
+                sign: sign,
+                parts: parts,
+            }
         }
     }
 }
@@ -529,7 +629,12 @@ pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F, v: T,
 /// 826 bytes of buffer should be sufficient for `f64`. Compare this with
 /// the actual number for the worst case: 770 bytes (when `exp = -1074`).
 fn estimate_max_buf_len(exp: i16) -> usize {
-    21 + ((if exp < 0 { -12 } else { 5 } * exp as i32) as usize >> 4)
+    21 +
+    ((if exp < 0 {
+        -12
+    } else {
+        5
+    } * exp as i32) as usize >> 4)
 }
 
 /// Formats given floating point number into the exponential form with
@@ -547,10 +652,17 @@ fn estimate_max_buf_len(exp: i16) -> usize {
 /// (The tipping point for `f64` is about 800, so 1000 bytes should be enough.)
 /// There should be at least 7 parts available, due to the worst case like
 /// `[+][1][.][2345][e][-][67]`.
-pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
-                                  sign: Sign, ndigits: usize, upper: bool,
-                                  buf: &'a mut [u8], parts: &'a mut [Part<'a>]) -> Formatted<'a>
-        where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
+pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F,
+                                  v: T,
+                                  sign: Sign,
+                                  ndigits: usize,
+                                  upper: bool,
+                                  buf: &'a mut [u8],
+                                  parts: &'a mut [Part<'a>])
+                                  -> Formatted<'a>
+    where T: DecodableFloat,
+          F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16)
+{
     assert!(parts.len() >= 6);
     assert!(ndigits > 0);
 
@@ -559,31 +671,57 @@ pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
     match full_decoded {
         FullDecoded::Nan => {
             parts[0] = Part::Copy(b"NaN");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted {
+                sign: sign,
+                parts: &parts[..1],
+            }
         }
         FullDecoded::Infinite => {
             parts[0] = Part::Copy(b"inf");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted {
+                sign: sign,
+                parts: &parts[..1],
+            }
         }
         FullDecoded::Zero => {
             if ndigits > 1 { // [0.][0000][e0]
                 parts[0] = Part::Copy(b"0.");
                 parts[1] = Part::Zero(ndigits - 1);
-                parts[2] = Part::Copy(if upper { b"E0" } else { b"e0" });
-                Formatted { sign: sign, parts: &parts[..3] }
+                parts[2] = Part::Copy(if upper {
+                    b"E0"
+                } else {
+                    b"e0"
+                });
+                Formatted {
+                    sign: sign,
+                    parts: &parts[..3],
+                }
             } else {
-                parts[0] = Part::Copy(if upper { b"0E0" } else { b"0e0" });
-                Formatted { sign: sign, parts: &parts[..1] }
+                parts[0] = Part::Copy(if upper {
+                    b"0E0"
+                } else {
+                    b"0e0"
+                });
+                Formatted {
+                    sign: sign,
+                    parts: &parts[..1],
+                }
             }
         }
         FullDecoded::Finite(ref decoded) => {
             let maxlen = estimate_max_buf_len(decoded.exp);
             assert!(buf.len() >= ndigits || buf.len() >= maxlen);
 
-            let trunc = if ndigits < maxlen { ndigits } else { maxlen };
+            let trunc = if ndigits < maxlen {
+                ndigits
+            } else {
+                maxlen
+            };
             let (len, exp) = format_exact(decoded, &mut buf[..trunc], i16::MIN);
-            Formatted { sign: sign,
-                        parts: digits_to_exp_str(&buf[..len], exp, ndigits, upper, parts) }
+            Formatted {
+                sign: sign,
+                parts: digits_to_exp_str(&buf[..len], exp, ndigits, upper, parts),
+            }
         }
     }
 }
@@ -603,10 +741,17 @@ pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
 /// (The tipping point for `f64` is about 800, and 1000 bytes should be enough.)
 /// There should be at least 5 parts available, due to the worst case like
 /// `[+][0.][0000][45][0000]` with `frac_digits = 10`.
-pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
-                                    sign: Sign, frac_digits: usize, _upper: bool,
-                                    buf: &'a mut [u8], parts: &'a mut [Part<'a>]) -> Formatted<'a>
-        where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
+pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F,
+                                    v: T,
+                                    sign: Sign,
+                                    frac_digits: usize,
+                                    _upper: bool,
+                                    buf: &'a mut [u8],
+                                    parts: &'a mut [Part<'a>])
+                                    -> Formatted<'a>
+    where T: DecodableFloat,
+          F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16)
+{
     assert!(parts.len() >= 4);
 
     let (negative, full_decoded) = decode(v);
@@ -614,20 +759,32 @@ pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
     match full_decoded {
         FullDecoded::Nan => {
             parts[0] = Part::Copy(b"NaN");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted {
+                sign: sign,
+                parts: &parts[..1],
+            }
         }
         FullDecoded::Infinite => {
             parts[0] = Part::Copy(b"inf");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted {
+                sign: sign,
+                parts: &parts[..1],
+            }
         }
         FullDecoded::Zero => {
             if frac_digits > 0 { // [0.][0000]
                 parts[0] = Part::Copy(b"0.");
                 parts[1] = Part::Zero(frac_digits);
-                Formatted { sign: sign, parts: &parts[..2] }
+                Formatted {
+                    sign: sign,
+                    parts: &parts[..2],
+                }
             } else {
                 parts[0] = Part::Copy(b"0");
-                Formatted { sign: sign, parts: &parts[..1] }
+                Formatted {
+                    sign: sign,
+                    parts: &parts[..1],
+                }
             }
         }
         FullDecoded::Finite(ref decoded) => {
@@ -637,7 +794,11 @@ pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
             // it *is* possible that `frac_digits` is ridiculously large.
             // `format_exact` will end rendering digits much earlier in this case,
             // because we are strictly limited by `maxlen`.
-            let limit = if frac_digits < 0x8000 { -(frac_digits as i16) } else { i16::MIN };
+            let limit = if frac_digits < 0x8000 {
+                -(frac_digits as i16)
+            } else {
+                i16::MIN
+            };
             let (len, exp) = format_exact(decoded, &mut buf[..maxlen], limit);
             if exp <= limit {
                 // the restriction couldn't been met, so this should render like zero no matter
@@ -647,16 +808,23 @@ pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
                 if frac_digits > 0 { // [0.][0000]
                     parts[0] = Part::Copy(b"0.");
                     parts[1] = Part::Zero(frac_digits);
-                    Formatted { sign: sign, parts: &parts[..2] }
+                    Formatted {
+                        sign: sign,
+                        parts: &parts[..2],
+                    }
                 } else {
                     parts[0] = Part::Copy(b"0");
-                    Formatted { sign: sign, parts: &parts[..1] }
+                    Formatted {
+                        sign: sign,
+                        parts: &parts[..1],
+                    }
                 }
             } else {
-                Formatted { sign: sign,
-                            parts: digits_to_dec_str(&buf[..len], exp, frac_digits, parts) }
+                Formatted {
+                    sign: sign,
+                    parts: digits_to_dec_str(&buf[..len], exp, frac_digits, parts),
+                }
             }
         }
     }
 }
-

@@ -151,20 +151,47 @@ pub fn max_pow10_no_more_than(x: u32) -> (u8, u32) {
     const X1: u32 =           10;
 
     if x < X4 {
-        if x < X2 { if x < X1 {(0,  1)} else {(1, X1)} }
-        else      { if x < X3 {(2, X2)} else {(3, X3)} }
+        if x < X2 {
+            if x < X1 {
+                (0, 1)
+            } else {
+                (1, X1)
+            }
+        } else {
+            if x < X3 {
+                (2, X2)
+            } else {
+                (3, X3)
+            }
+        }
     } else {
-        if x < X6      { if x < X5 {(4, X4)} else {(5, X5)} }
-        else if x < X8 { if x < X7 {(6, X6)} else {(7, X7)} }
-        else           { if x < X9 {(8, X8)} else {(9, X9)} }
+        if x < X6 {
+            if x < X5 {
+                (4, X4)
+            } else {
+                (5, X5)
+            }
+        } else if x < X8 {
+            if x < X7 {
+                (6, X6)
+            } else {
+                (7, X7)
+            }
+        } else {
+            if x < X9 {
+                (8, X8)
+            } else {
+                (9, X9)
+            }
+        }
     }
 }
 
 /// The shortest mode implementation for Grisu.
 ///
 /// It returns `None` when it would return an inexact representation otherwise.
-pub fn format_shortest_opt(d: &Decoded,
-                           buf: &mut [u8]) -> Option<(/*#digits*/ usize, /*exp*/ i16)> {
+pub fn format_shortest_opt(d: &Decoded, buf: &mut [u8])
+                           -> Option<(/*#digits*/ usize, /*exp*/ i16)> {
     assert!(d.mant > 0);
     assert!(d.minus > 0);
     assert!(d.plus > 0);
@@ -174,9 +201,18 @@ pub fn format_shortest_opt(d: &Decoded,
     assert!(d.mant + d.plus < (1 << 61)); // we need at least three bits of additional precision
 
     // start with the normalized values with the shared exponent
-    let plus = Fp { f: d.mant + d.plus, e: d.exp }.normalize();
-    let minus = Fp { f: d.mant - d.minus, e: d.exp }.normalize_to(plus.e);
-    let v = Fp { f: d.mant, e: d.exp }.normalize_to(plus.e);
+    let plus = Fp {
+        f: d.mant + d.plus,
+        e: d.exp,
+    }.normalize();
+    let minus = Fp {
+        f: d.mant - d.minus,
+        e: d.exp,
+    }.normalize_to(plus.e);
+    let v = Fp {
+        f: d.mant,
+        e: d.exp,
+    }.normalize_to(plus.e);
 
     // find any `cached = 10^minusk` such that `ALPHA <= minusk + plus.e + 64 <= GAMMA`.
     // since `plus` is normalized, this means `2^(62 + ALPHA) <= plus * cached < 2^(64 + GAMMA)`;
@@ -272,7 +308,13 @@ pub fn format_shortest_opt(d: &Decoded,
         if plus1rem < delta1 {
             // `plus1 % 10^kappa < delta1 = plus1 - minus1`; we've found the correct `kappa`.
             let ten_kappa = (ten_kappa as u64) << e; // scale 10^kappa back to the shared exponent
-            return round_and_weed(&mut buf[..i], exp, plus1rem, delta1, plus1 - v.f, ten_kappa, 1);
+            return round_and_weed(&mut buf[..i],
+                                  exp,
+                                  plus1rem,
+                                  delta1,
+                                  plus1 - v.f,
+                                  ten_kappa,
+                                  1);
         }
 
         // break the loop when we have rendered all integral digits.
@@ -313,8 +355,13 @@ pub fn format_shortest_opt(d: &Decoded,
 
         if r < threshold {
             let ten_kappa = 1 << e; // implicit divisor
-            return round_and_weed(&mut buf[..i], exp, r, threshold,
-                                  (plus1 - v.f) * ulp, ten_kappa, ulp);
+            return round_and_weed(&mut buf[..i],
+                                  exp,
+                                  r,
+                                  threshold,
+                                  (plus1 - v.f) * ulp,
+                                  ten_kappa,
+                                  ulp);
         }
 
         // restore invariants
@@ -338,8 +385,14 @@ pub fn format_shortest_opt(d: &Decoded,
     // - `plus1v = (plus1 - v) * k` (and also, `threshold > plus1v` from prior invariants)
     // - `ten_kappa = 10^kappa * k`
     // - `ulp = 2^-e * k`
-    fn round_and_weed(buf: &mut [u8], exp: i16, remainder: u64, threshold: u64, plus1v: u64,
-                      ten_kappa: u64, ulp: u64) -> Option<(usize, i16)> {
+    fn round_and_weed(buf: &mut [u8],
+                      exp: i16,
+                      remainder: u64,
+                      threshold: u64,
+                      plus1v: u64,
+                      ten_kappa: u64,
+                      ulp: u64)
+                      -> Option<(usize, i16)> {
         assert!(!buf.is_empty());
 
         // produce two approximations to `v` (actually `plus1 - v`) within 1.5 ulps.
@@ -394,8 +447,7 @@ pub fn format_shortest_opt(d: &Decoded,
             //
             // consequently, we should stop when `TC1 || TC2 || (TC3a && TC3b)`. the following is
             // equal to its inverse, `!TC1 && !TC2 && (!TC3a || !TC3b)`.
-            while plus1w < plus1v_up &&
-                  threshold - plus1w >= ten_kappa &&
+            while plus1w < plus1v_up && threshold - plus1w >= ten_kappa &&
                   (plus1w + ten_kappa < plus1v_up ||
                    plus1v_up - plus1w >= plus1w + ten_kappa - plus1v_up) {
                 *last -= 1;
@@ -408,8 +460,7 @@ pub fn format_shortest_opt(d: &Decoded,
         //
         // this is simply same to the terminating conditions for `v + 1 ulp`, with all `plus1v_up`
         // replaced by `plus1v_down` instead. overflow analysis equally holds.
-        if plus1w < plus1v_down &&
-           threshold - plus1w >= ten_kappa &&
+        if plus1w < plus1v_down && threshold - plus1w >= ten_kappa &&
            (plus1w + ten_kappa < plus1v_down ||
             plus1v_down - plus1w >= plus1w + ten_kappa - plus1v_down) {
             return None;
@@ -430,7 +481,7 @@ pub fn format_shortest_opt(d: &Decoded,
 /// The shortest mode implementation for Grisu with Dragon fallback.
 ///
 /// This should be used for most cases.
-pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp*/ i16) {
+pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (usize, i16) {
     use num::flt2dec::strategy::dragon::format_shortest as fallback;
     match format_shortest_opt(d, buf) {
         Some(ret) => ret,
@@ -442,13 +493,16 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
 ///
 /// It returns `None` when it would return an inexact representation otherwise.
 pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
-                                -> Option<(/*#digits*/ usize, /*exp*/ i16)> {
+                        -> Option<(/*#digits*/ usize, /*exp*/ i16)> {
     assert!(d.mant > 0);
     assert!(d.mant < (1 << 61)); // we need at least three bits of additional precision
     assert!(!buf.is_empty());
 
     // normalize and scale `v`.
-    let v = Fp { f: d.mant, e: d.exp }.normalize();
+    let v = Fp {
+        f: d.mant,
+        e: d.exp,
+    }.normalize();
     let (minusk, cached) = cached_power(ALPHA - v.e - 64, GAMMA - v.e - 64);
     let v = v.mul(&cached);
 
@@ -489,7 +543,13 @@ pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
         // thus we are being sloppy here and widen the error range by a factor of 10.
         // this will increase the false negative rate, but only very, *very* slightly;
         // it can only matter noticably when the mantissa is bigger than 60 bits.
-        return possibly_round(buf, 0, exp, limit, v.f / 10, (max_ten_kappa as u64) << e, err << e);
+        return possibly_round(buf,
+                              0,
+                              exp,
+                              limit,
+                              v.f / 10,
+                              (max_ten_kappa as u64) << e,
+                              err << e);
     } else if ((exp as i32 - limit as i32) as usize) < buf.len() {
         (exp - limit) as usize
     } else {
@@ -518,7 +578,13 @@ pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
         // is the buffer full? run the rounding pass with the remainder.
         if i == len {
             let vrem = ((r as u64) << e) + vfrac; // == (v % 10^kappa) * 2^e
-            return possibly_round(buf, len, exp, limit, vrem, (ten_kappa as u64) << e, err << e);
+            return possibly_round(buf,
+                                  len,
+                                  exp,
+                                  limit,
+                                  vrem,
+                                  (ten_kappa as u64) << e,
+                                  err << e);
         }
 
         // break the loop when we have rendered all integral digits.
@@ -588,8 +654,14 @@ pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
     // - `remainder = (v % 10^kappa) * k`
     // - `ten_kappa = 10^kappa * k`
     // - `ulp = 2^-e * k`
-    fn possibly_round(buf: &mut [u8], mut len: usize, mut exp: i16, limit: i16,
-                      remainder: u64, ten_kappa: u64, ulp: u64) -> Option<(usize, i16)> {
+    fn possibly_round(buf: &mut [u8],
+                      mut len: usize,
+                      mut exp: i16,
+                      limit: i16,
+                      remainder: u64,
+                      ten_kappa: u64,
+                      ulp: u64)
+                      -> Option<(usize, i16)> {
         debug_assert!(remainder < ten_kappa);
 
         //           10^kappa
@@ -606,7 +678,9 @@ pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
         //
         // error is too large that there are at least three possible representations
         // between `v - 1 ulp` and `v + 1 ulp`. we cannot determine which one is correct.
-        if ulp >= ten_kappa { return None; }
+        if ulp >= ten_kappa {
+            return None;
+        }
 
         //    10^kappa
         //   :<------->:
@@ -620,7 +694,9 @@ pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
         // in fact, 1/2 ulp is enough to introduce two possible representations.
         // (remember that we need a unique representation for both `v - 1 ulp` and `v + 1 ulp`.)
         // this won't overflow, as `ulp < ten_kappa` from the first check.
-        if ten_kappa - ulp <= ulp { return None; }
+        if ten_kappa - ulp <= ulp {
+            return None;
+        }
 
         //     remainder
         //       :<->|                           :

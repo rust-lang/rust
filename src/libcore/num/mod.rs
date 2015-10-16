@@ -111,7 +111,9 @@ macro_rules! checked_op {
 
 /// Swapping a single byte is a no-op. This is marked as `unsafe` for
 /// consistency with the other `bswap` intrinsics.
-unsafe fn bswap8(x: u8) -> u8 { x }
+unsafe fn bswap8(x: u8) -> u8 {
+    x
+}
 
 // `Int` + `SignedInt` implemented for signed integers
 macro_rules! int_impl {
@@ -1366,14 +1368,13 @@ macro_rules! doit {
 }
 doit! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
 
-fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32)
-                                         -> Result<T, ParseIntError> {
+fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
     use self::IntErrorKind::*;
     use self::ParseIntError as PIE;
 
     assert!(radix >= 2 && radix <= 36,
-           "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
-           radix);
+            "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
+            radix);
 
     if src.is_empty() {
         return Err(PIE { kind: Empty });
@@ -1387,7 +1388,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32)
     // of multi-byte sequences
     let src = src.as_bytes();
 
-    match (src[0], &src[1..])  {
+    match (src[0], &src[1..]) {
         (b'-', digits) if digits.is_empty() => Err(PIE { kind: Empty }),
         (b'-', digits) if is_signed_ty => {
             // The number is negative
@@ -1407,7 +1408,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32)
                 };
             }
             Ok(result)
-        },
+        }
         (c, digits) => {
             // The number is signed
             let mut result = match (c as char).to_digit(radix) {
@@ -1436,7 +1437,9 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32)
 /// An error which can be returned when parsing an integer.
 #[derive(Debug, Clone, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct ParseIntError { kind: IntErrorKind }
+pub struct ParseIntError {
+    kind: IntErrorKind,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 enum IntErrorKind {

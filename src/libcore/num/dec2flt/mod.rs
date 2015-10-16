@@ -153,7 +153,7 @@ from_str_float_impl!(f64, to_f64);
 #[derive(Debug, Clone, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseFloatError {
-    kind: FloatErrorKind
+    kind: FloatErrorKind,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -214,8 +214,10 @@ fn dec2flt<T: RawFloat>(s: &str) -> Result<T, ParseFloatError> {
         ParseResult::Invalid => match s {
             "inf" => T::infinity(),
             "NaN" => T::nan(),
-            _ => { return Err(pfe_invalid()); }
-        }
+            _ => {
+                return Err(pfe_invalid());
+            }
+        },
     };
 
     match sign {
@@ -232,8 +234,7 @@ fn convert<T: RawFloat>(mut decimal: Decimal) -> Result<T, ParseFloatError> {
         return Ok(x);
     }
     // AlgorithmM and AlgorithmR both compute approximately `f * 10^e`.
-    let max_digits = decimal.integral.len() + decimal.fractional.len() +
-                     decimal.exp.abs() as usize;
+    let max_digits = decimal.integral.len() + decimal.fractional.len() + decimal.exp.abs() as usize;
     // Remove/shift out the decimal point.
     let e = decimal.exp - decimal.fractional.len() as i64;
     if let Some(x) = algorithm::fast_path(decimal.integral, decimal.fractional, e) {

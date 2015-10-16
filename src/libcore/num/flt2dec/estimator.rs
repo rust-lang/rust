@@ -22,4 +22,3 @@ pub fn estimate_scaling_factor(mant: u64, exp: i16) -> i16 {
     // therefore this always underestimates (or is exact), but not much.
     (((nbits + exp as i64) * 1292913986) >> 32) as i16
 }
-
