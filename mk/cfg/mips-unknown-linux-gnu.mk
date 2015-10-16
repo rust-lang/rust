@@ -7,8 +7,8 @@ CFG_LIB_NAME_mips-unknown-linux-gnu=lib$(1).so
 CFG_STATIC_LIB_NAME_mips-unknown-linux-gnu=lib$(1).a
 CFG_LIB_GLOB_mips-unknown-linux-gnu=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_mips-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
-CFG_JEMALLOC_CFLAGS_mips-unknown-linux-gnu := -mips32r2 -msoft-float -mabi=32 -mno-compact-eh $(CFLAGS)
-CFG_GCCISH_CFLAGS_mips-unknown-linux-gnu := -Wall -g -fPIC -mips32r2 -msoft-float -mabi=32 -mno-compact-eh $(CFLAGS)
+CFG_JEMALLOC_CFLAGS_mips-unknown-linux-gnu := -mips32r2 -msoft-float -mabi=32 $(CFLAGS)
+CFG_GCCISH_CFLAGS_mips-unknown-linux-gnu := -Wall -g -fPIC -mips32r2 -msoft-float -mabi=32 $(CFLAGS)
 CFG_GCCISH_CXXFLAGS_mips-unknown-linux-gnu := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_mips-unknown-linux-gnu := -shared -fPIC -g -mips32r2 -msoft-float -mabi=32
 CFG_GCCISH_DEF_FLAG_mips-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
@@ -20,5 +20,5 @@ CFG_UNIXY_mips-unknown-linux-gnu := 1
 CFG_LDPATH_mips-unknown-linux-gnu :=
 CFG_RUN_mips-unknown-linux-gnu=
 CFG_RUN_TARG_mips-unknown-linux-gnu=
-RUSTC_FLAGS_mips-unknown-linux-gnu := -C target-cpu=mips32r2 -C target-feature="+mips32r2,+o32" -C soft-float
+RUSTC_FLAGS_mips-unknown-linux-gnu := -C target-cpu=mips32r2 -C target-feature="+mips32r2" -C soft-float
 CFG_GNU_TRIPLE_mips-unknown-linux-gnu := mips-unknown-linux-gnu
