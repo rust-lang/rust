@@ -2666,13 +2666,18 @@ impl<'a> Parser<'a> {
         } else {
             try!(self.parse_prefix_expr())
         };
-        if self.expr_is_complete(&*lhs) && min_prec == 0 {
+        if self.expr_is_complete(&*lhs) {
             // Semi-statement forms are odd. See https://github.com/rust-lang/rust/issues/29071
             return Ok(lhs);
         }
         let cur_op_span = self.span;
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = AssocOp::from_token(&self.token) {
+            let restrictions = if op.is_assign_like() {
+                self.restrictions & Restrictions::RESTRICTION_NO_STRUCT_LITERAL
+            } else {
+                self.restrictions
+            };
             if op.precedence() < min_prec {
                 break;
             }
@@ -2706,12 +2711,19 @@ impl<'a> Parser<'a> {
                     break
             }
 
+
             let rhs = try!(match op.fixity() {
-                Fixity::Right => self.parse_assoc_expr_with(op.precedence(), None),
-                Fixity::Left => self.parse_assoc_expr_with(op.precedence() + 1, None),
+                Fixity::Right => self.with_res(restrictions, |this|{
+                    this.parse_assoc_expr_with(op.precedence(), None)
+                }),
+                Fixity::Left => self.with_res(restrictions, |this|{
+                    this.parse_assoc_expr_with(op.precedence() + 1, None)
+                }),
                 // We currently have no non-associative operators that are not handled above by
                 // the special cases. The code is here only for future convenience.
-                Fixity::None => self.parse_assoc_expr_with(op.precedence() + 1, None),
+                Fixity::None => self.with_res(restrictions, |this|{
+                    this.parse_assoc_expr_with(op.precedence() + 1, None)
+                }),
             });
 
             lhs = match op {
@@ -2974,13 +2986,22 @@ impl<'a> Parser<'a> {
         self.parse_expr_res(Restrictions::empty())
     }
 
-    /// Parse an expression, subject to the given restrictions
-    pub fn parse_expr_res(&mut self, r: Restrictions) -> PResult<P<Expr>> {
+    /// Evaluate the closure with restrictions in place.
+    ///
+    /// After the closure is evaluated, restrictions are reset.
+    pub fn with_res<F>(&mut self, r: Restrictions, f: F) -> PResult<P<Expr>>
+    where F: FnOnce(&mut Self) -> PResult<P<Expr>> {
         let old = self.restrictions;
         self.restrictions = r;
-        let e = try!(self.parse_assoc_expr());
+        let r = f(self);
         self.restrictions = old;
-        return Ok(e);
+        return r;
+
+    }
+
+    /// Parse an expression, subject to the given restrictions
+    pub fn parse_expr_res(&mut self, r: Restrictions) -> PResult<P<Expr>> {
+        self.with_res(r, |this| this.parse_assoc_expr())
     }
 
     /// Parse the RHS of a local variable declaration (e.g. '= 14;')
