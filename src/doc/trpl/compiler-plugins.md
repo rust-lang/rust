@@ -170,13 +170,25 @@ starting point for an improved quasiquote as an ordinary plugin library.
 
 Plugins can extend [Rust's lint
 infrastructure](../reference.html#lint-check-attributes) with additional checks for
-code style, safety, etc. You can see
-[`src/test/auxiliary/lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/auxiliary/lint_plugin_test.rs)
-for a full example, the core of which is reproduced here:
+code style, safety, etc. Now let's write a plugin [`lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/auxiliary/lint_plugin_test.rs)
+that warns about any item named `lintme`.
 
 ```ignore
-declare_lint!(TEST_LINT, Warn,
-              "Warn about items named 'lintme'");
+#![feature(plugin_registrar)]
+#![feature(box_syntax, rustc_private)]
+
+extern crate syntax;
+
+// Load rustc as a plugin to get macros
+#[macro_use]
+extern crate rustc;
+
+use rustc::lint::{EarlyContext, LintContext, LintPass, EarlyLintPass,
+                  EarlyLintPassObject, LintArray};
+use rustc::plugin::Registry;
+use syntax::ast;
+
+declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");
 
 struct Pass;
 
@@ -184,9 +196,11 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(TEST_LINT)
     }
+}
 
-    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
-        if it.ident.name == "lintme" {
+impl EarlyLintPass for Pass {
+    fn check_item(&mut self, cx: &EarlyContext, it: &ast::Item) {
+        if it.ident.name.as_str() == "lintme" {
             cx.span_lint(TEST_LINT, it.span, "item is named 'lintme'");
         }
     }
@@ -194,7 +208,7 @@ impl LintPass for Pass {
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_lint_pass(box Pass as LintPassObject);
+    reg.register_early_lint_pass(box Pass as EarlyLintPassObject);
 }
 ```
 
