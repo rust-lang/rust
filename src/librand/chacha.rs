@@ -245,6 +245,7 @@ mod tests {
     }
 
     #[test]
+    #[rustfmt_skip]
     fn test_rng_true_values() {
         // Test vectors 1 and 2 from
         // http://tools.ietf.org/html/draft-nir-cfrg-chacha20-poly1305-04
@@ -253,41 +254,17 @@ mod tests {
 
         let v = (0..16).map(|_| ra.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
-                   vec!(0xade0b876,
-                        0x903df1a0,
-                        0xe56a5d40,
-                        0x28bd8653,
-                        0xb819d2bd,
-                        0x1aed8da0,
-                        0xccef36a8,
-                        0xc70d778b,
-                        0x7c5941da,
-                        0x8d485751,
-                        0x3fe02477,
-                        0x374ad8b8,
-                        0xf4b8436a,
-                        0x1ca11815,
-                        0x69b687c3,
-                        0x8665eeb2));
+                   vec!(0xade0b876, 0x903df1a0, 0xe56a5d40, 0x28bd8653,
+                        0xb819d2bd, 0x1aed8da0, 0xccef36a8, 0xc70d778b,
+                        0x7c5941da, 0x8d485751, 0x3fe02477, 0x374ad8b8,
+                        0xf4b8436a, 0x1ca11815, 0x69b687c3, 0x8665eeb2));
 
         let v = (0..16).map(|_| ra.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
-                   vec!(0xbee7079f,
-                        0x7a385155,
-                        0x7c97ba98,
-                        0x0d082d73,
-                        0xa0290fcb,
-                        0x6965e348,
-                        0x3e53c612,
-                        0xed7aee32,
-                        0x7621b729,
-                        0x434ee69c,
-                        0xb03371d5,
-                        0xd539d874,
-                        0x281fed31,
-                        0x45fb0a51,
-                        0x1f0ae1ac,
-                        0x6f4d794b));
+                   vec!(0xbee7079f, 0x7a385155, 0x7c97ba98, 0x0d082d73,
+                        0xa0290fcb, 0x6965e348, 0x3e53c612, 0xed7aee32,
+                        0x7621b729, 0x434ee69c, 0xb03371d5, 0xd539d874,
+                        0x281fed31, 0x45fb0a51, 0x1f0ae1ac, 0x6f4d794b));
 
 
         let seed: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
@@ -304,22 +281,10 @@ mod tests {
         }
 
         assert_eq!(v,
-                   vec!(0xf225c81a,
-                        0x6ab1be57,
-                        0x04d42951,
-                        0x70858036,
-                        0x49884684,
-                        0x64efec72,
-                        0x4be2d186,
-                        0x3615b384,
-                        0x11cfa18e,
-                        0xd3c50049,
-                        0x75c775f6,
-                        0x434c6530,
-                        0x2c5bad8f,
-                        0x898881dc,
-                        0x5f1c86d9,
-                        0xc1f8e7f4));
+                   vec!(0xf225c81a, 0x6ab1be57, 0x04d42951, 0x70858036,
+                        0x49884684, 0x64efec72, 0x4be2d186, 0x3615b384,
+                        0x11cfa18e, 0xd3c50049, 0x75c775f6, 0x434c6530,
+                        0x2c5bad8f, 0x898881dc, 0x5f1c86d9, 0xc1f8e7f4));
     }
 
     #[test]
