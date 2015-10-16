@@ -50,8 +50,7 @@ use ast::{BiSub, StrStyle};
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{TtDelimited, TtSequence, TtToken};
-use ast::{Ty, Ty_, TypeBinding};
-use ast::{TyMac};
+use ast::{Ty, Ty_, TypeBinding, TyMac};
 use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr};
 use ast::{TyRptr, TyTup, TyU32, TyVec};
@@ -2658,7 +2657,10 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an associative expression with operators of at least `min_prec` precedence
-    pub fn parse_assoc_expr_with(&mut self, min_prec: usize, lhs: Option<P<Expr>>) -> PResult<P<Expr>> {
+    pub fn parse_assoc_expr_with(&mut self,
+                                 min_prec: usize,
+                                 lhs: Option<P<Expr>>)
+                                 -> PResult<P<Expr>> {
         let mut lhs = if lhs.is_some() {
             lhs.unwrap()
         } else if self.token == token::DotDot {

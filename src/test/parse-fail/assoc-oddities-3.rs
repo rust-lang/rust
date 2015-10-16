@@ -8,17 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that placement in respects unsafe code checks.
+// compile-flags: -Z parse-only
 
-#![feature(box_heap)]
-#![feature(placement_in_syntax)]
-
-fn main() {
-    use std::boxed::HEAP;
-
-    let p: *const i32 = &42;
-    let _ = HEAP <- *p; //~ ERROR requires unsafe
-
-    let p: *const _ = &HEAP;
-    let _ = *p <- 42; //~ ERROR requires unsafe
+fn that_odd_parse() {
+    // see assoc-oddities-1 for explanation
+    x + if c { a } else { b }[n]; //~ ERROR expected one of
 }
