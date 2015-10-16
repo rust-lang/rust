@@ -172,6 +172,16 @@ impl AssocOp {
         }
     }
 
+    pub fn is_assign_like(&self) -> bool {
+        use self::AssocOp::*;
+        match *self {
+            Assign | AssignOp(_) | Inplace => true,
+            Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual | As | Multiply | Divide |
+            Modulus | Add | Subtract | ShiftLeft | ShiftRight | BitAnd | BitXor | BitOr | LAnd |
+            LOr | DotDot => false
+        }
+    }
+
     pub fn to_ast_binop(&self) -> Option<ast::BinOp_> {
         use self::AssocOp::*;
         match *self {
