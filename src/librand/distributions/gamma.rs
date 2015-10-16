@@ -154,7 +154,7 @@ impl IndependentSample<f64> for GammaLargeShape {
             let StandardNormal(x) = rng.gen::<StandardNormal>();
             let v_cbrt = 1.0 + self.c * x;
             if v_cbrt <= 0.0 { // a^3 <= 0 iff a <= 0
-                continue
+                continue;
             }
 
             let v = v_cbrt * v_cbrt * v_cbrt;
@@ -163,7 +163,7 @@ impl IndependentSample<f64> for GammaLargeShape {
             let x_sqr = x * x;
             if u < 1.0 - 0.0331 * x_sqr * x_sqr ||
                u.ln() < 0.5 * x_sqr + self.d * (1.0 - v + v.ln()) {
-                return self.d * v * self.scale
+                return self.d * v * self.scale;
             }
         }
     }
