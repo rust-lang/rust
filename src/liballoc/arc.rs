@@ -93,7 +93,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 ///
 /// # Examples
 ///
-/// In this example, a large vector of floats is shared between several threads.
+/// In this example, a large vector is shared between several threads.
 /// With simple pipes, without `Arc`, a copy would have to be made for each
 /// thread.
 ///
