@@ -245,7 +245,9 @@ impl<'longer_than_self> Arena<'longer_than_self> {
     }
 
     #[inline]
-    fn alloc_copy<T, F>(&self, op: F) -> &mut T where F: FnOnce() -> T {
+    fn alloc_copy<T, F>(&self, op: F) -> &mut T
+        where F: FnOnce() -> T
+    {
         unsafe {
             let ptr = self.alloc_copy_inner(mem::size_of::<T>(), mem::align_of::<T>());
             let ptr = ptr as *mut T;
@@ -296,7 +298,9 @@ impl<'longer_than_self> Arena<'longer_than_self> {
     }
 
     #[inline]
-    fn alloc_noncopy<T, F>(&self, op: F) -> &mut T where F: FnOnce() -> T {
+    fn alloc_noncopy<T, F>(&self, op: F) -> &mut T
+        where F: FnOnce() -> T
+    {
         unsafe {
             let tydesc = get_tydesc::<T>();
             let (ty_ptr, ptr) = self.alloc_noncopy_inner(mem::size_of::<T>(), mem::align_of::<T>());
@@ -318,7 +322,9 @@ impl<'longer_than_self> Arena<'longer_than_self> {
     /// Allocates a new item in the arena, using `op` to initialize the value,
     /// and returns a reference to it.
     #[inline]
-    pub fn alloc<T:'longer_than_self, F>(&self, op: F) -> &mut T where F: FnOnce() -> T {
+    pub fn alloc<T: 'longer_than_self, F>(&self, op: F) -> &mut T
+        where F: FnOnce() -> T
+    {
         unsafe {
             if intrinsics::needs_drop::<T>() {
                 self.alloc_noncopy(op)
