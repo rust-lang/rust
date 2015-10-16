@@ -26,3 +26,11 @@ extern "C" {
     fn  foo  (x:  *const c_char ,    ...   ) ->
 libc::c_long;
         }
+
+   extern    {  
+                       pub fn freopen(filename: *const c_char, mode: *const c_char
+                               , mode2: *const c_char
+                               , mode3: *const c_char,
+                               file: *mut FILE)
+                              -> *mut FILE;
+   }
