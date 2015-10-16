@@ -23,30 +23,37 @@ use rustfmt::config::Config;
 use std::env;
 use std::fs::{self, File};
 use std::io::{self, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use getopts::Options;
 
-// Try to find a project file in the current directory and its parents.
-fn lookup_project_file() -> io::Result<PathBuf> {
-    let mut current = try!(env::current_dir());
+// Try to find a project file in the input file directory and its parents.
+fn lookup_project_file(input_file: &Path) -> io::Result<PathBuf> {
+    let mut current = if input_file.is_relative() {
+        try!(env::current_dir()).join(input_file)
+    } else {
+        input_file.to_path_buf()
+    };
+
+    // TODO: We should canonize path to properly handle its parents,
+    // but `canonicalize` function is unstable now (recently added API)
+    // current = try!(fs::canonicalize(current));
+
     loop {
+        // if the current directory has no parent, we're done searching
+        if !current.pop() {
+            return Err(io::Error::new(io::ErrorKind::NotFound, "config not found"));
+        }
         let config_file = current.join("rustfmt.toml");
         if fs::metadata(&config_file).is_ok() {
             return Ok(config_file);
-        } else {
-            current = match current.parent() {
-                // if the current directory has no parent, we're done searching
-                None => return Err(io::Error::new(io::ErrorKind::NotFound, "config not found")),
-                Some(path) => path.to_path_buf(),
-            };
         }
     }
 }
 
 // Try to find a project file. If it's found, read it.
-fn lookup_and_read_project_file() -> io::Result<(PathBuf, String)> {
-    let path = try!(lookup_project_file());
+fn lookup_and_read_project_file(input_file: &Path) -> io::Result<(PathBuf, String)> {
+    let path = try!(lookup_project_file(input_file));
     let mut file = try!(File::open(&path));
     let mut toml = String::new();
     try!(file.read_to_string(&mut toml));
@@ -59,7 +66,7 @@ fn execute() -> i32 {
         None => return 1,
     };
 
-    let config = match lookup_and_read_project_file() {
+    let config = match lookup_and_read_project_file(&file) {
         Ok((path, toml)) => {
             println!("Project config file: {}", path.display());
             Config::from_toml(&toml)
