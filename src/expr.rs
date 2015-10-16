@@ -426,7 +426,6 @@ impl Rewrite for ast::Block {
         visitor.block_indent = context.block_indent + context.overflow_indent;
 
         let prefix = match self.rules {
-            ast::BlockCheckMode::PushUnsafeBlock(..) |
             ast::BlockCheckMode::UnsafeBlock(..) => {
                 let snippet = context.snippet(self.span);
                 let open_pos = try_opt!(snippet.find_uncommented("{"));
@@ -463,7 +462,6 @@ impl Rewrite for ast::Block {
 
                 prefix
             }
-            ast::BlockCheckMode::PopUnsafeBlock(..) |
             ast::BlockCheckMode::DefaultBlock => {
                 visitor.last_pos = self.span.lo;
 
