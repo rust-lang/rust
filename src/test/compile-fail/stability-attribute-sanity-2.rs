@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// More checks that stability attributes are used correctly
+
 #![feature(staged_api)]
 #![staged_api]
-#![deny(deprecated)]
 
-struct Foo;
+#[stable(feature = "a", feature = "b", since = "1.0.0")] //~ ERROR multiple 'feature' items
+fn f1() { }
 
-impl Foo {
-    #[unstable(feature = "test_feature", issue = "0")]
-    #[deprecated(since = "1.0.0", reason = "text")]
-    fn foo(self) {}
-}
+#[stable(feature = "a", sinse = "1.0.0")] //~ ERROR unknown meta item 'sinse'
+fn f2() { }
 
-fn main() {
-    Foo
-    .foo(); //~ ERROR use of deprecated item
-}
+#[unstable(feature = "a", issue = "no")] //~ ERROR incorrect 'issue'
+fn f3() { }
+
+fn main() { }

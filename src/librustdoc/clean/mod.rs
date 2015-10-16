@@ -324,8 +324,8 @@ impl Item {
         match self.stability {
             Some(ref s) => {
                 let mut base = match s.level {
-                    attr::Unstable => "unstable".to_string(),
-                    attr::Stable => String::new(),
+                    stability::Unstable => "unstable".to_string(),
+                    stability::Stable => String::new(),
                 };
                 if !s.deprecated_since.is_empty() {
                     base.push_str(" deprecated");
@@ -2674,7 +2674,7 @@ impl Clean<Item> for doctree::Macro {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Stability {
-    pub level: attr::StabilityLevel,
+    pub level: stability::StabilityLevel,
     pub feature: String,
     pub since: String,
     pub deprecated_since: String,
@@ -2685,32 +2685,36 @@ pub struct Stability {
 impl Clean<Stability> for attr::Stability {
     fn clean(&self, _: &DocContext) -> Stability {
         Stability {
-            level: self.level,
+            level: stability::StabilityLevel::from_attr_level(&self.level),
             feature: self.feature.to_string(),
-            since: self.since.as_ref().map_or("".to_string(),
-                                              |interned| interned.to_string()),
-            deprecated_since: self.deprecated_since.as_ref().map_or("".to_string(),
-                                                                    |istr| istr.to_string()),
-            reason: self.reason.as_ref().map_or("".to_string(),
-                                                |interned| interned.to_string()),
-            issue: self.issue,
+            since: match self.level {
+                attr::Stable {ref since} => since.to_string(),
+                _ => "".to_string(),
+            },
+            deprecated_since: match self.depr {
+                Some(attr::Deprecation {ref since, ..}) => since.to_string(),
+                _=> "".to_string(),
+            },
+            reason: {
+                if let Some(ref depr) = self.depr {
+                    depr.reason.to_string()
+                } else if let attr::Unstable {reason: Some(ref reason), ..} = self.level {
+                    reason.to_string()
+                } else {
+                    "".to_string()
+                }
+            },
+            issue: match self.level {
+                attr::Unstable {issue, ..} => Some(issue),
+                _ => None,
+            }
         }
     }
 }
 
 impl<'a> Clean<Stability> for &'a attr::Stability {
-    fn clean(&self, _: &DocContext) -> Stability {
-        Stability {
-            level: self.level,
-            feature: self.feature.to_string(),
-            since: self.since.as_ref().map_or("".to_string(),
-                                              |interned| interned.to_string()),
-            deprecated_since: self.deprecated_since.as_ref().map_or("".to_string(),
-                                                                    |istr| istr.to_string()),
-            reason: self.reason.as_ref().map_or("".to_string(),
-                                                |interned| interned.to_string()),
-            issue: self.issue,
-        }
+    fn clean(&self, dc: &DocContext) -> Stability {
+        (**self).clean(dc)
     }
 }
 
