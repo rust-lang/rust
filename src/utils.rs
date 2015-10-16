@@ -164,11 +164,7 @@ pub fn is_from_for_desugar(decl: &Decl) -> bool {
         [
             let DeclLocal(ref loc) = decl.node,
             let Some(ref expr) = loc.init,
-            // FIXME: This should check for MatchSource::ForLoop
-            // but right now there's a bug where the match source isn't
-            // set during lowering
-            // https://github.com/rust-lang/rust/pull/28973
-            let ExprMatch(_, _, _) = expr.node
+            let ExprMatch(_, _, MatchSource::ForLoopDesugar) = expr.node
         ],
         { return true; }
     };
