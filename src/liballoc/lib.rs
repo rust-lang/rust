@@ -90,6 +90,7 @@
 #![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]
 #![feature(raw)]
+#![feature(shared)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unique)]
