@@ -81,12 +81,6 @@ pub fn binop_to_string(op: BinOp_) -> &'static str {
     }
 }
 
-/// Returns true if the given struct def is tuple-like; i.e. that its fields
-/// are unnamed.
-pub fn struct_def_is_tuple_like(struct_def: &hir::StructDef) -> bool {
-    struct_def.ctor_id.is_some()
-}
-
 pub fn stmt_id(s: &Stmt) -> NodeId {
     match s.node {
         StmtDecl(_, id) => id,
@@ -200,11 +194,6 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
                     }
                 }
             }
-            ItemEnum(ref enum_definition, _) => {
-                for variant in &enum_definition.variants {
-                    self.operation.visit_id(variant.node.id)
-                }
-            }
             _ => {}
         }
 
@@ -292,13 +281,13 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
         visit::walk_struct_field(self, struct_field)
     }
 
-    fn visit_struct_def(&mut self,
-                        struct_def: &StructDef,
+    fn visit_variant_data(&mut self,
+                        struct_def: &VariantData,
                         _: Name,
                         _: &hir::Generics,
-                        id: NodeId) {
-        self.operation.visit_id(id);
-        struct_def.ctor_id.map(|ctor_id| self.operation.visit_id(ctor_id));
+                        _: NodeId,
+                        _: Span) {
+        self.operation.visit_id(struct_def.id());
         visit::walk_struct_def(self, struct_def);
     }
 

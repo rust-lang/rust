@@ -124,7 +124,7 @@ pub enum Node<'ast> {
     NodeBlock(&'ast Block),
 
     /// NodeStructCtor represents a tuple struct.
-    NodeStructCtor(&'ast StructDef),
+    NodeStructCtor(&'ast VariantData),
 
     NodeLifetime(&'ast Lifetime),
     NodeTyParam(&'ast TyParam)
@@ -149,7 +149,7 @@ pub enum MapEntry<'ast> {
     EntryLocal(NodeId, &'ast Pat),
     EntryPat(NodeId, &'ast Pat),
     EntryBlock(NodeId, &'ast Block),
-    EntryStructCtor(NodeId, &'ast StructDef),
+    EntryStructCtor(NodeId, &'ast VariantData),
     EntryLifetime(NodeId, &'ast Lifetime),
     EntryTyParam(NodeId, &'ast TyParam),
 
@@ -471,18 +471,19 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    pub fn expect_struct(&self, id: NodeId) -> &'ast StructDef {
+    pub fn expect_struct(&self, id: NodeId) -> &'ast VariantData {
         match self.find(id) {
             Some(NodeItem(i)) => {
                 match i.node {
-                    ItemStruct(ref struct_def, _) => &**struct_def,
+                    ItemStruct(ref struct_def, _) => struct_def,
                     _ => panic!("struct ID bound to non-struct")
                 }
             }
             Some(NodeVariant(variant)) => {
-                match variant.node.kind {
-                    StructVariantKind(ref struct_def) => &**struct_def,
-                    _ => panic!("struct ID bound to enum variant that isn't struct-like"),
+                if variant.node.data.is_struct() {
+                    &variant.node.data
+                } else {
+                    panic!("struct ID bound to enum variant that isn't struct-like")
                 }
             }
             _ => panic!(format!("expected struct, found {}", self.node_to_string(id))),
@@ -527,6 +528,10 @@ impl<'ast> Map<'ast> {
             NodeTraitItem(ti) => PathName(ti.name),
             NodeVariant(v) => PathName(v.node.name),
             NodeLifetime(lt) => PathName(lt.name),
+            NodeTyParam(tp) => PathName(tp.name),
+            NodeLocal(&Pat { node: PatIdent(_,l,_), .. }) => {
+                PathName(l.node.name)
+            },
             _ => panic!("no path elem for {:?}", node)
         }
     }
@@ -578,7 +583,7 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    /// Given a node ID, get a list of of attributes associated with the AST
+    /// Given a node ID, get a list of attributes associated with the AST
     /// corresponding to the Node ID
     pub fn attrs(&self, id: NodeId) -> &'ast [ast::Attribute] {
         let attrs = match self.find(id) {
@@ -987,4 +992,3 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
     }
 }
-

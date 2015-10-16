@@ -8,12 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Empty struct defined with braces shouldn't add names into value namespace
+// A quick test of 'unsafe const fn' functionality
 
-#![feature(braced_empty_structs)]
+#![feature(const_fn)]
 
-struct Empty {}
+unsafe const fn dummy(v: u32) -> u32 {
+    !v
+}
+
+struct Type;
+impl Type {
+    unsafe const fn new() -> Type {
+        Type
+    }
+}
+
+const VAL: u32 = unsafe { dummy(0xFFFF) };
+const TYPE_INST: Type = unsafe { Type::new() };
 
 fn main() {
-    let e = Empty; //~ ERROR `Empty` is the name of a struct or struct variant
+    assert_eq!(VAL, 0xFFFF0000);
 }

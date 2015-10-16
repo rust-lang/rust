@@ -82,7 +82,7 @@ fn it_works() {
 ```
 
 `assert!` is a macro provided by Rust which takes one argument: if the argument
-is `true`, nothing happens. If the argument is false, it `panic!`s. Let's run
+is `true`, nothing happens. If the argument is `false`, it `panic!`s. Let's run
 our tests again:
 
 ```bash
@@ -289,7 +289,7 @@ running 0 tests
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 ```
 
-The `--ignored` argument is an argument to the test binary, and not to cargo,
+The `--ignored` argument is an argument to the test binary, and not to Cargo,
 which is why the command is `cargo test -- --ignored`.
 
 # The `tests` module
@@ -367,7 +367,7 @@ It works!
 The current convention is to use the `tests` module to hold your "unit-style"
 tests. Anything that just tests one small bit of functionality makes sense to
 go here. But what about "integration-style" tests instead? For that, we have
-the `tests` directory
+the `tests` directory.
 
 # The `tests` directory
 

@@ -203,9 +203,9 @@ pub enum DropGlueKind<'tcx> {
     /// Skips the dtor, if any, for ty; drops the contents directly.
     /// Note that the dtor is only skipped at the most *shallow*
     /// level, namely, an `impl Drop for Ty` itself. So, for example,
-    /// if Ty is Newtype(S) then only the Drop impl for for Newtype
-    /// itself will be skipped, while the Drop impl for S, if any,
-    /// will be invoked.
+    /// if Ty is Newtype(S) then only the Drop impl for Newtype itself
+    /// will be skipped, while the Drop impl for S, if any, will be
+    /// invoked.
     TyContents(Ty<'tcx>),
 }
 

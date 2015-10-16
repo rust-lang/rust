@@ -381,7 +381,7 @@ impl String {
     /// Converts a vector of bytes to a `String` without checking that the
     /// string contains valid UTF-8.
     ///
-    /// See the safe version, [`from_utrf8()`][fromutf8], for more.
+    /// See the safe version, [`from_utf8()`][fromutf8], for more.
     ///
     /// [fromutf8]: struct.String.html#method.from_utf8
     ///

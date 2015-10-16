@@ -93,7 +93,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 ///
 /// # Examples
 ///
-/// In this example, a large vector of floats is shared between several threads.
+/// In this example, a large vector is shared between several threads.
 /// With simple pipes, without `Arc`, a copy would have to be made for each
 /// thread.
 ///
@@ -307,9 +307,7 @@ impl<T: ?Sized> Arc<T> {
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            deallocate(ptr as *mut u8,
-                       size_of_val(&*ptr),
-                       align_of_val(&*ptr))
+            deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
         }
     }
 }
@@ -550,6 +548,7 @@ impl<T: ?Sized> Drop for Arc<T> {
     ///
     /// } // implicit drop
     /// ```
+    #[unsafe_destructor_blind_to_params]
     #[inline]
     fn drop(&mut self) {
         // This structure has #[unsafe_no_drop_flag], so this drop glue may run
@@ -721,11 +720,7 @@ impl<T: ?Sized> Drop for Weak<T> {
         // ref, which can only happen after the lock is released.
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            unsafe {
-                deallocate(ptr as *mut u8,
-                           size_of_val(&*ptr),
-                           align_of_val(&*ptr))
-            }
+            unsafe { deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr)) }
         }
     }
 }
@@ -1145,6 +1140,13 @@ mod tests {
 
 impl<T: ?Sized> borrow::Borrow<T> for Arc<T> {
     fn borrow(&self) -> &T {
+        &**self
+    }
+}
+
+#[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
+impl<T: ?Sized> AsRef<T> for Arc<T> {
+    fn as_ref(&self) -> &T {
         &**self
     }
 }

@@ -18,7 +18,7 @@ use syntax::ast;
 use syntax::codemap::Span;
 use tcx::{Cx, PatNode};
 
-struct Builder<'a,'tcx:'a> {
+struct Builder<'a, 'tcx: 'a> {
     hir: Cx<'a, 'tcx>,
     extents: FnvHashMap<CodeExtent, Vec<GraphExtent>>,
     cfg: CFG<'tcx>,
@@ -31,7 +31,7 @@ struct Builder<'a,'tcx:'a> {
 }
 
 struct CFG<'tcx> {
-    basic_blocks: Vec<BasicBlockData<'tcx>>
+    basic_blocks: Vec<BasicBlockData<'tcx>>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -75,13 +75,13 @@ macro_rules! unpack {
 ///////////////////////////////////////////////////////////////////////////
 // construct() -- the main entry point for building MIR for a function
 
-pub fn construct<'a,'tcx>(mut hir: Cx<'a,'tcx>,
-                          _span: Span,
-                          implicit_arguments: Vec<Ty<'tcx>>,
-                          explicit_arguments: Vec<(Ty<'tcx>, PatNode<'tcx>)>,
-                          argument_extent: CodeExtent,
-                          ast_block: &'tcx hir::Block)
-                          -> Mir<'tcx> {
+pub fn construct<'a, 'tcx>(mut hir: Cx<'a, 'tcx>,
+                           _span: Span,
+                           implicit_arguments: Vec<Ty<'tcx>>,
+                           explicit_arguments: Vec<(Ty<'tcx>, PatNode<'tcx>)>,
+                           argument_extent: CodeExtent,
+                           ast_block: &'tcx hir::Block)
+                           -> Mir<'tcx> {
     let cfg = CFG { basic_blocks: vec![] };
 
     // it's handy to have a temporary of type `()` sometimes, so make
@@ -115,7 +115,7 @@ pub fn construct<'a,'tcx>(mut hir: Cx<'a,'tcx>,
     builder.cfg.terminate(block, Terminator::Goto { target: END_BLOCK });
     builder.cfg.terminate(END_BLOCK, Terminator::Return);
 
-    Mir  {
+    Mir {
         basic_blocks: builder.cfg.basic_blocks,
         extents: builder.extents,
         var_decls: builder.var_decls,
@@ -177,4 +177,3 @@ mod matches;
 mod misc;
 mod scope;
 mod stmt;
-

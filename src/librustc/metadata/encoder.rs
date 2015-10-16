@@ -315,7 +315,7 @@ fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         let vid = variant.did;
         let variant_node_id = ecx.local_id(vid);
 
-        if let ty::VariantKind::Dict = variant.kind() {
+        if let ty::VariantKind::Struct = variant.kind() {
             // tuple-like enum variant fields aren't really items so
             // don't try to encode them.
             for field in &variant.fields {
@@ -328,7 +328,7 @@ fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_def_id_and_key(ecx, rbml_w, vid);
         encode_family(rbml_w, match variant.kind() {
             ty::VariantKind::Unit | ty::VariantKind::Tuple => 'v',
-            ty::VariantKind::Dict => 'V'
+            ty::VariantKind::Struct => 'V'
         });
         encode_name(rbml_w, variant.name);
         encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(id));
@@ -381,12 +381,8 @@ fn each_auxiliary_node_id<F>(item: &hir::Item, callback: F) -> bool where
     match item.node {
         hir::ItemStruct(ref struct_def, _) => {
             // If this is a newtype struct, return the constructor.
-            match struct_def.ctor_id {
-                Some(ctor_id) if !struct_def.fields.is_empty() &&
-                        struct_def.fields[0].node.kind.is_unnamed() => {
-                    continue_ = callback(ctor_id);
-                }
-                _ => {}
+            if struct_def.is_tuple() {
+                continue_ = callback(struct_def.id());
             }
         }
         _ => {}
@@ -1023,7 +1019,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_attributes(rbml_w, &item.attrs);
         encode_repr_attrs(rbml_w, ecx, &item.attrs);
         for v in &enum_definition.variants {
-            encode_variant_id(rbml_w, ecx.tcx.map.local_def_id(v.node.id));
+            encode_variant_id(rbml_w, ecx.tcx.map.local_def_id(v.node.data.id()));
         }
         encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
         encode_path(rbml_w, path);
@@ -1072,8 +1068,8 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         // Encode inherent implementations for this structure.
         encode_inherent_implementations(ecx, rbml_w, def_id);
 
-        if let Some(ctor_id) = struct_def.ctor_id {
-            let ctor_did = ecx.tcx.map.local_def_id(ctor_id);
+        if !struct_def.is_struct() {
+            let ctor_did = ecx.tcx.map.local_def_id(struct_def.id());
             rbml_w.wr_tagged_u64(tag_items_data_item_struct_ctor,
                                  def_to_u64(ctor_did));
         }
@@ -1085,9 +1081,8 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         }
 
         // If this is a tuple-like struct, encode the type of the constructor.
-        if let Some(ctor_id) = struct_def.ctor_id {
-            encode_info_for_struct_ctor(ecx, rbml_w, item.name,
-                                        ctor_id, index, item.id);
+        if !struct_def.is_struct() {
+            encode_info_for_struct_ctor(ecx, rbml_w, item.name, struct_def.id(), index, item.id);
         }
       }
       hir::ItemDefaultImpl(unsafety, _) => {

@@ -809,7 +809,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let mut type_map = debug_context(cx).type_map.borrow_mut();
 
         if already_stored_in_typemap {
-            // Also make sure that we already have a TypeMap entry entry for the unique type id.
+            // Also make sure that we already have a TypeMap entry for the unique type id.
             let metadata_for_uid = match type_map.find_metadata_for_unique_id(unique_type_id) {
                 Some(metadata) => metadata,
                 None => {
@@ -1365,7 +1365,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 let sole_struct_member_description = MemberDescription {
                     name: match non_null_variant.kind() {
                         ty::VariantKind::Tuple => "__0".to_string(),
-                        ty::VariantKind::Dict => {
+                        ty::VariantKind::Struct => {
                             non_null_variant.fields[0].name.to_string()
                         }
                         ty::VariantKind::Unit => unreachable!()
@@ -1540,7 +1540,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                    .map(|(i, _)| format!("__{}", i))
                    .collect()
         }
-        ty::VariantKind::Dict => {
+        ty::VariantKind::Struct => {
             variant.fields
                    .iter()
                    .map(|f| f.name.to_string())

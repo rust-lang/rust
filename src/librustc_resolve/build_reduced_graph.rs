@@ -49,8 +49,6 @@ use rustc_front::hir::{ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaul
 use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use rustc_front::hir::{NamedField, PathListIdent, PathListMod, Public};
 use rustc_front::hir::StmtDecl;
-use rustc_front::hir::StructVariantKind;
-use rustc_front::hir::TupleVariantKind;
 use rustc_front::hir::UnnamedField;
 use rustc_front::hir::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use rustc_front::hir::Visibility;
@@ -494,9 +492,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             // These items live in both the type and value namespaces.
             ItemStruct(ref struct_def, _) => {
                 // Adding to both Type and Value namespaces or just Type?
-                let (forbid, ctor_id) = match struct_def.ctor_id {
-                    Some(ctor_id)   => (ForbidDuplicateTypesAndValues, Some(ctor_id)),
-                    None            => (ForbidDuplicateTypesAndModules, None)
+                let (forbid, ctor_id) = if struct_def.is_struct() {
+                    (ForbidDuplicateTypesAndModules, None)
+                } else {
+                    (ForbidDuplicateTypesAndValues, Some(struct_def.id()))
                 };
 
                 let name_bindings = self.add_child(name, parent, forbid, sp);
@@ -515,7 +514,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 }
 
                 // Record the def ID and fields of this struct.
-                let named_fields = struct_def.fields.iter().filter_map(|f| {
+                let named_fields = struct_def.fields().filter_map(|f| {
                     match f.node.kind {
                         NamedField(name, _) => Some(name),
                         UnnamedField(_) => None
@@ -589,14 +588,13 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                        item_id: DefId,
                                        parent: &Rc<Module>) {
         let name = variant.node.name;
-        let is_exported = match variant.node.kind {
-            TupleVariantKind(_) => false,
-            StructVariantKind(_) => {
-                // Not adding fields for variants as they are not accessed with a self receiver
-                let variant_def_id = self.ast_map.local_def_id(variant.node.id);
-                self.structs.insert(variant_def_id, Vec::new());
-                true
-            }
+        let is_exported = if variant.node.data.is_struct() {
+            // Not adding fields for variants as they are not accessed with a self receiver
+            let variant_def_id = self.ast_map.local_def_id(variant.node.data.id());
+            self.structs.insert(variant_def_id, Vec::new());
+            true
+        } else {
+            false
         };
 
         let child = self.add_child(name, parent,
@@ -605,10 +603,12 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         // variants are always treated as importable to allow them to be glob
         // used
         child.define_value(DefVariant(item_id,
-                                      self.ast_map.local_def_id(variant.node.id), is_exported),
+                                      self.ast_map.local_def_id(variant.node.data.id()),
+                                      is_exported),
                            variant.span, DefModifiers::PUBLIC | DefModifiers::IMPORTABLE);
         child.define_type(DefVariant(item_id,
-                                     self.ast_map.local_def_id(variant.node.id), is_exported),
+                                     self.ast_map.local_def_id(variant.node.data.id()),
+                                     is_exported),
                           variant.span, DefModifiers::PUBLIC | DefModifiers::IMPORTABLE);
     }
 

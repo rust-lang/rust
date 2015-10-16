@@ -451,6 +451,7 @@ impl<T: ?Sized> Drop for Rc<T> {
     ///
     /// } // implicit drop
     /// ```
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         unsafe {
             let ptr = *self._ptr;
@@ -466,9 +467,7 @@ impl<T: ?Sized> Drop for Rc<T> {
                     self.dec_weak();
 
                     if self.weak() == 0 {
-                        deallocate(ptr as *mut u8,
-                                   size_of_val(&*ptr),
-                                   align_of_val(&*ptr))
+                        deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
                     }
                 }
             }
@@ -787,9 +786,7 @@ impl<T: ?Sized> Drop for Weak<T> {
                 // the weak count starts at 1, and will only go to zero if all
                 // the strong pointers have disappeared.
                 if self.weak() == 0 {
-                    deallocate(ptr as *mut u8,
-                               size_of_val(&*ptr),
-                               align_of_val(&*ptr))
+                    deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
                 }
             }
         }
@@ -1114,6 +1111,13 @@ mod tests {
 
 impl<T: ?Sized> borrow::Borrow<T> for Rc<T> {
     fn borrow(&self) -> &T {
+        &**self
+    }
+}
+
+#[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
+impl<T: ?Sized> AsRef<T> for Rc<T> {
+    fn as_ref(&self) -> &T {
         &**self
     }
 }

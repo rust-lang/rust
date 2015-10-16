@@ -521,11 +521,10 @@ struct AdtField<'tcx> {
 }
 
 fn struct_variant<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                            struct_def: &hir::StructDef)
+                            struct_def: &hir::VariantData)
                             -> AdtVariant<'tcx> {
     let fields =
-        struct_def.fields
-        .iter()
+        struct_def.fields()
         .map(|field| {
             let field_ty = fcx.tcx().node_id_to_type(field.node.id);
             let field_ty = fcx.instantiate_type_scheme(field.span,
@@ -544,41 +543,7 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                            enum_def: &hir::EnumDef)
                            -> Vec<AdtVariant<'tcx>> {
     enum_def.variants.iter()
-        .map(|variant| {
-            match variant.node.kind {
-                hir::TupleVariantKind(ref args) if !args.is_empty() => {
-                    let ctor_ty = fcx.tcx().node_id_to_type(variant.node.id);
-
-                    // the regions in the argument types come from the
-                    // enum def'n, and hence will all be early bound
-                    let arg_tys = fcx.tcx().no_late_bound_regions(&ctor_ty.fn_args()).unwrap();
-                    AdtVariant {
-                        fields: args.iter().enumerate().map(|(index, arg)| {
-                            let arg_ty = arg_tys[index];
-                            let arg_ty =
-                                fcx.instantiate_type_scheme(variant.span,
-                                                            &fcx.inh
-                                                                .infcx
-                                                                .parameter_environment
-                                                                .free_substs,
-                                                            &arg_ty);
-                            AdtField {
-                                ty: arg_ty,
-                                span: arg.ty.span
-                            }
-                        }).collect()
-                    }
-                }
-                hir::TupleVariantKind(_) => {
-                    AdtVariant {
-                        fields: Vec::new()
-                    }
-                }
-                hir::StructVariantKind(ref struct_def) => {
-                    struct_variant(fcx, &**struct_def)
-                }
-            }
-        })
+        .map(|variant| struct_variant(fcx, &variant.node.data))
         .collect()
 }
 

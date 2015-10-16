@@ -61,51 +61,55 @@ HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc fmt_macros
 TOOLS := compiletest rustdoc rustc rustbook error-index-generator
 
 DEPS_core :=
-DEPS_libc := core
-DEPS_rustc_unicode := core
 DEPS_alloc := core libc alloc_system
+DEPS_alloc_system := core libc
+DEPS_collections := core alloc rustc_unicode
+DEPS_libc := core
+DEPS_rand := core
+DEPS_rustc_bitflags := core
+DEPS_rustc_unicode := core
+
 DEPS_std := core libc rand alloc collections rustc_unicode \
 	native:rust_builtin native:backtrace \
 	alloc_system
+DEPS_arena := std
+DEPS_glob := std
+DEPS_flate := std native:miniz
+DEPS_fmt_macros = std
+DEPS_getopts := std
 DEPS_graphviz := std
+DEPS_log := std
+DEPS_num := std
+DEPS_rbml := std log serialize
+DEPS_serialize := std log
+DEPS_term := std log
+DEPS_test := std getopts serialize rbml term native:rust_test_helpers
+
 DEPS_syntax := std term serialize log fmt_macros arena libc rustc_bitflags
+
+DEPS_rustc := syntax flate arena serialize getopts rbml rustc_front\
+              log graphviz rustc_llvm rustc_back rustc_data_structures
+DEPS_rustc_back := std syntax rustc_llvm rustc_front flate log libc
+DEPS_rustc_borrowck := rustc rustc_front log graphviz syntax
+DEPS_rustc_data_structures := std log serialize
 DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \
                      rustc_typeck rustc_mir rustc_resolve log syntax serialize rustc_llvm \
 		             rustc_trans rustc_privacy rustc_lint rustc_front
 
-DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
-	                log syntax serialize rustc_llvm rustc_front rustc_platform_intrinsics
-DEPS_rustc_mir := rustc rustc_front syntax
-DEPS_rustc_typeck := rustc syntax rustc_front rustc_platform_intrinsics
-DEPS_rustc_borrowck := rustc rustc_front log graphviz syntax
-DEPS_rustc_resolve := rustc rustc_front log syntax
-DEPS_rustc_privacy := rustc rustc_front log syntax
-DEPS_rustc_lint := rustc log syntax
-DEPS_rustc := syntax flate arena serialize getopts rbml \
-              log graphviz rustc_llvm rustc_back rustc_data_structures
-DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
-DEPS_rustc_platform_intrinsics := rustc rustc_llvm
-DEPS_rustc_back := std syntax rustc_llvm rustc_front flate log libc
 DEPS_rustc_front := std syntax log serialize
-DEPS_rustc_data_structures := std log serialize
+DEPS_rustc_lint := rustc log syntax
+DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
+DEPS_rustc_mir := rustc rustc_front syntax
+DEPS_rustc_resolve := rustc rustc_front log syntax
+DEPS_rustc_platform_intrinsics := rustc rustc_llvm
+DEPS_rustc_privacy := rustc rustc_front log syntax
+DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
+                    log syntax serialize rustc_llvm rustc_front rustc_platform_intrinsics
+DEPS_rustc_typeck := rustc syntax rustc_front rustc_platform_intrinsics
+
 DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
                 test rustc_lint rustc_front
-DEPS_rustc_bitflags := core
-DEPS_flate := std native:miniz
-DEPS_arena := std
-DEPS_graphviz := std
-DEPS_glob := std
-DEPS_serialize := std log
-DEPS_rbml := std log serialize
-DEPS_term := std log
-DEPS_getopts := std
-DEPS_collections := core alloc rustc_unicode
-DEPS_num := std
-DEPS_test := std getopts serialize rbml term native:rust_test_helpers
-DEPS_rand := core
-DEPS_log := std
-DEPS_fmt_macros = std
-DEPS_alloc_system := core libc
+
 
 TOOL_DEPS_compiletest := test getopts
 TOOL_DEPS_rustdoc := rustdoc

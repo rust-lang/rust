@@ -301,7 +301,7 @@ extern "rust-intrinsic" {
     /// # Safety
     ///
     /// Beyond requiring that the program must be allowed to access both regions
-    /// of memory, it is Undefined Behaviour for source and destination to
+    /// of memory, it is Undefined Behavior for source and destination to
     /// overlap. Care must also be taken with the ownership of `src` and
     /// `dst`. This method semantically moves the values of `src` into `dst`.
     /// However it does not drop the contents of `dst`, or prevent the contents
@@ -373,20 +373,20 @@ extern "rust-intrinsic" {
     /// a size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`
     ///
-    /// The volatile parameter parameter is set to `true`, so it will not be optimized out.
+    /// The volatile parameter is set to `true`, so it will not be optimized out.
     pub fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T,
                                                   count: usize);
     /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`
     ///
-    /// The volatile parameter parameter is set to `true`, so it will not be optimized out.
+    /// The volatile parameter is set to `true`, so it will not be optimized out.
     pub fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
     /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
     /// size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`.
     ///
-    /// The volatile parameter parameter is set to `true`, so it will not be optimized out.
+    /// The volatile parameter is set to `true`, so it will not be optimized out.
     pub fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
 
     /// Perform a volatile load from the `src` pointer.

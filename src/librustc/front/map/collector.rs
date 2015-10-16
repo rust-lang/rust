@@ -134,26 +134,15 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             ItemEnum(ref enum_definition, _) => {
                 for v in &enum_definition.variants {
                     let variant_def_index =
-                        self.insert_def(v.node.id,
+                        self.insert_def(v.node.data.id(),
                                         NodeVariant(&**v),
                                         DefPathData::EnumVariant(v.node.name));
 
-                    match v.node.kind {
-                        TupleVariantKind(ref args) => {
-                            for arg in args {
-                                self.create_def_with_parent(Some(variant_def_index),
-                                                            arg.id,
-                                                            DefPathData::PositionalField);
-                            }
-                        }
-                        StructVariantKind(ref def) => {
-                            for field in &def.fields {
-                                self.create_def_with_parent(
-                                    Some(variant_def_index),
-                                    field.node.id,
-                                    DefPathData::Field(field.node.kind));
-                            }
-                        }
+                    for field in v.node.data.fields() {
+                        self.create_def_with_parent(
+                            Some(variant_def_index),
+                            field.node.id,
+                            DefPathData::Field(field.node.kind));
                     }
                 }
             }
@@ -161,13 +150,13 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             }
             ItemStruct(ref struct_def, _) => {
                 // If this is a tuple-like struct, register the constructor.
-                if let Some(ctor_id) = struct_def.ctor_id {
-                    self.insert_def(ctor_id,
+                if !struct_def.is_struct() {
+                    self.insert_def(struct_def.id(),
                                     NodeStructCtor(&**struct_def),
                                     DefPathData::StructCtor);
                 }
 
-                for field in &struct_def.fields {
+                for field in struct_def.fields() {
                     self.create_def(field.node.id, DefPathData::Field(field.node.kind));
                 }
             }

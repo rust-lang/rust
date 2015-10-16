@@ -110,7 +110,7 @@ macro_rules! define_bignum {
     ($name:ident: type=$ty:ty, n=$n:expr) => (
         /// Stack-allocated arbitrary-precision (up to certain limit) integer.
         ///
-        /// This is backed by an fixed-size array of given type ("digit").
+        /// This is backed by a fixed-size array of given type ("digit").
         /// While the array is not very large (normally some hundred bytes),
         /// copying it recklessly may result in the performance hit.
         /// Thus this is intentionally not `Copy`.

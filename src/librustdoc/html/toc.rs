@@ -55,8 +55,8 @@ pub struct TocBuilder {
     /// strictly increasing (i.e. chain[0].level < chain[1].level <
     /// ...) with each entry being the most recent occurrence of a
     /// heading with that level (it doesn't include the most recent
-    /// occurrences of every level, just, if *is* in `chain` then is is
-    /// the most recent one).
+    /// occurrences of every level, just, if it *is* in `chain` then
+    /// it is the most recent one).
     ///
     /// We also have `chain[0].level <= top_level.entries[last]`.
     chain: Vec<TocEntry>

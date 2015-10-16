@@ -215,11 +215,11 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
 
-    fn visit_struct_def(&mut self, def: &hir::StructDef, _: ast::Name,
-                        _: &hir::Generics, _: ast::NodeId) {
+    fn visit_variant_data(&mut self, def: &hir::VariantData, _: ast::Name,
+                        _: &hir::Generics, _: ast::NodeId, _: codemap::Span) {
         let has_extern_repr = self.struct_has_extern_repr;
         let inherited_pub_visibility = self.inherited_pub_visibility;
-        let live_fields = def.fields.iter().filter(|f| {
+        let live_fields = def.fields().filter(|f| {
             has_extern_repr || inherited_pub_visibility || match f.node.kind {
                 hir::NamedField(_, hir::Public) => true,
                 _ => false
@@ -339,7 +339,8 @@ impl<'v> Visitor<'v> for LifeSeeder {
         }
         match item.node {
             hir::ItemEnum(ref enum_def, _) if allow_dead_code => {
-                self.worklist.extend(enum_def.variants.iter().map(|variant| variant.node.id));
+                self.worklist.extend(enum_def.variants.iter()
+                                                      .map(|variant| variant.node.data.id()));
             }
             hir::ItemTrait(_, _, _, ref trait_items) => {
                 for trait_item in trait_items {
@@ -426,7 +427,9 @@ fn find_live(tcx: &ty::ctxt,
 
 fn get_struct_ctor_id(item: &hir::Item) -> Option<ast::NodeId> {
     match item.node {
-        hir::ItemStruct(ref struct_def, _) => struct_def.ctor_id,
+        hir::ItemStruct(ref struct_def, _) if !struct_def.is_struct() => {
+            Some(struct_def.id())
+        }
         _ => None
     }
 }
@@ -464,7 +467,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_variant(&mut self, variant: &hir::Variant_) -> bool {
-        !self.symbol_is_live(variant.id, None)
+        !self.symbol_is_live(variant.data.id(), None)
             && !has_allow_dead_code_or_lang_attr(&variant.attrs)
     }
 
@@ -540,7 +543,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
                 hir::ItemEnum(ref enum_def, _) => {
                     for variant in &enum_def.variants {
                         if self.should_warn_about_variant(&variant.node) {
-                            self.warn_dead_code(variant.node.id, variant.span,
+                            self.warn_dead_code(variant.node.data.id(), variant.span,
                                                 variant.node.name, "variant");
                         }
                     }

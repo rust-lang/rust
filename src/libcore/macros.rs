@@ -168,8 +168,14 @@ macro_rules! try {
     })
 }
 
-/// Use the `format!` syntax to write data into a buffer of type `&mut Write`.
-/// See `std::fmt` for more information.
+/// Use the `format!` syntax to write data into a buffer.
+///
+/// This macro is typically used with a buffer of `&mut `[`Write`][write].
+///
+/// See [`std::fmt`][fmt] for more information on format syntax.
+///
+/// [fmt]: fmt/index.html
+/// [write]: io/trait.Write.html
 ///
 /// # Examples
 ///
@@ -179,14 +185,34 @@ macro_rules! try {
 /// let mut w = Vec::new();
 /// write!(&mut w, "test").unwrap();
 /// write!(&mut w, "formatted {}", "arguments").unwrap();
+///
+/// assert_eq!(w, b"testformatted arguments");
 /// ```
 #[macro_export]
 macro_rules! write {
     ($dst:expr, $($arg:tt)*) => ($dst.write_fmt(format_args!($($arg)*)))
 }
 
-/// Equivalent to the `write!` macro, except that a newline is appended after
-/// the message is written.
+/// Use the `format!` syntax to write data into a buffer, appending a newline.
+///
+/// This macro is typically used with a buffer of `&mut `[`Write`][write].
+///
+/// See [`std::fmt`][fmt] for more information on format syntax.
+///
+/// [fmt]: fmt/index.html
+/// [write]: io/trait.Write.html
+///
+/// # Examples
+///
+/// ```
+/// use std::io::Write;
+///
+/// let mut w = Vec::new();
+/// writeln!(&mut w, "test").unwrap();
+/// writeln!(&mut w, "formatted {}", "arguments").unwrap();
+///
+/// assert_eq!(&w[..], "test\nformatted arguments\n".as_bytes());
+/// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! writeln {
@@ -253,7 +279,7 @@ macro_rules! unreachable {
     });
 }
 
-/// A standardised placeholder for marking unfinished code. It panics with the
+/// A standardized placeholder for marking unfinished code. It panics with the
 /// message `"not yet implemented"` when executed.
 ///
 /// This can be useful if you are prototyping and are just looking to have your

@@ -81,8 +81,8 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     ("associated_types", "1.0.0", None, Accepted),
     ("visible_private_types", "1.0.0", None, Active),
     ("slicing_syntax", "1.0.0", None, Accepted),
-    ("box_syntax", "1.0.0", None, Active),
-    ("placement_in_syntax", "1.0.0", None, Active),
+    ("box_syntax", "1.0.0", Some(27779), Active),
+    ("placement_in_syntax", "1.0.0", Some(27779), Active),
     ("pushpop_unsafe", "1.2.0", None, Active),
     ("on_unimplemented", "1.0.0", None, Active),
     ("simd_ffi", "1.0.0", None, Active),
@@ -135,6 +135,10 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     // Allows using the unsafe_no_drop_flag attribute (unlikely to
     // switch to Accepted; see RFC 320)
     ("unsafe_no_drop_flag", "1.0.0", None, Active),
+
+    // Allows using the unsafe_destructor_blind_to_params attribute;
+    // RFC 1238
+    ("dropck_parametricity", "1.3.0", Some(28498), Active),
 
     // Allows the use of custom attributes; RFC 572
     ("custom_attribute", "1.0.0", None, Active),
@@ -192,7 +196,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     // allow `#[unwind]`
     ("unwind_attributes", "1.4.0", None, Active),
 
-    // allow empty structs/enum variants with braces
+    // allow empty structs and enum variants with braces
     ("braced_empty_structs", "1.5.0", None, Active),
 
     // allow overloading augmented assignment operations like `a += b`
@@ -339,6 +343,11 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("unsafe_no_drop_flag", Whitelisted, Gated("unsafe_no_drop_flag",
                                                "unsafe_no_drop_flag has unstable semantics \
                                                 and may be removed in the future")),
+    ("unsafe_destructor_blind_to_params",
+     Normal,
+     Gated("dropck_parametricity",
+           "unsafe_destructor_blind_to_params has unstable semantics \
+            and may be removed in the future")),
     ("unwind", Whitelisted, Gated("unwind_attributes", "#[unwind] is experimental")),
 
     // used in resolve
@@ -477,6 +486,7 @@ pub struct Features {
     pub cfg_target_feature: bool,
     pub cfg_target_vendor: bool,
     pub augmented_assignments: bool,
+    pub braced_empty_structs: bool,
 }
 
 impl Features {
@@ -507,6 +517,7 @@ impl Features {
             cfg_target_feature: false,
             cfg_target_vendor: false,
             augmented_assignments: false,
+            braced_empty_structs: false,
         }
     }
 }
@@ -726,7 +737,7 @@ impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
 }
 
 struct PostExpansionVisitor<'a> {
-    context: &'a Context<'a>
+    context: &'a Context<'a>,
 }
 
 impl<'a> PostExpansionVisitor<'a> {
@@ -800,7 +811,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemStruct(ref def, _) => {
+            ast::ItemStruct(..) => {
                 if attr::contains_name(&i.attrs[..], "simd") {
                     self.gate_feature("simd", i.span,
                                       "SIMD types are experimental and possibly buggy");
@@ -818,10 +829,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                             }
                         }
                     }
-                }
-                if def.fields.is_empty() && def.ctor_id.is_none() {
-                    self.gate_feature("braced_empty_structs", i.span,
-                                      "empty structs with braces are unstable");
                 }
             }
 
@@ -850,6 +857,21 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         visit::walk_item(self, i);
     }
 
+    fn visit_variant_data(&mut self, s: &'v ast::VariantData, _: ast::Ident,
+                        _: &'v ast::Generics, _: ast::NodeId, span: Span) {
+        if s.fields().count() == 0 {
+            if s.is_struct() {
+                self.gate_feature("braced_empty_structs", span,
+                                  "empty structs and enum variants with braces are unstable");
+            } else if s.is_tuple() {
+                self.context.span_handler.span_err(span, "empty tuple structs and enum variants \
+                                                          are not allowed, use unit structs and \
+                                                          enum variants instead");
+            }
+        }
+        visit::walk_struct_def(self, s)
+    }
+
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
         let links_to_llvm = match attr::first_attr_value_str_by_name(&i.attrs,
                                                                      "link_name") {
@@ -871,12 +893,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   e.span,
                                   "box expression syntax is experimental; \
                                    you can call `Box::new` instead.");
-            }
-            ast::ExprStruct(_, ref fields, ref expr) => {
-                if fields.is_empty() && expr.is_none() {
-                    self.gate_feature("braced_empty_structs", e.span,
-                                      "empty structs with braces are unstable");
-                }
             }
             _ => {}
         }
@@ -901,12 +917,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 self.gate_feature("box_patterns",
                                   pattern.span,
                                   "box pattern syntax is experimental");
-            }
-            ast::PatStruct(_, ref fields, dotdot) => {
-                if fields.is_empty() && !dotdot {
-                    self.gate_feature("braced_empty_structs", pattern.span,
-                                      "empty structs with braces are unstable");
-                }
             }
             _ => {}
         }
@@ -1077,6 +1087,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         cfg_target_feature: cx.has_feature("cfg_target_feature"),
         cfg_target_vendor: cx.has_feature("cfg_target_vendor"),
         augmented_assignments: cx.has_feature("augmented_assignments"),
+        braced_empty_structs: cx.has_feature("braced_empty_structs"),
     }
 }
 
@@ -1107,8 +1118,7 @@ pub enum UnstableFeatures {
     /// Errors are bypassed for bootstrapping. This is required any time
     /// during the build that feature-related lints are set to warn or above
     /// because the build turns on warnings-as-errors and uses lots of unstable
-    /// features. As a result, this this is always required for building Rust
-    /// itself.
+    /// features. As a result, this is always required for building Rust itself.
     Cheat
 }
 

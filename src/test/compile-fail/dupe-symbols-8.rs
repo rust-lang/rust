@@ -7,12 +7,17 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+//
+// error-pattern:already defined
 
-// Test that we get an expansion stack for `for` loops.
 
-// error-pattern:in this expansion of for loop expansion
+#![allow(warnings)]
 
 fn main() {
-    for t in &foo {
+    {
+        extern fn fail() {}
+    }
+    {
+        extern fn fail() {}
     }
 }

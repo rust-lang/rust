@@ -119,14 +119,62 @@ mod tests {
     }
 
     #[test]
+    fn test_leading_plus() {
+        assert_eq!("+127".parse::<u8>().ok(), Some(127u8));
+        assert_eq!("+9223372036854775807".parse::<i64>().ok(), Some(9223372036854775807i64));
+    }
+
+    #[test]
     fn test_invalid() {
         assert_eq!("--129".parse::<i8>().ok(), None);
+        assert_eq!("++129".parse::<i8>().ok(), None);
         assert_eq!("Съешь".parse::<u8>().ok(), None);
     }
 
     #[test]
     fn test_empty() {
         assert_eq!("-".parse::<i8>().ok(), None);
+        assert_eq!("+".parse::<i8>().ok(), None);
         assert_eq!("".parse::<u8>().ok(), None);
     }
+
+    macro_rules! test_impl_from {
+        ($fn_name: ident, $Small: ty, $Large: ty) => {
+            #[test]
+            fn $fn_name() {
+                let small_max = <$Small>::max_value();
+                let small_min = <$Small>::min_value();
+                let large_max: $Large = small_max.into();
+                let large_min: $Large = small_min.into();
+                assert_eq!(large_max as $Small, small_max);
+                assert_eq!(large_min as $Small, small_min);
+            }
+        }
+    }
+
+    // Unsigned -> Unsigned
+    test_impl_from! { test_u8u16, u8, u16 }
+    test_impl_from! { test_u8u32, u8, u32 }
+    test_impl_from! { test_u8u64, u8, u64 }
+    test_impl_from! { test_u8usize, u8, usize }
+    test_impl_from! { test_u16u32, u16, u32 }
+    test_impl_from! { test_u16u64, u16, u64 }
+    test_impl_from! { test_u32u64, u32, u64 }
+
+    // Signed -> Signed
+    test_impl_from! { test_i8i16, i8, i16 }
+    test_impl_from! { test_i8i32, i8, i32 }
+    test_impl_from! { test_i8i64, i8, i64 }
+    test_impl_from! { test_i8isize, i8, isize }
+    test_impl_from! { test_i16i32, i16, i32 }
+    test_impl_from! { test_i16i64, i16, i64 }
+    test_impl_from! { test_i32i64, i32, i64 }
+
+    // Unsigned -> Signed
+    test_impl_from! { test_u8i16, u8, i16 }
+    test_impl_from! { test_u8i32, u8, i32 }
+    test_impl_from! { test_u8i64, u8, i64 }
+    test_impl_from! { test_u16i32, u16, i32 }
+    test_impl_from! { test_u16i64, u16, i64 }
+    test_impl_from! { test_u32i64, u32, i64 }
 }

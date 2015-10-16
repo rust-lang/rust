@@ -39,7 +39,7 @@ pub trait CommandExt {
     /// This is not enough to create a daemon process. The *init* process should
     /// be the child reaper of a daemon. This can be achieved if the parent
     /// process exit. Moreover, a daemon should not have a controlling terminal.
-    /// To acheive this, a session leader (the child) must spawn another process
+    /// To achieve this, a session leader (the child) must spawn another process
     /// (the daemon) in the same session.
     #[unstable(feature = "process_session_leader", reason = "recently added",
                issue = "27811")]

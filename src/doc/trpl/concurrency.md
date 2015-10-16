@@ -35,9 +35,11 @@ channel connecting two threads, we would want to be able to send some data
 down the channel and to the other thread. Therefore, we'd ensure that `Send` was
 implemented for that type.
 
-In the opposite way, if we were wrapping a library with FFI that isn't
+In the opposite way, if we were wrapping a library with [FFI][ffi] that isn't
 threadsafe, we wouldn't want to implement `Send`, and so the compiler will help
 us enforce that it can't leave the current thread.
+
+[ffi]: ffi.html
 
 ### `Sync`
 
@@ -195,7 +197,7 @@ our value if it's immutable, but we want to be able to mutate it, so we need
 something else to persuade the borrow checker we know what we're doing.
 
 It looks like we need some type that allows us to safely mutate a shared value,
-for example a type that that can ensure only one thread at a time is able to
+for example a type that can ensure only one thread at a time is able to
 mutate the value inside it at any one time.
 
 For that, we can use the `Mutex<T>` type!

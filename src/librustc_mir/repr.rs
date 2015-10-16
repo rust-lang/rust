@@ -110,7 +110,7 @@ pub enum BorrowKind {
     Unique,
 
     /// Data is mutable and not aliasable.
-    Mut
+    Mut,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -226,17 +226,27 @@ pub struct BasicBlockData<'tcx> {
 
 pub enum Terminator<'tcx> {
     /// block should have one successor in the graph; we jump there
-    Goto { target: BasicBlock },
+    Goto {
+        target: BasicBlock,
+    },
 
     /// block should initiate unwinding; should be one successor
     /// that does cleanup and branches to DIVERGE_BLOCK
-    Panic { target: BasicBlock },
+    Panic {
+        target: BasicBlock,
+    },
 
     /// jump to branch 0 if this lvalue evaluates to true
-    If { cond: Operand<'tcx>, targets: [BasicBlock; 2] },
+    If {
+        cond: Operand<'tcx>,
+        targets: [BasicBlock; 2],
+    },
 
     /// lvalue evaluates to some enum; jump depending on the branch
-    Switch { discr: Lvalue<'tcx>, targets: Vec<BasicBlock> },
+    Switch {
+        discr: Lvalue<'tcx>,
+        targets: Vec<BasicBlock>,
+    },
 
     /// Indicates that the last statement in the block panics, aborts,
     /// etc. No successors. This terminator appears on exactly one
@@ -254,7 +264,10 @@ pub enum Terminator<'tcx> {
     /// block ends with a call; it should have two successors. The
     /// first successor indicates normal return. The second indicates
     /// unwinding.
-    Call { data: CallData<'tcx>, targets: [BasicBlock; 2] },
+    Call {
+        data: CallData<'tcx>,
+        targets: [BasicBlock; 2],
+    },
 }
 
 impl<'tcx> Terminator<'tcx> {
@@ -312,7 +325,9 @@ impl<'tcx> Debug for Terminator<'tcx> {
             Call { data: ref c, targets } => {
                 try!(write!(fmt, "{:?} = {:?}(", c.destination, c.func));
                 for (index, arg) in c.args.iter().enumerate() {
-                    if index > 0 { try!(write!(fmt, ", ")); }
+                    if index > 0 {
+                        try!(write!(fmt, ", "));
+                    }
                     try!(write!(fmt, "{:?}", arg));
                 }
                 write!(fmt, ") -> {:?}", targets)
@@ -339,7 +354,7 @@ pub enum StatementKind<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DropKind {
     Shallow,
-    Deep
+    Deep,
 }
 
 impl<'tcx> Debug for Statement<'tcx> {
@@ -376,7 +391,7 @@ pub enum Lvalue<'tcx> {
     ReturnPointer,
 
     /// projection out of an lvalue (access a field, deref a pointer, etc)
-    Projection(Box<LvalueProjection<'tcx>>)
+    Projection(Box<LvalueProjection<'tcx>>),
 }
 
 /// The `Projection` data structure defines things of the form `B.x`
@@ -384,13 +399,13 @@ pub enum Lvalue<'tcx> {
 /// shared between `Constant` and `Lvalue`. See the aliases
 /// `LvalueProjection` etc below.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Projection<'tcx,B,V> {
+pub struct Projection<'tcx, B, V> {
     pub base: B,
-    pub elem: ProjectionElem<'tcx,V>,
+    pub elem: ProjectionElem<'tcx, V>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ProjectionElem<'tcx,V> {
+pub enum ProjectionElem<'tcx, V> {
     Deref,
     Field(Field),
     Index(V),
@@ -446,7 +461,10 @@ impl<'tcx> Lvalue<'tcx> {
     }
 
     pub fn elem(self, elem: LvalueElem<'tcx>) -> Lvalue<'tcx> {
-        Lvalue::Projection(Box::new(LvalueProjection { base: self, elem: elem }))
+        Lvalue::Projection(Box::new(LvalueProjection {
+            base: self,
+            elem: elem,
+        }))
     }
 }
 
@@ -623,7 +641,7 @@ pub enum UnOp {
     /// The `!` operator for logical inversion
     Not,
     /// The `-` operator for negation
-    Neg
+    Neg,
 }
 
 impl<'tcx> Debug for Rvalue<'tcx> {
@@ -641,8 +659,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Box(ref t) => write!(fmt, "Box {:?}", t),
             Aggregate(ref kind, ref lvs) => write!(fmt, "Aggregate<{:?}>({:?})", kind, lvs),
             InlineAsm(ref asm) => write!(fmt, "InlineAsm({:?})", asm),
-            Slice { ref input, from_start, from_end } => write!(fmt, "{:?}[{:?}..-{:?}]",
-                                                                input, from_start, from_end),
+            Slice { ref input, from_start, from_end } =>
+                write!(fmt, "{:?}[{:?}..-{:?}]", input, from_start, from_end),
         }
     }
 }
@@ -658,12 +676,16 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 pub struct Constant<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
-    pub literal: Literal<'tcx>
+    pub literal: Literal<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Literal<'tcx> {
-    Item { def_id: DefId, substs: &'tcx Substs<'tcx> },
-    Value { value: ConstVal },
+    Item {
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>,
+    },
+    Value {
+        value: ConstVal,
+    },
 }
-

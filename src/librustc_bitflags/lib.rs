@@ -22,7 +22,9 @@
 
 //! A typesafe bitmask flag generator.
 
-#[cfg(test)] #[macro_use] extern crate std;
+#[cfg(test)]
+#[macro_use]
+extern crate std;
 
 /// The `bitflags!` macro generates a `struct` that holds a set of C-style
 /// bitmask flags. It is useful for creating typesafe wrappers for C APIs.
@@ -321,7 +323,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bits(){
+    fn test_bits() {
         assert_eq!(Flags::empty().bits(), 0b00000000);
         assert_eq!(Flags::FlagA.bits(), 0b00000001);
         assert_eq!(Flags::FlagABC.bits(), 0b00000111);
@@ -354,7 +356,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_empty(){
+    fn test_is_empty() {
         assert!(Flags::empty().is_empty());
         assert!(!Flags::FlagA.is_empty());
         assert!(!Flags::FlagABC.is_empty());
@@ -413,7 +415,7 @@ mod tests {
     }
 
     #[test]
-    fn test_insert(){
+    fn test_insert() {
         let mut e1 = Flags::FlagA;
         let e2 = Flags::FlagA | Flags::FlagB;
         e1.insert(e2);
@@ -425,7 +427,7 @@ mod tests {
     }
 
     #[test]
-    fn test_remove(){
+    fn test_remove() {
         let mut e1 = Flags::FlagA | Flags::FlagB;
         let e2 = Flags::FlagA | Flags::FlagC;
         e1.remove(e2);
@@ -484,12 +486,12 @@ mod tests {
 
     #[test]
     fn test_hash() {
-      let mut x = Flags::empty();
-      let mut y = Flags::empty();
-      assert!(hash(&x) == hash(&y));
-      x = Flags::all();
-      y = Flags::FlagABC;
-      assert!(hash(&x) == hash(&y));
+        let mut x = Flags::empty();
+        let mut y = Flags::empty();
+        assert!(hash(&x) == hash(&y));
+        x = Flags::all();
+        y = Flags::FlagABC;
+        assert!(hash(&x) == hash(&y));
     }
 
     fn hash<T: Hash>(t: &T) -> u64 {

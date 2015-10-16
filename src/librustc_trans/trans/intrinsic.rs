@@ -135,7 +135,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 
             if transmute_restriction.original_from != transmute_restriction.substituted_from {
                 span_transmute_size_error(ccx.sess(), transmute_restriction.span,
-                    &format!("transmute called on types with potentially different sizes: \
+                    &format!("transmute called with differently sized types: \
                               {} (could be {} bit{}) to {} (could be {} bit{})",
                              transmute_restriction.original_from,
                              from_type_size as usize,
@@ -145,7 +145,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
                              if to_type_size == 1 {""} else {"s"}));
             } else {
                 span_transmute_size_error(ccx.sess(), transmute_restriction.span,
-                    &format!("transmute called on types with different sizes: \
+                    &format!("transmute called with differently sized types: \
                               {} ({} bit{}) to {} ({} bit{})",
                              transmute_restriction.original_from,
                              from_type_size as usize,
@@ -1221,8 +1221,8 @@ fn try_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 // MSVC's definition of the `rust_try` function. The exact implementation here
 // is a little different than the GNU (standard) version below, not only because
 // of the personality function but also because of the other fiddly bits about
-// SEH. LLVM also currently requires us to structure this a very particular way
-// as explained below.
+// SEH. LLVM also currently requires us to structure this in a very particular
+// way as explained below.
 //
 // Like with the GNU version we generate a shim wrapper
 fn trans_msvc_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,

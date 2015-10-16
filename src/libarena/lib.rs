@@ -38,7 +38,13 @@
 #![feature(ptr_as_ref)]
 #![feature(raw)]
 #![feature(staged_api)]
+#![feature(dropck_parametricity)]
 #![cfg_attr(test, feature(test))]
+
+// SNAP 1af31d4
+#![allow(unused_features)]
+// SNAP 1af31d4
+#![allow(unused_attributes)]
 
 extern crate alloc;
 
@@ -99,7 +105,7 @@ pub struct Arena<'longer_than_self> {
     head: RefCell<Chunk>,
     copy_head: RefCell<Chunk>,
     chunks: RefCell<Vec<Chunk>>,
-    _marker: marker::PhantomData<*mut &'longer_than_self()>,
+    _marker: marker::PhantomData<*mut &'longer_than_self ()>,
 }
 
 impl<'a> Arena<'a> {
@@ -191,7 +197,7 @@ fn un_bitpack_tydesc_ptr(p: usize) -> (*const TyDesc, bool) {
 struct TyDesc {
     drop_glue: fn(*const i8),
     size: usize,
-    align: usize
+    align: usize,
 }
 
 trait AllTypes { fn dummy(&self) { } }
@@ -218,8 +224,7 @@ impl<'longer_than_self> Arena<'longer_than_self> {
         let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
         self.chunks.borrow_mut().push(self.copy_head.borrow().clone());
 
-        *self.copy_head.borrow_mut() =
-            chunk((new_min_chunk_size + 1).next_power_of_two(), true);
+        *self.copy_head.borrow_mut() = chunk((new_min_chunk_size + 1).next_power_of_two(), true);
 
         self.alloc_copy_inner(n_bytes, align)
     }
@@ -236,16 +241,15 @@ impl<'longer_than_self> Arena<'longer_than_self> {
         let copy_head = self.copy_head.borrow();
         copy_head.fill.set(end);
 
-        unsafe {
-            copy_head.as_ptr().offset(start as isize)
-        }
+        unsafe { copy_head.as_ptr().offset(start as isize) }
     }
 
     #[inline]
-    fn alloc_copy<T, F>(&self, op: F) -> &mut T where F: FnOnce() -> T {
+    fn alloc_copy<T, F>(&self, op: F) -> &mut T
+        where F: FnOnce() -> T
+    {
         unsafe {
-            let ptr = self.alloc_copy_inner(mem::size_of::<T>(),
-                                            mem::align_of::<T>());
+            let ptr = self.alloc_copy_inner(mem::size_of::<T>(), mem::align_of::<T>());
             let ptr = ptr as *mut T;
             ptr::write(&mut (*ptr), op());
             &mut *ptr
@@ -253,21 +257,18 @@ impl<'longer_than_self> Arena<'longer_than_self> {
     }
 
     // Functions for the non-POD part of the arena
-    fn alloc_noncopy_grow(&self, n_bytes: usize,
-                          align: usize) -> (*const u8, *const u8) {
+    fn alloc_noncopy_grow(&self, n_bytes: usize, align: usize) -> (*const u8, *const u8) {
         // Allocate a new chunk.
         let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
         self.chunks.borrow_mut().push(self.head.borrow().clone());
 
-        *self.head.borrow_mut() =
-            chunk((new_min_chunk_size + 1).next_power_of_two(), false);
+        *self.head.borrow_mut() = chunk((new_min_chunk_size + 1).next_power_of_two(), false);
 
         self.alloc_noncopy_inner(n_bytes, align)
     }
 
     #[inline]
-    fn alloc_noncopy_inner(&self, n_bytes: usize,
-                           align: usize) -> (*const u8, *const u8) {
+    fn alloc_noncopy_inner(&self, n_bytes: usize, align: usize) -> (*const u8, *const u8) {
         // Be careful to not maintain any `head` borrows active, because
         // `alloc_noncopy_grow` borrows it mutably.
         let (start, end, tydesc_start, head_capacity) = {
@@ -291,24 +292,25 @@ impl<'longer_than_self> Arena<'longer_than_self> {
 
         unsafe {
             let buf = head.as_ptr();
-            (buf.offset(tydesc_start as isize), buf.offset(start as isize))
+            (buf.offset(tydesc_start as isize),
+             buf.offset(start as isize))
         }
     }
 
     #[inline]
-    fn alloc_noncopy<T, F>(&self, op: F) -> &mut T where F: FnOnce() -> T {
+    fn alloc_noncopy<T, F>(&self, op: F) -> &mut T
+        where F: FnOnce() -> T
+    {
         unsafe {
             let tydesc = get_tydesc::<T>();
-            let (ty_ptr, ptr) =
-                self.alloc_noncopy_inner(mem::size_of::<T>(),
-                                         mem::align_of::<T>());
+            let (ty_ptr, ptr) = self.alloc_noncopy_inner(mem::size_of::<T>(), mem::align_of::<T>());
             let ty_ptr = ty_ptr as *mut usize;
             let ptr = ptr as *mut T;
             // Write in our tydesc along with a bit indicating that it
             // has *not* been initialized yet.
             *ty_ptr = bitpack_tydesc_ptr(tydesc, false);
             // Actually initialize it
-            ptr::write(&mut(*ptr), op());
+            ptr::write(&mut (*ptr), op());
             // Now that we are done, update the tydesc to indicate that
             // the object is there.
             *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
@@ -320,7 +322,9 @@ impl<'longer_than_self> Arena<'longer_than_self> {
     /// Allocates a new item in the arena, using `op` to initialize the value,
     /// and returns a reference to it.
     #[inline]
-    pub fn alloc<T:'longer_than_self, F>(&self, op: F) -> &mut T where F: FnOnce() -> T {
+    pub fn alloc<T: 'longer_than_self, F>(&self, op: F) -> &mut T
+        where F: FnOnce() -> T
+    {
         unsafe {
             if intrinsics::needs_drop::<T>() {
                 self.alloc_noncopy(op)
@@ -352,10 +356,10 @@ fn test_arena_destructors_fail() {
     for i in 0..10 {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
-        arena.alloc(|| { Rc::new(i) });
+        arena.alloc(|| Rc::new(i));
         // Allocate something with funny size and alignment, to keep
         // things interesting.
-        arena.alloc(|| { [0u8, 1, 2] });
+        arena.alloc(|| [0u8, 1, 2]);
     }
     // Now, panic while allocating
     arena.alloc::<Rc<i32>, _>(|| {
@@ -403,12 +407,13 @@ fn calculate_size<T>(capacity: usize) -> usize {
 
 impl<T> TypedArenaChunk<T> {
     #[inline]
-    unsafe fn new(next: *mut TypedArenaChunk<T>, capacity: usize)
-           -> *mut TypedArenaChunk<T> {
+    unsafe fn new(next: *mut TypedArenaChunk<T>, capacity: usize) -> *mut TypedArenaChunk<T> {
         let size = calculate_size::<T>(capacity);
-        let chunk = allocate(size, mem::align_of::<TypedArenaChunk<T>>())
-                    as *mut TypedArenaChunk<T>;
-        if chunk.is_null() { alloc::oom() }
+        let chunk =
+            allocate(size, mem::align_of::<TypedArenaChunk<T>>()) as *mut TypedArenaChunk<T>;
+        if chunk.is_null() {
+            alloc::oom()
+        }
         (*chunk).next = next;
         (*chunk).capacity = capacity;
         chunk
@@ -431,7 +436,8 @@ impl<T> TypedArenaChunk<T> {
         let next = self.next;
         let size = calculate_size::<T>(self.capacity);
         let self_ptr: *mut TypedArenaChunk<T> = self;
-        deallocate(self_ptr as *mut u8, size,
+        deallocate(self_ptr as *mut u8,
+                   size,
                    mem::align_of::<TypedArenaChunk<T>>());
         if !next.is_null() {
             let capacity = (*next).capacity;
@@ -443,9 +449,7 @@ impl<T> TypedArenaChunk<T> {
     #[inline]
     fn start(&self) -> *const u8 {
         let this: *const TypedArenaChunk<T> = self;
-        unsafe {
-            round_up(this.offset(1) as usize, mem::align_of::<T>()) as *const u8
-        }
+        unsafe { round_up(this.offset(1) as usize, mem::align_of::<T>()) as *const u8 }
     }
 
     // Returns a pointer to the end of the allocated space.
@@ -510,6 +514,7 @@ impl<T> TypedArena<T> {
 }
 
 impl<T> Drop for TypedArena<T> {
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         unsafe {
             // Determine how much was filled.
@@ -538,14 +543,21 @@ mod tests {
 
     #[test]
     fn test_arena_alloc_nested() {
-        struct Inner { value: u8 }
-        struct Outer<'a> { inner: &'a Inner }
-        enum EI<'e> { I(Inner), O(Outer<'e>) }
+        struct Inner {
+            value: u8,
+        }
+        struct Outer<'a> {
+            inner: &'a Inner,
+        }
+        enum EI<'e> {
+            I(Inner),
+            O(Outer<'e>),
+        }
 
         struct Wrap<'a>(TypedArena<EI<'a>>);
 
         impl<'a> Wrap<'a> {
-            fn alloc_inner<F:Fn() -> Inner>(&self, f: F) -> &Inner {
+            fn alloc_inner<F: Fn() -> Inner>(&self, f: F) -> &Inner {
                 let r: &EI = self.0.alloc(EI::I(f()));
                 if let &EI::I(ref i) = r {
                     i
@@ -553,7 +565,7 @@ mod tests {
                     panic!("mismatch");
                 }
             }
-            fn alloc_outer<F:Fn() -> Outer<'a>>(&self, f: F) -> &Outer {
+            fn alloc_outer<F: Fn() -> Outer<'a>>(&self, f: F) -> &Outer {
                 let r: &EI = self.0.alloc(EI::O(f()));
                 if let &EI::O(ref o) = r {
                     o
@@ -565,8 +577,9 @@ mod tests {
 
         let arena = Wrap(TypedArena::new());
 
-        let result = arena.alloc_outer(|| Outer {
-            inner: arena.alloc_inner(|| Inner { value: 10 }) });
+        let result = arena.alloc_outer(|| {
+            Outer { inner: arena.alloc_inner(|| Inner { value: 10 }) }
+        });
 
         assert_eq!(result.inner.value, 10);
     }
@@ -575,49 +588,27 @@ mod tests {
     pub fn test_copy() {
         let arena = TypedArena::new();
         for _ in 0..100000 {
-            arena.alloc(Point {
-                x: 1,
-                y: 2,
-                z: 3,
-            });
+            arena.alloc(Point { x: 1, y: 2, z: 3 });
         }
     }
 
     #[bench]
     pub fn bench_copy(b: &mut Bencher) {
         let arena = TypedArena::new();
-        b.iter(|| {
-            arena.alloc(Point {
-                x: 1,
-                y: 2,
-                z: 3,
-            })
-        })
+        b.iter(|| arena.alloc(Point { x: 1, y: 2, z: 3 }))
     }
 
     #[bench]
     pub fn bench_copy_nonarena(b: &mut Bencher) {
         b.iter(|| {
-            let _: Box<_> = box Point {
-                x: 1,
-                y: 2,
-                z: 3,
-            };
+            let _: Box<_> = box Point { x: 1, y: 2, z: 3 };
         })
     }
 
     #[bench]
     pub fn bench_copy_old_arena(b: &mut Bencher) {
         let arena = Arena::new();
-        b.iter(|| {
-            arena.alloc(|| {
-                Point {
-                    x: 1,
-                    y: 2,
-                    z: 3,
-                }
-            })
-        })
+        b.iter(|| arena.alloc(|| Point { x: 1, y: 2, z: 3 }))
     }
 
     #[allow(dead_code)]
@@ -632,7 +623,7 @@ mod tests {
         for _ in 0..100000 {
             arena.alloc(Noncopy {
                 string: "hello world".to_string(),
-                array: vec!( 1, 2, 3, 4, 5 ),
+                array: vec!(1, 2, 3, 4, 5),
             });
         }
     }
@@ -643,7 +634,7 @@ mod tests {
         b.iter(|| {
             arena.alloc(Noncopy {
                 string: "hello world".to_string(),
-                array: vec!( 1, 2, 3, 4, 5 ),
+                array: vec!(1, 2, 3, 4, 5),
             })
         })
     }
@@ -653,7 +644,7 @@ mod tests {
         b.iter(|| {
             let _: Box<_> = box Noncopy {
                 string: "hello world".to_string(),
-                array: vec!( 1, 2, 3, 4, 5 ),
+                array: vec!(1, 2, 3, 4, 5),
             };
         })
     }
@@ -662,9 +653,11 @@ mod tests {
     pub fn bench_noncopy_old_arena(b: &mut Bencher) {
         let arena = Arena::new();
         b.iter(|| {
-            arena.alloc(|| Noncopy {
-                string: "hello world".to_string(),
-                array: vec!( 1, 2, 3, 4, 5 ),
+            arena.alloc(|| {
+                Noncopy {
+                    string: "hello world".to_string(),
+                    array: vec!(1, 2, 3, 4, 5),
+                }
             })
         })
     }

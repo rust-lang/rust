@@ -497,7 +497,7 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
                 Ok(true)
             },
             "block" => {
-                // anything can follow block, the braces provide a easy boundary to
+                // anything can follow block, the braces provide an easy boundary to
                 // maintain
                 Ok(true)
             },

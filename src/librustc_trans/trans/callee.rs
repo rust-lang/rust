@@ -339,7 +339,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let llargs = get_params(fcx.llfn);
 
     let self_idx = fcx.arg_offset();
-    // the first argument (`self`) will be ptr to the the fn pointer
+    // the first argument (`self`) will be ptr to the fn pointer
     let llfnpointer = if is_by_ref {
         Load(bcx, llargs[self_idx])
     } else {
@@ -417,10 +417,9 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
             || "local item should be in ast map".to_string());
 
         match map_node {
-            hir_map::NodeVariant(v) => match v.node.kind {
-                hir::TupleVariantKind(ref args) => !args.is_empty(),
-                _ => false
-            },
+            hir_map::NodeVariant(v) => {
+                v.node.data.is_tuple()
+            }
             hir_map::NodeStructCtor(_) => true,
             _ => false
         }

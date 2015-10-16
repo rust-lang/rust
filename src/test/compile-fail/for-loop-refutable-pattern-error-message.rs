@@ -9,7 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    for
-        &1 //~ ERROR refutable pattern in `for` loop binding
-        in [1].iter() {}
+    for &1 in [1].iter() {} //~ ERROR refutable pattern in `for` loop binding
 }

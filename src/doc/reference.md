@@ -418,11 +418,14 @@ The two values of the boolean type are written `true` and `false`.
 
 ### Symbols
 
-Symbols are a general class of printable [token](#tokens) that play structural
-roles in a variety of grammar productions. They are catalogued here for
-completeness as the set of remaining miscellaneous printable tokens that do not
+Symbols are a general class of printable [tokens](#tokens) that play structural
+roles in a variety of grammar productions. They are a
+set of remaining miscellaneous printable tokens that do not
 otherwise appear as [unary operators](#unary-operator-expressions), [binary
 operators](#binary-operator-expressions), or [keywords][keywords].
+They are catalogued in [the Symbols section][symbols] of the Grammar document.
+
+[symbols]: grammar.html#symbols
 
 
 ## Paths
@@ -984,99 +987,6 @@ The type parameters can also be explicitly supplied in a trailing
 there is not sufficient context to determine the type parameters. For example,
 `mem::size_of::<u32>() == 4`.
 
-#### Unsafety
-
-Unsafe operations are those that potentially violate the memory-safety
-guarantees of Rust's static semantics.
-
-The following language level features cannot be used in the safe subset of
-Rust:
-
-- Dereferencing a [raw pointer](#pointer-types).
-- Reading or writing a [mutable static variable](#mutable-statics).
-- Calling an unsafe function (including an intrinsic or foreign function).
-
-##### Unsafe functions
-
-Unsafe functions are functions that are not safe in all contexts and/or for all
-possible inputs. Such a function must be prefixed with the keyword `unsafe` and
-can only be called from an `unsafe` block or another `unsafe` function.
-
-##### Unsafe blocks
-
-A block of code can be prefixed with the `unsafe` keyword, to permit calling
-`unsafe` functions or dereferencing raw pointers within a safe function.
-
-When a programmer has sufficient conviction that a sequence of potentially
-unsafe operations is actually safe, they can encapsulate that sequence (taken
-as a whole) within an `unsafe` block. The compiler will consider uses of such
-code safe, in the surrounding context.
-
-Unsafe blocks are used to wrap foreign libraries, make direct use of hardware
-or implement features not directly present in the language. For example, Rust
-provides the language features necessary to implement memory-safe concurrency
-in the language but the implementation of threads and message passing is in the
-standard library.
-
-Rust's type system is a conservative approximation of the dynamic safety
-requirements, so in some cases there is a performance cost to using safe code.
-For example, a doubly-linked list is not a tree structure and can only be
-represented with reference-counted pointers in safe code. By using `unsafe`
-blocks to represent the reverse links as raw pointers, it can be implemented
-with only boxes.
-
-##### Behavior considered undefined
-
-The following is a list of behavior which is forbidden in all Rust code,
-including within `unsafe` blocks and `unsafe` functions. Type checking provides
-the guarantee that these issues are never caused by safe code.
-
-* Data races
-* Dereferencing a null/dangling raw pointer
-* Reads of [undef](http://llvm.org/docs/LangRef.html#undefined-values)
-  (uninitialized) memory
-* Breaking the [pointer aliasing
-  rules](http://llvm.org/docs/LangRef.html#pointer-aliasing-rules)
-  with raw pointers (a subset of the rules used by C)
-* `&mut` and `&` follow LLVM’s scoped [noalias] model, except if the `&T`
-  contains an `UnsafeCell<U>`. Unsafe code must not violate these aliasing
-  guarantees.
-* Mutating non-mutable data (that is, data reached through a shared reference or
-  data owned by a `let` binding), unless that data is contained within an `UnsafeCell<U>`.
-* Invoking undefined behavior via compiler intrinsics:
-  * Indexing outside of the bounds of an object with `std::ptr::offset`
-    (`offset` intrinsic), with
-    the exception of one byte past the end which is permitted.
-  * Using `std::ptr::copy_nonoverlapping_memory` (`memcpy32`/`memcpy64`
-    intrinsics) on overlapping buffers
-* Invalid values in primitive types, even in private fields/locals:
-  * Dangling/null references or boxes
-  * A value other than `false` (0) or `true` (1) in a `bool`
-  * A discriminant in an `enum` not included in the type definition
-  * A value in a `char` which is a surrogate or above `char::MAX`
-  * Non-UTF-8 byte sequences in a `str`
-* Unwinding into Rust from foreign code or unwinding from Rust into foreign
-  code. Rust's failure system is not compatible with exception handling in
-  other languages. Unwinding must be caught and handled at FFI boundaries.
-
-[noalias]: http://llvm.org/docs/LangRef.html#noalias
-
-##### Behavior not considered unsafe
-
-This is a list of behavior not considered *unsafe* in Rust terms, but that may
-be undesired.
-
-* Deadlocks
-* Leaks of memory and other resources
-* Exiting without calling destructors
-* Integer overflow
-  - Overflow is considered "unexpected" behavior and is always user-error,
-    unless the `wrapping` primitives are used. In non-optimized builds, the compiler
-    will insert debug checks that panic on overflow, but in optimized builds overflow
-    instead results in wrapped values. See [RFC 560] for the rationale and more details.
-
-[RFC 560]: https://github.com/rust-lang/rfcs/blob/master/text/0560-integer-overflow.md
-
 #### Diverging functions
 
 A special kind of function can be declared with a `!` character where the
@@ -1166,7 +1076,7 @@ let p: Point = (41, 68);
 
 ### Structs
 
-A _structure_ is a nominal [structure type](#structure-types) defined with the
+A _struct_ is a nominal [struct type](#struct-types) defined with the
 keyword `struct`.
 
 An example of a `struct` item and its use:
@@ -1177,7 +1087,7 @@ let p = Point {x: 10, y: 11};
 let px: i32 = p.x;
 ```
 
-A _tuple structure_ is a nominal [tuple type](#tuple-types), also defined with
+A _tuple struct_ is a nominal [tuple type](#tuple-types), also defined with
 the keyword `struct`. For example:
 
 ```
@@ -1186,8 +1096,8 @@ let p = Point(10, 11);
 let px: i32 = match p { Point(x, _) => x };
 ```
 
-A _unit-like struct_ is a structure without any fields, defined by leaving off
-the list of fields entirely. Such a structure implicitly defines a constant of
+A _unit-like struct_ is a struct without any fields, defined by leaving off
+the list of fields entirely. Such a struct implicitly defines a constant of
 its type with the same name. For example:
 
 ```
@@ -1205,7 +1115,7 @@ const Cookie: Cookie = Cookie {};
 let c = [Cookie, Cookie {}, Cookie, Cookie {}];
 ```
 
-The precise memory layout of a structure is not specified. One can specify a
+The precise memory layout of a struct is not specified. One can specify a
 particular layout using the [`repr` attribute](#ffi-attributes).
 
 ### Enumerations
@@ -1528,11 +1438,11 @@ struct Foo;
 
 trait Shape { fn area(&self) -> f64; }
 trait Circle : Shape { fn radius(&self) -> f64; }
-# impl Shape for Foo {
-#     fn area(&self) -> f64 {
-#         0.0
-#     }
-# }
+impl Shape for Foo {
+    fn area(&self) -> f64 {
+        0.0
+    }
+}
 impl Circle for Foo {
     fn radius(&self) -> f64 {
         println!("calling area: {}", self.area());
@@ -2022,6 +1932,20 @@ macro scope.
 - `simd` - on certain tuple structs, derive the arithmetic operators, which
   lower to the target's SIMD instructions, if any; the `simd` feature gate
   is necessary to use this attribute.
+- `unsafe_destructor_blind_to_params` - on `Drop::drop` method, asserts that the
+  destructor code (and all potential specializations of that code) will
+  never attempt to read from nor write to any references with lifetimes
+  that come in via generic parameters. This is a constraint we cannot
+  currently express via the type system, and therefore we rely on the
+  programmer to assert that it holds. Adding this to a Drop impl causes
+  the associated destructor to be considered "uninteresting" by the
+  Drop-Check rule, and thus it can help sidestep data ordering
+  constraints that would otherwise be introduced by the Drop-Check
+  rule. Such sidestepping of the constraints, if done incorrectly, can
+  lead to undefined behavior (in the form of reading or writing to data
+  outside of its dynamic extent), and thus this attribute has the word
+  "unsafe" in its name. To use this, the
+  `unsafe_destructor_blind_to_params` feature gate must be enabled.
 - `unsafe_no_drop_flag` - on structs, remove the flag that prevents
   destructors from being run twice. Destructors might be run multiple times on
   the same object with this attribute. To use this, the `unsafe_no_drop_flag` feature
@@ -2436,7 +2360,7 @@ The currently implemented features of the reference compiler are:
                               terms of encapsulation).
 * - `default_type_parameter_fallback` - Allows type parameter defaults to
                                         influence type inference.
-* - `braced_empty_structs` - Allows use of empty structs with braces.
+* - `braced_empty_structs` - Allows use of empty structs and enum variants with braces.
 
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about `#![feature]` directives which enabled
@@ -2480,7 +2404,7 @@ items.
 
 An _item declaration statement_ has a syntactic form identical to an
 [item](#items) declaration within a module. Declaring an item &mdash; a
-function, enumeration, structure, type, static, trait, implementation or module
+function, enumeration, struct, type, static, trait, implementation or module
 &mdash; locally within a statement block is simply a way of restricting its
 scope to a narrow region containing all of its uses; it is otherwise identical
 in meaning to declaring the item outside the statement block.
@@ -2625,26 +2549,26 @@ comma:
 (0); // zero in parentheses
 ```
 
-### Structure expressions
+### Struct expressions
 
-There are several forms of structure expressions. A _structure expression_
-consists of the [path](#paths) of a [structure item](#structs), followed by
+There are several forms of struct expressions. A _struct expression_
+consists of the [path](#paths) of a [struct item](#structs), followed by
 a brace-enclosed list of one or more comma-separated name-value pairs,
-providing the field values of a new instance of the structure. A field name
+providing the field values of a new instance of the struct. A field name
 can be any identifier, and is separated from its value expression by a colon.
-The location denoted by a structure field is mutable if and only if the
-enclosing structure is mutable.
+The location denoted by a struct field is mutable if and only if the
+enclosing struct is mutable.
 
-A _tuple structure expression_ consists of the [path](#paths) of a [structure
+A _tuple struct expression_ consists of the [path](#paths) of a [struct
 item](#structs), followed by a parenthesized list of one or more
-comma-separated expressions (in other words, the path of a structure item
-followed by a tuple expression). The structure item must be a tuple structure
+comma-separated expressions (in other words, the path of a struct item
+followed by a tuple expression). The struct item must be a tuple struct
 item.
 
-A _unit-like structure expression_ consists only of the [path](#paths) of a
-[structure item](#structs).
+A _unit-like struct expression_ consists only of the [path](#paths) of a
+[struct item](#structs).
 
-The following are examples of structure expressions:
+The following are examples of struct expressions:
 
 ```
 # struct Point { x: f64, y: f64 }
@@ -2657,14 +2581,14 @@ let u = game::User {name: "Joe", age: 35, score: 100_000};
 some_fn::<Cookie>(Cookie);
 ```
 
-A structure expression forms a new value of the named structure type. Note
-that for a given *unit-like* structure type, this will always be the same
+A struct expression forms a new value of the named struct type. Note
+that for a given *unit-like* struct type, this will always be the same
 value.
 
-A structure expression can terminate with the syntax `..` followed by an
+A struct expression can terminate with the syntax `..` followed by an
 expression to denote a functional update. The expression following `..` (the
-base) must have the same structure type as the new structure type being formed.
-The entire expression denotes the result of constructing a new structure (with
+base) must have the same struct type as the new struct type being formed.
+The entire expression denotes the result of constructing a new struct (with
 the same type as the base expression) with the given values for the fields that
 were explicitly specified and the values in the base expression for all other
 fields.
@@ -2710,7 +2634,7 @@ the left-hand-side expression is an indirect [trait object](#trait-objects).
 A _field expression_ consists of an expression followed by a single dot and an
 identifier, when not immediately followed by a parenthesized expression-list
 (the latter is a [method call expression](#method-call-expressions)). A field
-expression denotes a field of a [structure](#structure-types).
+expression denotes a field of a [struct](#struct-types).
 
 ```{.ignore .field}
 mystruct.myfield;
@@ -3429,17 +3353,17 @@ As you can see, the `vec!` macro allows you to create a `Vec<T>` easily. The
 All in-bounds elements of arrays and slices are always initialized, and access
 to an array or slice is always bounds-checked.
 
-### Structure types
+### Struct types
 
 A `struct` *type* is a heterogeneous product of other types, called the
 *fields* of the type.[^structtype]
 
 [^structtype]: `struct` types are analogous to `struct` types in C,
     the *record* types of the ML family,
-    or the *structure* types of the Lisp family.
+    or the *struct* types of the Lisp family.
 
 New instances of a `struct` can be constructed with a [struct
-expression](#structure-expressions).
+expression](#struct-expressions).
 
 The memory layout of a `struct` is undefined by default to allow for compiler
 optimizations like field reordering, but it can be fixed with the
@@ -3449,14 +3373,14 @@ have the same memory layout.
 
 The fields of a `struct` may be qualified by [visibility
 modifiers](#visibility-and-privacy), to allow access to data in a
-structure outside a module.
+struct outside a module.
 
-A _tuple struct_ type is just like a structure type, except that the fields are
+A _tuple struct_ type is just like a struct type, except that the fields are
 anonymous.
 
-A _unit-like struct_ type is like a structure type, except that it has no
-fields. The one value constructed by the associated [structure
-expression](#structure-expressions) is the only value that inhabits such a
+A _unit-like struct_ type is like a struct type, except that it has no
+fields. The one value constructed by the associated [struct
+expression](#struct-expressions) is the only value that inhabits such a
 type.
 
 ### Enumerated types
@@ -3483,7 +3407,7 @@ named reference to an [`enum` item](#enumerations).
 ### Recursive types
 
 Nominal types &mdash; [enumerations](#enumerated-types) and
-[structs](#structure-types) &mdash; may be recursive. That is, each `enum`
+[structs](#struct-types) &mdash; may be recursive. That is, each `enum`
 constructor or `struct` field may refer, directly or indirectly, to the
 enclosing `enum` or `struct` type itself. Such recursion has restrictions:
 
@@ -3785,7 +3709,7 @@ repeated sub-expression is a coercion site for coercion to type `U`.
 Each sub-expression is a coercion site to the respective type, e.g. the
 zeroth sub-expression is a coercion site to type `U_0`.
 
-* Parenthesised sub-expressions (`(e)`): if the expression has type `U`, then
+* Parenthesized sub-expressions (`(e)`): if the expression has type `U`, then
 the sub-expression is a coercion site to `U`.
 
 * Blocks: if a block has type `U`, then the last expression in the block (if
@@ -4050,6 +3974,99 @@ In general, `--crate-type=bin` or `--crate-type=lib` should be sufficient for
 all compilation needs, and the other options are just available if more
 fine-grained control is desired over the output format of a Rust crate.
 
+# Unsafety
+
+Unsafe operations are those that potentially violate the memory-safety
+guarantees of Rust's static semantics.
+
+The following language level features cannot be used in the safe subset of
+Rust:
+
+- Dereferencing a [raw pointer](#pointer-types).
+- Reading or writing a [mutable static variable](#mutable-statics).
+- Calling an unsafe function (including an intrinsic or foreign function).
+
+## Unsafe functions
+
+Unsafe functions are functions that are not safe in all contexts and/or for all
+possible inputs. Such a function must be prefixed with the keyword `unsafe` and
+can only be called from an `unsafe` block or another `unsafe` function.
+
+## Unsafe blocks
+
+A block of code can be prefixed with the `unsafe` keyword, to permit calling
+`unsafe` functions or dereferencing raw pointers within a safe function.
+
+When a programmer has sufficient conviction that a sequence of potentially
+unsafe operations is actually safe, they can encapsulate that sequence (taken
+as a whole) within an `unsafe` block. The compiler will consider uses of such
+code safe, in the surrounding context.
+
+Unsafe blocks are used to wrap foreign libraries, make direct use of hardware
+or implement features not directly present in the language. For example, Rust
+provides the language features necessary to implement memory-safe concurrency
+in the language but the implementation of threads and message passing is in the
+standard library.
+
+Rust's type system is a conservative approximation of the dynamic safety
+requirements, so in some cases there is a performance cost to using safe code.
+For example, a doubly-linked list is not a tree structure and can only be
+represented with reference-counted pointers in safe code. By using `unsafe`
+blocks to represent the reverse links as raw pointers, it can be implemented
+with only boxes.
+
+## Behavior considered undefined
+
+The following is a list of behavior which is forbidden in all Rust code,
+including within `unsafe` blocks and `unsafe` functions. Type checking provides
+the guarantee that these issues are never caused by safe code.
+
+* Data races
+* Dereferencing a null/dangling raw pointer
+* Reads of [undef](http://llvm.org/docs/LangRef.html#undefined-values)
+  (uninitialized) memory
+* Breaking the [pointer aliasing
+  rules](http://llvm.org/docs/LangRef.html#pointer-aliasing-rules)
+  with raw pointers (a subset of the rules used by C)
+* `&mut` and `&` follow LLVM’s scoped [noalias] model, except if the `&T`
+  contains an `UnsafeCell<U>`. Unsafe code must not violate these aliasing
+  guarantees.
+* Mutating non-mutable data (that is, data reached through a shared reference or
+  data owned by a `let` binding), unless that data is contained within an `UnsafeCell<U>`.
+* Invoking undefined behavior via compiler intrinsics:
+  * Indexing outside of the bounds of an object with `std::ptr::offset`
+    (`offset` intrinsic), with
+    the exception of one byte past the end which is permitted.
+  * Using `std::ptr::copy_nonoverlapping_memory` (`memcpy32`/`memcpy64`
+    intrinsics) on overlapping buffers
+* Invalid values in primitive types, even in private fields/locals:
+  * Dangling/null references or boxes
+  * A value other than `false` (0) or `true` (1) in a `bool`
+  * A discriminant in an `enum` not included in the type definition
+  * A value in a `char` which is a surrogate or above `char::MAX`
+  * Non-UTF-8 byte sequences in a `str`
+* Unwinding into Rust from foreign code or unwinding from Rust into foreign
+  code. Rust's failure system is not compatible with exception handling in
+  other languages. Unwinding must be caught and handled at FFI boundaries.
+
+[noalias]: http://llvm.org/docs/LangRef.html#noalias
+
+## Behavior not considered unsafe
+
+This is a list of behavior not considered *unsafe* in Rust terms, but that may
+be undesired.
+
+* Deadlocks
+* Leaks of memory and other resources
+* Exiting without calling destructors
+* Integer overflow
+  - Overflow is considered "unexpected" behavior and is always user-error,
+    unless the `wrapping` primitives are used. In non-optimized builds, the compiler
+    will insert debug checks that panic on overflow, but in optimized builds overflow
+    instead results in wrapped values. See [RFC 560] for the rationale and more details.
+
+[RFC 560]: https://github.com/rust-lang/rfcs/blob/master/text/0560-integer-overflow.md
+
 # Appendix: Influences
 
 Rust is not a particularly original language, with design elements coming from
@@ -4058,7 +4075,7 @@ that have since been removed):
 
 * SML, OCaml: algebraic data types, pattern matching, type inference,
   semicolon statement separation
-* C++: references, RAII, smart pointers, move semantics, monomorphisation,
+* C++: references, RAII, smart pointers, move semantics, monomorphization,
   memory model
 * ML Kit, Cyclone: region based memory management
 * Haskell (GHC): typeclasses, type families

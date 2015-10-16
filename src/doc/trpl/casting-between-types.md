@@ -82,7 +82,7 @@ unsafe {
 with:
 
 ```text
-error: transmute called on types with different sizes: [u8; 4] (32 bits) to u64
+error: transmute called with differently sized types: [u8; 4] (32 bits) to u64
 (64 bits)
 ```
 

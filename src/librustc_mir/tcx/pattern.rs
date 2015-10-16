@@ -40,7 +40,7 @@ use syntax::ptr::P;
 #[derive(Clone, Debug)]
 pub struct PatNode<'tcx> {
     pat: &'tcx hir::Pat,
-    binding_map: Option<Rc<FnvHashMap<ast::Name, ast::NodeId>>>
+    binding_map: Option<Rc<FnvHashMap<ast::Name, ast::NodeId>>>,
 }
 
 impl<'tcx> PatNode<'tcx> {
@@ -53,8 +53,7 @@ impl<'tcx> PatNode<'tcx> {
         }
     }
 
-    pub fn irrefutable(pat: &'tcx hir::Pat)
-                       -> PatNode<'tcx> {
+    pub fn irrefutable(pat: &'tcx hir::Pat) -> PatNode<'tcx> {
         PatNode::new(pat, None)
     }
 
@@ -76,8 +75,7 @@ impl<'tcx> PatNode<'tcx> {
                                   prefix: &'tcx Vec<P<hir::Pat>>,
                                   slice: &'tcx Option<P<hir::Pat>>,
                                   suffix: &'tcx Vec<P<hir::Pat>>)
-                                  -> PatternKind<'tcx>
-    {
+                                  -> PatternKind<'tcx> {
         match ty.sty {
             ty::TySlice(..) =>
                 // matching a slice or fixed-length array
@@ -98,9 +96,7 @@ impl<'tcx> PatNode<'tcx> {
             }
 
             _ => {
-                cx.tcx.sess.span_bug(
-                    self.pat.span,
-                    "unexpanded macro or bad constant etc");
+                cx.tcx.sess.span_bug(self.pat.span, "unexpanded macro or bad constant etc");
             }
         }
     }
@@ -108,16 +104,17 @@ impl<'tcx> PatNode<'tcx> {
     fn variant_or_leaf<'a>(&self,
                            cx: &mut Cx<'a, 'tcx>,
                            subpatterns: Vec<FieldPatternRef<'tcx>>)
-                           -> PatternKind<'tcx>
-    {
+                           -> PatternKind<'tcx> {
         let def = cx.tcx.def_map.borrow().get(&self.pat.id).unwrap().full_def();
         match def {
             def::DefVariant(enum_id, variant_id, _) => {
                 let adt_def = cx.tcx.lookup_adt_def(enum_id);
                 if adt_def.variants.len() > 1 {
-                    PatternKind::Variant { adt_def: adt_def,
-                                           variant_index: adt_def.variant_index_with_id(variant_id),
-                                           subpatterns: subpatterns }
+                    PatternKind::Variant {
+                        adt_def: adt_def,
+                        variant_index: adt_def.variant_index_with_id(variant_id),
+                        subpatterns: subpatterns,
+                    }
                 } else {
                     PatternKind::Leaf { subpatterns: subpatterns }
                 }
@@ -130,9 +127,8 @@ impl<'tcx> PatNode<'tcx> {
             }
 
             _ => {
-                cx.tcx.sess.span_bug(
-                    self.pat.span,
-                    &format!("inappropriate def for pattern: {:?}", def));
+                cx.tcx.sess.span_bug(self.pat.span,
+                                     &format!("inappropriate def for pattern: {:?}", def));
             }
         }
     }
@@ -141,16 +137,15 @@ impl<'tcx> PatNode<'tcx> {
 impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
     type Output = Pattern<'tcx>;
 
-    fn make_mirror<'a>(self, cx: &mut Cx<'a,'tcx>) -> Pattern<'tcx> {
+    fn make_mirror<'a>(self, cx: &mut Cx<'a, 'tcx>) -> Pattern<'tcx> {
         let kind = match self.pat.node {
-            hir::PatWild(..) =>
-                PatternKind::Wild,
+            hir::PatWild(..) => PatternKind::Wild,
 
             hir::PatLit(ref value) => {
                 let value = const_eval::eval_const_expr(cx.tcx, value);
                 let value = Literal::Value { value: value };
                 PatternKind::Constant { value: value }
-            },
+            }
 
             hir::PatRange(ref lo, ref hi) => {
                 let lo = const_eval::eval_const_expr(cx.tcx, lo);
@@ -296,16 +291,16 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
             }
 
             hir::PatQPath(..) => {
-                cx.tcx.sess.span_bug(
-                    self.pat.span,
-                    "unexpanded macro or bad constant etc");
+                cx.tcx.sess.span_bug(self.pat.span, "unexpanded macro or bad constant etc");
             }
         };
 
         let ty = cx.tcx.node_id_to_type(self.pat.id);
 
-        Pattern { span: self.pat.span,
-                  ty: ty,
-                  kind: kind }
+        Pattern {
+            span: self.pat.span,
+            ty: ty,
+            kind: kind,
+        }
     }
 }

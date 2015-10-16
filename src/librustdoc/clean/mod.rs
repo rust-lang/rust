@@ -153,7 +153,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         //
         // Note that this loop only searches the top-level items of the crate,
         // and this is intentional. If we were to search the entire crate for an
-        // item tagged with `#[doc(primitive)]` then we we would also have to
+        // item tagged with `#[doc(primitive)]` then we would also have to
         // search the entirety of external modules for items tagged
         // `#[doc(primitive)]`, which is a pretty inefficient process (decoding
         // all that metadata unconditionally).
@@ -324,8 +324,8 @@ impl Item {
         match self.stability {
             Some(ref s) => {
                 let mut base = match s.level {
-                    attr::Unstable => "unstable".to_string(),
-                    attr::Stable => String::new(),
+                    stability::Unstable => "unstable".to_string(),
+                    stability::Stable => String::new(),
                 };
                 if !s.deprecated_since.is_empty() {
                     base.push_str(" deprecated");
@@ -1805,11 +1805,11 @@ pub struct VariantStruct {
     pub fields_stripped: bool,
 }
 
-impl Clean<VariantStruct> for ::rustc_front::hir::StructDef {
+impl Clean<VariantStruct> for ::rustc_front::hir::VariantData {
     fn clean(&self, cx: &DocContext) -> VariantStruct {
         VariantStruct {
             struct_type: doctree::struct_type_from_def(self),
-            fields: self.fields.clean(cx),
+            fields: self.fields().map(|x| x.clean(cx)).collect(),
             fields_stripped: false,
         }
     }
@@ -1853,9 +1853,9 @@ impl Clean<Item> for doctree::Variant {
             source: self.whence.clean(cx),
             visibility: None,
             stability: self.stab.clean(cx),
-            def_id: cx.map.local_def_id(self.id),
+            def_id: cx.map.local_def_id(self.def.id()),
             inner: VariantItem(Variant {
-                kind: self.kind.clean(cx),
+                kind: struct_def_to_variant_kind(&self.def, cx),
             }),
         }
     }
@@ -1871,7 +1871,7 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
                     self.fields.iter().map(|f| f.unsubst_ty().clean(cx)).collect()
                 )
             }
-            ty::VariantKind::Dict => {
+            ty::VariantKind::Struct => {
                 StructVariant(VariantStruct {
                     struct_type: doctree::Plain,
                     fields_stripped: false,
@@ -1917,18 +1917,13 @@ pub enum VariantKind {
     StructVariant(VariantStruct),
 }
 
-impl Clean<VariantKind> for hir::VariantKind {
-    fn clean(&self, cx: &DocContext) -> VariantKind {
-        match self {
-            &hir::TupleVariantKind(ref args) => {
-                if args.is_empty() {
-                    CLikeVariant
-                } else {
-                    TupleVariant(args.iter().map(|x| x.ty.clean(cx)).collect())
-                }
-            },
-            &hir::StructVariantKind(ref sd) => StructVariant(sd.clean(cx)),
-        }
+fn struct_def_to_variant_kind(struct_def: &hir::VariantData, cx: &DocContext) -> VariantKind {
+    if struct_def.is_struct() {
+        StructVariant(struct_def.clean(cx))
+    } else if struct_def.is_unit() {
+        CLikeVariant
+    } else {
+        TupleVariant(struct_def.fields().map(|x| x.node.ty.clean(cx)).collect())
     }
 }
 
@@ -2679,7 +2674,7 @@ impl Clean<Item> for doctree::Macro {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Stability {
-    pub level: attr::StabilityLevel,
+    pub level: stability::StabilityLevel,
     pub feature: String,
     pub since: String,
     pub deprecated_since: String,
@@ -2690,32 +2685,36 @@ pub struct Stability {
 impl Clean<Stability> for attr::Stability {
     fn clean(&self, _: &DocContext) -> Stability {
         Stability {
-            level: self.level,
+            level: stability::StabilityLevel::from_attr_level(&self.level),
             feature: self.feature.to_string(),
-            since: self.since.as_ref().map_or("".to_string(),
-                                              |interned| interned.to_string()),
-            deprecated_since: self.deprecated_since.as_ref().map_or("".to_string(),
-                                                                    |istr| istr.to_string()),
-            reason: self.reason.as_ref().map_or("".to_string(),
-                                                |interned| interned.to_string()),
-            issue: self.issue,
+            since: match self.level {
+                attr::Stable {ref since} => since.to_string(),
+                _ => "".to_string(),
+            },
+            deprecated_since: match self.depr {
+                Some(attr::Deprecation {ref since, ..}) => since.to_string(),
+                _=> "".to_string(),
+            },
+            reason: {
+                if let Some(ref depr) = self.depr {
+                    depr.reason.to_string()
+                } else if let attr::Unstable {reason: Some(ref reason), ..} = self.level {
+                    reason.to_string()
+                } else {
+                    "".to_string()
+                }
+            },
+            issue: match self.level {
+                attr::Unstable {issue, ..} => Some(issue),
+                _ => None,
+            }
         }
     }
 }
 
 impl<'a> Clean<Stability> for &'a attr::Stability {
-    fn clean(&self, _: &DocContext) -> Stability {
-        Stability {
-            level: self.level,
-            feature: self.feature.to_string(),
-            since: self.since.as_ref().map_or("".to_string(),
-                                              |interned| interned.to_string()),
-            deprecated_since: self.deprecated_since.as_ref().map_or("".to_string(),
-                                                                    |istr| istr.to_string()),
-            reason: self.reason.as_ref().map_or("".to_string(),
-                                                |interned| interned.to_string()),
-            issue: self.issue,
-        }
+    fn clean(&self, dc: &DocContext) -> Stability {
+        (**self).clean(dc)
     }
 }
 

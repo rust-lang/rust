@@ -52,9 +52,10 @@ use std::sync::Arc;
 use externalfiles::ExternalHtml;
 
 use serialize::json::{self, ToJson};
-use syntax::{abi, ast, attr};
+use syntax::{abi, ast};
 use rustc::metadata::cstore::LOCAL_CRATE;
 use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::middle::stability;
 use rustc::util::nodemap::DefIdSet;
 use rustc_front::hir;
 
@@ -1608,8 +1609,8 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         let s1 = i1.stability.as_ref().map(|s| s.level);
         let s2 = i2.stability.as_ref().map(|s| s.level);
         match (s1, s2) {
-            (Some(attr::Unstable), Some(attr::Stable)) => return Ordering::Greater,
-            (Some(attr::Stable), Some(attr::Unstable)) => return Ordering::Less,
+            (Some(stability::Unstable), Some(stability::Stable)) => return Ordering::Greater,
+            (Some(stability::Stable), Some(stability::Unstable)) => return Ordering::Less,
             _ => {}
         }
         i1.name.cmp(&i2.name)
@@ -1724,7 +1725,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Optio
                 String::new()
             };
             format!("Deprecated{}{}", since, Markdown(&reason))
-        } else if stab.level == attr::Unstable {
+        } else if stab.level == stability::Unstable {
             let unstable_extra = if show_reason {
                 match (!stab.feature.is_empty(), &cx.issue_tracker_base_url, stab.issue) {
                     (true, &Some(ref tracker_url), Some(issue_no)) =>

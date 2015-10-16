@@ -109,7 +109,7 @@ fn main(){
 "##,
 
 E0026: r##"
-This error indicates that a struct pattern attempted to extract a non-existant
+This error indicates that a struct pattern attempted to extract a non-existent
 field from a struct. Struct fields are identified by the name used before the
 colon `:` so struct patterns should resemble the declaration of the struct type
 being matched.
@@ -1308,8 +1308,8 @@ extern "rust-intrinsic" {
 "##,
 
 E0101: r##"
-You hit this error because the compiler the compiler lacks information
-to determine a type for this expression. Erroneous code example:
+You hit this error because the compiler lacks the information to
+determine a type for this expression. Erroneous code example:
 
 ```
 fn main() {
@@ -3352,7 +3352,7 @@ register_diagnostics! {
     E0182,
     E0183,
 //  E0187, // can't infer the kind of the closure
-//  E0188, // can not cast a immutable reference to a mutable pointer
+//  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
     E0196, // cannot determine a type for this closure

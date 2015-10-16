@@ -361,7 +361,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           let repr = adt::represent_type(cx, t);
           // Unboxed closures can have substitutions in all spaces
           // inherited from their environment, so we use entire
-          // contents of the VecPerParamSpace to to construct the llvm
+          // contents of the VecPerParamSpace to construct the llvm
           // name
           adt::incomplete_type_of(cx, &*repr, "closure")
       }

@@ -593,7 +593,7 @@ mod stack {
         top: node::Handle<*mut Node<K, V>, Type, NodeType>,
     }
 
-    /// A `PartialSearchStack` that doesn't hold a a reference to the next node, and is just
+    /// A `PartialSearchStack` that doesn't hold a reference to the next node, and is just
     /// just waiting for a `Handle` to that next node to be pushed. See `PartialSearchStack::with`
     /// for more details.
     pub struct Pusher<'id, 'a, K:'a, V:'a> {
@@ -949,7 +949,7 @@ impl<'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for BTreeMap<K, V>
     }
 }
 
-/// Genericises over how to get the correct type of iterator from the correct type
+/// Genericizes over how to get the correct type of iterator from the correct type
 /// of Node ownership.
 trait Traverse<N> {
     fn traverse(node: N) -> Self;

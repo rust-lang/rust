@@ -77,7 +77,7 @@
 //! borrowed pointer? I mean any data that is reached by first
 //! dereferencing a borrowed pointer and then either traversing
 //! interior offsets or boxes.  We say that the guarantor
-//! of such data it the region of the borrowed pointer that was
+//! of such data is the region of the borrowed pointer that was
 //! traversed.  This is essentially the same as the ownership
 //! relation, except that a borrowed pointer never owns its
 //! contents.
@@ -592,6 +592,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
         };
 
         substs_wf_in_scope(rcx, origin, &callee.substs, expr.span, expr_region);
+        type_must_outlive(rcx, infer::ExprTypeIsNotInScope(callee.ty, expr.span),
+                          callee.ty, expr_region);
     }
 
     // Check any autoderefs or autorefs that appear.
@@ -664,6 +666,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
         }
     }
 
+    debug!("regionck::visit_expr(e={:?}, repeating_scope={}) - visiting subexprs",
+           expr, rcx.repeating_scope);
     match expr.node {
         hir::ExprPath(..) => {
             rcx.fcx.opt_node_ty_substs(expr.id, |item_substs| {

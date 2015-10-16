@@ -269,7 +269,7 @@ impl UnsafetyState {
                         (unsafety, blk.id, self.unsafe_push_count.checked_sub(1).unwrap()),
                     hir::UnsafeBlock(..) =>
                         (hir::Unsafety::Unsafe, blk.id, self.unsafe_push_count),
-                    hir::DefaultBlock =>
+                    hir::DefaultBlock | hir::PushUnstableBlock | hir:: PopUnstableBlock =>
                         (unsafety, self.def, self.unsafe_push_count),
                 };
                 UnsafetyState{ def: def,
@@ -1464,7 +1464,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Return the dict-like variant corresponding to a given `Def`.
     pub fn def_struct_variant(&self,
-                              def: def::Def)
+                              def: def::Def,
+                              span: Span)
                               -> Option<(ty::AdtDef<'tcx>, ty::VariantDef<'tcx>)>
     {
         let (adt, variant) = match def {
@@ -1484,11 +1485,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let var_kind = variant.kind();
-        if var_kind == ty::VariantKind::Dict || var_kind == ty::VariantKind::Unit {
+        if var_kind == ty::VariantKind::Struct {
             Some((adt, variant))
-        } else {
-            None
-        }
+        } else if var_kind == ty::VariantKind::Unit {
+            if !self.tcx().sess.features.borrow().braced_empty_structs {
+                self.tcx().sess.span_err(span, "empty structs and enum variants \
+                                                with braces are unstable");
+                fileline_help!(self.tcx().sess, span, "add #![feature(braced_empty_structs)] to \
+                                                       the crate features to enable");
+            }
+
+             Some((adt, variant))
+         } else {
+             None
+         }
     }
 
     pub fn write_nil(&self, node_id: ast::NodeId) {
@@ -1810,7 +1820,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // There is a possibility that this algorithm will have to run an arbitrary number of times
         // to terminate so we bound it by the compiler's recursion limit.
-        for _ in (0..self.tcx().sess.recursion_limit.get()) {
+        for _ in 0..self.tcx().sess.recursion_limit.get() {
             // First we try to solve all obligations, it is possible that the last iteration
             // has made it possible to make more progress.
             self.select_obligations_where_possible();
@@ -1878,7 +1888,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // If there are no more fallbacks to apply at this point we have applied all possible
-            // defaults and type inference will procede as normal.
+            // defaults and type inference will proceed as normal.
             if unbound_tyvars.is_empty() {
                 break;
             }
@@ -2222,7 +2232,7 @@ fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 {
     match method {
         Some(method) => {
-            // extract method method return type, which will be &T;
+            // extract method return type, which will be &T;
             // all LB regions should have been instantiated during method lookup
             let ret_ty = method.ty.fn_ret();
             let ret_ty = fcx.tcx().no_late_bound_regions(&ret_ty).unwrap().unwrap();
@@ -3177,7 +3187,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         // Find the relevant variant
         let def = lookup_full_def(tcx, path.span, expr.id);
-        let (adt, variant) = match fcx.def_struct_variant(def) {
+        let (adt, variant) = match fcx.def_struct_variant(def, path.span) {
             Some((adt, variant)) => (adt, variant),
             None => {
                 span_err!(fcx.tcx().sess, path.span, E0071,
@@ -4106,7 +4116,7 @@ fn check_const_with_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Gather locals in statics (because of block expressions).
     // This is technically unnecessary because locals in static items are forbidden,
     // but prevents type checking from blowing up before const checking can properly
-    // emit a error.
+    // emit an error.
     GatherLocalsVisitor { fcx: fcx }.visit_expr(e);
 
     check_expr_with_hint(fcx, e, declty);
@@ -4360,7 +4370,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     //    parameters permitted at present, but perhaps we will allow
     //    them in the future.)
     //
-    // 1b. Reference to a enum variant or tuple-like struct:
+    // 1b. Reference to an enum variant or tuple-like struct:
     //
     //        struct foo<T>(...)
     //        enum E<T> { foo(...) }

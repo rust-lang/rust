@@ -243,7 +243,7 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
 ///
-/// See the safe version, [`from_utrf8()`][fromutf8], for more.
+/// See the safe version, [`from_utf8()`][fromutf8], for more.
 ///
 /// [fromutf8]: fn.from_utf8.html
 ///
@@ -562,7 +562,7 @@ macro_rules! derive_pattern_clone {
 }
 
 /// This macro generates two public iterator structs
-/// wrapping an private internal one that makes use of the `Pattern` API.
+/// wrapping a private internal one that makes use of the `Pattern` API.
 ///
 /// For all patterns `P: Pattern<'a>` the following items will be
 /// generated (generics omitted):
@@ -965,7 +965,7 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
 #[allow(deprecated)]
 pub struct LinesAny<'a>(Lines<'a>);
 
-/// A nameable, clonable fn type
+/// A nameable, cloneable fn type
 #[derive(Clone)]
 struct LinesAnyMap;
 

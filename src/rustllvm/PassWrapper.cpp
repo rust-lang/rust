@@ -250,7 +250,7 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target,
 #endif
   PM->run(*unwrap(M));
 
-  // Apparently `addPassesToEmitFile` adds an pointer to our on-the-stack output
+  // Apparently `addPassesToEmitFile` adds a pointer to our on-the-stack output
   // stream (OS), so the only real safe place to delete this is here? Don't we
   // wish this was written in Rust?
   delete PM;
@@ -335,8 +335,7 @@ LLVMRustSetDataLayoutFromTargetMachine(LLVMModuleRef Module,
                                        LLVMTargetMachineRef TMR) {
     TargetMachine *Target = unwrap(TMR);
 #if LLVM_VERSION_MINOR >= 7
-    if (const DataLayout *DL = Target->getDataLayout())
-        unwrap(Module)->setDataLayout(*DL);
+    unwrap(Module)->setDataLayout(Target->createDataLayout());
 #elif LLVM_VERSION_MINOR >= 6
     if (const DataLayout *DL = Target->getSubtargetImpl()->getDataLayout())
         unwrap(Module)->setDataLayout(DL);

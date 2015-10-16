@@ -54,11 +54,12 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext) 
 /// section.
 pub fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
                                                   -> llvm::ValueRef {
-    let section_var_name = "__rustc_debug_gdb_scripts_section__";
+    let c_section_var_name = "__rustc_debug_gdb_scripts_section__\0";
+    let section_var_name = &c_section_var_name[..c_section_var_name.len()-1];
 
     let section_var = unsafe {
         llvm::LLVMGetNamedGlobal(ccx.llmod(),
-                                 section_var_name.as_ptr() as *const _)
+                                 c_section_var_name.as_ptr() as *const _)
     };
 
     if section_var == ptr::null_mut() {
