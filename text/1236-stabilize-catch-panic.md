@@ -441,25 +441,6 @@ roughly analogous to an opaque "an unexpected error has occurred" message.
 Stabilizing `catch_panic` does little to change the tradeoffs around `Result`
 and `panic` that led to these conventions.
 
-## Why remove `Send`?
-
-One of the primary use cases of `recover` is in an FFI context, where lots
-of `*mut` and `*const` pointers are flying around. These two types aren't
-`Send` by default, so having their values cross the `catch_panic` boundary
-would be highly un-ergonomic (albeit still possible). As a result, this RFC
-proposes removing the `Send` bound from the function.
-
-## Why keep `'static`?
-
-This RFC proposes leaving the `'static` bound on the closure parameter for now.
-There isn't a clearly strong case (such as for `Send`) to remove this parameter
-just yet, and it helps mitigate exception safety issues related to shared
-references across the `recover` boundary.
-
-There is conversely also not a clearly strong case for *keeping* this bound, but
-as it's the more conservative route (and backwards compatible to remove) it will
-remain for now.
-
 # Drawbacks
 
 A drawback of this RFC is that it can water down Rust's error handling story.
