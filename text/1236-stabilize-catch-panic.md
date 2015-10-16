@@ -192,7 +192,7 @@ fn recover<F: FnOnce() -> R + PanicSafe, R>(f: F) -> thread::Result<R>
 Before analyzing this new signature, let's take a look at this new
 `PanicSafe` trait.
 
-## An `PanicSafe` marker trait
+## A `PanicSafe` marker trait
 
 As discussed in the motivation section above, the current bounds of `Send +
 'static` on the closure parameter are too restrictive for common use cases, but
@@ -257,7 +257,7 @@ Let's take a look at each of these items in detail:
 
 The only consumer of the `PanicSafe` bound is the `recover` function on the
 closure type parameter, and this ends up meaning that the *environment* needs to
-be exception safe. In terms of error messages, this cause the compiler to emit
+be exception safe. In terms of error messages, this causes the compiler to emit
 an error per closed-over-variable to indicate whether or not it is exception
 safe to share across the boundary.
 
