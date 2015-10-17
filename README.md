@@ -1,4 +1,4 @@
-# rustfmt
+# rustfmt [![Build Status](https://travis-ci.org/nrc/rustfmt.svg)](https://travis-ci.org/nrc/rustfmt)
 
 A tool for formatting Rust code according to style guidelines.
 
