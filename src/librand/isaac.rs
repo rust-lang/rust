@@ -97,15 +97,23 @@ impl IsaacRng {
             macro_rules! memloop {
                 ($arr:expr) => {{
                     for i in (0..RAND_SIZE_USIZE).step_by(8) {
-                        a=a+$arr[i  ]; b=b+$arr[i+1];
-                        c=c+$arr[i+2]; d=d+$arr[i+3];
-                        e=e+$arr[i+4]; f=f+$arr[i+5];
-                        g=g+$arr[i+6]; h=h+$arr[i+7];
+                        a = a + $arr[i];
+                        b = b + $arr[i + 1];
+                        c = c + $arr[i + 2];
+                        d = d + $arr[i + 3];
+                        e = e + $arr[i + 4];
+                        f = f + $arr[i + 5];
+                        g = g + $arr[i + 6];
+                        h = h + $arr[i + 7];
                         mix!();
-                        self.mem[i  ]=a; self.mem[i+1]=b;
-                        self.mem[i+2]=c; self.mem[i+3]=d;
-                        self.mem[i+4]=e; self.mem[i+5]=f;
-                        self.mem[i+6]=g; self.mem[i+7]=h;
+                        self.mem[i] = a;
+                        self.mem[i + 1] = b;
+                        self.mem[i + 2] = c;
+                        self.mem[i + 3] = d;
+                        self.mem[i + 4] = e;
+                        self.mem[i + 5] = f;
+                        self.mem[i + 6] = g;
+                        self.mem[i + 7] = h;
                     }
                 }}
             }
@@ -349,15 +357,23 @@ impl Isaac64Rng {
             macro_rules! memloop {
                 ($arr:expr) => {{
                     for i in (0..RAND_SIZE_64 / 8).map(|i| i * 8) {
-                        a=a+$arr[i  ]; b=b+$arr[i+1];
-                        c=c+$arr[i+2]; d=d+$arr[i+3];
-                        e=e+$arr[i+4]; f=f+$arr[i+5];
-                        g=g+$arr[i+6]; h=h+$arr[i+7];
+                        a = a + $arr[i];
+                        b = b + $arr[i + 1];
+                        c = c + $arr[i + 2];
+                        d = d + $arr[i + 3];
+                        e = e + $arr[i + 4];
+                        f = f + $arr[i + 5];
+                        g = g + $arr[i + 6];
+                        h = h + $arr[i + 7];
                         mix!();
-                        self.mem[i  ]=a; self.mem[i+1]=b;
-                        self.mem[i+2]=c; self.mem[i+3]=d;
-                        self.mem[i+4]=e; self.mem[i+5]=f;
-                        self.mem[i+6]=g; self.mem[i+7]=h;
+                        self.mem[i] = a;
+                        self.mem[i + 1] = b;
+                        self.mem[i + 2] = c;
+                        self.mem[i + 3] = d;
+                        self.mem[i + 4] = e;
+                        self.mem[i + 5] = f;
+                        self.mem[i + 6] = g;
+                        self.mem[i + 7] = h;
                     }
                 }}
             }
