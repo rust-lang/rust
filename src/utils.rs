@@ -119,6 +119,19 @@ pub fn match_type(cx: &LateContext, ty: ty::Ty, path: &[&str]) -> bool {
 }
 
 /// check if method call given in "expr" belongs to given trait
+pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
+    let method_call = ty::MethodCall::expr(expr.id);
+
+    let trt_id = cx.tcx.tables
+                       .borrow().method_map.get(&method_call)
+                       .and_then(|callee| cx.tcx.impl_of_method(callee.def_id));
+    if let Some(trt_id) = trt_id {
+        match_def_path(cx, trt_id, path)
+    } else {
+        false
+    }
+}
+/// check if method call given in "expr" belongs to given trait
 pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
     let method_call = ty::MethodCall::expr(expr.id);
     let trt_id = cx.tcx.tables
