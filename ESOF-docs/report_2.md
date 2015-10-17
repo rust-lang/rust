@@ -16,3 +16,17 @@
 [Wikipedia]: www.sapo.pt
 
 As said above, requirements are conditions that the costumer wants the software to have before it is delivered.
+
+### RUST's requirements
+
+1. To be a fast systems programming language;
+2. Guarantee memory safety;
+3. To be a good language for creating highly concurrent and highly safe systems.
+
+Rust is being developed by a huge community which counts with numerous ways to communicate such as the questions [Forum], [Twitter], [StackOverflow] or [Reddit].
+
+[Forum]:https://internals.rust-lang.org/
+[Twitter]:https://twitter.com/rustlang
+[StackOverflow]:http://stackoverflow.com/questions/tagged/rust
+[Reddit]:https://www.reddit.com/r/rust/
+
