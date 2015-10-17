@@ -59,43 +59,22 @@ impl<'a> FmtVisitor<'a> {
         let span = codemap::mk_sp(start, end);
         let snippet = self.snippet(span);
 
-        self.write_snippet(&snippet, true, &process_last_snippet);
+        self.write_snippet(&snippet, &process_last_snippet);
     }
 
     fn write_snippet<F: Fn(&mut FmtVisitor, &str, &str)>(&mut self,
                                                          snippet: &str,
-                                                         last_snippet: bool,
                                                          process_last_snippet: F) {
-        // Trim whitespace from the right hand side of each line.
-        // Annoyingly, the library functions for splitting by lines etc. are not
-        // quite right, so we must do it ourselves.
-        let mut line_start = 0;
-        let mut last_wspace = None;
-        for (i, c) in snippet.char_indices() {
-            if c == '\n' {
-                if let Some(lw) = last_wspace {
-                    self.buffer.push_str(&snippet[line_start..lw]);
-                    self.buffer.push_str("\n");
-                } else {
-                    self.buffer.push_str(&snippet[line_start..i + 1]);
-                }
-
-                line_start = i + 1;
-                last_wspace = None;
-            } else {
-                if c.is_whitespace() {
-                    if last_wspace.is_none() {
-                        last_wspace = Some(i);
-                    }
-                } else {
-                    last_wspace = None;
-                }
-            }
-        }
-        if last_snippet {
-            process_last_snippet(self, &snippet[line_start..], snippet);
+        let mut lines: Vec<&str> = snippet.lines().collect();
+        let last_snippet = if snippet.ends_with("\n") {
+            ""
         } else {
-            self.buffer.push_str(&snippet[line_start..]);
+            lines.pop().unwrap()
+        };
+        for line in lines.iter() {
+            self.buffer.push_str(line.trim_right());
+            self.buffer.push_str("\n");
         }
+        process_last_snippet(self, &last_snippet, snippet);
     }
 }
