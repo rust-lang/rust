@@ -24,8 +24,10 @@ use num::flt2dec::estimator::estimate_scaling_factor;
 use num::bignum::Digit32 as Digit;
 use num::bignum::Big32x40 as Big;
 
-static POW10: [Digit; 10] = [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000];
-static TWOPOW10: [Digit; 10] = [2, 20, 200, 2000, 20000, 200000, 2000000, 20000000, 200000000, 2000000000];
+static POW10: [Digit; 10] = [
+    1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000];
+static TWOPOW10: [Digit; 10] = [
+    2, 20, 200, 2000, 20000, 200000, 2000000, 20000000, 200000000, 2000000000];
 
 // precalculated arrays of `Digit`s for 10^(2^n)
 static POW10TO16: [Digit; 2] = [0x6fc10000, 0x2386f2];
