@@ -8,6 +8,7 @@
 3. [Pull Requests](#pull-requests)
 4. [New Features](#new-features)
   1. [RFC](#rfc)
+5. [Use Cases](#use-cases)
 
 ## RUST - Programming Language
 
@@ -111,3 +112,7 @@ _NOTE: If anyone wants to propose a new feature to the Rust language, an issue s
 >
 >_From [Rust RFC repository]_
 [Rust RFC repository]:https://github.com/rust-lang/rfcs/
+
+### Use Cases
+
+![alt tab](https://github.com/martapips/rust/ESOF-docs/res/rustUseCaseDiagram.png)
