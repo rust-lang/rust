@@ -30,3 +30,34 @@ Rust is being developed by a huge community which counts with numerous ways to c
 [StackOverflow]:http://stackoverflow.com/questions/tagged/rust
 [Reddit]:https://www.reddit.com/r/rust/
 
+
+#### Bugs
+
+The Rust community welcomes anyone that reports Bugs. Even if the person that reports isn't really sure about what they are reporting.
+
+It is asked to search in the existing issues for the bug before reporting it. However there is no problem in reporting a bug for the second time considering the enormous amount of existing issues.
+
+All issues should fallow the form bellow:
+
+```
+<short summary of the bug>
+
+I tried this code:
+
+<code sample that causes the bug>
+
+I expected to see this happen: <explanation>
+
+Instead, this happened: <explanation>
+
+## Meta
+
+`rustc --version --verbose`:
+
+Backtrace:
+```
+
+>All three components are important: what you did, what you expected, what happened instead. Please include the output of rustc --version --verbose, which includes important information about what platform you're on, what version of Rust you're using, etc.
+>
+>  _From [Rust - Github]_
+[Rust - Github]:https://github.com/rust-lang/rust
