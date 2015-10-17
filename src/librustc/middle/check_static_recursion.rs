@@ -201,7 +201,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
     }
 
     fn visit_enum_def(&mut self, enum_definition: &'ast hir::EnumDef,
-                      generics: &'ast hir::Generics, item_id: ast::NodeId) {
+                      generics: &'ast hir::Generics, item_id: ast::NodeId, _: Span) {
         self.populate_enum_discriminants(enum_definition);
         visit::walk_enum_def(self, enum_definition, generics, item_id);
     }

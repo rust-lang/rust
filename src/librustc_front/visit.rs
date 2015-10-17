@@ -120,7 +120,7 @@ pub trait Visitor<'v> : Sized {
         walk_struct_field(self, s)
     }
     fn visit_enum_def(&mut self, enum_definition: &'v EnumDef,
-                      generics: &'v Generics, item_id: NodeId) {
+                      generics: &'v Generics, item_id: NodeId, _: Span) {
         walk_enum_def(self, enum_definition, generics, item_id)
     }
     fn visit_variant(&mut self, v: &'v Variant, g: &'v Generics, item_id: NodeId) {
@@ -293,7 +293,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         }
         ItemEnum(ref enum_definition, ref type_parameters) => {
             visitor.visit_generics(type_parameters);
-            visitor.visit_enum_def(enum_definition, type_parameters, item.id)
+            visitor.visit_enum_def(enum_definition, type_parameters, item.id, item.span)
         }
         ItemDefaultImpl(_, ref trait_ref) => {
             visitor.visit_trait_ref(trait_ref)
@@ -326,9 +326,7 @@ pub fn walk_enum_def<'v, V: Visitor<'v>>(visitor: &mut V,
                                          enum_definition: &'v EnumDef,
                                          generics: &'v Generics,
                                          item_id: NodeId) {
-    for variant in &enum_definition.variants {
-        visitor.visit_variant(variant, generics, item_id);
-    }
+    walk_list!(visitor, visit_variant, &enum_definition.variants, generics, item_id);
 }
 
 pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
