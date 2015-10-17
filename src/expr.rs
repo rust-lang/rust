@@ -161,10 +161,10 @@ impl Rewrite for ast::Expr {
                 wrap_str("return".to_owned(), context.config.max_width, width, offset)
             }
             ast::Expr_::ExprRet(Some(ref expr)) => {
-                rewrite_unary_prefix(context, "return ", expr, width, offset)
+                rewrite_unary_prefix(context, "return ", &**expr, width, offset)
             }
             ast::Expr_::ExprBox(ref expr) => {
-                rewrite_unary_prefix(context, "box ", expr, width, offset)
+                rewrite_unary_prefix(context, "box ", &**expr, width, offset)
             }
             ast::Expr_::ExprAddrOf(mutability, ref expr) => {
                 rewrite_expr_addrof(context, mutability, expr, width, offset)
@@ -210,15 +210,15 @@ impl Rewrite for ast::Expr {
     }
 }
 
-fn rewrite_pair<LHS, RHS>(lhs: &LHS,
-                          rhs: &RHS,
-                          prefix: &str,
-                          infix: &str,
-                          suffix: &str,
-                          context: &RewriteContext,
-                          width: usize,
-                          offset: Indent)
-                          -> Option<String>
+pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
+                              rhs: &RHS,
+                              prefix: &str,
+                              infix: &str,
+                              suffix: &str,
+                              context: &RewriteContext,
+                              width: usize,
+                              offset: Indent)
+                              -> Option<String>
     where LHS: Rewrite,
           RHS: Rewrite
 {
@@ -1470,16 +1470,16 @@ fn rewrite_binary_op(context: &RewriteContext,
                  rhs_result))
 }
 
-fn rewrite_unary_prefix(context: &RewriteContext,
-                        prefix: &str,
-                        expr: &ast::Expr,
-                        width: usize,
-                        offset: Indent)
-                        -> Option<String> {
-    expr.rewrite(context,
-                 try_opt!(width.checked_sub(prefix.len())),
-                 offset + prefix.len())
-        .map(|r| format!("{}{}", prefix, r))
+pub fn rewrite_unary_prefix<R: Rewrite>(context: &RewriteContext,
+                                        prefix: &str,
+                                        rewrite: &R,
+                                        width: usize,
+                                        offset: Indent)
+                                        -> Option<String> {
+    rewrite.rewrite(context,
+                    try_opt!(width.checked_sub(prefix.len())),
+                    offset + prefix.len())
+           .map(|r| format!("{}{}", prefix, r))
 }
 
 fn rewrite_unary_op(context: &RewriteContext,
