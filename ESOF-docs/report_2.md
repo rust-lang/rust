@@ -30,7 +30,8 @@ As said above, requirements are conditions that the costumer wants the software 
 
 1. To be a fast systems programming language;
 2. Guarantee memory safety;
-3. To be a good language for creating highly concurrent and highly safe systems.
+3. To be a good language for creating highly concurrent and highly safe systems;
+4. Zero-cost abstractions while still allowing precise control like a low-level language.
 
 Rust is being developed by a huge community which counts with numerous ways to communicate such as the questions [Forum], [Twitter], [StackOverflow] or [Reddit].
 
@@ -84,14 +85,23 @@ Backtrace:
 	Once the reviewer thinks that the code is acceptable to be merged, they will sign off with an r+
 	that indicates that it has passed review and is ready to be merged.
 
-4.  Once the pull request is aproved, a bot called [Homu] that queues up the approved pull request and tries merging. 
+4.  Once the pull request is aproved, a bot called [Homu] that queues up the approved pull request and tries merging.
 
 
 [Homu]:https://github.com/barosl/homu
 
 ### New features
 
-If anyone wants to propose a new feature to the Rust language, an issue should be opened in the [RFCs repository] instead of the Rust one. Then those new features will go through the RFC process.
+To propose new features:
+1. Discussion pre-RFC on the Rust Internals forum https://internals.rust-lang.org/, Reddit or Rust's personal blog
+2. Do an RFC
+	An RFC describes why you want a feature, a detailed description, possible drawbacks and possible alternatives.
+3. Once the RFC is declared to be in final comment period the RFC will be accepted, postponed or rejected.
+	Accepted: The RFC is merged into the master branch of the rfcs repo
+	Postponed: The ticket is filed against the RFC repo to keep track on the discussion
+	Rejected.
+
+_NOTE: If anyone wants to propose a new feature to the Rust language, an issue should be opened in the [RFCs repository] instead of the Rust one. Then those new features will go through the RFC process._
 
 [RFCs repository]:https://github.com/rust-lang/rfcs/issues/new
 
