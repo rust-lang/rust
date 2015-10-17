@@ -293,6 +293,7 @@ impl<T: ?Sized> Mutex<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Drop for Mutex<T> {
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         // This is actually safe b/c we know that there is no further usage of
         // this mutex (it's up to the user to arrange for a mutex to get
