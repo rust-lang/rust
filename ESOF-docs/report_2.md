@@ -1,12 +1,21 @@
 # 2nd Report - ESOF
 
+## Index
+
+1. [Definition of Requirements](#definition-of-requirements)
+2. [RUST's requirements](#rust's-requirements)
+  1. [Bugs](#bugs)
+3. [Pull Requests](#pull-requests)
+4. [New Features](#new-features)
+  1. [RFC](#rfc)
+
 ## RUST - Programming Language
 
 ### Definition of Requirements
 
 > Software Requirements is a field within software engineering that deals with establishing the needs of stakeholders that are to be solved by software. The IEEE Standard Glossary of Software Engineering Technology defines a software requirement as:
 
->> 1. A condition or capability needed by a user to solve a problem or achieve an objective; 
+>> 1. A condition or capability needed by a user to solve a problem or achieve an objective;
 
 >> 2. A condition or capability that must be met or possessed by a system or system component to satisfy a contract, standard, specification, or other formally imposed document;
 
@@ -70,12 +79,25 @@ Backtrace:
 2. If it's a breaking change then it should include the string **[breaking-change]**.
 
 3. The pull request will be assigned to a reviewer, though you can also choose a reviewer yourself.
-	The reviewer will comment on your code, pointing out possible bugs, style issues, missing tests, 
-	or other problems. 
-	Once the reviewer thinks that the code is acceptable to be merged, they will sign off with an r+ 
+	The reviewer will comment on your code, pointing out possible bugs, style issues, missing tests,
+	or other problems.
+	Once the reviewer thinks that the code is acceptable to be merged, they will sign off with an r+
 	that indicates that it has passed review and is ready to be merged.
 
 4.  Once the pull request is aproved, a bot called [Homu] that queues up the approved pull request and tries merging. 
 
 
 [Homu]:https://github.com/barosl/homu
+
+### New features
+
+If anyone wants to propose a new feature to the Rust language, an issue should be opened in the [RFCs repository] instead of the Rust one. Then those new features will go through the RFC process.
+
+[RFCs repository]:https://github.com/rust-lang/rfcs/issues/new
+
+#### RFC
+
+>The "RFC" (request for comments) process is intended to provide a consistent and controlled path for new features to enter the language and standard libraries, so that all stakeholders can be confident about the direction the language is evolving in.
+>
+>_From [Rust RFC repository]_
+[Rust RFC repository]:https://github.com/rust-lang/rfcs/
