@@ -629,12 +629,13 @@ pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F,
 /// 826 bytes of buffer should be sufficient for `f64`. Compare this with
 /// the actual number for the worst case: 770 bytes (when `exp = -1074`).
 fn estimate_max_buf_len(exp: i16) -> usize {
-    21 +
-    ((if exp < 0 {
+    let multiplier = if exp < 0 {
         -12
     } else {
         5
-    } * exp as i32) as usize >> 4)
+    };
+    let exp_part_len = (multiplier * (exp as i32)) as usize >> 4;
+    21 + exp_part_len
 }
 
 /// Formats given floating point number into the exponential form with
