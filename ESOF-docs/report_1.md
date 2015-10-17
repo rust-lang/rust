@@ -2,6 +2,13 @@
 
 We are 4 students of the Engineering Faculty of the University of Oporto, and we're studying this project for the course of Software Engineering.
 
+## Index
+
+1. [RUST - Programming Language](#rust---programming-language)
+2. [Project's Activity](#projects-activity)
+3. [Developing Paradigm](#developing-paradigm)
+    1. [Paradigm problems](#paradigm-problems)
+    2. TAD (Test after develpment) vs TDD (Test driven development)
 
 ## RUST - Programming Language
 
