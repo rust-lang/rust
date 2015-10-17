@@ -115,4 +115,4 @@ _NOTE: If anyone wants to propose a new feature to the Rust language, an issue s
 
 ### Use Cases
 
-![alt tab](https://github.com/martapips/rust/blob/master/ESOF-docs/res/rustUseCaseDiagram.png)
+![alt tab](https://github.com/martapips/rust/blob/master/ESOF-docs/res/rustUseCaseDiagram.jpg?raw=true)
