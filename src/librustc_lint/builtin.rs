@@ -1236,15 +1236,12 @@ impl LateLintPass for DropWithReprExtern {
                                                                      codemap::DUMMY_SP);
                         let self_defn_span = ctx.tcx.map.def_id_span(self_type_did,
                                                                      codemap::DUMMY_SP);
-                        ctx.span_lint(DROP_WITH_REPR_EXTERN,
-                                      drop_impl_span,
-                                      "implementing Drop adds hidden state to types, \
-                                       possibly conflicting with `#[repr(C)]`");
-                        // FIXME #19668: could be span_lint_note instead of manual guard.
-                        if ctx.current_level(DROP_WITH_REPR_EXTERN) != Level::Allow {
-                            ctx.sess().span_note(self_defn_span,
-                                               "the `#[repr(C)]` attribute is attached here");
-                        }
+                        ctx.span_lint_note(DROP_WITH_REPR_EXTERN,
+                                           drop_impl_span,
+                                           "implementing Drop adds hidden state to types, \
+                                            possibly conflicting with `#[repr(C)]`",
+                                            self_defn_span,
+                                            "the `#[repr(C)]` attribute is attached here");
                     }
                 }
                 _ => {}
