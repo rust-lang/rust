@@ -13,10 +13,10 @@ use syntax::print::pprust;
 use syntax::codemap::{self, Span, BytePos, CodeMap};
 
 use Indent;
-use lists::{format_item_list, itemize_list, format_fn_args, list_helper, ListTactic};
+use lists::{format_item_list, itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, span_after, format_mutability, wrap_str};
-use expr::{rewrite_unary_prefix, rewrite_pair};
+use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
 
 impl Rewrite for ast::Path {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
@@ -491,28 +491,8 @@ impl Rewrite for ast::Ty {
                 let budget = try_opt!(width.checked_sub(2));
                 ty.rewrite(context, budget, offset + 1).map(|ty_str| format!("[{}]", ty_str))
             }
-            ast::TyTup(ref tup_ret) => {
-                if tup_ret.is_empty() {
-                    Some("()".to_owned())
-                } else if let [ref item] = &**tup_ret {
-                    let budget = try_opt!(width.checked_sub(3));
-                    let inner = try_opt!(item.rewrite(context, budget, offset + 1));
-                    let ret = format!("({},)", inner);
-                    wrap_str(ret, context.config.max_width, budget, offset + 1)
-                } else {
-                    let budget = try_opt!(width.checked_sub(2));
-                    let items = itemize_list(context.codemap,
-                                             tup_ret.iter(),
-                                             ")",
-                                             |item| item.span.lo,
-                                             |item| item.span.hi,
-                                             |item| item.rewrite(context, budget, offset + 1),
-                                             span_after(self.span, "(", context.codemap),
-                                             self.span.hi);
-
-                    list_helper(items, budget, offset + 1, context.config, ListTactic::Mixed)
-                        .map(|s| format!("({})", s))
-                }
+            ast::TyTup(ref items) => {
+                rewrite_tuple(context, items, self.span, width, offset)
             }
             ast::TyPolyTraitRef(ref trait_ref) => trait_ref.rewrite(context, width, offset),
             ast::TyPath(ref q_self, ref path) => {
