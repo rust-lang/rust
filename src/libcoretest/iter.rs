@@ -13,6 +13,7 @@ use core::{i8, i16, isize};
 use core::usize;
 
 use test::Bencher;
+use test::black_box;
 
 #[test]
 fn test_lt() {
@@ -998,5 +999,77 @@ fn bench_max(b: &mut Bencher) {
     b.iter(|| {
         let it = 0..100;
         it.map(scatter).max()
+    })
+}
+
+#[bench]
+fn bench_cmp_10000(b: &mut Bencher) {
+    b.iter(|| {
+        let it = black_box(0..10000);
+        let it2 = black_box(0..10000);
+        it.cmp(it2)
+    })
+}
+
+#[bench]
+fn bench_partial_cmp_10000(b: &mut Bencher) {
+    b.iter(|| {
+        let it = black_box(0..10000);
+        let it2 = black_box(0..10000);
+        it.partial_cmp(it2)
+    })
+}
+
+#[bench]
+fn bench_eq_10000(b: &mut Bencher) {
+    b.iter(|| {
+        let it = black_box(0..10000);
+        let it2 = black_box(0..10000);
+        it.eq(it2)
+    })
+}
+
+#[bench]
+fn bench_ne_10000(b: &mut Bencher) {
+    b.iter(|| {
+        let it = black_box(0..10000);
+        let it2 = black_box(0..10000);
+        it.ne(it2)
+    })
+}
+
+#[bench]
+fn bench_lt_10000(b: &mut Bencher) {
+    b.iter(|| {
+        let it = black_box(0..10000);
+        let it2 = black_box(0..10000);
+        it.lt(it2)
+    })
+}
+
+#[bench]
+fn bench_le_10000(b: &mut Bencher) {
+    b.iter(|| {
+        let it = black_box(0..10000);
+        let it2 = black_box(0..10000);
+        it.le(it2)
+    })
+}
+
+#[bench]
+fn bench_gt_10000(b: &mut Bencher) {
+    b.iter(|| {
+        let it = black_box(0..10000);
+        let it2 = black_box(0..10000);
+        it.gt(it2)
+    })
+}
+
+#[bench]
+fn bench_ge_10000(b: &mut Bencher) {
+    b.iter(|| {
+        let it = black_box(0..10000);
+        let it2 = black_box(0..10000);
+        it.ge(it2)
     })
 }
