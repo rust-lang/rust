@@ -18,11 +18,11 @@
 
 use clone::Clone;
 use intrinsics;
-use ops::Deref;
+use ops::{CoerceUnsized, Deref};
 use fmt;
 use hash;
 use option::Option::{self, Some, None};
-use marker::{PhantomData, Send, Sized, Sync};
+use marker::{Copy, PhantomData, Send, Sized, Sync, Unsize};
 use mem;
 use nonzero::NonZero;
 
@@ -528,6 +528,71 @@ impl<T:?Sized> Deref for Unique<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Pointer for Unique<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Pointer::fmt(&*self.pointer, f)
+    }
+}
+
+/// A wrapper around a raw `*mut T` that indicates that the possessor
+/// of this wrapper has shared ownership of the referent. Useful for
+/// building abstractions like `Rc<T>` or `Arc<T>`, which internally
+/// use raw pointers to manage the memory that they own.
+#[unstable(feature = "shared", reason = "needs an RFC to flesh out design",
+           issue = "0")]
+pub struct Shared<T: ?Sized> {
+    pointer: NonZero<*const T>,
+    // NOTE: this marker has no consequences for variance, but is necessary
+    // for dropck to understand that we logically own a `T`.
+    //
+    // For details, see:
+    // https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md#phantom-data
+    _marker: PhantomData<T>,
+}
+
+/// `Shared` pointers are not `Send` because the data they reference may be aliased.
+// NB: This impl is unnecessary, but should provide better error messages.
+#[unstable(feature = "shared", issue = "0")]
+impl<T: ?Sized> !Send for Shared<T> { }
+
+/// `Shared` pointers are not `Sync` because the data they reference may be aliased.
+// NB: This impl is unnecessary, but should provide better error messages.
+#[unstable(feature = "shared", issue = "0")]
+impl<T: ?Sized> !Sync for Shared<T> { }
+
+#[unstable(feature = "shared", issue = "0")]
+impl<T: ?Sized> Shared<T> {
+    /// Creates a new `Shared`.
+    pub unsafe fn new(ptr: *mut T) -> Self {
+        Shared { pointer: NonZero::new(ptr), _marker: PhantomData }
+    }
+}
+
+#[unstable(feature = "shared", issue = "0")]
+impl<T: ?Sized> Clone for Shared<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+#[unstable(feature = "shared", issue = "0")]
+impl<T: ?Sized> Copy for Shared<T> { }
+
+#[cfg(not(stage0))] // remove cfg after new snapshot
+#[unstable(feature = "shared", issue = "0")]
+impl<T: ?Sized, U: ?Sized> CoerceUnsized<Shared<U>> for Shared<T> where T: Unsize<U> { }
+
+#[unstable(feature = "shared", issue = "0")]
+impl<T: ?Sized> Deref for Shared<T> {
+    type Target = *mut T;
+
+    #[inline]
+    fn deref(&self) -> &*mut T {
+        unsafe { mem::transmute(&*self.pointer) }
+    }
+}
+
+#[unstable(feature = "shared", issue = "0")]
+impl<T> fmt::Pointer for Shared<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&*self.pointer, f)
     }

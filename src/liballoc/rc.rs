@@ -163,9 +163,8 @@ use core::hash::{Hasher, Hash};
 use core::intrinsics::{assume, drop_in_place, abort};
 use core::marker::{self, Unsize};
 use core::mem::{self, align_of_val, size_of_val, forget};
-use core::nonzero::NonZero;
 use core::ops::{CoerceUnsized, Deref};
-use core::ptr;
+use core::ptr::{self, Shared};
 
 use heap::deallocate;
 
@@ -184,12 +183,13 @@ struct RcBox<T: ?Sized> {
 pub struct Rc<T: ?Sized> {
     // FIXME #12808: strange names to try to avoid interfering with field
     // accesses of the contained type via Deref
-    _ptr: NonZero<*mut RcBox<T>>,
+    _ptr: Shared<RcBox<T>>,
 }
 
 impl<T: ?Sized> !marker::Send for Rc<T> {}
 impl<T: ?Sized> !marker::Sync for Rc<T> {}
 
+#[cfg(not(stage0))] // remove cfg after new snapshot
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 
 impl<T> Rc<T> {
@@ -210,7 +210,7 @@ impl<T> Rc<T> {
                 // pointers, which ensures that the weak destructor never frees
                 // the allocation while the strong destructor is running, even
                 // if the weak pointer is stored inside the strong one.
-                _ptr: NonZero::new(Box::into_raw(box RcBox {
+                _ptr: Shared::new(Box::into_raw(box RcBox {
                     strong: Cell::new(1),
                     weak: Cell::new(1),
                     value: value,
@@ -712,12 +712,13 @@ impl<T> fmt::Pointer for Rc<T> {
 pub struct Weak<T: ?Sized> {
     // FIXME #12808: strange names to try to avoid interfering with
     // field accesses of the contained type via Deref
-    _ptr: NonZero<*mut RcBox<T>>,
+    _ptr: Shared<RcBox<T>>,
 }
 
 impl<T: ?Sized> !marker::Send for Weak<T> {}
 impl<T: ?Sized> !marker::Sync for Weak<T> {}
 
+#[cfg(not(stage0))] // remove cfg after new snapshot
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
 impl<T: ?Sized> Weak<T> {
