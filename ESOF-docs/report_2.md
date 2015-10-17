@@ -61,3 +61,21 @@ Backtrace:
 >
 >  _From [Rust - Github]_
 [Rust - Github]:https://github.com/rust-lang/rust
+
+### Pull Requests
+
+1.  The pull request that is commited on the rust repo should include the changes that the user made,
+   new tests or changes on old tests and the description of what the change is justifying and why it's necessary.
+
+2. If it's a breaking change then it should include the string **[breaking-change]**.
+
+3. The pull request will be assigned to a reviewer, though you can also choose a reviewer yourself.
+	The reviewer will comment on your code, pointing out possible bugs, style issues, missing tests, 
+	or other problems. 
+	Once the reviewer thinks that the code is acceptable to be merged, they will sign off with an r+ 
+	that indicates that it has passed review and is ready to be merged.
+
+4.  Once the pull request is aproved, a bot called [Homu] that queues up the approved pull request and tries merging. 
+
+
+[Homu]:https://github.com/barosl/homu
