@@ -1091,6 +1091,9 @@ pub struct ParameterEnvironment<'a, 'tcx:'a> {
     /// for things that have to do with the parameters in scope.
     pub selection_cache: traits::SelectionCache<'tcx>,
 
+    /// Caches the results of trait evaluation.
+    pub evaluation_cache: traits::EvaluationCache<'tcx>,
+
     /// Scope that is attached to free regions for this scope. This
     /// is usually the id of the fn body, but for more abstract scopes
     /// like structs we often use the node-id of the struct.
@@ -1112,6 +1115,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             implicit_region_bound: self.implicit_region_bound,
             caller_bounds: caller_bounds,
             selection_cache: traits::SelectionCache::new(),
+            evaluation_cache: traits::EvaluationCache::new(),
             free_id: self.free_id,
         }
     }
@@ -2584,6 +2588,7 @@ impl<'tcx> ctxt<'tcx> {
                                    caller_bounds: Vec::new(),
                                    implicit_region_bound: ty::ReEmpty,
                                    selection_cache: traits::SelectionCache::new(),
+                                   evaluation_cache: traits::EvaluationCache::new(),
 
                                    // for an empty parameter
                                    // environment, there ARE no free
@@ -2673,6 +2678,7 @@ impl<'tcx> ctxt<'tcx> {
             implicit_region_bound: ty::ReScope(free_id_outlive),
             caller_bounds: predicates,
             selection_cache: traits::SelectionCache::new(),
+            evaluation_cache: traits::EvaluationCache::new(),
             free_id: free_id,
         };
 

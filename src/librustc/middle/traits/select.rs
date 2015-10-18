@@ -236,11 +236,24 @@ enum BuiltinBoundConditions<'tcx> {
     AmbiguousBuiltin
 }
 
-#[derive(Debug)]
-enum EvaluationResult<'tcx> {
+#[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+/// The result of trait evaluation. The order is important
+/// here as the evaluation of a list is the maximum of the
+/// evaluations.
+enum EvaluationResult {
+    /// Evaluation successful
     EvaluatedToOk,
+    /// Evaluation failed because of recursion - treated as ambiguous
+    EvaluatedToUnknown,
+    /// Evaluation is known to be ambiguous
     EvaluatedToAmbig,
-    EvaluatedToErr(SelectionError<'tcx>),
+    /// Evaluation failed
+    EvaluatedToErr,
+}
+
+#[derive(Clone)]
+pub struct EvaluationCache<'tcx> {
+    hashmap: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>, EvaluationResult>>
 }
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
@@ -381,6 +394,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // The result is "true" if the obligation *may* hold and "false" if
     // we can be sure it does not.
 
+
     /// Evaluates whether the obligation `obligation` can be satisfied (by any means).
     pub fn evaluate_obligation(&mut self,
                                obligation: &PredicateObligation<'tcx>)
@@ -393,41 +407,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .may_apply()
     }
 
-    fn evaluate_builtin_bound_recursively<'o>(&mut self,
-                                              bound: ty::BuiltinBound,
-                                              previous_stack: &TraitObligationStack<'o, 'tcx>,
-                                              ty: Ty<'tcx>)
-                                              -> EvaluationResult<'tcx>
-    {
-        let obligation =
-            util::predicate_for_builtin_bound(
-                self.tcx(),
-                previous_stack.obligation.cause.clone(),
-                bound,
-                previous_stack.obligation.recursion_depth + 1,
-                ty);
-
-        match obligation {
-            Ok(obligation) => {
-                self.evaluate_predicate_recursively(previous_stack.list(), &obligation)
-            }
-            Err(ErrorReported) => {
-                EvaluatedToOk
-            }
-        }
-    }
-
     fn evaluate_predicates_recursively<'a,'o,I>(&mut self,
                                                 stack: TraitObligationStackList<'o, 'tcx>,
                                                 predicates: I)
-                                                -> EvaluationResult<'tcx>
+                                                -> EvaluationResult
         where I : Iterator<Item=&'a PredicateObligation<'tcx>>, 'tcx:'a
     {
         let mut result = EvaluatedToOk;
         for obligation in predicates {
             match self.evaluate_predicate_recursively(stack, obligation) {
-                EvaluatedToErr(e) => { return EvaluatedToErr(e); }
+                EvaluatedToErr => { return EvaluatedToErr; }
                 EvaluatedToAmbig => { result = EvaluatedToAmbig; }
+                EvaluatedToUnknown => {
+                    if result < EvaluatedToUnknown {
+                        result = EvaluatedToUnknown;
+                    }
+                }
                 EvaluatedToOk => { }
             }
         }
@@ -437,7 +432,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn evaluate_predicate_recursively<'o>(&mut self,
                                           previous_stack: TraitObligationStackList<'o, 'tcx>,
                                           obligation: &PredicateObligation<'tcx>)
-                                           -> EvaluationResult<'tcx>
+                                           -> EvaluationResult
     {
         debug!("evaluate_predicate_recursively({:?})",
                obligation);
@@ -464,7 +459,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 });
                 match result {
                     Ok(()) => EvaluatedToOk,
-                    Err(_) => EvaluatedToErr(Unimplemented),
+                    Err(_) => EvaluatedToErr
                 }
             }
 
@@ -489,7 +484,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if object_safety::is_object_safe(self.tcx(), trait_def_id) {
                     EvaluatedToOk
                 } else {
-                    EvaluatedToErr(Unimplemented)
+                    EvaluatedToErr
                 }
             }
 
@@ -505,7 +500,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             EvaluatedToAmbig
                         }
                         Err(_) => {
-                            EvaluatedToErr(Unimplemented)
+                            EvaluatedToErr
                         }
                     }
                 })
@@ -516,22 +511,33 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn evaluate_obligation_recursively<'o>(&mut self,
                                            previous_stack: TraitObligationStackList<'o, 'tcx>,
                                            obligation: &TraitObligation<'tcx>)
-                                           -> EvaluationResult<'tcx>
+                                           -> EvaluationResult
     {
         debug!("evaluate_obligation_recursively({:?})",
                obligation);
 
         let stack = self.push_stack(previous_stack, obligation);
+        let fresh_trait_ref = stack.fresh_trait_ref;
+        if let Some(result) = self.check_evaluation_cache(fresh_trait_ref) {
+            debug!("CACHE HIT: EVAL({:?})={:?}",
+                   fresh_trait_ref,
+                   result);
+            return result;
+        }
 
         let result = self.evaluate_stack(&stack);
 
-        debug!("result: {:?}", result);
+        debug!("CACHE MISS: EVAL({:?})={:?}",
+               fresh_trait_ref,
+               result);
+        self.insert_evaluation_cache(fresh_trait_ref, result);
+
         result
     }
 
     fn evaluate_stack<'o>(&mut self,
                           stack: &TraitObligationStack<'o, 'tcx>)
-                          -> EvaluationResult<'tcx>
+                          -> EvaluationResult
     {
         // In intercrate mode, whenever any of the types are unbound,
         // there can always be an impl. Even if there are no impls in
@@ -559,16 +565,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // precise still.
         let input_types = stack.fresh_trait_ref.0.input_types();
         let unbound_input_types = input_types.iter().any(|ty| ty.is_fresh());
-        if
-            unbound_input_types &&
-             (self.intercrate ||
-              stack.iter().skip(1).any(
-                  |prev| self.match_fresh_trait_refs(&stack.fresh_trait_ref,
-                                                     &prev.fresh_trait_ref)))
-        {
-            debug!("evaluate_stack({:?}) --> unbound argument, recursion -->  ambiguous",
+        if unbound_input_types && self.intercrate {
+            debug!("evaluate_stack({:?}) --> unbound argument, intercrate -->  ambiguous",
                    stack.fresh_trait_ref);
             return EvaluatedToAmbig;
+        }
+        if unbound_input_types &&
+              stack.iter().skip(1).any(
+                  |prev| self.match_fresh_trait_refs(&stack.fresh_trait_ref,
+                                                     &prev.fresh_trait_ref))
+        {
+            debug!("evaluate_stack({:?}) --> unbound argument, recursive --> giving up",
+                   stack.fresh_trait_ref);
+            return EvaluatedToUnknown;
         }
 
         // If there is any previous entry on the stack that precisely
@@ -603,7 +612,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.candidate_from_obligation(stack) {
             Ok(Some(c)) => self.winnow_candidate(stack, &c),
             Ok(None) => EvaluatedToAmbig,
-            Err(e) => EvaluatedToErr(e),
+            Err(..) => EvaluatedToErr
         }
     }
 
@@ -635,6 +644,34 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
         })
+    }
+
+    fn pick_evaluation_cache(&self) -> &EvaluationCache<'tcx> {
+        &self.param_env().evaluation_cache
+    }
+
+    fn check_evaluation_cache(&self, trait_ref: ty::PolyTraitRef<'tcx>)
+                              -> Option<EvaluationResult>
+    {
+        let cache = self.pick_evaluation_cache();
+        cache.hashmap.borrow().get(&trait_ref).cloned()
+    }
+
+    fn insert_evaluation_cache(&mut self,
+                               trait_ref: ty::PolyTraitRef<'tcx>,
+                               result: EvaluationResult)
+    {
+        // Avoid caching results that depend on more than just the trait-ref:
+        // The stack can create EvaluatedToUnknown, and closure signatures
+        // being yet uninferred can create "spurious" EvaluatedToAmbig.
+        if result == EvaluatedToUnknown ||
+            (result == EvaluatedToAmbig && trait_ref.has_closure_types())
+        {
+            return;
+        }
+
+        let cache = self.pick_evaluation_cache();
+        cache.hashmap.borrow_mut().insert(trait_ref, result);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -669,7 +706,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match self.check_candidate_cache(&cache_fresh_trait_pred) {
             Some(c) => {
-                debug!("CACHE HIT: cache_fresh_trait_pred={:?}, candidate={:?}",
+                debug!("CACHE HIT: SELECT({:?})={:?}",
                        cache_fresh_trait_pred,
                        c);
                 return c;
@@ -681,7 +718,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let candidate = self.candidate_from_obligation_no_cache(stack);
 
         if self.should_update_candidate_cache(&cache_fresh_trait_pred, &candidate) {
-            debug!("CACHE MISS: cache_fresh_trait_pred={:?}, candidate={:?}",
+            debug!("CACHE MISS: SELECT({:?})={:?}",
                    cache_fresh_trait_pred, candidate);
             self.insert_candidate_cache(cache_fresh_trait_pred, candidate.clone());
         }
@@ -1138,7 +1175,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn evaluate_where_clause<'o>(&mut self,
                                  stack: &TraitObligationStack<'o, 'tcx>,
                                  where_clause_trait_ref: ty::PolyTraitRef<'tcx>)
-                                 -> EvaluationResult<'tcx>
+                                 -> EvaluationResult
     {
         self.infcx().probe(move |_| {
             match self.match_where_clause_trait_ref(stack.obligation, where_clause_trait_ref) {
@@ -1146,7 +1183,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.evaluate_predicates_recursively(stack.list(), obligations.iter())
                 }
                 Err(()) => {
-                    EvaluatedToErr(Unimplemented)
+                    EvaluatedToErr
                 }
             }
         })
@@ -1492,7 +1529,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn winnow_candidate<'o>(&mut self,
                             stack: &TraitObligationStack<'o, 'tcx>,
                             candidate: &SelectionCandidate<'tcx>)
-                            -> EvaluationResult<'tcx>
+                            -> EvaluationResult
     {
         debug!("winnow_candidate: candidate={:?}", candidate);
         let result = self.infcx.probe(|_| {
@@ -1500,7 +1537,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             match self.confirm_candidate(stack.obligation, candidate) {
                 Ok(selection) => self.winnow_selection(stack.list(),
                                                        selection),
-                Err(error) => EvaluatedToErr(error),
+                Err(..) => EvaluatedToErr
             }
         });
         debug!("winnow_candidate depth={} result={:?}",
@@ -1511,7 +1548,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn winnow_selection<'o>(&mut self,
                             stack: TraitObligationStackList<'o,'tcx>,
                             selection: Selection<'tcx>)
-                            -> EvaluationResult<'tcx>
+                            -> EvaluationResult
     {
         self.evaluate_predicates_recursively(stack,
                                              selection.nested_obligations().iter())
@@ -2956,6 +2993,14 @@ impl<'tcx> SelectionCache<'tcx> {
     }
 }
 
+impl<'tcx> EvaluationCache<'tcx> {
+    pub fn new() -> EvaluationCache<'tcx> {
+        EvaluationCache {
+            hashmap: RefCell::new(FnvHashMap())
+        }
+    }
+}
+
 impl<'o,'tcx> TraitObligationStack<'o,'tcx> {
     fn list(&'o self) -> TraitObligationStackList<'o,'tcx> {
         TraitObligationStackList::with(self)
@@ -3001,17 +3046,14 @@ impl<'o,'tcx> fmt::Debug for TraitObligationStack<'o,'tcx> {
     }
 }
 
-impl<'tcx> EvaluationResult<'tcx> {
+impl EvaluationResult {
     fn may_apply(&self) -> bool {
         match *self {
             EvaluatedToOk |
             EvaluatedToAmbig |
-            EvaluatedToErr(OutputTypeParameterMismatch(..)) |
-            EvaluatedToErr(TraitNotObjectSafe(_)) =>
-                true,
+            EvaluatedToUnknown => true,
 
-            EvaluatedToErr(Unimplemented) =>
-                false,
+            EvaluatedToErr => false
         }
     }
 }
