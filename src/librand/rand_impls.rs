@@ -14,7 +14,7 @@ use core::char;
 use core::isize;
 use core::usize;
 
-use {Rand,Rng};
+use {Rand, Rng};
 
 impl Rand for isize {
     #[inline]
@@ -185,7 +185,9 @@ macro_rules! tuple_impl {
 
 impl Rand for () {
     #[inline]
-    fn rand<R: Rng>(_: &mut R) -> () { () }
+    fn rand<R: Rng>(_: &mut R) -> () {
+        ()
+    }
 }
 tuple_impl!{A}
 tuple_impl!{A, B}

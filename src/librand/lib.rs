@@ -36,13 +36,19 @@
 #![feature(num_bits_bytes)]
 #![feature(staged_api)]
 #![feature(step_by)]
+#![feature(custom_attribute)]
+#![allow(unused_attributes)]
 
 #![cfg_attr(test, feature(test, rand, rustc_private, iter_order))]
 
 #![allow(deprecated)]
 
-#[cfg(test)] #[macro_use] extern crate std;
-#[cfg(test)] #[macro_use] extern crate log;
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+#[cfg(test)]
+#[macro_use]
+extern crate log;
 
 use core::f64;
 use core::intrinsics;
@@ -217,7 +223,10 @@ pub trait Rng : Sized {
     /// Return an iterator that will yield an infinite number of randomly
     /// generated items.
     fn gen_iter<'a, T: Rand>(&'a mut self) -> Generator<'a, T, Self> {
-        Generator { rng: self, _marker: PhantomData }
+        Generator {
+            rng: self,
+            _marker: PhantomData,
+        }
     }
 
     /// Generate a random value in the range [`low`, `high`).
@@ -272,9 +281,9 @@ pub trait Rng : Sized {
 /// Iterator which will generate a stream of random items.
 ///
 /// This iterator is created via the `gen_iter` method on `Rng`.
-pub struct Generator<'a, T, R:'a> {
+pub struct Generator<'a, T, R: 'a> {
     rng: &'a mut R,
-    _marker: PhantomData<T>
+    _marker: PhantomData<T>,
 }
 
 impl<'a, T: Rand, R: Rng> Iterator for Generator<'a, T, R> {
@@ -288,7 +297,7 @@ impl<'a, T: Rand, R: Rng> Iterator for Generator<'a, T, R> {
 /// Iterator which will continuously generate random ascii characters.
 ///
 /// This iterator is created via the `gen_ascii_chars` method on `Rng`.
-pub struct AsciiGenerator<'a, R:'a> {
+pub struct AsciiGenerator<'a, R: 'a> {
     rng: &'a mut R,
 }
 
@@ -384,7 +393,7 @@ impl SeedableRng<[u32; 4]> for XorShiftRng {
             x: seed[0],
             y: seed[1],
             z: seed[2],
-            w: seed[3]
+            w: seed[3],
         }
     }
 }
@@ -396,7 +405,12 @@ impl Rand for XorShiftRng {
             tuple = rng.gen();
         }
         let (x, y, z, w) = tuple;
-        XorShiftRng { x: x, y: y, z: z, w: w }
+        XorShiftRng {
+            x: x,
+            y: y,
+            z: z,
+            w: w,
+        }
     }
 }
 
@@ -420,7 +434,9 @@ pub struct Closed01<F>(pub F);
 mod test {
     use std::__rand as rand;
 
-    pub struct MyRng<R> { inner: R }
+    pub struct MyRng<R> {
+        inner: R,
+    }
 
     impl<R: rand::Rng> ::Rng for MyRng<R> {
         fn next_u32(&mut self) -> u32 {
