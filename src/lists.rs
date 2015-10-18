@@ -232,7 +232,8 @@ pub fn write_list<'b, I, T>(items: I, formatting: &ListFormatting<'b>) -> Option
             DefinitiveListTactic::Mixed => {
                 let total_width = total_item_width(item) + item_sep_len;
 
-                if line_len > 0 && line_len + total_width > formatting.width {
+                // 1 is space between separator and item.
+                if line_len > 0 && line_len + 1 + total_width > formatting.width {
                     result.push('\n');
                     result.push_str(indent_str);
                     line_len = 0;
