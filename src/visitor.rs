@@ -20,6 +20,7 @@ use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
 use macros::rewrite_macro;
+use items::rewrite_static;
 
 pub struct FmtVisitor<'a> {
     pub codemap: &'a CodeMap,
@@ -31,22 +32,8 @@ pub struct FmtVisitor<'a> {
 }
 
 impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
-    // FIXME: We'd rather not format expressions here, as we have little
-    // context. How are we still reaching this?
-    fn visit_expr(&mut self, ex: &'v ast::Expr) {
-        debug!("visit_expr: {:?} {:?}",
-               self.codemap.lookup_char_pos(ex.span.lo),
-               self.codemap.lookup_char_pos(ex.span.hi));
-        self.format_missing(ex.span.lo);
-
-        let rewrite = ex.rewrite(&self.get_context(),
-                                 self.config.max_width - self.block_indent.width(),
-                                 self.block_indent);
-
-        if let Some(new_str) = rewrite {
-            self.buffer.push_str(&new_str);
-            self.last_pos = ex.span.hi;
-        }
+    fn visit_expr(&mut self, _: &'v ast::Expr) {
+        unreachable!()
     }
 
     fn visit_stmt(&mut self, stmt: &'v ast::Stmt) {
@@ -104,16 +91,19 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             self.visit_stmt(&stmt)
         }
 
-        match b.expr {
-            Some(ref e) => {
-                self.format_missing_with_indent(e.span.lo);
-                self.visit_expr(e);
+        if let Some(ref e) = b.expr {
+            self.format_missing_with_indent(e.span.lo);
+            let rewrite = e.rewrite(&self.get_context(),
+                                    self.config.max_width - self.block_indent.width(),
+                                    self.block_indent)
+                           .unwrap_or_else(|| self.snippet(e.span));
 
-                if semicolon_for_expr(e) {
-                    self.buffer.push_str(";");
-                }
+            self.buffer.push_str(&rewrite);
+            self.last_pos = e.span.hi;
+
+            if semicolon_for_expr(e) {
+                self.buffer.push_str(";");
             }
-            None => {}
         }
 
         self.block_indent = self.block_indent.block_unindent(self.config);
@@ -131,7 +121,6 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 b: &'v ast::Block,
                 s: Span,
                 _: ast::NodeId) {
-
         let indent = self.block_indent;
         let rewrite = match fk {
             visit::FnKind::ItemFn(ident, ref generics, unsafety, constness, abi, vis) => {
@@ -190,6 +179,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             ast::Item_::ItemUse(ref vp) => {
                 self.format_import(item.vis, vp, item.span);
             }
+            // TODO(#78): format traits and impl definitions.
             ast::Item_::ItemImpl(..) |
             ast::Item_::ItemTrait(..) => {
                 self.block_indent = self.block_indent.block_indent(self.config);
@@ -225,7 +215,36 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 self.format_missing_with_indent(item.span.lo);
                 self.format_foreign_mod(foreign_mod, item.span);
             }
-            _ => {
+            ast::Item_::ItemStatic(ref ty, mutability, ref expr) => {
+                self.format_missing_with_indent(item.span.lo);
+                let rewrite = rewrite_static("static",
+                                             item.ident,
+                                             ty,
+                                             mutability,
+                                             expr,
+                                             &self.get_context());
+                if let Some(s) = rewrite {
+                    self.buffer.push_str(&s);
+                    self.last_pos = item.span.hi;
+                }
+            }
+            ast::Item_::ItemConst(ref ty, ref expr) => {
+                self.format_missing_with_indent(item.span.lo);
+                let rewrite = rewrite_static("const",
+                                             item.ident,
+                                             ty,
+                                             ast::Mutability::MutImmutable,
+                                             expr,
+                                             &self.get_context());
+                if let Some(s) = rewrite {
+                    self.buffer.push_str(&s);
+                    self.last_pos = item.span.hi;
+                }
+            }
+            // TODO(#486): format type aliases.
+            ast::Item_::ItemDefaultImpl(..) |
+            ast::Item_::ItemFn(..) |
+            ast::Item_::ItemTy(..) => {
                 visit::walk_item(self, item);
             }
         }
@@ -247,7 +266,6 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 self.last_pos = ti.span.hi;
             }
         }
-        // TODO(#78): format trait types.
 
         visit::walk_trait_item(self, ti)
     }

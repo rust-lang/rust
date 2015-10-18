@@ -1136,6 +1136,26 @@ impl<'a> FmtVisitor<'a> {
     }
 }
 
+pub fn rewrite_static(prefix: &str,
+                      ident: ast::Ident,
+                      ty: &ast::Ty,
+                      mutability: ast::Mutability,
+                      expr: &ast::Expr,
+                      context: &RewriteContext)
+                      -> Option<String> {
+    let prefix = format!("{} {}{}: ", prefix, format_mutability(mutability), ident);
+    // 2 = " =".len()
+    let ty_str = try_opt!(ty.rewrite(context,
+                                     context.config.max_width - context.block_indent.width() -
+                                     prefix.len() - 2,
+                                     context.block_indent));
+    let lhs = format!("{}{} =", prefix, ty_str);
+
+    // 1 = ;
+    let remaining_width = context.config.max_width - context.block_indent.width() - 1;
+    rewrite_assign_rhs(context, lhs, expr, remaining_width, context.block_indent).map(|s| s + ";")
+}
+
 impl Rewrite for ast::FunctionRetTy {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match *self {
