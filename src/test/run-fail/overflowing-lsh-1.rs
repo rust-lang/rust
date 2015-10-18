@@ -11,9 +11,8 @@
 // error-pattern:thread '<main>' panicked at 'shift operation overflowed'
 // compile-flags: -C debug-assertions
 
-// (Work around constant-evaluation)
-fn id<T>(x: T) -> T { x }
+#![warn(exceeding_bitshifts)]
 
 fn main() {
-    let _x = 1_i32 << id(32);
+    let _x = 1_i32 << 32;
 }

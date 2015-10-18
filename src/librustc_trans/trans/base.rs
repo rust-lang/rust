@@ -2125,7 +2125,10 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
           let mut v = TransItemVisitor{ ccx: ccx };
           v.visit_expr(&**expr);
 
-          let g = consts::trans_static(ccx, m, expr, item.id, &item.attrs);
+          let g = match consts::trans_static(ccx, m, expr, item.id, &item.attrs) {
+              Ok(g) => g,
+              Err(err) => ccx.tcx().sess.span_fatal(expr.span, &err.description()),
+          };
           set_global_section(ccx, g, item);
           update_linkage(ccx, g, Some(item.id), OriginalTranslation);
       },

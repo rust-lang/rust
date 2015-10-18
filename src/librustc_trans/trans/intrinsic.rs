@@ -1563,7 +1563,16 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
             None => bcx.sess().span_bug(call_info.span,
                                         "intrinsic call with unexpected argument shape"),
         };
-        let vector = consts::const_expr(bcx.ccx(), vector, tcx.mk_substs(substs), None).0;
+        let vector = match consts::const_expr(
+            bcx.ccx(),
+            vector,
+            tcx.mk_substs(substs),
+            None,
+            consts::TrueConst::Yes, // this should probably help simd error reporting
+        ) {
+            Ok((vector, _)) => vector,
+            Err(err) => bcx.sess().span_fatal(call_info.span, &err.description()),
+        };
 
         let indices: Option<Vec<_>> = (0..n)
             .map(|i| {

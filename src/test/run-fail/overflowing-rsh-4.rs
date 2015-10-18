@@ -14,12 +14,11 @@
 // This function is checking that our (type-based) automatic
 // truncation does not sidestep the overflow checking.
 
-// (Work around constant-evaluation)
-fn id<T>(x: T) -> T { x }
+#![warn(exceeding_bitshifts)]
 
 fn main() {
     // this signals overflow when checking is on
-    let x = 2_i8 >> id(17);
+    let x = 2_i8 >> 17;
 
     // ... but when checking is off, the fallback will truncate the
     // input to its lower three bits (= 1). Note that this is *not*

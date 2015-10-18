@@ -275,19 +275,30 @@ impl<'a, 'tcx> Opt<'a, 'tcx> {
     }
 
     fn trans<'blk>(&self, mut bcx: Block<'blk, 'tcx>) -> OptResult<'blk, 'tcx> {
+        use trans::consts::TrueConst::Yes;
         let _icx = push_ctxt("match::trans_opt");
         let ccx = bcx.ccx();
         match *self {
             ConstantValue(ConstantExpr(lit_expr), _) => {
                 let lit_ty = bcx.tcx().node_id_to_type(lit_expr.id);
-                let (llval, _) = consts::const_expr(ccx, &*lit_expr, bcx.fcx.param_substs, None);
+                let expr = consts::const_expr(ccx, &*lit_expr, bcx.fcx.param_substs, None, Yes);
+                let llval = match expr {
+                    Ok((llval, _)) => llval,
+                    Err(err) => bcx.ccx().sess().span_fatal(lit_expr.span, &err.description()),
+                };
                 let lit_datum = immediate_rvalue(llval, lit_ty);
                 let lit_datum = unpack_datum!(bcx, lit_datum.to_appropriate_datum(bcx));
                 SingleResult(Result::new(bcx, lit_datum.val))
             }
             ConstantRange(ConstantExpr(ref l1), ConstantExpr(ref l2), _) => {
-                let (l1, _) = consts::const_expr(ccx, &**l1, bcx.fcx.param_substs, None);
-                let (l2, _) = consts::const_expr(ccx, &**l2, bcx.fcx.param_substs, None);
+                let l1 = match consts::const_expr(ccx, &**l1, bcx.fcx.param_substs, None, Yes) {
+                    Ok((l1, _)) => l1,
+                    Err(err) => bcx.ccx().sess().span_fatal(l1.span, &err.description()),
+                };
+                let l2 = match consts::const_expr(ccx, &**l2, bcx.fcx.param_substs, None, Yes) {
+                    Ok((l2, _)) => l2,
+                    Err(err) => bcx.ccx().sess().span_fatal(l2.span, &err.description()),
+                };
                 RangeResult(Result::new(bcx, l1), Result::new(bcx, l2))
             }
             Variant(disr_val, ref repr, _, _) => {
