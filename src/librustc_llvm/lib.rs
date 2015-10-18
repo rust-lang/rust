@@ -60,7 +60,7 @@ pub use self::DLLStorageClassTypes::*;
 
 use std::ffi::CString;
 use std::cell::RefCell;
-use std::{slice, mem};
+use std::slice;
 use libc::{c_uint, c_ushort, uint64_t, c_int, size_t, c_char};
 use libc::{c_longlong, c_ulonglong, c_void};
 use debuginfo::{DIBuilderRef, DIDescriptor,
@@ -2307,7 +2307,7 @@ pub unsafe extern "C" fn rust_llvm_string_write_impl(sr: RustStringRef,
                                                      size: size_t) {
     let slice = slice::from_raw_parts(ptr as *const u8, size as usize);
 
-    let sr: RustStringRepr = mem::transmute(sr);
+    let sr = sr as RustStringRepr;
     (*sr).borrow_mut().push_all(slice);
 }
 

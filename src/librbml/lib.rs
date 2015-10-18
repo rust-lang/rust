@@ -932,15 +932,6 @@ pub mod writer {
             }
         }
 
-        /// FIXME(pcwalton): Workaround for badness in trans. DO NOT USE ME.
-        pub unsafe fn unsafe_clone(&self) -> Encoder<'a> {
-            Encoder {
-                writer: mem::transmute_copy(&self.writer),
-                size_positions: self.size_positions.clone(),
-                relax_limit: self.relax_limit,
-            }
-        }
-
         pub fn start_tag(&mut self, tag_id: usize) -> EncodeResult {
             debug!("Start tag {:?}", tag_id);
             assert!(tag_id >= NUM_IMPLICIT_TAGS);
