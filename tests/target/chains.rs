@@ -62,3 +62,67 @@ fn main() {
                     })
                     .filter(some_mod::some_filter)
 }
+
+fn floaters() {
+    let z = Foo {
+        field1: val1,
+        field2: val2,
+    };
+
+    let x = Foo {
+                field1: val1,
+                field2: val2,
+            }
+            .method_call()
+            .method_call();
+
+    let y = if cond {
+                val1
+            } else {
+                val2
+            }
+            .method_call();
+
+    {
+        match x {
+            PushParam => {
+                // params are 1-indexed
+                stack.push(mparams[match cur.to_digit(10) {
+                               Some(d) => d as usize - 1,
+                               None => return Err("bad param number".to_owned()),
+                           }]
+                           .clone());
+            }
+        }
+    }
+
+    if cond {
+        some();
+    } else {
+        none();
+    }
+    .bar()
+    .baz();
+
+    Foo { x: val }
+        .baz(|| {
+            // force multiline
+        })
+        .quux();
+
+    Foo {
+        y: i_am_multi_line,
+        z: ok,
+    }
+    .baz(|| {
+        // force multiline
+    })
+    .quux();
+
+    a +
+    match x {
+        true => "yay!",
+        false => "boo!",
+    }
+    .bar()
+}

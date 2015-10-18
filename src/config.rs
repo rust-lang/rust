@@ -290,9 +290,10 @@ create_config! {
         "Multiline style on literal structs";
     enum_trailing_comma: bool, true, "Put a trailing comma on enum declarations";
     report_todo: ReportTactic, ReportTactic::Always,
-        "Report all occurrences of TODO in source file comments";
+        "Report all, none or unnumbered occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never,
-        "Report all occurrences of FIXME in source file comments";
+        "Report all, none or unnumbered occurrences of FIXME in source file comments";
+    chain_base_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indent on chain base";
     // Alphabetically, case sensitive.
     reorder_imports: bool, false, "Reorder import statements alphabetically";
     single_line_if_else: bool, false, "Put else on same line as closing brace for if statements";
