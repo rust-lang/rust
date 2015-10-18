@@ -76,9 +76,9 @@ Backtrace:
 ### Pull Requests
 
 1.  The pull request that is commited on the rust repo should include the changes that the user made,
-   new tests or changes on old tests and the description of what the change is justifying and why it's necessary.
+   new tests or changes on old tests and the description of what the change is, justifying and why it's necessary.
 
-2. If it's a breaking change then it should include the string **[breaking-change]**.
+2. If it is a breaking change, which now that 1.0 has been released and there are stability guarantees in place should only happen to unstable features, then it should include the string **[breaking-change]** so these can easily be found and documented. These are collected in [bitrust] , to make it easy to find all of them.
 
 3. The pull request will be assigned to a reviewer, though you can also choose a reviewer yourself.
 	The reviewer will comment on your code, pointing out possible bugs, style issues, missing tests,
@@ -86,26 +86,47 @@ Backtrace:
 	Once the reviewer thinks that the code is acceptable to be merged, they will sign off with an r+
 	that indicates that it has passed review and is ready to be merged.
 
-4.  Once the pull request is aproved, a bot called [Homu] that queues up the approved pull request and tries merging.
+4.  Once the pull request is aproved, a bot called [Homu] that queues up the [approved pull request] and tries merging.
+	[Here's] a simple example that demonstrates the code review and continuous integration process.
 
+Certain types of pull requests, such as documentation pull requests, comment fixes, and the like, are very unlikely to fail. Doing full builds and tests can take a long time, so these pull requests are frequently manually collected into a "roll-up" branch, that can all be merged with one single merge and test of the full branch, rather than one for each pull request.
 
 [Homu]:https://github.com/barosl/homu
+[bitrust]:https://killercup.github.io/bitrust/
+[approved pull request]:http://buildbot.rust-lang.org/homu/queue/rust
+[Here's]:https://github.com/rust-lang/rust/pull/28729
 
 ### New features
 
 To propose new features:
-1. Discussion pre-RFC on the Rust Internals forum https://internals.rust-lang.org/, Reddit or Rust's personal blog
-2. Do an RFC
-	An RFC describes why you want a feature, a detailed description, possible drawbacks and possible alternatives.
+
+1. Discussion pre-RFC on [the Rust Internals forum], [Rust's subreddit] or [Rust's personal blog].
+
+2. Do an RFC:
+Features are proposed as part of a Request for Comments, generally referred to as an RFC. An RFC describes why you want a feature, a detailed description of the feature that is sufficient to implement it, possible drawbacks of the design, possible alternatives that could achieve the same goal, and any still open questions that are unresolved.
+
 3. Once the RFC is declared to be in final comment period the RFC will be accepted, postponed or rejected.
-	Accepted: The RFC is merged into the master branch of the rfcs repo
-	Postponed: The ticket is filed against the RFC repo to keep track on the discussion
-	Rejected.
+	
+	**Accepted**: The RFC is merged into the **[master]** branch of the **[rfcs]** repo.
+	
+	**Postponed**: The [ticket is filed against the RFC repo] to keep track on the discussion.
+	
+	**Rejected**: This means that the team believes that this feature is unlikely to ever get implemented.
+
+4. If the RFC is accepted, a [tracking issue](with label B-RFC-approved) is filled against the rust repo to help keeping track of the implementation status of the RFC. 
+
+When a feature is first implemented, it is marked as unstable, and you can only use it by explicitly opting in, and using the nightly compiler. This gives the community a chance to evaluate the feature, make sure it works as intended, ensure that it does not break existing code or cause problems that were unanticipated when merely discussing it. This process is described in the [Stability as a deliverable] blog post.
+After there has been a certain amount of experience using the feature in the unstable form, along with any fixes that might be required, it is eventually promoted to being stable.
 
 _NOTE: If anyone wants to propose a new feature to the Rust language, an issue should be opened in the [RFCs repository] instead of the Rust one. Then those new features will go through the RFC process._
 
 [RFCs repository]:https://github.com/rust-lang/rfcs/issues/new
-
+[the Rust Internals forum]:https://internals.rust-lang.org/
+[Rust's subreddit]:https://www.reddit.com/r/rust/
+[Rust's personal blog]:http://blog.rust-lang.org/
+[ticket is filed against the RFC repo]:https://github.com/rust-lang/rfcs/issues?q=is%3Aissue+label%3Apostponed
+[tracking issue]:https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AB-RFC-approved
+[Stability as a deliverable]:http://blog.rust-lang.org/2014/10/30/Stability.html
 #### RFC
 
 >The "RFC" (request for comments) process is intended to provide a consistent and controlled path for new features to enter the language and standard libraries, so that all stakeholders can be confident about the direction the language is evolving in.
