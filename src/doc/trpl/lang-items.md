@@ -54,6 +54,8 @@ fn main(argc: isize, argv: *const *const u8) -> isize {
 #[lang = "eh_personality"] extern fn eh_personality() {}
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
 # #[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
+# #[no_mangle] pub extern fn rust_eh_register_frames () {}
+# #[no_mangle] pub extern fn rust_eh_unregister_frames () {}
 ```
 
 Note the use of `abort`: the `exchange_malloc` lang item is assumed to
