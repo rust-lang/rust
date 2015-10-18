@@ -481,7 +481,9 @@ impl<'a> FmtVisitor<'a> {
         let context = self.get_context();
         let mut arg_item_strs = try_opt!(args.iter()
                                              .map(|arg| {
-                                                 arg.rewrite(&context, multi_line_budget, indent)
+                                                 arg.rewrite(&context,
+                                                             multi_line_budget,
+                                                             arg_indent)
                                              })
                                              .collect::<Option<Vec<_>>>());
 
