@@ -11,17 +11,12 @@
 use target::Target;
 
 pub fn target() -> Target {
-    let mut options = super::windows_base::opts();
-    options.cpu = "pentium4".to_string();
+    let mut base = super::windows_base::opts();
+    base.cpu = "pentium4".to_string();
 
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
     // space available to x86 Windows binaries on x86_64.
-    options.pre_link_args.push("-Wl,--large-address-aware".to_string());
-
-    // Make sure that we link to the dynamic libgcc, otherwise cross-module
-    // DWARF stack unwinding will not work.
-    // This behavior may be overridden by -Clink-args="-static-libgcc"
-    options.pre_link_args.push("-shared-libgcc".to_string());
+    base.pre_link_args.push("-Wl,--large-address-aware".to_string());
 
     Target {
         llvm_target: "i686-pc-windows-gnu".to_string(),
@@ -31,6 +26,6 @@ pub fn target() -> Target {
         target_os: "windows".to_string(),
         target_env: "gnu".to_string(),
         target_vendor: "pc".to_string(),
-        options: options,
+        options: base,
     }
 }
