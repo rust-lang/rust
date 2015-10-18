@@ -142,6 +142,9 @@ extern "C" {
                                    -> _Unwind_Reason_Code;
 
     pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
+
+    #[unwind]
+    pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
 }
 
 // ... and now we just providing access to SjLj counterspart
