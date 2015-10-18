@@ -561,53 +561,33 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         }
     }
 
-    /// By default, LLVM lowers `resume` instructions into calls to `_Unwind_Resume`
-    /// defined in libgcc, however, unlike personality routines, there is no easy way to
-    /// override that symbol.  This method injects a local-scoped `_Unwind_Resume` function
-    /// which immediately defers to the user-defined `eh_unwind_resume` lang item.
-    pub fn inject_unwind_resume_hook(&self) {
-        let ccx = self.ccx;
-        if !ccx.sess().target.target.options.custom_unwind_resume ||
-           ccx.unwind_resume_hooked().get() {
-            return;
-        }
-
-        let new_resume = match ccx.tcx().lang_items.eh_unwind_resume() {
-            Some(did) => callee::trans_fn_ref(ccx, did, ExprId(0), &self.param_substs).val,
-            None => {
-                let fty = Type::variadic_func(&[], &Type::void(self.ccx));
-                declare::declare_cfn(self.ccx, "rust_eh_unwind_resume", fty,
-                                     self.ccx.tcx().mk_nil())
+    // Returns a ValueRef of the "eh_unwind_resume" lang item if one is defined,
+    // otherwise declares it as an external funtion.
+    pub fn eh_unwind_resume(&self) -> ValueRef {
+        use trans::attributes;
+        assert!(self.ccx.sess().target.target.options.custom_unwind_resume);
+        match self.ccx.tcx().lang_items.eh_unwind_resume() {
+            Some(def_id) => {
+                callee::trans_fn_ref(self.ccx, def_id, ExprId(0),
+                                     self.param_substs).val
             }
-        };
-
-        unsafe {
-            let resume_type = Type::func(&[Type::i8(ccx).ptr_to()], &Type::void(ccx));
-            let old_resume = llvm::LLVMAddFunction(ccx.llmod(),
-                                                   "_Unwind_Resume\0".as_ptr() as *const _,
-                                                   resume_type.to_ref());
-            llvm::SetLinkage(old_resume, llvm::InternalLinkage);
-            let llbb = llvm::LLVMAppendBasicBlockInContext(ccx.llcx(),
-                                                           old_resume,
-                                                           "\0".as_ptr() as *const _);
-            let builder = ccx.builder();
-            builder.position_at_end(llbb);
-            builder.call(new_resume, &[llvm::LLVMGetFirstParam(old_resume)], None);
-            builder.unreachable(); // it should never return
-
-            // Until DwarfEHPrepare pass has run, _Unwind_Resume is not referenced by any live code
-            // and is subject to dead code elimination.  Here we add _Unwind_Resume to @llvm.globals
-            // to prevent that.
-            let i8p_ty = Type::i8p(ccx);
-            let used_ty = Type::array(&i8p_ty, 1);
-            let used = llvm::LLVMAddGlobal(ccx.llmod(), used_ty.to_ref(),
-                                           "llvm.used\0".as_ptr() as *const _);
-            let old_resume = llvm::LLVMConstBitCast(old_resume, i8p_ty.to_ref());
-            llvm::LLVMSetInitializer(used, C_array(i8p_ty, &[old_resume]));
-            llvm::SetLinkage(used, llvm::AppendingLinkage);
-            llvm::LLVMSetSection(used, "llvm.metadata\0".as_ptr() as *const _)
+            None => {
+                let mut unwresume = self.ccx.eh_unwind_resume().borrow_mut();
+                match *unwresume {
+                    Some(llfn) => llfn,
+                    None => {
+                        let fty = Type::func(&[Type::i8p(self.ccx)], &Type::void(self.ccx));
+                        let llfn = declare::declare_fn(self.ccx,
+                                                       "rust_eh_unwind_resume",
+                                                       llvm::CCallConv,
+                                                       fty, ty::FnDiverging);
+                        attributes::unwind(llfn, true);
+                        *unwresume = Some(llfn);
+                        llfn
+                    }
+                }
+            }
         }
-        ccx.unwind_resume_hooked().set(true);
     }
 }
 
