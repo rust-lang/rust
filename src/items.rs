@@ -825,15 +825,15 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    fn format_struct(&self,
-                     item_name: &str,
-                     ident: ast::Ident,
-                     vis: ast::Visibility,
-                     struct_def: &ast::VariantData,
-                     generics: Option<&ast::Generics>,
-                     span: Span,
-                     offset: Indent)
-                     -> Option<String> {
+    pub fn format_struct(&self,
+                         item_name: &str,
+                         ident: ast::Ident,
+                         vis: ast::Visibility,
+                         struct_def: &ast::VariantData,
+                         generics: Option<&ast::Generics>,
+                         span: Span,
+                         offset: Indent)
+                         -> Option<String> {
         let mut result = String::with_capacity(1024);
 
         let header_str = self.format_header(item_name, ident, vis);
@@ -927,27 +927,6 @@ impl<'a> FmtVisitor<'a> {
         }
 
         Some(result)
-    }
-
-    pub fn visit_struct(&mut self,
-                        ident: ast::Ident,
-                        vis: ast::Visibility,
-                        struct_def: &ast::VariantData,
-                        generics: &ast::Generics,
-                        span: Span) {
-        let indent = self.block_indent;
-        let result = self.format_struct("struct ",
-                                        ident,
-                                        vis,
-                                        struct_def,
-                                        Some(generics),
-                                        span,
-                                        indent);
-
-        if let Some(rewrite) = result {
-            self.buffer.push_str(&rewrite);
-            self.last_pos = span.hi;
-        }
     }
 
     fn format_header(&self, item_name: &str, ident: ast::Ident, vis: ast::Visibility) -> String {
@@ -1136,6 +1115,26 @@ impl<'a> FmtVisitor<'a> {
             Some(format!(" where {}", preds_str))
         }
     }
+}
+
+pub fn rewrite_static(prefix: &str,
+                      ident: ast::Ident,
+                      ty: &ast::Ty,
+                      mutability: ast::Mutability,
+                      expr: &ast::Expr,
+                      context: &RewriteContext)
+                      -> Option<String> {
+    let prefix = format!("{} {}{}: ", prefix, format_mutability(mutability), ident);
+    // 2 = " =".len()
+    let ty_str = try_opt!(ty.rewrite(context,
+                                     context.config.max_width - context.block_indent.width() -
+                                     prefix.len() - 2,
+                                     context.block_indent));
+    let lhs = format!("{}{} =", prefix, ty_str);
+
+    // 1 = ;
+    let remaining_width = context.config.max_width - context.block_indent.width() - 1;
+    rewrite_assign_rhs(context, lhs, expr, remaining_width, context.block_indent).map(|s| s + ";")
 }
 
 impl Rewrite for ast::FunctionRetTy {
