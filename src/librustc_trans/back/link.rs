@@ -32,6 +32,8 @@ use util::sha2::{Digest, Sha256};
 use util::fs::fix_windows_verbatim_for_gcc;
 use rustc_back::tempdir::TempDir;
 
+use std::ascii;
+use std::char;
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, PathExt};
@@ -883,6 +885,16 @@ fn link_natively(sess: &Session, dylib: bool,
     let prog = time(sess.time_passes(), "running linker", || cmd.output());
     match prog {
         Ok(prog) => {
+            fn escape_string(s: &[u8]) -> String {
+                str::from_utf8(s).map(|s| s.to_owned())
+                    .unwrap_or_else(|_| {
+                        let mut x = "Non-UTF-8 output: ".to_string();
+                        x.extend(s.iter()
+                                 .flat_map(|&b| ascii::escape_default(b))
+                                 .map(|b| char::from_u32(b as u32).unwrap()));
+                        x
+                    })
+            }
             if !prog.status.success() {
                 sess.err(&format!("linking with `{}` failed: {}",
                                  pname,
@@ -890,11 +902,11 @@ fn link_natively(sess: &Session, dylib: bool,
                 sess.note(&format!("{:?}", &cmd));
                 let mut output = prog.stderr.clone();
                 output.push_all(&prog.stdout);
-                sess.note(str::from_utf8(&output[..]).unwrap());
+                sess.note(&*escape_string(&output[..]));
                 sess.abort_if_errors();
             }
-            info!("linker stderr:\n{}", String::from_utf8(prog.stderr).unwrap());
-            info!("linker stdout:\n{}", String::from_utf8(prog.stdout).unwrap());
+            info!("linker stderr:\n{}", escape_string(&prog.stderr[..]));
+            info!("linker stdout:\n{}", escape_string(&prog.stdout[..]));
         },
         Err(e) => {
             sess.fatal(&format!("could not exec the linker `{}`: {}", pname, e));
