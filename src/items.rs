@@ -143,14 +143,13 @@ impl<'a> FmtVisitor<'a> {
                                                    // These are not actually rust functions,
                                                    // but we format them as such.
                                                    abi::Abi::Rust,
-                                                   ast::Visibility::Inherited,
+                                                   item.vis,
                                                    span,
                                                    false,
                                                    false);
 
                 match rewrite {
                     Some((new_fn, _)) => {
-                        self.buffer.push_str(format_visibility(item.vis));
                         self.buffer.push_str(&new_fn);
                         self.buffer.push_str(";");
                     }

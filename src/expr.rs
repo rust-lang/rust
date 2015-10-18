@@ -273,7 +273,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
     let has_long_item = try_opt!(items.iter()
                                       .map(|li| li.item.as_ref().map(|s| s.len() > 10))
                                       .fold(Some(false),
-                                            |acc, x| acc.and_then(|y| x.map(|x| (x || y)))));
+                                            |acc, x| acc.and_then(|y| x.map(|x| x || y))));
 
     let tactic = if has_long_item || items.iter().any(ListItem::is_multiline) {
         definitive_tactic(&items, ListTactic::HorizontalVertical, max_item_width)
