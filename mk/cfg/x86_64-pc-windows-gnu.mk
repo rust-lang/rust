@@ -22,3 +22,4 @@ CFG_LDPATH_x86_64-pc-windows-gnu :=
 CFG_RUN_x86_64-pc-windows-gnu=$(2)
 CFG_RUN_TARG_x86_64-pc-windows-gnu=$(call CFG_RUN_x86_64-pc-windows-gnu,,$(2))
 CFG_GNU_TRIPLE_x86_64-pc-windows-gnu := x86_64-w64-mingw32
+CFG_LIBC_STARTUP_OBJECTS_x86_64-pc-windows-gnu := crt2.o dllcrt2.o

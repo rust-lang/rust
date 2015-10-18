@@ -98,16 +98,25 @@ pub struct TargetOptions {
     pub linker: String,
     /// Archive utility to use when managing archives. Defaults to "ar".
     pub ar: String,
+
     /// Linker arguments that are unconditionally passed *before* any
     /// user-defined libraries.
     pub pre_link_args: Vec<String>,
+    /// Objects to link before all others, always found within the
+    /// sysroot folder.
+    pub pre_link_objects_exe: Vec<String>, // ... when linking an executable
+    pub pre_link_objects_dll: Vec<String>, // ... when linking a dylib
+    /// Linker arguments that are unconditionally passed after any
+    /// user-defined but before post_link_objects.  Standard platform
+    /// libraries that should be always be linked to, usually go here.
+    pub late_link_args: Vec<String>,
+    /// Objects to link after all others, always found within the
+    /// sysroot folder.
+    pub post_link_objects: Vec<String>,
     /// Linker arguments that are unconditionally passed *after* any
     /// user-defined libraries.
     pub post_link_args: Vec<String>,
-    /// Objects to link before and after all others, always found within the
-    /// sysroot folder.
-    pub pre_link_objects: Vec<String>,
-    pub post_link_objects: Vec<String>,
+
     /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
     /// to "default".
     pub cpu: String,
@@ -219,8 +228,10 @@ impl Default for TargetOptions {
             no_compiler_rt: false,
             no_default_libraries: true,
             position_independent_executables: false,
-            pre_link_objects: Vec::new(),
+            pre_link_objects_exe: Vec::new(),
+            pre_link_objects_dll: Vec::new(),
             post_link_objects: Vec::new(),
+            late_link_args: Vec::new(),
             archive_format: String::new(),
             custom_unwind_resume: false,
             lib_allocation_crate: "alloc_system".to_string(),
