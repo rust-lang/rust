@@ -11,9 +11,7 @@
 // error-pattern:thread '<main>' panicked at 'arithmetic operation overflowed'
 // compile-flags: -C debug-assertions
 
-// (Work around constant-evaluation)
-fn value() -> u8 { 200 }
 
 fn main() {
-    let _x = value() + value() + value();
+    let _x = 200u8 + 200u8 + 200u8;
 }
