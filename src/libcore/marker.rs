@@ -36,6 +36,17 @@ impl<T> !Send for *const T { }
 impl<T> !Send for *mut T { }
 
 /// Types with a constant size known at compile-time.
+///
+/// All type parameters which can be bounded have an implicit bound of `Sized`. The special syntax
+/// `?Sized` can be used to remove this bound if it is not appropriate.
+///
+/// ```
+/// struct Foo<T>(T);
+/// struct Bar<T: ?Sized>(T);
+///
+/// // struct FooUse(Foo<[i32]>); // error: Sized is not implemented for [i32]
+/// struct BarUse(Bar<[i32]>); // OK
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
 #[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
