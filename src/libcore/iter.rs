@@ -209,7 +209,7 @@
 //! interesting implementation of [`IntoIterator`]:
 //!
 //! ```ignore
-//! impl<I> IntoIterator for I where I: Iterator
+//! impl<I: Iterator> IntoIterator for I
 //! ```
 //!
 //! In other words, all [`Iterator`]s implement [`IntoIterator`], by just
