@@ -9,6 +9,7 @@
 4. [New Features](#new-features)
   1. [RFC](#rfc)
 5. [Use Cases](#use-cases)
+6. [Critical Analysis] (#critical-analysis)
 
 ## RUST - Programming Language
 
@@ -154,3 +155,17 @@ _NOTE: If anyone wants to propose a new feature to the Rust language, an issue s
 ### Use Cases
 
 ![alt tab](https://github.com/martapips/rust/blob/master/ESOF-docs/res/rustUseCaseDiagram.jpg?raw=true)
+
+### Critical Analysis
+
+In conclusion, we can say that Rust's team is focused on their requirements and it's developing them each day. 
+The policy on adding new features is strict and well organized which allows Rust to be safer and more stable in the pursuit of the main goals.
+The core team is well adjusted and is now working on some new improvements for the next year like doubling down on infrastructure, zeroing in on gaps in key features and
+branching out into new places to use Rust.
+
+The Rust community is very active and keeps growing, which leads to a better development of this programming language. 
+
+We can see in their [personal blog] that the team is very commited since the beggining and it keeps updating Rust and bringing us news frequently, letting users know what is going on and allowing them to keep contributing.
+
+[personal blog]:http://blog.rust-lang.org/
+
