@@ -10,12 +10,12 @@
 
 use std::cell::Cell;
 
-#[derive(Show)]
+#[derive(Debug)]
 struct Refs<'a> {
     v: Vec<Cell<Option<&'a C<'a>>>>,
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 struct C<'a> {
     refs: Refs<'a>,
 }

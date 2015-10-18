@@ -9,18 +9,18 @@ applicable, common traits.
 
 To see why, consider the following situation:
 
-* Crate `std` defines trait `Show`.
-* Crate `url` defines type `Url`, without implementing `Show`.
+* Crate `std` defines trait `Debug`.
+* Crate `url` defines type `Url`, without implementing `Debug`.
 * Crate `webapp` imports from both `std` and `url`,
 
-There is no way for `webapp` to add `Show` to `url`, since it defines neither.
+There is no way for `webapp` to add `Debug` to `url`, since it defines neither.
 (Note: the newtype pattern can provide an efficient, but inconvenient
 workaround; see [newtype for views](../types/newtype.md))
 
 The most important common traits to implement from `std` are:
 
 ```rust
-Clone, Show, Hash, Eq
+Clone, Debug, Hash, Eq
 ```
 
 #### When safe, derive or otherwise implement `Send` and `Share`. [FIXME]

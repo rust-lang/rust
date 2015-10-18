@@ -10,7 +10,7 @@
 
 use std::cell::Cell;
 
-#[derive(Show)]
+#[derive(Debug)]
 struct B<'a> {
     a: [Cell<Option<&'a B<'a>>>; 2]
 }
