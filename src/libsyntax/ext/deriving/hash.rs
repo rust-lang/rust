@@ -42,14 +42,30 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                                   vec![path_std!(cx, core::hash::Hasher)])],
                 },
                 explicit_self: borrowed_explicit_self(),
-                args: vec!(Ptr(Box::new(Literal(arg)), Borrowed(None, MutMutable))),
+                args: vec!(Ptr(Box::new(Literal(arg.clone())), Borrowed(None, MutMutable))),
                 ret_ty: nil_ty(),
                 attributes: vec![],
                 is_unsafe: false,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                    hash_substructure(a, b, c)
+                    hash_substructure(a, b, c, false)
                 }))
-            }
+            },
+            MethodDef {
+                name: "hash_end",
+                generics: LifetimeBounds {
+                    lifetimes: Vec::new(),
+                    bounds: vec![("__H",
+                                  vec![path_std!(cx, core::hash::Hasher)])],
+                },
+                explicit_self: borrowed_explicit_self(),
+                args: vec!(Ptr(Box::new(Literal(arg.clone())), Borrowed(None, MutMutable))),
+                ret_ty: nil_ty(),
+                attributes: vec![],
+                is_unsafe: false,
+                combine_substructure: combine_substructure(Box::new(|a, b, c| {
+                    hash_substructure(a, b, c, true)
+                }))
+            },
         ),
         associated_types: Vec::new(),
     };
@@ -57,14 +73,17 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
     hash_trait_def.expand(cx, mitem, item, push);
 }
 
-fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
+fn hash_substructure(cx: &mut ExtCtxt,
+                     trait_span: Span,
+                     substr: &Substructure,
+                     is_end: bool) -> P<Expr> {
     let state_expr = match (substr.nonself_args.len(), substr.nonself_args.get(0)) {
         (1, Some(o_f)) => o_f,
         _ => cx.span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`")
     };
-    let call_hash = |span, thing_expr| {
+    let call_hash = |span, thing_expr, use_end| {
         let hash_path = {
-            let strs = cx.std_path(&["hash", "Hash", "hash"]);
+            let strs = cx.std_path(&["hash", "Hash", if use_end { "hash_end" } else { "hash" }]);
 
             cx.expr_path(cx.path_global(span, strs))
         };
@@ -84,15 +103,15 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                 None => cx.expr_usize(trait_span, index)
             };
 
-            stmts.push(call_hash(trait_span, discriminant));
+            stmts.push(call_hash(trait_span, discriminant, false));
 
             fs
         }
         _ => cx.span_bug(trait_span, "impossible substructure in `derive(Hash)`")
     };
 
-    for &FieldInfo { ref self_, span, .. } in fields {
-        stmts.push(call_hash(span, self_.clone()));
+    for (index, &FieldInfo { ref self_, span, .. }) in fields.iter().enumerate() {
+        stmts.push(call_hash(span, self_.clone(), is_end && index == fields.len() - 1));
     }
 
     cx.expr_block(cx.block(trait_span, stmts, None))

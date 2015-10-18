@@ -963,6 +963,10 @@ impl<A: fmt::Debug> fmt::Debug for LinkedList<A> {
 impl<A: Hash> Hash for LinkedList<A> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.len().hash(state);
+        self.hash_end(state);
+    }
+
+    fn hash_end<H: Hasher>(&self, state: &mut H) {
         for elt in self {
             elt.hash(state);
         }

@@ -692,6 +692,10 @@ impl<'tcx> Hash for InternedTy<'tcx> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         self.ty.sty.hash(s)
     }
+
+    fn hash_end<H: Hasher>(&self, s: &mut H) {
+        self.ty.sty.hash_end(s)
+    }
 }
 
 impl<'tcx> Borrow<TypeVariants<'tcx>> for InternedTy<'tcx> {

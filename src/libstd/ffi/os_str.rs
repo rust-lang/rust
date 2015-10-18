@@ -211,6 +211,11 @@ impl Hash for OsString {
     fn hash<H: Hasher>(&self, state: &mut H) {
         (&**self).hash(state)
     }
+
+    #[inline]
+    fn hash_end<H: Hasher>(&self, state: &mut H) {
+        (&**self).hash_end(state)
+    }
 }
 
 impl OsStr {
@@ -346,6 +351,11 @@ impl Ord for OsStr {
 impl Hash for OsStr {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
+        self.bytes().hash(state)
+    }
+
+    #[inline]
+    fn hash_end<H: Hasher>(&self, state: &mut H) {
         self.bytes().hash(state)
     }
 }

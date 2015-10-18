@@ -107,6 +107,17 @@ pub trait Hash {
             piece.hash(state);
         }
     }
+
+    // FIXME: This should be unstable, but doing so breaks deriving
+    // #[unstable(feature = "hash_end", reason = "recently added", issue = "0")]
+
+    /// Feeds this value into the state given, assuming it will be the last
+    /// value fed before finishing the hash.  This means that there is no need
+    /// to write a size or sentinel to separate this value from what follows.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn hash_end<H: Hasher>(&self, state: &mut H) {
+        self.hash(state);
+    }
 }
 
 /// A trait which represents the ability to hash an arbitrary stream of bytes.
@@ -246,6 +257,10 @@ mod impls {
             state.write(self.as_bytes());
             state.write_u8(0xff)
         }
+
+        fn hash_end<H: Hasher>(&self, state: &mut H) {
+            state.write(self.as_bytes());
+        }
     }
 
     macro_rules! impl_hash_tuple {
@@ -256,13 +271,21 @@ mod impls {
             }
         );
 
-        ( $($name:ident)+) => (
+        ( $last:ident $($name:ident)*) => (
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($name: Hash),*> Hash for ($($name,)*) {
+            impl<$($name: Hash,)* $last: Hash> Hash for ($($name,)*$last,) {
                 #[allow(non_snake_case)]
                 fn hash<S: Hasher>(&self, state: &mut S) {
-                    let ($(ref $name,)*) = *self;
+                    let ($(ref $name,)* ref $last,) = *self;
                     $($name.hash(state);)*
+                    $last.hash(state);
+                }
+
+                #[allow(non_snake_case)]
+                fn hash_end<S: Hasher>(&self, state: &mut S) {
+                    let ($(ref $name,)* ref $last,) = *self;
+                    $($name.hash(state);)*
+                    $last.hash_end(state);
                 }
             }
         );
@@ -288,6 +311,10 @@ mod impls {
             self.len().hash(state);
             Hash::hash_slice(self, state)
         }
+
+        fn hash_end<H: Hasher>(&self, state: &mut H) {
+            Hash::hash_slice(self, state)
+        }
     }
 
 
@@ -296,12 +323,20 @@ mod impls {
         fn hash<H: Hasher>(&self, state: &mut H) {
             (**self).hash(state);
         }
+
+        fn hash_end<H: Hasher>(&self, state: &mut H) {
+            (**self).hash_end(state);
+        }
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, T: ?Sized + Hash> Hash for &'a mut T {
         fn hash<H: Hasher>(&self, state: &mut H) {
             (**self).hash(state);
+        }
+
+        fn hash_end<H: Hasher>(&self, state: &mut H) {
+            (**self).hash_end(state);
         }
     }
 

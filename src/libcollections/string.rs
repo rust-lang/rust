@@ -1033,6 +1033,11 @@ impl hash::Hash for String {
     fn hash<H: hash::Hasher>(&self, hasher: &mut H) {
         (**self).hash(hasher)
     }
+
+    #[inline]
+    fn hash_end<H: hash::Hasher>(&self, hasher: &mut H) {
+        (**self).hash_end(hasher)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

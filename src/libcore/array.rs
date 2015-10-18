@@ -106,6 +106,10 @@ macro_rules! array_impls {
                 fn hash<H: hash::Hasher>(&self, state: &mut H) {
                     Hash::hash(&self[..], state)
                 }
+
+                fn hash_end<H: hash::Hasher>(&self, state: &mut H) {
+                    Hash::hash_end(&self[..], state)
+                }
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
