@@ -27,15 +27,15 @@ const CHACHA_ROUNDS: usize = 20; // Cryptographically secure from 8 upwards as o
 /// Salsa20*](http://cr.yp.to/chacha.html)
 #[derive(Copy, Clone)]
 pub struct ChaChaRng {
-    buffer:  [u32; STATE_WORDS], // Internal buffer of output
-    state:   [u32; STATE_WORDS], // Initial state
-    index:   usize,                 // Index into state
+    buffer: [u32; STATE_WORDS], // Internal buffer of output
+    state: [u32; STATE_WORDS], // Initial state
+    index: usize, // Index into state
 }
 
 static EMPTY: ChaChaRng = ChaChaRng {
-    buffer:  [0; STATE_WORDS],
-    state:   [0; STATE_WORDS],
-    index:   STATE_WORDS
+    buffer: [0; STATE_WORDS],
+    state: [0; STATE_WORDS],
+    index: STATE_WORDS,
 };
 
 
@@ -95,9 +95,9 @@ impl ChaChaRng {
     /// associated with a particular nonce can call this function with
     /// arguments `0, desired_nonce`.
     pub fn set_counter(&mut self, counter_low: u64, counter_high: u64) {
-        self.state[12] = (counter_low >>  0) as u32;
+        self.state[12] = (counter_low >> 0) as u32;
         self.state[13] = (counter_low >> 32) as u32;
-        self.state[14] = (counter_high >>  0) as u32;
+        self.state[14] = (counter_high >> 0) as u32;
         self.state[15] = (counter_high >> 32) as u32;
         self.index = STATE_WORDS; // force recomputation
     }
@@ -127,7 +127,7 @@ impl ChaChaRng {
         self.state[3] = 0x6B206574;
 
         for i in 0..KEY_WORDS {
-            self.state[4+i] = key[i];
+            self.state[4 + i] = key[i];
         }
 
         self.state[12] = 0;
@@ -144,11 +144,17 @@ impl ChaChaRng {
         self.index = 0;
         // update 128-bit counter
         self.state[12] += 1;
-        if self.state[12] != 0 { return };
+        if self.state[12] != 0 {
+            return;
+        }
         self.state[13] += 1;
-        if self.state[13] != 0 { return };
+        if self.state[13] != 0 {
+            return;
+        }
         self.state[14] += 1;
-        if self.state[14] != 0 { return };
+        if self.state[14] != 0 {
+            return;
+        }
         self.state[15] += 1;
     }
 }
@@ -172,7 +178,7 @@ impl<'a> SeedableRng<&'a [u32]> for ChaChaRng {
         // reset state
         self.init(&[0; KEY_WORDS]);
         // set key in place
-        let key = &mut self.state[4 .. 4+KEY_WORDS];
+        let key = &mut self.state[4..4 + KEY_WORDS];
         for (k, s) in key.iter_mut().zip(seed) {
             *k = *s;
         }
@@ -191,7 +197,7 @@ impl<'a> SeedableRng<&'a [u32]> for ChaChaRng {
 
 impl Rand for ChaChaRng {
     fn rand<R: Rng>(other: &mut R) -> ChaChaRng {
-        let mut key : [u32; KEY_WORDS] = [0; KEY_WORDS];
+        let mut key: [u32; KEY_WORDS] = [0; KEY_WORDS];
         for word in &mut key {
             *word = other.gen();
         }
@@ -219,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_rng_seeded() {
-        let seed : &[_] = &[0,1,2,3,4,5,6,7];
+        let seed: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
         let mut ra: ChaChaRng = SeedableRng::from_seed(seed);
         let mut rb: ChaChaRng = SeedableRng::from_seed(seed);
         assert!(order::equals(ra.gen_ascii_chars().take(100),
@@ -239,10 +245,11 @@ mod tests {
     }
 
     #[test]
+    #[rustfmt_skip]
     fn test_rng_true_values() {
         // Test vectors 1 and 2 from
         // http://tools.ietf.org/html/draft-nir-cfrg-chacha20-poly1305-04
-        let seed : &[_] = &[0; 8];
+        let seed: &[_] = &[0; 8];
         let mut ra: ChaChaRng = SeedableRng::from_seed(seed);
 
         let v = (0..16).map(|_| ra.next_u32()).collect::<Vec<_>>();
@@ -260,12 +267,12 @@ mod tests {
                         0x281fed31, 0x45fb0a51, 0x1f0ae1ac, 0x6f4d794b));
 
 
-        let seed : &[_] = &[0,1,2,3,4,5,6,7];
+        let seed: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
         let mut ra: ChaChaRng = SeedableRng::from_seed(seed);
 
         // Store the 17*i-th 32-bit word,
         // i.e., the i-th word of the i-th 16-word block
-        let mut v : Vec<u32> = Vec::new();
+        let mut v: Vec<u32> = Vec::new();
         for _ in 0..16 {
             v.push(ra.next_u32());
             for _ in 0..16 {
@@ -282,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_rng_clone() {
-        let seed : &[_] = &[0; 8];
+        let seed: &[_] = &[0; 8];
         let mut rng: ChaChaRng = SeedableRng::from_seed(seed);
         let mut clone = rng.clone();
         for _ in 0..16 {

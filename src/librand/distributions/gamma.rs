@@ -46,7 +46,7 @@ pub struct Gamma {
 enum GammaRepr {
     Large(GammaLargeShape),
     One(Exp),
-    Small(GammaSmallShape)
+    Small(GammaSmallShape),
 }
 
 // These two helpers could be made public, but saving the
@@ -65,7 +65,7 @@ enum GammaRepr {
 /// shape parameters.
 struct GammaSmallShape {
     inv_shape: f64,
-    large_shape: GammaLargeShape
+    large_shape: GammaLargeShape,
 }
 
 /// Gamma distribution where the shape parameter is larger than 1.
@@ -75,7 +75,7 @@ struct GammaSmallShape {
 struct GammaLargeShape {
     scale: f64,
     c: f64,
-    d: f64
+    d: f64,
 }
 
 impl Gamma {
@@ -88,9 +88,9 @@ impl Gamma {
         assert!(scale > 0.0, "Gamma::new called with scale <= 0");
 
         let repr = match shape {
-            1.0         => One(Exp::new(1.0 / scale)),
+            1.0 => One(Exp::new(1.0 / scale)),
             0.0 ... 1.0 => Small(GammaSmallShape::new_raw(shape, scale)),
-            _           => Large(GammaLargeShape::new_raw(shape, scale))
+            _ => Large(GammaLargeShape::new_raw(shape, scale)),
         };
         Gamma { repr: repr }
     }
@@ -100,7 +100,7 @@ impl GammaSmallShape {
     fn new_raw(shape: f64, scale: f64) -> GammaSmallShape {
         GammaSmallShape {
             inv_shape: 1. / shape,
-            large_shape: GammaLargeShape::new_raw(shape + 1.0, scale)
+            large_shape: GammaLargeShape::new_raw(shape + 1.0, scale),
         }
     }
 }
@@ -111,19 +111,25 @@ impl GammaLargeShape {
         GammaLargeShape {
             scale: scale,
             c: 1. / (9. * d).sqrt(),
-            d: d
+            d: d,
         }
     }
 }
 
 impl Sample<f64> for Gamma {
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 {
+        self.ind_sample(rng)
+    }
 }
 impl Sample<f64> for GammaSmallShape {
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 {
+        self.ind_sample(rng)
+    }
 }
 impl Sample<f64> for GammaLargeShape {
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 {
+        self.ind_sample(rng)
+    }
 }
 
 impl IndependentSample<f64> for Gamma {
@@ -148,7 +154,7 @@ impl IndependentSample<f64> for GammaLargeShape {
             let StandardNormal(x) = rng.gen::<StandardNormal>();
             let v_cbrt = 1.0 + self.c * x;
             if v_cbrt <= 0.0 { // a^3 <= 0 iff a <= 0
-                continue
+                continue;
             }
 
             let v = v_cbrt * v_cbrt * v_cbrt;
@@ -156,8 +162,8 @@ impl IndependentSample<f64> for GammaLargeShape {
 
             let x_sqr = x * x;
             if u < 1.0 - 0.0331 * x_sqr * x_sqr ||
-                u.ln() < 0.5 * x_sqr + self.d * (1.0 - v + v.ln()) {
-                return self.d * v * self.scale
+               u.ln() < 0.5 * x_sqr + self.d * (1.0 - v + v.ln()) {
+                return self.d * v * self.scale;
             }
         }
     }
@@ -196,7 +202,9 @@ impl ChiSquared {
     }
 }
 impl Sample<f64> for ChiSquared {
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 {
+        self.ind_sample(rng)
+    }
 }
 impl IndependentSample<f64> for ChiSquared {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
@@ -206,7 +214,7 @@ impl IndependentSample<f64> for ChiSquared {
                 let StandardNormal(norm) = rng.gen::<StandardNormal>();
                 norm * norm
             }
-            DoFAnythingElse(ref g) => g.ind_sample(rng)
+            DoFAnythingElse(ref g) => g.ind_sample(rng),
         }
     }
 }
@@ -234,12 +242,14 @@ impl FisherF {
         FisherF {
             numer: ChiSquared::new(m),
             denom: ChiSquared::new(n),
-            dof_ratio: n / m
+            dof_ratio: n / m,
         }
     }
 }
 impl Sample<f64> for FisherF {
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 {
+        self.ind_sample(rng)
+    }
 }
 impl IndependentSample<f64> for FisherF {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
@@ -251,7 +261,7 @@ impl IndependentSample<f64> for FisherF {
 /// freedom.
 pub struct StudentT {
     chi: ChiSquared,
-    dof: f64
+    dof: f64,
 }
 
 impl StudentT {
@@ -261,12 +271,14 @@ impl StudentT {
         assert!(n > 0.0, "StudentT::new called with `n <= 0`");
         StudentT {
             chi: ChiSquared::new(n),
-            dof: n
+            dof: n,
         }
     }
 }
 impl Sample<f64> for StudentT {
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 {
+        self.ind_sample(rng)
+    }
 }
 impl IndependentSample<f64> for StudentT {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {

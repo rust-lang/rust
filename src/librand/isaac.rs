@@ -48,7 +48,9 @@ static EMPTY: IsaacRng = IsaacRng {
     cnt: 0,
     rsl: [w(0); RAND_SIZE_USIZE],
     mem: [w(0); RAND_SIZE_USIZE],
-    a: w(0), b: w(0), c: w(0),
+    a: w(0),
+    b: w(0),
+    c: w(0),
 };
 
 impl IsaacRng {
@@ -95,15 +97,23 @@ impl IsaacRng {
             macro_rules! memloop {
                 ($arr:expr) => {{
                     for i in (0..RAND_SIZE_USIZE).step_by(8) {
-                        a=a+$arr[i  ]; b=b+$arr[i+1];
-                        c=c+$arr[i+2]; d=d+$arr[i+3];
-                        e=e+$arr[i+4]; f=f+$arr[i+5];
-                        g=g+$arr[i+6]; h=h+$arr[i+7];
+                        a = a + $arr[i];
+                        b = b + $arr[i + 1];
+                        c = c + $arr[i + 2];
+                        d = d + $arr[i + 3];
+                        e = e + $arr[i + 4];
+                        f = f + $arr[i + 5];
+                        g = g + $arr[i + 6];
+                        h = h + $arr[i + 7];
                         mix!();
-                        self.mem[i  ]=a; self.mem[i+1]=b;
-                        self.mem[i+2]=c; self.mem[i+3]=d;
-                        self.mem[i+4]=e; self.mem[i+5]=f;
-                        self.mem[i+6]=g; self.mem[i+7]=h;
+                        self.mem[i] = a;
+                        self.mem[i + 1] = b;
+                        self.mem[i + 2] = c;
+                        self.mem[i + 3] = d;
+                        self.mem[i + 4] = e;
+                        self.mem[i + 5] = f;
+                        self.mem[i + 6] = g;
+                        self.mem[i + 7] = h;
                     }
                 }}
             }
@@ -113,10 +123,14 @@ impl IsaacRng {
         } else {
             for i in (0..RAND_SIZE_USIZE).step_by(8) {
                 mix!();
-                self.mem[i  ]=a; self.mem[i+1]=b;
-                self.mem[i+2]=c; self.mem[i+3]=d;
-                self.mem[i+4]=e; self.mem[i+5]=f;
-                self.mem[i+6]=g; self.mem[i+7]=h;
+                self.mem[i] = a;
+                self.mem[i + 1] = b;
+                self.mem[i + 2] = c;
+                self.mem[i + 3] = d;
+                self.mem[i + 4] = e;
+                self.mem[i + 5] = f;
+                self.mem[i + 6] = g;
+                self.mem[i + 7] = h;
             }
         }
 
@@ -290,7 +304,9 @@ static EMPTY_64: Isaac64Rng = Isaac64Rng {
     cnt: 0,
     rsl: [w(0); RAND_SIZE_64],
     mem: [w(0); RAND_SIZE_64],
-    a: w(0), b: w(0), c: w(0),
+    a: w(0),
+    b: w(0),
+    c: w(0),
 };
 
 impl Isaac64Rng {
@@ -311,8 +327,14 @@ impl Isaac64Rng {
                 let mut $var = w(0x9e3779b97f4a7c13);
             )
         }
-        init!(a); init!(b); init!(c); init!(d);
-        init!(e); init!(f); init!(g); init!(h);
+        init!(a);
+        init!(b);
+        init!(c);
+        init!(d);
+        init!(e);
+        init!(f);
+        init!(g);
+        init!(h);
 
         macro_rules! mix {
             () => {{
@@ -335,15 +357,23 @@ impl Isaac64Rng {
             macro_rules! memloop {
                 ($arr:expr) => {{
                     for i in (0..RAND_SIZE_64 / 8).map(|i| i * 8) {
-                        a=a+$arr[i  ]; b=b+$arr[i+1];
-                        c=c+$arr[i+2]; d=d+$arr[i+3];
-                        e=e+$arr[i+4]; f=f+$arr[i+5];
-                        g=g+$arr[i+6]; h=h+$arr[i+7];
+                        a = a + $arr[i];
+                        b = b + $arr[i + 1];
+                        c = c + $arr[i + 2];
+                        d = d + $arr[i + 3];
+                        e = e + $arr[i + 4];
+                        f = f + $arr[i + 5];
+                        g = g + $arr[i + 6];
+                        h = h + $arr[i + 7];
                         mix!();
-                        self.mem[i  ]=a; self.mem[i+1]=b;
-                        self.mem[i+2]=c; self.mem[i+3]=d;
-                        self.mem[i+4]=e; self.mem[i+5]=f;
-                        self.mem[i+6]=g; self.mem[i+7]=h;
+                        self.mem[i] = a;
+                        self.mem[i + 1] = b;
+                        self.mem[i + 2] = c;
+                        self.mem[i + 3] = d;
+                        self.mem[i + 4] = e;
+                        self.mem[i + 5] = f;
+                        self.mem[i + 6] = g;
+                        self.mem[i + 7] = h;
                     }
                 }}
             }
@@ -353,10 +383,14 @@ impl Isaac64Rng {
         } else {
             for i in (0..RAND_SIZE_64 / 8).map(|i| i * 8) {
                 mix!();
-                self.mem[i  ]=a; self.mem[i+1]=b;
-                self.mem[i+2]=c; self.mem[i+3]=d;
-                self.mem[i+4]=e; self.mem[i+5]=f;
-                self.mem[i+6]=g; self.mem[i+7]=h;
+                self.mem[i] = a;
+                self.mem[i + 1] = b;
+                self.mem[i + 2] = c;
+                self.mem[i + 3] = d;
+                self.mem[i + 4] = e;
+                self.mem[i + 5] = f;
+                self.mem[i + 6] = g;
+                self.mem[i + 7] = h;
             }
         }
 
@@ -370,7 +404,7 @@ impl Isaac64Rng {
         let mut a = self.a;
         let mut b = self.b + self.c;
         const MIDPOINT: usize =  RAND_SIZE_64 / 2;
-        const MP_VEC: [(usize, usize); 2] = [(0,MIDPOINT), (MIDPOINT, 0)];
+        const MP_VEC: [(usize, usize); 2] = [(0, MIDPOINT), (MIDPOINT, 0)];
         macro_rules! ind {
             ($x:expr) => {
                 *self.mem.get_unchecked((($x >> 3).0 as usize) & (RAND_SIZE_64 - 1))
@@ -573,6 +607,7 @@ mod tests {
     }
 
     #[test]
+    #[rustfmt_skip]
     fn test_rng_32_true_values() {
         let seed: &[_] = &[1, 23, 456, 7890, 12345];
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
@@ -585,7 +620,9 @@ mod tests {
         let seed: &[_] = &[12345, 67890, 54321, 9876];
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
-        for _ in 0..10000 { rb.next_u32(); }
+        for _ in 0..10000 {
+            rb.next_u32();
+        }
 
         let v = (0..10).map(|_| rb.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
@@ -593,6 +630,7 @@ mod tests {
                         1576568959, 3507990155, 179069555, 141456972, 2478885421));
     }
     #[test]
+    #[rustfmt_skip]
     fn test_rng_64_true_values() {
         let seed: &[_] = &[1, 23, 456, 7890, 12345];
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
@@ -607,7 +645,9 @@ mod tests {
         let seed: &[_] = &[12345, 67890, 54321, 9876];
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
-        for _ in 0..10000 { rb.next_u64(); }
+        for _ in 0..10000 {
+            rb.next_u64();
+        }
 
         let v = (0..10).map(|_| rb.next_u64()).collect::<Vec<_>>();
         assert_eq!(v,
@@ -615,6 +655,7 @@ mod tests {
                         17196852593171130876, 2606123525235546165, 15790932315217671084,
                         596345674630742204, 9947027391921273664, 11788097613744130851,
                         10391409374914919106));
+
     }
 
     #[test]
