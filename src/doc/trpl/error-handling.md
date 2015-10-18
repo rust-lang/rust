@@ -279,7 +279,7 @@ fn extension(file_name: &str) -> Option<&str> {
 }
 ```
 
-One other pattern that we find is very common is assigning a default value to
+One other pattern that we find it very common is assigning a default value to
 the case when an `Option` value is `None`. For example, maybe your program
 assumes that the extension of a file is `rs` even if none is present. As you
 might imagine, the case analysis for this is not specific to file
