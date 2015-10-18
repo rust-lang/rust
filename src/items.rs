@@ -823,15 +823,15 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    fn format_struct(&self,
-                     item_name: &str,
-                     ident: ast::Ident,
-                     vis: ast::Visibility,
-                     struct_def: &ast::VariantData,
-                     generics: Option<&ast::Generics>,
-                     span: Span,
-                     offset: Indent)
-                     -> Option<String> {
+    pub fn format_struct(&self,
+                         item_name: &str,
+                         ident: ast::Ident,
+                         vis: ast::Visibility,
+                         struct_def: &ast::VariantData,
+                         generics: Option<&ast::Generics>,
+                         span: Span,
+                         offset: Indent)
+                         -> Option<String> {
         let mut result = String::with_capacity(1024);
 
         let header_str = self.format_header(item_name, ident, vis);
@@ -925,27 +925,6 @@ impl<'a> FmtVisitor<'a> {
         }
 
         Some(result)
-    }
-
-    pub fn visit_struct(&mut self,
-                        ident: ast::Ident,
-                        vis: ast::Visibility,
-                        struct_def: &ast::VariantData,
-                        generics: &ast::Generics,
-                        span: Span) {
-        let indent = self.block_indent;
-        let result = self.format_struct("struct ",
-                                        ident,
-                                        vis,
-                                        struct_def,
-                                        Some(generics),
-                                        span,
-                                        indent);
-
-        if let Some(rewrite) = result {
-            self.buffer.push_str(&rewrite);
-            self.last_pos = span.hi;
-        }
     }
 
     fn format_header(&self, item_name: &str, ident: ast::Ident, vis: ast::Visibility) -> String {

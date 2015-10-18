@@ -45,7 +45,6 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 }
             }
             ast::Stmt_::StmtExpr(ref ex, _) | ast::Stmt_::StmtSemi(ref ex, _) => {
-                self.format_missing_with_indent(stmt.span.lo);
                 let suffix = if semicolon_for_stmt(stmt) {
                     ";"
                 } else {
@@ -54,13 +53,9 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 let rewrite = ex.rewrite(&self.get_context(),
                                          self.config.max_width - self.block_indent.width() -
                                          suffix.len(),
-                                         self.block_indent);
-
-                if let Some(new_str) = rewrite {
-                    self.buffer.push_str(&new_str);
-                    self.buffer.push_str(suffix);
-                    self.last_pos = stmt.span.hi;
-                }
+                                         self.block_indent)
+                                .map(|s| s + suffix);
+                self.push_rewrite(stmt.span, rewrite);
             }
             ast::Stmt_::StmtMac(ref _mac, _macro_style) => {
                 self.format_missing_with_indent(stmt.span.lo);
@@ -179,7 +174,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             ast::Item_::ItemUse(ref vp) => {
                 self.format_import(item.vis, vp, item.span);
             }
-            // TODO(#78): format traits and impl definitions.
+            // FIXME(#78): format traits and impl definitions.
             ast::Item_::ItemImpl(..) |
             ast::Item_::ItemTrait(..) => {
                 self.block_indent = self.block_indent.block_indent(self.config);
@@ -193,8 +188,15 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 self.last_pos = item.span.hi;
             }
             ast::Item_::ItemStruct(ref def, ref generics) => {
-                self.format_missing_with_indent(item.span.lo);
-                self.visit_struct(item.ident, item.vis, def, generics, item.span);
+                let indent = self.block_indent;
+                let rewrite = self.format_struct("struct ",
+                                                 item.ident,
+                                                 item.vis,
+                                                 def,
+                                                 Some(generics),
+                                                 item.span,
+                                                 indent);
+                self.push_rewrite(item.span, rewrite);
             }
             ast::Item_::ItemEnum(ref def, ref generics) => {
                 self.format_missing_with_indent(item.span.lo);
@@ -216,32 +218,24 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 self.format_foreign_mod(foreign_mod, item.span);
             }
             ast::Item_::ItemStatic(ref ty, mutability, ref expr) => {
-                self.format_missing_with_indent(item.span.lo);
                 let rewrite = rewrite_static("static",
                                              item.ident,
                                              ty,
                                              mutability,
                                              expr,
                                              &self.get_context());
-                if let Some(s) = rewrite {
-                    self.buffer.push_str(&s);
-                    self.last_pos = item.span.hi;
-                }
+                self.push_rewrite(item.span, rewrite);
             }
             ast::Item_::ItemConst(ref ty, ref expr) => {
-                self.format_missing_with_indent(item.span.lo);
                 let rewrite = rewrite_static("const",
                                              item.ident,
                                              ty,
                                              ast::Mutability::MutImmutable,
                                              expr,
                                              &self.get_context());
-                if let Some(s) = rewrite {
-                    self.buffer.push_str(&s);
-                    self.last_pos = item.span.hi;
-                }
+                self.push_rewrite(item.span, rewrite);
             }
-            // TODO(#486): format type aliases.
+            // FIXME(#486): format type aliases.
             ast::Item_::ItemDefaultImpl(..) |
             ast::Item_::ItemFn(..) |
             ast::Item_::ItemTy(..) => {
@@ -256,15 +250,9 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         }
 
         if let ast::TraitItem_::MethodTraitItem(ref sig, None) = ti.node {
-            self.format_missing_with_indent(ti.span.lo);
-
             let indent = self.block_indent;
-            let new_fn = self.rewrite_required_fn(indent, ti.ident, sig, ti.span);
-
-            if let Some(fn_str) = new_fn {
-                self.buffer.push_str(&fn_str);
-                self.last_pos = ti.span.hi;
-            }
+            let rewrite = self.rewrite_required_fn(indent, ti.ident, sig, ti.span);
+            self.push_rewrite(ti.span, rewrite);
         }
 
         visit::walk_trait_item(self, ti)
@@ -290,6 +278,15 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 }
 
 impl<'a> FmtVisitor<'a> {
+    fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
+        self.format_missing_with_indent(span.lo);
+
+        if let Some(res) = rewrite {
+            self.buffer.push_str(&res);
+            self.last_pos = span.hi;
+        }
+    }
+
     pub fn from_codemap(codemap: &'a CodeMap, config: &'a Config) -> FmtVisitor<'a> {
         FmtVisitor {
             codemap: codemap,
