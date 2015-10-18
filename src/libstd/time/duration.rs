@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cmp::min;
+use fmt;
+use io::Write;
 use ops::{Add, Sub, Mul, Div};
+use str;
 use sys::time::SteadyTime;
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
@@ -165,6 +169,39 @@ impl Div<u32> for Duration {
     }
 }
 
+/// Format the duration as `"{seconds}.{subsecond}" or,
+/// if the `nanos` component is zero, "{seconds}".
+/// Width and padding apply to the integral part,
+/// while precision applies to the fractional part:
+///
+/// ```rust
+/// assert_eq!(format!("{:04.2}", Duration::from_millis(12_345)), "0012.34")
+/// ```
+impl fmt::Display for Duration {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        try!(fmt::Display::fmt(&self.secs, formatter));
+        if self.nanos != 0 {
+            try!(formatter.write_str("."));
+            const SIZE: usize = 10;  // Enough decimal digits for u32
+            let mut buffer = [0_u8; SIZE];
+            let written = {
+                let mut slice: &mut [u8] = &mut buffer;
+                try!(write!(slice, "{:09}", self.nanos).map_err(|_| fmt::Error));
+                SIZE - slice.len()
+            };
+            let s = unsafe {
+                str::from_utf8_unchecked(&buffer[..written])
+            };
+            let s = match formatter.precision() {
+                Some(precision) => &s[..min(precision, s.len())],
+                None => s.trim_right_matches('0'),
+            };
+            try!(formatter.write_str(s));
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;
@@ -241,5 +278,17 @@ mod tests {
         assert_eq!(Duration::new(1, 1) / 3, Duration::new(0, 333_333_333));
         assert_eq!(Duration::new(99, 999_999_000) / 100,
                    Duration::new(0, 999_999_990));
+    }
+
+    #[test]
+    fn display() {
+        assert_eq!(format!("{}", Duration::new(1, 0)), "1");
+        assert_eq!(format!("{}", Duration::new(1, 1)), "1.000000001");
+        assert_eq!(format!("{}", Duration::new(1, 001_000_000)), "1.001");
+        assert_eq!(format!("{}", Duration::new(1, 123_456_789)), "1.123456789");
+        assert_eq!(format!("{:.5}", Duration::new(1, 123_456_789)), "1.12345");
+        assert_eq!(format!("{:.5}", Duration::new(1, 001_000_000)), "1.00100");
+        assert_eq!(format!("{:04.5}", Duration::new(12, 001_000_000)), "0012.00100");
+        assert_eq!(format!("{:04.2}", Duration::from_millis(12_345)), "0012.34");
     }
 }
