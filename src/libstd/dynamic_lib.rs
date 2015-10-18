@@ -22,7 +22,6 @@ use prelude::v1::*;
 
 use env;
 use ffi::{CString, OsString};
-use mem;
 use path::{Path, PathBuf};
 
 pub struct DynamicLibrary {
@@ -114,7 +113,7 @@ impl DynamicLibrary {
         // the destructor does not run.
         match maybe_symbol_value {
             Err(err) => Err(err),
-            Ok(symbol_value) => Ok(mem::transmute(symbol_value))
+            Ok(symbol_value) => Ok(symbol_value as *mut T)
         }
     }
 }
