@@ -1583,11 +1583,11 @@ impl<'a> Parser<'a> {
 
         let lo = self.span.lo;
         let literal = P(try!(self.parse_lit()));
-        let hi = self.span.hi;
+        let hi = self.last_span.hi;
         let expr = self.mk_expr(lo, hi, ExprLit(literal));
 
         if minus_present {
-            let minus_hi = self.span.hi;
+            let minus_hi = self.last_span.hi;
             let unary = self.mk_unary(UnNeg, expr);
             Ok(self.mk_expr(minus_lo, minus_hi, unary))
         } else {
