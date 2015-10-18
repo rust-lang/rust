@@ -822,6 +822,7 @@ impl<'a, 'tcx> TypeFoldable<'tcx> for ty::ParameterEnvironment<'a, 'tcx> where '
             implicit_region_bound: self.implicit_region_bound.fold_with(folder),
             caller_bounds: self.caller_bounds.fold_with(folder),
             selection_cache: traits::SelectionCache::new(),
+            evaluation_cache: traits::EvaluationCache::new(),
             free_id: self.free_id,
         }
     }
