@@ -521,7 +521,7 @@ impl<'a> FmtVisitor<'a> {
 
             let variadic_arg = if variadic {
                 let variadic_span = codemap::mk_sp(args.last().unwrap().ty.span.hi, span.hi);
-                let variadic_start = span_after(variadic_span, "...", self.codemap) - BytePos(1);
+                let variadic_start = span_after(variadic_span, "...", self.codemap) - BytePos(3);
                 Some(ArgumentKind::Variadic(variadic_start))
             } else {
                 None

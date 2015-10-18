@@ -32,8 +32,9 @@ pub fn extra_offset(text: &str, offset: Indent) -> usize {
 #[inline]
 pub fn span_after(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
     let snippet = codemap.span_to_snippet(original).unwrap();
+    let offset = snippet.find_uncommented(needle).unwrap() + needle.len();
 
-    original.lo + BytePos(snippet.find_uncommented(needle).unwrap() as u32 + 1)
+    original.lo + BytePos(offset as u32)
 }
 
 #[inline]

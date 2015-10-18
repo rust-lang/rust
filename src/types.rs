@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast;
+use syntax::ast::{self, Mutability};
 use syntax::print::pprust;
 use syntax::codemap::{self, Span, BytePos, CodeMap};
 
@@ -16,6 +16,7 @@ use Indent;
 use lists::{format_item_list, itemize_list, format_fn_args, list_helper, ListTactic};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, span_after, format_mutability, wrap_str};
+use expr::{rewrite_unary_prefix, rewrite_pair};
 
 impl Rewrite for ast::Path {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
@@ -129,21 +130,25 @@ impl<'a> SegmentParam<'a> {
 }
 
 impl<'a> Rewrite for SegmentParam<'a> {
-    // FIXME: doesn't always use width, offset.
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
-        Some(match *self {
+        match *self {
             SegmentParam::LifeTime(ref lt) => {
-                pprust::lifetime_to_string(lt)
+                wrap_str(pprust::lifetime_to_string(lt),
+                         context.config.max_width,
+                         width,
+                         offset)
             }
             SegmentParam::Type(ref ty) => {
-                try_opt!(ty.rewrite(context, width, offset))
+                ty.rewrite(context, width, offset)
             }
             SegmentParam::Binding(ref binding) => {
-                format!("{} = {}",
-                        binding.ident,
-                        try_opt!(binding.ty.rewrite(context, width, offset)))
+                let mut result = format!("{} = ", binding.ident);
+                let budget = try_opt!(width.checked_sub(result.len()));
+                let rewrite = try_opt!(binding.ty.rewrite(context, budget, offset + result.len()));
+                result.push_str(&rewrite);
+                Some(result)
             }
-        })
+        }
     }
 }
 
@@ -163,9 +168,7 @@ fn get_path_separator(codemap: &CodeMap,
     for c in snippet.chars().rev() {
         if c == ':' {
             return "::";
-        } else if c.is_whitespace() || c == '<' {
-            continue;
-        } else {
+        } else if !c.is_whitespace() && c != '<' {
             return "";
         }
     }
@@ -271,8 +274,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
 impl Rewrite for ast::WherePredicate {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         // TODO: dead spans?
-        // TODO: don't assume we'll always fit on one line...
-        Some(match *self {
+        let result = match *self {
             ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate { ref bound_lifetimes,
                                                                            ref bounded_ty,
                                                                            ref bounds,
@@ -335,23 +337,27 @@ impl Rewrite for ast::WherePredicate {
                 let path_str = try_opt!(path.rewrite(context, budget, offset + used_width));
                 format!("{} = {}", path_str, ty_str)
             }
-        })
+        };
+
+        wrap_str(result, context.config.max_width, width, offset)
     }
 }
 
 impl Rewrite for ast::LifetimeDef {
-    fn rewrite(&self, _: &RewriteContext, _: usize, _: Indent) -> Option<String> {
-        if self.bounds.is_empty() {
-            Some(pprust::lifetime_to_string(&self.lifetime))
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+        let result = if self.bounds.is_empty() {
+            pprust::lifetime_to_string(&self.lifetime)
         } else {
-            Some(format!("{}: {}",
-                         pprust::lifetime_to_string(&self.lifetime),
-                         self.bounds
-                             .iter()
-                             .map(pprust::lifetime_to_string)
-                             .collect::<Vec<_>>()
-                             .join(" + ")))
-        }
+            format!("{}: {}",
+                    pprust::lifetime_to_string(&self.lifetime),
+                    self.bounds
+                        .iter()
+                        .map(pprust::lifetime_to_string)
+                        .collect::<Vec<_>>()
+                        .join(" + "))
+        };
+
+        wrap_str(result, context.config.max_width, width, offset)
     }
 }
 
@@ -366,7 +372,10 @@ impl Rewrite for ast::TyParamBound {
                 Some(format!("?{}", try_opt!(tref.rewrite(context, budget, offset + 1))))
             }
             ast::TyParamBound::RegionTyParamBound(ref l) => {
-                Some(pprust::lifetime_to_string(l))
+                wrap_str(pprust::lifetime_to_string(l),
+                         context.config.max_width,
+                         width,
+                         offset)
             }
         }
     }
@@ -377,11 +386,10 @@ impl Rewrite for ast::TyParamBounds {
         let strs: Vec<_> = try_opt!(self.iter()
                                         .map(|b| b.rewrite(context, width, offset))
                                         .collect());
-        Some(strs.join(" + "))
+        wrap_str(strs.join(" + "), context.config.max_width, width, offset)
     }
 }
 
-// FIXME: this assumes everything will fit on one line
 impl Rewrite for ast::TyParam {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         let mut result = String::with_capacity(128);
@@ -404,11 +412,10 @@ impl Rewrite for ast::TyParam {
             result.push_str(&rewrite);
         }
 
-        Some(result)
+        wrap_str(result, context.config.max_width, width, offset)
     }
 }
 
-// FIXME: this assumes everything will fit on one line
 impl Rewrite for ast::PolyTraitRef {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         if !self.bound_lifetimes.is_empty() {
@@ -432,12 +439,8 @@ impl Rewrite for ast::PolyTraitRef {
 }
 
 impl Rewrite for ast::Ty {
-    // FIXME doesn't always use width, offset
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match self.node {
-            ast::TyPath(None, ref p) => {
-                p.rewrite(context, width, offset)
-            }
             ast::TyObjectSum(ref ty, ref bounds) => {
                 let ty_str = try_opt!(ty.rewrite(context, width, offset));
                 let overhead = ty_str.len() + 3;
@@ -446,6 +449,14 @@ impl Rewrite for ast::Ty {
                              try_opt!(bounds.rewrite(context,
                                                      try_opt!(width.checked_sub(overhead)),
                                                      offset + overhead))))
+            }
+            ast::TyPtr(ref mt) => {
+                let prefix = match mt.mutbl {
+                    Mutability::MutMutable => "*mut ",
+                    Mutability::MutImmutable => "*const ",
+                };
+
+                rewrite_unary_prefix(context, prefix, &*mt.ty, width, offset)
             }
             ast::TyRptr(ref lifetime, ref mt) => {
                 let mut_str = format_mutability(mt.mutbl);
@@ -470,37 +481,60 @@ impl Rewrite for ast::Ty {
                     }
                 })
             }
+            // FIXME: we drop any comments here, even though it's a silly place to put
+            // comments.
             ast::TyParen(ref ty) => {
                 let budget = try_opt!(width.checked_sub(2));
                 ty.rewrite(context, budget, offset + 1).map(|ty_str| format!("({})", ty_str))
             }
-            ast::TyTup(ref tup_ret) => {
+            ast::TyVec(ref ty) => {
                 let budget = try_opt!(width.checked_sub(2));
+                ty.rewrite(context, budget, offset + 1).map(|ty_str| format!("[{}]", ty_str))
+            }
+            ast::TyTup(ref tup_ret) => {
                 if tup_ret.is_empty() {
-                    Some("()".to_string())
+                    Some("()".to_owned())
                 } else if let [ref item] = &**tup_ret {
+                    let budget = try_opt!(width.checked_sub(3));
                     let inner = try_opt!(item.rewrite(context, budget, offset + 1));
                     let ret = format!("({},)", inner);
                     wrap_str(ret, context.config.max_width, budget, offset + 1)
                 } else {
+                    let budget = try_opt!(width.checked_sub(2));
                     let items = itemize_list(context.codemap,
                                              tup_ret.iter(),
                                              ")",
                                              |item| item.span.lo,
                                              |item| item.span.hi,
                                              |item| item.rewrite(context, budget, offset + 1),
-                                             tup_ret[0].span.lo,
+                                             span_after(self.span, "(", context.codemap),
                                              self.span.hi);
-
 
                     list_helper(items, budget, offset + 1, context.config, ListTactic::Mixed)
                         .map(|s| format!("({})", s))
                 }
             }
-            _ => wrap_str(pprust::ty_to_string(self),
-                          context.config.max_width,
-                          width,
-                          offset),
+            ast::TyPolyTraitRef(ref trait_ref) => trait_ref.rewrite(context, width, offset),
+            ast::TyPath(ref q_self, ref path) => {
+                rewrite_path(context, q_self.as_ref(), path, width, offset)
+            }
+            ast::TyFixedLengthVec(ref ty, ref repeats) => {
+                rewrite_pair(&**ty, &**repeats, "[", "; ", "]", context, width, offset)
+            }
+            ast::TyInfer => {
+                if width >= 1 {
+                    Some("_".to_owned())
+                } else {
+                    None
+                }
+            }
+            ast::TyBareFn(..) => {
+                wrap_str(pprust::ty_to_string(self),
+                         context.config.max_width,
+                         width,
+                         offset)
+            }
+            ast::TyMac(..) | ast::TyTypeof(..) => unreachable!(),
         }
     }
 }
