@@ -92,3 +92,7 @@ fn nested_enum_test() {
         }
     }
 }
+
+   pub  struct  EmtpyWithComment {
+    // FIXME: Implement this struct
+}

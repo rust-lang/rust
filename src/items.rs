@@ -11,9 +11,10 @@
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
 use Indent;
-use utils::{format_mutability, format_visibility, contains_skip, span_after, end_typaram, wrap_str};
-use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic,
-            DefinitiveListTactic, definitive_tactic};
+use utils::{format_mutability, format_visibility, contains_skip, span_after, end_typaram,
+            wrap_str, last_line_width};
+use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
+            DefinitiveListTactic, definitive_tactic, format_item_list};
 use expr::rewrite_assign_rhs;
 use comment::FindUncommented;
 use visitor::FmtVisitor;
@@ -21,7 +22,7 @@ use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, StructLitStyle};
 
 use syntax::{ast, abi};
-use syntax::codemap::{self, Span, BytePos};
+use syntax::codemap::{Span, BytePos, mk_sp};
 use syntax::print::pprust;
 use syntax::parse::token;
 
@@ -133,7 +134,7 @@ impl<'a> FmtVisitor<'a> {
         self.format_missing_with_indent(item.span.lo);
         // Drop semicolon or it will be interpreted as comment.
         // FIXME: this may be a faulty span from libsyntax.
-        let span = codemap::mk_sp(item.span.lo, item.span.hi - BytePos(1));
+        let span = mk_sp(item.span.lo, item.span.hi - BytePos(1));
 
         match item.node {
             ast::ForeignItem_::ForeignItemFn(ref fn_decl, ref generics) => {
@@ -247,7 +248,7 @@ impl<'a> FmtVisitor<'a> {
                                span: Span)
                                -> Option<String> {
         // Drop semicolon or it will be interpreted as comment
-        let span = codemap::mk_sp(span.lo, span.hi - BytePos(1));
+        let span = mk_sp(span.lo, span.hi - BytePos(1));
 
         // FIXME: silly formatting of the `.0`.
         let mut result = try_opt!(self.rewrite_fn_base(indent,
@@ -313,7 +314,7 @@ impl<'a> FmtVisitor<'a> {
 
         // Generics.
         let generics_indent = indent + result.len();
-        let generics_span = codemap::mk_sp(span.lo, span_for_return(&fd.output).lo);
+        let generics_span = mk_sp(span.lo, span_for_return(&fd.output).lo);
         let generics_str = try_opt!(self.rewrite_generics(generics,
                                                           indent,
                                                           generics_indent,
@@ -371,10 +372,8 @@ impl<'a> FmtVisitor<'a> {
                                  .last()
                                  .map(|tp| end_typaram(tp))
                                  .unwrap_or(span.lo);
-        let args_span = codemap::mk_sp(span_after(codemap::mk_sp(args_start, span.hi),
-                                                  "(",
-                                                  self.codemap),
-                                       span_for_return(&fd.output).lo);
+        let args_span = mk_sp(span_after(mk_sp(args_start, span.hi), "(", self.codemap),
+                              span_for_return(&fd.output).lo);
         let arg_str = try_opt!(self.rewrite_args(&fd.inputs,
                                                  explicit_self,
                                                  one_line_budget,
@@ -437,7 +436,7 @@ impl<'a> FmtVisitor<'a> {
             let snippet_lo = fd.output.span().hi;
             if where_clause.predicates.is_empty() {
                 let snippet_hi = span.hi;
-                let snippet = self.snippet(codemap::mk_sp(snippet_lo, snippet_hi));
+                let snippet = self.snippet(mk_sp(snippet_lo, snippet_hi));
                 let snippet = snippet.trim();
                 if !snippet.is_empty() {
                     result.push(' ');
@@ -527,7 +526,7 @@ impl<'a> FmtVisitor<'a> {
             }
 
             let variadic_arg = if variadic {
-                let variadic_span = codemap::mk_sp(args.last().unwrap().ty.span.hi, span.hi);
+                let variadic_span = mk_sp(args.last().unwrap().ty.span.hi, span.hi);
                 let variadic_start = span_after(variadic_span, "...", self.codemap) - BytePos(3);
                 Some(ArgumentKind::Variadic(variadic_start))
             } else {
@@ -666,7 +665,7 @@ impl<'a> FmtVisitor<'a> {
                                                 " {",
                                                 self.block_indent,
                                                 self.block_indent.block_indent(self.config),
-                                                codemap::mk_sp(span.lo, body_start))
+                                                mk_sp(span.lo, body_start))
                                .unwrap();
         self.buffer.push_str(&generics_str);
 
@@ -737,7 +736,7 @@ impl<'a> FmtVisitor<'a> {
     fn format_variant(&self, field: &ast::Variant) -> Option<String> {
         if contains_skip(&field.node.attrs) {
             let lo = field.node.attrs[0].span.lo;
-            let span = codemap::mk_sp(lo, field.span.hi);
+            let span = mk_sp(lo, field.span.hi);
             return Some(self.snippet(span));
         }
 
@@ -753,51 +752,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let variant_body = match *field.node.data {
-            ast::VariantData::Tuple(ref types, _) => {
-                let mut result = field.node.name.to_string();
-                let items = itemize_list(self.codemap,
-                                         types.iter(),
-                                         ")",
-                                         |arg| arg.node.ty.span.lo,
-                                         |arg| arg.node.ty.span.hi,
-                                         |arg| {
-                                             // FIXME silly width, indent
-                                             arg.node
-                                                .ty
-                                                .rewrite(&self.get_context(), 1000, Indent::empty())
-                                         },
-                                         span_after(field.span, "(", self.codemap),
-                                         field.span.hi);
-                let item_vec = items.collect::<Vec<_>>();
-
-                result.push('(');
-
-                let indent = indent + field.node.name.to_string().len() + "(".len();
-
-                let comma_cost = if self.config.enum_trailing_comma {
-                    1
-                } else {
-                    0
-                };
-                let budget = self.config.max_width - indent.width() - comma_cost - 1; // 1 = )
-                let tactic = definitive_tactic(&item_vec, ListTactic::HorizontalVertical, budget);
-
-                let fmt = ListFormatting {
-                    tactic: tactic,
-                    separator: ",",
-                    trailing_separator: SeparatorTactic::Never,
-                    indent: indent,
-                    width: budget,
-                    ends_with_newline: true,
-                    config: self.config,
-                };
-                let list_str = try_opt!(write_list(&item_vec, &fmt));
-
-                result.push_str(&list_str);
-                result.push(')');
-
-                Some(result)
-            }
+            ast::VariantData::Tuple(..) |
             ast::VariantData::Struct(..) => {
                 // FIXME: Should limit the width, as we have a trailing comma
                 self.format_struct("",
@@ -844,19 +799,17 @@ impl<'a> FmtVisitor<'a> {
         let header_str = self.format_header(item_name, ident, vis);
         result.push_str(&header_str);
 
-        let (is_tuple, fields) = match *struct_def {
+        let (fields, body_lo, opener, terminator) = match *struct_def {
             ast::VariantData::Unit(..) => {
                 result.push(';');
                 return Some(result);
             }
-            ast::VariantData::Tuple(ref vec, _) => (true, vec),
-            ast::VariantData::Struct(ref vec, _) => (false, vec),
-        };
-
-        let (opener, terminator) = if is_tuple {
-            ("(", ")")
-        } else {
-            (" {", "}")
+            ast::VariantData::Tuple(ref vec, _) => {
+                (vec, vec[0].span.lo, "(", ")")
+            }
+            ast::VariantData::Struct(ref vec, _) => {
+                (vec, span_after(span, "{", self.codemap), " {", "}")
+            }
         };
 
         let generics_str = match generics {
@@ -865,12 +818,27 @@ impl<'a> FmtVisitor<'a> {
                                               opener,
                                               offset,
                                               offset + header_str.len(),
-                                              codemap::mk_sp(span.lo, fields[0].span.lo)))
+                                              mk_sp(span.lo, body_lo)))
             }
             None => opener.to_owned(),
         };
         result.push_str(&generics_str);
 
+        // FIXME: properly format empty structs and their comments.
+        if fields.is_empty() {
+            result.push_str(&self.snippet(mk_sp(body_lo, span.hi)));
+            return Some(result);
+        }
+
+        let item_indent = if let ast::VariantData::Tuple(..) = *struct_def {
+            self.block_indent + result.len()
+        } else {
+            offset.block_indent(self.config)
+        };
+        // 2 = ");" or ","
+        let item_budget = try_opt!(self.config.max_width.checked_sub(item_indent.width() + 2));
+
+        let context = self.get_context();
         let items = itemize_list(self.codemap,
                                  fields.iter(),
                                  terminator,
@@ -883,55 +851,38 @@ impl<'a> FmtVisitor<'a> {
                                      }
                                  },
                                  |field| field.node.ty.span.hi,
-                                 |field| self.format_field(field),
+                                 |field| field.rewrite(&context, item_budget, item_indent),
                                  span_after(span, opener.trim(), self.codemap),
                                  span.hi);
-
-        // 2 terminators and a semicolon
-        let used_budget = offset.width() + header_str.len() + generics_str.len() + 3;
-
-        // Conservative approximation
-        let single_line_cost = (span.hi - fields[0].span.lo).0;
-        let break_line = !is_tuple || generics_str.contains('\n') ||
-                         single_line_cost as usize + used_budget > self.config.max_width;
-
-        let tactic = if break_line {
-            let indentation = offset.block_indent(self.config).to_string(self.config);
-            result.push('\n');
-            result.push_str(&indentation);
-
-            DefinitiveListTactic::Vertical
-        } else {
-            DefinitiveListTactic::Horizontal
-        };
-
-        // 1 = ,
-        let budget = self.config.max_width - offset.width() + self.config.tab_spaces - 1;
-        let fmt = ListFormatting {
-            tactic: tactic,
-            separator: ",",
-            trailing_separator: self.config.struct_trailing_comma,
-            indent: offset.block_indent(self.config),
-            width: budget,
-            ends_with_newline: true,
-            config: self.config,
-        };
-
-        let list_str = try_opt!(write_list(items, &fmt));
-        result.push_str(&list_str);
-
-        if break_line {
-            result.push('\n');
-            result.push_str(&offset.to_string(self.config));
+        match *struct_def {
+            ast::VariantData::Tuple(..) => {
+                // 2 = );
+                let budget = try_opt!(self.config.max_width.checked_sub(item_indent.width() + 2));
+                let rewrite = try_opt!(format_item_list(items, budget, item_indent, self.config));
+                result.push_str(&rewrite);
+                result.push(')');
+                Some(result)
+            }
+            ast::VariantData::Struct(..) => {
+                // 1 = ,
+                let budget = self.config.max_width - offset.width() + self.config.tab_spaces - 1;
+                let fmt = ListFormatting {
+                    tactic: DefinitiveListTactic::Vertical,
+                    separator: ",",
+                    trailing_separator: self.config.struct_trailing_comma,
+                    indent: item_indent,
+                    width: budget,
+                    ends_with_newline: true,
+                    config: self.config,
+                };
+                Some(format!("{}\n{}{}\n{}}}",
+                             result,
+                             offset.block_indent(self.config).to_string(self.config),
+                             try_opt!(write_list(items, &fmt)),
+                             offset.to_string(self.config)))
+            }
+            _ => unreachable!(),
         }
-
-        result.push_str(terminator);
-
-        if is_tuple {
-            result.push(';');
-        }
-
-        Some(result)
     }
 
     fn format_header(&self, item_name: &str, ident: ast::Ident, vis: ast::Visibility) -> String {
@@ -962,45 +913,6 @@ impl<'a> FmtVisitor<'a> {
         }
 
         Some(result)
-    }
-
-    // Field of a struct
-    fn format_field(&self, field: &ast::StructField) -> Option<String> {
-        if contains_skip(&field.node.attrs) {
-            // FIXME: silly width, indent
-            return wrap_str(self.snippet(codemap::mk_sp(field.node.attrs[0].span.lo,
-                                                        field.span.hi)),
-                            self.config.max_width,
-                            1000,
-                            Indent::empty());
-        }
-
-        let name = match field.node.kind {
-            ast::StructFieldKind::NamedField(ident, _) => Some(ident.to_string()),
-            ast::StructFieldKind::UnnamedField(_) => None,
-        };
-        let vis = match field.node.kind {
-            ast::StructFieldKind::NamedField(_, vis) |
-            ast::StructFieldKind::UnnamedField(vis) => format_visibility(vis),
-        };
-        // FIXME silly width, indent
-        let typ = try_opt!(field.node.ty.rewrite(&self.get_context(), 1000, Indent::empty()));
-
-        let indent = self.block_indent.block_indent(self.config);
-        let mut attr_str = try_opt!(field.node
-                                         .attrs
-                                         .rewrite(&self.get_context(),
-                                                  self.config.max_width - indent.width(),
-                                                  indent));
-        if !attr_str.is_empty() {
-            attr_str.push('\n');
-            attr_str.push_str(&indent.to_string(self.config));
-        }
-
-        Some(match name {
-            Some(name) => format!("{}{}{}: {}", attr_str, vis, name, typ),
-            None => format!("{}{}{}", attr_str, vis, typ),
-        })
     }
 
     fn rewrite_generics(&self,
@@ -1039,7 +951,7 @@ impl<'a> FmtVisitor<'a> {
             } else {
                 l.bounds[l.bounds.len() - 1].span.hi
             };
-            codemap::mk_sp(l.lifetime.span.lo, hi)
+            mk_sp(l.lifetime.span.lo, hi)
         });
         let ty_spans = tys.iter().map(span_for_ty_param);
 
@@ -1119,6 +1031,44 @@ impl<'a> FmtVisitor<'a> {
         } else {
             Some(format!(" where {}", preds_str))
         }
+    }
+}
+
+impl Rewrite for ast::StructField {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+        if contains_skip(&self.node.attrs) {
+            let span = context.snippet(mk_sp(self.node.attrs[0].span.lo, self.span.hi));
+            return wrap_str(span, context.config.max_width, width, offset);
+        }
+
+        let name = match self.node.kind {
+            ast::StructFieldKind::NamedField(ident, _) => Some(ident.to_string()),
+            ast::StructFieldKind::UnnamedField(_) => None,
+        };
+        let vis = match self.node.kind {
+            ast::StructFieldKind::NamedField(_, vis) |
+            ast::StructFieldKind::UnnamedField(vis) => format_visibility(vis),
+        };
+        let indent = context.block_indent.block_indent(context.config);
+        let mut attr_str = try_opt!(self.node
+                                        .attrs
+                                        .rewrite(context,
+                                                 context.config.max_width - indent.width(),
+                                                 indent));
+        if !attr_str.is_empty() {
+            attr_str.push('\n');
+            attr_str.push_str(&indent.to_string(context.config));
+        }
+
+        let result = match name {
+            Some(name) => format!("{}{}{}: ", attr_str, vis, name),
+            None => format!("{}{}", attr_str, vis),
+        };
+
+        let last_line_width = last_line_width(&result);
+        let budget = try_opt!(width.checked_sub(last_line_width));
+        let rewrite = try_opt!(self.node.ty.rewrite(context, budget, offset + last_line_width));
+        Some(result + &rewrite)
     }
 }
 
@@ -1254,7 +1204,7 @@ fn span_for_ty_param(ty: &ast::TyParam) -> Span {
     // Note that ty.span is the span for ty.ident, not the whole item.
     let lo = ty.span.lo;
     if let Some(ref def) = ty.default {
-        return codemap::mk_sp(lo, def.span.hi);
+        return mk_sp(lo, def.span.hi);
     }
     if ty.bounds.is_empty() {
         return ty.span;
@@ -1263,7 +1213,7 @@ fn span_for_ty_param(ty: &ast::TyParam) -> Span {
         ast::TyParamBound::TraitTyParamBound(ref ptr, _) => ptr.span.hi,
         ast::TyParamBound::RegionTyParamBound(ref l) => l.span.hi,
     };
-    codemap::mk_sp(lo, hi)
+    mk_sp(lo, hi)
 }
 
 fn span_for_where_pred(pred: &ast::WherePredicate) -> Span {
