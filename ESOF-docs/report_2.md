@@ -12,6 +12,18 @@
 
 ## RUST - Programming Language
 
+
+Rust is a programming language focused on **stability**, **community** and **clarity**.
+Stability is discussed quite a bit in their [blog] introducing a release channel and stabilization process.
+Community has always been one of Rust's greatest strengths. They've introduced and refined the [RFC process], culminating with [subteams] to manage RFCs in each particular area. 
+Community-wide debate on RFCs was indispensable for delivering a quality 1.0 release. 
+
+All of this refinement prior to 1.0 was in service of reaching clarity on what Rust represents.
+
+[blog]:http://blog.rust-lang.org/2014/10/30/Stability.html
+[RFC process]:https://github.com/rust-lang/rfcs#when-you-need-to-follow-this-process
+[subteams]:https://github.com/rust-lang/rfcs/pull/1068
+
 ### Definition of Requirements
 
 > Software Requirements is a field within software engineering that deals with establishing the needs of stakeholders that are to be solved by software. The IEEE Standard Glossary of Software Engineering Technology defines a software requirement as:
@@ -41,6 +53,11 @@ Rust is being developed by a huge community which counts with numerous ways to c
 [StackOverflow]:http://stackoverflow.com/questions/tagged/rust
 [Reddit]:https://www.reddit.com/r/rust/
 
+> Altogether, Rust is exciting because it is empowering: you can hack without fear.
+And you can do so in contexts you might not have before, dropping down from languages like Ruby or Python, making your first foray into systems programming.
+
+>  _From: [Rust in 2016]_
+[Rust in 2016]: http://blog.rust-lang.org/2015/08/14/Next-year.html
 
 #### Bugs
 
