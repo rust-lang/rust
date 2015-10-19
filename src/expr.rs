@@ -423,7 +423,7 @@ impl Rewrite for ast::Block {
         }
 
         let mut visitor = FmtVisitor::from_codemap(context.codemap, context.config);
-        visitor.block_indent = context.block_indent + context.overflow_indent;
+        visitor.block_indent = context.block_indent;
 
         let prefix = match self.rules {
             ast::BlockCheckMode::UnsafeBlock(..) => {
@@ -751,7 +751,7 @@ fn rewrite_match(context: &RewriteContext,
     let mut result = format!("match {} {{", cond_str);
 
     let nested_context = context.nested_context();
-    let arm_indent = nested_context.block_indent + context.overflow_indent;
+    let arm_indent = nested_context.block_indent;
     let arm_indent_str = arm_indent.to_string(context.config);
 
     let open_brace_pos = span_after(mk_sp(cond.span.hi, arm_start_pos(&arms[0])),
@@ -795,7 +795,7 @@ fn rewrite_match(context: &RewriteContext,
                                                      &arm_indent_str));
     result.push_str(&comment);
     result.push('\n');
-    result.push_str(&(context.block_indent + context.overflow_indent).to_string(context.config));
+    result.push_str(&context.block_indent.to_string(context.config));
     result.push('}');
     Some(result)
 }
@@ -1537,9 +1537,8 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
             // FIXME: we probably should related max_width to width instead of config.max_width
             // where is the 1 coming from anyway?
             let max_width = try_opt!(context.config.max_width.checked_sub(new_offset.width() + 1));
-            let rhs_indent = Indent::new(context.config.tab_spaces, 0);
-            let overflow_context = context.overflow_context(rhs_indent);
-            let rhs = ex.rewrite(&overflow_context, max_width, new_offset);
+            let inner_context = context.nested_context();
+            let rhs = ex.rewrite(&inner_context, max_width, new_offset);
 
             result.push_str(&&try_opt!(rhs));
         }

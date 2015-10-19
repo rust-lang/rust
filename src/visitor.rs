@@ -387,7 +387,6 @@ impl<'a> FmtVisitor<'a> {
             codemap: self.codemap,
             config: self.config,
             block_indent: self.block_indent,
-            overflow_indent: Indent::empty(),
         };
         // 1 = ";"
         match vp.rewrite(&context, self.config.max_width - offset.width() - 1, offset) {
@@ -419,7 +418,6 @@ impl<'a> FmtVisitor<'a> {
             codemap: self.codemap,
             config: self.config,
             block_indent: self.block_indent,
-            overflow_indent: Indent::empty(),
         }
     }
 }

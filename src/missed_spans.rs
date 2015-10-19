@@ -11,7 +11,7 @@
 use visitor::FmtVisitor;
 
 use syntax::codemap::{self, BytePos, Span};
-use comment::{CharClasses, CodeCharKind};
+use comment::{CodeCharKind, CommentCodeSlices, rewrite_comment};
 
 impl<'a> FmtVisitor<'a> {
     // TODO these format_missing methods are ugly. Refactor and add unit tests

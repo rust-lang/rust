@@ -291,6 +291,10 @@ impl<T> Iterator for CharClasses<T> where T: Iterator, T::Item: RichChar {
                     '\n' => CharClassesStatus::Normal,
                     _ => CharClassesStatus::LineComment,
                 };
+                // let code_char_kind = match chr {
+                //     '\n' => CodeCharKind::Normal,
+                //     _ => CodeCharKind::Comment,
+                // };
                 return Some((CodeCharKind::Comment, item));
             }
         };
@@ -298,14 +302,14 @@ impl<T> Iterator for CharClasses<T> where T: Iterator, T::Item: RichChar {
     }
 }
 
-struct CommentCodeSlices<'a> {
+pub struct CommentCodeSlices<'a> {
     slice: &'a str,
     last_slice_type: CodeCharKind,
     last_slice_end: usize,
 }
 
 impl<'a> CommentCodeSlices<'a> {
-    fn new(slice: &'a str) -> CommentCodeSlices<'a> {
+    pub fn new(slice: &'a str) -> CommentCodeSlices<'a> {
         CommentCodeSlices {
             slice: slice,
             last_slice_type: CodeCharKind::Comment,
@@ -315,7 +319,7 @@ impl<'a> CommentCodeSlices<'a> {
 }
 
 impl<'a> Iterator for CommentCodeSlices<'a> {
-    type Item = (CodeCharKind, &'a str);
+    type Item = (CodeCharKind, usize, &'a str);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.last_slice_end == self.slice.len() {
@@ -341,11 +345,13 @@ impl<'a> Iterator for CommentCodeSlices<'a> {
             // This was the last subslice.
             self.last_slice_end = self.slice.len();
 
-            Some((kind, &self.slice[sub_slice_end..]))
+            Some((kind, sub_slice_end, &self.slice[sub_slice_end..]))
         } else {
-            let res = &self.slice[self.last_slice_end..sub_slice_end];
+            let res = (kind,
+                       self.last_slice_end,
+                       &self.slice[self.last_slice_end..sub_slice_end]);
             self.last_slice_end = sub_slice_end;
-            Some((kind, res))
+            Some(res)
         }
     }
 }
@@ -362,9 +368,10 @@ mod test {
 
         let mut iter = CommentCodeSlices::new(input);
 
-        assert_eq!((CodeCharKind::Normal, "code(); "), iter.next().unwrap());
-        assert_eq!((CodeCharKind::Comment, "/* test */"), iter.next().unwrap());
-        assert_eq!((CodeCharKind::Normal, " 1 + 1"), iter.next().unwrap());
+        assert_eq!((CodeCharKind::Normal, 0, "code(); "), iter.next().unwrap());
+        assert_eq!((CodeCharKind::Comment, 8, "/* test */"),
+                   iter.next().unwrap());
+        assert_eq!((CodeCharKind::Normal, 18, " 1 + 1"), iter.next().unwrap());
         assert_eq!(None, iter.next());
     }
 
