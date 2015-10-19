@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "dylib"]
+#![crate_type = "staticlib"]
 
 extern "C" {
     fn this_symbol_not_defined();
 }
 
+#[no_mangle]
 pub extern "C" fn foo() {
     unsafe { this_symbol_not_defined(); }
 }

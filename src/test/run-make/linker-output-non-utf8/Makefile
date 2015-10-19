@@ -8,5 +8,5 @@ bad_dir := $(TMPDIR)/zzz$$'\xff'
 all:
 	$(RUSTC) library.rs
 	mkdir $(bad_dir)
-	mv $(call DYLIB,library) $(bad_dir)
+	mv $(call STATICLIB,library) $(bad_dir)
 	LIBRARY_PATH=$(bad_dir) $(RUSTC) exec.rs 2>&1 | grep this_symbol_not_defined
