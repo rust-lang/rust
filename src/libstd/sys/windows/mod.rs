@@ -51,6 +51,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::ERROR_ALREADY_EXISTS => ErrorKind::AlreadyExists,
         libc::ERROR_BROKEN_PIPE => ErrorKind::BrokenPipe,
         libc::ERROR_FILE_NOT_FOUND => ErrorKind::NotFound,
+        c::ERROR_PATH_NOT_FOUND => ErrorKind::NotFound,
         libc::ERROR_NO_DATA => ErrorKind::BrokenPipe,
         libc::ERROR_OPERATION_ABORTED => ErrorKind::TimedOut,
 
