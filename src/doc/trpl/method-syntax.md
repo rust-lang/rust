@@ -55,7 +55,7 @@ kinds of things `foo` could be: `self` if it’s just a value on the stack,
 `&self` if it’s a reference, and `&mut self` if it’s a mutable reference.
 Because we took the `&self` parameter to `area`, we can use it just like any
 other parameter. Because we know it’s a `Circle`, we can access the `radius`
-just like we would with any other `struct`. 
+just like we would with any other `struct`.
 
 We should default to using `&self`, as you should prefer borrowing over taking
 ownership, as well as taking immutable references over mutable ones. Here’s an

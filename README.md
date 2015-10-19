@@ -98,7 +98,7 @@ Building the documentation requires building the compiler, so the above
 details will apply. Once you have the compiler built, you can
 
 ```sh
-$ make docs NO_REBUILD=1 
+$ make docs NO_REBUILD=1
 ```
 
 To make sure you don’t re-build the compiler because you made a change
