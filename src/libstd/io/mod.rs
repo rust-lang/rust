@@ -20,11 +20,11 @@
 //!
 //! # Read and Write
 //!
-//! Because they are traits, they're implemented by a number of other types,
-//! and you can implement them for your types too. As such, you'll see a
-//! few different types of I/O throughout the documentation in this module:
-//! `File`s, `TcpStream`s, and sometimes even `Vec<T>`s. For example, `Read`
-//! adds a `read()` method, which we can use on `File`s:
+//! Because they are traits, `Read` and `Write` are implemented by a number
+//! of other types, and you can implement them for your types too. As such,
+//! you'll see a few different types of I/O throughout the documentation in
+//! this module: `File`s, `TcpStream`s, and sometimes even `Vec<T>`s. For
+//! example, `Read` adds a `read()` method, which we can use on `File`s:
 //!
 //! ```
 //! use std::io;
@@ -111,7 +111,7 @@
 //! # }
 //! ```
 //!
-//! `BufWriter` doesn't add any new ways of writing, it just buffers every call
+//! `BufWriter` doesn't add any new ways of writing; it just buffers every call
 //! to [`write()`][write]:
 //!
 //! ```
@@ -165,7 +165,7 @@
 //! # }
 //! ```
 //!
-//! Of course, using `io::stdout()` directly is less comon than something like
+//! Of course, using `io::stdout()` directly is less common than something like
 //! `println!`.
 //!
 //! ## Iterator types

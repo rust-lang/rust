@@ -7,12 +7,12 @@ modification, are permitted provided that the following conditions are
 met:
 
     (1) Redistributions of source code must retain the above copyright
-    notice, this list of conditions and the following disclaimer. 
+    notice, this list of conditions and the following disclaimer.
 
     (2) Redistributions in binary form must reproduce the above copyright
     notice, this list of conditions and the following disclaimer in
     the documentation and/or other materials provided with the
-    distribution.  
+    distribution.
 
     (3) The name of the author may not be used to
     endorse or promote products derived from this software without
@@ -1246,7 +1246,7 @@ add_unit_ranges (struct backtrace_state *state, uintptr_t base_address,
 
 static int
 find_address_ranges (struct backtrace_state *state, uintptr_t base_address,
-		     struct dwarf_buf *unit_buf, 
+		     struct dwarf_buf *unit_buf,
 		     const unsigned char *dwarf_str, size_t dwarf_str_size,
 		     const unsigned char *dwarf_ranges,
 		     size_t dwarf_ranges_size,

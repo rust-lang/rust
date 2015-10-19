@@ -42,7 +42,7 @@ Some examples of unsafe functions:
 * `slice::get_unchecked` will perform unchecked indexing, allowing memory
   safety to be freely violated.
 * every raw pointer to sized type has intrinsic `offset` method that invokes
-  Undefined Behaviour if it is not "in bounds" as defined by LLVM.
+  Undefined Behavior if it is not "in bounds" as defined by LLVM.
 * `mem::transmute` reinterprets some value as having the given type,
   bypassing type safety in arbitrary ways. (see [conversions] for details)
 * All FFI functions are `unsafe` because they can do arbitrary things.
