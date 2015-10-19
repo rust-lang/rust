@@ -233,7 +233,7 @@ So when we add the curly braces:
 ```rust
 let mut x = 5;
 
-{                   
+{
     let y = &mut x; // -+ &mut borrow starts here
     *y += 1;        //  |
 }                   // -+ ... and ends here
@@ -306,7 +306,7 @@ which was invalid. For example:
 
 ```rust,ignore
 let y: &i32;
-{ 
+{
     let x = 5;
     y = &x;
 }
@@ -323,7 +323,7 @@ error: `x` does not live long enough
 note: reference must be valid for the block suffix following statement 0 at
 2:16...
 let y: &i32;
-{ 
+{
     let x = 5;
     y = &x;
 }
