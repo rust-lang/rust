@@ -219,6 +219,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             }
             ast::Item_::ItemStatic(ref ty, mutability, ref expr) => {
                 let rewrite = rewrite_static("static",
+                                             item.vis,
                                              item.ident,
                                              ty,
                                              mutability,
@@ -228,6 +229,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             }
             ast::Item_::ItemConst(ref ty, ref expr) => {
                 let rewrite = rewrite_static("const",
+                                             item.vis,
                                              item.ident,
                                              ty,
                                              ast::Mutability::MutImmutable,

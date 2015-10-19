@@ -11,3 +11,7 @@ static boolnames: &'static [&'static str] = &["bw", "am", "xsb", "xhp", "xenl", 
 
 static mut name: SomeType =
     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+
+pub static count: u8 = 10;
+
+pub const test: &Type = &val;
