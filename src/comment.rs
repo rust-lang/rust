@@ -81,11 +81,11 @@ pub fn rewrite_comment(orig: &str,
             let rewrite = try_opt!(rewrite_string(line, &fmt));
             result.push_str(&rewrite);
         } else {
-            if line.len() == 0 {
-                result.pop(); // Remove space if this is an empty comment.
-            } else {
-                result.push_str(line);
+            if line.len() == 0 || line.starts_with('!') {
+                // Remove space if this is an empty comment or a doc comment.
+                result.pop();
             }
+            result.push_str(line);
         }
 
         first = false;
@@ -195,17 +195,17 @@ enum CharClassesStatus {
     LitCharEscape,
     // The u32 is the nesting deepness of the comment
     BlockComment(u32),
-    // Status when the '/' has been consumed, but not yet the '*', deepness is the new deepness
-    // (after the comment opening).
+    // Status when the '/' has been consumed, but not yet the '*', deepness is
+    // the new deepness (after the comment opening).
     BlockCommentOpening(u32),
-    // Status when the '*' has been consumed, but not yet the '/', deepness is the new deepness
-    // (after the comment closing).
+    // Status when the '*' has been consumed, but not yet the '/', deepness is
+    // the new deepness (after the comment closing).
     BlockCommentClosing(u32),
     LineComment,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
-enum CodeCharKind {
+pub enum CodeCharKind {
     Normal,
     Comment,
 }
@@ -298,10 +298,136 @@ impl<T> Iterator for CharClasses<T> where T: Iterator, T::Item: RichChar {
     }
 }
 
+/// Iterator over an alternating sequence of functional and commented parts of
+/// a string. The first item is always a, possibly zero length, subslice of
+/// functional text. Line style comments contain their ending newlines.
+pub struct CommentCodeSlices<'a> {
+    slice: &'a str,
+    last_slice_kind: CodeCharKind,
+    last_slice_end: usize,
+}
+
+impl<'a> CommentCodeSlices<'a> {
+    pub fn new(slice: &'a str) -> CommentCodeSlices<'a> {
+        CommentCodeSlices {
+            slice: slice,
+            last_slice_kind: CodeCharKind::Comment,
+            last_slice_end: 0,
+        }
+    }
+}
+
+impl<'a> Iterator for CommentCodeSlices<'a> {
+    type Item = (CodeCharKind, usize, &'a str);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.last_slice_end == self.slice.len() {
+            return None;
+        }
+
+        let mut sub_slice_end = self.last_slice_end;
+        let mut first_whitespace = None;
+        let subslice = &self.slice[self.last_slice_end..];
+        let mut iter = CharClasses::new(subslice.char_indices());
+
+        for (kind, (i, c)) in &mut iter {
+            let is_comment_connector = self.last_slice_kind == CodeCharKind::Normal &&
+                                       &subslice[..2] == "//" &&
+                                       [' ', '\t'].contains(&c);
+
+            if is_comment_connector && first_whitespace.is_none() {
+                first_whitespace = Some(i);
+            }
+
+            if kind == self.last_slice_kind && !is_comment_connector {
+                let last_index = match first_whitespace {
+                    Some(j) => j,
+                    None => i,
+                };
+                sub_slice_end = self.last_slice_end + last_index;
+                break;
+            }
+
+            if !is_comment_connector {
+                first_whitespace = None;
+            }
+        }
+
+        if let (None, true) = (iter.next(), sub_slice_end == self.last_slice_end) {
+            // This was the last subslice.
+            sub_slice_end = match first_whitespace {
+                Some(i) => self.last_slice_end + i,
+                None => self.slice.len(),
+            };
+        }
+
+        let kind = match self.last_slice_kind {
+            CodeCharKind::Comment => CodeCharKind::Normal,
+            CodeCharKind::Normal => CodeCharKind::Comment,
+        };
+        let res = (kind,
+                   self.last_slice_end,
+                   &self.slice[self.last_slice_end..sub_slice_end]);
+        self.last_slice_end = sub_slice_end;
+        self.last_slice_kind = kind;
+
+        Some(res)
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::{CharClasses, CodeCharKind, contains_comment, rewrite_comment, FindUncommented};
+    use super::{CharClasses, CodeCharKind, contains_comment, rewrite_comment, FindUncommented,
+                CommentCodeSlices};
     use Indent;
+
+    #[test]
+    fn char_classes() {
+        let mut iter = CharClasses::new("//\n\n".chars());
+
+        assert_eq!((CodeCharKind::Comment, '/'), iter.next().unwrap());
+        assert_eq!((CodeCharKind::Comment, '/'), iter.next().unwrap());
+        assert_eq!((CodeCharKind::Comment, '\n'), iter.next().unwrap());
+        assert_eq!((CodeCharKind::Normal, '\n'), iter.next().unwrap());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn comment_code_slices() {
+        let input = "code(); /* test */ 1 + 1";
+        let mut iter = CommentCodeSlices::new(input);
+
+        assert_eq!((CodeCharKind::Normal, 0, "code(); "), iter.next().unwrap());
+        assert_eq!((CodeCharKind::Comment, 8, "/* test */"),
+                   iter.next().unwrap());
+        assert_eq!((CodeCharKind::Normal, 18, " 1 + 1"), iter.next().unwrap());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn comment_code_slices_two() {
+        let input = "// comment\n    test();";
+        let mut iter = CommentCodeSlices::new(input);
+
+        assert_eq!((CodeCharKind::Normal, 0, ""), iter.next().unwrap());
+        assert_eq!((CodeCharKind::Comment, 0, "// comment\n"),
+                   iter.next().unwrap());
+        assert_eq!((CodeCharKind::Normal, 11, "    test();"),
+                   iter.next().unwrap());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn comment_code_slices_three() {
+        let input = "1 // comment\n    // comment2\n\n";
+        let mut iter = CommentCodeSlices::new(input);
+
+        assert_eq!((CodeCharKind::Normal, 0, "1 "), iter.next().unwrap());
+        assert_eq!((CodeCharKind::Comment, 2, "// comment\n    // comment2\n"),
+                   iter.next().unwrap());
+        assert_eq!((CodeCharKind::Normal, 29, "\n"), iter.next().unwrap());
+        assert_eq!(None, iter.next());
+    }
 
     #[test]
     #[rustfmt_skip]
@@ -362,7 +488,6 @@ mod test {
     #[test]
     fn test_find_uncommented() {
         fn check(haystack: &str, needle: &str, expected: Option<usize>) {
-            println!("haystack {:?}, needle: {:?}", haystack, needle);
             assert_eq!(expected, haystack.find_uncommented(needle));
         }
 

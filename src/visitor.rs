@@ -101,11 +101,22 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             }
         }
 
-        self.block_indent = self.block_indent.block_unindent(self.config);
         // TODO: we should compress any newlines here to just one
         self.format_missing_with_indent(b.span.hi - brace_compensation);
+        // FIXME: this is a terrible hack to indent the comments between the last
+        // item in the block and the closing brace to the block's level.
+        // The closing brace itself, however, should be indented at a shallower
+        // level.
+        let total_len = self.buffer.len;
+        let chars_too_many = if self.config.hard_tabs {
+            1
+        } else {
+            self.config.tab_spaces
+        };
+        self.buffer.truncate(total_len - chars_too_many);
         self.buffer.push_str("}");
         self.last_pos = b.span.hi;
+        self.block_indent = self.block_indent.block_unindent(self.config);
     }
 
     // Note that this only gets called for function definitions. Required methods
@@ -177,6 +188,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             // FIXME(#78): format traits and impl definitions.
             ast::Item_::ItemImpl(..) |
             ast::Item_::ItemTrait(..) => {
+                self.format_missing_with_indent(item.span.lo);
                 self.block_indent = self.block_indent.block_indent(self.config);
                 visit::walk_item(self, item);
                 self.block_indent = self.block_indent.block_unindent(self.config);
@@ -215,6 +227,9 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             }
             ast::Item_::ItemMac(..) => {
                 self.format_missing_with_indent(item.span.lo);
+                let snippet = self.snippet(item.span);
+                self.buffer.push_str(&snippet);
+                self.last_pos = item.span.hi;
                 // FIXME: we cannot format these yet, because of a bad span.
                 // See rust lang issue #28424.
                 // visit::walk_item(self, item);
@@ -387,7 +402,6 @@ impl<'a> FmtVisitor<'a> {
             codemap: self.codemap,
             config: self.config,
             block_indent: self.block_indent,
-            overflow_indent: Indent::empty(),
         };
         // 1 = ";"
         match vp.rewrite(&context, self.config.max_width - offset.width() - 1, offset) {
@@ -419,7 +433,6 @@ impl<'a> FmtVisitor<'a> {
             codemap: self.codemap,
             config: self.config,
             block_indent: self.block_indent,
-            overflow_indent: Indent::empty(),
         }
     }
 }

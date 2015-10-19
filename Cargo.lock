@@ -7,7 +7,7 @@ dependencies = [
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "strings 0.0.1 (git+https://github.com/nrc/strings.rs.git)",
  "term 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
- "toml 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "toml 0.1.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-segmentation 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -93,7 +93,7 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.1.22"
+version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",

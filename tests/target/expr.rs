@@ -142,7 +142,8 @@ fn baz() {
 fn qux() {
     {}
     // FIXME this one could be done better.
-    { /* a block with a comment */
+    {
+        // a block with a comment
     }
     {
 

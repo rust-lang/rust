@@ -22,7 +22,8 @@ mod doc;
 mod other;
 
 
-// sfdgfffffffffffffffffffffffffffffffffffffffffffffffffffffff ffffffffffffffffffffffffffffffffffffffffff
+// sfdgfffffffffffffffffffffffffffffffffffffffffffffffffffffff
+// ffffffffffffffffffffffffffffffffffffffffff
 
 fn foo(a: isize, b: u32 /* blah blah */, c: f64) {
 
