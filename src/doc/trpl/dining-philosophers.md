@@ -512,6 +512,7 @@ impl Philosopher {
 
     fn eat(&self, table: &Table) {
         let _left = table.forks[self.left].lock().unwrap();
+        thread::sleep_ms(150);
         let _right = table.forks[self.right].lock().unwrap();
 
         println!("{} is eating.", self.name);
@@ -597,6 +598,7 @@ We now need to construct those `left` and `right` values, so we add them to
 ```rust,ignore
 fn eat(&self, table: &Table) {
     let _left = table.forks[self.left].lock().unwrap();
+    thread::sleep_ms(150);
     let _right = table.forks[self.right].lock().unwrap();
 
     println!("{} is eating.", self.name);
@@ -607,11 +609,14 @@ fn eat(&self, table: &Table) {
 }
 ```
 
-We have two new lines. We’ve also added an argument, `table`. We access the
+We have three new lines. We’ve added an argument, `table`. We access the
 `Table`’s list of forks, and then use `self.left` and `self.right` to access
 the fork at that particular index. That gives us access to the `Mutex` at that
 index, and we call `lock()` on it. If the mutex is currently being accessed by
-someone else, we’ll block until it becomes available.
+someone else, we’ll block until it becomes available. We have also a call to
+`thread::sleep_ms` between the moment first fork is picked and the moment the
+second forked is picked, as the process  of picking up the fork is not
+immediate.
 
 The call to `lock()` might fail, and if it does, we want to crash. In this
 case, the error that could happen is that the mutex is [‘poisoned’][poison],
@@ -660,7 +665,9 @@ We need to pass in our `left` and `right` values to the constructors for our
 you look at the pattern, it’s all consistent until the very end. Monsieur
 Foucault should have `4, 0` as arguments, but instead, has `0, 4`. This is what
 prevents deadlock, actually: one of our philosophers is left handed! This is
-one way to solve the problem, and in my opinion, it’s the simplest.
+one way to solve the problem, and in my opinion, it’s the simplest. If you
+change the order of the parameters, you will be able to observe the deadlock
+taking place.
 
 ```rust,ignore
 let handles: Vec<_> = philosophers.into_iter().map(|p| {
