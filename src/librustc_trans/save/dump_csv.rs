@@ -66,7 +66,7 @@ pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
     save_ctxt: SaveContext<'l, 'tcx>,
     sess: &'l Session,
     tcx: &'l ty::ctxt<'tcx>,
-    analysis: &'l ty::CrateAnalysis,
+    analysis: &'l ty::CrateAnalysis<'l>,
 
     span: SpanUtils<'l>,
     fmt: FmtStrs<'l, 'tcx>,
@@ -77,7 +77,7 @@ pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
 impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     pub fn new(tcx: &'l ty::ctxt<'tcx>,
                lcx: &'l LoweringContext<'l>,
-               analysis: &'l ty::CrateAnalysis,
+               analysis: &'l ty::CrateAnalysis<'l>,
                output_file: Box<File>)
                -> DumpCsvVisitor<'l, 'tcx> {
         let span_utils = SpanUtils::new(&tcx.sess);

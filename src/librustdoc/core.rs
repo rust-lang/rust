@@ -143,7 +143,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     driver::phase_3_run_analysis_passes(&sess,
                                         hir_map,
                                         &arenas,
-                                        name,
+                                        &name,
                                         resolve::MakeGlobMap::No,
                                         |tcx, analysis| {
         let ty::CrateAnalysis { exported_items, public_items, .. } = analysis;

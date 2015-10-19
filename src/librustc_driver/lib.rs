@@ -399,6 +399,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                             state.lcx.unwrap(),
                                             state.krate.unwrap(),
                                             state.analysis.unwrap(),
+                                            state.crate_name.unwrap(),
                                             state.out_dir));
             };
             control.make_glob_map = resolve::MakeGlobMap::Yes;
