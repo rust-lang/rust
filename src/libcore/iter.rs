@@ -1266,14 +1266,18 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return Ordering::Equal,
-                (None, _   ) => return Ordering::Less,
-                (_   , None) => return Ordering::Greater,
-                (Some(x), Some(y)) => match x.cmp(&y) {
-                    Ordering::Equal => (),
-                    non_eq => return non_eq,
-                },
+            let (l, r) = (self.next(), other.next());
+            return if l.is_none() && r.is_none() {
+                Ordering::Equal
+            } else if l.is_none() {
+                Ordering::Less
+            } else if r.is_none() {
+                Ordering::Greater
+            } else {
+                match Ord::cmp(&l.unwrap(), &r.unwrap()) {
+                    Ordering::Equal => continue,
+                    non_eq => non_eq,
+                }
             }
         }
     }
@@ -1289,14 +1293,18 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return Some(Ordering::Equal),
-                (None, _   ) => return Some(Ordering::Less),
-                (_   , None) => return Some(Ordering::Greater),
-                (Some(x), Some(y)) => match x.partial_cmp(&y) {
-                    Some(Ordering::Equal) => (),
-                    non_eq => return non_eq,
-                },
+            let (l, r) = (self.next(), other.next());
+            return if l.is_none() && r.is_none() {
+                Some(Ordering::Equal)
+            } else if l.is_none() {
+                Some(Ordering::Less)
+            } else if r.is_none() {
+                Some(Ordering::Greater)
+            } else {
+                match PartialOrd::partial_cmp(&l.unwrap(), &r.unwrap()) {
+                    Some(Ordering::Equal) => continue,
+                    non_eq => non_eq,
+                }
             }
         }
     }
@@ -1312,10 +1320,15 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return true,
-                (None, _) | (_, None) => return false,
-                (Some(x), Some(y)) => if x != y { return false },
+            let (l, r) = (self.next(), other.next());
+            return if l.is_none() && r.is_none() {
+                true
+            } else if l.is_none() || r.is_none() {
+                false
+            } else if PartialEq::ne(&l.unwrap(), &r.unwrap()) {
+                false
+            } else {
+                continue
             }
         }
     }
@@ -1331,10 +1344,15 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return false,
-                (None, _) | (_, None) => return true,
-                (Some(x), Some(y)) => if x.ne(&y) { return true },
+            let (l, r) = (self.next(), other.next());
+            return if l.is_none() && r.is_none() {
+                false
+            } else if l.is_none() || r.is_none() {
+                true
+            } else if PartialEq::ne(&l.unwrap(), &r.unwrap()) {
+                true
+            } else {
+                continue
             }
         }
     }
@@ -1350,18 +1368,18 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return false,
-                (None, _   ) => return true,
-                (_   , None) => return false,
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return true,
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return false,
-                        None => return false,
-                    }
-                },
+            let (l, r) = (self.next(), other.next());
+            return if l.is_none() && r.is_none() {
+                false
+            } else if l.is_none() || r.is_none() {
+                l.is_none()
+            } else {
+                match PartialOrd::partial_cmp(&l.unwrap(), &r.unwrap()) {
+                    Some(Ordering::Less) => true,
+                    Some(Ordering::Equal) => continue,
+                    Some(Ordering::Greater) => false,
+                    None => false,
+                }
             }
         }
     }
@@ -1377,18 +1395,18 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return true,
-                (None, _   ) => return true,
-                (_   , None) => return false,
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return true,
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return false,
-                        None => return false,
-                    }
-                },
+            let (l, r) = (self.next(), other.next());
+            return if l.is_none() && r.is_none() {
+                true
+            } else if l.is_none() || r.is_none() {
+                l.is_none()
+            } else {
+                match PartialOrd::partial_cmp(&l.unwrap(), &r.unwrap()) {
+                    Some(Ordering::Less) => true,
+                    Some(Ordering::Equal) => continue,
+                    Some(Ordering::Greater) => false,
+                    None => false,
+                }
             }
         }
     }
@@ -1404,17 +1422,17 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return false,
-                (None, _   ) => return false,
-                (_   , None) => return true,
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return false,
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return true,
-                        None => return false,
-                    }
+            let (l, r) = (self.next(), other.next());
+            return if l.is_none() && r.is_none() {
+                false
+            } else if l.is_none() || r.is_none() {
+                r.is_none()
+            } else {
+                match PartialOrd::partial_cmp(&l.unwrap(), &r.unwrap()) {
+                    Some(Ordering::Less) => false,
+                    Some(Ordering::Equal) => continue,
+                    Some(Ordering::Greater) => true,
+                    None => false,
                 }
             }
         }
@@ -1431,18 +1449,18 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return true,
-                (None, _   ) => return false,
-                (_   , None) => return true,
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return false,
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return true,
-                        None => return false,
-                    }
-                },
+            let (l, r) = (self.next(), other.next());
+            return if l.is_none() && r.is_none() {
+                true
+            } else if l.is_none() || r.is_none() {
+                r.is_none()
+            } else {
+                match PartialOrd::partial_cmp(&l.unwrap(), &r.unwrap()) {
+                    Some(Ordering::Less) => false,
+                    Some(Ordering::Equal) => continue,
+                    Some(Ordering::Greater) => true,
+                    None => false,
+                }
             }
         }
     }
