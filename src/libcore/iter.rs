@@ -3135,7 +3135,7 @@ impl<T> Default for Empty<T> {
 
 /// Creates an iterator that yields nothing.
 ///
-/// # Exampes
+/// # Examples
 ///
 /// Basic usage:
 ///
