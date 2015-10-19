@@ -346,13 +346,52 @@ context of the language.
 # Drawbacks
 [drawbacks]: #drawbacks
 
+## Ugliness
+
 This attribute, like the original `unsafe_destructor_blind_to_params`
 UGEH attribute, is ugly.
+
+## Unchecked assertions boo
 
 It would be nicer if to actually change the language in a way where we
 could check the assertions being made by the programmer, rather than
 trusting them. (pnkfelix has some thoughts on this, which are mostly
 reflected in what he wrote in the [RFC 1238 alternatives][].)
+
+## Attributes lack hygiene
+
+As noted by arielb1, putting type parameter identifiers into attributes
+is not likely to play well with macro hygiene.
+
+Here is a concrete example:
+
+```rust
+struct Yell2<A:Debug,B:Debug>(A, B);
+
+macro_rules! make_yell2a {
+    ($A:ident, $B:ident) => {
+        impl<$A:Debug,$B:Debug> Drop for Yell2<$A,$B> {
+            #[unsafe_destructor_blind_to(???)]  // <----
+            fn drop(&mut self) {
+                println!("Yell1(_, {:?})", self.1);
+            }
+        }
+    }
+}
+
+make_yell2a!(X, Y);
+```
+
+Here is the issue: In the above, what does one put in for the `???` to
+say that we are blind to the first type parameter to `Yell2`?
+`#[unsafe_destructor_blind_to(A)` would be nonsense, becauase in the instantiation of the macro, `$A` will be mapped to the identifier `X`.  so perhaps we should write it is blind to `X` -- but to me one big point of macro hygiene is that a macro definition should not have to build in knowledge of the identifiers chosen at the usage site, and this is the opposite of that.
+
+(I don't think `#[unsafe_destructor_blind_to($A)` works, because our attribute system operates at the same meta-level that macros operate at , but I would be happy to be proven wrong.)
+
+----
+
+Despite my somewhat dire attitude above, I don't think this is a significant problem in the short term. This sort of macro is probably rare, and the combination of this macro with UGEH is doubly so. You cannot define a destructor multiple times for the same type, so it seems weird to me to abstract this code construction at this particular level.
+
 
 [RFC 1238 alternatives]: https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md#continue-supporting-parametricity
 
