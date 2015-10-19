@@ -287,8 +287,8 @@ impl<'a> FmtVisitor<'a> {
                        has_body: bool)
                        -> Option<(String, bool)> {
         let mut force_new_line_for_brace = false;
-        // FIXME we'll lose any comments in between parts of the function decl, but anyone
-        // who comments there probably deserves what they get.
+        // FIXME we'll lose any comments in between parts of the function decl, but
+        // anyone who comments there probably deserves what they get.
 
         let where_clause = &generics.where_clause;
 
@@ -1008,7 +1008,8 @@ impl<'a> FmtVisitor<'a> {
                                  span_start,
                                  span_end);
         let item_vec = items.collect::<Vec<_>>();
-        // FIXME: we don't need to collect here if the where_layout isnt horizontalVertical
+        // FIXME: we don't need to collect here if the where_layout isnt
+        // HorizontalVertical.
         let tactic = definitive_tactic(&item_vec, self.config.where_layout, budget);
 
         let fmt = ListFormatting {

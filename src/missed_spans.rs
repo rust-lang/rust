@@ -10,7 +10,7 @@
 
 use visitor::FmtVisitor;
 
-use syntax::codemap::{self, BytePos, Span};
+use syntax::codemap::{self, BytePos, Span, Pos};
 use comment::{CodeCharKind, CommentCodeSlices, rewrite_comment};
 
 impl<'a> FmtVisitor<'a> {
@@ -55,22 +55,116 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = end;
         let span = codemap::mk_sp(start, end);
 
-        self.write_snippet(&snippet, &process_last_snippet);
+        self.write_snippet(span, &process_last_snippet);
     }
 
-    fn write_snippet<F: Fn(&mut FmtVisitor, &str, &str)>(&mut self,
-                                                         snippet: &str,
-                                                         process_last_snippet: F) {
-        let mut lines: Vec<&str> = snippet.lines().collect();
-        let last_snippet = if snippet.ends_with("\n") {
-            ""
-        } else {
-            lines.pop().unwrap()
-        };
-        for line in lines.iter() {
-            self.buffer.push_str(line.trim_right());
-            self.buffer.push_str("\n");
+    fn write_snippet<F>(&mut self, span: Span, process_last_snippet: F)
+        where F: Fn(&mut FmtVisitor, &str, &str)
+    {
+        // Get a snippet from the file start to the span's hi without allocating.
+        // We need it to determine what precedes the current comment. If the comment
+        // follows code on the same line, we won't touch it.
+        let big_span_lo = self.codemap.lookup_char_pos(span.lo).file.start_pos;
+        let local_begin = self.codemap.lookup_byte_offset(big_span_lo);
+        let local_end = self.codemap.lookup_byte_offset(span.hi);
+        let start_index = local_begin.pos.to_usize();
+        let end_index = local_end.pos.to_usize();
+        let big_snippet = &local_begin.fm.src.as_ref().unwrap()[start_index..end_index];
+
+        let big_diff = (span.lo - big_span_lo).to_usize();
+        let snippet = self.snippet(span);
+
+        self.write_snippet_inner(big_snippet, big_diff, &snippet, process_last_snippet);
+    }
+
+    fn write_snippet_inner<F>(&mut self,
+                              big_snippet: &str,
+                              big_diff: usize,
+                              snippet: &str,
+                              process_last_snippet: F)
+        where F: Fn(&mut FmtVisitor, &str, &str)
+    {
+        // Trim whitespace from the right hand side of each line.
+        // Annoyingly, the library functions for splitting by lines etc. are not
+        // quite right, so we must do it ourselves.
+        let mut line_start = 0;
+        let mut last_wspace = None;
+        let mut rewrite_next_comment = true;
+
+        for (kind, offset, subslice) in CommentCodeSlices::new(snippet) {
+            if let CodeCharKind::Comment = kind {
+                let last_char = big_snippet[..(offset + big_diff)]
+                                    .chars()
+                                    .rev()
+                                    .skip_while(|rev_c| [' ', '\t'].contains(&rev_c))
+                                    .next();
+
+                let fix_indent = last_char.map(|rev_c| ['{', '\n'].contains(&rev_c))
+                                          .unwrap_or(true);
+
+                if rewrite_next_comment && fix_indent {
+                    if let Some('{') = last_char {
+                        self.buffer.push_str("\n");
+                    }
+
+                    let comment_width = ::std::cmp::min(self.config.ideal_width,
+                                                        self.config.max_width -
+                                                        self.block_indent.width());
+
+                    self.buffer.push_str(&self.block_indent.to_string(self.config));
+                    self.buffer.push_str(&rewrite_comment(subslice,
+                                                          false,
+                                                          comment_width,
+                                                          self.block_indent,
+                                                          self.config)
+                                              .unwrap());
+
+                    last_wspace = None;
+                    line_start = offset + subslice.len();
+
+                    if let Some('/') = subslice.chars().skip(1).next() {
+                        self.buffer.push_str("\n");
+                    } else if line_start < snippet.len() {
+                        let x = (&snippet[line_start..]).chars().next().unwrap() != '\n';
+
+                        if x {
+                            self.buffer.push_str("\n");
+                        }
+                    }
+
+                    continue;
+                } else {
+                    rewrite_next_comment = false;
+                }
+            }
+
+            for (mut i, c) in subslice.char_indices() {
+                i += offset;
+
+                if c == '\n' {
+                    if let Some(lw) = last_wspace {
+                        self.buffer.push_str(&snippet[line_start..lw]);
+                        self.buffer.push_str("\n");
+                    } else {
+                        self.buffer.push_str(&snippet[line_start..i + 1]);
+                    }
+
+                    line_start = i + 1;
+                    last_wspace = None;
+                    rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;
+                } else {
+                    if c.is_whitespace() {
+                        if last_wspace.is_none() {
+                            last_wspace = Some(i);
+                        }
+                    } else {
+                        rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;
+                        last_wspace = None;
+                    }
+                }
+            }
         }
-        process_last_snippet(self, &last_snippet, snippet);
+
+        process_last_snippet(self, &snippet[line_start..], &snippet);
     }
 }

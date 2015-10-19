@@ -471,10 +471,6 @@ impl Rewrite for ast::Block {
 
         visitor.visit_block(self);
 
-        // Push text between last block item and end of block
-        let snippet = visitor.snippet(mk_sp(visitor.last_pos, self.span.hi));
-        visitor.buffer.push_str(&snippet);
-
         Some(format!("{}{}", prefix, visitor.buffer))
     }
 }
@@ -1534,8 +1530,8 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
             let new_offset = offset.block_indent(context.config);
             result.push_str(&format!("\n{}", new_offset.to_string(context.config)));
 
-            // FIXME: we probably should related max_width to width instead of config.max_width
-            // where is the 1 coming from anyway?
+            // FIXME: we probably should related max_width to width instead of
+            // config.max_width where is the 1 coming from anyway?
             let max_width = try_opt!(context.config.max_width.checked_sub(new_offset.width() + 1));
             let inner_context = context.nested_context();
             let rhs = ex.rewrite(&inner_context, max_width, new_offset);
