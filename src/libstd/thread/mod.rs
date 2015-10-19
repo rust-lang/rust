@@ -162,7 +162,6 @@
 
 use prelude::v1::*;
 
-use alloc::boxed::FnBox;
 use any::Any;
 use cell::UnsafeCell;
 use fmt;
@@ -249,16 +248,6 @@ impl Builder {
     pub fn spawn<F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
         F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
     {
-        unsafe {
-            self.spawn_inner(Box::new(f)).map(JoinHandle)
-        }
-    }
-
-    // NB: this function is unsafe as the lifetime parameter of the code to run
-    //     in the new thread is not tied into the return value, and the return
-    //     value must not outlast that lifetime.
-    unsafe fn spawn_inner<'a, T: Send>(self, f: Box<FnBox() -> T + Send + 'a>)
-                                       -> io::Result<JoinInner<T>> {
         let Builder { name, stack_size } = self;
 
         let stack_size = stack_size.unwrap_or(util::min_stack());
@@ -274,22 +263,26 @@ impl Builder {
             if let Some(name) = their_thread.name() {
                 imp::Thread::set_name(name);
             }
-            thread_info::set(imp::guard::current(), their_thread);
-            let mut output = None;
-            let try_result = {
-                let ptr = &mut output;
-                unwind::try(move || *ptr = Some(f()))
-            };
-            *their_packet.get() = Some(try_result.map(|()| {
-                output.unwrap()
-            }));
+            unsafe {
+                thread_info::set(imp::guard::current(), their_thread);
+                let mut output = None;
+                let try_result = {
+                    let ptr = &mut output;
+                    unwind::try(move || *ptr = Some(f()))
+                };
+                *their_packet.get() = Some(try_result.map(|()| {
+                    output.unwrap()
+                }));
+            }
         };
 
-        Ok(JoinInner {
-            native: Some(try!(imp::Thread::new(stack_size, Box::new(main)))),
+        Ok(JoinHandle(JoinInner {
+            native: unsafe {
+                Some(try!(imp::Thread::new(stack_size, Box::new(main))))
+            },
             thread: my_thread,
             packet: Packet(my_packet),
-        })
+        }))
     }
 }
 
