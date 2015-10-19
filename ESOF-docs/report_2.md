@@ -66,7 +66,7 @@ The Rust community welcomes anyone that reports Bugs. Even if the person that re
 
 It is asked to search in the existing issues for the bug before reporting it. However there is no problem in reporting a bug for the second time considering the enormous amount of existing issues.
 
-All issues should fallow the form bellow:
+All issues should follow the form bellow:
 
 ```
 <short summary of the bug>
