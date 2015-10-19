@@ -70,6 +70,16 @@ fn main() {
     if let Some(x) = (1..20).next() { // also fine
         println!("{}", x)
     }
+
+    // the following shouldn't warn because it can't be written with a for loop
+    let mut iter = 1u32..20;
+    while let Some(x) = iter.next() {
+        println!("next: {:?}", iter.next())
+    }
+
+    // but this should:
+    let mut iter2 = 1u32..20;
+    while let Some(x) = iter2.next() { } //~ERROR this loop could be written as a `for` loop
 }
 
 // regression test (#360)

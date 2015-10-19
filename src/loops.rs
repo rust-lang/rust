@@ -232,11 +232,14 @@ impl LateLintPass for LoopsPass {
             }
         }
         if let ExprMatch(ref expr, ref arms, MatchSource::WhileLetDesugar) = expr.node {
+            let body = &arms[0].body;
             let pat = &arms[0].pats[0].node;
-            if let (&PatEnum(ref path, _), &ExprMethodCall(method_name, _, _)) = (pat, &expr.node) {
+            if let (&PatEnum(ref path, _), &ExprMethodCall(method_name, _, ref args)) = (pat, &expr.node) {
+                let iterator_def_id = var_def_id(cx, &args[0]);
                 if method_name.node.as_str() == "next" &&
                         match_trait_method(cx, expr, &["core", "iter", "Iterator"]) &&
-                        path.segments.last().unwrap().identifier.name.as_str() == "Some" {
+                        path.segments.last().unwrap().identifier.name.as_str() == "Some" &&
+                        !var_used(body, iterator_def_id, cx) {
                     span_lint(cx, WHILE_LET_ON_ITERATOR, expr.span,
                               "this loop could be written as a `for` loop");
                 }
@@ -309,6 +312,32 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
                 self.nonindex = true;
                 return;
             }
+        }
+        walk_expr(self, expr);
+    }
+}
+
+fn var_used(expr: &Expr, def_id: Option<NodeId>, cx: &LateContext) -> bool {
+    match def_id {
+        None => false,
+        Some(def_id) => {
+            let mut visitor = VarUsedVisitor{ def_id: def_id, found: false, cx: cx };
+            walk_expr(&mut visitor, expr);
+            visitor.found
+        }
+    }
+}
+
+struct VarUsedVisitor<'v, 't: 'v> {
+    cx: &'v LateContext<'v, 't>,
+    def_id: NodeId,
+    found: bool
+}
+
+impl<'v, 't> Visitor<'v> for VarUsedVisitor<'v, 't> {
+    fn visit_expr(&mut self, expr: &'v Expr) {
+        if Some(self.def_id) == var_def_id(self.cx, expr) {
+            self.found = true;
         }
         walk_expr(self, expr);
     }
