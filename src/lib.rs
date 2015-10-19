@@ -41,7 +41,7 @@ use rustc::session::config::Input;
 use rustc_driver::{driver, CompilerCalls, Compilation};
 
 use syntax::ast;
-use syntax::codemap::CodeMap;
+use syntax::codemap::{CodeMap, Span};
 use syntax::diagnostics;
 
 use std::ops::{Add, Sub};
@@ -76,10 +76,33 @@ mod modules;
 pub mod rustfmt_diff;
 mod chains;
 mod macros;
+mod patterns;
 
 const MIN_STRING: usize = 10;
 // When we get scoped annotations, we should have rustfmt::skip.
 const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
+
+pub trait Spanned {
+    fn span(&self) -> Span;
+}
+
+impl Spanned for ast::Expr {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
+impl Spanned for ast::Pat {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
+impl Spanned for ast::Ty {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
 
 #[derive(Copy, Clone, Debug)]
 pub struct Indent {

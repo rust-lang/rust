@@ -29,41 +29,16 @@ impl<'a> FmtVisitor<'a> {
     pub fn visit_let(&mut self, local: &ast::Local, span: Span) {
         self.format_missing_with_indent(span.lo);
 
-        // String that is placed within the assignment pattern and expression.
-        let infix = {
-            let mut infix = String::new();
-
-            if let Some(ref ty) = local.ty {
-                // 2 = ": ".len()
-                let offset = self.block_indent + 2;
-                let width = self.config.max_width - offset.width();
-                let rewrite = ty.rewrite(&self.get_context(), width, offset);
-
-                match rewrite {
-                    Some(result) => {
-                        infix.push_str(": ");
-                        infix.push_str(&result);
-                    }
-                    None => return,
-                }
-            }
-
-            if local.init.is_some() {
-                infix.push_str(" =");
-            }
-
-            infix
-        };
-
         // New scope so we drop the borrow of self (context) in time to mutably
         // borrow self to mutate its buffer.
         let result = {
             let context = self.get_context();
             let mut result = "let ".to_owned();
-            let pattern_offset = self.block_indent + result.len() + infix.len();
+            let pattern_offset = self.block_indent + result.len();
             // 1 = ;
-            let pattern_width = self.config.max_width.checked_sub(pattern_offset.width() + 1);
-            let pattern_width = match pattern_width {
+            let pattern_width = match self.config
+                                          .max_width
+                                          .checked_sub(pattern_offset.width() + 1) {
                 Some(width) => width,
                 None => return,
             };
@@ -72,6 +47,36 @@ impl<'a> FmtVisitor<'a> {
                 Some(ref pat_string) => result.push_str(pat_string),
                 None => return,
             }
+
+            // String that is placed within the assignment pattern and expression.
+            let infix = {
+                let mut infix = String::new();
+
+                if let Some(ref ty) = local.ty {
+                    // 2 = ": ".len()
+                    // 1 = ;
+                    let offset = self.block_indent + result.len() + 2;
+                    let width = match self.config.max_width.checked_sub(offset.width() + 1) {
+                        Some(w) => w,
+                        None => return,
+                    };
+                    let rewrite = ty.rewrite(&self.get_context(), width, offset);
+
+                    match rewrite {
+                        Some(result) => {
+                            infix.push_str(": ");
+                            infix.push_str(&result);
+                        }
+                        None => return,
+                    }
+                }
+
+                if local.init.is_some() {
+                    infix.push_str(" =");
+                }
+
+                infix
+            };
 
             result.push_str(&infix);
 
@@ -86,7 +91,7 @@ impl<'a> FmtVisitor<'a> {
                 let rhs = rewrite_assign_rhs(&context, result, ex, max_width, context.block_indent);
 
                 match rhs {
-                    Some(result) => result,
+                    Some(s) => s,
                     None => return,
                 }
             } else {

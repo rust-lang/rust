@@ -12,7 +12,7 @@ use std::cmp::Ordering;
 use std::borrow::Borrow;
 use std::mem::swap;
 
-use Indent;
+use {Indent, Spanned};
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
             DefinitiveListTactic, definitive_tactic, ListItem, format_fn_args};
@@ -76,7 +76,7 @@ impl Rewrite for ast::Expr {
                                    offset)
             }
             ast::Expr_::ExprTup(ref items) => {
-                rewrite_tuple_lit(context, items, self.span, width, offset)
+                rewrite_tuple(context, items, self.span, width, offset)
             }
             ast::Expr_::ExprWhile(ref cond, ref block, label) => {
                 Loop::new_while(None, cond, block, label).rewrite(context, width, offset)
@@ -479,13 +479,6 @@ impl Rewrite for ast::Block {
     }
 }
 
-// FIXME(#18): implement pattern formatting
-impl Rewrite for ast::Pat {
-    fn rewrite(&self, context: &RewriteContext, _: usize, _: Indent) -> Option<String> {
-        Some(context.snippet(self.span))
-    }
-}
-
 // Abstraction over for, while and loop expressions
 struct Loop<'a> {
     cond: Option<&'a ast::Expr>,
@@ -849,11 +842,7 @@ impl Rewrite for ast::Arm {
         // 5 = ` => {`
         let pat_budget = try_opt!(width.checked_sub(5));
         let pat_strs = try_opt!(pats.iter()
-                                    .map(|p| {
-                                        p.rewrite(context,
-                                                  pat_budget,
-                                                  offset.block_indent(context.config))
-                                    })
+                                    .map(|p| p.rewrite(context, pat_budget, offset))
                                     .collect::<Option<Vec<_>>>());
 
         let mut total_width = pat_strs.iter().fold(0, |a, p| a + p.len());
@@ -1187,7 +1176,9 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     // Replace the stub with the full overflowing last argument if the rewrite
     // succeeded and its first line fits with the other arguments.
     match (overflow_last, tactic, placeholder) {
-        (true, DefinitiveListTactic::Horizontal, placeholder @ Some(..)) => {
+        (true,
+         DefinitiveListTactic::Horizontal,
+         placeholder @ Some(..)) => {
             item_vec[arg_count - 1].item = placeholder;
         }
         (true, _, _) => {
@@ -1205,8 +1196,6 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         ends_with_newline: false,
         config: context.config,
     };
-
-    // format_fn_args(items, remaining_width, offset, context.config)
 
     let list_str = match write_list(&item_vec, &fmt) {
         Some(str) => str,
@@ -1382,12 +1371,14 @@ fn rewrite_field(context: &RewriteContext,
     expr.map(|s| format!("{}: {}", name, s))
 }
 
-fn rewrite_tuple_lit(context: &RewriteContext,
-                     items: &[ptr::P<ast::Expr>],
-                     span: Span,
-                     width: usize,
-                     offset: Indent)
-                     -> Option<String> {
+pub fn rewrite_tuple<'a, R>(context: &RewriteContext,
+                            items: &'a [ptr::P<R>],
+                            span: Span,
+                            width: usize,
+                            offset: Indent)
+                            -> Option<String>
+    where R: Rewrite + Spanned + 'a
+{
     debug!("rewrite_tuple_lit: width: {}, offset: {:?}", width, offset);
     let indent = offset + 1;
     // In case of length 1, need a trailing comma
@@ -1400,8 +1391,8 @@ fn rewrite_tuple_lit(context: &RewriteContext,
     let items = itemize_list(context.codemap,
                              items.iter(),
                              ")",
-                             |item| item.span.lo,
-                             |item| item.span.hi,
+                             |item| item.span().lo,
+                             |item| item.span().hi,
                              |item| {
                                  let inner_width = context.config.max_width - indent.width() - 1;
                                  item.rewrite(context, inner_width, indent)

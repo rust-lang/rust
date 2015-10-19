@@ -88,6 +88,7 @@ fn main() {
 
 fn matches() {
     match 1 {
+        -1 => 10,
         1 => 1, // foo
         2 => 2,
         // bar
