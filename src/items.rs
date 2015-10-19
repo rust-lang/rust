@@ -1118,13 +1118,18 @@ impl<'a> FmtVisitor<'a> {
 }
 
 pub fn rewrite_static(prefix: &str,
+                      vis: ast::Visibility,
                       ident: ast::Ident,
                       ty: &ast::Ty,
                       mutability: ast::Mutability,
                       expr: &ast::Expr,
                       context: &RewriteContext)
                       -> Option<String> {
-    let prefix = format!("{} {}{}: ", prefix, format_mutability(mutability), ident);
+    let prefix = format!("{}{} {}{}: ",
+                         format_visibility(vis),
+                         prefix,
+                         format_mutability(mutability),
+                         ident);
     // 2 = " =".len()
     let ty_str = try_opt!(ty.rewrite(context,
                                      context.config.max_width - context.block_indent.width() -
