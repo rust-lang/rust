@@ -162,7 +162,7 @@ pub fn contains_comment(text: &str) -> bool {
     CharClasses::new(text.chars()).any(|(kind, _)| kind == CodeCharKind::Comment)
 }
 
-struct CharClasses<T>
+pub struct CharClasses<T>
     where T: Iterator,
           T::Item: RichChar
 {
@@ -170,7 +170,7 @@ struct CharClasses<T>
     status: CharClassesStatus,
 }
 
-trait RichChar {
+pub trait RichChar {
     fn get_char(&self) -> char;
 }
 
@@ -195,23 +195,23 @@ enum CharClassesStatus {
     LitCharEscape,
     // The u32 is the nesting deepness of the comment
     BlockComment(u32),
-    // Status when the '/' has been consumed, but not yet the '*', deepness is the new deepness
-    // (after the comment opening).
+    // Status when the '/' has been consumed, but not yet the '*', deepness is
+    // the new deepness (after the comment opening).
     BlockCommentOpening(u32),
-    // Status when the '*' has been consumed, but not yet the '/', deepness is the new deepness
-    // (after the comment closing).
+    // Status when the '*' has been consumed, but not yet the '/', deepness is
+    // the new deepness (after the comment closing).
     BlockCommentClosing(u32),
     LineComment,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
-enum CodeCharKind {
+pub enum CodeCharKind {
     Normal,
     Comment,
 }
 
 impl<T> CharClasses<T> where T: Iterator, T::Item: RichChar {
-    fn new(base: T) -> CharClasses<T> {
+    pub fn new(base: T) -> CharClasses<T> {
         CharClasses {
             base: base.peekable(),
             status: CharClassesStatus::Normal,
@@ -298,10 +298,75 @@ impl<T> Iterator for CharClasses<T> where T: Iterator, T::Item: RichChar {
     }
 }
 
+struct CommentCodeSlices<'a> {
+    slice: &'a str,
+    last_slice_type: CodeCharKind,
+    last_slice_end: usize,
+}
+
+impl<'a> CommentCodeSlices<'a> {
+    fn new(slice: &'a str) -> CommentCodeSlices<'a> {
+        CommentCodeSlices {
+            slice: slice,
+            last_slice_type: CodeCharKind::Comment,
+            last_slice_end: 0,
+        }
+    }
+}
+
+impl<'a> Iterator for CommentCodeSlices<'a> {
+    type Item = (CodeCharKind, &'a str);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.last_slice_end == self.slice.len() {
+            return None;
+        }
+
+        let mut sub_slice_end = self.last_slice_end;
+        for (kind, (i, _)) in CharClasses::new(self.slice[self.last_slice_end..].char_indices()) {
+            if kind == self.last_slice_type {
+                sub_slice_end = self.last_slice_end + i;
+                break;
+            }
+        }
+
+        let kind = match self.last_slice_type {
+            CodeCharKind::Comment => CodeCharKind::Normal,
+            CodeCharKind::Normal => CodeCharKind::Comment,
+        };
+        self.last_slice_type = kind;
+
+        // FIXME: be consistent in use of kind vs type.
+        if sub_slice_end == self.last_slice_end {
+            // This was the last subslice.
+            self.last_slice_end = self.slice.len();
+
+            Some((kind, &self.slice[sub_slice_end..]))
+        } else {
+            let res = &self.slice[self.last_slice_end..sub_slice_end];
+            self.last_slice_end = sub_slice_end;
+            Some((kind, res))
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::{CharClasses, CodeCharKind, contains_comment, rewrite_comment, FindUncommented};
+    use super::{CharClasses, CodeCharKind, contains_comment, rewrite_comment, FindUncommented,
+                CommentCodeSlices};
     use Indent;
+
+    #[test]
+    fn comment_code_slices() {
+        let input = "code(); /* test */ 1 + 1";
+
+        let mut iter = CommentCodeSlices::new(input);
+
+        assert_eq!((CodeCharKind::Normal, "code(); "), iter.next().unwrap());
+        assert_eq!((CodeCharKind::Comment, "/* test */"), iter.next().unwrap());
+        assert_eq!((CodeCharKind::Normal, " 1 + 1"), iter.next().unwrap());
+        assert_eq!(None, iter.next());
+    }
 
     #[test]
     #[rustfmt_skip]

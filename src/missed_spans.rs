@@ -10,7 +10,8 @@
 
 use visitor::FmtVisitor;
 
-use syntax::codemap::{self, BytePos};
+use syntax::codemap::{self, BytePos, Span};
+use comment::{CharClasses, CodeCharKind};
 
 impl<'a> FmtVisitor<'a> {
     // TODO these format_missing methods are ugly. Refactor and add unit tests
@@ -37,16 +38,12 @@ impl<'a> FmtVisitor<'a> {
                                                                 end: BytePos,
                                                                 process_last_snippet: F) {
         let start = self.last_pos;
-        debug!("format_missing_inner: {:?} to {:?}",
-               self.codemap.lookup_char_pos(start),
-               self.codemap.lookup_char_pos(end));
 
         if start == end {
             // Do nothing if this is the beginning of the file.
-            if start == self.codemap.lookup_char_pos(start).file.start_pos {
-                return;
+            if start != self.codemap.lookup_char_pos(start).file.start_pos {
+                process_last_snippet(self, "", "");
             }
-            process_last_snippet(self, "", "");
             return;
         }
 
@@ -57,7 +54,6 @@ impl<'a> FmtVisitor<'a> {
 
         self.last_pos = end;
         let span = codemap::mk_sp(start, end);
-        let snippet = self.snippet(span);
 
         self.write_snippet(&snippet, &process_last_snippet);
     }
