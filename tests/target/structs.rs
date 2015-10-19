@@ -34,12 +34,10 @@ struct Qux<'a,
     pub W,
 );
 
-struct Tuple(
-    // Comment 1
-    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
-    // Comment 2
-    BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB,
-);
+struct Tuple(// Comment 1
+             AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
+             // Comment 2
+             BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB);
 
 // With a where clause and generics.
 pub struct Foo<'a, Y: Baz>
@@ -112,4 +110,10 @@ struct FieldsWithAttributes {
     #[attr2]
     pub id: usize, /* CCCCCCCCCCCCCCCCCCC CCCCCCCCCCCCCCCCCCC CCCCCCCCCCCCCCCC CCCCCCCCCCCCCCCCCC
                     * CCCCCCCCCCCCCC CCCCCCCCCCCC */
+}
+
+struct Deep {
+    deeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeep: node::Handle<IdRef<'id, Node<K, V>>,
+                                                                         Type,
+                                                                         NodeType>,
 }

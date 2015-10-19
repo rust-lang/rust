@@ -115,3 +115,9 @@ struct FieldsWithAttributes {
     #[attr1]
     #[attr2] pub id: usize // CCCCCCCCCCCCCCCCCCC CCCCCCCCCCCCCCCCCCC CCCCCCCCCCCCCCCC CCCCCCCCCCCCCCCCCC CCCCCCCCCCCCCC CCCCCCCCCCCC
 }
+
+struct Deep {
+    deeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeep: node::Handle<IdRef<'id, Node<K, V>>,
+                                                     Type,
+                                                     NodeType>,
+}

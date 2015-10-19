@@ -195,7 +195,13 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                                  def,
                                                  Some(generics),
                                                  item.span,
-                                                 indent);
+                                                 indent)
+                                  .map(|s| {
+                                      match **def {
+                                          ast::VariantData::Tuple(..) => s + ";",
+                                          _ => s,
+                                      }
+                                  });
                 self.push_rewrite(item.span, rewrite);
             }
             ast::Item_::ItemEnum(ref def, ref generics) => {
