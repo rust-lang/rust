@@ -42,7 +42,7 @@ With that in mind, let’s learn about ownership.
 # Ownership
 
 [Variable bindings][bindings] have a property in Rust: they ‘have ownership’
-of what they’re bound to. This means that when a binding goes out of scope, 
+of what they’re bound to. This means that when a binding goes out of scope,
 Rust will free the bound resources. For example:
 
 ```rust
@@ -158,8 +158,8 @@ has no pointers to data somewhere else, copying it is a full copy.
 
 All primitive types implement the `Copy` trait and their ownership is
 therefore not moved like one would assume, following the ´ownership rules´.
-To give an example, the two following snippets of code only compile because the 
-`i32` and `bool` types implement the `Copy` trait. 
+To give an example, the two following snippets of code only compile because the
+`i32` and `bool` types implement the `Copy` trait.
 
 ```rust
 fn main() {
