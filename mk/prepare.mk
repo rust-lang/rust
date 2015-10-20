@@ -185,16 +185,16 @@ INSTALL_DEBUGGER_SCRIPT_COMMANDS=$(if $(findstring windows,$(1)),\
 
 define DEF_PREPARE
 
-prepare-base-$(1): PREPARE_SOURCE_DIR=$$(PREPARE_HOST)/stage$$(PREPARE_STAGE)
-prepare-base-$(1): PREPARE_SOURCE_BIN_DIR=$$(PREPARE_SOURCE_DIR)/bin
-prepare-base-$(1): PREPARE_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_DIR)/$$(CFG_LIBDIR_RELATIVE)
-prepare-base-$(1): PREPARE_SOURCE_MAN_DIR=$$(S)/man
-prepare-base-$(1): PREPARE_DEST_BIN_DIR=$$(PREPARE_DEST_DIR)/bin
-prepare-base-$(1): PREPARE_DEST_LIB_DIR=$$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)
-prepare-base-$(1): PREPARE_DEST_MAN_DIR=$$(PREPARE_DEST_DIR)/share/man/man1
-prepare-base-$(1): prepare-everything-$(1)
+prepare-base-$(1)-%: PREPARE_SOURCE_DIR=$$(PREPARE_HOST)/stage$$(PREPARE_STAGE)
+prepare-base-$(1)-%: PREPARE_SOURCE_BIN_DIR=$$(PREPARE_SOURCE_DIR)/bin
+prepare-base-$(1)-%: PREPARE_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_DIR)/$$(CFG_LIBDIR_RELATIVE)
+prepare-base-$(1)-%: PREPARE_SOURCE_MAN_DIR=$$(S)/man
+prepare-base-$(1)-%: PREPARE_DEST_BIN_DIR=$$(PREPARE_DEST_DIR)/bin
+prepare-base-$(1)-%: PREPARE_DEST_LIB_DIR=$$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)
+prepare-base-$(1)-%: PREPARE_DEST_MAN_DIR=$$(PREPARE_DEST_DIR)/share/man/man1
 
-prepare-everything-$(1): prepare-host-$(1) prepare-targets-$(1) prepare-debugger-scripts-$(1)
+prepare-base-$(1)-target: prepare-target-$(1)
+prepare-base-$(1)-host: prepare-host-$(1) prepare-debugger-scripts-$(1)
 
 prepare-host-$(1): prepare-host-tools-$(1)
 
@@ -222,7 +222,7 @@ $$(foreach lib,$$(CRATES), \
   $$(foreach host,$$(CFG_HOST), \
     $$(eval $$(call DEF_PREPARE_HOST_LIB,$$(lib),$$(PREPARE_STAGE),$$(host),$(1)))))
 
-prepare-targets-$(1): \
+prepare-target-$(1): \
         $$(foreach host,$$(CFG_HOST), \
            $$(foreach target,$$(CFG_TARGET), \
              prepare-target-$$(target)-host-$$(host)-$$(PREPARE_STAGE)-$(1)))
