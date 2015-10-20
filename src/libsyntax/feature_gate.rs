@@ -328,7 +328,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("cold", Whitelisted, Ungated),
     ("naked", Whitelisted, Gated("naked",
                                     "the `#[naked]` attribute \
-                                     is an experimental feature"))),
+                                     is an experimental feature")),
     ("export_name", Whitelisted, Ungated),
     ("inline", Whitelisted, Ungated),
     ("link", Whitelisted, Ungated),
