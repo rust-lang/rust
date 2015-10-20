@@ -417,7 +417,7 @@ impl<'a> TraitDef<'a> {
                 let mut attrs = newitem.attrs.clone();
                 attrs.extend(item.attrs.iter().filter(|a| {
                     match &a.name()[..] {
-                        "allow" | "warn" | "deny" | "forbid" => true,
+                        "allow" | "warn" | "deny" | "forbid" | "stable" | "unstable" => true,
                         _ => false,
                     }
                 }).cloned());
