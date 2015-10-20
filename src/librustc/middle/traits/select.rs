@@ -407,6 +407,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
+    /// Evaluates whether the obligation `obligation` can be satisfied,
+    /// and returns `false` if not certain. However, this is not entirely
+    /// accurate if inference variables are involved.
+    pub fn evaluate_obligation_conservatively(&mut self,
+                                              obligation: &PredicateObligation<'tcx>)
+                               -> bool
+    {
+        debug!("evaluate_obligation_conservatively({:?})",
+               obligation);
+
+        self.infcx.probe(|_| {
+            self.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation)
+                == EvaluatedToOk
+        })
+    }
+
+
     fn evaluate_predicates_recursively<'a,'o,I>(&mut self,
                                                 stack: TraitObligationStackList<'o, 'tcx>,
                                                 predicates: I)
