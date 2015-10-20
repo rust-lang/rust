@@ -27,6 +27,10 @@ pub fn rewrite_comment(orig: &str,
     // Edge case: block comments. Let's not trim their lines (for now).
     let (opener, closer, line_start) = if block_style {
         ("/* ", " */", " * ")
+    } else if orig.starts_with("///") {
+        ("/// ", "", "/// ")
+    } else if orig.starts_with("//!") {
+        ("//! ", "", "//! ")
     } else {
         ("// ", "", "// ")
     };
@@ -81,7 +85,7 @@ pub fn rewrite_comment(orig: &str,
             let rewrite = try_opt!(rewrite_string(line, &fmt));
             result.push_str(&rewrite);
         } else {
-            if line.len() == 0 || line.starts_with('!') {
+            if line.len() == 0 {
                 // Remove space if this is an empty comment or a doc comment.
                 result.pop();
             }
@@ -97,7 +101,10 @@ pub fn rewrite_comment(orig: &str,
 }
 
 fn left_trim_comment_line(line: &str) -> &str {
-    if line.starts_with("/* ") || line.starts_with("// ") {
+    if line.starts_with("//! ") || line.starts_with("/// ") {
+        &line[4..]
+    } else if line.starts_with("/* ") || line.starts_with("// ") || line.starts_with("//!") ||
+       line.starts_with("///") {
         &line[3..]
     } else if line.starts_with("/*") || line.starts_with("* ") || line.starts_with("//") {
         &line[2..]
