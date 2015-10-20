@@ -340,6 +340,21 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
            ty,
            bound);
 
+    if !ty.has_infer_types() && !ty.has_closure_types() {
+        let cause = ObligationCause::misc(span, ast::DUMMY_NODE_ID);
+        let obligation =
+            util::predicate_for_builtin_bound(infcx.tcx, cause, bound, 0, ty);
+        let obligation = match obligation {
+            Ok(o) => o,
+            Err(..) => return false
+        };
+        let result = SelectionContext::new(infcx)
+            .evaluate_obligation_conservatively(&obligation);
+        debug!("type_known_to_meet_builtin_bound: ty={:?} bound={:?} => {:?}",
+               ty, bound, result);
+        return result;
+    }
+
     let mut fulfill_cx = FulfillmentContext::new(false);
 
     // We can use a dummy node-id here because we won't pay any mind
