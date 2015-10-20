@@ -83,6 +83,8 @@ pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
 pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
 pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
 
+pub const ERROR_PATH_NOT_FOUND: libc::c_int = 3;
+
 #[repr(C)]
 #[cfg(target_arch = "x86")]
 pub struct WSADATA {
