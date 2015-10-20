@@ -84,40 +84,92 @@ pub fn identify_constrained_type_params<'tcx>(_tcx: &ty::ctxt<'tcx>,
                                               impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                               input_parameters: &mut HashSet<Parameter>)
 {
-    loop {
-        let num_inputs = input_parameters.len();
+    let mut predicates = predicates.to_owned();
+    setup_constraining_predicates(_tcx, &mut predicates, impl_trait_ref, input_parameters);
+}
 
-        let poly_projection_predicates = // : iterator over PolyProjectionPredicate
-            predicates.iter()
-                      .filter_map(|predicate| {
-                          match *predicate {
-                              ty::Predicate::Projection(ref data) => Some(data.clone()),
-                              _ => None,
-                          }
-                      });
 
-        for poly_projection in poly_projection_predicates {
-            // Note that we can skip binder here because the impl
-            // trait ref never contains any late-bound regions.
-            let projection = poly_projection.skip_binder();
+/// Order the predicates in `predicates` such that each parameter is
+/// constrained before it is used, if that is possible, and add the
+/// paramaters so constrained to `input_parameters`. For example,
+/// imagine the following impl:
+///
+///     impl<T: Debug, U: Iterator<Item=T>> Trait for U
+///
+/// The impl's predicates are collected from left to right. Ignoring
+/// the implicit `Sized` bounds, these are
+///   * T: Debug
+///   * U: Iterator
+///   * <U as Iterator>::Item = T -- a desugared ProjectionPredicate
+///
+/// When we, for example, try to go over the trait-reference
+/// `IntoIter<u32> as Trait`, we substitute the impl parameters with fresh
+/// variables and match them with the impl trait-ref, so we know that
+/// `$U = IntoIter<u32>`.
+///
+/// However, in order to process the `$T: Debug` predicate, we must first
+/// know the value of `$T` - which is only given by processing the
+/// projection. As we occasionally want to process predicates in a single
+/// pass, we want the projection to come first. In fact, as projections
+/// can (acyclically) depend on one another - see RFC447 for details - we
+/// need to topologically sort them.
+pub fn setup_constraining_predicates<'tcx>(_tcx: &ty::ctxt<'tcx>,
+                                           predicates: &mut [ty::Predicate<'tcx>],
+                                           impl_trait_ref: Option<ty::TraitRef<'tcx>>,
+                                           input_parameters: &mut HashSet<Parameter>)
+{
+    // The canonical way of doing the needed topological sort
+    // would be a DFS, but getting the graph and its ownership
+    // right is annoying, so I am using an in-place fixed-point iteration,
+    // which is `O(nt)` where `t` is the depth of type-parameter constraints,
+    // remembering that `t` should be less than 7 in practice.
+    //
+    // Basically, I iterate over all projections and swap every
+    // "ready" projection to the start of the list, such that
+    // all of the projections before `i` are topologically sorted
+    // and constrain all the parameters in `input_parameters`.
+    //
+    // In the example, `input_parameters` starts by containing `U` - which
+    // is constrained by the trait-ref - and so on the first pass we
+    // observe that `<U as Iterator>::Item = T` is a "ready" projection that
+    // constrains `T` and swap it to front. As it is the sole projection,
+    // no more swaps can take place afterwards, with the result being
+    //   * <U as Iterator>::Item = T
+    //   * T: Debug
+    //   * U: Iterator
+    let mut i = 0;
+    let mut changed = true;
+    while changed {
+        changed = false;
 
-            // Special case: watch out for some kind of sneaky attempt
-            // to project out an associated type defined by this very
-            // trait.
-            let unbound_trait_ref = &projection.projection_ty.trait_ref;
-            if Some(unbound_trait_ref.clone()) == impl_trait_ref {
+        for j in i..predicates.len() {
+
+            if let ty::Predicate::Projection(ref poly_projection) = predicates[j] {
+                // Note that we can skip binder here because the impl
+                // trait ref never contains any late-bound regions.
+                let projection = poly_projection.skip_binder();
+
+                // Special case: watch out for some kind of sneaky attempt
+                // to project out an associated type defined by this very
+                // trait.
+                let unbound_trait_ref = &projection.projection_ty.trait_ref;
+                if Some(unbound_trait_ref.clone()) == impl_trait_ref {
+                    continue;
+                }
+
+                let inputs = parameters_for_trait_ref(&projection.projection_ty.trait_ref);
+                let relies_only_on_inputs = inputs.iter().all(|p| input_parameters.contains(&p));
+                if !relies_only_on_inputs {
+                    continue;
+                }
+                input_parameters.extend(parameters_for_type(projection.ty));
+            } else {
                 continue;
             }
-
-            let inputs = parameters_for_trait_ref(&projection.projection_ty.trait_ref);
-            let relies_only_on_inputs = inputs.iter().all(|p| input_parameters.contains(&p));
-            if relies_only_on_inputs {
-                input_parameters.extend(parameters_for_type(projection.ty));
-            }
-        }
-
-        if input_parameters.len() == num_inputs {
-            break;
+            // fancy control flow to bypass borrow checker
+            predicates.swap(i, j);
+            i += 1;
+            changed = true;
         }
     }
 }
