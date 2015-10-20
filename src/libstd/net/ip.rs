@@ -594,9 +594,17 @@ mod tests {
     fn test_from_str_socket_addr() {
         assert_eq!(Ok(sa4(Ipv4Addr::new(77, 88, 21, 11), 80)),
                    "77.88.21.11:80".parse());
+        assert_eq!(Ok(SocketAddrV4::new(Ipv4Addr::new(77, 88, 21, 11), 80)),
+                   "77.88.21.11:80".parse());
         assert_eq!(Ok(sa6(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 53)),
                    "[2a02:6b8:0:1::1]:53".parse());
+        assert_eq!(Ok(SocketAddrV6::new(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1,
+                                                      0, 0, 0, 1), 53, 0, 0)),
+                   "[2a02:6b8:0:1::1]:53".parse());
         assert_eq!(Ok(sa6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x7F00, 1), 22)),
+                   "[::127.0.0.1]:22".parse());
+        assert_eq!(Ok(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0,
+                                                      0x7F00, 1), 22, 0, 0)),
                    "[::127.0.0.1]:22".parse());
 
         // without port
