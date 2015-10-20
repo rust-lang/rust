@@ -625,8 +625,8 @@ mod tests {
         drop(p.wait());
     }
 
-    #[cfg(unix)]
     #[cfg(all(unix, not(target_os="android")))]
+    #[test]
     fn signal_reported_right() {
         use os::unix::process::ExitStatusExt;
 
