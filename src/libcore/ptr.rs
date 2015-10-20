@@ -538,7 +538,7 @@ impl<T> fmt::Pointer for Unique<T> {
 /// building abstractions like `Rc<T>` or `Arc<T>`, which internally
 /// use raw pointers to manage the memory that they own.
 #[unstable(feature = "shared", reason = "needs an RFC to flesh out design",
-           issue = "0")]
+           issue = "27730")]
 pub struct Shared<T: ?Sized> {
     pointer: NonZero<*const T>,
     // NOTE: this marker has no consequences for variance, but is necessary
@@ -551,15 +551,15 @@ pub struct Shared<T: ?Sized> {
 
 /// `Shared` pointers are not `Send` because the data they reference may be aliased.
 // NB: This impl is unnecessary, but should provide better error messages.
-#[unstable(feature = "shared", issue = "0")]
+#[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized> !Send for Shared<T> { }
 
 /// `Shared` pointers are not `Sync` because the data they reference may be aliased.
 // NB: This impl is unnecessary, but should provide better error messages.
-#[unstable(feature = "shared", issue = "0")]
+#[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized> !Sync for Shared<T> { }
 
-#[unstable(feature = "shared", issue = "0")]
+#[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized> Shared<T> {
     /// Creates a new `Shared`.
     pub unsafe fn new(ptr: *mut T) -> Self {
@@ -567,21 +567,21 @@ impl<T: ?Sized> Shared<T> {
     }
 }
 
-#[unstable(feature = "shared", issue = "0")]
+#[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized> Clone for Shared<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-#[unstable(feature = "shared", issue = "0")]
+#[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized> Copy for Shared<T> { }
 
 #[cfg(not(stage0))] // remove cfg after new snapshot
-#[unstable(feature = "shared", issue = "0")]
+#[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<Shared<U>> for Shared<T> where T: Unsize<U> { }
 
-#[unstable(feature = "shared", issue = "0")]
+#[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized> Deref for Shared<T> {
     type Target = *mut T;
 
@@ -591,7 +591,7 @@ impl<T: ?Sized> Deref for Shared<T> {
     }
 }
 
-#[unstable(feature = "shared", issue = "0")]
+#[unstable(feature = "shared", issue = "27730")]
 impl<T> fmt::Pointer for Shared<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&*self.pointer, f)
