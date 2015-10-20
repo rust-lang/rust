@@ -6,7 +6,7 @@
 # Summary
 
 This RFC proposes several new types and associated APIs for working with times in Rust.
-The primary new types are `Instance`, for working with time that is guaranteed to be
+The primary new types are `Instant`, for working with time that is guaranteed to be
 monotonic, and `SystemTime`, for working with times across processes on a single system
 (usually internally represented as a number of seconds since an epoch).
 
@@ -121,7 +121,7 @@ directly address time zones.
 
 ## Types
 
-```rs
+```rust
 pub struct Instant {
   secs: u64,
   nanos: u32
@@ -167,7 +167,7 @@ use for negative values. Rather than require each API that takes a `Duration`
 to produce an `Err` (or `panic!`) when receiving a negative value, this design
 optimizes for the broadly useful positive `Duration`.
 
-```rs
+```rust
 impl Instant {
   /// Panics if `earlier` is later than &self.
   /// Because Instant is monotonic, the only time that `earlier` should be
@@ -180,7 +180,7 @@ impl Instant {
 }
 
 impl Add<Duration> for Instant {
-  type Output = SystemTime;
+  type Output = Instant;
 }
 
 impl Sub<Duration> for Instant {
@@ -202,7 +202,7 @@ The "standard" terminology comes from [JodaTime][joda-time-standard].
 
 [joda-time-standard]: http://joda-time.sourceforge.net/apidocs/org/joda/time/Duration.html#standardDays(long)
 
-```rs
+```rust
 impl Duration {
   /// a standard minute is 60 seconds
   /// panics if the number of minutes is larger than u64 seconds
@@ -241,7 +241,7 @@ This design attempts to help the programmer catch the most egregious of these
 kinds of mistakes (unexpected travel **back in time**) before the mistake
 propagates.
 
-```rs
+```rust
 impl SystemTime {
   /// Returns an `Err` if `earlier` is later
   pub fn duration_from_earlier(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError>;
