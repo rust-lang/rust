@@ -264,6 +264,13 @@ impl Sub<Duration> for SystemTime {
   type Output = SystemTime;
 }
 
+// An anchor which can be used to generate new SystemTime instances from a known
+// Duration or convert a SystemTime to a Duration which can later then be used
+// again to recreate the SystemTime.
+//
+// Defined to be "1970-01-01 00:00:00 UTC" on all systems.
+const UNIX_EPOCH: SystemTime = ...;
+
 // Note that none of these operations actually imply that the underlying system
 // operation that produced these SystemTimes happened at the same time
 // (for Eq) or before/after (for Ord) than the other system operation.
