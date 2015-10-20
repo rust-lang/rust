@@ -43,6 +43,21 @@ pub fn inline(val: ValueRef, inline: InlineAttr) {
     };
 }
 
+/// Tell LLVM whether the function should be naked.
+#[inline]
+pub fn naked(val: ValueRef, naked: bool) {
+    if naked {
+        llvm::SetFunctionAttribute(val, llvm::Attribute::Naked);
+    } else {
+        unsafe {
+            llvm::LLVMRemoveFunctionAttr(
+                val,
+                llvm::Attribute::Naked.bits() as c_ulonglong,
+            );
+        }
+    }
+}
+
 /// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.
 #[inline]
 pub fn emit_uwtable(val: ValueRef, emit: bool) {
@@ -116,6 +131,8 @@ pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRe
                                                llvm::FunctionIndex as c_uint,
                                                llvm::ColdAttribute as u64)
             }
+        }else if attr.check_name("naked") {
+            naked(llfn, true);
         } else if attr.check_name("allocator") {
             llvm::Attribute::NoAlias.apply_llfn(llvm::ReturnIndex as c_uint, llfn);
         } else if attr.check_name("unwind") {
