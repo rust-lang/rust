@@ -9,7 +9,6 @@
 // except according to those terms.
 
 //! See `README.md` for high-level documentation
-#![allow(dead_code)] // FIXME -- just temporarily
 
 pub use self::MethodMatchResult::*;
 pub use self::MethodMatchedData::*;
@@ -190,7 +189,6 @@ pub enum MethodMatchedData {
 /// parameter environment.
 #[derive(PartialEq,Eq,Debug,Clone)]
 enum SelectionCandidate<'tcx> {
-    PhantomFnCandidate,
     BuiltinCandidate(ty::BuiltinBound),
     ParamCandidate(ty::PolyTraitRef<'tcx>),
     ImplCandidate(DefId),
@@ -403,8 +401,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("evaluate_obligation({:?})",
                obligation);
 
-        self.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation)
-            .may_apply()
+        self.infcx.probe(|_| {
+            self.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation)
+                .may_apply()
+        })
     }
 
     fn evaluate_predicates_recursively<'a,'o,I>(&mut self,
@@ -415,7 +415,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         let mut result = EvaluatedToOk;
         for obligation in predicates {
-            match self.evaluate_predicate_recursively(stack, obligation) {
+            let eval = self.evaluate_predicate_recursively(stack, obligation);
+            debug!("evaluate_predicate_recursively({:?}) = {:?}",
+                   obligation, eval);
+            match eval {
                 EvaluatedToErr => { return EvaluatedToErr; }
                 EvaluatedToAmbig => { result = EvaluatedToAmbig; }
                 EvaluatedToUnknown => {
@@ -454,10 +457,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Predicate::Equate(ref p) => {
-                let result = self.infcx.probe(|_| {
-                    self.infcx.equality_predicate(obligation.cause.span, p)
-                });
-                match result {
+                // does this code ever run?
+                match self.infcx.equality_predicate(obligation.cause.span, p) {
                     Ok(()) => EvaluatedToOk,
                     Err(_) => EvaluatedToErr
                 }
@@ -489,21 +490,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Predicate::Projection(ref data) => {
-                self.infcx.probe(|_| {
-                    let project_obligation = obligation.with(data.clone());
-                    match project::poly_project_and_unify_type(self, &project_obligation) {
-                        Ok(Some(subobligations)) => {
-                            self.evaluate_predicates_recursively(previous_stack,
-                                                                 subobligations.iter())
-                        }
-                        Ok(None) => {
-                            EvaluatedToAmbig
-                        }
-                        Err(_) => {
-                            EvaluatedToErr
-                        }
+                let project_obligation = obligation.with(data.clone());
+                match project::poly_project_and_unify_type(self, &project_obligation) {
+                    Ok(Some(subobligations)) => {
+                        self.evaluate_predicates_recursively(previous_stack,
+                                                             subobligations.iter())
                     }
-                })
+                    Ok(None) => {
+                        EvaluatedToAmbig
+                    }
+                    Err(_) => {
+                        EvaluatedToErr
+                    }
+                }
             }
         }
     }
@@ -610,40 +609,36 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match self.candidate_from_obligation(stack) {
-            Ok(Some(c)) => self.winnow_candidate(stack, &c),
+            Ok(Some(c)) => self.evaluate_candidate(stack, &c),
             Ok(None) => EvaluatedToAmbig,
             Err(..) => EvaluatedToErr
         }
     }
 
-    /// Evaluates whether the impl with id `impl_def_id` could be applied to the self type
-    /// `obligation_self_ty`. This can be used either for trait or inherent impls.
-    pub fn evaluate_impl(&mut self,
-                         impl_def_id: DefId,
-                         obligation: &TraitObligation<'tcx>)
-                         -> bool
+    /// Further evaluate `candidate` to decide whether all type parameters match and whether nested
+    /// obligations are met. Returns true if `candidate` remains viable after this further
+    /// scrutiny.
+    fn evaluate_candidate<'o>(&mut self,
+                              stack: &TraitObligationStack<'o, 'tcx>,
+                              candidate: &SelectionCandidate<'tcx>)
+                              -> EvaluationResult
     {
-        debug!("evaluate_impl(impl_def_id={:?}, obligation={:?})",
-               impl_def_id,
-               obligation);
-
-        self.infcx.probe(|snapshot| {
-            match self.match_impl(impl_def_id, obligation, snapshot) {
-                Ok((substs, skol_map)) => {
-                    let vtable_impl = self.vtable_impl(impl_def_id,
-                                                       substs,
-                                                       obligation.cause.clone(),
-                                                       obligation.recursion_depth + 1,
-                                                       skol_map,
-                                                       snapshot);
-                    self.winnow_selection(TraitObligationStackList::empty(),
-                                          VtableImpl(vtable_impl)).may_apply()
+        debug!("evaluate_candidate: depth={} candidate={:?}",
+               stack.obligation.recursion_depth, candidate);
+        let result = self.infcx.probe(|_| {
+            let candidate = (*candidate).clone();
+            match self.confirm_candidate(stack.obligation, candidate) {
+                Ok(selection) => {
+                    self.evaluate_predicates_recursively(
+                        stack.list(),
+                        selection.nested_obligations().iter())
                 }
-                Err(()) => {
-                    false
-                }
+                Err(..) => EvaluatedToErr
             }
-        })
+        });
+        debug!("evaluate_candidate: depth={} result={:?}",
+               stack.obligation.recursion_depth, result);
+        result
     }
 
     fn pick_evaluation_cache(&self) -> &EvaluationCache<'tcx> {
@@ -779,7 +774,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Instead, we select the right impl now but report `Bar does
         // not implement Clone`.
         if candidates.len() > 1 {
-            candidates.retain(|c| self.winnow_candidate(stack, c).may_apply())
+            candidates.retain(|c| self.evaluate_candidate(stack, c).may_apply())
         }
 
         // If there are STILL multiple candidate, we can further reduce
@@ -1184,9 +1179,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(obligations) => {
                     self.evaluate_predicates_recursively(stack.list(), obligations.iter())
                 }
-                Err(()) => {
-                    EvaluatedToErr
-                }
+                Err(()) => EvaluatedToErr
             }
         })
     }
@@ -1525,37 +1518,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // attempt to evaluate recursive bounds to see if they are
     // satisfied.
 
-    /// Further evaluate `candidate` to decide whether all type parameters match and whether nested
-    /// obligations are met. Returns true if `candidate` remains viable after this further
-    /// scrutiny.
-    fn winnow_candidate<'o>(&mut self,
-                            stack: &TraitObligationStack<'o, 'tcx>,
-                            candidate: &SelectionCandidate<'tcx>)
-                            -> EvaluationResult
-    {
-        debug!("winnow_candidate: candidate={:?}", candidate);
-        let result = self.infcx.probe(|_| {
-            let candidate = (*candidate).clone();
-            match self.confirm_candidate(stack.obligation, candidate) {
-                Ok(selection) => self.winnow_selection(stack.list(),
-                                                       selection),
-                Err(..) => EvaluatedToErr
-            }
-        });
-        debug!("winnow_candidate depth={} result={:?}",
-               stack.obligation.recursion_depth, result);
-        result
-    }
-
-    fn winnow_selection<'o>(&mut self,
-                            stack: TraitObligationStackList<'o,'tcx>,
-                            selection: Selection<'tcx>)
-                            -> EvaluationResult
-    {
-        self.evaluate_predicates_recursively(stack,
-                                             selection.nested_obligations().iter())
-    }
-
     /// Returns true if `candidate_i` should be dropped in favor of
     /// `candidate_j`.  Generally speaking we will drop duplicate
     /// candidates and prefer where-clause candidates.
@@ -1580,9 +1542,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.tcx().sess.bug(
                         "default implementations shouldn't be recorded \
                          when there are other valid candidates");
-                }
-                &PhantomFnCandidate => {
-                    self.tcx().sess.bug("PhantomFn didn't short-circuit selection");
                 }
                 &ImplCandidate(..) |
                 &ClosureCandidate(..) |
@@ -2013,7 +1972,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     try!(self.confirm_builtin_candidate(obligation, builtin_bound))))
             }
 
-            PhantomFnCandidate |
             ErrorCandidate => {
                 Ok(VtableBuiltin(VtableBuiltinData { nested: vec![] }))
             }
@@ -2783,74 +2741,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              origin,
                                              poly_trait_ref,
                                              obligation.predicate.to_poly_trait_ref()) {
-            Ok(()) => Ok(()),
-            Err(_) => Err(()),
-        }
-    }
-
-    /// Determines whether the self type declared against
-    /// `impl_def_id` matches `obligation_self_ty`. If successful,
-    /// returns the substitutions used to make them match. See
-    /// `match_impl()`. For example, if `impl_def_id` is declared
-    /// as:
-    ///
-    ///    impl<T:Copy> Foo for Box<T> { ... }
-    ///
-    /// and `obligation_self_ty` is `int`, we'd get back an `Err(_)`
-    /// result. But if `obligation_self_ty` were `Box<int>`, we'd get
-    /// back `Ok(T=int)`.
-    fn match_inherent_impl(&mut self,
-                           impl_def_id: DefId,
-                           obligation_cause: &ObligationCause,
-                           obligation_self_ty: Ty<'tcx>)
-                           -> Result<Substs<'tcx>,()>
-    {
-        // Create fresh type variables for each type parameter declared
-        // on the impl etc.
-        let impl_substs = util::fresh_type_vars_for_impl(self.infcx,
-                                                         obligation_cause.span,
-                                                         impl_def_id);
-
-        // Find the self type for the impl.
-        let impl_self_ty = self.tcx().lookup_item_type(impl_def_id).ty;
-        let impl_self_ty = impl_self_ty.subst(self.tcx(), &impl_substs);
-
-        debug!("match_impl_self_types(obligation_self_ty={:?}, impl_self_ty={:?})",
-               obligation_self_ty,
-               impl_self_ty);
-
-        match self.match_self_types(obligation_cause,
-                                    impl_self_ty,
-                                    obligation_self_ty) {
-            Ok(()) => {
-                debug!("Matched impl_substs={:?}", impl_substs);
-                Ok(impl_substs)
-            }
-            Err(()) => {
-                debug!("NoMatch");
-                Err(())
-            }
-        }
-    }
-
-    fn match_self_types(&mut self,
-                        cause: &ObligationCause,
-
-                        // The self type provided by the impl/caller-obligation:
-                        provided_self_ty: Ty<'tcx>,
-
-                        // The self type the obligation is for:
-                        required_self_ty: Ty<'tcx>)
-                        -> Result<(),()>
-    {
-        // FIXME(#5781) -- equating the types is stronger than
-        // necessary. Should consider variance of trait w/r/t Self.
-
-        let origin = infer::RelateSelfType(cause.span);
-        match self.infcx.eq_types(false,
-                                  origin,
-                                  provided_self_ty,
-                                  required_self_ty) {
             Ok(()) => Ok(()),
             Err(_) => Err(()),
         }
