@@ -663,9 +663,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         // Avoid caching results that depend on more than just the trait-ref:
         // The stack can create EvaluatedToUnknown, and closure signatures
-        // being yet uninferred can create "spurious" EvaluatedToAmbig.
+        // being yet uninferred can create "spurious" EvaluatedToAmbig
+        // and EvaluatedToOk.
         if result == EvaluatedToUnknown ||
-            (result == EvaluatedToAmbig && trait_ref.has_closure_types())
+            ((result == EvaluatedToAmbig || result == EvaluatedToOk)
+             && trait_ref.has_closure_types())
         {
             return;
         }
@@ -2297,6 +2299,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                impl_def_id,
                impl_obligations);
 
+        // Because of RFC447, the impl-trait-ref and obligations
+        // are sufficient to determine the impl substs, without
+        // relying on projections in the impl-trait-ref.
+        //
+        // e.g. `impl<U: Tr, V: Iterator<Item=U>> Foo<<U as Tr>::T> for V`
         impl_obligations.append(&mut substs.obligations);
 
         VtableImplData { impl_def_id: impl_def_id,
@@ -2933,12 +2940,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let predicates = self.tcx().lookup_predicates(def_id);
         let predicates = predicates.instantiate(self.tcx(), substs);
         let predicates = normalize_with_depth(self, cause.clone(), recursion_depth, &predicates);
-        let mut predicates = self.infcx().plug_leaks(skol_map, snapshot, &predicates);
-        let mut obligations =
-            util::predicates_for_generics(cause,
-                                          recursion_depth,
-                                          &predicates.value);
-        obligations.append(&mut predicates.obligations);
+        let predicates = self.infcx().plug_leaks(skol_map, snapshot, &predicates);
+
+        let mut obligations = predicates.obligations;
+        obligations.append(
+            &mut util::predicates_for_generics(cause,
+                                               recursion_depth,
+                                               &predicates.value));
         obligations
     }
 
