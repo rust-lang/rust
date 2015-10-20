@@ -278,6 +278,13 @@ impl PartialEq for SystemTime;
 impl Eq for SystemTime;
 impl PartialOrd for SystemTime;
 impl Ord for SystemTime;
+
+impl SystemTimeError {
+    /// A SystemTimeError originates from attempting to subtract two SystemTime
+    /// instances, a and b. If a < b then an error is returned, and the duration
+    /// returned represents (b - a).
+    pub fn duration(&self) -> Duration;
+}
 ```
 
 The main difference from the design of `Instant` is that it is impossible to
@@ -338,8 +345,6 @@ possible to compare two arbitrary times to each other first, and then
 use `duration_from_earlier` reliably to get a positive `Duration`.
 
 # Unresolved Questions
-
-What should `SystemTimeError` look like?
 
 This RFC leaves types related to human representations of dates and times
 to a future proposal.
