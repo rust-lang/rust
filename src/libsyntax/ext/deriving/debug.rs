@@ -18,7 +18,7 @@ use ext::deriving::generic::ty::*;
 use parse::token;
 use ptr::P;
 
-pub fn expand_deriving_show(cx: &mut ExtCtxt,
+pub fn expand_deriving_debug(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: &MetaItem,
                             item: &Annotatable,
