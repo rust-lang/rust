@@ -1847,6 +1847,8 @@ type int8_t = i8;
 - `should_panic` - indicates that this test function should panic, inverting the success condition.
 - `cold` - The function is unlikely to be executed, so optimize it (and calls
   to it) differently.
+- `naked` - The function utilizes a custom ABI or custom inline ASM that requires
+  the normal stack frame and return to be left out.
 
 ### Static-only attributes
 
