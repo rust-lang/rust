@@ -25,6 +25,8 @@ impl LintPass for MatchPass {
 impl LateLintPass for MatchPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprMatch(ref ex, ref arms, MatchSource::Normal) = expr.node {
+            if in_external_macro(cx, expr.span) { return; }
+
             // check preconditions for SINGLE_MATCH
                 // only two arms
             if arms.len() == 2 &&
@@ -39,7 +41,6 @@ impl LateLintPass for MatchPass {
                 // finally, we don't want any content in the second arm (unit or empty block)
                 is_unit_expr(&arms[1].body)
             {
-                if in_external_macro(cx, expr.span) {return;}
                 span_help_and_lint(cx, SINGLE_MATCH, expr.span,
                                    "you seem to be trying to use match for destructuring a \
                                     single pattern. Consider using `if let`",
@@ -51,7 +52,6 @@ impl LateLintPass for MatchPass {
 
             // check preconditions for MATCH_REF_PATS
             if has_only_ref_pats(arms) {
-                if in_external_macro(cx, expr.span) { return; }
                 if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
                     span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
                         "you don't need to add `&` to both the expression to match \
@@ -65,12 +65,11 @@ impl LateLintPass for MatchPass {
 
             // check preconditions for MATCH_BOOL
             // type of expression == bool
-            if is_bool_expr(cx, ex) {
-                if in_external_macro(cx, expr.span) { return; }
+            if cx.tcx.expr_ty(ex).sty == ty::TyBool {
 
                 span_lint(cx, MATCH_BOOL, expr.span,
                                    "you seem to be trying to match on a boolean expression. \
-                                   Consider using if..else block");
+                                   Consider using an if..else block");
             }
         }
     }
@@ -82,10 +81,6 @@ fn is_unit_expr(expr: &Expr) -> bool {
         ExprBlock(ref b) if b.stmts.is_empty() && b.expr.is_none() => true,
         _ => false,
     }
-}
-
-fn is_bool_expr(cx: &LateContext, ex: &Expr ) -> bool {
-    cx.tcx.expr_ty(ex).sty == ty::TyBool
 }
 
 fn has_only_ref_pats(arms: &[Arm]) -> bool {
