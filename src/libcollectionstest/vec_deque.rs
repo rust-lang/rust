@@ -475,7 +475,7 @@ fn test_drain() {
         let mut d: VecDeque<i32> = VecDeque::new();
 
         {
-            let mut iter = d.drain();
+            let mut iter = d.drain(..);
 
             assert_eq!(iter.size_hint(), (0, Some(0)));
             assert_eq!(iter.next(), None);
@@ -492,7 +492,7 @@ fn test_drain() {
             d.push_back(i);
         }
 
-        assert_eq!(d.drain().collect::<Vec<_>>(), [0, 1, 2, 3, 4]);
+        assert_eq!(d.drain(..).collect::<Vec<_>>(), [0, 1, 2, 3, 4]);
         assert!(d.is_empty());
     }
 
@@ -506,7 +506,7 @@ fn test_drain() {
             d.push_front(i);
         }
 
-        assert_eq!(d.drain().collect::<Vec<_>>(), [8,7,6,0,1,2,3,4]);
+        assert_eq!(d.drain(..).collect::<Vec<_>>(), [8,7,6,0,1,2,3,4]);
         assert!(d.is_empty());
     }
 
@@ -521,7 +521,7 @@ fn test_drain() {
         }
 
         {
-            let mut it = d.drain();
+            let mut it = d.drain(..);
             assert_eq!(it.size_hint(), (8, Some(8)));
             assert_eq!(it.next(), Some(8));
             assert_eq!(it.size_hint(), (7, Some(7)));
