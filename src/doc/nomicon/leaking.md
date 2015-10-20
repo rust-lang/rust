@@ -135,7 +135,7 @@ impl<T> Rc<T> {
     fn new(data: T) -> Self {
         unsafe {
             // Wouldn't it be nice if heap::allocate worked like this?
-            let ptr = heap::allocate<RcBox<T>>();
+            let ptr = heap::allocate::<RcBox<T>>();
             ptr::write(ptr, RcBox {
                 data: data,
                 ref_count: 1,
