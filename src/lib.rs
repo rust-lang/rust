@@ -136,6 +136,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         loops::REVERSE_RANGE_LOOP,
         loops::UNUSED_COLLECT,
         loops::WHILE_LET_LOOP,
+        matches::MATCH_BOOL,
         matches::MATCH_REF_PATS,
         matches::SINGLE_MATCH,
         methods::SHOULD_IMPLEMENT_TRAIT,

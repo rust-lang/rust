@@ -1,5 +1,6 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
+use rustc::middle::ty;
 
 use utils::{snippet, span_lint, span_help_and_lint, in_external_macro, expr_block};
 
@@ -9,19 +10,23 @@ declare_lint!(pub SINGLE_MATCH, Warn,
 declare_lint!(pub MATCH_REF_PATS, Warn,
               "a match has all arms prefixed with `&`; the match expression can be \
                dereferenced instead");
+declare_lint!(pub MATCH_BOOL, Warn,
+              "a match on boolean expression; recommends `if..else` block instead");
 
 #[allow(missing_copy_implementations)]
 pub struct MatchPass;
 
 impl LintPass for MatchPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(SINGLE_MATCH, MATCH_REF_PATS)
+        lint_array!(SINGLE_MATCH, MATCH_REF_PATS, MATCH_BOOL)
     }
 }
 
 impl LateLintPass for MatchPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprMatch(ref ex, ref arms, MatchSource::Normal) = expr.node {
+            if in_external_macro(cx, expr.span) { return; }
+
             // check preconditions for SINGLE_MATCH
                 // only two arms
             if arms.len() == 2 &&
@@ -36,7 +41,6 @@ impl LateLintPass for MatchPass {
                 // finally, we don't want any content in the second arm (unit or empty block)
                 is_unit_expr(&arms[1].body)
             {
-                if in_external_macro(cx, expr.span) {return;}
                 span_help_and_lint(cx, SINGLE_MATCH, expr.span,
                                    "you seem to be trying to use match for destructuring a \
                                     single pattern. Consider using `if let`",
@@ -48,7 +52,6 @@ impl LateLintPass for MatchPass {
 
             // check preconditions for MATCH_REF_PATS
             if has_only_ref_pats(arms) {
-                if in_external_macro(cx, expr.span) { return; }
                 if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
                     span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
                         "you don't need to add `&` to both the expression to match \
@@ -58,6 +61,15 @@ impl LateLintPass for MatchPass {
                         "instead of prefixing all patterns with `&`, you can dereference the \
                          expression to match: `match *{} {{ ...`", snippet(cx, ex.span, "..")));
                 }
+            }
+
+            // check preconditions for MATCH_BOOL
+            // type of expression == bool
+            if cx.tcx.expr_ty(ex).sty == ty::TyBool {
+
+                span_lint(cx, MATCH_BOOL, expr.span,
+                                   "you seem to be trying to match on a boolean expression. \
+                                   Consider using an if..else block");
             }
         }
     }
