@@ -89,7 +89,7 @@ pub struct RawVec<T, A:Allocator=DefaultAllocator> {
 }
 
 impl<T, A:Allocator> Drop for RawVec<T, A> {
-	#[should_we_put_ugeh_attribute_here_or_not(???)]
+    #[should_we_put_ugeh_attribute_here_or_not(???)]
     /// Frees the memory owned by the RawVec *without* trying to Drop its contents.
     fn drop(&mut self) {
         [... free memory using self.alloc ...]
@@ -316,6 +316,7 @@ continue to consider all `D` that is data owned by a value `v`,
 including when `D` == `InspectorC<'a,'name,'c>`).
 
 ## Prototype
+[prototype]: #prototype
 
 pnkfelix has implemented a proof-of-concept
 [implementation][pnkfelix prototype] of this feature.
@@ -359,6 +360,7 @@ trusting them. (pnkfelix has some thoughts on this, which are mostly
 reflected in what he wrote in the [RFC 1238 alternatives][].)
 
 ## Attributes lack hygiene
+[attributes-lack-hygiene]: #attributes-lack-hygiene
 
 As noted by arielb1, putting type parameter identifiers into attributes
 is not likely to play well with macro hygiene.
@@ -412,7 +414,108 @@ just a comma and a space added to the program text when it is added.
 (I only weakly support the latter position; it is obviously easy
 to support this form if that is deemed desirable.)
 
+## Use a blacklist not a whitelist
+[blacklist-not-whitelist]: #use-a-blacklist-not-a-whitelist
+
+The `unsafe_destructor_blind_to` attribute acts as a whitelist of
+parameters that we are telling dropck to ignore in its analysis
+of this destructor.
+
+We could instead add a way to list the lifetimes and/or
+type-expressions (e.g. parameters, projections from parameters) that
+the destructor may access (and thus treat that list as a blacklist of
+parameters that dropck needs to *include* in its analysis).
+
+arielb1 first suggested this as an attribute form
+[here][blacklist attribute], but then provided a different formulation
+of the idea by expressing it as a [`where`-clause][blacklist where] on
+the `fn drop` method (which is what I will show in the next section).
+
+[blacklist attribute]: https://github.com/rust-lang/rfcs/pull/1327#issuecomment-149302743
+
+[blacklist where]: https://github.com/rust-lang/rfcs/pull/1327#issuecomment-149329351
+
+## Make dropck "see again" via (focused) where-clauses
+
+(This alternative carries over some ideas from
+[the previous section][blacklist-not-whitelist], but it stands well on
+its own as something to consider, so I am giving it its own section.)
+
+The idea is that we keep the UGEH attribute, blunt hammer that it is.
+You first opt out of the dropck ordering constraints via that, and
+then you add back in ordering constraints via `where` clauses.
+
+(The ordering constraints in question would normally be *implied* by
+the dropck analysis; the point is that UGEH is opting out of that
+analysis, and so we are now adding them back in.)
+
+Here is the allocator example expressed in this fashion:
+
+```rust
+impl<T, A:Allocator> Drop for RawVec<T, A> {
+    #[unsafe_destructor_blind_to_params]
+    /// Frees the memory owned by the RawVec *without* trying to Drop its contents.
+    fn drop<'s>(&'s mut self) where A: 's {
+    //                        ~~~~~~~~~~~
+    //                             |
+    //                             |
+    // This constraint (that `A` outlives `'s`), and other conditions
+    // relating `'s` and `Self` are normally implied by Rust's type
+    // system, but `unsafe_destructor_blind_to_params` opts out of
+    // enforcing them. This `where`-clause is opting back into *just*
+    // the `A:'s` again.
+    //
+    // Note we are *still* opting out of `T: 's` via
+    // `unsafe_destructor_blind_to_params`, and thus our overall
+    // goal (of not breaking code that relies on `T` not having to
+    // survive the destructor call) is accomplished.
+
+        [... free memory using self.alloc ...]
+    }
+}
+```
+
+This approach, if we can make it work, seems fine to me. It certainly
+avoids a number of problems that the eyepatch attribute has.
+
+Advantages of fn-drop-with-where-clauses:
+
+  * It completely sidesteps the [hygiene issue][attributes-lack-hygiene].
+
+  * If the eyepatch attribute is to be limited to identifiers (type
+    parameters) and lifetimes, then this approach is more expressive,
+    since it would allow one to put type-projections into the
+    constraints.
+
+Drawbacks of fn-drop-with-where-clauses:
+
+  * Its not 100% clear what our implementation strategy will be for it,
+    while the eyepatch attribute does have a [prototype].
+
+    I actually do not give this drawback much weight; resolving this
+    may be merely a matter of just trying to do it: e.g., build up the
+    set of where-clauses when we make the ADT's representatin, and
+    then have `dropck` insert instantiate and insert them as needed.
+
+  * It might have the wrong ergonomics for developers: It seems bad to
+    have the blunt hammer introduce all sorts of potential
+    unsoundness, and rely on the developer to keep the set of
+    `where`-clauses on the `fn drop` up to date.
+
+    This would be a pretty bad drawback, *if* the language and
+    compiler were to stagnate. But my intention/goal is to eventually
+    put in a [sound compiler analysis][wait-for-proper-parametricity].
+    In other words, in the future, I will be more concerned about the
+    ergonomics of the code that uses the sound analysis. I will not be
+    concerned about "gotcha's" associated with the UGEH escape hatch.
+
+(The most important thing I want to convey is that I believe that both
+the eyepatch attribute and fn-drop-with-where-clauses are capable of
+resolving the real issues that I face today, and I would be happy for
+either proposal to be accepted.)
+
 ## Wait for proper parametricity
+[wait-for-proper-parametricity]: #wait-for-proper-parametricity
 
 As alluded to in the [drawbacks][], in principle we could provide
 similar expressiveness to that offered by the eyepatch (which is
