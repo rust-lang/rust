@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Show)]
-//~^ WARNING derive(Show) is deprecated
+#![feature(rustc_private)]
+
+extern crate serialize;
+
+#[derive(Encodable)]
+//~^ WARNING derive(Encodable) is deprecated in favor of derive(RustcEncodable)
 struct Test1;
 
 fn main() { }

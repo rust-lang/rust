@@ -119,7 +119,7 @@ for (trait, supers, errs) in [('Clone', [], 1),
                               ('PartialOrd', ['PartialEq'], 8),
                               ('Eq', ['PartialEq'], 1),
                               ('Ord', ['Eq', 'PartialOrd', 'PartialEq'], 1),
-                              ('Show', [], 1),
+                              ('Debug', [], 1),
                               ('Hash', [], 1)]:
     traits[trait] = (ALL, supers, errs)
 
