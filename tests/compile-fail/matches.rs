@@ -38,6 +38,28 @@ fn single_match(){
     }
 }
 
+fn match_bool() {
+    let test: bool = true;
+
+    match test {  //~ ERROR you seem to be trying to match on a boolean expression
+        true => (),
+        false => (),
+    };
+
+    let option = 1;
+    match option == 1 {  //~ ERROR you seem to be trying to match on a boolean expression
+        true => (),
+        false => (),
+    };
+
+    // Not linted
+    match option {
+        1 ... 10 => (),
+        10 ... 20 => (),
+        _ => (),
+    };
+}
+
 fn ref_pats() {
     {
         let v = &Some(0);
