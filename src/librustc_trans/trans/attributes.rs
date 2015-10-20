@@ -131,7 +131,7 @@ pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRe
                                                llvm::FunctionIndex as c_uint,
                                                llvm::ColdAttribute as u64)
             }
-        }else if attr.check_name("naked") {
+        } else if attr.check_name("naked") {
             naked(llfn, true);
         } else if attr.check_name("allocator") {
             llvm::Attribute::NoAlias.apply_llfn(llvm::ReturnIndex as c_uint, llfn);
