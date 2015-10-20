@@ -193,6 +193,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     // allow `extern "platform-intrinsic" { ... }`
     ("platform_intrinsics", "1.4.0", Some(27731), Active),
 
+    // allow `#[naked]`
+    ("naked_attributes", "1.5.0", None, Active),
+
     // allow `#[unwind]`
     ("unwind_attributes", "1.4.0", None, Active),
 
@@ -326,7 +329,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     // FIXME: #14406 these are processed in trans, which happens after the
     // lint pass
     ("cold", Whitelisted, Ungated),
-    ("naked", Whitelisted, Gated("naked",
+    ("naked", Whitelisted, Gated("naked_attributes",
                                     "the `#[naked]` attribute \
                                      is an experimental feature")),
     ("export_name", Whitelisted, Ungated),
