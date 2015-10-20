@@ -1577,6 +1577,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for IntoIter<T> {
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         // destroy the remaining elements
         for _x in self {}
