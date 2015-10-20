@@ -169,6 +169,9 @@ optimizes for the broadly useful positive `Duration`.
 
 ```rust
 impl Instant {
+  /// Returns an instant corresponding to "now".
+  pub fn now() -> Instant;
+
   /// Panics if `earlier` is later than &self.
   /// Because Instant is monotonic, the only time that `earlier` should be
   /// a later time is a bug in your code.
@@ -243,6 +246,9 @@ propagates.
 
 ```rust
 impl SystemTime {
+  /// Returns the system time corresponding to "now".
+  pub fn now() -> SystemTime;
+
   /// Returns an `Err` if `earlier` is later
   pub fn duration_from_earlier(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError>;
 
