@@ -52,6 +52,7 @@ mod llrepr;
 mod machine;
 mod _match;
 mod meth;
+mod mir;
 mod monomorphize;
 mod tvec;
 mod type_;

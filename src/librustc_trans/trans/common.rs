@@ -743,6 +743,12 @@ pub fn C_floating(s: &str, t: Type) -> ValueRef {
     }
 }
 
+pub fn C_floating_f64(f: f64, t: Type) -> ValueRef {
+    unsafe {
+        llvm::LLVMConstReal(t.to_ref(), f)
+    }
+}
+
 pub fn C_nil(ccx: &CrateContext) -> ValueRef {
     C_struct(ccx, &[], false)
 }
