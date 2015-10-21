@@ -75,6 +75,7 @@ use trans::intrinsic;
 use trans::machine;
 use trans::machine::{llsize_of, llsize_of_real};
 use trans::meth;
+use trans::mir;
 use trans::monomorphize;
 use trans::tvec;
 use trans::type_::Type;
@@ -1231,7 +1232,10 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
         false
     };
 
+    let mir = ccx.mir_map().get(&id);
+
     let mut fcx = FunctionContext {
+          mir: mir,
           llfn: llfndecl,
           llenv: None,
           llretslotptr: Cell::new(None),
@@ -1571,7 +1575,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                    llfndecl: ValueRef,
                                    param_substs: &'tcx Substs<'tcx>,
                                    fn_ast_id: ast::NodeId,
-                                   _attributes: &[ast::Attribute],
+                                   attributes: &[ast::Attribute],
                                    output_type: ty::FnOutput<'tcx>,
                                    abi: Abi,
                                    closure_env: closure::ClosureEnv<'b>) {
@@ -1599,6 +1603,12 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                       Some(body.span),
                       &arena);
     let mut bcx = init_function(&fcx, false, output_type);
+
+    if attributes.iter().any(|item| item.check_name("rustc_mir")) {
+        mir::trans_mir(bcx);
+        fcx.cleanup();
+        return;
+    }
 
     // cleanup scope for the incoming arguments
     let fn_cleanup_debug_loc =
