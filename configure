@@ -625,7 +625,6 @@ valopt_nosave local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt_nosave host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
 valopt_nosave target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
 valopt_nosave mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
-valopt_nosave libc-dir "/usr/lib" "installation directory of the system libc"
 
 # Temporarily support old triples until buildbots get updated
 CFG_BUILD=$(to_llvm_triple $CFG_BUILD)
@@ -1081,9 +1080,6 @@ program_transform_name=$($CFG_CC -v 2>&1 | sed -n "s/.*--program-transform-name=
 CFG_STDCPP_NAME=$(echo "stdc++" | sed "${program_transform_name}")
 putvar CFG_STDCPP_NAME
 
-#CFG_LIB_SEARCH_PATH=$($CFG_CC -print-search-dirs | sed -n "/libraries: =/  { s/.*=//; P }")
-#putvar CFG_LIB_SEARCH_PATH
-
 # a little post-processing of various config values
 CFG_PREFIX=${CFG_PREFIX%/}
 CFG_MANDIR=${CFG_MANDIR%/}
@@ -1284,16 +1280,6 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
             putvar CFG_DISABLE_JEMALLOC
             ;;
 
-        *-windows-gnu)
-            if [ -z "$CFG_LIBC_DIR_PROVIDED" ]; then
-                # Use gcc location to find mingw libc directory
-                for dir in $(dirname $CFG_GCC)/../*-mingw32/lib; do
-                    if [ -d "$dir" ]; then
-                        CFG_LIBC_DIR=$dir
-                    fi
-                done
-            fi
-            ;;
         *)
             ;;
     esac
@@ -1752,7 +1738,6 @@ putvar CFG_AARCH64_LINUX_ANDROID_NDK
 putvar CFG_ARM_LINUX_ANDROIDEABI_NDK
 putvar CFG_I686_LINUX_ANDROID_NDK
 putvar CFG_MANDIR
-putvar CFG_LIBC_DIR
 
 # Avoid spurious warnings from clang by feeding it original source on
 # ccache-miss rather than preprocessed input.

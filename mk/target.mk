@@ -146,19 +146,10 @@ define TARGET_RT_STARTUP
 $$(foreach obj,rsbegin rsend, \
 	$$(eval $$(call TARGET_RUSTRT_STARTUP_OBJ,$(1),$(2),$(3),$$(obj))) )
 
+# Expand build rules for libc startup objects
 $$(foreach obj,$$(CFG_LIBC_STARTUP_OBJECTS_$(2)), \
-	$$(eval $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.core : $$(TLIB$(1)_T_$(2)_H_$(3))/$$(obj)) \
-	$$(eval $$(call COPY_LIBC_STARTUP,$$(TLIB$(1)_T_$(2)_H_$(3)),$$(obj))) )
-endef
+	$$(eval $$(call TARGET_LIBC_STARTUP_OBJ,$(1),$(2),$(3),$$(obj))) )
 
-# TARGET_RT_STARTUP's helper for copying LibC startup objects
-# $(1) - target lib directory
-# $(2) - object name
-define COPY_LIBC_STARTUP
-
-$(1)/$(2) : $$(CFG_LIBC_DIR)/$(2)
-	@$$(call E, cp: $$@)
-	@cp $$^ $$@
 endef
 
 # Macro for building runtime startup/shutdown object files;
@@ -167,10 +158,10 @@ endef
 # $(1) - stage
 # $(2) - target triple
 # $(3) - host triple
-# $(4) - object name
+# $(4) - object basename
 define TARGET_RUSTRT_STARTUP_OBJ
 
-$$(TLIB$(1)_T_$(2)_H_$(3))/$(4).o:\
+$$(TLIB$(1)_T_$(2)_H_$(3))/$(4).o: \
 		$(S)src/rtstartup/$(4).rs \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.core \
 		$$(HSREQ$(1)_T_$(2)_H_$(3)) \
@@ -183,8 +174,30 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(4).o:\
 # but before everything else (since they are needed for linking dylib crates).
 $$(foreach crate, $$(TARGET_CRATES), \
 	$$(if $$(findstring core,$$(DEPS_$$(crate))), \
-		$$(eval $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate) : $$(TLIB$(1)_T_$(2)_H_$(3))/$(4).o) ))
+		$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate))) : $$(TLIB$(1)_T_$(2)_H_$(3))/$(4).o
+
 endef
+
+# Macro for copying libc startup objects into the target's lib directory.
+#
+# $(1) - stage
+# $(2) - target triple
+# $(3) - host triple
+# $(4) - object name
+define TARGET_LIBC_STARTUP_OBJ
+
+# Ask gcc where the startup object is located
+$$(TLIB$(1)_T_$(2)_H_$(3))/$(4) : $$(shell $$(CC_$(2)) -print-file-name=$(4))
+	@$$(call E, cp: $$@)
+	@cp $$^ $$@
+
+# Make sure this is done before libcore has finished building
+# (libcore itself does not depend on these objects, but other crates do,
+#  so might as well do it here)
+$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.core : $$(TLIB$(1)_T_$(2)_H_$(3))/$(4)
+
+endef
+
 
 # Every recipe in RUST_TARGET_STAGE_N outputs to $$(TLIB$(1)_T_$(2)_H_$(3),
 # a directory that can be cleaned out during the middle of a run of
