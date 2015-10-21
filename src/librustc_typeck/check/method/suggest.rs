@@ -23,6 +23,7 @@ use middle::lang_items::FnOnceTraitLangItem;
 use middle::subst::Substs;
 use middle::traits::{Obligation, SelectionContext};
 use metadata::{csearch, cstore, decoder};
+use util::nodemap::{FnvHashSet};
 
 use syntax::ast;
 use syntax::codemap::Span;
@@ -406,7 +407,9 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
         }, ccx.tcx.map.krate());
 
         // Cross-crate:
+        let mut external_mods = FnvHashSet();
         fn handle_external_def(traits: &mut AllTraitsVec,
+                               external_mods: &mut FnvHashSet<DefId>,
                                ccx: &CrateCtxt,
                                cstore: &cstore::CStore,
                                dl: decoder::DefLike) {
@@ -415,8 +418,12 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
                     traits.push(TraitInfo::new(did));
                 }
                 decoder::DlDef(def::DefMod(did)) => {
+                    if !external_mods.insert(did) {
+                        return;
+                    }
                     csearch::each_child_of_item(cstore, did, |dl, _, _| {
-                        handle_external_def(traits, ccx, cstore, dl)
+                        handle_external_def(traits, external_mods,
+                                            ccx, cstore, dl)
                     })
                 }
                 _ => {}
@@ -425,7 +432,9 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
         let cstore = &ccx.tcx.sess.cstore;
         cstore.iter_crate_data(|cnum, _| {
             csearch::each_top_level_item_of_crate(cstore, cnum, |dl, _, _| {
-                handle_external_def(&mut traits, ccx, cstore, dl)
+                handle_external_def(&mut traits,
+                                    &mut external_mods,
+                                    ccx, cstore, dl)
             })
         });
 
