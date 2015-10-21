@@ -659,7 +659,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn pick_evaluation_cache(&self) -> &EvaluationCache<'tcx> {
-        &self.param_env().evaluation_cache
+        // see comment in `pick_candidate_cache`
+        if self.intercrate ||
+            !self.param_env().caller_bounds.is_empty()
+        {
+            &self.param_env().evaluation_cache
+        } else
+        {
+            &self.tcx().evaluation_cache
+        }
     }
 
     fn check_evaluation_cache(&self, trait_ref: ty::PolyTraitRef<'tcx>)
