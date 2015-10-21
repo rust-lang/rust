@@ -51,6 +51,7 @@ pub mod mutex_atomic;
 pub mod zero_div_zero;
 pub mod open_options;
 pub mod needless_features;
+pub mod needless_update;
 
 mod reexport {
     pub use syntax::ast::{Name, Ident, NodeId};
@@ -96,6 +97,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box zero_div_zero::ZeroDivZeroPass);
     reg.register_late_lint_pass(box mutex_atomic::MutexAtomic);
     reg.register_late_lint_pass(box needless_features::NeedlessFeaturesPass);
+    reg.register_late_lint_pass(box needless_update::NeedlessUpdatePass);
 
     reg.register_lint_group("clippy_pedantic", vec![
         methods::OPTION_UNWRAP_USED,
@@ -155,6 +157,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         needless_bool::NEEDLESS_BOOL,
         needless_features::UNSTABLE_AS_MUT_SLICE,
         needless_features::UNSTABLE_AS_SLICE,
+        needless_update::NEEDLESS_UPDATE,
         open_options::NONSENSICAL_OPEN_OPTIONS,
         precedence::PRECEDENCE,
         ptr_arg::PTR_ARG,
