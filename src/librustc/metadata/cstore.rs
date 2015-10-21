@@ -207,7 +207,7 @@ impl CStore {
                 visit(cstore, dep, ordering);
             }
             ordering.push(cnum);
-        };
+        }
         for (&num, _) in self.metas.borrow().iter() {
             visit(self, num, &mut ordering);
         }

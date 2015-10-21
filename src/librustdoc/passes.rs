@@ -28,7 +28,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
     let krate = {
         struct Stripper<'a> {
             stripped: &'a mut DefIdSet
-        };
+        }
         impl<'a> fold::DocFolder for Stripper<'a> {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
                 if i.is_hidden_from_doc() {
@@ -60,7 +60,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
     let krate = {
         struct ImplStripper<'a> {
             stripped: &'a mut DefIdSet
-        };
+        }
         impl<'a> fold::DocFolder for ImplStripper<'a> {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
                 if let clean::ImplItem(clean::Impl{

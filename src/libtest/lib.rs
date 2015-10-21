@@ -924,7 +924,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
             } else {
                 None
             }
-        };
+        }
         filtered.into_iter().filter_map(filter).collect()
     };
 
