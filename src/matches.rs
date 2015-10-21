@@ -1,6 +1,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use rustc::middle::ty;
+use syntax::ast::Lit_::LitBool;
 
 use utils::{snippet, span_lint, span_help_and_lint, in_external_macro, expr_block};
 
@@ -66,10 +67,58 @@ impl LateLintPass for MatchPass {
             // check preconditions for MATCH_BOOL
             // type of expression == bool
             if cx.tcx.expr_ty(ex).sty == ty::TyBool {
-
-                span_lint(cx, MATCH_BOOL, expr.span,
+                if arms.len() == 2 && arms[0].pats.len() == 1 { // no guards
+                    let exprs = if let PatLit(ref arm_bool) = arms[0].pats[0].node {
+                        if let ExprLit(ref lit) = arm_bool.node {
+                            if let LitBool(val) = lit.node { 
+                                if val {
+                                    Some((&*arms[0].body, &*arms[1].body))
+                                } else {
+                                    Some((&*arms[1].body, &*arms[0].body))
+                                }
+                            } else { None }
+                        } else { None }
+                    } else { None };
+                    if let Some((ref true_expr, ref false_expr)) = exprs {
+                        if !is_unit_expr(true_expr) {
+                            if !is_unit_expr(false_expr) {
+                                span_help_and_lint(cx, MATCH_BOOL, expr.span,
+                                    "you seem to be trying to match on a boolean expression. \
+                                   Consider using an if..else block:",
+                                   &format!("try\nif {} {} else {}",
+                                        snippet(cx, ex.span, "b"),
+                                        expr_block(cx, true_expr, None, ".."),
+                                        expr_block(cx, false_expr, None, "..")));
+                            } else {
+                                span_help_and_lint(cx, MATCH_BOOL, expr.span,
+                                    "you seem to be trying to match on a boolean expression. \
+                                   Consider using an if..else block:",
+                                   &format!("try\nif {} {}",
+                                        snippet(cx, ex.span, "b"),
+                                        expr_block(cx, true_expr, None, "..")));
+                            }
+                        } else if !is_unit_expr(false_expr) {
+                            span_help_and_lint(cx, MATCH_BOOL, expr.span,
+                                "you seem to be trying to match on a boolean expression. \
+                               Consider using an if..else block:",
+                               &format!("try\nif !{} {}",
+                                    snippet(cx, ex.span, "b"),
+                                    expr_block(cx, false_expr, None, "..")));
+                        } else {
+                            span_lint(cx, MATCH_BOOL, expr.span,
                                    "you seem to be trying to match on a boolean expression. \
                                    Consider using an if..else block");
+                        }
+                    } else {
+                        span_lint(cx, MATCH_BOOL, expr.span,
+                            "you seem to be trying to match on a boolean expression. \
+                            Consider using an if..else block");
+                    }
+                } else {
+                    span_lint(cx, MATCH_BOOL, expr.span,
+                        "you seem to be trying to match on a boolean expression. \
+                        Consider using an if..else block");
+                }
             }
         }
     }

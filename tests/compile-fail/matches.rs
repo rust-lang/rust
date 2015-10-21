@@ -48,8 +48,25 @@ fn match_bool() {
 
     let option = 1;
     match option == 1 {  //~ ERROR you seem to be trying to match on a boolean expression
+        true => 1,
+        false => 0,
+    };
+    
+    match test { //~ ERROR you seem to be trying to match on a boolean expression
         true => (),
-        false => (),
+        false => { println!("Noooo!"); },
+    };
+    
+    match test { //~ ERROR you seem to be trying to match on a boolean expression
+        //~^ERROR you seem to be trying to use match
+        //TODO: Remove duplicate warning
+        false => { println!("Noooo!"); },
+        _ => (),
+    };
+    
+    match test { //~ ERROR you seem to be trying to match on a boolean expression
+        false => { println!("Noooo!"); },
+        true => { println!("Yes!"); },
     };
 
     // Not linted
