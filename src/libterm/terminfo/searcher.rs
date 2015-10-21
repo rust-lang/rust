@@ -102,7 +102,7 @@ fn test_get_dbpath_for_term() {
     fn x(t: &str) -> String {
         let p = get_dbpath_for_term(t).expect("no terminfo entry found");
         p.to_str().unwrap().to_string()
-    };
+    }
     assert!(x("screen") == "/usr/share/terminfo/s/screen");
     assert!(get_dbpath_for_term("") == None);
     env::set_var("TERMINFO_DIRS", ":");
