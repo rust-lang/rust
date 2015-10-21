@@ -143,7 +143,7 @@ pub fn compile_input(sess: Session,
         phase_3_run_analysis_passes(&sess,
                                     ast_map,
                                     &arenas,
-                                    id,
+                                    &id,
                                     control.make_glob_map,
                                     |tcx, analysis| {
 
@@ -155,7 +155,8 @@ pub fn compile_input(sess: Session,
                                                                tcx.map.krate(),
                                                                &analysis,
                                                                tcx,
-                                                               &lcx);
+                                                               &lcx,
+                                                               &id);
                 (control.after_analysis.callback)(state);
 
                 tcx.sess.abort_if_errors();
@@ -279,7 +280,7 @@ pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
     pub expanded_crate: Option<&'a ast::Crate>,
     pub hir_crate: Option<&'a hir::Crate>,
     pub ast_map: Option<&'a hir_map::Map<'ast>>,
-    pub analysis: Option<&'a ty::CrateAnalysis>,
+    pub analysis: Option<&'a ty::CrateAnalysis<'a>>,
     pub tcx: Option<&'a ty::ctxt<'tcx>>,
     pub lcx: Option<&'a LoweringContext<'a>>,
     pub trans: Option<&'a trans::CrateTranslation>,
@@ -358,7 +359,8 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                             hir_crate: &'a hir::Crate,
                             analysis: &'a ty::CrateAnalysis,
                             tcx: &'a ty::ctxt<'tcx>,
-                            lcx: &'a LoweringContext<'a>)
+                            lcx: &'a LoweringContext<'a>,
+                            crate_name: &'a str)
                             -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             analysis: Some(analysis),
@@ -366,6 +368,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
             krate: Some(krate),
             hir_crate: Some(hir_crate),
             lcx: Some(lcx),
+            crate_name: Some(crate_name),
             .. CompileState::empty(input, session, out_dir)
         }
     }
@@ -661,7 +664,7 @@ pub fn make_map<'ast>(sess: &Session,
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                ast_map: front::map::Map<'tcx>,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
-                                               name: String,
+                                               name: &str,
                                                make_glob_map: resolve::MakeGlobMap,
                                                f: F)
                                                -> R
