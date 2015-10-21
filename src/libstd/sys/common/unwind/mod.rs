@@ -34,28 +34,35 @@
 //! object being thrown, and to decide whether it should be caught at that stack
 //! frame.  Once the handler frame has been identified, cleanup phase begins.
 //!
-//! In the cleanup phase, personality routines invoke cleanup code associated
-//! with their stack frames (i.e. destructors).  Once stack has been unwound down
-//! to the handler frame level, unwinding stops and the last personality routine
-//! transfers control to its catch block.
+//! In the cleanup phase, the unwinder invokes each personality routine again.
+//! This time it decides which (if any) cleanup code needs to be run for
+//! the current stack frame.  If so, the control is transferred to a special branch
+//! in the function body, the "landing pad", which invokes destructors, frees memory,
+//! etc.  At the end of the landing pad, control is transferred back to the unwinder
+//! and unwinding resumes.
+//!
+//! Once stack has been unwound down to the handler frame level, unwinding stops
+//! and the last personality routine transfers control to the catch block.
+//!
+//! ## `eh_personality` and `eh_unwind_resume`
+//!
+//! These language items are used by the compiler when generating unwind info.
+//! The first one is the personality routine described above.  The second one
+//! allows compilation target to customize the process of resuming unwind at the
+//! end of the landing pads.  `eh_unwind_resume` is used only if `custom_unwind_resume`
+//! flag in the target options is set.
 //!
 //! ## Frame unwind info registration
 //!
-//! Each module has its own frame unwind info section (usually ".eh_frame"), and
-//! unwinder needs to know about all of them in order for unwinding to be able to
-//! cross module boundaries.
-//!
-//! On some platforms, like Linux, this is achieved by dynamically enumerating
-//! currently loaded modules via the dl_iterate_phdr() API and finding all
-//! .eh_frame sections.
-//!
+//! Each module's image contains a frame unwind info section (usually ".eh_frame").
+//! When a module is loaded/unloaded into the process, the unwinder must be informed
+//! about the location of this section in memory. The methods of achieving that vary
+//! by the platform.
+//! On some (e.g. Linux), the unwinder can discover unwind info sections on its own
+//! (by dynamically enumerating currently loaded modules via the dl_iterate_phdr() API
+//! and finding their ".eh_frame" sections);
 //! Others, like Windows, require modules to actively register their unwind info
-//! sections by calling __register_frame_info() API at startup.  In the latter
-//! case it is essential that there is only one copy of the unwinder runtime in
-//! the process.  This is usually achieved by linking to the dynamic version of
-//! the unwind runtime.
-//!
-//! Currently Rust uses unwind runtime provided by libgcc.
+//! sections via unwinder API (see `rust_eh_register_frames`/`rust_eh_unregister_frames`).
 
 #![allow(dead_code)]
 #![allow(unused_imports)]
