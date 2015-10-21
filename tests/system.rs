@@ -145,7 +145,7 @@ pub fn idempotent_check(filename: String) -> Result<FormatReport, HashMap<String
     // Don't generate warnings for to-do items.
     config.report_todo = ReportTactic::Never;
 
-    let mut file_map = format(Path::new(&filename), &config);
+    let mut file_map = format(Path::new(&filename), &config, WriteMode::Return);
     let format_report = fmt_lines(&mut file_map, &config);
 
     // Won't panic, as we're not doing any IO.

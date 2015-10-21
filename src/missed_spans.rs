@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use WriteMode;
 use visitor::FmtVisitor;
-
 use syntax::codemap::{self, BytePos, Span, Pos};
 use comment::{CodeCharKind, CommentCodeSlices, rewrite_comment};
 
@@ -80,7 +80,7 @@ impl<'a> FmtVisitor<'a> {
     fn write_snippet_inner<F>(&mut self,
                               big_snippet: &str,
                               big_diff: usize,
-                              snippet: &str,
+                              old_snippet: &str,
                               process_last_snippet: F)
         where F: Fn(&mut FmtVisitor, &str, &str)
     {
@@ -90,6 +90,26 @@ impl<'a> FmtVisitor<'a> {
         let mut line_start = 0;
         let mut last_wspace = None;
         let mut rewrite_next_comment = true;
+
+        fn replace_chars(string: &str) -> String {
+            string.chars()
+                  .map(|ch| {
+                      match ch.is_whitespace() {
+                          true => ch,
+                          false => 'X',
+                      }
+                  })
+                  .collect()
+        }
+
+        let replaced = match self.write_mode {
+            Some(mode) => match mode {
+                WriteMode::Coverage => replace_chars(old_snippet),
+                _ => old_snippet.to_owned(),
+            },
+            None => old_snippet.to_owned(),
+        };
+        let snippet = &*replaced;
 
         for (kind, offset, subslice) in CommentCodeSlices::new(snippet) {
             if let CodeCharKind::Comment = kind {
