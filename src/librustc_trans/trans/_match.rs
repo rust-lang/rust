@@ -303,7 +303,7 @@ impl<'a, 'tcx> Opt<'a, 'tcx> {
                 RangeResult(Result::new(bcx, l1), Result::new(bcx, l2))
             }
             Variant(disr_val, ref repr, _, _) => {
-                adt::trans_case(bcx, &**repr, disr_val)
+                SingleResult(Result::new(bcx, adt::trans_case(bcx, &**repr, disr_val)))
             }
             SliceLengthEqual(length, _) => {
                 SingleResult(Result::new(bcx, C_uint(ccx, length)))
