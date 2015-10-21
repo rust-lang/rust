@@ -34,5 +34,5 @@ pub mod mir_map;
 mod hair;
 pub mod repr;
 mod graphviz;
-
+pub mod tcx;
 
