@@ -1222,10 +1222,10 @@ impl VariantData {
     }
 }
 
-/*
-  FIXME (#3300): Should allow items to be anonymous. Right now
-  we just use dummy names for anon items.
- */
+//
+// FIXME (#3300): Should allow items to be anonymous. Right now
+// we just use dummy names for anon items.
+//
 /// An item
 ///
 /// The name might be a dummy name in case of anonymous items
@@ -1269,7 +1269,6 @@ pub enum Item_ {
 
     // Default trait implementations
     ///
-    // `impl Trait for .. {}`
     ItemDefaultImpl(Unsafety, TraitRef),
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,

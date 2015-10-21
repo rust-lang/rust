@@ -750,11 +750,11 @@ impl<'a> State<'a> {
                 try!(self.bclose(item.span));
             }
             hir::ItemImpl(unsafety,
-                          polarity,
-                          ref generics,
-                          ref opt_trait,
-                          ref ty,
-                          ref impl_items) => {
+                         polarity,
+                         ref generics,
+                         ref opt_trait,
+                         ref ty,
+                         ref impl_items) => {
                 try!(self.head(""));
                 try!(self.print_visibility(item.vis));
                 try!(self.print_unsafety(unsafety));
@@ -1517,7 +1517,7 @@ impl<'a> State<'a> {
                     Ok(())
                 }));
 
-                let mut options = vec!();
+                let mut options = vec![];
                 if a.volatile {
                     options.push("volatile");
                 }
@@ -1703,8 +1703,8 @@ impl<'a> State<'a> {
     pub fn print_pat(&mut self, pat: &hir::Pat) -> io::Result<()> {
         try!(self.maybe_print_comment(pat.span.lo));
         try!(self.ann.pre(self, NodePat(pat)));
-        /* Pat isn't normalized, but the beauty of it
-         is that it doesn't matter */
+        // Pat isn't normalized, but the beauty of it
+        // is that it doesn't matter
         match pat.node {
             hir::PatWild(hir::PatWildSingle) => try!(word(&mut self.s, "_")),
             hir::PatWild(hir::PatWildMulti) => try!(word(&mut self.s, "..")),
@@ -2087,7 +2087,7 @@ impl<'a> State<'a> {
 
     pub fn print_where_clause(&mut self, where_clause: &hir::WhereClause) -> io::Result<()> {
         if where_clause.predicates.is_empty() {
-            return Ok(())
+            return Ok(());
         }
 
         try!(space(&mut self.s));
@@ -2273,7 +2273,7 @@ impl<'a> State<'a> {
         match self.next_comment() {
             Some(ref cmnt) => {
                 if (*cmnt).style != comments::Trailing {
-                    return Ok(())
+                    return Ok(());
                 }
                 let span_line = cm.lookup_char_pos(span.hi);
                 let comment_line = cm.lookup_char_pos((*cmnt).pos);

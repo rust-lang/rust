@@ -175,7 +175,7 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
     fn visit_item(&mut self, item: &Item) {
         if !self.pass_through_items {
             if self.visited_outermost {
-                return
+                return;
             } else {
                 self.visited_outermost = true
             }

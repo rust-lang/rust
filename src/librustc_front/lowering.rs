@@ -114,7 +114,7 @@ impl<'a, 'hir> LoweringContext<'a> {
     fn next_id(&self) -> NodeId {
         let cached = self.cached_id.get();
         if cached == 0 {
-            return self.id_assigner.next_node_id()
+            return self.id_assigner.next_node_id();
         }
 
         self.cached_id.set(cached + 1);
@@ -158,7 +158,7 @@ pub fn lower_view_path(_lctx: &LoweringContext, view_path: &ViewPath) -> P<hir::
                                                                   id: id,
                                                                   name: name.name,
                                                                   rename: rename.map(|x| x.name),
-                                                              },
+                                                              }
                                                               PathListMod { id, rename } =>
                                                                   hir::PathListMod {
                                                                   id: id,
@@ -1422,7 +1422,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                                           false,
                                                           result_ident,
                                                           match_expr)],
-                                            Some(expr_ident(lctx, e.span, result_ident))))
+                                            Some(expr_ident(lctx, e.span, result_ident))));
             }
 
             ExprMac(_) => panic!("Shouldn't exist here"),
@@ -1526,7 +1526,7 @@ pub fn lower_trait_bound_modifier(_lctx: &LoweringContext,
 
 fn arm(pats: Vec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
     hir::Arm {
-        attrs: vec!(),
+        attrs: vec![],
         pats: pats,
         guard: None,
         body: expr,
@@ -1625,7 +1625,7 @@ fn block_all(lctx: &LoweringContext,
 fn pat_some(lctx: &LoweringContext, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
     let some = std_path(lctx, &["option", "Option", "Some"]);
     let path = path_global(span, some);
-    pat_enum(lctx, span, path, vec!(pat))
+    pat_enum(lctx, span, path, vec![pat])
 }
 
 fn pat_none(lctx: &LoweringContext, span: Span) -> P<hir::Pat> {
@@ -1674,7 +1674,7 @@ fn pat(lctx: &LoweringContext, span: Span, pat: hir::Pat_) -> P<hir::Pat> {
 }
 
 fn path_ident(span: Span, id: Ident) -> hir::Path {
-    path(span, vec!(id))
+    path(span, vec![id])
 }
 
 fn path(span: Span, strs: Vec<Ident>) -> hir::Path {
@@ -1722,7 +1722,7 @@ fn std_path(lctx: &LoweringContext, components: &[&str]) -> Vec<Ident> {
         v.push(str_to_ident(s));
     }
     v.extend(components.iter().map(|s| str_to_ident(s)));
-    return v
+    return v;
 }
 
 // Given suffix ["b","c","d"], returns path `::std::b::c::d` when

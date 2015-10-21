@@ -303,11 +303,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         ItemDefaultImpl(_, ref trait_ref) => {
             visitor.visit_trait_ref(trait_ref)
         }
-        ItemImpl(_, _,
-                 ref type_parameters,
-                 ref opt_trait_reference,
-                 ref typ,
-                 ref impl_items) => {
+        ItemImpl(_, _, ref type_parameters, ref opt_trait_reference, ref typ, ref impl_items) => {
             visitor.visit_generics(type_parameters);
             walk_list!(visitor, visit_trait_ref, opt_trait_reference);
             visitor.visit_ty(typ);
@@ -330,7 +326,11 @@ pub fn walk_enum_def<'v, V: Visitor<'v>>(visitor: &mut V,
                                          enum_definition: &'v EnumDef,
                                          generics: &'v Generics,
                                          item_id: NodeId) {
-    walk_list!(visitor, visit_variant, &enum_definition.variants, generics, item_id);
+    walk_list!(visitor,
+               visit_variant,
+               &enum_definition.variants,
+               generics,
+               item_id);
 }
 
 pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
