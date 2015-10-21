@@ -60,7 +60,7 @@ pub mod clone;
 pub mod encodable;
 pub mod decodable;
 pub mod hash;
-pub mod show;
+pub mod debug;
 pub mod default;
 pub mod primitive;
 
@@ -173,7 +173,7 @@ derive_traits! {
     "PartialOrd" => partial_ord::expand_deriving_partial_ord,
     "Ord" => ord::expand_deriving_ord,
 
-    "Debug" => show::expand_deriving_show,
+    "Debug" => debug::expand_deriving_debug,
 
     "Default" => default::expand_deriving_default,
 
@@ -184,7 +184,6 @@ derive_traits! {
     "Copy" => bounds::expand_deriving_copy,
 
     // deprecated
-    "Show" => show::expand_deriving_show,
     "Encodable" => encodable::expand_deriving_encodable,
     "Decodable" => decodable::expand_deriving_decodable,
 }
@@ -192,7 +191,6 @@ derive_traits! {
 #[inline] // because `name` is a compile-time constant
 fn warn_if_deprecated(ecx: &mut ExtCtxt, sp: Span, name: &str) {
     if let Some(replacement) = match name {
-        "Show" => Some("Debug"),
         "Encodable" => Some("RustcEncodable"),
         "Decodable" => Some("RustcDecodable"),
         _ => None,

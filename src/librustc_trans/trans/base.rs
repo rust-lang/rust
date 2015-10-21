@@ -89,7 +89,6 @@ use libc::c_uint;
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
-use std::mem;
 use std::str;
 use std::{i8, i16, i32, i64};
 use syntax::abi::{Rust, RustCall, RustIntrinsic, PlatformIntrinsic, Abi};
@@ -2125,7 +2124,10 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
           let mut v = TransItemVisitor{ ccx: ccx };
           v.visit_expr(&**expr);
 
-          let g = consts::trans_static(ccx, m, expr, item.id, &item.attrs);
+          let g = match consts::trans_static(ccx, m, expr, item.id, &item.attrs) {
+              Ok(g) => g,
+              Err(err) => ccx.tcx().sess.span_fatal(expr.span, &err.description()),
+          };
           set_global_section(ccx, g, item);
           update_linkage(ccx, g, Some(item.id), OriginalTranslation);
       },
@@ -2661,11 +2663,7 @@ impl Iterator for ValueIter {
     fn next(&mut self) -> Option<ValueRef> {
         let old = self.cur;
         if !old.is_null() {
-            self.cur = unsafe {
-                let step: unsafe extern "C" fn(ValueRef) -> ValueRef =
-                    mem::transmute_copy(&self.step);
-                step(old)
-            };
+            self.cur = unsafe { (self.step)(old) };
             Some(old)
         } else {
             None

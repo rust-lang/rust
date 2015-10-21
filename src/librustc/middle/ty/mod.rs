@@ -102,12 +102,12 @@ pub const INITIAL_DISCRIMINANT_VALUE: Disr = 0;
 
 /// The complete set of all analyses described in this module. This is
 /// produced by the driver and fed to trans and later passes.
-pub struct CrateAnalysis {
+pub struct CrateAnalysis<'a> {
     pub export_map: ExportMap,
     pub exported_items: middle::privacy::ExportedItems,
     pub public_items: middle::privacy::PublicItems,
     pub reachable: NodeSet,
-    pub name: String,
+    pub name: &'a str,
     pub glob_map: Option<GlobMap>,
 }
 

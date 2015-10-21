@@ -20,7 +20,6 @@ use rustc_front;
 use rustc::front::map::NodeItem;
 use rustc_front::{hir, lowering};
 
-use syntax::attr;
 use syntax::ast::{self, NodeId};
 use syntax::ast_util;
 use syntax::codemap::*;
@@ -714,19 +713,13 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l ty::ctxt<'tcx>,
                                lcx: &'l lowering::LoweringContext<'l>,
                                krate: &ast::Crate,
                                analysis: &ty::CrateAnalysis,
+                               cratename: &str,
                                odir: Option<&Path>) {
     if generated_code(krate.span) {
         return;
     }
 
     assert!(analysis.glob_map.is_some());
-    let cratename = match attr::find_crate_name(&krate.attrs) {
-        Some(name) => name.to_string(),
-        None => {
-            info!("Could not find crate name, using 'unknown_crate'");
-            String::from("unknown_crate")
-        }
-    };
 
     info!("Dumping crate {}", cratename);
 
@@ -751,7 +744,7 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l ty::ctxt<'tcx>,
     }
 
     // Create output file.
-    let mut out_name = cratename.clone();
+    let mut out_name = cratename.to_owned();
     out_name.push_str(".csv");
     root_path.push(&out_name);
     let output_file = match File::create(&root_path) {
@@ -765,7 +758,7 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l ty::ctxt<'tcx>,
 
     let mut visitor = dump_csv::DumpCsvVisitor::new(tcx, lcx, analysis, output_file);
 
-    visitor.dump_crate_info(&cratename, krate);
+    visitor.dump_crate_info(cratename, krate);
     visit::walk_crate(&mut visitor, krate);
 }
 

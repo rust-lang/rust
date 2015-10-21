@@ -21,6 +21,7 @@
 # * dist-docs - Stage docs for upload
 
 PKG_NAME := $(CFG_PACKAGE_NAME)
+STD_PKG_NAME := rust-std-$(CFG_PACKAGE_VERS)
 DOC_PKG_NAME := rust-docs-$(CFG_PACKAGE_VERS)
 MINGW_PKG_NAME := rust-mingw-$(CFG_PACKAGE_VERS)
 
@@ -112,19 +113,25 @@ distcheck-tar-src: dist-tar-src
 # Unix binary installer tarballs
 ######################################################################
 
-define DEF_INSTALLER
+define DEF_START_INSTALLER
+dist-install-dir-$(1)-%: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
+dist-install-dir-$(1)-%: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
+dist-install-dir-$(1)-%: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
+dist-install-dir-$(1)-%: PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
+dist-install-dir-$(1)-%: PREPARE_CLEAN=true
 
 $$(eval $$(call DEF_PREPARE,dir-$(1)))
+endef
 
-dist-install-dir-$(1): PREPARE_HOST=$(1)
-dist-install-dir-$(1): PREPARE_TARGETS=$(2)
-dist-install-dir-$(1): PREPARE_DEST_DIR=tmp/dist/$$(PKG_NAME)-$(1)-image
-dist-install-dir-$(1): PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
-dist-install-dir-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
-dist-install-dir-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
-dist-install-dir-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
-dist-install-dir-$(1): PREPARE_CLEAN=true
-dist-install-dir-$(1): prepare-base-dir-$(1) docs
+$(foreach target,$(CFG_TARGET),\
+  $(eval $(call DEF_START_INSTALLER,$(target))))
+
+define DEF_INSTALLER
+
+dist-install-dir-$(1)-host: PREPARE_HOST=$(1)
+dist-install-dir-$(1)-host: PREPARE_TARGETS=$(2)
+dist-install-dir-$(1)-host: PREPARE_DEST_DIR=tmp/dist/$$(PKG_NAME)-$(1)-image
+dist-install-dir-$(1)-host: prepare-base-dir-$(1)-host docs
 	$$(Q)mkdir -p $$(PREPARE_DEST_DIR)/share/doc/rust
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)COPYRIGHT $$(PREPARE_DEST_DIR)/share/doc/rust
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-APACHE $$(PREPARE_DEST_DIR)/share/doc/rust
@@ -141,14 +148,27 @@ prepare-overlay-$(1):
 # This tiny morsel of metadata is used by rust-packaging
 	$$(Q)echo "$(CFG_VERSION)" > tmp/dist/$$(PKG_NAME)-$(1)-overlay/version
 
-dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1) prepare-overlay-$(1)
+dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)-host prepare-overlay-$(1)
 	@$(call E, build: $$@)
-# Copy essential gcc components into installer
-ifdef CFG_WINDOWSY_$(1)
-ifeq ($$(findstring gnu,$(1)),gnu)
-	$$(Q)rm -Rf tmp/dist/win-rust-gcc-$(1)
-	$$(Q)$$(CFG_PYTHON) $$(S)src/etc/make-win-dist.py tmp/dist/$$(PKG_NAME)-$(1)-image tmp/dist/win-rust-gcc-$(1) $(1)
-	$$(Q)cp -r $$(S)src/etc/third-party tmp/dist/$$(PKG_NAME)-$(1)-image/share/doc/
+# On a 32-bit MinGW target we've got a few runtime DLL dependencies that we need
+# to include. THe first argument to `make-win-dist` is where to put these DLLs
+# (the image we're creating) and the second argument is a junk directory to
+# ignore all the other MinGW stuff the script creates.
+ifeq ($(2),i686-pc-windows-gnu)
+	$$(Q)rm -Rf tmp/dist/win-rust-gcc-$(2)
+	$$(Q)$$(CFG_PYTHON) $$(S)src/etc/make-win-dist.py \
+		tmp/dist/$$(STD_PKG_NAME)-$(2)-image \
+		tmp/dist/win-rust-gcc-$(2) $(2)
+endif
+# On 32-bit MinGW we're always including a DLL which needs some extra licenses
+# to distribute. On 64-bit MinGW we don't actually distribute anything requiring
+# us to distribute a license but it's likely that the install will *also*
+# include the rust-mingw package down below, which also need licenses, so to be
+# safe we just inlude it here in all MinGW packages.
+ifdef CFG_WINDOWSY_$(2)
+ifeq ($$(findstring $(2),gnu),gnu)
+	$$(Q)cp -r $$(S)src/etc/third-party \
+		tmp/dist/$$(STD_PKG_NAME)-$(2)-image/share/doc/
 endif
 endif
 	$$(Q)$$(S)src/rust-installer/gen-installer.sh \
@@ -183,11 +203,16 @@ dist/$$(DOC_PKG_NAME)-$(1).tar.gz: dist-doc-install-dir-$(1)
 		--bulk-dirs=share/doc/rust/html
 	$$(Q)rm -R tmp/dist/$$(DOC_PKG_NAME)-$(1)-image
 
+# Creates the rust-mingw package, and the first argument to make-win-dist is a
+# "temporary directory" which is just thrown away (this contains the runtime
+# DLLs included in the rustc package above) and the second argument is where to
+# place all the MinGW components (which is what we want).
 dist-mingw-install-dir-$(1):
 	$$(Q)mkdir -p tmp/dist/rust-mingw-tmp-$(1)-image
 	$$(Q)rm -Rf tmp/dist/$$(MINGW_PKG_NAME)-$(1)-image
 	$$(Q)$$(CFG_PYTHON) $$(S)src/etc/make-win-dist.py \
-		tmp/dist/rust-mingw-tmp-$(1)-image tmp/dist/$$(MINGW_PKG_NAME)-$(1)-image $(1)
+		tmp/dist/rust-mingw-tmp-$(1)-image \
+		tmp/dist/$$(MINGW_PKG_NAME)-$(1)-image $(1)
 
 dist/$$(MINGW_PKG_NAME)-$(1).tar.gz: dist-mingw-install-dir-$(1)
 	@$(call E, build: $$@)
@@ -205,15 +230,34 @@ dist/$$(MINGW_PKG_NAME)-$(1).tar.gz: dist-mingw-install-dir-$(1)
 
 endef
 
-ifneq ($(CFG_ENABLE_DIST_HOST_ONLY),)
-$(foreach host,$(CFG_HOST),\
-  $(eval $(call DEF_INSTALLER,$(host),$(host))))
-else
-$(foreach host,$(CFG_HOST),\
-  $(eval $(call DEF_INSTALLER,$(host),$(CFG_TARGET))))
-endif
+# $(1) - host
+# $(2) - target
+define DEF_INSTALLER_TARGETS
 
-dist-install-dirs: $(foreach host,$(CFG_HOST),dist-install-dir-$(host))
+dist-install-dir-$(2)-target: PREPARE_HOST=$(1)
+dist-install-dir-$(2)-target: PREPARE_TARGETS=$(2)
+dist-install-dir-$(2)-target: PREPARE_DEST_DIR=tmp/dist/$$(STD_PKG_NAME)-$(2)-image
+dist-install-dir-$(2)-target: prepare-base-dir-$(2)-target
+
+dist/$$(STD_PKG_NAME)-$(2).tar.gz: dist-install-dir-$(2)-target
+	@$$(call E, build: $$@)
+	$$(Q)$$(S)src/rust-installer/gen-installer.sh \
+		--product-name=Rust \
+		--rel-manifest-dir=rustlib \
+		--success-message=std-is-standing-at-the-ready. \
+		--image-dir=tmp/dist/$$(STD_PKG_NAME)-$(2)-image \
+		--work-dir=tmp/dist \
+		--output-dir=dist \
+		--package-name=$$(STD_PKG_NAME)-$(2) \
+		--component-name=rust-std-$(2) \
+		--legacy-manifest-dirs=rustlib,cargo
+	$$(Q)rm -R tmp/dist/$$(STD_PKG_NAME)-$(2)-image
+endef
+
+$(foreach host,$(CFG_HOST),\
+  $(eval $(call DEF_INSTALLER,$(host))))
+$(foreach target,$(CFG_TARGET),\
+  $(eval $(call DEF_INSTALLER_TARGETS,$(CFG_BUILD),$(target))))
 
 ifdef CFG_WINDOWSY_$(CFG_BUILD)
 define BUILD_MINGW_TARBALL
@@ -230,7 +274,9 @@ ifeq ($(CFG_DISABLE_DOCS),)
 MAYBE_DOC_TARBALLS=$(foreach host,$(CFG_HOST),dist/$(DOC_PKG_NAME)-$(host).tar.gz)
 endif
 
-dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).tar.gz) \
+dist-tar-bins: \
+	$(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).tar.gz) \
+	$(foreach target,$(CFG_TARGET),dist/$(STD_PKG_NAME)-$(target).tar.gz) \
 	$(MAYBE_DOC_TARBALLS) $(MAYBE_MINGW_TARBALLS)
 
 # Just try to run the compiler for the build host

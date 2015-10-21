@@ -137,7 +137,7 @@ pub struct IntermediateBox<T: ?Sized> {
 
 impl<T> Place<T> for IntermediateBox<T> {
     fn pointer(&mut self) -> *mut T {
-        unsafe { ::core::mem::transmute(self.ptr) }
+        self.ptr as *mut T
     }
 }
 

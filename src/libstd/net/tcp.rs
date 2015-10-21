@@ -373,39 +373,28 @@ mod tests {
     }
 
     #[test]
-    fn connect_ip4_loopback() {
-        let addr = next_test_ip4();
-        let acceptor = t!(TcpListener::bind(&addr));
+    fn connect_loopback() {
+        each_ip(&mut |addr| {
+            let acceptor = t!(TcpListener::bind(&addr));
 
-        let _t = thread::spawn(move|| {
-            let mut stream = t!(TcpStream::connect(&("127.0.0.1", addr.port())));
-            t!(stream.write(&[44]));
-        });
+            let _t = thread::spawn(move|| {
+                let host = match addr {
+                    SocketAddr::V4(..) => "127.0.0.1",
+                    SocketAddr::V6(..) => "::1",
+                };
+                let mut stream = t!(TcpStream::connect(&(host, addr.port())));
+                t!(stream.write(&[66]));
+            });
 
-        let mut stream = t!(acceptor.accept()).0;
-        let mut buf = [0];
-        t!(stream.read(&mut buf));
-        assert!(buf[0] == 44);
+            let mut stream = t!(acceptor.accept()).0;
+            let mut buf = [0];
+            t!(stream.read(&mut buf));
+            assert!(buf[0] == 66);
+        })
     }
 
     #[test]
-    fn connect_ip6_loopback() {
-        let addr = next_test_ip6();
-        let acceptor = t!(TcpListener::bind(&addr));
-
-        let _t = thread::spawn(move|| {
-            let mut stream = t!(TcpStream::connect(&("::1", addr.port())));
-            t!(stream.write(&[66]));
-        });
-
-        let mut stream = t!(acceptor.accept()).0;
-        let mut buf = [0];
-        t!(stream.read(&mut buf));
-        assert!(buf[0] == 66);
-    }
-
-    #[test]
-    fn smoke_test_ip6() {
+    fn smoke_test() {
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));
 
@@ -425,7 +414,7 @@ mod tests {
     }
 
     #[test]
-    fn read_eof_ip4() {
+    fn read_eof() {
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));
 
@@ -470,7 +459,7 @@ mod tests {
     }
 
     #[test]
-    fn multiple_connect_serial_ip4() {
+    fn multiple_connect_serial() {
         each_ip(&mut |addr| {
             let max = 10;
             let acceptor = t!(TcpListener::bind(&addr));
@@ -527,7 +516,7 @@ mod tests {
     }
 
     #[test]
-    fn multiple_connect_interleaved_lazy_schedule_ip4() {
+    fn multiple_connect_interleaved_lazy_schedule() {
         const MAX: usize = 10;
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));
@@ -560,7 +549,7 @@ mod tests {
     }
 
     #[test]
-    fn socket_and_peer_name_ip4() {
+    fn socket_and_peer_name() {
         each_ip(&mut |addr| {
             let listener = t!(TcpListener::bind(&addr));
             let so_name = t!(listener.local_addr());

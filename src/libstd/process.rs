@@ -100,7 +100,7 @@ impl IntoInner<AnonPipe> for ChildStdin {
     fn into_inner(self) -> AnonPipe { self.inner }
 }
 
-/// A handle to a child procesess's stdout
+/// A handle to a child process's stdout
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
     inner: AnonPipe
@@ -121,7 +121,7 @@ impl IntoInner<AnonPipe> for ChildStdout {
     fn into_inner(self) -> AnonPipe { self.inner }
 }
 
-/// A handle to a child procesess's stderr
+/// A handle to a child process's stderr
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStderr {
     inner: AnonPipe
@@ -625,8 +625,8 @@ mod tests {
         drop(p.wait());
     }
 
-    #[cfg(unix)]
     #[cfg(all(unix, not(target_os="android")))]
+    #[test]
     fn signal_reported_right() {
         use os::unix::process::ExitStatusExt;
 

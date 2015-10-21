@@ -220,6 +220,7 @@ checking the implicit assertion that no potentially expired data
 It is sometimes obvious that no such access can occur, like the case above.
 However, when dealing with a generic type parameter, such access can
 occur indirectly. Examples of such indirect access are:
+
  * invoking a callback,
  * via a trait method call.
 

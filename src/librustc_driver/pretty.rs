@@ -158,7 +158,7 @@ impl PpSourceMode {
                                                sess: &'tcx Session,
                                                ast_map: &hir_map::Map<'tcx>,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
-                                               id: String,
+                                               id: &str,
                                                payload: B,
                                                f: F) -> A where
         F: FnOnce(&HirPrinterSupport, B, &hir::Crate) -> A,
@@ -713,7 +713,7 @@ pub fn pretty_print_input(sess: Session,
         (PpmHir(s), None) => {
             let out: &mut Write = &mut out;
             s.call_with_pp_support_hir(
-                &sess, &ast_map.unwrap(), &arenas, id, box out, |annotation, out, krate| {
+                &sess, &ast_map.unwrap(), &arenas, &id, box out, |annotation, out, krate| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust_hir::print_crate(sess.codemap(),
@@ -732,7 +732,7 @@ pub fn pretty_print_input(sess: Session,
             s.call_with_pp_support_hir(&sess,
                                        &ast_map.unwrap(),
                                        &arenas,
-                                       id,
+                                       &id,
                                        (out,uii),
                                        |annotation, (out,uii), _| {
                 debug!("pretty printing source code {:?}", s);
@@ -780,7 +780,7 @@ pub fn pretty_print_input(sess: Session,
                     driver::phase_3_run_analysis_passes(&sess,
                                                         ast_map,
                                                         &arenas,
-                                                        id,
+                                                        &id,
                                                         resolve::MakeGlobMap::No,
                                                         |tcx, _| {
                         print_flowgraph(variants, tcx, code, mode, out)

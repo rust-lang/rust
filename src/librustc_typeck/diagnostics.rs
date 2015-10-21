@@ -1390,8 +1390,7 @@ enum Bar { A(u8), B(&bool), }        // error
 enum Bar<'a> { A(u8), B(&'a bool), } // correct
 
 type MyStr = &str;        // error
-type MyStr<'a> = &'a str; //correct
-
+type MyStr<'a> = &'a str; // correct
 ```
 
 Lifetime elision is a special, limited kind of inference for lifetimes in

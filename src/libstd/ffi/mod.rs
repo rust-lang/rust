@@ -13,7 +13,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::c_str::{CString, CStr, NulError};
+pub use self::c_str::{CString, CStr, NulError, IntoStringError};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::os_str::{OsString, OsStr};

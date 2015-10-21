@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(negate_unsigned)]
-
 #![allow(unused_imports)]
 #![feature(negate_unsigned)]
 

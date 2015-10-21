@@ -10,7 +10,7 @@
 
 use std::mem;
 
-#[derive(PartialEq, Show)]
+#[derive(PartialEq, Debug)]
 enum Foo {
     A(u32),
     Bar([u16; 4]),

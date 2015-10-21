@@ -411,7 +411,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
     }
 
     let mut int_regs = 6; // RDI, RSI, RDX, RCX, R8, R9
-    let mut sse_regs = 8;
+    let mut sse_regs = 8; // XMM0-7
 
     let ret_ty = if ret_def {
         x86_64_ty(ccx, rty, |cls| {
@@ -430,8 +430,8 @@ pub fn compute_abi_info(ccx: &CrateContext,
     let mut arg_tys = Vec::new();
     for t in atys {
         let ty = x86_64_ty(ccx, *t, |cls| {
-            let needed_int = cls.iter().filter(|&&c| c == Int).count();
-            let needed_sse = cls.iter().filter(|c| c.is_sse()).count();
+            let needed_int = cls.iter().filter(|&&c| c == Int).count() as isize;
+            let needed_sse = cls.iter().filter(|c| c.is_sse()).count() as isize;
             let in_mem = cls.is_pass_byval() ||
                          int_regs < needed_int ||
                          sse_regs < needed_sse;

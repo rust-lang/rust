@@ -35,12 +35,12 @@ impl<R: Rng, Rsdr: Reseeder<R>> ReseedingRng<R, Rsdr> {
     /// * `rng`: the random number generator to use.
     /// * `generation_threshold`: the number of bytes of entropy at which to reseed the RNG.
     /// * `reseeder`: the reseeding object to use.
-    pub fn new(rng: R, generation_threshold: usize, reseeder: Rsdr) -> ReseedingRng<R,Rsdr> {
+    pub fn new(rng: R, generation_threshold: usize, reseeder: Rsdr) -> ReseedingRng<R, Rsdr> {
         ReseedingRng {
             rng: rng,
             generation_threshold: generation_threshold,
             bytes_generated: 0,
-            reseeder: reseeder
+            reseeder: reseeder,
         }
     }
 
@@ -90,7 +90,7 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R> + Default>
             rng: SeedableRng::from_seed(seed),
             generation_threshold: DEFAULT_GENERATION_THRESHOLD,
             bytes_generated: 0,
-            reseeder: rsdr
+            reseeder: rsdr,
         }
     }
 }
@@ -114,7 +114,9 @@ impl<R: Rng + Default> Reseeder<R> for ReseedWithDefault {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for ReseedWithDefault {
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn default() -> ReseedWithDefault { ReseedWithDefault }
+    fn default() -> ReseedWithDefault {
+        ReseedWithDefault
+    }
 }
 
 #[cfg(test)]
@@ -126,7 +128,7 @@ mod tests {
     use {SeedableRng, Rng};
 
     struct Counter {
-        i: u32
+        i: u32,
     }
 
     impl Rng for Counter {
@@ -153,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_reseeding() {
-        let mut rs = ReseedingRng::new(Counter {i:0}, 400, ReseedWithDefault);
+        let mut rs = ReseedingRng::new(Counter { i: 0 }, 400, ReseedWithDefault);
 
         let mut i = 0;
         for _ in 0..1000 {

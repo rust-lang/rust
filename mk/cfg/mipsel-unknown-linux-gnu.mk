@@ -1,8 +1,8 @@
 # mipsel-unknown-linux-gnu configuration
-CC_mipsel-unknown-linux-gnu=mipsel-unknown-linux-gnu-gcc
-CXX_mipsel-unknown-linux-gnu=mipsel-unknown-linux-gnu-g++
-CPP_mipsel-unknown-linux-gnu=mipsel-unknown-linux-gnu-gcc
-AR_mipsel-unknown-linux-gnu=mipsel-unknown-linux-gnu-ar
+CC_mipsel-unknown-linux-gnu=mipsel-linux-gnu-gcc
+CXX_mipsel-unknown-linux-gnu=mipsel-linux-gnu-g++
+CPP_mipsel-unknown-linux-gnu=mipsel-linux-gnu-gcc
+AR_mipsel-unknown-linux-gnu=mipsel-linux-gnu-ar
 CFG_LIB_NAME_mipsel-unknown-linux-gnu=lib$(1).so
 CFG_STATIC_LIB_NAME_mipsel-unknown-linux-gnu=lib$(1).a
 CFG_LIB_GLOB_mipsel-unknown-linux-gnu=lib$(1)-*.so
@@ -20,5 +20,5 @@ CFG_UNIXY_mipsel-unknown-linux-gnu := 1
 CFG_LDPATH_mipsel-unknown-linux-gnu :=
 CFG_RUN_mipsel-unknown-linux-gnu=
 CFG_RUN_TARG_mipsel-unknown-linux-gnu=
-RUSTC_FLAGS_mipsel-unknown-linux-gnu := -C target-cpu=mips32 -C target-feature="+mips32,+o32"
+RUSTC_FLAGS_mipsel-unknown-linux-gnu := -C target-cpu=mips32 -C target-feature="+mips32"
 CFG_GNU_TRIPLE_mipsel-unknown-linux-gnu := mipsel-unknown-linux-gnu

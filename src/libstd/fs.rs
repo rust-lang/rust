@@ -2162,4 +2162,10 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn read_dir_not_found() {
+        let res = fs::read_dir("/path/that/does/not/exist");
+        assert_eq!(res.err().unwrap().kind(), ErrorKind::NotFound);
+    }
 }
