@@ -12,7 +12,7 @@ use rustc::middle::const_eval::ConstVal;
 use rustc::middle::def_id::DefId;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::subst::Substs;
-use rustc::middle::ty::{AdtDef, ClosureSubsts, Region, Ty};
+use rustc::middle::ty::{AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use rustc_back::slice;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_front::hir::InlineAsm;
@@ -24,6 +24,8 @@ use std::u32;
 /// Lowered representation of a single function.
 pub struct Mir<'tcx> {
     pub basic_blocks: Vec<BasicBlockData<'tcx>>,
+
+    pub return_ty: FnOutput<'tcx>,
 
     // for every node id
     pub extents: FnvHashMap<CodeExtent, Vec<GraphExtent>>,
