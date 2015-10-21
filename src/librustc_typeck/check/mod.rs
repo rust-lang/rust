@@ -164,11 +164,6 @@ pub struct Inherited<'a, 'tcx: 'a> {
 
     tables: &'a RefCell<ty::Tables<'tcx>>,
 
-    // A mapping from each fn's id to its signature, with all bound
-    // regions replaced with free ones. Unlike the other tables, this
-    // one is never copied into the tcx: it is only used by regionck.
-    fn_sig_map: RefCell<NodeMap<Vec<Ty<'tcx>>>>,
-
     // When we process a call like `c()` where `c` is a closure type,
     // we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
     // `FnOnce` closure. In that case, we defer full resolution of the
@@ -314,7 +309,6 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             infcx: infer::new_infer_ctxt(tcx, tables, Some(param_env), true),
             locals: RefCell::new(NodeMap()),
             tables: tables,
-            fn_sig_map: RefCell::new(NodeMap()),
             deferred_call_resolutions: RefCell::new(DefIdMap()),
             deferred_cast_checks: RefCell::new(Vec::new()),
         }
@@ -620,22 +614,13 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         ccx: ccx
     };
 
-    // Remember return type so that regionck can access it later.
-    let mut fn_sig_tys: Vec<Ty> =
-        arg_tys.iter()
-        .cloned()
-        .collect();
-
     if let ty::FnConverging(ret_ty) = ret_ty {
         fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::ReturnType);
-        fn_sig_tys.push(ret_ty); // FIXME(#25759) just take implied bounds from the arguments
     }
 
-    debug!("fn-sig-map: fn_id={} fn_sig_tys={:?}",
-           fn_id,
-           fn_sig_tys);
+    debug!("fn-sig-map: fn_id={} fn_sig={:?}", fn_id, fn_sig);
 
-    inherited.fn_sig_map.borrow_mut().insert(fn_id, fn_sig_tys);
+    inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig.clone());
 
     {
         let mut visit = GatherLocalsVisitor { fcx: &fcx, };

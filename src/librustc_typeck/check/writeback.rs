@@ -43,6 +43,7 @@ pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &hir::Expr) {
     wbcx.visit_expr(e);
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_closures();
+    wbcx.visit_liberated_fn_sigs();
 }
 
 pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
@@ -63,6 +64,7 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
     }
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_closures();
+    wbcx.visit_liberated_fn_sigs();
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -361,6 +363,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    fn visit_liberated_fn_sigs(&self) {
+        for (&node_id, fn_sig) in self.fcx.inh.tables.borrow().liberated_fn_sigs.iter() {
+            let fn_sig = self.resolve(fn_sig, ResolvingFnSig(node_id));
+            self.tcx().tables.borrow_mut().liberated_fn_sigs.insert(node_id, fn_sig.clone());
+        }
+    }
+
     fn resolve<T:TypeFoldable<'tcx>>(&self, t: &T, reason: ResolveReason) -> T {
         t.fold_with(&mut Resolver::new(self.fcx, reason))
     }
@@ -376,6 +385,7 @@ enum ResolveReason {
     ResolvingPattern(Span),
     ResolvingUpvar(ty::UpvarId),
     ResolvingClosure(DefId),
+    ResolvingFnSig(ast::NodeId),
 }
 
 impl ResolveReason {
@@ -386,6 +396,9 @@ impl ResolveReason {
             ResolvingPattern(s) => s,
             ResolvingUpvar(upvar_id) => {
                 tcx.expr_span(upvar_id.closure_expr_id)
+            }
+            ResolvingFnSig(id) => {
+                tcx.map.span(id)
             }
             ResolvingClosure(did) => {
                 if let Some(node_id) = tcx.map.as_local_node_id(did) {
@@ -462,6 +475,16 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     let span = self.reason.span(self.tcx);
                     span_err!(self.tcx.sess, span, E0196,
                               "cannot determine a type for this closure")
+                }
+
+                ResolvingFnSig(id) => {
+                    // any failures here should also fail when
+                    // resolving the patterns, closure types, or
+                    // something else.
+                    let span = self.reason.span(self.tcx);
+                    self.tcx.sess.delay_span_bug(
+                        span,
+                        &format!("cannot resolve some aspect of fn sig for {:?}", id));
                 }
             }
         }
