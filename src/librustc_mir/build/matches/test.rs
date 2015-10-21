@@ -100,27 +100,28 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
             TestKind::Eq { value, ty } => {
                 // call PartialEq::eq(discrim, constant)
-                let constant = self.push_literal(block, test.span, ty.clone(), value);
+                let constant = self.literal_operand(test.span, ty.clone(), value);
                 let item_ref = self.hir.partial_eq(ty);
-                self.call_comparison_fn(block, test.span, item_ref, lvalue.clone(), constant)
+                self.call_comparison_fn(block, test.span, item_ref,
+                                        Operand::Consume(lvalue.clone()), constant)
             }
 
             TestKind::Range { lo, hi, ty } => {
                 // Test `v` by computing `PartialOrd::le(lo, v) && PartialOrd::le(v, hi)`.
-                let lo = self.push_literal(block, test.span, ty.clone(), lo);
-                let hi = self.push_literal(block, test.span, ty.clone(), hi);
+                let lo = self.literal_operand(test.span, ty.clone(), lo);
+                let hi = self.literal_operand(test.span, ty.clone(), hi);
                 let item_ref = self.hir.partial_le(ty);
 
                 let lo_blocks = self.call_comparison_fn(block,
                                                         test.span,
                                                         item_ref.clone(),
                                                         lo,
-                                                        lvalue.clone());
+                                                        Operand::Consume(lvalue.clone()));
 
                 let hi_blocks = self.call_comparison_fn(lo_blocks[0],
                                                         test.span,
                                                         item_ref,
-                                                        lvalue.clone(),
+                                                        Operand::Consume(lvalue.clone()),
                                                         hi);
 
                 let failure = self.cfg.start_new_block();
@@ -165,14 +166,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                           block: BasicBlock,
                           span: Span,
                           item_ref: ItemRef<'tcx>,
-                          lvalue1: Lvalue<'tcx>,
-                          lvalue2: Lvalue<'tcx>)
+                          lvalue1: Operand<'tcx>,
+                          lvalue2: Operand<'tcx>)
                           -> Vec<BasicBlock> {
         let target_blocks = vec![self.cfg.start_new_block(), self.cfg.start_new_block()];
 
         let bool_ty = self.hir.bool_ty();
         let eq_result = self.temp(bool_ty);
-        let func = self.push_item_ref(block, span, item_ref);
+        let func = self.item_ref_operand(span, item_ref);
         let call_blocks = [self.cfg.start_new_block(), self.diverge_cleanup()];
         self.cfg.terminate(block,
                            Terminator::Call {

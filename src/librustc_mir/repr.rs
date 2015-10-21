@@ -294,10 +294,10 @@ pub struct CallData<'tcx> {
     pub destination: Lvalue<'tcx>,
 
     /// the fn being called
-    pub func: Lvalue<'tcx>,
+    pub func: Operand<'tcx>,
 
     /// the arguments
-    pub args: Vec<Lvalue<'tcx>>,
+    pub args: Vec<Operand<'tcx>>,
 }
 
 impl<'tcx> BasicBlockData<'tcx> {
