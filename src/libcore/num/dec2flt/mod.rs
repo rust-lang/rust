@@ -147,6 +147,7 @@ use self::num::digits_to_big;
 use self::rawfp::RawFloat;
 
 mod algorithm;
+#[rustfmt_skip]
 mod table;
 mod num;
 // These two have their own tests.
