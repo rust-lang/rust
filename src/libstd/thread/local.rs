@@ -277,13 +277,14 @@ mod imp {
     use intrinsics;
     use ptr;
 
+    thread_local!(static DTOR_RUNNING: Cell<bool> = Cell::new(false));
+
     pub struct Key<T> {
         inner: UnsafeCell<Option<T>>,
 
         // Metadata to keep track of the state of the destructor. Remember that
         // these variables are thread-local, not global.
         dtor_registered: Cell<bool>,
-        dtor_running: Cell<bool>,
     }
 
     unsafe impl<T> ::marker::Sync for Key<T> { }
@@ -293,13 +294,14 @@ mod imp {
             Key {
                 inner: UnsafeCell::new(None),
                 dtor_registered: Cell::new(false),
-                dtor_running: Cell::new(false)
             }
         }
 
         pub unsafe fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
-            if intrinsics::needs_drop::<T>() && self.dtor_running.get() {
-                return None
+            if intrinsics::needs_drop::<T>() {
+                if DTOR_RUNNING.with(|running| { running.get() }) {
+                    return None
+                }
             }
             self.register_dtor();
             Some(&self.inner)
@@ -389,12 +391,12 @@ mod imp {
         _tlv_atexit(dtor, t);
     }
 
-    pub unsafe extern fn destroy_value<T>(ptr: *mut u8) {
+    unsafe extern fn destroy_value<T>(ptr: *mut u8) {
         let ptr = ptr as *mut Key<T>;
         // Right before we run the user destructor be sure to flag the
         // destructor as running for this thread so calls to `get` will return
         // `None`.
-        (*ptr).dtor_running.set(true);
+        DTOR_RUNNING.with(|running| running.set(true));
 
         // The OSX implementation of TLS apparently had an odd aspect to it
         // where the pointer we have may be overwritten while this destructor
@@ -470,7 +472,7 @@ mod imp {
         }
     }
 
-    pub unsafe extern fn destroy_value<T: 'static>(ptr: *mut u8) {
+    unsafe extern fn destroy_value<T: 'static>(ptr: *mut u8) {
         // The OS TLS ensures that this key contains a NULL value when this
         // destructor starts to run. We set it back to a sentinel value of 1 to
         // ensure that any future calls to `get` for this thread will return
