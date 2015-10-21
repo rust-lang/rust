@@ -547,7 +547,12 @@ impl<'a> Context<'a> {
                     continue
                 }
             };
-            if ret.is_some() {
+            // If we've already found a candidate and we're not matching hashes,
+            // emit an error about duplicate candidates found. If we're matching
+            // based on a hash, however, then if we've gotten this far both
+            // candidates have the same hash, so they're not actually
+            // duplicates that we should warn about.
+            if ret.is_some() && self.hash.is_none() {
                 span_err!(self.sess, self.span, E0465,
                           "multiple {} candidates for `{}` found",
                           flavor, self.crate_name);
