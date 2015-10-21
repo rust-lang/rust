@@ -37,6 +37,7 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
+#![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(unicode)]
 #![feature(vec_push_all)]
@@ -52,6 +53,7 @@ extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_front;
 extern crate rustc_llvm as llvm;
+extern crate rustc_mir;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate serialize;
 
