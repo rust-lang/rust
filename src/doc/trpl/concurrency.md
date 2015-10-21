@@ -150,7 +150,7 @@ owners!
 So, we need some type that lets us have more than one reference to a value and
 that we can share between threads, that is it must implement `Sync`.
 
-We'll use `Arc<T>`, rust's standard atomic reference count type, which
+We'll use `Arc<T>`, Rust's standard atomic reference count type, which
 wraps a value up with some extra runtime bookkeeping which allows us to
 share the ownership of the value between multiple references at the same time.
 
