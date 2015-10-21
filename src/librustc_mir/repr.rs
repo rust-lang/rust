@@ -247,6 +247,7 @@ pub enum Terminator<'tcx> {
     /// lvalue evaluates to some enum; jump depending on the branch
     Switch {
         discr: Lvalue<'tcx>,
+        adt_def: AdtDef<'tcx>,
         targets: Vec<BasicBlock>,
     },
 
@@ -279,7 +280,7 @@ impl<'tcx> Terminator<'tcx> {
             Goto { target: ref b } => slice::ref_slice(b),
             Panic { target: ref b } => slice::ref_slice(b),
             If { cond: _, targets: ref b } => b,
-            Switch { discr: _, targets: ref b } => b,
+            Switch { discr: _, adt_def: _, targets: ref b } => b,
             Diverge => &[],
             Return => &[],
             Call { data: _, targets: ref b } => b,
@@ -318,7 +319,7 @@ impl<'tcx> Debug for Terminator<'tcx> {
                 write!(fmt, "panic -> {:?}", target),
             If { cond: ref lv, ref targets } =>
                 write!(fmt, "if({:?}) -> {:?}", lv, targets),
-            Switch { discr: ref lv, ref targets } =>
+            Switch { discr: ref lv, adt_def: _, ref targets } =>
                 write!(fmt, "switch({:?}) -> {:?}", lv, targets),
             Diverge =>
                 write!(fmt, "diverge"),
