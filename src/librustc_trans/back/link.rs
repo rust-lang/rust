@@ -184,9 +184,9 @@ pub fn find_crate_name(sess: Option<&Session>,
 }
 
 pub fn build_link_meta(sess: &Session, krate: &hir::Crate,
-                       name: String) -> LinkMeta {
+                       name: &str) -> LinkMeta {
     let r = LinkMeta {
-        crate_name: name,
+        crate_name: name.to_owned(),
         crate_hash: Svh::calculate(&sess.opts.cg.metadata, krate),
     };
     info!("{:?}", r);
