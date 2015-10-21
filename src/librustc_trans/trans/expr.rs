@@ -2574,29 +2574,6 @@ impl OverflowOpViaInputCheck {
     }
 }
 
-fn shift_mask_val<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                              llty: Type,
-                              mask_llty: Type,
-                              invert: bool) -> ValueRef {
-    let kind = llty.kind();
-    match kind {
-        TypeKind::Integer => {
-            // i8/u8 can shift by at most 7, i16/u16 by at most 15, etc.
-            let val = llty.int_width() - 1;
-            if invert {
-                C_integral(mask_llty, !val, true)
-            } else {
-                C_integral(mask_llty, val, false)
-            }
-        },
-        TypeKind::Vector => {
-            let mask = shift_mask_val(bcx, llty.element_type(), mask_llty.element_type(), invert);
-            VectorSplat(bcx, mask_llty.vector_length(), mask)
-        },
-        _ => panic!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
-    }
-}
-
 // Check if an integer or vector contains a nonzero element.
 fn build_nonzero_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    value: ValueRef,
@@ -2614,44 +2591,6 @@ fn build_nonzero_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         },
         _ => panic!("build_nonzero_check: expected Integer or Vector, found {:?}", kind),
     }
-}
-
-// To avoid UB from LLVM, these two functions mask RHS with an
-// appropriate mask unconditionally (i.e. the fallback behavior for
-// all shifts). For 32- and 64-bit types, this matches the semantics
-// of Java. (See related discussion on #1877 and #10183.)
-
-fn build_unchecked_lshift<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                      lhs: ValueRef,
-                                      rhs: ValueRef,
-                                      binop_debug_loc: DebugLoc) -> ValueRef {
-    let rhs = base::cast_shift_expr_rhs(bcx, hir::BinOp_::BiShl, lhs, rhs);
-    // #1877, #10183: Ensure that input is always valid
-    let rhs = shift_mask_rhs(bcx, rhs, binop_debug_loc);
-    Shl(bcx, lhs, rhs, binop_debug_loc)
-}
-
-fn build_unchecked_rshift<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                      lhs_t: Ty<'tcx>,
-                                      lhs: ValueRef,
-                                      rhs: ValueRef,
-                                      binop_debug_loc: DebugLoc) -> ValueRef {
-    let rhs = base::cast_shift_expr_rhs(bcx, hir::BinOp_::BiShr, lhs, rhs);
-    // #1877, #10183: Ensure that input is always valid
-    let rhs = shift_mask_rhs(bcx, rhs, binop_debug_loc);
-    let is_signed = lhs_t.is_signed();
-    if is_signed {
-        AShr(bcx, lhs, rhs, binop_debug_loc)
-    } else {
-        LShr(bcx, lhs, rhs, binop_debug_loc)
-    }
-}
-
-fn shift_mask_rhs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                              rhs: ValueRef,
-                              debug_loc: DebugLoc) -> ValueRef {
-    let rhs_llty = val_ty(rhs);
-    And(bcx, rhs, shift_mask_val(bcx, rhs_llty, rhs_llty, false), debug_loc)
 }
 
 fn with_overflow_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, oop: OverflowOp, info: NodeIdAndSpan,
