@@ -82,7 +82,7 @@ fn it_works() {
 ```
 
 `assert!` is a macro provided by Rust which takes one argument: if the argument
-is `true`, nothing happens. If the argument is `false`, it `panic!`s. Let's run
+is `false`, it `panic!`s. Let's run
 our tests again:
 
 ```bash
@@ -506,4 +506,3 @@ We haven’t covered all of the details with writing documentation tests. For mo
 please see the [Documentation chapter](documentation.html)
 
 One final note: Tests *cannot* be run on a binary file. To see more on file arrangement see the [Crates and Modules](crates-and-modules.html) section.
-
