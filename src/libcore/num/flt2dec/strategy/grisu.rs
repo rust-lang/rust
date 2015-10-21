@@ -537,7 +537,7 @@ pub fn format_shortest_opt(d: &Decoded,
 /// The shortest mode implementation for Grisu with Dragon fallback.
 ///
 /// This should be used for most cases.
-pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (usize, i16) {
+pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/* #digits */ usize, /* exp */ i16) {
     use num::flt2dec::strategy::dragon::format_shortest as fallback;
     match format_shortest_opt(d, buf) {
         Some(ret) => ret,
