@@ -284,19 +284,32 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         // When we enter a function, we can derive
         debug!("visit_fn_body(id={})", id);
 
-        let fn_sig_map = self.fcx.inh.fn_sig_map.borrow();
-        let fn_sig = match fn_sig_map.get(&id) {
-            Some(f) => f,
-            None => {
-                self.tcx().sess.bug(
-                    &format!("No fn-sig entry for id={}", id));
+        let fn_sig = {
+            let fn_sig_map = &self.infcx().tables.borrow().liberated_fn_sigs;
+            match fn_sig_map.get(&id) {
+                Some(f) => f.clone(),
+                None => {
+                    self.tcx().sess.bug(
+                        &format!("No fn-sig entry for id={}", id));
+                }
             }
         };
 
         let old_region_bounds_pairs_len = self.region_bound_pairs.len();
 
+        // Collect the types from which we create inferred bounds.
+        // For the return type, if diverging, substitute `bool` just
+        // because it will have no effect.
+        //
+        // FIXME(#25759) return types should not be implied bounds
+        let fn_sig_tys: Vec<_> =
+            fn_sig.inputs.iter()
+                         .cloned()
+                         .chain(Some(fn_sig.output.unwrap_or(self.tcx().types.bool)))
+                         .collect();
+
         let old_body_id = self.set_body_id(body.id);
-        self.relate_free_regions(&fn_sig[..], body.id, span);
+        self.relate_free_regions(&fn_sig_tys[..], body.id, span);
         link_fn_args(self,
                      self.tcx().region_maps.node_extent(body.id),
                      &fn_decl.inputs[..]);
