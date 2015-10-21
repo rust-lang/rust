@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-Almost direct (but slightly optimized) Rust translation of Figure 3 of [1].
-
-[1] Burger, R. G. and Dybvig, R. K. 1996. Printing floating-point numbers
-    quickly and accurately. SIGPLAN Not. 31, 5 (May. 1996), 108-116.
-*/
+// !
+// Almost direct (but slightly optimized) Rust translation of Figure 3 of [1].
+//
+// [1] Burger, R. G. and Dybvig, R. K. 1996. Printing floating-point numbers
+// quickly and accurately. SIGPLAN Not. 31, 5 (May. 1996), 108-116.
+//
 
 use prelude::v1::*;
 
@@ -24,22 +24,23 @@ use num::flt2dec::estimator::estimate_scaling_factor;
 use num::bignum::Digit32 as Digit;
 use num::bignum::Big32x40 as Big;
 
-static POW10: [Digit; 10] = [
-    1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000];
-static TWOPOW10: [Digit; 10] = [
-    2, 20, 200, 2000, 20000, 200000, 2000000, 20000000, 200000000, 2000000000];
+static POW10: [Digit; 10] = [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000,
+                             1000000000];
+static TWOPOW10: [Digit; 10] = [2, 20, 200, 2000, 20000, 200000, 2000000, 20000000, 200000000,
+                                2000000000];
 
 // precalculated arrays of `Digit`s for 10^(2^n)
 static POW10TO16: [Digit; 2] = [0x6fc10000, 0x2386f2];
 static POW10TO32: [Digit; 4] = [0, 0x85acef81, 0x2d6d415b, 0x4ee];
 static POW10TO64: [Digit; 7] = [0, 0, 0xbf6a1f01, 0x6e38ed64, 0xdaa797ed, 0xe93ff9f4, 0x184f03];
-static POW10TO128: [Digit; 14] =
-    [0, 0, 0, 0, 0x2e953e01, 0x3df9909, 0xf1538fd, 0x2374e42f, 0xd3cff5ec, 0xc404dc08, 0xbccdb0da,
- 0xa6337f19, 0xe91f2603, 0x24e];
-static POW10TO256: [Digit; 27] =
-    [0, 0, 0, 0, 0, 0, 0, 0, 0x982e7c01, 0xbed3875b, 0xd8d99f72, 0x12152f87, 0x6bde50c6, 0xcf4a6e70,
- 0xd595d80f, 0x26b2716e, 0xadc666b0, 0x1d153624, 0x3c42d35a, 0x63ff540e, 0xcc5573c0, 0x65f9ef17,
- 0x55bc28f2, 0x80dcc7f7, 0xf46eeddc, 0x5fdcefce, 0x553f7];
+static POW10TO128: [Digit; 14] = [0, 0, 0, 0, 0x2e953e01, 0x3df9909, 0xf1538fd, 0x2374e42f,
+                                  0xd3cff5ec, 0xc404dc08, 0xbccdb0da, 0xa6337f19, 0xe91f2603,
+                                  0x24e];
+static POW10TO256: [Digit; 27] = [0, 0, 0, 0, 0, 0, 0, 0, 0x982e7c01, 0xbed3875b, 0xd8d99f72,
+                                  0x12152f87, 0x6bde50c6, 0xcf4a6e70, 0xd595d80f, 0x26b2716e,
+                                  0xadc666b0, 0x1d153624, 0x3c42d35a, 0x63ff540e, 0xcc5573c0,
+                                  0x65f9ef17, 0x55bc28f2, 0x80dcc7f7, 0xf46eeddc, 0x5fdcefce,
+                                  0x553f7];
 
 #[doc(hidden)]
 pub fn mul_pow10(x: &mut Big, n: usize) -> &mut Big {
@@ -107,18 +108,26 @@ fn div_rem_upto_16<'a>(x: &'a mut Big,
 }
 
 /// The shortest mode implementation for Dragon.
-pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp*/ i16) {
+pub fn format_shortest(d: &Decoded,
+                       buf: &mut [u8])
+                       -> (// #digits
+                           usize,
+                           // exp
+                           i16) {
     // the number `v` to format is known to be:
     // - equal to `mant * 2^exp`;
     // - preceded by `(mant - 2 * minus) * 2^exp` in the original type; and
     // - followed by `(mant + 2 * plus) * 2^exp` in the original type.
     //
-    // obviously, `minus` and `plus` cannot be zero. (for infinities, we use out-of-range values.)
-    // also we assume that at least one digit is generated, i.e. `mant` cannot be zero too.
+    // obviously, `minus` and `plus` cannot be zero. (for infinities, we use
+    // out-of-range values.)
+    // also we assume that at least one digit is generated, i.e. `mant` cannot be
+    // zero too.
     //
     // this also means that any number between `low = (mant - minus) * 2^exp` and
     // `high = (mant + plus) * 2^exp` will map to this exact floating point number,
-    // with bounds included when the original mantissa was even (i.e. `!mant_was_odd`).
+    // with bounds included when the original mantissa was even (i.e.
+    // `!mant_was_odd`).
 
     assert!(d.mant > 0);
     assert!(d.minus > 0);
@@ -134,7 +143,8 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
         Ordering::Equal
     };
 
-    // estimate `k_0` from original inputs satisfying `10^(k_0-1) < high <= 10^(k_0+1)`.
+    // estimate `k_0` from original inputs satisfying `10^(k_0-1) < high <=
+    // 10^(k_0+1)`.
     // the tight bound `k` satisfying `10^(k-1) < high <= 10^k` is calculated later.
     let mut k = estimate_scaling_factor(d.mant + d.plus, d.exp);
 
@@ -164,11 +174,13 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
     }
 
     // fixup when `mant + plus > scale` (or `>=`).
-    // we are not actually modifying `scale`, since we can skip the initial multiplication instead.
+    // we are not actually modifying `scale`, since we can skip the initial
+    // multiplication instead.
     // now `scale < mant + plus <= scale * 10` and we are ready to generate digits.
     //
     // note that `d[0]` *can* be zero, when `scale - plus < mant < scale`.
-    // in this case rounding-up condition (`up` below) will be triggered immediately.
+    // in this case rounding-up condition (`up` below) will be triggered
+    // immediately.
     if scale.cmp(mant.clone().add(&plus)) < rounding {
         // equivalent to scaling `scale` by 10
         k += 1;
@@ -195,7 +207,8 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
         // - `v - low = minus / scale * 10^(k-n-1)`
         // - `high - v = plus / scale * 10^(k-n-1)`
         // - `(mant + plus) / scale <= 10` (thus `mant / scale < 10`)
-        // where `d[i..j]` is a shorthand for `d[i] * 10^(j-i) + ... + d[j-1] * 10 + d[j]`.
+        // where `d[i..j]` is a shorthand for `d[i] * 10^(j-i) + ... + d[j-1] * 10 +
+        // d[j]`.
 
         // generate one digit: `d[n] = floor(mant / scale) < 10`.
         let (d, _) = div_rem_upto_16(&mut mant, &scale, &scale2, &scale4, &scale8);
@@ -204,14 +217,16 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
         i += 1;
 
         // this is a simplified description of the modified Dragon algorithm.
-        // many intermediate derivations and completeness arguments are omitted for convenience.
+        // many intermediate derivations and completeness arguments are omitted for
+        // convenience.
         //
         // start with modified invariants, as we've updated `n`:
         // - `v = mant / scale * 10^(k-n) + d[0..n-1] * 10^(k-n)`
         // - `v - low = minus / scale * 10^(k-n)`
         // - `high - v = plus / scale * 10^(k-n)`
         //
-        // assume that `d[0..n-1]` is the shortest representation between `low` and `high`,
+        // assume that `d[0..n-1]` is the shortest representation between `low` and
+        // `high`,
         // i.e. `d[0..n-1]` satisfies both of the following but `d[0..n-2]` doesn't:
         // - `low < d[0..n-1] * 10^(k-n) < high` (bijectivity: digits round to `v`); and
         // - `abs(v / 10^(k-n) - d[0..n-1]) <= 1/2` (the last digit is correct).
@@ -223,16 +238,19 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
         // when `mant < minus` and `2 * mant <= scale`.
         // (the former becomes `mant <= minus` when the original mantissa is even.)
         //
-        // when the second doesn't hold (`2 * mant > scale`), we need to increase the last digit.
+        // when the second doesn't hold (`2 * mant > scale`), we need to increase the
+        // last digit.
         // this is enough for restoring that condition: we already know that
         // the digit generation guarantees `0 <= v / 10^(k-n) - d[0..n-1] < 1`.
         // in this case, the first condition becomes `-plus < mant - scale < minus`.
         // since `mant < scale` after the generation, we have `scale < mant + plus`.
-        // (again, this becomes `scale <= mant + plus` when the original mantissa is even.)
+        // (again, this becomes `scale <= mant + plus` when the original mantissa is
+        // even.)
         //
         // in short:
         // - stop and round `down` (keep digits as is) when `mant < minus` (or `<=`).
-        // - stop and round `up` (increase the last digit) when `scale < mant + plus` (or `<=`).
+        // - stop and round `up` (increase the last digit) when `scale < mant + plus`
+        // (or `<=`).
         // - keep generating otherwise.
         down = mant.cmp(&minus) < rounding;
         up = scale.cmp(mant.clone().add(&plus)) < rounding;
@@ -242,7 +260,8 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
         }
 
         // restore the invariants.
-        // this makes the algorithm always terminating: `minus` and `plus` always increases,
+        // this makes the algorithm always terminating: `minus` and `plus` always
+        // increases,
         // but `mant` is clipped modulo `scale` and `scale` is fixed.
         mant.mul_small(10);
         minus.mul_small(10);
@@ -267,14 +286,21 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
 }
 
 /// The exact and fixed mode implementation for Dragon.
-pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usize, /*exp*/ i16) {
+pub fn format_exact(d: &Decoded,
+                    buf: &mut [u8],
+                    limit: i16)
+                    -> (// #digits
+                        usize,
+                        // exp
+                        i16) {
     assert!(d.mant > 0);
     assert!(d.minus > 0);
     assert!(d.plus > 0);
     assert!(d.mant.checked_add(d.plus).is_some());
     assert!(d.mant.checked_sub(d.minus).is_some());
 
-    // estimate `k_0` from original inputs satisfying `10^(k_0-1) < v <= 10^(k_0+1)`.
+    // estimate `k_0` from original inputs satisfying `10^(k_0-1) < v <=
+    // 10^(k_0+1)`.
     let mut k = estimate_scaling_factor(d.mant, d.exp);
 
     // `v = mant / scale`.
@@ -294,9 +320,12 @@ pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usi
     }
 
     // fixup when `mant + plus >= scale`, where `plus / scale = 10^-buf.len() / 2`.
-    // in order to keep the fixed-size bignum, we actually use `mant + floor(plus) >= scale`.
-    // we are not actually modifying `scale`, since we can skip the initial multiplication instead.
-    // again with the shortest algorithm, `d[0]` can be zero but will be eventually rounded up.
+    // in order to keep the fixed-size bignum, we actually use `mant + floor(plus)
+    // >= scale`.
+    // we are not actually modifying `scale`, since we can skip the initial
+    // multiplication instead.
+    // again with the shortest algorithm, `d[0]` can be zero but will be eventually
+    // rounded up.
     if *div_2pow10(&mut scale.clone(), buf.len()).add(&mant) >= scale {
         // equivalent to scaling `scale` by 10
         k += 1;
@@ -304,12 +333,14 @@ pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usi
         mant.mul_small(10);
     }
 
-    // if we are working with the last-digit limitation, we need to shorten the buffer
+    // if we are working with the last-digit limitation, we need to shorten the
+    // buffer
     // before the actual rendering in order to avoid double rounding.
     // note that we have to enlarge the buffer again when rounding up happens!
     let mut len = if k < limit {
         // oops, we cannot even produce *one* digit.
-        // this is possible when, say, we've got something like 9.5 and it's being rounded to 10.
+        // this is possible when, say, we've got something like 9.5 and it's being
+        // rounded to 10.
         // we return an empty buffer, with an exception of the later rounding-up case
         // which occurs when `k == limit` and has to produce exactly one digit.
         0
@@ -330,7 +361,8 @@ pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usi
         scale8.mul_pow2(3);
 
         for i in 0..len {
-            if mant.is_zero() { // following digits are all zeroes, we stop here
+            if mant.is_zero() {
+                // following digits are all zeroes, we stop here
                 // do *not* try to perform rounding! rather, fill remaining digits.
                 for c in &mut buf[i..len] {
                     *c = b'0';
@@ -369,7 +401,8 @@ pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usi
     if order == Ordering::Greater ||
        (order == Ordering::Equal && (len == 0 || buf[len - 1] & 1 == 1)) {
         // if rounding up changes the length, the exponent should also change.
-        // but we've been requested a fixed number of digits, so do not alter the buffer...
+        // but we've been requested a fixed number of digits, so do not alter the
+        // buffer...
         if let Some(c) = round_up(buf, len) {
             // ...unless we've been requested the fixed precision instead.
             // we also need to check that, if the original buffer was empty,

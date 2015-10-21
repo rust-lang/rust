@@ -29,7 +29,7 @@ use intrinsics::{i16_mul_with_overflow, u16_mul_with_overflow};
 use intrinsics::{i32_mul_with_overflow, u32_mul_with_overflow};
 use intrinsics::{i64_mul_with_overflow, u64_mul_with_overflow};
 
-use ::{i8,i16,i32,i64};
+use {i8, i16, i32, i64};
 
 pub trait OverflowingOps {
     fn overflowing_add(self, rhs: Self) -> (Self, bool);
@@ -176,12 +176,12 @@ wrapping_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 mod shift_max {
     #![allow(non_upper_case_globals)]
 
-    pub const  i8: u32 = (1 << 3) - 1;
+    pub const i8: u32 = (1 << 3) - 1;
     pub const i16: u32 = (1 << 4) - 1;
     pub const i32: u32 = (1 << 5) - 1;
     pub const i64: u32 = (1 << 6) - 1;
 
-    pub const  u8: u32 = i8;
+    pub const u8: u32 = i8;
     pub const u16: u32 = i16;
     pub const u32: u32 = i32;
     pub const u64: u32 = i64;

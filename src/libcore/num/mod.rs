@@ -41,7 +41,8 @@ use slice::SliceExt;
 /// intended to have wrapping semantics.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Default)]
-pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
+pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")]
+    pub T);
 
 pub mod wrapping;
 
@@ -1249,7 +1250,7 @@ pub enum FpCategory {
 
     /// Positive or negative infinity
     #[stable(feature = "rust1", since = "1.0.0")]
-    Infinite ,
+    Infinite,
 
     /// Positive or negative zero
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1392,7 +1393,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     let (is_positive, digits) = match src[0] {
         b'+' => (true, &src[1..]),
         b'-' if is_signed_ty => (false, &src[1..]),
-        _ => (true, src)
+        _ => (true, src),
     };
 
     if digits.is_empty() {
@@ -1478,7 +1479,8 @@ pub use num::dec2flt::ParseFloatError;
 
 // Conversion traits for primitive integer types
 // Conversions T -> T are covered by a blanket impl and therefore excluded
-// Some conversions from and to usize/isize are not implemented due to portability concerns
+// Some conversions from and to usize/isize are not implemented due to
+// portability concerns
 macro_rules! impl_from {
     ($Small: ty, $Large: ty) => {
         #[stable(feature = "lossless_int_conv", since = "1.5.0")]

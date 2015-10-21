@@ -19,7 +19,8 @@
 //! inputs, but we don't do so to avoid the code bloat. Each bignum is still
 //! tracked for the actual usages, so it normally doesn't matter.
 
-// This module is only for dec2flt and flt2dec, and only public because of libcoretest.
+// This module is only for dec2flt and flt2dec, and only public because of
+// libcoretest.
 // It is not intended to ever be stabilized.
 #![doc(hidden)]
 #![unstable(feature = "core_private_bignum",
@@ -36,19 +37,22 @@ use intrinsics;
 pub trait FullOps {
     /// Returns `(carry', v')` such that `carry' * 2^W + v' = self + other + carry`,
     /// where `W` is the number of bits in `Self`.
-    fn full_add(self, other: Self, carry: bool) -> (bool /*carry*/, Self);
+    fn full_add(self, other: Self, carry: bool) -> (bool /* carry */, Self);
 
     /// Returns `(carry', v')` such that `carry' * 2^W + v' = self * other + carry`,
     /// where `W` is the number of bits in `Self`.
-    fn full_mul(self, other: Self, carry: Self) -> (Self /*carry*/, Self);
+    fn full_mul(self, other: Self, carry: Self) -> (Self /* carry */, Self);
 
     /// Returns `(carry', v')` such that `carry' * 2^W + v' = self * other + other2 + carry`,
     /// where `W` is the number of bits in `Self`.
-    fn full_mul_add(self, other: Self, other2: Self, carry: Self) -> (Self /*carry*/, Self);
+    fn full_mul_add(self, other: Self, other2: Self, carry: Self) -> (Self /* carry */, Self);
 
     /// Returns `(quo, rem)` such that `borrow * 2^W + self = quo * other + rem`
     /// and `0 <= rem < other`, where `W` is the number of bits in `Self`.
-    fn full_div_rem(self, other: Self, borrow: Self) -> (Self /*quotient*/, Self /*remainder*/);
+    fn full_div_rem(self,
+                    other: Self,
+                    borrow: Self)
+                    -> (Self /* quotient */, Self /* remainder */);
 }
 
 macro_rules! impl_full_ops {
