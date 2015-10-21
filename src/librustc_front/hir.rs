@@ -1269,6 +1269,7 @@ pub enum Item_ {
 
     // Default trait implementations
     ///
+    // `impl Trait for .. {}`
     ItemDefaultImpl(Unsafety, TraitRef),
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,
