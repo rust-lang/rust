@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use hair;
+use hair::cx::{Cx, PatNode};
 use rustc::middle::region::CodeExtent;
 use rustc::middle::ty::{FnOutput, Ty};
 use rustc_data_structures::fnv::FnvHashMap;
@@ -16,7 +17,6 @@ use rustc_front::hir;
 use repr::*;
 use syntax::ast;
 use syntax::codemap::Span;
-use tcx::{Cx, PatNode};
 
 struct Builder<'a, 'tcx: 'a> {
     hir: Cx<'a, 'tcx>,

@@ -9,9 +9,8 @@
 // except according to those terms.
 
 use hair::*;
-use repr::*;
 
-use tcx::pattern::PatNode;
+use hair::cx::pattern::PatNode;
 use rustc_front::hir;
 use syntax::ptr::P;
 
@@ -77,16 +76,5 @@ impl<'a,'tcx:'a,T,U> ToRef for &'tcx Vec<T>
 
     fn to_ref(self) -> Vec<U> {
         self.iter().map(|expr| expr.to_ref()).collect()
-    }
-}
-
-impl<'a,'tcx:'a> ToRef for &'tcx hir::Field {
-    type Output = FieldExprRef<'tcx>;
-
-    fn to_ref(self) -> FieldExprRef<'tcx> {
-        FieldExprRef {
-            name: Field::Named(self.name.node),
-            expr: self.expr.to_ref(),
-        }
     }
 }
