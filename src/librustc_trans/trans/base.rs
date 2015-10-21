@@ -498,13 +498,8 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                               &format!("enum-iter-variant-{}",
                                       &variant.disr_val.to_string())
                               );
-                      match adt::trans_case(cx, &*repr, variant.disr_val) {
-                          _match::SingleResult(r) => {
-                              AddCase(llswitch, r.val, variant_cx.llbb)
-                          }
-                          _ => ccx.sess().unimpl("value from adt::trans_case \
-                                                  in iter_structural_ty")
-                      }
+                      let case_val = adt::trans_case(cx, &*repr, variant.disr_val);
+                      AddCase(llswitch, case_val, variant_cx.llbb);
                       let variant_cx =
                           iter_variant(variant_cx,
                                        &*repr,
