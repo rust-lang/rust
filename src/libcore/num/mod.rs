@@ -1473,9 +1473,12 @@ impl fmt::Display for ParseIntError {
 
 pub use num::dec2flt::ParseFloatError;
 
-// Conversion traits for primitive integer types
-// Conversions T -> T are covered by a blanket impl and therefore excluded
-// Some conversions from and to usize/isize are not implemented due to portability concerns
+// Conversion traits for primitive integer types (only) where the conversion is
+// guaranteed to be lossless on all platforms. Conversions T -> T are covered
+// by a blanket impl and therefore excluded. Conversions from `usize` and
+// `isize` to other types are not implemented because there are no primitive
+// integer types that are defined to be at least as large as them on all
+// architectures.
 macro_rules! impl_from {
     ($Small: ty, $Large: ty) => {
         #[stable(feature = "lossless_int_conv", since = "1.5.0")]
@@ -1496,6 +1499,7 @@ impl_from! { u8, u64 }
 impl_from! { u8, usize }
 impl_from! { u16, u32 }
 impl_from! { u16, u64 }
+impl_from! { u16, usize }
 impl_from! { u32, u64 }
 
 // Signed -> Signed
@@ -1505,12 +1509,14 @@ impl_from! { i8, i64 }
 impl_from! { i8, isize }
 impl_from! { i16, i32 }
 impl_from! { i16, i64 }
+impl_from! { i16, isize }
 impl_from! { i32, i64 }
 
 // Unsigned -> Signed
 impl_from! { u8, i16 }
 impl_from! { u8, i32 }
 impl_from! { u8, i64 }
+impl_from! { u8, isize }
 impl_from! { u16, i32 }
 impl_from! { u16, i64 }
 impl_from! { u32, i64 }
