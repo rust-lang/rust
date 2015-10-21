@@ -1732,6 +1732,13 @@ impl<'tcx, 'container> VariantDefData<'tcx, 'container> {
     }
 
     #[inline]
+    pub fn index_of_field_named(&self,
+                                name: ast::Name)
+                                -> Option<usize> {
+        self.fields.iter().position(|f| f.name == name)
+    }
+
+    #[inline]
     pub fn field_named(&self, name: ast::Name) -> &FieldDefData<'tcx, 'container> {
         self.find_field_named(name).unwrap()
     }
