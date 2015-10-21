@@ -498,12 +498,28 @@ unsafe impl<T: Send + ?Sized> Send for Unique<T> { }
 #[unstable(feature = "unique", issue = "27730")]
 unsafe impl<T: Sync + ?Sized> Sync for Unique<T> { }
 
+#[cfg(stage0)]
+macro_rules! unique_new {
+    () => (
+        /// Creates a new `Unique`.
+        pub unsafe fn new(ptr: *mut T) -> Unique<T> {
+            Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
+        }
+    )
+}
+#[cfg(not(stage0))]
+macro_rules! unique_new {
+    () => (
+        /// Creates a new `Unique`.
+        pub unsafe const fn new(ptr: *mut T) -> Unique<T> {
+            Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
+        }
+    )
+}
+
 #[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized> Unique<T> {
-    /// Creates a new `Unique`.
-    pub unsafe fn new(ptr: *mut T) -> Unique<T> {
-        Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
-    }
+    unique_new!{}
 
     /// Dereferences the content.
     pub unsafe fn get(&self) -> &T {
