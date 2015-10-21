@@ -714,7 +714,7 @@ impl DirEntry {
     /// This function will not traverse symlinks if this entry points at a
     /// symlink.
     ///
-    /// # Platform behavior
+    /// # Platform Notes
     ///
     /// On Windows this function is cheap to call (no extra system calls
     /// needed), but on Unix platforms this function is the equivalent of
@@ -729,7 +729,7 @@ impl DirEntry {
     /// This function will not traverse symlinks if this entry points at a
     /// symlink.
     ///
-    /// # Platform behavior
+    /// # Platform Notes
     ///
     /// On Windows and most Unix platforms this function is free (no extra
     /// system calls needed), but some Unix platforms may require the equivalent
@@ -756,6 +756,18 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// Note that there is no
 /// guarantee that the file is immediately deleted (e.g. depending on
 /// platform, other open file descriptors may prevent immediate removal).
+///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// `DeleteFileW`
+///
+/// ### Unix
+///
+/// `unlink`
 ///
 /// # Errors
 ///
@@ -784,6 +796,24 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function will traverse symbolic links to query information about the
 /// destination file.
 ///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// `GetFileAttributesExW` with the `GetFileExInfoStandard` option.
+///
+/// ### Unix
+///
+/// `stat`
+///
+/// # Errors
+///
+/// This function will return an error if the user lacks the requisite
+/// permissions to perform a `metadata` call on the given `path` or if there
+/// is no entry in the filesystem at the provided path.
+///
 /// # Examples
 ///
 /// ```rust
@@ -795,18 +825,30 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # Ok(())
 /// # }
 /// ```
-///
-/// # Errors
-///
-/// This function will return an error if the user lacks the requisite
-/// permissions to perform a `metadata` call on the given `path` or if there
-/// is no entry in the filesystem at the provided path.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::stat(path.as_ref()).map(Metadata)
 }
 
 /// Query the metadata about a file without following symlinks.
+///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// `GetFileAttributesExW` with the `GetFileExInfoStandard` option.
+///
+/// ### Unix
+///
+/// 'lstat'
+///
+/// # Errors
+///
+/// This function will return an error if the user lacks the requisite
+/// permissions to perform a `metadata` call on the given `path` or if there
+/// is no entry in the filesystem at the provided path.
 ///
 /// # Examples
 ///
@@ -827,6 +869,18 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// Rename a file or directory to a new name.
 ///
 /// This will not work if the new name is on a different mount point.
+///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// `MoveFileExW` with the `MOVEFILE_REPLACE_EXISTING` flag.
+///
+/// ### Unix
+///
+/// 'rename'
 ///
 /// # Errors
 ///
@@ -860,6 +914,26 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 ///
 /// On success, the total number of bytes copied is returned.
 ///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// 'CopyFileExW' with an `LPPROGRESS_ROUTINE` returning `PROGRESS_CONTINUE` until complete.
+///
+/// ### Unix
+///
+/// For `from`, 'open' is called with `O_RDONLY` followed by setting `O_CLOEXEC` on the returned
+/// file descriptor.
+///
+/// For `to`, `open` is called with `O_WRONLY`, `O_CREAT` and `O_TRUNC` followed by setting
+/// `O_CLOEXEC` on the returned file descriptor.
+///
+/// The copy operation is performed by calling `read` followed by `write` until complete
+///
+/// Permissions are then set with `chmod`.
+///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
@@ -888,6 +962,25 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 ///
 /// The `dst` path will be a link pointing to the `src` path. Note that systems
 /// often require these two paths to both be located on the same filesystem.
+///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// 'CreateHardLinkW'
+///
+/// ### Unix
+///
+/// 'link'
+///
+/// # Errors
+///
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * The `src` path is not a file or doesn't exist
 ///
 /// # Examples
 ///
@@ -932,11 +1025,25 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 
 /// Reads a symbolic link, returning the file that the link points to.
 ///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// 'CreateFileW' with `FILE_FLAG_OPEN_REPARSE_POINT` and `FILE_FLAG_BACKUP_SEMANTICS` flags set.
+///
+/// ### Unix
+///
+/// 'readlink'
+///
 /// # Errors
 ///
-/// This function will return an error on failure. Failure conditions include
-/// reading a file that does not exist or reading a file that is not a symbolic
-/// link.
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * `path` is not a symbolic link
+/// * `path` does not exist
 ///
 /// # Examples
 ///
@@ -963,10 +1070,25 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 
 /// Creates a new, empty directory at the provided path
 ///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// 'CreateDirectoryW'
+///
+/// ### Unix
+///
+/// 'mkdir'
+///
 /// # Errors
 ///
-/// This function will return an error if the user lacks permissions to make a
-/// new directory at the provided `path`, or if the directory already exists.
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * User lacks permissions to create directory at `path`
+/// * `path` already exists
 ///
 /// # Examples
 ///
@@ -986,9 +1108,24 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Recursively create a directory and all of its parent components if they
 /// are missing.
 ///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// 'CreateDirectoryW'
+///
+/// ### Unix
+///
+/// 'mkdir'
+///
 /// # Errors
 ///
-/// This function will fail if any directory in the path specified by `path`
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * If any directory in the path specified by `path`
 /// does not already exist and it could not be created otherwise. The specific
 /// error conditions for when a directory is being created (after it is
 /// determined to not exist) are outlined by `fs::create_dir`.
@@ -1010,10 +1147,25 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 
 /// Removes an existing, empty directory.
 ///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// 'RemoveDirectoryW'
+///
+/// ### Unix
+///
+/// 'rmdir'
+///
 /// # Errors
 ///
-/// This function will return an error if the user lacks permissions to remove
-/// the directory at the provided `path`, or if the directory isn't empty.
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * If the user lacks permissions to remove the directory at the provided `path`
+/// * If the directory isn't empty
 ///
 /// # Examples
 ///
@@ -1035,6 +1187,21 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// This function does **not** follow symbolic links and it will simply remove the
 /// symbolic link itself.
+///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// 'FindFirstFileW' followed by `GetFileAttributesExW` with the
+/// `GetFileExInfoStandard` option. All files are removed with `DeleteFileW`
+/// and all directories removed with `RemoveDirectoryW`.
+///
+/// ### Unix
+///
+/// `opendir` followed by `lstat`. All files are then removed with `rmdir` and
+/// directories removed with `rmdir`
 ///
 /// # Errors
 ///
@@ -1073,6 +1240,27 @@ fn _remove_dir_all(path: &Path) -> io::Result<()> {
 /// The iterator will yield instances of `io::Result<DirEntry>`. New errors may
 /// be encountered after an iterator is initially constructed.
 ///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// `FindFirstFileW`
+///
+/// ### Unix
+///
+/// `opendir`
+///
+/// # Errors
+///
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * The provided `path` doesn't exist
+/// * The process lacks permissions to view the contents
+/// * The `path` points at a non-directory file
+///
 /// # Examples
 ///
 /// ```
@@ -1095,12 +1283,6 @@ fn _remove_dir_all(path: &Path) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
-///
-/// # Errors
-///
-/// This function will return an error if the provided `path` doesn't exist, if
-/// the process lacks permissions to view the contents or if the `path` points
-/// at a non-directory file
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
     fs_imp::readdir(path.as_ref()).map(ReadDir)
