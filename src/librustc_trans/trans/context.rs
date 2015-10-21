@@ -14,6 +14,7 @@ use metadata::common::LinkMeta;
 use middle::def::ExportMap;
 use middle::def_id::DefId;
 use middle::traits;
+use rustc_mir::mir_map::MirMap;
 use trans::adt;
 use trans::base;
 use trans::builder::Builder;
@@ -70,6 +71,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     stats: Stats,
     check_overflow: bool,
     check_drop_flag_for_sanity: bool,
+    mir_map: &'a MirMap<'tcx>,
 
     available_drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, String>>,
     use_dll_storage_attrs: bool,
@@ -251,6 +253,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn new(crate_name: &str,
                local_count: usize,
                tcx: &'b ty::ctxt<'tcx>,
+               mir_map: &'b MirMap<'tcx>,
                export_map: ExportMap,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
@@ -317,6 +320,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             link_meta: link_meta,
             symbol_hasher: RefCell::new(symbol_hasher),
             tcx: tcx,
+            mir_map: mir_map,
             stats: Stats {
                 n_glues_created: Cell::new(0),
                 n_null_glues: Cell::new(0),
@@ -802,6 +806,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn use_dll_storage_attrs(&self) -> bool {
         self.shared.use_dll_storage_attrs()
+    }
+
+    pub fn mir_map(&self) -> &'b MirMap<'tcx> {
+        self.shared.mir_map
     }
 }
 

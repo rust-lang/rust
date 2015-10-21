@@ -145,7 +145,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
                                         &arenas,
                                         &name,
                                         resolve::MakeGlobMap::No,
-                                        |tcx, analysis| {
+                                        |tcx, _, analysis| {
         let ty::CrateAnalysis { exported_items, public_items, .. } = analysis;
 
         // Convert from a NodeId set to a DefId set since we don't always have easy access

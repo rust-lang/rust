@@ -44,6 +44,7 @@ use middle::pat_util::simple_name;
 use middle::subst::Substs;
 use middle::ty::{self, Ty, HasTypeFlags};
 use rustc::front::map as hir_map;
+use rustc_mir::mir_map::MirMap;
 use session::config::{self, NoDebugInfo, FullDebugInfo};
 use session::Session;
 use trans::_match;
@@ -2737,7 +2738,10 @@ pub fn filter_reachable_ids(ccx: &SharedCrateContext) -> NodeSet {
     }).collect()
 }
 
-pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslation {
+pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
+                         mir_map: &MirMap<'tcx>,
+                         analysis: ty::CrateAnalysis)
+                         -> CrateTranslation {
     let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
     let krate = tcx.map.krate();
 
@@ -2779,6 +2783,7 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
     let shared_ccx = SharedCrateContext::new(&link_meta.crate_name,
                                              codegen_units,
                                              tcx,
+                                             &mir_map,
                                              export_map,
                                              Sha256::new(),
                                              link_meta.clone(),
