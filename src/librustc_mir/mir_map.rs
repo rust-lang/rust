@@ -23,8 +23,8 @@ extern crate rustc_front;
 use build;
 use dot;
 use repr::Mir;
+use hair::cx::{PatNode, Cx};
 use std::fs::File;
-use tcx::{PatNode, Cx};
 
 use self::rustc::middle::infer;
 use self::rustc::middle::region::CodeExtentData;

@@ -24,7 +24,7 @@ use rustc::middle::infer::InferCtxt;
 use rustc::middle::subst::{Subst, Substs};
 use rustc::middle::ty::{self, Ty};
 use syntax::codemap::Span;
-use syntax::parse::token::{self, special_idents};
+use syntax::parse::token;
 
 #[derive(Copy, Clone)]
 pub struct Cx<'a, 'tcx: 'a> {
@@ -87,18 +87,9 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
         adt_def.variants.len()
     }
 
-    pub fn fields(&mut self, adt_def: ty::AdtDef<'tcx>, variant_index: usize) -> Vec<Field> {
-        adt_def.variants[variant_index]
-            .fields
-            .iter()
-            .enumerate()
-            .map(|(index, field)| {
-                if field.name == special_idents::unnamed_field.name {
-                    Field::Indexed(index)
-                } else {
-                    Field::Named(field.name)
-                }
-            })
+    pub fn all_fields(&mut self, adt_def: ty::AdtDef<'tcx>, variant_index: usize) -> Vec<Field> {
+        (0..adt_def.variants[variant_index].fields.len())
+            .map(Field::new)
             .collect()
     }
 

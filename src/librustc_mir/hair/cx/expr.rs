@@ -12,16 +12,16 @@ use hair::*;
 use repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
 use std::rc::Rc;
-use tcx::Cx;
-use tcx::block;
-use tcx::pattern::PatNode;
-use tcx::to_ref::ToRef;
+use hair::cx::Cx;
+use hair::cx::block;
+use hair::cx::pattern::PatNode;
+use hair::cx::to_ref::ToRef;
 use rustc::front::map;
 use rustc::middle::const_eval;
 use rustc::middle::def;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::pat_util;
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty::{self, VariantDef, Ty};
 use rustc_front::hir;
 use rustc_front::util as hir_util;
 use syntax::parse::token;
@@ -170,11 +170,12 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             hir::ExprStruct(_, ref fields, ref base) => {
                 match expr_ty.sty {
                     ty::TyStruct(adt, substs) => {
+                        let field_refs = field_refs(&adt.variants[0], fields);
                         ExprKind::Adt {
                             adt_def: adt,
                             variant_index: 0,
                             substs: substs,
-                            fields: fields.to_ref(),
+                            fields: field_refs,
                             base: base.to_ref(),
                         }
                     }
@@ -183,11 +184,12 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                             def::DefVariant(enum_id, variant_id, true) => {
                                 debug_assert!(adt.did == enum_id);
                                 let index = adt.variant_index_with_id(variant_id);
+                                let field_refs = field_refs(&adt.variants[index], fields);
                                 ExprKind::Adt {
                                     adt_def: adt,
                                     variant_index: index,
                                     substs: substs,
-                                    fields: fields.to_ref(),
+                                    fields: field_refs,
                                     base: base.to_ref(),
                                 }
                             }
@@ -238,11 +240,10 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     }
                 };
 
-                let field_expr_ref = |s: &'tcx P<hir::Expr>, nm: &str| {
-                    FieldExprRef {
-                        name: Field::Named(token::intern(nm)),
-                        expr: s.to_ref(),
-                    }
+                let field_expr_ref = |s: &'tcx P<hir::Expr>, name: &str| {
+                    let name = token::intern(name);
+                    let index = adt_def.variants[0].index_of_field_named(name).unwrap();
+                    FieldExprRef { name: Field::new(index), expr: s.to_ref() }
                 };
 
                 let start_field = start.as_ref()
@@ -293,12 +294,25 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             hir::ExprLoop(ref body, _) =>
                 ExprKind::Loop { condition: None,
                                  body: block::to_expr_ref(cx, body) },
-            hir::ExprField(ref source, name) =>
-                ExprKind::Field { lhs: source.to_ref(),
-                                  name: Field::Named(name.node) },
+            hir::ExprField(ref source, name) => {
+                let index = match cx.tcx.expr_ty_adjusted(source).sty {
+                    ty::TyStruct(adt_def, _) =>
+                        adt_def.variants[0].index_of_field_named(name.node),
+                    ref ty =>
+                        cx.tcx.sess.span_bug(
+                            self.span,
+                            &format!("field of non-struct: {:?}", ty)),
+                };
+                let index = index.unwrap_or_else(|| {
+                    cx.tcx.sess.span_bug(
+                        self.span,
+                        &format!("no index found for field `{}`", name.node));
+                });
+                ExprKind::Field { lhs: source.to_ref(), name: Field::new(index) }
+            }
             hir::ExprTupField(ref source, index) =>
                 ExprKind::Field { lhs: source.to_ref(),
-                                  name: Field::Indexed(index.node) },
+                                  name: Field::new(index.node as usize) },
             hir::ExprCast(ref source, _) =>
                 ExprKind::Cast { source: source.to_ref() },
             hir::ExprBox(ref value) =>
@@ -616,7 +630,7 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
             // at this point we have `self.n`, which loads up the upvar
             let field_kind = ExprKind::Field {
                 lhs: self_expr.to_ref(),
-                name: Field::Indexed(index),
+                name: Field::new(index),
             };
 
             // ...but the upvar might be an `&T` or `&mut T` capture, at which
@@ -813,4 +827,16 @@ fn loop_label<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr) -> Cod
             cx.tcx.sess.span_bug(expr.span, &format!("loop scope resolved to {:?}", d));
         }
     }
+}
+
+fn field_refs<'tcx>(variant: VariantDef<'tcx>,
+                    fields: &'tcx [hir::Field])
+                    -> Vec<FieldExprRef<'tcx>>
+{
+    fields.iter()
+          .map(|field| FieldExprRef {
+              name: Field::new(variant.index_of_field_named(field.name.node).unwrap()),
+              expr: field.expr.to_ref(),
+          })
+          .collect()
 }
