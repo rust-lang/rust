@@ -368,7 +368,12 @@ impl<'a> CrateReader<'a> {
                      explicitly_linked: bool)
                          -> (ast::CrateNum, Rc<cstore::crate_metadata>,
                              cstore::CrateSource) {
-        match self.existing_match(name, hash, kind) {
+        enum LookupResult {
+            Previous(ast::CrateNum),
+            Loaded(loader::Library),
+        }
+        let result = match self.existing_match(name, hash, kind) {
+            Some(cnum) => LookupResult::Previous(cnum),
             None => {
                 let mut load_ctxt = loader::Context {
                     sess: self.sess,
@@ -386,15 +391,35 @@ impl<'a> CrateReader<'a> {
                     should_match_name: true,
                 };
                 let library = load_ctxt.load_library_crate();
-                self.register_crate(root, ident, name, span, library,
-                                    explicitly_linked)
+
+                // In the case that we're loading a crate, but not matching
+                // against a hash, we could load a crate which has the same hash
+                // as an already loaded crate. If this is the case prevent
+                // duplicates by just using the first crate.
+                let meta_hash = decoder::get_crate_hash(library.metadata
+                                                               .as_slice());
+                let mut result = LookupResult::Loaded(library);
+                self.sess.cstore.iter_crate_data(|cnum, data| {
+                    if data.name() == name && meta_hash == data.hash() {
+                        assert!(hash.is_none());
+                        result = LookupResult::Previous(cnum);
+                    }
+                });
+                result
             }
-            Some(cnum) => {
+        };
+
+        match result {
+            LookupResult::Previous(cnum) => {
                 let data = self.sess.cstore.get_crate_data(cnum);
                 if explicitly_linked && !data.explicitly_linked.get() {
                     data.explicitly_linked.set(explicitly_linked);
                 }
                 (cnum, data, self.sess.cstore.get_used_crate_source(cnum).unwrap())
+            }
+            LookupResult::Loaded(library) => {
+                self.register_crate(root, ident, name, span, library,
+                                    explicitly_linked)
             }
         }
     }
