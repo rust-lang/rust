@@ -443,10 +443,19 @@ pub type LvalueProjection<'tcx> =
 pub type LvalueElem<'tcx> =
     ProjectionElem<'tcx,Operand<'tcx>>;
 
+/// Index into the list of fields found in a `VariantDef`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Field {
-    Named(Name),
-    Indexed(usize),
+pub struct Field(u32);
+
+impl Field {
+    pub fn new(value: usize) -> Field {
+        assert!(value < (u32::MAX) as usize);
+        Field(value as u32)
+    }
+
+    pub fn index(self) -> usize {
+        self.0 as usize
+    }
 }
 
 impl<'tcx> Lvalue<'tcx> {
@@ -491,10 +500,8 @@ impl<'tcx> Debug for Lvalue<'tcx> {
                         write!(fmt,"({:?} as {:?})", data.base, variant_index),
                     ProjectionElem::Deref =>
                         write!(fmt,"(*{:?})", data.base),
-                    ProjectionElem::Field(Field::Named(name)) =>
-                        write!(fmt,"{:?}.{:?}", data.base, name),
-                    ProjectionElem::Field(Field::Indexed(index)) =>
-                        write!(fmt,"{:?}.{:?}", data.base, index),
+                    ProjectionElem::Field(field) =>
+                        write!(fmt,"{:?}.{:?}", data.base, field.index()),
                     ProjectionElem::Index(ref index) =>
                         write!(fmt,"{:?}[{:?}]", data.base, index),
                     ProjectionElem::ConstantIndex { offset, min_length, from_end: false } =>
