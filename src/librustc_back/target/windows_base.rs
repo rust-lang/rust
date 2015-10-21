@@ -65,11 +65,11 @@ pub fn opts() -> TargetOptions {
             "-nostdlib".to_string(),
         ),
         pre_link_objects_exe: vec!(
-            "crt2.o".to_string(),
-            "rsbegin.o".to_string(),
+            "crt2.o".to_string(),    // mingw C runtime initialization for executables
+            "rsbegin.o".to_string(), // Rust compiler runtime initialization, see rsbegin.rs
         ),
         pre_link_objects_dll: vec!(
-            "dllcrt2.o".to_string(),
+            "dllcrt2.o".to_string(), // mingw C runtime initialization for dlls
             "rsbegin.o".to_string(),
         ),
         late_link_args: vec!(

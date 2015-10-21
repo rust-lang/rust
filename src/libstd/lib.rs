@@ -400,15 +400,6 @@ pub mod __rand {
     pub use rand::{thread_rng, ThreadRng, Rng};
 }
 
-// Rust runtime's startup objects depend on these symbols, so they must be public.
-// Since sys_common isn't public, we have to re-export them here explicitly.
-#[doc(hidden)]
-#[unstable(feature = "eh_frame_registry", issue = "0")]
-#[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
-pub mod __frame_registry {
-    pub use sys_common::unwind::imp::eh_frame_registry::*;
-}
-
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`
 // because rustdoc only looks for these modules at the crate level.

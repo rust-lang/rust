@@ -32,6 +32,11 @@ use thread::{self, Thread};
 // Reexport some of our utilities which are expected by other crates.
 pub use sys_common::unwind::{begin_unwind, begin_unwind_fmt};
 
+// Rust runtime's startup objects depend on these symbols, so they must be public.
+// Since sys_common isn't public, we have to re-export them here.
+#[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
+pub use sys_common::unwind::imp::eh_frame_registry::*;
+
 #[cfg(not(test))]
 #[lang = "start"]
 fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
