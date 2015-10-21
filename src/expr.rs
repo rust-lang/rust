@@ -779,6 +779,7 @@ fn rewrite_match(context: &RewriteContext,
             // We couldn't format the arm, just reproduce the source.
             let snippet = context.snippet(mk_sp(arm_start_pos(arm), arm_end_pos(arm)));
             result.push_str(&snippet);
+            result.push_str(arm_comma(&arm.body));
         }
     }
     // BytePos(1) = closing match brace.
@@ -807,6 +808,18 @@ fn arm_start_pos(arm: &ast::Arm) -> BytePos {
 
 fn arm_end_pos(arm: &ast::Arm) -> BytePos {
     arm.body.span.hi
+}
+
+fn arm_comma(body: &ast::Expr) -> &'static str {
+    if let ast::ExprBlock(ref block) = body.node {
+        if let ast::DefaultBlock = block.rules {
+            ""
+        } else {
+            ","
+        }
+    } else {
+        ","
+    }
 }
 
 // Match arms.
@@ -881,11 +894,7 @@ impl Rewrite for ast::Arm {
             line_start += offset.width();
         }
 
-        let comma = if let ast::ExprBlock(_) = body.node {
-            ""
-        } else {
-            ","
-        };
+        let comma = arm_comma(body);
 
         // Let's try and get the arm body on the same line as the condition.
         // 4 = ` => `.len()

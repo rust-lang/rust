@@ -226,3 +226,20 @@ fn issue280() {
 fn issue383() {
     match resolution.last_private {LastImport{..} => false, _ => true};
 }
+
+fn issue507() {
+    match 1 {
+        1 => unsafe { std::intrinsics::abort() },
+        _ => (),
+    }
+}
+
+fn issue508() {
+    match s.type_id() {
+        Some(NodeTypeId::Element(ElementTypeId::HTMLElement(
+                    HTMLElementTypeId::HTMLCanvasElement))) => true,
+        Some(NodeTypeId::Element(ElementTypeId::HTMLElement(
+                        HTMLElementTypeId::HTMLObjectElement))) => s.has_object_data(),
+        Some(NodeTypeId::Element(_)) => false,
+    }
+}
