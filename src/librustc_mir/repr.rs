@@ -355,8 +355,8 @@ pub enum StatementKind<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DropKind {
-    Shallow,
-    Deep,
+    Free, // free a partially constructed box, should go away eventually
+    Deep
 }
 
 impl<'tcx> Debug for Statement<'tcx> {
@@ -364,7 +364,7 @@ impl<'tcx> Debug for Statement<'tcx> {
         use self::StatementKind::*;
         match self.kind {
             Assign(ref lv, ref rv) => write!(fmt, "{:?} = {:?}", lv, rv),
-            Drop(DropKind::Shallow, ref lv) => write!(fmt, "shallow_drop {:?}", lv),
+            Drop(DropKind::Free, ref lv) => write!(fmt, "free {:?}", lv),
             Drop(DropKind::Deep, ref lv) => write!(fmt, "drop {:?}", lv),
         }
     }

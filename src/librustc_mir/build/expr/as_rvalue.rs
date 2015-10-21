@@ -71,7 +71,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                 // schedule a shallow free of that memory, lest we unwind:
                 let extent = this.extent_of_innermost_scope().unwrap();
-                this.schedule_drop(expr_span, extent, DropKind::Shallow, &result, value_ty);
+                this.schedule_drop(expr_span, extent, DropKind::Free, &result, value_ty);
 
                 // initialize the box contents:
                 let contents = result.clone().deref();
