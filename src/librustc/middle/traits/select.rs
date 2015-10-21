@@ -2851,18 +2851,37 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                  -> Vec<PredicateObligation<'tcx>>
     {
         debug!("impl_or_trait_obligations(def_id={:?})", def_id);
+        let tcx = self.tcx();
 
-        let predicates = self.tcx().lookup_predicates(def_id);
-        let predicates = predicates.instantiate(self.tcx(), substs);
-        let predicates = normalize_with_depth(self, cause.clone(), recursion_depth, &predicates);
-        let predicates = self.infcx().plug_leaks(skol_map, snapshot, &predicates);
-
-        let mut obligations = predicates.obligations;
-        obligations.append(
-            &mut util::predicates_for_generics(cause,
-                                               recursion_depth,
-                                               &predicates.value));
-        obligations
+        // To allow for one-pass evaluation of the nested obligation,
+        // each predicate must be preceded by the obligations required
+        // to normalize it.
+        // for example, if we have:
+        //    impl<U: Iterator, V: Iterator<Item=U>> Foo for V where U::Item: Copy
+        // the impl will have the following predicates:
+        //    <V as Iterator>::Item = U,
+        //    U: Iterator, U: Sized,
+        //    V: Iterator, V: Sized,
+        //    <U as Iterator>::Item: Copy
+        // When we substitute, say, `V => IntoIter<u32>, U => $0`, the last
+        // obligation will normalize to `<$0 as Iterator>::Item = $1` and
+        // `$1: Copy`, so we must ensure the obligations are emitted in
+        // that order.
+        let predicates = tcx
+            .lookup_predicates(def_id)
+            .predicates.iter()
+            .flat_map(|predicate| {
+                let predicate =
+                    normalize_with_depth(self, cause.clone(), recursion_depth,
+                                         &predicate.subst(tcx, substs));
+                predicate.obligations.into_iter().chain(
+                    Some(Obligation {
+                        cause: cause.clone(),
+                        recursion_depth: recursion_depth,
+                        predicate: predicate.value
+                    }))
+            }).collect();
+        self.infcx().plug_leaks(skol_map, snapshot, &predicates)
     }
 
     #[allow(unused_comparisons)]
