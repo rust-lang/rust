@@ -47,7 +47,7 @@ As you can see, the `trait` block looks very similar to the `impl` block,
 but we don’t define a body, just a type signature. When we `impl` a trait,
 we use `impl Trait for Item`, rather than just `impl Item`.
 
-## Traits bounds for generic functions
+## Trait constraints on generic functions
 
 Traits are useful because they allow a type to make certain promises about its
 behavior. Generic functions can exploit this to constrain the types they
@@ -155,7 +155,7 @@ We get a compile-time error:
 error: the trait `HasArea` is not implemented for the type `_` [E0277]
 ```
 
-## Traits bounds for generic structs
+## Trait constraints on generic structs
 
 Your generic structs can also benefit from trait constraints. All you need to
 do is append the constraint when you declare type parameters. Here is a new
