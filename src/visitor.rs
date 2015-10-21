@@ -31,17 +31,13 @@ pub struct FmtVisitor<'a> {
     pub config: &'a Config,
 }
 
-impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
-    fn visit_expr(&mut self, _: &'v ast::Expr) {
-        unreachable!()
-    }
-
-    fn visit_stmt(&mut self, stmt: &'v ast::Stmt) {
+impl<'a> FmtVisitor<'a> {
+    fn visit_stmt(&mut self, stmt: &ast::Stmt) {
         match stmt.node {
             ast::Stmt_::StmtDecl(ref decl, _) => {
                 match decl.node {
                     ast::Decl_::DeclLocal(ref local) => self.visit_let(local, stmt.span),
-                    ast::Decl_::DeclItem(..) => visit::walk_stmt(self, stmt),
+                    ast::Decl_::DeclItem(ref item) => self.visit_item(item),
                 }
             }
             ast::Stmt_::StmtExpr(ref ex, _) | ast::Stmt_::StmtSemi(ref ex, _) => {
@@ -57,14 +53,14 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                 .map(|s| s + suffix);
                 self.push_rewrite(stmt.span, rewrite);
             }
-            ast::Stmt_::StmtMac(ref _mac, _macro_style) => {
+            ast::Stmt_::StmtMac(ref mac, _macro_style) => {
                 self.format_missing_with_indent(stmt.span.lo);
-                visit::walk_stmt(self, stmt);
+                self.visit_mac(mac);
             }
         }
     }
 
-    fn visit_block(&mut self, b: &'v ast::Block) {
+    pub fn visit_block(&mut self, b: &ast::Block) {
         debug!("visit_block: {:?} {:?}",
                self.codemap.lookup_char_pos(b.span.lo),
                self.codemap.lookup_char_pos(b.span.hi));
@@ -122,9 +118,9 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     // Note that this only gets called for function definitions. Required methods
     // on traits do not get handled here.
     fn visit_fn(&mut self,
-                fk: visit::FnKind<'v>,
-                fd: &'v ast::FnDecl,
-                b: &'v ast::Block,
+                fk: visit::FnKind,
+                fd: &ast::FnDecl,
+                b: &ast::Block,
                 s: Span,
                 _: ast::NodeId) {
         let indent = self.block_indent;
@@ -167,7 +163,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         self.visit_block(b)
     }
 
-    fn visit_item(&mut self, item: &'v ast::Item) {
+    fn visit_item(&mut self, item: &ast::Item) {
         // Don't look at attributes for modules.
         // We want to avoid looking at attributes in another file, which the AST
         // doesn't distinguish. FIXME This is overly conservative and means we miss
@@ -185,12 +181,22 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             ast::Item_::ItemUse(ref vp) => {
                 self.format_import(item.vis, vp, item.span);
             }
-            // FIXME(#78): format traits and impl definitions.
-            ast::Item_::ItemImpl(..) |
-            ast::Item_::ItemTrait(..) => {
+            // FIXME(#78): format impl definitions.
+            ast::Item_::ItemImpl(_, _, _, _, _, ref impl_items) => {
                 self.format_missing_with_indent(item.span.lo);
                 self.block_indent = self.block_indent.block_indent(self.config);
-                visit::walk_item(self, item);
+                for item in impl_items {
+                    self.visit_impl_item(&item);
+                }
+                self.block_indent = self.block_indent.block_unindent(self.config);
+            }
+            // FIXME(#78): format traits.
+            ast::Item_::ItemTrait(_, _, _, ref trait_items) => {
+                self.format_missing_with_indent(item.span.lo);
+                self.block_indent = self.block_indent.block_indent(self.config);
+                for item in trait_items {
+                    self.visit_trait_item(&item);
+                }
                 self.block_indent = self.block_indent.block_unindent(self.config);
             }
             ast::Item_::ItemExternCrate(_) => {
@@ -232,7 +238,6 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 self.last_pos = item.span.hi;
                 // FIXME: we cannot format these yet, because of a bad span.
                 // See rust lang issue #28424.
-                // visit::walk_item(self, item);
             }
             ast::Item_::ItemForeignMod(ref foreign_mod) => {
                 self.format_missing_with_indent(item.span.lo);
@@ -258,37 +263,80 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              &self.get_context());
                 self.push_rewrite(item.span, rewrite);
             }
-            // FIXME(#486): format type aliases.
-            ast::Item_::ItemDefaultImpl(..) |
-            ast::Item_::ItemFn(..) |
+            ast::Item_::ItemDefaultImpl(..) => {
+                // FIXME(#78): format impl definitions.
+            }
+            ast::ItemFn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
+                self.visit_fn(visit::FnKind::ItemFn(item.ident,
+                                                    generics,
+                                                    unsafety,
+                                                    constness,
+                                                    abi,
+                                                    item.vis),
+                              declaration,
+                              body,
+                              item.span,
+                              item.id)
+            }
             ast::Item_::ItemTy(..) => {
-                visit::walk_item(self, item);
+                // FIXME(#486): format type aliases.
             }
         }
     }
 
-    fn visit_trait_item(&mut self, ti: &'v ast::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
         if self.visit_attrs(&ti.attrs) {
             return;
         }
 
-        if let ast::TraitItem_::MethodTraitItem(ref sig, None) = ti.node {
-            let indent = self.block_indent;
-            let rewrite = self.rewrite_required_fn(indent, ti.ident, sig, ti.span);
-            self.push_rewrite(ti.span, rewrite);
+        match ti.node {
+            ast::ConstTraitItem(..) => {
+                // FIXME: Implement
+            }
+            ast::MethodTraitItem(ref sig, None) => {
+                let indent = self.block_indent;
+                let rewrite = self.rewrite_required_fn(indent, ti.ident, sig, ti.span);
+                self.push_rewrite(ti.span, rewrite);
+            }
+            ast::MethodTraitItem(ref sig, Some(ref body)) => {
+                self.visit_fn(visit::FnKind::Method(ti.ident, sig, None),
+                              &sig.decl,
+                              &body,
+                              ti.span,
+                              ti.id);
+            }
+            ast::TypeTraitItem(..) => {
+                // FIXME: Implement
+            }
         }
-
-        visit::walk_trait_item(self, ti)
     }
 
-    fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
         if self.visit_attrs(&ii.attrs) {
             return;
         }
-        visit::walk_impl_item(self, ii)
+
+        match ii.node {
+            ast::MethodImplItem(ref sig, ref body) => {
+                self.visit_fn(visit::FnKind::Method(ii.ident, sig, Some(ii.vis)),
+                              &sig.decl,
+                              body,
+                              ii.span,
+                              ii.id);
+            }
+            ast::ConstImplItem(..) => {
+                // FIXME: Implement
+            }
+            ast::TypeImplItem(_) => {
+                // FIXME: Implement
+            }
+            ast::MacImplItem(ref mac) => {
+                self.visit_mac(mac);
+            }
+        }
     }
 
-    fn visit_mac(&mut self, mac: &'v ast::Mac) {
+    fn visit_mac(&mut self, mac: &ast::Mac) {
         // 1 = ;
         let width = self.config.max_width - self.block_indent.width() - 1;
         let rewrite = rewrite_macro(mac, &self.get_context(), width, self.block_indent);
@@ -298,9 +346,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             self.last_pos = mac.span.hi;
         }
     }
-}
 
-impl<'a> FmtVisitor<'a> {
     fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
         self.format_missing_with_indent(span.lo);
 
@@ -366,6 +412,12 @@ impl<'a> FmtVisitor<'a> {
         false
     }
 
+    fn walk_mod_items(&mut self, m: &ast::Mod) {
+        for item in &m.items {
+            self.visit_item(&item);
+        }
+    }
+
     fn format_mod(&mut self, m: &ast::Mod, s: Span, ident: ast::Ident) {
         debug!("FmtVisitor::format_mod: ident: {:?}, span: {:?}", ident, s);
 
@@ -377,7 +429,7 @@ impl<'a> FmtVisitor<'a> {
 
         if is_internal {
             self.block_indent = self.block_indent.block_indent(self.config);
-            visit::walk_mod(self, m);
+            self.walk_mod_items(m);
             self.block_indent = self.block_indent.block_unindent(self.config);
 
             self.format_missing_with_indent(m.inner.hi - BytePos(1));
@@ -390,7 +442,7 @@ impl<'a> FmtVisitor<'a> {
         let filemap = self.codemap.get_filemap(filename);
         self.last_pos = filemap.start_pos;
         self.block_indent = Indent::empty();
-        visit::walk_mod(self, m);
+        self.walk_mod_items(m);
         self.format_missing(filemap.end_pos);
     }
 
