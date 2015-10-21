@@ -92,6 +92,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                           .collect();
                 self.cfg.terminate(block, Terminator::Switch {
                     discr: lvalue.clone(),
+                    adt_def: adt_def,
                     targets: target_blocks.clone()
                 });
                 target_blocks
