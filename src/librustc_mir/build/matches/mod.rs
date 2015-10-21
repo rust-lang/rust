@@ -51,10 +51,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         .collect(),
         };
 
-        let arm_bodies: Vec<ExprRef<'tcx>> =
-            arms.iter()
-                .map(|arm| arm.body.clone())
-                .collect();
+        let arm_bodies: Vec<ExprRef<'tcx>> = arms.iter()
+                                                 .map(|arm| arm.body.clone())
+                                                 .collect();
 
         // assemble a list of candidates: there is one candidate per
         // pattern, which means there may be more than one candidate
@@ -62,24 +61,28 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // highest priority candidate comes last in the list. This the
         // reverse of the order in which candidates are written in the
         // source.
-        let candidates: Vec<Candidate<'tcx>> =
-            arms.iter()
-                .enumerate()
-                .rev() // highest priority comes last
-                .flat_map(|(arm_index, arm)| {
-                    arm.patterns.iter()
-                                .rev()
-                                .map(move |pat| (arm_index, pat.clone(), arm.guard.clone()))
-                })
-                .map(|(arm_index, pattern, guard)| {
-                    Candidate {
+        let candidates: Vec<Candidate<'tcx>> = arms.iter()
+                                                   .enumerate()
+                                                   .rev()
+                                                   .flat_map(|(arm_index, arm)| {
+                                                       arm.patterns
+                                                          .iter()
+                                                          .rev()
+                                                          .map(move |pat| {
+                                                              (arm_index,
+                                                               pat.clone(),
+                                                               arm.guard.clone())
+                                                          })
+                                                   })
+                                                   .map(|(arm_index, pattern, guard)| {
+                                                       Candidate {
                         match_pairs: vec![self.match_pair(discriminant_lvalue.clone(), pattern)],
                         bindings: vec![],
                         guard: guard,
                         arm_index: arm_index,
                     }
-                })
-                .collect();
+                                                   })
+                                                   .collect();
 
         // this will generate code to test discriminant_lvalue and
         // branch to the appropriate arm block
@@ -144,7 +147,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             match_pairs: vec![self.match_pair(initializer.clone(), irrefutable_pat.clone())],
             bindings: vec![],
             guard: None,
-            arm_index: 0, // since we don't call `match_candidates`, this field is unused
+            arm_index: 0, /* since we don't call `match_candidates`, this field is unused */
         };
 
         // Simplify the candidate. Since the pattern is irrefutable, this should
@@ -275,10 +278,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         span: Span,
                         arm_blocks: &mut ArmBlocks,
                         mut candidates: Vec<Candidate<'tcx>>,
-                        mut block: BasicBlock)
-    {
+                        mut block: BasicBlock) {
         debug!("matched_candidate(span={:?}, block={:?}, candidates={:?})",
-               span, block, candidates);
+               span,
+               block,
+               candidates);
 
         // Start by simplifying candidates. Once this process is
         // complete, all the match pairs which remain require some
@@ -291,9 +295,12 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // see whether the candidates in the front of the queue (and
         // hence back of the vec) have satisfied all their match
         // pairs.
-        let fully_matched =
-            candidates.iter().rev().take_while(|c| c.match_pairs.is_empty()).count();
-        debug!("match_candidates: {:?} candidates fully matched", fully_matched);
+        let fully_matched = candidates.iter()
+                                      .rev()
+                                      .take_while(|c| c.match_pairs.is_empty())
+                                      .count();
+        debug!("match_candidates: {:?} candidates fully matched",
+               fully_matched);
         for _ in 0..fully_matched {
             // If so, apply any bindings, test the guard (if any), and
             // branch to the arm.
@@ -316,21 +323,22 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // otherwise, extract the next match pair and construct tests
         let match_pair = &candidates.last().unwrap().match_pairs[0];
         let test = self.test(match_pair);
-        debug!("match_candidates: test={:?} match_pair={:?}", test, match_pair);
+        debug!("match_candidates: test={:?} match_pair={:?}",
+               test,
+               match_pair);
         let target_blocks = self.perform_test(block, &match_pair.lvalue, &test);
 
         for (outcome, mut target_block) in target_blocks.into_iter().enumerate() {
-            let applicable_candidates: Vec<Candidate<'tcx>> =
-                candidates.iter()
-                          .filter_map(|candidate| {
-                              unpack!(target_block =
+            let applicable_candidates: Vec<Candidate<'tcx>> = candidates.iter()
+                                                                        .filter_map(|candidate| {
+                                                                            unpack!(target_block =
                                       self.candidate_under_assumption(target_block,
                                                                       &match_pair.lvalue,
                                                                       &test.kind,
                                                                       outcome,
                                                                       candidate))
-                          })
-                          .collect();
+                                                                        })
+                                                                        .collect();
             self.match_candidates(span, arm_blocks, applicable_candidates, target_block);
         }
     }
@@ -353,7 +361,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                         candidate: Candidate<'tcx>)
                                         -> Option<BasicBlock> {
         debug!("bind_and_guard_matched_candidate(block={:?}, candidate={:?})",
-               block, candidate);
+               block,
+               candidate);
 
         debug_assert!(candidate.match_pairs.is_empty());
 
@@ -366,8 +375,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             // guard, this block is simply unreachable
             let cond = unpack!(block = self.as_operand(block, guard));
             let otherwise = self.cfg.start_new_block();
-            self.cfg.terminate(block, Terminator::If { cond: cond,
-                                                       targets: [arm_block, otherwise]});
+            self.cfg.terminate(block,
+                               Terminator::If {
+                                   cond: cond,
+                                   targets: [arm_block, otherwise],
+                               });
             Some(otherwise)
         } else {
             self.cfg.terminate(block, Terminator::Goto { target: arm_block });
@@ -375,11 +387,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         }
     }
 
-    fn bind_matched_candidate(&mut self,
-                              block: BasicBlock,
-                              bindings: Vec<Binding<'tcx>>) {
+    fn bind_matched_candidate(&mut self, block: BasicBlock, bindings: Vec<Binding<'tcx>>) {
         debug!("bind_matched_candidate(block={:?}, bindings={:?})",
-               block, bindings);
+               block,
+               bindings);
 
         // Assign each of the bindings. This may trigger moves out of the candidate.
         for binding in bindings {
@@ -389,8 +400,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             let var_index = self.var_indices[&binding.var_id];
 
             let rvalue = match binding.binding_mode {
-                BindingMode::ByValue =>
-                    Rvalue::Use(Operand::Consume(binding.source)),
+                BindingMode::ByValue => Rvalue::Use(Operand::Consume(binding.source)),
                 BindingMode::ByRef(region, borrow_kind) =>
                     Rvalue::Ref(region, borrow_kind, binding.source),
             };
@@ -406,10 +416,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                        var_id: NodeId,
                        var_ty: Ty<'tcx>,
                        span: Span)
-                       -> u32
-    {
+                       -> u32 {
         debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, var_extent={:?}, span={:?})",
-               var_id, name, var_ty, var_extent, span);
+               var_id,
+               name,
+               var_ty,
+               var_extent,
+               span);
 
         let index = self.var_decls.len();
         self.var_decls.push(VarDecl::<'tcx> {
@@ -418,7 +431,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             ty: var_ty.clone(),
         });
         let index = index as u32;
-        self.schedule_drop(span, var_extent, DropKind::Deep, &Lvalue::Var(index), var_ty);
+        self.schedule_drop(span,
+                           var_extent,
+                           DropKind::Deep,
+                           &Lvalue::Var(index),
+                           var_ty);
         self.var_indices.insert(var_id, index);
 
         debug!("declare_binding: index={:?}", index);

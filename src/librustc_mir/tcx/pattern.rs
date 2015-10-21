@@ -77,13 +77,11 @@ impl<'tcx> PatNode<'tcx> {
                                   suffix: &'tcx Vec<P<hir::Pat>>)
                                   -> PatternKind<'tcx> {
         match ty.sty {
-            ty::TySlice(..) =>
-                // matching a slice or fixed-length array
-                PatternKind::Slice {
-                    prefix: self.pat_refs(prefix),
-                    slice: self.opt_pat_ref(slice),
-                    suffix: self.pat_refs(suffix),
-                },
+            ty::TySlice(..) => PatternKind::Slice {
+                prefix: self.pat_refs(prefix),
+                slice: self.opt_pat_ref(slice),
+                suffix: self.pat_refs(suffix),
+            },
 
             ty::TyArray(_, len) => {
                 // fixed-length array
@@ -153,38 +151,38 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
                 let hi = const_eval::eval_const_expr(cx.tcx, hi);
                 let hi = Literal::Value { value: hi };
                 PatternKind::Range { lo: lo, hi: hi }
-            },
+            }
 
             hir::PatEnum(..) | hir::PatIdent(..) | hir::PatQPath(..)
-                if pat_is_resolved_const(&cx.tcx.def_map, self.pat) =>
-            {
+                if pat_is_resolved_const(&cx.tcx.def_map, self.pat) => {
                 let def = cx.tcx.def_map.borrow().get(&self.pat.id).unwrap().full_def();
                 match def {
                     def::DefConst(def_id) | def::DefAssociatedConst(def_id) =>
                         match const_eval::lookup_const_by_id(cx.tcx, def_id, Some(self.pat.id)) {
-                            Some(const_expr) => {
-                                let opt_value =
+                        Some(const_expr) => {
+                            let opt_value =
                                     const_eval::eval_const_expr_partial(
                                         cx.tcx, const_expr,
                                         const_eval::EvalHint::ExprTypeChecked);
-                                let literal = if let Ok(value) = opt_value {
-                                    Literal::Value { value: value }
-                                } else {
-                                    let substs = cx.tcx.mk_substs(Substs::empty());
-                                    Literal::Item { def_id: def_id, substs: substs }
-                                };
-                                PatternKind::Constant { value: literal }
-                            }
-                            None => {
-                                cx.tcx.sess.span_bug(
-                                    self.pat.span,
-                                    &format!("cannot eval constant: {:?}", def_id))
-                            }
-                        },
-                    _ =>
-                        cx.tcx.sess.span_bug(
-                            self.pat.span,
-                            &format!("def not a constant: {:?}", def)),
+                            let literal = if let Ok(value) = opt_value {
+                                Literal::Value { value: value }
+                            } else {
+                                let substs = cx.tcx.mk_substs(Substs::empty());
+                                Literal::Item {
+                                    def_id: def_id,
+                                    substs: substs,
+                                }
+                            };
+                            PatternKind::Constant { value: literal }
+                        }
+                        None => {
+                            cx.tcx.sess.span_bug(self.pat.span,
+                                                 &format!("cannot eval constant: {:?}", def_id))
+                        }
+                    },
+                    _ => cx.tcx
+                           .sess
+                           .span_bug(self.pat.span, &format!("def not a constant: {:?}", def)),
                 }
             }
 
@@ -196,43 +194,40 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
             hir::PatVec(ref prefix, ref slice, ref suffix) => {
                 let ty = cx.tcx.node_id_to_type(self.pat.id);
                 match ty.sty {
-                    ty::TyRef(_, mt) =>
-                        PatternKind::Deref {
-                            subpattern: Pattern {
-                                ty: mt.ty,
-                                span: self.pat.span,
-                                kind: self.slice_or_array_pattern(cx, mt.ty, prefix,
-                                                                  slice, suffix),
-                            }.to_ref()
-                        },
+                    ty::TyRef(_, mt) => PatternKind::Deref {
+                        subpattern: Pattern {
+                            ty: mt.ty,
+                            span: self.pat.span,
+                            kind: self.slice_or_array_pattern(cx, mt.ty, prefix, slice, suffix),
+                        }
+                                        .to_ref(),
+                    },
 
                     ty::TySlice(..) |
-                    ty::TyArray(..) =>
-                        self.slice_or_array_pattern(cx, ty, prefix, slice, suffix),
+                    ty::TyArray(..) => self.slice_or_array_pattern(cx, ty, prefix, slice, suffix),
 
                     ref sty =>
-                        cx.tcx.sess.span_bug(
-                            self.pat.span,
-                            &format!("unexpanded type for vector pattern: {:?}", sty)),
+                        cx.tcx.sess.span_bug(self.pat.span,
+                                             &format!("unexpanded type for vector pattern: {:?}",
+                                                      sty)),
                 }
             }
 
             hir::PatTup(ref subpatterns) => {
-                let subpatterns =
-                    subpatterns.iter()
-                               .enumerate()
-                               .map(|(i, subpattern)| FieldPatternRef {
-                                   field: Field::Indexed(i),
-                                   pattern: self.pat_ref(subpattern),
-                               })
-                               .collect();
+                let subpatterns = subpatterns.iter()
+                                             .enumerate()
+                                             .map(|(i, subpattern)| {
+                                                 FieldPatternRef {
+                                                     field: Field::Indexed(i),
+                                                     pattern: self.pat_ref(subpattern),
+                                                 }
+                                             })
+                                             .collect();
 
                 PatternKind::Leaf { subpatterns: subpatterns }
             }
 
-            hir::PatIdent(bm, ref ident, ref sub)
-                if pat_is_binding(&cx.tcx.def_map, self.pat) =>
-            {
+            hir::PatIdent(bm, ref ident, ref sub) if pat_is_binding(&cx.tcx.def_map, self.pat) => {
                 let id = match self.binding_map {
                     None => self.pat.id,
                     Some(ref map) => map[&ident.node.name],
@@ -243,14 +238,14 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
                     _ => None,
                 };
                 let (mutability, mode) = match bm {
-                    hir::BindByValue(hir::MutMutable) =>
-                        (Mutability::Mut, BindingMode::ByValue),
-                    hir::BindByValue(hir::MutImmutable) =>
-                        (Mutability::Not, BindingMode::ByValue),
+                    hir::BindByValue(hir::MutMutable) => (Mutability::Mut, BindingMode::ByValue),
+                    hir::BindByValue(hir::MutImmutable) => (Mutability::Not, BindingMode::ByValue),
                     hir::BindByRef(hir::MutMutable) =>
-                        (Mutability::Not, BindingMode::ByRef(region.unwrap(), BorrowKind::Mut)),
+                        (Mutability::Not,
+                         BindingMode::ByRef(region.unwrap(), BorrowKind::Mut)),
                     hir::BindByRef(hir::MutImmutable) =>
-                        (Mutability::Not, BindingMode::ByRef(region.unwrap(), BorrowKind::Shared)),
+                        (Mutability::Not,
+                         BindingMode::ByRef(region.unwrap(), BorrowKind::Shared)),
                 };
                 PatternKind::Binding {
                     mutability: mutability,
@@ -267,26 +262,28 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
             }
 
             hir::PatEnum(_, ref opt_subpatterns) => {
-                let subpatterns =
-                    opt_subpatterns.iter()
-                                   .flat_map(|v| v.iter())
-                                   .enumerate()
-                                   .map(|(i, field)| FieldPatternRef {
-                                       field: Field::Indexed(i),
-                                       pattern: self.pat_ref(field),
-                                   })
-                                   .collect();
+                let subpatterns = opt_subpatterns.iter()
+                                                 .flat_map(|v| v.iter())
+                                                 .enumerate()
+                                                 .map(|(i, field)| {
+                                                     FieldPatternRef {
+                                                         field: Field::Indexed(i),
+                                                         pattern: self.pat_ref(field),
+                                                     }
+                                                 })
+                                                 .collect();
                 self.variant_or_leaf(cx, subpatterns)
             }
 
             hir::PatStruct(_, ref fields, _) => {
-                let subpatterns =
-                    fields.iter()
-                          .map(|field| FieldPatternRef {
-                              field: Field::Named(field.node.name),
-                              pattern: self.pat_ref(&field.node.pat),
-                          })
-                          .collect();
+                let subpatterns = fields.iter()
+                                        .map(|field| {
+                                            FieldPatternRef {
+                                                field: Field::Named(field.node.name),
+                                                pattern: self.pat_ref(&field.node.pat),
+                                            }
+                                        })
+                                        .collect();
                 self.variant_or_leaf(cx, subpatterns)
             }
 

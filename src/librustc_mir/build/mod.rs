@@ -131,8 +131,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                      explicit_arguments: Vec<(Ty<'tcx>, PatNode<'tcx>)>,
                      argument_extent: CodeExtent,
                      ast_block: &'tcx hir::Block)
-                     -> BlockAnd<Vec<ArgDecl<'tcx>>>
-    {
+                     -> BlockAnd<Vec<ArgDecl<'tcx>>> {
         self.in_scope(argument_extent, block, |this| {
             let arg_decls = {
                 let implicit_arg_decls = implicit_arguments.into_iter()
@@ -141,17 +140,16 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // to start, translate the argument patterns and collect the
                 // argument types.
                 let explicit_arg_decls =
-                    explicit_arguments
-                    .into_iter()
-                    .enumerate()
-                    .map(|(index, (ty, pattern))| {
-                        let lvalue = Lvalue::Arg(index as u32);
-                        unpack!(block = this.lvalue_into_pattern(block,
+                    explicit_arguments.into_iter()
+                                      .enumerate()
+                                      .map(|(index, (ty, pattern))| {
+                                              let lvalue = Lvalue::Arg(index as u32);
+                                              unpack!(block = this.lvalue_into_pattern(block,
                                                                  argument_extent,
                                                                  hair::PatternRef::Hair(pattern),
                                                                  &lvalue));
-                        ArgDecl { ty: ty }
-                    });
+                                              ArgDecl { ty: ty }
+                                          });
 
                 implicit_arg_decls.chain(explicit_arg_decls).collect()
             };

@@ -39,7 +39,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         }
 
         let category = Category::of(&expr.kind).unwrap();
-        debug!("expr_as_operand: category={:?} for={:?}", category, expr.kind);
+        debug!("expr_as_operand: category={:?} for={:?}",
+               category,
+               expr.kind);
         match category {
             Category::Constant => {
                 let constant = this.as_constant(expr);

@@ -50,14 +50,12 @@ impl Category {
             ExprKind::Index { .. } |
             ExprKind::SelfRef |
             ExprKind::VarRef { .. } |
-            ExprKind::StaticRef { .. } =>
-                Some(Category::Lvalue),
+            ExprKind::StaticRef { .. } => Some(Category::Lvalue),
 
             ExprKind::LogicalOp { .. } |
             ExprKind::If { .. } |
             ExprKind::Match { .. } |
-            ExprKind::Call { .. } =>
-                Some(Category::Rvalue(RvalueFunc::Into)),
+            ExprKind::Call { .. } => Some(Category::Rvalue(RvalueFunc::Into)),
 
             ExprKind::Vec { .. } |
             ExprKind::Tuple { .. } |
@@ -74,20 +72,15 @@ impl Category {
             ExprKind::Borrow { .. } |
             ExprKind::Assign { .. } |
             ExprKind::AssignOp { .. } |
-            ExprKind::InlineAsm { .. } =>
-                Some(Category::Rvalue(RvalueFunc::AsRvalue)),
+            ExprKind::InlineAsm { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 
-            ExprKind::Literal { .. } =>
-                Some(Category::Constant),
+            ExprKind::Literal { .. } => Some(Category::Constant),
 
             ExprKind::Loop { .. } |
             ExprKind::Block { .. } |
             ExprKind::Break { .. } |
             ExprKind::Continue { .. } |
-            ExprKind::Return { .. } =>
-                // FIXME(#27840) these probably want their own
-                // category, like "nonterminating"
-                Some(Category::Rvalue(RvalueFunc::Into)),
+            ExprKind::Return { .. } => Some(Category::Rvalue(RvalueFunc::Into)),
         }
     }
 }

@@ -55,23 +55,26 @@ fn mirror_stmts<'a, 'tcx: 'a, STMTS>(cx: &mut Cx<'a, 'tcx>,
     while let Some((index, stmt)) = stmts.next() {
         match stmt.node {
             hir::StmtExpr(ref expr, id) | hir::StmtSemi(ref expr, id) =>
-                result.push(
-                    StmtRef::Mirror(
-                        Box::new(Stmt { span: stmt.span,
-                                        kind: StmtKind::Expr {
-                                            scope: cx.tcx.region_maps.node_extent(id),
-                                            expr: expr.to_ref() } }))),
+                result.push(StmtRef::Mirror(Box::new(Stmt {
+                span: stmt.span,
+                kind: StmtKind::Expr {
+                    scope: cx.tcx.region_maps.node_extent(id),
+                    expr: expr.to_ref(),
+                },
+            }))),
 
             hir::StmtDecl(ref decl, id) => {
                 match decl.node {
-                    hir::DeclItem(..) => { /* ignore for purposes of the MIR */ }
+                    hir::DeclItem(..) => { /* ignore for purposes of the MIR */
+                    }
                     hir::DeclLocal(ref local) => {
                         let remainder_extent = CodeExtentData::Remainder(BlockRemainder {
                             block: block_id,
                             first_statement_index: index as u32,
                         });
-                        let remainder_extent =
-                            cx.tcx.region_maps.lookup_code_extent(remainder_extent);
+                        let remainder_extent = cx.tcx
+                                                 .region_maps
+                                                 .lookup_code_extent(remainder_extent);
 
                         // pull in all following statements, since
                         // they are within the scope of this let:

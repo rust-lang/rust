@@ -52,12 +52,16 @@ impl<'tcx> CFG<'tcx> {
         self.push_assign(block, span, temp, Rvalue::Use(Operand::Constant(constant)));
     }
 
-    pub fn push_drop(&mut self, block: BasicBlock, span: Span,
-                     kind: DropKind, lvalue: &Lvalue<'tcx>) {
-        self.push(block, Statement {
-            span: span,
-            kind: StatementKind::Drop(kind, lvalue.clone())
-        });
+    pub fn push_drop(&mut self,
+                     block: BasicBlock,
+                     span: Span,
+                     kind: DropKind,
+                     lvalue: &Lvalue<'tcx>) {
+        self.push(block,
+                  Statement {
+                      span: span,
+                      kind: StatementKind::Drop(kind, lvalue.clone()),
+                  });
     }
 
     pub fn push_assign(&mut self,
@@ -65,24 +69,25 @@ impl<'tcx> CFG<'tcx> {
                        span: Span,
                        lvalue: &Lvalue<'tcx>,
                        rvalue: Rvalue<'tcx>) {
-        self.push(block, Statement {
-            span: span,
-            kind: StatementKind::Assign(lvalue.clone(), rvalue)
-        });
+        self.push(block,
+                  Statement {
+                      span: span,
+                      kind: StatementKind::Assign(lvalue.clone(), rvalue),
+                  });
     }
 
-    pub fn terminate(&mut self,
-                     block: BasicBlock,
-                     terminator: Terminator<'tcx>) {
+    pub fn terminate(&mut self, block: BasicBlock, terminator: Terminator<'tcx>) {
         // Check whether this block has already been terminated. For
         // this, we rely on the fact that the initial state is to have
         // a Diverge terminator and an empty list of targets (which
         // is not a valid state).
-        debug_assert!(match self.block_data(block).terminator { Terminator::Diverge => true,
-                                                                _ => false },
-                      "terminate: block {:?} already has a terminator set", block);
+        debug_assert!(match self.block_data(block).terminator {
+                          Terminator::Diverge => true,
+                          _ => false,
+                      },
+                      "terminate: block {:?} already has a terminator set",
+                      block);
 
         self.block_data_mut(block).terminator = terminator;
     }
 }
-

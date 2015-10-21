@@ -93,8 +93,12 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     } else {
                         PassArgs::ByRef
                     };
-                    overloaded_operator(cx, self, ty::MethodCall::expr(self.id),
-                                        pass_args, lhs.to_ref(), vec![rhs])
+                    overloaded_operator(cx,
+                                        self,
+                                        ty::MethodCall::expr(self.id),
+                                        pass_args,
+                                        lhs.to_ref(),
+                                        vec![rhs])
                 } else {
                     // FIXME overflow
                     match op.node {
@@ -126,8 +130,12 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
             hir::ExprIndex(ref lhs, ref index) => {
                 if cx.tcx.is_method_call(self.id) {
-                    overloaded_lvalue(cx, self, ty::MethodCall::expr(self.id),
-                                      PassArgs::ByValue, lhs.to_ref(), vec![index])
+                    overloaded_lvalue(cx,
+                                      self,
+                                      ty::MethodCall::expr(self.id),
+                                      PassArgs::ByValue,
+                                      lhs.to_ref(),
+                                      vec![index])
                 } else {
                     ExprKind::Index {
                         lhs: lhs.to_ref(),
@@ -138,8 +146,12 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
             hir::ExprUnary(hir::UnOp::UnDeref, ref arg) => {
                 if cx.tcx.is_method_call(self.id) {
-                    overloaded_lvalue(cx, self, ty::MethodCall::expr(self.id),
-                                      PassArgs::ByValue, arg.to_ref(), vec![])
+                    overloaded_lvalue(cx,
+                                      self,
+                                      ty::MethodCall::expr(self.id),
+                                      PassArgs::ByValue,
+                                      arg.to_ref(),
+                                      vec![])
                 } else {
                     ExprKind::Deref { arg: arg.to_ref() }
                 }
@@ -147,17 +159,21 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
             hir::ExprUnary(op, ref arg) => {
                 if cx.tcx.is_method_call(self.id) {
-                    overloaded_operator(cx, self, ty::MethodCall::expr(self.id),
-                                        PassArgs::ByValue, arg.to_ref(), vec![])
+                    overloaded_operator(cx,
+                                        self,
+                                        ty::MethodCall::expr(self.id),
+                                        PassArgs::ByValue,
+                                        arg.to_ref(),
+                                        vec![])
                 } else {
                     // FIXME overflow
                     let op = match op {
                         hir::UnOp::UnNot => UnOp::Not,
                         hir::UnOp::UnNeg => UnOp::Neg,
                         hir::UnOp::UnDeref => {
-                            cx.tcx.sess.span_bug(
-                                self.span,
-                                "UnDeref should have been handled elsewhere");
+                            cx.tcx
+                              .sess
+                              .span_bug(self.span, "UnDeref should have been handled elsewhere");
                         }
                     };
                     ExprKind::Unary {
@@ -192,16 +208,16 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                                 }
                             }
                             ref def => {
-                                cx.tcx.sess.span_bug(
-                                    self.span,
-                                    &format!("unexpected def: {:?}", def));
+                                cx.tcx
+                                  .sess
+                                  .span_bug(self.span, &format!("unexpected def: {:?}", def));
                             }
                         }
                     }
                     _ => {
-                        cx.tcx.sess.span_bug(
-                            self.span,
-                            &format!("unexpected type for struct literal: {:?}", expr_ty));
+                        cx.tcx.sess.span_bug(self.span,
+                                             &format!("unexpected type for struct literal: {:?}",
+                                                      expr_ty));
                     }
                 }
             }
@@ -271,44 +287,47 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             }
 
             // Now comes the rote stuff:
-
-            hir::ExprRepeat(ref v, ref c) =>
-                ExprKind::Repeat { value: v.to_ref(), count: c.to_ref() },
-            hir::ExprRet(ref v) =>
-                ExprKind::Return { value: v.to_ref() },
-            hir::ExprBreak(label) =>
-                ExprKind::Break { label: label.map(|_| loop_label(cx, self)) },
+            hir::ExprRepeat(ref v, ref c) => ExprKind::Repeat {
+                value: v.to_ref(),
+                count: c.to_ref(),
+            },
+            hir::ExprRet(ref v) => ExprKind::Return { value: v.to_ref() },
+            hir::ExprBreak(label) => ExprKind::Break { label: label.map(|_| loop_label(cx, self)) },
             hir::ExprAgain(label) =>
                 ExprKind::Continue { label: label.map(|_| loop_label(cx, self)) },
-            hir::ExprMatch(ref discr, ref arms, _) =>
-                ExprKind::Match { discriminant: discr.to_ref(),
-                                  arms: arms.iter().map(|a| convert_arm(cx, a)).collect() },
-            hir::ExprIf(ref cond, ref then, ref otherwise) =>
-                ExprKind::If { condition: cond.to_ref(),
-                               then: block::to_expr_ref(cx, then),
-                               otherwise: otherwise.to_ref() },
-            hir::ExprWhile(ref cond, ref body, _) =>
-                ExprKind::Loop { condition: Some(cond.to_ref()),
-                                 body: block::to_expr_ref(cx, body) },
-            hir::ExprLoop(ref body, _) =>
-                ExprKind::Loop { condition: None,
-                                 body: block::to_expr_ref(cx, body) },
-            hir::ExprField(ref source, name) =>
-                ExprKind::Field { lhs: source.to_ref(),
-                                  name: Field::Named(name.node) },
-            hir::ExprTupField(ref source, index) =>
-                ExprKind::Field { lhs: source.to_ref(),
-                                  name: Field::Indexed(index.node) },
-            hir::ExprCast(ref source, _) =>
-                ExprKind::Cast { source: source.to_ref() },
-            hir::ExprBox(ref value) =>
-                ExprKind::Box { value: value.to_ref() },
-            hir::ExprVec(ref fields) =>
-                ExprKind::Vec { fields: fields.to_ref() },
-            hir::ExprTup(ref fields) =>
-                ExprKind::Tuple { fields: fields.to_ref() },
-            hir::ExprCall(ref fun, ref args) =>
-                ExprKind::Call { fun: fun.to_ref(), args: args.to_ref() },
+            hir::ExprMatch(ref discr, ref arms, _) => ExprKind::Match {
+                discriminant: discr.to_ref(),
+                arms: arms.iter().map(|a| convert_arm(cx, a)).collect(),
+            },
+            hir::ExprIf(ref cond, ref then, ref otherwise) => ExprKind::If {
+                condition: cond.to_ref(),
+                then: block::to_expr_ref(cx, then),
+                otherwise: otherwise.to_ref(),
+            },
+            hir::ExprWhile(ref cond, ref body, _) => ExprKind::Loop {
+                condition: Some(cond.to_ref()),
+                body: block::to_expr_ref(cx, body),
+            },
+            hir::ExprLoop(ref body, _) => ExprKind::Loop {
+                condition: None,
+                body: block::to_expr_ref(cx, body),
+            },
+            hir::ExprField(ref source, name) => ExprKind::Field {
+                lhs: source.to_ref(),
+                name: Field::Named(name.node),
+            },
+            hir::ExprTupField(ref source, index) => ExprKind::Field {
+                lhs: source.to_ref(),
+                name: Field::Indexed(index.node),
+            },
+            hir::ExprCast(ref source, _) => ExprKind::Cast { source: source.to_ref() },
+            hir::ExprBox(ref value) => ExprKind::Box { value: value.to_ref() },
+            hir::ExprVec(ref fields) => ExprKind::Vec { fields: fields.to_ref() },
+            hir::ExprTup(ref fields) => ExprKind::Tuple { fields: fields.to_ref() },
+            hir::ExprCall(ref fun, ref args) => ExprKind::Call {
+                fun: fun.to_ref(),
+                args: args.to_ref(),
+            },
         };
 
         let temp_lifetime = cx.tcx.region_maps.temporary_scope(self.id);
@@ -345,16 +364,25 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             Some(&ty::adjustment::AdjustDerefRef(ref adj)) => {
                 for i in 0..adj.autoderefs {
                     let i = i as u32;
-                    let adjusted_ty =
-                        expr.ty.adjust_for_autoderef(
-                            cx.tcx,
-                            self.id,
-                            self.span,
-                            i,
-                            |mc| cx.tcx.tables.borrow().method_map.get(&mc).map(|m| m.ty));
+                    let adjusted_ty = expr.ty.adjust_for_autoderef(cx.tcx,
+                                                                   self.id,
+                                                                   self.span,
+                                                                   i,
+                                                                   |mc| {
+                                                                       cx.tcx
+                                                                         .tables
+                                                                         .borrow()
+                                                                         .method_map
+                                                                         .get(&mc)
+                                                                         .map(|m| m.ty)
+                                                                   });
                     let kind = if cx.tcx.is_overloaded_autoderef(self.id, i) {
-                        overloaded_lvalue(cx, self, ty::MethodCall::autoderef(self.id, i),
-                                          PassArgs::ByValue, expr.to_ref(), vec![])
+                        overloaded_lvalue(cx,
+                                          self,
+                                          ty::MethodCall::autoderef(self.id, i),
+                                          PassArgs::ByValue,
+                                          expr.to_ref(),
+                                          vec![])
                     } else {
                         ExprKind::Deref { arg: expr.to_ref() }
                     };
@@ -396,7 +424,11 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                             let region = cx.tcx.mk_region(region);
                             expr = Expr {
                                 temp_lifetime: temp_lifetime,
-                                ty: cx.tcx.mk_ref(region, ty::TypeAndMut { ty: expr.ty, mutbl: m }),
+                                ty: cx.tcx.mk_ref(region,
+                                                  ty::TypeAndMut {
+                                                      ty: expr.ty,
+                                                      mutbl: m,
+                                                  }),
                                 span: self.span,
                                 kind: ExprKind::Borrow {
                                     region: *region,
@@ -498,24 +530,19 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
         def::DefFn(def_id, _) |
         def::DefConst(def_id) |
         def::DefMethod(def_id) |
-        def::DefAssociatedConst(def_id) =>
-            ExprKind::Literal {
-                literal: Literal::Item { def_id: def_id, substs: substs }
+        def::DefAssociatedConst(def_id) => ExprKind::Literal {
+            literal: Literal::Item {
+                def_id: def_id,
+                substs: substs,
             },
+        },
 
-        def::DefStatic(node_id, _) =>
-            ExprKind::StaticRef {
-                id: node_id,
-            },
+        def::DefStatic(node_id, _) => ExprKind::StaticRef { id: node_id },
 
         def @ def::DefLocal(..) |
-        def @ def::DefUpvar(..) =>
-            convert_var(cx, expr, def),
+        def @ def::DefUpvar(..) => convert_var(cx, expr, def),
 
-        def =>
-            cx.tcx.sess.span_bug(
-                expr.span,
-                &format!("def `{:?}` not yet implemented", def)),
+        def => cx.tcx.sess.span_bug(expr.span, &format!("def `{:?}` not yet implemented", def)),
     }
 }
 
@@ -527,13 +554,14 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
 
     match def {
         def::DefLocal(_, node_id) => {
-            ExprKind::VarRef {
-                id: node_id,
-            }
+            ExprKind::VarRef { id: node_id }
         }
 
         def::DefUpvar(_, id_var, index, closure_expr_id) => {
-            debug!("convert_var(upvar({:?}, {:?}, {:?}))", id_var, index, closure_expr_id);
+            debug!("convert_var(upvar({:?}, {:?}, {:?}))",
+                   id_var,
+                   index,
+                   closure_expr_id);
             let var_ty = cx.tcx.node_id_to_type(id_var);
 
             let body_id = match cx.tcx.map.find(closure_expr_id) {
@@ -541,14 +569,16 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
                     match expr.node {
                         hir::ExprClosure(_, _, ref body) => body.id,
                         _ => {
-                            cx.tcx.sess.span_bug(expr.span,
-                                              &format!("closure expr is not a closure expr"));
+                            cx.tcx
+                              .sess
+                              .span_bug(expr.span, &format!("closure expr is not a closure expr"));
                         }
                     }
                 }
                 _ => {
-                    cx.tcx.sess.span_bug(expr.span,
-                                      &format!("ast-map has garbage for closure expr"));
+                    cx.tcx
+                      .sess
+                      .span_bug(expr.span, &format!("ast-map has garbage for closure expr"));
                 }
             };
 
@@ -566,10 +596,11 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
 
             let self_expr = match cx.tcx.closure_kind(cx.tcx.map.local_def_id(closure_expr_id)) {
                 ty::ClosureKind::FnClosureKind => {
-                    let ref_closure_ty =
-                        cx.tcx.mk_ref(region,
-                                   ty::TypeAndMut { ty: closure_ty,
-                                                    mutbl: hir::MutImmutable });
+                    let ref_closure_ty = cx.tcx.mk_ref(region,
+                                                       ty::TypeAndMut {
+                                                           ty: closure_ty,
+                                                           mutbl: hir::MutImmutable,
+                                                       });
                     Expr {
                         ty: closure_ty,
                         temp_lifetime: temp_lifetime,
@@ -579,16 +610,18 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
                                 ty: ref_closure_ty,
                                 temp_lifetime: temp_lifetime,
                                 span: expr.span,
-                                kind: ExprKind::SelfRef
-                            }.to_ref()
-                        }
+                                kind: ExprKind::SelfRef,
+                            }
+                                     .to_ref(),
+                        },
                     }
                 }
                 ty::ClosureKind::FnMutClosureKind => {
-                    let ref_closure_ty =
-                        cx.tcx.mk_ref(region,
-                                   ty::TypeAndMut { ty: closure_ty,
-                                                    mutbl: hir::MutMutable });
+                    let ref_closure_ty = cx.tcx.mk_ref(region,
+                                                       ty::TypeAndMut {
+                                                           ty: closure_ty,
+                                                           mutbl: hir::MutMutable,
+                                                       });
                     Expr {
                         ty: closure_ty,
                         temp_lifetime: temp_lifetime,
@@ -598,9 +631,10 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
                                 ty: ref_closure_ty,
                                 temp_lifetime: temp_lifetime,
                                 span: expr.span,
-                                kind: ExprKind::SelfRef
-                            }.to_ref()
-                        }
+                                kind: ExprKind::SelfRef,
+                            }
+                                     .to_ref(),
+                        },
                     }
                 }
                 ty::ClosureKind::FnOnceClosureKind => {
@@ -628,9 +662,9 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
             let upvar_capture = match cx.tcx.upvar_capture(upvar_id) {
                 Some(c) => c,
                 None => {
-                    cx.tcx.sess.span_bug(
-                        expr.span,
-                        &format!("no upvar_capture for {:?}", upvar_id));
+                    cx.tcx
+                      .sess
+                      .span_bug(expr.span, &format!("no upvar_capture for {:?}", upvar_id));
                 }
             };
             match upvar_capture {
@@ -642,7 +676,8 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
                             ty: var_ty,
                             span: expr.span,
                             kind: field_kind,
-                        }.to_ref()
+                        }
+                                 .to_ref(),
                     }
                 }
             }
@@ -702,23 +737,25 @@ fn overloaded_operator<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
             let scope = cx.tcx.region_maps.node_extent(expr.id);
             let region = cx.tcx.mk_region(ty::ReScope(scope));
             let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
-            argrefs.extend(
-                args.iter()
-                    .map(|arg| {
-                        let arg_ty = cx.tcx.expr_ty_adjusted(arg);
-                        let adjusted_ty =
-                            cx.tcx.mk_ref(region,
-                                       ty::TypeAndMut { ty: arg_ty,
-                                                        mutbl: hir::MutImmutable });
-                        Expr {
-                            temp_lifetime: temp_lifetime,
-                            ty: adjusted_ty,
-                            span: expr.span,
-                            kind: ExprKind::Borrow { region: *region,
-                                                     borrow_kind: BorrowKind::Shared,
-                                                     arg: arg.to_ref() }
-                        }.to_ref()
-                    }))
+            argrefs.extend(args.iter().map(|arg| {
+                let arg_ty = cx.tcx.expr_ty_adjusted(arg);
+                let adjusted_ty = cx.tcx.mk_ref(region,
+                                                ty::TypeAndMut {
+                                                    ty: arg_ty,
+                                                    mutbl: hir::MutImmutable,
+                                                });
+                Expr {
+                    temp_lifetime: temp_lifetime,
+                    ty: adjusted_ty,
+                    span: expr.span,
+                    kind: ExprKind::Borrow {
+                        region: *region,
+                        borrow_kind: BorrowKind::Shared,
+                        arg: arg.to_ref(),
+                    },
+                }
+                    .to_ref()
+            }))
         }
     }
 
@@ -798,10 +835,13 @@ fn capture_freevar<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
                 temp_lifetime: temp_lifetime,
                 ty: freevar_ty,
                 span: closure_expr.span,
-                kind: ExprKind::Borrow { region: upvar_borrow.region,
-                                         borrow_kind: borrow_kind,
-                                         arg: captured_var.to_ref() }
-            }.to_ref()
+                kind: ExprKind::Borrow {
+                    region: upvar_borrow.region,
+                    borrow_kind: borrow_kind,
+                    arg: captured_var.to_ref(),
+                },
+            }
+                .to_ref()
         }
     }
 }

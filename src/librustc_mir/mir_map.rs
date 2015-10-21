@@ -136,10 +136,9 @@ impl<'a, 'm, 'tcx> visit::Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
                 span: Span,
                 id: ast::NodeId) {
         let (prefix, implicit_arg_tys) = match fk {
-            visit::FnKind::Closure =>
-                (format!("{}-", id), vec![closure_self_ty(&self.tcx, id, body.id)]),
-            _ =>
-                (format!(""), vec![]),
+            visit::FnKind::Closure => (format!("{}-", id),
+                                       vec![closure_self_ty(&self.tcx, id, body.id)]),
+            _ => (format!(""), vec![]),
         };
 
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
@@ -156,24 +155,23 @@ impl<'a, 'm, 'tcx> visit::Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
                     if item.check_name("graphviz") {
                         match item.value_str() {
                             Some(s) => {
-                                match
-                                    File::create(format!("{}{}", prefix, s))
-                                    .and_then(|ref mut output| dot::render(&mir, output))
-                                {
-                                    Ok(()) => { }
+                                match File::create(format!("{}{}", prefix, s))
+                                          .and_then(|ref mut output| dot::render(&mir, output)) {
+                                    Ok(()) => {}
                                     Err(e) => {
-                                        self.tcx.sess.span_fatal(
-                                            item.span,
-                                            &format!("Error writing graphviz \
-                                                      results to `{}`: {}",
-                                                     s, e));
+                                        self.tcx.sess.span_fatal(item.span,
+                                                                 &format!("Error writing \
+                                                                           graphviz results to \
+                                                                           `{}`: {}",
+                                                                          s,
+                                                                          e));
                                     }
                                 }
                             }
                             None => {
-                                self.tcx.sess.span_err(
-                                    item.span,
-                                    &format!("graphviz attribute requires a path"));
+                                self.tcx.sess.span_err(item.span,
+                                                       &format!("graphviz attribute requires a \
+                                                                 path"));
                             }
                         }
                     }
@@ -227,15 +225,16 @@ fn closure_self_ty<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
     let region = tcx.mk_region(region);
 
     match tcx.closure_kind(tcx.map.local_def_id(closure_expr_id)) {
-        ty::ClosureKind::FnClosureKind =>
-            tcx.mk_ref(region,
-                       ty::TypeAndMut { ty: closure_ty,
-                                        mutbl: hir::MutImmutable }),
-        ty::ClosureKind::FnMutClosureKind =>
-            tcx.mk_ref(region,
-                       ty::TypeAndMut { ty: closure_ty,
-                                        mutbl: hir::MutMutable }),
-        ty::ClosureKind::FnOnceClosureKind =>
-            closure_ty
+        ty::ClosureKind::FnClosureKind => tcx.mk_ref(region,
+                                                     ty::TypeAndMut {
+                                                         ty: closure_ty,
+                                                         mutbl: hir::MutImmutable,
+                                                     }),
+        ty::ClosureKind::FnMutClosureKind => tcx.mk_ref(region,
+                                                        ty::TypeAndMut {
+                                                            ty: closure_ty,
+                                                            mutbl: hir::MutMutable,
+                                                        }),
+        ty::ClosureKind::FnOnceClosureKind => closure_ty,
     }
 }

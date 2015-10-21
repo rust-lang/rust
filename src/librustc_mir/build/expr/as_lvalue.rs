@@ -17,11 +17,8 @@ use repr::*;
 
 impl<'a,'tcx> Builder<'a,'tcx> {
     /// Compile `expr`, yielding an lvalue that we can move from etc.
-    pub fn as_lvalue<M>(&mut self,
-                        block: BasicBlock,
-                        expr: M)
-                        -> BlockAnd<Lvalue<'tcx>>
-        where M: Mirror<'tcx, Output=Expr<'tcx>>
+    pub fn as_lvalue<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Lvalue<'tcx>>
+        where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
         self.expr_as_lvalue(block, expr)
@@ -58,12 +55,16 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                 // bounds check:
                 let (len, lt) = (this.temp(usize_ty.clone()), this.temp(bool_ty));
-                this.cfg.push_assign(block, expr_span, // len = len(slice)
-                                     &len, Rvalue::Len(slice.clone()));
-                this.cfg.push_assign(block, expr_span, // lt = idx < len
-                                     &lt, Rvalue::BinaryOp(BinOp::Lt,
-                                                           idx.clone(),
-                                                           Operand::Consume(len)));
+                this.cfg.push_assign(block,
+                                     expr_span, // len = len(slice)
+                                     &len,
+                                     Rvalue::Len(slice.clone()));
+                this.cfg.push_assign(block,
+                                     expr_span, // lt = idx < len
+                                     &lt,
+                                     Rvalue::BinaryOp(BinOp::Lt,
+                                                      idx.clone(),
+                                                      Operand::Consume(len)));
 
                 let (success, failure) = (this.cfg.start_new_block(), this.cfg.start_new_block());
                 this.cfg.terminate(block,
