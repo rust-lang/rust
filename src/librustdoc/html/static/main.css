@@ -172,6 +172,28 @@ nav.sub {
 
 /* Everything else */
 
+#main a {
+    border-bottom: dashed 1px #aaa;
+}
+#main a:hover {
+    border-bottom: dashed 1px black;
+}
+
+#main h1 a,
+#main h2 a,
+#main .collapse-toggle,
+#main .docblock a,
+#main .stability a {
+    border-bottom: none;
+}
+#main h1 a:hover,
+#main h2 a:hover,
+#main .collapse-toggle:hover,
+#main .docblock a:hover,
+#main .stability a:hover {
+    border-bottom: none;
+}
+
 .js-only, .hidden { display: none !important; }
 
 .sidebar {
