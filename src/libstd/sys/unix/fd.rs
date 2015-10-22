@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use io;
-use libc::{self, c_int, size_t, c_void};
+use libc::{self, c_int, c_void};
 use mem;
 use sys::c;
 use sys::cvt;
@@ -35,18 +35,14 @@ impl FileDesc {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let ret = try!(cvt(unsafe {
-            libc::read(self.fd,
-                       buf.as_mut_ptr() as *mut c_void,
-                       buf.len() as size_t)
+            libc::read(self.fd, buf.as_mut_ptr() as *mut c_void, buf.len())
         }));
         Ok(ret as usize)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = try!(cvt(unsafe {
-            libc::write(self.fd,
-                        buf.as_ptr() as *const c_void,
-                        buf.len() as size_t)
+            libc::write(self.fd, buf.as_ptr() as *const c_void, buf.len())
         }));
         Ok(ret as usize)
     }

@@ -14,7 +14,7 @@ use os::unix::prelude::*;
 use ffi::{CString, CStr, OsString, OsStr};
 use fmt;
 use io::{self, Error, ErrorKind, SeekFrom};
-use libc::{self, c_int, size_t, off_t, c_char, mode_t};
+use libc::{self, c_int, off_t, c_char, mode_t};
 use mem;
 use path::{Path, PathBuf};
 use ptr;
@@ -388,7 +388,7 @@ impl fmt::Debug for File {
                 return None;
             }
             let l = buf.iter().position(|&c| c == 0).unwrap();
-            buf.truncate(l as usize);
+            buf.truncate(l);
             buf.shrink_to_fit();
             Some(PathBuf::from(OsString::from_vec(buf)))
         }
@@ -478,7 +478,7 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
 
     loop {
         let buf_read = try!(cvt(unsafe {
-            libc::readlink(p, buf.as_mut_ptr() as *mut _, buf.capacity() as libc::size_t)
+            libc::readlink(p, buf.as_mut_ptr() as *mut _, buf.capacity())
         })) as usize;
 
         unsafe { buf.set_len(buf_read); }

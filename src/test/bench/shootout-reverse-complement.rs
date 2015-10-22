@@ -103,9 +103,9 @@ impl Tables {
 
 /// Finds the first position at which `b` occurs in `s`.
 fn memchr(h: &[u8], n: u8) -> Option<usize> {
-    use libc::{c_void, c_int, size_t};
+    use libc::{c_void, c_int};
     let res = unsafe {
-        libc::memchr(h.as_ptr() as *const c_void, n as c_int, h.len() as size_t)
+        libc::memchr(h.as_ptr() as *const c_void, n as c_int, h.len())
     };
     if res.is_null() {
         None

@@ -236,8 +236,7 @@ mod imp {
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
             let ret = unsafe {
-                SecRandomCopyBytes(kSecRandomDefault, v.len() as size_t,
-                                   v.as_mut_ptr())
+                SecRandomCopyBytes(kSecRandomDefault, v.len(), v.as_mut_ptr())
             };
             if ret == -1 {
                 panic!("couldn't generate random bytes: {}",

@@ -143,7 +143,7 @@ extern "system" {
                    flags: c_int) -> c_int;
 }
 
-const NI_MAXHOST: usize = 1025;
+const NI_MAXHOST: libc::size_t = 1025;
 
 pub fn lookup_addr(addr: &IpAddr) -> io::Result<String> {
     init();
@@ -154,7 +154,7 @@ pub fn lookup_addr(addr: &IpAddr) -> io::Result<String> {
 
     let data = unsafe {
         try!(cvt_gai(getnameinfo(inner, len,
-                                 hostbuf.as_mut_ptr(), NI_MAXHOST as libc::size_t,
+                                 hostbuf.as_mut_ptr(), NI_MAXHOST,
                                  ptr::null_mut(), 0, 0)));
 
         CStr::from_ptr(hostbuf.as_ptr())

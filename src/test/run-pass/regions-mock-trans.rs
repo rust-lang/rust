@@ -32,8 +32,7 @@ struct Ccx {
 
 fn alloc<'a>(_bcx : &'a arena) -> &'a Bcx<'a> {
     unsafe {
-        mem::transmute(libc::malloc(mem::size_of::<Bcx<'a>>()
-            as libc::size_t))
+        mem::transmute(libc::malloc(mem::size_of::<Bcx<'a>>()))
     }
 }
 

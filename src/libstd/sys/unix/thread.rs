@@ -43,7 +43,7 @@ impl Thread {
         assert_eq!(pthread_attr_init(&mut attr), 0);
 
         let stack_size = cmp::max(stack, min_stack_size(&attr));
-        match pthread_attr_setstacksize(&mut attr, stack_size as libc::size_t) {
+        match pthread_attr_setstacksize(&mut attr, stack_size) {
             0 => {}
             n => {
                 assert_eq!(n, libc::EINVAL);
@@ -54,7 +54,7 @@ impl Thread {
                 let page_size = os::page_size();
                 let stack_size = (stack_size + page_size - 1) &
                                  (-(page_size as isize - 1) as usize - 1);
-                let stack_size = stack_size as libc::size_t;
+                let stack_size = stack_size;
                 assert_eq!(pthread_attr_setstacksize(&mut attr, stack_size), 0);
             }
         };
@@ -251,7 +251,7 @@ pub mod guard {
         // This ensures SIGBUS will be raised on
         // stack overflow.
         let result = mmap(stackaddr,
-                          psize as libc::size_t,
+                          psize,
                           PROT_NONE,
                           MAP_PRIVATE | MAP_ANON | MAP_FIXED,
                           -1,
@@ -272,7 +272,7 @@ pub mod guard {
             fn pthread_get_stackaddr_np(thread: pthread_t) -> *mut libc::c_void;
             fn pthread_get_stacksize_np(thread: pthread_t) -> libc::size_t;
         }
-        Some((pthread_get_stackaddr_np(pthread_self()) as libc::size_t -
+        Some((pthread_get_stackaddr_np(pthread_self()) -
               pthread_get_stacksize_np(pthread_self())) as usize)
     }
 
@@ -377,8 +377,8 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
     });
 
     match unsafe { __pthread_get_minstack } {
-        None => PTHREAD_STACK_MIN as usize,
-        Some(f) => unsafe { f(attr) as usize },
+        None => PTHREAD_STACK_MIN,
+        Some(f) => unsafe { f(attr) },
     }
 }
 
@@ -386,7 +386,7 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
 // platforms.
 #[cfg(not(target_os = "linux"))]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
-    PTHREAD_STACK_MIN as usize
+    PTHREAD_STACK_MIN
 }
 
 extern {

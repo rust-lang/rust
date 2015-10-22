@@ -37,9 +37,9 @@ impl Thread {
         // Round up to the next 64 kB because that's what the NT kernel does,
         // might as well make it explicit.
         let stack_size = (stack + 0xfffe) & (!0xfffe);
-        let ret = c::CreateThread(ptr::null_mut(), stack_size as libc::size_t,
-                                  thread_start, &*p as *const _ as *mut _,
-                                  0, ptr::null_mut());
+        let ret = c::CreateThread(ptr::null_mut(), stack_size, thread_start,
+                                  &*p as *const _ as *mut _, 0,
+                                  ptr::null_mut());
 
         return if ret as usize == 0 {
             Err(io::Error::last_os_error())
