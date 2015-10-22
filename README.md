@@ -84,6 +84,13 @@ Read ["Installing Rust"] from [The Book].
    $ ./configure
    $ make && make install
    ```
+> ***Note:*** gcc versions >= 5 currently have issues building LLVM on Windows
+> resulting in a segmentation fault when building Rust. In order to avoid this
+> it may be necessary to obtain an earlier version of gcc such as 4.9.x.
+> Installers for earlier Windows builds of gcc are available at the
+> [Mingw-Builds] project.
+
+[Mingw-Builds]: http://sourceforge.net/projects/mingw-w64/
 
 ## Building Documentation
 
