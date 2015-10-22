@@ -3331,6 +3331,25 @@ extern "platform-intrinsic" {
 ```
 "##,
 
+E0516: r##"
+The `typeof` keyword is currently reserved but unimplemented.
+Erroneous code example:
+
+```
+fn main() {
+    let x: typeof(92) = 92;
+}
+```
+
+Try using type inference instead. Example:
+
+```
+fn main() {
+    let x = 92;
+}
+```
+"##,
+
 }
 
 register_diagnostics! {
