@@ -19,5 +19,6 @@ diff = { git = "https://github.com/utkarshkukreti/diff.rs.git" }
 syntex_syntax = { git = "https://github.com/serde-rs/syntex" }
 log = "0.3.2"
 env_logger = "0.3.1"
+getopts = "0.2"
 
 [dev-dependencies]
