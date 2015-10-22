@@ -33,9 +33,7 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_syntax)]
-#![feature(fs_canonicalize)]
 #![feature(libc)]
-#![feature(path_ext)]
 #![feature(rand)]
 #![feature(rustc_private)]
 #![feature(slice_bytes)]
@@ -57,3 +55,4 @@ pub mod rpath;
 pub mod sha2;
 pub mod svh;
 pub mod target;
+pub mod slice;

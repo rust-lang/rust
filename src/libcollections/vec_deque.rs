@@ -38,12 +38,13 @@ const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1
 const MAXIMUM_ZST_CAPACITY: usize = 1 << (usize::BITS - 1); // Largest possible power of two
 
-/// `VecDeque` is a growable ring buffer, which can be used as a
-/// double-ended queue efficiently.
+/// `VecDeque` is a growable ring buffer, which can be used as a double-ended
+/// queue efficiently.
 ///
-/// The "default" usage of this type as a queue is to use `push_back` to add to the queue, and
-/// `pop_front` to remove from the queue. `extend` and `append` push onto the back in this manner,
-/// and iterating over `VecDeque` goes front to back.
+/// The "default" usage of this type as a queue is to use `push_back` to add to
+/// the queue, and `pop_front` to remove from the queue. `extend` and `append`
+/// push onto the back in this manner, and iterating over `VecDeque` goes front
+/// to back.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VecDeque<T> {
     // tail and head are pointers into the buffer. Tail always points
@@ -499,8 +500,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(deque_extras)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::with_capacity(15);
@@ -509,9 +508,7 @@ impl<T> VecDeque<T> {
     /// buf.shrink_to_fit();
     /// assert!(buf.capacity() >= 4);
     /// ```
-    #[unstable(feature = "deque_extras",
-               reason = "needs to be audited",
-               issue = "27788")]
+    #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn shrink_to_fit(&mut self) {
         // +1 since the ringbuffer always leaves one space empty
         // len + 1 can't overflow for an existing, well-formed ringbuffer.
@@ -653,9 +650,7 @@ impl<T> VecDeque<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
     #[inline]
-    #[unstable(feature = "deque_extras",
-               reason = "matches collection reform specification, waiting for dust to settle",
-               issue = "27788")]
+    #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_slices(&self) -> (&[T], &[T]) {
         unsafe {
             let contiguous = self.is_contiguous();
@@ -674,9 +669,7 @@ impl<T> VecDeque<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
     #[inline]
-    #[unstable(feature = "deque_extras",
-               reason = "matches collection reform specification, waiting for dust to settle",
-               issue = "27788")]
+    #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
         unsafe {
             let contiguous = self.is_contiguous();
@@ -1035,25 +1028,21 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(deque_extras)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
-    /// assert_eq!(buf.swap_back_remove(0), None);
+    /// assert_eq!(buf.swap_remove_back(0), None);
     /// buf.push_back(1);
     /// buf.push_back(2);
     /// buf.push_back(3);
     ///
-    /// assert_eq!(buf.swap_back_remove(0), Some(1));
+    /// assert_eq!(buf.swap_remove_back(0), Some(1));
     /// assert_eq!(buf.len(), 2);
     /// assert_eq!(buf[0], 3);
     /// assert_eq!(buf[1], 2);
     /// ```
-    #[unstable(feature = "deque_extras",
-               reason = "the naming of this function may be altered",
-               issue = "27788")]
-    pub fn swap_back_remove(&mut self, index: usize) -> Option<T> {
+    #[stable(feature = "deque_extras_15", since = "1.5.0")]
+    pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {
         let length = self.len();
         if length > 0 && index < length - 1 {
             self.swap(index, length - 1);
@@ -1061,6 +1050,15 @@ impl<T> VecDeque<T> {
             return None;
         }
         self.pop_back()
+    }
+
+    /// deprecated
+    #[unstable(feature = "deque_extras",
+               reason = "the naming of this function may be altered",
+               issue = "27788")]
+    #[deprecated(since = "1.5.0", reason = "renamed to swap_remove_back")]
+    pub fn swap_back_remove(&mut self, index: usize) -> Option<T> {
+        self.swap_remove_back(index)
     }
 
     /// Removes an element from anywhere in the `VecDeque` and returns it,
@@ -1073,25 +1071,21 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(deque_extras)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
-    /// assert_eq!(buf.swap_front_remove(0), None);
+    /// assert_eq!(buf.swap_remove_front(0), None);
     /// buf.push_back(1);
     /// buf.push_back(2);
     /// buf.push_back(3);
     ///
-    /// assert_eq!(buf.swap_front_remove(2), Some(3));
+    /// assert_eq!(buf.swap_remove_front(2), Some(3));
     /// assert_eq!(buf.len(), 2);
     /// assert_eq!(buf[0], 2);
     /// assert_eq!(buf[1], 1);
     /// ```
-    #[unstable(feature = "deque_extras",
-               reason = "the naming of this function may be altered",
-               issue = "27788")]
-    pub fn swap_front_remove(&mut self, index: usize) -> Option<T> {
+    #[stable(feature = "deque_extras_15", since = "1.5.0")]
+    pub fn swap_remove_front(&mut self, index: usize) -> Option<T> {
         let length = self.len();
         if length > 0 && index < length && index != 0 {
             self.swap(index, 0);
@@ -1099,6 +1093,15 @@ impl<T> VecDeque<T> {
             return None;
         }
         self.pop_front()
+    }
+
+    /// deprecated
+    #[unstable(feature = "deque_extras",
+               reason = "the naming of this function may be altered",
+               issue = "27788")]
+    #[deprecated(since = "1.5.0", reason = "renamed to swap_remove_front")]
+    pub fn swap_front_remove(&mut self, index: usize) -> Option<T> {
+        self.swap_remove_front(index)
     }
 
     /// Inserts an element at `index` within the `VecDeque`. Whichever
@@ -1111,8 +1114,6 @@ impl<T> VecDeque<T> {
     ///
     /// # Examples
     /// ```
-    /// #![feature(deque_extras)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -1121,9 +1122,7 @@ impl<T> VecDeque<T> {
     /// buf.insert(1, 11);
     /// assert_eq!(Some(&11), buf.get(1));
     /// ```
-    #[unstable(feature = "deque_extras",
-               reason = "needs to be audited",
-               issue = "27788")]
+    #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn insert(&mut self, index: usize, value: T) {
         assert!(index <= self.len(), "index out of bounds");
         if self.is_full() {

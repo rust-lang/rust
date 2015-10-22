@@ -24,7 +24,6 @@
 #![feature(box_syntax)]
 #![feature(dynamic_lib)]
 #![feature(libc)]
-#![feature(path_ext)]
 #![feature(path_relative_from)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]

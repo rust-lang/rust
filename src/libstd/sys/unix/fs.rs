@@ -543,7 +543,7 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    use fs::{File, PathExt, set_permissions};
+    use fs::{File, set_permissions};
     if !from.is_file() {
         return Err(Error::new(ErrorKind::InvalidInput,
                               "the source path is not an existing regular file"))

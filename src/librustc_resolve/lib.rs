@@ -23,7 +23,6 @@
 #![feature(borrow_state)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(slice_splits)]
 #![feature(staged_api)]
 
 #[macro_use] extern crate log;

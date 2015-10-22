@@ -36,7 +36,7 @@ use std::ascii;
 use std::char;
 use std::env;
 use std::ffi::OsString;
-use std::fs::{self, PathExt};
+use std::fs;
 use std::io::{self, Read, Write};
 use std::iter::once;
 use std::mem;

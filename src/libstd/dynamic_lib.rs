@@ -16,7 +16,9 @@
             reason = "API has not been scrutinized and is highly likely to \
                       either disappear or change",
             issue = "27810")]
+#![deprecated(since = "1.5.0", reason = "replaced with crates.io crates")]
 #![allow(missing_docs)]
+#![allow(deprecated)]
 
 use prelude::v1::*;
 

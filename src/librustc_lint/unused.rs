@@ -18,7 +18,6 @@ use lint::{LateContext, EarlyContext, LintContext, LintArray};
 use lint::{LintPass, EarlyLintPass, LateLintPass};
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
-use std::slice;
 
 use syntax::ast;
 use syntax::attr::{self, AttrMetaMethods};
@@ -26,8 +25,8 @@ use syntax::codemap::Span;
 use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
 use syntax::ptr::P;
 
+use rustc_back::slice;
 use rustc_front::hir;
-
 use rustc_front::visit::FnKind;
 
 declare_lint! {

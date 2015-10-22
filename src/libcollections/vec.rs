@@ -865,8 +865,6 @@ impl<T: Clone> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_resize)]
-    ///
     /// let mut vec = vec!["hello"];
     /// vec.resize(3, "world");
     /// assert_eq!(vec, ["hello", "world", "world"]);
@@ -875,9 +873,7 @@ impl<T: Clone> Vec<T> {
     /// vec.resize(2, 0);
     /// assert_eq!(vec, [1, 2]);
     /// ```
-    #[unstable(feature = "vec_resize",
-               reason = "matches collection reform specification; waiting for dust to settle",
-               issue = "27790")]
+    #[stable(feature = "vec_resize", since = "1.5.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
 
