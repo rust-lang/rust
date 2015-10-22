@@ -64,6 +64,7 @@
 
 #![no_core]
 #![allow(raw_pointer_derive)]
+#![allow(unused_attributes)]
 #![deny(missing_docs)]
 
 #![feature(allow_internal_unstable)]
@@ -84,6 +85,7 @@
 #![cfg_attr(not(stage0), feature(repr_simd, platform_intrinsics))]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
+#![feature(custom_attribute)]
 
 #[macro_use]
 mod macros;
