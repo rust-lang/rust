@@ -1268,7 +1268,8 @@ pub enum Item_ {
     ItemTrait(Unsafety, Generics, TyParamBounds, Vec<P<TraitItem>>),
 
     // Default trait implementations
-    ///
+    //
+    // `impl Trait for .. {}`
     ItemDefaultImpl(Unsafety, TraitRef),
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,
