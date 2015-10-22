@@ -20,7 +20,8 @@ pub struct S4<T>(Option<Box<S3<S3<T>>>>,Option<Box<S3<S3<T>>>>);
 pub struct S5<T>(Option<Box<S4<S4<T>>>>,Option<Box<S4<S4<T>>>>,Option<T>);
 
 trait Foo { fn xxx(&self); }
-trait Bar {} // anything local or #[fundamental]
+/// some local of #[fundamental] trait
+trait Bar {}
 
 impl<T> Foo for T where T: Bar, T: Sync {
     fn xxx(&self) {}
