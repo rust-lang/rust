@@ -2057,7 +2057,7 @@ so. This can be a little clumsy, especially if you intend for the program to
 be used in shell scripts.
 
 So let's start by adding the flags. Like before, we need to tweak the usage
-string and add a flag to the Option variable. Once we're done that, Getopts does the rest:
+string and add a flag to the Option variable. Once we've done that, Getopts does the rest:
 
 ```rust,ignore
 ...
