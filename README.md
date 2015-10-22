@@ -72,6 +72,9 @@ Read ["Installing Rust"] from [The Book].
    $ pacman -S mingw-w64-i686-toolchain
    $ pacman -S mingw-w64-x86_64-toolchain
 
+   # Make git available in MSYS2 (if not already available on path)
+   $ pacman -S git
+
    $ pacman -S base-devel
    ```
 
