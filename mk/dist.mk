@@ -157,7 +157,7 @@ dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)-host prepare-overlay-$(1)
 ifeq ($(2),i686-pc-windows-gnu)
 	$$(Q)rm -Rf tmp/dist/win-rust-gcc-$(2)
 	$$(Q)$$(CFG_PYTHON) $$(S)src/etc/make-win-dist.py \
-		tmp/dist/$$(STD_PKG_NAME)-$(2)-image \
+		tmp/dist/$$(PKG_NAME)-$(2)-image \
 		tmp/dist/win-rust-gcc-$(2) $(2)
 endif
 # On 32-bit MinGW we're always including a DLL which needs some extra licenses
@@ -168,7 +168,7 @@ endif
 ifdef CFG_WINDOWSY_$(2)
 ifeq ($$(findstring $(2),gnu),gnu)
 	$$(Q)cp -r $$(S)src/etc/third-party \
-		tmp/dist/$$(STD_PKG_NAME)-$(2)-image/share/doc/
+		tmp/dist/$$(PKG_NAME)-$(2)-image/share/doc/
 endif
 endif
 	$$(Q)$$(S)src/rust-installer/gen-installer.sh \
