@@ -23,6 +23,7 @@ use Indent;
 use rewrite::{Rewrite, RewriteContext};
 use utils::first_line_width;
 use expr::rewrite_call;
+use config::BlockIndentStyle;
 
 use syntax::{ast, ptr};
 use syntax::codemap::{mk_sp, Span};
@@ -41,17 +42,24 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
         expr = subexpr;
     }
 
-    let parent = subexpr_list.pop().unwrap();
-    let parent_rewrite = try_opt!(expr.rewrite(context, width, offset));
-    let (extra_indent, extend) = if !parent_rewrite.contains('\n') && is_continuable(parent) ||
-                                    parent_rewrite.len() <= context.config.tab_spaces {
-        (Indent::new(0, parent_rewrite.len()), true)
-    } else {
-        (Indent::new(context.config.tab_spaces, 0), false)
+    let parent_block_indent = match context.config.chain_base_indent {
+        BlockIndentStyle::Visual => offset,
+        BlockIndentStyle::Inherit => context.block_indent,
+        BlockIndentStyle::Tabbed => context.block_indent.block_indent(context.config),
     };
-    let indent = offset + extra_indent;
+    let parent_context = &RewriteContext { block_indent: parent_block_indent, ..*context };
+    let parent = subexpr_list.pop().unwrap();
+    let parent_rewrite = try_opt!(expr.rewrite(parent_context, width, offset));
+    let (indent, extend) = if !parent_rewrite.contains('\n') && is_continuable(parent) ||
+                              parent_rewrite.len() <= context.config.tab_spaces {
+        (offset + Indent::new(0, parent_rewrite.len()), true)
+    } else if is_block_expr(parent, &parent_rewrite) {
+        (parent_block_indent, false)
+    } else {
+        (offset + Indent::new(context.config.tab_spaces, 0), false)
+    };
 
-    let max_width = try_opt!(width.checked_sub(extra_indent.width()));
+    let max_width = try_opt!((width + offset.width()).checked_sub(indent.width()));
     let mut rewrites = try_opt!(subexpr_list.iter()
                                             .rev()
                                             .map(|e| {
@@ -114,7 +122,7 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
         _ => total_width <= width && rewrites.iter().all(|s| !s.contains('\n')),
     };
 
-    let connector = if fits_single_line {
+    let connector = if fits_single_line && !parent_rewrite.contains('\n') {
         String::new()
     } else {
         format!("\n{}", indent.to_string(context.config))
@@ -130,6 +138,27 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
                  parent_rewrite,
                  first_connector,
                  rewrites.join(&connector)))
+}
+
+// States whether an expression's last line exclusively consists of closing
+// parens, braces and brackets in its idiomatic formatting.
+fn is_block_expr(expr: &ast::Expr, repr: &str) -> bool {
+    match expr.node {
+        ast::Expr_::ExprStruct(..) |
+        ast::Expr_::ExprWhile(..) |
+        ast::Expr_::ExprWhileLet(..) |
+        ast::Expr_::ExprIf(..) |
+        ast::Expr_::ExprIfLet(..) |
+        ast::Expr_::ExprBlock(..) |
+        ast::Expr_::ExprLoop(..) |
+        ast::Expr_::ExprForLoop(..) |
+        ast::Expr_::ExprMatch(..) => repr.contains('\n'),
+        ast::Expr_::ExprParen(ref expr) |
+        ast::Expr_::ExprBinary(_, _, ref expr) |
+        ast::Expr_::ExprIndex(_, ref expr) |
+        ast::Expr_::ExprUnary(_, ref expr) => is_block_expr(expr, repr),
+        _ => false,
+    }
 }
 
 fn pop_expr_chain<'a>(expr: &'a ast::Expr) -> Option<&'a ast::Expr> {
