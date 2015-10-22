@@ -17,7 +17,7 @@ use errors::{Level, RenderSpan, DiagnosticBuilder};
 use errors::RenderSpan::*;
 use errors::Level::*;
 
-use std::{cmp, fmt};
+use std::{cmp, fmt, env};
 use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
