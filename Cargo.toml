@@ -16,6 +16,7 @@ regex = "0.1.41"
 term = "0.2.11"
 strings = { version = "0.0.1", git = "https://github.com/nrc/strings.rs.git" }
 diff = { git = "https://github.com/utkarshkukreti/diff.rs.git" }
+syntex_syntax = { git = "https://github.com/serde-rs/syntex" }
 log = "0.3.2"
 env_logger = "0.3.1"
 

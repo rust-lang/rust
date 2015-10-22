@@ -15,10 +15,7 @@
 #[macro_use]
 extern crate log;
 
-extern crate getopts;
-extern crate rustc;
-extern crate rustc_driver;
-extern crate syntax;
+extern crate syntex_syntax as syntax;
 extern crate rustc_serialize;
 
 extern crate strings;
@@ -28,22 +25,15 @@ extern crate regex;
 extern crate diff;
 extern crate term;
 
-use rustc::session::Session;
-use rustc::session::config as rustc_config;
-use rustc::session::config::Input;
-use rustc_driver::{driver, CompilerCalls, Compilation};
-
 use syntax::ast;
 use syntax::codemap::{CodeMap, Span};
-use syntax::diagnostics;
+use syntax::parse::{self, ParseSess};
 
 use std::ops::{Add, Sub};
-use std::path::PathBuf;
+use std::path::Path;
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
-use std::rc::Rc;
-use std::cell::RefCell;
 
 use issues::{BadIssueSeeker, Issue};
 use filemap::FileMap;
@@ -380,65 +370,24 @@ pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     report
 }
 
-struct RustFmtCalls {
-    config: Rc<Config>,
-    result: Rc<RefCell<Option<FileMap>>>,
-}
+pub fn format(file: &Path, config: &Config) -> FileMap {
+    let parse_session = ParseSess::new();
+    let krate = parse::parse_crate_from_file(file, Vec::new(), &parse_session);
+    let mut file_map = fmt_ast(&krate, parse_session.codemap(), config);
 
-impl<'a> CompilerCalls<'a> for RustFmtCalls {
-    fn no_input(&mut self,
-                _: &getopts::Matches,
-                _: &rustc_config::Options,
-                _: &Option<PathBuf>,
-                _: &Option<PathBuf>,
-                _: &diagnostics::registry::Registry)
-                -> Option<(Input, Option<PathBuf>)> {
-        panic!("No input supplied to RustFmt");
-    }
+    // For some reason, the codemap does not include terminating
+    // newlines so we must add one on for each file. This is sad.
+    filemap::append_newlines(&mut file_map);
 
-    fn build_controller(&mut self, _: &Session) -> driver::CompileController<'a> {
-        let result = self.result.clone();
-        let config = self.config.clone();
-
-        let mut control = driver::CompileController::basic();
-        control.after_parse.stop = Compilation::Stop;
-        control.after_parse.callback = Box::new(move |state| {
-            let krate = state.krate.unwrap();
-            let codemap = state.session.codemap();
-            let mut file_map = fmt_ast(krate, codemap, &*config);
-            // For some reason, the codemap does not include terminating
-            // newlines so we must add one on for each file. This is sad.
-            filemap::append_newlines(&mut file_map);
-
-            *result.borrow_mut() = Some(file_map);
-        });
-
-        control
-    }
-}
-
-pub fn format(args: Vec<String>, config: &Config) -> FileMap {
-    let result = Rc::new(RefCell::new(None));
-
-    {
-        let config = Rc::new(config.clone());
-        let mut call_ctxt = RustFmtCalls {
-            config: config,
-            result: result.clone(),
-        };
-        rustc_driver::run_compiler(&args, &mut call_ctxt);
-    }
-
-    // Peel the union.
-    Rc::try_unwrap(result).ok().unwrap().into_inner().unwrap()
+    return file_map;
 }
 
 // args are the arguments passed on the command line, generally passed through
 // to the compiler.
 // write_mode determines what happens to the result of running rustfmt, see
 // WriteMode.
-pub fn run(args: Vec<String>, write_mode: WriteMode, config: &Config) {
-    let mut result = format(args, config);
+pub fn run(file: &Path, write_mode: WriteMode, config: &Config) {
+    let mut result = format(file, config);
 
     println!("{}", fmt_lines(&mut result, config));
 

@@ -135,7 +135,6 @@ fn print_mismatches(result: HashMap<String, Vec<Mismatch>>) {
 pub fn idempotent_check(filename: String) -> Result<FormatReport, HashMap<String, Vec<Mismatch>>> {
     let sig_comments = read_significant_comments(&filename);
     let mut config = get_config(sig_comments.get("config").map(|x| &(*x)[..]));
-    let args = vec!["rustfmt".to_owned(), filename];
 
     for (key, val) in &sig_comments {
         if key != "target" && key != "config" {
@@ -146,7 +145,7 @@ pub fn idempotent_check(filename: String) -> Result<FormatReport, HashMap<String
     // Don't generate warnings for to-do items.
     config.report_todo = ReportTactic::Never;
 
-    let mut file_map = format(args, &config);
+    let mut file_map = format(Path::new(&filename), &config);
     let format_report = fmt_lines(&mut file_map, &config);
 
     // Won't panic, as we're not doing any IO.

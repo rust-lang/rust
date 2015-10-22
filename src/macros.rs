@@ -19,15 +19,10 @@
 // List-like invocations with parentheses will be formatted as function calls,
 // and those with brackets will be formatted as array literals.
 
-use std::thread;
-use std::collections::hash_map::{HashMap, Entry};
-
 use syntax::ast;
 use syntax::parse::token::{Eof, Comma, Token};
 use syntax::parse::{ParseSess, tts_to_parser};
 use syntax::codemap::{mk_sp, BytePos};
-use syntax::parse::token;
-use syntax::util::interner::StrInterner;
 
 use Indent;
 use rewrite::RewriteContext;
@@ -36,12 +31,6 @@ use comment::FindUncommented;
 use utils::{wrap_str, span_after};
 
 static FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];
-
-// We need to pass `TokenTree`s to our expression parsing thread, but they are
-// not `Send`. We wrap them in a `Send` container to force our will.
-// FIXME: this is a pretty terrible hack. Any other solution would be preferred.
-struct ForceSend<T>(pub T);
-unsafe impl<T> Send for ForceSend<T> {}
 
 // FIXME: use the enum from libsyntax?
 #[derive(Clone, Copy)]
@@ -84,38 +73,28 @@ pub fn rewrite_macro(mac: &ast::Mac,
         };
     }
 
-    let wrapped_tt_vec = ForceSend(mac.node.tts.clone());
-    let my_interner = ForceSend(clone_interner());
+    let parse_session = ParseSess::new();
+    let mut parser = tts_to_parser(&parse_session, mac.node.tts.clone(), Vec::new());
+    let mut expr_vec = Vec::new();
 
-    // Wrap expression parsing logic in a thread since the libsyntax parser
-    // panics on failure, which we do not want to propagate.
-    // The expression vector is wrapped in an Option inside a Result.
-    let expr_vec_result = thread::spawn(move || {
-        let parse_session = ParseSess::new();
-        let mut parser = tts_to_parser(&parse_session, wrapped_tt_vec.0, vec![]);
-        let mut expr_vec = vec![];
-        token::get_ident_interner().reset(my_interner.0);
+    loop {
+        expr_vec.push(match parser.parse_expr_nopanic() {
+            Ok(expr) => expr,
+            Err(..) => return None,
+        });
 
-        loop {
-            expr_vec.push(parser.parse_expr());
-
-            match parser.token {
-                Token::Eof => break,
-                Token::Comma => (),
-                _ => panic!("Macro not list-like, skiping..."),
-            }
-
-            let _ = parser.bump();
-
-            if parser.token == Token::Eof {
-                return None;
-            }
+        match parser.token {
+            Token::Eof => break,
+            Token::Comma => (),
+            _ => return None,
         }
 
-        Some(ForceSend((expr_vec, clone_interner())))
-    });
-    let (expr_vec, interner) = try_opt!(try_opt!(expr_vec_result.join().ok())).0;
-    token::get_ident_interner().reset(interner);
+        let _ = parser.bump();
+
+        if parser.token == Token::Eof {
+            return None;
+        }
+    }
 
     match style {
         MacroStyle::Parens => {
@@ -144,23 +123,6 @@ pub fn rewrite_macro(mac: &ast::Mac,
                      offset)
         }
     }
-}
-
-fn clone_interner() -> StrInterner {
-    let old = token::get_ident_interner();
-    let new = StrInterner::new();
-    let mut map = HashMap::new();
-    for name in (0..old.len()).map(|i| i as u32).map(ast::Name) {
-        match map.entry(old.get(name)) {
-            Entry::Occupied(e) => {
-                new.gensym_copy(*e.get());
-            }
-            Entry::Vacant(e) => {
-                e.insert(new.intern(&old.get(name)));
-            }
-        }
-    }
-    return new
 }
 
 fn macro_style(mac: &ast::Mac, context: &RewriteContext) -> MacroStyle {
