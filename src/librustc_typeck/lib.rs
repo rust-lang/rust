@@ -81,10 +81,8 @@ This API is completely unstable and subject to change.
 #![feature(iter_cmp)]
 #![feature(iter_arith)]
 #![feature(quote)]
-#![feature(ref_slice)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(slice_splits)]
 #![feature(staged_api)]
 #![feature(vec_push_all)]
 #![feature(cell_extras)]
@@ -97,6 +95,7 @@ extern crate fmt_macros;
 extern crate rustc;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_front;
+extern crate rustc_back;
 
 pub use rustc::front;
 pub use rustc::lint;

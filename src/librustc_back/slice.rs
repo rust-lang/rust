@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(deprecated)]
+use std::mem;
 
-use dynamic_lib::DynamicLibrary;
-use io;
-use io::prelude::*;
-use libc;
+pub fn ref_slice<T>(ptr: &T) -> &[T; 1] {
+    unsafe { mem::transmute(ptr) }
+}
 
-use sys_common::gnu::libbacktrace;
-
-pub fn print(w: &mut Write, i: isize, addr: u64, _: &DynamicLibrary, _: libc::HANDLE)
-        -> io::Result<()> {
-    let addr = addr as usize as *mut libc::c_void;
-    libbacktrace::print(w, i, addr, addr)
+pub fn mut_ref_slice<T>(ptr: &mut T) -> &mut [T; 1] {
+    unsafe { mem::transmute(ptr) }
 }

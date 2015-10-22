@@ -81,12 +81,12 @@ use sys_common::mutex::Mutex;
 #[path = "seh.rs"] #[doc(hidden)]
 pub mod imp;
 
-// SNAP: i686-pc-windows-gnu
+// stage0: i686-pc-windows-gnu
 #[cfg(all(stage0, windows, target_arch = "x86_64", target_env = "gnu"))]
 #[path = "seh64_gnu.rs"] #[doc(hidden)]
 pub mod imp;
 
-// SNAP: x86_64-pc-windows-msvc
+// stage0: x86_64-pc-windows-msvc
 #[cfg(all(stage0, windows, target_arch = "x86_64", target_env = "msvc"))]
 #[path = "seh.rs"] #[doc(hidden)]
 pub mod imp;

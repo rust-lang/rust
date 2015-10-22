@@ -115,7 +115,6 @@ use util::lev_distance::lev_distance;
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::{HashSet};
 use std::mem::replace;
-use std::slice;
 use syntax::abi;
 use syntax::ast;
 use syntax::attr;
@@ -130,6 +129,7 @@ use rustc_front::hir;
 use rustc_front::hir::Visibility;
 use rustc_front::hir::{Item, ItemImpl};
 use rustc_front::print::pprust;
+use rustc_back::slice;
 
 mod assoc;
 pub mod dropck;

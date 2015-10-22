@@ -155,8 +155,7 @@ impl Utf8Error {
     /// // the first byte is invalid here
     /// assert_eq!(1, error.valid_up_to());
     /// ```
-    #[unstable(feature = "utf8_error", reason = "method just added",
-               issue = "27734")]
+    #[stable(feature = "utf8_error", since = "1.5.0")]
     pub fn valid_up_to(&self) -> usize { self.valid_up_to }
 }
 
@@ -882,9 +881,7 @@ generate_pattern_iterators! {
         /// Created with the method `.rmatch_indices()`.
         struct RMatchIndices;
     stability:
-        #[unstable(feature = "str_match_indices",
-                   reason = "type may be removed or have its iterator impl changed",
-                   issue = "27743")]
+        #[stable(feature = "str_match_indices", since = "1.5.0")]
     internal:
         MatchIndicesInternal yielding ((usize, &'a str));
     delegate double ended;

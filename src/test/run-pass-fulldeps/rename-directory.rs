@@ -13,12 +13,12 @@
 
 // ignore-cross-compile
 
-#![feature(rustc_private, path_ext)]
+#![feature(rustc_private)]
 
 extern crate rustc_back;
 
 use std::ffi::CString;
-use std::fs::{self, File, PathExt};
+use std::fs::{self, File};
 use rustc_back::tempdir::TempDir;
 
 fn rename_directory() {

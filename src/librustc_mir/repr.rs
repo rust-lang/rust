@@ -13,12 +13,12 @@ use rustc::middle::def_id::DefId;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::subst::Substs;
 use rustc::middle::ty::{AdtDef, ClosureSubsts, Region, Ty};
+use rustc_back::slice;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_front::hir::InlineAsm;
 use syntax::ast::Name;
 use syntax::codemap::Span;
 use std::fmt::{Debug, Formatter, Error};
-use std::slice;
 use std::u32;
 
 /// Lowered representation of a single function.

@@ -21,4 +21,5 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 pub use super::{Read, Write, BufRead, Seek};
+#[allow(deprecated)]
 pub use fs::PathExt;
