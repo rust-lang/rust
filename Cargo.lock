@@ -3,6 +3,8 @@ name = "rustfmt"
 version = "0.0.1"
 dependencies = [
  "diff 0.1.7 (git+https://github.com/utkarshkukreti/diff.rs.git)",
+ "env_logger 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "strings 0.0.1 (git+https://github.com/nrc/strings.rs.git)",
@@ -23,6 +25,15 @@ dependencies = [
 name = "diff"
 version = "0.1.7"
 source = "git+https://github.com/utkarshkukreti/diff.rs.git#6edb9454bf4127087aced0fe07ab3ea6894083cb"
+
+[[package]]
+name = "env_logger"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "kernel32-sys"

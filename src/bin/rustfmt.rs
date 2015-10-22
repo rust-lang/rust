@@ -15,6 +15,7 @@
 extern crate log;
 extern crate rustfmt;
 extern crate toml;
+extern crate env_logger;
 
 use rustfmt::{WriteMode, run};
 use rustfmt::config::Config;
@@ -71,6 +72,8 @@ fn execute() -> i32 {
 
 fn main() {
     use std::io::Write;
+    let _ = env_logger::init();
+
     let exit_code = execute();
     // Make sure standard output is flushed before we exit
     std::io::stdout().flush().unwrap();
