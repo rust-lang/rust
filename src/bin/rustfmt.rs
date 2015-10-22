@@ -7,8 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(path_ext)]
-#![feature(rustc_private)]
+
 #![cfg(not(test))]
 
 #[macro_use]
@@ -21,7 +20,7 @@ use rustfmt::{WriteMode, run};
 use rustfmt::config::Config;
 
 use std::env;
-use std::fs::{File, PathExt};
+use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -31,7 +30,7 @@ fn lookup_project_file() -> io::Result<PathBuf> {
     let mut current = try!(env::current_dir());
     loop {
         let config_file = current.join("rustfmt.toml");
-        if config_file.exists() {
+        if fs::metadata(&config_file).is_ok() {
             return Ok(config_file);
         } else {
             current = match current.parent() {

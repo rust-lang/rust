@@ -437,7 +437,7 @@ mod test {
     }
 
     #[test]
-    #[rustfmt_skip]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     fn format_comments() {
         let config = Default::default();
         assert_eq!("/* test */", rewrite_comment(" //test", true, 100, Indent::new(0, 100),
