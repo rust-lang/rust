@@ -160,7 +160,7 @@ compiler errors:
 
 * Any one artifact may only be linked to at most one allocator. Binaries,
   dylibs, and staticlibs must link to exactly one allocator, and if none have
-  been explicitly chosen the compiler will choose one. On the other than rlibs
+  been explicitly chosen the compiler will choose one. On the other hand rlibs
   do not need to link to an allocator (but still can).
 
 * A consumer of an allocator is tagged with `#![needs_allocator]` (e.g. the
