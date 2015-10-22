@@ -231,17 +231,26 @@ impl LateLintPass for LoopsPass {
                 }
             }
         }
-        if let ExprMatch(ref expr, ref arms, MatchSource::WhileLetDesugar) = expr.node {
+        if let ExprMatch(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.node {
             let body = &arms[0].body;
             let pat = &arms[0].pats[0].node;
-            if let (&PatEnum(ref path, _), &ExprMethodCall(method_name, _, ref args)) = (pat, &expr.node) {
-                let iterator_def_id = var_def_id(cx, &args[0]);
-                if method_name.node.as_str() == "next" &&
-                        match_trait_method(cx, expr, &["core", "iter", "Iterator"]) &&
-                        path.segments.last().unwrap().identifier.name.as_str() == "Some" &&
-                        !var_used(body, iterator_def_id, cx) {
-                    span_lint(cx, WHILE_LET_ON_ITERATOR, expr.span,
-                              "this loop could be written as a `for` loop");
+            if let (&PatEnum(ref path, Some(ref pat_args)),
+                    &ExprMethodCall(method_name, _, ref method_args)) =
+                        (pat, &match_expr.node) {
+                let iterator_def_id = var_def_id(cx, &method_args[0]);
+                if let Some(lhs_constructor) = path.segments.last() {
+                    if method_name.node.as_str() == "next" &&
+                            match_trait_method(cx, match_expr, &["core", "iter", "Iterator"]) &&
+                            lhs_constructor.identifier.name.as_str() == "Some" &&
+                            !var_used(body, iterator_def_id, cx) {
+                        let iterator = snippet(cx, method_args[0].span, "_");
+                        let loop_var = snippet(cx, pat_args[0].span, "_");
+                        span_help_and_lint(cx, WHILE_LET_ON_ITERATOR, expr.span,
+                                           "this loop could be written as a `for` loop",
+                                           &format!("try\nfor {} in {} {{...}}",
+                                                    loop_var,
+                                                    iterator));
+                    }
                 }
             }
         }

@@ -54,20 +54,24 @@ fn main() {
         println!("{}", x);
     }
 
-
-    while let Option::Some(x) = (1..20).next() { //~ERROR this loop could be written as a `for` loop
+    let mut iter = 1..20;
+    while let Option::Some(x) = iter.next() { //~ERROR this loop could be written as a `for` loop
         println!("{}", x);
     }
 
-    while let Some(x) = (1..20).next() { //~ERROR this loop could be written as a `for` loop
+    let mut iter = 1..20;
+    while let Some(x) = iter.next() { //~ERROR this loop could be written as a `for` loop
         println!("{}", x);
     }
 
-    while let Some(_) = (1..20).next() {} //~ERROR this loop could be written as a `for` loop
+    let mut iter = 1..20;
+    while let Some(_) = iter.next() {} //~ERROR this loop could be written as a `for` loop
 
-    while let None = (1..20).next() {} // this is fine (if nonsensical)
+    let mut iter = 1..20;
+    while let None = iter.next() {} // this is fine (if nonsensical)
 
-    if let Some(x) = (1..20).next() { // also fine
+    let mut iter = 1..20;
+    if let Some(x) = iter.next() { // also fine
         println!("{}", x)
     }
 
@@ -76,10 +80,6 @@ fn main() {
     while let Some(x) = iter.next() {
         println!("next: {:?}", iter.next())
     }
-
-    // but this should:
-    let mut iter2 = 1u32..20;
-    while let Some(x) = iter2.next() { } //~ERROR this loop could be written as a `for` loop
 }
 
 // regression test (#360)
