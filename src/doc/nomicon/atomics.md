@@ -1,11 +1,11 @@
 % Atomics
 
 Rust pretty blatantly just inherits C11's memory model for atomics. This is not
-due this model being particularly excellent or easy to understand. Indeed, this
-model is quite complex and known to have [several flaws][C11-busted]. Rather, it
-is a pragmatic concession to the fact that *everyone* is pretty bad at modeling
-atomics. At very least, we can benefit from existing tooling and research around
-C.
+due to this model being particularly excellent or easy to understand. Indeed,
+this model is quite complex and known to have [several flaws][C11-busted].
+Rather, it is a pragmatic concession to the fact that *everyone* is pretty bad
+at modeling atomics. At very least, we can benefit from existing tooling and
+research around C.
 
 Trying to fully explain the model in this book is fairly hopeless. It's defined
 in terms of madness-inducing causality graphs that require a full book to
