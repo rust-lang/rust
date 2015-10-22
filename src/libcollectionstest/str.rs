@@ -697,11 +697,11 @@ fn test_escape_default() {
 
 #[test]
 fn test_total_ord() {
-    "1234".cmp("123") == Greater;
-    "123".cmp("1234") == Less;
-    "1234".cmp("1234") == Equal;
-    "12345555".cmp("123456") == Less;
-    "22".cmp("1234") == Greater;
+    assert_eq!("1234".cmp("123"), Greater);
+    assert_eq!("123".cmp("1234"), Less);
+    assert_eq!("1234".cmp("1234"), Equal);
+    assert_eq!("12345555".cmp("123456"), Less);
+    assert_eq!("22".cmp("1234"), Greater);
 }
 
 #[test]
