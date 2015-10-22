@@ -6,7 +6,7 @@
 # Summary
 
 This RFC proposes several new types and associated APIs for working with times in Rust.
-The primary new types are `Instance`, for working with time that is guaranteed to be
+The primary new types are `Instant`, for working with time that is guaranteed to be
 monotonic, and `SystemTime`, for working with times across processes on a single system
 (usually internally represented as a number of seconds since an epoch).
 
@@ -121,7 +121,7 @@ directly address time zones.
 
 ## Types
 
-```rs
+```rust
 pub struct Instant {
   secs: u64,
   nanos: u32
@@ -167,8 +167,11 @@ use for negative values. Rather than require each API that takes a `Duration`
 to produce an `Err` (or `panic!`) when receiving a negative value, this design
 optimizes for the broadly useful positive `Duration`.
 
-```rs
+```rust
 impl Instant {
+  /// Returns an instant corresponding to "now".
+  pub fn now() -> Instant;
+
   /// Panics if `earlier` is later than &self.
   /// Because Instant is monotonic, the only time that `earlier` should be
   /// a later time is a bug in your code.
@@ -180,7 +183,7 @@ impl Instant {
 }
 
 impl Add<Duration> for Instant {
-  type Output = SystemTime;
+  type Output = Instant;
 }
 
 impl Sub<Duration> for Instant {
@@ -202,7 +205,7 @@ The "standard" terminology comes from [JodaTime][joda-time-standard].
 
 [joda-time-standard]: http://joda-time.sourceforge.net/apidocs/org/joda/time/Duration.html#standardDays(long)
 
-```rs
+```rust
 impl Duration {
   /// a standard minute is 60 seconds
   /// panics if the number of minutes is larger than u64 seconds
@@ -241,8 +244,11 @@ This design attempts to help the programmer catch the most egregious of these
 kinds of mistakes (unexpected travel **back in time**) before the mistake
 propagates.
 
-```rs
+```rust
 impl SystemTime {
+  /// Returns the system time corresponding to "now".
+  pub fn now() -> SystemTime;
+
   /// Returns an `Err` if `earlier` is later
   pub fn duration_from_earlier(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError>;
 
@@ -258,6 +264,13 @@ impl Sub<Duration> for SystemTime {
   type Output = SystemTime;
 }
 
+// An anchor which can be used to generate new SystemTime instances from a known
+// Duration or convert a SystemTime to a Duration which can later then be used
+// again to recreate the SystemTime.
+//
+// Defined to be "1970-01-01 00:00:00 UTC" on all systems.
+const UNIX_EPOCH: SystemTime = ...;
+
 // Note that none of these operations actually imply that the underlying system
 // operation that produced these SystemTimes happened at the same time
 // (for Eq) or before/after (for Ord) than the other system operation.
@@ -265,6 +278,13 @@ impl PartialEq for SystemTime;
 impl Eq for SystemTime;
 impl PartialOrd for SystemTime;
 impl Ord for SystemTime;
+
+impl SystemTimeError {
+    /// A SystemTimeError originates from attempting to subtract two SystemTime
+    /// instances, a and b. If a < b then an error is returned, and the duration
+    /// returned represents (b - a).
+    pub fn duration(&self) -> Duration;
+}
 ```
 
 The main difference from the design of `Instant` is that it is impossible to
@@ -325,8 +345,6 @@ possible to compare two arbitrary times to each other first, and then
 use `duration_from_earlier` reliably to get a positive `Duration`.
 
 # Unresolved Questions
-
-What should `SystemTimeError` look like?
 
 This RFC leaves types related to human representations of dates and times
 to a future proposal.
