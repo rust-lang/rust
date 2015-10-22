@@ -711,11 +711,15 @@ impl<T> Option<T> {
     ///
     /// ```
     /// let mut x: Option<i32> = None;
-    /// let (y, z) = x.insert(123);
-    /// *y = 456;
+    /// {
+    ///     let (y, z) = x.insert(123);
+    ///     *y = 456;
+    ///     assert_eq!(z, None);
+    /// }
     /// assert_eq!(x, Some(456));
-    /// assert_eq!(z, None);
     /// ```
+    #[inline]
+    #[unstable(feature = "option_insert", issue = "29203")]
     pub fn insert(&mut self, val: T) -> (&mut T, Option<T>) {
         let prev = self.take();
         *self = Some(val);

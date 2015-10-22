@@ -270,3 +270,21 @@ fn test_cloned() {
     assert_eq!(opt_ref_ref.clone().cloned(), Some(&val));
     assert_eq!(opt_ref_ref.cloned().cloned(), Some(1u32));
 }
+
+#[test]
+fn test_insert() {
+    let mut x: Option<u32> = None;
+    {
+        let (y, z) = x.insert(0u32);
+        assert_eq!(z, None);
+        assert_eq!(*y, 0u32);
+        *y = 1u32;
+    }
+    assert_eq!(x, Some(1u32));
+    {
+        let (y, z) = x.insert(2u32);
+        assert_eq!(z, Some(1u32));
+        assert_eq!(*y, 2u32);
+    }
+}
+
