@@ -51,11 +51,15 @@ us an uninstall option.
 ## That disclaimer we promised
 
 Some people, and somewhat rightfully so, get very upset when we tell them to
-`curl | sh`. Basically, when they do this, they are trusting that the good
-people who maintain Rust aren't going to hack their computer and do bad things.
-That's a good instinct! If you're one of those people, please check out the
-documentation on [building Rust from Source][from-source], or [the official
-binary downloads][install-page].
+`curl | sh`. Their concern is that `curl | sh` implicitly requires you to trust
+that the good people who maintain Rust aren't going to hack your computer and
+do bad things — and even having accepted that, there is still the possibility
+that the Rust website has been hacked and the `rustup` script compromised.
+
+Being wary of such possibilities is a good instinct! If you're uncomfortable
+using `curl | sh` for reasons like these, please check out the documentation on
+[building Rust from Source][from-source], or
+[the official binary downloads][install-page].
 
 [from-source]: https://github.com/rust-lang/rust#building-from-source
 
