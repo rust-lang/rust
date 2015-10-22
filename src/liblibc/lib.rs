@@ -80,10 +80,13 @@
 
 #![allow(bad_style, raw_pointer_derive)]
 #![cfg_attr(target_os = "nacl", allow(unused_imports))]
-#[cfg(feature = "cargo-build")] extern crate std as core;
+#[cfg(feature = "cargo-build")]
+extern crate std as core;
 
-#[cfg(test)] extern crate std;
-#[cfg(test)] extern crate test;
+#[cfg(test)]
+extern crate std;
+#[cfg(test)]
+extern crate test;
 
 // Explicit export lists for the intersection (provided here) mean that
 // you can write more-platform-agnostic code if you stick to just these
@@ -128,19 +131,29 @@ pub use funcs::bsd43::*;
 //
 // So the following exports don't follow any particular plan.
 
-#[cfg(unix)] pub use consts::os::sysconf::*;
+#[cfg(unix)]
+pub use consts::os::sysconf::*;
 
-#[cfg(unix)] pub use funcs::posix88::mman::*;
-#[cfg(unix)] pub use funcs::posix88::dirent::*;
-#[cfg(unix)] pub use funcs::posix88::net::*;
-#[cfg(unix)] pub use funcs::posix01::stat_::*;
-#[cfg(unix)] pub use funcs::posix01::unistd::*;
-#[cfg(unix)] pub use funcs::posix01::resource::*;
+#[cfg(unix)]
+pub use funcs::posix88::mman::*;
+#[cfg(unix)]
+pub use funcs::posix88::dirent::*;
+#[cfg(unix)]
+pub use funcs::posix88::net::*;
+#[cfg(unix)]
+pub use funcs::posix01::stat_::*;
+#[cfg(unix)]
+pub use funcs::posix01::unistd::*;
+#[cfg(unix)]
+pub use funcs::posix01::resource::*;
 
 
-#[cfg(windows)] pub use funcs::extra::kernel32::*;
-#[cfg(windows)] pub use funcs::extra::winsock::*;
-#[cfg(windows)] pub use funcs::extra::msvcrt::*;
+#[cfg(windows)]
+pub use funcs::extra::kernel32::*;
+#[cfg(windows)]
+pub use funcs::extra::winsock::*;
+#[cfg(windows)]
+pub use funcs::extra::msvcrt::*;
 
 // On NaCl, these libraries are static. Thus it would be a Bad Idea to link them
 // in when creating a test crate.
@@ -150,27 +163,31 @@ pub use funcs::bsd43::*;
               all(target_os = "netbsd", target_vendor = "rumprun"))))]
 #[link(name = "c")]
 #[link(name = "m")]
-extern {}
+extern {
+}
 
 // When compiling rust with musl, statically include libc.a in liblibc.rlib.
 // A cargo build of the libc crate will therefore automatically pick up the
 // libc.a symbols because liblibc is transitively linked to by the stdlib.
 #[cfg(all(target_env = "musl", not(feature = "cargo-build"), not(test)))]
 #[link(name = "c", kind = "static")]
-extern {}
+extern {
+}
 
 #[cfg(all(windows, target_env = "msvc"))]
 #[link(name = "kernel32")]
 #[link(name = "shell32")]
 #[link(name = "msvcrt")]
-extern {}
+extern {
+}
 
 // libnacl provides functions that require a trip through the IRT to work.
 // ie: _exit, mmap, nanosleep, etc. Anything that would otherwise require a trip
 // to the kernel.
 #[cfg(all(target_os = "nacl", not(feature = "cargo-build"), not(test)))]
 #[link(name = "nacl", kind = "static")]
-extern {}
+extern {
+}
 
 // pnaclmm provides a number of functions that the toolchain's Clang emits calls
 // to when codegening atomic ops. All the functions within wrap various atomic
@@ -180,7 +197,8 @@ extern {}
 // optimizations on the whole pnaclmm foreach binary built).
 #[cfg(all(target_os = "nacl", not(feature = "cargo-build"), not(test)))]
 #[link(name = "pnaclmm", kind = "static")]
-extern {}
+extern {
+}
 
 pub mod types {
 
@@ -226,9 +244,12 @@ pub mod types {
             pub enum DIR {}
             pub enum dirent_t {}
         }
-        pub mod posix01 {}
-        pub mod posix08 {}
-        pub mod bsd44 {}
+        pub mod posix01 {
+        }
+        pub mod posix08 {
+        }
+        pub mod bsd44 {
+        }
     }
 
     // Standard types that are scalar but vary by OS and arch.
@@ -237,9 +258,8 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
-                use types::common::c95::{c_void};
-                use types::os::arch::c95::{c_char, c_ulong, size_t,
-                                                 time_t, suseconds_t, c_long};
+                use types::common::c95::c_void;
+                use types::os::arch::c95::{c_char, c_ulong, size_t, time_t, suseconds_t, c_long};
 
                 #[cfg(not(target_os = "nacl"))]
                 pub type pthread_t = c_ulong;
@@ -248,10 +268,11 @@ pub mod types {
                 pub type rlim_t = u64;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct glob_t {
+                #[derive(Copy, Clone)]
+                pub struct glob_t {
                     pub gl_pathc: size_t,
                     pub gl_pathv: *mut *mut c_char,
-                    pub gl_offs:  size_t,
+                    pub gl_offs: size_t,
 
                     pub __unused1: *mut c_void,
                     pub __unused2: *mut c_void,
@@ -261,13 +282,15 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct timeval {
+                #[derive(Copy, Clone)]
+                pub struct timeval {
                     pub tv_sec: time_t,
                     pub tv_usec: suseconds_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct timespec {
+                #[derive(Copy, Clone)]
+                pub struct timespec {
                     pub tv_sec: time_t,
                     pub tv_nsec: c_long,
                 }
@@ -307,12 +330,12 @@ pub mod types {
                     pub ru_msgrcv: c_long,
                     pub ru_nsignals: c_long,
                     pub ru_nvcsw: c_long,
-                    pub ru_nivcsw: c_long
+                    pub ru_nivcsw: c_long,
                 }
             }
 
             pub mod bsd44 {
-                use types::common::c95::{c_void};
+                use types::common::c95::c_void;
                 use types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = u32;
@@ -320,12 +343,14 @@ pub mod types {
                 pub type in_port_t = u16;
                 pub type in_addr_t = u32;
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr {
                     pub sa_family: sa_family_t,
                     pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
-                #[derive(Copy)] pub struct sockaddr_storage {
+                #[derive(Copy)]
+                pub struct sockaddr_storage {
                     pub ss_family: sa_family_t,
                     pub __ss_align: isize,
                     #[cfg(target_pointer_width = "32")]
@@ -334,21 +359,26 @@ pub mod types {
                     pub __ss_pad2: [u8; 128 - 2 * 8],
                 }
                 impl ::core::clone::Clone for sockaddr_storage {
-                    fn clone(&self) -> sockaddr_storage { *self }
+                    fn clone(&self) -> sockaddr_storage {
+                        *self
+                    }
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_in {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_in {
                     pub sin_family: sa_family_t,
                     pub sin_port: in_port_t,
                     pub sin_addr: in_addr,
                     pub sin_zero: [u8; 8],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct in_addr {
+                #[derive(Copy, Clone)]
+                pub struct in_addr {
                     pub s_addr: in_addr_t,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_in6 {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_in6 {
                     pub sin6_family: sa_family_t,
                     pub sin6_port: in_port_t,
                     pub sin6_flowinfo: u32,
@@ -356,21 +386,25 @@ pub mod types {
                     pub sin6_scope_id: u32,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct in6_addr {
-                    pub s6_addr: [u16; 8]
+                #[derive(Copy, Clone)]
+                pub struct in6_addr {
+                    pub s6_addr: [u16; 8],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ip_mreq {
+                #[derive(Copy, Clone)]
+                pub struct ip_mreq {
                     pub imr_multiaddr: in_addr,
                     pub imr_interface: in_addr,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ip6_mreq {
+                #[derive(Copy, Clone)]
+                pub struct ip6_mreq {
                     pub ipv6mr_multiaddr: in6_addr,
                     pub ipv6mr_interface: c_uint,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct addrinfo {
+                #[derive(Copy, Clone)]
+                pub struct addrinfo {
                     pub ai_flags: c_int,
                     pub ai_family: c_int,
                     pub ai_socktype: c_int,
@@ -392,23 +426,27 @@ pub mod types {
                     pub ai_next: *mut addrinfo,
                 }
                 #[repr(C)]
-                #[derive(Copy)] pub struct sockaddr_un {
+                #[derive(Copy)]
+                pub struct sockaddr_un {
                     pub sun_family: sa_family_t,
-                    pub sun_path: [c_char; 108]
+                    pub sun_path: [c_char; 108],
                 }
                 impl ::core::clone::Clone for sockaddr_un {
-                    fn clone(&self) -> sockaddr_un { *self }
+                    fn clone(&self) -> sockaddr_un {
+                        *self
+                    }
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ifaddrs {
+                #[derive(Copy, Clone)]
+                pub struct ifaddrs {
                     pub ifa_next: *mut ifaddrs,
                     pub ifa_name: *mut c_char,
                     pub ifa_flags: c_uint,
                     pub ifa_addr: *mut sockaddr,
                     pub ifa_netmask: *mut sockaddr,
                     pub ifa_ifu: *mut sockaddr, // FIXME This should be a union
-                    pub ifa_data: *mut c_void
+                    pub ifa_data: *mut c_void,
                 }
 
             }
@@ -488,14 +526,15 @@ pub mod types {
                 use types::os::arch::c95::{c_short, c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use types::os::arch::posix88::{mode_t, off_t};
-                use types::os::arch::posix88::{uid_t};
+                use types::os::arch::posix88::uid_t;
 
                 pub type nlink_t = u32;
                 pub type blksize_t = i32;
                 pub type blkcnt_t = i32;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct stat {
+                #[derive(Copy, Clone)]
+                pub struct stat {
                     pub st_dev: dev_t,
                     pub __pad1: c_short,
                     pub st_ino: ino_t,
@@ -519,14 +558,16 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct utimbuf {
+                #[derive(Copy, Clone)]
+                pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct pthread_attr_t {
-                    pub __size: [u32; 9]
+                #[derive(Copy, Clone)]
+                pub struct pthread_attr_t {
+                    pub __size: [u32; 9],
                 }
             }
 
@@ -542,7 +583,8 @@ pub mod types {
                 pub type blkcnt_t = u32;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct stat {
+                #[derive(Copy, Clone)]
+                pub struct stat {
                     pub st_dev: c_ulonglong,
                     pub __pad0: [c_uchar; 4],
                     pub __st_ino: c_long,
@@ -565,14 +607,16 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct utimbuf {
+                #[derive(Copy, Clone)]
+                pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct pthread_attr_t {
-                    pub __size: [u32; 9]
+                #[derive(Copy, Clone)]
+                pub struct pthread_attr_t {
+                    pub __size: [u32; 9],
                 }
             }
 
@@ -582,14 +626,15 @@ pub mod types {
                 use types::os::arch::c95::{c_long, c_ulong, time_t};
                 use types::os::arch::posix88::{gid_t, ino_t};
                 use types::os::arch::posix88::{mode_t, off_t};
-                use types::os::arch::posix88::{uid_t};
+                use types::os::arch::posix88::uid_t;
 
                 pub type nlink_t = u32;
                 pub type blksize_t = i32;
                 pub type blkcnt_t = i32;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct stat {
+                #[derive(Copy, Clone)]
+                pub struct stat {
                     pub st_dev: c_ulong,
                     pub st_pad1: [c_long; 3],
                     pub st_ino: ino_t,
@@ -613,29 +658,34 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct utimbuf {
+                #[derive(Copy, Clone)]
+                pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct pthread_attr_t {
-                    pub __size: [u32; 9]
+                #[derive(Copy, Clone)]
+                pub struct pthread_attr_t {
+                    pub __size: [u32; 9],
                 }
             }
-            pub mod posix08 {}
-            pub mod bsd44 {}
+            pub mod posix08 {
+            }
+            pub mod bsd44 {
+            }
             pub mod extra {
                 use types::os::arch::c95::{c_ushort, c_int, c_uchar};
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_ll {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_ll {
                     pub sll_family: c_ushort,
                     pub sll_protocol: c_ushort,
                     pub sll_ifindex: c_int,
                     pub sll_hatype: c_ushort,
                     pub sll_pkttype: c_uchar,
                     pub sll_halen: c_uchar,
-                    pub sll_addr: [c_uchar; 8]
+                    pub sll_addr: [c_uchar; 8],
                 }
             }
 
@@ -693,14 +743,15 @@ pub mod types {
                 use types::os::arch::c95::{c_int, c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use types::os::arch::posix88::{mode_t, off_t};
-                use types::os::arch::posix88::{uid_t};
+                use types::os::arch::posix88::uid_t;
 
                 pub type nlink_t = u64;
                 pub type blksize_t = i64;
                 pub type blkcnt_t = i64;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct stat {
+                #[derive(Copy, Clone)]
+                pub struct stat {
                     pub st_dev: dev_t,
                     pub st_ino: ino_t,
                     pub st_nlink: nlink_t,
@@ -722,14 +773,16 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct utimbuf {
+                #[derive(Copy, Clone)]
+                pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct pthread_attr_t {
-                    pub __size: [u64; 7]
+                #[derive(Copy, Clone)]
+                pub struct pthread_attr_t {
+                    pub __size: [u64; 7],
                 }
             }
             #[cfg(target_arch = "aarch64")]
@@ -737,14 +790,15 @@ pub mod types {
                 use types::os::arch::c95::{c_int, c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use types::os::arch::posix88::{mode_t, off_t};
-                use types::os::arch::posix88::{uid_t};
+                use types::os::arch::posix88::uid_t;
 
                 pub type nlink_t = u32;
                 pub type blksize_t = i32;
                 pub type blkcnt_t = i64;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct stat {
+                #[derive(Copy, Clone)]
+                pub struct stat {
                     pub st_dev: dev_t,
                     pub st_ino: ino_t,
                     pub st_mode: mode_t,
@@ -767,14 +821,16 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct utimbuf {
+                #[derive(Copy, Clone)]
+                pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct pthread_attr_t {
-                    pub __size: [u64; 8]
+                #[derive(Copy, Clone)]
+                pub struct pthread_attr_t {
+                    pub __size: [u64; 8],
                 }
             }
             pub mod posix08 {
@@ -783,14 +839,15 @@ pub mod types {
             }
             pub mod extra {
                 use types::os::arch::c95::{c_ushort, c_int, c_uchar};
-                #[derive(Copy, Clone)] pub struct sockaddr_ll {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_ll {
                     pub sll_family: c_ushort,
                     pub sll_protocol: c_ushort,
                     pub sll_ifindex: c_int,
                     pub sll_hatype: c_ushort,
                     pub sll_pkttype: c_uchar,
                     pub sll_halen: c_uchar,
-                    pub sll_addr: [c_uchar; 8]
+                    pub sll_addr: [c_uchar; 8],
                 }
 
             }
@@ -801,21 +858,21 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
-                use types::common::c95::{c_void};
-                use types::os::arch::c95::{c_char, c_int, size_t,
-                                                 time_t, suseconds_t, c_long};
-                use types::os::arch::c99::{uintptr_t};
+                use types::common::c95::c_void;
+                use types::os::arch::c95::{c_char, c_int, size_t, time_t, suseconds_t, c_long};
+                use types::os::arch::c99::uintptr_t;
 
                 pub type pthread_t = uintptr_t;
                 pub type rlim_t = i64;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct glob_t {
-                    pub gl_pathc:  size_t,
+                #[derive(Copy, Clone)]
+                pub struct glob_t {
+                    pub gl_pathc: size_t,
                     pub __unused1: size_t,
-                    pub gl_offs:   size_t,
+                    pub gl_offs: size_t,
                     pub __unused2: c_int,
-                    pub gl_pathv:  *mut *mut c_char,
+                    pub gl_pathv: *mut *mut c_char,
 
                     pub __unused3: *mut c_void,
 
@@ -827,13 +884,15 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct timeval {
+                #[derive(Copy, Clone)]
+                pub struct timeval {
                     pub tv_sec: time_t,
                     pub tv_usec: suseconds_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct timespec {
+                #[derive(Copy, Clone)]
+                pub struct timespec {
                     pub tv_sec: time_t,
                     pub tv_nsec: c_long,
                 }
@@ -871,12 +930,12 @@ pub mod types {
                     pub ru_msgrcv: c_long,
                     pub ru_nsignals: c_long,
                     pub ru_nvcsw: c_long,
-                    pub ru_nivcsw: c_long
+                    pub ru_nivcsw: c_long,
                 }
             }
 
             pub mod bsd44 {
-                use types::common::c95::{c_void};
+                use types::common::c95::c_void;
                 use types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = u32;
@@ -884,13 +943,15 @@ pub mod types {
                 pub type in_port_t = u16;
                 pub type in_addr_t = u32;
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr {
                     pub sa_len: u8,
                     pub sa_family: sa_family_t,
                     pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
-                #[derive(Copy)] pub struct sockaddr_storage {
+                #[derive(Copy)]
+                pub struct sockaddr_storage {
                     pub ss_len: u8,
                     pub ss_family: sa_family_t,
                     pub __ss_pad1: [u8; 6],
@@ -898,10 +959,13 @@ pub mod types {
                     pub __ss_pad2: [u8; 112],
                 }
                 impl ::core::clone::Clone for sockaddr_storage {
-                    fn clone(&self) -> sockaddr_storage { *self }
+                    fn clone(&self) -> sockaddr_storage {
+                        *self
+                    }
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_in {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_in {
                     pub sin_len: u8,
                     pub sin_family: sa_family_t,
                     pub sin_port: in_port_t,
@@ -909,11 +973,13 @@ pub mod types {
                     pub sin_zero: [u8; 8],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct in_addr {
+                #[derive(Copy, Clone)]
+                pub struct in_addr {
                     pub s_addr: in_addr_t,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_in6 {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_in6 {
                     pub sin6_len: u8,
                     pub sin6_family: sa_family_t,
                     pub sin6_port: in_port_t,
@@ -922,21 +988,25 @@ pub mod types {
                     pub sin6_scope_id: u32,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct in6_addr {
-                    pub s6_addr: [u16; 8]
+                #[derive(Copy, Clone)]
+                pub struct in6_addr {
+                    pub s6_addr: [u16; 8],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ip_mreq {
+                #[derive(Copy, Clone)]
+                pub struct ip_mreq {
                     pub imr_multiaddr: in_addr,
                     pub imr_interface: in_addr,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ip6_mreq {
+                #[derive(Copy, Clone)]
+                pub struct ip6_mreq {
                     pub ipv6mr_multiaddr: in6_addr,
                     pub ipv6mr_interface: c_uint,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct addrinfo {
+                #[derive(Copy, Clone)]
+                pub struct addrinfo {
                     pub ai_flags: c_int,
                     pub ai_family: c_int,
                     pub ai_socktype: c_int,
@@ -947,23 +1017,27 @@ pub mod types {
                     pub ai_next: *mut addrinfo,
                 }
                 #[repr(C)]
-                #[derive(Copy)] pub struct sockaddr_un {
+                #[derive(Copy)]
+                pub struct sockaddr_un {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
-                    pub sun_path: [c_char; 104]
+                    pub sun_path: [c_char; 104],
                 }
                 impl ::core::clone::Clone for sockaddr_un {
-                    fn clone(&self) -> sockaddr_un { *self }
+                    fn clone(&self) -> sockaddr_un {
+                        *self
+                    }
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ifaddrs {
+                #[derive(Copy, Clone)]
+                pub struct ifaddrs {
                     pub ifa_next: *mut ifaddrs,
                     pub ifa_name: *mut c_char,
                     pub ifa_flags: c_uint,
                     pub ifa_addr: *mut sockaddr,
                     pub ifa_netmask: *mut sockaddr,
                     pub ifa_dstaddr: *mut sockaddr,
-                    pub ifa_data: *mut c_void
+                    pub ifa_data: *mut c_void,
                 }
 
 
@@ -1011,19 +1085,20 @@ pub mod types {
                 pub type ssize_t = i32;
             }
             pub mod posix01 {
-                use types::common::c95::{c_void};
+                use types::common::c95::c_void;
                 use types::common::c99::{uint32_t, int32_t};
                 use types::os::arch::c95::{c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use types::os::arch::posix88::{mode_t, off_t};
-                use types::os::arch::posix88::{uid_t};
+                use types::os::arch::posix88::uid_t;
 
                 pub type nlink_t = u16;
                 pub type blksize_t = u32;
                 pub type blkcnt_t = i64;
                 pub type fflags_t = u32;
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct stat {
+                #[derive(Copy, Clone)]
+                pub struct stat {
                     pub st_dev: dev_t,
                     pub st_ino: ino_t,
                     pub st_mode: mode_t,
@@ -1049,7 +1124,8 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct utimbuf {
+                #[derive(Copy, Clone)]
+                pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
                 }
@@ -1105,19 +1181,20 @@ pub mod types {
                 pub type ssize_t = i64;
             }
             pub mod posix01 {
-                use types::common::c95::{c_void};
+                use types::common::c95::c_void;
                 use types::common::c99::{uint32_t, int32_t};
                 use types::os::arch::c95::{c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use types::os::arch::posix88::{mode_t, off_t};
-                use types::os::arch::posix88::{uid_t};
+                use types::os::arch::posix88::uid_t;
 
                 pub type nlink_t = u16;
                 pub type blksize_t = u32;
                 pub type blkcnt_t = i64;
                 pub type fflags_t = u32;
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct stat {
+                #[derive(Copy, Clone)]
+                pub struct stat {
                     pub st_dev: dev_t,
                     pub st_ino: ino_t,
                     pub st_mode: mode_t,
@@ -1142,7 +1219,8 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct utimbuf {
+                #[derive(Copy, Clone)]
+                pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
                 }
@@ -1162,21 +1240,21 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
-                use types::common::c95::{c_void};
-                use types::os::arch::c95::{c_char, c_int, size_t,
-                                                 time_t, suseconds_t, c_long};
-                use types::os::arch::c99::{uintptr_t};
+                use types::common::c95::c_void;
+                use types::os::arch::c95::{c_char, c_int, size_t, time_t, suseconds_t, c_long};
+                use types::os::arch::c99::uintptr_t;
 
                 pub type pthread_t = uintptr_t;
                 pub type rlim_t = i64;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct glob_t {
-                    pub gl_pathc:  size_t,
+                #[derive(Copy, Clone)]
+                pub struct glob_t {
+                    pub gl_pathc: size_t,
                     pub __unused1: size_t,
-                    pub gl_offs:   size_t,
+                    pub gl_offs: size_t,
                     pub __unused2: c_int,
-                    pub gl_pathv:  *mut *mut c_char,
+                    pub gl_pathv: *mut *mut c_char,
 
                     pub __unused3: *mut c_void,
 
@@ -1188,13 +1266,15 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct timeval {
+                #[derive(Copy, Clone)]
+                pub struct timeval {
                     pub tv_sec: time_t,
                     pub tv_usec: suseconds_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct timespec {
+                #[derive(Copy, Clone)]
+                pub struct timespec {
                     pub tv_sec: time_t,
                     pub tv_nsec: c_long,
                 }
@@ -1232,12 +1312,12 @@ pub mod types {
                     pub ru_msgrcv: c_long,
                     pub ru_nsignals: c_long,
                     pub ru_nvcsw: c_long,
-                    pub ru_nivcsw: c_long
+                    pub ru_nivcsw: c_long,
                 }
             }
 
             pub mod bsd44 {
-                use types::common::c95::{c_void};
+                use types::common::c95::c_void;
                 use types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = u32;
@@ -1245,13 +1325,15 @@ pub mod types {
                 pub type in_port_t = u16;
                 pub type in_addr_t = u32;
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr {
                     pub sa_len: u8,
                     pub sa_family: sa_family_t,
                     pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
-                #[derive(Copy)] pub struct sockaddr_storage {
+                #[derive(Copy)]
+                pub struct sockaddr_storage {
                     pub ss_len: u8,
                     pub ss_family: sa_family_t,
                     pub __ss_pad1: [u8; 6],
@@ -1259,10 +1341,13 @@ pub mod types {
                     pub __ss_pad2: [u8; 112],
                 }
                 impl ::core::clone::Clone for sockaddr_storage {
-                    fn clone(&self) -> sockaddr_storage { *self }
+                    fn clone(&self) -> sockaddr_storage {
+                        *self
+                    }
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_in {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_in {
                     pub sin_len: u8,
                     pub sin_family: sa_family_t,
                     pub sin_port: in_port_t,
@@ -1270,11 +1355,13 @@ pub mod types {
                     pub sin_zero: [u8; 8],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct in_addr {
+                #[derive(Copy, Clone)]
+                pub struct in_addr {
                     pub s_addr: in_addr_t,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_in6 {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_in6 {
                     pub sin6_len: u8,
                     pub sin6_family: sa_family_t,
                     pub sin6_port: in_port_t,
@@ -1283,21 +1370,25 @@ pub mod types {
                     pub sin6_scope_id: u32,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct in6_addr {
-                    pub s6_addr: [u16; 8]
+                #[derive(Copy, Clone)]
+                pub struct in6_addr {
+                    pub s6_addr: [u16; 8],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ip_mreq {
+                #[derive(Copy, Clone)]
+                pub struct ip_mreq {
                     pub imr_multiaddr: in_addr,
                     pub imr_interface: in_addr,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ip6_mreq {
+                #[derive(Copy, Clone)]
+                pub struct ip6_mreq {
                     pub ipv6mr_multiaddr: in6_addr,
                     pub ipv6mr_interface: c_uint,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct addrinfo {
+                #[derive(Copy, Clone)]
+                pub struct addrinfo {
                     pub ai_flags: c_int,
                     pub ai_family: c_int,
                     pub ai_socktype: c_int,
@@ -1308,23 +1399,27 @@ pub mod types {
                     pub ai_next: *mut addrinfo,
                 }
                 #[repr(C)]
-                #[derive(Copy)] pub struct sockaddr_un {
+                #[derive(Copy)]
+                pub struct sockaddr_un {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
-                    pub sun_path: [c_char; 104]
+                    pub sun_path: [c_char; 104],
                 }
                 impl ::core::clone::Clone for sockaddr_un {
-                    fn clone(&self) -> sockaddr_un { *self }
+                    fn clone(&self) -> sockaddr_un {
+                        *self
+                    }
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ifaddrs {
+                #[derive(Copy, Clone)]
+                pub struct ifaddrs {
                     pub ifa_next: *mut ifaddrs,
                     pub ifa_name: *mut c_char,
                     pub ifa_flags: c_uint,
                     pub ifa_addr: *mut sockaddr,
                     pub ifa_netmask: *mut sockaddr,
                     pub ifa_dstaddr: *mut sockaddr,
-                    pub ifa_data: *mut c_void
+                    pub ifa_data: *mut c_void,
                 }
 
             }
@@ -1370,12 +1465,12 @@ pub mod types {
                 pub type ssize_t = i64;
             }
             pub mod posix01 {
-                use types::common::c95::{c_void};
+                use types::common::c95::c_void;
                 use types::common::c99::{uint16_t, uint32_t, int32_t, uint64_t, int64_t};
                 use types::os::arch::c95::{c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t};
                 use types::os::arch::posix88::{mode_t, off_t};
-                use types::os::arch::posix88::{uid_t};
+                use types::os::arch::posix88::uid_t;
 
                 pub type nlink_t = u16;
                 pub type blksize_t = uint32_t;
@@ -1384,7 +1479,8 @@ pub mod types {
                 pub type fflags_t = u32;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct stat {
+                #[derive(Copy, Clone)]
+                pub struct stat {
                     pub st_ino: ino_t,
                     pub st_nlink: nlink_t,
                     pub st_dev: dev_t,
@@ -1409,7 +1505,8 @@ pub mod types {
                     pub st_qspare2: int64_t,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct utimbuf {
+                #[derive(Copy, Clone)]
+                pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
                 }
@@ -1429,22 +1526,22 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
-                use types::common::c95::{c_void};
-                use types::os::arch::c95::{c_char, c_int, size_t,
-                                                 time_t, suseconds_t, c_long};
-                use types::os::arch::c99::{uintptr_t};
+                use types::common::c95::c_void;
+                use types::os::arch::c95::{c_char, c_int, size_t, time_t, suseconds_t, c_long};
+                use types::os::arch::c99::uintptr_t;
 
                 pub type pthread_t = uintptr_t;
                 pub type rlim_t = u64;
 
                 #[cfg(target_os = "bitrig")]
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct glob_t {
-                    pub gl_pathc:  c_int,
+                #[derive(Copy, Clone)]
+                pub struct glob_t {
+                    pub gl_pathc: c_int,
                     pub gl_matchc: c_int,
-                    pub gl_offs:   c_int,
-                    pub gl_flags:  c_int,
-                    pub gl_pathv:  *mut *mut c_char,
+                    pub gl_offs: c_int,
+                    pub gl_flags: c_int,
+                    pub gl_pathv: *mut *mut c_char,
                     pub __unused1: *mut c_void,
                     pub __unused2: *mut c_void,
                     pub __unused3: *mut c_void,
@@ -1456,12 +1553,13 @@ pub mod types {
 
                 #[cfg(target_os = "netbsd")]
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct glob_t {
-                    pub gl_pathc:  size_t,
+                #[derive(Copy, Clone)]
+                pub struct glob_t {
+                    pub gl_pathc: size_t,
                     pub gl_matchc: size_t,
-                    pub gl_offs:   size_t,
-                    pub gl_flags:  c_int,
-                    pub gl_pathv:  *mut *mut c_char,
+                    pub gl_offs: size_t,
+                    pub gl_flags: c_int,
+                    pub gl_pathv: *mut *mut c_char,
                     pub __unused1: *mut c_void,
                     pub __unused2: *mut c_void,
                     pub __unused3: *mut c_void,
@@ -1472,12 +1570,13 @@ pub mod types {
 
                 #[cfg(target_os = "openbsd")]
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct glob_t {
-                    pub gl_pathc:  c_int,
+                #[derive(Copy, Clone)]
+                pub struct glob_t {
+                    pub gl_pathc: c_int,
                     pub __unused1: c_int,
-                    pub gl_offs:   c_int,
+                    pub gl_offs: c_int,
                     pub __unused2: c_int,
-                    pub gl_pathv:  *mut *mut c_char,
+                    pub gl_pathv: *mut *mut c_char,
 
                     pub __unused3: *mut c_void,
 
@@ -1490,13 +1589,15 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct timeval {
+                #[derive(Copy, Clone)]
+                pub struct timeval {
                     pub tv_sec: time_t,
                     pub tv_usec: suseconds_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct timespec {
+                #[derive(Copy, Clone)]
+                pub struct timespec {
                     pub tv_sec: time_t,
                     pub tv_nsec: c_long,
                 }
@@ -1534,12 +1635,12 @@ pub mod types {
                     pub ru_msgrcv: c_long,
                     pub ru_nsignals: c_long,
                     pub ru_nvcsw: c_long,
-                    pub ru_nivcsw: c_long
+                    pub ru_nivcsw: c_long,
                 }
             }
 
             pub mod bsd44 {
-                use types::common::c95::{c_void};
+                use types::common::c95::c_void;
                 use types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = u32;
@@ -1547,13 +1648,15 @@ pub mod types {
                 pub type in_port_t = u16;
                 pub type in_addr_t = u32;
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr {
                     pub sa_len: u8,
                     pub sa_family: sa_family_t,
                     pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
-                #[derive(Copy)] pub struct sockaddr_storage {
+                #[derive(Copy)]
+                pub struct sockaddr_storage {
                     pub ss_len: u8,
                     pub ss_family: sa_family_t,
                     pub __ss_pad1: [u8; 6],
@@ -1561,10 +1664,13 @@ pub mod types {
                     pub __ss_pad3: [u8; 240],
                 }
                 impl ::core::clone::Clone for sockaddr_storage {
-                    fn clone(&self) -> sockaddr_storage { *self }
+                    fn clone(&self) -> sockaddr_storage {
+                        *self
+                    }
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_in {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_in {
                     pub sin_len: u8,
                     pub sin_family: sa_family_t,
                     pub sin_port: in_port_t,
@@ -1572,11 +1678,13 @@ pub mod types {
                     pub sin_zero: [u8; 8],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct in_addr {
+                #[derive(Copy, Clone)]
+                pub struct in_addr {
                     pub s_addr: in_addr_t,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_in6 {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_in6 {
                     pub sin6_len: u8,
                     pub sin6_family: sa_family_t,
                     pub sin6_port: in_port_t,
@@ -1585,22 +1693,26 @@ pub mod types {
                     pub sin6_scope_id: u32,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct in6_addr {
-                    pub s6_addr: [u16; 8]
+                #[derive(Copy, Clone)]
+                pub struct in6_addr {
+                    pub s6_addr: [u16; 8],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ip_mreq {
+                #[derive(Copy, Clone)]
+                pub struct ip_mreq {
                     pub imr_multiaddr: in_addr,
                     pub imr_interface: in_addr,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ip6_mreq {
+                #[derive(Copy, Clone)]
+                pub struct ip6_mreq {
                     pub ipv6mr_multiaddr: in6_addr,
                     pub ipv6mr_interface: c_uint,
                 }
                 #[cfg(not(target_os = "netbsd"))]
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct addrinfo {
+                #[derive(Copy, Clone)]
+                pub struct addrinfo {
                     pub ai_flags: c_int,
                     pub ai_family: c_int,
                     pub ai_socktype: c_int,
@@ -1612,7 +1724,8 @@ pub mod types {
                 }
                 #[cfg(target_os = "netbsd")]
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct addrinfo {
+                #[derive(Copy, Clone)]
+                pub struct addrinfo {
                     pub ai_flags: c_int,
                     pub ai_family: c_int,
                     pub ai_socktype: c_int,
@@ -1623,23 +1736,27 @@ pub mod types {
                     pub ai_next: *mut addrinfo,
                 }
                 #[repr(C)]
-                #[derive(Copy)] pub struct sockaddr_un {
+                #[derive(Copy)]
+                pub struct sockaddr_un {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
-                    pub sun_path: [c_char; 104]
+                    pub sun_path: [c_char; 104],
                 }
                 impl ::core::clone::Clone for sockaddr_un {
-                    fn clone(&self) -> sockaddr_un { *self }
+                    fn clone(&self) -> sockaddr_un {
+                        *self
+                    }
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ifaddrs {
+                #[derive(Copy, Clone)]
+                pub struct ifaddrs {
                     pub ifa_next: *mut ifaddrs,
                     pub ifa_name: *mut c_char,
                     pub ifa_flags: c_uint,
                     pub ifa_addr: *mut sockaddr,
                     pub ifa_netmask: *mut sockaddr,
                     pub ifa_dstaddr: *mut sockaddr,
-                    pub ifa_data: *mut c_void
+                    pub ifa_data: *mut c_void,
                 }
             }
         }
@@ -1674,7 +1791,7 @@ pub mod types {
                 pub type uintmax_t = u64;
             }
             pub mod posix88 {
-                use types::os::arch::c95::{c_long};
+                use types::os::arch::c95::c_long;
                 pub type off_t = i64;
                 pub type dev_t = i32;
                 pub type pid_t = i32;
@@ -1685,12 +1802,12 @@ pub mod types {
                 pub type ssize_t = c_long;
             }
             pub mod posix01 {
-                use types::common::c95::{c_void};
+                use types::common::c95::c_void;
                 use types::common::c99::{uint32_t, uint64_t};
                 use types::os::arch::c95::{c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t};
                 use types::os::arch::posix88::{mode_t, off_t};
-                use types::os::arch::posix88::{uid_t};
+                use types::os::arch::posix88::uid_t;
                 #[cfg(target_os = "netbsd")]
                 use types::os::arch::c95::{c_int, c_uint};
 
@@ -1702,7 +1819,8 @@ pub mod types {
 
                 #[cfg(not(target_os = "netbsd"))]
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct stat {
+                #[derive(Copy, Clone)]
+                pub struct stat {
                     pub st_mode: mode_t,
                     pub st_dev: dev_t,
                     pub st_ino: ino_t,
@@ -1726,7 +1844,8 @@ pub mod types {
                 }
                 #[cfg(target_os = "netbsd")]
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct stat {
+                #[derive(Copy, Clone)]
+                pub struct stat {
                     pub st_mode: mode_t,
                     pub st_dev: dev_t,
                     pub st_ino: ino_t,
@@ -1751,7 +1870,8 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct utimbuf {
+                #[derive(Copy, Clone)]
+                pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
                 }
@@ -1760,7 +1880,8 @@ pub mod types {
                 pub type pthread_attr_t = *mut c_void;
                 #[cfg(target_os = "netbsd")]
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct pthread_attr_t {
+                #[derive(Copy, Clone)]
+                pub struct pthread_attr_t {
                     pta_magic: c_uint,
                     pta_flags: c_int,
                     pta_private: *mut c_void,
@@ -1786,7 +1907,8 @@ pub mod types {
                 // pub Note: this is the struct called stat64 in Windows. Not stat,
                 // nor stati64.
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct stat {
+                #[derive(Copy, Clone)]
+                pub struct stat {
                     pub st_dev: dev_t,
                     pub st_ino: ino_t,
                     pub st_mode: u16,
@@ -1802,19 +1924,22 @@ pub mod types {
 
                 // note that this is called utimbuf64 in Windows
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct utimbuf {
+                #[derive(Copy, Clone)]
+                pub struct utimbuf {
                     pub actime: time64_t,
                     pub modtime: time64_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct timeval {
+                #[derive(Copy, Clone)]
+                pub struct timeval {
                     pub tv_sec: c_long,
                     pub tv_usec: c_long,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct timespec {
+                #[derive(Copy, Clone)]
+                pub struct timespec {
                     pub tv_sec: time_t,
                     pub tv_nsec: c_long,
                 }
@@ -1832,33 +1957,40 @@ pub mod types {
                 pub type in_port_t = u16;
                 pub type in_addr_t = u32;
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr {
                     pub sa_family: sa_family_t,
                     pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
-                #[derive(Copy)] pub struct sockaddr_storage {
+                #[derive(Copy)]
+                pub struct sockaddr_storage {
                     pub ss_family: sa_family_t,
                     pub __ss_pad1: [u8; 6],
                     pub __ss_align: i64,
                     pub __ss_pad2: [u8; 112],
                 }
                 impl ::core::clone::Clone for sockaddr_storage {
-                    fn clone(&self) -> sockaddr_storage { *self }
+                    fn clone(&self) -> sockaddr_storage {
+                        *self
+                    }
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_in {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_in {
                     pub sin_family: sa_family_t,
                     pub sin_port: in_port_t,
                     pub sin_addr: in_addr,
                     pub sin_zero: [u8; 8],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct in_addr {
+                #[derive(Copy, Clone)]
+                pub struct in_addr {
                     pub s_addr: in_addr_t,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_in6 {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_in6 {
                     pub sin6_family: sa_family_t,
                     pub sin6_port: in_port_t,
                     pub sin6_flowinfo: u32,
@@ -1866,21 +1998,25 @@ pub mod types {
                     pub sin6_scope_id: u32,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct in6_addr {
-                    pub s6_addr: [u16; 8]
+                #[derive(Copy, Clone)]
+                pub struct in6_addr {
+                    pub s6_addr: [u16; 8],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ip_mreq {
+                #[derive(Copy, Clone)]
+                pub struct ip_mreq {
                     pub imr_multiaddr: in_addr,
                     pub imr_interface: in_addr,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ip6_mreq {
+                #[derive(Copy, Clone)]
+                pub struct ip6_mreq {
                     pub ipv6mr_multiaddr: in6_addr,
                     pub ipv6mr_interface: c_uint,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct addrinfo {
+                #[derive(Copy, Clone)]
+                pub struct addrinfo {
                     pub ai_flags: c_int,
                     pub ai_family: c_int,
                     pub ai_socktype: c_int,
@@ -1891,12 +2027,15 @@ pub mod types {
                     pub ai_next: *mut addrinfo,
                 }
                 #[repr(C)]
-                #[derive(Copy)] pub struct sockaddr_un {
+                #[derive(Copy)]
+                pub struct sockaddr_un {
                     pub sun_family: sa_family_t,
-                    pub sun_path: [c_char; 108]
+                    pub sun_path: [c_char; 108],
                 }
                 impl ::core::clone::Clone for sockaddr_un {
-                    fn clone(&self) -> sockaddr_un { *self }
+                    fn clone(&self) -> sockaddr_un {
+                        *self
+                    }
                 }
             }
         }
@@ -1981,12 +2120,11 @@ pub mod types {
             pub mod bsd44 {
             }
             pub mod extra {
-                use consts::os::extra::{MAX_PROTOCOL_CHAIN,
-                                              WSAPROTOCOL_LEN};
+                use consts::os::extra::{MAX_PROTOCOL_CHAIN, WSAPROTOCOL_LEN};
                 use types::common::c95::c_void;
                 use types::os::arch::c95::{c_char, c_int, c_uint, size_t};
                 use types::os::arch::c95::{c_long, c_ulong};
-                use types::os::arch::c95::{wchar_t};
+                use types::os::arch::c95::wchar_t;
                 use types::os::arch::c99::{c_ulonglong, c_longlong, uintptr_t};
 
                 pub type BOOL = c_int;
@@ -2023,7 +2161,8 @@ pub mod types {
                 pub type LPCH = *mut CHAR;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct SECURITY_ATTRIBUTES {
+                #[derive(Copy, Clone)]
+                pub struct SECURITY_ATTRIBUTES {
                     pub nLength: DWORD,
                     pub lpSecurityDescriptor: LPVOID,
                     pub bInheritHandle: BOOL,
@@ -2047,7 +2186,8 @@ pub mod types {
                 pub type int64 = i64;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct STARTUPINFO {
+                #[derive(Copy, Clone)]
+                pub struct STARTUPINFO {
                     pub cb: DWORD,
                     pub lpReserved: LPWSTR,
                     pub lpDesktop: LPWSTR,
@@ -2070,7 +2210,8 @@ pub mod types {
                 pub type LPSTARTUPINFO = *mut STARTUPINFO;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct PROCESS_INFORMATION {
+                #[derive(Copy, Clone)]
+                pub struct PROCESS_INFORMATION {
                     pub hProcess: HANDLE,
                     pub hThread: HANDLE,
                     pub dwProcessId: DWORD,
@@ -2079,7 +2220,8 @@ pub mod types {
                 pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct SYSTEM_INFO {
+                #[derive(Copy, Clone)]
+                pub struct SYSTEM_INFO {
                     pub wProcessorArchitecture: WORD,
                     pub wReserved: WORD,
                     pub dwPageSize: DWORD,
@@ -2095,7 +2237,8 @@ pub mod types {
                 pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct MEMORY_BASIC_INFORMATION {
+                #[derive(Copy, Clone)]
+                pub struct MEMORY_BASIC_INFORMATION {
                     pub BaseAddress: LPVOID,
                     pub AllocationBase: LPVOID,
                     pub AllocationProtect: DWORD,
@@ -2107,7 +2250,8 @@ pub mod types {
                 pub type LPMEMORY_BASIC_INFORMATION = *mut MEMORY_BASIC_INFORMATION;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct OVERLAPPED {
+                #[derive(Copy, Clone)]
+                pub struct OVERLAPPED {
                     pub Internal: *mut c_ulong,
                     pub InternalHigh: *mut c_ulong,
                     pub Offset: DWORD,
@@ -2118,7 +2262,8 @@ pub mod types {
                 pub type LPOVERLAPPED = *mut OVERLAPPED;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct FILETIME {
+                #[derive(Copy, Clone)]
+                pub struct FILETIME {
                     pub dwLowDateTime: DWORD,
                     pub dwHighDateTime: DWORD,
                 }
@@ -2126,7 +2271,8 @@ pub mod types {
                 pub type LPFILETIME = *mut FILETIME;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct GUID {
+                #[derive(Copy, Clone)]
+                pub struct GUID {
                     pub Data1: DWORD,
                     pub Data2: WORD,
                     pub Data3: WORD,
@@ -2134,7 +2280,8 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct WSAPROTOCOLCHAIN {
+                #[derive(Copy, Clone)]
+                pub struct WSAPROTOCOLCHAIN {
                     pub ChainLen: c_int,
                     pub ChainEntries: [DWORD; MAX_PROTOCOL_CHAIN as usize],
                 }
@@ -2142,7 +2289,8 @@ pub mod types {
                 pub type LPWSAPROTOCOLCHAIN = *mut WSAPROTOCOLCHAIN;
 
                 #[repr(C)]
-                #[derive(Copy)] pub struct WSAPROTOCOL_INFO {
+                #[derive(Copy)]
+                pub struct WSAPROTOCOL_INFO {
                     pub dwServiceFlags1: DWORD,
                     pub dwServiceFlags2: DWORD,
                     pub dwServiceFlags3: DWORD,
@@ -2162,10 +2310,12 @@ pub mod types {
                     pub iSecurityScheme: c_int,
                     pub dwMessageSize: DWORD,
                     pub dwProviderReserved: DWORD,
-                    pub szProtocol: [u8; WSAPROTOCOL_LEN as usize + 1],
+                    pub szProtocol: [u8; (WSAPROTOCOL_LEN as usize) + 1],
                 }
                 impl ::core::clone::Clone for WSAPROTOCOL_INFO {
-                    fn clone(&self) -> WSAPROTOCOL_INFO { *self }
+                    fn clone(&self) -> WSAPROTOCOL_INFO {
+                        *self
+                    }
                 }
 
                 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
@@ -2173,7 +2323,8 @@ pub mod types {
                 pub type GROUP = c_uint;
 
                 #[repr(C)]
-                #[derive(Copy)] pub struct WIN32_FIND_DATAW {
+                #[derive(Copy)]
+                pub struct WIN32_FIND_DATAW {
                     pub dwFileAttributes: DWORD,
                     pub ftCreationTime: FILETIME,
                     pub ftLastAccessTime: FILETIME,
@@ -2186,7 +2337,9 @@ pub mod types {
                     pub cAlternateFileName: [wchar_t; 14],
                 }
                 impl ::core::clone::Clone for WIN32_FIND_DATAW {
-                    fn clone(&self) -> WIN32_FIND_DATAW { *self }
+                    fn clone(&self) -> WIN32_FIND_DATAW {
+                        *self
+                    }
                 }
 
                 pub type LPWIN32_FIND_DATAW = *mut WIN32_FIND_DATAW;
@@ -2201,18 +2354,19 @@ pub mod types {
                 use types::common::c95::c_void;
                 use types::os::arch::c95::{c_char, c_int, size_t, time_t};
                 use types::os::arch::c95::{suseconds_t, c_long};
-                use types::os::arch::c99::{uintptr_t};
+                use types::os::arch::c99::uintptr_t;
 
                 pub type pthread_t = uintptr_t;
                 pub type rlim_t = u64;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct glob_t {
-                    pub gl_pathc:  size_t,
+                #[derive(Copy, Clone)]
+                pub struct glob_t {
+                    pub gl_pathc: size_t,
                     pub __unused1: c_int,
-                    pub gl_offs:   size_t,
+                    pub gl_offs: size_t,
                     pub __unused2: c_int,
-                    pub gl_pathv:  *mut *mut c_char,
+                    pub gl_pathv: *mut *mut c_char,
 
                     pub __unused3: *mut c_void,
 
@@ -2224,13 +2378,15 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct timeval {
+                #[derive(Copy, Clone)]
+                pub struct timeval {
                     pub tv_sec: time_t,
                     pub tv_usec: suseconds_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct timespec {
+                #[derive(Copy, Clone)]
+                pub struct timespec {
                     pub tv_sec: time_t,
                     pub tv_nsec: c_long,
                 }
@@ -2268,12 +2424,12 @@ pub mod types {
                     pub ru_msgrcv: c_long,
                     pub ru_nsignals: c_long,
                     pub ru_nvcsw: c_long,
-                    pub ru_nivcsw: c_long
+                    pub ru_nivcsw: c_long,
                 }
             }
 
             pub mod bsd44 {
-                use types::common::c95::{c_void};
+                use types::common::c95::c_void;
                 use types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = u32;
@@ -2281,14 +2437,16 @@ pub mod types {
                 pub type in_port_t = u16;
                 pub type in_addr_t = u32;
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr {
                     pub sa_len: u8,
                     pub sa_family: sa_family_t,
                     pub sa_data: [u8; 14],
                 }
 
                 #[repr(C)]
-                #[derive(Copy)] pub struct sockaddr_storage {
+                #[derive(Copy)]
+                pub struct sockaddr_storage {
                     pub ss_len: u8,
                     pub ss_family: sa_family_t,
                     pub __ss_pad1: [u8; 6],
@@ -2296,11 +2454,14 @@ pub mod types {
                     pub __ss_pad2: [u8; 112],
                 }
                 impl ::core::clone::Clone for sockaddr_storage {
-                    fn clone(&self) -> sockaddr_storage { *self }
+                    fn clone(&self) -> sockaddr_storage {
+                        *self
+                    }
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_in {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_in {
                     pub sin_len: u8,
                     pub sin_family: sa_family_t,
                     pub sin_port: in_port_t,
@@ -2309,12 +2470,14 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct in_addr {
+                #[derive(Copy, Clone)]
+                pub struct in_addr {
                     pub s_addr: in_addr_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_in6 {
+                #[derive(Copy, Clone)]
+                pub struct sockaddr_in6 {
                     pub sin6_len: u8,
                     pub sin6_family: sa_family_t,
                     pub sin6_port: in_port_t,
@@ -2324,24 +2487,28 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct in6_addr {
-                    pub s6_addr: [u16; 8]
+                #[derive(Copy, Clone)]
+                pub struct in6_addr {
+                    pub s6_addr: [u16; 8],
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ip_mreq {
+                #[derive(Copy, Clone)]
+                pub struct ip_mreq {
                     pub imr_multiaddr: in_addr,
                     pub imr_interface: in_addr,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ip6_mreq {
+                #[derive(Copy, Clone)]
+                pub struct ip6_mreq {
                     pub ipv6mr_multiaddr: in6_addr,
                     pub ipv6mr_interface: c_uint,
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct addrinfo {
+                #[derive(Copy, Clone)]
+                pub struct addrinfo {
                     pub ai_flags: c_int,
                     pub ai_family: c_int,
                     pub ai_socktype: c_int,
@@ -2353,24 +2520,28 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy)] pub struct sockaddr_un {
+                #[derive(Copy)]
+                pub struct sockaddr_un {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
-                    pub sun_path: [c_char; 104]
+                    pub sun_path: [c_char; 104],
                 }
                 impl ::core::clone::Clone for sockaddr_un {
-                    fn clone(&self) -> sockaddr_un { *self }
+                    fn clone(&self) -> sockaddr_un {
+                        *self
+                    }
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct ifaddrs {
+                #[derive(Copy, Clone)]
+                pub struct ifaddrs {
                     pub ifa_next: *mut ifaddrs,
                     pub ifa_name: *mut c_char,
                     pub ifa_flags: c_uint,
                     pub ifa_addr: *mut sockaddr,
                     pub ifa_netmask: *mut sockaddr,
                     pub ifa_dstaddr: *mut sockaddr,
-                    pub ifa_data: *mut c_void
+                    pub ifa_data: *mut c_void,
                 }
             }
         }
@@ -2420,15 +2591,15 @@ pub mod types {
             pub mod posix01 {
                 use types::common::c99::{int32_t, int64_t, uint32_t};
                 use types::os::arch::c95::{c_char, c_long, time_t};
-                use types::os::arch::posix88::{dev_t, gid_t, ino_t,
-                                                     mode_t, off_t, uid_t};
+                use types::os::arch::posix88::{dev_t, gid_t, ino_t, mode_t, off_t, uid_t};
 
                 pub type nlink_t = u16;
                 pub type blksize_t = i32;
                 pub type blkcnt_t = i64;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct stat {
+                #[derive(Copy, Clone)]
+                pub struct stat {
                     pub st_dev: dev_t,
                     pub st_mode: mode_t,
                     pub st_nlink: nlink_t,
@@ -2454,18 +2625,22 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct utimbuf {
+                #[derive(Copy, Clone)]
+                pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy)] pub struct pthread_attr_t {
+                #[derive(Copy)]
+                pub struct pthread_attr_t {
                     pub __sig: c_long,
-                    pub __opaque: [c_char; 36]
+                    pub __opaque: [c_char; 36],
                 }
                 impl ::core::clone::Clone for pthread_attr_t {
-                    fn clone(&self) -> pthread_attr_t { *self }
+                    fn clone(&self) -> pthread_attr_t {
+                        *self
+                    }
                 }
             }
             pub mod posix08 {
@@ -2474,7 +2649,8 @@ pub mod types {
             }
             pub mod extra {
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct mach_timebase_info {
+                #[derive(Copy, Clone)]
+                pub struct mach_timebase_info {
                     pub numer: u32,
                     pub denom: u32,
                 }
@@ -2527,7 +2703,7 @@ pub mod types {
             }
             pub mod posix01 {
                 use types::common::c99::{int32_t, int64_t};
-                use types::common::c99::{uint32_t};
+                use types::common::c99::uint32_t;
                 use types::os::arch::c95::{c_char, c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use types::os::arch::posix88::{mode_t, off_t, uid_t};
@@ -2537,7 +2713,8 @@ pub mod types {
                 pub type blkcnt_t = i64;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct stat {
+                #[derive(Copy, Clone)]
+                pub struct stat {
                     pub st_dev: dev_t,
                     pub st_mode: mode_t,
                     pub st_nlink: nlink_t,
@@ -2563,18 +2740,22 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct utimbuf {
+                #[derive(Copy, Clone)]
+                pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
                 }
 
                 #[repr(C)]
-                #[derive(Copy)] pub struct pthread_attr_t {
+                #[derive(Copy)]
+                pub struct pthread_attr_t {
                     pub __sig: c_long,
-                    pub __opaque: [c_char; 56]
+                    pub __opaque: [c_char; 56],
                 }
                 impl ::core::clone::Clone for pthread_attr_t {
-                    fn clone(&self) -> pthread_attr_t { *self }
+                    fn clone(&self) -> pthread_attr_t {
+                        *self
+                    }
                 }
             }
             pub mod posix08 {
@@ -2583,7 +2764,8 @@ pub mod types {
             }
             pub mod extra {
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct mach_timebase_info {
+                #[derive(Copy, Clone)]
+                pub struct mach_timebase_info {
                     pub numer: u32,
                     pub denom: u32,
                 }
@@ -2603,21 +2785,21 @@ pub mod consts {
         pub mod c95 {
             use types::os::arch::c95::{c_int, c_uint};
 
-            pub const EXIT_FAILURE : c_int = 1;
-            pub const EXIT_SUCCESS : c_int = 0;
-            pub const RAND_MAX : c_int = 32767;
-            pub const EOF : c_int = -1;
-            pub const SEEK_SET : c_int = 0;
-            pub const SEEK_CUR : c_int = 1;
-            pub const SEEK_END : c_int = 2;
-            pub const _IOFBF : c_int = 0;
-            pub const _IONBF : c_int = 4;
-            pub const _IOLBF : c_int = 64;
-            pub const BUFSIZ : c_uint = 512;
-            pub const FOPEN_MAX : c_uint = 20;
-            pub const FILENAME_MAX : c_uint = 260;
-            pub const L_tmpnam : c_uint = 16;
-            pub const TMP_MAX : c_uint = 32767;
+            pub const EXIT_FAILURE: c_int = 1;
+            pub const EXIT_SUCCESS: c_int = 0;
+            pub const RAND_MAX: c_int = 32767;
+            pub const EOF: c_int = -1;
+            pub const SEEK_SET: c_int = 0;
+            pub const SEEK_CUR: c_int = 1;
+            pub const SEEK_END: c_int = 2;
+            pub const _IOFBF: c_int = 0;
+            pub const _IONBF: c_int = 4;
+            pub const _IOLBF: c_int = 64;
+            pub const BUFSIZ: c_uint = 512;
+            pub const FOPEN_MAX: c_uint = 20;
+            pub const FILENAME_MAX: c_uint = 260;
+            pub const L_tmpnam: c_uint = 16;
+            pub const TMP_MAX: c_uint = 32767;
 
             pub const WSAEINTR: c_int = 10004;
             pub const WSAEBADF: c_int = 10009;
@@ -2678,43 +2860,43 @@ pub mod consts {
             use types::os::arch::c95::c_int;
             use types::os::arch::posix88::mode_t;
 
-            pub const O_RDONLY : c_int = 0;
-            pub const O_WRONLY : c_int = 1;
-            pub const O_RDWR : c_int = 2;
-            pub const O_APPEND : c_int = 8;
-            pub const O_CREAT : c_int = 256;
-            pub const O_EXCL : c_int = 1024;
-            pub const O_TRUNC : c_int = 512;
-            pub const S_IFIFO : c_int = 4096;
-            pub const S_IFCHR : c_int = 8192;
-            pub const S_IFBLK : c_int = 12288;
-            pub const S_IFDIR : c_int = 16384;
-            pub const S_IFREG : c_int = 32768;
-            pub const S_IFLNK : c_int = 40960;
-            pub const S_IFSOCK : mode_t = 49152;
-            pub const S_IFMT : c_int = 61440;
-            pub const S_IEXEC : c_int = 64;
-            pub const S_IWRITE : c_int = 128;
-            pub const S_IREAD : c_int = 256;
-            pub const S_IRWXU : c_int = 448;
-            pub const S_IXUSR : c_int = 64;
-            pub const S_IWUSR : c_int = 128;
-            pub const S_IRUSR : c_int = 256;
-            pub const S_IRWXG : mode_t = 56;
-            pub const S_IXGRP : mode_t = 8;
-            pub const S_IWGRP : mode_t = 16;
-            pub const S_IRGRP : mode_t = 32;
-            pub const S_IRWXO : mode_t = 7;
-            pub const S_IXOTH : mode_t = 1;
-            pub const S_IWOTH : mode_t = 2;
-            pub const S_IROTH : mode_t = 4;
-            pub const F_OK : c_int = 0;
-            pub const R_OK : c_int = 4;
-            pub const W_OK : c_int = 2;
-            pub const X_OK : c_int = 1;
-            pub const STDIN_FILENO : c_int = 0;
-            pub const STDOUT_FILENO : c_int = 1;
-            pub const STDERR_FILENO : c_int = 2;
+            pub const O_RDONLY: c_int = 0;
+            pub const O_WRONLY: c_int = 1;
+            pub const O_RDWR: c_int = 2;
+            pub const O_APPEND: c_int = 8;
+            pub const O_CREAT: c_int = 256;
+            pub const O_EXCL: c_int = 1024;
+            pub const O_TRUNC: c_int = 512;
+            pub const S_IFIFO: c_int = 4096;
+            pub const S_IFCHR: c_int = 8192;
+            pub const S_IFBLK: c_int = 12288;
+            pub const S_IFDIR: c_int = 16384;
+            pub const S_IFREG: c_int = 32768;
+            pub const S_IFLNK: c_int = 40960;
+            pub const S_IFSOCK: mode_t = 49152;
+            pub const S_IFMT: c_int = 61440;
+            pub const S_IEXEC: c_int = 64;
+            pub const S_IWRITE: c_int = 128;
+            pub const S_IREAD: c_int = 256;
+            pub const S_IRWXU: c_int = 448;
+            pub const S_IXUSR: c_int = 64;
+            pub const S_IWUSR: c_int = 128;
+            pub const S_IRUSR: c_int = 256;
+            pub const S_IRWXG: mode_t = 56;
+            pub const S_IXGRP: mode_t = 8;
+            pub const S_IWGRP: mode_t = 16;
+            pub const S_IRGRP: mode_t = 32;
+            pub const S_IRWXO: mode_t = 7;
+            pub const S_IXOTH: mode_t = 1;
+            pub const S_IWOTH: mode_t = 2;
+            pub const S_IROTH: mode_t = 4;
+            pub const F_OK: c_int = 0;
+            pub const R_OK: c_int = 4;
+            pub const W_OK: c_int = 2;
+            pub const X_OK: c_int = 1;
+            pub const STDIN_FILENO: c_int = 0;
+            pub const STDOUT_FILENO: c_int = 1;
+            pub const STDERR_FILENO: c_int = 2;
         }
         pub mod posix01 {
         }
@@ -2772,121 +2954,121 @@ pub mod consts {
             use types::os::arch::c95::{c_int, c_long};
             use types::os::arch::extra::{WORD, DWORD, BOOL, HANDLE};
 
-            pub const TRUE : BOOL = 1;
-            pub const FALSE : BOOL = 0;
+            pub const TRUE: BOOL = 1;
+            pub const FALSE: BOOL = 0;
 
-            pub const O_TEXT : c_int = 16384;
-            pub const O_BINARY : c_int = 32768;
+            pub const O_TEXT: c_int = 16384;
+            pub const O_BINARY: c_int = 32768;
             pub const O_NOINHERIT: c_int = 128;
 
-            pub const ERROR_SUCCESS : c_int = 0;
+            pub const ERROR_SUCCESS: c_int = 0;
             pub const ERROR_INVALID_FUNCTION: c_int = 1;
             pub const ERROR_FILE_NOT_FOUND: c_int = 2;
             pub const ERROR_ACCESS_DENIED: c_int = 5;
-            pub const ERROR_INVALID_HANDLE : c_int = 6;
+            pub const ERROR_INVALID_HANDLE: c_int = 6;
             pub const ERROR_BROKEN_PIPE: c_int = 109;
-            pub const ERROR_DISK_FULL : c_int = 112;
-            pub const ERROR_CALL_NOT_IMPLEMENTED : c_int = 120;
-            pub const ERROR_INSUFFICIENT_BUFFER : c_int = 122;
-            pub const ERROR_INVALID_NAME : c_int = 123;
-            pub const ERROR_ALREADY_EXISTS : c_int = 183;
+            pub const ERROR_DISK_FULL: c_int = 112;
+            pub const ERROR_CALL_NOT_IMPLEMENTED: c_int = 120;
+            pub const ERROR_INSUFFICIENT_BUFFER: c_int = 122;
+            pub const ERROR_INVALID_NAME: c_int = 123;
+            pub const ERROR_ALREADY_EXISTS: c_int = 183;
             pub const ERROR_PIPE_BUSY: c_int = 231;
             pub const ERROR_NO_DATA: c_int = 232;
-            pub const ERROR_INVALID_ADDRESS : c_int = 487;
+            pub const ERROR_INVALID_ADDRESS: c_int = 487;
             pub const ERROR_PIPE_CONNECTED: c_int = 535;
             pub const ERROR_NOTHING_TO_TERMINATE: c_int = 758;
             pub const ERROR_OPERATION_ABORTED: c_int = 995;
             pub const ERROR_IO_PENDING: c_int = 997;
-            pub const ERROR_FILE_INVALID : c_int = 1006;
+            pub const ERROR_FILE_INVALID: c_int = 1006;
             pub const ERROR_NOT_FOUND: c_int = 1168;
             pub const INVALID_HANDLE_VALUE: HANDLE = !0 as HANDLE;
 
-            pub const DELETE : DWORD = 0x00010000;
-            pub const READ_CONTROL : DWORD = 0x00020000;
-            pub const SYNCHRONIZE : DWORD = 0x00100000;
-            pub const WRITE_DAC : DWORD = 0x00040000;
-            pub const WRITE_OWNER : DWORD = 0x00080000;
+            pub const DELETE: DWORD = 0x00010000;
+            pub const READ_CONTROL: DWORD = 0x00020000;
+            pub const SYNCHRONIZE: DWORD = 0x00100000;
+            pub const WRITE_DAC: DWORD = 0x00040000;
+            pub const WRITE_OWNER: DWORD = 0x00080000;
 
-            pub const PROCESS_CREATE_PROCESS : DWORD = 0x0080;
-            pub const PROCESS_CREATE_THREAD : DWORD = 0x0002;
-            pub const PROCESS_DUP_HANDLE : DWORD = 0x0040;
-            pub const PROCESS_QUERY_INFORMATION : DWORD = 0x0400;
-            pub const PROCESS_QUERY_LIMITED_INFORMATION : DWORD = 0x1000;
-            pub const PROCESS_SET_INFORMATION : DWORD = 0x0200;
-            pub const PROCESS_SET_QUOTA : DWORD = 0x0100;
-            pub const PROCESS_SUSPEND_RESUME : DWORD = 0x0800;
-            pub const PROCESS_TERMINATE : DWORD = 0x0001;
-            pub const PROCESS_VM_OPERATION : DWORD = 0x0008;
-            pub const PROCESS_VM_READ : DWORD = 0x0010;
-            pub const PROCESS_VM_WRITE : DWORD = 0x0020;
+            pub const PROCESS_CREATE_PROCESS: DWORD = 0x0080;
+            pub const PROCESS_CREATE_THREAD: DWORD = 0x0002;
+            pub const PROCESS_DUP_HANDLE: DWORD = 0x0040;
+            pub const PROCESS_QUERY_INFORMATION: DWORD = 0x0400;
+            pub const PROCESS_QUERY_LIMITED_INFORMATION: DWORD = 0x1000;
+            pub const PROCESS_SET_INFORMATION: DWORD = 0x0200;
+            pub const PROCESS_SET_QUOTA: DWORD = 0x0100;
+            pub const PROCESS_SUSPEND_RESUME: DWORD = 0x0800;
+            pub const PROCESS_TERMINATE: DWORD = 0x0001;
+            pub const PROCESS_VM_OPERATION: DWORD = 0x0008;
+            pub const PROCESS_VM_READ: DWORD = 0x0010;
+            pub const PROCESS_VM_WRITE: DWORD = 0x0020;
 
-            pub const STARTF_FORCEONFEEDBACK : DWORD = 0x00000040;
-            pub const STARTF_FORCEOFFFEEDBACK : DWORD = 0x00000080;
-            pub const STARTF_PREVENTPINNING : DWORD = 0x00002000;
-            pub const STARTF_RUNFULLSCREEN : DWORD = 0x00000020;
-            pub const STARTF_TITLEISAPPID : DWORD = 0x00001000;
-            pub const STARTF_TITLEISLINKNAME : DWORD = 0x00000800;
-            pub const STARTF_USECOUNTCHARS : DWORD = 0x00000008;
-            pub const STARTF_USEFILLATTRIBUTE : DWORD = 0x00000010;
-            pub const STARTF_USEHOTKEY : DWORD = 0x00000200;
-            pub const STARTF_USEPOSITION : DWORD = 0x00000004;
-            pub const STARTF_USESHOWWINDOW : DWORD = 0x00000001;
-            pub const STARTF_USESIZE : DWORD = 0x00000002;
-            pub const STARTF_USESTDHANDLES : DWORD = 0x00000100;
+            pub const STARTF_FORCEONFEEDBACK: DWORD = 0x00000040;
+            pub const STARTF_FORCEOFFFEEDBACK: DWORD = 0x00000080;
+            pub const STARTF_PREVENTPINNING: DWORD = 0x00002000;
+            pub const STARTF_RUNFULLSCREEN: DWORD = 0x00000020;
+            pub const STARTF_TITLEISAPPID: DWORD = 0x00001000;
+            pub const STARTF_TITLEISLINKNAME: DWORD = 0x00000800;
+            pub const STARTF_USECOUNTCHARS: DWORD = 0x00000008;
+            pub const STARTF_USEFILLATTRIBUTE: DWORD = 0x00000010;
+            pub const STARTF_USEHOTKEY: DWORD = 0x00000200;
+            pub const STARTF_USEPOSITION: DWORD = 0x00000004;
+            pub const STARTF_USESHOWWINDOW: DWORD = 0x00000001;
+            pub const STARTF_USESIZE: DWORD = 0x00000002;
+            pub const STARTF_USESTDHANDLES: DWORD = 0x00000100;
 
-            pub const WAIT_ABANDONED : DWORD = 0x00000080;
-            pub const WAIT_OBJECT_0 : DWORD = 0x00000000;
-            pub const WAIT_TIMEOUT : DWORD = 0x00000102;
-            pub const WAIT_FAILED : DWORD = !0;
+            pub const WAIT_ABANDONED: DWORD = 0x00000080;
+            pub const WAIT_OBJECT_0: DWORD = 0x00000000;
+            pub const WAIT_TIMEOUT: DWORD = 0x00000102;
+            pub const WAIT_FAILED: DWORD = !0;
 
-            pub const DUPLICATE_CLOSE_SOURCE : DWORD = 0x00000001;
-            pub const DUPLICATE_SAME_ACCESS : DWORD = 0x00000002;
+            pub const DUPLICATE_CLOSE_SOURCE: DWORD = 0x00000001;
+            pub const DUPLICATE_SAME_ACCESS: DWORD = 0x00000002;
 
-            pub const INFINITE : DWORD = !0;
-            pub const STILL_ACTIVE : DWORD = 259;
+            pub const INFINITE: DWORD = !0;
+            pub const STILL_ACTIVE: DWORD = 259;
 
-            pub const MEM_COMMIT : DWORD = 0x00001000;
-            pub const MEM_RESERVE : DWORD = 0x00002000;
-            pub const MEM_DECOMMIT : DWORD = 0x00004000;
-            pub const MEM_RELEASE : DWORD = 0x00008000;
-            pub const MEM_RESET : DWORD = 0x00080000;
-            pub const MEM_RESET_UNDO : DWORD = 0x1000000;
-            pub const MEM_LARGE_PAGES : DWORD = 0x20000000;
-            pub const MEM_PHYSICAL : DWORD = 0x00400000;
-            pub const MEM_TOP_DOWN : DWORD = 0x00100000;
-            pub const MEM_WRITE_WATCH : DWORD = 0x00200000;
+            pub const MEM_COMMIT: DWORD = 0x00001000;
+            pub const MEM_RESERVE: DWORD = 0x00002000;
+            pub const MEM_DECOMMIT: DWORD = 0x00004000;
+            pub const MEM_RELEASE: DWORD = 0x00008000;
+            pub const MEM_RESET: DWORD = 0x00080000;
+            pub const MEM_RESET_UNDO: DWORD = 0x1000000;
+            pub const MEM_LARGE_PAGES: DWORD = 0x20000000;
+            pub const MEM_PHYSICAL: DWORD = 0x00400000;
+            pub const MEM_TOP_DOWN: DWORD = 0x00100000;
+            pub const MEM_WRITE_WATCH: DWORD = 0x00200000;
 
-            pub const PAGE_EXECUTE : DWORD = 0x10;
-            pub const PAGE_EXECUTE_READ : DWORD = 0x20;
-            pub const PAGE_EXECUTE_READWRITE : DWORD = 0x40;
-            pub const PAGE_EXECUTE_WRITECOPY : DWORD = 0x80;
-            pub const PAGE_NOACCESS : DWORD = 0x01;
-            pub const PAGE_READONLY : DWORD = 0x02;
-            pub const PAGE_READWRITE : DWORD = 0x04;
-            pub const PAGE_WRITECOPY : DWORD = 0x08;
-            pub const PAGE_GUARD : DWORD = 0x100;
-            pub const PAGE_NOCACHE : DWORD = 0x200;
-            pub const PAGE_WRITECOMBINE : DWORD = 0x400;
+            pub const PAGE_EXECUTE: DWORD = 0x10;
+            pub const PAGE_EXECUTE_READ: DWORD = 0x20;
+            pub const PAGE_EXECUTE_READWRITE: DWORD = 0x40;
+            pub const PAGE_EXECUTE_WRITECOPY: DWORD = 0x80;
+            pub const PAGE_NOACCESS: DWORD = 0x01;
+            pub const PAGE_READONLY: DWORD = 0x02;
+            pub const PAGE_READWRITE: DWORD = 0x04;
+            pub const PAGE_WRITECOPY: DWORD = 0x08;
+            pub const PAGE_GUARD: DWORD = 0x100;
+            pub const PAGE_NOCACHE: DWORD = 0x200;
+            pub const PAGE_WRITECOMBINE: DWORD = 0x400;
 
-            pub const SEC_COMMIT : DWORD = 0x8000000;
-            pub const SEC_IMAGE : DWORD = 0x1000000;
-            pub const SEC_IMAGE_NO_EXECUTE : DWORD = 0x11000000;
-            pub const SEC_LARGE_PAGES : DWORD = 0x80000000;
-            pub const SEC_NOCACHE : DWORD = 0x10000000;
-            pub const SEC_RESERVE : DWORD = 0x4000000;
-            pub const SEC_WRITECOMBINE : DWORD = 0x40000000;
+            pub const SEC_COMMIT: DWORD = 0x8000000;
+            pub const SEC_IMAGE: DWORD = 0x1000000;
+            pub const SEC_IMAGE_NO_EXECUTE: DWORD = 0x11000000;
+            pub const SEC_LARGE_PAGES: DWORD = 0x80000000;
+            pub const SEC_NOCACHE: DWORD = 0x10000000;
+            pub const SEC_RESERVE: DWORD = 0x4000000;
+            pub const SEC_WRITECOMBINE: DWORD = 0x40000000;
 
-            pub const FILE_MAP_ALL_ACCESS : DWORD = 0xf001f;
-            pub const FILE_MAP_READ : DWORD = 0x4;
-            pub const FILE_MAP_WRITE : DWORD = 0x2;
-            pub const FILE_MAP_COPY : DWORD = 0x1;
-            pub const FILE_MAP_EXECUTE : DWORD = 0x20;
+            pub const FILE_MAP_ALL_ACCESS: DWORD = 0xf001f;
+            pub const FILE_MAP_READ: DWORD = 0x4;
+            pub const FILE_MAP_WRITE: DWORD = 0x2;
+            pub const FILE_MAP_COPY: DWORD = 0x1;
+            pub const FILE_MAP_EXECUTE: DWORD = 0x20;
 
-            pub const PROCESSOR_ARCHITECTURE_INTEL : WORD = 0;
-            pub const PROCESSOR_ARCHITECTURE_ARM : WORD = 5;
-            pub const PROCESSOR_ARCHITECTURE_IA64 : WORD = 6;
-            pub const PROCESSOR_ARCHITECTURE_AMD64 : WORD = 9;
-            pub const PROCESSOR_ARCHITECTURE_UNKNOWN : WORD = 0xffff;
+            pub const PROCESSOR_ARCHITECTURE_INTEL: WORD = 0;
+            pub const PROCESSOR_ARCHITECTURE_ARM: WORD = 5;
+            pub const PROCESSOR_ARCHITECTURE_IA64: WORD = 6;
+            pub const PROCESSOR_ARCHITECTURE_AMD64: WORD = 9;
+            pub const PROCESSOR_ARCHITECTURE_UNKNOWN: WORD = 0xffff;
 
             pub const MOVEFILE_COPY_ALLOWED: DWORD = 2;
             pub const MOVEFILE_CREATE_HARDLINK: DWORD = 16;
@@ -2961,13 +3143,15 @@ pub mod consts {
             pub const STANDARD_RIGHTS_WRITE: DWORD = 0x20000;
             pub const FILE_WRITE_EA: DWORD = 0x00000010;
             pub const FILE_READ_EA: DWORD = 0x00000008;
-            pub const FILE_GENERIC_READ: DWORD =
-                STANDARD_RIGHTS_READ | FILE_READ_DATA |
-                FILE_READ_ATTRIBUTES | FILE_READ_EA | SYNCHRONIZE;
-            pub const FILE_GENERIC_WRITE: DWORD =
-                STANDARD_RIGHTS_WRITE | FILE_WRITE_DATA |
-                FILE_WRITE_ATTRIBUTES | FILE_WRITE_EA | FILE_APPEND_DATA |
-                SYNCHRONIZE;
+            pub const FILE_GENERIC_READ: DWORD = STANDARD_RIGHTS_READ | FILE_READ_DATA |
+                                                 FILE_READ_ATTRIBUTES |
+                                                 FILE_READ_EA |
+                                                 SYNCHRONIZE;
+            pub const FILE_GENERIC_WRITE: DWORD = STANDARD_RIGHTS_WRITE | FILE_WRITE_DATA |
+                                                  FILE_WRITE_ATTRIBUTES |
+                                                  FILE_WRITE_EA |
+                                                  FILE_APPEND_DATA |
+                                                  SYNCHRONIZE;
 
             pub const FILE_BEGIN: DWORD = 0;
             pub const FILE_CURRENT: DWORD = 1;
@@ -3008,21 +3192,21 @@ pub mod consts {
         pub mod c95 {
             use types::os::arch::c95::{c_int, c_uint};
 
-            pub const EXIT_FAILURE : c_int = 1;
-            pub const EXIT_SUCCESS : c_int = 0;
-            pub const RAND_MAX : c_int = 2147483647;
-            pub const EOF : c_int = -1;
-            pub const SEEK_SET : c_int = 0;
-            pub const SEEK_CUR : c_int = 1;
-            pub const SEEK_END : c_int = 2;
-            pub const _IOFBF : c_int = 0;
-            pub const _IONBF : c_int = 2;
-            pub const _IOLBF : c_int = 1;
-            pub const BUFSIZ : c_uint = 8192;
-            pub const FOPEN_MAX : c_uint = 16;
-            pub const FILENAME_MAX : c_uint = 4096;
-            pub const L_tmpnam : c_uint = 20;
-            pub const TMP_MAX : c_uint = 238328;
+            pub const EXIT_FAILURE: c_int = 1;
+            pub const EXIT_SUCCESS: c_int = 0;
+            pub const RAND_MAX: c_int = 2147483647;
+            pub const EOF: c_int = -1;
+            pub const SEEK_SET: c_int = 0;
+            pub const SEEK_CUR: c_int = 1;
+            pub const SEEK_END: c_int = 2;
+            pub const _IOFBF: c_int = 0;
+            pub const _IONBF: c_int = 2;
+            pub const _IOLBF: c_int = 1;
+            pub const BUFSIZ: c_uint = 8192;
+            pub const FOPEN_MAX: c_uint = 16;
+            pub const FILENAME_MAX: c_uint = 4096;
+            pub const L_tmpnam: c_uint = 20;
+            pub const TMP_MAX: c_uint = 238328;
         }
         pub mod c99 {
         }
@@ -3037,114 +3221,114 @@ pub mod consts {
             use types::common::c95::c_void;
             use types::os::arch::posix88::mode_t;
 
-            pub const O_RDONLY : c_int = 0;
-            pub const O_WRONLY : c_int = 1;
-            pub const O_RDWR : c_int = 2;
-            pub const O_APPEND : c_int = 1024;
-            pub const O_CREAT : c_int = 64;
-            pub const O_EXCL : c_int = 128;
-            pub const O_NOCTTY : c_int = 256;
-            pub const O_TRUNC : c_int = 512;
-            pub const S_IFIFO : mode_t = 4096;
-            pub const S_IFCHR : mode_t = 8192;
-            pub const S_IFBLK : mode_t = 24576;
-            pub const S_IFDIR : mode_t = 16384;
-            pub const S_IFREG : mode_t = 32768;
-            pub const S_IFLNK : mode_t = 40960;
-            pub const S_IFSOCK : mode_t = 49152;
-            pub const S_IFMT : mode_t = 61440;
-            pub const S_IEXEC : mode_t = 64;
-            pub const S_IWRITE : mode_t = 128;
-            pub const S_IREAD : mode_t = 256;
-            pub const S_IRWXU : mode_t = 448;
-            pub const S_IXUSR : mode_t = 64;
-            pub const S_IWUSR : mode_t = 128;
-            pub const S_IRUSR : mode_t = 256;
-            pub const S_IRWXG : mode_t = 56;
-            pub const S_IXGRP : mode_t = 8;
-            pub const S_IWGRP : mode_t = 16;
-            pub const S_IRGRP : mode_t = 32;
-            pub const S_IRWXO : mode_t = 7;
-            pub const S_IXOTH : mode_t = 1;
-            pub const S_IWOTH : mode_t = 2;
-            pub const S_IROTH : mode_t = 4;
-            pub const F_OK : c_int = 0;
-            pub const R_OK : c_int = 4;
-            pub const W_OK : c_int = 2;
-            pub const X_OK : c_int = 1;
-            pub const STDIN_FILENO : c_int = 0;
-            pub const STDOUT_FILENO : c_int = 1;
-            pub const STDERR_FILENO : c_int = 2;
-            pub const F_LOCK : c_int = 1;
-            pub const F_TEST : c_int = 3;
-            pub const F_TLOCK : c_int = 2;
-            pub const F_ULOCK : c_int = 0;
-            pub const SIGHUP : c_int = 1;
-            pub const SIGINT : c_int = 2;
-            pub const SIGQUIT : c_int = 3;
-            pub const SIGILL : c_int = 4;
-            pub const SIGABRT : c_int = 6;
-            pub const SIGFPE : c_int = 8;
-            pub const SIGKILL : c_int = 9;
-            pub const SIGSEGV : c_int = 11;
-            pub const SIGPIPE : c_int = 13;
-            pub const SIGALRM : c_int = 14;
-            pub const SIGTERM : c_int = 15;
+            pub const O_RDONLY: c_int = 0;
+            pub const O_WRONLY: c_int = 1;
+            pub const O_RDWR: c_int = 2;
+            pub const O_APPEND: c_int = 1024;
+            pub const O_CREAT: c_int = 64;
+            pub const O_EXCL: c_int = 128;
+            pub const O_NOCTTY: c_int = 256;
+            pub const O_TRUNC: c_int = 512;
+            pub const S_IFIFO: mode_t = 4096;
+            pub const S_IFCHR: mode_t = 8192;
+            pub const S_IFBLK: mode_t = 24576;
+            pub const S_IFDIR: mode_t = 16384;
+            pub const S_IFREG: mode_t = 32768;
+            pub const S_IFLNK: mode_t = 40960;
+            pub const S_IFSOCK: mode_t = 49152;
+            pub const S_IFMT: mode_t = 61440;
+            pub const S_IEXEC: mode_t = 64;
+            pub const S_IWRITE: mode_t = 128;
+            pub const S_IREAD: mode_t = 256;
+            pub const S_IRWXU: mode_t = 448;
+            pub const S_IXUSR: mode_t = 64;
+            pub const S_IWUSR: mode_t = 128;
+            pub const S_IRUSR: mode_t = 256;
+            pub const S_IRWXG: mode_t = 56;
+            pub const S_IXGRP: mode_t = 8;
+            pub const S_IWGRP: mode_t = 16;
+            pub const S_IRGRP: mode_t = 32;
+            pub const S_IRWXO: mode_t = 7;
+            pub const S_IXOTH: mode_t = 1;
+            pub const S_IWOTH: mode_t = 2;
+            pub const S_IROTH: mode_t = 4;
+            pub const F_OK: c_int = 0;
+            pub const R_OK: c_int = 4;
+            pub const W_OK: c_int = 2;
+            pub const X_OK: c_int = 1;
+            pub const STDIN_FILENO: c_int = 0;
+            pub const STDOUT_FILENO: c_int = 1;
+            pub const STDERR_FILENO: c_int = 2;
+            pub const F_LOCK: c_int = 1;
+            pub const F_TEST: c_int = 3;
+            pub const F_TLOCK: c_int = 2;
+            pub const F_ULOCK: c_int = 0;
+            pub const SIGHUP: c_int = 1;
+            pub const SIGINT: c_int = 2;
+            pub const SIGQUIT: c_int = 3;
+            pub const SIGILL: c_int = 4;
+            pub const SIGABRT: c_int = 6;
+            pub const SIGFPE: c_int = 8;
+            pub const SIGKILL: c_int = 9;
+            pub const SIGSEGV: c_int = 11;
+            pub const SIGPIPE: c_int = 13;
+            pub const SIGALRM: c_int = 14;
+            pub const SIGTERM: c_int = 15;
 
-            pub const PROT_NONE : c_int = 0;
-            pub const PROT_READ : c_int = 1;
-            pub const PROT_WRITE : c_int = 2;
-            pub const PROT_EXEC : c_int = 4;
+            pub const PROT_NONE: c_int = 0;
+            pub const PROT_READ: c_int = 1;
+            pub const PROT_WRITE: c_int = 2;
+            pub const PROT_EXEC: c_int = 4;
 
-            pub const MAP_FILE : c_int = 0x0000;
-            pub const MAP_SHARED : c_int = 0x0001;
-            pub const MAP_PRIVATE : c_int = 0x0002;
-            pub const MAP_FIXED : c_int = 0x0010;
-            pub const MAP_ANON : c_int = 0x0020;
+            pub const MAP_FILE: c_int = 0x0000;
+            pub const MAP_SHARED: c_int = 0x0001;
+            pub const MAP_PRIVATE: c_int = 0x0002;
+            pub const MAP_FIXED: c_int = 0x0010;
+            pub const MAP_ANON: c_int = 0x0020;
 
-            pub const MAP_FAILED : *mut c_void = !0 as *mut c_void;
+            pub const MAP_FAILED: *mut c_void = !0 as *mut c_void;
 
-            pub const MCL_CURRENT : c_int = 0x0001;
-            pub const MCL_FUTURE : c_int = 0x0002;
+            pub const MCL_CURRENT: c_int = 0x0001;
+            pub const MCL_FUTURE: c_int = 0x0002;
 
-            pub const MS_ASYNC : c_int = 0x0001;
-            pub const MS_INVALIDATE : c_int = 0x0002;
-            pub const MS_SYNC : c_int = 0x0004;
+            pub const MS_ASYNC: c_int = 0x0001;
+            pub const MS_INVALIDATE: c_int = 0x0002;
+            pub const MS_SYNC: c_int = 0x0004;
 
-            pub const EPERM : c_int = 1;
-            pub const ENOENT : c_int = 2;
-            pub const ESRCH : c_int = 3;
-            pub const EINTR : c_int = 4;
-            pub const EIO : c_int = 5;
-            pub const ENXIO : c_int = 6;
-            pub const E2BIG : c_int = 7;
-            pub const ENOEXEC : c_int = 8;
-            pub const EBADF : c_int = 9;
-            pub const ECHILD : c_int = 10;
-            pub const EAGAIN : c_int = 11;
-            pub const ENOMEM : c_int = 12;
-            pub const EACCES : c_int = 13;
-            pub const EFAULT : c_int = 14;
-            pub const ENOTBLK : c_int = 15;
-            pub const EBUSY : c_int = 16;
-            pub const EEXIST : c_int = 17;
-            pub const EXDEV : c_int = 18;
-            pub const ENODEV : c_int = 19;
-            pub const ENOTDIR : c_int = 20;
-            pub const EISDIR : c_int = 21;
-            pub const EINVAL : c_int = 22;
-            pub const ENFILE : c_int = 23;
-            pub const EMFILE : c_int = 24;
-            pub const ENOTTY : c_int = 25;
-            pub const ETXTBSY : c_int = 26;
-            pub const EFBIG : c_int = 27;
-            pub const ENOSPC : c_int = 28;
-            pub const ESPIPE : c_int = 29;
-            pub const EROFS : c_int = 30;
-            pub const EMLINK : c_int = 31;
-            pub const EPIPE : c_int = 32;
-            pub const EDOM : c_int = 33;
-            pub const ERANGE : c_int = 34;
+            pub const EPERM: c_int = 1;
+            pub const ENOENT: c_int = 2;
+            pub const ESRCH: c_int = 3;
+            pub const EINTR: c_int = 4;
+            pub const EIO: c_int = 5;
+            pub const ENXIO: c_int = 6;
+            pub const E2BIG: c_int = 7;
+            pub const ENOEXEC: c_int = 8;
+            pub const EBADF: c_int = 9;
+            pub const ECHILD: c_int = 10;
+            pub const EAGAIN: c_int = 11;
+            pub const ENOMEM: c_int = 12;
+            pub const EACCES: c_int = 13;
+            pub const EFAULT: c_int = 14;
+            pub const ENOTBLK: c_int = 15;
+            pub const EBUSY: c_int = 16;
+            pub const EEXIST: c_int = 17;
+            pub const EXDEV: c_int = 18;
+            pub const ENODEV: c_int = 19;
+            pub const ENOTDIR: c_int = 20;
+            pub const EISDIR: c_int = 21;
+            pub const EINVAL: c_int = 22;
+            pub const ENFILE: c_int = 23;
+            pub const EMFILE: c_int = 24;
+            pub const ENOTTY: c_int = 25;
+            pub const ETXTBSY: c_int = 26;
+            pub const EFBIG: c_int = 27;
+            pub const ENOSPC: c_int = 28;
+            pub const ESPIPE: c_int = 29;
+            pub const EROFS: c_int = 30;
+            pub const EMLINK: c_int = 31;
+            pub const EPIPE: c_int = 32;
+            pub const EDOM: c_int = 33;
+            pub const ERANGE: c_int = 34;
 
             pub const EDEADLK: c_int = 35;
             pub const ENAMETOOLONG: c_int = 36;
@@ -3260,114 +3444,114 @@ pub mod consts {
             use types::common::c95::c_void;
             use types::os::arch::posix88::mode_t;
 
-            pub const O_RDONLY : c_int = 0;
-            pub const O_WRONLY : c_int = 1;
-            pub const O_RDWR : c_int = 2;
-            pub const O_APPEND : c_int = 8;
-            pub const O_CREAT : c_int = 256;
-            pub const O_EXCL : c_int = 1024;
-            pub const O_NOCTTY : c_int = 2048;
-            pub const O_TRUNC : c_int = 512;
-            pub const S_IFIFO : mode_t = 4096;
-            pub const S_IFCHR : mode_t = 8192;
-            pub const S_IFBLK : mode_t = 24576;
-            pub const S_IFDIR : mode_t = 16384;
-            pub const S_IFREG : mode_t = 32768;
-            pub const S_IFLNK : mode_t = 40960;
-            pub const S_IFSOCK : mode_t = 49152;
-            pub const S_IFMT : mode_t = 61440;
-            pub const S_IEXEC : mode_t = 64;
-            pub const S_IWRITE : mode_t = 128;
-            pub const S_IREAD : mode_t = 256;
-            pub const S_IRWXU : mode_t = 448;
-            pub const S_IXUSR : mode_t = 64;
-            pub const S_IWUSR : mode_t = 128;
-            pub const S_IRUSR : mode_t = 256;
-            pub const S_IRWXG : mode_t = 56;
-            pub const S_IXGRP : mode_t = 8;
-            pub const S_IWGRP : mode_t = 16;
-            pub const S_IRGRP : mode_t = 32;
-            pub const S_IRWXO : mode_t = 7;
-            pub const S_IXOTH : mode_t = 1;
-            pub const S_IWOTH : mode_t = 2;
-            pub const S_IROTH : mode_t = 4;
-            pub const F_OK : c_int = 0;
-            pub const R_OK : c_int = 4;
-            pub const W_OK : c_int = 2;
-            pub const X_OK : c_int = 1;
-            pub const STDIN_FILENO : c_int = 0;
-            pub const STDOUT_FILENO : c_int = 1;
-            pub const STDERR_FILENO : c_int = 2;
-            pub const F_LOCK : c_int = 1;
-            pub const F_TEST : c_int = 3;
-            pub const F_TLOCK : c_int = 2;
-            pub const F_ULOCK : c_int = 0;
-            pub const SIGHUP : c_int = 1;
-            pub const SIGINT : c_int = 2;
-            pub const SIGQUIT : c_int = 3;
-            pub const SIGILL : c_int = 4;
-            pub const SIGABRT : c_int = 6;
-            pub const SIGFPE : c_int = 8;
-            pub const SIGKILL : c_int = 9;
-            pub const SIGSEGV : c_int = 11;
-            pub const SIGPIPE : c_int = 13;
-            pub const SIGALRM : c_int = 14;
-            pub const SIGTERM : c_int = 15;
+            pub const O_RDONLY: c_int = 0;
+            pub const O_WRONLY: c_int = 1;
+            pub const O_RDWR: c_int = 2;
+            pub const O_APPEND: c_int = 8;
+            pub const O_CREAT: c_int = 256;
+            pub const O_EXCL: c_int = 1024;
+            pub const O_NOCTTY: c_int = 2048;
+            pub const O_TRUNC: c_int = 512;
+            pub const S_IFIFO: mode_t = 4096;
+            pub const S_IFCHR: mode_t = 8192;
+            pub const S_IFBLK: mode_t = 24576;
+            pub const S_IFDIR: mode_t = 16384;
+            pub const S_IFREG: mode_t = 32768;
+            pub const S_IFLNK: mode_t = 40960;
+            pub const S_IFSOCK: mode_t = 49152;
+            pub const S_IFMT: mode_t = 61440;
+            pub const S_IEXEC: mode_t = 64;
+            pub const S_IWRITE: mode_t = 128;
+            pub const S_IREAD: mode_t = 256;
+            pub const S_IRWXU: mode_t = 448;
+            pub const S_IXUSR: mode_t = 64;
+            pub const S_IWUSR: mode_t = 128;
+            pub const S_IRUSR: mode_t = 256;
+            pub const S_IRWXG: mode_t = 56;
+            pub const S_IXGRP: mode_t = 8;
+            pub const S_IWGRP: mode_t = 16;
+            pub const S_IRGRP: mode_t = 32;
+            pub const S_IRWXO: mode_t = 7;
+            pub const S_IXOTH: mode_t = 1;
+            pub const S_IWOTH: mode_t = 2;
+            pub const S_IROTH: mode_t = 4;
+            pub const F_OK: c_int = 0;
+            pub const R_OK: c_int = 4;
+            pub const W_OK: c_int = 2;
+            pub const X_OK: c_int = 1;
+            pub const STDIN_FILENO: c_int = 0;
+            pub const STDOUT_FILENO: c_int = 1;
+            pub const STDERR_FILENO: c_int = 2;
+            pub const F_LOCK: c_int = 1;
+            pub const F_TEST: c_int = 3;
+            pub const F_TLOCK: c_int = 2;
+            pub const F_ULOCK: c_int = 0;
+            pub const SIGHUP: c_int = 1;
+            pub const SIGINT: c_int = 2;
+            pub const SIGQUIT: c_int = 3;
+            pub const SIGILL: c_int = 4;
+            pub const SIGABRT: c_int = 6;
+            pub const SIGFPE: c_int = 8;
+            pub const SIGKILL: c_int = 9;
+            pub const SIGSEGV: c_int = 11;
+            pub const SIGPIPE: c_int = 13;
+            pub const SIGALRM: c_int = 14;
+            pub const SIGTERM: c_int = 15;
 
-            pub const PROT_NONE : c_int = 0;
-            pub const PROT_READ : c_int = 1;
-            pub const PROT_WRITE : c_int = 2;
-            pub const PROT_EXEC : c_int = 4;
+            pub const PROT_NONE: c_int = 0;
+            pub const PROT_READ: c_int = 1;
+            pub const PROT_WRITE: c_int = 2;
+            pub const PROT_EXEC: c_int = 4;
 
-            pub const MAP_FILE : c_int = 0x0000;
-            pub const MAP_SHARED : c_int = 0x0001;
-            pub const MAP_PRIVATE : c_int = 0x0002;
-            pub const MAP_FIXED : c_int = 0x0010;
-            pub const MAP_ANON : c_int = 0x0800;
+            pub const MAP_FILE: c_int = 0x0000;
+            pub const MAP_SHARED: c_int = 0x0001;
+            pub const MAP_PRIVATE: c_int = 0x0002;
+            pub const MAP_FIXED: c_int = 0x0010;
+            pub const MAP_ANON: c_int = 0x0800;
 
-            pub const MAP_FAILED : *mut c_void = !0 as *mut c_void;
+            pub const MAP_FAILED: *mut c_void = !0 as *mut c_void;
 
-            pub const MCL_CURRENT : c_int = 0x0001;
-            pub const MCL_FUTURE : c_int = 0x0002;
+            pub const MCL_CURRENT: c_int = 0x0001;
+            pub const MCL_FUTURE: c_int = 0x0002;
 
-            pub const MS_ASYNC : c_int = 0x0001;
-            pub const MS_INVALIDATE : c_int = 0x0002;
-            pub const MS_SYNC : c_int = 0x0004;
+            pub const MS_ASYNC: c_int = 0x0001;
+            pub const MS_INVALIDATE: c_int = 0x0002;
+            pub const MS_SYNC: c_int = 0x0004;
 
-            pub const EPERM : c_int = 1;
-            pub const ENOENT : c_int = 2;
-            pub const ESRCH : c_int = 3;
-            pub const EINTR : c_int = 4;
-            pub const EIO : c_int = 5;
-            pub const ENXIO : c_int = 6;
-            pub const E2BIG : c_int = 7;
-            pub const ENOEXEC : c_int = 8;
-            pub const EBADF : c_int = 9;
-            pub const ECHILD : c_int = 10;
-            pub const EAGAIN : c_int = 11;
-            pub const ENOMEM : c_int = 12;
-            pub const EACCES : c_int = 13;
-            pub const EFAULT : c_int = 14;
-            pub const ENOTBLK : c_int = 15;
-            pub const EBUSY : c_int = 16;
-            pub const EEXIST : c_int = 17;
-            pub const EXDEV : c_int = 18;
-            pub const ENODEV : c_int = 19;
-            pub const ENOTDIR : c_int = 20;
-            pub const EISDIR : c_int = 21;
-            pub const EINVAL : c_int = 22;
-            pub const ENFILE : c_int = 23;
-            pub const EMFILE : c_int = 24;
-            pub const ENOTTY : c_int = 25;
-            pub const ETXTBSY : c_int = 26;
-            pub const EFBIG : c_int = 27;
-            pub const ENOSPC : c_int = 28;
-            pub const ESPIPE : c_int = 29;
-            pub const EROFS : c_int = 30;
-            pub const EMLINK : c_int = 31;
-            pub const EPIPE : c_int = 32;
-            pub const EDOM : c_int = 33;
-            pub const ERANGE : c_int = 34;
+            pub const EPERM: c_int = 1;
+            pub const ENOENT: c_int = 2;
+            pub const ESRCH: c_int = 3;
+            pub const EINTR: c_int = 4;
+            pub const EIO: c_int = 5;
+            pub const ENXIO: c_int = 6;
+            pub const E2BIG: c_int = 7;
+            pub const ENOEXEC: c_int = 8;
+            pub const EBADF: c_int = 9;
+            pub const ECHILD: c_int = 10;
+            pub const EAGAIN: c_int = 11;
+            pub const ENOMEM: c_int = 12;
+            pub const EACCES: c_int = 13;
+            pub const EFAULT: c_int = 14;
+            pub const ENOTBLK: c_int = 15;
+            pub const EBUSY: c_int = 16;
+            pub const EEXIST: c_int = 17;
+            pub const EXDEV: c_int = 18;
+            pub const ENODEV: c_int = 19;
+            pub const ENOTDIR: c_int = 20;
+            pub const EISDIR: c_int = 21;
+            pub const EINVAL: c_int = 22;
+            pub const ENFILE: c_int = 23;
+            pub const EMFILE: c_int = 24;
+            pub const ENOTTY: c_int = 25;
+            pub const ETXTBSY: c_int = 26;
+            pub const EFBIG: c_int = 27;
+            pub const ENOSPC: c_int = 28;
+            pub const ESPIPE: c_int = 29;
+            pub const EROFS: c_int = 30;
+            pub const EMLINK: c_int = 31;
+            pub const EPIPE: c_int = 32;
+            pub const EDOM: c_int = 33;
+            pub const ERANGE: c_int = 34;
 
             pub const ENOMSG: c_int = 35;
             pub const EIDRM: c_int = 36;
@@ -3479,63 +3663,63 @@ pub mod consts {
             use types::os::arch::c95::{c_int, size_t};
             use types::os::common::posix01::rlim_t;
 
-            pub const F_DUPFD : c_int = 0;
-            pub const F_GETFD : c_int = 1;
-            pub const F_SETFD : c_int = 2;
-            pub const F_GETFL : c_int = 3;
-            pub const F_SETFL : c_int = 4;
+            pub const F_DUPFD: c_int = 0;
+            pub const F_GETFD: c_int = 1;
+            pub const F_SETFD: c_int = 2;
+            pub const F_GETFL: c_int = 3;
+            pub const F_SETFL: c_int = 4;
 
-            pub const O_ACCMODE : c_int = 3;
+            pub const O_ACCMODE: c_int = 3;
 
-            pub const SIGTRAP : c_int = 5;
+            pub const SIGTRAP: c_int = 5;
             pub const SIG_IGN: size_t = 1;
 
-            pub const GLOB_ERR      : c_int = 1 << 0;
-            pub const GLOB_MARK     : c_int = 1 << 1;
-            pub const GLOB_NOSORT   : c_int = 1 << 2;
-            pub const GLOB_DOOFFS   : c_int = 1 << 3;
-            pub const GLOB_NOCHECK  : c_int = 1 << 4;
-            pub const GLOB_APPEND   : c_int = 1 << 5;
-            pub const GLOB_NOESCAPE : c_int = 1 << 6;
+            pub const GLOB_ERR: c_int = 1 << 0;
+            pub const GLOB_MARK: c_int = 1 << 1;
+            pub const GLOB_NOSORT: c_int = 1 << 2;
+            pub const GLOB_DOOFFS: c_int = 1 << 3;
+            pub const GLOB_NOCHECK: c_int = 1 << 4;
+            pub const GLOB_APPEND: c_int = 1 << 5;
+            pub const GLOB_NOESCAPE: c_int = 1 << 6;
 
-            pub const GLOB_NOSPACE  : c_int = 1;
-            pub const GLOB_ABORTED  : c_int = 2;
-            pub const GLOB_NOMATCH  : c_int = 3;
+            pub const GLOB_NOSPACE: c_int = 1;
+            pub const GLOB_ABORTED: c_int = 2;
+            pub const GLOB_NOMATCH: c_int = 3;
 
-            pub const POSIX_MADV_NORMAL : c_int = 0;
-            pub const POSIX_MADV_RANDOM : c_int = 1;
-            pub const POSIX_MADV_SEQUENTIAL : c_int = 2;
-            pub const POSIX_MADV_WILLNEED : c_int = 3;
-            pub const POSIX_MADV_DONTNEED : c_int = 4;
+            pub const POSIX_MADV_NORMAL: c_int = 0;
+            pub const POSIX_MADV_RANDOM: c_int = 1;
+            pub const POSIX_MADV_SEQUENTIAL: c_int = 2;
+            pub const POSIX_MADV_WILLNEED: c_int = 3;
+            pub const POSIX_MADV_DONTNEED: c_int = 4;
 
-            pub const _SC_MQ_PRIO_MAX : c_int = 28;
-            pub const _SC_IOV_MAX : c_int = 60;
-            pub const _SC_GETGR_R_SIZE_MAX : c_int = 69;
-            pub const _SC_GETPW_R_SIZE_MAX : c_int = 70;
-            pub const _SC_LOGIN_NAME_MAX : c_int = 71;
-            pub const _SC_TTY_NAME_MAX : c_int = 72;
-            pub const _SC_THREADS : c_int = 67;
-            pub const _SC_THREAD_SAFE_FUNCTIONS : c_int = 68;
-            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS : c_int = 73;
-            pub const _SC_THREAD_KEYS_MAX : c_int = 74;
-            pub const _SC_THREAD_STACK_MIN : c_int = 75;
-            pub const _SC_THREAD_THREADS_MAX : c_int = 76;
-            pub const _SC_THREAD_ATTR_STACKADDR : c_int = 77;
-            pub const _SC_THREAD_ATTR_STACKSIZE : c_int = 78;
-            pub const _SC_THREAD_PRIORITY_SCHEDULING : c_int = 79;
-            pub const _SC_THREAD_PRIO_INHERIT : c_int = 80;
-            pub const _SC_THREAD_PRIO_PROTECT : c_int = 81;
-            pub const _SC_THREAD_PROCESS_SHARED : c_int = 82;
-            pub const _SC_ATEXIT_MAX : c_int = 87;
-            pub const _SC_XOPEN_VERSION : c_int = 89;
-            pub const _SC_XOPEN_XCU_VERSION : c_int = 90;
-            pub const _SC_XOPEN_UNIX : c_int = 91;
-            pub const _SC_XOPEN_CRYPT : c_int = 92;
-            pub const _SC_XOPEN_ENH_I18N : c_int = 93;
-            pub const _SC_XOPEN_SHM : c_int = 94;
-            pub const _SC_XOPEN_LEGACY : c_int = 129;
-            pub const _SC_XOPEN_REALTIME : c_int = 130;
-            pub const _SC_XOPEN_REALTIME_THREADS : c_int = 131;
+            pub const _SC_MQ_PRIO_MAX: c_int = 28;
+            pub const _SC_IOV_MAX: c_int = 60;
+            pub const _SC_GETGR_R_SIZE_MAX: c_int = 69;
+            pub const _SC_GETPW_R_SIZE_MAX: c_int = 70;
+            pub const _SC_LOGIN_NAME_MAX: c_int = 71;
+            pub const _SC_TTY_NAME_MAX: c_int = 72;
+            pub const _SC_THREADS: c_int = 67;
+            pub const _SC_THREAD_SAFE_FUNCTIONS: c_int = 68;
+            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS: c_int = 73;
+            pub const _SC_THREAD_KEYS_MAX: c_int = 74;
+            pub const _SC_THREAD_STACK_MIN: c_int = 75;
+            pub const _SC_THREAD_THREADS_MAX: c_int = 76;
+            pub const _SC_THREAD_ATTR_STACKADDR: c_int = 77;
+            pub const _SC_THREAD_ATTR_STACKSIZE: c_int = 78;
+            pub const _SC_THREAD_PRIORITY_SCHEDULING: c_int = 79;
+            pub const _SC_THREAD_PRIO_INHERIT: c_int = 80;
+            pub const _SC_THREAD_PRIO_PROTECT: c_int = 81;
+            pub const _SC_THREAD_PROCESS_SHARED: c_int = 82;
+            pub const _SC_ATEXIT_MAX: c_int = 87;
+            pub const _SC_XOPEN_VERSION: c_int = 89;
+            pub const _SC_XOPEN_XCU_VERSION: c_int = 90;
+            pub const _SC_XOPEN_UNIX: c_int = 91;
+            pub const _SC_XOPEN_CRYPT: c_int = 92;
+            pub const _SC_XOPEN_ENH_I18N: c_int = 93;
+            pub const _SC_XOPEN_SHM: c_int = 94;
+            pub const _SC_XOPEN_LEGACY: c_int = 129;
+            pub const _SC_XOPEN_REALTIME: c_int = 130;
+            pub const _SC_XOPEN_REALTIME_THREADS: c_int = 131;
 
 
 
@@ -3591,61 +3775,61 @@ pub mod consts {
             use types::os::arch::c95::{c_int, size_t};
             use types::os::common::posix01::rlim_t;
 
-            pub const F_DUPFD : c_int = 0;
-            pub const F_GETFD : c_int = 1;
-            pub const F_SETFD : c_int = 2;
-            pub const F_GETFL : c_int = 3;
-            pub const F_SETFL : c_int = 4;
+            pub const F_DUPFD: c_int = 0;
+            pub const F_GETFD: c_int = 1;
+            pub const F_SETFD: c_int = 2;
+            pub const F_GETFL: c_int = 3;
+            pub const F_SETFL: c_int = 4;
 
-            pub const SIGTRAP : c_int = 5;
+            pub const SIGTRAP: c_int = 5;
             pub const SIG_IGN: size_t = 1;
 
-            pub const GLOB_ERR      : c_int = 1 << 0;
-            pub const GLOB_MARK     : c_int = 1 << 1;
-            pub const GLOB_NOSORT   : c_int = 1 << 2;
-            pub const GLOB_DOOFFS   : c_int = 1 << 3;
-            pub const GLOB_NOCHECK  : c_int = 1 << 4;
-            pub const GLOB_APPEND   : c_int = 1 << 5;
-            pub const GLOB_NOESCAPE : c_int = 1 << 6;
+            pub const GLOB_ERR: c_int = 1 << 0;
+            pub const GLOB_MARK: c_int = 1 << 1;
+            pub const GLOB_NOSORT: c_int = 1 << 2;
+            pub const GLOB_DOOFFS: c_int = 1 << 3;
+            pub const GLOB_NOCHECK: c_int = 1 << 4;
+            pub const GLOB_APPEND: c_int = 1 << 5;
+            pub const GLOB_NOESCAPE: c_int = 1 << 6;
 
-            pub const GLOB_NOSPACE  : c_int = 1;
-            pub const GLOB_ABORTED  : c_int = 2;
-            pub const GLOB_NOMATCH  : c_int = 3;
+            pub const GLOB_NOSPACE: c_int = 1;
+            pub const GLOB_ABORTED: c_int = 2;
+            pub const GLOB_NOMATCH: c_int = 3;
 
-            pub const POSIX_MADV_NORMAL : c_int = 0;
-            pub const POSIX_MADV_RANDOM : c_int = 1;
-            pub const POSIX_MADV_SEQUENTIAL : c_int = 2;
-            pub const POSIX_MADV_WILLNEED : c_int = 3;
-            pub const POSIX_MADV_DONTNEED : c_int = 4;
+            pub const POSIX_MADV_NORMAL: c_int = 0;
+            pub const POSIX_MADV_RANDOM: c_int = 1;
+            pub const POSIX_MADV_SEQUENTIAL: c_int = 2;
+            pub const POSIX_MADV_WILLNEED: c_int = 3;
+            pub const POSIX_MADV_DONTNEED: c_int = 4;
 
-            pub const _SC_MQ_PRIO_MAX : c_int = 28;
-            pub const _SC_IOV_MAX : c_int = 60;
-            pub const _SC_GETGR_R_SIZE_MAX : c_int = 69;
-            pub const _SC_GETPW_R_SIZE_MAX : c_int = 70;
-            pub const _SC_LOGIN_NAME_MAX : c_int = 71;
-            pub const _SC_TTY_NAME_MAX : c_int = 72;
-            pub const _SC_THREADS : c_int = 67;
-            pub const _SC_THREAD_SAFE_FUNCTIONS : c_int = 68;
-            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS : c_int = 73;
-            pub const _SC_THREAD_KEYS_MAX : c_int = 74;
-            pub const _SC_THREAD_STACK_MIN : c_int = 75;
-            pub const _SC_THREAD_THREADS_MAX : c_int = 76;
-            pub const _SC_THREAD_ATTR_STACKADDR : c_int = 77;
-            pub const _SC_THREAD_ATTR_STACKSIZE : c_int = 78;
-            pub const _SC_THREAD_PRIORITY_SCHEDULING : c_int = 79;
-            pub const _SC_THREAD_PRIO_INHERIT : c_int = 80;
-            pub const _SC_THREAD_PRIO_PROTECT : c_int = 81;
-            pub const _SC_THREAD_PROCESS_SHARED : c_int = 82;
-            pub const _SC_ATEXIT_MAX : c_int = 87;
-            pub const _SC_XOPEN_VERSION : c_int = 89;
-            pub const _SC_XOPEN_XCU_VERSION : c_int = 90;
-            pub const _SC_XOPEN_UNIX : c_int = 91;
-            pub const _SC_XOPEN_CRYPT : c_int = 92;
-            pub const _SC_XOPEN_ENH_I18N : c_int = 93;
-            pub const _SC_XOPEN_SHM : c_int = 94;
-            pub const _SC_XOPEN_LEGACY : c_int = 129;
-            pub const _SC_XOPEN_REALTIME : c_int = 130;
-            pub const _SC_XOPEN_REALTIME_THREADS : c_int = 131;
+            pub const _SC_MQ_PRIO_MAX: c_int = 28;
+            pub const _SC_IOV_MAX: c_int = 60;
+            pub const _SC_GETGR_R_SIZE_MAX: c_int = 69;
+            pub const _SC_GETPW_R_SIZE_MAX: c_int = 70;
+            pub const _SC_LOGIN_NAME_MAX: c_int = 71;
+            pub const _SC_TTY_NAME_MAX: c_int = 72;
+            pub const _SC_THREADS: c_int = 67;
+            pub const _SC_THREAD_SAFE_FUNCTIONS: c_int = 68;
+            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS: c_int = 73;
+            pub const _SC_THREAD_KEYS_MAX: c_int = 74;
+            pub const _SC_THREAD_STACK_MIN: c_int = 75;
+            pub const _SC_THREAD_THREADS_MAX: c_int = 76;
+            pub const _SC_THREAD_ATTR_STACKADDR: c_int = 77;
+            pub const _SC_THREAD_ATTR_STACKSIZE: c_int = 78;
+            pub const _SC_THREAD_PRIORITY_SCHEDULING: c_int = 79;
+            pub const _SC_THREAD_PRIO_INHERIT: c_int = 80;
+            pub const _SC_THREAD_PRIO_PROTECT: c_int = 81;
+            pub const _SC_THREAD_PROCESS_SHARED: c_int = 82;
+            pub const _SC_ATEXIT_MAX: c_int = 87;
+            pub const _SC_XOPEN_VERSION: c_int = 89;
+            pub const _SC_XOPEN_XCU_VERSION: c_int = 90;
+            pub const _SC_XOPEN_UNIX: c_int = 91;
+            pub const _SC_XOPEN_CRYPT: c_int = 92;
+            pub const _SC_XOPEN_ENH_I18N: c_int = 93;
+            pub const _SC_XOPEN_SHM: c_int = 94;
+            pub const _SC_XOPEN_LEGACY: c_int = 129;
+            pub const _SC_XOPEN_REALTIME: c_int = 130;
+            pub const _SC_XOPEN_REALTIME_THREADS: c_int = 131;
 
             pub const PTHREAD_CREATE_JOINABLE: c_int = 1;
             pub const PTHREAD_CREATE_DETACHED: c_int = 0;
@@ -3695,17 +3879,17 @@ pub mod consts {
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
 
-            pub const MADV_NORMAL : c_int = 0;
-            pub const MADV_RANDOM : c_int = 1;
-            pub const MADV_SEQUENTIAL : c_int = 2;
-            pub const MADV_WILLNEED : c_int = 3;
-            pub const MADV_DONTNEED : c_int = 4;
-            pub const MADV_REMOVE : c_int = 9;
-            pub const MADV_DONTFORK : c_int = 10;
-            pub const MADV_DOFORK : c_int = 11;
-            pub const MADV_MERGEABLE : c_int = 12;
-            pub const MADV_UNMERGEABLE : c_int = 13;
-            pub const MADV_HWPOISON : c_int = 100;
+            pub const MADV_NORMAL: c_int = 0;
+            pub const MADV_RANDOM: c_int = 1;
+            pub const MADV_SEQUENTIAL: c_int = 2;
+            pub const MADV_WILLNEED: c_int = 3;
+            pub const MADV_DONTNEED: c_int = 4;
+            pub const MADV_REMOVE: c_int = 9;
+            pub const MADV_DONTFORK: c_int = 10;
+            pub const MADV_DOFORK: c_int = 11;
+            pub const MADV_MERGEABLE: c_int = 12;
+            pub const MADV_UNMERGEABLE: c_int = 13;
+            pub const MADV_HWPOISON: c_int = 100;
 
             pub const IFF_LOOPBACK: c_int = 0x8;
 
@@ -3786,17 +3970,17 @@ pub mod consts {
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
 
-            pub const MADV_NORMAL : c_int = 0;
-            pub const MADV_RANDOM : c_int = 1;
-            pub const MADV_SEQUENTIAL : c_int = 2;
-            pub const MADV_WILLNEED : c_int = 3;
-            pub const MADV_DONTNEED : c_int = 4;
-            pub const MADV_REMOVE : c_int = 9;
-            pub const MADV_DONTFORK : c_int = 10;
-            pub const MADV_DOFORK : c_int = 11;
-            pub const MADV_MERGEABLE : c_int = 12;
-            pub const MADV_UNMERGEABLE : c_int = 13;
-            pub const MADV_HWPOISON : c_int = 100;
+            pub const MADV_NORMAL: c_int = 0;
+            pub const MADV_RANDOM: c_int = 1;
+            pub const MADV_SEQUENTIAL: c_int = 2;
+            pub const MADV_WILLNEED: c_int = 3;
+            pub const MADV_DONTNEED: c_int = 4;
+            pub const MADV_REMOVE: c_int = 9;
+            pub const MADV_DONTFORK: c_int = 10;
+            pub const MADV_DOFORK: c_int = 11;
+            pub const MADV_MERGEABLE: c_int = 12;
+            pub const MADV_UNMERGEABLE: c_int = 13;
+            pub const MADV_HWPOISON: c_int = 100;
 
             pub const AF_UNIX: c_int = 1;
             pub const AF_INET: c_int = 2;
@@ -3879,28 +4063,28 @@ pub mod consts {
         pub mod extra {
             use types::os::arch::c95::c_int;
 
-            pub const AF_PACKET : c_int = 17;
-            pub const IPPROTO_RAW : c_int = 255;
+            pub const AF_PACKET: c_int = 17;
+            pub const IPPROTO_RAW: c_int = 255;
 
-            pub const O_RSYNC : c_int = 1052672;
-            pub const O_DSYNC : c_int = 4096;
-            pub const O_NONBLOCK : c_int = 2048;
-            pub const O_SYNC : c_int = 1052672;
+            pub const O_RSYNC: c_int = 1052672;
+            pub const O_DSYNC: c_int = 4096;
+            pub const O_NONBLOCK: c_int = 2048;
+            pub const O_SYNC: c_int = 1052672;
 
-            pub const PROT_GROWSDOWN : c_int = 0x010000000;
-            pub const PROT_GROWSUP : c_int = 0x020000000;
+            pub const PROT_GROWSDOWN: c_int = 0x010000000;
+            pub const PROT_GROWSUP: c_int = 0x020000000;
 
-            pub const MAP_TYPE : c_int = 0x000f;
-            pub const MAP_ANONYMOUS : c_int = 0x0020;
-            pub const MAP_32BIT : c_int = 0x0040;
-            pub const MAP_GROWSDOWN : c_int = 0x0100;
-            pub const MAP_DENYWRITE : c_int = 0x0800;
-            pub const MAP_EXECUTABLE : c_int = 0x01000;
-            pub const MAP_LOCKED : c_int = 0x02000;
-            pub const MAP_NORESERVE : c_int = 0x04000;
-            pub const MAP_POPULATE : c_int = 0x08000;
-            pub const MAP_NONBLOCK : c_int = 0x010000;
-            pub const MAP_STACK : c_int = 0x020000;
+            pub const MAP_TYPE: c_int = 0x000f;
+            pub const MAP_ANONYMOUS: c_int = 0x0020;
+            pub const MAP_32BIT: c_int = 0x0040;
+            pub const MAP_GROWSDOWN: c_int = 0x0100;
+            pub const MAP_DENYWRITE: c_int = 0x0800;
+            pub const MAP_EXECUTABLE: c_int = 0x01000;
+            pub const MAP_LOCKED: c_int = 0x02000;
+            pub const MAP_NORESERVE: c_int = 0x04000;
+            pub const MAP_POPULATE: c_int = 0x08000;
+            pub const MAP_NONBLOCK: c_int = 0x010000;
+            pub const MAP_STACK: c_int = 0x020000;
 
             pub const PATH_MAX: c_int = 4096;
         }
@@ -3909,27 +4093,27 @@ pub mod consts {
         pub mod extra {
             use types::os::arch::c95::c_int;
 
-            pub const AF_PACKET : c_int = 17;
-            pub const IPPROTO_RAW : c_int = 255;
+            pub const AF_PACKET: c_int = 17;
+            pub const IPPROTO_RAW: c_int = 255;
 
-            pub const O_RSYNC : c_int = 16400;
-            pub const O_DSYNC : c_int = 16;
-            pub const O_NONBLOCK : c_int = 128;
-            pub const O_SYNC : c_int = 16400;
+            pub const O_RSYNC: c_int = 16400;
+            pub const O_DSYNC: c_int = 16;
+            pub const O_NONBLOCK: c_int = 128;
+            pub const O_SYNC: c_int = 16400;
 
-            pub const PROT_GROWSDOWN : c_int = 0x01000000;
-            pub const PROT_GROWSUP : c_int = 0x02000000;
+            pub const PROT_GROWSDOWN: c_int = 0x01000000;
+            pub const PROT_GROWSUP: c_int = 0x02000000;
 
-            pub const MAP_TYPE : c_int = 0x000f;
-            pub const MAP_ANONYMOUS : c_int = 0x0800;
-            pub const MAP_GROWSDOWN : c_int = 0x01000;
-            pub const MAP_DENYWRITE : c_int = 0x02000;
-            pub const MAP_EXECUTABLE : c_int = 0x04000;
-            pub const MAP_LOCKED : c_int = 0x08000;
-            pub const MAP_NORESERVE : c_int = 0x0400;
-            pub const MAP_POPULATE : c_int = 0x010000;
-            pub const MAP_NONBLOCK : c_int = 0x020000;
-            pub const MAP_STACK : c_int = 0x040000;
+            pub const MAP_TYPE: c_int = 0x000f;
+            pub const MAP_ANONYMOUS: c_int = 0x0800;
+            pub const MAP_GROWSDOWN: c_int = 0x01000;
+            pub const MAP_DENYWRITE: c_int = 0x02000;
+            pub const MAP_EXECUTABLE: c_int = 0x04000;
+            pub const MAP_LOCKED: c_int = 0x08000;
+            pub const MAP_NORESERVE: c_int = 0x0400;
+            pub const MAP_POPULATE: c_int = 0x010000;
+            pub const MAP_NONBLOCK: c_int = 0x020000;
+            pub const MAP_STACK: c_int = 0x040000;
 
             pub const PATH_MAX: c_int = 4096;
         }
@@ -3937,63 +4121,63 @@ pub mod consts {
         pub mod sysconf {
             use types::os::arch::c95::c_int;
 
-            pub const _SC_ARG_MAX : c_int = 0;
-            pub const _SC_CHILD_MAX : c_int = 1;
-            pub const _SC_CLK_TCK : c_int = 2;
-            pub const _SC_NGROUPS_MAX : c_int = 3;
-            pub const _SC_OPEN_MAX : c_int = 4;
-            pub const _SC_STREAM_MAX : c_int = 5;
-            pub const _SC_TZNAME_MAX : c_int = 6;
-            pub const _SC_JOB_CONTROL : c_int = 7;
-            pub const _SC_SAVED_IDS : c_int = 8;
-            pub const _SC_REALTIME_SIGNALS : c_int = 9;
-            pub const _SC_PRIORITY_SCHEDULING : c_int = 10;
-            pub const _SC_TIMERS : c_int = 11;
-            pub const _SC_ASYNCHRONOUS_IO : c_int = 12;
-            pub const _SC_PRIORITIZED_IO : c_int = 13;
-            pub const _SC_SYNCHRONIZED_IO : c_int = 14;
-            pub const _SC_FSYNC : c_int = 15;
-            pub const _SC_MAPPED_FILES : c_int = 16;
-            pub const _SC_MEMLOCK : c_int = 17;
-            pub const _SC_MEMLOCK_RANGE : c_int = 18;
-            pub const _SC_MEMORY_PROTECTION : c_int = 19;
-            pub const _SC_MESSAGE_PASSING : c_int = 20;
-            pub const _SC_SEMAPHORES : c_int = 21;
-            pub const _SC_SHARED_MEMORY_OBJECTS : c_int = 22;
-            pub const _SC_AIO_LISTIO_MAX : c_int = 23;
-            pub const _SC_AIO_MAX : c_int = 24;
-            pub const _SC_AIO_PRIO_DELTA_MAX : c_int = 25;
-            pub const _SC_DELAYTIMER_MAX : c_int = 26;
-            pub const _SC_MQ_OPEN_MAX : c_int = 27;
-            pub const _SC_VERSION : c_int = 29;
-            pub const _SC_PAGESIZE : c_int = 30;
-            pub const _SC_RTSIG_MAX : c_int = 31;
-            pub const _SC_SEM_NSEMS_MAX : c_int = 32;
-            pub const _SC_SEM_VALUE_MAX : c_int = 33;
-            pub const _SC_SIGQUEUE_MAX : c_int = 34;
-            pub const _SC_TIMER_MAX : c_int = 35;
-            pub const _SC_BC_BASE_MAX : c_int = 36;
-            pub const _SC_BC_DIM_MAX : c_int = 37;
-            pub const _SC_BC_SCALE_MAX : c_int = 38;
-            pub const _SC_BC_STRING_MAX : c_int = 39;
-            pub const _SC_COLL_WEIGHTS_MAX : c_int = 40;
-            pub const _SC_EXPR_NEST_MAX : c_int = 42;
-            pub const _SC_LINE_MAX : c_int = 43;
-            pub const _SC_RE_DUP_MAX : c_int = 44;
-            pub const _SC_2_VERSION : c_int = 46;
-            pub const _SC_2_C_BIND : c_int = 47;
-            pub const _SC_2_C_DEV : c_int = 48;
-            pub const _SC_2_FORT_DEV : c_int = 49;
-            pub const _SC_2_FORT_RUN : c_int = 50;
-            pub const _SC_2_SW_DEV : c_int = 51;
-            pub const _SC_2_LOCALEDEF : c_int = 52;
-            pub const _SC_NPROCESSORS_ONLN : c_int = 84;
-            pub const _SC_2_CHAR_TERM : c_int = 95;
-            pub const _SC_2_C_VERSION : c_int = 96;
-            pub const _SC_2_UPE : c_int = 97;
-            pub const _SC_XBS5_ILP32_OFF32 : c_int = 125;
-            pub const _SC_XBS5_ILP32_OFFBIG : c_int = 126;
-            pub const _SC_XBS5_LPBIG_OFFBIG : c_int = 128;
+            pub const _SC_ARG_MAX: c_int = 0;
+            pub const _SC_CHILD_MAX: c_int = 1;
+            pub const _SC_CLK_TCK: c_int = 2;
+            pub const _SC_NGROUPS_MAX: c_int = 3;
+            pub const _SC_OPEN_MAX: c_int = 4;
+            pub const _SC_STREAM_MAX: c_int = 5;
+            pub const _SC_TZNAME_MAX: c_int = 6;
+            pub const _SC_JOB_CONTROL: c_int = 7;
+            pub const _SC_SAVED_IDS: c_int = 8;
+            pub const _SC_REALTIME_SIGNALS: c_int = 9;
+            pub const _SC_PRIORITY_SCHEDULING: c_int = 10;
+            pub const _SC_TIMERS: c_int = 11;
+            pub const _SC_ASYNCHRONOUS_IO: c_int = 12;
+            pub const _SC_PRIORITIZED_IO: c_int = 13;
+            pub const _SC_SYNCHRONIZED_IO: c_int = 14;
+            pub const _SC_FSYNC: c_int = 15;
+            pub const _SC_MAPPED_FILES: c_int = 16;
+            pub const _SC_MEMLOCK: c_int = 17;
+            pub const _SC_MEMLOCK_RANGE: c_int = 18;
+            pub const _SC_MEMORY_PROTECTION: c_int = 19;
+            pub const _SC_MESSAGE_PASSING: c_int = 20;
+            pub const _SC_SEMAPHORES: c_int = 21;
+            pub const _SC_SHARED_MEMORY_OBJECTS: c_int = 22;
+            pub const _SC_AIO_LISTIO_MAX: c_int = 23;
+            pub const _SC_AIO_MAX: c_int = 24;
+            pub const _SC_AIO_PRIO_DELTA_MAX: c_int = 25;
+            pub const _SC_DELAYTIMER_MAX: c_int = 26;
+            pub const _SC_MQ_OPEN_MAX: c_int = 27;
+            pub const _SC_VERSION: c_int = 29;
+            pub const _SC_PAGESIZE: c_int = 30;
+            pub const _SC_RTSIG_MAX: c_int = 31;
+            pub const _SC_SEM_NSEMS_MAX: c_int = 32;
+            pub const _SC_SEM_VALUE_MAX: c_int = 33;
+            pub const _SC_SIGQUEUE_MAX: c_int = 34;
+            pub const _SC_TIMER_MAX: c_int = 35;
+            pub const _SC_BC_BASE_MAX: c_int = 36;
+            pub const _SC_BC_DIM_MAX: c_int = 37;
+            pub const _SC_BC_SCALE_MAX: c_int = 38;
+            pub const _SC_BC_STRING_MAX: c_int = 39;
+            pub const _SC_COLL_WEIGHTS_MAX: c_int = 40;
+            pub const _SC_EXPR_NEST_MAX: c_int = 42;
+            pub const _SC_LINE_MAX: c_int = 43;
+            pub const _SC_RE_DUP_MAX: c_int = 44;
+            pub const _SC_2_VERSION: c_int = 46;
+            pub const _SC_2_C_BIND: c_int = 47;
+            pub const _SC_2_C_DEV: c_int = 48;
+            pub const _SC_2_FORT_DEV: c_int = 49;
+            pub const _SC_2_FORT_RUN: c_int = 50;
+            pub const _SC_2_SW_DEV: c_int = 51;
+            pub const _SC_2_LOCALEDEF: c_int = 52;
+            pub const _SC_NPROCESSORS_ONLN: c_int = 84;
+            pub const _SC_2_CHAR_TERM: c_int = 95;
+            pub const _SC_2_C_VERSION: c_int = 96;
+            pub const _SC_2_UPE: c_int = 97;
+            pub const _SC_XBS5_ILP32_OFF32: c_int = 125;
+            pub const _SC_XBS5_ILP32_OFFBIG: c_int = 126;
+            pub const _SC_XBS5_LPBIG_OFFBIG: c_int = 128;
 
             pub const _PC_NAME_MAX: c_int = 3;
             pub const _PC_PATH_MAX: c_int = 4;
@@ -4002,9 +4186,9 @@ pub mod consts {
         pub mod sysconf {
             use types::os::arch::c95::c_int;
 
-            pub static _SC_SENDMSG_MAX_SIZE : c_int = 0;
-            pub static _SC_NPROCESSORS_ONLN : c_int = 1;
-            pub static _SC_PAGESIZE : c_int = 2;
+            pub static _SC_SENDMSG_MAX_SIZE: c_int = 0;
+            pub static _SC_NPROCESSORS_ONLN: c_int = 1;
+            pub static _SC_PAGESIZE: c_int = 2;
 
             pub const _PC_NAME_MAX: c_int = 3;
             pub const _PC_PATH_MAX: c_int = 4;
@@ -4014,35 +4198,35 @@ pub mod consts {
         pub mod sysconf {
             use types::os::arch::c95::c_int;
 
-            pub const _SC_ARG_MAX : c_int = 0;
-            pub const _SC_BC_BASE_MAX : c_int = 1;
-            pub const _SC_BC_DIM_MAX : c_int = 2;
-            pub const _SC_BC_SCALE_MAX : c_int = 3;
-            pub const _SC_BC_STRING_MAX : c_int = 4;
-            pub const _SC_CHILD_MAX : c_int = 5;
-            pub const _SC_CLK_TCK : c_int = 6;
-            pub const _SC_COLL_WEIGHTS_MAX : c_int = 7;
-            pub const _SC_EXPR_NEST_MAX : c_int = 8;
-            pub const _SC_LINE_MAX : c_int = 9;
-            pub const _SC_NGROUPS_MAX : c_int = 10;
-            pub const _SC_OPEN_MAX : c_int = 11;
-            pub const _SC_2_C_BIND : c_int = 13;
-            pub const _SC_2_C_DEV : c_int = 14;
-            pub const _SC_2_C_VERSION : c_int = 15;
-            pub const _SC_2_CHAR_TERM : c_int = 16;
-            pub const _SC_2_FORT_DEV : c_int = 17;
-            pub const _SC_2_FORT_RUN : c_int = 18;
-            pub const _SC_2_LOCALEDEF : c_int = 19;
-            pub const _SC_2_SW_DEV : c_int = 20;
-            pub const _SC_2_UPE : c_int = 21;
-            pub const _SC_2_VERSION : c_int = 22;
-            pub const _SC_JOB_CONTROL : c_int = 23;
-            pub const _SC_SAVED_IDS : c_int = 24;
-            pub const _SC_VERSION : c_int = 25;
-            pub const _SC_RE_DUP_MAX : c_int = 26;
-            pub const _SC_STREAM_MAX : c_int = 27;
-            pub const _SC_TZNAME_MAX : c_int = 28;
-            pub const _SC_PAGESIZE : c_int = 39;
+            pub const _SC_ARG_MAX: c_int = 0;
+            pub const _SC_BC_BASE_MAX: c_int = 1;
+            pub const _SC_BC_DIM_MAX: c_int = 2;
+            pub const _SC_BC_SCALE_MAX: c_int = 3;
+            pub const _SC_BC_STRING_MAX: c_int = 4;
+            pub const _SC_CHILD_MAX: c_int = 5;
+            pub const _SC_CLK_TCK: c_int = 6;
+            pub const _SC_COLL_WEIGHTS_MAX: c_int = 7;
+            pub const _SC_EXPR_NEST_MAX: c_int = 8;
+            pub const _SC_LINE_MAX: c_int = 9;
+            pub const _SC_NGROUPS_MAX: c_int = 10;
+            pub const _SC_OPEN_MAX: c_int = 11;
+            pub const _SC_2_C_BIND: c_int = 13;
+            pub const _SC_2_C_DEV: c_int = 14;
+            pub const _SC_2_C_VERSION: c_int = 15;
+            pub const _SC_2_CHAR_TERM: c_int = 16;
+            pub const _SC_2_FORT_DEV: c_int = 17;
+            pub const _SC_2_FORT_RUN: c_int = 18;
+            pub const _SC_2_LOCALEDEF: c_int = 19;
+            pub const _SC_2_SW_DEV: c_int = 20;
+            pub const _SC_2_UPE: c_int = 21;
+            pub const _SC_2_VERSION: c_int = 22;
+            pub const _SC_JOB_CONTROL: c_int = 23;
+            pub const _SC_SAVED_IDS: c_int = 24;
+            pub const _SC_VERSION: c_int = 25;
+            pub const _SC_RE_DUP_MAX: c_int = 26;
+            pub const _SC_STREAM_MAX: c_int = 27;
+            pub const _SC_TZNAME_MAX: c_int = 28;
+            pub const _SC_PAGESIZE: c_int = 39;
 
             pub const _PC_NAME_MAX: c_int = 4;
             pub const _PC_PATH_MAX: c_int = 5;
@@ -4055,21 +4239,21 @@ pub mod consts {
         pub mod c95 {
             use types::os::arch::c95::{c_int, c_uint};
 
-            pub const EXIT_FAILURE : c_int = 1;
-            pub const EXIT_SUCCESS : c_int = 0;
-            pub const RAND_MAX : c_int = 2147483647;
-            pub const EOF : c_int = -1;
-            pub const SEEK_SET : c_int = 0;
-            pub const SEEK_CUR : c_int = 1;
-            pub const SEEK_END : c_int = 2;
-            pub const _IOFBF : c_int = 0;
-            pub const _IONBF : c_int = 2;
-            pub const _IOLBF : c_int = 1;
-            pub const BUFSIZ : c_uint = 1024;
-            pub const FOPEN_MAX : c_uint = 20;
-            pub const FILENAME_MAX : c_uint = 1024;
-            pub const L_tmpnam : c_uint = 1024;
-            pub const TMP_MAX : c_uint = 308915776;
+            pub const EXIT_FAILURE: c_int = 1;
+            pub const EXIT_SUCCESS: c_int = 0;
+            pub const RAND_MAX: c_int = 2147483647;
+            pub const EOF: c_int = -1;
+            pub const SEEK_SET: c_int = 0;
+            pub const SEEK_CUR: c_int = 1;
+            pub const SEEK_END: c_int = 2;
+            pub const _IOFBF: c_int = 0;
+            pub const _IONBF: c_int = 2;
+            pub const _IOLBF: c_int = 1;
+            pub const BUFSIZ: c_uint = 1024;
+            pub const FOPEN_MAX: c_uint = 20;
+            pub const FILENAME_MAX: c_uint = 1024;
+            pub const L_tmpnam: c_uint = 1024;
+            pub const TMP_MAX: c_uint = 308915776;
         }
         pub mod c99 {
         }
@@ -4078,241 +4262,241 @@ pub mod consts {
             use types::os::arch::c95::c_int;
             use types::os::arch::posix88::mode_t;
 
-            pub const O_RDONLY : c_int = 0;
-            pub const O_WRONLY : c_int = 1;
-            pub const O_RDWR : c_int = 2;
-            pub const O_APPEND : c_int = 8;
-            pub const O_CREAT : c_int = 512;
-            pub const O_EXCL : c_int = 2048;
-            pub const O_NOCTTY : c_int = 32768;
-            pub const O_TRUNC : c_int = 1024;
-            pub const S_IFIFO : mode_t = 4096;
-            pub const S_IFCHR : mode_t = 8192;
-            pub const S_IFBLK : mode_t = 24576;
-            pub const S_IFDIR : mode_t = 16384;
-            pub const S_IFREG : mode_t = 32768;
-            pub const S_IFLNK : mode_t = 40960;
-            pub const S_IFSOCK : mode_t = 49152;
-            pub const S_IFMT : mode_t = 61440;
-            pub const S_IEXEC : mode_t = 64;
-            pub const S_IWRITE : mode_t = 128;
-            pub const S_IREAD : mode_t = 256;
-            pub const S_IRWXU : mode_t = 448;
-            pub const S_IXUSR : mode_t = 64;
-            pub const S_IWUSR : mode_t = 128;
-            pub const S_IRUSR : mode_t = 256;
-            pub const S_IRWXG : mode_t = 56;
-            pub const S_IXGRP : mode_t = 8;
-            pub const S_IWGRP : mode_t = 16;
-            pub const S_IRGRP : mode_t = 32;
-            pub const S_IRWXO : mode_t = 7;
-            pub const S_IXOTH : mode_t = 1;
-            pub const S_IWOTH : mode_t = 2;
-            pub const S_IROTH : mode_t = 4;
-            pub const F_OK : c_int = 0;
-            pub const R_OK : c_int = 4;
-            pub const W_OK : c_int = 2;
-            pub const X_OK : c_int = 1;
-            pub const STDIN_FILENO : c_int = 0;
-            pub const STDOUT_FILENO : c_int = 1;
-            pub const STDERR_FILENO : c_int = 2;
-            pub const F_LOCK : c_int = 1;
-            pub const F_TEST : c_int = 3;
-            pub const F_TLOCK : c_int = 2;
-            pub const F_ULOCK : c_int = 0;
-            pub const SIGHUP : c_int = 1;
-            pub const SIGINT : c_int = 2;
-            pub const SIGQUIT : c_int = 3;
-            pub const SIGILL : c_int = 4;
-            pub const SIGABRT : c_int = 6;
-            pub const SIGFPE : c_int = 8;
-            pub const SIGKILL : c_int = 9;
-            pub const SIGSEGV : c_int = 11;
-            pub const SIGPIPE : c_int = 13;
-            pub const SIGALRM : c_int = 14;
-            pub const SIGTERM : c_int = 15;
+            pub const O_RDONLY: c_int = 0;
+            pub const O_WRONLY: c_int = 1;
+            pub const O_RDWR: c_int = 2;
+            pub const O_APPEND: c_int = 8;
+            pub const O_CREAT: c_int = 512;
+            pub const O_EXCL: c_int = 2048;
+            pub const O_NOCTTY: c_int = 32768;
+            pub const O_TRUNC: c_int = 1024;
+            pub const S_IFIFO: mode_t = 4096;
+            pub const S_IFCHR: mode_t = 8192;
+            pub const S_IFBLK: mode_t = 24576;
+            pub const S_IFDIR: mode_t = 16384;
+            pub const S_IFREG: mode_t = 32768;
+            pub const S_IFLNK: mode_t = 40960;
+            pub const S_IFSOCK: mode_t = 49152;
+            pub const S_IFMT: mode_t = 61440;
+            pub const S_IEXEC: mode_t = 64;
+            pub const S_IWRITE: mode_t = 128;
+            pub const S_IREAD: mode_t = 256;
+            pub const S_IRWXU: mode_t = 448;
+            pub const S_IXUSR: mode_t = 64;
+            pub const S_IWUSR: mode_t = 128;
+            pub const S_IRUSR: mode_t = 256;
+            pub const S_IRWXG: mode_t = 56;
+            pub const S_IXGRP: mode_t = 8;
+            pub const S_IWGRP: mode_t = 16;
+            pub const S_IRGRP: mode_t = 32;
+            pub const S_IRWXO: mode_t = 7;
+            pub const S_IXOTH: mode_t = 1;
+            pub const S_IWOTH: mode_t = 2;
+            pub const S_IROTH: mode_t = 4;
+            pub const F_OK: c_int = 0;
+            pub const R_OK: c_int = 4;
+            pub const W_OK: c_int = 2;
+            pub const X_OK: c_int = 1;
+            pub const STDIN_FILENO: c_int = 0;
+            pub const STDOUT_FILENO: c_int = 1;
+            pub const STDERR_FILENO: c_int = 2;
+            pub const F_LOCK: c_int = 1;
+            pub const F_TEST: c_int = 3;
+            pub const F_TLOCK: c_int = 2;
+            pub const F_ULOCK: c_int = 0;
+            pub const SIGHUP: c_int = 1;
+            pub const SIGINT: c_int = 2;
+            pub const SIGQUIT: c_int = 3;
+            pub const SIGILL: c_int = 4;
+            pub const SIGABRT: c_int = 6;
+            pub const SIGFPE: c_int = 8;
+            pub const SIGKILL: c_int = 9;
+            pub const SIGSEGV: c_int = 11;
+            pub const SIGPIPE: c_int = 13;
+            pub const SIGALRM: c_int = 14;
+            pub const SIGTERM: c_int = 15;
 
-            pub const PROT_NONE : c_int = 0;
-            pub const PROT_READ : c_int = 1;
-            pub const PROT_WRITE : c_int = 2;
-            pub const PROT_EXEC : c_int = 4;
+            pub const PROT_NONE: c_int = 0;
+            pub const PROT_READ: c_int = 1;
+            pub const PROT_WRITE: c_int = 2;
+            pub const PROT_EXEC: c_int = 4;
 
-            pub const MAP_FILE : c_int = 0x0000;
-            pub const MAP_SHARED : c_int = 0x0001;
-            pub const MAP_PRIVATE : c_int = 0x0002;
-            pub const MAP_FIXED : c_int = 0x0010;
-            pub const MAP_ANON : c_int = 0x1000;
+            pub const MAP_FILE: c_int = 0x0000;
+            pub const MAP_SHARED: c_int = 0x0001;
+            pub const MAP_PRIVATE: c_int = 0x0002;
+            pub const MAP_FIXED: c_int = 0x0010;
+            pub const MAP_ANON: c_int = 0x1000;
 
-            pub const MAP_FAILED : *mut c_void = !0 as *mut c_void;
+            pub const MAP_FAILED: *mut c_void = !0 as *mut c_void;
 
-            pub const MCL_CURRENT : c_int = 0x0001;
-            pub const MCL_FUTURE : c_int = 0x0002;
+            pub const MCL_CURRENT: c_int = 0x0001;
+            pub const MCL_FUTURE: c_int = 0x0002;
 
-            pub const MS_SYNC : c_int = 0x0000;
-            pub const MS_ASYNC : c_int = 0x0001;
-            pub const MS_INVALIDATE : c_int = 0x0002;
+            pub const MS_SYNC: c_int = 0x0000;
+            pub const MS_ASYNC: c_int = 0x0001;
+            pub const MS_INVALIDATE: c_int = 0x0002;
 
-            pub const EPERM : c_int = 1;
-            pub const ENOENT : c_int = 2;
-            pub const ESRCH : c_int = 3;
-            pub const EINTR : c_int = 4;
-            pub const EIO : c_int = 5;
-            pub const ENXIO : c_int = 6;
-            pub const E2BIG : c_int = 7;
-            pub const ENOEXEC : c_int = 8;
-            pub const EBADF : c_int = 9;
-            pub const ECHILD : c_int = 10;
-            pub const EDEADLK : c_int = 11;
-            pub const ENOMEM : c_int = 12;
-            pub const EACCES : c_int = 13;
-            pub const EFAULT : c_int = 14;
-            pub const ENOTBLK : c_int = 15;
-            pub const EBUSY : c_int = 16;
-            pub const EEXIST : c_int = 17;
-            pub const EXDEV : c_int = 18;
-            pub const ENODEV : c_int = 19;
-            pub const ENOTDIR : c_int = 20;
-            pub const EISDIR : c_int = 21;
-            pub const EINVAL : c_int = 22;
-            pub const ENFILE : c_int = 23;
-            pub const EMFILE : c_int = 24;
-            pub const ENOTTY : c_int = 25;
-            pub const ETXTBSY : c_int = 26;
-            pub const EFBIG : c_int = 27;
-            pub const ENOSPC : c_int = 28;
-            pub const ESPIPE : c_int = 29;
-            pub const EROFS : c_int = 30;
-            pub const EMLINK : c_int = 31;
-            pub const EPIPE : c_int = 32;
-            pub const EDOM : c_int = 33;
-            pub const ERANGE : c_int = 34;
-            pub const EAGAIN : c_int = 35;
-            pub const EWOULDBLOCK : c_int = 35;
-            pub const EINPROGRESS : c_int = 36;
-            pub const EALREADY : c_int = 37;
-            pub const ENOTSOCK : c_int = 38;
-            pub const EDESTADDRREQ : c_int = 39;
-            pub const EMSGSIZE : c_int = 40;
-            pub const EPROTOTYPE : c_int = 41;
-            pub const ENOPROTOOPT : c_int = 42;
-            pub const EPROTONOSUPPORT : c_int = 43;
-            pub const ESOCKTNOSUPPORT : c_int = 44;
-            pub const EOPNOTSUPP : c_int = 45;
-            pub const EPFNOSUPPORT : c_int = 46;
-            pub const EAFNOSUPPORT : c_int = 47;
-            pub const EADDRINUSE : c_int = 48;
-            pub const EADDRNOTAVAIL : c_int = 49;
-            pub const ENETDOWN : c_int = 50;
-            pub const ENETUNREACH : c_int = 51;
-            pub const ENETRESET : c_int = 52;
-            pub const ECONNABORTED : c_int = 53;
-            pub const ECONNRESET : c_int = 54;
-            pub const ENOBUFS : c_int = 55;
-            pub const EISCONN : c_int = 56;
-            pub const ENOTCONN : c_int = 57;
-            pub const ESHUTDOWN : c_int = 58;
-            pub const ETOOMANYREFS : c_int = 59;
-            pub const ETIMEDOUT : c_int = 60;
-            pub const ECONNREFUSED : c_int = 61;
-            pub const ELOOP : c_int = 62;
-            pub const ENAMETOOLONG : c_int = 63;
-            pub const EHOSTDOWN : c_int = 64;
-            pub const EHOSTUNREACH : c_int = 65;
-            pub const ENOTEMPTY : c_int = 66;
-            pub const EPROCLIM : c_int = 67;
-            pub const EUSERS : c_int = 68;
-            pub const EDQUOT : c_int = 69;
-            pub const ESTALE : c_int = 70;
-            pub const EREMOTE : c_int = 71;
-            pub const EBADRPC : c_int = 72;
-            pub const ERPCMISMATCH : c_int = 73;
-            pub const EPROGUNAVAIL : c_int = 74;
-            pub const EPROGMISMATCH : c_int = 75;
-            pub const EPROCUNAVAIL : c_int = 76;
-            pub const ENOLCK : c_int = 77;
-            pub const ENOSYS : c_int = 78;
-            pub const EFTYPE : c_int = 79;
-            pub const EAUTH : c_int = 80;
-            pub const ENEEDAUTH : c_int = 81;
-            pub const EIDRM : c_int = 82;
-            pub const ENOMSG : c_int = 83;
-            pub const EOVERFLOW : c_int = 84;
-            pub const ECANCELED : c_int = 85;
-            pub const EILSEQ : c_int = 86;
-            pub const ENOATTR : c_int = 87;
-            pub const EDOOFUS : c_int = 88;
-            pub const EBADMSG : c_int = 89;
-            pub const EMULTIHOP : c_int = 90;
-            pub const ENOLINK : c_int = 91;
-            pub const EPROTO : c_int = 92;
-            pub const ENOMEDIUM : c_int = 93;
-            pub const EUNUSED94 : c_int = 94;
-            pub const EUNUSED95 : c_int = 95;
-            pub const EUNUSED96 : c_int = 96;
-            pub const EUNUSED97 : c_int = 97;
-            pub const EUNUSED98 : c_int = 98;
-            pub const EASYNC : c_int = 99;
-            pub const ELAST : c_int = 99;
+            pub const EPERM: c_int = 1;
+            pub const ENOENT: c_int = 2;
+            pub const ESRCH: c_int = 3;
+            pub const EINTR: c_int = 4;
+            pub const EIO: c_int = 5;
+            pub const ENXIO: c_int = 6;
+            pub const E2BIG: c_int = 7;
+            pub const ENOEXEC: c_int = 8;
+            pub const EBADF: c_int = 9;
+            pub const ECHILD: c_int = 10;
+            pub const EDEADLK: c_int = 11;
+            pub const ENOMEM: c_int = 12;
+            pub const EACCES: c_int = 13;
+            pub const EFAULT: c_int = 14;
+            pub const ENOTBLK: c_int = 15;
+            pub const EBUSY: c_int = 16;
+            pub const EEXIST: c_int = 17;
+            pub const EXDEV: c_int = 18;
+            pub const ENODEV: c_int = 19;
+            pub const ENOTDIR: c_int = 20;
+            pub const EISDIR: c_int = 21;
+            pub const EINVAL: c_int = 22;
+            pub const ENFILE: c_int = 23;
+            pub const EMFILE: c_int = 24;
+            pub const ENOTTY: c_int = 25;
+            pub const ETXTBSY: c_int = 26;
+            pub const EFBIG: c_int = 27;
+            pub const ENOSPC: c_int = 28;
+            pub const ESPIPE: c_int = 29;
+            pub const EROFS: c_int = 30;
+            pub const EMLINK: c_int = 31;
+            pub const EPIPE: c_int = 32;
+            pub const EDOM: c_int = 33;
+            pub const ERANGE: c_int = 34;
+            pub const EAGAIN: c_int = 35;
+            pub const EWOULDBLOCK: c_int = 35;
+            pub const EINPROGRESS: c_int = 36;
+            pub const EALREADY: c_int = 37;
+            pub const ENOTSOCK: c_int = 38;
+            pub const EDESTADDRREQ: c_int = 39;
+            pub const EMSGSIZE: c_int = 40;
+            pub const EPROTOTYPE: c_int = 41;
+            pub const ENOPROTOOPT: c_int = 42;
+            pub const EPROTONOSUPPORT: c_int = 43;
+            pub const ESOCKTNOSUPPORT: c_int = 44;
+            pub const EOPNOTSUPP: c_int = 45;
+            pub const EPFNOSUPPORT: c_int = 46;
+            pub const EAFNOSUPPORT: c_int = 47;
+            pub const EADDRINUSE: c_int = 48;
+            pub const EADDRNOTAVAIL: c_int = 49;
+            pub const ENETDOWN: c_int = 50;
+            pub const ENETUNREACH: c_int = 51;
+            pub const ENETRESET: c_int = 52;
+            pub const ECONNABORTED: c_int = 53;
+            pub const ECONNRESET: c_int = 54;
+            pub const ENOBUFS: c_int = 55;
+            pub const EISCONN: c_int = 56;
+            pub const ENOTCONN: c_int = 57;
+            pub const ESHUTDOWN: c_int = 58;
+            pub const ETOOMANYREFS: c_int = 59;
+            pub const ETIMEDOUT: c_int = 60;
+            pub const ECONNREFUSED: c_int = 61;
+            pub const ELOOP: c_int = 62;
+            pub const ENAMETOOLONG: c_int = 63;
+            pub const EHOSTDOWN: c_int = 64;
+            pub const EHOSTUNREACH: c_int = 65;
+            pub const ENOTEMPTY: c_int = 66;
+            pub const EPROCLIM: c_int = 67;
+            pub const EUSERS: c_int = 68;
+            pub const EDQUOT: c_int = 69;
+            pub const ESTALE: c_int = 70;
+            pub const EREMOTE: c_int = 71;
+            pub const EBADRPC: c_int = 72;
+            pub const ERPCMISMATCH: c_int = 73;
+            pub const EPROGUNAVAIL: c_int = 74;
+            pub const EPROGMISMATCH: c_int = 75;
+            pub const EPROCUNAVAIL: c_int = 76;
+            pub const ENOLCK: c_int = 77;
+            pub const ENOSYS: c_int = 78;
+            pub const EFTYPE: c_int = 79;
+            pub const EAUTH: c_int = 80;
+            pub const ENEEDAUTH: c_int = 81;
+            pub const EIDRM: c_int = 82;
+            pub const ENOMSG: c_int = 83;
+            pub const EOVERFLOW: c_int = 84;
+            pub const ECANCELED: c_int = 85;
+            pub const EILSEQ: c_int = 86;
+            pub const ENOATTR: c_int = 87;
+            pub const EDOOFUS: c_int = 88;
+            pub const EBADMSG: c_int = 89;
+            pub const EMULTIHOP: c_int = 90;
+            pub const ENOLINK: c_int = 91;
+            pub const EPROTO: c_int = 92;
+            pub const ENOMEDIUM: c_int = 93;
+            pub const EUNUSED94: c_int = 94;
+            pub const EUNUSED95: c_int = 95;
+            pub const EUNUSED96: c_int = 96;
+            pub const EUNUSED97: c_int = 97;
+            pub const EUNUSED98: c_int = 98;
+            pub const EASYNC: c_int = 99;
+            pub const ELAST: c_int = 99;
         }
         pub mod posix01 {
             use types::os::arch::c95::{c_int, size_t};
             use types::os::common::posix01::rlim_t;
 
-            pub const F_DUPFD : c_int = 0;
-            pub const F_GETFD : c_int = 1;
-            pub const F_SETFD : c_int = 2;
-            pub const F_GETFL : c_int = 3;
-            pub const F_SETFL : c_int = 4;
+            pub const F_DUPFD: c_int = 0;
+            pub const F_GETFD: c_int = 1;
+            pub const F_SETFD: c_int = 2;
+            pub const F_GETFL: c_int = 3;
+            pub const F_SETFL: c_int = 4;
 
-            pub const SIGTRAP : c_int = 5;
+            pub const SIGTRAP: c_int = 5;
             pub const SIG_IGN: size_t = 1;
 
-            pub const GLOB_APPEND   : c_int = 0x0001;
-            pub const GLOB_DOOFFS   : c_int = 0x0002;
-            pub const GLOB_ERR      : c_int = 0x0004;
-            pub const GLOB_MARK     : c_int = 0x0008;
-            pub const GLOB_NOCHECK  : c_int = 0x0010;
-            pub const GLOB_NOSORT   : c_int = 0x0020;
-            pub const GLOB_NOESCAPE : c_int = 0x2000;
+            pub const GLOB_APPEND: c_int = 0x0001;
+            pub const GLOB_DOOFFS: c_int = 0x0002;
+            pub const GLOB_ERR: c_int = 0x0004;
+            pub const GLOB_MARK: c_int = 0x0008;
+            pub const GLOB_NOCHECK: c_int = 0x0010;
+            pub const GLOB_NOSORT: c_int = 0x0020;
+            pub const GLOB_NOESCAPE: c_int = 0x2000;
 
-            pub const GLOB_NOSPACE  : c_int = -1;
-            pub const GLOB_ABORTED  : c_int = -2;
-            pub const GLOB_NOMATCH  : c_int = -3;
+            pub const GLOB_NOSPACE: c_int = -1;
+            pub const GLOB_ABORTED: c_int = -2;
+            pub const GLOB_NOMATCH: c_int = -3;
 
-            pub const POSIX_MADV_NORMAL : c_int = 0;
-            pub const POSIX_MADV_RANDOM : c_int = 1;
-            pub const POSIX_MADV_SEQUENTIAL : c_int = 2;
-            pub const POSIX_MADV_WILLNEED : c_int = 3;
-            pub const POSIX_MADV_DONTNEED : c_int = 4;
+            pub const POSIX_MADV_NORMAL: c_int = 0;
+            pub const POSIX_MADV_RANDOM: c_int = 1;
+            pub const POSIX_MADV_SEQUENTIAL: c_int = 2;
+            pub const POSIX_MADV_WILLNEED: c_int = 3;
+            pub const POSIX_MADV_DONTNEED: c_int = 4;
 
-            pub const _SC_IOV_MAX : c_int = 56;
-            pub const _SC_GETGR_R_SIZE_MAX : c_int = 70;
-            pub const _SC_GETPW_R_SIZE_MAX : c_int = 71;
-            pub const _SC_LOGIN_NAME_MAX : c_int = 73;
-            pub const _SC_MQ_PRIO_MAX : c_int = 75;
-            pub const _SC_THREAD_ATTR_STACKADDR : c_int = 82;
-            pub const _SC_THREAD_ATTR_STACKSIZE : c_int = 83;
-            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS : c_int = 85;
-            pub const _SC_THREAD_KEYS_MAX : c_int = 86;
-            pub const _SC_THREAD_PRIO_INHERIT : c_int = 87;
-            pub const _SC_THREAD_PRIO_PROTECT : c_int = 88;
-            pub const _SC_THREAD_PRIORITY_SCHEDULING : c_int = 89;
-            pub const _SC_THREAD_PROCESS_SHARED : c_int = 90;
-            pub const _SC_THREAD_SAFE_FUNCTIONS : c_int = 91;
-            pub const _SC_THREAD_STACK_MIN : c_int = 93;
-            pub const _SC_THREAD_THREADS_MAX : c_int = 94;
-            pub const _SC_THREADS : c_int = 96;
-            pub const _SC_TTY_NAME_MAX : c_int = 101;
-            pub const _SC_ATEXIT_MAX : c_int = 107;
-            pub const _SC_XOPEN_CRYPT : c_int = 108;
-            pub const _SC_XOPEN_ENH_I18N : c_int = 109;
-            pub const _SC_XOPEN_LEGACY : c_int = 110;
-            pub const _SC_XOPEN_REALTIME : c_int = 111;
-            pub const _SC_XOPEN_REALTIME_THREADS : c_int = 112;
-            pub const _SC_XOPEN_SHM : c_int = 113;
-            pub const _SC_XOPEN_UNIX : c_int = 115;
-            pub const _SC_XOPEN_VERSION : c_int = 116;
-            pub const _SC_XOPEN_XCU_VERSION : c_int = 117;
+            pub const _SC_IOV_MAX: c_int = 56;
+            pub const _SC_GETGR_R_SIZE_MAX: c_int = 70;
+            pub const _SC_GETPW_R_SIZE_MAX: c_int = 71;
+            pub const _SC_LOGIN_NAME_MAX: c_int = 73;
+            pub const _SC_MQ_PRIO_MAX: c_int = 75;
+            pub const _SC_THREAD_ATTR_STACKADDR: c_int = 82;
+            pub const _SC_THREAD_ATTR_STACKSIZE: c_int = 83;
+            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS: c_int = 85;
+            pub const _SC_THREAD_KEYS_MAX: c_int = 86;
+            pub const _SC_THREAD_PRIO_INHERIT: c_int = 87;
+            pub const _SC_THREAD_PRIO_PROTECT: c_int = 88;
+            pub const _SC_THREAD_PRIORITY_SCHEDULING: c_int = 89;
+            pub const _SC_THREAD_PROCESS_SHARED: c_int = 90;
+            pub const _SC_THREAD_SAFE_FUNCTIONS: c_int = 91;
+            pub const _SC_THREAD_STACK_MIN: c_int = 93;
+            pub const _SC_THREAD_THREADS_MAX: c_int = 94;
+            pub const _SC_THREADS: c_int = 96;
+            pub const _SC_TTY_NAME_MAX: c_int = 101;
+            pub const _SC_ATEXIT_MAX: c_int = 107;
+            pub const _SC_XOPEN_CRYPT: c_int = 108;
+            pub const _SC_XOPEN_ENH_I18N: c_int = 109;
+            pub const _SC_XOPEN_LEGACY: c_int = 110;
+            pub const _SC_XOPEN_REALTIME: c_int = 111;
+            pub const _SC_XOPEN_REALTIME_THREADS: c_int = 112;
+            pub const _SC_XOPEN_SHM: c_int = 113;
+            pub const _SC_XOPEN_UNIX: c_int = 115;
+            pub const _SC_XOPEN_VERSION: c_int = 116;
+            pub const _SC_XOPEN_XCU_VERSION: c_int = 117;
 
             pub const PTHREAD_CREATE_JOINABLE: c_int = 0;
             pub const PTHREAD_CREATE_DETACHED: c_int = 1;
@@ -4371,24 +4555,24 @@ pub mod consts {
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
 
-            pub const MADV_NORMAL : c_int = 0;
-            pub const MADV_RANDOM : c_int = 1;
-            pub const MADV_SEQUENTIAL : c_int = 2;
-            pub const MADV_WILLNEED : c_int = 3;
-            pub const MADV_DONTNEED : c_int = 4;
-            pub const MADV_FREE : c_int = 5;
-            pub const MADV_NOSYNC : c_int = 6;
-            pub const MADV_AUTOSYNC : c_int = 7;
-            pub const MADV_NOCORE : c_int = 8;
-            pub const MADV_CORE : c_int = 9;
-            pub const MADV_PROTECT : c_int = 10;
+            pub const MADV_NORMAL: c_int = 0;
+            pub const MADV_RANDOM: c_int = 1;
+            pub const MADV_SEQUENTIAL: c_int = 2;
+            pub const MADV_WILLNEED: c_int = 3;
+            pub const MADV_DONTNEED: c_int = 4;
+            pub const MADV_FREE: c_int = 5;
+            pub const MADV_NOSYNC: c_int = 6;
+            pub const MADV_AUTOSYNC: c_int = 7;
+            pub const MADV_NOCORE: c_int = 8;
+            pub const MADV_CORE: c_int = 9;
+            pub const MADV_PROTECT: c_int = 10;
 
-            pub const MINCORE_INCORE : c_int =  0x1;
-            pub const MINCORE_REFERENCED : c_int = 0x2;
-            pub const MINCORE_MODIFIED : c_int = 0x4;
-            pub const MINCORE_REFERENCED_OTHER : c_int = 0x8;
-            pub const MINCORE_MODIFIED_OTHER : c_int = 0x10;
-            pub const MINCORE_SUPER : c_int = 0x20;
+            pub const MINCORE_INCORE: c_int = 0x1;
+            pub const MINCORE_REFERENCED: c_int = 0x2;
+            pub const MINCORE_MODIFIED: c_int = 0x4;
+            pub const MINCORE_REFERENCED_OTHER: c_int = 0x8;
+            pub const MINCORE_MODIFIED_OTHER: c_int = 0x10;
+            pub const MINCORE_SUPER: c_int = 0x20;
 
             pub const AF_INET: c_int = 2;
             pub const AF_INET6: c_int = 28;
@@ -4444,8 +4628,8 @@ pub mod consts {
         pub mod extra {
             use types::os::arch::c95::c_int;
 
-            pub const O_SYNC : c_int = 128;
-            pub const O_NONBLOCK : c_int = 4;
+            pub const O_SYNC: c_int = 128;
+            pub const O_NONBLOCK: c_int = 4;
             pub const CTL_KERN: c_int = 1;
             pub const KERN_PROC: c_int = 14;
             #[cfg(target_os = "freebsd")]
@@ -4453,71 +4637,71 @@ pub mod consts {
             #[cfg(target_os = "dragonfly")]
             pub const KERN_PROC_PATHNAME: c_int = 9;
 
-            pub const MAP_COPY : c_int = 0x0002;
-            pub const MAP_RENAME : c_int = 0x0020;
-            pub const MAP_NORESERVE : c_int = 0x0040;
-            pub const MAP_HASSEMAPHORE : c_int = 0x0200;
-            pub const MAP_STACK : c_int = 0x0400;
-            pub const MAP_NOSYNC : c_int = 0x0800;
-            pub const MAP_NOCORE : c_int = 0x020000;
+            pub const MAP_COPY: c_int = 0x0002;
+            pub const MAP_RENAME: c_int = 0x0020;
+            pub const MAP_NORESERVE: c_int = 0x0040;
+            pub const MAP_HASSEMAPHORE: c_int = 0x0200;
+            pub const MAP_STACK: c_int = 0x0400;
+            pub const MAP_NOSYNC: c_int = 0x0800;
+            pub const MAP_NOCORE: c_int = 0x020000;
 
-            pub const IPPROTO_RAW : c_int = 255;
+            pub const IPPROTO_RAW: c_int = 255;
         }
         pub mod sysconf {
             use types::os::arch::c95::c_int;
 
-            pub const _SC_ARG_MAX : c_int = 1;
-            pub const _SC_CHILD_MAX : c_int = 2;
-            pub const _SC_CLK_TCK : c_int = 3;
-            pub const _SC_NGROUPS_MAX : c_int = 4;
-            pub const _SC_OPEN_MAX : c_int = 5;
-            pub const _SC_JOB_CONTROL : c_int = 6;
-            pub const _SC_SAVED_IDS : c_int = 7;
-            pub const _SC_VERSION : c_int = 8;
-            pub const _SC_BC_BASE_MAX : c_int = 9;
-            pub const _SC_BC_DIM_MAX : c_int = 10;
-            pub const _SC_BC_SCALE_MAX : c_int = 11;
-            pub const _SC_BC_STRING_MAX : c_int = 12;
-            pub const _SC_COLL_WEIGHTS_MAX : c_int = 13;
-            pub const _SC_EXPR_NEST_MAX : c_int = 14;
-            pub const _SC_LINE_MAX : c_int = 15;
-            pub const _SC_RE_DUP_MAX : c_int = 16;
-            pub const _SC_2_VERSION : c_int = 17;
-            pub const _SC_2_C_BIND : c_int = 18;
-            pub const _SC_2_C_DEV : c_int = 19;
-            pub const _SC_2_CHAR_TERM : c_int = 20;
-            pub const _SC_2_FORT_DEV : c_int = 21;
-            pub const _SC_2_FORT_RUN : c_int = 22;
-            pub const _SC_2_LOCALEDEF : c_int = 23;
-            pub const _SC_2_SW_DEV : c_int = 24;
-            pub const _SC_2_UPE : c_int = 25;
-            pub const _SC_STREAM_MAX : c_int = 26;
-            pub const _SC_TZNAME_MAX : c_int = 27;
-            pub const _SC_ASYNCHRONOUS_IO : c_int = 28;
-            pub const _SC_MAPPED_FILES : c_int = 29;
-            pub const _SC_MEMLOCK : c_int = 30;
-            pub const _SC_MEMLOCK_RANGE : c_int = 31;
-            pub const _SC_MEMORY_PROTECTION : c_int = 32;
-            pub const _SC_MESSAGE_PASSING : c_int = 33;
-            pub const _SC_PRIORITIZED_IO : c_int = 34;
-            pub const _SC_PRIORITY_SCHEDULING : c_int = 35;
-            pub const _SC_REALTIME_SIGNALS : c_int = 36;
-            pub const _SC_SEMAPHORES : c_int = 37;
-            pub const _SC_FSYNC : c_int = 38;
-            pub const _SC_SHARED_MEMORY_OBJECTS : c_int = 39;
-            pub const _SC_SYNCHRONIZED_IO : c_int = 40;
-            pub const _SC_TIMERS : c_int = 41;
-            pub const _SC_AIO_LISTIO_MAX : c_int = 42;
-            pub const _SC_AIO_MAX : c_int = 43;
-            pub const _SC_AIO_PRIO_DELTA_MAX : c_int = 44;
-            pub const _SC_DELAYTIMER_MAX : c_int = 45;
-            pub const _SC_MQ_OPEN_MAX : c_int = 46;
-            pub const _SC_PAGESIZE : c_int = 47;
-            pub const _SC_RTSIG_MAX : c_int = 48;
-            pub const _SC_SEM_NSEMS_MAX : c_int = 49;
-            pub const _SC_SEM_VALUE_MAX : c_int = 50;
-            pub const _SC_SIGQUEUE_MAX : c_int = 51;
-            pub const _SC_TIMER_MAX : c_int = 52;
+            pub const _SC_ARG_MAX: c_int = 1;
+            pub const _SC_CHILD_MAX: c_int = 2;
+            pub const _SC_CLK_TCK: c_int = 3;
+            pub const _SC_NGROUPS_MAX: c_int = 4;
+            pub const _SC_OPEN_MAX: c_int = 5;
+            pub const _SC_JOB_CONTROL: c_int = 6;
+            pub const _SC_SAVED_IDS: c_int = 7;
+            pub const _SC_VERSION: c_int = 8;
+            pub const _SC_BC_BASE_MAX: c_int = 9;
+            pub const _SC_BC_DIM_MAX: c_int = 10;
+            pub const _SC_BC_SCALE_MAX: c_int = 11;
+            pub const _SC_BC_STRING_MAX: c_int = 12;
+            pub const _SC_COLL_WEIGHTS_MAX: c_int = 13;
+            pub const _SC_EXPR_NEST_MAX: c_int = 14;
+            pub const _SC_LINE_MAX: c_int = 15;
+            pub const _SC_RE_DUP_MAX: c_int = 16;
+            pub const _SC_2_VERSION: c_int = 17;
+            pub const _SC_2_C_BIND: c_int = 18;
+            pub const _SC_2_C_DEV: c_int = 19;
+            pub const _SC_2_CHAR_TERM: c_int = 20;
+            pub const _SC_2_FORT_DEV: c_int = 21;
+            pub const _SC_2_FORT_RUN: c_int = 22;
+            pub const _SC_2_LOCALEDEF: c_int = 23;
+            pub const _SC_2_SW_DEV: c_int = 24;
+            pub const _SC_2_UPE: c_int = 25;
+            pub const _SC_STREAM_MAX: c_int = 26;
+            pub const _SC_TZNAME_MAX: c_int = 27;
+            pub const _SC_ASYNCHRONOUS_IO: c_int = 28;
+            pub const _SC_MAPPED_FILES: c_int = 29;
+            pub const _SC_MEMLOCK: c_int = 30;
+            pub const _SC_MEMLOCK_RANGE: c_int = 31;
+            pub const _SC_MEMORY_PROTECTION: c_int = 32;
+            pub const _SC_MESSAGE_PASSING: c_int = 33;
+            pub const _SC_PRIORITIZED_IO: c_int = 34;
+            pub const _SC_PRIORITY_SCHEDULING: c_int = 35;
+            pub const _SC_REALTIME_SIGNALS: c_int = 36;
+            pub const _SC_SEMAPHORES: c_int = 37;
+            pub const _SC_FSYNC: c_int = 38;
+            pub const _SC_SHARED_MEMORY_OBJECTS: c_int = 39;
+            pub const _SC_SYNCHRONIZED_IO: c_int = 40;
+            pub const _SC_TIMERS: c_int = 41;
+            pub const _SC_AIO_LISTIO_MAX: c_int = 42;
+            pub const _SC_AIO_MAX: c_int = 43;
+            pub const _SC_AIO_PRIO_DELTA_MAX: c_int = 44;
+            pub const _SC_DELAYTIMER_MAX: c_int = 45;
+            pub const _SC_MQ_OPEN_MAX: c_int = 46;
+            pub const _SC_PAGESIZE: c_int = 47;
+            pub const _SC_RTSIG_MAX: c_int = 48;
+            pub const _SC_SEM_NSEMS_MAX: c_int = 49;
+            pub const _SC_SEM_VALUE_MAX: c_int = 50;
+            pub const _SC_SIGQUEUE_MAX: c_int = 51;
+            pub const _SC_TIMER_MAX: c_int = 52;
 
             pub const _PC_NAME_MAX: c_int = 4;
             pub const _PC_PATH_MAX: c_int = 5;
@@ -4529,21 +4713,21 @@ pub mod consts {
         pub mod c95 {
             use types::os::arch::c95::{c_int, c_uint};
 
-            pub const EXIT_FAILURE : c_int = 1;
-            pub const EXIT_SUCCESS : c_int = 0;
-            pub const RAND_MAX : c_int = 2147483647;
-            pub const EOF : c_int = -1;
-            pub const SEEK_SET : c_int = 0;
-            pub const SEEK_CUR : c_int = 1;
-            pub const SEEK_END : c_int = 2;
-            pub const _IOFBF : c_int = 0;
-            pub const _IONBF : c_int = 2;
-            pub const _IOLBF : c_int = 1;
-            pub const BUFSIZ : c_uint = 1024;
-            pub const FOPEN_MAX : c_uint = 20;
-            pub const FILENAME_MAX : c_uint = 1024;
-            pub const L_tmpnam : c_uint = 1024;
-            pub const TMP_MAX : c_uint = 308915776;
+            pub const EXIT_FAILURE: c_int = 1;
+            pub const EXIT_SUCCESS: c_int = 0;
+            pub const RAND_MAX: c_int = 2147483647;
+            pub const EOF: c_int = -1;
+            pub const SEEK_SET: c_int = 0;
+            pub const SEEK_CUR: c_int = 1;
+            pub const SEEK_END: c_int = 2;
+            pub const _IOFBF: c_int = 0;
+            pub const _IONBF: c_int = 2;
+            pub const _IOLBF: c_int = 1;
+            pub const BUFSIZ: c_uint = 1024;
+            pub const FOPEN_MAX: c_uint = 20;
+            pub const FILENAME_MAX: c_uint = 1024;
+            pub const L_tmpnam: c_uint = 1024;
+            pub const TMP_MAX: c_uint = 308915776;
         }
         pub mod c99 {
         }
@@ -4552,245 +4736,245 @@ pub mod consts {
             use types::os::arch::c95::c_int;
             use types::os::arch::posix88::mode_t;
 
-            pub const O_RDONLY : c_int = 0;
-            pub const O_WRONLY : c_int = 1;
-            pub const O_RDWR : c_int = 2;
-            pub const O_APPEND : c_int = 8;
-            pub const O_CREAT : c_int = 512;
-            pub const O_EXCL : c_int = 2048;
-            pub const O_NOCTTY : c_int = 32768;
-            pub const O_TRUNC : c_int = 1024;
-            pub const S_IFIFO : mode_t = 4096;
-            pub const S_IFCHR : mode_t = 8192;
-            pub const S_IFBLK : mode_t = 24576;
-            pub const S_IFDIR : mode_t = 16384;
-            pub const S_IFREG : mode_t = 32768;
-            pub const S_IFLNK : mode_t = 40960;
-            pub const S_IFSOCK : mode_t = 49152;
-            pub const S_IFMT : mode_t = 61440;
-            pub const S_IEXEC : mode_t = 64;
-            pub const S_IWRITE : mode_t = 128;
-            pub const S_IREAD : mode_t = 256;
-            pub const S_IRWXU : mode_t = 448;
-            pub const S_IXUSR : mode_t = 64;
-            pub const S_IWUSR : mode_t = 128;
-            pub const S_IRUSR : mode_t = 256;
-            pub const S_IRWXG : mode_t = 56;
-            pub const S_IXGRP : mode_t = 8;
-            pub const S_IWGRP : mode_t = 16;
-            pub const S_IRGRP : mode_t = 32;
-            pub const S_IRWXO : mode_t = 7;
-            pub const S_IXOTH : mode_t = 1;
-            pub const S_IWOTH : mode_t = 2;
-            pub const S_IROTH : mode_t = 4;
-            pub const F_OK : c_int = 0;
-            pub const R_OK : c_int = 4;
-            pub const W_OK : c_int = 2;
-            pub const X_OK : c_int = 1;
-            pub const STDIN_FILENO : c_int = 0;
-            pub const STDOUT_FILENO : c_int = 1;
-            pub const STDERR_FILENO : c_int = 2;
-            pub const F_LOCK : c_int = 1;
-            pub const F_TEST : c_int = 3;
-            pub const F_TLOCK : c_int = 2;
-            pub const F_ULOCK : c_int = 0;
-            pub const SIGHUP : c_int = 1;
-            pub const SIGINT : c_int = 2;
-            pub const SIGQUIT : c_int = 3;
-            pub const SIGILL : c_int = 4;
-            pub const SIGABRT : c_int = 6;
-            pub const SIGFPE : c_int = 8;
-            pub const SIGKILL : c_int = 9;
-            pub const SIGSEGV : c_int = 11;
-            pub const SIGPIPE : c_int = 13;
-            pub const SIGALRM : c_int = 14;
-            pub const SIGTERM : c_int = 15;
+            pub const O_RDONLY: c_int = 0;
+            pub const O_WRONLY: c_int = 1;
+            pub const O_RDWR: c_int = 2;
+            pub const O_APPEND: c_int = 8;
+            pub const O_CREAT: c_int = 512;
+            pub const O_EXCL: c_int = 2048;
+            pub const O_NOCTTY: c_int = 32768;
+            pub const O_TRUNC: c_int = 1024;
+            pub const S_IFIFO: mode_t = 4096;
+            pub const S_IFCHR: mode_t = 8192;
+            pub const S_IFBLK: mode_t = 24576;
+            pub const S_IFDIR: mode_t = 16384;
+            pub const S_IFREG: mode_t = 32768;
+            pub const S_IFLNK: mode_t = 40960;
+            pub const S_IFSOCK: mode_t = 49152;
+            pub const S_IFMT: mode_t = 61440;
+            pub const S_IEXEC: mode_t = 64;
+            pub const S_IWRITE: mode_t = 128;
+            pub const S_IREAD: mode_t = 256;
+            pub const S_IRWXU: mode_t = 448;
+            pub const S_IXUSR: mode_t = 64;
+            pub const S_IWUSR: mode_t = 128;
+            pub const S_IRUSR: mode_t = 256;
+            pub const S_IRWXG: mode_t = 56;
+            pub const S_IXGRP: mode_t = 8;
+            pub const S_IWGRP: mode_t = 16;
+            pub const S_IRGRP: mode_t = 32;
+            pub const S_IRWXO: mode_t = 7;
+            pub const S_IXOTH: mode_t = 1;
+            pub const S_IWOTH: mode_t = 2;
+            pub const S_IROTH: mode_t = 4;
+            pub const F_OK: c_int = 0;
+            pub const R_OK: c_int = 4;
+            pub const W_OK: c_int = 2;
+            pub const X_OK: c_int = 1;
+            pub const STDIN_FILENO: c_int = 0;
+            pub const STDOUT_FILENO: c_int = 1;
+            pub const STDERR_FILENO: c_int = 2;
+            pub const F_LOCK: c_int = 1;
+            pub const F_TEST: c_int = 3;
+            pub const F_TLOCK: c_int = 2;
+            pub const F_ULOCK: c_int = 0;
+            pub const SIGHUP: c_int = 1;
+            pub const SIGINT: c_int = 2;
+            pub const SIGQUIT: c_int = 3;
+            pub const SIGILL: c_int = 4;
+            pub const SIGABRT: c_int = 6;
+            pub const SIGFPE: c_int = 8;
+            pub const SIGKILL: c_int = 9;
+            pub const SIGSEGV: c_int = 11;
+            pub const SIGPIPE: c_int = 13;
+            pub const SIGALRM: c_int = 14;
+            pub const SIGTERM: c_int = 15;
 
-            pub const PROT_NONE : c_int = 0;
-            pub const PROT_READ : c_int = 1;
-            pub const PROT_WRITE : c_int = 2;
-            pub const PROT_EXEC : c_int = 4;
+            pub const PROT_NONE: c_int = 0;
+            pub const PROT_READ: c_int = 1;
+            pub const PROT_WRITE: c_int = 2;
+            pub const PROT_EXEC: c_int = 4;
 
-            pub const MAP_FILE : c_int = 0x0000;
-            pub const MAP_SHARED : c_int = 0x0001;
-            pub const MAP_PRIVATE : c_int = 0x0002;
-            pub const MAP_FIXED : c_int = 0x0010;
-            pub const MAP_ANON : c_int = 0x1000;
+            pub const MAP_FILE: c_int = 0x0000;
+            pub const MAP_SHARED: c_int = 0x0001;
+            pub const MAP_PRIVATE: c_int = 0x0002;
+            pub const MAP_FIXED: c_int = 0x0010;
+            pub const MAP_ANON: c_int = 0x1000;
 
-            pub const MAP_FAILED : *mut c_void = !0 as *mut c_void;
+            pub const MAP_FAILED: *mut c_void = !0 as *mut c_void;
 
-            pub const MCL_CURRENT : c_int = 0x0001;
-            pub const MCL_FUTURE : c_int = 0x0002;
+            pub const MCL_CURRENT: c_int = 0x0001;
+            pub const MCL_FUTURE: c_int = 0x0002;
 
-            pub const MS_ASYNC : c_int = 0x0001;
-            pub const MS_SYNC : c_int = 0x0002;
-            pub const MS_INVALIDATE : c_int = 0x0004;
+            pub const MS_ASYNC: c_int = 0x0001;
+            pub const MS_SYNC: c_int = 0x0002;
+            pub const MS_INVALIDATE: c_int = 0x0004;
 
-            pub const EPERM : c_int = 1;
-            pub const ENOENT : c_int = 2;
-            pub const ESRCH : c_int = 3;
-            pub const EINTR : c_int = 4;
-            pub const EIO : c_int = 5;
-            pub const ENXIO : c_int = 6;
-            pub const E2BIG : c_int = 7;
-            pub const ENOEXEC : c_int = 8;
-            pub const EBADF : c_int = 9;
-            pub const ECHILD : c_int = 10;
-            pub const EDEADLK : c_int = 11;
-            pub const ENOMEM : c_int = 12;
-            pub const EACCES : c_int = 13;
-            pub const EFAULT : c_int = 14;
-            pub const ENOTBLK : c_int = 15;
-            pub const EBUSY : c_int = 16;
-            pub const EEXIST : c_int = 17;
-            pub const EXDEV : c_int = 18;
-            pub const ENODEV : c_int = 19;
-            pub const ENOTDIR : c_int = 20;
-            pub const EISDIR : c_int = 21;
-            pub const EINVAL : c_int = 22;
-            pub const ENFILE : c_int = 23;
-            pub const EMFILE : c_int = 24;
-            pub const ENOTTY : c_int = 25;
-            pub const ETXTBSY : c_int = 26;
-            pub const EFBIG : c_int = 27;
-            pub const ENOSPC : c_int = 28;
-            pub const ESPIPE : c_int = 29;
-            pub const EROFS : c_int = 30;
-            pub const EMLINK : c_int = 31;
-            pub const EPIPE : c_int = 32;
-            pub const EDOM : c_int = 33;
-            pub const ERANGE : c_int = 34;
-            pub const EAGAIN : c_int = 35;
-            pub const EWOULDBLOCK : c_int = 35;
-            pub const EINPROGRESS : c_int = 36;
-            pub const EALREADY : c_int = 37;
-            pub const ENOTSOCK : c_int = 38;
-            pub const EDESTADDRREQ : c_int = 39;
-            pub const EMSGSIZE : c_int = 40;
-            pub const EPROTOTYPE : c_int = 41;
-            pub const ENOPROTOOPT : c_int = 42;
-            pub const EPROTONOSUPPORT : c_int = 43;
-            pub const ESOCKTNOSUPPORT : c_int = 44;
-            pub const EOPNOTSUPP : c_int = 45;
-            pub const EPFNOSUPPORT : c_int = 46;
-            pub const EAFNOSUPPORT : c_int = 47;
-            pub const EADDRINUSE : c_int = 48;
-            pub const EADDRNOTAVAIL : c_int = 49;
-            pub const ENETDOWN : c_int = 50;
-            pub const ENETUNREACH : c_int = 51;
-            pub const ENETRESET : c_int = 52;
-            pub const ECONNABORTED : c_int = 53;
-            pub const ECONNRESET : c_int = 54;
-            pub const ENOBUFS : c_int = 55;
-            pub const EISCONN : c_int = 56;
-            pub const ENOTCONN : c_int = 57;
-            pub const ESHUTDOWN : c_int = 58;
-            pub const ETOOMANYREFS : c_int = 59;
-            pub const ETIMEDOUT : c_int = 60;
-            pub const ECONNREFUSED : c_int = 61;
-            pub const ELOOP : c_int = 62;
-            pub const ENAMETOOLONG : c_int = 63;
-            pub const EHOSTDOWN : c_int = 64;
-            pub const EHOSTUNREACH : c_int = 65;
-            pub const ENOTEMPTY : c_int = 66;
-            pub const EPROCLIM : c_int = 67;
-            pub const EUSERS : c_int = 68;
-            pub const EDQUOT : c_int = 69;
-            pub const ESTALE : c_int = 70;
-            pub const EREMOTE : c_int = 71;
-            pub const EBADRPC : c_int = 72;
-            pub const ERPCMISMATCH : c_int = 73;
-            pub const EPROGUNAVAIL : c_int = 74;
-            pub const EPROGMISMATCH : c_int = 75;
-            pub const EPROCUNAVAIL : c_int = 76;
-            pub const ENOLCK : c_int = 77;
-            pub const ENOSYS : c_int = 78;
-            pub const EFTYPE : c_int = 79;
-            pub const EAUTH : c_int = 80;
-            pub const ENEEDAUTH : c_int = 81;
-            pub const EIPSEC : c_int = 82;
-            pub const ENOATTR : c_int = 83;
-            pub const EILSEQ : c_int = 84;
-            pub const ENOMEDIUM : c_int = 85;
-            pub const EMEDIUMTYPE : c_int = 86;
-            pub const EOVERFLOW : c_int = 87;
-            pub const ECANCELED : c_int = 88;
-            pub const EIDRM : c_int = 89;
-            pub const ENOMSG : c_int = 90;
-            pub const ENOTSUP : c_int = 91;
-            pub const ELAST : c_int = 91; // must be equal to largest errno
+            pub const EPERM: c_int = 1;
+            pub const ENOENT: c_int = 2;
+            pub const ESRCH: c_int = 3;
+            pub const EINTR: c_int = 4;
+            pub const EIO: c_int = 5;
+            pub const ENXIO: c_int = 6;
+            pub const E2BIG: c_int = 7;
+            pub const ENOEXEC: c_int = 8;
+            pub const EBADF: c_int = 9;
+            pub const ECHILD: c_int = 10;
+            pub const EDEADLK: c_int = 11;
+            pub const ENOMEM: c_int = 12;
+            pub const EACCES: c_int = 13;
+            pub const EFAULT: c_int = 14;
+            pub const ENOTBLK: c_int = 15;
+            pub const EBUSY: c_int = 16;
+            pub const EEXIST: c_int = 17;
+            pub const EXDEV: c_int = 18;
+            pub const ENODEV: c_int = 19;
+            pub const ENOTDIR: c_int = 20;
+            pub const EISDIR: c_int = 21;
+            pub const EINVAL: c_int = 22;
+            pub const ENFILE: c_int = 23;
+            pub const EMFILE: c_int = 24;
+            pub const ENOTTY: c_int = 25;
+            pub const ETXTBSY: c_int = 26;
+            pub const EFBIG: c_int = 27;
+            pub const ENOSPC: c_int = 28;
+            pub const ESPIPE: c_int = 29;
+            pub const EROFS: c_int = 30;
+            pub const EMLINK: c_int = 31;
+            pub const EPIPE: c_int = 32;
+            pub const EDOM: c_int = 33;
+            pub const ERANGE: c_int = 34;
+            pub const EAGAIN: c_int = 35;
+            pub const EWOULDBLOCK: c_int = 35;
+            pub const EINPROGRESS: c_int = 36;
+            pub const EALREADY: c_int = 37;
+            pub const ENOTSOCK: c_int = 38;
+            pub const EDESTADDRREQ: c_int = 39;
+            pub const EMSGSIZE: c_int = 40;
+            pub const EPROTOTYPE: c_int = 41;
+            pub const ENOPROTOOPT: c_int = 42;
+            pub const EPROTONOSUPPORT: c_int = 43;
+            pub const ESOCKTNOSUPPORT: c_int = 44;
+            pub const EOPNOTSUPP: c_int = 45;
+            pub const EPFNOSUPPORT: c_int = 46;
+            pub const EAFNOSUPPORT: c_int = 47;
+            pub const EADDRINUSE: c_int = 48;
+            pub const EADDRNOTAVAIL: c_int = 49;
+            pub const ENETDOWN: c_int = 50;
+            pub const ENETUNREACH: c_int = 51;
+            pub const ENETRESET: c_int = 52;
+            pub const ECONNABORTED: c_int = 53;
+            pub const ECONNRESET: c_int = 54;
+            pub const ENOBUFS: c_int = 55;
+            pub const EISCONN: c_int = 56;
+            pub const ENOTCONN: c_int = 57;
+            pub const ESHUTDOWN: c_int = 58;
+            pub const ETOOMANYREFS: c_int = 59;
+            pub const ETIMEDOUT: c_int = 60;
+            pub const ECONNREFUSED: c_int = 61;
+            pub const ELOOP: c_int = 62;
+            pub const ENAMETOOLONG: c_int = 63;
+            pub const EHOSTDOWN: c_int = 64;
+            pub const EHOSTUNREACH: c_int = 65;
+            pub const ENOTEMPTY: c_int = 66;
+            pub const EPROCLIM: c_int = 67;
+            pub const EUSERS: c_int = 68;
+            pub const EDQUOT: c_int = 69;
+            pub const ESTALE: c_int = 70;
+            pub const EREMOTE: c_int = 71;
+            pub const EBADRPC: c_int = 72;
+            pub const ERPCMISMATCH: c_int = 73;
+            pub const EPROGUNAVAIL: c_int = 74;
+            pub const EPROGMISMATCH: c_int = 75;
+            pub const EPROCUNAVAIL: c_int = 76;
+            pub const ENOLCK: c_int = 77;
+            pub const ENOSYS: c_int = 78;
+            pub const EFTYPE: c_int = 79;
+            pub const EAUTH: c_int = 80;
+            pub const ENEEDAUTH: c_int = 81;
+            pub const EIPSEC: c_int = 82;
+            pub const ENOATTR: c_int = 83;
+            pub const EILSEQ: c_int = 84;
+            pub const ENOMEDIUM: c_int = 85;
+            pub const EMEDIUMTYPE: c_int = 86;
+            pub const EOVERFLOW: c_int = 87;
+            pub const ECANCELED: c_int = 88;
+            pub const EIDRM: c_int = 89;
+            pub const ENOMSG: c_int = 90;
+            pub const ENOTSUP: c_int = 91;
+            pub const ELAST: c_int = 91; // must be equal to largest errno
         }
         pub mod posix01 {
             use types::os::arch::c95::{c_int, size_t};
             use types::os::common::posix01::rlim_t;
 
-            pub const F_DUPFD : c_int = 0;
-            pub const F_GETFD : c_int = 1;
-            pub const F_SETFD : c_int = 2;
-            pub const F_GETFL : c_int = 3;
-            pub const F_SETFL : c_int = 4;
-            pub const F_GETOWN : c_int = 5;
-            pub const F_SETOWN : c_int = 6;
-            pub const F_GETLK : c_int = 7;
-            pub const F_SETLK : c_int = 8;
-            pub const F_SETLKW : c_int = 9;
+            pub const F_DUPFD: c_int = 0;
+            pub const F_GETFD: c_int = 1;
+            pub const F_SETFD: c_int = 2;
+            pub const F_GETFL: c_int = 3;
+            pub const F_SETFL: c_int = 4;
+            pub const F_GETOWN: c_int = 5;
+            pub const F_SETOWN: c_int = 6;
+            pub const F_GETLK: c_int = 7;
+            pub const F_SETLK: c_int = 8;
+            pub const F_SETLKW: c_int = 9;
 
-            pub const SIGTRAP : c_int = 5;
+            pub const SIGTRAP: c_int = 5;
             pub const SIG_IGN: size_t = 1;
 
-            pub const GLOB_APPEND   : c_int = 0x0001;
-            pub const GLOB_DOOFFS   : c_int = 0x0002;
-            pub const GLOB_ERR      : c_int = 0x0004;
-            pub const GLOB_MARK     : c_int = 0x0008;
-            pub const GLOB_NOCHECK  : c_int = 0x0010;
-            pub const GLOB_NOSORT   : c_int = 0x0020;
-            pub const GLOB_NOESCAPE : c_int = 0x1000;
+            pub const GLOB_APPEND: c_int = 0x0001;
+            pub const GLOB_DOOFFS: c_int = 0x0002;
+            pub const GLOB_ERR: c_int = 0x0004;
+            pub const GLOB_MARK: c_int = 0x0008;
+            pub const GLOB_NOCHECK: c_int = 0x0010;
+            pub const GLOB_NOSORT: c_int = 0x0020;
+            pub const GLOB_NOESCAPE: c_int = 0x1000;
 
-            pub const GLOB_NOSPACE  : c_int = -1;
-            pub const GLOB_ABORTED  : c_int = -2;
-            pub const GLOB_NOMATCH  : c_int = -3;
-            pub const GLOB_NOSYS : c_int = -4;
+            pub const GLOB_NOSPACE: c_int = -1;
+            pub const GLOB_ABORTED: c_int = -2;
+            pub const GLOB_NOMATCH: c_int = -3;
+            pub const GLOB_NOSYS: c_int = -4;
 
-            pub const POSIX_MADV_NORMAL : c_int = 0;
-            pub const POSIX_MADV_RANDOM : c_int = 1;
-            pub const POSIX_MADV_SEQUENTIAL : c_int = 2;
-            pub const POSIX_MADV_WILLNEED : c_int = 3;
-            pub const POSIX_MADV_DONTNEED : c_int = 4;
+            pub const POSIX_MADV_NORMAL: c_int = 0;
+            pub const POSIX_MADV_RANDOM: c_int = 1;
+            pub const POSIX_MADV_SEQUENTIAL: c_int = 2;
+            pub const POSIX_MADV_WILLNEED: c_int = 3;
+            pub const POSIX_MADV_DONTNEED: c_int = 4;
 
-            pub const _SC_IOV_MAX : c_int = 51;
-            pub const _SC_GETGR_R_SIZE_MAX : c_int = 100;
-            pub const _SC_GETPW_R_SIZE_MAX : c_int = 101;
-            pub const _SC_LOGIN_NAME_MAX : c_int = 102;
-            pub const _SC_MQ_PRIO_MAX : c_int = 59;
-            pub const _SC_THREAD_ATTR_STACKADDR : c_int = 77;
-            pub const _SC_THREAD_ATTR_STACKSIZE : c_int = 78;
-            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS : c_int = 80;
-            pub const _SC_THREAD_KEYS_MAX : c_int = 81;
-            pub const _SC_THREAD_PRIO_INHERIT : c_int = 82;
-            pub const _SC_THREAD_PRIO_PROTECT : c_int = 83;
-            pub const _SC_THREAD_PRIORITY_SCHEDULING : c_int = 84;
-            pub const _SC_THREAD_PROCESS_SHARED : c_int = 85;
-            pub const _SC_THREAD_SAFE_FUNCTIONS : c_int = 103;
-            pub const _SC_THREAD_STACK_MIN : c_int = 89;
-            pub const _SC_THREAD_THREADS_MAX : c_int = 90;
-            pub const _SC_THREADS : c_int = 91;
-            pub const _SC_TTY_NAME_MAX : c_int = 107;
-            pub const _SC_ATEXIT_MAX : c_int = 46;
-            pub const _SC_XOPEN_CRYPT : c_int = 117;
-            pub const _SC_XOPEN_ENH_I18N : c_int = 118;
-            pub const _SC_XOPEN_LEGACY : c_int = 119;
-            pub const _SC_XOPEN_REALTIME : c_int = 120;
-            pub const _SC_XOPEN_REALTIME_THREADS : c_int = 121;
-            pub const _SC_XOPEN_SHM : c_int = 30;
-            pub const _SC_XOPEN_UNIX : c_int = 123;
-            pub const _SC_XOPEN_VERSION : c_int = 125;
+            pub const _SC_IOV_MAX: c_int = 51;
+            pub const _SC_GETGR_R_SIZE_MAX: c_int = 100;
+            pub const _SC_GETPW_R_SIZE_MAX: c_int = 101;
+            pub const _SC_LOGIN_NAME_MAX: c_int = 102;
+            pub const _SC_MQ_PRIO_MAX: c_int = 59;
+            pub const _SC_THREAD_ATTR_STACKADDR: c_int = 77;
+            pub const _SC_THREAD_ATTR_STACKSIZE: c_int = 78;
+            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS: c_int = 80;
+            pub const _SC_THREAD_KEYS_MAX: c_int = 81;
+            pub const _SC_THREAD_PRIO_INHERIT: c_int = 82;
+            pub const _SC_THREAD_PRIO_PROTECT: c_int = 83;
+            pub const _SC_THREAD_PRIORITY_SCHEDULING: c_int = 84;
+            pub const _SC_THREAD_PROCESS_SHARED: c_int = 85;
+            pub const _SC_THREAD_SAFE_FUNCTIONS: c_int = 103;
+            pub const _SC_THREAD_STACK_MIN: c_int = 89;
+            pub const _SC_THREAD_THREADS_MAX: c_int = 90;
+            pub const _SC_THREADS: c_int = 91;
+            pub const _SC_TTY_NAME_MAX: c_int = 107;
+            pub const _SC_ATEXIT_MAX: c_int = 46;
+            pub const _SC_XOPEN_CRYPT: c_int = 117;
+            pub const _SC_XOPEN_ENH_I18N: c_int = 118;
+            pub const _SC_XOPEN_LEGACY: c_int = 119;
+            pub const _SC_XOPEN_REALTIME: c_int = 120;
+            pub const _SC_XOPEN_REALTIME_THREADS: c_int = 121;
+            pub const _SC_XOPEN_SHM: c_int = 30;
+            pub const _SC_XOPEN_UNIX: c_int = 123;
+            pub const _SC_XOPEN_VERSION: c_int = 125;
 
-            pub const PTHREAD_CREATE_JOINABLE : c_int = 0;
-            pub const PTHREAD_CREATE_DETACHED : c_int = 1;
-            pub const PTHREAD_STACK_MIN : size_t = 2048;
+            pub const PTHREAD_CREATE_JOINABLE: c_int = 0;
+            pub const PTHREAD_CREATE_DETACHED: c_int = 1;
+            pub const PTHREAD_STACK_MIN: size_t = 2048;
 
-            pub const CLOCK_REALTIME : c_int = 0;
-            pub const CLOCK_MONOTONIC : c_int = 3;
+            pub const CLOCK_REALTIME: c_int = 0;
+            pub const CLOCK_MONOTONIC: c_int = 3;
 
             pub const RLIMIT_CPU: c_int = 0;
             pub const RLIMIT_FSIZE: c_int = 1;
@@ -4819,12 +5003,12 @@ pub mod consts {
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
 
-            pub const MADV_NORMAL : c_int = 0;
-            pub const MADV_RANDOM : c_int = 1;
-            pub const MADV_SEQUENTIAL : c_int = 2;
-            pub const MADV_WILLNEED : c_int = 3;
-            pub const MADV_DONTNEED : c_int = 4;
-            pub const MADV_FREE : c_int = 6;
+            pub const MADV_NORMAL: c_int = 0;
+            pub const MADV_RANDOM: c_int = 1;
+            pub const MADV_SEQUENTIAL: c_int = 2;
+            pub const MADV_WILLNEED: c_int = 3;
+            pub const MADV_DONTNEED: c_int = 4;
+            pub const MADV_FREE: c_int = 6;
 
             pub const AF_UNIX: c_int = 1;
             pub const AF_INET: c_int = 2;
@@ -4879,77 +5063,77 @@ pub mod consts {
         pub mod extra {
             use types::os::arch::c95::c_int;
 
-            pub const O_DSYNC : c_int = 128; // same as SYNC
-            pub const O_SYNC : c_int = 128;
-            pub const O_NONBLOCK : c_int = 4;
-            pub const CTL_KERN : c_int = 1;
-            pub const KERN_PROC : c_int = 66;
+            pub const O_DSYNC: c_int = 128; // same as SYNC
+            pub const O_SYNC: c_int = 128;
+            pub const O_NONBLOCK: c_int = 4;
+            pub const CTL_KERN: c_int = 1;
+            pub const KERN_PROC: c_int = 66;
 
-            pub const MAP_COPY : c_int = 0x0002;
-            pub const MAP_RENAME : c_int = 0x0000;
-            pub const MAP_NORESERVE : c_int = 0x0000;
-            pub const MAP_NOEXTEND : c_int = 0x0000;
-            pub const MAP_HASSEMAPHORE : c_int = 0x0000;
+            pub const MAP_COPY: c_int = 0x0002;
+            pub const MAP_RENAME: c_int = 0x0000;
+            pub const MAP_NORESERVE: c_int = 0x0000;
+            pub const MAP_NOEXTEND: c_int = 0x0000;
+            pub const MAP_HASSEMAPHORE: c_int = 0x0000;
 
-            pub const IPPROTO_RAW : c_int = 255;
+            pub const IPPROTO_RAW: c_int = 255;
 
             pub const PATH_MAX: c_int = 1024;
         }
         pub mod sysconf {
             use types::os::arch::c95::c_int;
 
-            pub const _SC_ARG_MAX : c_int = 1;
-            pub const _SC_CHILD_MAX : c_int = 2;
-            pub const _SC_CLK_TCK : c_int = 3;
-            pub const _SC_NGROUPS_MAX : c_int = 4;
-            pub const _SC_OPEN_MAX : c_int = 5;
-            pub const _SC_JOB_CONTROL : c_int = 6;
-            pub const _SC_SAVED_IDS : c_int = 7;
-            pub const _SC_VERSION : c_int = 8;
-            pub const _SC_BC_BASE_MAX : c_int = 9;
-            pub const _SC_BC_DIM_MAX : c_int = 10;
-            pub const _SC_BC_SCALE_MAX : c_int = 11;
-            pub const _SC_BC_STRING_MAX : c_int = 12;
-            pub const _SC_COLL_WEIGHTS_MAX : c_int = 13;
-            pub const _SC_EXPR_NEST_MAX : c_int = 14;
-            pub const _SC_LINE_MAX : c_int = 15;
-            pub const _SC_RE_DUP_MAX : c_int = 16;
-            pub const _SC_2_VERSION : c_int = 17;
-            pub const _SC_2_C_BIND : c_int = 18;
-            pub const _SC_2_C_DEV : c_int = 19;
-            pub const _SC_2_CHAR_TERM : c_int = 20;
-            pub const _SC_2_FORT_DEV : c_int = 21;
-            pub const _SC_2_FORT_RUN : c_int = 22;
-            pub const _SC_2_LOCALEDEF : c_int = 23;
-            pub const _SC_2_SW_DEV : c_int = 24;
-            pub const _SC_2_UPE : c_int = 25;
-            pub const _SC_STREAM_MAX : c_int = 26;
-            pub const _SC_TZNAME_MAX : c_int = 27;
-            pub const _SC_PAGESIZE : c_int = 28;
-            pub const _SC_FSYNC : c_int = 29;
-            pub const _SC_SEM_NSEMS_MAX : c_int = 31;
-            pub const _SC_SEM_VALUE_MAX : c_int = 32;
-            pub const _SC_AIO_LISTIO_MAX : c_int = 42;
-            pub const _SC_AIO_MAX : c_int = 43;
-            pub const _SC_AIO_PRIO_DELTA_MAX : c_int = 44;
-            pub const _SC_ASYNCHRONOUS_IO : c_int = 45;
-            pub const _SC_DELAYTIMER_MAX : c_int = 50;
-            pub const _SC_MAPPED_FILES : c_int = 53;
-            pub const _SC_MEMLOCK : c_int = 54;
-            pub const _SC_MEMLOCK_RANGE : c_int = 55;
-            pub const _SC_MEMORY_PROTECTION : c_int = 56;
-            pub const _SC_MESSAGE_PASSING : c_int = 57;
-            pub const _SC_MQ_OPEN_MAX : c_int = 58;
-            pub const _SC_PRIORITIZED_IO : c_int = 60;
-            pub const _SC_PRIORITY_SCHEDULING : c_int = 61;
-            pub const _SC_REALTIME_SIGNALS : c_int = 64;
-            pub const _SC_RTSIG_MAX : c_int = 66;
-            pub const _SC_SEMAPHORES : c_int = 67;
-            pub const _SC_SHARED_MEMORY_OBJECTS : c_int = 68;
-            pub const _SC_SIGQUEUE_MAX : c_int = 70;
-            pub const _SC_SYNCHRONIZED_IO : c_int = 75;
-            pub const _SC_TIMER_MAX : c_int = 93;
-            pub const _SC_TIMERS : c_int = 94;
+            pub const _SC_ARG_MAX: c_int = 1;
+            pub const _SC_CHILD_MAX: c_int = 2;
+            pub const _SC_CLK_TCK: c_int = 3;
+            pub const _SC_NGROUPS_MAX: c_int = 4;
+            pub const _SC_OPEN_MAX: c_int = 5;
+            pub const _SC_JOB_CONTROL: c_int = 6;
+            pub const _SC_SAVED_IDS: c_int = 7;
+            pub const _SC_VERSION: c_int = 8;
+            pub const _SC_BC_BASE_MAX: c_int = 9;
+            pub const _SC_BC_DIM_MAX: c_int = 10;
+            pub const _SC_BC_SCALE_MAX: c_int = 11;
+            pub const _SC_BC_STRING_MAX: c_int = 12;
+            pub const _SC_COLL_WEIGHTS_MAX: c_int = 13;
+            pub const _SC_EXPR_NEST_MAX: c_int = 14;
+            pub const _SC_LINE_MAX: c_int = 15;
+            pub const _SC_RE_DUP_MAX: c_int = 16;
+            pub const _SC_2_VERSION: c_int = 17;
+            pub const _SC_2_C_BIND: c_int = 18;
+            pub const _SC_2_C_DEV: c_int = 19;
+            pub const _SC_2_CHAR_TERM: c_int = 20;
+            pub const _SC_2_FORT_DEV: c_int = 21;
+            pub const _SC_2_FORT_RUN: c_int = 22;
+            pub const _SC_2_LOCALEDEF: c_int = 23;
+            pub const _SC_2_SW_DEV: c_int = 24;
+            pub const _SC_2_UPE: c_int = 25;
+            pub const _SC_STREAM_MAX: c_int = 26;
+            pub const _SC_TZNAME_MAX: c_int = 27;
+            pub const _SC_PAGESIZE: c_int = 28;
+            pub const _SC_FSYNC: c_int = 29;
+            pub const _SC_SEM_NSEMS_MAX: c_int = 31;
+            pub const _SC_SEM_VALUE_MAX: c_int = 32;
+            pub const _SC_AIO_LISTIO_MAX: c_int = 42;
+            pub const _SC_AIO_MAX: c_int = 43;
+            pub const _SC_AIO_PRIO_DELTA_MAX: c_int = 44;
+            pub const _SC_ASYNCHRONOUS_IO: c_int = 45;
+            pub const _SC_DELAYTIMER_MAX: c_int = 50;
+            pub const _SC_MAPPED_FILES: c_int = 53;
+            pub const _SC_MEMLOCK: c_int = 54;
+            pub const _SC_MEMLOCK_RANGE: c_int = 55;
+            pub const _SC_MEMORY_PROTECTION: c_int = 56;
+            pub const _SC_MESSAGE_PASSING: c_int = 57;
+            pub const _SC_MQ_OPEN_MAX: c_int = 58;
+            pub const _SC_PRIORITIZED_IO: c_int = 60;
+            pub const _SC_PRIORITY_SCHEDULING: c_int = 61;
+            pub const _SC_REALTIME_SIGNALS: c_int = 64;
+            pub const _SC_RTSIG_MAX: c_int = 66;
+            pub const _SC_SEMAPHORES: c_int = 67;
+            pub const _SC_SHARED_MEMORY_OBJECTS: c_int = 68;
+            pub const _SC_SIGQUEUE_MAX: c_int = 70;
+            pub const _SC_SYNCHRONIZED_IO: c_int = 75;
+            pub const _SC_TIMER_MAX: c_int = 93;
+            pub const _SC_TIMERS: c_int = 94;
 
             pub const _PC_NAME_MAX: c_int = 4;
             pub const _PC_PATH_MAX: c_int = 5;
@@ -4961,21 +5145,21 @@ pub mod consts {
         pub mod c95 {
             use types::os::arch::c95::{c_int, c_uint};
 
-            pub const EXIT_FAILURE : c_int = 1;
-            pub const EXIT_SUCCESS : c_int = 0;
-            pub const RAND_MAX : c_int = 2147483647;
-            pub const EOF : c_int = -1;
-            pub const SEEK_SET : c_int = 0;
-            pub const SEEK_CUR : c_int = 1;
-            pub const SEEK_END : c_int = 2;
-            pub const _IOFBF : c_int = 0;
-            pub const _IONBF : c_int = 2;
-            pub const _IOLBF : c_int = 1;
-            pub const BUFSIZ : c_uint = 1024;
-            pub const FOPEN_MAX : c_uint = 20;
-            pub const FILENAME_MAX : c_uint = 1024;
-            pub const L_tmpnam : c_uint = 1024;
-            pub const TMP_MAX : c_uint = 308915776;
+            pub const EXIT_FAILURE: c_int = 1;
+            pub const EXIT_SUCCESS: c_int = 0;
+            pub const RAND_MAX: c_int = 2147483647;
+            pub const EOF: c_int = -1;
+            pub const SEEK_SET: c_int = 0;
+            pub const SEEK_CUR: c_int = 1;
+            pub const SEEK_END: c_int = 2;
+            pub const _IOFBF: c_int = 0;
+            pub const _IONBF: c_int = 2;
+            pub const _IOLBF: c_int = 1;
+            pub const BUFSIZ: c_uint = 1024;
+            pub const FOPEN_MAX: c_uint = 20;
+            pub const FILENAME_MAX: c_uint = 1024;
+            pub const L_tmpnam: c_uint = 1024;
+            pub const TMP_MAX: c_uint = 308915776;
         }
         pub mod c99 {
         }
@@ -4984,254 +5168,254 @@ pub mod consts {
             use types::os::arch::c95::c_int;
             use types::os::arch::posix88::mode_t;
 
-            pub const O_RDONLY : c_int = 0;
-            pub const O_WRONLY : c_int = 1;
-            pub const O_RDWR : c_int = 2;
-            pub const O_APPEND : c_int = 8;
-            pub const O_CREAT : c_int = 512;
-            pub const O_EXCL : c_int = 2048;
-            pub const O_NOCTTY : c_int = 32768;
-            pub const O_TRUNC : c_int = 1024;
-            pub const S_IFIFO : mode_t = 4096;
-            pub const S_IFCHR : mode_t = 8192;
-            pub const S_IFBLK : mode_t = 24576;
-            pub const S_IFDIR : mode_t = 16384;
-            pub const S_IFREG : mode_t = 32768;
-            pub const S_IFLNK : mode_t = 40960;
-            pub const S_IFSOCK : mode_t = 49152;
-            pub const S_IFMT : mode_t = 61440;
-            pub const S_IEXEC : mode_t = 64;
-            pub const S_IWRITE : mode_t = 128;
-            pub const S_IREAD : mode_t = 256;
-            pub const S_IRWXU : mode_t = 448;
-            pub const S_IXUSR : mode_t = 64;
-            pub const S_IWUSR : mode_t = 128;
-            pub const S_IRUSR : mode_t = 256;
-            pub const S_IRWXG : mode_t = 56;
-            pub const S_IXGRP : mode_t = 8;
-            pub const S_IWGRP : mode_t = 16;
-            pub const S_IRGRP : mode_t = 32;
-            pub const S_IRWXO : mode_t = 7;
-            pub const S_IXOTH : mode_t = 1;
-            pub const S_IWOTH : mode_t = 2;
-            pub const S_IROTH : mode_t = 4;
-            pub const F_OK : c_int = 0;
-            pub const R_OK : c_int = 4;
-            pub const W_OK : c_int = 2;
-            pub const X_OK : c_int = 1;
-            pub const STDIN_FILENO : c_int = 0;
-            pub const STDOUT_FILENO : c_int = 1;
-            pub const STDERR_FILENO : c_int = 2;
-            pub const F_LOCK : c_int = 1;
-            pub const F_TEST : c_int = 3;
-            pub const F_TLOCK : c_int = 2;
-            pub const F_ULOCK : c_int = 0;
-            pub const SIGHUP : c_int = 1;
-            pub const SIGINT : c_int = 2;
-            pub const SIGQUIT : c_int = 3;
-            pub const SIGILL : c_int = 4;
-            pub const SIGABRT : c_int = 6;
-            pub const SIGFPE : c_int = 8;
-            pub const SIGKILL : c_int = 9;
-            pub const SIGSEGV : c_int = 11;
-            pub const SIGPIPE : c_int = 13;
-            pub const SIGALRM : c_int = 14;
-            pub const SIGTERM : c_int = 15;
+            pub const O_RDONLY: c_int = 0;
+            pub const O_WRONLY: c_int = 1;
+            pub const O_RDWR: c_int = 2;
+            pub const O_APPEND: c_int = 8;
+            pub const O_CREAT: c_int = 512;
+            pub const O_EXCL: c_int = 2048;
+            pub const O_NOCTTY: c_int = 32768;
+            pub const O_TRUNC: c_int = 1024;
+            pub const S_IFIFO: mode_t = 4096;
+            pub const S_IFCHR: mode_t = 8192;
+            pub const S_IFBLK: mode_t = 24576;
+            pub const S_IFDIR: mode_t = 16384;
+            pub const S_IFREG: mode_t = 32768;
+            pub const S_IFLNK: mode_t = 40960;
+            pub const S_IFSOCK: mode_t = 49152;
+            pub const S_IFMT: mode_t = 61440;
+            pub const S_IEXEC: mode_t = 64;
+            pub const S_IWRITE: mode_t = 128;
+            pub const S_IREAD: mode_t = 256;
+            pub const S_IRWXU: mode_t = 448;
+            pub const S_IXUSR: mode_t = 64;
+            pub const S_IWUSR: mode_t = 128;
+            pub const S_IRUSR: mode_t = 256;
+            pub const S_IRWXG: mode_t = 56;
+            pub const S_IXGRP: mode_t = 8;
+            pub const S_IWGRP: mode_t = 16;
+            pub const S_IRGRP: mode_t = 32;
+            pub const S_IRWXO: mode_t = 7;
+            pub const S_IXOTH: mode_t = 1;
+            pub const S_IWOTH: mode_t = 2;
+            pub const S_IROTH: mode_t = 4;
+            pub const F_OK: c_int = 0;
+            pub const R_OK: c_int = 4;
+            pub const W_OK: c_int = 2;
+            pub const X_OK: c_int = 1;
+            pub const STDIN_FILENO: c_int = 0;
+            pub const STDOUT_FILENO: c_int = 1;
+            pub const STDERR_FILENO: c_int = 2;
+            pub const F_LOCK: c_int = 1;
+            pub const F_TEST: c_int = 3;
+            pub const F_TLOCK: c_int = 2;
+            pub const F_ULOCK: c_int = 0;
+            pub const SIGHUP: c_int = 1;
+            pub const SIGINT: c_int = 2;
+            pub const SIGQUIT: c_int = 3;
+            pub const SIGILL: c_int = 4;
+            pub const SIGABRT: c_int = 6;
+            pub const SIGFPE: c_int = 8;
+            pub const SIGKILL: c_int = 9;
+            pub const SIGSEGV: c_int = 11;
+            pub const SIGPIPE: c_int = 13;
+            pub const SIGALRM: c_int = 14;
+            pub const SIGTERM: c_int = 15;
 
-            pub const PROT_NONE : c_int = 0;
-            pub const PROT_READ : c_int = 1;
-            pub const PROT_WRITE : c_int = 2;
-            pub const PROT_EXEC : c_int = 4;
+            pub const PROT_NONE: c_int = 0;
+            pub const PROT_READ: c_int = 1;
+            pub const PROT_WRITE: c_int = 2;
+            pub const PROT_EXEC: c_int = 4;
 
-            pub const MAP_FILE : c_int = 0;
-            pub const MAP_SHARED : c_int = 1;
-            pub const MAP_PRIVATE : c_int = 2;
-            pub const MAP_FIXED : c_int = 16;
-            pub const MAP_ANON : c_int = 4096;
+            pub const MAP_FILE: c_int = 0;
+            pub const MAP_SHARED: c_int = 1;
+            pub const MAP_PRIVATE: c_int = 2;
+            pub const MAP_FIXED: c_int = 16;
+            pub const MAP_ANON: c_int = 4096;
 
-            pub const MAP_FAILED : *mut c_void = !0 as *mut c_void;
+            pub const MAP_FAILED: *mut c_void = !0 as *mut c_void;
 
-            pub const MCL_CURRENT : c_int = 1;
-            pub const MCL_FUTURE : c_int = 2;
+            pub const MCL_CURRENT: c_int = 1;
+            pub const MCL_FUTURE: c_int = 2;
 
-            pub const MS_ASYNC : c_int = 1;
-            pub const MS_SYNC : c_int = 4;
-            pub const MS_INVALIDATE : c_int = 2;
+            pub const MS_ASYNC: c_int = 1;
+            pub const MS_SYNC: c_int = 4;
+            pub const MS_INVALIDATE: c_int = 2;
 
-            pub const EPERM : c_int = 1;
-            pub const ENOENT : c_int = 2;
-            pub const ESRCH : c_int = 3;
-            pub const EINTR : c_int = 4;
-            pub const EIO : c_int = 5;
-            pub const ENXIO : c_int = 6;
-            pub const E2BIG : c_int = 7;
-            pub const ENOEXEC : c_int = 8;
-            pub const EBADF : c_int = 9;
-            pub const ECHILD : c_int = 10;
-            pub const EDEADLK : c_int = 11;
-            pub const ENOMEM : c_int = 12;
-            pub const EACCES : c_int = 13;
-            pub const EFAULT : c_int = 14;
-            pub const ENOTBLK : c_int = 15;
-            pub const EBUSY : c_int = 16;
-            pub const EEXIST : c_int = 17;
-            pub const EXDEV : c_int = 18;
-            pub const ENODEV : c_int = 19;
-            pub const ENOTDIR : c_int = 20;
-            pub const EISDIR : c_int = 21;
-            pub const EINVAL : c_int = 22;
-            pub const ENFILE : c_int = 23;
-            pub const EMFILE : c_int = 24;
-            pub const ENOTTY : c_int = 25;
-            pub const ETXTBSY : c_int = 26;
-            pub const EFBIG : c_int = 27;
-            pub const ENOSPC : c_int = 28;
-            pub const ESPIPE : c_int = 29;
-            pub const EROFS : c_int = 30;
-            pub const EMLINK : c_int = 31;
-            pub const EPIPE : c_int = 32;
-            pub const EDOM : c_int = 33;
-            pub const ERANGE : c_int = 34;
-            pub const EAGAIN : c_int = 35;
-            pub const EWOULDBLOCK : c_int = 35;
-            pub const EINPROGRESS : c_int = 36;
-            pub const EALREADY : c_int = 37;
-            pub const ENOTSOCK : c_int = 38;
-            pub const EDESTADDRREQ : c_int = 39;
-            pub const EMSGSIZE : c_int = 40;
-            pub const EPROTOTYPE : c_int = 41;
-            pub const ENOPROTOOPT : c_int = 42;
-            pub const EPROTONOSUPPORT : c_int = 43;
-            pub const ESOCKTNOSUPPORT : c_int = 44;
-            pub const EOPNOTSUPP : c_int = 45;
-            pub const EPFNOSUPPORT : c_int = 46;
-            pub const EAFNOSUPPORT : c_int = 47;
-            pub const EADDRINUSE : c_int = 48;
-            pub const EADDRNOTAVAIL : c_int = 49;
-            pub const ENETDOWN : c_int = 50;
-            pub const ENETUNREACH : c_int = 51;
-            pub const ENETRESET : c_int = 52;
-            pub const ECONNABORTED : c_int = 53;
-            pub const ECONNRESET : c_int = 54;
-            pub const ENOBUFS : c_int = 55;
-            pub const EISCONN : c_int = 56;
-            pub const ENOTCONN : c_int = 57;
-            pub const ESHUTDOWN : c_int = 58;
-            pub const ETOOMANYREFS : c_int = 59;
-            pub const ETIMEDOUT : c_int = 60;
-            pub const ECONNREFUSED : c_int = 61;
-            pub const ELOOP : c_int = 62;
-            pub const ENAMETOOLONG : c_int = 63;
-            pub const EHOSTDOWN : c_int = 64;
-            pub const EHOSTUNREACH : c_int = 65;
-            pub const ENOTEMPTY : c_int = 66;
-            pub const EPROCLIM : c_int = 67;
-            pub const EUSERS : c_int = 68;
-            pub const EDQUOT : c_int = 69;
-            pub const ESTALE : c_int = 70;
-            pub const EREMOTE : c_int = 71;
-            pub const EBADRPC : c_int = 72;
-            pub const ERPCMISMATCH : c_int = 73;
-            pub const EPROGUNAVAIL : c_int = 74;
-            pub const EPROGMISMATCH : c_int = 75;
-            pub const EPROCUNAVAIL : c_int = 76;
-            pub const ENOLCK : c_int = 77;
-            pub const ENOSYS : c_int = 78;
-            pub const EFTYPE : c_int = 79;
-            pub const EAUTH : c_int = 80;
-            pub const ENEEDAUTH : c_int = 81;
-            pub const ENOATTR : c_int = 93;
-            pub const EILSEQ : c_int = 85;
-            pub const EOVERFLOW : c_int = 84;
-            pub const ECANCELED : c_int = 87;
-            pub const EIDRM : c_int = 82;
-            pub const ENOMSG : c_int = 83;
-            pub const ENOTSUP : c_int = 86;
-            pub const ELAST : c_int = 96;
+            pub const EPERM: c_int = 1;
+            pub const ENOENT: c_int = 2;
+            pub const ESRCH: c_int = 3;
+            pub const EINTR: c_int = 4;
+            pub const EIO: c_int = 5;
+            pub const ENXIO: c_int = 6;
+            pub const E2BIG: c_int = 7;
+            pub const ENOEXEC: c_int = 8;
+            pub const EBADF: c_int = 9;
+            pub const ECHILD: c_int = 10;
+            pub const EDEADLK: c_int = 11;
+            pub const ENOMEM: c_int = 12;
+            pub const EACCES: c_int = 13;
+            pub const EFAULT: c_int = 14;
+            pub const ENOTBLK: c_int = 15;
+            pub const EBUSY: c_int = 16;
+            pub const EEXIST: c_int = 17;
+            pub const EXDEV: c_int = 18;
+            pub const ENODEV: c_int = 19;
+            pub const ENOTDIR: c_int = 20;
+            pub const EISDIR: c_int = 21;
+            pub const EINVAL: c_int = 22;
+            pub const ENFILE: c_int = 23;
+            pub const EMFILE: c_int = 24;
+            pub const ENOTTY: c_int = 25;
+            pub const ETXTBSY: c_int = 26;
+            pub const EFBIG: c_int = 27;
+            pub const ENOSPC: c_int = 28;
+            pub const ESPIPE: c_int = 29;
+            pub const EROFS: c_int = 30;
+            pub const EMLINK: c_int = 31;
+            pub const EPIPE: c_int = 32;
+            pub const EDOM: c_int = 33;
+            pub const ERANGE: c_int = 34;
+            pub const EAGAIN: c_int = 35;
+            pub const EWOULDBLOCK: c_int = 35;
+            pub const EINPROGRESS: c_int = 36;
+            pub const EALREADY: c_int = 37;
+            pub const ENOTSOCK: c_int = 38;
+            pub const EDESTADDRREQ: c_int = 39;
+            pub const EMSGSIZE: c_int = 40;
+            pub const EPROTOTYPE: c_int = 41;
+            pub const ENOPROTOOPT: c_int = 42;
+            pub const EPROTONOSUPPORT: c_int = 43;
+            pub const ESOCKTNOSUPPORT: c_int = 44;
+            pub const EOPNOTSUPP: c_int = 45;
+            pub const EPFNOSUPPORT: c_int = 46;
+            pub const EAFNOSUPPORT: c_int = 47;
+            pub const EADDRINUSE: c_int = 48;
+            pub const EADDRNOTAVAIL: c_int = 49;
+            pub const ENETDOWN: c_int = 50;
+            pub const ENETUNREACH: c_int = 51;
+            pub const ENETRESET: c_int = 52;
+            pub const ECONNABORTED: c_int = 53;
+            pub const ECONNRESET: c_int = 54;
+            pub const ENOBUFS: c_int = 55;
+            pub const EISCONN: c_int = 56;
+            pub const ENOTCONN: c_int = 57;
+            pub const ESHUTDOWN: c_int = 58;
+            pub const ETOOMANYREFS: c_int = 59;
+            pub const ETIMEDOUT: c_int = 60;
+            pub const ECONNREFUSED: c_int = 61;
+            pub const ELOOP: c_int = 62;
+            pub const ENAMETOOLONG: c_int = 63;
+            pub const EHOSTDOWN: c_int = 64;
+            pub const EHOSTUNREACH: c_int = 65;
+            pub const ENOTEMPTY: c_int = 66;
+            pub const EPROCLIM: c_int = 67;
+            pub const EUSERS: c_int = 68;
+            pub const EDQUOT: c_int = 69;
+            pub const ESTALE: c_int = 70;
+            pub const EREMOTE: c_int = 71;
+            pub const EBADRPC: c_int = 72;
+            pub const ERPCMISMATCH: c_int = 73;
+            pub const EPROGUNAVAIL: c_int = 74;
+            pub const EPROGMISMATCH: c_int = 75;
+            pub const EPROCUNAVAIL: c_int = 76;
+            pub const ENOLCK: c_int = 77;
+            pub const ENOSYS: c_int = 78;
+            pub const EFTYPE: c_int = 79;
+            pub const EAUTH: c_int = 80;
+            pub const ENEEDAUTH: c_int = 81;
+            pub const ENOATTR: c_int = 93;
+            pub const EILSEQ: c_int = 85;
+            pub const EOVERFLOW: c_int = 84;
+            pub const ECANCELED: c_int = 87;
+            pub const EIDRM: c_int = 82;
+            pub const ENOMSG: c_int = 83;
+            pub const ENOTSUP: c_int = 86;
+            pub const ELAST: c_int = 96;
         }
         pub mod posix01 {
             use types::os::arch::c95::{c_int, size_t};
             use types::os::common::posix01::rlim_t;
 
-            pub const F_DUPFD : c_int = 0;
-            pub const F_GETFD : c_int = 1;
-            pub const F_SETFD : c_int = 2;
-            pub const F_GETFL : c_int = 3;
-            pub const F_SETFL : c_int = 4;
-            pub const F_GETOWN : c_int = 5;
-            pub const F_SETOWN : c_int = 6;
-            pub const F_GETLK : c_int = 7;
-            pub const F_SETLK : c_int = 8;
-            pub const F_SETLKW : c_int = 9;
+            pub const F_DUPFD: c_int = 0;
+            pub const F_GETFD: c_int = 1;
+            pub const F_SETFD: c_int = 2;
+            pub const F_GETFL: c_int = 3;
+            pub const F_SETFL: c_int = 4;
+            pub const F_GETOWN: c_int = 5;
+            pub const F_SETOWN: c_int = 6;
+            pub const F_GETLK: c_int = 7;
+            pub const F_SETLK: c_int = 8;
+            pub const F_SETLKW: c_int = 9;
 
-            pub const SIGTRAP : c_int = 5;
-            pub const SIG_IGN : size_t = 1;
+            pub const SIGTRAP: c_int = 5;
+            pub const SIG_IGN: size_t = 1;
 
-            pub const GLOB_APPEND : c_int = 1;
-            pub const GLOB_DOOFFS : c_int = 2;
-            pub const GLOB_ERR : c_int = 4;
-            pub const GLOB_MARK : c_int = 8;
-            pub const GLOB_NOCHECK : c_int = 16;
-            pub const GLOB_NOSORT : c_int = 32;
-            pub const GLOB_NOESCAPE : c_int = 4096;
+            pub const GLOB_APPEND: c_int = 1;
+            pub const GLOB_DOOFFS: c_int = 2;
+            pub const GLOB_ERR: c_int = 4;
+            pub const GLOB_MARK: c_int = 8;
+            pub const GLOB_NOCHECK: c_int = 16;
+            pub const GLOB_NOSORT: c_int = 32;
+            pub const GLOB_NOESCAPE: c_int = 4096;
 
-            pub const GLOB_NOSPACE : c_int = -1;
-            pub const GLOB_ABORTED : c_int = -2;
-            pub const GLOB_NOMATCH : c_int = -3;
-            pub const GLOB_NOSYS : c_int = -4;
+            pub const GLOB_NOSPACE: c_int = -1;
+            pub const GLOB_ABORTED: c_int = -2;
+            pub const GLOB_NOMATCH: c_int = -3;
+            pub const GLOB_NOSYS: c_int = -4;
 
-            pub const POSIX_MADV_NORMAL : c_int = 0;
-            pub const POSIX_MADV_RANDOM : c_int = 1;
-            pub const POSIX_MADV_SEQUENTIAL : c_int = 2;
-            pub const POSIX_MADV_WILLNEED : c_int = 3;
-            pub const POSIX_MADV_DONTNEED : c_int = 4;
+            pub const POSIX_MADV_NORMAL: c_int = 0;
+            pub const POSIX_MADV_RANDOM: c_int = 1;
+            pub const POSIX_MADV_SEQUENTIAL: c_int = 2;
+            pub const POSIX_MADV_WILLNEED: c_int = 3;
+            pub const POSIX_MADV_DONTNEED: c_int = 4;
 
-            pub const _SC_IOV_MAX : c_int = 32;
-            pub const _SC_GETGR_R_SIZE_MAX : c_int = 47;
-            pub const _SC_GETPW_R_SIZE_MAX : c_int = 48;
-            pub const _SC_LOGIN_NAME_MAX : c_int = 37;
-            pub const _SC_MQ_PRIO_MAX : c_int = 55;
-            pub const _SC_THREAD_ATTR_STACKADDR : c_int = 61;
-            pub const _SC_THREAD_ATTR_STACKSIZE : c_int = 62;
-            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS : c_int = 57;
-            pub const _SC_THREAD_KEYS_MAX : c_int = 58;
-            pub const _SC_THREAD_PRIO_INHERIT : c_int = 64;
-            pub const _SC_THREAD_PRIO_PROTECT : c_int = 65;
-            pub const _SC_THREAD_PRIORITY_SCHEDULING : c_int = 63;
-            pub const _SC_THREAD_PROCESS_SHARED : c_int = 66;
-            pub const _SC_THREAD_SAFE_FUNCTIONS : c_int = 67;
-            pub const _SC_THREAD_STACK_MIN : c_int = 59;
-            pub const _SC_THREAD_THREADS_MAX : c_int = 60;
-            pub const _SC_THREADS : c_int = 41;
-            pub const _SC_TTY_NAME_MAX : c_int = 68;
-            pub const _SC_ATEXIT_MAX : c_int = 40;
-            pub const _SC_XOPEN_SHM : c_int = 30;
+            pub const _SC_IOV_MAX: c_int = 32;
+            pub const _SC_GETGR_R_SIZE_MAX: c_int = 47;
+            pub const _SC_GETPW_R_SIZE_MAX: c_int = 48;
+            pub const _SC_LOGIN_NAME_MAX: c_int = 37;
+            pub const _SC_MQ_PRIO_MAX: c_int = 55;
+            pub const _SC_THREAD_ATTR_STACKADDR: c_int = 61;
+            pub const _SC_THREAD_ATTR_STACKSIZE: c_int = 62;
+            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS: c_int = 57;
+            pub const _SC_THREAD_KEYS_MAX: c_int = 58;
+            pub const _SC_THREAD_PRIO_INHERIT: c_int = 64;
+            pub const _SC_THREAD_PRIO_PROTECT: c_int = 65;
+            pub const _SC_THREAD_PRIORITY_SCHEDULING: c_int = 63;
+            pub const _SC_THREAD_PROCESS_SHARED: c_int = 66;
+            pub const _SC_THREAD_SAFE_FUNCTIONS: c_int = 67;
+            pub const _SC_THREAD_STACK_MIN: c_int = 59;
+            pub const _SC_THREAD_THREADS_MAX: c_int = 60;
+            pub const _SC_THREADS: c_int = 41;
+            pub const _SC_TTY_NAME_MAX: c_int = 68;
+            pub const _SC_ATEXIT_MAX: c_int = 40;
+            pub const _SC_XOPEN_SHM: c_int = 30;
 
-            pub const PTHREAD_CREATE_JOINABLE : c_int = 0;
-            pub const PTHREAD_CREATE_DETACHED : c_int = 1;
-            pub const PTHREAD_STACK_MIN : size_t = 2048;
+            pub const PTHREAD_CREATE_JOINABLE: c_int = 0;
+            pub const PTHREAD_CREATE_DETACHED: c_int = 1;
+            pub const PTHREAD_STACK_MIN: size_t = 2048;
 
-            pub const CLOCK_REALTIME : c_int = 0;
-            pub const CLOCK_MONOTONIC : c_int = 3;
+            pub const CLOCK_REALTIME: c_int = 0;
+            pub const CLOCK_MONOTONIC: c_int = 3;
 
-            pub const RLIMIT_CPU : c_int = 0;
-            pub const RLIMIT_FSIZE : c_int = 1;
-            pub const RLIMIT_DATA : c_int = 2;
-            pub const RLIMIT_STACK : c_int = 3;
-            pub const RLIMIT_CORE : c_int = 4;
-            pub const RLIMIT_RSS : c_int = 5;
-            pub const RLIMIT_MEMLOCK : c_int = 6;
-            pub const RLIMIT_NPROC : c_int = 7;
-            pub const RLIMIT_NOFILE : c_int = 8;
-            pub const RLIM_NLIMITS : c_int = 9;
+            pub const RLIMIT_CPU: c_int = 0;
+            pub const RLIMIT_FSIZE: c_int = 1;
+            pub const RLIMIT_DATA: c_int = 2;
+            pub const RLIMIT_STACK: c_int = 3;
+            pub const RLIMIT_CORE: c_int = 4;
+            pub const RLIMIT_RSS: c_int = 5;
+            pub const RLIMIT_MEMLOCK: c_int = 6;
+            pub const RLIMIT_NPROC: c_int = 7;
+            pub const RLIMIT_NOFILE: c_int = 8;
+            pub const RLIM_NLIMITS: c_int = 9;
 
-            pub const RLIM_INFINITY : rlim_t = 0x7fff_ffff_ffff_ffff;
-            pub const RLIM_SAVED_MAX : rlim_t = RLIM_INFINITY;
-            pub const RLIM_SAVED_CUR : rlim_t = RLIM_INFINITY;
+            pub const RLIM_INFINITY: rlim_t = 0x7fff_ffff_ffff_ffff;
+            pub const RLIM_SAVED_MAX: rlim_t = RLIM_INFINITY;
+            pub const RLIM_SAVED_CUR: rlim_t = RLIM_INFINITY;
 
-            pub const RUSAGE_SELF : c_int = 0;
-            pub const RUSAGE_CHILDREN : c_int = -1;
-            pub const RUSAGE_THREAD : c_int = 1;
+            pub const RUSAGE_SELF: c_int = 0;
+            pub const RUSAGE_CHILDREN: c_int = -1;
+            pub const RUSAGE_THREAD: c_int = 1;
         }
         pub mod posix08 {
             use types::os::arch::c95::c_int;
@@ -5241,122 +5425,122 @@ pub mod consts {
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
 
-            pub const MADV_NORMAL : c_int = 0;
-            pub const MADV_RANDOM : c_int = 1;
-            pub const MADV_SEQUENTIAL : c_int = 2;
-            pub const MADV_WILLNEED : c_int = 3;
-            pub const MADV_DONTNEED : c_int = 4;
-            pub const MADV_FREE : c_int = 6;
+            pub const MADV_NORMAL: c_int = 0;
+            pub const MADV_RANDOM: c_int = 1;
+            pub const MADV_SEQUENTIAL: c_int = 2;
+            pub const MADV_WILLNEED: c_int = 3;
+            pub const MADV_DONTNEED: c_int = 4;
+            pub const MADV_FREE: c_int = 6;
 
-            pub const AF_UNIX : c_int = 1;
-            pub const AF_INET : c_int = 2;
-            pub const AF_INET6 : c_int = 24;
-            pub const SOCK_STREAM : c_int = 1;
-            pub const SOCK_DGRAM : c_int = 2;
-            pub const SOCK_RAW : c_int = 3;
-            pub const IPPROTO_TCP : c_int = 6;
-            pub const IPPROTO_IP : c_int = 0;
-            pub const IPPROTO_IPV6 : c_int = 41;
-            pub const IP_MULTICAST_TTL : c_int = 10;
-            pub const IP_MULTICAST_LOOP : c_int = 11;
-            pub const IP_TTL : c_int = 4;
-            pub const IP_HDRINCL : c_int = 2;
-            pub const IP_ADD_MEMBERSHIP : c_int = 12;
-            pub const IP_DROP_MEMBERSHIP : c_int = 13;
+            pub const AF_UNIX: c_int = 1;
+            pub const AF_INET: c_int = 2;
+            pub const AF_INET6: c_int = 24;
+            pub const SOCK_STREAM: c_int = 1;
+            pub const SOCK_DGRAM: c_int = 2;
+            pub const SOCK_RAW: c_int = 3;
+            pub const IPPROTO_TCP: c_int = 6;
+            pub const IPPROTO_IP: c_int = 0;
+            pub const IPPROTO_IPV6: c_int = 41;
+            pub const IP_MULTICAST_TTL: c_int = 10;
+            pub const IP_MULTICAST_LOOP: c_int = 11;
+            pub const IP_TTL: c_int = 4;
+            pub const IP_HDRINCL: c_int = 2;
+            pub const IP_ADD_MEMBERSHIP: c_int = 12;
+            pub const IP_DROP_MEMBERSHIP: c_int = 13;
 
-            pub const TCP_NODELAY : c_int = 1;
-            pub const SOL_SOCKET : c_int = 65535;
-            pub const SO_DEBUG : c_int = 1;
-            pub const SO_ACCEPTCONN : c_int = 2;
-            pub const SO_REUSEADDR : c_int = 4;
-            pub const SO_KEEPALIVE : c_int = 8;
-            pub const SO_DONTROUTE : c_int = 16;
-            pub const SO_BROADCAST : c_int = 32;
-            pub const SO_USELOOPBACK : c_int = 64;
-            pub const SO_LINGER : c_int = 128;
-            pub const SO_OOBINLINE : c_int = 256;
-            pub const SO_REUSEPORT : c_int = 512;
-            pub const SO_SNDBUF : c_int = 4097;
-            pub const SO_RCVBUF : c_int = 4098;
-            pub const SO_SNDLOWAT : c_int = 4099;
-            pub const SO_RCVLOWAT : c_int = 4100;
-            pub const SO_SNDTIMEO : c_int = 4107;
-            pub const SO_RCVTIMEO : c_int = 4108;
-            pub const SO_ERROR : c_int = 4103;
-            pub const SO_TYPE : c_int = 4104;
+            pub const TCP_NODELAY: c_int = 1;
+            pub const SOL_SOCKET: c_int = 65535;
+            pub const SO_DEBUG: c_int = 1;
+            pub const SO_ACCEPTCONN: c_int = 2;
+            pub const SO_REUSEADDR: c_int = 4;
+            pub const SO_KEEPALIVE: c_int = 8;
+            pub const SO_DONTROUTE: c_int = 16;
+            pub const SO_BROADCAST: c_int = 32;
+            pub const SO_USELOOPBACK: c_int = 64;
+            pub const SO_LINGER: c_int = 128;
+            pub const SO_OOBINLINE: c_int = 256;
+            pub const SO_REUSEPORT: c_int = 512;
+            pub const SO_SNDBUF: c_int = 4097;
+            pub const SO_RCVBUF: c_int = 4098;
+            pub const SO_SNDLOWAT: c_int = 4099;
+            pub const SO_RCVLOWAT: c_int = 4100;
+            pub const SO_SNDTIMEO: c_int = 4107;
+            pub const SO_RCVTIMEO: c_int = 4108;
+            pub const SO_ERROR: c_int = 4103;
+            pub const SO_TYPE: c_int = 4104;
 
-            pub const IFF_LOOPBACK : c_int = 0x8;
+            pub const IFF_LOOPBACK: c_int = 0x8;
 
-            pub const SHUT_RD : c_int = 0;
-            pub const SHUT_WR : c_int = 1;
-            pub const SHUT_RDWR : c_int = 2;
+            pub const SHUT_RD: c_int = 0;
+            pub const SHUT_WR: c_int = 1;
+            pub const SHUT_RDWR: c_int = 2;
 
-            pub const LOCK_SH : c_int = 1;
-            pub const LOCK_EX : c_int = 2;
-            pub const LOCK_NB : c_int = 4;
-            pub const LOCK_UN : c_int = 8;
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         pub mod extra {
             use types::os::arch::c95::c_int;
 
 
-            pub const MAP_RENAME : c_int = 32;
-            pub const MAP_NORESERVE : c_int = 64;
-            pub const MAP_HASSEMAPHORE : c_int = 512;
+            pub const MAP_RENAME: c_int = 32;
+            pub const MAP_NORESERVE: c_int = 64;
+            pub const MAP_HASSEMAPHORE: c_int = 512;
 
-            pub const IPPROTO_RAW : c_int = 255;
+            pub const IPPROTO_RAW: c_int = 255;
 
-            pub const PATH_MAX : c_int = 1024;
+            pub const PATH_MAX: c_int = 1024;
         }
         pub mod sysconf {
             use types::os::arch::c95::c_int;
 
-            pub const _SC_ARG_MAX : c_int = 1;
-            pub const _SC_CHILD_MAX : c_int = 2;
-            pub const _SC_CLK_TCK : c_int = 39;
-            pub const _SC_NGROUPS_MAX : c_int = 4;
-            pub const _SC_OPEN_MAX : c_int = 5;
-            pub const _SC_JOB_CONTROL : c_int = 6;
-            pub const _SC_SAVED_IDS : c_int = 7;
-            pub const _SC_VERSION : c_int = 8;
-            pub const _SC_BC_BASE_MAX : c_int = 9;
-            pub const _SC_BC_DIM_MAX : c_int = 10;
-            pub const _SC_BC_SCALE_MAX : c_int = 11;
-            pub const _SC_BC_STRING_MAX : c_int = 12;
-            pub const _SC_COLL_WEIGHTS_MAX : c_int = 13;
-            pub const _SC_EXPR_NEST_MAX : c_int = 14;
-            pub const _SC_LINE_MAX : c_int = 15;
-            pub const _SC_RE_DUP_MAX : c_int = 16;
-            pub const _SC_2_VERSION : c_int = 17;
-            pub const _SC_2_C_BIND : c_int = 18;
-            pub const _SC_2_C_DEV : c_int = 19;
-            pub const _SC_2_CHAR_TERM : c_int = 20;
-            pub const _SC_2_FORT_DEV : c_int = 21;
-            pub const _SC_2_FORT_RUN : c_int = 22;
-            pub const _SC_2_LOCALEDEF : c_int = 23;
-            pub const _SC_2_SW_DEV : c_int = 24;
-            pub const _SC_2_UPE : c_int = 25;
-            pub const _SC_STREAM_MAX : c_int = 26;
-            pub const _SC_TZNAME_MAX : c_int = 27;
-            pub const _SC_PAGESIZE : c_int = 28;
-            pub const _SC_FSYNC : c_int = 29;
-            pub const _SC_AIO_LISTIO_MAX : c_int = 51;
-            pub const _SC_AIO_MAX : c_int = 52;
-            pub const _SC_ASYNCHRONOUS_IO : c_int = 50;
-            pub const _SC_MAPPED_FILES : c_int = 33;
-            pub const _SC_MEMLOCK : c_int = 34;
-            pub const _SC_MEMLOCK_RANGE : c_int = 35;
-            pub const _SC_MEMORY_PROTECTION : c_int = 36;
-            pub const _SC_MESSAGE_PASSING : c_int = 53;
-            pub const _SC_MQ_OPEN_MAX : c_int = 54;
-            pub const _SC_PRIORITY_SCHEDULING : c_int = 56;
-            pub const _SC_SEMAPHORES : c_int = 42;
-            pub const _SC_SHARED_MEMORY_OBJECTS : c_int = 87;
-            pub const _SC_SYNCHRONIZED_IO : c_int = 31;
-            pub const _SC_TIMERS : c_int = 44;
+            pub const _SC_ARG_MAX: c_int = 1;
+            pub const _SC_CHILD_MAX: c_int = 2;
+            pub const _SC_CLK_TCK: c_int = 39;
+            pub const _SC_NGROUPS_MAX: c_int = 4;
+            pub const _SC_OPEN_MAX: c_int = 5;
+            pub const _SC_JOB_CONTROL: c_int = 6;
+            pub const _SC_SAVED_IDS: c_int = 7;
+            pub const _SC_VERSION: c_int = 8;
+            pub const _SC_BC_BASE_MAX: c_int = 9;
+            pub const _SC_BC_DIM_MAX: c_int = 10;
+            pub const _SC_BC_SCALE_MAX: c_int = 11;
+            pub const _SC_BC_STRING_MAX: c_int = 12;
+            pub const _SC_COLL_WEIGHTS_MAX: c_int = 13;
+            pub const _SC_EXPR_NEST_MAX: c_int = 14;
+            pub const _SC_LINE_MAX: c_int = 15;
+            pub const _SC_RE_DUP_MAX: c_int = 16;
+            pub const _SC_2_VERSION: c_int = 17;
+            pub const _SC_2_C_BIND: c_int = 18;
+            pub const _SC_2_C_DEV: c_int = 19;
+            pub const _SC_2_CHAR_TERM: c_int = 20;
+            pub const _SC_2_FORT_DEV: c_int = 21;
+            pub const _SC_2_FORT_RUN: c_int = 22;
+            pub const _SC_2_LOCALEDEF: c_int = 23;
+            pub const _SC_2_SW_DEV: c_int = 24;
+            pub const _SC_2_UPE: c_int = 25;
+            pub const _SC_STREAM_MAX: c_int = 26;
+            pub const _SC_TZNAME_MAX: c_int = 27;
+            pub const _SC_PAGESIZE: c_int = 28;
+            pub const _SC_FSYNC: c_int = 29;
+            pub const _SC_AIO_LISTIO_MAX: c_int = 51;
+            pub const _SC_AIO_MAX: c_int = 52;
+            pub const _SC_ASYNCHRONOUS_IO: c_int = 50;
+            pub const _SC_MAPPED_FILES: c_int = 33;
+            pub const _SC_MEMLOCK: c_int = 34;
+            pub const _SC_MEMLOCK_RANGE: c_int = 35;
+            pub const _SC_MEMORY_PROTECTION: c_int = 36;
+            pub const _SC_MESSAGE_PASSING: c_int = 53;
+            pub const _SC_MQ_OPEN_MAX: c_int = 54;
+            pub const _SC_PRIORITY_SCHEDULING: c_int = 56;
+            pub const _SC_SEMAPHORES: c_int = 42;
+            pub const _SC_SHARED_MEMORY_OBJECTS: c_int = 87;
+            pub const _SC_SYNCHRONIZED_IO: c_int = 31;
+            pub const _SC_TIMERS: c_int = 44;
 
-            pub const _PC_NAME_MAX : c_int = 4;
-            pub const _PC_PATH_MAX : c_int = 5;
+            pub const _PC_NAME_MAX: c_int = 4;
+            pub const _PC_PATH_MAX: c_int = 5;
         }
     }
 
@@ -5365,21 +5549,21 @@ pub mod consts {
         pub mod c95 {
             use types::os::arch::c95::{c_int, c_uint};
 
-            pub const EXIT_FAILURE : c_int = 1;
-            pub const EXIT_SUCCESS : c_int = 0;
-            pub const RAND_MAX : c_int = 2147483647;
-            pub const EOF : c_int = -1;
-            pub const SEEK_SET : c_int = 0;
-            pub const SEEK_CUR : c_int = 1;
-            pub const SEEK_END : c_int = 2;
-            pub const _IOFBF : c_int = 0;
-            pub const _IONBF : c_int = 2;
-            pub const _IOLBF : c_int = 1;
-            pub const BUFSIZ : c_uint = 1024;
-            pub const FOPEN_MAX : c_uint = 20;
-            pub const FILENAME_MAX : c_uint = 1024;
-            pub const L_tmpnam : c_uint = 1024;
-            pub const TMP_MAX : c_uint = 308915776;
+            pub const EXIT_FAILURE: c_int = 1;
+            pub const EXIT_SUCCESS: c_int = 0;
+            pub const RAND_MAX: c_int = 2147483647;
+            pub const EOF: c_int = -1;
+            pub const SEEK_SET: c_int = 0;
+            pub const SEEK_CUR: c_int = 1;
+            pub const SEEK_END: c_int = 2;
+            pub const _IOFBF: c_int = 0;
+            pub const _IONBF: c_int = 2;
+            pub const _IOLBF: c_int = 1;
+            pub const BUFSIZ: c_uint = 1024;
+            pub const FOPEN_MAX: c_uint = 20;
+            pub const FILENAME_MAX: c_uint = 1024;
+            pub const L_tmpnam: c_uint = 1024;
+            pub const TMP_MAX: c_uint = 308915776;
         }
         pub mod c99 {
         }
@@ -5388,253 +5572,253 @@ pub mod consts {
             use types::os::arch::c95::c_int;
             use types::os::arch::posix88::mode_t;
 
-            pub const O_RDONLY : c_int = 0;
-            pub const O_WRONLY : c_int = 1;
-            pub const O_RDWR : c_int = 2;
-            pub const O_APPEND : c_int = 8;
-            pub const O_CREAT : c_int = 512;
-            pub const O_EXCL : c_int = 2048;
-            pub const O_NOCTTY : c_int = 131072;
-            pub const O_TRUNC : c_int = 1024;
-            pub const S_IFIFO : mode_t = 4096;
-            pub const S_IFCHR : mode_t = 8192;
-            pub const S_IFBLK : mode_t = 24576;
-            pub const S_IFDIR : mode_t = 16384;
-            pub const S_IFREG : mode_t = 32768;
-            pub const S_IFLNK : mode_t = 40960;
-            pub const S_IFSOCK : mode_t = 49152;
-            pub const S_IFMT : mode_t = 61440;
-            pub const S_IEXEC : mode_t = 64;
-            pub const S_IWRITE : mode_t = 128;
-            pub const S_IREAD : mode_t = 256;
-            pub const S_IRWXU : mode_t = 448;
-            pub const S_IXUSR : mode_t = 64;
-            pub const S_IWUSR : mode_t = 128;
-            pub const S_IRUSR : mode_t = 256;
-            pub const S_IRWXG : mode_t = 56;
-            pub const S_IXGRP : mode_t = 8;
-            pub const S_IWGRP : mode_t = 16;
-            pub const S_IRGRP : mode_t = 32;
-            pub const S_IRWXO : mode_t = 7;
-            pub const S_IXOTH : mode_t = 1;
-            pub const S_IWOTH : mode_t = 2;
-            pub const S_IROTH : mode_t = 4;
-            pub const F_OK : c_int = 0;
-            pub const R_OK : c_int = 4;
-            pub const W_OK : c_int = 2;
-            pub const X_OK : c_int = 1;
-            pub const STDIN_FILENO : c_int = 0;
-            pub const STDOUT_FILENO : c_int = 1;
-            pub const STDERR_FILENO : c_int = 2;
-            pub const F_LOCK : c_int = 1;
-            pub const F_TEST : c_int = 3;
-            pub const F_TLOCK : c_int = 2;
-            pub const F_ULOCK : c_int = 0;
-            pub const SIGHUP : c_int = 1;
-            pub const SIGINT : c_int = 2;
-            pub const SIGQUIT : c_int = 3;
-            pub const SIGILL : c_int = 4;
-            pub const SIGABRT : c_int = 6;
-            pub const SIGFPE : c_int = 8;
-            pub const SIGKILL : c_int = 9;
-            pub const SIGSEGV : c_int = 11;
-            pub const SIGPIPE : c_int = 13;
-            pub const SIGALRM : c_int = 14;
-            pub const SIGTERM : c_int = 15;
+            pub const O_RDONLY: c_int = 0;
+            pub const O_WRONLY: c_int = 1;
+            pub const O_RDWR: c_int = 2;
+            pub const O_APPEND: c_int = 8;
+            pub const O_CREAT: c_int = 512;
+            pub const O_EXCL: c_int = 2048;
+            pub const O_NOCTTY: c_int = 131072;
+            pub const O_TRUNC: c_int = 1024;
+            pub const S_IFIFO: mode_t = 4096;
+            pub const S_IFCHR: mode_t = 8192;
+            pub const S_IFBLK: mode_t = 24576;
+            pub const S_IFDIR: mode_t = 16384;
+            pub const S_IFREG: mode_t = 32768;
+            pub const S_IFLNK: mode_t = 40960;
+            pub const S_IFSOCK: mode_t = 49152;
+            pub const S_IFMT: mode_t = 61440;
+            pub const S_IEXEC: mode_t = 64;
+            pub const S_IWRITE: mode_t = 128;
+            pub const S_IREAD: mode_t = 256;
+            pub const S_IRWXU: mode_t = 448;
+            pub const S_IXUSR: mode_t = 64;
+            pub const S_IWUSR: mode_t = 128;
+            pub const S_IRUSR: mode_t = 256;
+            pub const S_IRWXG: mode_t = 56;
+            pub const S_IXGRP: mode_t = 8;
+            pub const S_IWGRP: mode_t = 16;
+            pub const S_IRGRP: mode_t = 32;
+            pub const S_IRWXO: mode_t = 7;
+            pub const S_IXOTH: mode_t = 1;
+            pub const S_IWOTH: mode_t = 2;
+            pub const S_IROTH: mode_t = 4;
+            pub const F_OK: c_int = 0;
+            pub const R_OK: c_int = 4;
+            pub const W_OK: c_int = 2;
+            pub const X_OK: c_int = 1;
+            pub const STDIN_FILENO: c_int = 0;
+            pub const STDOUT_FILENO: c_int = 1;
+            pub const STDERR_FILENO: c_int = 2;
+            pub const F_LOCK: c_int = 1;
+            pub const F_TEST: c_int = 3;
+            pub const F_TLOCK: c_int = 2;
+            pub const F_ULOCK: c_int = 0;
+            pub const SIGHUP: c_int = 1;
+            pub const SIGINT: c_int = 2;
+            pub const SIGQUIT: c_int = 3;
+            pub const SIGILL: c_int = 4;
+            pub const SIGABRT: c_int = 6;
+            pub const SIGFPE: c_int = 8;
+            pub const SIGKILL: c_int = 9;
+            pub const SIGSEGV: c_int = 11;
+            pub const SIGPIPE: c_int = 13;
+            pub const SIGALRM: c_int = 14;
+            pub const SIGTERM: c_int = 15;
 
-            pub const PROT_NONE : c_int = 0;
-            pub const PROT_READ : c_int = 1;
-            pub const PROT_WRITE : c_int = 2;
-            pub const PROT_EXEC : c_int = 4;
+            pub const PROT_NONE: c_int = 0;
+            pub const PROT_READ: c_int = 1;
+            pub const PROT_WRITE: c_int = 2;
+            pub const PROT_EXEC: c_int = 4;
 
-            pub const MAP_FILE : c_int = 0x0000;
-            pub const MAP_SHARED : c_int = 0x0001;
-            pub const MAP_PRIVATE : c_int = 0x0002;
-            pub const MAP_FIXED : c_int = 0x0010;
-            pub const MAP_ANON : c_int = 0x1000;
+            pub const MAP_FILE: c_int = 0x0000;
+            pub const MAP_SHARED: c_int = 0x0001;
+            pub const MAP_PRIVATE: c_int = 0x0002;
+            pub const MAP_FIXED: c_int = 0x0010;
+            pub const MAP_ANON: c_int = 0x1000;
 
-            pub const MAP_FAILED : *mut c_void = !0 as *mut c_void;
+            pub const MAP_FAILED: *mut c_void = !0 as *mut c_void;
 
-            pub const MCL_CURRENT : c_int = 0x0001;
-            pub const MCL_FUTURE : c_int = 0x0002;
+            pub const MCL_CURRENT: c_int = 0x0001;
+            pub const MCL_FUTURE: c_int = 0x0002;
 
-            pub const MS_ASYNC : c_int = 0x0001;
-            pub const MS_INVALIDATE : c_int = 0x0002;
-            pub const MS_SYNC : c_int = 0x0010;
+            pub const MS_ASYNC: c_int = 0x0001;
+            pub const MS_INVALIDATE: c_int = 0x0002;
+            pub const MS_SYNC: c_int = 0x0010;
 
-            pub const MS_KILLPAGES : c_int = 0x0004;
-            pub const MS_DEACTIVATE : c_int = 0x0008;
+            pub const MS_KILLPAGES: c_int = 0x0004;
+            pub const MS_DEACTIVATE: c_int = 0x0008;
 
-            pub const EPERM : c_int = 1;
-            pub const ENOENT : c_int = 2;
-            pub const ESRCH : c_int = 3;
-            pub const EINTR : c_int = 4;
-            pub const EIO : c_int = 5;
-            pub const ENXIO : c_int = 6;
-            pub const E2BIG : c_int = 7;
-            pub const ENOEXEC : c_int = 8;
-            pub const EBADF : c_int = 9;
-            pub const ECHILD : c_int = 10;
-            pub const EDEADLK : c_int = 11;
-            pub const ENOMEM : c_int = 12;
-            pub const EACCES : c_int = 13;
-            pub const EFAULT : c_int = 14;
-            pub const ENOTBLK : c_int = 15;
-            pub const EBUSY : c_int = 16;
-            pub const EEXIST : c_int = 17;
-            pub const EXDEV : c_int = 18;
-            pub const ENODEV : c_int = 19;
-            pub const ENOTDIR : c_int = 20;
-            pub const EISDIR : c_int = 21;
-            pub const EINVAL : c_int = 22;
-            pub const ENFILE : c_int = 23;
-            pub const EMFILE : c_int = 24;
-            pub const ENOTTY : c_int = 25;
-            pub const ETXTBSY : c_int = 26;
-            pub const EFBIG : c_int = 27;
-            pub const ENOSPC : c_int = 28;
-            pub const ESPIPE : c_int = 29;
-            pub const EROFS : c_int = 30;
-            pub const EMLINK : c_int = 31;
-            pub const EPIPE : c_int = 32;
-            pub const EDOM : c_int = 33;
-            pub const ERANGE : c_int = 34;
-            pub const EAGAIN : c_int = 35;
-            pub const EWOULDBLOCK : c_int = EAGAIN;
-            pub const EINPROGRESS : c_int = 36;
-            pub const EALREADY : c_int = 37;
-            pub const ENOTSOCK : c_int = 38;
-            pub const EDESTADDRREQ : c_int = 39;
-            pub const EMSGSIZE : c_int = 40;
-            pub const EPROTOTYPE : c_int = 41;
-            pub const ENOPROTOOPT : c_int = 42;
-            pub const EPROTONOSUPPORT : c_int = 43;
-            pub const ESOCKTNOSUPPORT : c_int = 44;
-            pub const ENOTSUP : c_int = 45;
-            pub const EPFNOSUPPORT : c_int = 46;
-            pub const EAFNOSUPPORT : c_int = 47;
-            pub const EADDRINUSE : c_int = 48;
-            pub const EADDRNOTAVAIL : c_int = 49;
-            pub const ENETDOWN : c_int = 50;
-            pub const ENETUNREACH : c_int = 51;
-            pub const ENETRESET : c_int = 52;
-            pub const ECONNABORTED : c_int = 53;
-            pub const ECONNRESET : c_int = 54;
-            pub const ENOBUFS : c_int = 55;
-            pub const EISCONN : c_int = 56;
-            pub const ENOTCONN : c_int = 57;
-            pub const ESHUTDOWN : c_int = 58;
-            pub const ETOOMANYREFS : c_int = 59;
-            pub const ETIMEDOUT : c_int = 60;
-            pub const ECONNREFUSED : c_int = 61;
-            pub const ELOOP : c_int = 62;
-            pub const ENAMETOOLONG : c_int = 63;
-            pub const EHOSTDOWN : c_int = 64;
-            pub const EHOSTUNREACH : c_int = 65;
-            pub const ENOTEMPTY : c_int = 66;
-            pub const EPROCLIM : c_int = 67;
-            pub const EUSERS : c_int = 68;
-            pub const EDQUOT : c_int = 69;
-            pub const ESTALE : c_int = 70;
-            pub const EREMOTE : c_int = 71;
-            pub const EBADRPC : c_int = 72;
-            pub const ERPCMISMATCH : c_int = 73;
-            pub const EPROGUNAVAIL : c_int = 74;
-            pub const EPROGMISMATCH : c_int = 75;
-            pub const EPROCUNAVAIL : c_int = 76;
-            pub const ENOLCK : c_int = 77;
-            pub const ENOSYS : c_int = 78;
-            pub const EFTYPE : c_int = 79;
-            pub const EAUTH : c_int = 80;
-            pub const ENEEDAUTH : c_int = 81;
-            pub const EPWROFF : c_int = 82;
-            pub const EDEVERR : c_int = 83;
-            pub const EOVERFLOW : c_int = 84;
-            pub const EBADEXEC : c_int = 85;
-            pub const EBADARCH : c_int = 86;
-            pub const ESHLIBVERS : c_int = 87;
-            pub const EBADMACHO : c_int = 88;
-            pub const ECANCELED : c_int = 89;
-            pub const EIDRM : c_int = 90;
-            pub const ENOMSG : c_int = 91;
-            pub const EILSEQ : c_int = 92;
-            pub const ENOATTR : c_int = 93;
-            pub const EBADMSG : c_int = 94;
-            pub const EMULTIHOP : c_int = 95;
-            pub const ENODATA : c_int = 96;
-            pub const ENOLINK : c_int = 97;
-            pub const ENOSR : c_int = 98;
-            pub const ENOSTR : c_int = 99;
-            pub const EPROTO : c_int = 100;
-            pub const ETIME : c_int = 101;
-            pub const EOPNOTSUPP : c_int = 102;
-            pub const ENOPOLICY : c_int = 103;
-            pub const ENOTRECOVERABLE : c_int = 104;
-            pub const EOWNERDEAD : c_int = 105;
-            pub const EQFULL : c_int = 106;
-            pub const ELAST : c_int = 106;
+            pub const EPERM: c_int = 1;
+            pub const ENOENT: c_int = 2;
+            pub const ESRCH: c_int = 3;
+            pub const EINTR: c_int = 4;
+            pub const EIO: c_int = 5;
+            pub const ENXIO: c_int = 6;
+            pub const E2BIG: c_int = 7;
+            pub const ENOEXEC: c_int = 8;
+            pub const EBADF: c_int = 9;
+            pub const ECHILD: c_int = 10;
+            pub const EDEADLK: c_int = 11;
+            pub const ENOMEM: c_int = 12;
+            pub const EACCES: c_int = 13;
+            pub const EFAULT: c_int = 14;
+            pub const ENOTBLK: c_int = 15;
+            pub const EBUSY: c_int = 16;
+            pub const EEXIST: c_int = 17;
+            pub const EXDEV: c_int = 18;
+            pub const ENODEV: c_int = 19;
+            pub const ENOTDIR: c_int = 20;
+            pub const EISDIR: c_int = 21;
+            pub const EINVAL: c_int = 22;
+            pub const ENFILE: c_int = 23;
+            pub const EMFILE: c_int = 24;
+            pub const ENOTTY: c_int = 25;
+            pub const ETXTBSY: c_int = 26;
+            pub const EFBIG: c_int = 27;
+            pub const ENOSPC: c_int = 28;
+            pub const ESPIPE: c_int = 29;
+            pub const EROFS: c_int = 30;
+            pub const EMLINK: c_int = 31;
+            pub const EPIPE: c_int = 32;
+            pub const EDOM: c_int = 33;
+            pub const ERANGE: c_int = 34;
+            pub const EAGAIN: c_int = 35;
+            pub const EWOULDBLOCK: c_int = EAGAIN;
+            pub const EINPROGRESS: c_int = 36;
+            pub const EALREADY: c_int = 37;
+            pub const ENOTSOCK: c_int = 38;
+            pub const EDESTADDRREQ: c_int = 39;
+            pub const EMSGSIZE: c_int = 40;
+            pub const EPROTOTYPE: c_int = 41;
+            pub const ENOPROTOOPT: c_int = 42;
+            pub const EPROTONOSUPPORT: c_int = 43;
+            pub const ESOCKTNOSUPPORT: c_int = 44;
+            pub const ENOTSUP: c_int = 45;
+            pub const EPFNOSUPPORT: c_int = 46;
+            pub const EAFNOSUPPORT: c_int = 47;
+            pub const EADDRINUSE: c_int = 48;
+            pub const EADDRNOTAVAIL: c_int = 49;
+            pub const ENETDOWN: c_int = 50;
+            pub const ENETUNREACH: c_int = 51;
+            pub const ENETRESET: c_int = 52;
+            pub const ECONNABORTED: c_int = 53;
+            pub const ECONNRESET: c_int = 54;
+            pub const ENOBUFS: c_int = 55;
+            pub const EISCONN: c_int = 56;
+            pub const ENOTCONN: c_int = 57;
+            pub const ESHUTDOWN: c_int = 58;
+            pub const ETOOMANYREFS: c_int = 59;
+            pub const ETIMEDOUT: c_int = 60;
+            pub const ECONNREFUSED: c_int = 61;
+            pub const ELOOP: c_int = 62;
+            pub const ENAMETOOLONG: c_int = 63;
+            pub const EHOSTDOWN: c_int = 64;
+            pub const EHOSTUNREACH: c_int = 65;
+            pub const ENOTEMPTY: c_int = 66;
+            pub const EPROCLIM: c_int = 67;
+            pub const EUSERS: c_int = 68;
+            pub const EDQUOT: c_int = 69;
+            pub const ESTALE: c_int = 70;
+            pub const EREMOTE: c_int = 71;
+            pub const EBADRPC: c_int = 72;
+            pub const ERPCMISMATCH: c_int = 73;
+            pub const EPROGUNAVAIL: c_int = 74;
+            pub const EPROGMISMATCH: c_int = 75;
+            pub const EPROCUNAVAIL: c_int = 76;
+            pub const ENOLCK: c_int = 77;
+            pub const ENOSYS: c_int = 78;
+            pub const EFTYPE: c_int = 79;
+            pub const EAUTH: c_int = 80;
+            pub const ENEEDAUTH: c_int = 81;
+            pub const EPWROFF: c_int = 82;
+            pub const EDEVERR: c_int = 83;
+            pub const EOVERFLOW: c_int = 84;
+            pub const EBADEXEC: c_int = 85;
+            pub const EBADARCH: c_int = 86;
+            pub const ESHLIBVERS: c_int = 87;
+            pub const EBADMACHO: c_int = 88;
+            pub const ECANCELED: c_int = 89;
+            pub const EIDRM: c_int = 90;
+            pub const ENOMSG: c_int = 91;
+            pub const EILSEQ: c_int = 92;
+            pub const ENOATTR: c_int = 93;
+            pub const EBADMSG: c_int = 94;
+            pub const EMULTIHOP: c_int = 95;
+            pub const ENODATA: c_int = 96;
+            pub const ENOLINK: c_int = 97;
+            pub const ENOSR: c_int = 98;
+            pub const ENOSTR: c_int = 99;
+            pub const EPROTO: c_int = 100;
+            pub const ETIME: c_int = 101;
+            pub const EOPNOTSUPP: c_int = 102;
+            pub const ENOPOLICY: c_int = 103;
+            pub const ENOTRECOVERABLE: c_int = 104;
+            pub const EOWNERDEAD: c_int = 105;
+            pub const EQFULL: c_int = 106;
+            pub const ELAST: c_int = 106;
         }
         pub mod posix01 {
             use types::os::arch::c95::{c_int, size_t};
             use types::os::common::posix01::rlim_t;
 
-            pub const F_DUPFD : c_int = 0;
-            pub const F_GETFD : c_int = 1;
-            pub const F_SETFD : c_int = 2;
-            pub const F_GETFL : c_int = 3;
-            pub const F_SETFL : c_int = 4;
+            pub const F_DUPFD: c_int = 0;
+            pub const F_GETFD: c_int = 1;
+            pub const F_SETFD: c_int = 2;
+            pub const F_GETFL: c_int = 3;
+            pub const F_SETFL: c_int = 4;
 
-            pub const O_ACCMODE : c_int = 3;
+            pub const O_ACCMODE: c_int = 3;
 
-            pub const SIGTRAP : c_int = 5;
+            pub const SIGTRAP: c_int = 5;
             pub const SIG_IGN: size_t = 1;
 
-            pub const GLOB_APPEND   : c_int = 0x0001;
-            pub const GLOB_DOOFFS   : c_int = 0x0002;
-            pub const GLOB_ERR      : c_int = 0x0004;
-            pub const GLOB_MARK     : c_int = 0x0008;
-            pub const GLOB_NOCHECK  : c_int = 0x0010;
-            pub const GLOB_NOSORT   : c_int = 0x0020;
-            pub const GLOB_NOESCAPE : c_int = 0x2000;
+            pub const GLOB_APPEND: c_int = 0x0001;
+            pub const GLOB_DOOFFS: c_int = 0x0002;
+            pub const GLOB_ERR: c_int = 0x0004;
+            pub const GLOB_MARK: c_int = 0x0008;
+            pub const GLOB_NOCHECK: c_int = 0x0010;
+            pub const GLOB_NOSORT: c_int = 0x0020;
+            pub const GLOB_NOESCAPE: c_int = 0x2000;
 
-            pub const GLOB_NOSPACE  : c_int = -1;
-            pub const GLOB_ABORTED  : c_int = -2;
-            pub const GLOB_NOMATCH  : c_int = -3;
+            pub const GLOB_NOSPACE: c_int = -1;
+            pub const GLOB_ABORTED: c_int = -2;
+            pub const GLOB_NOMATCH: c_int = -3;
 
-            pub const POSIX_MADV_NORMAL : c_int = 0;
-            pub const POSIX_MADV_RANDOM : c_int = 1;
-            pub const POSIX_MADV_SEQUENTIAL : c_int = 2;
-            pub const POSIX_MADV_WILLNEED : c_int = 3;
-            pub const POSIX_MADV_DONTNEED : c_int = 4;
+            pub const POSIX_MADV_NORMAL: c_int = 0;
+            pub const POSIX_MADV_RANDOM: c_int = 1;
+            pub const POSIX_MADV_SEQUENTIAL: c_int = 2;
+            pub const POSIX_MADV_WILLNEED: c_int = 3;
+            pub const POSIX_MADV_DONTNEED: c_int = 4;
 
-            pub const _SC_IOV_MAX : c_int = 56;
-            pub const _SC_GETGR_R_SIZE_MAX : c_int = 70;
-            pub const _SC_GETPW_R_SIZE_MAX : c_int = 71;
-            pub const _SC_LOGIN_NAME_MAX : c_int = 73;
-            pub const _SC_MQ_PRIO_MAX : c_int = 75;
-            pub const _SC_THREAD_ATTR_STACKADDR : c_int = 82;
-            pub const _SC_THREAD_ATTR_STACKSIZE : c_int = 83;
-            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS : c_int = 85;
-            pub const _SC_THREAD_KEYS_MAX : c_int = 86;
-            pub const _SC_THREAD_PRIO_INHERIT : c_int = 87;
-            pub const _SC_THREAD_PRIO_PROTECT : c_int = 88;
-            pub const _SC_THREAD_PRIORITY_SCHEDULING : c_int = 89;
-            pub const _SC_THREAD_PROCESS_SHARED : c_int = 90;
-            pub const _SC_THREAD_SAFE_FUNCTIONS : c_int = 91;
-            pub const _SC_THREAD_STACK_MIN : c_int = 93;
-            pub const _SC_THREAD_THREADS_MAX : c_int = 94;
-            pub const _SC_THREADS : c_int = 96;
-            pub const _SC_TTY_NAME_MAX : c_int = 101;
-            pub const _SC_ATEXIT_MAX : c_int = 107;
-            pub const _SC_XOPEN_CRYPT : c_int = 108;
-            pub const _SC_XOPEN_ENH_I18N : c_int = 109;
-            pub const _SC_XOPEN_LEGACY : c_int = 110;
-            pub const _SC_XOPEN_REALTIME : c_int = 111;
-            pub const _SC_XOPEN_REALTIME_THREADS : c_int = 112;
-            pub const _SC_XOPEN_SHM : c_int = 113;
-            pub const _SC_XOPEN_UNIX : c_int = 115;
-            pub const _SC_XOPEN_VERSION : c_int = 116;
-            pub const _SC_XOPEN_XCU_VERSION : c_int = 121;
+            pub const _SC_IOV_MAX: c_int = 56;
+            pub const _SC_GETGR_R_SIZE_MAX: c_int = 70;
+            pub const _SC_GETPW_R_SIZE_MAX: c_int = 71;
+            pub const _SC_LOGIN_NAME_MAX: c_int = 73;
+            pub const _SC_MQ_PRIO_MAX: c_int = 75;
+            pub const _SC_THREAD_ATTR_STACKADDR: c_int = 82;
+            pub const _SC_THREAD_ATTR_STACKSIZE: c_int = 83;
+            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS: c_int = 85;
+            pub const _SC_THREAD_KEYS_MAX: c_int = 86;
+            pub const _SC_THREAD_PRIO_INHERIT: c_int = 87;
+            pub const _SC_THREAD_PRIO_PROTECT: c_int = 88;
+            pub const _SC_THREAD_PRIORITY_SCHEDULING: c_int = 89;
+            pub const _SC_THREAD_PROCESS_SHARED: c_int = 90;
+            pub const _SC_THREAD_SAFE_FUNCTIONS: c_int = 91;
+            pub const _SC_THREAD_STACK_MIN: c_int = 93;
+            pub const _SC_THREAD_THREADS_MAX: c_int = 94;
+            pub const _SC_THREADS: c_int = 96;
+            pub const _SC_TTY_NAME_MAX: c_int = 101;
+            pub const _SC_ATEXIT_MAX: c_int = 107;
+            pub const _SC_XOPEN_CRYPT: c_int = 108;
+            pub const _SC_XOPEN_ENH_I18N: c_int = 109;
+            pub const _SC_XOPEN_LEGACY: c_int = 110;
+            pub const _SC_XOPEN_REALTIME: c_int = 111;
+            pub const _SC_XOPEN_REALTIME_THREADS: c_int = 112;
+            pub const _SC_XOPEN_SHM: c_int = 113;
+            pub const _SC_XOPEN_UNIX: c_int = 115;
+            pub const _SC_XOPEN_VERSION: c_int = 116;
+            pub const _SC_XOPEN_XCU_VERSION: c_int = 121;
 
             pub const PTHREAD_CREATE_JOINABLE: c_int = 1;
             pub const PTHREAD_CREATE_DETACHED: c_int = 2;
@@ -5666,22 +5850,22 @@ pub mod consts {
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
 
-            pub const MADV_NORMAL : c_int = 0;
-            pub const MADV_RANDOM : c_int = 1;
-            pub const MADV_SEQUENTIAL : c_int = 2;
-            pub const MADV_WILLNEED : c_int = 3;
-            pub const MADV_DONTNEED : c_int = 4;
-            pub const MADV_FREE : c_int = 5;
-            pub const MADV_ZERO_WIRED_PAGES : c_int = 6;
-            pub const MADV_FREE_REUSABLE : c_int = 7;
-            pub const MADV_FREE_REUSE : c_int = 8;
-            pub const MADV_CAN_REUSE : c_int = 9;
+            pub const MADV_NORMAL: c_int = 0;
+            pub const MADV_RANDOM: c_int = 1;
+            pub const MADV_SEQUENTIAL: c_int = 2;
+            pub const MADV_WILLNEED: c_int = 3;
+            pub const MADV_DONTNEED: c_int = 4;
+            pub const MADV_FREE: c_int = 5;
+            pub const MADV_ZERO_WIRED_PAGES: c_int = 6;
+            pub const MADV_FREE_REUSABLE: c_int = 7;
+            pub const MADV_FREE_REUSE: c_int = 8;
+            pub const MADV_CAN_REUSE: c_int = 9;
 
-            pub const MINCORE_INCORE : c_int =  0x1;
-            pub const MINCORE_REFERENCED : c_int = 0x2;
-            pub const MINCORE_MODIFIED : c_int = 0x4;
-            pub const MINCORE_REFERENCED_OTHER : c_int = 0x8;
-            pub const MINCORE_MODIFIED_OTHER : c_int = 0x10;
+            pub const MINCORE_INCORE: c_int = 0x1;
+            pub const MINCORE_REFERENCED: c_int = 0x2;
+            pub const MINCORE_MODIFIED: c_int = 0x4;
+            pub const MINCORE_REFERENCED_OTHER: c_int = 0x8;
+            pub const MINCORE_MODIFIED_OTHER: c_int = 0x10;
 
             pub const AF_UNIX: c_int = 1;
             pub const AF_INET: c_int = 2;
@@ -5738,22 +5922,22 @@ pub mod consts {
         pub mod extra {
             use types::os::arch::c95::c_int;
 
-            pub const O_DSYNC : c_int = 4194304;
-            pub const O_SYNC : c_int = 128;
-            pub const O_NONBLOCK : c_int = 4;
-            pub const F_GETPATH : c_int = 50;
-            pub const F_FULLFSYNC : c_int = 51;
+            pub const O_DSYNC: c_int = 4194304;
+            pub const O_SYNC: c_int = 128;
+            pub const O_NONBLOCK: c_int = 4;
+            pub const F_GETPATH: c_int = 50;
+            pub const F_FULLFSYNC: c_int = 51;
 
-            pub const MAP_COPY : c_int = 0x0002;
-            pub const MAP_RENAME : c_int = 0x0020;
-            pub const MAP_NORESERVE : c_int = 0x0040;
-            pub const MAP_NOEXTEND : c_int = 0x0100;
-            pub const MAP_HASSEMAPHORE : c_int = 0x0200;
-            pub const MAP_NOCACHE : c_int = 0x0400;
-            pub const MAP_JIT : c_int = 0x0800;
-            pub const MAP_STACK : c_int = 0;
+            pub const MAP_COPY: c_int = 0x0002;
+            pub const MAP_RENAME: c_int = 0x0020;
+            pub const MAP_NORESERVE: c_int = 0x0040;
+            pub const MAP_NOEXTEND: c_int = 0x0100;
+            pub const MAP_HASSEMAPHORE: c_int = 0x0200;
+            pub const MAP_NOCACHE: c_int = 0x0400;
+            pub const MAP_JIT: c_int = 0x0800;
+            pub const MAP_STACK: c_int = 0;
 
-            pub const IPPROTO_RAW : c_int = 255;
+            pub const IPPROTO_RAW: c_int = 255;
 
             pub const SO_NREAD: c_int = 0x1020;
             pub const SO_NKE: c_int = 0x1021;
@@ -5769,106 +5953,106 @@ pub mod consts {
         pub mod sysconf {
             use types::os::arch::c95::c_int;
 
-            pub const _SC_ARG_MAX : c_int = 1;
-            pub const _SC_CHILD_MAX : c_int = 2;
-            pub const _SC_CLK_TCK : c_int = 3;
-            pub const _SC_NGROUPS_MAX : c_int = 4;
-            pub const _SC_OPEN_MAX : c_int = 5;
-            pub const _SC_JOB_CONTROL : c_int = 6;
-            pub const _SC_SAVED_IDS : c_int = 7;
-            pub const _SC_VERSION : c_int = 8;
-            pub const _SC_BC_BASE_MAX : c_int = 9;
-            pub const _SC_BC_DIM_MAX : c_int = 10;
-            pub const _SC_BC_SCALE_MAX : c_int = 11;
-            pub const _SC_BC_STRING_MAX : c_int = 12;
-            pub const _SC_COLL_WEIGHTS_MAX : c_int = 13;
-            pub const _SC_EXPR_NEST_MAX : c_int = 14;
-            pub const _SC_LINE_MAX : c_int = 15;
-            pub const _SC_RE_DUP_MAX : c_int = 16;
-            pub const _SC_2_VERSION : c_int = 17;
-            pub const _SC_2_C_BIND : c_int = 18;
-            pub const _SC_2_C_DEV : c_int = 19;
-            pub const _SC_2_CHAR_TERM : c_int = 20;
-            pub const _SC_2_FORT_DEV : c_int = 21;
-            pub const _SC_2_FORT_RUN : c_int = 22;
-            pub const _SC_2_LOCALEDEF : c_int = 23;
-            pub const _SC_2_SW_DEV : c_int = 24;
-            pub const _SC_2_UPE : c_int = 25;
-            pub const _SC_STREAM_MAX : c_int = 26;
-            pub const _SC_TZNAME_MAX : c_int = 27;
-            pub const _SC_ASYNCHRONOUS_IO : c_int = 28;
-            pub const _SC_PAGESIZE : c_int = 29;
-            pub const _SC_MEMLOCK : c_int = 30;
-            pub const _SC_MEMLOCK_RANGE : c_int = 31;
-            pub const _SC_MEMORY_PROTECTION : c_int = 32;
-            pub const _SC_MESSAGE_PASSING : c_int = 33;
-            pub const _SC_PRIORITIZED_IO : c_int = 34;
-            pub const _SC_PRIORITY_SCHEDULING : c_int = 35;
-            pub const _SC_REALTIME_SIGNALS : c_int = 36;
-            pub const _SC_SEMAPHORES : c_int = 37;
-            pub const _SC_FSYNC : c_int = 38;
-            pub const _SC_SHARED_MEMORY_OBJECTS : c_int = 39;
-            pub const _SC_SYNCHRONIZED_IO : c_int = 40;
-            pub const _SC_TIMERS : c_int = 41;
-            pub const _SC_AIO_LISTIO_MAX : c_int = 42;
-            pub const _SC_AIO_MAX : c_int = 43;
-            pub const _SC_AIO_PRIO_DELTA_MAX : c_int = 44;
-            pub const _SC_DELAYTIMER_MAX : c_int = 45;
-            pub const _SC_MQ_OPEN_MAX : c_int = 46;
-            pub const _SC_MAPPED_FILES : c_int = 47;
-            pub const _SC_RTSIG_MAX : c_int = 48;
-            pub const _SC_SEM_NSEMS_MAX : c_int = 49;
-            pub const _SC_SEM_VALUE_MAX : c_int = 50;
-            pub const _SC_SIGQUEUE_MAX : c_int = 51;
-            pub const _SC_TIMER_MAX : c_int = 52;
-            pub const _SC_NPROCESSORS_CONF : c_int = 57;
-            pub const _SC_NPROCESSORS_ONLN : c_int = 58;
-            pub const _SC_2_PBS : c_int = 59;
-            pub const _SC_2_PBS_ACCOUNTING : c_int = 60;
-            pub const _SC_2_PBS_CHECKPOINT : c_int = 61;
-            pub const _SC_2_PBS_LOCATE : c_int = 62;
-            pub const _SC_2_PBS_MESSAGE : c_int = 63;
-            pub const _SC_2_PBS_TRACK : c_int = 64;
-            pub const _SC_ADVISORY_INFO : c_int = 65;
-            pub const _SC_BARRIERS : c_int = 66;
-            pub const _SC_CLOCK_SELECTION : c_int = 67;
-            pub const _SC_CPUTIME : c_int = 68;
-            pub const _SC_FILE_LOCKING : c_int = 69;
-            pub const _SC_HOST_NAME_MAX : c_int = 72;
-            pub const _SC_MONOTONIC_CLOCK : c_int = 74;
-            pub const _SC_READER_WRITER_LOCKS : c_int = 76;
-            pub const _SC_REGEXP : c_int = 77;
-            pub const _SC_SHELL : c_int = 78;
-            pub const _SC_SPAWN : c_int = 79;
-            pub const _SC_SPIN_LOCKS : c_int = 80;
-            pub const _SC_SPORADIC_SERVER : c_int = 81;
-            pub const _SC_THREAD_CPUTIME : c_int = 84;
-            pub const _SC_THREAD_SPORADIC_SERVER : c_int = 92;
-            pub const _SC_TIMEOUTS : c_int = 95;
-            pub const _SC_TRACE : c_int = 97;
-            pub const _SC_TRACE_EVENT_FILTER : c_int = 98;
-            pub const _SC_TRACE_INHERIT : c_int = 99;
-            pub const _SC_TRACE_LOG : c_int = 100;
-            pub const _SC_TYPED_MEMORY_OBJECTS : c_int = 102;
-            pub const _SC_V6_ILP32_OFF32 : c_int = 103;
-            pub const _SC_V6_ILP32_OFFBIG : c_int = 104;
-            pub const _SC_V6_LP64_OFF64 : c_int = 105;
-            pub const _SC_V6_LPBIG_OFFBIG : c_int = 106;
-            pub const _SC_IPV6 : c_int = 118;
-            pub const _SC_RAW_SOCKETS : c_int = 119;
-            pub const _SC_SYMLOOP_MAX : c_int = 120;
-            pub const _SC_PAGE_SIZE : c_int = _SC_PAGESIZE;
-            pub const _SC_XOPEN_STREAMS : c_int = 114;
-            pub const _SC_XBS5_ILP32_OFF32 : c_int = 122;
-            pub const _SC_XBS5_ILP32_OFFBIG : c_int = 123;
-            pub const _SC_XBS5_LP64_OFF64 : c_int = 124;
-            pub const _SC_XBS5_LPBIG_OFFBIG : c_int = 125;
-            pub const _SC_SS_REPL_MAX : c_int = 126;
-            pub const _SC_TRACE_EVENT_NAME_MAX : c_int = 127;
-            pub const _SC_TRACE_NAME_MAX : c_int = 128;
-            pub const _SC_TRACE_SYS_MAX : c_int = 129;
-            pub const _SC_TRACE_USER_EVENT_MAX : c_int = 130;
-            pub const _SC_PASS_MAX : c_int = 131;
+            pub const _SC_ARG_MAX: c_int = 1;
+            pub const _SC_CHILD_MAX: c_int = 2;
+            pub const _SC_CLK_TCK: c_int = 3;
+            pub const _SC_NGROUPS_MAX: c_int = 4;
+            pub const _SC_OPEN_MAX: c_int = 5;
+            pub const _SC_JOB_CONTROL: c_int = 6;
+            pub const _SC_SAVED_IDS: c_int = 7;
+            pub const _SC_VERSION: c_int = 8;
+            pub const _SC_BC_BASE_MAX: c_int = 9;
+            pub const _SC_BC_DIM_MAX: c_int = 10;
+            pub const _SC_BC_SCALE_MAX: c_int = 11;
+            pub const _SC_BC_STRING_MAX: c_int = 12;
+            pub const _SC_COLL_WEIGHTS_MAX: c_int = 13;
+            pub const _SC_EXPR_NEST_MAX: c_int = 14;
+            pub const _SC_LINE_MAX: c_int = 15;
+            pub const _SC_RE_DUP_MAX: c_int = 16;
+            pub const _SC_2_VERSION: c_int = 17;
+            pub const _SC_2_C_BIND: c_int = 18;
+            pub const _SC_2_C_DEV: c_int = 19;
+            pub const _SC_2_CHAR_TERM: c_int = 20;
+            pub const _SC_2_FORT_DEV: c_int = 21;
+            pub const _SC_2_FORT_RUN: c_int = 22;
+            pub const _SC_2_LOCALEDEF: c_int = 23;
+            pub const _SC_2_SW_DEV: c_int = 24;
+            pub const _SC_2_UPE: c_int = 25;
+            pub const _SC_STREAM_MAX: c_int = 26;
+            pub const _SC_TZNAME_MAX: c_int = 27;
+            pub const _SC_ASYNCHRONOUS_IO: c_int = 28;
+            pub const _SC_PAGESIZE: c_int = 29;
+            pub const _SC_MEMLOCK: c_int = 30;
+            pub const _SC_MEMLOCK_RANGE: c_int = 31;
+            pub const _SC_MEMORY_PROTECTION: c_int = 32;
+            pub const _SC_MESSAGE_PASSING: c_int = 33;
+            pub const _SC_PRIORITIZED_IO: c_int = 34;
+            pub const _SC_PRIORITY_SCHEDULING: c_int = 35;
+            pub const _SC_REALTIME_SIGNALS: c_int = 36;
+            pub const _SC_SEMAPHORES: c_int = 37;
+            pub const _SC_FSYNC: c_int = 38;
+            pub const _SC_SHARED_MEMORY_OBJECTS: c_int = 39;
+            pub const _SC_SYNCHRONIZED_IO: c_int = 40;
+            pub const _SC_TIMERS: c_int = 41;
+            pub const _SC_AIO_LISTIO_MAX: c_int = 42;
+            pub const _SC_AIO_MAX: c_int = 43;
+            pub const _SC_AIO_PRIO_DELTA_MAX: c_int = 44;
+            pub const _SC_DELAYTIMER_MAX: c_int = 45;
+            pub const _SC_MQ_OPEN_MAX: c_int = 46;
+            pub const _SC_MAPPED_FILES: c_int = 47;
+            pub const _SC_RTSIG_MAX: c_int = 48;
+            pub const _SC_SEM_NSEMS_MAX: c_int = 49;
+            pub const _SC_SEM_VALUE_MAX: c_int = 50;
+            pub const _SC_SIGQUEUE_MAX: c_int = 51;
+            pub const _SC_TIMER_MAX: c_int = 52;
+            pub const _SC_NPROCESSORS_CONF: c_int = 57;
+            pub const _SC_NPROCESSORS_ONLN: c_int = 58;
+            pub const _SC_2_PBS: c_int = 59;
+            pub const _SC_2_PBS_ACCOUNTING: c_int = 60;
+            pub const _SC_2_PBS_CHECKPOINT: c_int = 61;
+            pub const _SC_2_PBS_LOCATE: c_int = 62;
+            pub const _SC_2_PBS_MESSAGE: c_int = 63;
+            pub const _SC_2_PBS_TRACK: c_int = 64;
+            pub const _SC_ADVISORY_INFO: c_int = 65;
+            pub const _SC_BARRIERS: c_int = 66;
+            pub const _SC_CLOCK_SELECTION: c_int = 67;
+            pub const _SC_CPUTIME: c_int = 68;
+            pub const _SC_FILE_LOCKING: c_int = 69;
+            pub const _SC_HOST_NAME_MAX: c_int = 72;
+            pub const _SC_MONOTONIC_CLOCK: c_int = 74;
+            pub const _SC_READER_WRITER_LOCKS: c_int = 76;
+            pub const _SC_REGEXP: c_int = 77;
+            pub const _SC_SHELL: c_int = 78;
+            pub const _SC_SPAWN: c_int = 79;
+            pub const _SC_SPIN_LOCKS: c_int = 80;
+            pub const _SC_SPORADIC_SERVER: c_int = 81;
+            pub const _SC_THREAD_CPUTIME: c_int = 84;
+            pub const _SC_THREAD_SPORADIC_SERVER: c_int = 92;
+            pub const _SC_TIMEOUTS: c_int = 95;
+            pub const _SC_TRACE: c_int = 97;
+            pub const _SC_TRACE_EVENT_FILTER: c_int = 98;
+            pub const _SC_TRACE_INHERIT: c_int = 99;
+            pub const _SC_TRACE_LOG: c_int = 100;
+            pub const _SC_TYPED_MEMORY_OBJECTS: c_int = 102;
+            pub const _SC_V6_ILP32_OFF32: c_int = 103;
+            pub const _SC_V6_ILP32_OFFBIG: c_int = 104;
+            pub const _SC_V6_LP64_OFF64: c_int = 105;
+            pub const _SC_V6_LPBIG_OFFBIG: c_int = 106;
+            pub const _SC_IPV6: c_int = 118;
+            pub const _SC_RAW_SOCKETS: c_int = 119;
+            pub const _SC_SYMLOOP_MAX: c_int = 120;
+            pub const _SC_PAGE_SIZE: c_int = _SC_PAGESIZE;
+            pub const _SC_XOPEN_STREAMS: c_int = 114;
+            pub const _SC_XBS5_ILP32_OFF32: c_int = 122;
+            pub const _SC_XBS5_ILP32_OFFBIG: c_int = 123;
+            pub const _SC_XBS5_LP64_OFF64: c_int = 124;
+            pub const _SC_XBS5_LPBIG_OFFBIG: c_int = 125;
+            pub const _SC_SS_REPL_MAX: c_int = 126;
+            pub const _SC_TRACE_EVENT_NAME_MAX: c_int = 127;
+            pub const _SC_TRACE_NAME_MAX: c_int = 128;
+            pub const _SC_TRACE_SYS_MAX: c_int = 129;
+            pub const _SC_TRACE_USER_EVENT_MAX: c_int = 130;
+            pub const _SC_PASS_MAX: c_int = 131;
 
             pub const _PC_NAME_MAX: c_int = 4;
             pub const _PC_PATH_MAX: c_int = 5;
@@ -5907,16 +6091,15 @@ pub mod funcs {
             use types::os::arch::c95::{c_char, c_int, c_long, size_t};
 
             extern {
-                pub fn fopen(filename: *const c_char,
-                             mode: *const c_char) -> *mut FILE;
-                pub fn freopen(filename: *const c_char, mode: *const c_char,
+                pub fn fopen(filename: *const c_char, mode: *const c_char) -> *mut FILE;
+                pub fn freopen(filename: *const c_char,
+                               mode: *const c_char,
                                file: *mut FILE)
                                -> *mut FILE;
                 pub fn fflush(file: *mut FILE) -> c_int;
                 pub fn fclose(file: *mut FILE) -> c_int;
                 pub fn remove(filename: *const c_char) -> c_int;
-                pub fn rename(oldname: *const c_char,
-                              newname: *const c_char) -> c_int;
+                pub fn rename(oldname: *const c_char, newname: *const c_char) -> c_int;
                 pub fn tmpfile() -> *mut FILE;
                 pub fn setvbuf(stream: *mut FILE,
                                buffer: *mut c_char,
@@ -5926,10 +6109,9 @@ pub mod funcs {
                 pub fn setbuf(stream: *mut FILE, buf: *mut c_char);
                 // Omitted: printf and scanf variants.
                 pub fn fgetc(stream: *mut FILE) -> c_int;
-                pub fn fgets(buf: *mut c_char, n: c_int, stream: *mut FILE)
-                             -> *mut c_char;
+                pub fn fgets(buf: *mut c_char, n: c_int, stream: *mut FILE) -> *mut c_char;
                 pub fn fputc(c: c_int, stream: *mut FILE) -> c_int;
-                pub fn fputs(s: *const c_char, stream: *mut FILE)-> c_int;
+                pub fn fputs(s: *const c_char, stream: *mut FILE) -> c_int;
                 // Omitted: getc, getchar (might be macros).
 
                 // Omitted: gets, so ridiculously unsafe that it should not
@@ -5948,8 +6130,7 @@ pub mod funcs {
                               nobj: size_t,
                               stream: *mut FILE)
                               -> size_t;
-                pub fn fseek(stream: *mut FILE, offset: c_long, whence: c_int)
-                             -> c_int;
+                pub fn fseek(stream: *mut FILE, offset: c_long, whence: c_int) -> c_int;
                 pub fn ftell(stream: *mut FILE) -> c_long;
                 pub fn rewind(stream: *mut FILE);
                 pub fn fgetpos(stream: *mut FILE, ptr: *mut fpos_t) -> c_int;
@@ -5964,7 +6145,7 @@ pub mod funcs {
             use types::common::c95::c_void;
             use types::os::arch::c95::{c_char, c_double, c_int};
             use types::os::arch::c95::{c_long, c_uint, c_ulong};
-            use types::os::arch::c95::{size_t};
+            use types::os::arch::c95::size_t;
 
             extern {
                 pub fn abs(i: c_int) -> c_int;
@@ -5972,12 +6153,9 @@ pub mod funcs {
                 // Omitted: div, ldiv (return pub type incomplete).
                 pub fn atof(s: *const c_char) -> c_double;
                 pub fn atoi(s: *const c_char) -> c_int;
-                pub fn strtod(s: *const c_char,
-                              endp: *mut *mut c_char) -> c_double;
-                pub fn strtol(s: *const c_char,
-                              endp: *mut *mut c_char, base: c_int) -> c_long;
-                pub fn strtoul(s: *const c_char, endp: *mut *mut c_char,
-                               base: c_int) -> c_ulong;
+                pub fn strtod(s: *const c_char, endp: *mut *mut c_char) -> c_double;
+                pub fn strtol(s: *const c_char, endp: *mut *mut c_char, base: c_int) -> c_long;
+                pub fn strtoul(s: *const c_char, endp: *mut *mut c_char, base: c_int) -> c_ulong;
                 pub fn calloc(nobj: size_t, size: size_t) -> *mut c_void;
                 pub fn malloc(size: size_t) -> *mut c_void;
                 pub fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
@@ -6005,7 +6183,7 @@ pub mod funcs {
                 /// ```
                 pub fn exit(status: c_int) -> !;
                 pub fn _exit(status: c_int) -> !;
-                pub fn atexit(cb: extern fn()) -> c_int;
+                pub fn atexit(cb: extern "C" fn()) -> c_int;
                 pub fn system(s: *const c_char) -> c_int;
                 pub fn getenv(s: *const c_char) -> *mut c_char;
                 // Omitted: bsearch, qsort
@@ -6017,43 +6195,34 @@ pub mod funcs {
         pub mod string {
             use types::common::c95::c_void;
             use types::os::arch::c95::{c_char, c_int, size_t};
-            use types::os::arch::c95::{wchar_t};
+            use types::os::arch::c95::wchar_t;
 
             extern {
-                pub fn strcpy(dst: *mut c_char,
-                              src: *const c_char) -> *mut c_char;
-                pub fn strncpy(dst: *mut c_char, src: *const c_char, n: size_t)
-                               -> *mut c_char;
+                pub fn strcpy(dst: *mut c_char, src: *const c_char) -> *mut c_char;
+                pub fn strncpy(dst: *mut c_char, src: *const c_char, n: size_t) -> *mut c_char;
                 pub fn strcat(s: *mut c_char, ct: *const c_char) -> *mut c_char;
-                pub fn strncat(s: *mut c_char, ct: *const c_char,
-                               n: size_t) -> *mut c_char;
+                pub fn strncat(s: *mut c_char, ct: *const c_char, n: size_t) -> *mut c_char;
                 pub fn strcmp(cs: *const c_char, ct: *const c_char) -> c_int;
-                pub fn strncmp(cs: *const c_char, ct: *const c_char,
-                               n: size_t) -> c_int;
+                pub fn strncmp(cs: *const c_char, ct: *const c_char, n: size_t) -> c_int;
                 pub fn strcoll(cs: *const c_char, ct: *const c_char) -> c_int;
                 pub fn strchr(cs: *const c_char, c: c_int) -> *mut c_char;
                 pub fn strrchr(cs: *const c_char, c: c_int) -> *mut c_char;
                 pub fn strspn(cs: *const c_char, ct: *const c_char) -> size_t;
                 pub fn strcspn(cs: *const c_char, ct: *const c_char) -> size_t;
-                pub fn strpbrk(cs: *const c_char,
-                               ct: *const c_char) -> *mut c_char;
-                pub fn strstr(cs: *const c_char,
-                              ct: *const c_char) -> *mut c_char;
+                pub fn strpbrk(cs: *const c_char, ct: *const c_char) -> *mut c_char;
+                pub fn strstr(cs: *const c_char, ct: *const c_char) -> *mut c_char;
                 pub fn strlen(cs: *const c_char) -> size_t;
                 pub fn strerror(n: c_int) -> *mut c_char;
                 pub fn strtok(s: *mut c_char, t: *const c_char) -> *mut c_char;
-                pub fn strxfrm(s: *mut c_char, ct: *const c_char,
-                               n: size_t) -> size_t;
+                pub fn strxfrm(s: *mut c_char, ct: *const c_char, n: size_t) -> size_t;
                 pub fn wcslen(buf: *const wchar_t) -> size_t;
 
                 // Omitted: memcpy, memmove, memset (provided by LLVM)
 
                 // These are fine to execute on the Rust stack. They must be,
                 // in fact, because LLVM generates calls to them!
-                pub fn memcmp(cx: *const c_void, ct: *const c_void,
-                              n: size_t) -> c_int;
-                pub fn memchr(cx: *const c_void, c: c_int,
-                              n: size_t) -> *mut c_void;
+                pub fn memcmp(cx: *const c_void, ct: *const c_void, n: size_t) -> c_int;
+                pub fn memchr(cx: *const c_void, c: c_int, n: size_t) -> *mut c_void;
             }
         }
     }
@@ -6096,8 +6265,7 @@ pub mod funcs {
 
             extern {
                 #[link_name = "_popen"]
-                pub fn popen(command: *const c_char,
-                             mode: *const c_char) -> *mut FILE;
+                pub fn popen(command: *const c_char, mode: *const c_char) -> *mut FILE;
                 #[link_name = "_pclose"]
                 pub fn pclose(stream: *mut FILE) -> c_int;
                 #[link_name = "_fdopen"]
@@ -6111,11 +6279,9 @@ pub mod funcs {
             use types::os::arch::c95::{c_int, c_char, wchar_t};
             extern {
                 #[link_name = "_open"]
-                pub fn open(path: *const c_char, oflag: c_int, mode: c_int)
-                            -> c_int;
+                pub fn open(path: *const c_char, oflag: c_int, mode: c_int) -> c_int;
                 #[link_name = "_wopen"]
-                pub fn wopen(path: *const wchar_t, oflag: c_int, mode: c_int)
-                            -> c_int;
+                pub fn wopen(path: *const wchar_t, oflag: c_int, mode: c_int) -> c_int;
                 #[link_name = "_creat"]
                 pub fn creat(path: *const c_char, mode: c_int) -> c_int;
             }
@@ -6127,8 +6293,7 @@ pub mod funcs {
 
         pub mod unistd {
             use types::common::c95::c_void;
-            use types::os::arch::c95::{c_int, c_uint, c_char,
-                                             c_long, size_t};
+            use types::os::arch::c95::{c_int, c_uint, c_char, c_long, size_t};
             use types::os::arch::c99::intptr_t;
 
             extern {
@@ -6143,18 +6308,19 @@ pub mod funcs {
                 #[link_name = "_dup2"]
                 pub fn dup2(src: c_int, dst: c_int) -> c_int;
                 #[link_name = "_execv"]
-                pub fn execv(prog: *const c_char,
-                             argv: *const *const c_char) -> intptr_t;
+                pub fn execv(prog: *const c_char, argv: *const *const c_char) -> intptr_t;
                 #[link_name = "_execve"]
-                pub fn execve(prog: *const c_char, argv: *const *const c_char,
+                pub fn execve(prog: *const c_char,
+                              argv: *const *const c_char,
                               envp: *const *const c_char)
                               -> c_int;
                 #[link_name = "_execvp"]
-                pub fn execvp(c: *const c_char,
-                              argv: *const *const c_char) -> c_int;
+                pub fn execvp(c: *const c_char, argv: *const *const c_char) -> c_int;
                 #[link_name = "_execvpe"]
-                pub fn execvpe(c: *const c_char, argv: *const *const c_char,
-                               envp: *const *const c_char) -> c_int;
+                pub fn execvpe(c: *const c_char,
+                               argv: *const *const c_char,
+                               envp: *const *const c_char)
+                               -> c_int;
                 #[link_name = "_getcwd"]
                 pub fn getcwd(buf: *mut c_char, size: size_t) -> *mut c_char;
                 #[link_name = "_getpid"]
@@ -6162,21 +6328,17 @@ pub mod funcs {
                 #[link_name = "_isatty"]
                 pub fn isatty(fd: c_int) -> c_int;
                 #[link_name = "_lseek"]
-                pub fn lseek(fd: c_int, offset: c_long, origin: c_int)
-                             -> c_long;
+                pub fn lseek(fd: c_int, offset: c_long, origin: c_int) -> c_long;
                 #[link_name = "_pipe"]
-                pub fn pipe(fds: *mut c_int, psize: c_uint, textmode: c_int)
-                            -> c_int;
+                pub fn pipe(fds: *mut c_int, psize: c_uint, textmode: c_int) -> c_int;
                 #[link_name = "_read"]
-                pub fn read(fd: c_int, buf: *mut c_void, count: c_uint)
-                            -> c_int;
+                pub fn read(fd: c_int, buf: *mut c_void, count: c_uint) -> c_int;
                 #[link_name = "_rmdir"]
                 pub fn rmdir(path: *const c_char) -> c_int;
                 #[link_name = "_unlink"]
                 pub fn unlink(c: *const c_char) -> c_int;
                 #[link_name = "_write"]
-                pub fn write(fd: c_int, buf: *const c_void,
-                             count: c_uint) -> c_int;
+                pub fn write(fd: c_int, buf: *const c_void, count: c_uint) -> c_int;
             }
         }
 
@@ -6223,8 +6385,7 @@ pub mod funcs {
             use types::os::arch::c95::{c_char, c_int};
 
             extern {
-                pub fn popen(command: *const c_char,
-                             mode: *const c_char) -> *mut FILE;
+                pub fn popen(command: *const c_char, mode: *const c_char) -> *mut FILE;
                 pub fn pclose(stream: *mut FILE) -> c_int;
                 pub fn fdopen(fd: c_int, mode: *const c_char) -> *mut FILE;
                 pub fn fileno(stream: *mut FILE) -> c_int;
@@ -6239,20 +6400,21 @@ pub mod funcs {
                 extern {
                     #[cfg(any(target_os = "macos",
                               target_os = "ios"))]
-                    pub fn open(path: *const ::c_char, oflag: ::c_int, ...)
-                                -> ::c_int;
+                    pub fn open(path: *const ::c_char, oflag: ::c_int, ...) -> ::c_int;
 
                     #[cfg(not(any(target_os = "macos",
                                   target_os = "ios")))]
-                    pub fn open(path: *const ::c_char, oflag: ::c_int, mode: ::mode_t)
-                                -> ::c_int;
+                    pub fn open(path: *const ::c_char, oflag: ::c_int, mode: ::mode_t) -> ::c_int;
                 }
             }
 
             #[cfg(any(target_os = "macos",
                       target_os = "ios"))]
             #[inline]
-            pub unsafe extern fn open(path: *const c_char, oflag: c_int, mode: mode_t) -> c_int {
+            pub unsafe extern "C" fn open(path: *const c_char,
+                                          oflag: c_int,
+                                          mode: mode_t)
+                                          -> c_int {
                 use types::os::arch::c95::c_uint;
                 open_shim::open(path, oflag, mode as c_uint)
             }
@@ -6260,7 +6422,10 @@ pub mod funcs {
             #[cfg(not(any(target_os = "macos",
                           target_os = "ios")))]
             #[inline]
-            pub unsafe extern fn open(path: *const c_char, oflag: c_int, mode: mode_t) -> c_int {
+            pub unsafe extern "C" fn open(path: *const c_char,
+                                          oflag: c_int,
+                                          mode: mode_t)
+                                          -> c_int {
                 open_shim::open(path, oflag, mode)
             }
 
@@ -6285,8 +6450,10 @@ pub mod funcs {
                 #[link_name="rust_opendir"]
                 pub fn opendir(dirname: *const c_char) -> *mut DIR;
                 #[link_name="rust_readdir_r"]
-                pub fn readdir_r(dirp: *mut DIR, entry: *mut dirent_t,
-                                  result: *mut *mut dirent_t) -> c_int;
+                pub fn readdir_r(dirp: *mut DIR,
+                                 entry: *mut dirent_t,
+                                 result: *mut *mut dirent_t)
+                                 -> c_int;
             }
 
             extern {
@@ -6300,7 +6467,7 @@ pub mod funcs {
         pub mod unistd {
             use types::common::c95::c_void;
             use types::os::arch::c95::{c_char, c_int, c_long, c_uint};
-            use types::os::arch::c95::{size_t};
+            use types::os::arch::c95::size_t;
             use types::os::common::posix01::timespec;
             use types::os::arch::posix01::utimbuf;
             use types::os::arch::posix88::{gid_t, off_t, pid_t};
@@ -6311,31 +6478,27 @@ pub mod funcs {
                 pub fn access(path: *const c_char, amode: c_int) -> c_int;
                 pub fn alarm(seconds: c_uint) -> c_uint;
                 pub fn chdir(dir: *const c_char) -> c_int;
-                pub fn chown(path: *const c_char, uid: uid_t,
-                             gid: gid_t) -> c_int;
+                pub fn chown(path: *const c_char, uid: uid_t, gid: gid_t) -> c_int;
                 pub fn close(fd: c_int) -> c_int;
                 pub fn dup(fd: c_int) -> c_int;
                 pub fn dup2(src: c_int, dst: c_int) -> c_int;
-                pub fn execv(prog: *const c_char,
-                             argv: *const *const c_char) -> c_int;
-                pub fn execve(prog: *const c_char, argv: *const *const c_char,
+                pub fn execv(prog: *const c_char, argv: *const *const c_char) -> c_int;
+                pub fn execve(prog: *const c_char,
+                              argv: *const *const c_char,
                               envp: *const *const c_char)
                               -> c_int;
-                pub fn execvp(c: *const c_char,
-                              argv: *const *const c_char) -> c_int;
+                pub fn execvp(c: *const c_char, argv: *const *const c_char) -> c_int;
                 pub fn fork() -> pid_t;
                 pub fn fpathconf(filedes: c_int, name: c_int) -> c_long;
                 pub fn getcwd(buf: *mut c_char, size: size_t) -> *mut c_char;
                 pub fn getegid() -> gid_t;
                 pub fn geteuid() -> uid_t;
                 pub fn getgid() -> gid_t;
-                pub fn getgroups(ngroups_max: c_int, groups: *mut gid_t)
-                                 -> c_int;
+                pub fn getgroups(ngroups_max: c_int, groups: *mut gid_t) -> c_int;
                 pub fn getlogin() -> *mut c_char;
                 // GNU getopt(3) modifies its arguments despite the
                 // char * const [] prototype; see the manpage.
-                pub fn getopt(argc: c_int, argv: *mut *mut c_char,
-                              optstr: *const c_char) -> c_int;
+                pub fn getopt(argc: c_int, argv: *mut *mut c_char, optstr: *const c_char) -> c_int;
                 pub fn getpgrp() -> pid_t;
                 pub fn getpid() -> pid_t;
                 pub fn getppid() -> pid_t;
@@ -6343,13 +6506,11 @@ pub mod funcs {
                 pub fn getsid(pid: pid_t) -> pid_t;
                 pub fn isatty(fd: c_int) -> c_int;
                 pub fn link(src: *const c_char, dst: *const c_char) -> c_int;
-                pub fn lseek(fd: c_int, offset: off_t, whence: c_int)
-                             -> off_t;
+                pub fn lseek(fd: c_int, offset: off_t, whence: c_int) -> off_t;
                 pub fn pathconf(path: *mut c_char, name: c_int) -> c_long;
                 pub fn pause() -> c_int;
                 pub fn pipe(fds: *mut c_int) -> c_int;
-                pub fn read(fd: c_int, buf: *mut c_void, count: size_t)
-                            -> ssize_t;
+                pub fn read(fd: c_int, buf: *mut c_void, count: size_t) -> ssize_t;
                 pub fn rmdir(path: *const c_char) -> c_int;
                 pub fn setgid(gid: gid_t) -> c_int;
                 pub fn setpgid(pid: pid_t, pgid: pid_t) -> c_int;
@@ -6358,21 +6519,20 @@ pub mod funcs {
                 pub fn sleep(secs: c_uint) -> c_uint;
                 pub fn usleep(secs: c_uint) -> c_int;
                 #[cfg_attr(target_os = "netbsd", link_name = "__nanosleep50")]
-                pub fn nanosleep(rqtp: *const timespec,
-                                 rmtp: *mut timespec) -> c_int;
+                pub fn nanosleep(rqtp: *const timespec, rmtp: *mut timespec) -> c_int;
                 pub fn sysconf(name: c_int) -> c_long;
                 pub fn tcgetpgrp(fd: c_int) -> pid_t;
                 pub fn ttyname(fd: c_int) -> *mut c_char;
                 pub fn unlink(c: *const c_char) -> c_int;
                 pub fn wait(status: *const c_int) -> pid_t;
-                pub fn waitpid(pid: pid_t, status: *const c_int, options: c_int)
-                               -> pid_t;
-                pub fn write(fd: c_int, buf: *const c_void, count: size_t)
-                             -> ssize_t;
-                pub fn pread(fd: c_int, buf: *mut c_void, count: size_t,
-                             offset: off_t) -> ssize_t;
-                pub fn pwrite(fd: c_int, buf: *const c_void, count: size_t,
-                              offset: off_t) -> ssize_t;
+                pub fn waitpid(pid: pid_t, status: *const c_int, options: c_int) -> pid_t;
+                pub fn write(fd: c_int, buf: *const c_void, count: size_t) -> ssize_t;
+                pub fn pread(fd: c_int, buf: *mut c_void, count: size_t, offset: off_t) -> ssize_t;
+                pub fn pwrite(fd: c_int,
+                              buf: *const c_void,
+                              count: size_t,
+                              offset: off_t)
+                              -> ssize_t;
                 #[cfg_attr(target_os = "netbsd", link_name = "__utime50")]
                 pub fn utime(file: *const c_char, buf: *const utimbuf) -> c_int;
             }
@@ -6380,61 +6540,58 @@ pub mod funcs {
             extern {
                 pub fn access(path: *const c_char, amode: c_int) -> c_int;
                 pub fn chdir(dir: *const c_char) -> c_int;
-                pub fn chown(path: *const c_char, uid: uid_t,
-                             gid: gid_t) -> c_int;
+                pub fn chown(path: *const c_char, uid: uid_t, gid: gid_t) -> c_int;
                 pub fn close(fd: c_int) -> c_int;
                 pub fn dup(fd: c_int) -> c_int;
                 pub fn dup2(src: c_int, dst: c_int) -> c_int;
-                pub fn execv(prog: *const c_char,
-                             argv: *const *const c_char) -> c_int;
-                pub fn execve(prog: *const c_char, argv: *const *const c_char,
+                pub fn execv(prog: *const c_char, argv: *const *const c_char) -> c_int;
+                pub fn execve(prog: *const c_char,
+                              argv: *const *const c_char,
                               envp: *const *const c_char)
                               -> c_int;
-                pub fn execvp(c: *const c_char,
-                              argv: *const *const c_char) -> c_int;
+                pub fn execvp(c: *const c_char, argv: *const *const c_char) -> c_int;
                 pub fn fork() -> pid_t;
                 pub fn getcwd(buf: *mut c_char, size: size_t) -> *mut c_char;
                 pub fn getegid() -> gid_t;
                 pub fn geteuid() -> uid_t;
                 pub fn getgid() -> gid_t;
                 pub fn getlogin() -> *mut c_char;
-                pub fn getopt(argc: c_int, argv: *const *const c_char,
-                              optstr: *const c_char) -> c_int;
+                pub fn getopt(argc: c_int,
+                              argv: *const *const c_char,
+                              optstr: *const c_char)
+                              -> c_int;
                 pub fn getuid() -> uid_t;
                 pub fn getsid(pid: pid_t) -> pid_t;
                 pub fn isatty(fd: c_int) -> c_int;
                 pub fn link(src: *const c_char, dst: *const c_char) -> c_int;
-                pub fn lseek(fd: c_int, offset: off_t, whence: c_int)
-                             -> off_t;
+                pub fn lseek(fd: c_int, offset: off_t, whence: c_int) -> off_t;
                 pub fn pipe(fds: *mut c_int) -> c_int;
-                pub fn read(fd: c_int, buf: *mut c_void, count: size_t)
-                            -> ssize_t;
+                pub fn read(fd: c_int, buf: *mut c_void, count: size_t) -> ssize_t;
                 pub fn rmdir(path: *const c_char) -> c_int;
                 pub fn setgid(gid: gid_t) -> c_int;
                 pub fn setuid(uid: uid_t) -> c_int;
                 pub fn sleep(secs: c_uint) -> c_uint;
                 pub fn usleep(secs: c_uint) -> c_int;
-                pub fn nanosleep(rqtp: *const timespec,
-                                 rmtp: *mut timespec) -> c_int;
+                pub fn nanosleep(rqtp: *const timespec, rmtp: *mut timespec) -> c_int;
                 pub fn sysconf(name: c_int) -> c_long;
                 pub fn ttyname(fd: c_int) -> *mut c_char;
                 pub fn unlink(c: *const c_char) -> c_int;
                 pub fn wait(status: *const c_int) -> pid_t;
-                pub fn waitpid(pid: pid_t, status: *const c_int, options: c_int)
-                               -> pid_t;
-                pub fn write(fd: c_int, buf: *const c_void, count: size_t)
-                             -> ssize_t;
-                pub fn pread(fd: c_int, buf: *mut c_void, count: size_t,
-                             offset: off_t) -> ssize_t;
-                pub fn pwrite(fd: c_int, buf: *const c_void, count: size_t,
-                              offset: off_t) -> ssize_t;
+                pub fn waitpid(pid: pid_t, status: *const c_int, options: c_int) -> pid_t;
+                pub fn write(fd: c_int, buf: *const c_void, count: size_t) -> ssize_t;
+                pub fn pread(fd: c_int, buf: *mut c_void, count: size_t, offset: off_t) -> ssize_t;
+                pub fn pwrite(fd: c_int,
+                              buf: *const c_void,
+                              count: size_t,
+                              offset: off_t)
+                              -> ssize_t;
                 pub fn utime(file: *const c_char, buf: *const utimbuf) -> c_int;
             }
         }
 
         pub mod signal {
-            use types::os::arch::c95::{c_int};
-            use types::os::arch::posix88::{pid_t};
+            use types::os::arch::c95::c_int;
+            use types::os::arch::posix88::pid_t;
 
             extern {
                 pub fn kill(pid: pid_t, sig: c_int) -> c_int;
@@ -6442,7 +6599,7 @@ pub mod funcs {
         }
 
         pub mod mman {
-            use types::common::c95::{c_void};
+            use types::common::c95::c_void;
             use types::os::arch::c95::{size_t, c_int, c_char};
             use types::os::arch::posix88::{mode_t, off_t};
 
@@ -6453,15 +6610,12 @@ pub mod funcs {
                 pub fn mlockall(flags: c_int) -> c_int;
                 pub fn munlockall() -> c_int;
 
-                pub fn mprotect(addr: *mut c_void, len: size_t, prot: c_int)
-                                -> c_int;
+                pub fn mprotect(addr: *mut c_void, len: size_t, prot: c_int) -> c_int;
 
                 #[cfg_attr(target_os = "netbsd", link_name = "__msync13")]
-                pub fn msync(addr: *mut c_void, len: size_t, flags: c_int)
-                             -> c_int;
+                pub fn msync(addr: *mut c_void, len: size_t, flags: c_int) -> c_int;
 
-                pub fn shm_open(name: *const c_char, oflag: c_int, mode: mode_t)
-                                -> c_int;
+                pub fn shm_open(name: *const c_char, oflag: c_int, mode: mode_t) -> c_int;
                 pub fn shm_unlink(name: *const c_char) -> c_int;
             }
 
@@ -6515,25 +6669,20 @@ pub mod funcs {
             use types::os::arch::posix88::{ssize_t, off_t};
 
             extern {
-                pub fn readlink(path: *const c_char,
-                                buf: *mut c_char,
-                                bufsz: size_t)
-                                -> ssize_t;
+                pub fn readlink(path: *const c_char, buf: *mut c_char, bufsz: size_t) -> ssize_t;
 
                 pub fn fsync(fd: c_int) -> c_int;
 
                 #[cfg(any(target_os = "linux", target_os = "android"))]
                 pub fn fdatasync(fd: c_int) -> c_int;
 
-                pub fn setenv(name: *const c_char, val: *const c_char,
-                              overwrite: c_int) -> c_int;
+                pub fn setenv(name: *const c_char, val: *const c_char, overwrite: c_int) -> c_int;
                 #[cfg_attr(target_os = "netbsd", link_name = "__unsetenv13")]
                 pub fn unsetenv(name: *const c_char) -> c_int;
                 #[cfg_attr(target_os = "netbsd", link_name = "__putenv50")]
                 pub fn putenv(string: *mut c_char) -> c_int;
 
-                pub fn symlink(path1: *const c_char,
-                               path2: *const c_char) -> c_int;
+                pub fn symlink(path1: *const c_char, path2: *const c_char) -> c_int;
 
                 pub fn ftruncate(fd: c_int, length: off_t) -> c_int;
             }
@@ -6546,22 +6695,20 @@ pub mod funcs {
             #[cfg(not(all(target_os = "android", any(target_arch = "arm",
                                                      target_arch = "x86"))))]
             extern {
-                pub fn signal(signum: c_int,
-                              handler: sighandler_t) -> sighandler_t;
+                pub fn signal(signum: c_int, handler: sighandler_t) -> sighandler_t;
             }
 
             #[cfg(all(target_os = "android", any(target_arch = "arm",
                                                  target_arch = "x86")))]
             extern {
                 #[link_name = "bsd_signal"]
-                pub fn signal(signum: c_int,
-                              handler: sighandler_t) -> sighandler_t;
+                pub fn signal(signum: c_int, handler: sighandler_t) -> sighandler_t;
             }
         }
 
         pub mod glob {
             use types::os::arch::c95::{c_char, c_int};
-            use types::os::common::posix01::{glob_t};
+            use types::os::common::posix01::glob_t;
 
             extern {
                 #[cfg_attr(target_os = "netbsd", link_name = "__glob30")]
@@ -6576,15 +6723,12 @@ pub mod funcs {
         }
 
         pub mod mman {
-            use types::common::c95::{c_void};
+            use types::common::c95::c_void;
             use types::os::arch::c95::{c_int, size_t};
 
             #[cfg(not(target_os = "nacl"))]
             extern {
-                pub fn posix_madvise(addr: *mut c_void,
-                                     len: size_t,
-                                     advice: c_int)
-                                     -> c_int;
+                pub fn posix_madvise(addr: *mut c_void, len: size_t, advice: c_int) -> c_int;
             }
         }
 
@@ -6638,7 +6782,7 @@ pub mod funcs {
 
     #[cfg(not(windows))]
     pub mod bsd43 {
-        use types::common::c95::{c_void};
+        use types::common::c95::c_void;
         use types::os::common::bsd44::{socklen_t, sockaddr, ifaddrs};
         use types::os::arch::c95::{c_int, size_t};
         use types::os::arch::posix88::ssize_t;
@@ -6647,30 +6791,43 @@ pub mod funcs {
             #[cfg_attr(target_os = "netbsd", link_name = "__socket30")]
             pub fn socket(domain: c_int, ty: c_int, protocol: c_int) -> c_int;
 
-            pub fn connect(socket: c_int, address: *const sockaddr,
-                           len: socklen_t) -> c_int;
-            pub fn bind(socket: c_int, address: *const sockaddr,
-                        address_len: socklen_t) -> c_int;
+            pub fn connect(socket: c_int, address: *const sockaddr, len: socklen_t) -> c_int;
+            pub fn bind(socket: c_int, address: *const sockaddr, address_len: socklen_t) -> c_int;
             pub fn listen(socket: c_int, backlog: c_int) -> c_int;
-            pub fn accept(socket: c_int, address: *mut sockaddr,
-                          address_len: *mut socklen_t) -> c_int;
-            pub fn getpeername(socket: c_int, address: *mut sockaddr,
-                               address_len: *mut socklen_t) -> c_int;
-            pub fn getsockname(socket: c_int, address: *mut sockaddr,
-                               address_len: *mut socklen_t) -> c_int;
-            pub fn setsockopt(socket: c_int, level: c_int, name: c_int,
+            pub fn accept(socket: c_int,
+                          address: *mut sockaddr,
+                          address_len: *mut socklen_t)
+                          -> c_int;
+            pub fn getpeername(socket: c_int,
+                               address: *mut sockaddr,
+                               address_len: *mut socklen_t)
+                               -> c_int;
+            pub fn getsockname(socket: c_int,
+                               address: *mut sockaddr,
+                               address_len: *mut socklen_t)
+                               -> c_int;
+            pub fn setsockopt(socket: c_int,
+                              level: c_int,
+                              name: c_int,
                               value: *const c_void,
-                              option_len: socklen_t) -> c_int;
-            pub fn recv(socket: c_int, buf: *mut c_void, len: size_t,
-                        flags: c_int) -> ssize_t;
-            pub fn send(socket: c_int, buf: *const c_void, len: size_t,
-                        flags: c_int) -> ssize_t;
-            pub fn recvfrom(socket: c_int, buf: *mut c_void, len: size_t,
-                            flags: c_int, addr: *mut sockaddr,
-                            addrlen: *mut socklen_t) -> ssize_t;
-            pub fn sendto(socket: c_int, buf: *const c_void, len: size_t,
-                          flags: c_int, addr: *const sockaddr,
-                          addrlen: socklen_t) -> ssize_t;
+                              option_len: socklen_t)
+                              -> c_int;
+            pub fn recv(socket: c_int, buf: *mut c_void, len: size_t, flags: c_int) -> ssize_t;
+            pub fn send(socket: c_int, buf: *const c_void, len: size_t, flags: c_int) -> ssize_t;
+            pub fn recvfrom(socket: c_int,
+                            buf: *mut c_void,
+                            len: size_t,
+                            flags: c_int,
+                            addr: *mut sockaddr,
+                            addrlen: *mut socklen_t)
+                            -> ssize_t;
+            pub fn sendto(socket: c_int,
+                          buf: *const c_void,
+                          len: size_t,
+                          flags: c_int,
+                          addr: *const sockaddr,
+                          addrlen: socklen_t)
+                          -> ssize_t;
             pub fn getifaddrs(ifap: *mut *mut ifaddrs) -> c_int;
             pub fn freeifaddrs(ifa: *mut ifaddrs);
             pub fn shutdown(socket: c_int, how: c_int) -> c_int;
@@ -6679,37 +6836,50 @@ pub mod funcs {
 
     #[cfg(windows)]
     pub mod bsd43 {
-        use types::common::c95::{c_void};
+        use types::common::c95::c_void;
         use types::os::common::bsd44::{socklen_t, sockaddr, SOCKET};
         use types::os::arch::c95::c_int;
 
         extern "system" {
             pub fn socket(domain: c_int, ty: c_int, protocol: c_int) -> SOCKET;
-            pub fn connect(socket: SOCKET, address: *const sockaddr,
-                           len: socklen_t) -> c_int;
-            pub fn bind(socket: SOCKET, address: *const sockaddr,
-                        address_len: socklen_t) -> c_int;
+            pub fn connect(socket: SOCKET, address: *const sockaddr, len: socklen_t) -> c_int;
+            pub fn bind(socket: SOCKET, address: *const sockaddr, address_len: socklen_t) -> c_int;
             pub fn listen(socket: SOCKET, backlog: c_int) -> c_int;
-            pub fn accept(socket: SOCKET, address: *mut sockaddr,
-                          address_len: *mut socklen_t) -> SOCKET;
-            pub fn getpeername(socket: SOCKET, address: *mut sockaddr,
-                               address_len: *mut socklen_t) -> c_int;
-            pub fn getsockname(socket: SOCKET, address: *mut sockaddr,
-                               address_len: *mut socklen_t) -> c_int;
-            pub fn setsockopt(socket: SOCKET, level: c_int, name: c_int,
+            pub fn accept(socket: SOCKET,
+                          address: *mut sockaddr,
+                          address_len: *mut socklen_t)
+                          -> SOCKET;
+            pub fn getpeername(socket: SOCKET,
+                               address: *mut sockaddr,
+                               address_len: *mut socklen_t)
+                               -> c_int;
+            pub fn getsockname(socket: SOCKET,
+                               address: *mut sockaddr,
+                               address_len: *mut socklen_t)
+                               -> c_int;
+            pub fn setsockopt(socket: SOCKET,
+                              level: c_int,
+                              name: c_int,
                               value: *const c_void,
-                              option_len: socklen_t) -> c_int;
+                              option_len: socklen_t)
+                              -> c_int;
             pub fn closesocket(socket: SOCKET) -> c_int;
-            pub fn recv(socket: SOCKET, buf: *mut c_void, len: c_int,
-                        flags: c_int) -> c_int;
-            pub fn send(socket: SOCKET, buf: *const c_void, len: c_int,
-                        flags: c_int) -> c_int;
-            pub fn recvfrom(socket: SOCKET, buf: *mut c_void, len: c_int,
-                            flags: c_int, addr: *mut sockaddr,
-                            addrlen: *mut c_int) -> c_int;
-            pub fn sendto(socket: SOCKET, buf: *const c_void, len: c_int,
-                          flags: c_int, addr: *const sockaddr,
-                          addrlen: c_int) -> c_int;
+            pub fn recv(socket: SOCKET, buf: *mut c_void, len: c_int, flags: c_int) -> c_int;
+            pub fn send(socket: SOCKET, buf: *const c_void, len: c_int, flags: c_int) -> c_int;
+            pub fn recvfrom(socket: SOCKET,
+                            buf: *mut c_void,
+                            len: c_int,
+                            flags: c_int,
+                            addr: *mut sockaddr,
+                            addrlen: *mut c_int)
+                            -> c_int;
+            pub fn sendto(socket: SOCKET,
+                          buf: *const c_void,
+                          len: c_int,
+                          flags: c_int,
+                          addr: *const sockaddr,
+                          addrlen: c_int)
+                          -> c_int;
             pub fn shutdown(socket: SOCKET, how: c_int) -> c_int;
         }
     }
@@ -6722,7 +6892,7 @@ pub mod funcs {
               target_os = "netbsd",
               target_os = "openbsd"))]
     pub mod bsd44 {
-        use types::common::c95::{c_void};
+        use types::common::c95::c_void;
         use types::os::arch::c95::{c_char, c_uchar, c_int, c_uint, c_ulong, size_t};
 
         extern {
@@ -6745,19 +6915,16 @@ pub mod funcs {
                                    sizep: *mut size_t)
                                    -> c_int;
             pub fn getdtablesize() -> c_int;
-            pub fn madvise(addr: *mut c_void, len: size_t, advice: c_int)
-                           -> c_int;
-            pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar)
-                           -> c_int;
-            pub fn realpath(pathname: *const c_char, resolved: *mut c_char)
-                            -> *mut c_char;
+            pub fn madvise(addr: *mut c_void, len: size_t, advice: c_int) -> c_int;
+            pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar) -> c_int;
+            pub fn realpath(pathname: *const c_char, resolved: *mut c_char) -> *mut c_char;
             pub fn flock(fd: c_int, operation: c_int) -> c_int;
         }
     }
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     pub mod bsd44 {
-        use types::common::c95::{c_void};
+        use types::common::c95::c_void;
         use types::os::arch::c95::{c_uchar, c_int, size_t};
         #[cfg(not(feature = "cargo-build"))]
         use types::os::arch::c95::c_ulong;
@@ -6775,10 +6942,8 @@ pub mod funcs {
             pub fn ioctl(fd: c_int, request: c_int, ...) -> c_int;
             #[cfg(not(feature = "cargo-build"))]
             pub fn ioctl(fd: c_int, request: c_ulong, ...) -> c_int;
-            pub fn madvise(addr: *mut c_void, len: size_t, advice: c_int)
-                           -> c_int;
-            pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar)
-                           -> c_int;
+            pub fn madvise(addr: *mut c_void, len: size_t, advice: c_int) -> c_int;
+            pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar) -> c_int;
             pub fn flock(fd: c_int, operation: c_int) -> c_int;
         }
     }
@@ -6800,8 +6965,7 @@ pub mod funcs {
         use types::os::arch::c95::{c_char, c_int};
 
         extern {
-            pub fn _NSGetExecutablePath(buf: *mut c_char, bufsize: *mut u32)
-                                        -> c_int;
+            pub fn _NSGetExecutablePath(buf: *mut c_char, bufsize: *mut u32) -> c_int;
         }
     }
 
@@ -6822,26 +6986,17 @@ pub mod funcs {
     pub mod extra {
 
         pub mod kernel32 {
-            use types::os::arch::c95::{c_uint};
-            use types::os::arch::extra::{BOOL, DWORD, SIZE_T, HMODULE,
-                                               LPCWSTR, LPWSTR,
-                                               LPWCH, LPDWORD, LPVOID,
-                                               LPCVOID, LPOVERLAPPED,
-                                               LPSECURITY_ATTRIBUTES,
-                                               LPSTARTUPINFO,
-                                               LPPROCESS_INFORMATION,
-                                               LPMEMORY_BASIC_INFORMATION,
-                                               LPSYSTEM_INFO, HANDLE, LPHANDLE,
-                                               LARGE_INTEGER, PLARGE_INTEGER,
-                                               LPFILETIME, LPWIN32_FIND_DATAW};
+            use types::os::arch::c95::c_uint;
+            use types::os::arch::extra::{BOOL, DWORD, SIZE_T, HMODULE, LPCWSTR, LPWSTR, LPWCH,
+                                         LPDWORD, LPVOID, LPCVOID, LPOVERLAPPED,
+                                         LPSECURITY_ATTRIBUTES, LPSTARTUPINFO,
+                                         LPPROCESS_INFORMATION, LPMEMORY_BASIC_INFORMATION,
+                                         LPSYSTEM_INFO, HANDLE, LPHANDLE, LARGE_INTEGER,
+                                         PLARGE_INTEGER, LPFILETIME, LPWIN32_FIND_DATAW};
 
             extern "system" {
-                pub fn GetEnvironmentVariableW(n: LPCWSTR,
-                                               v: LPWSTR,
-                                               nsize: DWORD)
-                                               -> DWORD;
-                pub fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR)
-                                               -> BOOL;
+                pub fn GetEnvironmentVariableW(n: LPCWSTR, v: LPWSTR, nsize: DWORD) -> DWORD;
+                pub fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR) -> BOOL;
                 pub fn GetEnvironmentStringsW() -> LPWCH;
                 pub fn FreeEnvironmentStringsW(env_ptr: LPWCH) -> BOOL;
                 pub fn GetModuleFileNameW(hModule: HMODULE,
@@ -6849,8 +7004,7 @@ pub mod funcs {
                                           nSize: DWORD)
                                           -> DWORD;
                 pub fn CreateDirectoryW(lpPathName: LPCWSTR,
-                                        lpSecurityAttributes:
-                                        LPSECURITY_ATTRIBUTES)
+                                        lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
                                         -> BOOL;
                 pub fn CopyFileW(lpExistingFileName: LPCWSTR,
                                  lpNewFileName: LPCWSTR,
@@ -6858,15 +7012,13 @@ pub mod funcs {
                                  -> BOOL;
                 pub fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
                 pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
-                pub fn GetCurrentDirectoryW(nBufferLength: DWORD,
-                                            lpBuffer: LPWSTR)
-                                            -> DWORD;
+                pub fn GetCurrentDirectoryW(nBufferLength: DWORD, lpBuffer: LPWSTR) -> DWORD;
                 pub fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
                 pub fn GetLastError() -> DWORD;
-                pub fn FindFirstFileW(fileName: LPCWSTR, findFileData: LPWIN32_FIND_DATAW)
+                pub fn FindFirstFileW(fileName: LPCWSTR,
+                                      findFileData: LPWIN32_FIND_DATAW)
                                       -> HANDLE;
-                pub fn FindNextFileW(findFile: HANDLE, findFileData: LPWIN32_FIND_DATAW)
-                                     -> BOOL;
+                pub fn FindNextFileW(findFile: HANDLE, findFileData: LPWIN32_FIND_DATAW) -> BOOL;
                 pub fn FindClose(findFile: HANDLE) -> BOOL;
                 pub fn DuplicateHandle(hSourceProcessHandle: HANDLE,
                                        hSourceHandle: HANDLE,
@@ -6884,39 +7036,27 @@ pub mod funcs {
                 pub fn GetCurrentProcess() -> HANDLE;
                 pub fn CreateProcessW(lpApplicationName: LPCWSTR,
                                       lpCommandLine: LPWSTR,
-                                      lpProcessAttributes:
-                                      LPSECURITY_ATTRIBUTES,
-                                      lpThreadAttributes:
-                                      LPSECURITY_ATTRIBUTES,
+                                      lpProcessAttributes: LPSECURITY_ATTRIBUTES,
+                                      lpThreadAttributes: LPSECURITY_ATTRIBUTES,
                                       bInheritHandles: BOOL,
                                       dwCreationFlags: DWORD,
                                       lpEnvironment: LPVOID,
                                       lpCurrentDirectory: LPCWSTR,
                                       lpStartupInfo: LPSTARTUPINFO,
-                                      lpProcessInformation:
-                                      LPPROCESS_INFORMATION)
+                                      lpProcessInformation: LPPROCESS_INFORMATION)
                                       -> BOOL;
-                pub fn WaitForSingleObject(hHandle: HANDLE,
-                                           dwMilliseconds: DWORD)
-                                           -> DWORD;
-                pub fn TerminateProcess(hProcess: HANDLE, uExitCode: c_uint)
-                                        -> BOOL;
-                pub fn GetExitCodeProcess(hProcess: HANDLE,
-                                          lpExitCode: LPDWORD)
-                                          -> BOOL;
+                pub fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
+                pub fn TerminateProcess(hProcess: HANDLE, uExitCode: c_uint) -> BOOL;
+                pub fn GetExitCodeProcess(hProcess: HANDLE, lpExitCode: LPDWORD) -> BOOL;
                 pub fn GetSystemInfo(lpSystemInfo: LPSYSTEM_INFO);
                 pub fn VirtualAlloc(lpAddress: LPVOID,
                                     dwSize: SIZE_T,
                                     flAllocationType: DWORD,
                                     flProtect: DWORD)
                                     -> LPVOID;
-                pub fn VirtualFree(lpAddress: LPVOID,
-                                   dwSize: SIZE_T,
-                                   dwFreeType: DWORD)
-                                   -> BOOL;
+                pub fn VirtualFree(lpAddress: LPVOID, dwSize: SIZE_T, dwFreeType: DWORD) -> BOOL;
                 pub fn VirtualLock(lpAddress: LPVOID, dwSize: SIZE_T) -> BOOL;
-                pub fn VirtualUnlock(lpAddress: LPVOID, dwSize: SIZE_T)
-                                     -> BOOL;
+                pub fn VirtualUnlock(lpAddress: LPVOID, dwSize: SIZE_T) -> BOOL;
                 pub fn VirtualProtect(lpAddress: LPVOID,
                                       dwSize: SIZE_T,
                                       flNewProtect: DWORD,
@@ -6942,11 +7082,12 @@ pub mod funcs {
                 pub fn UnmapViewOfFile(lpBaseAddress: LPCVOID) -> BOOL;
                 pub fn MoveFileExW(lpExistingFileName: LPCWSTR,
                                    lpNewFileName: LPCWSTR,
-                                   dwFlags: DWORD) -> BOOL;
+                                   dwFlags: DWORD)
+                                   -> BOOL;
                 pub fn CreateHardLinkW(lpSymlinkFileName: LPCWSTR,
                                        lpTargetFileName: LPCWSTR,
                                        lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
-                                        -> BOOL;
+                                       -> BOOL;
                 pub fn FlushFileBuffers(hFile: HANDLE) -> BOOL;
                 pub fn CreateFileW(lpFileName: LPCWSTR,
                                    dwDesiredAccess: DWORD,
@@ -6954,59 +7095,59 @@ pub mod funcs {
                                    lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
                                    dwCreationDisposition: DWORD,
                                    dwFlagsAndAttributes: DWORD,
-                                   hTemplateFile: HANDLE) -> HANDLE;
+                                   hTemplateFile: HANDLE)
+                                   -> HANDLE;
                 pub fn ReadFile(hFile: HANDLE,
                                 lpBuffer: LPVOID,
                                 nNumberOfBytesToRead: DWORD,
                                 lpNumberOfBytesRead: LPDWORD,
-                                lpOverlapped: LPOVERLAPPED) -> BOOL;
+                                lpOverlapped: LPOVERLAPPED)
+                                -> BOOL;
                 pub fn WriteFile(hFile: HANDLE,
                                  lpBuffer: LPVOID,
                                  nNumberOfBytesToWrite: DWORD,
                                  lpNumberOfBytesWritten: LPDWORD,
-                                 lpOverlapped: LPOVERLAPPED) -> BOOL;
+                                 lpOverlapped: LPOVERLAPPED)
+                                 -> BOOL;
                 pub fn SetFilePointerEx(hFile: HANDLE,
                                         liDistanceToMove: LARGE_INTEGER,
                                         lpNewFilePointer: PLARGE_INTEGER,
-                                        dwMoveMethod: DWORD) -> BOOL;
+                                        dwMoveMethod: DWORD)
+                                        -> BOOL;
                 pub fn SetEndOfFile(hFile: HANDLE) -> BOOL;
 
-                pub fn GetSystemTimeAsFileTime(
-                            lpSystemTimeAsFileTime: LPFILETIME);
+                pub fn GetSystemTimeAsFileTime(lpSystemTimeAsFileTime: LPFILETIME);
 
-                pub fn QueryPerformanceFrequency(
-                            lpFrequency: *mut LARGE_INTEGER) -> BOOL;
-                pub fn QueryPerformanceCounter(
-                            lpPerformanceCount: *mut LARGE_INTEGER) -> BOOL;
+                pub fn QueryPerformanceFrequency(lpFrequency: *mut LARGE_INTEGER) -> BOOL;
+                pub fn QueryPerformanceCounter(lpPerformanceCount: *mut LARGE_INTEGER) -> BOOL;
 
                 pub fn GetCurrentProcessId() -> DWORD;
-                pub fn CreateNamedPipeW(
-                            lpName: LPCWSTR,
-                            dwOpenMode: DWORD,
-                            dwPipeMode: DWORD,
-                            nMaxInstances: DWORD,
-                            nOutBufferSize: DWORD,
-                            nInBufferSize: DWORD,
-                            nDefaultTimeOut: DWORD,
-                            lpSecurityAttributes: LPSECURITY_ATTRIBUTES
-                            ) -> HANDLE;
-                pub fn ConnectNamedPipe(hNamedPipe: HANDLE,
-                                        lpOverlapped: LPOVERLAPPED) -> BOOL;
-                pub fn WaitNamedPipeW(lpNamedPipeName: LPCWSTR,
-                                      nTimeOut: DWORD) -> BOOL;
+                pub fn CreateNamedPipeW(lpName: LPCWSTR,
+                                        dwOpenMode: DWORD,
+                                        dwPipeMode: DWORD,
+                                        nMaxInstances: DWORD,
+                                        nOutBufferSize: DWORD,
+                                        nInBufferSize: DWORD,
+                                        nDefaultTimeOut: DWORD,
+                                        lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
+                                        -> HANDLE;
+                pub fn ConnectNamedPipe(hNamedPipe: HANDLE, lpOverlapped: LPOVERLAPPED) -> BOOL;
+                pub fn WaitNamedPipeW(lpNamedPipeName: LPCWSTR, nTimeOut: DWORD) -> BOOL;
                 pub fn SetNamedPipeHandleState(hNamedPipe: HANDLE,
                                                lpMode: LPDWORD,
                                                lpMaxCollectionCount: LPDWORD,
                                                lpCollectDataTimeout: LPDWORD)
-                                                            -> BOOL;
+                                               -> BOOL;
                 pub fn CreateEventW(lpEventAttributes: LPSECURITY_ATTRIBUTES,
                                     bManualReset: BOOL,
                                     bInitialState: BOOL,
-                                    lpName: LPCWSTR) -> HANDLE;
+                                    lpName: LPCWSTR)
+                                    -> HANDLE;
                 pub fn GetOverlappedResult(hFile: HANDLE,
                                            lpOverlapped: LPOVERLAPPED,
                                            lpNumberOfBytesTransferred: LPDWORD,
-                                           bWait: BOOL) -> BOOL;
+                                           bWait: BOOL)
+                                           -> BOOL;
                 pub fn DisconnectNamedPipe(hNamedPipe: HANDLE) -> BOOL;
             }
         }
@@ -7023,8 +7164,7 @@ pub mod funcs {
                 pub fn get_osfhandle(fd: c_int) -> c_long;
 
                 #[link_name = "_open_osfhandle"]
-                pub fn open_osfhandle(osfhandle: intptr_t,
-                                      flags: c_int) -> c_int;
+                pub fn open_osfhandle(osfhandle: intptr_t, flags: c_int) -> c_int;
             }
         }
 
@@ -7039,4 +7179,6 @@ pub mod funcs {
     }
 }
 
-#[test] fn work_on_windows() { } // FIXME #10872 needed for a happy windows
+#[test]
+fn work_on_windows() {
+} // FIXME #10872 needed for a happy windows
