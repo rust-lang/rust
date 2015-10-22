@@ -37,8 +37,9 @@ If we’re on Windows and not using PowerShell, the `~` may not work. Consult th
 documentation for our shell for more details.
 
 Let’s make a new source file next. We’ll call our file `main.rs`. Rust files
-always end in a `.rs` extension. If we’re using more than one word in our
-filename, use an underscore: `hello_world.rs` rather than `helloworld.rs`.
+always end in a `.rs` extension, and if we’re using more than one word in a
+Rust filename, we use an underscore: for example, `linked_list.rs`, not
+`linkedlist.rs` or `LinkedList.rs`.
 
 Now that we’ve got our file open, type this in:
 
