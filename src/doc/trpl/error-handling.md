@@ -1545,7 +1545,7 @@ cargo build --release
 
 ## Argument parsing
 
-Let's get argument parsing out of the way. we won't go into too much
+Let's get argument parsing out of the way. We won't go into too much
 detail on Getopts, but there is [some good documentation][15]
 describing it. The short story is that Getopts generates an argument
 parser and a help message from a vector of options (The fact that it
@@ -1855,7 +1855,7 @@ In our program, we accept a single file for input and do one pass over the
 data. This means we probably should be able to accept input on stdin. But maybe
 we like the current format too—so let's have both!
 
-Adding support for stdin is actually quite easy. There are only two things we
+Adding support for stdin is actually quite easy. There are only three things we
 have to do:
 
 1. Tweak the program arguments so that a single parameter—the
@@ -2057,7 +2057,7 @@ so. This can be a little clumsy, especially if you intend for the program to
 be used in shell scripts.
 
 So let's start by adding the flags. Like before, we need to tweak the usage
-string and add a flag to the Option variable. Once were done that, Getopts does the rest:
+string and add a flag to the Option variable. Once we've done that, Getopts does the rest:
 
 ```rust,ignore
 ...

@@ -784,9 +784,6 @@ impl<'b, T: ?Sized> DerefMut for RefMut<'b, T> {
 ///
 /// unsafe impl<T> Sync for NotThreadSafe<T> {}
 /// ```
-///
-/// **NOTE:** `UnsafeCell<T>`'s fields are public to allow static initializers. It is not
-/// recommended to access its fields directly, `get` should be used instead.
 #[lang = "unsafe_cell"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct UnsafeCell<T: ?Sized> {
@@ -799,8 +796,7 @@ impl<T> UnsafeCell<T> {
     /// Constructs a new instance of `UnsafeCell` which will wrap the specified
     /// value.
     ///
-    /// All access to the inner value through methods is `unsafe`, and it is highly discouraged to
-    /// access the fields directly.
+    /// All access to the inner value through methods is `unsafe`.
     ///
     /// # Examples
     ///
