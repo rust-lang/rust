@@ -213,13 +213,36 @@ pub mod types {
             pub enum fpos_t {}
         }
         pub mod c99 {
+            /// An alias for `i8` using the C name from `<stdint.h>`. Use `i8`
+            /// instead.
             pub type int8_t = i8;
+
+            /// An alias for `i16` using the C name from `<stdint.h>`. Use `i16`
+            /// instead.
             pub type int16_t = i16;
+
+            /// An alias for `i32` using the C name from `<stdint.h>`. Use `i32`
+            /// instead.
             pub type int32_t = i32;
+
+            /// An alias for `i64` using the C name from `<stdint.h>`. Use `i64`
+            /// instead.
             pub type int64_t = i64;
+
+            /// An alias for `u8` using the C name from `<stdint.h>`. Use `u8`
+            /// instead.
             pub type uint8_t = u8;
+
+            /// An alias for `u16` using the C name from `<stdint.h>`. Use `u16`
+            /// instead.
             pub type uint16_t = u16;
+
+            /// An alias for `u32` using the C name from `<stdint.h>`. Use `u32`
+            /// instead.
             pub type uint32_t = u32;
+
+            /// An alias for `u64` using the C name from `<stdint.h>`. Use `u64`
+            /// instead.
             pub type uint64_t = u64;
         }
         pub mod posix88 {
