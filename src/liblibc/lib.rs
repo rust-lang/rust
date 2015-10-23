@@ -24,7 +24,7 @@
        html_playground_url = "https://play.rust-lang.org/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![cfg_attr(test, feature(test))]
-#![feature(cfg_target_vendor)]
+#![cfg_attr(not(feature = "cargo-build"), feature(cfg_target_vendor))]
 
 //! Bindings for the C standard library and other platform libraries
 //!
