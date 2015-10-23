@@ -1595,8 +1595,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // QUALIFIED PATH `<TYPE [as TRAIT_REF]>::IDENT[::<PARAMS>]`
-    // Assumes that the leading `<` has been parsed already.
+    /// Parses qualified path.
+    ///
+    /// Assumes that the leading `<` has been parsed already.
+    ///
+    /// Qualifed paths are a part of the universal function call
+    /// syntax (UFCS).
+    ///
+    /// `qualified_path = <type [as trait_ref]>::path`
+    ///
+    /// See `parse_path` for `mode` meaning.
+    ///
+    /// # Examples:
+    ///
+    /// `<T as U>::a`
+    /// `<T as U>::F::a::<S>`
     pub fn parse_qualified_path(&mut self, mode: PathParsingMode)
                                 -> PResult<(QSelf, ast::Path)> {
         let span = self.last_span;
