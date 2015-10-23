@@ -7,7 +7,6 @@ A collection of lints to catch common mistakes and improve your Rust code.
 
 ##Lints
 There are 69 lints included in this crate:
-There are 65 lints included in this crate:
 
 name                                                                                                   | default | meaning
 -------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
