@@ -92,7 +92,7 @@
 //!
 //! /// An iterator which counts from one to five
 //! struct Counter {
-//!     count: i32,
+//!     count: usize,
 //! }
 //!
 //! // we want our count to start at one, so let's add a new() method to help.
@@ -107,11 +107,11 @@
 //! // Then, we implement `Iterator` for our `Counter`:
 //!
 //! impl Iterator for Counter {
-//!     // we will be counting with i32
-//!     type Item = i32;
+//!     // we will be counting with usize
+//!     type Item = usize;
 //!
 //!     // next() is the only required method
-//!     fn next(&mut self) -> Option<i32> {
+//!     fn next(&mut self) -> Option<usize> {
 //!         // increment our count. This is why we started at zero.
 //!         self.count += 1;
 //!
@@ -1486,7 +1486,7 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
     fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
 }
 
-/// Conversion from an `Iterator`
+/// Conversion from an `Iterator`.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
                           built from an iterator over elements of type `{A}`"]
@@ -1518,21 +1518,90 @@ pub trait FromIterator<A> {
     fn from_iter<T: IntoIterator<Item=A>>(iterator: T) -> Self;
 }
 
-/// Conversion into an `Iterator`
+/// Conversion into an `Iterator`.
 ///
-/// Implementing this trait allows you to use your type with Rust's `for` loop. See
-/// the [module level documentation](index.html) for more details.
+/// By implementing `IntoIterator` for a type, you define how it will be
+/// converted to an iterator. This is common for types which describe a
+/// collection of some kind.
+///
+/// One benefit of implementing `IntoIterator` is that your type will [work
+/// with Rust's `for` loop syntax](index.html#for-loops-and-intoiterator).
+///
+/// # Examples
+///
+/// Vectors implement `IntoIterator`:
+///
+/// ```
+/// let v = vec![1, 2, 3];
+///
+/// let mut iter = v.into_iter();
+///
+/// let n = iter.next();
+/// assert_eq!(Some(1), n);
+///
+/// let n = iter.next();
+/// assert_eq!(Some(2), n);
+///
+/// let n = iter.next();
+/// assert_eq!(Some(3), n);
+///
+/// let n = iter.next();
+/// assert_eq!(None, n);
+/// ```
+///
+/// Implementing `IntoIterator` for your type:
+///
+/// ```
+/// // A sample collection, that's just a wrapper over Vec<T>
+/// #[derive(Debug)]
+/// struct MyCollection(Vec<i32>);
+///
+/// // Let's give it some methods so we can create one and add things
+/// // to it.
+/// impl MyCollection {
+///     fn new() -> MyCollection {
+///         MyCollection(Vec::new())
+///     }
+///
+///     fn add(&mut self, elem: i32) {
+///         self.0.push(elem);
+///     }
+/// }
+///
+/// // and we'll implement IntoIterator
+/// impl IntoIterator for MyCollection {
+///     type Item = i32;
+///     type IntoIter = ::std::vec::IntoIter<i32>;
+///
+///     fn into_iter(self) -> Self::IntoIter {
+///         self.0.into_iter()
+///     }
+/// }
+///
+/// // Now we can make a new collection...
+/// let mut c = MyCollection::new();
+///
+/// // ... add some stuff to it ...
+/// c.add(0);
+/// c.add(1);
+/// c.add(2);
+///
+/// // ... and then turn it into an Iterator:
+/// for (i, n) in c.into_iter().enumerate() {
+///     assert_eq!(i as i32, n);
+/// }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
-    /// The type of the elements being iterated
+    /// The type of the elements being iterated over.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Item;
 
-    /// A container for iterating over elements of type `Item`
+    /// Which kind of iterator are we turning this into?
     #[stable(feature = "rust1", since = "1.0.0")]
     type IntoIter: Iterator<Item=Self::Item>;
 
-    /// Consumes `Self` and returns an iterator over it
+    /// Consumes `Self` and returns an iterator over it.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn into_iter(self) -> Self::IntoIter;
 }
@@ -1547,23 +1616,164 @@ impl<I: Iterator> IntoIterator for I {
     }
 }
 
-/// A type growable from an `Iterator` implementation
+/// Extend a collection with the contents of an iterator.
+///
+/// Iterators produce a series of values, and collections can also be thought
+/// of as a series of values. The `Extend` trait bridges this gap, allowing you
+/// to extend a collection by including the contents of that iterator.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// // You can extend a String with some chars:
+/// let mut message = String::from("The first three letters are: ");
+///
+/// message.extend(&['a', 'b', 'c']);
+///
+/// assert_eq!("abc", &message[29..32]);
+/// ```
+///
+/// Implementing `Extend`:
+///
+/// ```
+/// // A sample collection, that's just a wrapper over Vec<T>
+/// #[derive(Debug)]
+/// struct MyCollection(Vec<i32>);
+///
+/// // Let's give it some methods so we can create one and add things
+/// // to it.
+/// impl MyCollection {
+///     fn new() -> MyCollection {
+///         MyCollection(Vec::new())
+///     }
+///
+///     fn add(&mut self, elem: i32) {
+///         self.0.push(elem);
+///     }
+/// }
+///
+/// // since MyCollection has a list of i32s, we implement Extend for i32
+/// impl Extend<i32> for MyCollection {
+///
+///     // This is a bit simpler with the concrete type signature: we can call
+///     // extend on anything which can be turned into an Iterator which gives
+///     // us i32s. Because we need i32s to put into MyCollection.
+///     fn extend<T: IntoIterator<Item=i32>>(&mut self, iterable: T) {
+///
+///         // The implementation is very straightforward: loop through the
+///         // iterator, and add() each element to ourselves.
+///         for elem in iterable {
+///             self.add(elem);
+///         }
+///     }
+/// }
+///
+/// let mut c = MyCollection::new();
+///
+/// c.add(5);
+/// c.add(6);
+/// c.add(7);
+///
+/// // let's extend our collection with three more numbers
+/// c.extend(vec![1, 2, 3]);
+///
+/// // we've added these elements onto the end
+/// assert_eq!("MyCollection([5, 6, 7, 1, 2, 3])", format!("{:?}", c));
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Extend<A> {
-    /// Extends a container with the elements yielded by an arbitrary iterator
+    /// Extends a collection with the contents of an iterator.
+    ///
+    /// As this is the only method for this trait, the [trait-level] docs
+    /// contain more details.
+    ///
+    /// [trait-level]: trait.Extend.html
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// // You can extend a String with some chars:
+    /// let mut message = String::from("The first three letters are: ");
+    ///
+    /// message.extend(['a', 'b', 'c'].iter());
+    ///
+    /// assert_eq!("abc", &message[29..32]);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn extend<T: IntoIterator<Item=A>>(&mut self, iterable: T);
 }
 
-/// A range iterator able to yield elements from both ends
+/// An iterator able to yield elements from both ends.
 ///
-/// A `DoubleEndedIterator` can be thought of as a deque in that `next()` and
-/// `next_back()` exhaust elements from the *same* range, and do not work
-/// independently of each other.
+/// Something that implements `DoubleEndedIterator` has one extra capability
+/// over something that implements [`Iterator`]: the ability to also take
+/// `Item`s from the back, as well as the front.
+///
+/// It is important to note that both back and forth work on the same range,
+/// and do not cross: iteration is over when they meet in the middle.
+///
+/// [`Iterator`]: trait.Iterator.html
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// let numbers = vec![1, 2, 3];
+///
+/// let mut iter = numbers.iter();
+///
+/// let n = iter.next();
+/// assert_eq!(Some(&1), n);
+///
+/// let n = iter.next_back();
+/// assert_eq!(Some(&3), n);
+///
+/// let n = iter.next_back();
+/// assert_eq!(Some(&2), n);
+///
+/// let n = iter.next();
+/// assert_eq!(None, n);
+///
+/// let n = iter.next_back();
+/// assert_eq!(None, n);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait DoubleEndedIterator: Iterator {
-    /// Yields an element from the end of the range, returning `None` if the
-    /// range is empty.
+    /// An iterator able to yield elements from both ends.
+    ///
+    /// As this is the only method for this trait, the [trait-level] docs
+    /// contain more details.
+    ///
+    /// [trait-level]: trait.DoubleEndedIterator.html
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let numbers = vec![1, 2, 3];
+    ///
+    /// let mut iter = numbers.iter();
+    ///
+    /// let n = iter.next();
+    /// assert_eq!(Some(&1), n);
+    ///
+    /// let n = iter.next_back();
+    /// assert_eq!(Some(&3), n);
+    ///
+    /// let n = iter.next_back();
+    /// assert_eq!(Some(&2), n);
+    ///
+    /// let n = iter.next();
+    /// assert_eq!(None, n);
+    ///
+    /// let n = iter.next_back();
+    /// assert_eq!(None, n);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
 }
@@ -1573,18 +1783,98 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
     fn next_back(&mut self) -> Option<I::Item> { (**self).next_back() }
 }
 
-/// An iterator that knows its exact length
+/// An iterator that knows its exact length.
 ///
-/// This trait is a helper for iterators like the vector iterator, so that
-/// it can support double-ended enumeration.
+/// Many [`Iterator`]s don't know how many times they will iterate, but some do.
+/// If an iterator knows how many times it can iterate, providing access to
+/// that information can be useful. For example, if you want to iterate
+/// backwards, a good start is to know where the end is.
 ///
-/// `Iterator::size_hint` *must* return the exact size of the iterator.
-/// Note that the size must fit in `usize`.
+/// When implementing an `ExactSizeIterator`, You must also implement
+/// [`Iterator`]. When doing so, the implementation of [`size_hint()`] *must*
+/// return the exact size of the iterator.
+///
+/// [`Iterator`]: trait.Iterator.html
+/// [`size_hint()`]: trait.Iterator.html#method.size_hint
+///
+/// The [`len()`] method has a default implementation, so you usually shouldn't
+/// implement it. However, you may be able to provide a more performant
+/// implementation than the default, so overriding it in this case makes sense.
+///
+/// [`len()`]: #method.len
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// // a finite range knows exactly how many times it will iterate
+/// let five = (0..5);
+///
+/// assert_eq!(5, five.len());
+/// ```
+///
+/// In the [module level docs][moddocs], we implemented an [`Iterator`],
+/// `Counter`. Let's implement `ExactSizeIterator` for it as well:
+///
+/// [moddocs]: index.html
+///
+/// ```
+/// # struct Counter {
+/// #     count: usize,
+/// # }
+/// # impl Counter {
+/// #     fn new() -> Counter {
+/// #         Counter { count: 0 }
+/// #     }
+/// # }
+/// # impl Iterator for Counter {
+/// #     type Item = usize;
+/// #     fn next(&mut self) -> Option<usize> {
+/// #         self.count += 1;
+/// #         if self.count < 6 {
+/// #             Some(self.count)
+/// #         } else {
+/// #             None
+/// #         }
+/// #     }
+/// # }
+/// impl ExactSizeIterator for Counter {
+///     // We already have the number of iterations, so we can use it directly.
+///     fn len(&self) -> usize {
+///         self.count
+///     }
+/// }
+///
+/// // And now we can use it!
+///
+/// let counter = Counter::new();
+///
+/// assert_eq!(0, counter.len());
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExactSizeIterator: Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    /// Returns the exact length of the iterator.
+    /// Returns the exact number of times the iterator will iterate.
+    ///
+    /// This method has a default implementation, so you usually should not
+    /// implement it directly. However, if you can provide a more efficient
+    /// implementation, you can do so. See the [trait-level] docs for an
+    /// example.
+    ///
+    /// [trait-level]: trait.ExactSizeIterator.html
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// // a finite range knows exactly how many times it will iterate
+    /// let five = (0..5);
+    ///
+    /// assert_eq!(5, five.len());
+    /// ```
     fn len(&self) -> usize {
         let (lower, upper) = self.size_hint();
         // Note: This assertion is overly defensive, but it checks the invariant
