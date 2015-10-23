@@ -436,7 +436,7 @@ meta_seq : meta_item [ ',' meta_seq ] ? ;
 ## Statements
 
 ```antlr
-stmt : decl_stmt | expr_stmt ;
+stmt : decl_stmt | expr_stmt | ';' ;
 ```
 
 ### Declaration statements
