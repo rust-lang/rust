@@ -256,7 +256,25 @@ endef
 
 $(foreach host,$(CFG_HOST),\
   $(eval $(call DEF_INSTALLER,$(host))))
-$(foreach target,$(CFG_TARGET),\
+
+# When generating packages for the standard library, we've actually got a lot of
+# artifacts to choose from. Each of the CFG_HOST compilers will have a copy of
+# the standard library for each CFG_TARGET, but we only want to generate one
+# standard library package. As a result, for each entry in CFG_TARGET we need to
+# pick a CFG_HOST to get the standard library from.
+#
+# In theory it doesn't actually matter what host we choose as it should be the
+# case that all hosts produce the same set of libraries for a target (regardless
+# of the host itself). Currently there is a bug in the compiler, however, which
+# means this is not the case (see #29228 and #29235). To solve the first of
+# those bugs, we prefer to select a standard library from the host it was
+# generated from, allowing plugins to work in more situations.
+#
+# For all CFG_TARGET entries in CFG_HOST, however, we just pick CFG_BUILD as the
+# host we slurp up a standard library from.
+$(foreach host,$(CFG_HOST),\
+  $(eval $(call DEF_INSTALLER_TARGETS,$(host),$(host))))
+$(foreach target,$(filter-out $(CFG_HOST),$(CFG_TARGET)),\
   $(eval $(call DEF_INSTALLER_TARGETS,$(CFG_BUILD),$(target))))
 
 ifdef CFG_WINDOWSY_$(CFG_BUILD)
