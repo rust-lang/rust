@@ -1703,7 +1703,9 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             }
         }
         hir::TyTypeof(ref _e) => {
-            tcx.sess.span_bug(ast_ty.span, "typeof is reserved but unimplemented");
+            span_err!(tcx.sess, ast_ty.span, E0516,
+                  "`typeof` is a reserved keyword but unimplemented");
+            tcx.types.err
         }
         hir::TyInfer => {
             // TyInfer also appears as the type of arguments or return
