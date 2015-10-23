@@ -54,9 +54,19 @@ pub struct MismatchedProjectionTypes<'tcx> {
 
 #[derive(PartialEq, Eq, Debug)]
 enum ProjectionTyCandidate<'tcx> {
+    // from a where-clause in the env or object type
     ParamEnv(ty::PolyProjectionPredicate<'tcx>),
+
+    // from the definition of `Trait` when you have something like <<A as Trait>::B as Trait2>::C
+    TraitDef(ty::PolyProjectionPredicate<'tcx>),
+
+    // defined in an impl
     Impl(VtableImplData<'tcx, PredicateObligation<'tcx>>),
+
+    // closure return type
     Closure(VtableClosureData<'tcx, PredicateObligation<'tcx>>),
+
+    // fn pointer return type
     FnPointer(Ty<'tcx>),
 }
 
@@ -491,7 +501,11 @@ fn project_type<'cx,'tcx>(
            candidates.vec.len(),
            candidates.ambiguous);
 
-    // We probably need some winnowing logic similar to select here.
+    // Inherent ambiguity that prevents us from even enumerating the
+    // candidates.
+    if candidates.ambiguous {
+        return Err(ProjectionTyError::TooManyCandidates);
+    }
 
     // Drop duplicates.
     //
@@ -512,9 +526,29 @@ fn project_type<'cx,'tcx>(
         }
     }
 
-    if candidates.ambiguous || candidates.vec.len() > 1 {
-        return Err(ProjectionTyError::TooManyCandidates);
+    // Prefer where-clauses. As in select, if there are multiple
+    // candidates, we prefer where-clause candidates over impls.  This
+    // may seem a bit surprising, since impls are the source of
+    // "truth" in some sense, but in fact some of the impls that SEEM
+    // applicable are not, because of nested obligations. Where
+    // clauses are the safer choice. See the comment on
+    // `select::SelectionCandidate` and #21974 for more details.
+    if candidates.vec.len() > 1 {
+        debug!("retaining param-env candidates only from {:?}", candidates.vec);
+        candidates.vec.retain(|c| match *c {
+            ProjectionTyCandidate::ParamEnv(..) => true,
+            ProjectionTyCandidate::Impl(..) |
+            ProjectionTyCandidate::Closure(..) |
+            ProjectionTyCandidate::TraitDef(..) |
+            ProjectionTyCandidate::FnPointer(..) => false,
+        });
+        debug!("resulting candidate set: {:?}", candidates.vec);
+        if candidates.vec.len() != 1 {
+            return Err(ProjectionTyError::TooManyCandidates);
+        }
     }
+
+    assert!(candidates.vec.len() <= 1);
 
     match candidates.vec.pop() {
         Some(candidate) => {
@@ -538,9 +572,14 @@ fn assemble_candidates_from_param_env<'cx,'tcx>(
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
 {
+    debug!("assemble_candidates_from_param_env(..)");
     let env_predicates = selcx.param_env().caller_bounds.iter().cloned();
-    assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
-                                        candidate_set, env_predicates);
+    assemble_candidates_from_predicates(selcx,
+                                        obligation,
+                                        obligation_trait_ref,
+                                        candidate_set,
+                                        ProjectionTyCandidate::ParamEnv,
+                                        env_predicates);
 }
 
 /// In the case of a nested projection like <<A as Foo>::FooT as Bar>::BarT, we may find
@@ -559,6 +598,8 @@ fn assemble_candidates_from_trait_def<'cx,'tcx>(
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
 {
+    debug!("assemble_candidates_from_trait_def(..)");
+
     // Check whether the self-type is itself a projection.
     let trait_ref = match obligation_trait_ref.self_ty().sty {
         ty::TyProjection(ref data) => data.trait_ref.clone(),
@@ -575,8 +616,12 @@ fn assemble_candidates_from_trait_def<'cx,'tcx>(
     let trait_predicates = selcx.tcx().lookup_predicates(trait_ref.def_id);
     let bounds = trait_predicates.instantiate(selcx.tcx(), trait_ref.substs);
     let bounds = elaborate_predicates(selcx.tcx(), bounds.predicates.into_vec());
-    assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
-                                        candidate_set, bounds)
+    assemble_candidates_from_predicates(selcx,
+                                        obligation,
+                                        obligation_trait_ref,
+                                        candidate_set,
+                                        ProjectionTyCandidate::TraitDef,
+                                        bounds)
 }
 
 fn assemble_candidates_from_predicates<'cx,'tcx,I>(
@@ -584,6 +629,7 @@ fn assemble_candidates_from_predicates<'cx,'tcx,I>(
     obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
+    ctor: fn(ty::PolyProjectionPredicate<'tcx>) -> ProjectionTyCandidate<'tcx>,
     env_predicates: I)
     where I: Iterator<Item=ty::Predicate<'tcx>>
 {
@@ -614,8 +660,7 @@ fn assemble_candidates_from_predicates<'cx,'tcx,I>(
                        data, is_match, same_name);
 
                 if is_match {
-                    candidate_set.vec.push(
-                        ProjectionTyCandidate::ParamEnv(data.clone()));
+                    candidate_set.vec.push(ctor(data.clone()));
                 }
             }
             _ => { }
@@ -647,8 +692,12 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
                                           .map(|p| p.to_predicate())
                                           .collect();
     let env_predicates = elaborate_predicates(selcx.tcx(), env_predicates);
-    assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
-                                        candidate_set, env_predicates)
+    assemble_candidates_from_predicates(selcx,
+                                        obligation,
+                                        obligation_trait_ref,
+                                        candidate_set,
+                                        ProjectionTyCandidate::ParamEnv,
+                                        env_predicates)
 }
 
 fn assemble_candidates_from_impls<'cx,'tcx>(
@@ -746,7 +795,8 @@ fn confirm_candidate<'cx,'tcx>(
            obligation);
 
     match candidate {
-        ProjectionTyCandidate::ParamEnv(poly_projection) => {
+        ProjectionTyCandidate::ParamEnv(poly_projection) |
+        ProjectionTyCandidate::TraitDef(poly_projection) => {
             confirm_param_env_candidate(selcx, obligation, poly_projection)
         }
 
