@@ -65,7 +65,6 @@ use super::ValuePairs;
 use super::region_inference::RegionResolutionError;
 use super::region_inference::ConcreteFailure;
 use super::region_inference::SubSupConflict;
-use super::region_inference::SupSupConflict;
 use super::region_inference::GenericBoundFailure;
 use super::region_inference::GenericKind;
 use super::region_inference::ProcessedErrors;
@@ -258,13 +257,6 @@ pub trait ErrorReporting<'tcx> {
                                sup_origin: SubregionOrigin<'tcx>,
                                sup_region: Region);
 
-    fn report_sup_sup_conflict(&self,
-                               var_origin: RegionVariableOrigin,
-                               origin1: SubregionOrigin<'tcx>,
-                               region1: Region,
-                               origin2: SubregionOrigin<'tcx>,
-                               region2: Region);
-
     fn report_processed_errors(&self,
                                var_origin: &[RegionVariableOrigin],
                                trace_origin: &[(TypeTrace<'tcx>, TypeError<'tcx>)],
@@ -311,14 +303,6 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     self.report_sub_sup_conflict(var_origin,
                                                  sub_origin, sub_r,
                                                  sup_origin, sup_r);
-                }
-
-                SupSupConflict(var_origin,
-                               origin1, r1,
-                               origin2, r2) => {
-                    self.report_sup_sup_conflict(var_origin,
-                                                 origin1, r1,
-                                                 origin2, r2);
                 }
 
                 ProcessedErrors(ref var_origins,
@@ -376,7 +360,6 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                         None => processed_errors.push((*error).clone()),
                     }
                 }
-                SupSupConflict(..) => processed_errors.push((*error).clone()),
                 _ => ()  // This shouldn't happen
             }
         }
@@ -928,29 +911,6 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             "...");
 
         self.note_region_origin(&sub_origin);
-    }
-
-    fn report_sup_sup_conflict(&self,
-                               var_origin: RegionVariableOrigin,
-                               origin1: SubregionOrigin<'tcx>,
-                               region1: Region,
-                               origin2: SubregionOrigin<'tcx>,
-                               region2: Region) {
-        self.report_inference_failure(var_origin);
-
-        self.tcx.note_and_explain_region(
-            "first, the lifetime must be contained by ",
-            region1,
-            "...");
-
-        self.note_region_origin(&origin1);
-
-        self.tcx.note_and_explain_region(
-            "but, the lifetime must also be contained by ",
-            region2,
-            "...");
-
-        self.note_region_origin(&origin2);
     }
 
     fn report_processed_errors(&self,
