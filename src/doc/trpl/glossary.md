@@ -38,6 +38,14 @@ let z = (8, 2, 6);
 
 In the example above `x` and `y` have arity 2. `z` has arity 3.
 
+### Bounds
+
+Bounds are constraints on a type or [trait][traits]. For example, if a bound
+is placed on the argument a function takes, types passed to that function
+must abide by that constraint.
+
+[traits]: traits.html
+
 ### DST (Dynamically Sized Type)
 
 A type without a statically known size or alignment. ([more info][link])
