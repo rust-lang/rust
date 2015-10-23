@@ -7,7 +7,8 @@ fn main() {
              .1
              .foo(|x| x + 1);
 
-    bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc.ddddddddddddddddddddddddddd();
+    bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc
+                       .ddddddddddddddddddddddddddd();
 
     bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc
                        .ddddddddddddddddddddddddddd
@@ -125,4 +126,9 @@ fn floaters() {
         false => "boo!",
     }
     .bar()
+}
+
+fn is_replaced_content() -> bool {
+    constellat.send(ConstellationMsg::ViewportConstrained(self.id, constraints))
+              .unwrap();
 }

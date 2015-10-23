@@ -101,3 +101,8 @@ fn floaters() {
 
     a + match x { true => "yay!", false => "boo!" }.bar()
 }
+
+fn is_replaced_content() -> bool {
+    constellat.send(ConstellationMsg::ViewportConstrained(
+            self.id, constraints)).unwrap();
+}

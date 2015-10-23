@@ -2,7 +2,8 @@
 // Test chain formatting without overflowing the last item.
 
 fn main() {
-    bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc.ddddddddddddddddddddddddddd();
+    bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc
+                       .ddddddddddddddddddddddddddd();
 
     bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc
                        .ddddddddddddddddddddddddddd

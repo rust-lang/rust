@@ -82,11 +82,11 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
     let veto_single_line = if context.config.take_source_hints && subexpr_list.len() > 1 {
         // Look at the source code. Unless all chain elements start on the same
         // line, we won't consider putting them on a single line either.
-        let first_line_no = context.codemap.lookup_char_pos(subexpr_list[0].span.lo).line;
+        let last_span = context.snippet(mk_sp(subexpr_list[1].span.hi, total_span.hi));
+        let first_span = context.snippet(subexpr_list[1].span);
+        let last_iter = last_span.chars().take_while(|c| c.is_whitespace());
 
-        subexpr_list[1..]
-            .iter()
-            .any(|ex| context.codemap.lookup_char_pos(ex.span.hi).line != first_line_no)
+        first_span.chars().chain(last_iter).any(|c| c == '\n')
     } else {
         false
     };
