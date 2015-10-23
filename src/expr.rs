@@ -863,7 +863,7 @@ impl Rewrite for ast::Arm {
             // If the patterns were previously stacked, keep them stacked.
             let pat_span = mk_sp(pats[0].span.lo, pats[pats.len() - 1].span.hi);
             let pat_str = context.snippet(pat_span);
-            vertical = pat_str.find('\n').is_some();
+            vertical = pat_str.contains('\n');
         }
 
         let pats_width = if vertical {
@@ -922,10 +922,9 @@ impl Rewrite for ast::Arm {
         }
 
         let body_budget = try_opt!(width.checked_sub(context.config.tab_spaces));
-        let next_line_body = nop_block_collapse(body.rewrite(context,
-                                                             body_budget,
-                                                             context.block_indent
-                                                                    .block_indent(context.config)),
+        let indent = context.block_indent.block_indent(context.config);
+        let inner_context = &RewriteContext { block_indent: indent, ..*context };
+        let next_line_body = nop_block_collapse(body.rewrite(inner_context, body_budget, indent),
                                                 body_budget);
 
         let body_str = try_opt!(match_arm_heuristic(same_line_body.as_ref().map(|x| &x[..]),

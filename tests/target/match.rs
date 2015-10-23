@@ -247,3 +247,35 @@ fn issue508() {
         Some(NodeTypeId::Element(_)) => false,
     }
 }
+
+fn issue496() {
+    {
+        {
+            {
+                match def {
+                    def::DefConst(def_id) | def::DefAssociatedConst(def_id) =>
+                        match const_eval::lookup_const_by_id(cx.tcx, def_id, Some(self.pat.id)) {
+                            Some(const_expr) => {
+                                x
+                            }
+                        },
+                }
+            }
+        }
+    }
+}
+
+fn issue494() {
+    {
+        match stmt.node {
+            hir::StmtExpr(ref expr, id) | hir::StmtSemi(ref expr, id) =>
+                result.push(StmtRef::Mirror(Box::new(Stmt {
+                    span: stmt.span,
+                    kind: StmtKind::Expr {
+                        scope: cx.tcx.region_maps.node_extent(id),
+                        expr: expr.to_ref(),
+                    },
+                }))),
+        }
+    }
+}
