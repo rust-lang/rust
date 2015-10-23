@@ -48,39 +48,30 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
 
 
 fn features_contain(sess: &Session, s: &str) -> bool {
-    sess.target.target.options.features.contains(s) ||
-        sess.opts.cg.target_feature.contains(s)
+    sess.target.target.options.features.contains(s) || sess.opts.cg.target_feature.contains(s)
 }
 
 pub fn has_sse(sess: &Session) -> bool {
-    features_contain(sess, "+sse") ||
-        has_sse2(sess)
+    features_contain(sess, "+sse") || has_sse2(sess)
 }
 pub fn has_sse2(sess: &Session) -> bool {
     // x86-64 requires at least SSE2 support
-    sess.target.target.arch == "x86_64" ||
-        features_contain(sess, "+sse2") ||
-        has_sse3(sess)
+    sess.target.target.arch == "x86_64" || features_contain(sess, "+sse2") || has_sse3(sess)
 }
 pub fn has_sse3(sess: &Session) -> bool {
-    features_contain(sess, "+sse3") ||
-        has_ssse3(sess)
+    features_contain(sess, "+sse3") || has_ssse3(sess)
 }
 pub fn has_ssse3(sess: &Session) -> bool {
-    features_contain(sess, "+ssse3") ||
-        has_sse41(sess)
+    features_contain(sess, "+ssse3") || has_sse41(sess)
 }
 pub fn has_sse41(sess: &Session) -> bool {
-    features_contain(sess, "+sse4.1") ||
-        has_sse42(sess)
+    features_contain(sess, "+sse4.1") || has_sse42(sess)
 }
 pub fn has_sse42(sess: &Session) -> bool {
-    features_contain(sess, "+sse4.2") ||
-        has_avx(sess)
+    features_contain(sess, "+sse4.2") || has_avx(sess)
 }
 pub fn has_avx(sess: &Session) -> bool {
-    features_contain(sess, "+avx") ||
-        has_avx2(sess)
+    features_contain(sess, "+avx") || has_avx2(sess)
 }
 pub fn has_avx2(sess: &Session) -> bool {
     features_contain(sess, "+avx2")
@@ -88,11 +79,9 @@ pub fn has_avx2(sess: &Session) -> bool {
 
 pub fn has_neon(sess: &Session) -> bool {
     // AArch64 requires NEON support
-    sess.target.target.arch == "aarch64" ||
-        features_contain(sess, "+neon")
+    sess.target.target.arch == "aarch64" || features_contain(sess, "+neon")
 }
 pub fn has_vfp(sess: &Session) -> bool {
     // AArch64 requires VFP support
-    sess.target.target.arch == "aarch64" ||
-        features_contain(sess, "+vfp")
+    sess.target.target.arch == "aarch64" || features_contain(sess, "+vfp")
 }
