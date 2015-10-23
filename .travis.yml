@@ -1,5 +1,7 @@
 language: rust
 rust:
+ - stable
+ - beta
  - nightly
 
 sudo: false

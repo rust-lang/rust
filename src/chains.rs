@@ -72,11 +72,9 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
                                             .collect::<Option<Vec<_>>>());
 
     // Total of all items excluding the last.
-    let almost_total = rewrites.split_last()
-                               .unwrap()
-                               .1
-                               .iter()
-                               .fold(0, |a, b| a + first_line_width(b)) +
+    let almost_total = rewrites[..rewrites.len() - 1]
+                           .iter()
+                           .fold(0, |a, b| a + first_line_width(b)) +
                        parent_rewrite.len();
     let total_width = almost_total + first_line_width(rewrites.last().unwrap());
     let veto_single_line = if context.config.take_source_hints && subexpr_list.len() > 1 {
@@ -95,7 +93,9 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
                            match subexpr_list[0].node {
         ast::Expr_::ExprMethodCall(ref method_name, ref types, ref expressions)
             if context.config.chains_overflow_last => {
-            let (last, init) = rewrites.split_last_mut().unwrap();
+            let len = rewrites.len();
+            let (init, last) = rewrites.split_at_mut(len - 1);
+            let last = &mut last[0];
 
             if init.iter().all(|s| !s.contains('\n')) && total_width <= width {
                 let last_rewrite = width.checked_sub(almost_total)

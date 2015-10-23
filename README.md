@@ -3,15 +3,34 @@
 A tool for formatting Rust code according to style guidelines.
 
 ## Gotchas
-* For things you do not want rustfmt to mangle, use
-```rust
- #[rustfmt_skip]
- ```
-* When you run rustfmt use a file called rustfmt.toml to override the default settings of rustfmt.
-* We create a functioning executable called rustfmt in the target directory
+
+* For things you do not want rustfmt to mangle, use one of
+   ```rust
+   #[rustfmt_skip]
+   #[cfg_attr(rustfmt, rustfmt_skip)]
+    ```
+* When you run rustfmt use a file called rustfmt.toml to override the default
+  settings of rustfmt.
+* We create a functioning executable called `rustfmt` in the target directory
+
+## Installation
+
+> **Note:** this method currently requires you to be running a nightly install
+> of Rust as `cargo install` has not yet made its way onto the stable channel.
+
+```
+cargo install --git https://github.com/nrc/rustfmt
+```
+
+or if you're using `multirust`
+
+```
+multirust run nightly cargo install --git https://github.com/nrc/rustfmt
+```
 
 ## How to build and test
-You'll need a pretty up to date version of the **nightly** version of Rust.
+
+First make sure you've got Rust **1.3.0** or greater available, then:
 
 `cargo build` to build.
 

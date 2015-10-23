@@ -19,8 +19,6 @@
 // List-like invocations with parentheses will be formatted as function calls,
 // and those with brackets will be formatted as array literals.
 
-use std::thread;
-
 use syntax::ast;
 use syntax::parse::token::{Eof, Comma, Token};
 use syntax::parse::{ParseSess, tts_to_parser};
@@ -33,12 +31,6 @@ use comment::FindUncommented;
 use utils::{wrap_str, span_after};
 
 static FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];
-
-// We need to pass `TokenTree`s to our expression parsing thread, but they are
-// not `Send`. We wrap them in a `Send` container to force our will.
-// FIXME: this is a pretty terrible hack. Any other solution would be preferred.
-struct ForceSend<T>(pub T);
-unsafe impl<T> Send for ForceSend<T> {}
 
 // FIXME: use the enum from libsyntax?
 #[derive(Clone, Copy)]
@@ -81,34 +73,28 @@ pub fn rewrite_macro(mac: &ast::Mac,
         };
     }
 
-    let wrapped_tt_vec = ForceSend(mac.node.tts.clone());
-    // Wrap expression parsing logic in a thread since the libsyntax parser
-    // panics on failure, which we do not want to propagate.
-    // The expression vector is wrapped in an Option inside a Result.
-    let expr_vec_result = thread::catch_panic(move || {
-        let parse_session = ParseSess::new();
-        let mut parser = tts_to_parser(&parse_session, wrapped_tt_vec.0, vec![]);
-        let mut expr_vec = vec![];
+    let parse_session = ParseSess::new();
+    let mut parser = tts_to_parser(&parse_session, mac.node.tts.clone(), Vec::new());
+    let mut expr_vec = Vec::new();
 
-        loop {
-            expr_vec.push(parser.parse_expr());
+    loop {
+        expr_vec.push(match parser.parse_expr_nopanic() {
+            Ok(expr) => expr,
+            Err(..) => return None,
+        });
 
-            match parser.token {
-                Token::Eof => break,
-                Token::Comma => (),
-                _ => panic!("Macro not list-like, skiping..."),
-            }
-
-            let _ = parser.bump();
-
-            if parser.token == Token::Eof {
-                return None;
-            }
+        match parser.token {
+            Token::Eof => break,
+            Token::Comma => (),
+            _ => return None,
         }
 
-        Some(expr_vec)
-    });
-    let expr_vec = try_opt!(try_opt!(expr_vec_result.ok()));
+        let _ = parser.bump();
+
+        if parser.token == Token::Eof {
+            return None;
+        }
+    }
 
     match style {
         MacroStyle::Parens => {
