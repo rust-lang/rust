@@ -63,8 +63,9 @@ impl Rewrite for Pat {
                 if pat_vec.is_empty() {
                     Some(path_str)
                 } else {
-                    let width = try_opt!(width.checked_sub(path_str.len()));
-                    let offset = offset + path_str.len();
+                    // 1 = (
+                    let width = try_opt!(width.checked_sub(path_str.len() + 1));
+                    let offset = offset + path_str.len() + 1;
                     let items = itemize_list(context.codemap,
                                              pat_vec.iter(),
                                              ")",
