@@ -284,7 +284,7 @@ impl<T> Vec<T> {
 
     /// Creates a `Vec<T>` directly from the raw components of another vector.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:

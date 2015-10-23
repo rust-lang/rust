@@ -214,7 +214,7 @@ impl<T:Copy> Cell<T> {
 
     /// Returns a reference to the underlying `UnsafeCell`.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is `unsafe` because `UnsafeCell`'s field is public.
     ///
@@ -813,7 +813,7 @@ impl<T> UnsafeCell<T> {
 
     /// Unwraps the value.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is unsafe because this thread or another thread may currently be
     /// inspecting the inner value.

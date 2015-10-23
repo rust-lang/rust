@@ -247,7 +247,7 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 ///
 /// [fromutf8]: fn.from_utf8.html
 ///
-/// # Unsafety
+/// # Safety
 ///
 /// This function is unsafe because it does not check that the bytes passed to
 /// it are valid UTF-8. If this constraint is violated, undefined behavior
