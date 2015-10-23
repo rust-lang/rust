@@ -29,3 +29,5 @@ impl T for S {
 trait T2 {
     type T: Iterator<Item=<S as T>::T>;
 }
+
+fn main() { }
