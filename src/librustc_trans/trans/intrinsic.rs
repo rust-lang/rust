@@ -655,7 +655,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             match val_ty.sty {
                 ty::TyEnum(..) => {
                     let repr = adt::represent_type(ccx, *val_ty);
-                    adt::trans_get_discr(bcx, &*repr, llargs[0], Some(llret_ty))
+                    adt::trans_get_discr(bcx, &*repr, llargs[0],
+                                         Some(llret_ty), true)
                 }
                 _ => C_null(llret_ty)
             }
