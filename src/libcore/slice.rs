@@ -1430,7 +1430,7 @@ pub fn mut_ref_slice<A>(s: &mut A) -> &mut [A] {
 ///
 /// The `len` argument is the number of **elements**, not the number of bytes.
 ///
-/// # Unsafety
+/// # Safety
 ///
 /// This function is unsafe as there is no guarantee that the given pointer is
 /// valid for `len` elements, nor whether the lifetime inferred is a suitable
