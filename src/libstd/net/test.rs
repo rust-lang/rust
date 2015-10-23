@@ -47,7 +47,9 @@ pub fn tsa<A: ToSocketAddrs>(a: A) -> Result<Vec<SocketAddr>, String> {
 // it is running in and assigns a port range based on it.
 fn base_port() -> u16 {
     let cwd = env::current_dir().unwrap();
-    let dirs = ["32-opt", "32-nopt", "64-opt", "64-nopt", "64-opt-vg",
+    let dirs = ["32-opt", "32-nopt",
+                "musl-64-opt", "cross-opt",
+                "64-opt", "64-nopt", "64-opt-vg", "64-debug-opt",
                 "all-opt", "snap3", "dist"];
     dirs.iter().enumerate().find(|&(_, dir)| {
         cwd.to_str().unwrap().contains(dir)
