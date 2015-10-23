@@ -154,21 +154,21 @@ dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)-host prepare-overlay-$(1)
 # to include. THe first argument to `make-win-dist` is where to put these DLLs
 # (the image we're creating) and the second argument is a junk directory to
 # ignore all the other MinGW stuff the script creates.
-ifeq ($(2),i686-pc-windows-gnu)
-	$$(Q)rm -Rf tmp/dist/win-rust-gcc-$(2)
+ifeq ($(1),i686-pc-windows-gnu)
+	$$(Q)rm -Rf tmp/dist/win-rust-gcc-$(1)
 	$$(Q)$$(CFG_PYTHON) $$(S)src/etc/make-win-dist.py \
-		tmp/dist/$$(PKG_NAME)-$(2)-image \
-		tmp/dist/win-rust-gcc-$(2) $(2)
+		tmp/dist/$$(PKG_NAME)-$(1)-image \
+		tmp/dist/win-rust-gcc-$(1) $(1)
 endif
 # On 32-bit MinGW we're always including a DLL which needs some extra licenses
 # to distribute. On 64-bit MinGW we don't actually distribute anything requiring
 # us to distribute a license but it's likely that the install will *also*
 # include the rust-mingw package down below, which also need licenses, so to be
 # safe we just inlude it here in all MinGW packages.
-ifdef CFG_WINDOWSY_$(2)
-ifeq ($$(findstring $(2),gnu),gnu)
+ifdef CFG_WINDOWSY_$(1)
+ifeq ($$(findstring $(1),gnu),gnu)
 	$$(Q)cp -r $$(S)src/etc/third-party \
-		tmp/dist/$$(PKG_NAME)-$(2)-image/share/doc/
+		tmp/dist/$$(PKG_NAME)-$(1)-image/share/doc/
 endif
 endif
 	$$(Q)$$(S)src/rust-installer/gen-installer.sh \
