@@ -1,6 +1,5 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
-use std::f64::consts as f64;
 use utils::span_lint;
 use syntax::ast::Lit_::*;
 use syntax::ast::Lit;
@@ -13,14 +12,26 @@ declare_lint! {
      is found; suggests to use the constant"
 }
 
-const KNOWN_CONSTS : &'static [(f64, &'static str)] = &[(f64::E, "E"), (f64::FRAC_1_PI, "FRAC_1_PI"),
-    (f64::FRAC_1_SQRT_2, "FRAC_1_SQRT_2"), (f64::FRAC_2_PI, "FRAC_2_PI"),
-    (f64::FRAC_2_SQRT_PI, "FRAC_2_SQRT_PI"), (f64::FRAC_PI_2, "FRAC_PI_2"), (f64::FRAC_PI_3, "FRAC_PI_3"),
-    (f64::FRAC_PI_4, "FRAC_PI_4"), (f64::FRAC_PI_6, "FRAC_PI_6"), (f64::FRAC_PI_8, "FRAC_PI_8"),
-    (f64::LN_10, "LN_10"), (f64::LN_2, "LN_2"), (f64::LOG10_E, "LOG10_E"), (f64::LOG2_E, "LOG2_E"),
-    (f64::PI, "PI"), (f64::SQRT_2, "SQRT_2")];
-
-const EPSILON_DIVISOR : f64 = 8192f64; //TODO: test to find a good value
+// Tuples are of the form (name, lower_bound, upper_bound)
+#[allow(approx_constant)]
+const KNOWN_CONSTS : &'static [(&'static str, f64, f64)] = &[
+    ("E", 2.7101, 2.7200),
+    ("FRAC_1_PI", 0.31829, 0.31840),
+    ("FRAC_1_SQRT_2", 0.7071, 0.7072),
+    ("FRAC_2_PI", 0.6366, 0.6370),
+    ("FRAC_2_SQRT_PI", 1.1283, 1.1284),
+    ("FRAC_PI_2", 1.5707, 1.5708),
+    ("FRAC_PI_3", 1.0471, 1.0472),
+    ("FRAC_PI_4", 0.7853, 0.7854),
+    ("FRAC_PI_6", 0.5235, 0.5236),
+    ("FRAC_PI_8", 0.3926, 0.3927),
+    ("LN_10", 2.302, 2.303),
+    ("LN_2", 0.6931, 0.6932),
+    ("LOG10_E", 0.4342, 0.4343),
+    ("LOG2_E", 1.4426, 1.4427),
+    ("PI", 3.140, 3.142),
+    ("SQRT_2", 1.4142, 1.4143),
+];
 
 #[derive(Copy,Clone)]
 pub struct ApproxConstant;
@@ -49,19 +60,14 @@ fn check_lit(cx: &LateContext, lit: &Lit, e: &Expr) {
     }
 }
 
-fn check_known_consts(cx: &LateContext, e: &Expr, str: &str, module: &str) {
-    if let Ok(value) = str.parse::<f64>() {
-        for &(constant, name) in KNOWN_CONSTS {
-            if !within_epsilon(constant, value) { continue; }
-            span_lint(cx, APPROX_CONSTANT, e.span, &format!(
-                "approximate value of `{}::{}` found. \
-                Consider using it directly", module, &name));
+fn check_known_consts(cx: &LateContext, e: &Expr, s: &str, module: &str) {
+    if let Ok(value) = s.parse::<f64>() {
+        for &(name, lower_bound, upper_bound) in KNOWN_CONSTS {
+            if (value >= lower_bound) && (value < upper_bound) {
+                span_lint(cx, APPROX_CONSTANT, e.span, &format!(
+                    "approximate value of `{}::{}` found. \
+                    Consider using it directly", module, &name));
+            }
         }
     }
-}
-
-fn within_epsilon(target: f64, value: f64) -> bool {
-    f64::abs(value - target) < f64::abs(if target > value {
-                                            target
-                                        } else { value }) / EPSILON_DIVISOR
 }

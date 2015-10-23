@@ -49,7 +49,8 @@ fn main() {
     let no_log2_e = 1.442;
 
     let my_pi = 3.1415; //~ERROR approximate value of `f{32, 64}::PI` found
-    let almost_pi = 3.141;
+    let almost_pi = 3.14; //~ERROR approximate value of `f{32, 64}::PI` found
+    let no_pi = 3.15;
 
     let my_sq2 = 1.4142; //~ERROR approximate value of `f{32, 64}::SQRT_2` found
     let no_sq2 = 1.414;
