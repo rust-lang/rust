@@ -23,7 +23,7 @@ use super::elaborate_predicates;
 use middle::def_id::DefId;
 use middle::subst::{self, SelfSpace, TypeSpace};
 use middle::traits;
-use middle::ty::{self, ToPolyTraitRef, Ty};
+use middle::ty::{self, HasTypeFlags, ToPolyTraitRef, Ty};
 use std::rc::Rc;
 use syntax::ast;
 
@@ -158,7 +158,7 @@ pub fn supertraits_reference_self<'tcx>(tcx: &ty::ctxt<'tcx>,
                     data.0.trait_ref.substs.types.get_slice(TypeSpace)
                                                  .iter()
                                                  .cloned()
-                                                 .any(is_self)
+                                                 .any(|t| t.has_self_ty())
                 }
                 ty::Predicate::Projection(..) |
                 ty::Predicate::WellFormed(..) |
@@ -198,7 +198,7 @@ fn generics_require_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
         .any(|predicate| {
             match predicate {
                 ty::Predicate::Trait(ref trait_pred) if trait_pred.def_id() == sized_def_id => {
-                    is_self(trait_pred.0.self_ty())
+                    trait_pred.0.self_ty().is_self()
                 }
                 ty::Predicate::Projection(..) |
                 ty::Predicate::Trait(..) |
@@ -375,11 +375,4 @@ fn contains_illegal_self_type_reference<'tcx>(tcx: &ty::ctxt<'tcx>,
     });
 
     error
-}
-
-fn is_self<'tcx>(ty: Ty<'tcx>) -> bool {
-    match ty.sty {
-        ty::TyParam(ref data) => data.space == subst::SelfSpace,
-        _ => false,
-    }
 }
