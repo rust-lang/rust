@@ -556,7 +556,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
             // NB: we must hit the discriminant first so that structural
             // comparison know not to proceed when the discriminants differ.
 
-            match adt::trans_switch(cx, &*repr, av) {
+            match adt::trans_switch(cx, &*repr, av, false) {
                 (_match::Single, None) => {
                     if n_variants != 0 {
                         assert!(n_variants == 1);

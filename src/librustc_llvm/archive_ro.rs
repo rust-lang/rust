@@ -79,14 +79,14 @@ impl Drop for ArchiveRO {
 }
 
 impl<'a> Iterator for Iter<'a> {
-    type Item = Child<'a>;
+    type Item = Result<Child<'a>, String>;
 
-    fn next(&mut self) -> Option<Child<'a>> {
+    fn next(&mut self) -> Option<Result<Child<'a>, String>> {
         let ptr = unsafe { ::LLVMRustArchiveIteratorNext(self.ptr) };
         if ptr.is_null() {
-            None
+            ::last_error().map(Err)
         } else {
-            Some(Child { ptr: ptr, _data: marker::PhantomData })
+            Some(Ok(Child { ptr: ptr, _data: marker::PhantomData }))
         }
     }
 }

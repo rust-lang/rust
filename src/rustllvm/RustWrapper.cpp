@@ -348,6 +348,19 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateFunction(
     LLVMValueRef Fn,
     LLVMMetadataRef TParam,
     LLVMMetadataRef Decl) {
+#if LLVM_VERSION_MINOR >= 8
+    DITemplateParameterArray TParams =
+        DITemplateParameterArray(unwrap<MDTuple>(TParam));
+    DISubprogram *Sub = Builder->createFunction(
+        unwrapDI<DIScope>(Scope), Name, LinkageName,
+        unwrapDI<DIFile>(File), LineNo,
+        unwrapDI<DISubroutineType>(Ty), isLocalToUnit, isDefinition, ScopeLine,
+        Flags, isOptimized,
+        TParams,
+        unwrapDIptr<DISubprogram>(Decl));
+    unwrap<Function>(Fn)->setSubprogram(Sub);
+    return wrap(Sub);
+#else
     return wrap(Builder->createFunction(
         unwrapDI<DIScope>(Scope), Name, LinkageName,
         unwrapDI<DIFile>(File), LineNo,
@@ -356,6 +369,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateFunction(
         unwrap<Function>(Fn),
         unwrapDIptr<MDNode>(TParam),
         unwrapDIptr<MDNode>(Decl)));
+#endif
 }
 
 extern "C" LLVMMetadataRef LLVMDIBuilderCreateBasicType(
@@ -830,7 +844,9 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
 #if LLVM_VERSION_MINOR >= 6
     raw_string_ostream Stream(Err);
     DiagnosticPrinterRawOStream DP(Stream);
-#if LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MINOR >= 8
+    if (Linker::linkModules(*Dst, std::move(Src.get()))) {
+#elif LLVM_VERSION_MINOR >= 7
     if (Linker::LinkModules(Dst, Src->get(), [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
 #else
     if (Linker::LinkModules(Dst, *Src, [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
