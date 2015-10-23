@@ -141,15 +141,6 @@ pub enum RegionResolutionError<'tcx> {
                    SubregionOrigin<'tcx>, Region,
                    SubregionOrigin<'tcx>, Region),
 
-    /// `SupSupConflict(v, origin1, r1, origin2, r2)`:
-    ///
-    /// Could not infer a value for `v` because `v <= r1` (due to
-    /// `origin1`) and `v <= r2` (due to `origin2`) and
-    /// `r1` and `r2` have no intersection.
-    SupSupConflict(RegionVariableOrigin,
-                   SubregionOrigin<'tcx>, Region,
-                   SubregionOrigin<'tcx>, Region),
-
     /// For subsets of `ConcreteFailure` and `SubSupConflict`, we can derive
     /// more specific errors message by suggesting to the user where they
     /// should put a lifetime. In those cases we process and put those errors
