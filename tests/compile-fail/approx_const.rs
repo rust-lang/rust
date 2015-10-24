@@ -42,7 +42,7 @@ fn main() {
     let my_ln_2 = 0.6931471805599453; //~ERROR approximate value of `f{32, 64}::LN_2` found
     let no_ln_2 = 0.693;
 
-    let my_log10_e = 0.43429448190325176; //~ERROR approximate value of `f{32, 64}::LOG10_E` found
+    let my_log10_e = 0.43429448190325182; //~ERROR approximate value of `f{32, 64}::LOG10_E` found
     let no_log10_e = 0.434;
 
     let my_log2_e = 1.4426950408889634; //~ERROR approximate value of `f{32, 64}::LOG2_E` found
