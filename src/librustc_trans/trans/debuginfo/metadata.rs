@@ -480,7 +480,7 @@ macro_rules! return_if_metadata_created_in_meantime {
                                 .find_metadata_for_unique_id($unique_type_id) {
             Some(metadata) => return MetadataCreationResult::new(metadata, true),
             None => { /* proceed normally */ }
-        };
+        }
     )
 }
 

@@ -1019,7 +1019,7 @@ mod tests {
     fn wtf8buf_from_iterator() {
         fn f(values: &[u32]) -> Wtf8Buf {
             values.iter().map(|&c| CodePoint::from_u32(c).unwrap()).collect::<Wtf8Buf>()
-        };
+        }
         assert_eq!(f(&[0x61, 0xE9, 0x20, 0x1F4A9]).bytes, b"a\xC3\xA9 \xF0\x9F\x92\xA9");
 
         assert_eq!(f(&[0xD83D, 0xDCA9]).bytes, b"\xF0\x9F\x92\xA9");  // Magic!
@@ -1038,7 +1038,7 @@ mod tests {
             let mut string = initial.iter().map(c).collect::<Wtf8Buf>();
             string.extend(extended.iter().map(c));
             string
-        };
+        }
 
         assert_eq!(e(&[0x61, 0xE9], &[0x20, 0x1F4A9]).bytes,
                    b"a\xC3\xA9 \xF0\x9F\x92\xA9");
