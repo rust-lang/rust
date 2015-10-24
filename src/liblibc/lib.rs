@@ -6163,7 +6163,7 @@ pub mod funcs {
 
                 /// Exits the running program in a possibly dangerous manner.
                 ///
-                /// # Unsafety
+                /// # Safety
                 ///
                 /// While this forces your program to exit, it does so in a way that has
                 /// consequences. This will skip all unwinding code, which means that anything
