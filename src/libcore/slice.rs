@@ -655,6 +655,11 @@ impl<'a, T> Default for &'a [T] {
     fn default() -> &'a [T] { &[] }
 }
 
+#[stable(feature = "mut_slice_default", since = "1.5.0")]
+impl<'a, T> Default for &'a mut [T] {
+    fn default() -> &'a mut [T] { &mut [] }
+}
+
 //
 // Iterators
 //
