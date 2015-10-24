@@ -163,12 +163,20 @@ LLVMRustWriteArchive(char *Dst,
     auto Member = NewMembers[i];
     assert(Member->name);
     if (Member->filename) {
+#if LLVM_VERSION_MINOR >= 8
+      Members.push_back(NewArchiveIterator(Member->filename));
+#else
       Members.push_back(NewArchiveIterator(Member->filename, Member->name));
+#endif
     } else {
       Members.push_back(NewArchiveIterator(Member->child, Member->name));
     }
   }
+#if LLVM_VERSION_MINOR >= 8
+  auto pair = writeArchive(Dst, Members, WriteSymbtab, Kind, true, false);
+#else
   auto pair = writeArchive(Dst, Members, WriteSymbtab, Kind, true);
+#endif
   if (!pair.second)
     return 0;
   LLVMRustSetLastError(pair.second.message().c_str());
