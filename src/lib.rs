@@ -168,6 +168,14 @@ impl Add<usize> for Indent {
     }
 }
 
+impl Sub<usize> for Indent {
+    type Output = Indent;
+
+    fn sub(self, rhs: usize) -> Indent {
+        Indent::new(self.block_indent, self.alignment - rhs)
+    }
+}
+
 #[derive(Copy, Clone)]
 pub enum WriteMode {
     // Backups the original file and overwrites the orignal.
