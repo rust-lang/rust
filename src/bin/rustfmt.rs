@@ -108,7 +108,7 @@ fn determine_params<I>(args: I) -> Option<(PathBuf, WriteMode)>
     opts.optopt("",
                 "write-mode",
                 "mode to write in",
-                "[replace|overwrite|display|diff]");
+                "[replace|overwrite|display|diff|coverage]");
     let matches = match opts.parse(args) {
         Ok(m) => m,
         Err(e) => {

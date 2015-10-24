@@ -14,7 +14,7 @@ use syntax::visit;
 
 use strings::string_buffer::StringBuffer;
 
-use Indent;
+use {Indent, WriteMode};
 use utils;
 use config::Config;
 use rewrite::{Rewrite, RewriteContext};
@@ -29,6 +29,7 @@ pub struct FmtVisitor<'a> {
     // TODO: RAII util for indenting
     pub block_indent: Indent,
     pub config: &'a Config,
+    pub write_mode: Option<WriteMode>,
 }
 
 impl<'a> FmtVisitor<'a> {
@@ -356,7 +357,10 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    pub fn from_codemap(codemap: &'a CodeMap, config: &'a Config) -> FmtVisitor<'a> {
+    pub fn from_codemap(codemap: &'a CodeMap,
+                        config: &'a Config,
+                        mode: Option<WriteMode>)
+                        -> FmtVisitor<'a> {
         FmtVisitor {
             codemap: codemap,
             buffer: StringBuffer::new(),
@@ -366,6 +370,7 @@ impl<'a> FmtVisitor<'a> {
                 alignment: 0,
             },
             config: config,
+            write_mode: mode,
         }
     }
 

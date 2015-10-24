@@ -43,11 +43,23 @@ fn system_tests() {
     // Turn a DirEntry into a String that represents the relative path to the
     // file.
     let files = files.map(get_path_string);
-    let (_reports, count, fails) = check_files(files);
+    let (_reports, count, fails) = check_files(files, WriteMode::Return);
 
     // Display results.
     println!("Ran {} system tests.", count);
     assert!(fails == 0, "{} system tests failed", fails);
+}
+
+// Do the same for tests/coverage-source directory
+// the only difference is the coverage mode
+#[test]
+fn coverage_tests() {
+    let files = fs::read_dir("tests/coverage-source").ok().expect("Couldn't read source dir.");
+    let files = files.map(get_path_string);
+    let (_reports, count, fails) = check_files(files, WriteMode::Coverage);
+
+    println!("Ran {} tests in coverage mode.", count);
+    assert!(fails == 0, "{} tests failed", fails);
 }
 
 // Idempotence tests. Files in tests/target are checked to be unaltered by
@@ -59,7 +71,7 @@ fn idempotence_tests() {
                     .ok()
                     .expect("Couldn't read target dir.")
                     .map(get_path_string);
-    let (_reports, count, fails) = check_files(files);
+    let (_reports, count, fails) = check_files(files, WriteMode::Return);
 
     // Display results.
     println!("Ran {} idempotent tests.", count);
@@ -78,7 +90,7 @@ fn self_tests() {
     // Hack because there's no `IntoIterator` impl for `[T; N]`.
     let files = files.chain(Some("src/lib.rs".to_owned()).into_iter());
 
-    let (reports, count, fails) = check_files(files);
+    let (reports, count, fails) = check_files(files, WriteMode::Return);
     let mut warnings = 0;
 
     // Display results.
@@ -97,7 +109,7 @@ fn self_tests() {
 
 // For each file, run rustfmt and collect the output.
 // Returns the number of files checked and the number of failures.
-fn check_files<I>(files: I) -> (Vec<FormatReport>, u32, u32)
+fn check_files<I>(files: I, write_mode: WriteMode) -> (Vec<FormatReport>, u32, u32)
     where I: Iterator<Item = String>
 {
     let mut count = 0;
@@ -107,7 +119,7 @@ fn check_files<I>(files: I) -> (Vec<FormatReport>, u32, u32)
     for file_name in files.filter(|f| f.ends_with(".rs")) {
         println!("Testing '{}'...", file_name);
 
-        match idempotent_check(file_name) {
+        match idempotent_check(file_name, write_mode) {
             Ok(report) => reports.push(report),
             Err(msg) => {
                 print_mismatches(msg);
@@ -132,7 +144,9 @@ fn print_mismatches(result: HashMap<String, Vec<Mismatch>>) {
     assert!(t.reset().unwrap());
 }
 
-pub fn idempotent_check(filename: String) -> Result<FormatReport, HashMap<String, Vec<Mismatch>>> {
+pub fn idempotent_check(filename: String,
+                        write_mode: WriteMode)
+                        -> Result<FormatReport, HashMap<String, Vec<Mismatch>>> {
     let sig_comments = read_significant_comments(&filename);
     let mut config = get_config(sig_comments.get("config").map(|x| &(*x)[..]));
 
@@ -145,14 +159,14 @@ pub fn idempotent_check(filename: String) -> Result<FormatReport, HashMap<String
     // Don't generate warnings for to-do items.
     config.report_todo = ReportTactic::Never;
 
-    let mut file_map = format(Path::new(&filename), &config);
+    let mut file_map = format(Path::new(&filename), &config, write_mode);
     let format_report = fmt_lines(&mut file_map, &config);
 
     // Won't panic, as we're not doing any IO.
     let write_result = filemap::write_all_files(&file_map, WriteMode::Return, &config).unwrap();
     let target = sig_comments.get("target").map(|x| &(*x)[..]);
 
-    handle_result(write_result, target).map(|_| format_report)
+    handle_result(write_result, target, write_mode).map(|_| format_report)
 }
 
 // Reads test config file from comments and reads its contents.
@@ -205,13 +219,14 @@ fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
 // Compare output to input.
 // TODO: needs a better name, more explanation.
 fn handle_result(result: HashMap<String, String>,
-                 target: Option<&str>)
+                 target: Option<&str>,
+                 write_mode: WriteMode)
                  -> Result<(), HashMap<String, Vec<Mismatch>>> {
     let mut failures = HashMap::new();
 
     for (file_name, fmt_text) in result {
         // If file is in tests/source, compare to file with same name in tests/target.
-        let target = get_target(&file_name, target);
+        let target = get_target(&file_name, target, write_mode);
         let mut f = fs::File::open(&target).ok().expect("Couldn't open target.");
 
         let mut text = String::new();
@@ -231,9 +246,14 @@ fn handle_result(result: HashMap<String, String>,
 }
 
 // Map source file paths to their target paths.
-fn get_target(file_name: &str, target: Option<&str>) -> String {
+fn get_target(file_name: &str, target: Option<&str>, write_mode: WriteMode) -> String {
     let file_path = Path::new(file_name);
-    let source_path_prefix = Path::new("tests/source/");
+    let (source_path_prefix, target_path_prefix) = match write_mode {
+        WriteMode::Coverage => (Path::new("tests/coverage-source/"),
+                                "tests/coverage-target/"),
+        _ => (Path::new("tests/source/"), "tests/target/"),
+    };
+
     if file_path.starts_with(source_path_prefix) {
         let mut components = file_path.components();
         // Can't skip(2) as the resulting iterator can't as_path()
@@ -246,7 +266,7 @@ fn get_target(file_name: &str, target: Option<&str>) -> String {
         };
         let base = target.unwrap_or(new_target);
 
-        format!("tests/target/{}", base)
+        format!("{}{}", target_path_prefix, base)
     } else {
         file_name.to_owned()
     }

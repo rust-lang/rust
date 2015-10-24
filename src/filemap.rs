@@ -100,7 +100,7 @@ fn write_file(text: &StringBuffer,
             let file = try!(File::create(&filename));
             try!(write_system_newlines(file, text, config));
         }
-        WriteMode::Display => {
+        WriteMode::Display | WriteMode::Coverage => {
             println!("{}:\n", filename);
             let stdout = stdout();
             let stdout_lock = stdout.lock();

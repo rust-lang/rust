@@ -182,6 +182,8 @@ pub enum WriteMode {
     Diff,
     // Return the result as a mapping from filenames to Strings.
     Return,
+    // Display how much of the input file was processed
+    Coverage,
 }
 
 impl FromStr for WriteMode {
@@ -193,6 +195,7 @@ impl FromStr for WriteMode {
             "display" => Ok(WriteMode::Display),
             "overwrite" => Ok(WriteMode::Overwrite),
             "diff" => Ok(WriteMode::Diff),
+            "coverage" => Ok(WriteMode::Coverage),
             _ => Err(()),
         }
     }
@@ -277,11 +280,11 @@ impl fmt::Display for FormatReport {
 }
 
 // Formatting which depends on the AST.
-fn fmt_ast(krate: &ast::Crate, codemap: &CodeMap, config: &Config) -> FileMap {
+fn fmt_ast(krate: &ast::Crate, codemap: &CodeMap, config: &Config, mode: WriteMode) -> FileMap {
     let mut file_map = FileMap::new();
     for (path, module) in modules::list_files(krate, codemap) {
         let path = path.to_str().unwrap();
-        let mut visitor = FmtVisitor::from_codemap(codemap, config);
+        let mut visitor = FmtVisitor::from_codemap(codemap, config, Some(mode));
         visitor.format_separate_mod(module, path);
         file_map.insert(path.to_owned(), visitor.buffer);
     }
@@ -370,10 +373,10 @@ pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     report
 }
 
-pub fn format(file: &Path, config: &Config) -> FileMap {
+pub fn format(file: &Path, config: &Config, mode: WriteMode) -> FileMap {
     let parse_session = ParseSess::new();
     let krate = parse::parse_crate_from_file(file, Vec::new(), &parse_session);
-    let mut file_map = fmt_ast(&krate, parse_session.codemap(), config);
+    let mut file_map = fmt_ast(&krate, parse_session.codemap(), config, mode);
 
     // For some reason, the codemap does not include terminating
     // newlines so we must add one on for each file. This is sad.
@@ -387,7 +390,7 @@ pub fn format(file: &Path, config: &Config) -> FileMap {
 // write_mode determines what happens to the result of running rustfmt, see
 // WriteMode.
 pub fn run(file: &Path, write_mode: WriteMode, config: &Config) {
-    let mut result = format(file, config);
+    let mut result = format(file, config, write_mode);
 
     println!("{}", fmt_lines(&mut result, config));
 
