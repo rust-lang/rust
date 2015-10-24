@@ -24,6 +24,7 @@ use middle::ty::{self, Ty};
 
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
+use std::fmt;
 use std::mem;
 use syntax::codemap::{self, Span};
 use syntax::ast::{self, NodeId};
@@ -34,8 +35,24 @@ use rustc_front::hir::{Block, Item, FnDecl, Arm, Pat, Stmt, Expr, Local};
 use rustc_front::util::stmt_id;
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
-           RustcDecodable, Debug, Copy)]
+           RustcDecodable, Copy)]
 pub struct CodeExtent(u32);
+
+impl fmt::Debug for CodeExtent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "CodeExtent({:?}", self.0));
+
+        try!(ty::tls::with_opt(|opt_tcx| {
+            if let Some(tcx) = opt_tcx {
+                let data = tcx.region_maps.code_extents.borrow()[self.0 as usize];
+                try!(write!(f, "/{:?}", data));
+            }
+            Ok(())
+        }));
+
+        write!(f, ")")
+    }
+}
 
 /// The root of everything. I should be using NonZero or profiling
 /// instead of this (probably).
