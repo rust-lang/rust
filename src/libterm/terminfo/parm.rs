@@ -32,14 +32,14 @@ enum States {
     SeekIfElse(isize),
     SeekIfElsePercent(isize),
     SeekIfEnd(isize),
-    SeekIfEndPercent(isize)
+    SeekIfEndPercent(isize),
 }
 
 #[derive(Copy, Clone, PartialEq)]
 enum FormatState {
     FormatStateFlags,
     FormatStateWidth,
-    FormatStatePrecision
+    FormatStatePrecision,
 }
 
 /// Types of parameters a capability can use
@@ -47,7 +47,7 @@ enum FormatState {
 #[derive(Clone)]
 pub enum Param {
     Words(String),
-    Number(isize)
+    Number(isize),
 }
 
 /// Container for static and dynamic variable arrays
@@ -55,7 +55,7 @@ pub struct Variables {
     /// Static variables A-Z
     sta: [Param; 26],
     /// Dynamic variables a-z
-    dyn: [Param; 26]
+    dyn: [Param; 26],
 }
 
 impl Variables {
@@ -119,10 +119,13 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                 } else {
                     output.push(c);
                 }
-            },
+            }
             Percent => {
                 match cur {
-                    '%' => { output.push(c); state = Nothing },
+                    '%' => {
+                        output.push(c);
+                        state = Nothing
+                    }
                     'c' => if !stack.is_empty() {
                         match stack.pop().unwrap() {
                             // if c is 0, use 0200 (128) for ncurses compatibility
@@ -133,7 +136,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                                     c as u8
                                 })
                             }
-                            _       => return Err("a non-char was used with %c".to_owned())
+                            _ => return Err("a non-char was used with %c".to_owned()),
                         }
                     } else { return Err("stack is empty".to_owned()) },
                     'p' => state = PushParam,
@@ -271,7 +274,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                                 flags.width = cur as usize - '0' as usize;
                                 fstate = FormatStateWidth;
                             }
-                            _ => unreachable!()
+                            _ => unreachable!(),
                         }
                         state = FormatPattern(flags, fstate);
                     }
@@ -293,14 +296,14 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         return Err(format!("unrecognized format option {:?}", cur))
                     }
                 }
-            },
+            }
             PushParam => {
                 // params are 1-indexed
                 stack.push(mparams[match cur.to_digit(10) {
                     Some(d) => d as usize - 1,
                     None => return Err("bad param number".to_owned())
                 }].clone());
-            },
+            }
             SetVar => {
                 if cur >= 'A' && cur <= 'Z' {
                     if !stack.is_empty() {
@@ -315,7 +318,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                 } else {
                     return Err("bad variable name in %P".to_owned());
                 }
-            },
+            }
             GetVar => {
                 if cur >= 'A' && cur <= 'Z' {
                     let idx = (cur as u8) - b'A';
@@ -326,16 +329,16 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                 } else {
                     return Err("bad variable name in %g".to_owned());
                 }
-            },
+            }
             CharConstant => {
                 stack.push(Number(c as isize));
                 state = CharClose;
-            },
+            }
             CharClose => {
                 if cur != '\'' {
                     return Err("malformed character constant".to_owned());
                 }
-            },
+            }
             IntConstant(i) => {
                 match cur {
                     '}' => {
@@ -451,7 +454,7 @@ struct Flags {
     alternate: bool,
     left: bool,
     sign: bool,
-    space: bool
+    space: bool,
 }
 
 impl Flags {
@@ -467,7 +470,7 @@ enum FormatOp {
     FormatOctal,
     FormatHex,
     FormatHEX,
-    FormatString
+    FormatString,
 }
 
 impl FormatOp {
@@ -478,7 +481,7 @@ impl FormatOp {
             'x' => FormatHex,
             'X' => FormatHEX,
             's' => FormatString,
-            _ => panic!("bad FormatOp char")
+            _ => panic!("bad FormatOp char"),
         }
     }
     fn to_char(self) -> char {
@@ -487,7 +490,7 @@ impl FormatOp {
             FormatOctal => 'o',
             FormatHex => 'x',
             FormatHEX => 'X',
-            FormatString => 's'
+            FormatString => 's',
         }
     }
 }
@@ -538,7 +541,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                         s.extend(s_);
                     }
                 }
-                FormatString => unreachable!()
+                FormatString => unreachable!(),
             }
             s
         }
