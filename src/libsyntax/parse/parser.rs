@@ -64,7 +64,6 @@ use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp, CodeMap};
 use diagnostic;
 use ext::tt::macro_parser;
 use parse;
-use parse::attr::ParserAttr;
 use parse::classify;
 use parse::common::{SeqSep, seq_sep_none, seq_sep_trailing_allowed};
 use parse::lexer::{Reader, TokenAndSpan};

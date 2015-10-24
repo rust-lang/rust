@@ -85,7 +85,6 @@ use codemap::{BytePos, mk_sp, Span};
 use codemap;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
-use parse::attr::ParserAttr;
 use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
 use parse::token::{Eof, DocComment, MatchNt, SubstNt};
 use parse::token::{Token, Nonterminal};
