@@ -41,6 +41,11 @@ pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
     }
 }
 
+#[cfg(not(stage0))]
+pub fn payload() -> *mut u8 {
+    0 as *mut u8
+}
+
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send + 'static> {
     let my_ep = ptr as *mut Exception;
     let cause = (*my_ep).cause.take();
