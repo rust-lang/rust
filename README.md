@@ -88,7 +88,7 @@ Read ["Installing Rust"] from [The Book].
 > resulting in a segmentation fault when building Rust. In order to avoid this
 > it may be necessary to obtain an earlier version of gcc such as 4.9.x.
 > Installers for earlier Windows builds of gcc are available at the
-> [Mingw-Builds] project.
+> [Mingw-Builds] project. For more information on this see issue #28260.
 
 [Mingw-Builds]: http://sourceforge.net/projects/mingw-w64/
 
