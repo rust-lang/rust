@@ -149,9 +149,8 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
                 cap = self.ti.strings.get("op");
             }
         }
-        let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_owned()), |op| {
-            expand(op, &[], &mut Variables::new())
-        });
+        let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_owned()),
+                           |op| expand(op, &[], &mut Variables::new()));
         if s.is_ok() {
             return self.out.write_all(&s.unwrap());
         }
