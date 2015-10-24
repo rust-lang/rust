@@ -116,7 +116,7 @@ pub fn parse_expr_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> P<ast::Expr> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(p.parse_expr(), p)
+    maybe_aborted(panictry!(p.parse_expr_nopanic()), p)
 }
 
 pub fn parse_item_from_source_str(name: String,
@@ -125,7 +125,7 @@ pub fn parse_item_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> Option<P<ast::Item>> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(p.parse_item(),p)
+    maybe_aborted(panictry!(p.parse_item_nopanic()), p)
 }
 
 pub fn parse_meta_from_source_str(name: String,
@@ -134,7 +134,7 @@ pub fn parse_meta_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> P<ast::MetaItem> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(p.parse_meta_item(),p)
+    maybe_aborted(p.parse_meta_item(), p)
 }
 
 pub fn parse_stmt_from_source_str(name: String,
@@ -148,7 +148,7 @@ pub fn parse_stmt_from_source_str(name: String,
         name,
         source
     );
-    maybe_aborted(p.parse_stmt(), p)
+    maybe_aborted(panictry!(p.parse_stmt_nopanic()), p)
 }
 
 // Warning: This parses with quote_depth > 0, which is not the default.
