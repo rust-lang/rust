@@ -3196,6 +3196,10 @@ impl<'a> Parser<'a> {
             // Parse &pat / &mut pat
             try!(self.expect_and());
             let mutbl = try!(self.parse_mutability());
+            if let token::Lifetime(ident) = self.token {
+                return Err(self.fatal(&format!("unexpected lifetime `{}` in pattern", ident)));
+            }
+
             let subpat = try!(self.parse_pat_nopanic());
             pat = PatRegion(subpat, mutbl);
           }
