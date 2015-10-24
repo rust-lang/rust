@@ -64,7 +64,8 @@
 #![feature(vec_push_all)]
 #![cfg_attr(windows, feature(libc))]
 
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
 pub use terminfo::TerminfoTerminal;
 #[cfg(windows)]
