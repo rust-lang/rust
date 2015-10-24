@@ -254,7 +254,7 @@ impl str {
     ///
     /// Returns the substring from [`begin`..`end`).
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// Caller must check both UTF-8 sequence boundaries and the boundaries
     /// of the entire slice as well.
