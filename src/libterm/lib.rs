@@ -101,25 +101,19 @@ impl Write for WriterWrapper {
 /// Return a Terminal wrapping stdout, or None if a terminal couldn't be
 /// opened.
 pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
-    TerminfoTerminal::new(WriterWrapper {
-        wrapped: box std::io::stdout(),
-    })
+    TerminfoTerminal::new(WriterWrapper { wrapped: box std::io::stdout() })
 }
 
 #[cfg(windows)]
 /// Return a Terminal wrapping stdout, or None if a terminal couldn't be
 /// opened.
 pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
-    let ti = TerminfoTerminal::new(WriterWrapper {
-        wrapped: box std::io::stdout(),
-    });
+    let ti = TerminfoTerminal::new(WriterWrapper { wrapped: box std::io::stdout() });
 
     match ti {
         Some(t) => Some(t),
         None => {
-            WinConsole::new(WriterWrapper {
-                wrapped: box std::io::stdout(),
-            })
+            WinConsole::new(WriterWrapper { wrapped: box std::io::stdout() })
         }
     }
 }
@@ -128,25 +122,19 @@ pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
 /// Return a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
 pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send>> {
-    TerminfoTerminal::new(WriterWrapper {
-        wrapped: box std::io::stderr(),
-    })
+    TerminfoTerminal::new(WriterWrapper { wrapped: box std::io::stderr() })
 }
 
 #[cfg(windows)]
 /// Return a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
 pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send>> {
-    let ti = TerminfoTerminal::new(WriterWrapper {
-        wrapped: box std::io::stderr(),
-    });
+    let ti = TerminfoTerminal::new(WriterWrapper { wrapped: box std::io::stderr() });
 
     match ti {
         Some(t) => Some(t),
         None => {
-            WinConsole::new(WriterWrapper {
-                wrapped: box std::io::stderr(),
-            })
+            WinConsole::new(WriterWrapper { wrapped: box std::io::stderr() })
         }
     }
 }
