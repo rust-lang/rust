@@ -95,7 +95,7 @@ pub trait Into<T>: Sized {
 /// assert_eq!(string, other_string);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait From<T> {
+pub trait From<T>: Sized {
     /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn from(T) -> Self;

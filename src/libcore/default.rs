@@ -78,6 +78,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use marker::Sized;
+
 /// A trait for giving a type a useful default value.
 ///
 /// A struct can derive default implementations of `Default` for basic types using
@@ -93,7 +95,7 @@
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Default {
+pub trait Default: Sized {
     /// Returns the "default value" for a type.
     ///
     /// Default values are often some kind of initial value, identity value, or anything else that
