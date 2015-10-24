@@ -50,6 +50,11 @@ pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
     rtabort!("could not unwind stack");
 }
 
+#[cfg(not(stage0))]
+pub fn payload() -> *mut u8 {
+    0 as *mut u8
+}
+
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send + 'static> {
     let panic_ctx = Box::from_raw(ptr as *mut PanicData);
     return panic_ctx.data;

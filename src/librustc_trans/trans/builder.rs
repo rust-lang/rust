@@ -12,7 +12,7 @@
 
 use llvm;
 use llvm::{CallConv, AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect, AttrBuilder};
-use llvm::{Opcode, IntPredicate, RealPredicate, False};
+use llvm::{Opcode, IntPredicate, RealPredicate, False, OperandBundleDef};
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
 use trans::base;
 use trans::common::*;
@@ -158,6 +158,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                   args: &[ValueRef],
                   then: BasicBlockRef,
                   catch: BasicBlockRef,
+                  bundle: Option<&OperandBundleDef>,
                   attributes: Option<AttrBuilder>)
                   -> ValueRef {
         self.count_insn("invoke");
@@ -169,17 +170,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                    .collect::<Vec<String>>()
                    .join(", "));
 
+        let bundle = bundle.as_ref().map(|b| b.raw()).unwrap_or(0 as *mut _);
+
         unsafe {
-            let v = llvm::LLVMBuildInvoke(self.llbuilder,
-                                          llfn,
-                                          args.as_ptr(),
-                                          args.len() as c_uint,
-                                          then,
-                                          catch,
-                                          noname());
-            match attributes {
-                Some(a) => a.apply_callsite(v),
-                None => {}
+            let v = llvm::LLVMRustBuildInvoke(self.llbuilder,
+                                              llfn,
+                                              args.as_ptr(),
+                                              args.len() as c_uint,
+                                              then,
+                                              catch,
+                                              bundle,
+                                              noname());
+            if let Some(a) = attributes {
+                a.apply_callsite(v);
             }
             v
         }
@@ -771,7 +774,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                          comment_text.as_ptr(), noname(), False,
                                          False)
             };
-            self.call(asm, &[], None);
+            self.call(asm, &[], None, None);
         }
     }
 
@@ -796,11 +799,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         unsafe {
             let v = llvm::LLVMInlineAsm(
                 fty.to_ref(), asm, cons, volatile, alignstack, dia as c_uint);
-            self.call(v, inputs, None)
+            self.call(v, inputs, None, None)
         }
     }
 
     pub fn call(&self, llfn: ValueRef, args: &[ValueRef],
+                bundle: Option<&OperandBundleDef>,
                 attributes: Option<AttrBuilder>) -> ValueRef {
         self.count_insn("call");
 
@@ -837,21 +841,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
+        let bundle = bundle.as_ref().map(|b| b.raw()).unwrap_or(0 as *mut _);
+
         unsafe {
-            let v = llvm::LLVMBuildCall(self.llbuilder, llfn, args.as_ptr(),
-                                        args.len() as c_uint, noname());
-            match attributes {
-                Some(a) => a.apply_callsite(v),
-                None => {}
+            let v = llvm::LLVMRustBuildCall(self.llbuilder, llfn, args.as_ptr(),
+                                            args.len() as c_uint, bundle,
+                                            noname());
+            if let Some(a) = attributes {
+                a.apply_callsite(v);
             }
             v
         }
     }
 
     pub fn call_with_conv(&self, llfn: ValueRef, args: &[ValueRef],
-                          conv: CallConv, attributes: Option<AttrBuilder>) -> ValueRef {
+                          conv: CallConv,
+                          bundle: Option<&OperandBundleDef>,
+                          attributes: Option<AttrBuilder>) -> ValueRef {
         self.count_insn("callwithconv");
-        let v = self.call(llfn, args, attributes);
+        let v = self.call(llfn, args, bundle, attributes);
         llvm::SetInstructionCallConv(v, conv);
         v
     }
@@ -948,8 +956,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             assert!((t as isize != 0));
             let args: &[ValueRef] = &[];
             self.count_insn("trap");
-            llvm::LLVMBuildCall(
-                self.llbuilder, t, args.as_ptr(), args.len() as c_uint, noname());
+            llvm::LLVMRustBuildCall(self.llbuilder, t,
+                                    args.as_ptr(), args.len() as c_uint,
+                                    0 as *mut _,
+                                    noname());
         }
     }
 
@@ -980,6 +990,86 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.count_insn("resume");
         unsafe {
             llvm::LLVMBuildResume(self.llbuilder, exn)
+        }
+    }
+
+    pub fn cleanup_pad(&self,
+                       parent: Option<ValueRef>,
+                       args: &[ValueRef]) -> ValueRef {
+        self.count_insn("cleanuppad");
+        let parent = parent.unwrap_or(0 as *mut _);
+        let name = CString::new("cleanuppad").unwrap();
+        let ret = unsafe {
+            llvm::LLVMRustBuildCleanupPad(self.llbuilder,
+                                          parent,
+                                          args.len() as c_uint,
+                                          args.as_ptr(),
+                                          name.as_ptr())
+        };
+        assert!(!ret.is_null(), "LLVM does not have support for cleanuppad");
+        return ret
+    }
+
+    pub fn cleanup_ret(&self, cleanup: ValueRef,
+                       unwind: Option<BasicBlockRef>) -> ValueRef {
+        self.count_insn("cleanupret");
+        let unwind = unwind.unwrap_or(0 as *mut _);
+        let ret = unsafe {
+            llvm::LLVMRustBuildCleanupRet(self.llbuilder, cleanup, unwind)
+        };
+        assert!(!ret.is_null(), "LLVM does not have support for cleanupret");
+        return ret
+    }
+
+    pub fn catch_pad(&self,
+                     parent: ValueRef,
+                     args: &[ValueRef]) -> ValueRef {
+        self.count_insn("catchpad");
+        let name = CString::new("catchpad").unwrap();
+        let ret = unsafe {
+            llvm::LLVMRustBuildCatchPad(self.llbuilder, parent,
+                                        args.len() as c_uint, args.as_ptr(),
+                                        name.as_ptr())
+        };
+        assert!(!ret.is_null(), "LLVM does not have support for catchpad");
+        return ret
+    }
+
+    pub fn catch_ret(&self, pad: ValueRef, unwind: BasicBlockRef) -> ValueRef {
+        self.count_insn("catchret");
+        let ret = unsafe {
+            llvm::LLVMRustBuildCatchRet(self.llbuilder, pad, unwind)
+        };
+        assert!(!ret.is_null(), "LLVM does not have support for catchret");
+        return ret
+    }
+
+    pub fn catch_switch(&self,
+                        parent: Option<ValueRef>,
+                        unwind: Option<BasicBlockRef>,
+                        num_handlers: usize) -> ValueRef {
+        self.count_insn("catchswitch");
+        let parent = parent.unwrap_or(0 as *mut _);
+        let unwind = unwind.unwrap_or(0 as *mut _);
+        let name = CString::new("catchswitch").unwrap();
+        let ret = unsafe {
+            llvm::LLVMRustBuildCatchSwitch(self.llbuilder, parent, unwind,
+                                           num_handlers as c_uint,
+                                           name.as_ptr())
+        };
+        assert!(!ret.is_null(), "LLVM does not have support for catchswitch");
+        return ret
+    }
+
+    pub fn add_handler(&self, catch_switch: ValueRef, handler: BasicBlockRef) {
+        unsafe {
+            llvm::LLVMRustAddHandler(catch_switch, handler);
+        }
+    }
+
+    pub fn set_personality_fn(&self, personality: ValueRef) {
+        unsafe {
+            llvm::LLVMRustSetPersonalityFn(self.llbuilder, personality);
         }
     }
 

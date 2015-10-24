@@ -334,7 +334,7 @@ impl<'a> ArchiveBuilder<'a> {
         // all SYMDEF files as these are just magical placeholders which get
         // re-created when we make a new archive anyway.
         for file in archive.iter() {
-            let file = try!(file.map_err(string2io));
+            let file = try!(file.map_err(string_to_io_error));
             if !is_relevant_child(&file) {
                 continue
             }
@@ -455,7 +455,7 @@ impl<'a> ArchiveBuilder<'a> {
         unsafe {
             if let Some(archive) = self.src_archive() {
                 for child in archive.iter() {
-                    let child = try!(child.map_err(string2io));
+                    let child = try!(child.map_err(string_to_io_error));
                     let child_name = match child.name() {
                         Some(s) => s,
                         None => continue,
@@ -484,7 +484,7 @@ impl<'a> ArchiveBuilder<'a> {
                     }
                     Addition::Archive { archive, archive_name: _, mut skip } => {
                         for child in archive.iter() {
-                            let child = try!(child.map_err(string2io));
+                            let child = try!(child.map_err(string_to_io_error));
                             if !is_relevant_child(&child) {
                                 continue
                             }
@@ -541,6 +541,6 @@ impl<'a> ArchiveBuilder<'a> {
     }
 }
 
-fn string2io(s: String) -> io::Error {
+fn string_to_io_error(s: String) -> io::Error {
     io::Error::new(io::ErrorKind::Other, format!("bad archive: {}", s))
 }
