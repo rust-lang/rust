@@ -82,7 +82,8 @@ pub fn parse_crate_attrs_from_file(
     cfg: ast::CrateConfig,
     sess: &ParseSess
 ) -> Vec<ast::Attribute> {
-    new_parser_from_file(sess, cfg, input).parse_inner_attributes()
+    // FIXME: maybe_aborted?
+    panictry!(new_parser_from_file(sess, cfg, input).parse_inner_attributes())
 }
 
 pub fn parse_crate_from_source_str(name: String,
@@ -106,7 +107,7 @@ pub fn parse_crate_attrs_from_source_str(name: String,
                                            cfg,
                                            name,
                                            source);
-    maybe_aborted(p.parse_inner_attributes(), p)
+    maybe_aborted(panictry!(p.parse_inner_attributes()), p)
 }
 
 pub fn parse_expr_from_source_str(name: String,
@@ -133,7 +134,7 @@ pub fn parse_meta_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> P<ast::MetaItem> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(p.parse_meta_item(), p)
+    maybe_aborted(panictry!(p.parse_meta_item()), p)
 }
 
 pub fn parse_stmt_from_source_str(name: String,
