@@ -207,7 +207,7 @@ pub mod attr {
         /// Convenience attribute to set the foreground color
         ForegroundColor(super::color::Color),
         /// Convenience attribute to set the background color
-        BackgroundColor(super::color::Color)
+        BackgroundColor(super::color::Color),
     }
 }
 
