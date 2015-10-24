@@ -85,7 +85,7 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
                            &mut Variables::new());
             if s.is_ok() {
                 try!(self.out.write_all(&s.unwrap()));
-                return Ok(true)
+                return Ok(true);
             }
         }
         Ok(false)
@@ -102,7 +102,7 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
                            &mut Variables::new());
             if s.is_ok() {
                 try!(self.out.write_all(&s.unwrap()));
-                return Ok(true)
+                return Ok(true);
             }
         }
         Ok(false)
@@ -119,7 +119,7 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
                     let s = expand(parm.unwrap(), &[], &mut Variables::new());
                     if s.is_ok() {
                         try!(self.out.write_all(&s.unwrap()));
-                        return Ok(true)
+                        return Ok(true);
                     }
                 }
                 Ok(false)
@@ -153,7 +153,7 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
             expand(op, &[], &mut Variables::new())
         });
         if s.is_ok() {
-            return self.out.write_all(&s.unwrap())
+            return self.out.write_all(&s.unwrap());
         }
         Ok(())
     }
