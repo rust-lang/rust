@@ -1490,7 +1490,7 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
                           built from an iterator over elements of type `{A}`"]
-pub trait FromIterator<A> {
+pub trait FromIterator<A>: Sized {
     /// Builds a container with elements from something iterable.
     ///
     /// # Examples
