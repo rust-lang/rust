@@ -222,7 +222,7 @@ macro_rules! create_config {
                 for _ in 0..max {
                     space_str.push(' ');
                 }
-                println!("\nConfiguration Options:");
+                println!("Configuration Options:");
                 $(
                     let name_raw = stringify!($i);
                     let mut name_out = String::with_capacity(max);
