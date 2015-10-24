@@ -2109,6 +2109,17 @@ pub enum UnresolvedTypeAction {
     Ignore
 }
 
+/// Desired behaviour upon reaching the recursion limit. Used in
+/// `autoderef_with_recursion_option`. Default is `ErrorGracefully`
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AutoderefRecursionOption {
+    /// Returns the last resolved type as it if were the valid end result
+    ReturnLastResolvedType,
+    /// Error gracefully upon reaching the limit.. This is the default behaviour
+    ErrorGracefully,
+}
+
+
 /// Executes an autoderef loop for the type `t`. At each step, invokes `should_stop` to decide
 /// whether to terminate the loop. Returns the final type and number of derefs that it performed.
 ///
@@ -2119,9 +2130,35 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                                  base_ty: Ty<'tcx>,
                                  opt_expr: Option<&hir::Expr>,
                                  unresolved_type_action: UnresolvedTypeAction,
-                                 mut lvalue_pref: LvaluePreference,
-                                 mut should_stop: F)
+                                 lvalue_pref: LvaluePreference,
+                                 should_stop: F)
                                  -> (Ty<'tcx>, usize, Option<T>)
+    where F: FnMut(Ty<'tcx>, usize) -> Option<T>,
+{
+    // call the implementation with the default behaviour.
+    autoderef_with_recursion_option(fcx,
+                                    sp,
+                                    base_ty,
+                                    opt_expr,
+                                    unresolved_type_action,
+                                    lvalue_pref,
+                                    AutoderefRecursionOption::ErrorGracefully,
+                                    should_stop)
+}
+
+/// Actual implementation of of `autoderef`. `autoderef` calls this method with
+/// `AutoderefRecursionOption::ErrorGracefully` as default behaviour. Unless
+/// specific behaviour is needed in case of reaching the recursion limit,
+/// `autoderef` should be used instead.
+pub fn autoderef_with_recursion_option<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
+                                                       sp: Span,
+                                                       base_ty: Ty<'tcx>,
+                                                       opt_expr: Option<&hir::Expr>,
+                                                       unresolved_type_action: UnresolvedTypeAction,
+                                                       mut lvalue_pref: LvaluePreference,
+                                                       recursion_option: AutoderefRecursionOption,
+                                                       mut should_stop: F)
+                                                       -> (Ty<'tcx>, usize, Option<T>)
     where F: FnMut(Ty<'tcx>, usize) -> Option<T>,
 {
     debug!("autoderef(base_ty={:?}, opt_expr={:?}, lvalue_pref={:?})",
@@ -2130,7 +2167,8 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
            lvalue_pref);
 
     let mut t = base_ty;
-    for autoderefs in 0..fcx.tcx().sess.recursion_limit.get() {
+    let recursion_limit = fcx.tcx().sess.recursion_limit.get();
+    for autoderefs in 0..recursion_limit {
         let resolved_t = match unresolved_type_action {
             UnresolvedTypeAction::Error => {
                 structurally_resolved_type(fcx, sp, t)
@@ -2173,6 +2211,7 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                 try_overloaded_deref(fcx, sp, method_call, None, resolved_t, lvalue_pref)
             }
         };
+
         match mt {
             Some(mt) => {
                 t = mt.ty;
@@ -2184,11 +2223,21 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
     }
 
-    // We've reached the recursion limit, error gracefully.
-    span_err!(fcx.tcx().sess, sp, E0055,
-        "reached the recursion limit while auto-dereferencing {:?}",
-        base_ty);
-    (fcx.tcx().types.err, 0, None)
+    // Respect the desired behaviour regarding the recursion limit.
+    match recursion_option  {
+        AutoderefRecursionOption::ReturnLastResolvedType => {
+            // Treat `t`, the last resolved type, as endresult
+            return (t, recursion_limit, None);
+        },
+        AutoderefRecursionOption::ErrorGracefully => {
+            // We've reached the recursion limit, error gracefully.
+            // This is the default behaviour.
+            span_err!(fcx.tcx().sess, sp, E0055,
+                "reached the recursion limit while auto-dereferencing {:?}",
+                base_ty);
+            (fcx.tcx().types.err, 0, None)
+        }
+    }
 }
 
 fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
