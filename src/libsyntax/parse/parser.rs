@@ -359,7 +359,8 @@ impl<'a> Parser<'a> {
     }
 
     // Panicing fns (for now!)
-    // This is so that the quote_*!() syntax extensions
+    // These functions are used by the quote_*!() syntax extensions, but shouldn't
+    // be used otherwise.
     pub fn parse_expr(&mut self) -> P<Expr> {
         panictry!(self.parse_expr_nopanic())
     }

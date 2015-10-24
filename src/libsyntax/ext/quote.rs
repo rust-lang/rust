@@ -694,7 +694,7 @@ fn parse_arguments_to_quote(cx: &ExtCtxt, tts: &[ast::TokenTree])
     let mut p = cx.new_parser_from_tts(tts);
     p.quote_depth += 1;
 
-    let cx_expr = p.parse_expr();
+    let cx_expr = panictry!(p.parse_expr_nopanic());
     if !panictry!(p.eat(&token::Comma)) {
         panic!(p.fatal("expected token `,`"));
     }
