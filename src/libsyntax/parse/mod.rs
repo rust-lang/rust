@@ -13,7 +13,6 @@
 use ast;
 use codemap::{self, Span, CodeMap, FileMap};
 use diagnostic::{SpanHandler, Handler, Auto, FatalError};
-use parse::attr::ParserAttr;
 use parse::parser::Parser;
 use parse::token::InternedString;
 use ptr::P;

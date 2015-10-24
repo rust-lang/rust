@@ -16,19 +16,9 @@ use parse::token;
 use parse::parser::{Parser, TokenType};
 use ptr::P;
 
-/// A parser that can parse attributes.
-pub trait ParserAttr {
-    fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute>;
-    fn parse_inner_attributes(&mut self) -> Vec<ast::Attribute>;
-    fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute;
-    fn parse_meta_item(&mut self) -> P<ast::MetaItem>;
-    fn parse_meta_seq(&mut self) -> Vec<P<ast::MetaItem>>;
-    fn parse_optional_meta(&mut self) -> Vec<P<ast::MetaItem>>;
-}
-
-impl<'a> ParserAttr for Parser<'a> {
+impl<'a> Parser<'a> {
     /// Parse attributes that appear before an item
-    fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute> {
+    pub fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         loop {
             debug!("parse_outer_attributes: self.token={:?}",
@@ -120,7 +110,7 @@ impl<'a> ParserAttr for Parser<'a> {
     /// terminated by a semicolon.
 
     /// matches inner_attrs*
-    fn parse_inner_attributes(&mut self) -> Vec<ast::Attribute> {
+    pub fn parse_inner_attributes(&mut self) -> Vec<ast::Attribute> {
         let mut attrs: Vec<ast::Attribute> = vec![];
         loop {
             match self.token {
@@ -155,7 +145,7 @@ impl<'a> ParserAttr for Parser<'a> {
     /// matches meta_item = IDENT
     /// | IDENT = lit
     /// | IDENT meta_seq
-    fn parse_meta_item(&mut self) -> P<ast::MetaItem> {
+    pub fn parse_meta_item(&mut self) -> P<ast::MetaItem> {
         let nt_meta = match self.token {
             token::Interpolated(token::NtMeta(ref e)) => {
                 Some(e.clone())
@@ -209,12 +199,5 @@ impl<'a> ParserAttr for Parser<'a> {
                        &token::CloseDelim(token::Paren),
                        seq_sep_trailing_allowed(token::Comma),
                        |p| Ok(p.parse_meta_item()))).node
-    }
-
-    fn parse_optional_meta(&mut self) -> Vec<P<ast::MetaItem>> {
-        match self.token {
-            token::OpenDelim(token::Paren) => self.parse_meta_seq(),
-            _ => Vec::new()
-        }
     }
 }

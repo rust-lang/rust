@@ -19,7 +19,6 @@ use ext::base;
 use ext::build::AstBuilder;
 use attr;
 use attr::*;
-use parse::attr::ParserAttr;
 use parse::token;
 
 pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
