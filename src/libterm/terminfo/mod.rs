@@ -28,13 +28,13 @@ use self::parm::{expand, Number, Variables};
 #[derive(Debug)]
 pub struct TermInfo {
     /// Names for the terminal
-    pub names: Vec<String> ,
+    pub names: Vec<String>,
     /// Map of capability name to boolean value
     pub bools: HashMap<String, bool>,
     /// Map of capability name to numeric value
     pub numbers: HashMap<String, u16>,
     /// Map of capability name to raw (unexpanded) string
-    pub strings: HashMap<String, Vec<u8> >
+    pub strings: HashMap<String, Vec<u8>>,
 }
 
 pub mod searcher;
@@ -61,7 +61,7 @@ fn cap_for_attr(attr: attr::Attr) -> &'static str {
         attr::Reverse            => "rev",
         attr::Secure             => "invis",
         attr::ForegroundColor(_) => "setaf",
-        attr::BackgroundColor(_) => "setab"
+        attr::BackgroundColor(_) => "setab",
     }
 }
 
@@ -70,7 +70,7 @@ fn cap_for_attr(attr: attr::Attr) -> &'static str {
 pub struct TerminfoTerminal<T> {
     num_colors: u16,
     out: T,
-    ti: Box<TermInfo>
+    ti: Box<TermInfo>,
 }
 
 impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
@@ -80,9 +80,9 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
             let s = expand(self.ti
                                .strings
                                .get("setaf")
-                               .unwrap()
-                               ,
-                           &[Number(color as isize)], &mut Variables::new());
+                               .unwrap(),
+                           &[Number(color as isize)],
+                           &mut Variables::new());
             if s.is_ok() {
                 try!(self.out.write_all(&s.unwrap()));
                 return Ok(true)
@@ -97,9 +97,9 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
             let s = expand(self.ti
                                .strings
                                .get("setab")
-                               .unwrap()
-                               ,
-                           &[Number(color as isize)], &mut Variables::new());
+                               .unwrap(),
+                           &[Number(color as isize)],
+                           &mut Variables::new());
             if s.is_ok() {
                 try!(self.out.write_all(&s.unwrap()));
                 return Ok(true)
@@ -116,9 +116,7 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
                 let cap = cap_for_attr(attr);
                 let parm = self.ti.strings.get(cap);
                 if parm.is_some() {
-                    let s = expand(parm.unwrap(),
-                                   &[],
-                                   &mut Variables::new());
+                    let s = expand(parm.unwrap(), &[], &mut Variables::new());
                     if s.is_ok() {
                         try!(self.out.write_all(&s.unwrap()));
                         return Ok(true)
@@ -192,16 +190,16 @@ impl<T: Write+Send+'static> TerminfoTerminal<T> {
             Err(err) => return match env::var("MSYSCON") {
                 Ok(ref val) if &val[..] == "mintty.exe" => {
                     // msys terminal
-                    Some(box TerminfoTerminal{
+                    Some(box TerminfoTerminal {
                         out: out,
                         ti: msys_terminfo(),
                         num_colors: 8,
                     })
-                },
+                }
                 _ => {
                     debug!("error finding terminfo entry: {:?}", err);
                     None
-                },
+                }
             },
         };
 
@@ -212,20 +210,25 @@ impl<T: Write+Send+'static> TerminfoTerminal<T> {
         }
 
         let inf = ti.unwrap();
-        let nc = if inf.strings.get("setaf").is_some()
-                 && inf.strings.get("setab").is_some() {
-                     inf.numbers.get("colors").map_or(0, |&n| n)
-                 } else { 0 };
+        let nc = if inf.strings.get("setaf").is_some() && inf.strings.get("setab").is_some() {
+            inf.numbers.get("colors").map_or(0, |&n| n)
+        } else {
+            0
+        };
 
-        Some(box TerminfoTerminal {out: out,
-                                   ti: inf,
-                                   num_colors: nc})
+        Some(box TerminfoTerminal {
+            out: out,
+            ti: inf,
+            num_colors: nc,
+        })
     }
 
     fn dim_if_necessary(&self, color: color::Color) -> color::Color {
         if color >= self.num_colors && color >= 8 && color < 16 {
             color-8
-        } else { color }
+        } else {
+            color
+        }
     }
 }
 
