@@ -38,14 +38,12 @@ pub fn llvm_err(handler: &diagnostic::Handler, msg: String) -> ! {
     unsafe {
         let cstr = llvm::LLVMRustGetLastError();
         if cstr == ptr::null() {
-            handler.fatal(&msg[..]);
+            panic!(handler.fatal(&msg[..]));
         } else {
             let err = CStr::from_ptr(cstr).to_bytes();
             let err = String::from_utf8_lossy(err).to_string();
             libc::free(cstr as *mut _);
-            handler.fatal(&format!("{}: {}",
-                                  &msg[..],
-                                  &err[..]));
+            panic!(handler.fatal(&format!("{}: {}", &msg[..], &err[..])));
         }
     }
 }

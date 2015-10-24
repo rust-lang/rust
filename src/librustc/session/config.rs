@@ -657,15 +657,15 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
     let target = match Target::search(&opts.target_triple) {
         Ok(t) => t,
         Err(e) => {
-            sp.handler().fatal(&format!("Error loading target specification: {}", e));
+            panic!(sp.handler().fatal(&format!("Error loading target specification: {}", e)));
         }
     };
 
     let (int_type, uint_type) = match &target.target_pointer_width[..] {
         "32" => (ast::TyI32, ast::TyU32),
         "64" => (ast::TyI64, ast::TyU64),
-        w    => sp.handler().fatal(&format!("target specification was invalid: unrecognized \
-                                             target-pointer-width {}", w))
+        w    => panic!(sp.handler().fatal(&format!("target specification was invalid: \
+                                                    unrecognized target-pointer-width {}", w))),
     };
 
     Config {
