@@ -160,13 +160,19 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
         Ok(())
     }
 
-    fn get_ref<'a>(&'a self) -> &'a T { &self.out }
+    fn get_ref<'a>(&'a self) -> &'a T {
+        &self.out
+    }
 
-    fn get_mut<'a>(&'a mut self) -> &'a mut T { &mut self.out }
+    fn get_mut<'a>(&'a mut self) -> &'a mut T {
+        &mut self.out
+    }
 }
 
 impl<T: Write+Send+'static> UnwrappableTerminal<T> for TerminfoTerminal<T> {
-    fn unwrap(self) -> T { self.out }
+    fn unwrap(self) -> T {
+        self.out
+    }
 }
 
 impl<T: Write+Send+'static> TerminfoTerminal<T> {
