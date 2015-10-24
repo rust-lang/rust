@@ -856,7 +856,7 @@ mod tests {
 
     #[test] fn parse_stmt_1 () {
         assert!(string_to_stmt("b;".to_string()) ==
-                   P(Spanned{
+                   Some(P(Spanned{
                        node: ast::StmtExpr(P(ast::Expr {
                            id: ast::DUMMY_NODE_ID,
                            node: ast::ExprPath(None, ast::Path {
@@ -871,7 +871,7 @@ mod tests {
                             }),
                            span: sp(0,1)}),
                                            ast::DUMMY_NODE_ID),
-                       span: sp(0,1)}))
+                       span: sp(0,1)})))
 
     }
 
