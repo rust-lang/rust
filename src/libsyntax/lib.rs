@@ -30,7 +30,6 @@
 #![feature(filling_drop)]
 #![feature(libc)]
 #![feature(rustc_private)]
-#![feature(set_stdio)]
 #![feature(staged_api)]
 #![feature(str_char)]
 #![feature(str_escape)]

@@ -257,8 +257,10 @@ impl Target {
                      .map(|s| s.as_string())
                      .and_then(|os| os.map(|s| s.to_string())) {
                 Some(val) => val,
-                None =>
-                    handler.fatal(&format!("Field {} in target specification is required", name))
+                None => {
+                    panic!(handler.fatal(&format!("Field {} in target specification is required",
+                                                  name)))
+                }
             }
         };
 
