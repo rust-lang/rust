@@ -12,7 +12,7 @@
 
 #![feature(const_fn)]
 
-unsafe const fn dummy(v: u32) -> u32 {
+const unsafe fn dummy(v: u32) -> u32 {
     !v
 }
 
