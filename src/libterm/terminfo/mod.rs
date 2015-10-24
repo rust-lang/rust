@@ -49,17 +49,17 @@ pub mod parm;
 
 fn cap_for_attr(attr: attr::Attr) -> &'static str {
     match attr {
-        attr::Bold               => "bold",
-        attr::Dim                => "dim",
-        attr::Italic(true)       => "sitm",
-        attr::Italic(false)      => "ritm",
-        attr::Underline(true)    => "smul",
-        attr::Underline(false)   => "rmul",
-        attr::Blink              => "blink",
-        attr::Standout(true)     => "smso",
-        attr::Standout(false)    => "rmso",
-        attr::Reverse            => "rev",
-        attr::Secure             => "invis",
+        attr::Bold => "bold",
+        attr::Dim => "dim",
+        attr::Italic(true) => "sitm",
+        attr::Italic(false) => "ritm",
+        attr::Underline(true) => "smul",
+        attr::Underline(false) => "rmul",
+        attr::Blink => "blink",
+        attr::Standout(true) => "smso",
+        attr::Standout(false) => "rmso",
+        attr::Reverse => "rev",
+        attr::Secure => "invis",
         attr::ForegroundColor(_) => "setaf",
         attr::BackgroundColor(_) => "setab",
     }
