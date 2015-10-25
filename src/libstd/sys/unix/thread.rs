@@ -14,6 +14,7 @@ use prelude::v1::*;
 
 use alloc::boxed::FnBox;
 use cmp;
+#[cfg(not(target_env = "newlib"))]
 use ffi::CString;
 use io;
 use libc::consts::os::posix01::PTHREAD_STACK_MIN;
@@ -138,6 +139,10 @@ impl Thread {
             pthread_setname_np(pthread_self(), cname.as_ptr(),
                                carg.as_ptr() as *mut libc::c_void);
         }
+    }
+    #[cfg(target_env = "newlib")]
+    pub unsafe fn set_name(_name: &str) {
+        // Newlib has no way to set a thread name.
     }
 
     pub fn sleep(dur: Duration) {

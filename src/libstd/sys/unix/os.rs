@@ -34,30 +34,15 @@ const TMPBUF_SZ: usize = 128;
 
 /// Returns the platform-specific value of errno
 pub fn errno() -> i32 {
-    #[cfg(any(target_os = "macos",
-              target_os = "ios",
-              target_os = "freebsd"))]
-    unsafe fn errno_location() -> *const c_int {
-        extern { fn __error() -> *const c_int; }
-        __error()
-    }
-
-    #[cfg(target_os = "dragonfly")]
-    unsafe fn errno_location() -> *const c_int {
-        extern { fn __dfly_error() -> *const c_int; }
-        __dfly_error()
-    }
-
-    #[cfg(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"))]
-    unsafe fn errno_location() -> *const c_int {
-        extern { fn __errno() -> *const c_int; }
-        __errno()
-    }
-
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    unsafe fn errno_location() -> *const c_int {
-        extern { fn __errno_location() -> *const c_int; }
-        __errno_location()
+    extern {
+        #[cfg_attr(any(target_os = "linux", target_os = "android"), link_name = "__errno_location")]
+        #[cfg_attr(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd",
+                       target_env = "newlib"),
+                   link_name = "__errno")]
+        #[cfg_attr(target_os = "dragonfly", link_name = "__dfly_error")]
+        #[cfg_attr(any(target_os = "macos", target_os = "ios", target_os = "freebsd"),
+                   link_name = "__error")]
+        fn errno_location() -> *const c_int;
     }
 
     unsafe {
@@ -67,14 +52,9 @@ pub fn errno() -> i32 {
 
 /// Gets a detailed string description for the given error number.
 pub fn error_string(errno: i32) -> String {
-    #[cfg(target_os = "linux")]
     extern {
-        #[link_name = "__xpg_strerror_r"]
-        fn strerror_r(errnum: c_int, buf: *mut c_char,
-                      buflen: libc::size_t) -> c_int;
-    }
-    #[cfg(not(target_os = "linux"))]
-    extern {
+        #[cfg_attr(any(target_os = "linux", target_env = "newlib"),
+                   link_name = "__xpg_strerror_r")]
         fn strerror_r(errnum: c_int, buf: *mut c_char,
                       buflen: libc::size_t) -> c_int;
     }
@@ -361,7 +341,8 @@ pub fn args() -> Args {
           target_os = "dragonfly",
           target_os = "bitrig",
           target_os = "netbsd",
-          target_os = "openbsd"))]
+          target_os = "openbsd",
+          target_os = "nacl"))]
 pub fn args() -> Args {
     use sys_common;
     let bytes = sys_common::args::clone().unwrap_or(Vec::new());
@@ -473,10 +454,12 @@ pub fn home_dir() -> Option<PathBuf> {
     }).map(PathBuf::from);
 
     #[cfg(any(target_os = "android",
-              target_os = "ios"))]
+              target_os = "ios",
+              target_os = "nacl"))]
     unsafe fn fallback() -> Option<OsString> { None }
     #[cfg(not(any(target_os = "android",
-                  target_os = "ios")))]
+                  target_os = "ios",
+                  target_os = "nacl")))]
     unsafe fn fallback() -> Option<OsString> {
         let amt = match libc::sysconf(c::_SC_GETPW_R_SIZE_MAX) {
             n if n < 0 => 512 as usize,
