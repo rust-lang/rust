@@ -313,14 +313,19 @@ def escape_char(c):
 
 def emit_bsearch_range_table(f):
     f.write("""
-fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
+fn bsearch_range_table(c: char, r: &'static [(char, char)]) -> bool {
     use core::cmp::Ordering::{Equal, Less, Greater};
     use core::slice::SliceExt;
-    r.binary_search_by(|&(lo,hi)| {
-        if lo <= c && c <= hi { Equal }
-        else if hi < c { Less }
-        else { Greater }
-    }).is_ok()
+    r.binary_search_by(|&(lo, hi)| {
+         if lo <= c && c <= hi {
+             Equal
+         } else if hi < c {
+             Less
+         } else {
+             Greater
+         }
+     })
+     .is_ok()
 }\n
 """)
 
