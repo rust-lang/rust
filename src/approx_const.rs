@@ -1,5 +1,6 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
+use std::f64::consts as f64;
 use utils::span_lint;
 use syntax::ast::Lit_::*;
 use syntax::ast::Lit;
@@ -12,25 +13,24 @@ declare_lint! {
      is found; suggests to use the constant"
 }
 
-// Tuples are of the form (name, lower_bound, upper_bound)
-#[allow(approx_constant)]
-const KNOWN_CONSTS : &'static [(&'static str, f64, f64)] = &[
-    ("E", 2.7101, 2.7200),
-    ("FRAC_1_PI", 0.31829, 0.31840),
-    ("FRAC_1_SQRT_2", 0.7071, 0.7072),
-    ("FRAC_2_PI", 0.6366, 0.6370),
-    ("FRAC_2_SQRT_PI", 1.1283, 1.1284),
-    ("FRAC_PI_2", 1.5707, 1.5708),
-    ("FRAC_PI_3", 1.0471, 1.0472),
-    ("FRAC_PI_4", 0.7853, 0.7854),
-    ("FRAC_PI_6", 0.5235, 0.5236),
-    ("FRAC_PI_8", 0.3926, 0.3927),
-    ("LN_10", 2.302, 2.303),
-    ("LN_2", 0.6931, 0.6932),
-    ("LOG10_E", 0.4342, 0.4343),
-    ("LOG2_E", 1.4426, 1.4427),
-    ("PI", 3.140, 3.142),
-    ("SQRT_2", 1.4142, 1.4143),
+// Tuples are of the form (constant, name, min_digits)
+const KNOWN_CONSTS : &'static [(f64, &'static str, usize)] = &[
+    (f64::E, "E", 4),
+    (f64::FRAC_1_PI, "FRAC_1_PI", 4),
+    (f64::FRAC_1_SQRT_2, "FRAC_1_SQRT_2", 5),
+    (f64::FRAC_2_PI, "FRAC_2_PI", 5),
+    (f64::FRAC_2_SQRT_PI, "FRAC_2_SQRT_PI", 5),
+    (f64::FRAC_PI_2, "FRAC_PI_2", 5),
+    (f64::FRAC_PI_3, "FRAC_PI_3", 5),
+    (f64::FRAC_PI_4, "FRAC_PI_4", 5),
+    (f64::FRAC_PI_6, "FRAC_PI_6", 5),
+    (f64::FRAC_PI_8, "FRAC_PI_8", 5),
+    (f64::LN_10, "LN_10", 5),
+    (f64::LN_2, "LN_2", 5),
+    (f64::LOG10_E, "LOG10_E", 5),
+    (f64::LOG2_E, "LOG2_E", 5),
+    (f64::PI, "PI", 3),
+    (f64::SQRT_2, "SQRT_2", 5),
 ];
 
 #[derive(Copy,Clone)]
@@ -52,22 +52,41 @@ impl LateLintPass for ApproxConstant {
 
 fn check_lit(cx: &LateContext, lit: &Lit, e: &Expr) {
     match lit.node {
-        LitFloat(ref str, TyF32) => check_known_consts(cx, e, str, "f32"),
-        LitFloat(ref str, TyF64) => check_known_consts(cx, e, str, "f64"),
-        LitFloatUnsuffixed(ref str) =>
-            check_known_consts(cx, e, str, "f{32, 64}"),
+        LitFloat(ref s, TyF32) => check_known_consts(cx, e, s, "f32"),
+        LitFloat(ref s, TyF64) => check_known_consts(cx, e, s, "f64"),
+        LitFloatUnsuffixed(ref s) =>
+            check_known_consts(cx, e, s, "f{32, 64}"),
         _ => ()
     }
 }
 
 fn check_known_consts(cx: &LateContext, e: &Expr, s: &str, module: &str) {
-    if let Ok(value) = s.parse::<f64>() {
-        for &(name, lower_bound, upper_bound) in KNOWN_CONSTS {
-            if (value >= lower_bound) && (value < upper_bound) {
+    if let Ok(_) = s.parse::<f64>() {
+        for &(constant, name, min_digits) in KNOWN_CONSTS {
+            if is_approx_const(constant, s, min_digits) {
                 span_lint(cx, APPROX_CONSTANT, e.span, &format!(
                     "approximate value of `{}::{}` found. \
                     Consider using it directly", module, &name));
+                return;
             }
         }
+    }
+}
+
+/// Returns false if the number of significant figures in `value` are
+/// less than `min_digits`; otherwise, returns true if `value` is equal
+/// to `constant`, rounded to the number of digits present in `value`.
+fn is_approx_const(constant: f64, value: &str, min_digits: usize) -> bool {
+    if value.len() <= min_digits {
+        false
+    } else {
+        let round_const = format!("{:.*}", value.len() - 2, constant);
+
+        let mut trunc_const = constant.to_string();
+        if trunc_const.len() > value.len() {
+            trunc_const.truncate(value.len());
+        }
+
+        (value == round_const) || (value == trunc_const)
     }
 }
