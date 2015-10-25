@@ -1257,7 +1257,7 @@ pub trait Iterator {
 
     /// Lexicographically compares the elements of this `Iterator` with those
     /// of another.
-    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    #[stable(feature = "iter_order", since = "1.5.0")]
     fn cmp<I>(mut self, other: I) -> Ordering where
         I: IntoIterator<Item = Self::Item>,
         Self::Item: Ord,
@@ -1280,7 +1280,7 @@ pub trait Iterator {
 
     /// Lexicographically compares the elements of this `Iterator` with those
     /// of another.
-    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    #[stable(feature = "iter_order", since = "1.5.0")]
     fn partial_cmp<I>(mut self, other: I) -> Option<Ordering> where
         I: IntoIterator,
         Self::Item: PartialOrd<I::Item>,
@@ -1303,7 +1303,7 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are equal to those of
     /// another.
-    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    #[stable(feature = "iter_order", since = "1.5.0")]
     fn eq<I>(mut self, other: I) -> bool where
         I: IntoIterator,
         Self::Item: PartialEq<I::Item>,
@@ -1322,7 +1322,7 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are unequal to those of
     /// another.
-    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    #[stable(feature = "iter_order", since = "1.5.0")]
     fn ne<I>(mut self, other: I) -> bool where
         I: IntoIterator,
         Self::Item: PartialEq<I::Item>,
@@ -1341,7 +1341,7 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// less than those of another.
-    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    #[stable(feature = "iter_order", since = "1.5.0")]
     fn lt<I>(mut self, other: I) -> bool where
         I: IntoIterator,
         Self::Item: PartialOrd<I::Item>,
@@ -1368,7 +1368,7 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// less or equal to those of another.
-    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    #[stable(feature = "iter_order", since = "1.5.0")]
     fn le<I>(mut self, other: I) -> bool where
         I: IntoIterator,
         Self::Item: PartialOrd<I::Item>,
@@ -1395,7 +1395,7 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// greater than those of another.
-    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    #[stable(feature = "iter_order", since = "1.5.0")]
     fn gt<I>(mut self, other: I) -> bool where
         I: IntoIterator,
         Self::Item: PartialOrd<I::Item>,
@@ -1422,7 +1422,7 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// greater than or equal to those of another.
-    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    #[stable(feature = "iter_order", since = "1.5.0")]
     fn ge<I>(mut self, other: I) -> bool where
         I: IntoIterator,
         Self::Item: PartialOrd<I::Item>,
@@ -3224,6 +3224,8 @@ impl<A> Iterator for StepBy<A, RangeFrom<A>> where
 #[unstable(feature = "range_inclusive",
            reason = "likely to be replaced by range notation and adapters",
            issue = "27777")]
+#[deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
+#[allow(deprecated)]
 pub struct RangeInclusive<A> {
     range: ops::Range<A>,
     done: bool,
@@ -3234,6 +3236,8 @@ pub struct RangeInclusive<A> {
 #[unstable(feature = "range_inclusive",
            reason = "likely to be replaced by range notation and adapters",
            issue = "27777")]
+#[deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
+#[allow(deprecated)]
 pub fn range_inclusive<A>(start: A, stop: A) -> RangeInclusive<A>
     where A: Step + One + Clone
 {
@@ -3246,6 +3250,8 @@ pub fn range_inclusive<A>(start: A, stop: A) -> RangeInclusive<A>
 #[unstable(feature = "range_inclusive",
            reason = "likely to be replaced by range notation and adapters",
            issue = "27777")]
+#[deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
+#[allow(deprecated)]
 impl<A> Iterator for RangeInclusive<A> where
     A: PartialEq + Step + One + Clone,
     for<'a> &'a A: Add<&'a A, Output = A>
@@ -3280,6 +3286,8 @@ impl<A> Iterator for RangeInclusive<A> where
 #[unstable(feature = "range_inclusive",
            reason = "likely to be replaced by range notation and adapters",
            issue = "27777")]
+#[deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
+#[allow(deprecated)]
 impl<A> DoubleEndedIterator for RangeInclusive<A> where
     A: PartialEq + Step + One + Clone,
     for<'a> &'a A: Add<&'a A, Output = A>,
@@ -3657,7 +3665,7 @@ pub fn once<T>(value: T) -> Once<T> {
 /// If two sequences are equal up until the point where one ends,
 /// the shorter sequence compares less.
 #[deprecated(since = "1.4.0", reason = "use the equivalent methods on `Iterator` instead")]
-#[unstable(feature = "iter_order", reason = "needs review and revision",
+#[unstable(feature = "iter_order_deprecated", reason = "needs review and revision",
            issue = "27737")]
 pub mod order {
     use cmp;

@@ -290,6 +290,7 @@ impl<T> Option<T> {
                reason = "waiting for mut conventions",
                issue = "27776")]
     #[deprecated(since = "1.4.0", reason = "niche API, unclear of usefulness")]
+    #[allow(deprecated)]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         match *self {
             Some(ref mut x) => {
@@ -694,6 +695,7 @@ impl<T> Option<T> {
     #[unstable(feature = "as_slice", reason = "unsure of the utility here",
                issue = "27776")]
     #[deprecated(since = "1.4.0", reason = "niche API, unclear of usefulness")]
+    #[allow(deprecated)]
     pub fn as_slice(&self) -> &[T] {
         match *self {
             Some(ref x) => slice::ref_slice(x),

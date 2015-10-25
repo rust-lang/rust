@@ -106,6 +106,7 @@ pub use core::slice::{Chunks, Windows};
 pub use core::slice::{Iter, IterMut};
 pub use core::slice::{SplitMut, ChunksMut, Split};
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
+#[allow(deprecated)]
 pub use core::slice::{bytes, mut_ref_slice, ref_slice};
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
 
@@ -214,21 +215,21 @@ impl<T> [T] {
     }
 
     /// Returns the first and all the rest of the elements of a slice.
-    #[unstable(feature = "slice_splits", reason = "new API", issue = "27742")]
+    #[stable(feature = "slice_splits", since = "1.5.0")]
     #[inline]
     pub fn split_first(&self) -> Option<(&T, &[T])> {
         core_slice::SliceExt::split_first(self)
     }
 
     /// Returns the first and all the rest of the elements of a slice.
-    #[unstable(feature = "slice_splits", reason = "new API", issue = "27742")]
+    #[stable(feature = "slice_splits", since = "1.5.0")]
     #[inline]
     pub fn split_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
         core_slice::SliceExt::split_first_mut(self)
     }
 
     /// Returns the last and all the rest of the elements of a slice.
-    #[unstable(feature = "slice_splits", reason = "new API", issue = "27742")]
+    #[stable(feature = "slice_splits", since = "1.5.0")]
     #[inline]
     pub fn split_last(&self) -> Option<(&T, &[T])> {
         core_slice::SliceExt::split_last(self)
@@ -236,7 +237,7 @@ impl<T> [T] {
     }
 
     /// Returns the last and all the rest of the elements of a slice.
-    #[unstable(feature = "slice_splits", reason = "new API", issue = "27742")]
+    #[stable(feature = "slice_splits", since = "1.5.0")]
     #[inline]
     pub fn split_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
         core_slice::SliceExt::split_last_mut(self)

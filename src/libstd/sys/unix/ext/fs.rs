@@ -178,21 +178,23 @@ impl MetadataExt for fs::Metadata {
 }
 
 /// Add special unix types (block/char device, fifo and socket)
-#[unstable(feature = "file_type_ext", reason = "recently added API",
-           issue = "27796")]
+#[stable(feature = "file_type_ext", since = "1.5.0")]
 pub trait FileTypeExt {
     /// Returns whether this file type is a block device.
+    #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_block_device(&self) -> bool;
     /// Returns whether this file type is a char device.
+    #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_char_device(&self) -> bool;
     /// Returns whether this file type is a fifo.
+    #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_fifo(&self) -> bool;
     /// Returns whether this file type is a socket.
+    #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_socket(&self) -> bool;
 }
 
-#[unstable(feature = "file_type_ext", reason = "recently added API",
-           issue = "27796")]
+#[stable(feature = "file_type_ext", since = "1.5.0")]
 impl FileTypeExt for fs::FileType {
     fn is_block_device(&self) -> bool { self.as_inner().is(libc::S_IFBLK) }
     fn is_char_device(&self) -> bool { self.as_inner().is(libc::S_IFCHR) }

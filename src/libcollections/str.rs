@@ -277,8 +277,7 @@ impl str {
     /// Takes a bytewise mutable slice from a string.
     ///
     /// Same as `slice_unchecked`, but works with `&mut str` instead of `&str`.
-    #[unstable(feature = "str_slice_mut", reason = "recently added",
-               issue = "27793")]
+    #[stable(feature = "str_slice_mut", since = "1.5.0")]
     #[inline]
     pub unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str {
         core_str::StrExt::slice_mut_unchecked(self, begin, end)
@@ -1192,9 +1191,7 @@ impl str {
     /// let v: Vec<_> = "ababa".match_indices("aba").collect();
     /// assert_eq!(v, [(0, "aba")]); // only the first `aba`
     /// ```
-    #[unstable(feature = "str_match_indices",
-               reason = "might have its iterator type changed",
-               issue = "27743")]
+    #[stable(feature = "str_match_indices", since = "1.5.0")]
     pub fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
         core_str::StrExt::match_indices(self, pat)
     }
@@ -1231,9 +1228,7 @@ impl str {
     /// let v: Vec<_> = "ababa".rmatch_indices("aba").collect();
     /// assert_eq!(v, [(2, "aba")]); // only the last `aba`
     /// ```
-    #[unstable(feature = "str_match_indices",
-               reason = "might have its iterator type changed",
-               issue = "27743")]
+    #[stable(feature = "str_match_indices", since = "1.5.0")]
     pub fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {

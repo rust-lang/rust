@@ -29,7 +29,6 @@
 #![feature(drain)]
 #![feature(filling_drop)]
 #![feature(libc)]
-#![feature(ref_slice)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
@@ -37,7 +36,6 @@
 #![feature(str_escape)]
 #![feature(unicode)]
 #![feature(vec_push_all)]
-#![feature(vec_resize)]
 
 extern crate fmt_macros;
 extern crate serialize;

@@ -34,7 +34,6 @@
        test(no_crate_inject))]
 #![no_std]
 
-#![feature(char_from_unchecked)]
 #![feature(core_char_ext)]
 #![feature(core_slice_ext)]
 #![feature(core_str_ext)]

@@ -1131,9 +1131,7 @@ impl ops::DerefMut for String {
 }
 
 /// Error returned from `String::from`
-#[unstable(feature = "str_parse_error", reason = "may want to be replaced with \
-                                                  Void if it ever exists",
-           issue = "27734")]
+#[stable(feature = "str_parse_error", since = "1.5.0")]
 #[derive(Copy)]
 pub enum ParseError {}
 

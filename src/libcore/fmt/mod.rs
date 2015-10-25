@@ -1098,43 +1098,36 @@ impl<'a> Formatter<'a> {
     pub fn flags(&self) -> u32 { self.flags }
 
     /// Character used as 'fill' whenever there is alignment
-    #[unstable(feature = "fmt_flags", reason = "method was just created",
-               issue = "27726")]
+    #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn fill(&self) -> char { self.fill }
 
     /// Flag indicating what form of alignment was requested
-    #[unstable(feature = "fmt_flags", reason = "method was just created",
+    #[unstable(feature = "fmt_flags_align", reason = "method was just created",
                issue = "27726")]
     pub fn align(&self) -> Alignment { self.align }
 
     /// Optionally specified integer width that the output should be
-    #[unstable(feature = "fmt_flags", reason = "method was just created",
-               issue = "27726")]
+    #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn width(&self) -> Option<usize> { self.width }
 
     /// Optionally specified precision for numeric types
-    #[unstable(feature = "fmt_flags", reason = "method was just created",
-               issue = "27726")]
+    #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn precision(&self) -> Option<usize> { self.precision }
 
     /// Determines if the `+` flag was specified.
-    #[unstable(feature = "fmt_flags", reason = "method was just created",
-               issue = "27726")]
+    #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_plus(&self) -> bool { self.flags & (1 << FlagV1::SignPlus as u32) != 0 }
 
     /// Determines if the `-` flag was specified.
-    #[unstable(feature = "fmt_flags", reason = "method was just created",
-               issue = "27726")]
+    #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_minus(&self) -> bool { self.flags & (1 << FlagV1::SignMinus as u32) != 0 }
 
     /// Determines if the `#` flag was specified.
-    #[unstable(feature = "fmt_flags", reason = "method was just created",
-               issue = "27726")]
+    #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn alternate(&self) -> bool { self.flags & (1 << FlagV1::Alternate as u32) != 0 }
 
     /// Determines if the `0` flag was specified.
-    #[unstable(feature = "fmt_flags", reason = "method was just created",
-               issue = "27726")]
+    #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_aware_zero_pad(&self) -> bool {
         self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
     }

@@ -66,7 +66,6 @@ use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::FnvHashSet;
 
-use std::slice;
 use syntax::{abi, ast};
 use syntax::codemap::{Span, Pos};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
@@ -74,7 +73,7 @@ use syntax::parse::token;
 
 use rustc_front::print::pprust;
 use rustc_front::hir;
-
+use rustc_back::slice;
 
 pub trait AstConv<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;

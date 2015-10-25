@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(deprecated)]
+
 use std::dynamic_lib::DynamicLibrary;
 use std::io::prelude::*;
 use std::path::PathBuf;

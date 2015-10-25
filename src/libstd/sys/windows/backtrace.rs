@@ -22,7 +22,7 @@
 //! copy of that function in my mingw install (maybe it was broken?). Instead,
 //! this takes the route of using StackWalk64 in order to walk the stack.
 
-#![allow(dead_code)]
+#![allow(dead_code, deprecated)]
 
 use io::prelude::*;
 
