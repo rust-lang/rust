@@ -1159,6 +1159,12 @@ impl StructFieldKind {
             NamedField(..) => false,
         }
     }
+
+    pub fn visibility(&self) -> Visibility {
+        match *self {
+            NamedField(_, vis) | UnnamedField(vis) => vis
+        }
+    }
 }
 
 /// Fields and Ids of enum variants and structs
