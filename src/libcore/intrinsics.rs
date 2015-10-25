@@ -586,20 +586,6 @@ extern "rust-intrinsic" {
     /// Returns (a * b) mod 2^N, where N is the width of N in bits.
     pub fn overflowing_mul<T>(a: T, b: T) -> T;
 
-    /// Performs an unchecked signed division, which results in undefined behavior,
-    /// in cases where y == 0, or x == isize::MIN and y == -1
-    pub fn unchecked_sdiv<T>(x: T, y: T) -> T;
-    /// Performs an unchecked unsigned division, which results in undefined behavior,
-    /// in cases where y == 0
-    pub fn unchecked_udiv<T>(x: T, y: T) -> T;
-
-    /// Returns the remainder of an unchecked signed division, which results in
-    /// undefined behavior, in cases where y == 0, or x == isize::MIN and y == -1
-    pub fn unchecked_srem<T>(x: T, y: T) -> T;
-    /// Returns the remainder of an unchecked unsigned division, which results in
-    /// undefined behavior, in cases where y == 0
-    pub fn unchecked_urem<T>(x: T, y: T) -> T;
-
     /// Returns the value of the discriminant for the variant in 'v',
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
     pub fn discriminant_value<T>(v: &T) -> u64;
@@ -608,4 +594,59 @@ extern "rust-intrinsic" {
     /// the data pointer `data`, returning the exception payload if an exception
     /// is thrown (aka the thread panics).
     pub fn try(f: fn(*mut u8), data: *mut u8) -> *mut u8;
+}
+
+#[cfg(not(stage0))]
+extern "rust-intrinsic" {
+    /// Performs an unchecked `i8` division, resulting in undefined behavior
+    /// where y = 0 or x = `std::i8::MIN` and y = -1
+    pub fn i8_unchecked_div(x: i8, y: i8) -> i8;
+    /// Performs an unchecked `i16` division, resulting in undefined behavior
+    /// where y = 0 or x = `std::i16::MIN` and y = -1
+    pub fn i16_unchecked_div(x: i16, y: i16) -> i16;
+    /// Performs an unchecked `i32` division, resulting in undefined behavior
+    /// where y = 0 or x = `std::i32::MIN` and y = -1
+    pub fn i32_unchecked_div(x: i32, y: i32) -> i32;
+    /// Performs an unchecked `i64` division, resulting in undefined behavior
+    /// where y = 0 or x = `std::i64::MIN` and y = -1
+    pub fn i64_unchecked_div(x: i64, y: i64) -> i64;
+
+    /// Performs an unchecked `u8` division, resulting in undefined behavior
+    /// where y = 0
+    pub fn u8_unchecked_div(x: u8, y: u8) -> u8;
+    /// Performs an unchecked `u16` division, resulting in undefined behavior
+    /// where y = 0
+    pub fn u16_unchecked_div(x: u16, y: u16) -> u16;
+    /// Performs an unchecked `u32` division, resulting in undefined behavior
+    /// where y = 0
+    pub fn u32_unchecked_div(x: u32, y: u32) -> u32;
+    /// Performs an unchecked `u64` division, resulting in undefined behavior
+    /// where y = 0
+    pub fn u64_unchecked_div(x: u64, y: u64) -> u64;
+
+    /// Returns the remainder of an unchecked `i8` division, resulting in
+    /// undefined behavior where y = 0 or x = `std::i8::MIN` and y = -1
+    pub fn i8_unchecked_rem(x: i8, y: i8) -> i8;
+    /// Returns the remainder of an unchecked `i16` division, resulting in
+    /// undefined behavior where y = 0 or x = `std::i16::MIN` and y = -1
+    pub fn i16_unchecked_rem(x: i16, y: i16) -> i16;
+    /// Returns the remainder of an unchecked `i32` division, resulting in
+    /// undefined behavior where y = 0 or x = `std::i32::MIN` and y = -1
+    pub fn i32_unchecked_rem(x: i32, y: i32) -> i32;
+    /// Returns the remainder of an unchecked `i64` division, resulting in
+    /// undefined behavior where y = 0 or x = `std::i64::MIN` and y = -1
+    pub fn i64_unchecked_rem(x: i64, y: i64) -> i64;
+
+    /// Returns the remainder of an unchecked `u8` division, resulting in
+    /// undefined behavior where y = 0
+    pub fn u8_unchecked_rem(x: u8, y: u8) -> u8;
+    /// Returns the remainder of an unchecked `u16` division, resulting in
+    /// undefined behavior where y = 0
+    pub fn u16_unchecked_rem(x: u16, y: u16) -> u16;
+    /// Returns the remainder of an unchecked `u32` division, resulting in
+    /// undefined behavior where y = 0
+    pub fn u32_unchecked_rem(x: u32, y: u32) -> u32;
+    /// Returns the remainder of an unchecked `u64` division, resulting in
+    /// undefined behavior where y = 0
+    pub fn u64_unchecked_rem(x: u64, y: u64) -> u64;
 }
