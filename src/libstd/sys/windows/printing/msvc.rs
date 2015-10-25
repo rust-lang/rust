@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(deprecated)]
+
 use sys_common::backtrace::{output, output_fileline};
 use ffi::CStr;
 use dynamic_lib::DynamicLibrary;

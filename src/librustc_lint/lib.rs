@@ -35,7 +35,6 @@
 #![feature(box_syntax)]
 #![feature(num_bits_bytes)]
 #![feature(quote)]
-#![feature(ref_slice)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
@@ -48,6 +47,7 @@ extern crate rustc;
 #[macro_use]
 extern crate log;
 extern crate rustc_front;
+extern crate rustc_back;
 
 pub use rustc::lint as lint;
 pub use rustc::metadata as metadata;

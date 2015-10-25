@@ -356,6 +356,7 @@ pub mod guard {
 // but that caused Debian to detect an unnecessarily strict versioned
 // dependency on libc6 (#23628).
 #[cfg(target_os = "linux")]
+#[allow(deprecated)]
 fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
     use dynamic_lib::DynamicLibrary;
     use sync::Once;

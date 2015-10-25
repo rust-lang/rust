@@ -123,7 +123,7 @@ impl Default for ReseedWithDefault {
 mod tests {
     use std::prelude::v1::*;
 
-    use core::iter::{order, repeat};
+    use core::iter::order;
     use super::{ReseedingRng, ReseedWithDefault};
     use {SeedableRng, Rng};
 

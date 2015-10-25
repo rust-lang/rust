@@ -18,7 +18,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 
-#![feature(ref_slice)]
 #![feature(rustc_private)]
 #![feature(into_cow)]
 
@@ -27,6 +26,7 @@ extern crate graphviz as dot;
 extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_front;
+extern crate rustc_back;
 extern crate syntax;
 
 pub mod build;

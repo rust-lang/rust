@@ -101,12 +101,14 @@
 use ascii::*;
 use borrow::{Borrow, IntoCow, ToOwned, Cow};
 use cmp;
+use fmt;
+use fs;
+use io;
 use iter;
 use mem;
 use ops::{self, Deref};
 use string::String;
 use vec::Vec;
-use fmt;
 
 use ffi::{OsStr, OsString};
 
@@ -1688,6 +1690,81 @@ impl Path {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn display(&self) -> Display {
         Display { path: self }
+    }
+
+
+    /// Gets information on the file, directory, etc at this path.
+    ///
+    /// Consult the `fs::metadata` documentation for more info.
+    ///
+    /// This call preserves identical runtime/error semantics with
+    /// `fs::metadata`.
+    #[stable(feature = "path_ext", since = "1.5.0")]
+    pub fn metadata(&self) -> io::Result<fs::Metadata> {
+        fs::metadata(self)
+    }
+
+    /// Gets information on the file, directory, etc at this path.
+    ///
+    /// Consult the `fs::symlink_metadata` documentation for more info.
+    ///
+    /// This call preserves identical runtime/error semantics with
+    /// `fs::symlink_metadata`.
+    #[stable(feature = "path_ext", since = "1.5.0")]
+    pub fn symlink_metadata(&self) -> io::Result<fs::Metadata> {
+        fs::symlink_metadata(self)
+    }
+
+    /// Returns the canonical form of a path, normalizing all components and
+    /// eliminate all symlinks.
+    ///
+    /// This call preserves identical runtime/error semantics with
+    /// `fs::canonicalize`.
+    #[stable(feature = "path_ext", since = "1.5.0")]
+    pub fn canonicalize(&self) -> io::Result<PathBuf> {
+        fs::canonicalize(self)
+    }
+
+    /// Reads the symlink at this path.
+    ///
+    /// For more information see `fs::read_link`.
+    #[stable(feature = "path_ext", since = "1.5.0")]
+    pub fn read_link(&self) -> io::Result<PathBuf> {
+        fs::read_link(self)
+    }
+
+    /// Reads the directory at this path.
+    ///
+    /// For more information see `fs::read_dir`.
+    #[stable(feature = "path_ext", since = "1.5.0")]
+    pub fn read_dir(&self) -> io::Result<fs::ReadDir> {
+        fs::read_dir(self)
+    }
+
+    /// Boolean value indicator whether the underlying file exists on the local
+    /// filesystem. Returns false in exactly the cases where `fs::stat` fails.
+    #[stable(feature = "path_ext", since = "1.5.0")]
+    pub fn exists(&self) -> bool {
+        fs::metadata(self).is_ok()
+    }
+
+    /// Whether the underlying implementation (be it a file path, or something
+    /// else) points at a "regular file" on the FS. Will return false for paths
+    /// to non-existent locations or directories or other non-regular files
+    /// (named pipes, etc). Follows links when making this determination.
+    #[stable(feature = "path_ext", since = "1.5.0")]
+    pub fn is_file(&self) -> bool {
+        fs::metadata(self).map(|m| m.is_file()).unwrap_or(false)
+    }
+
+    /// Whether the underlying implementation (be it a file path, or something
+    /// else) is pointing at a directory in the underlying FS. Will return
+    /// false for paths to non-existent locations or if the item is not a
+    /// directory (eg files, named pipes, etc). Follows links when making this
+    /// determination.
+    #[stable(feature = "path_ext", since = "1.5.0")]
+    pub fn is_dir(&self) -> bool {
+        fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
     }
 }
 

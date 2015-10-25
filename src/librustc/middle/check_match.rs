@@ -29,13 +29,13 @@ use middle::ty::*;
 use middle::ty;
 use std::cmp::Ordering;
 use std::fmt;
-use std::iter::{range_inclusive, FromIterator, IntoIterator, repeat};
-use std::slice;
+use std::iter::{FromIterator, IntoIterator, repeat};
 
 use rustc_front::hir;
 use rustc_front::hir::Pat;
 use rustc_front::visit::{self, Visitor, FnKind};
 use rustc_front::util as front_util;
+use rustc_back::slice;
 
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
 use syntax::ast_util;
@@ -615,7 +615,7 @@ fn all_constructors(_cx: &MatchCheckCtxt, left_ty: Ty,
 
         ty::TyRef(_, ty::TypeAndMut { ty, .. }) => match ty.sty {
             ty::TySlice(_) =>
-                range_inclusive(0, max_slice_length).map(|length| Slice(length)).collect(),
+                (0..max_slice_length+1).map(|length| Slice(length)).collect(),
             _ => vec![Single]
         },
 
@@ -790,7 +790,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
             match left_ty.sty {
                 ty::TyArray(_, _) => vec!(Single),
                 _                      => if slice.is_some() {
-                    range_inclusive(before.len() + after.len(), max_slice_length)
+                    (before.len() + after.len()..max_slice_length+1)
                         .map(|length| Slice(length))
                         .collect()
                 } else {
