@@ -26,85 +26,59 @@ use syntax::codemap::{Span, BytePos, mk_sp};
 use syntax::print::pprust;
 use syntax::parse::token;
 
-impl<'a> FmtVisitor<'a> {
-    pub fn visit_let(&mut self, local: &ast::Local, span: Span) {
-        self.format_missing_with_indent(span.lo);
+// Statements of the form
+// let pat: ty = init;
+impl Rewrite for ast::Local {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+        let mut result = "let ".to_owned();
+        let pattern_offset = offset + result.len();
+        // 1 = ;
+        let pattern_width = try_opt!(width.checked_sub(pattern_offset.width() + 1));
 
-        // New scope so we drop the borrow of self (context) in time to mutably
-        // borrow self to mutate its buffer.
-        let result = {
-            let context = self.get_context();
-            let mut result = "let ".to_owned();
-            let pattern_offset = self.block_indent + result.len();
-            // 1 = ;
-            let pattern_width = match self.config
-                                          .max_width
-                                          .checked_sub(pattern_offset.width() + 1) {
-                Some(width) => width,
-                None => return,
-            };
+        let pat_str = try_opt!(self.pat.rewrite(&context, pattern_width, pattern_offset));
+        result.push_str(&pat_str);
 
-            match local.pat.rewrite(&context, pattern_width, pattern_offset) {
-                Some(ref pat_string) => result.push_str(pat_string),
-                None => return,
+        // String that is placed within the assignment pattern and expression.
+        let infix = {
+            let mut infix = String::new();
+
+            if let Some(ref ty) = self.ty {
+                // 2 = ": ".len()
+                // 1 = ;
+                let indent = offset + last_line_width(&result) + 2;
+                let budget = try_opt!(width.checked_sub(indent.width() + 1));
+                let rewrite = try_opt!(ty.rewrite(context, budget, indent));
+
+                infix.push_str(": ");
+                infix.push_str(&rewrite);
             }
 
-            // String that is placed within the assignment pattern and expression.
-            let infix = {
-                let mut infix = String::new();
-
-                if let Some(ref ty) = local.ty {
-                    // 2 = ": ".len()
-                    // 1 = ;
-                    let offset = self.block_indent + result.len() + 2;
-                    let width = match self.config.max_width.checked_sub(offset.width() + 1) {
-                        Some(w) => w,
-                        None => return,
-                    };
-                    let rewrite = ty.rewrite(&self.get_context(), width, offset);
-
-                    match rewrite {
-                        Some(result) => {
-                            infix.push_str(": ");
-                            infix.push_str(&result);
-                        }
-                        None => return,
-                    }
-                }
-
-                if local.init.is_some() {
-                    infix.push_str(" =");
-                }
-
-                infix
-            };
-
-            result.push_str(&infix);
-
-            if let Some(ref ex) = local.init {
-                let max_width = self.config.max_width.checked_sub(context.block_indent.width() + 1);
-                let max_width = match max_width {
-                    Some(width) => width,
-                    None => return,
-                };
-
-                // 1 = trailing semicolon;
-                let rhs = rewrite_assign_rhs(&context, result, ex, max_width, context.block_indent);
-
-                match rhs {
-                    Some(s) => s,
-                    None => return,
-                }
-            } else {
-                result
+            if self.init.is_some() {
+                infix.push_str(" =");
             }
+
+            infix
         };
 
-        self.buffer.push_str(&result);
-        self.buffer.push_str(";");
-        self.last_pos = span.hi;
-    }
+        result.push_str(&infix);
 
+        if let Some(ref ex) = self.init {
+            let budget = try_opt!(width.checked_sub(context.block_indent.width() + 1));
+
+            // 1 = trailing semicolon;
+            result = try_opt!(rewrite_assign_rhs(&context,
+                                                 result,
+                                                 ex,
+                                                 budget,
+                                                 context.block_indent));
+        }
+
+        result.push(';');
+        Some(result)
+    }
+}
+
+impl<'a> FmtVisitor<'a> {
     pub fn format_foreign_mod(&mut self, fm: &ast::ForeignMod, span: Span) {
         self.buffer.push_str("extern ");
 

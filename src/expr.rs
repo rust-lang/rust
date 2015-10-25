@@ -1398,7 +1398,10 @@ pub fn rewrite_tuple<'a, R>(context: &RewriteContext,
                              |item| item.span().lo,
                              |item| item.span().hi,
                              |item| {
-                                 let inner_width = context.config.max_width - indent.width() - 1;
+                                 let inner_width = try_opt!(context.config
+                                                                   .max_width
+                                                                   .checked_sub(indent.width() +
+                                                                                1));
                                  item.rewrite(context, inner_width, indent)
                              },
                              span.lo + BytePos(1), // Remove parens
@@ -1522,10 +1525,15 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
                                            offset: Indent)
                                            -> Option<String> {
     let mut result = lhs.into();
-
+    let last_line_width = last_line_width(&result) -
+                          if result.contains('\n') {
+        offset.width()
+    } else {
+        0
+    };
     // 1 = space between operator and rhs.
-    let max_width = try_opt!(width.checked_sub(result.len() + 1));
-    let rhs = ex.rewrite(&context, max_width, offset + result.len() + 1);
+    let max_width = try_opt!(width.checked_sub(last_line_width + 1));
+    let rhs = ex.rewrite(&context, max_width, offset + last_line_width + 1);
 
     match rhs {
         Some(new_str) => {

@@ -37,7 +37,13 @@ impl<'a> FmtVisitor<'a> {
         match stmt.node {
             ast::Stmt_::StmtDecl(ref decl, _) => {
                 match decl.node {
-                    ast::Decl_::DeclLocal(ref local) => self.visit_let(local, stmt.span),
+                    ast::Decl_::DeclLocal(ref local) => {
+                        let rewrite = {
+                            let context = self.get_context();
+                            local.rewrite(&context, self.config.max_width, self.block_indent)
+                        };
+                        self.push_rewrite(stmt.span, rewrite);
+                    }
                     ast::Decl_::DeclItem(ref item) => self.visit_item(item),
                 }
             }
