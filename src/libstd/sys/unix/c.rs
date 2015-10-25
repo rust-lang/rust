@@ -24,9 +24,7 @@
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
-pub use self::signal_os::{sigaction, siginfo, sigset_t, sigaltstack};
-pub use self::signal_os::{SA_ONSTACK, SA_SIGINFO, SIGBUS, SIGSTKSZ, SIG_SETMASK};
-
+pub use self::signal_os::*;
 use libc;
 
 #[cfg(any(target_os = "macos",
@@ -52,6 +50,13 @@ pub const FIOCLEX: libc::c_ulong = 0x5451;
               target_arch = "powerpc")))]
 pub const FIOCLEX: libc::c_ulong = 0x6601;
 
+#[cfg(target_env = "newlib")]
+pub const FD_CLOEXEC: libc::c_int = 1;
+#[cfg(target_env = "newlib")]
+pub const F_GETFD: libc::c_int = 1;
+#[cfg(target_env = "newlib")]
+pub const F_SETFD: libc::c_int = 2;
+
 pub const WNOHANG: libc::c_int = 1;
 
 #[cfg(target_os = "linux")]
@@ -75,6 +80,18 @@ pub struct passwd {
     pub pw_passwd: *mut libc::c_char,
     pub pw_uid: libc::uid_t,
     pub pw_gid: libc::gid_t,
+    pub pw_gecos: *mut libc::c_char,
+    pub pw_dir: *mut libc::c_char,
+    pub pw_shell: *mut libc::c_char,
+}
+#[repr(C)]
+#[cfg(target_env = "newlib")]
+pub struct passwd {
+    pub pw_name: *mut libc::c_char,
+    pub pw_passwd: *mut libc::c_char,
+    pub pw_uid: libc::uid_t,
+    pub pw_gid: libc::gid_t,
+    pub pw_comment: *mut libc::c_char,
     pub pw_gecos: *mut libc::c_char,
     pub pw_dir: *mut libc::c_char,
     pub pw_shell: *mut libc::c_char,
@@ -124,7 +141,10 @@ extern {
                       optname: libc::c_int,
                       optval: *mut libc::c_void,
                       optlen: *mut libc::socklen_t) -> libc::c_int;
+    #[cfg(not(target_env = "newlib"))]
     pub fn ioctl(fd: libc::c_int, req: libc::c_ulong, ...) -> libc::c_int;
+    #[cfg(target_env = "newlib")]
+    pub fn fnctl(fd: libc::c_int, req: libc::c_int, ...) -> libc::c_int;
 
 
     pub fn waitpid(pid: libc::pid_t, status: *mut libc::c_int,
@@ -138,6 +158,7 @@ extern {
                      oldact: *mut sigaction) -> libc::c_int;
 
     #[cfg_attr(target_os = "netbsd", link_name = "__sigaltstack14")]
+    #[cfg(not(target_env = "newlib"))]
     pub fn sigaltstack(ss: *const sigaltstack,
                        oss: *mut sigaltstack) -> libc::c_int;
 
@@ -160,6 +181,8 @@ extern {
     pub fn utimes(filename: *const libc::c_char,
                   times: *const libc::timeval) -> libc::c_int;
     pub fn gai_strerror(errcode: libc::c_int) -> *const libc::c_char;
+    /// Newlib has this, but only for Cygwin.
+    #[cfg(not(target_os = "nacl"))]
     pub fn setgroups(ngroups: libc::c_int,
                      ptr: *const libc::c_void) -> libc::c_int;
     pub fn realpath(pathname: *const libc::c_char, resolved: *mut libc::c_char)
@@ -322,6 +345,25 @@ mod signal_os {
             pub ss_size: libc::size_t,
             pub ss_flags: libc::c_int,
         }
+    }
+}
+
+/// Note: Although the signal functions are defined on NaCl, they always fail.
+/// Also, this could be cfg-ed on newlib instead of nacl, but these structures
+/// can differ depending on the platform, so I've played it safe here.
+#[cfg(target_os = "nacl")]
+mod signal_os {
+    use libc;
+
+    pub static SA_NOCLDSTOP: libc::c_ulong = 1;
+    pub static SA_SIGINFO:   libc::c_ulong = 2;
+
+    pub type sigset_t = libc::c_ulong;
+    #[repr(C)]
+    pub struct sigaction {
+        pub sa_flags: libc::c_int,
+        pub sa_mask:  sigset_t,
+        pub handler:  extern fn(libc::c_int),
     }
 }
 

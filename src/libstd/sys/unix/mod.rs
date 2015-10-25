@@ -12,7 +12,6 @@
 #![allow(non_camel_case_types)]
 
 use io::{self, ErrorKind};
-use libc::funcs::posix01::signal::signal;
 use libc;
 use num::One;
 use ops::Neg;
@@ -48,7 +47,9 @@ pub mod thread_local;
 pub mod time;
 pub mod stdio;
 
+#[cfg(not(target_os = "nacl"))]
 pub fn init() {
+    use libc::funcs::posix01::signal::signal;
     // By default, some platforms will send a *signal* when an EPIPE error
     // would otherwise be delivered. This runtime doesn't install a SIGPIPE
     // handler, causing it to kill the program, which isn't exactly what we
@@ -60,6 +61,8 @@ pub fn init() {
         assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != !0);
     }
 }
+#[cfg(target_os = "nacl")]
+pub fn init() { }
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno as libc::c_int {

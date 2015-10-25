@@ -118,7 +118,7 @@ impl DynamicLibrary {
     }
 }
 
-#[cfg(all(test, not(target_os = "ios")))]
+#[cfg(all(test, not(target_os = "ios"), not(target_os = "nacl")))]
 mod tests {
     use super::*;
     use prelude::v1::*;
@@ -371,4 +371,31 @@ mod dl {
         fn FreeLibrary(handle: *mut libc::c_void);
         fn SetErrorMode(uMode: libc::c_uint) -> libc::c_uint;
     }
+}
+
+#[cfg(target_os = "nacl")]
+pub mod dl {
+    use ffi::OsStr;
+    use ptr;
+    use result::Result;
+    use result::Result::Err;
+    use libc;
+    use string::String;
+    use ops::FnOnce;
+    use option::Option;
+
+    pub fn open(_filename: Option<&OsStr>) -> Result<*mut u8, String> {
+        Err(format!("NaCl + Newlib doesn't impl loading shared objects"))
+    }
+
+    pub fn check_for_errors_in<T, F>(_f: F) -> Result<T, String>
+        where F: FnOnce() -> T,
+    {
+        Err(format!("NaCl doesn't support shared objects"))
+    }
+
+    pub unsafe fn symbol(_handle: *mut u8, _symbol: *const libc::c_char) -> *mut u8 {
+        ptr::null_mut()
+    }
+    pub unsafe fn close(_handle: *mut u8) { }
 }
