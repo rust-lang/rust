@@ -386,24 +386,33 @@ pub fn env() -> Env {
     let _g = ENV_LOCK.lock();
     return unsafe {
         let mut environ = *environ();
-        if environ as usize == 0 {
+        if environ == ptr::null() {
             panic!("os::env() failure getting env string from OS: {}",
                    io::Error::last_os_error());
         }
         let mut result = Vec::new();
         while *environ != ptr::null() {
-            result.push(parse(CStr::from_ptr(*environ).to_bytes()));
+            if let Some(key_value) = parse(CStr::from_ptr(*environ).to_bytes()) {
+                result.push(key_value);
+            }
             environ = environ.offset(1);
         }
         Env { iter: result.into_iter(), _dont_send_or_sync_me: ptr::null_mut() }
     };
 
-    fn parse(input: &[u8]) -> (OsString, OsString) {
-        let mut it = input.splitn(2, |b| *b == b'=');
-        let key = it.next().unwrap().to_vec();
-        let default: &[u8] = &[];
-        let val = it.next().unwrap_or(default).to_vec();
-        (OsStringExt::from_vec(key), OsStringExt::from_vec(val))
+    fn parse(input: &[u8]) -> Option<(OsString, OsString)> {
+        // Strategy (copied from glibc): Variable name and value are separated
+        // by an ASCII equals sign '='. Since a variable name must not be
+        // empty, allow variable names starting with an equals sign. Skip all
+        // malformed lines.
+        if input.is_empty() {
+            return None;
+        }
+        let pos = input[1..].iter().position(|&b| b == b'=').map(|p| p + 1);
+        pos.map(|p| (
+            OsStringExt::from_vec(input[..p].to_vec()),
+            OsStringExt::from_vec(input[p+1..].to_vec()),
+        ))
     }
 }
 
