@@ -49,7 +49,9 @@ pub struct ToLowercase(CaseMappingIter);
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for ToLowercase {
     type Item = char;
-    fn next(&mut self) -> Option<char> { self.0.next() }
+    fn next(&mut self) -> Option<char> {
+        self.0.next()
+    }
 }
 
 /// An iterator over the uppercase mapping of a given character, returned from
@@ -61,7 +63,9 @@ pub struct ToUppercase(CaseMappingIter);
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for ToUppercase {
     type Item = char;
-    fn next(&mut self) -> Option<char> { self.0.next() }
+    fn next(&mut self) -> Option<char> {
+        self.0.next()
+    }
 }
 
 
@@ -69,7 +73,7 @@ enum CaseMappingIter {
     Three(char, char, char),
     Two(char, char),
     One(char),
-    Zero
+    Zero,
 }
 
 impl CaseMappingIter {
@@ -165,7 +169,9 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_digit(self, radix: u32) -> bool { C::is_digit(self, radix) }
+    pub fn is_digit(self, radix: u32) -> bool {
+        C::is_digit(self, radix)
+    }
 
     /// Converts a `char` to a digit in the given radix.
     ///
@@ -229,7 +235,9 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn to_digit(self, radix: u32) -> Option<u32> { C::to_digit(self, radix) }
+    pub fn to_digit(self, radix: u32) -> Option<u32> {
+        C::to_digit(self, radix)
+    }
 
     /// Returns an iterator that yields the hexadecimal Unicode escape of a
     /// character, as `char`s.
@@ -262,7 +270,9 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn escape_unicode(self) -> EscapeUnicode { C::escape_unicode(self) }
+    pub fn escape_unicode(self) -> EscapeUnicode {
+        C::escape_unicode(self)
+    }
 
     /// Returns an iterator that yields the literal escape code of a `char`.
     ///
@@ -309,7 +319,9 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn escape_default(self) -> EscapeDefault { C::escape_default(self) }
+    pub fn escape_default(self) -> EscapeDefault {
+        C::escape_default(self)
+    }
 
     /// Returns the number of bytes this `char` would need if encoded in UTF-8.
     ///
@@ -358,7 +370,9 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn len_utf8(self) -> usize { C::len_utf8(self) }
+    pub fn len_utf8(self) -> usize {
+        C::len_utf8(self)
+    }
 
     /// Returns the number of 16-bit code units this `char` would need if
     /// encoded in UTF-16.
@@ -378,7 +392,9 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn len_utf16(self) -> usize { C::len_utf16(self) }
+    pub fn len_utf16(self) -> usize {
+        C::len_utf16(self)
+    }
 
     /// Encodes this character as UTF-8 into the provided byte buffer, and then
     /// returns the number of bytes written.
@@ -482,9 +498,9 @@ impl char {
     #[inline]
     pub fn is_alphabetic(self) -> bool {
         match self {
-            'a' ... 'z' | 'A' ... 'Z' => true,
+            'a'...'z' | 'A'...'Z' => true,
             c if c > '\x7f' => derived_property::Alphabetic(c),
-            _ => false
+            _ => false,
         }
     }
 
@@ -498,7 +514,9 @@ impl char {
                reason = "mainly needed for compiler internals",
                issue = "0")]
     #[inline]
-    pub fn is_xid_start(self) -> bool { derived_property::XID_Start(self) }
+    pub fn is_xid_start(self) -> bool {
+        derived_property::XID_Start(self)
+    }
 
     /// Returns true if this `char` satisfies the 'XID_Continue' Unicode property, and false
     /// otherwise.
@@ -510,7 +528,9 @@ impl char {
                reason = "mainly needed for compiler internals",
                issue = "0")]
     #[inline]
-    pub fn is_xid_continue(self) -> bool { derived_property::XID_Continue(self) }
+    pub fn is_xid_continue(self) -> bool {
+        derived_property::XID_Continue(self)
+    }
 
     /// Returns true if this `char` is lowercase, and false otherwise.
     ///
@@ -542,9 +562,9 @@ impl char {
     #[inline]
     pub fn is_lowercase(self) -> bool {
         match self {
-            'a' ... 'z' => true,
+            'a'...'z' => true,
             c if c > '\x7f' => derived_property::Lowercase(c),
-            _ => false
+            _ => false,
         }
     }
 
@@ -578,9 +598,9 @@ impl char {
     #[inline]
     pub fn is_uppercase(self) -> bool {
         match self {
-            'A' ... 'Z' => true,
+            'A'...'Z' => true,
             c if c > '\x7f' => derived_property::Uppercase(c),
-            _ => false
+            _ => false,
         }
     }
 
@@ -608,9 +628,9 @@ impl char {
     #[inline]
     pub fn is_whitespace(self) -> bool {
         match self {
-            ' ' | '\x09' ... '\x0d' => true,
+            ' ' | '\x09'...'\x0d' => true,
             c if c > '\x7f' => property::White_Space(c),
-            _ => false
+            _ => false,
         }
     }
 
@@ -673,7 +693,9 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_control(self) -> bool { general_category::Cc(self) }
+    pub fn is_control(self) -> bool {
+        general_category::Cc(self)
+    }
 
     /// Returns true if this `char` is numeric, and false otherwise.
     ///
@@ -713,9 +735,9 @@ impl char {
     #[inline]
     pub fn is_numeric(self) -> bool {
         match self {
-            '0' ... '9' => true,
+            '0'...'9' => true,
             c if c > '\x7f' => general_category::N(c),
-            _ => false
+            _ => false,
         }
     }
 
@@ -823,7 +845,9 @@ impl char {
 /// An iterator that decodes UTF-16 encoded code points from an iterator of `u16`s.
 #[unstable(feature = "decode_utf16", reason = "recently exposed", issue = "27830")]
 #[derive(Clone)]
-pub struct DecodeUtf16<I> where I: Iterator<Item=u16> {
+pub struct DecodeUtf16<I>
+    where I: Iterator<Item = u16>
+{
     iter: I,
     buf: Option<u16>,
 }
@@ -874,7 +898,7 @@ pub struct DecodeUtf16<I> where I: Iterator<Item=u16> {
 /// ```
 #[unstable(feature = "decode_utf16", reason = "recently exposed", issue = "27830")]
 #[inline]
-pub fn decode_utf16<I: IntoIterator<Item=u16>>(iterable: I) -> DecodeUtf16<I::IntoIter> {
+pub fn decode_utf16<I: IntoIterator<Item = u16>>(iterable: I) -> DecodeUtf16<I::IntoIter> {
     DecodeUtf16 {
         iter: iterable.into_iter(),
         buf: None,
@@ -890,8 +914,8 @@ impl<I: Iterator<Item=u16>> Iterator for DecodeUtf16<I> {
             Some(buf) => buf,
             None => match self.iter.next() {
                 Some(u) => u,
-                None => return None
-            }
+                None => return None,
+            },
         };
 
         if u < 0xD800 || 0xDFFF < u {
@@ -904,13 +928,13 @@ impl<I: Iterator<Item=u16>> Iterator for DecodeUtf16<I> {
             let u2 = match self.iter.next() {
                 Some(u2) => u2,
                 // eof
-                None => return Some(Err(u))
+                None => return Some(Err(u)),
             };
             if u2 < 0xDC00 || u2 > 0xDFFF {
                 // not a trailing surrogate so we're not a valid
                 // surrogate pair, so rewind to redecode u2 next time.
                 self.buf = Some(u2);
-                return Some(Err(u))
+                return Some(Err(u));
             }
 
             // all ok, so lets decode it.
