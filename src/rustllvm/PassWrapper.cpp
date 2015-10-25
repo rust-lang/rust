@@ -49,7 +49,9 @@ LLVMInitializePasses() {
   initializeVectorization(Registry);
   initializeIPO(Registry);
   initializeAnalysis(Registry);
+#if LLVM_VERSION_MINOR <= 7
   initializeIPA(Registry);
+#endif
   initializeTransformUtils(Registry);
   initializeInstCombine(Registry);
   initializeInstrumentation(Registry);
