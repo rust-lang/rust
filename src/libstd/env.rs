@@ -260,6 +260,11 @@ impl Error for VarError {
 ///  - [Austin Group Bugzilla](http://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
 ///
+/// # Panics
+///
+/// This function panics if the `key` string is empty or contains an ASCII
+/// equals sign.
+///
 /// # Examples
 ///
 /// ```
@@ -291,6 +296,11 @@ fn _set_var(k: &OsStr, v: &OsStr) {
 ///
 ///  - [Austin Group Bugzilla](http://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
+///
+/// # Panics
+///
+/// This function panics if the `key` string is empty or contains an ASCII
+/// equals sign.
 ///
 /// # Examples
 ///
