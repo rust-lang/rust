@@ -3304,13 +3304,13 @@ impl<'a> Parser<'a> {
                             pat = PatEnum(path, Some(args));
                         }
                       }
-                      _ if qself.is_some() => {
-                        // Parse qualified path
-                        pat = PatQPath(qself.unwrap(), path);
-                      }
                       _ => {
-                        // Parse nullary enum
-                        pat = PatEnum(path, Some(vec![]));
+                        pat = match qself {
+                            // Parse qualified path
+                            Some(qself) => PatQPath(qself, path),
+                            // Parse nullary enum
+                            None => PatEnum(path, Some(vec![]))
+                        };
                       }
                     }
                 }
