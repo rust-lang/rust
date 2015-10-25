@@ -90,7 +90,7 @@ fn main() {
         "Hello from a thread!"
     });
 
-    println!("{}", handle.join().unwrap());
+    println!("{:?}", handle.join().unwrap());
 }
 ```
 
