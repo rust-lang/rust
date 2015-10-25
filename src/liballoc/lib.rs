@@ -82,6 +82,7 @@
 #![feature(core_slice_ext)]
 #![feature(custom_attribute)]
 #![feature(fundamental)]
+// #![feature(hash_end)]
 #![feature(lang_items)]
 #![feature(no_std)]
 #![feature(nonzero)]

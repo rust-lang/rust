@@ -678,6 +678,10 @@ impl<T: ?Sized+Hash> Hash for Rc<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         (**self).hash(state);
     }
+
+    fn hash_end<H: Hasher>(&self, state: &mut H) {
+        (**self).hash_end(state);
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

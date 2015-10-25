@@ -41,6 +41,12 @@ fn test_writer_hasher() {
         s.finish()
     }
 
+    fn hash_end<T: Hash>(t: &T) -> u64 {
+        let mut s = MyHasher { hash: 0 };
+        t.hash_end(&mut s);
+        s.finish()
+    }
+
     assert_eq!(hash(&()), 0);
 
     assert_eq!(hash(&5_u8), 5);
@@ -78,6 +84,13 @@ fn test_writer_hasher() {
 
     let ptr = 5_usize as *mut i32;
     assert_eq!(hash(&ptr), 5);
+
+    assert_eq!(hash_end(&5_u32), 5);
+    assert_eq!(hash_end(&s), 97);
+    assert_eq!(hash_end(&("a", "b")), 97 + 98 + 0xFF);
+    assert_eq!(hash_end(&(42u8, "a")), 42 + 97);
+    assert_eq!(hash_end(&("a", 42u8)), 97 + 0xFF + 42);
+    assert_eq!(hash_end(&&s), 97);
 }
 
 struct Custom { hash: u64 }

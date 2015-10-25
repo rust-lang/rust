@@ -148,7 +148,7 @@ pub fn make_hash<T: ?Sized, S>(hash_state: &S, t: &T) -> SafeHash
     where T: Hash, S: HashState
 {
     let mut state = hash_state.hasher();
-    t.hash(&mut state);
+    t.hash_end(&mut state);
     // We need to avoid 0 in order to prevent collisions with
     // EMPTY_HASH. We can maintain our precious uniform distribution
     // of initial indexes by unconditionally setting the MSB,

@@ -373,6 +373,10 @@ impl<T: ?Sized + Hash> Hash for Box<T> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         (**self).hash(state);
     }
+
+    fn hash_end<H: hash::Hasher>(&self, state: &mut H) {
+        (**self).hash_end(state);
+    }
 }
 
 impl Box<Any> {

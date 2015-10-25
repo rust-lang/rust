@@ -36,6 +36,7 @@
 #![feature(dynamic_lib)]
 #![feature(enumset)]
 #![feature(fs_canonicalize)]
+// #![feature(hash_end)]
 #![feature(hashmap_hasher)]
 #![feature(into_cow)]
 #![feature(iter_cmp)]

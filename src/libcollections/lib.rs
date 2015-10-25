@@ -45,6 +45,7 @@
 #![feature(core_str_ext)]
 #![feature(fmt_internals)]
 #![feature(fmt_radix)]
+// #![feature(hash_end)]
 #![feature(heap_api)]
 #![feature(iter_order)]
 #![feature(iter_arith)]

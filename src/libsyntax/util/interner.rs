@@ -19,7 +19,7 @@ use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt;
-use std::hash::Hash;
+use std::hash::{Hash,Hasher};
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -92,9 +92,19 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
     }
 }
 
-#[derive(Clone, PartialEq, Hash, PartialOrd)]
+#[derive(Clone, PartialEq, PartialOrd)]
 pub struct RcStr {
     string: Rc<String>,
+}
+
+impl Hash for RcStr {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        self.string.hash(s);
+    }
+
+    fn hash_end<H: Hasher>(&self, s: &mut H) {
+        self.string.hash_end(s);
+    }
 }
 
 impl RcStr {

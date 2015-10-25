@@ -232,6 +232,11 @@ impl<'a, B: ?Sized> Hash for Cow<'a, B> where B: Hash + ToOwned
     fn hash<H: Hasher>(&self, state: &mut H) {
         Hash::hash(&**self, state)
     }
+
+    #[inline]
+    fn hash_end<H: Hasher>(&self, state: &mut H) {
+        Hash::hash_end(&**self, state)
+    }
 }
 
 /// Trait for moving into a `Cow`.
