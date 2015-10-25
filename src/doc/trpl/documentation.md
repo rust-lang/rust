@@ -269,7 +269,9 @@ documentation comment, I need to add a little function definition below
 it. At the same time, it's just there to satisfy the compiler, so hiding
 it makes the example more clear. You can use this technique to explain
 longer examples in detail, while still preserving the testability of your
-documentation. For example, this code:
+documentation.
+
+For example, imagine that we wanted to document this code:
 
 ```rust
 let x = 5;
@@ -277,43 +279,11 @@ let y = 6;
 println!("{}", x + y);
 ```
 
-Here's an explanation, rendered:
-
--------------------------------------------------------------------------------
-
-First, we set `x` to five:
-
-```rust
-let x = 5;
-# let y = 6;
-# println!("{}", x + y);
-```
-
-Next, we set `y` to six:
-
-```rust
-# let x = 5;
-let y = 6;
-# println!("{}", x + y);
-```
-
-Finally, we print the sum of `x` and `y`:
-
-```rust
-# let x = 5;
-# let y = 6;
-println!("{}", x + y);
-```
-
--------------------------------------------------------------------------------
-
-Here's the same explanation, in raw text:
-
--------------------------------------------------------------------------------
+We might want the documentation to end up looking like this:
 
 > First, we set `x` to five:
 >
-> ```text
+> ```rust
 > let x = 5;
 > # let y = 6;
 > # println!("{}", x + y);
@@ -321,7 +291,7 @@ Here's the same explanation, in raw text:
 >
 > Next, we set `y` to six:
 >
-> ```text
+> ```rust
 > # let x = 5;
 > let y = 6;
 > # println!("{}", x + y);
@@ -329,13 +299,41 @@ Here's the same explanation, in raw text:
 >
 > Finally, we print the sum of `x` and `y`:
 >
-> ```text
+> ```rust
 > # let x = 5;
 > # let y = 6;
 > println!("{}", x + y);
 > ```
 
--------------------------------------------------------------------------------
+To keep each code block testable, we want the whole program in each block, but
+we don't want the reader to see every line every time.  Here's what we put in
+our source code:
+
+```text
+    First, we set `x` to five:
+
+    ```text
+    let x = 5;
+    # let y = 6;
+    # println!("{}", x + y);
+    ```
+
+    Next, we set `y` to six:
+
+    ```text
+    # let x = 5;
+    let y = 6;
+    # println!("{}", x + y);
+    ```
+
+    Finally, we print the sum of `x` and `y`:
+
+    ```text
+    # let x = 5;
+    # let y = 6;
+    println!("{}", x + y);
+    ```
+```
 
 By repeating all parts of the example, you can ensure that your example still
 compiles, while only showing the parts that are relevant to that part of your
