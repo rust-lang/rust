@@ -23,7 +23,6 @@ use ffi::{OsStr, OsString};
 use fmt;
 use io;
 use path::{Path, PathBuf};
-use sync::StaticMutex;
 use sys::os as os_imp;
 
 /// Returns the current working directory as a `PathBuf`.
@@ -67,8 +66,6 @@ pub fn current_dir() -> io::Result<PathBuf> {
 pub fn set_current_dir<P: AsRef<Path>>(p: P) -> io::Result<()> {
     os_imp::chdir(p.as_ref())
 }
-
-static ENV_LOCK: StaticMutex = StaticMutex::new();
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
@@ -133,7 +130,6 @@ pub fn vars() -> Vars {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn vars_os() -> VarsOs {
-    let _g = ENV_LOCK.lock();
     VarsOs { inner: os_imp::env() }
 }
 
@@ -204,8 +200,9 @@ pub fn var_os<K: AsRef<OsStr>>(key: K) -> Option<OsString> {
 }
 
 fn _var_os(key: &OsStr) -> Option<OsString> {
-    let _g = ENV_LOCK.lock();
-    os_imp::getenv(key)
+    os_imp::getenv(key).unwrap_or_else(|e| {
+        panic!("failed to get environment variable `{:?}`: {}", key, e)
+    })
 }
 
 /// Possible errors from the `env::var` method.
@@ -275,8 +272,10 @@ pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(k: K, v: V) {
 }
 
 fn _set_var(k: &OsStr, v: &OsStr) {
-    let _g = ENV_LOCK.lock();
-    os_imp::setenv(k, v)
+    os_imp::setenv(k, v).unwrap_or_else(|e| {
+        panic!("failed to set environment variable `{:?}` to `{:?}`: {}",
+               k, v, e)
+    })
 }
 
 /// Removes an environment variable from the environment of the currently running process.
@@ -310,8 +309,9 @@ pub fn remove_var<K: AsRef<OsStr>>(k: K) {
 }
 
 fn _remove_var(k: &OsStr) {
-    let _g = ENV_LOCK.lock();
-    os_imp::unsetenv(k)
+    os_imp::unsetenv(k).unwrap_or_else(|e| {
+        panic!("failed to remove environment variable `{:?}`: {}", k, e)
+    })
 }
 
 /// An iterator over `Path` instances for parsing an environment variable
