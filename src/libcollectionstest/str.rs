@@ -41,10 +41,10 @@ fn test_rfind() {
 
 #[test]
 fn test_collect() {
-    let empty = String::from("");
+    let empty = "";
     let s: String = empty.chars().collect();
     assert_eq!(empty, s);
-    let data = String::from("ประเทศไทย中");
+    let data = "ประเทศไทย中";
     let s: String = data.chars().collect();
     assert_eq!(data, s);
 }
@@ -187,10 +187,8 @@ fn test_unsafe_slice() {
         rs
     }
     let letters = a_million_letter_a();
-    assert!(half_a_million_letter_a() ==
-        unsafe {String::from(letters.slice_unchecked(
-                                 0,
-                                 500000))});
+    assert_eq!(half_a_million_letter_a(),
+        unsafe { letters.slice_unchecked(0, 500000)});
 }
 
 #[test]
@@ -224,13 +222,12 @@ fn test_is_empty() {
 #[test]
 fn test_replace() {
     let a = "a";
-    assert_eq!("".replace(a, "b"), String::from(""));
-    assert_eq!("a".replace(a, "b"), String::from("b"));
-    assert_eq!("ab".replace(a, "b"), String::from("bb"));
+    assert_eq!("".replace(a, "b"), "");
+    assert_eq!("a".replace(a, "b"), "b");
+    assert_eq!("ab".replace(a, "b"), "bb");
     let test = "test";
-    assert!(" test test ".replace(test, "toast") ==
-        String::from(" toast toast "));
-    assert_eq!(" test test ".replace(test, ""), String::from("   "));
+    assert_eq!(" test test ".replace(test, "toast"), " toast toast ");
+    assert_eq!(" test test ".replace(test, ""), "   ");
 }
 
 #[test]
@@ -304,8 +301,7 @@ fn test_slice() {
         rs
     }
     let letters = a_million_letter_x();
-    assert!(half_a_million_letter_x() ==
-        String::from(&letters[0..3 * 500000]));
+    assert_eq!(half_a_million_letter_x(), &letters[0..3 * 500000]);
 }
 
 #[test]
@@ -676,49 +672,36 @@ fn test_split_at_boundscheck() {
 
 #[test]
 fn test_escape_unicode() {
-    assert_eq!("abc".escape_unicode(),
-               String::from("\\u{61}\\u{62}\\u{63}"));
-    assert_eq!("a c".escape_unicode(),
-               String::from("\\u{61}\\u{20}\\u{63}"));
-    assert_eq!("\r\n\t".escape_unicode(),
-               String::from("\\u{d}\\u{a}\\u{9}"));
-    assert_eq!("'\"\\".escape_unicode(),
-               String::from("\\u{27}\\u{22}\\u{5c}"));
-    assert_eq!("\x00\x01\u{fe}\u{ff}".escape_unicode(),
-               String::from("\\u{0}\\u{1}\\u{fe}\\u{ff}"));
-    assert_eq!("\u{100}\u{ffff}".escape_unicode(),
-               String::from("\\u{100}\\u{ffff}"));
-    assert_eq!("\u{10000}\u{10ffff}".escape_unicode(),
-               String::from("\\u{10000}\\u{10ffff}"));
-    assert_eq!("ab\u{fb00}".escape_unicode(),
-               String::from("\\u{61}\\u{62}\\u{fb00}"));
-    assert_eq!("\u{1d4ea}\r".escape_unicode(),
-               String::from("\\u{1d4ea}\\u{d}"));
+    assert_eq!("abc".escape_unicode(), "\\u{61}\\u{62}\\u{63}");
+    assert_eq!("a c".escape_unicode(), "\\u{61}\\u{20}\\u{63}");
+    assert_eq!("\r\n\t".escape_unicode(), "\\u{d}\\u{a}\\u{9}");
+    assert_eq!("'\"\\".escape_unicode(), "\\u{27}\\u{22}\\u{5c}");
+    assert_eq!("\x00\x01\u{fe}\u{ff}".escape_unicode(), "\\u{0}\\u{1}\\u{fe}\\u{ff}");
+    assert_eq!("\u{100}\u{ffff}".escape_unicode(), "\\u{100}\\u{ffff}");
+    assert_eq!("\u{10000}\u{10ffff}".escape_unicode(), "\\u{10000}\\u{10ffff}");
+    assert_eq!("ab\u{fb00}".escape_unicode(), "\\u{61}\\u{62}\\u{fb00}");
+    assert_eq!("\u{1d4ea}\r".escape_unicode(), "\\u{1d4ea}\\u{d}");
 }
 
 #[test]
 fn test_escape_default() {
-    assert_eq!("abc".escape_default(), String::from("abc"));
-    assert_eq!("a c".escape_default(), String::from("a c"));
-    assert_eq!("\r\n\t".escape_default(), String::from("\\r\\n\\t"));
-    assert_eq!("'\"\\".escape_default(), String::from("\\'\\\"\\\\"));
-    assert_eq!("\u{100}\u{ffff}".escape_default(),
-               String::from("\\u{100}\\u{ffff}"));
-    assert_eq!("\u{10000}\u{10ffff}".escape_default(),
-               String::from("\\u{10000}\\u{10ffff}"));
-    assert_eq!("ab\u{fb00}".escape_default(),
-               String::from("ab\\u{fb00}"));
-    assert_eq!("\u{1d4ea}\r".escape_default(),
-               String::from("\\u{1d4ea}\\r"));
+    assert_eq!("abc".escape_default(), "abc");
+    assert_eq!("a c".escape_default(), "a c");
+    assert_eq!("\r\n\t".escape_default(), "\\r\\n\\t");
+    assert_eq!("'\"\\".escape_default(), "\\'\\\"\\\\");
+    assert_eq!("\u{100}\u{ffff}".escape_default(), "\\u{100}\\u{ffff}");
+    assert_eq!("\u{10000}\u{10ffff}".escape_default(), "\\u{10000}\\u{10ffff}");
+    assert_eq!("ab\u{fb00}".escape_default(), "ab\\u{fb00}");
+    assert_eq!("\u{1d4ea}\r".escape_default(), "\\u{1d4ea}\\r");
 }
 
 #[test]
 fn test_total_ord() {
-    "1234".cmp("123") == Greater;
-    "123".cmp("1234") == Less;
-    "1234".cmp("1234") == Equal;
-    "12345555".cmp("123456") == Less;
-    "22".cmp("1234") == Greater;
+    assert_eq!("1234".cmp("123"), Greater);
+    assert_eq!("123".cmp("1234"), Less);
+    assert_eq!("1234".cmp("1234"), Equal);
+    assert_eq!("12345555".cmp("123456"), Less);
+    assert_eq!("22".cmp("1234"), Greater);
 }
 
 #[test]
@@ -1014,13 +997,10 @@ fn test_str_container() {
         v.iter().map(|x| x.len()).sum()
     }
 
-    let s = String::from("01234");
+    let s = "01234";
     assert_eq!(5, sum_len(&["012", "", "34"]));
-    assert_eq!(5, sum_len(&[&String::from("01"),
-                            &String::from("2"),
-                            &String::from("34"),
-                            &String::from("")]));
-    assert_eq!(5, sum_len(&[&s]));
+    assert_eq!(5, sum_len(&["01", "2", "34", ""]));
+    assert_eq!(5, sum_len(&[s]));
 }
 
 #[test]
