@@ -92,7 +92,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optflag("h", "help", "show this message"));
 
     let (argv0, args_) = args.split_first().unwrap();
-    if args[1] == "-h" || args[1] == "--help" {
+    if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
         println!("{}", getopts::usage(&message, &groups));
         println!("");
