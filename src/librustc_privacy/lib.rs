@@ -162,7 +162,7 @@ struct EmbargoVisitor<'a, 'tcx: 'a> {
     // This is a list of all exported items in the AST. An exported item is any
     // function/method/item which is usable by external crates. This essentially
     // means that the result is "public all the way down", but the "path down"
-    // may jump across private boundaries through reexport statements.
+    // may jump across private boundaries through reexport statements or type aliases.
     exported_items: ExportedItems,
 
     // This sets contains all the destination nodes which are publicly
@@ -172,9 +172,12 @@ struct EmbargoVisitor<'a, 'tcx: 'a> {
     // destination must also be exported.
     reexports: NodeSet,
 
+    // Items that are directly public without help of reexports or type aliases.
     // These two fields are closely related to one another in that they are only
-    // used for generation of the 'PublicItems' set, not for privacy checking at
-    // all
+    // used for generation of the `public_items` set, not for privacy checking at
+    // all. Public items are mostly a subset of exported items with exception of
+    // fields and exported macros - they are public, but not exported.
+    // FIXME: Make fields and exported macros exported as well (requires fixing resulting ICEs)
     public_items: PublicItems,
     prev_public: bool,
 }
@@ -194,57 +197,102 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     fn exported_trait(&self, _id: ast::NodeId) -> bool {
         true
     }
+
+    fn is_public_exported_ty(&self, ty: &hir::Ty) -> (bool, bool) {
+        if let hir::TyPath(..) = ty.node {
+            match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
+                def::DefPrimTy(..) | def::DefSelfTy(..) => (true, true),
+                def => {
+                    if let Some(node_id) = self.tcx.map.as_local_node_id(def.def_id()) {
+                        (self.public_items.contains(&node_id),
+                         self.exported_items.contains(&node_id))
+                    } else {
+                        (true, true)
+                    }
+                }
+            }
+        } else {
+            (true, true)
+        }
+    }
+
+    fn is_public_exported_trait(&self, trait_ref: &hir::TraitRef) -> (bool, bool) {
+        let did = self.tcx.trait_ref_to_def_id(trait_ref);
+        if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
+            (self.public_items.contains(&node_id), self.exported_items.contains(&node_id))
+        } else {
+            (true, true)
+        }
+    }
+
+    fn maybe_insert_id(&mut self, id: ast::NodeId) {
+        if self.prev_public { self.public_items.insert(id); }
+        if self.prev_exported { self.exported_items.insert(id); }
+    }
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        let orig_all_pub = self.prev_public;
-        self.prev_public = orig_all_pub && item.vis == hir::Public;
-        if self.prev_public {
-            self.public_items.insert(item.id);
-        }
-
+        let orig_all_public = self.prev_public;
         let orig_all_exported = self.prev_exported;
         match item.node {
             // impls/extern blocks do not break the "public chain" because they
-            // cannot have visibility qualifiers on them anyway
+            // cannot have visibility qualifiers on them anyway. They are also not
+            // added to public/exported sets based on inherited publicity.
             hir::ItemImpl(..) | hir::ItemDefaultImpl(..) | hir::ItemForeignMod(..) => {}
 
             // Traits are a little special in that even if they themselves are
             // not public they may still be exported.
             hir::ItemTrait(..) => {
+                self.prev_public = self.prev_public && item.vis == hir::Public;
                 self.prev_exported = self.exported_trait(item.id);
+
+                self.maybe_insert_id(item.id);
             }
 
             // Private by default, hence we only retain the "public chain" if
             // `pub` is explicitly listed.
             _ => {
-                self.prev_exported =
-                    (orig_all_exported && item.vis == hir::Public) ||
-                     self.reexports.contains(&item.id);
+                self.prev_public = self.prev_public && item.vis == hir::Public;
+                self.prev_exported = self.prev_exported && item.vis == hir::Public ||
+                                     self.reexports.contains(&item.id);
+
+                self.maybe_insert_id(item.id);
             }
         }
 
-        let public_first = self.prev_exported &&
-                           self.exported_items.insert(item.id);
-
         match item.node {
             // Enum variants inherit from their parent, so if the enum is
-            // public all variants are public unless they're explicitly priv
-            hir::ItemEnum(ref def, _) if public_first => {
+            // public all variants are public
+            hir::ItemEnum(ref def, _) => {
                 for variant in &def.variants {
-                    self.exported_items.insert(variant.node.data.id());
-                    self.public_items.insert(variant.node.data.id());
+                    self.maybe_insert_id(variant.node.data.id());
+                    for field in variant.node.data.fields() {
+                        // Variant fields are always public
+                        if self.prev_public { self.public_items.insert(field.node.id); }
+                        // FIXME: Make fields exported (requires fixing resulting ICEs)
+                        // if self.prev_exported { self.exported_items.insert(field.node.id); }
+                    }
+                }
+            }
+
+            // * Inherent impls for public types only have public methods exported
+            // * Inherent impls for private types do not need to export their methods
+            // * Inherent impls themselves are not exported, they are nothing more than
+            // containers for other items
+            hir::ItemImpl(_, _, _, None, ref ty, ref impl_items) => {
+                let (public_ty, exported_ty) = self.is_public_exported_ty(&ty);
+
+                for impl_item in impl_items {
+                    if impl_item.vis == hir::Public {
+                        if public_ty { self.public_items.insert(impl_item.id); }
+                        if exported_ty { self.exported_items.insert(impl_item.id); }
+                    }
                 }
             }
 
             // Implementations are a little tricky to determine what's exported
             // out of them. Here's a few cases which are currently defined:
-            //
-            // * Impls for private types do not need to export their methods
-            //   (either public or private methods)
-            //
-            // * Impls for public types only have public methods exported
             //
             // * Public trait impls for public types must have all methods
             //   exported.
@@ -257,83 +305,51 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             //   undefined symbols at linkage time if this case is not handled.
             //
             // * Private trait impls for private types can be completely ignored
-            hir::ItemImpl(_, _, _, _, ref ty, ref impl_items) => {
-                let public_ty = match ty.node {
-                    hir::TyPath(..) => {
-                        match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
-                            def::DefPrimTy(..) => true,
-                            def::DefSelfTy(..) => true,
-                            def => {
-                                let did = def.def_id();
-                                if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
-                                    self.exported_items.contains(&node_id)
-                                } else {
-                                    true
-                                }
-                            }
-                        }
-                    }
-                    _ => true,
-                };
-                let tr = self.tcx.impl_trait_ref(self.tcx.map.local_def_id(item.id));
-                let public_trait = tr.clone().map_or(false, |tr| {
-                    if let Some(node_id) = self.tcx.map.as_local_node_id(tr.def_id) {
-                        self.exported_items.contains(&node_id)
-                    } else {
-                        true
-                    }
-                });
+            hir::ItemImpl(_, _, _, Some(ref trait_ref), ref ty, ref impl_items) => {
+                let (public_ty, _exported_ty) = self.is_public_exported_ty(&ty);
+                let (public_trait, exported_trait) = self.is_public_exported_trait(trait_ref);
 
-                if public_ty || public_trait {
-                    for impl_item in impl_items {
-                        match impl_item.node {
-                            hir::ConstImplItem(..) => {
-                                if (public_ty && impl_item.vis == hir::Public)
-                                    || tr.is_some() {
-                                    self.exported_items.insert(impl_item.id);
-                                }
-                            }
-                            hir::MethodImplItem(ref sig, _) => {
-                                let meth_public = match sig.explicit_self.node {
-                                    hir::SelfStatic => public_ty,
-                                    _ => true,
-                                } && impl_item.vis == hir::Public;
-                                if meth_public || tr.is_some() {
-                                    self.exported_items.insert(impl_item.id);
-                                }
-                            }
-                            hir::TypeImplItem(_) => {}
-                        }
-                    }
+                if public_ty && public_trait { self.public_items.insert(item.id); }
+                if exported_trait { self.exported_items.insert(item.id); }
+
+                for impl_item in impl_items {
+                    if public_ty && public_trait { self.public_items.insert(impl_item.id); }
+                    if exported_trait { self.exported_items.insert(impl_item.id); }
                 }
+            }
+
+            // Default trait impls are exported for public traits
+            hir::ItemDefaultImpl(_, ref trait_ref) => {
+                let (public_trait, exported_trait) = self.is_public_exported_trait(trait_ref);
+
+                if public_trait { self.public_items.insert(item.id); }
+                if exported_trait { self.exported_items.insert(item.id); }
             }
 
             // Default methods on traits are all public so long as the trait
             // is public
-            hir::ItemTrait(_, _, _, ref trait_items) if public_first => {
+            hir::ItemTrait(_, _, _, ref trait_items) => {
                 for trait_item in trait_items {
-                    debug!("trait item {}", trait_item.id);
-                    self.exported_items.insert(trait_item.id);
+                    self.maybe_insert_id(trait_item.id);
                 }
             }
 
             // Struct constructors are public if the struct is all public.
-            hir::ItemStruct(ref def, _) if public_first => {
+            hir::ItemStruct(ref def, _) => {
                 if !def.is_struct() {
-                    self.exported_items.insert(def.id());
+                    self.maybe_insert_id(def.id());
                 }
-                // fields can be public or private, so lets check
                 for field in def.fields() {
-                    let vis = match field.node.kind {
-                        hir::NamedField(_, vis) | hir::UnnamedField(vis) => vis
-                    };
-                    if vis == hir::Public {
-                        self.public_items.insert(field.node.id);
+                    // Struct fields can be public or private, so lets check
+                    if field.node.kind.visibility() == hir::Public {
+                        if self.prev_public { self.public_items.insert(field.node.id); }
+                        // FIXME: Make fields exported (requires fixing resulting ICEs)
+                        // if self.prev_exported { self.exported_items.insert(field.node.id); }
                     }
                 }
             }
 
-            hir::ItemTy(ref ty, _) if public_first => {
+            hir::ItemTy(ref ty, _) if self.prev_exported => {
                 if let hir::TyPath(..) = ty.node {
                     match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
                         def::DefPrimTy(..) | def::DefSelfTy(..) | def::DefTyParam(..) => {},
@@ -347,19 +363,37 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
 
+            hir::ItemForeignMod(ref foreign_mod) => {
+                for foreign_item in &foreign_mod.items {
+                    let public = self.prev_public && foreign_item.vis == hir::Public;
+                    let exported = self.prev_exported && foreign_item.vis == hir::Public ||
+                                   self.reexports.contains(&foreign_item.id);
+
+                    if public { self.public_items.insert(foreign_item.id); }
+                    if exported { self.exported_items.insert(foreign_item.id); }
+                }
+            }
+
             _ => {}
         }
 
         visit::walk_item(self, item);
 
+        self.prev_public = orig_all_public;
         self.prev_exported = orig_all_exported;
-        self.prev_public = orig_all_pub;
     }
 
-    fn visit_foreign_item(&mut self, a: &hir::ForeignItem) {
-        if (self.prev_exported && a.vis == hir::Public) || self.reexports.contains(&a.id) {
-            self.exported_items.insert(a.id);
-        }
+    fn visit_block(&mut self, b: &'v hir::Block) {
+        let orig_all_public = replace(&mut self.prev_public, false);
+        let orig_all_exported = replace(&mut self.prev_exported, false);
+
+        // Blocks can have exported and public items, for example impls, but they always
+        // start as non-public and non-exported regardless of publicity of a function,
+        // constant, type, field, etc. in which this block resides
+        visit::walk_block(self, b);
+
+        self.prev_public = orig_all_public;
+        self.prev_exported = orig_all_exported;
     }
 
     fn visit_mod(&mut self, m: &hir::Mod, _sp: Span, id: ast::NodeId) {
@@ -374,6 +408,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             }
         }
         visit::walk_mod(self, m)
+    }
+
+    fn visit_macro_def(&mut self, md: &'v hir::MacroDef) {
+        self.public_items.insert(md.id);
+        // FIXME: Make exported macros exported (requires fixing resulting ICEs)
+        // self.exported_items.insert(md.id);
     }
 }
 
@@ -1447,11 +1487,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
         }
     }
 
-
     // we don't need to introspect into these at all: an
     // expression/block context can't possibly contain exported things.
     // (Making them no-ops stops us from traversing the whole AST without
     // having to be super careful about our `walk_...` calls above.)
+    // FIXME: Unfortunately this ^^^ is not true, blocks can contain
+    // exported items (e.g. impls) and actual code in rustc itself breaks
+    // if we don't traverse blocks in `EmbargoVisitor`
     fn visit_block(&mut self, _: &hir::Block) {}
     fn visit_expr(&mut self, _: &hir::Expr) {}
 }
@@ -1501,9 +1543,12 @@ pub fn check_crate(tcx: &ty::ctxt,
         prev_public: true,
     };
     loop {
-        let before = visitor.exported_items.len();
+        let before = (visitor.exported_items.len(), visitor.public_items.len(),
+                      visitor.reexports.len());
         visit::walk_crate(&mut visitor, krate);
-        if before == visitor.exported_items.len() {
+        let after = (visitor.exported_items.len(), visitor.public_items.len(),
+                     visitor.reexports.len());
+        if after == before {
             break
         }
     }
