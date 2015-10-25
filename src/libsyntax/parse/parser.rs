@@ -3276,12 +3276,9 @@ impl<'a> Parser<'a> {
                       }
                       token::OpenDelim(token::Brace) => {
                          if qself.is_some() {
-                            let span = self.span;
-                            self.span_err(span,
-                                          "unexpected `{` after qualified path");
-                            self.abort_if_errors();
+                            return Err(self.fatal("unexpected `{` after qualified path"));
                         }
-                       // Parse struct pattern
+                        // Parse struct pattern
                         try!(self.bump());
                         let (fields, etc) = try!(self.parse_pat_fields());
                         try!(self.bump());
@@ -3289,10 +3286,7 @@ impl<'a> Parser<'a> {
                       }
                       token::OpenDelim(token::Paren) => {
                         if qself.is_some() {
-                            let span = self.span;
-                            self.span_err(span,
-                                          "unexpected `(` after qualified path");
-                            self.abort_if_errors();
+                            return Err(self.fatal("unexpected `(` after qualified path"));
                         }
                         // Parse tuple struct or enum pattern
                         if self.look_ahead(1, |t| *t == token::DotDot) {
