@@ -22,12 +22,22 @@ use rustfmt::config::Config;
 
 use std::env;
 use std::fs::{self, File};
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
 use getopts::Options;
 
-// Try to find a project file in the input file directory and its parents.
+/// Rustfmt operations.
+enum Operation {
+    /// Format a file and its child modules.
+    Format(PathBuf, WriteMode),
+    /// Print the help message.
+    Help,
+    /// Invalid program input, including reason.
+    InvalidInput(String),
+}
+
+/// Try to find a project file in the input file directory and its parents.
 fn lookup_project_file(input_file: &Path) -> io::Result<PathBuf> {
     let mut current = if input_file.is_relative() {
         try!(env::current_dir()).join(input_file)
@@ -35,14 +45,14 @@ fn lookup_project_file(input_file: &Path) -> io::Result<PathBuf> {
         input_file.to_path_buf()
     };
 
-    // TODO: We should canonize path to properly handle its parents,
+    // FIXME: We should canonize path to properly handle its parents,
     // but `canonicalize` function is unstable now (recently added API)
     // current = try!(fs::canonicalize(current));
 
     loop {
-        // if the current directory has no parent, we're done searching
+        // If the current directory has no parent, we're done searching.
         if !current.pop() {
-            return Err(io::Error::new(io::ErrorKind::NotFound, "config not found"));
+            return Err(io::Error::new(io::ErrorKind::NotFound, "Config not found"));
         }
         let config_file = current.join("rustfmt.toml");
         if fs::metadata(&config_file).is_ok() {
@@ -51,7 +61,7 @@ fn lookup_project_file(input_file: &Path) -> io::Result<PathBuf> {
     }
 }
 
-// Try to find a project file. If it's found, read it.
+/// Try to find a project file. If it's found, read it.
 fn lookup_and_read_project_file(input_file: &Path) -> io::Result<(PathBuf, String)> {
     let path = try!(lookup_project_file(input_file));
     let mut file = try!(File::open(&path));
@@ -61,30 +71,46 @@ fn lookup_and_read_project_file(input_file: &Path) -> io::Result<(PathBuf, Strin
 }
 
 fn execute() -> i32 {
-    let (file, write_mode) = match determine_params(std::env::args().skip(1)) {
-        Some(params) => params,
-        None => return 1,
-    };
+    let mut opts = Options::new();
+    opts.optflag("h", "help", "show this message");
+    opts.optopt("",
+                "write-mode",
+                "mode to write in",
+                "[replace|overwrite|display|diff|coverage]");
 
-    let config = match lookup_and_read_project_file(&file) {
-        Ok((path, toml)) => {
-            println!("Project config file: {}", path.display());
-            Config::from_toml(&toml)
+    let operation = determine_operation(&opts, env::args().skip(1));
+
+    match operation {
+        Operation::InvalidInput(reason) => {
+            print_usage(&opts, &reason);
+            1
         }
-        Err(_) => Default::default(),
-    };
+        Operation::Help => {
+            print_usage(&opts, "");
+            0
+        }
+        Operation::Format(file, write_mode) => {
+            let config = match lookup_and_read_project_file(&file) {
+                Ok((path, toml)) => {
+                    println!("Using rustfmt config file: {}", path.display());
+                    Config::from_toml(&toml)
+                }
+                Err(_) => Default::default(),
+            };
 
-    run(&file, write_mode, &config);
-    0
+            run(&file, write_mode, &config);
+            0
+        }
+    }
 }
 
 fn main() {
-    use std::io::Write;
     let _ = env_logger::init();
-
     let exit_code = execute();
-    // Make sure standard output is flushed before we exit
+
+    // Make sure standard output is flushed before we exit.
     std::io::stdout().flush().unwrap();
+
     // Exit with given exit code.
     //
     // NOTE: This immediately terminates the process without doing any cleanup,
@@ -100,44 +126,31 @@ fn print_usage(opts: &Options, reason: &str) {
     Config::print_docs();
 }
 
-fn determine_params<I>(args: I) -> Option<(PathBuf, WriteMode)>
+fn determine_operation<I>(opts: &Options, args: I) -> Operation
     where I: Iterator<Item = String>
 {
-    let mut opts = Options::new();
-    opts.optflag("h", "help", "show this message");
-    opts.optopt("",
-                "write-mode",
-                "mode to write in",
-                "[replace|overwrite|display|diff|coverage]");
     let matches = match opts.parse(args) {
         Ok(m) => m,
-        Err(e) => {
-            print_usage(&opts, &e.to_string());
-            return None;
-        }
+        Err(e) => return Operation::InvalidInput(e.to_string()),
     };
 
     if matches.opt_present("h") {
-        print_usage(&opts, "");
+        return Operation::Help;
     }
 
     let write_mode = match matches.opt_str("write-mode") {
         Some(mode) => {
             match mode.parse() {
                 Ok(mode) => mode,
-                Err(..) => {
-                    print_usage(&opts, "Unrecognized write mode");
-                    return None;
-                }
+                Err(..) => return Operation::InvalidInput("Unrecognized write mode".into()),
             }
         }
         None => WriteMode::Replace,
     };
 
     if matches.free.len() != 1 {
-        print_usage(&opts, "Please provide one file to format");
-        return None;
+        return Operation::InvalidInput("Please provide one file to format".into());
     }
 
-    Some((PathBuf::from(&matches.free[0]), write_mode))
+    Operation::Format(PathBuf::from(&matches.free[0]), write_mode)
 }
