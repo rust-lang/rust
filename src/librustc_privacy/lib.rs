@@ -1114,7 +1114,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                 }
             }
 
-            hir::ItemStruct(ref def, _) => check_struct(&**def),
+            hir::ItemStruct(ref def, _) => check_struct(def),
 
             hir::ItemEnum(..) |
             hir::ItemExternCrate(_) | hir::ItemUse(_) |

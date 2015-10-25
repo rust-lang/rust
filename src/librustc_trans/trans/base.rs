@@ -2435,7 +2435,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             } else {
                 v.node.data.fields()
             };
-            assert!(fields.count() != 0);
+            assert!(!fields.is_empty());
             let ty = ccx.tcx().node_id_to_type(id);
             let parent = ccx.tcx().map.get_parent(id);
             let enm = ccx.tcx().map.expect_item(parent);

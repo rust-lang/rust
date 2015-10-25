@@ -734,7 +734,7 @@ impl<'a> State<'a> {
             }
             hir::ItemStruct(ref struct_def, ref generics) => {
                 try!(self.head(&visibility_qualified(item.vis, "struct")));
-                try!(self.print_struct(&**struct_def, generics, item.name, item.span, true));
+                try!(self.print_struct(struct_def, generics, item.name, item.span, true));
             }
 
             hir::ItemDefaultImpl(unsafety, ref trait_ref) => {
@@ -899,7 +899,7 @@ impl<'a> State<'a> {
         if !struct_def.is_struct() {
             if struct_def.is_tuple() {
                 try!(self.popen());
-                try!(self.commasep_iter(Inconsistent,
+                try!(self.commasep(Inconsistent,
                                    struct_def.fields(),
                                    |s, field| {
                                        match field.node.kind {

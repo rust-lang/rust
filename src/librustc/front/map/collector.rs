@@ -152,7 +152,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                 // If this is a tuple-like struct, register the constructor.
                 if !struct_def.is_struct() {
                     self.insert_def(struct_def.id(),
-                                    NodeStructCtor(&**struct_def),
+                                    NodeStructCtor(struct_def),
                                     DefPathData::StructCtor);
                 }
 
