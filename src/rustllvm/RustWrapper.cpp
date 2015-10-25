@@ -320,7 +320,9 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateSubroutineType(
     LLVMMetadataRef File,
     LLVMMetadataRef ParameterTypes) {
     return wrap(Builder->createSubroutineType(
+#if LLVM_VERSION_MINOR <= 7
         unwrapDI<DIFile>(File),
+#endif
 #if LLVM_VERSION_MINOR >= 7
         DITypeRefArray(unwrap<MDTuple>(ParameterTypes))));
 #elif LLVM_VERSION_MINOR >= 6
@@ -502,11 +504,27 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateVariable(
         ));
     }
 #endif
+#if LLVM_VERSION_MINOR >= 8
+    if (Tag == 0x100) { // DW_TAG_auto_variable
+        return wrap(Builder->createAutoVariable(
+            unwrapDI<DIDescriptor>(Scope), Name,
+            unwrapDI<DIFile>(File),
+            LineNo,
+            unwrapDI<DIType>(Ty), AlwaysPreserve, Flags));
+    } else {
+        return wrap(Builder->createParameterVariable(
+            unwrapDI<DIDescriptor>(Scope), Name, ArgNo,
+            unwrapDI<DIFile>(File),
+            LineNo,
+            unwrapDI<DIType>(Ty), AlwaysPreserve, Flags));
+    }
+#else
     return wrap(Builder->createLocalVariable(Tag,
         unwrapDI<DIDescriptor>(Scope), Name,
         unwrapDI<DIFile>(File),
         LineNo,
         unwrapDI<DIType>(Ty), AlwaysPreserve, Flags, ArgNo));
+#endif
 }
 
 extern "C" LLVMMetadataRef LLVMDIBuilderCreateArrayType(
