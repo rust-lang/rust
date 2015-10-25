@@ -859,7 +859,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
     fn visit_variant_data(&mut self, s: &'v ast::VariantData, _: ast::Ident,
                         _: &'v ast::Generics, _: ast::NodeId, span: Span) {
-        if s.fields().count() == 0 {
+        if s.fields().is_empty() {
             if s.is_struct() {
                 self.gate_feature("braced_empty_structs", span,
                                   "empty structs and enum variants with braces are unstable");

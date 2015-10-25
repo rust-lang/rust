@@ -223,8 +223,8 @@ pub trait Folder : Sized {
         noop_fold_poly_trait_ref(p, self)
     }
 
-    fn fold_variant_data(&mut self, struct_def: P<VariantData>) -> P<VariantData> {
-        noop_fold_struct_def(struct_def, self)
+    fn fold_variant_data(&mut self, vdata: VariantData) -> VariantData {
+        noop_fold_variant_data(vdata, self)
     }
 
     fn fold_lifetimes(&mut self, lts: Vec<Lifetime>) -> Vec<Lifetime> {
@@ -693,18 +693,16 @@ pub fn noop_fold_where_predicate<T: Folder>(pred: WherePredicate, fld: &mut T) -
     }
 }
 
-pub fn noop_fold_struct_def<T: Folder>(struct_def: P<VariantData>, fld: &mut T) -> P<VariantData> {
-    struct_def.map(|vdata| {
-        match vdata {
-            VariantData::Struct(fields, id) => {
-                VariantData::Struct(fields.move_map(|f| fld.fold_struct_field(f)), fld.new_id(id))
-            }
-            VariantData::Tuple(fields, id) => {
-                VariantData::Tuple(fields.move_map(|f| fld.fold_struct_field(f)), fld.new_id(id))
-            }
-            VariantData::Unit(id) => VariantData::Unit(fld.new_id(id))
+pub fn noop_fold_variant_data<T: Folder>(vdata: VariantData, fld: &mut T) -> VariantData {
+    match vdata {
+        VariantData::Struct(fields, id) => {
+            VariantData::Struct(fields.move_map(|f| fld.fold_struct_field(f)), fld.new_id(id))
         }
-    })
+        VariantData::Tuple(fields, id) => {
+            VariantData::Tuple(fields.move_map(|f| fld.fold_struct_field(f)), fld.new_id(id))
+        }
+        VariantData::Unit(id) => VariantData::Unit(fld.new_id(id))
+    }
 }
 
 pub fn noop_fold_trait_ref<T: Folder>(p: TraitRef, fld: &mut T) -> TraitRef {

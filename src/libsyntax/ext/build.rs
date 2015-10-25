@@ -1012,7 +1012,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                ast::Variant_ {
                    name: name,
                    attrs: Vec::new(),
-                   data: P(vdata),
+                   data: vdata,
                    disr_expr: None,
                })
     }
@@ -1041,7 +1041,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn item_struct_poly(&self, span: Span, name: Ident,
         struct_def: ast::VariantData, generics: Generics) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemStruct(P(struct_def), generics))
+        self.item(span, name, Vec::new(), ast::ItemStruct(struct_def, generics))
     }
 
     fn item_mod(&self, span: Span, inner_span: Span, name: Ident,

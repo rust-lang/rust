@@ -4678,9 +4678,7 @@ impl<'a> Parser<'a> {
                                             name, found `{}`", token_str)))
         };
 
-        Ok((class_name,
-            ItemStruct(P(vdata), generics),
-            None))
+        Ok((class_name, ItemStruct(vdata, generics), None))
     }
 
     pub fn parse_record_struct_body(&mut self) -> PResult<Vec<StructField>> {
@@ -5111,14 +5109,14 @@ impl<'a> Parser<'a> {
 
     /// Parse a structure-like enum variant definition
     /// this should probably be renamed or refactored...
-    fn parse_struct_def(&mut self) -> PResult<P<VariantData>> {
+    fn parse_struct_def(&mut self) -> PResult<VariantData> {
         let mut fields: Vec<StructField> = Vec::new();
         while self.token != token::CloseDelim(token::Brace) {
             fields.push(try!(self.parse_struct_decl_field(false)));
         }
         try!(self.bump());
 
-        Ok(P(VariantData::Struct(fields, ast::DUMMY_NODE_ID)))
+        Ok(VariantData::Struct(fields, ast::DUMMY_NODE_ID))
     }
 
     /// Parse the part of an "enum" decl following the '{'
@@ -5154,13 +5152,13 @@ impl<'a> Parser<'a> {
                         id: ast::DUMMY_NODE_ID,
                     }});
                 }
-                struct_def = P(ast::VariantData::Tuple(fields, ast::DUMMY_NODE_ID));
+                struct_def = ast::VariantData::Tuple(fields, ast::DUMMY_NODE_ID);
             } else if try!(self.eat(&token::Eq) ){
                 disr_expr = Some(try!(self.parse_expr_nopanic()));
                 any_disr = disr_expr.as_ref().map(|expr| expr.span);
-                struct_def = P(ast::VariantData::Unit(ast::DUMMY_NODE_ID));
+                struct_def = ast::VariantData::Unit(ast::DUMMY_NODE_ID);
             } else {
-                struct_def = P(ast::VariantData::Unit(ast::DUMMY_NODE_ID));
+                struct_def = ast::VariantData::Unit(ast::DUMMY_NODE_ID);
             }
 
             let vr = ast::Variant_ {

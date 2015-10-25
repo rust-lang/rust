@@ -103,7 +103,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             }
             hir::ItemStruct(ref struct_def, ref ast_generics) => {
                 self.check_type_defn(item, |fcx| {
-                    vec![struct_variant(fcx, &**struct_def)]
+                    vec![struct_variant(fcx, struct_def)]
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
@@ -627,7 +627,7 @@ fn struct_variant<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             struct_def: &hir::VariantData)
                             -> AdtVariant<'tcx> {
     let fields =
-        struct_def.fields()
+        struct_def.fields().iter()
         .map(|field| {
             let field_ty = fcx.tcx().node_id_to_type(field.node.id);
             let field_ty = fcx.instantiate_type_scheme(field.span,

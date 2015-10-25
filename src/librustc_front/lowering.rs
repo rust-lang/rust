@@ -266,7 +266,7 @@ pub fn lower_variant(_lctx: &LoweringContext, v: &Variant) -> P<hir::Variant> {
         node: hir::Variant_ {
             name: v.node.name.name,
             attrs: v.node.attrs.clone(),
-            data: lower_struct_def(_lctx, &v.node.data),
+            data: lower_variant_data(_lctx, &v.node.data),
             disr_expr: v.node.disr_expr.as_ref().map(|e| lower_expr(_lctx, e)),
         },
         span: v.span,
@@ -498,8 +498,8 @@ pub fn lower_where_predicate(_lctx: &LoweringContext,
     }
 }
 
-pub fn lower_struct_def(_lctx: &LoweringContext, sd: &VariantData) -> P<hir::VariantData> {
-    P(match *sd {
+pub fn lower_variant_data(_lctx: &LoweringContext, vdata: &VariantData) -> hir::VariantData {
+    match *vdata {
         VariantData::Struct(ref fields, id) => {
             hir::VariantData::Struct(fields.iter()
                                            .map(|f| lower_struct_field(_lctx, f)).collect(), id)
@@ -509,7 +509,7 @@ pub fn lower_struct_def(_lctx: &LoweringContext, sd: &VariantData) -> P<hir::Var
                                           .map(|f| lower_struct_field(_lctx, f)).collect(), id)
         }
         VariantData::Unit(id) => hir::VariantData::Unit(id)
-    })
+    }
 }
 
 pub fn lower_trait_ref(_lctx: &LoweringContext, p: &TraitRef) -> hir::TraitRef {
@@ -611,7 +611,7 @@ pub fn lower_item_underscore(_lctx: &LoweringContext, i: &Item_) -> hir::Item_ {
                           lower_generics(_lctx, generics))
         }
         ItemStruct(ref struct_def, ref generics) => {
-            let struct_def = lower_struct_def(_lctx, struct_def);
+            let struct_def = lower_variant_data(_lctx, struct_def);
             hir::ItemStruct(struct_def, lower_generics(_lctx, generics))
         }
         ItemDefaultImpl(unsafety, ref trait_ref) => {
