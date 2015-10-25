@@ -136,5 +136,24 @@ cargo rustc -- -L /path/to/clippy_so -Z extra-plugins=clippy
 
 *[Note](https://github.com/Manishearth/rust-clippy/wiki#a-word-of-warning):* Be sure that clippy was compiled with the same version of rustc that cargo invokes here!
 
+If you want to make clippy an optional dependency, you can do the following:
+
+In your `Cargo.toml`:
+```toml
+[dependencies]
+clippy = {version = "*", optional = true}
+
+[features]
+default=[]
+```
+
+And, in your `main.rs` or `lib.rs`:
+
+```rust
+#![cfg_attr(feature=clippy, feature(plugin))]
+
+#![cfg_attr(feature=clippy, plugin(clippy))]
+```
+
 ##License
 Licensed under [MPL](https://www.mozilla.org/MPL/2.0/). If you're having issues with the license, let me know and I'll try to change it to something more permissive.
