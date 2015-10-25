@@ -262,8 +262,9 @@ impl Error for VarError {
 ///
 /// # Panics
 ///
-/// This function panics if the `key` string is empty or contains an ASCII
-/// equals sign.
+/// This function may panic if `key` is empty, contains an ASCII equals sign
+/// `'='` or the NUL character `'\0'`, or when the value contains the NUL
+/// character.
 ///
 /// # Examples
 ///
@@ -299,8 +300,9 @@ fn _set_var(k: &OsStr, v: &OsStr) {
 ///
 /// # Panics
 ///
-/// This function panics if the `key` string is empty or contains an ASCII
-/// equals sign.
+/// This function may panic if `key` is empty, contains an ASCII equals sign
+/// `'='` or the NUL character `'\0'`, or when the value contains the NUL
+/// character.
 ///
 /// # Examples
 ///
