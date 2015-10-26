@@ -150,11 +150,11 @@ prepare-overlay-$(1):
 
 dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)-host prepare-overlay-$(1)
 	@$(call E, build: $$@)
-# On a 32-bit MinGW target we've got a few runtime DLL dependencies that we need
+# On a MinGW target we've got a few runtime DLL dependencies that we need
 # to include. THe first argument to `make-win-dist` is where to put these DLLs
 # (the image we're creating) and the second argument is a junk directory to
 # ignore all the other MinGW stuff the script creates.
-ifeq ($(1),i686-pc-windows-gnu)
+ifeq ($$(findstring pc-windows-gnu,$(1)),pc-windows-gnu)
 	$$(Q)rm -Rf tmp/dist/win-rust-gcc-$(1)
 	$$(Q)$$(CFG_PYTHON) $$(S)src/etc/make-win-dist.py \
 		tmp/dist/$$(PKG_NAME)-$(1)-image \
