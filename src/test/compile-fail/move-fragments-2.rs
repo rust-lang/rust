@@ -32,7 +32,7 @@ pub fn test_match_partial(p: Lonely<D, D>) {
     //~^ ERROR                 parent_of_fragments: `$(local p)`
     //~| ERROR                  assigned_leaf_path: `($(local p) as Lonely::Zero)`
     match p {
-        Zero(..) => {}
+        Zero => {}
         _ => {}
     }
 }
@@ -44,7 +44,7 @@ pub fn test_match_full(p: Lonely<D, D>) {
     //~| ERROR                  assigned_leaf_path: `($(local p) as Lonely::One)`
     //~| ERROR                  assigned_leaf_path: `($(local p) as Lonely::Two)`
     match p {
-        Zero(..) => {}
+        Zero => {}
         One(..) => {}
         Two(..) => {}
     }
@@ -59,7 +59,7 @@ pub fn test_match_bind_one(p: Lonely<D, D>) {
     //~| ERROR                  assigned_leaf_path: `($(local p) as Lonely::Two)`
     //~| ERROR                  assigned_leaf_path: `$(local data)`
     match p {
-        Zero(..) => {}
+        Zero => {}
         One(data) => {}
         Two(..) => {}
     }
@@ -78,7 +78,7 @@ pub fn test_match_bind_many(p: Lonely<D, D>) {
     //~| ERROR                  assigned_leaf_path: `$(local left)`
     //~| ERROR                  assigned_leaf_path: `$(local right)`
     match p {
-        Zero(..) => {}
+        Zero => {}
         One(data) => {}
         Two(left, right) => {}
     }

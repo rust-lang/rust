@@ -66,7 +66,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                  candidate: &mut Candidate<'pat, 'tcx>)
                                  -> Result<BasicBlock, MatchPair<'pat, 'tcx>> {
         match *match_pair.pattern.kind {
-            PatternKind::Wild(..) => {
+            PatternKind::Wild => {
                 // nothing left to do
                 Ok(block)
             }

@@ -1424,7 +1424,7 @@ impl<'tcx> cmt_<'tcx> {
                 NonAliasable
             }
 
-            Categorization::StaticItem(..) => {
+            Categorization::StaticItem => {
                 if self.mutbl.is_mutable() {
                     FreelyAliasable(AliasableStaticMut)
                 } else {

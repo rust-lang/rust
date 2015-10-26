@@ -38,7 +38,7 @@ pub fn test_match_bind_and_underscore(p: Lonely<D, D>) {
     //~| ERROR                  assigned_leaf_path: `$(local left)`
 
     match p {
-        Zero(..) => {}
+        Zero => {}
 
         One(_) => {}       // <-- does not fragment `($(local p) as One)` ...
 

@@ -625,7 +625,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                 self.visit_explicit_self(&sig.explicit_self);
                 MethodRibKind
             }
-            FnKind::Closure(..) => ClosureRibKind(node_id),
+            FnKind::Closure => ClosureRibKind(node_id),
         };
         self.resolve_function(rib_kind, declaration, block);
     }
