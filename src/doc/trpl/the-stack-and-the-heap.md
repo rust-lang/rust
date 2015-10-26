@@ -224,7 +224,7 @@ like this:
 | 1                    | y    | 42                     |
 | 0                    | x    | → (2<sup>30</sup>) - 1 |
 
-We have (2<sup>30</sup>) - 1 in our hypothetical computer with 1GB of RAM. And since
+We have (2<sup>30</sup>) - 1 addresses in our hypothetical computer with 1GB of RAM. And since
 our stack grows from zero, the easiest place to allocate memory is from the
 other end. So our first value is at the highest place in memory. And the value
 of the struct at `x` has a [raw pointer][rawpointer] to the place we’ve
