@@ -80,6 +80,23 @@ fn main() {
     while let Some(x) = iter.next() {
         println!("next: {:?}", iter.next())
     }
+
+    // neither can this
+    let mut iter = 1u32..20;
+    while let Some(x) = iter.next() {
+        println!("next: {:?}", iter.next());
+    }
+
+    // or this
+    let mut iter = 1u32..20;
+    while let Some(x) = iter.next() {break;}
+    println!("Remaining iter {:?}", iter);
+
+    // or this
+    let mut iter = 1u32..20;
+    while let Some(x) = iter.next() {
+        iter = 1..20;
+    }
 }
 
 // regression test (#360)

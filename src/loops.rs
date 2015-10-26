@@ -11,7 +11,8 @@ use std::collections::{HashSet,HashMap};
 use syntax::ast::Lit_::*;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type,
-            in_external_macro, expr_block, span_help_and_lint, is_integer_literal};
+            in_external_macro, expr_block, span_help_and_lint, is_integer_literal,
+            get_enclosing_block};
 use utils::{VEC_PATH, LL_PATH};
 
 declare_lint!{ pub NEEDLESS_RANGE_LOOP, Warn,
@@ -232,17 +233,16 @@ impl LateLintPass for LoopsPass {
             }
         }
         if let ExprMatch(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.node {
-            let body = &arms[0].body;
             let pat = &arms[0].pats[0].node;
             if let (&PatEnum(ref path, Some(ref pat_args)),
                     &ExprMethodCall(method_name, _, ref method_args)) =
                         (pat, &match_expr.node) {
-                let iterator_def_id = var_def_id(cx, &method_args[0]);
+                let iter_expr = &method_args[0];
                 if let Some(lhs_constructor) = path.segments.last() {
                     if method_name.node.as_str() == "next" &&
                             match_trait_method(cx, match_expr, &["core", "iter", "Iterator"]) &&
                             lhs_constructor.identifier.name.as_str() == "Some" &&
-                            !var_used(body, iterator_def_id, cx) {
+                            !is_iterator_used_after_while_let(cx, iter_expr) {
                         let iterator = snippet(cx, method_args[0].span, "_");
                         let loop_var = snippet(cx, pat_args[0].span, "_");
                         span_help_and_lint(cx, WHILE_LET_ON_ITERATOR, expr.span,
@@ -326,31 +326,45 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
     }
 }
 
-fn var_used(expr: &Expr, def_id: Option<NodeId>, cx: &LateContext) -> bool {
-    match def_id {
-        None => false,
-        Some(def_id) => {
-            let mut visitor = VarUsedVisitor{ def_id: def_id, found: false, cx: cx };
-            walk_expr(&mut visitor, expr);
-            visitor.found
-        }
+fn is_iterator_used_after_while_let(cx: &LateContext, iter_expr: &Expr) -> bool {
+    let def_id = match var_def_id(cx, iter_expr) {
+        Some(id) => id,
+        None => return false
+    };
+    let mut visitor = VarUsedAfterLoopVisitor {
+        cx: cx,
+        def_id: def_id,
+        iter_expr_id: iter_expr.id,
+        past_while_let: false,
+        var_used_after_while_let: false
+    };
+    if let Some(enclosing_block) = get_enclosing_block(cx, def_id) {
+        walk_block(&mut visitor, enclosing_block);
     }
+    visitor.var_used_after_while_let
 }
 
-struct VarUsedVisitor<'v, 't: 'v> {
+struct VarUsedAfterLoopVisitor<'v, 't: 'v> {
     cx: &'v LateContext<'v, 't>,
     def_id: NodeId,
-    found: bool
+    iter_expr_id: NodeId,
+    past_while_let: bool,
+    var_used_after_while_let: bool
 }
 
-impl<'v, 't> Visitor<'v> for VarUsedVisitor<'v, 't> {
+impl <'v, 't> Visitor<'v> for VarUsedAfterLoopVisitor<'v, 't> {
     fn visit_expr(&mut self, expr: &'v Expr) {
-        if Some(self.def_id) == var_def_id(self.cx, expr) {
-            self.found = true;
+        if self.past_while_let {
+            if Some(self.def_id) == var_def_id(self.cx, expr) {
+                self.var_used_after_while_let = true;
+            }
+        } else if self.iter_expr_id == expr.id {
+            self.past_while_let = true;
         }
         walk_expr(self, expr);
     }
 }
+
 
 /// Return true if the type of expr is one that provides IntoIterator impls
 /// for &T and &mut T, such as Vec.

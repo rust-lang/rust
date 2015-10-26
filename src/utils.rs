@@ -255,6 +255,19 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext, e: &Expr) -> Option<&'c Expr> {
         if let NodeExpr(parent) = node { Some(parent) } else { None } )
 }
 
+pub fn get_enclosing_block<'c>(cx: &'c LateContext, node: NodeId) -> Option<&'c Block> {
+    let map = &cx.tcx.map;
+    let enclosing_node = map.get_enclosing_scope(node)
+                            .and_then(|enclosing_id| map.find(enclosing_id));
+    if let Some(node) = enclosing_node {
+        match node {
+            NodeBlock(ref block) => Some(block),
+            NodeItem(&Item{ node: ItemFn(_, _, _, _, _, ref block), .. }) => Some(block),
+            _ => None
+        }
+    } else { None }
+}
+
 #[cfg(not(feature="structured_logging"))]
 pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
     cx.span_lint(lint, sp, msg);
