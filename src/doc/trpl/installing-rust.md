@@ -4,7 +4,7 @@ The first step to using Rust is to install it! There are a number of ways to
 install Rust, but the easiest is to use the `rustup` script. If we're on Linux
 or a Mac, all we need to do is this:
 
-> Note: we don't need to type in the `$`s, they just indicate the start of
+> Note: we don't need to type in the `$`s, they are there to indicate the start of
 > each command. We’ll see many tutorials and examples around the web that
 > follow this convention: `$` for commands run as our regular user, and `#` for
 > commands we should be running as an administrator.
@@ -38,14 +38,14 @@ If you're on Windows, please download the appropriate [installer][install-page].
 ## Uninstalling
 
 If you decide you don't want Rust anymore, we'll be a bit sad, but that's okay.
-Not every programming language is great for everyone. We'll just run the
+Not every programming language is great for everyone. We can run the
 uninstall script:
 
 ```bash
 $ sudo /usr/local/lib/rustlib/uninstall.sh
 ```
 
-If we used the Windows installer, we'll just re-run the `.msi` and it will give
+If we used the Windows installer, we can re-run the `.msi` and it will give
 us an uninstall option.
 
 ## That disclaimer we promised
@@ -103,7 +103,7 @@ platforms are required to have each of the following:
 
 * Automated building is set up, but may not be running tests.
 * Landing changes to the `rust-lang/rust` repository's master branch is gated on
-  platforms **building**. Note that this means for some platforms just the
+  platforms **building**. Note that this means for some platforms only the
   standard library is compiled, but for others the full bootstrap is run.
 * Official release artifacts are provided for the platform.
 
