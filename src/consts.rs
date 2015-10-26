@@ -6,10 +6,12 @@ use rustc::middle::def::PathResolution;
 use rustc::middle::def::Def::*;
 use rustc_front::hir::*;
 use syntax::ptr::P;
+use std::char;
 use std::cmp::PartialOrd;
 use std::cmp::Ordering::{self, Greater, Less, Equal};
 use std::rc::Rc;
 use std::ops::Deref;
+use std::fmt;
 use self::Constant::*;
 use self::FloatWidth::*;
 
@@ -21,6 +23,7 @@ use syntax::ast::{UintTy, FloatTy, StrStyle};
 use syntax::ast::UintTy::*;
 use syntax::ast::FloatTy::*;
 use syntax::ast::Sign::{self, Plus, Minus};
+use syntax::ast_util;
 
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
@@ -159,6 +162,67 @@ impl PartialOrd for Constant {
     }
 }
 
+fn format_byte(fmt: &mut fmt::Formatter, b: u8) -> fmt::Result {
+    if b == b'\\' {
+        write!(fmt, "\\\\")
+    } else if 0x20 <= b && b <= 0x7e {
+        write!(fmt, "{}", char::from_u32(b as u32).expect("all u8 are valid char"))
+    } else if b == 0x0a {
+        write!(fmt, "\\n")
+    } else if b == 0x0d {
+        write!(fmt, "\\r")
+    } else {
+        write!(fmt, "\\x{:02x}", b)
+    }
+}
+
+impl fmt::Display for Constant {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ConstantStr(ref s, _) => write!(fmt, "{:?}", s),
+            ConstantByte(ref b) =>
+                write!(fmt, "b'").and_then(|_| format_byte(fmt, *b))
+                                 .and_then(|_| write!(fmt, "'")),
+            ConstantBinary(ref bs) => {
+                try!(write!(fmt, "b\""));
+                for b in bs.iter() {
+                    try!(format_byte(fmt, *b));
+                }
+                write!(fmt, "\"")
+            }
+            ConstantChar(ref c) => write!(fmt, "'{}'", c),
+            ConstantInt(ref i, ref ity) => {
+                let (sign, suffix) = match *ity {
+                    LitIntType::SignedIntLit(ref sity, ref sign) =>
+                        (if let Sign::Minus = *sign { "-" } else { "" },
+                         ast_util::int_ty_to_string(*sity, None)),
+                    LitIntType::UnsignedIntLit(ref uity) =>
+                        ("", ast_util::uint_ty_to_string(*uity, None)),
+                    LitIntType::UnsuffixedIntLit(ref sign) =>
+                        (if let Sign::Minus = *sign { "-" } else { "" },
+                         "".into()),
+                };
+                write!(fmt, "{}{}{}", sign, i, suffix)
+            }
+            ConstantFloat(ref s, ref fw) => {
+                let suffix = match *fw {
+                    FloatWidth::Fw32 => "f32",
+                    FloatWidth::Fw64 => "f64",
+                    FloatWidth::FwAny => "",
+                };
+                write!(fmt, "{}{}", s, suffix)
+            }
+            ConstantBool(ref b) => write!(fmt, "{}", b),
+            ConstantRepeat(ref c, ref n) => write!(fmt, "[{}; {}]", c, n),
+            ConstantVec(ref v) => write!(fmt, "[{}]",
+                                         v.iter().map(|i| format!("{}", i))
+                                                 .collect::<Vec<_>>().join(", ")),
+            ConstantTuple(ref t) => write!(fmt, "({})",
+                                           t.iter().map(|i| format!("{}", i))
+                                                   .collect::<Vec<_>>().join(", ")),
+        }
+    }
+}
 
 
 fn lit_to_constant(lit: &Lit_) -> Constant {

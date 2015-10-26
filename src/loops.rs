@@ -44,7 +44,7 @@ pub struct LoopsPass;
 impl LintPass for LoopsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_RANGE_LOOP, EXPLICIT_ITER_LOOP, ITER_NEXT_LOOP,
-                    WHILE_LET_LOOP, UNUSED_COLLECT, REVERSE_RANGE_LOOP, 
+                    WHILE_LET_LOOP, UNUSED_COLLECT, REVERSE_RANGE_LOOP,
                     EXPLICIT_COUNTER_LOOP, EMPTY_LOOP)
     }
 }
@@ -88,8 +88,8 @@ impl LateLintPass for LoopsPass {
             // if this for loop is iterating over a two-sided range...
             if let ExprRange(Some(ref start_expr), Some(ref stop_expr)) = arg.node {
                 // ...and both sides are compile-time constant integers...
-                if let Some(Constant::ConstantInt(start_idx, _)) = constant_simple(start_expr) {
-                    if let Some(Constant::ConstantInt(stop_idx, _)) = constant_simple(stop_expr) {
+                if let Some(start_idx @ Constant::ConstantInt(..)) = constant_simple(start_expr) {
+                    if let Some(stop_idx @ Constant::ConstantInt(..)) = constant_simple(stop_expr) {
                         // ...and the start index is greater than the stop index,
                         // this loop will never run. This is often confusing for developers
                         // who think that this will iterate from the larger value to the
