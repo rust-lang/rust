@@ -305,7 +305,7 @@ impl MutabilityCategory {
 
     fn from_local(tcx: &ty::ctxt, id: ast::NodeId) -> MutabilityCategory {
         let ret = match tcx.map.get(id) {
-            ast_map::NodeLocal(p) | ast_map::NodeArg(p) => match p.node {
+            ast_map::NodeLocal(p) => match p.node {
                 hir::PatIdent(bind_mode, _, _) => {
                     if bind_mode == hir::BindByValue(hir::MutMutable) {
                         McDeclared
