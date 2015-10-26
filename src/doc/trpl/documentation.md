@@ -518,7 +518,7 @@ are the same, as are these:
 ```rust
 //! this
 
-#![doc="/// this"]
+#![doc="this"]
 ```
 
 You won't often see this attribute used for writing documentation, but it
