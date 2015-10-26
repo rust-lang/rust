@@ -1463,11 +1463,10 @@ impl<'tcx> cmt_<'tcx> {
                 "non-lvalue".to_string()
             }
             cat_local(vid) => {
-                match tcx.map.find(vid) {
-                    Some(ast_map::NodeArg(_)) => {
-                        "argument".to_string()
-                    }
-                    _ => "local variable".to_string()
+                if tcx.map.is_argument(vid) {
+                    "argument".to_string()
+                } else {
+                    "local variable".to_string()
                 }
             }
             cat_deref(_, _, pk) => {

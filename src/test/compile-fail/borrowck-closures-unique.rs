@@ -43,7 +43,7 @@ fn d(x: &mut isize) {
 }
 
 fn e(x: &mut isize) {
-    let c1 = || x = panic!(); //~ ERROR closure cannot assign to immutable local variable
+    let c1 = || x = panic!(); //~ ERROR closure cannot assign to immutable argument
 }
 
 fn main() {
