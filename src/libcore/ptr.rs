@@ -511,7 +511,7 @@ macro_rules! unique_new {
 macro_rules! unique_new {
     () => (
         /// Creates a new `Unique`.
-        pub unsafe const fn new(ptr: *mut T) -> Unique<T> {
+        pub const unsafe fn new(ptr: *mut T) -> Unique<T> {
             Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
         }
     )
