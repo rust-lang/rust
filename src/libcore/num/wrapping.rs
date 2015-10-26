@@ -12,22 +12,34 @@
 #![unstable(feature = "wrapping", reason = "may be removed or relocated",
             issue = "27755")]
 
+#[cfg(stage0)]
+pub use intrinsics::{
+    u8_add_with_overflow, i8_add_with_overflow,
+    u16_add_with_overflow, i16_add_with_overflow,
+    u32_add_with_overflow, i32_add_with_overflow,
+    u64_add_with_overflow, i64_add_with_overflow,
+
+    u8_sub_with_overflow, i8_sub_with_overflow,
+    u16_sub_with_overflow, i16_sub_with_overflow,
+    u32_sub_with_overflow, i32_sub_with_overflow,
+    u64_sub_with_overflow, i64_sub_with_overflow,
+
+    u8_mul_with_overflow, i8_mul_with_overflow,
+    u16_mul_with_overflow, i16_mul_with_overflow,
+    u32_mul_with_overflow, i32_mul_with_overflow,
+    u64_mul_with_overflow, i64_mul_with_overflow,
+};
+
+#[cfg(not(stage0))]
+pub use intrinsics::{
+    add_with_overflow,
+    sub_with_overflow,
+    mul_with_overflow,
+};
+
 use super::Wrapping;
 
 use ops::*;
-
-use intrinsics::{i8_add_with_overflow, u8_add_with_overflow};
-use intrinsics::{i16_add_with_overflow, u16_add_with_overflow};
-use intrinsics::{i32_add_with_overflow, u32_add_with_overflow};
-use intrinsics::{i64_add_with_overflow, u64_add_with_overflow};
-use intrinsics::{i8_sub_with_overflow, u8_sub_with_overflow};
-use intrinsics::{i16_sub_with_overflow, u16_sub_with_overflow};
-use intrinsics::{i32_sub_with_overflow, u32_sub_with_overflow};
-use intrinsics::{i64_sub_with_overflow, u64_sub_with_overflow};
-use intrinsics::{i8_mul_with_overflow, u8_mul_with_overflow};
-use intrinsics::{i16_mul_with_overflow, u16_mul_with_overflow};
-use intrinsics::{i32_mul_with_overflow, u32_mul_with_overflow};
-use intrinsics::{i64_mul_with_overflow, u64_mul_with_overflow};
 
 use ::{i8,i16,i32,i64};
 
@@ -191,21 +203,45 @@ macro_rules! signed_overflowing_impl {
     ($($t:ident)*) => ($(
         impl OverflowingOps for $t {
             #[inline(always)]
+            #[cfg(stage0)]
             fn overflowing_add(self, rhs: $t) -> ($t, bool) {
                 unsafe {
                     concat_idents!($t, _add_with_overflow)(self, rhs)
                 }
             }
             #[inline(always)]
+            #[cfg(not(stage0))]
+            fn overflowing_add(self, rhs: $t) -> ($t, bool) {
+                unsafe {
+                    add_with_overflow(self, rhs)
+                }
+            }
+            #[inline(always)]
+            #[cfg(stage0)]
             fn overflowing_sub(self, rhs: $t) -> ($t, bool) {
                 unsafe {
                     concat_idents!($t, _sub_with_overflow)(self, rhs)
                 }
             }
             #[inline(always)]
+            #[cfg(not(stage0))]
+            fn overflowing_sub(self, rhs: $t) -> ($t, bool) {
+                unsafe {
+                    sub_with_overflow(self, rhs)
+                }
+            }
+            #[inline(always)]
+            #[cfg(stage0)]
             fn overflowing_mul(self, rhs: $t) -> ($t, bool) {
                 unsafe {
                     concat_idents!($t, _mul_with_overflow)(self, rhs)
+                }
+            }
+            #[inline(always)]
+            #[cfg(not(stage0))]
+            fn overflowing_mul(self, rhs: $t) -> ($t, bool) {
+                unsafe {
+                    mul_with_overflow(self, rhs)
                 }
             }
 
@@ -253,21 +289,45 @@ macro_rules! unsigned_overflowing_impl {
     ($($t:ident)*) => ($(
         impl OverflowingOps for $t {
             #[inline(always)]
+            #[cfg(stage0)]
             fn overflowing_add(self, rhs: $t) -> ($t, bool) {
                 unsafe {
                     concat_idents!($t, _add_with_overflow)(self, rhs)
                 }
             }
             #[inline(always)]
+            #[cfg(not(stage0))]
+            fn overflowing_add(self, rhs: $t) -> ($t, bool) {
+                unsafe {
+                    add_with_overflow(self, rhs)
+                }
+            }
+            #[inline(always)]
+            #[cfg(stage0)]
             fn overflowing_sub(self, rhs: $t) -> ($t, bool) {
                 unsafe {
                     concat_idents!($t, _sub_with_overflow)(self, rhs)
                 }
             }
             #[inline(always)]
+            #[cfg(not(stage0))]
+            fn overflowing_sub(self, rhs: $t) -> ($t, bool) {
+                unsafe {
+                    sub_with_overflow(self, rhs)
+                }
+            }
+            #[inline(always)]
+            #[cfg(stage0)]
             fn overflowing_mul(self, rhs: $t) -> ($t, bool) {
                 unsafe {
                     concat_idents!($t, _mul_with_overflow)(self, rhs)
+                }
+            }
+            #[inline(always)]
+            #[cfg(not(stage0))]
+            fn overflowing_mul(self, rhs: $t) -> ($t, bool) {
+                unsafe {
+                    mul_with_overflow(self, rhs)
                 }
             }
 
@@ -305,6 +365,7 @@ unsigned_overflowing_impl! { u8 u16 u32 u64 }
 #[cfg(target_pointer_width = "64")]
 impl OverflowingOps for usize {
     #[inline(always)]
+    #[cfg(stage0)]
     fn overflowing_add(self, rhs: usize) -> (usize, bool) {
         unsafe {
             let res = u64_add_with_overflow(self as u64, rhs as u64);
@@ -312,6 +373,14 @@ impl OverflowingOps for usize {
         }
     }
     #[inline(always)]
+    #[cfg(not(stage0))]
+    fn overflowing_add(self, rhs: usize) -> (usize, bool) {
+        unsafe {
+            add_with_overflow(self, rhs)
+        }
+    }
+    #[inline(always)]
+    #[cfg(stage0)]
     fn overflowing_sub(self, rhs: usize) -> (usize, bool) {
         unsafe {
             let res = u64_sub_with_overflow(self as u64, rhs as u64);
@@ -319,10 +388,25 @@ impl OverflowingOps for usize {
         }
     }
     #[inline(always)]
+    #[cfg(not(stage0))]
+    fn overflowing_sub(self, rhs: usize) -> (usize, bool) {
+        unsafe {
+            sub_with_overflow(self, rhs)
+        }
+    }
+    #[inline(always)]
+    #[cfg(stage0)]
     fn overflowing_mul(self, rhs: usize) -> (usize, bool) {
         unsafe {
             let res = u64_mul_with_overflow(self as u64, rhs as u64);
             (res.0 as usize, res.1)
+        }
+    }
+    #[inline(always)]
+    #[cfg(not(stage0))]
+    fn overflowing_mul(self, rhs: usize) -> (usize, bool) {
+        unsafe {
+            mul_with_overflow(self, rhs)
         }
     }
     #[inline(always)]
@@ -355,6 +439,7 @@ impl OverflowingOps for usize {
 #[cfg(target_pointer_width = "32")]
 impl OverflowingOps for usize {
     #[inline(always)]
+    #[cfg(stage0)]
     fn overflowing_add(self, rhs: usize) -> (usize, bool) {
         unsafe {
             let res = u32_add_with_overflow(self as u32, rhs as u32);
@@ -362,6 +447,14 @@ impl OverflowingOps for usize {
         }
     }
     #[inline(always)]
+    #[cfg(not(stage0))]
+    fn overflowing_add(self, rhs: usize) -> (usize, bool) {
+        unsafe {
+            add_with_overflow(self, rhs)
+        }
+    }
+    #[inline(always)]
+    #[cfg(stage0)]
     fn overflowing_sub(self, rhs: usize) -> (usize, bool) {
         unsafe {
             let res = u32_sub_with_overflow(self as u32, rhs as u32);
@@ -369,10 +462,25 @@ impl OverflowingOps for usize {
         }
     }
     #[inline(always)]
+    #[cfg(not(stage0))]
+    fn overflowing_sub(self, rhs: usize) -> (usize, bool) {
+        unsafe {
+            sub_with_overflow(self, rhs)
+        }
+    }
+    #[inline(always)]
+    #[cfg(stage0)]
     fn overflowing_mul(self, rhs: usize) -> (usize, bool) {
         unsafe {
             let res = u32_mul_with_overflow(self as u32, rhs as u32);
             (res.0 as usize, res.1)
+        }
+    }
+    #[inline(always)]
+    #[cfg(not(stage0))]
+    fn overflowing_mul(self, rhs: usize) -> (usize, bool) {
+        unsafe {
+            mul_with_overflow(self, rhs)
         }
     }
     #[inline(always)]
@@ -405,6 +513,7 @@ impl OverflowingOps for usize {
 #[cfg(target_pointer_width = "64")]
 impl OverflowingOps for isize {
     #[inline(always)]
+    #[cfg(stage0)]
     fn overflowing_add(self, rhs: isize) -> (isize, bool) {
         unsafe {
             let res = i64_add_with_overflow(self as i64, rhs as i64);
@@ -412,6 +521,14 @@ impl OverflowingOps for isize {
         }
     }
     #[inline(always)]
+    #[cfg(not(stage0))]
+    fn overflowing_add(self, rhs: isize) -> (isize, bool) {
+        unsafe {
+            add_with_overflow(self, rhs)
+        }
+    }
+    #[inline(always)]
+    #[cfg(stage0)]
     fn overflowing_sub(self, rhs: isize) -> (isize, bool) {
         unsafe {
             let res = i64_sub_with_overflow(self as i64, rhs as i64);
@@ -419,10 +536,25 @@ impl OverflowingOps for isize {
         }
     }
     #[inline(always)]
+    #[cfg(not(stage0))]
+    fn overflowing_sub(self, rhs: isize) -> (isize, bool) {
+        unsafe {
+            sub_with_overflow(self, rhs)
+        }
+    }
+    #[inline(always)]
+    #[cfg(stage0)]
     fn overflowing_mul(self, rhs: isize) -> (isize, bool) {
         unsafe {
             let res = i64_mul_with_overflow(self as i64, rhs as i64);
             (res.0 as isize, res.1)
+        }
+    }
+    #[inline(always)]
+    #[cfg(not(stage0))]
+    fn overflowing_mul(self, rhs: isize) -> (isize, bool) {
+        unsafe {
+            mul_with_overflow(self, rhs)
         }
     }
     #[inline(always)]
@@ -455,6 +587,7 @@ impl OverflowingOps for isize {
 #[cfg(target_pointer_width = "32")]
 impl OverflowingOps for isize {
     #[inline(always)]
+    #[cfg(stage0)]
     fn overflowing_add(self, rhs: isize) -> (isize, bool) {
         unsafe {
             let res = i32_add_with_overflow(self as i32, rhs as i32);
@@ -462,6 +595,14 @@ impl OverflowingOps for isize {
         }
     }
     #[inline(always)]
+    #[cfg(not(stage0))]
+    fn overflowing_add(self, rhs: isize) -> (isize, bool) {
+        unsafe {
+            add_with_overflow(self, rhs)
+        }
+    }
+    #[inline(always)]
+    #[cfg(stage0)]
     fn overflowing_sub(self, rhs: isize) -> (isize, bool) {
         unsafe {
             let res = i32_sub_with_overflow(self as i32, rhs as i32);
@@ -469,10 +610,25 @@ impl OverflowingOps for isize {
         }
     }
     #[inline(always)]
+    #[cfg(not(stage0))]
+    fn overflowing_sub(self, rhs: isize) -> (isize, bool) {
+        unsafe {
+            sub_with_overflow(self, rhs)
+        }
+    }
+    #[inline(always)]
+    #[cfg(stage0)]
     fn overflowing_mul(self, rhs: isize) -> (isize, bool) {
         unsafe {
             let res = i32_mul_with_overflow(self as i32, rhs as i32);
             (res.0 as isize, res.1)
+        }
+    }
+    #[inline(always)]
+    #[cfg(not(stage0))]
+    fn overflowing_mul(self, rhs: isize) -> (isize, bool) {
+        unsafe {
+            mul_with_overflow(self, rhs)
         }
     }
     #[inline(always)]
