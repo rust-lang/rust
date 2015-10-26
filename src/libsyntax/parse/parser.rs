@@ -3196,6 +3196,10 @@ impl<'a> Parser<'a> {
             // Parse &pat / &mut pat
             try!(self.expect_and());
             let mutbl = try!(self.parse_mutability());
+            if let token::Lifetime(ident) = self.token {
+                return Err(self.fatal(&format!("unexpected lifetime `{}` in pattern", ident)));
+            }
+
             let subpat = try!(self.parse_pat_nopanic());
             pat = PatRegion(subpat, mutbl);
           }
@@ -3272,12 +3276,9 @@ impl<'a> Parser<'a> {
                       }
                       token::OpenDelim(token::Brace) => {
                          if qself.is_some() {
-                            let span = self.span;
-                            self.span_err(span,
-                                          "unexpected `{` after qualified path");
-                            self.abort_if_errors();
+                            return Err(self.fatal("unexpected `{` after qualified path"));
                         }
-                       // Parse struct pattern
+                        // Parse struct pattern
                         try!(self.bump());
                         let (fields, etc) = try!(self.parse_pat_fields());
                         try!(self.bump());
@@ -3285,10 +3286,7 @@ impl<'a> Parser<'a> {
                       }
                       token::OpenDelim(token::Paren) => {
                         if qself.is_some() {
-                            let span = self.span;
-                            self.span_err(span,
-                                          "unexpected `(` after qualified path");
-                            self.abort_if_errors();
+                            return Err(self.fatal("unexpected `(` after qualified path"));
                         }
                         // Parse tuple struct or enum pattern
                         if self.look_ahead(1, |t| *t == token::DotDot) {
@@ -3306,13 +3304,13 @@ impl<'a> Parser<'a> {
                             pat = PatEnum(path, Some(args));
                         }
                       }
-                      _ if qself.is_some() => {
-                        // Parse qualified path
-                        pat = PatQPath(qself.unwrap(), path);
-                      }
                       _ => {
-                        // Parse nullary enum
-                        pat = PatEnum(path, Some(vec![]));
+                        pat = match qself {
+                            // Parse qualified path
+                            Some(qself) => PatQPath(qself, path),
+                            // Parse nullary enum
+                            None => PatEnum(path, Some(vec![]))
+                        };
                       }
                     }
                 }
