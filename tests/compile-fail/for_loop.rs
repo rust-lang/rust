@@ -46,6 +46,10 @@ fn main() {
         println!("{}", i);
     }
 
+    for i in -10..0 { // not an error
+        println!("{}", i);
+    }
+
     for i in (10..0).rev() { // not an error, this is an established idiom for looping backwards on a range
         println!("{}", i);
     }
