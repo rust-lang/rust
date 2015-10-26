@@ -227,6 +227,7 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target,
                         LLVMPassManagerRef PMR,
                         LLVMModuleRef M,
                         const char *path,
+                        bool skipCodegen,
                         TargetMachine::CodeGenFileType FileType) {
   PassManager *PM = unwrap<PassManager>(PMR);
 
@@ -244,11 +245,21 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target,
     return false;
   }
 
+  // HACK: addPassesToEmitFile() also adds some codegen passes which are
+  // MachinePasses that may modify IR in a way that it becomes invalid (we've
+  // seen this with stack coloring). So the IR verifier would abort. Therefore,
+  // when we want to emit more than one filetype in a single run, we want to
+  // run the codegen passes and the verifier only for the first filetype.
+  // Telling LLVM to only start adding passes after it has seen a pass that
+  // doesn't exist allows us to achieve that.
+  char notAPass;
+  AnalysisID startBefore = skipCodegen ? (AnalysisID)&notAPass : nullptr;
+
 #if LLVM_VERSION_MINOR >= 7
-  unwrap(Target)->addPassesToEmitFile(*PM, OS, FileType, false);
+  unwrap(Target)->addPassesToEmitFile(*PM, OS, FileType, false, startBefore);
 #else
   formatted_raw_ostream FOS(OS);
-  unwrap(Target)->addPassesToEmitFile(*PM, FOS, FileType, false);
+  unwrap(Target)->addPassesToEmitFile(*PM, FOS, FileType, false, startBefore);
 #endif
   PM->run(*unwrap(M));
 

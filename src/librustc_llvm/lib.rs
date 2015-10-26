@@ -2066,6 +2066,7 @@ extern {
                                    PM: PassManagerRef,
                                    M: ModuleRef,
                                    Output: *const c_char,
+                                   skip_codegen: bool,
                                    FileType: FileType) -> bool;
     pub fn LLVMRustPrintModule(PM: PassManagerRef,
                                M: ModuleRef,
