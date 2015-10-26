@@ -307,8 +307,23 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                 (0, vec!(tcx.types.u64, tcx.types.u64),
                 tcx.mk_tup(vec!(tcx.types.u64, tcx.types.bool))),
 
-            "unchecked_udiv" | "unchecked_sdiv" | "unchecked_urem" | "unchecked_srem" =>
-                (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
+            "i8_unchecked_div" | "i8_unchecked_rem" =>
+                (0, vec![tcx.types.i8, tcx.types.i8], tcx.types.i8),
+            "i16_unchecked_div" | "i16_unchecked_rem" =>
+                (0, vec![tcx.types.i16, tcx.types.i16], tcx.types.i16),
+            "i32_unchecked_div" | "i32_unchecked_rem" =>
+                (0, vec![tcx.types.i32, tcx.types.i32], tcx.types.i32),
+            "i64_unchecked_div" | "i64_unchecked_rem" =>
+                (0, vec![tcx.types.i64, tcx.types.i64], tcx.types.i64),
+
+            "u8_unchecked_div" | "u8_unchecked_rem" =>
+                (0, vec![tcx.types.u8, tcx.types.u8], tcx.types.u8),
+            "u16_unchecked_div" | "u16_unchecked_rem" =>
+                (0, vec![tcx.types.u16, tcx.types.u16], tcx.types.u16),
+            "u32_unchecked_div" | "u32_unchecked_rem" =>
+                (0, vec![tcx.types.u32, tcx.types.u32], tcx.types.u32),
+            "u64_unchecked_div" | "u64_unchecked_rem" =>
+                (0, vec![tcx.types.u64, tcx.types.u64], tcx.types.u64),
 
             "overflowing_add" | "overflowing_sub" | "overflowing_mul" =>
                 (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
