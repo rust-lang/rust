@@ -1520,11 +1520,11 @@ impl Shape for Circle {
 ```
 
 It is possible to define an implementation without referring to a trait. The
-methods in such an implementation can only be used as direct calls on the
-values of the type that the implementation targets. In such an implementation,
-the trait type and `for` after `impl` are omitted. Such implementations are
-limited to nominal types (enums, structs), and the implementation must appear
-in the same crate as the `self` type:
+methods in such an implementation can only be used as direct calls on the values
+of the type that the implementation targets. In such an implementation, the
+trait type and `for` after `impl` are omitted. Such implementations are limited
+to nominal types (enums, structs, trait objects), and the implementation must
+appear in the same crate as the `self` type:
 
 ```
 struct Point {x: i32, y: i32}
