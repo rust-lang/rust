@@ -251,6 +251,26 @@ pub enum Terminator<'tcx> {
         targets: Vec<BasicBlock>,
     },
 
+    /// operand evaluates to an integer; jump depending on its value
+    /// to one of the targets, and otherwise fallback to `otherwise`
+    SwitchInt {
+        /// discriminant value being tested
+        discr: Lvalue<'tcx>,
+
+        /// type of value being tested
+        switch_ty: Ty<'tcx>,
+
+        /// Possible values. The locations to branch to in each case
+        /// are found in the corresponding indices from the `targets` vector.
+        values: Vec<ConstVal>,
+
+        /// Possible branch sites. The length of this vector should be
+        /// equal to the length of the `values` vector plus 1 -- the
+        /// extra item is the block to branch to if none of the values
+        /// fit.
+        targets: Vec<BasicBlock>,
+    },
+
     /// Indicates that the last statement in the block panics, aborts,
     /// etc. No successors. This terminator appears on exactly one
     /// basic block which we create in advance. However, during
@@ -280,7 +300,8 @@ impl<'tcx> Terminator<'tcx> {
             Goto { target: ref b } => slice::ref_slice(b),
             Panic { target: ref b } => slice::ref_slice(b),
             If { cond: _, targets: ref b } => b,
-            Switch { discr: _, adt_def: _, targets: ref b } => b,
+            Switch { targets: ref b, .. } => b,
+            SwitchInt { targets: ref b, .. } => b,
             Diverge => &[],
             Return => &[],
             Call { data: _, targets: ref b } => b,
@@ -321,6 +342,8 @@ impl<'tcx> Debug for Terminator<'tcx> {
                 write!(fmt, "if({:?}) -> {:?}", lv, targets),
             Switch { discr: ref lv, adt_def: _, ref targets } =>
                 write!(fmt, "switch({:?}) -> {:?}", lv, targets),
+            SwitchInt { discr: ref lv, switch_ty: _, ref values, ref targets } =>
+                write!(fmt, "switchInt({:?}, {:?}) -> {:?}", lv, values, targets),
             Diverge =>
                 write!(fmt, "diverge"),
             Return =>
