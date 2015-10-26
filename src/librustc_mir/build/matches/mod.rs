@@ -15,6 +15,8 @@
 
 use build::{BlockAnd, Builder};
 use repr::*;
+use rustc_data_structures::fnv::FnvHashMap;
+use rustc::middle::const_eval::ConstVal;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::ty::{AdtDef, Ty};
 use hair::*;
@@ -241,6 +243,13 @@ enum TestKind<'tcx> {
         adt_def: AdtDef<'tcx>,
     },
 
+    // test the branches of enum
+    SwitchInt {
+        switch_ty: Ty<'tcx>,
+        options: Vec<ConstVal>,
+        indices: FnvHashMap<ConstVal, usize>,
+    },
+
     // test for equality
     Eq {
         value: Literal<'tcx>,
@@ -315,20 +324,36 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
         // otherwise, extract the next match pair and construct tests
         let match_pair = &candidates.last().unwrap().match_pairs[0];
-        let test = self.test(match_pair);
+        let mut test = self.test(match_pair);
+
+        // most of the time, the test to perform is simply a function
+        // of the main candidate; but for a test like SwitchInt, we
+        // may want to add cases based on the candidates that are
+        // available
+        match test.kind {
+            TestKind::SwitchInt { switch_ty, ref mut options, ref mut indices } => {
+                for candidate in &candidates {
+                    self.add_cases_to_switch(&match_pair.lvalue,
+                                             candidate,
+                                             switch_ty,
+                                             options,
+                                             indices);
+                }
+            }
+            _ => { }
+        }
+
         debug!("match_candidates: test={:?} match_pair={:?}", test, match_pair);
         let target_blocks = self.perform_test(block, &match_pair.lvalue, &test);
 
-        for (outcome, mut target_block) in target_blocks.into_iter().enumerate() {
+        for (outcome, target_block) in target_blocks.into_iter().enumerate() {
             let applicable_candidates: Vec<Candidate<'tcx>> =
                 candidates.iter()
                           .filter_map(|candidate| {
-                              unpack!(target_block =
-                                      self.candidate_under_assumption(target_block,
-                                                                      &match_pair.lvalue,
-                                                                      &test.kind,
-                                                                      outcome,
-                                                                      candidate))
+                              self.candidate_under_assumption(&match_pair.lvalue,
+                                                              &test.kind,
+                                                              outcome,
+                                                              candidate)
                           })
                           .collect();
             self.match_candidates(span, arm_blocks, applicable_candidates, target_block);

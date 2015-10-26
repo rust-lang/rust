@@ -15,10 +15,13 @@
 // identify what tests are needed, perform the tests, and then filter
 // the candidates based on the result.
 
-use build::{BlockAnd, Builder};
+use build::Builder;
 use build::matches::{Candidate, MatchPair, Test, TestKind};
 use hair::*;
 use repr::*;
+use rustc_data_structures::fnv::FnvHashMap;
+use rustc::middle::const_eval::ConstVal;
+use rustc::middle::ty::Ty;
 use syntax::codemap::Span;
 
 impl<'a,'tcx> Builder<'a,'tcx> {
@@ -34,13 +37,31 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 }
             }
 
+            PatternKind::Constant { value: Literal::Value { .. } }
+            if is_switch_ty(match_pair.pattern.ty) => {
+                // for integers, we use a SwitchInt match, which allows
+                // us to handle more cases
+                Test {
+                    span: match_pair.pattern.span,
+                    kind: TestKind::SwitchInt {
+                        switch_ty: match_pair.pattern.ty,
+
+                        // these maps are empty to start; cases are
+                        // added below in add_cases_to_switch
+                        options: vec![],
+                        indices: FnvHashMap(),
+                    }
+                }
+            }
+
             PatternKind::Constant { ref value } => {
+                // for other types, we use an equality comparison
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Eq {
                         value: value.clone(),
                         ty: match_pair.pattern.ty.clone(),
-                    },
+                    }
                 }
             }
 
@@ -78,13 +99,52 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         }
     }
 
+    pub fn add_cases_to_switch(&mut self,
+                               test_lvalue: &Lvalue<'tcx>,
+                               candidate: &Candidate<'tcx>,
+                               switch_ty: Ty<'tcx>,
+                               options: &mut Vec<ConstVal>,
+                               indices: &mut FnvHashMap<ConstVal, usize>)
+    {
+        let match_pair = match candidate.match_pairs.iter().find(|mp| mp.lvalue == *test_lvalue) {
+            Some(match_pair) => match_pair,
+            _ => { return; }
+        };
+
+        match match_pair.pattern.kind {
+            PatternKind::Constant { value: Literal::Value { ref value } } => {
+                // if the lvalues match, the type should match
+                assert_eq!(match_pair.pattern.ty, switch_ty);
+
+                indices.entry(value.clone())
+                       .or_insert_with(|| {
+                           options.push(value.clone());
+                           options.len() - 1
+                       });
+            }
+
+            PatternKind::Range { .. } => {
+            }
+
+            PatternKind::Constant { .. } |
+            PatternKind::Variant { .. } |
+            PatternKind::Slice { .. } |
+            PatternKind::Array { .. } |
+            PatternKind::Wild |
+            PatternKind::Binding { .. } |
+            PatternKind::Leaf { .. } |
+            PatternKind::Deref { .. } => {
+            }
+        }
+    }
+
     /// Generates the code to perform a test.
     pub fn perform_test(&mut self,
                         block: BasicBlock,
                         lvalue: &Lvalue<'tcx>,
                         test: &Test<'tcx>)
                         -> Vec<BasicBlock> {
-        match test.kind.clone() {
+        match test.kind {
             TestKind::Switch { adt_def } => {
                 let num_enum_variants = self.hir.num_variants(adt_def);
                 let target_blocks: Vec<_> =
@@ -98,18 +158,34 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 target_blocks
             }
 
-            TestKind::Eq { value, ty } => {
+            TestKind::SwitchInt { switch_ty, ref options, indices: _ } => {
+                let otherwise = self.cfg.start_new_block();
+                let targets: Vec<_> =
+                    options.iter()
+                           .map(|_| self.cfg.start_new_block())
+                           .chain(Some(otherwise))
+                           .collect();
+                self.cfg.terminate(block, Terminator::SwitchInt {
+                    discr: lvalue.clone(),
+                    switch_ty: switch_ty,
+                    values: options.clone(),
+                    targets: targets.clone(),
+                });
+                targets
+            }
+
+            TestKind::Eq { ref value, ty } => {
                 // call PartialEq::eq(discrim, constant)
-                let constant = self.literal_operand(test.span, ty.clone(), value);
+                let constant = self.literal_operand(test.span, ty.clone(), value.clone());
                 let item_ref = self.hir.partial_eq(ty);
                 self.call_comparison_fn(block, test.span, item_ref,
                                         Operand::Consume(lvalue.clone()), constant)
             }
 
-            TestKind::Range { lo, hi, ty } => {
+            TestKind::Range { ref lo, ref hi, ty } => {
                 // Test `v` by computing `PartialOrd::le(lo, v) && PartialOrd::le(v, hi)`.
-                let lo = self.literal_operand(test.span, ty.clone(), lo);
-                let hi = self.literal_operand(test.span, ty.clone(), hi);
+                let lo = self.literal_operand(test.span, ty.clone(), lo.clone());
+                let hi = self.literal_operand(test.span, ty.clone(), hi.clone());
                 let item_ref = self.hir.partial_le(ty);
 
                 let lo_blocks = self.call_comparison_fn(block,
@@ -207,34 +283,31 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// were `Ok`, we would return `Some([x.0.downcast<Ok>.0 @ P1, x.1
     /// @ 22])`.
     pub fn candidate_under_assumption(&mut self,
-                                      mut block: BasicBlock,
                                       test_lvalue: &Lvalue<'tcx>,
                                       test_kind: &TestKind<'tcx>,
                                       test_outcome: usize,
                                       candidate: &Candidate<'tcx>)
-                                      -> BlockAnd<Option<Candidate<'tcx>>> {
+                                      -> Option<Candidate<'tcx>> {
         let candidate = candidate.clone();
         let match_pairs = candidate.match_pairs;
-        let result = unpack!(block = self.match_pairs_under_assumption(block,
-                                                                       test_lvalue,
-                                                                       test_kind,
-                                                                       test_outcome,
-                                                                       match_pairs));
-        block.and(match result {
+        let result = self.match_pairs_under_assumption(test_lvalue,
+                                                       test_kind,
+                                                       test_outcome,
+                                                       match_pairs);
+        match result {
             Some(match_pairs) => Some(Candidate { match_pairs: match_pairs, ..candidate }),
             None => None,
-        })
+        }
     }
 
     /// Helper for candidate_under_assumption that does the actual
     /// work of transforming the list of match pairs.
     fn match_pairs_under_assumption(&mut self,
-                                    mut block: BasicBlock,
                                     test_lvalue: &Lvalue<'tcx>,
                                     test_kind: &TestKind<'tcx>,
                                     test_outcome: usize,
                                     match_pairs: Vec<MatchPair<'tcx>>)
-                                    -> BlockAnd<Option<Vec<MatchPair<'tcx>>>> {
+                                    -> Option<Vec<MatchPair<'tcx>>> {
         let mut result = vec![];
 
         for match_pair in match_pairs {
@@ -245,30 +318,17 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 continue;
             }
 
-            let desired_test = self.test(&match_pair);
-
-            if *test_kind != desired_test.kind {
-                // if the match pair wants to (e.g.) test for
-                // equality against some particular constant, but
-                // we did a switch, then we can't say whether it
-                // matches or not, so we still have to include it
-                // as a possibility.
-                //
-                // For example, we have a constant `FOO:
-                // Option<i32> = Some(22)`, and `match_pair` is `x
-                // @ FOO`, but we did a switch on the variant
-                // (`Some` vs `None`). (OK, in principle this
-                // could tell us something, but we're not that
-                // smart yet to actually dig into the constant
-                // itself)
+            // if this test doesn't tell us anything about this match-pair, then hang onto it.
+            if !self.test_informs_match_pair(&match_pair, test_kind, test_outcome) {
                 result.push(match_pair);
                 continue;
             }
 
+            // otherwise, build up the consequence match pairs
             let opt_consequent_match_pairs =
-                unpack!(block = self.consequent_match_pairs_under_assumption(block,
-                                                                             match_pair,
-                                                                             test_outcome));
+                self.consequent_match_pairs_under_assumption(match_pair,
+                                                             test_kind,
+                                                             test_outcome);
             match opt_consequent_match_pairs {
                 None => {
                     // Right kind of test, but wrong outcome. That
@@ -276,7 +336,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     // inapplicable, since the candidate is only
                     // applicable if all of its match-pairs apply (and
                     // this one doesn't).
-                    return block.and(None);
+                    return None;
                 }
 
                 Some(consequent_match_pairs) => {
@@ -285,23 +345,122 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 }
             }
         }
-        block.and(Some(result))
+
+        Some(result)
     }
 
-    /// Identifies what test is needed to decide if `match_pair` is applicable.
+    /// Given that we executed `test` to `match_pair.lvalue` with
+    /// outcome `test_outcome`, does that tell us anything about
+    /// whether `match_pair` applies?
     ///
-    /// It is a bug to call this with a simplifyable pattern.
+    /// Often it does not. For example, if we are testing whether
+    /// the discriminant equals 4, and we find that it does not,
+    /// but the `match_pair` is testing if the discriminant equals 5,
+    /// that does not help us.
+    fn test_informs_match_pair(&mut self,
+                               match_pair: &MatchPair<'tcx>,
+                               test_kind: &TestKind<'tcx>,
+                               _test_outcome: usize)
+                               -> bool {
+        match match_pair.pattern.kind {
+            PatternKind::Variant { .. } => {
+                match *test_kind {
+                    TestKind::Switch { .. } => true,
+                    _ => false,
+                }
+            }
+
+            PatternKind::Constant { value: Literal::Value { .. } }
+            if is_switch_ty(match_pair.pattern.ty) => {
+                match *test_kind {
+                    TestKind::SwitchInt { .. } => true,
+
+                    // Did not do an integer equality test (which is always a SwitchInt).
+                    // So we learned nothing relevant to this match-pair.
+                    //
+                    // TODO we could use TestKind::Range to rule
+                    // things out here, in some cases.
+                    _ => false,
+                }
+            }
+
+            PatternKind::Constant { .. } |
+            PatternKind::Range { .. } |
+            PatternKind::Slice { .. } => {
+                let pattern_test = self.test(&match_pair);
+                if pattern_test.kind == *test_kind {
+                    true
+                } else {
+                    // TODO in all 3 cases, we could sometimes do
+                    // better here. For example, if we are checking
+                    // whether the value is equal to X, and we find
+                    // that it is, that (may) imply value is not equal
+                    // to Y. Or, if the range tested is `3..5`, and
+                    // our range is `4..5`, then we know that our
+                    // range also does not apply. Similarly, if we
+                    // test that length is >= 5, and it fails, we also
+                    // know that length is not >= 7. etc.
+                    false
+                }
+            }
+
+            PatternKind::Array { .. } |
+            PatternKind::Wild |
+            PatternKind::Binding { .. } |
+            PatternKind::Leaf { .. } |
+            PatternKind::Deref { .. } => {
+                self.error_simplifyable(&match_pair)
+            }
+        }
+    }
+
+    /// Given that we executed `test` with outcome `test_outcome`,
+    /// what are the resulting match pairs? This can return either:
+    ///
+    /// - None, meaning that the test indicated that this outcome
+    ///   means that this match-pair is not the current one for the
+    ///   current discriminant (which rules out the enclosing
+    ///   candidate);
+    /// - Some(...), meaning that either the test didn't tell us whether this
+    ///   match-pair is correct or not, or that we DID match and now have
+    ///   subsequent matches to perform.
+    ///
+    /// As an example, consider:
+    ///
+    /// ```
+    /// match option {
+    ///     Ok(<pattern>) => ...,
+    ///     Err(_) => ...,
+    /// }
+    /// ```
+    ///
+    /// Suppose that the `test` is a `Switch` and the outcome is
+    /// `Ok`. Then in that case, the first arm will have a match-pair
+    /// of `option @ Ok(<pattern>)`. In that case we will return
+    /// `Some(vec![(option as Ok) @ <pattern>])`. The `Some` reuslt
+    /// indicates that the match-pair still applies, and we now have
+    /// to test `(option as Ok) @ <pattern>`.
+    ///
+    /// On the second arm, a `None` will be returned, because if we
+    /// observed that `option` has the discriminant `Ok`, then the
+    /// second arm cannot apply.
     pub fn consequent_match_pairs_under_assumption(&mut self,
-                                                   mut block: BasicBlock,
                                                    match_pair: MatchPair<'tcx>,
+                                                   test_kind: &TestKind<'tcx>,
                                                    test_outcome: usize)
-                                                   -> BlockAnd<Option<Vec<MatchPair<'tcx>>>> {
+                                                   -> Option<Vec<MatchPair<'tcx>>> {
         match match_pair.pattern.kind {
             PatternKind::Variant { adt_def, variant_index, subpatterns } => {
+                assert!(match *test_kind { TestKind::Switch { .. } => true,
+                                           _ => false });
+
                 if test_outcome != variant_index {
-                    return block.and(None);
+                    return None; // Tested, but found the wrong variant.
                 }
 
+                // Correct variant. Extract the subitems and match
+                // those. The lvalue goes gets downcast, so
+                // e.g. `foo.bar` becomes `foo.bar as Variant`.
                 let elem = ProjectionElem::Downcast(adt_def, variant_index);
                 let downcast_lvalue = match_pair.lvalue.clone().elem(elem);
                 let consequent_match_pairs =
@@ -313,33 +472,37 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                    self.match_pair(lvalue, subpattern.pattern)
                                })
                                .collect();
-                block.and(Some(consequent_match_pairs))
+                Some(consequent_match_pairs)
             }
 
-            PatternKind::Constant { .. } |
-            PatternKind::Range { .. } => {
-                // these are boolean tests: if we are on the 0th
-                // successor, then they passed, and otherwise they
-                // failed, but there are never any more tests to come.
-                if test_outcome == 0 {
-                    block.and(Some(vec![]))
-                } else {
-                    block.and(None)
+            PatternKind::Constant { value: Literal::Value { ref value } }
+            if is_switch_ty(match_pair.pattern.ty) => {
+                match *test_kind {
+                    TestKind::SwitchInt { switch_ty: _, options: _, ref indices } => {
+                        let index = indices[value];
+                        if index == test_outcome {
+                            Some(vec![]) // this value, nothing left to test
+                        } else {
+                            None // some other value, candidate is inapplicable
+                        }
+                    }
+
+                    _ => {
+                        self.hir.span_bug(
+                            match_pair.pattern.span,
+                            &format!("did a switch-int, but value {:?} not found in cases",
+                                     value));
+                    }
                 }
             }
 
-            PatternKind::Slice { prefix, slice, suffix } => {
+            PatternKind::Constant { .. } |
+            PatternKind::Range { .. } |
+            PatternKind::Slice { .. } => {
                 if test_outcome == 0 {
-                    let mut consequent_match_pairs = vec![];
-                    unpack!(block = self.prefix_suffix_slice(&mut consequent_match_pairs,
-                                                             block,
-                                                             match_pair.lvalue,
-                                                             prefix,
-                                                             slice,
-                                                             suffix));
-                    block.and(Some(consequent_match_pairs))
+                    Some(vec![])
                 } else {
-                    block.and(None)
+                    None
                 }
             }
 
@@ -357,4 +520,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.hir.span_bug(match_pair.pattern.span,
                           &format!("simplifyable pattern found: {:?}", match_pair.pattern))
     }
+}
+
+fn is_switch_ty<'tcx>(ty: Ty<'tcx>) -> bool {
+    ty.is_integral() || ty.is_char()
 }
