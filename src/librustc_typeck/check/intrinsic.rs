@@ -310,8 +310,23 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
             "unchecked_udiv" | "unchecked_sdiv" | "unchecked_urem" | "unchecked_srem" =>
                 (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
 
-            "overflowing_add" | "overflowing_sub" | "overflowing_mul" =>
-                (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
+            "u8_wrapping_add" | "u8_wrapping_sub" | "u8_wrapping_mul" =>
+                (0, vec![tcx.types.u8, tcx.types.u8], tcx.types.u8),
+            "u16_wrapping_add" | "u16_wrapping_sub" | "u16_wrapping_mul" =>
+                (0, vec![tcx.types.u16, tcx.types.u16], tcx.types.u16),
+            "u32_wrapping_add" | "u32_wrapping_sub" | "u32_wrapping_mul" =>
+                (0, vec![tcx.types.u32, tcx.types.u32], tcx.types.u32),
+            "u64_wrapping_add" | "u64_wrapping_sub" | "u64_wrapping_mul" =>
+                (0, vec![tcx.types.u64, tcx.types.u64], tcx.types.u64),
+
+            "i8_wrapping_add" | "i8_wrapping_sub" | "i8_wrapping_mul" =>
+                (0, vec![tcx.types.i8, tcx.types.i8], tcx.types.i8),
+            "i16_wrapping_add" | "i16_wrapping_sub" | "i16_wrapping_mul" =>
+                (0, vec![tcx.types.i16, tcx.types.i16], tcx.types.i16),
+            "i32_wrapping_add" | "i32_wrapping_sub" | "i32_wrapping_mul" =>
+                (0, vec![tcx.types.i32, tcx.types.i32], tcx.types.i32),
+            "i64_wrapping_add" | "i64_wrapping_sub" | "i64_wrapping_mul" =>
+                (0, vec![tcx.types.i64, tcx.types.i64], tcx.types.i64),
 
             "return_address" => (0, vec![], tcx.mk_imm_ptr(tcx.types.u8)),
 

@@ -797,9 +797,35 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "unchecked_urem") => URem(bcx, llargs[0], llargs[1], call_debug_location),
         (_, "unchecked_srem") => SRem(bcx, llargs[0], llargs[1], call_debug_location),
 
-        (_, "overflowing_add") => Add(bcx, llargs[0], llargs[1], call_debug_location),
-        (_, "overflowing_sub") => Sub(bcx, llargs[0], llargs[1], call_debug_location),
-        (_, "overflowing_mul") => Mul(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "u8_wrapping_add") => Add(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "u16_wrapping_add") => Add(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "u32_wrapping_add") => Add(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "u64_wrapping_add") => Add(bcx, llargs[0], llargs[1], call_debug_location),
+
+        (_, "i8_wrapping_add") => Add(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "i16_wrapping_add") => Add(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "i32_wrapping_add") => Add(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "i64_wrapping_add") => Add(bcx, llargs[0], llargs[1], call_debug_location),
+
+        (_, "u8_wrapping_sub") => Sub(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "u16_wrapping_sub") => Sub(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "u32_wrapping_sub") => Sub(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "u64_wrapping_sub") => Sub(bcx, llargs[0], llargs[1], call_debug_location),
+
+        (_, "i8_wrapping_sub") => Sub(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "i16_wrapping_sub") => Sub(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "i32_wrapping_sub") => Sub(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "i64_wrapping_sub") => Sub(bcx, llargs[0], llargs[1], call_debug_location),
+
+        (_, "u8_wrapping_mul") => Mul(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "u16_wrapping_mul") => Mul(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "u32_wrapping_mul") => Mul(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "u64_wrapping_mul") => Mul(bcx, llargs[0], llargs[1], call_debug_location),
+
+        (_, "i8_wrapping_mul") => Mul(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "i16_wrapping_mul") => Mul(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "i32_wrapping_mul") => Mul(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "i64_wrapping_mul") => Mul(bcx, llargs[0], llargs[1], call_debug_location),
 
         (_, "return_address") => {
             if !fcx.caller_expects_out_pointer {

@@ -579,13 +579,6 @@ extern "rust-intrinsic" {
     /// Performs checked `u64` multiplication.
     pub fn u64_mul_with_overflow(x: u64, y: u64) -> (u64, bool);
 
-    /// Returns (a + b) mod 2^N, where N is the width of N in bits.
-    pub fn overflowing_add<T>(a: T, b: T) -> T;
-    /// Returns (a - b) mod 2^N, where N is the width of N in bits.
-    pub fn overflowing_sub<T>(a: T, b: T) -> T;
-    /// Returns (a * b) mod 2^N, where N is the width of N in bits.
-    pub fn overflowing_mul<T>(a: T, b: T) -> T;
-
     /// Performs an unchecked signed division, which results in undefined behavior,
     /// in cases where y == 0, or x == isize::MIN and y == -1
     pub fn unchecked_sdiv<T>(x: T, y: T) -> T;
@@ -608,4 +601,68 @@ extern "rust-intrinsic" {
     /// the data pointer `data`, returning the exception payload if an exception
     /// is thrown (aka the thread panics).
     pub fn try(f: fn(*mut u8), data: *mut u8) -> *mut u8;
+}
+
+#[cfg(stage0)]
+extern "rust-intrinsic" {
+    /// Returns (a + b) mod 2^N, where N is the width of N in bits.
+    pub fn overflowing_add<T>(a: T, b: T) -> T;
+    /// Returns (a - b) mod 2^N, where N is the width of N in bits.
+    pub fn overflowing_sub<T>(a: T, b: T) -> T;
+    /// Returns (a * b) mod 2^N, where N is the width of N in bits.
+    pub fn overflowing_mul<T>(a: T, b: T) -> T;
+}
+
+#[cfg(not(stage0))]
+extern "rust-intrinsic" {
+    /// Returns (a + b) mod 2^N, where N is the width of N in bits.
+    pub fn u8_wrapping_add(a: u8, b: u8) -> u8;
+    /// Returns (a + b) mod 2^N, where N is the width of N in bits.
+    pub fn u16_wrapping_add(a: u16, b: u16) -> u16;
+    /// Returns (a + b) mod 2^N, where N is the width of N in bits.
+    pub fn u32_wrapping_add(a: u32, b: u32) -> u32;
+    /// Returns (a + b) mod 2^N, where N is the width of N in bits.
+    pub fn u64_wrapping_add(a: u64, b: u64) -> u64;
+    /// Returns (a + b) mod 2^N, where N is the width of N in bits.
+    pub fn i8_wrapping_add(a: i8, b: i8) -> i8;
+    /// Returns (a + b) mod 2^N, where N is the width of N in bits.
+    pub fn i16_wrapping_add(a: i16, b: i16) -> i16;
+    /// Returns (a + b) mod 2^N, where N is the width of N in bits.
+    pub fn i32_wrapping_add(a: i32, b: i32) -> i32;
+    /// Returns (a + b) mod 2^N, where N is the width of N in bits.
+    pub fn i64_wrapping_add(a: i64, b: i64) -> i64;
+
+    /// Returns (a - b) mod 2^N, where N is the width of N in bits.
+    pub fn u8_wrapping_sub(a: u8, b: u8) -> u8;
+    /// Returns (a - b) mod 2^N, where N is the width of N in bits.
+    pub fn u16_wrapping_sub(a: u16, b: u16) -> u16;
+    /// Returns (a - b) mod 2^N, where N is the width of N in bits.
+    pub fn u32_wrapping_sub(a: u32, b: u32) -> u32;
+    /// Returns (a - b) mod 2^N, where N is the width of N in bits.
+    pub fn u64_wrapping_sub(a: u64, b: u64) -> u64;
+    /// Returns (a - b) mod 2^N, where N is the width of N in bits.
+    pub fn i8_wrapping_sub(a: i8, b: i8) -> i8;
+    /// Returns (a - b) mod 2^N, where N is the width of N in bits.
+    pub fn i16_wrapping_sub(a: i16, b: i16) -> i16;
+    /// Returns (a - b) mod 2^N, where N is the width of N in bits.
+    pub fn i32_wrapping_sub(a: i32, b: i32) -> i32;
+    /// Returns (a - b) mod 2^N, where N is the width of N in bits.
+    pub fn i64_wrapping_sub(a: i64, b: i64) -> i64;
+
+    /// Returns (a * b) mod 2^N, where N is the width of N in bits.
+    pub fn u8_wrapping_mul(a: u8, b: u8) -> u8;
+    /// Returns (a * b) mod 2^N, where N is the width of N in bits.
+    pub fn u16_wrapping_mul(a: u16, b: u16) -> u16;
+    /// Returns (a * b) mod 2^N, where N is the width of N in bits.
+    pub fn u32_wrapping_mul(a: u32, b: u32) -> u32;
+    /// Returns (a * b) mod 2^N, where N is the width of N in bits.
+    pub fn u64_wrapping_mul(a: u64, b: u64) -> u64;
+    /// Returns (a * b) mod 2^N, where N is the width of N in bits.
+    pub fn i8_wrapping_mul(a: i8, b: i8) -> i8;
+    /// Returns (a * b) mod 2^N, where N is the width of N in bits.
+    pub fn i16_wrapping_mul(a: i16, b: i16) -> i16;
+    /// Returns (a * b) mod 2^N, where N is the width of N in bits.
+    pub fn i32_wrapping_mul(a: i32, b: i32) -> i32;
+    /// Returns (a * b) mod 2^N, where N is the width of N in bits.
+    pub fn i64_wrapping_mul(a: i64, b: i64) -> i64;
 }
