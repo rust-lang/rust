@@ -47,7 +47,7 @@ pub struct Duration {
 }
 
 impl Duration {
-    /// Crates a new `Duration` from the specified number of seconds and
+    /// Creates a new `Duration` from the specified number of seconds and
     /// additional nanosecond precision.
     ///
     /// If the nanoseconds is greater than 1 billion (the number of nanoseconds
