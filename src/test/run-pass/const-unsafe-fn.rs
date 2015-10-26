@@ -12,13 +12,13 @@
 
 #![feature(const_fn)]
 
-unsafe const fn dummy(v: u32) -> u32 {
+const unsafe fn dummy(v: u32) -> u32 {
     !v
 }
 
 struct Type;
 impl Type {
-    unsafe const fn new() -> Type {
+    const unsafe fn new() -> Type {
         Type
     }
 }

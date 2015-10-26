@@ -55,7 +55,7 @@ macro_rules! nonzero_new {
         /// Creates an instance of NonZero with the provided value.
         /// You must indeed ensure that the value is actually "non-zero".
         #[inline(always)]
-        pub unsafe const fn new(inner: T) -> NonZero<T> {
+        pub const unsafe fn new(inner: T) -> NonZero<T> {
             NonZero(inner)
         }
     )

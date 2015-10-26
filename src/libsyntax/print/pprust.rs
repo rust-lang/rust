@@ -3058,12 +3058,13 @@ impl<'a> State<'a> {
                                 abi: abi::Abi,
                                 vis: ast::Visibility) -> io::Result<()> {
         try!(word(&mut self.s, &visibility_qualified(vis, "")));
-        try!(self.print_unsafety(unsafety));
 
         match constness {
             ast::Constness::NotConst => {}
             ast::Constness::Const => try!(self.word_nbsp("const"))
         }
+
+        try!(self.print_unsafety(unsafety));
 
         if abi != abi::Rust {
             try!(self.word_nbsp("extern"));
