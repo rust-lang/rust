@@ -46,6 +46,7 @@ use syntax::ast::{self, NodeIdAssigner};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::diagnostics;
+use syntax::feature_gate::UnstableFeatures;
 use syntax::fold::Folder;
 use syntax::parse;
 use syntax::parse::token;
@@ -750,9 +751,18 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         time(time_passes, "match checking", ||
             middle::check_match::check_crate(tcx));
 
-        let _mir_map =
-            time(time_passes, "MIR dump", ||
-                 mir::mir_map::build_mir_for_crate(tcx));
+        match tcx.sess.opts.unstable_features {
+            UnstableFeatures::Disallow => {
+                // use this as a shorthand for beta/stable, and skip
+                // MIR construction there until known regressions are
+                // addressed
+            }
+            UnstableFeatures::Allow | UnstableFeatures::Cheat => {
+                let _mir_map =
+                    time(time_passes, "MIR dump", ||
+                            mir::mir_map::build_mir_for_crate(tcx));
+            }
+        }
 
         time(time_passes, "liveness checking", ||
             middle::liveness::check_crate(tcx));
