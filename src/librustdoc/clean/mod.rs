@@ -1809,7 +1809,7 @@ impl Clean<VariantStruct> for ::rustc_front::hir::VariantData {
     fn clean(&self, cx: &DocContext) -> VariantStruct {
         VariantStruct {
             struct_type: doctree::struct_type_from_def(self),
-            fields: self.fields().map(|x| x.clean(cx)).collect(),
+            fields: self.fields().iter().map(|x| x.clean(cx)).collect(),
             fields_stripped: false,
         }
     }
@@ -1923,7 +1923,7 @@ fn struct_def_to_variant_kind(struct_def: &hir::VariantData, cx: &DocContext) ->
     } else if struct_def.is_unit() {
         CLikeVariant
     } else {
-        TupleVariant(struct_def.fields().map(|x| x.node.ty.clean(cx)).collect())
+        TupleVariant(struct_def.fields().iter().map(|x| x.node.ty.clean(cx)).collect())
     }
 }
 

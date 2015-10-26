@@ -520,19 +520,6 @@ pub trait PrintState<'a> {
         self.end()
     }
 
-    fn commasep_iter<'it, T: 'it, F, I>(&mut self, b: Breaks, elts: I, mut op: F) -> io::Result<()>
-        where F: FnMut(&mut Self, &T) -> io::Result<()>,
-              I: Iterator<Item=&'it T>,
-    {
-        try!(self.rbox(0, b));
-        let mut first = true;
-        for elt in elts {
-            if first { first = false; } else { try!(self.word_space(",")); }
-            try!(op(self, elt));
-        }
-        self.end()
-    }
-
     fn next_lit(&mut self, pos: BytePos) -> Option<comments::Literal> {
         let mut cur_lit = self.cur_cmnt_and_lit().cur_lit;
 
@@ -1407,7 +1394,7 @@ impl<'a> State<'a> {
         if !struct_def.is_struct() {
             if struct_def.is_tuple() {
                 try!(self.popen());
-                try!(self.commasep_iter(
+                try!(self.commasep(
                     Inconsistent, struct_def.fields(),
                     |s, field| {
                         match field.node.kind {
@@ -3104,7 +3091,6 @@ mod tests {
     use ast_util;
     use codemap;
     use parse::token;
-    use ptr::P;
 
     #[test]
     fn test_fun_to_string() {
@@ -3131,7 +3117,7 @@ mod tests {
             name: ident,
             attrs: Vec::new(),
             // making this up as I go.... ?
-            data: P(ast::VariantData::Unit(ast::DUMMY_NODE_ID)),
+            data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),
             disr_expr: None,
         });
 

@@ -97,7 +97,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             stab: self.stability(item.id),
             attrs: item.attrs.clone(),
             generics: generics.clone(),
-            fields: sd.fields().cloned().collect(),
+            fields: sd.fields().iter().cloned().collect(),
             whence: item.span
         }
     }
@@ -298,7 +298,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemEnum(ref ed, ref gen) =>
                 om.enums.push(self.visit_enum_def(item, name, ed, gen)),
             hir::ItemStruct(ref sd, ref gen) =>
-                om.structs.push(self.visit_variant_data(item, name, &**sd, gen)),
+                om.structs.push(self.visit_variant_data(item, name, sd, gen)),
             hir::ItemFn(ref fd, ref unsafety, constness, ref abi, ref gen, _) =>
                 om.fns.push(self.visit_fn(item, name, &**fd, unsafety,
                                           constness, abi, gen)),

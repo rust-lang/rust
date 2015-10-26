@@ -514,7 +514,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 }
 
                 // Record the def ID and fields of this struct.
-                let named_fields = struct_def.fields().filter_map(|f| {
+                let named_fields = struct_def.fields().iter().filter_map(|f| {
                     match f.node.kind {
                         NamedField(name, _) => Some(name),
                         UnnamedField(_) => None

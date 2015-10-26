@@ -918,7 +918,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 self.process_static_or_const_item(item, typ, expr),
             ast::ItemConst(ref typ, ref expr) =>
                 self.process_static_or_const_item(item, &typ, &expr),
-            ast::ItemStruct(ref def, ref ty_params) => self.process_struct(item, &**def, ty_params),
+            ast::ItemStruct(ref def, ref ty_params) => self.process_struct(item, def, ty_params),
             ast::ItemEnum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
             ast::ItemImpl(_, _,
                           ref ty_params,
