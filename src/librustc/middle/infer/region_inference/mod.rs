@@ -983,18 +983,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                    .unwrap()
                                    );
             match *constraint {
-              ConstrainRegSubVar(..) => {
-                // This is an expansion constraint.  Ignore.
-                false
-              }
-              ConstrainVarSubVar(a_vid, b_vid) => {
-                match var_data[b_vid.index as usize].value {
-                  ErrorValue => false,
-                  Value(b_region) => {
-                    let a_data = &mut var_data[a_vid.index as usize];
-                    self.contract_node(free_regions, a_vid, a_data, b_region)
-                  }
-                }
+              ConstrainRegSubVar(..) |
+              ConstrainVarSubVar(..) => {
+                  // Expansion will ensure that these constraints hold. Ignore.
+                  false
               }
               ConstrainVarSubReg(a_vid, b_region) => {
                 let a_data = &mut var_data[a_vid.index as usize];
