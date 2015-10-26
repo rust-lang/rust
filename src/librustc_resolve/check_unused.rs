@@ -31,8 +31,8 @@ use rustc_front::hir;
 use rustc_front::hir::{ViewPathGlob, ViewPathList, ViewPathSimple};
 use rustc_front::visit::{self, Visitor};
 
-struct UnusedImportCheckVisitor<'a, 'b:'a, 'tcx:'b> {
-    resolver: &'a mut Resolver<'b, 'tcx>
+struct UnusedImportCheckVisitor<'a, 'b: 'a, 'tcx: 'b> {
+    resolver: &'a mut Resolver<'b, 'tcx>,
 }
 
 // Deref and DerefMut impls allow treating UnusedImportCheckVisitor as Resolver.
@@ -51,16 +51,16 @@ impl<'a, 'b, 'tcx:'b> DerefMut for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
-    // We have information about whether `use` (import) directives are actually used now.
-    // If an import is not used at all, we signal a lint error. If an import is only used
-    // for a single namespace, we remove the other namespace from the recorded privacy
-    // information. That means in privacy.rs, we will only check imports and namespaces
-    // which are used. In particular, this means that if an import could name either a
-    // public or private item, we will check the correct thing, dependent on how the import
-    // is used.
+    // We have information about whether `use` (import) directives are actually
+    // used now. If an import is not used at all, we signal a lint error. If an
+    // import is only used for a single namespace, we remove the other namespace
+    // from the recorded privacy information. That means in privacy.rs, we will
+    // only check imports and namespaces which are used. In particular, this
+    // means that if an import could name either a public or private item, we
+    // will check the correct thing, dependent on how the import is used.
     fn finalize_import(&mut self, id: ast::NodeId, span: Span) {
         debug!("finalizing import uses for {:?}",
-                self.session.codemap().span_to_snippet(span));
+               self.session.codemap().span_to_snippet(span));
 
         if !self.used_imports.contains(&(id, TypeNS)) &&
            !self.used_imports.contains(&(id, ValueNS)) {
@@ -99,14 +99,14 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             // we might have two LastPrivates pointing at the same thing. There is no point
             // checking both, so lets not check the value one.
             (Some(DependsOn(def_v)), Some(DependsOn(def_t))) if def_v == def_t => v_used = Unused,
-            _ => {},
+            _ => {}
         }
 
         path_res.last_private = LastImport {
             value_priv: v_priv,
             value_used: v_used,
             type_priv: t_priv,
-            type_used: t_used
+            type_used: t_used,
         };
     }
 }
@@ -132,7 +132,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                                               "unused extern crate".to_string());
                     }
                 }
-            },
+            }
             hir::ItemUse(ref p) => {
                 match p.node {
                     ViewPathSimple(_, _) => {
