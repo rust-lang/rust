@@ -178,7 +178,7 @@ invariants to be maintained (e.g. `std::ptr::Unique` requires a non-null pointer
 struct OptionalInt(u32);
 impl OptionalInt {
     /// Value must be non-zero
-    unsafe const fn new(val: u32) -> OptionalInt {
+    const unsafe fn new(val: u32) -> OptionalInt {
         OptionalInt(val)
     }
 }
@@ -241,4 +241,4 @@ cannot be taken for granted, at least `if`/`else` should eventually work.
 
 Since it was accepted, the RFC has been updated as follows:
 
-1. Allowed `unsafe const fn`
+1. Allowed `const unsafe fn`
