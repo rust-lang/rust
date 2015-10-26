@@ -652,7 +652,7 @@ impl<'a> TraitDef<'a> {
                          struct_def: &'a VariantData,
                          type_ident: Ident,
                          generics: &Generics) -> P<ast::Item> {
-        let field_tys: Vec<P<ast::Ty>> = struct_def.fields()
+        let field_tys: Vec<P<ast::Ty>> = struct_def.fields().iter()
             .map(|field| field.node.ty.clone())
             .collect();
 
@@ -700,7 +700,7 @@ impl<'a> TraitDef<'a> {
         let mut field_tys = Vec::new();
 
         for variant in &enum_def.variants {
-            field_tys.extend(variant.node.data.fields()
+            field_tys.extend(variant.node.data.fields().iter()
                 .map(|field| field.node.ty.clone()));
         }
 
@@ -1483,7 +1483,7 @@ impl<'a> TraitDef<'a> {
                              -> (P<ast::Pat>, Vec<(Span, Option<Ident>,
                                                    P<Expr>,
                                                    &'a [ast::Attribute])>) {
-        if struct_def.fields().count() == 0 {
+        if struct_def.fields().is_empty() {
             return (cx.pat_enum(self.span, struct_path, vec![]), vec![]);
         }
 
@@ -1491,7 +1491,7 @@ impl<'a> TraitDef<'a> {
         let mut ident_expr = Vec::new();
         let mut struct_type = Unknown;
 
-        for (i, struct_field) in struct_def.fields().enumerate() {
+        for (i, struct_field) in struct_def.fields().iter().enumerate() {
             let sp = self.set_expn_info(cx, struct_field.span);
             let opt_id = match struct_field.node.kind {
                 ast::NamedField(ident, _) if (struct_type == Unknown ||

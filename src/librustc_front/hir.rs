@@ -49,7 +49,6 @@ use print::pprust;
 use util;
 
 use std::fmt;
-use std::{iter, option, slice};
 use serialize::{Encodable, Encoder, Decoder};
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
@@ -1024,7 +1023,7 @@ pub struct EnumDef {
 pub struct Variant_ {
     pub name: Name,
     pub attrs: Vec<Attribute>,
-    pub data: P<VariantData>,
+    pub data: VariantData,
     /// Explicit discriminant, eg `Foo = 1`
     pub disr_expr: Option<P<Expr>>,
 }
@@ -1179,17 +1178,12 @@ pub enum VariantData {
     Unit(NodeId),
 }
 
-pub type FieldIter<'a> = iter::FlatMap<option::IntoIter<&'a Vec<StructField>>,
-                                       slice::Iter<'a, StructField>,
-                                       fn(&Vec<StructField>) -> slice::Iter<StructField>>;
-
 impl VariantData {
-    pub fn fields(&self) -> FieldIter {
-        fn vec_iter<T>(v: &Vec<T>) -> slice::Iter<T> { v.iter() }
+    pub fn fields(&self) -> &[StructField] {
         match *self {
-            VariantData::Struct(ref fields, _) | VariantData::Tuple(ref fields, _) => Some(fields),
-            _ => None,
-        }.into_iter().flat_map(vec_iter)
+            VariantData::Struct(ref fields, _) | VariantData::Tuple(ref fields, _) => fields,
+            _ => &[],
+        }
     }
     pub fn id(&self) -> NodeId {
         match *self {
@@ -1248,7 +1242,7 @@ pub enum Item_ {
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
     ItemEnum(EnumDef, Generics),
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
-    ItemStruct(P<VariantData>, Generics),
+    ItemStruct(VariantData, Generics),
     /// Represents a Trait Declaration
     ItemTrait(Unsafety, Generics, TyParamBounds, Vec<P<TraitItem>>),
 
