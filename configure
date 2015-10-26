@@ -924,9 +924,218 @@ then
     fi
 fi
 
-# If the clang isn't already enabled, check for GCC, and if it is missing, turn
-# on clang as a backup.
-if [ -z "$CFG_ENABLE_CLANG" ]
+# a little post-processing of various config values
+CFG_PREFIX=${CFG_PREFIX%/}
+CFG_MANDIR=${CFG_MANDIR%/}
+CFG_HOST="$(echo $CFG_HOST | tr ',' ' ')"
+CFG_TARGET="$(echo $CFG_TARGET | tr ',' ' ')"
+CFG_SUPPORTED_TARGET=""
+for target_file in ${CFG_SRC_DIR}mk/cfg/*.mk; do
+  CFG_SUPPORTED_TARGET="${CFG_SUPPORTED_TARGET} $(basename "$target_file" .mk)"
+done
+
+# copy build-triples to host-triples so that builds are a subset of hosts
+V_TEMP=""
+for i in $CFG_BUILD $CFG_HOST;
+do
+   echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
+done
+CFG_HOST=$V_TEMP
+
+# copy host-triples to target-triples so that hosts are a subset of targets
+V_TEMP=""
+for i in $CFG_HOST $CFG_TARGET;
+do
+   echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
+done
+CFG_TARGET=$V_TEMP
+
+# check target-specific tool-chains
+for i in $CFG_TARGET
+do
+    L_CHECK=false
+    for j in $CFG_SUPPORTED_TARGET
+    do
+        if [ $i = $j ]
+        then
+            L_CHECK=true
+        fi
+    done
+
+    if [ $L_CHECK = false ]
+    then
+        err "unsupported target triples \"$i\" found"
+    fi
+
+    case $i in
+        *android*)
+            upper_snake_target=$(echo "$i" | tr '[:lower:]' '[:upper:]' | tr '\-' '\_')
+            eval ndk=\$"CFG_${upper_snake_target}_NDK"
+            if [ -z "$ndk" ]
+            then
+                ndk=$CFG_ANDROID_CROSS_PATH
+                eval "CFG_${upper_snake_target}_NDK"=$CFG_ANDROID_CROSS_PATH
+                warn "generic/default Android NDK option is deprecated (use --$i-ndk option instead)"
+            fi
+
+            # Perform a basic sanity check of the NDK
+            for android_ndk_tool in "$ndk/bin/$i-gcc" "$ndk/bin/$i-g++" "$ndk/bin/$i-ar"
+            do
+                if [ ! -f $android_ndk_tool ]
+                then
+                    err "NDK tool $android_ndk_tool not found (bad or missing --$i-ndk option?)"
+                fi
+            done
+            ;;
+
+        arm-apple-darwin)
+            if [ $CFG_OSTYPE != apple-darwin ]
+            then
+                err "The iOS target is only supported on Mac OS X"
+            fi
+            ;;
+
+
+        *-musl)
+            if [ ! -f $CFG_MUSL_ROOT/lib/libc.a ]
+            then
+                err "musl libc $CFG_MUSL_ROOT/lib/libc.a not found"
+            fi
+            ;;
+
+        *-msvc)
+            # Currently the build system is not configured to build jemalloc
+            # with MSVC, so we omit this optional dependency.
+            step_msg "targeting MSVC, disabling jemalloc"
+            CFG_DISABLE_JEMALLOC=1
+            putvar CFG_DISABLE_JEMALLOC
+
+            # There are some MSYS python builds which will auto-translate
+            # windows-style paths to MSYS-style paths in Python itself.
+            # Unfortunately this breaks LLVM's build system as somewhere along
+            # the line LLVM prints a path into a file from Python and then CMake
+            # later tries to interpret that path. If Python prints a MSYS path
+            # and CMake tries to use it as a Windows path, you're gonna have a
+            # Bad Time.
+            #
+            # Consequently here we try to detect when that happens and print an
+            # error if it does.
+            if $CFG_PYTHON -c 'import sys; print sys.argv[1]' `pwd` | grep '^/' > /dev/null
+            then
+                err "
+
+python is silently translating windows paths to MSYS paths \
+and the build will fail if this python is used.
+
+Either an official python install must be used or an \
+alternative python package in MinGW must be used.
+
+If you are building under msys2 try installing the mingw-w64-x86_64-python2 \
+package instead of python2:
+
+$ pacman -R python2 && pacman -S mingw-w64-x86_64-python2
+"
+            fi
+
+            # Only probe for cmake if we actually need to build LLVM
+            if [ -z $CFG_LLVM_ROOT ]
+            then
+                # MSVC requires cmake because that's how we're going to build LLVM
+                probe_need CFG_CMAKE cmake
+
+                # There are three builds of cmake on windows: MSVC, MinGW and Cygwin
+                # The Cygwin build does not have generators for Visual Studio, so
+                # detect that here and error.
+                if ! "$CFG_CMAKE" --help | sed -n '/^Generators/,$p' | grep 'Visual Studio' > /dev/null
+                then
+                    err "
+
+cmake does not support Visual Studio generators.
+
+This is likely due to it being an msys/cygwin build of cmake, \
+rather than the required windows version, built using MinGW \
+or Visual Studio.
+
+If you are building under msys2 try installing the mingw-w64-x86_64-cmake \
+package instead of cmake:
+
+$ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
+"
+                fi
+            fi
+
+            # Use the REG program to figure out where VS is installed
+            # We need to figure out where cl.exe and link.exe are, so we do some
+            # munging and some probing here. We also look for the default
+            # INCLUDE and LIB variables for MSVC so we can set those in the
+            # build system as well.
+            install=$(cmd //c reg QUERY \
+                       'HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\14.0' \
+                       -v InstallDir)
+            if [ -z "$install" ]; then
+              install=$(cmd //c reg QUERY \
+                         'HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\12.0' \
+                         -v InstallDir)
+            fi
+            need_ok "couldn't find visual studio install root"
+            CFG_MSVC_ROOT=$(echo "$install" | grep InstallDir | sed 's/.*REG_SZ[ ]*//')
+            CFG_MSVC_ROOT=$(dirname "$CFG_MSVC_ROOT")
+            CFG_MSVC_ROOT=$(dirname "$CFG_MSVC_ROOT")
+            putvar CFG_MSVC_ROOT
+
+            case $i in
+                x86_64-*)
+                    bits=x86_64
+                    msvc_part=amd64
+                    ;;
+                i686-*)
+                    bits=i386
+                    msvc_part=
+                    ;;
+                *)
+                    err "can only target x86 targets for MSVC"
+                    ;;
+            esac
+            bindir="${CFG_MSVC_ROOT}/VC/bin"
+            if [ -n "$msvc_part" ]; then
+                bindir="$bindir/$msvc_part"
+            fi
+            eval CFG_MSVC_BINDIR_$bits="\"$bindir\""
+            eval CFG_MSVC_CL_$bits="\"$bindir/cl.exe\""
+            eval CFG_MSVC_LIB_$bits="\"$bindir/lib.exe\""
+            eval CFG_MSVC_LINK_$bits="\"$bindir/link.exe\""
+
+            vcvarsall="${CFG_MSVC_ROOT}/VC/vcvarsall.bat"
+            include_path=$(cmd //V:ON //c "$vcvarsall" $msvc_part \& echo !INCLUDE!)
+            need_ok "failed to learn about MSVC's INCLUDE"
+            lib_path=$(cmd //V:ON //c "$vcvarsall" $msvc_part \& echo !LIB!)
+            need_ok "failed to learn about MSVC's LIB"
+
+            eval CFG_MSVC_INCLUDE_PATH_${bits}="\"$include_path\""
+            eval CFG_MSVC_LIB_PATH_${bits}="\"$lib_path\""
+
+            putvar CFG_MSVC_BINDIR_${bits}
+            putvar CFG_MSVC_CL_${bits}
+            putvar CFG_MSVC_LIB_${bits}
+            putvar CFG_MSVC_LINK_${bits}
+            putvar CFG_MSVC_INCLUDE_PATH_${bits}
+            putvar CFG_MSVC_LIB_PATH_${bits}
+            ;;
+
+        *-rumprun-netbsd)
+            step_msg "targeting rumprun-netbsd, disabling jemalloc"
+            CFG_DISABLE_JEMALLOC=1
+            putvar CFG_DISABLE_JEMALLOC
+            ;;
+
+        *)
+            ;;
+    esac
+done
+
+# If we're not targetting MSVC, and clang isn't already enabled, check for GCC,
+# and if it is missing, turn on clang as a backup.
+if [ -z "$CFG_MSVC_ROOT" -a -z "$CFG_ENABLE_CLANG" ]
 then
   CFG_GCC_VERSION=$("$CFG_GCC" --version 2>&1)
   if [ $? -ne 0 ]
@@ -1058,7 +1267,7 @@ then
     CFG_CC="ccache $CFG_CC"
 fi
 
-if [ -z "$CC" -a -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
+if [ -z "$CFG_MSVC_ROOT" -a -z "$CC" -a -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
 then
     err "either clang or gcc is required"
 fi
@@ -1079,211 +1288,6 @@ envopt CXXFLAGS
 program_transform_name=$($CFG_CC -v 2>&1 | sed -n "s/.*--program-transform-name='\([^']*\)'.*/\1/p")
 CFG_STDCPP_NAME=$(echo "stdc++" | sed "${program_transform_name}")
 putvar CFG_STDCPP_NAME
-
-# a little post-processing of various config values
-CFG_PREFIX=${CFG_PREFIX%/}
-CFG_MANDIR=${CFG_MANDIR%/}
-CFG_HOST="$(echo $CFG_HOST | tr ',' ' ')"
-CFG_TARGET="$(echo $CFG_TARGET | tr ',' ' ')"
-CFG_SUPPORTED_TARGET=""
-for target_file in ${CFG_SRC_DIR}mk/cfg/*.mk; do
-  CFG_SUPPORTED_TARGET="${CFG_SUPPORTED_TARGET} $(basename "$target_file" .mk)"
-done
-
-# copy build-triples to host-triples so that builds are a subset of hosts
-V_TEMP=""
-for i in $CFG_BUILD $CFG_HOST;
-do
-   echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
-done
-CFG_HOST=$V_TEMP
-
-# copy host-triples to target-triples so that hosts are a subset of targets
-V_TEMP=""
-for i in $CFG_HOST $CFG_TARGET;
-do
-   echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
-done
-CFG_TARGET=$V_TEMP
-
-# check target-specific tool-chains
-for i in $CFG_TARGET
-do
-    L_CHECK=false
-    for j in $CFG_SUPPORTED_TARGET
-    do
-        if [ $i = $j ]
-        then
-            L_CHECK=true
-        fi
-    done
-
-    if [ $L_CHECK = false ]
-    then
-        err "unsupported target triples \"$i\" found"
-    fi
-
-    case $i in
-        *android*)
-            upper_snake_target=$(echo "$i" | tr '[:lower:]' '[:upper:]' | tr '\-' '\_')
-            eval ndk=\$"CFG_${upper_snake_target}_NDK"
-            if [ -z "$ndk" ]
-            then
-                ndk=$CFG_ANDROID_CROSS_PATH
-                eval "CFG_${upper_snake_target}_NDK"=$CFG_ANDROID_CROSS_PATH
-                warn "generic/default Android NDK option is deprecated (use --$i-ndk option instead)"
-            fi
-
-            # Perform a basic sanity check of the NDK
-            for android_ndk_tool in "$ndk/bin/$i-gcc" "$ndk/bin/$i-g++" "$ndk/bin/$i-ar"
-            do
-                if [ ! -f $android_ndk_tool ]
-                then
-                    err "NDK tool $android_ndk_tool not found (bad or missing --$i-ndk option?)"
-                fi
-            done
-            ;;
-
-        arm-apple-darwin)
-            if [ $CFG_OSTYPE != apple-darwin ]
-            then
-                err "The iOS target is only supported on Mac OS X"
-            fi
-            ;;
-
-
-        *-musl)
-            if [ ! -f $CFG_MUSL_ROOT/lib/libc.a ]
-            then
-                err "musl libc $CFG_MUSL_ROOT/lib/libc.a not found"
-            fi
-            ;;
-
-        *-msvc)
-            # Currently the build system is not configured to build jemalloc
-            # with MSVC, so we omit this optional dependency.
-            step_msg "targeting MSVC, disabling jemalloc"
-            CFG_DISABLE_JEMALLOC=1
-            putvar CFG_DISABLE_JEMALLOC
-
-            # There are some MSYS python builds which will auto-translate
-            # windows-style paths to MSYS-style paths in Python itself.
-            # Unfortunately this breaks LLVM's build system as somewhere along
-            # the line LLVM prints a path into a file from Python and then CMake
-            # later tries to interpret that path. If Python prints a MSYS path
-            # and CMake tries to use it as a Windows path, you're gonna have a
-            # Bad Time.
-            #
-            # Consequently here we try to detect when that happens and print an
-            # error if it does.
-            if $CFG_PYTHON -c 'import sys; print sys.argv[1]' `pwd` | grep '^/' > /dev/null
-            then
-                err "
-
-python is silently translating windows paths to MSYS paths \
-and the build will fail if this python is used.
-
-Either an official python install must be used or an \
-alternative python package in MinGW must be used.
-
-If you are building under msys2 try installing the mingw-w64-x86_64-python2 \
-package instead of python2:
-
-$ pacman -R python2 && pacman -S mingw-w64-x86_64-python2
-"
-            fi
-
-            # MSVC requires cmake because that's how we're going to build LLVM
-            probe_need CFG_CMAKE cmake
-
-            # There are three builds of cmake on windows: MSVC, MinGW and Cygwin
-            # The Cygwin build does not have generators for Visual Studio, so
-            # detect that here and error.
-            if ! "$CFG_CMAKE" --help | sed -n '/^Generators/,$p' | grep 'Visual Studio' > /dev/null
-            then
-                err "
-
-cmake does not support Visual Studio generators.
-
-This is likely due to it being an msys/cygwin build of cmake, \
-rather than the required windows version, built using MinGW \
-or Visual Studio.
-
-If you are building under msys2 try installing the mingw-w64-x86_64-cmake \
-package instead of cmake:
-
-$ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
-"
-            fi
-
-            # Use the REG program to figure out where VS is installed
-            # We need to figure out where cl.exe and link.exe are, so we do some
-            # munging and some probing here. We also look for the default
-            # INCLUDE and LIB variables for MSVC so we can set those in the
-            # build system as well.
-            install=$(cmd //c reg QUERY \
-                       'HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\14.0' \
-                       -v InstallDir)
-            if [ -z "$install" ]; then
-              install=$(cmd //c reg QUERY \
-                         'HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\12.0' \
-                         -v InstallDir)
-            fi
-            need_ok "couldn't find visual studio install root"
-            CFG_MSVC_ROOT=$(echo "$install" | grep InstallDir | sed 's/.*REG_SZ[ ]*//')
-            CFG_MSVC_ROOT=$(dirname "$CFG_MSVC_ROOT")
-            CFG_MSVC_ROOT=$(dirname "$CFG_MSVC_ROOT")
-            putvar CFG_MSVC_ROOT
-
-            case $i in
-                x86_64-*)
-                    bits=x86_64
-                    msvc_part=amd64
-                    ;;
-                i686-*)
-                    bits=i386
-                    msvc_part=
-                    ;;
-                *)
-                    err "can only target x86 targets for MSVC"
-                    ;;
-            esac
-            bindir="${CFG_MSVC_ROOT}/VC/bin"
-            if [ -n "$msvc_part" ]; then
-                bindir="$bindir/$msvc_part"
-            fi
-            eval CFG_MSVC_BINDIR_$bits="\"$bindir\""
-            eval CFG_MSVC_CL_$bits="\"$bindir/cl.exe\""
-            eval CFG_MSVC_LIB_$bits="\"$bindir/lib.exe\""
-            eval CFG_MSVC_LINK_$bits="\"$bindir/link.exe\""
-
-            vcvarsall="${CFG_MSVC_ROOT}/VC/vcvarsall.bat"
-            include_path=$(cmd //V:ON //c "$vcvarsall" $msvc_part \& echo !INCLUDE!)
-            need_ok "failed to learn about MSVC's INCLUDE"
-            lib_path=$(cmd //V:ON //c "$vcvarsall" $msvc_part \& echo !LIB!)
-            need_ok "failed to learn about MSVC's LIB"
-
-            eval CFG_MSVC_INCLUDE_PATH_${bits}="\"$include_path\""
-            eval CFG_MSVC_LIB_PATH_${bits}="\"$lib_path\""
-
-            putvar CFG_MSVC_BINDIR_${bits}
-            putvar CFG_MSVC_CL_${bits}
-            putvar CFG_MSVC_LIB_${bits}
-            putvar CFG_MSVC_LINK_${bits}
-            putvar CFG_MSVC_INCLUDE_PATH_${bits}
-            putvar CFG_MSVC_LIB_PATH_${bits}
-            ;;
-
-        *-rumprun-netbsd)
-            step_msg "targeting rumprun-netbsd, disabling jemalloc"
-            CFG_DISABLE_JEMALLOC=1
-            putvar CFG_DISABLE_JEMALLOC
-            ;;
-
-        *)
-            ;;
-    esac
-done
 
 if [ -n "$CFG_PERF" ]
 then
