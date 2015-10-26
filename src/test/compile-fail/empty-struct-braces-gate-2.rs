@@ -20,8 +20,7 @@ enum E {
 fn main() {
     let e2: Empty2 = Empty2 {}; //~ ERROR empty structs and enum variants with braces are unstable
     let e2: Empty2 = Empty2;
-    // Issue #28692
-    // let e5: E = E::Empty5 {}; // ERROR empty structs and enum variants with braces are unstable
+    let e5: E = E::Empty5 {}; //~ ERROR empty structs and enum variants with braces are unstable
     let e5: E = E::Empty5;
 
     match e2 {
@@ -33,17 +32,15 @@ fn main() {
     match e2 {
         Empty2 { .. } => {} //~ ERROR empty structs and enum variants with braces are unstable
     }
-    // Issue #28692
-    // match e5 {
-    //     E::Empty5 {} => {} // ERROR empty structs and enum variants with braces are unstable
-    // }
+    match e5 {
+        E::Empty5 {} => {} //~ ERROR empty structs and enum variants with braces are unstable
+    }
     match e5 {
         E::Empty5 => {}
     }
-    // Issue #28692
-    // match e5 {
-    //     E::Empty5 { .. } => {} // ERROR empty structs and enum variants with braces are unstable
-    // }
+    match e5 {
+        E::Empty5 { .. } => {} //~ ERROR empty structs and enum variants with braces are unstable
+    }
 
     let e22 = Empty2 { ..e2 }; //~ ERROR empty structs and enum variants with braces are unstable
 }

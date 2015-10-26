@@ -21,6 +21,7 @@ use check::{check_expr_with_lvalue_pref};
 use check::{instantiate_path, resolve_ty_and_def_ufcs, structurally_resolved_type};
 use require_same_types;
 use util::nodemap::FnvHashMap;
+use session::Session;
 
 use std::cmp;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -136,6 +137,12 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         }
         hir::PatEnum(..) | hir::PatIdent(..)
                 if pat_is_resolved_const(&tcx.def_map.borrow(), pat) => {
+            if let hir::PatEnum(ref path, ref subpats) = pat.node {
+                if !(subpats.is_some() && subpats.as_ref().unwrap().is_empty()) {
+                    bad_struct_kind_err(tcx.sess, pat.span, path);
+                    return;
+                }
+            }
             let const_did = tcx.def_map.borrow().get(&pat.id).unwrap().def_id();
             let const_scheme = tcx.lookup_item_type(const_did);
             assert!(const_scheme.generics.is_empty());
@@ -192,11 +199,12 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         }
         hir::PatIdent(_, ref path, _) => {
             let path = hir_util::ident_to_path(path.span, path.node);
-            check_pat_enum(pcx, pat, &path, Some(&[]), expected);
+            check_pat_enum(pcx, pat, &path, Some(&[]), expected, false);
         }
         hir::PatEnum(ref path, ref subpats) => {
             let subpats = subpats.as_ref().map(|v| &v[..]);
-            check_pat_enum(pcx, pat, path, subpats, expected);
+            let is_tuple_struct_pat = !(subpats.is_some() && subpats.unwrap().is_empty());
+            check_pat_enum(pcx, pat, path, subpats, expected, is_tuple_struct_pat);
         }
         hir::PatQPath(ref qself, ref path) => {
             let self_ty = fcx.to_ty(&qself.ty);
@@ -572,11 +580,19 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx hir::Pat,
     fcx.write_substs(pat.id, ty::ItemSubsts { substs: item_substs.clone() });
 }
 
+// This function exists due to the warning "diagnostic code E0164 already used"
+fn bad_struct_kind_err(sess: &Session, span: Span, path: &hir::Path) {
+    let name = pprust::path_to_string(path);
+    span_err!(sess, span, E0164,
+        "`{}` does not name a tuple variant or a tuple struct", name);
+}
+
 pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                                 pat: &hir::Pat,
                                 path: &hir::Path,
                                 subpats: Option<&'tcx [P<hir::Pat>]>,
-                                expected: Ty<'tcx>)
+                                expected: Ty<'tcx>,
+                                is_tuple_struct_pat: bool)
 {
     // Typecheck the path.
     let fcx = pcx.fcx;
@@ -618,18 +634,32 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                      path_scheme, &ctor_predicates,
                      opt_ty, def, pat.span, pat.id);
 
+    let report_bad_struct_kind = || {
+        bad_struct_kind_err(tcx.sess, pat.span, path);
+        fcx.write_error(pat.id);
+
+        if let Some(subpats) = subpats {
+            for pat in subpats {
+                check_pat(pcx, &**pat, tcx.types.err);
+            }
+        }
+    };
+
     // If we didn't have a fully resolved path to start with, we had an
     // associated const, and we should quit now, since the rest of this
     // function uses checks specific to structs and enums.
     if path_res.depth != 0 {
-        let pat_ty = fcx.node_ty(pat.id);
-        demand::suptype(fcx, pat.span, expected, pat_ty);
+        if is_tuple_struct_pat {
+            report_bad_struct_kind();
+        } else {
+            let pat_ty = fcx.node_ty(pat.id);
+            demand::suptype(fcx, pat.span, expected, pat_ty);
+        }
         return;
     }
 
     let pat_ty = fcx.node_ty(pat.id);
     demand::eqtype(fcx, pat.span, expected, pat_ty);
-
 
     let real_path_ty = fcx.node_ty(pat.id);
     let (arg_tys, kind_name): (Vec<_>, &'static str) = match real_path_ty.sty {
@@ -637,6 +667,10 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             if def == def::DefVariant(enum_def.did, def.def_id(), false) =>
         {
             let variant = enum_def.variant_of_def(def);
+            if is_tuple_struct_pat && variant.kind() != ty::VariantKind::Tuple {
+                report_bad_struct_kind();
+                return;
+            }
             (variant.fields
                     .iter()
                     .map(|f| fcx.instantiate_type_scheme(pat.span,
@@ -646,26 +680,21 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
              "variant")
         }
         ty::TyStruct(struct_def, expected_substs) => {
-            (struct_def.struct_variant()
-                       .fields
-                       .iter()
-                       .map(|f| fcx.instantiate_type_scheme(pat.span,
-                                                            expected_substs,
-                                                            &f.unsubst_ty()))
-                       .collect(),
+            let variant = struct_def.struct_variant();
+            if is_tuple_struct_pat && variant.kind() != ty::VariantKind::Tuple {
+                report_bad_struct_kind();
+                return;
+            }
+            (variant.fields
+                    .iter()
+                    .map(|f| fcx.instantiate_type_scheme(pat.span,
+                                                         expected_substs,
+                                                         &f.unsubst_ty()))
+                    .collect(),
              "struct")
         }
         _ => {
-            let name = pprust::path_to_string(path);
-            span_err!(tcx.sess, pat.span, E0164,
-                "`{}` does not name a non-struct variant or a tuple struct", name);
-            fcx.write_error(pat.id);
-
-            if let Some(subpats) = subpats {
-                for pat in subpats {
-                    check_pat(pcx, &**pat, tcx.types.err);
-                }
-            }
+            report_bad_struct_kind();
             return;
         }
     };

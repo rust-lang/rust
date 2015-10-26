@@ -30,7 +30,7 @@ fn main() {
     let e3: Empty3 = Empty3 {};
     let e3: Empty3 = Empty3;
     let e4: E = E::Empty4 {};
-    // let e5: E = E::Empty5 {}; // Issue #28692
+    let e5: E = E::Empty5 {};
     let e5: E = E::Empty5;
 
     match e1 {
@@ -46,11 +46,10 @@ fn main() {
         E::Empty4 {} => {}
         _ => {}
     }
-    // Issue #28692
-    // match e5 {
-    //     E::Empty5 {} => {}
-    //     _ => {}
-    // }
+    match e5 {
+        E::Empty5 {} => {}
+        _ => {}
+    }
 
     match e1 {
         Empty1 { .. } => {}
@@ -65,11 +64,10 @@ fn main() {
         E::Empty4 { .. } => {}
         _ => {}
     }
-    // Issue #28692
-    // match e5 {
-    //     E::Empty5 { .. } => {}
-    //     _ => {}
-    // }
+    match e5 {
+        E::Empty5 { .. } => {}
+        _ => {}
+    }
 
     match e2 {
         Empty2 => {}

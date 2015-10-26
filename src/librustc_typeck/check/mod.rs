@@ -1446,7 +1446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                               -> Option<(ty::AdtDef<'tcx>, ty::VariantDef<'tcx>)>
     {
         let (adt, variant) = match def {
-            def::DefVariant(enum_id, variant_id, true) => {
+            def::DefVariant(enum_id, variant_id, _) => {
                 let adt = self.tcx().lookup_adt_def(enum_id);
                 (adt, adt.variant_with_id(variant_id))
             }
