@@ -12,8 +12,6 @@
 
 #![feature(braced_empty_structs)]
 
-FIXME //~ ERROR expected item, found `FIXME`
-
 struct Empty1;
 
 enum E {
@@ -24,17 +22,18 @@ fn main() {
     let e1 = Empty1;
     let e2 = E::Empty2;
 
-    // Issue #28692
+    // Rejected by parser as yet
     // match e1 {
-    //     Empty1() => () // ERROR variable `Empty1` should have a snake case name
+    //     Empty1() => () // ERROR `Empty1` does not name a tuple variant or a tuple struct
     // }
-    // match e1 {
-    //     Empty1(..) => () // ERROR variable `Empty1` should have a snake case name
-    // }
+    match e1 {
+        Empty1(..) => () //~ ERROR `Empty1` does not name a tuple variant or a tuple struct
+    }
+    // Rejected by parser as yet
     // match e2 {
-    //     E::Empty2() => () // ERROR variable `Empty2` should have a snake case name
+    //     E::Empty2() => () // ERROR `E::Empty2` does not name a tuple variant or a tuple struct
     // }
-    // match e2 {
-    //     E::Empty2(..) => () // ERROR variable `Empty2` should have a snake case name
-    // }
+    match e2 {
+        E::Empty2(..) => () //~ ERROR `E::Empty2` does not name a tuple variant or a tuple struct
+    }
 }

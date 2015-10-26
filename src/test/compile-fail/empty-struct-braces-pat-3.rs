@@ -8,24 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Can't use empty braced struct as constant pattern
+// Can't use empty braced struct as enum pattern
 
 #![feature(braced_empty_structs)]
-
-struct Empty1 {}
 
 enum E {
     Empty2 {}
 }
 
 fn main() {
-    let e1 = Empty1 {};
     let e2 = E::Empty2 {};
 
-    match e1 {
-        Empty1 => () // Not an error, `Empty1` is interpreted as a new binding
-    }
+    // Rejected by parser as yet
+    // match e2 {
+    //     E::Empty2() => () // ERROR `E::Empty2` does not name a tuple variant or a tuple struct
+    // }
     match e2 {
-        E::Empty2 => () //~ ERROR `E::Empty2` does not name a tuple variant or a tuple struct
+        E::Empty2(..) => () //~ ERROR `E::Empty2` does not name a tuple variant or a tuple struct
     }
 }

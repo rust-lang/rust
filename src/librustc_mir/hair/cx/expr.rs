@@ -178,7 +178,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     }
                     ty::TyEnum(adt, substs) => {
                         match cx.tcx.def_map.borrow()[&self.id].full_def() {
-                            def::DefVariant(enum_id, variant_id, true) => {
+                            def::DefVariant(enum_id, variant_id, _) => {
                                 debug_assert!(adt.did == enum_id);
                                 let index = adt.variant_index_with_id(variant_id);
                                 let field_refs = field_refs(&adt.variants[index], fields);

@@ -26,7 +26,7 @@ fn main() {
     let Bar { .. } = x; //~ ERROR empty structs and enum variants with braces are unstable
 
     match Enum::Bar {
-        Enum::Bar { .. } //~ ERROR `Enum::Bar` does not name a struct
+        Enum::Bar { .. } //~ ERROR empty structs and enum variants with braces are unstable
            => {}
         Enum::Foo { .. } //~ ERROR `Enum::Foo` does not name a struct
            => {}
