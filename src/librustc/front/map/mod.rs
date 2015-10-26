@@ -348,6 +348,27 @@ impl<'ast> Map<'ast> {
         self.find_entry(id).and_then(|x| x.parent_node()).unwrap_or(id)
     }
 
+    /// Check if the node is an argument. An argument is a local variable whose
+    /// immediate parent is an item or a closure.
+    pub fn is_argument(&self, id: NodeId) -> bool {
+        match self.find(id) {
+            Some(NodeLocal(_)) => (),
+            _ => return false,
+        }
+        match self.find(self.get_parent_node(id)) {
+            Some(NodeItem(_)) |
+            Some(NodeTraitItem(_)) |
+            Some(NodeImplItem(_)) => true,
+            Some(NodeExpr(e)) => {
+                match e.node {
+                    ExprClosure(..) => true,
+                    _ => false,
+                }
+            }
+            _ => false,
+        }
+    }
+
     /// If there is some error when walking the parents (e.g., a node does not
     /// have a parent in the map or a node can't be found), then we return the
     /// last good node id we found. Note that reaching the crate root (id == 0),
