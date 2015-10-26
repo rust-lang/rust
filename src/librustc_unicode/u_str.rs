@@ -10,8 +10,8 @@
 
 //! Unicode-intensive string manipulations.
 //!
-//! This module provides functionality to `str` that requires the Unicode methods provided by the
-//! unicode parts of the CharExt trait.
+//! This module provides functionality to `str` that requires the Unicode
+//! methods provided by the unicode parts of the CharExt trait.
 
 use char::{DecodeUtf16, decode_utf16};
 use core::char;
@@ -40,20 +40,28 @@ pub trait UnicodeStr {
 impl UnicodeStr for str {
     #[inline]
     fn split_whitespace(&self) -> SplitWhitespace {
-        fn is_not_empty(s: &&str) -> bool { !s.is_empty() }
+        fn is_not_empty(s: &&str) -> bool {
+            !s.is_empty()
+        }
         let is_not_empty: fn(&&str) -> bool = is_not_empty; // coerce to fn pointer
 
-        fn is_whitespace(c: char) -> bool { c.is_whitespace() }
+        fn is_whitespace(c: char) -> bool {
+            c.is_whitespace()
+        }
         let is_whitespace: fn(char) -> bool = is_whitespace; // coerce to fn pointer
 
         SplitWhitespace { inner: self.split(is_whitespace).filter(is_not_empty) }
     }
 
     #[inline]
-    fn is_whitespace(&self) -> bool { self.chars().all(|c| c.is_whitespace()) }
+    fn is_whitespace(&self) -> bool {
+        self.chars().all(|c| c.is_whitespace())
+    }
 
     #[inline]
-    fn is_alphanumeric(&self) -> bool { self.chars().all(|c| c.is_alphanumeric()) }
+    fn is_alphanumeric(&self) -> bool {
+        self.chars().all(|c| c.is_alphanumeric())
+    }
 
     #[inline]
     fn trim(&self) -> &str {
@@ -111,8 +119,9 @@ pub fn is_utf16(v: &[u16]) -> bool {
             Some(_) => {}
             None => {
                 let u2 = next!(false);
-                if u < 0xD7FF || u > 0xDBFF ||
-                    u2 < 0xDC00 || u2 > 0xDFFF { return false; }
+                if u < 0xD7FF || u > 0xDBFF || u2 < 0xDC00 || u2 > 0xDFFF {
+                    return false;
+                }
             }
         }
     }
@@ -125,7 +134,7 @@ pub fn is_utf16(v: &[u16]) -> bool {
 #[allow(deprecated)]
 #[derive(Clone)]
 pub struct Utf16Items<'a> {
-    decoder: DecodeUtf16<Cloned<slice::Iter<'a, u16>>>
+    decoder: DecodeUtf16<Cloned<slice::Iter<'a, u16>>>,
 }
 
 /// The possibilities for values decoded from a `u16` stream.
@@ -137,7 +146,7 @@ pub enum Utf16Item {
     /// A valid codepoint.
     ScalarValue(char),
     /// An invalid surrogate without its pair.
-    LoneSurrogate(u16)
+    LoneSurrogate(u16),
 }
 
 #[allow(deprecated)]
@@ -148,7 +157,7 @@ impl Utf16Item {
     pub fn to_char_lossy(&self) -> char {
         match *self {
             Utf16Item::ScalarValue(c) => c,
-            Utf16Item::LoneSurrogate(_) => '\u{FFFD}'
+            Utf16Item::LoneSurrogate(_) => '\u{FFFD}',
         }
     }
 }
@@ -160,9 +169,11 @@ impl<'a> Iterator for Utf16Items<'a> {
     type Item = Utf16Item;
 
     fn next(&mut self) -> Option<Utf16Item> {
-        self.decoder.next().map(|result| match result {
-            Ok(c) => Utf16Item::ScalarValue(c),
-            Err(s) => Utf16Item::LoneSurrogate(s),
+        self.decoder.next().map(|result| {
+            match result {
+                Ok(c) => Utf16Item::ScalarValue(c),
+                Err(s) => Utf16Item::LoneSurrogate(s),
+            }
         })
     }
 
@@ -209,13 +220,18 @@ pub fn utf16_items<'a>(v: &'a [u16]) -> Utf16Items<'a> {
 #[derive(Clone)]
 pub struct Utf16Encoder<I> {
     chars: I,
-    extra: u16
+    extra: u16,
 }
 
 impl<I> Utf16Encoder<I> {
     /// Create a UTF-16 encoder from any `char` iterator.
-    pub fn new(chars: I) -> Utf16Encoder<I> where I: Iterator<Item=char> {
-        Utf16Encoder { chars: chars, extra: 0 }
+    pub fn new(chars: I) -> Utf16Encoder<I>
+        where I: Iterator<Item = char>
+    {
+        Utf16Encoder {
+            chars: chars,
+            extra: 0,
+        }
     }
 }
 
@@ -233,7 +249,9 @@ impl<I> Iterator for Utf16Encoder<I> where I: Iterator<Item=char> {
         let mut buf = [0; 2];
         self.chars.next().map(|ch| {
             let n = CharExt::encode_utf16(ch, &mut buf).unwrap_or(0);
-            if n == 2 { self.extra = buf[1]; }
+            if n == 2 {
+                self.extra = buf[1];
+            }
             buf[0]
         })
     }
@@ -251,8 +269,12 @@ impl<I> Iterator for Utf16Encoder<I> where I: Iterator<Item=char> {
 impl<'a> Iterator for SplitWhitespace<'a> {
     type Item = &'a str;
 
-    fn next(&mut self) -> Option<&'a str> { self.inner.next() }
+    fn next(&mut self) -> Option<&'a str> {
+        self.inner.next()
+    }
 }
 impl<'a> DoubleEndedIterator for SplitWhitespace<'a> {
-    fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }
+    fn next_back(&mut self) -> Option<&'a str> {
+        self.inner.next_back()
+    }
 }
