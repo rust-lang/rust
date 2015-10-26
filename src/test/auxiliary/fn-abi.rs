@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:extern-take-value.rs
-
-extern crate extern_take_value;
-
-pub fn main() {
-    let a: extern "C" fn() -> i32 = extern_take_value::get_f();
-    let b: extern "C" fn() -> i32 = extern_take_value::get_f();
-    let c: extern "C" fn() -> i32 = extern_take_value::get_g();
-
-    assert!(a == b);
-    assert!(a != c);
-}
+#[no_mangle]
+pub extern fn foo() {}

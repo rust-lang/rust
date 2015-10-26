@@ -8,15 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:extern-take-value.rs
+pub extern fn f() -> i32 { 1 }
+pub extern fn g() -> i32 { 2 }
 
-extern crate extern_take_value;
-
-pub fn main() {
-    let a: extern "C" fn() -> i32 = extern_take_value::get_f();
-    let b: extern "C" fn() -> i32 = extern_take_value::get_f();
-    let c: extern "C" fn() -> i32 = extern_take_value::get_g();
-
-    assert!(a == b);
-    assert!(a != c);
-}
+pub fn get_f() -> extern fn() -> i32 { f }
+pub fn get_g() -> extern fn() -> i32 { g }
