@@ -23,7 +23,7 @@ A tool for formatting Rust code according to style guidelines.
 cargo install --git https://github.com/nrc/rustfmt
 ```
 
-or if you're using `multirust`
+or if you're using [`multirust`](https://github.com/brson/multirust)
 
 ```
 multirust run nightly cargo install --git https://github.com/nrc/rustfmt
