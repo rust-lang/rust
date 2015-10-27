@@ -8,20 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use outer::Foo;
-
-mod outer {
-    pub use self::inner::Foo;
-
-    mod inner {
-        pub trait Foo {
-            fn bar(&self) {}
-        }
-        impl Foo for i32 {}
+mod m {
+    trait Priv {
+        fn f(&self) {}
     }
+    impl Priv for super::S {}
+    pub trait Pub: Priv {}
+}
+
+struct S;
+impl m::Pub for S {}
+
+fn g<T: m::Pub>(arg: T) {
+    arg.f(); //~ ERROR: source trait is private
 }
 
 fn main() {
-    let x: i32 = 0;
-    x.bar();
+    g(S);
 }

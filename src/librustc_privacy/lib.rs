@@ -852,8 +852,12 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             ty::ImplContainer(_) => {
                 self.check_static_method(span, method_def_id, name)
             }
-            // Trait methods are always accessible if the trait is in scope.
-            ty::TraitContainer(_) => {}
+            // Trait methods are always all public. The only controlling factor
+            // is whether the trait itself is accessible or not.
+            ty::TraitContainer(trait_def_id) => {
+                self.report_error(self.ensure_public(span, trait_def_id,
+                                                     None, "source trait"));
+            }
         }
     }
 }
