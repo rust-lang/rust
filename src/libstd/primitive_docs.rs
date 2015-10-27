@@ -403,7 +403,7 @@ mod prim_u64 { }
 
 #[doc(primitive = "isize")]
 //
-/// The pointer-sized signed integer type.
+/// The pointer-sized unsigned integer type.
 ///
 /// *[See also the `std::isize` module](isize/index.html).*
 ///
