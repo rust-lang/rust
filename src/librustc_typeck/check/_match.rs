@@ -499,7 +499,7 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     result_ty,
                 ),
                 _ => (
-                    infer::MatchExpressionArm(expr.span, arm.body.span),
+                    infer::MatchExpressionArm(expr.span, arm.body.span, match_src),
                     result_ty,
                     bty,
                 ),
