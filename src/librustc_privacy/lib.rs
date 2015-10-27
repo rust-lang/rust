@@ -198,6 +198,7 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
         true
     }
 
+    // Returns tuple (is_public, is_exported) for a type
     fn is_public_exported_ty(&self, ty: &hir::Ty) -> (bool, bool) {
         if let hir::TyPath(..) = ty.node {
             match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
@@ -216,6 +217,7 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
         }
     }
 
+    // Returns tuple (is_public, is_exported) for a trait
     fn is_public_exported_trait(&self, trait_ref: &hir::TraitRef) -> (bool, bool) {
         let did = self.tcx.trait_ref_to_def_id(trait_ref);
         if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
@@ -226,8 +228,12 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     }
 
     fn maybe_insert_id(&mut self, id: ast::NodeId) {
-        if self.prev_public { self.public_items.insert(id); }
-        if self.prev_exported { self.exported_items.insert(id); }
+        if self.prev_public {
+            self.public_items.insert(id);
+        }
+        if self.prev_exported {
+            self.exported_items.insert(id);
+        }
     }
 }
 
@@ -269,7 +275,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                     self.maybe_insert_id(variant.node.data.id());
                     for field in variant.node.data.fields() {
                         // Variant fields are always public
-                        if self.prev_public { self.public_items.insert(field.node.id); }
+                        if self.prev_public {
+                            self.public_items.insert(field.node.id);
+                        }
                         // FIXME: Make fields exported (requires fixing resulting ICEs)
                         // if self.prev_exported { self.exported_items.insert(field.node.id); }
                     }
@@ -285,8 +293,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
 
                 for impl_item in impl_items {
                     if impl_item.vis == hir::Public {
-                        if public_ty { self.public_items.insert(impl_item.id); }
-                        if exported_ty { self.exported_items.insert(impl_item.id); }
+                        if public_ty {
+                            self.public_items.insert(impl_item.id);
+                        }
+                        if exported_ty {
+                            self.exported_items.insert(impl_item.id);
+                        }
                     }
                 }
             }
@@ -309,12 +321,20 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 let (public_ty, _exported_ty) = self.is_public_exported_ty(&ty);
                 let (public_trait, exported_trait) = self.is_public_exported_trait(trait_ref);
 
-                if public_ty && public_trait { self.public_items.insert(item.id); }
-                if exported_trait { self.exported_items.insert(item.id); }
+                if public_ty && public_trait {
+                    self.public_items.insert(item.id);
+                }
+                if exported_trait {
+                    self.exported_items.insert(item.id);
+                }
 
                 for impl_item in impl_items {
-                    if public_ty && public_trait { self.public_items.insert(impl_item.id); }
-                    if exported_trait { self.exported_items.insert(impl_item.id); }
+                    if public_ty && public_trait {
+                        self.public_items.insert(impl_item.id);
+                    }
+                    if exported_trait {
+                        self.exported_items.insert(impl_item.id);
+                    }
                 }
             }
 
@@ -322,8 +342,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemDefaultImpl(_, ref trait_ref) => {
                 let (public_trait, exported_trait) = self.is_public_exported_trait(trait_ref);
 
-                if public_trait { self.public_items.insert(item.id); }
-                if exported_trait { self.exported_items.insert(item.id); }
+                if public_trait {
+                    self.public_items.insert(item.id);
+                }
+                if exported_trait {
+                    self.exported_items.insert(item.id);
+                }
             }
 
             // Default methods on traits are all public so long as the trait
@@ -342,7 +366,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 for field in def.fields() {
                     // Struct fields can be public or private, so lets check
                     if field.node.kind.visibility() == hir::Public {
-                        if self.prev_public { self.public_items.insert(field.node.id); }
+                        if self.prev_public {
+                            self.public_items.insert(field.node.id);
+                        }
                         // FIXME: Make fields exported (requires fixing resulting ICEs)
                         // if self.prev_exported { self.exported_items.insert(field.node.id); }
                     }
@@ -369,8 +395,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                     let exported = self.prev_exported && foreign_item.vis == hir::Public ||
                                    self.reexports.contains(&foreign_item.id);
 
-                    if public { self.public_items.insert(foreign_item.id); }
-                    if exported { self.exported_items.insert(foreign_item.id); }
+                    if public {
+                        self.public_items.insert(foreign_item.id);
+                    }
+                    if exported {
+                        self.exported_items.insert(foreign_item.id);
+                    }
                 }
             }
 
