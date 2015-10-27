@@ -77,6 +77,8 @@ impl<'tcx> CtxtArenas<'tcx> {
     }
 }
 
+pub const FRESHEN_CACHE_SIZE: usize = 4;
+
 pub struct CommonTypes<'tcx> {
     pub bool: Ty<'tcx>,
     pub char: Ty<'tcx>,
@@ -93,6 +95,8 @@ pub struct CommonTypes<'tcx> {
     pub f32: Ty<'tcx>,
     pub f64: Ty<'tcx>,
     pub err: Ty<'tcx>,
+
+    pub fresh_vars: [[Ty<'tcx>; FRESHEN_CACHE_SIZE]; 3],
 }
 
 pub struct Tables<'tcx> {
@@ -193,6 +197,26 @@ impl<'tcx> CommonTypes<'tcx> {
             u64: mk(TyUint(ast::TyU64)),
             f32: mk(TyFloat(ast::TyF32)),
             f64: mk(TyFloat(ast::TyF64)),
+
+            // FIXME: have a way of not hardcoding FRESHEN_CACHE_SIZE
+            fresh_vars: [
+                [
+                    mk(TyInfer(ty::FreshTy(0))),
+                    mk(TyInfer(ty::FreshTy(1))),
+                    mk(TyInfer(ty::FreshTy(2))),
+                    mk(TyInfer(ty::FreshTy(3))),
+                ], [
+                    mk(TyInfer(ty::FreshIntTy(0))),
+                    mk(TyInfer(ty::FreshIntTy(1))),
+                    mk(TyInfer(ty::FreshIntTy(2))),
+                    mk(TyInfer(ty::FreshIntTy(3))),
+                ], [
+                    mk(TyInfer(ty::FreshFloatTy(0))),
+                    mk(TyInfer(ty::FreshFloatTy(1))),
+                    mk(TyInfer(ty::FreshFloatTy(2))),
+                    mk(TyInfer(ty::FreshFloatTy(3))),
+                ],
+            ]
         }
     }
 }

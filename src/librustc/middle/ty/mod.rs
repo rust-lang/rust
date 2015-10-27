@@ -74,7 +74,7 @@ pub use self::sty::BuiltinBound::Sync as BoundSync;
 
 pub use self::contents::TypeContents;
 pub use self::context::{ctxt, tls};
-pub use self::context::{CtxtArenas, Lift, Tables};
+pub use self::context::{CtxtArenas, Lift, Tables, FRESHEN_CACHE_SIZE};
 
 pub mod adjustment;
 pub mod cast;
