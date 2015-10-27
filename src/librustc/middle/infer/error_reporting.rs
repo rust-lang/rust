@@ -491,8 +491,11 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         self.check_and_note_conflicting_crates(terr, trace.origin.span());
 
         match trace.origin {
-            infer::MatchExpressionArm(_, arm_span) =>
-                self.tcx.sess.span_note(arm_span, "match arm with an incompatible type"),
+            infer::MatchExpressionArm(_, arm_span, source) => match source {
+                hir::MatchSource::IfLetDesugar{..} =>
+                    self.tcx.sess.span_note(arm_span, "`if let` arm with an incompatible type"),
+                _ => self.tcx.sess.span_note(arm_span, "match arm with an incompatible type"),
+            },
             _ => ()
         }
     }
@@ -1659,7 +1662,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                         "trait type parameters matches those \
                                  specified on the impl"
                     }
-                    infer::MatchExpressionArm(_, _) => {
+                    infer::MatchExpressionArm(_, _, _) => {
                         "match arms have compatible types"
                     }
                     infer::IfExpression(_) => {
