@@ -1069,13 +1069,23 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 }
 
 fn _remove_dir_all(path: &Path) -> io::Result<()> {
+    let filetype = try!(symlink_metadata(path)).file_type();
+    if filetype.is_symlink() {
+        remove_file(path)
+    } else {
+        _remove_dir_all_unchecked(path)
+    }
+}
+fn _remove_dir_all_unchecked(path: &Path) -> io::Result<()> {
     for child in try!(read_dir(path)) {
-        let child = try!(child).path();
-        let stat = try!(symlink_metadata(&*child));
-        if stat.is_dir() {
-            try!(remove_dir_all(&*child));
+        let child = try!(child);
+        let child_path = child.path();
+        let mut child_type = try!(child.file_type());
+        if child_type.is_dir() {
+            try!(_remove_dir_all_unchecked(&*child_path));
         } else {
-            try!(remove_file(&*child));
+            // The FileType::is_dir() is false for symlinks too
+            try!(remove_file(&*child_path));
         }
     }
     remove_dir(path)
@@ -1718,6 +1728,23 @@ mod tests {
         check!(fs::create_dir_all(&d2));
         check!(check!(File::create(&canary)).write(b"foo"));
         check!(fs::soft_link(&d2, &dt.join("d2")));
+        check!(fs::remove_dir_all(&d1));
+
+        assert!(!d1.is_dir());
+        assert!(canary.exists());
+    }
+
+    // FIXME(#12795) depends on lstat to work on windows
+    #[cfg(not(windows))]
+    #[test]
+    fn recursive_rmdir_of_symlink() {
+        let tmpdir = tmpdir();
+        let d1 = tmpdir.join("d1");
+        let d2 = tmpdir.join("d2");
+        let canary = d2.join("do_not_delete");
+        check!(fs::create_dir_all(&d2));
+        check!(check!(File::create(&canary)).write(b"foo"));
+        check!(fs::soft_link(&d2, &d1));
         check!(fs::remove_dir_all(&d1));
 
         assert!(!d1.is_dir());
