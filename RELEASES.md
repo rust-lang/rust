@@ -1,3 +1,172 @@
+Version 1.4.0 (October 2015)
+============================
+
+* ~1200 changes, numerous bugfixes
+
+Highlights
+----------
+
+* Windows builds targeting the 64-bit MSVC ABI and linker (instead of
+  GNU) are now supported and recommended for use.
+
+Breaking Changes
+----------------
+
+* [Several changes have been made to fix type soundness and improve
+  the behavior of associated types][sound]. See [RFC 1214]. Although
+  we have mostly introduced these changes as warnings this release, to
+  become errors next release, there are still some scenarios that will
+  see immediate breakage.
+* [The `str::lines` and `BufRead::lines` iterators treat `\r\n` as
+  line breaks in addition to `\n`][crlf].
+* [Loans of `'static` lifetime extend to the end of a function][stat].
+
+Language
+--------
+
+* `use` statements that import multiple items [can now rename
+  them][i], as in `use foo::{bar as kitten, baz as puppy}`.
+* [Binops work correctly on fat pointers][binfat].
+* `pub extern crate`, which does not behave as expected, [issues a
+  warning][pec] until a better solution is found.
+
+Libraries
+---------
+
+* [Many APIs were stabilized][stab]: `<Box<str>>::into_string`,
+  [`Arc::downgrade`], [`Arc::get_mut`], [`Arc::make_mut`],
+  [`Arc::try_unwrap`], [`Box::from_raw`], [`Box::into_raw`], [`CStr::to_str`],
+  [`CStr::to_string_lossy`], [`CString::from_raw`], [`CString::into_raw`],
+  [`IntoRawFd::into_raw_fd`], [`IntoRawFd`],
+  `IntoRawHandle::into_raw_handle`, `IntoRawHandle`,
+  `IntoRawSocket::into_raw_socket`, `IntoRawSocket`, [`Rc::downgrade`],
+  [`Rc::get_mut`], [`Rc::make_mut`], [`Rc::try_unwrap`], [`Result::expect`],
+  [`String::into_boxed_str`], [`TcpStream::read_timeout`],
+  [`TcpStream::set_read_timeout`], [`TcpStream::set_write_timeout`],
+  [`TcpStream::write_timeout`], [`UdpSocket::read_timeout`],
+  [`UdpSocket::set_read_timeout`], [`UdpSocket::set_write_timeout`],
+  [`UdpSocket::write_timeout`], `Vec::append`, `Vec::split_off`,
+  [`VecDeque::append`], [`VecDeque::retain`], [`VecDeque::split_off`],
+  [`rc::Weak::upgrade`], [`rc::Weak`], [`slice::Iter::as_slice`],
+  [`slice::IterMut::into_slice`], [`str::CharIndices::as_str`],
+  [`str::Chars::as_str`], [`str::split_at_mut`], [`str::split_at`],
+  [`sync::Weak::upgrade`], [`sync::Weak`], [`thread::park_timeout`],
+  [`thread::sleep`].
+* [Some APIs were deprecated][dep]: `BTreeMap::with_b`,
+  `BTreeSet::with_b`, `Option::as_mut_slice`, `Option::as_slice`,
+  `Result::as_mut_slice`, `Result::as_slice`, `f32::from_str_radix`,
+  `f64::from_str_radix`.
+* [Reverse-searching strings is faster with the 'two-way'
+  algorithm][s].
+* [`std::io::copy` allows `?Sized` arguments][cc].
+* The `Windows`, `Chunks`, and `ChunksMut` iterators over slices all
+  [override `count`, `nth` and `last` with an O(1)
+  implementation][it].
+* [`Default` is implemented for arrays up to `[T; 32]`][d].
+* [`IntoRawFd` has been added to the Unix-specific prelude,
+  `IntoRawSocket` and `IntoRawHandle` to the Windows-specific
+  prelude][pr].
+* [`Extend<String>` and `FromIterator<String` are both implemented for
+  `String`][es].
+* [`IntoIterator` is implemented for `Option<&T>` and
+  `Result<&T>`][into].
+* [`HashMap` and `HashSet` implement `Extend<&T>` where `T:
+  Copy`][ext] as part of [RFC 839].
+* [`BinaryHeap` implements `Debug`][bh2].
+* [`Borrow` and `BorrowMut` are implemented for fixed-size
+  arrays][bm].
+* [`extern fn`s of with the "Rust" and "C" ABIs implement common
+  traits including `Eq`, `Ord`, `Debug`, `Hash`][fp].
+* [String comparison is faster][faststr].
+* `&mut T` where `T: Write` [also implements `Write`][mutw].
+* [A stable regression in `VecDec::push_back` that caused panics for
+  zero-sized types was fixed][vd].
+* [Function pointers implement traits for up to 12 parameters][fp2].
+
+Miscellaneous
+-------------
+
+* The compiler [no longer uses the 'morestack' feature to prevent
+  stack overflow][mm]. Instead it uses guard pages and stack
+  probes (though stack probes are not yet implemented on any platform
+  but Windows).
+* [The compiler matches traits faster when projections are involved][p].
+* The 'improper_ctypes' lint [no longer warns about use of `isize` and
+  `usize`][ffi].
+* [Cargo now displays useful information about what its doing during
+  `cargo update`][cu].
+
+[`Arc::downgrade`]: http://doc.rust-lang.org/nightly/alloc/arc/struct.Arc.html#method.downgrade
+[`Arc::make_mut`]: http://doc.rust-lang.org/nightly/alloc/arc/struct.Arc.html#method.make_mut
+[`Arc::get_mut`]: http://doc.rust-lang.org/nightly/alloc/arc/struct.Arc.html#method.get_mut
+[`Arc::try_unwrap`]: http://doc.rust-lang.org/nightly/alloc/arc/struct.Arc.html#method.try_unwrap
+[`Box::from_raw`]: http://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html#method.from_raw
+[`Box::into_raw`]: http://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html#method.into_raw
+[`CStr::to_str`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.to_str
+[`CStr::to_string_lossy`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.to_string_lossy
+[`CString::from_raw`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.from_raw
+[`CString::into_raw`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.into_raw
+[`IntoRawFd::into_raw_fd`]: http://doc.rust-lang.org/nightly/std/os/unix/io/trait.IntoRawFd.html#tymethod.into_raw_fd
+[`IntoRawFd`]: http://doc.rust-lang.org/nightly/std/os/unix/io/trait.IntoRawFd.html
+[`Rc::downgrade`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.downgrade
+[`Rc::get_mut`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.get_mut
+[`Rc::make_mut`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.make_mut
+[`Rc::try_unwrap`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.try_unwrap
+[`Result::expect`]: http://doc.rust-lang.org/nightly/core/result/enum.Result.html#method.expect
+[`String::into_boxed_str`]: http://doc.rust-lang.org/nightly/collections/string/struct.String.html#method.into_boxed_str
+[`TcpStream::read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.read_timeout
+[`TcpStream::set_read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_read_timeout
+[`TcpStream::write_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.write_timeout
+[`TcpStream::set_write_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_write_timeout
+[`UdpSocket::read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.read_timeout
+[`UdpSocket::set_read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_read_timeout
+[`UdpSocket::write_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.write_timeout
+[`UdpSocket::set_write_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_write_timeout
+[`VecDeque::append`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.append
+[`VecDeque::retain`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.retain
+[`VecDeque::split_off`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.split_off
+[`rc::Weak::upgrade`]: http://doc.rust-lang.org/nightly/std/rc/struct.Weak.html#method.upgrade
+[`rc::Weak`]: http://doc.rust-lang.org/nightly/std/rc/struct.Weak.html
+[`slice::Iter::as_slice`]: http://doc.rust-lang.org/nightly/std/slice/struct.Iter.html#method.as_slice
+[`slice::IterMut::into_slice`]: http://doc.rust-lang.org/nightly/std/slice/struct.IterMut.html#method.into_slice
+[`str::CharIndices::as_str`]: http://doc.rust-lang.org/nightly/std/str/struct.CharIndices.html#method.as_str
+[`str::Chars::as_str`]: http://doc.rust-lang.org/nightly/std/str/struct.Chars.html#method.as_str
+[`str::split_at_mut`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.split_at_mut
+[`str::split_at`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.split_at
+[`sync::Weak::upgrade`]: http://doc.rust-lang.org/nightly/std/sync/struct.Weak.html#method.upgrade
+[`sync::Weak`]: http://doc.rust-lang.org/nightly/std/sync/struct.Weak.html
+[`thread::park_timeout`]: http://doc.rust-lang.org/nightly/std/thread/fn.park_timeout.html
+[`thread::sleep`]: http://doc.rust-lang.org/nightly/std/thread/fn.sleep.html
+[bh2]: https://github.com/rust-lang/rust/pull/28156
+[binfat]: https://github.com/rust-lang/rust/pull/28270
+[bm]: https://github.com/rust-lang/rust/pull/28197
+[cc]: https://github.com/rust-lang/rust/pull/27531
+[crlf]: https://github.com/rust-lang/rust/pull/28034
+[cu]: https://github.com/rust-lang/cargo/pull/1931
+[d]: https://github.com/rust-lang/rust/pull/27825
+[dep]: https://github.com/rust-lang/rust/pull/28339
+[es]: https://github.com/rust-lang/rust/pull/27956
+[ext]: https://github.com/rust-lang/rust/pull/28094
+[faststr]: https://github.com/rust-lang/rust/pull/28338
+[ffi]: https://github.com/rust-lang/rust/pull/28779
+[fp]: https://github.com/rust-lang/rust/pull/28268
+[fp2]: https://github.com/rust-lang/rust/pull/28560
+[i]: https://github.com/rust-lang/rust/pull/27451
+[into]: https://github.com/rust-lang/rust/pull/28039
+[it]: https://github.com/rust-lang/rust/pull/27652
+[mm]: https://github.com/rust-lang/rust/pull/27338
+[mutw]: https://github.com/rust-lang/rust/pull/28368
+[sound]: https://github.com/rust-lang/rust/pull/27641
+[p]: https://github.com/rust-lang/rust/pull/27866
+[pec]: https://github.com/rust-lang/rust/pull/28486
+[pr]: https://github.com/rust-lang/rust/pull/27896
+[RFC 839]: https://github.com/rust-lang/rfcs/blob/master/text/0839-embrace-extend-extinguish.md
+[RFC 1214]: https://github.com/rust-lang/rfcs/blob/master/text/1214-projections-lifetimes-and-wf.md
+[s]: https://github.com/rust-lang/rust/pull/27474
+[stab]: https://github.com/rust-lang/rust/pull/28339
+[stat]: https://github.com/rust-lang/rust/pull/28321
+[vd]: https://github.com/rust-lang/rust/pull/28494
+
 Version 1.3.0 (2015-09-17)
 ==============================
 
