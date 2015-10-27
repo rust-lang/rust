@@ -325,6 +325,8 @@ struct CodegenContext<'a> {
     plugin_passes: Vec<String>,
     // LLVM optimizations for which we want to print remarks.
     remark: Passes,
+    // Worker thread number
+    worker: usize,
 }
 
 impl<'a> CodegenContext<'a> {
@@ -334,6 +336,7 @@ impl<'a> CodegenContext<'a> {
             handler: sess.diagnostic().handler(),
             plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
             remark: sess.opts.cg.remark.clone(),
+            worker: 0,
         }
     }
 }
@@ -476,9 +479,9 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         cgcx.handler.abort_if_errors();
 
         // Finally, run the actual optimization passes
-        time(config.time_passes, "llvm function passes", ||
+        time(config.time_passes, &format!("llvm function passes [{}]", cgcx.worker), ||
              llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
-        time(config.time_passes, "llvm module passes", ||
+        time(config.time_passes, &format!("llvm module passes [{}]", cgcx.worker), ||
              llvm::LLVMRunPassManager(mpm, llmod));
 
         // Deallocate managers that we're now done with
@@ -529,7 +532,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
     }
 
-    time(config.time_passes, "codegen passes", || {
+    time(config.time_passes, &format!("codegen passes [{}]", cgcx.worker), || {
         if config.emit_ir {
             let ext = format!("{}.ll", name_extra);
             let out = output_names.with_extension(&ext);
@@ -869,6 +872,7 @@ fn run_work_multithreaded(sess: &Session,
                 handler: &diag_handler,
                 plugin_passes: plugin_passes,
                 remark: remark,
+                worker: i,
             };
 
             loop {
