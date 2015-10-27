@@ -404,6 +404,29 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             }
 
             ItemMod(..) => {
+                let child = parent.children.borrow().get(&name).cloned();
+                if let Some(child) = child {
+                    // check if there's struct of the same name already defined
+                    if child.defined_in_namespace(TypeNS)
+                        && child.get_module_if_available().is_none() {
+                        self.session.span_warn(sp, &format!(
+                                                    "duplicate definition of {} `{}`. \
+                                                     Defining a module and a struct with \
+                                                     the same name will be disallowed \
+                                                     soon.",
+                                               namespace_error_to_string(TypeError),
+                                               name));
+                        {
+                            let r = child.span_for_namespace(TypeNS);
+                            if let Some(sp) = r {
+                                self.session.span_note(sp,
+                                     &format!("first definition of {} `{}` here",
+                                          namespace_error_to_string(TypeError),
+                                          name));
+                            }
+                        }
+                    }
+                }
                 let name_bindings = self.add_child(name, parent, ForbidDuplicateModules, sp);
 
                 let parent_link = self.get_parent_link(parent, name);
@@ -495,6 +518,28 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let (forbid, ctor_id) = if struct_def.is_struct() {
                     (ForbidDuplicateTypesAndModules, None)
                 } else {
+                    let child = parent.children.borrow().get(&name).cloned();
+                    if let Some(child) = child {
+                        // check if theres a DefMod
+                        if let Some(DefMod(_)) = child.def_for_namespace(TypeNS) {
+                            self.session.span_warn(sp, &format!(
+                                                        "duplicate definition of {} `{}`. \
+                                                         Defining a module and a struct with \
+                                                         the same name will be disallowed \
+                                                         soon.",
+                                                   namespace_error_to_string(TypeError),
+                                                   name));
+                            {
+                                let r = child.span_for_namespace(TypeNS);
+                                if let Some(sp) = r {
+                                    self.session.span_note(sp,
+                                         &format!("first definition of {} `{}` here",
+                                              namespace_error_to_string(TypeError),
+                                              name));
+                                }
+                            }
+                        }
+                    }
                     (ForbidDuplicateTypesAndValues, Some(struct_def.id()))
                 };
 
