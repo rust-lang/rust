@@ -17,7 +17,7 @@ fn a<F:Fn(isize, isize) -> isize>(mut f: F) {
 }
 
 fn b<F:FnMut(isize, isize) -> isize>(f: F) {
-    f(1, 2);    //~ ERROR cannot borrow immutable local variable
+    f(1, 2);    //~ ERROR cannot borrow immutable argument
 }
 
 fn c<F:FnOnce(isize, isize) -> isize>(f: F) {

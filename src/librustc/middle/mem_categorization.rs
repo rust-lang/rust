@@ -305,7 +305,7 @@ impl MutabilityCategory {
 
     fn from_local(tcx: &ty::ctxt, id: ast::NodeId) -> MutabilityCategory {
         let ret = match tcx.map.get(id) {
-            ast_map::NodeLocal(p) | ast_map::NodeArg(p) => match p.node {
+            ast_map::NodeLocal(p) => match p.node {
                 hir::PatIdent(bind_mode, _, _) => {
                     if bind_mode == hir::BindByValue(hir::MutMutable) {
                         McDeclared
@@ -1463,11 +1463,10 @@ impl<'tcx> cmt_<'tcx> {
                 "non-lvalue".to_string()
             }
             cat_local(vid) => {
-                match tcx.map.find(vid) {
-                    Some(ast_map::NodeArg(_)) => {
-                        "argument".to_string()
-                    }
-                    _ => "local variable".to_string()
+                if tcx.map.is_argument(vid) {
+                    "argument".to_string()
+                } else {
+                    "local variable".to_string()
                 }
             }
             cat_deref(_, _, pk) => {

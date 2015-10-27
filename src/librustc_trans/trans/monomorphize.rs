@@ -262,7 +262,6 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         hir_map::NodeTyParam(..) |
         hir_map::NodeExpr(..) |
         hir_map::NodeStmt(..) |
-        hir_map::NodeArg(..) |
         hir_map::NodeBlock(..) |
         hir_map::NodePat(..) |
         hir_map::NodeLocal(..) => {

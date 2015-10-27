@@ -1976,7 +1976,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         None => {
             cx.sess().span_bug(span, "debuginfo::create_captured_var_metadata: node not found");
         }
-        Some(hir_map::NodeLocal(pat)) | Some(hir_map::NodeArg(pat)) => {
+        Some(hir_map::NodeLocal(pat)) => {
             match pat.node {
                 hir::PatIdent(_, ref path1, _) => {
                     path1.node.name

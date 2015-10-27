@@ -104,12 +104,6 @@ impl<'ast> NodeCollector<'ast> {
         let entry = MapEntry::from_node(self.parent_node, node);
         self.insert_entry(id, entry);
     }
-
-    fn visit_fn_decl(&mut self, decl: &'ast FnDecl) {
-        for a in &decl.inputs {
-            self.insert(a.id, NodeArg(&*a.pat));
-        }
-    }
 }
 
 impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
@@ -295,18 +289,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     fn visit_fn(&mut self, fk: visit::FnKind<'ast>, fd: &'ast FnDecl,
                 b: &'ast Block, s: Span, id: NodeId) {
         assert_eq!(self.parent_node, id);
-        self.visit_fn_decl(fd);
         visit::walk_fn(self, fk, fd, b, s);
-    }
-
-    fn visit_ty(&mut self, ty: &'ast Ty) {
-        match ty.node {
-            TyBareFn(ref fd) => {
-                self.visit_fn_decl(&*fd.decl);
-            }
-            _ => {}
-        }
-        visit::walk_ty(self, ty);
     }
 
     fn visit_block(&mut self, block: &'ast Block) {
