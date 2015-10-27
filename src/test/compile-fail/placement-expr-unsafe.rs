@@ -17,8 +17,8 @@ fn main() {
     use std::boxed::HEAP;
 
     let p: *const i32 = &42;
-    let _ = in HEAP { *p }; //~ ERROR requires unsafe
+    let _ = HEAP <- *p; //~ ERROR requires unsafe
 
     let p: *const _ = &HEAP;
-    let _ = in *p { 42 }; //~ ERROR requires unsafe
+    let _ = *p <- 42; //~ ERROR requires unsafe
 }

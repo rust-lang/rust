@@ -242,26 +242,6 @@ pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
     }
 }
 
-/// Maps a binary operator to its precedence
-pub fn operator_prec(op: ast::BinOp_) -> usize {
-  match op {
-      // 'as' sits here with 12
-      BiMul | BiDiv | BiRem     => 11,
-      BiAdd | BiSub             => 10,
-      BiShl | BiShr             =>  9,
-      BiBitAnd                  =>  8,
-      BiBitXor                  =>  7,
-      BiBitOr                   =>  6,
-      BiLt | BiLe | BiGe | BiGt | BiEq | BiNe => 3,
-      BiAnd                     =>  2,
-      BiOr                      =>  1
-  }
-}
-
-/// Precedence of the `as` operator, which is a binary operator
-/// not appearing in the prior table.
-pub const AS_PREC: usize = 12;
-
 pub fn empty_generics() -> Generics {
     Generics {
         lifetimes: Vec::new(),

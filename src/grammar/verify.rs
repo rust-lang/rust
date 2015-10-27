@@ -35,7 +35,7 @@ use syntax::parse::lexer::TokenAndSpan;
 
 fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
     fn id() -> token::Token {
-        token::Ident(ast::Ident::with_empty_ctxt(Name(0))), token::Plain)
+        token::Ident(ast::Ident::with_empty_ctxt(Name(0)), token::Plain)
     }
 
     let mut res = HashMap::new();
@@ -208,7 +208,7 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>, surrogate_
         token::Literal(token::ByteStr(..), n)    => token::Literal(token::ByteStr(nm), n),
         token::Literal(token::ByteStrRaw(..), n) => token::Literal(token::ByteStrRaw(fix(content),
                                                                                 count(content)), n),
-        token::Ident(..)           => token::Ident(ast::Ident::with_empty_ctxt(nm)),
+        token::Ident(..)           => token::Ident(ast::Ident::with_empty_ctxt(nm),
                                                    token::ModName),
         token::Lifetime(..)        => token::Lifetime(ast::Ident::with_empty_ctxt(nm)),
         ref t => t.clone()
