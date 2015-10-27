@@ -18,6 +18,7 @@
 
 use clone::Clone;
 use cmp;
+use default::Default;
 use option::Option;
 use hash::Hash;
 use hash::Hasher;
@@ -253,6 +254,12 @@ macro_rules! impls{
 
         impl<T:?Sized> Clone for $t<T> {
             fn clone(&self) -> $t<T> {
+                $t
+            }
+        }
+
+        impl<T:?Sized> Default for $t<T> {
+            fn default() -> $t<T> {
                 $t
             }
         }
