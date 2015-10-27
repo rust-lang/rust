@@ -317,6 +317,7 @@ r/#             {
 <str>\\[^n\nrt\\\x27\x220]  { return -1; }
 <str>(.|\n)                 { yymore(); }
 
+\<-  { return LARROW; }
 -\>  { return RARROW; }
 -    { return '-'; }
 -=   { return MINUSEQ; }
