@@ -1487,9 +1487,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                                         // Type inference causes unsuffixed integer literals
                                         // to be evaluated as i32 values. We still want to
                                         // inform the user of a semicolon in this case.
-                                        (&ty::TyInt(ast::TyI32),&ty::TyInt(..)) => true,
-                                        (&ty::TyInt(ast::TyI32),&ty::TyUint(..)) => true,
-                                        (a,b) => (a == b),
+                                        (&ty::TyInt(ast::TyI32), &ty::TyInt(..)) => true,
+                                        (&ty::TyInt(ast::TyI32), &ty::TyUint(..)) => true,
+                                        (a, b) => (a == b),
                                     }
                                 },
                                 _ => false
