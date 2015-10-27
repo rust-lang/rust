@@ -2941,9 +2941,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_match_expr(&mut self) -> PResult<P<Expr>> {
+        let match_span = self.last_span;
         let lo = self.last_span.lo;
         let discriminant = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
-        try!(self.commit_expr_expecting(&*discriminant, token::OpenDelim(token::Brace)));
+        if let Err(e) = self.commit_expr_expecting(&*discriminant, token::OpenDelim(token::Brace)) {
+            if self.token == token::Token::Semi {
+                self.span_note(match_span, "did you mean to remove this `match` keyword?");
+            }
+            return Err(e)
+        }
         let mut arms: Vec<Arm> = Vec::new();
         while self.token != token::CloseDelim(token::Brace) {
             arms.push(try!(self.parse_arm_nopanic()));
