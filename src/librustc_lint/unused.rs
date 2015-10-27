@@ -220,15 +220,11 @@ impl LintPass for PathStatements {
 
 impl LateLintPass for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
-        match s.node {
-            hir::StmtSemi(ref expr, _) => {
-                match expr.node {
-                    hir::ExprPath(..) => cx.span_lint(PATH_STATEMENTS, s.span,
-                                                      "path statement with no effect"),
-                    _ => ()
-                }
+        if let hir::StmtSemi(ref expr, _) = s.node {
+            if let hir::ExprPath(..) = expr.node {
+                cx.span_lint(PATH_STATEMENTS, s.span,
+                             "path statement with no effect");
             }
-            _ => ()
         }
     }
 }
