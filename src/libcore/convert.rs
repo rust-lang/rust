@@ -54,7 +54,7 @@ pub trait AsRef<T: ?Sized> {
 
 /// A cheap, mutable reference-to-mutable reference conversion.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait AsMut<T: ?Sized> {
+pub trait AsMut<T: ?Sized>: AsRef<T> {
     /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_mut(&mut self) -> &mut T;
