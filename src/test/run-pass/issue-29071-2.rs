@@ -8,17 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that `in PLACE { EXPR }` is feature-gated.
-//
-// See also feature-gate-box-expr.rs
-//
-// (Note that the two tests are separated since the checks appear to
-// be performed at distinct phases, with an abort_if_errors call
-// separating them.)
+fn t1() -> u32 {
+    let x;
+    x = if true { [1, 2, 3] } else { [2, 3, 4] }[0];
+    x
+}
+
+fn t2() -> [u32; 1] {
+    if true { [1, 2, 3]; } else { [2, 3, 4]; }
+    [0]
+}
+
+fn t3() -> u32 {
+    let x;
+    x = if true { i1 as F } else { i2 as F }();
+    x
+}
+
+fn t4() -> () {
+    if true { i1 as F; } else { i2 as F; }
+    ()
+}
+
+type F = fn() -> u32;
+fn i1() -> u32 { 1 }
+fn i2() -> u32 { 2 }
 
 fn main() {
-    use std::boxed::HEAP;
-
-    let x = HEAP <- 'c'; //~ ERROR placement-in expression syntax is experimental
-    println!("x: {}", x);
+    assert_eq!(t1(), 1);
+    assert_eq!(t3(), 1);
 }

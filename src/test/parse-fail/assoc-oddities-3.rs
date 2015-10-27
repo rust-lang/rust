@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,8 +10,7 @@
 
 // compile-flags: -Z parse-only
 
-fn removed_moves() {
-    let mut x = 0;
-    let y <- x;
-    //~^ ERROR expected one of `:`, `;`, `=`, or `@`, found `<-`
+fn that_odd_parse() {
+    // see assoc-oddities-1 for explanation
+    x + if c { a } else { b }[n]; //~ ERROR expected one of
 }

@@ -369,6 +369,7 @@ impl EarlyLintPass for UnusedParens {
             ast::ExprRet(Some(ref value)) => (value, "`return` value", false),
             ast::ExprAssign(_, ref value) => (value, "assigned value", false),
             ast::ExprAssignOp(_, _, ref value) => (value, "assigned value", false),
+            ast::ExprInPlace(_, ref value) => (value, "emplacement value", false),
             _ => return
         };
         self.check_unused_parens_core(cx, &**value, msg, struct_lit_needs_parens);
