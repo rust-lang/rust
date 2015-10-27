@@ -395,8 +395,12 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
       ty::TyArray(ty, size) => {
           let size = size as u64;
+          // we must use `sizing_type_of` here as the type may
+          // not be fully initialized.
+          let szty = sizing_type_of(cx, ty);
+          ensure_array_fits_in_address_space(cx, szty, size, t);
+
           let llty = in_memory_type_of(cx, ty);
-          ensure_array_fits_in_address_space(cx, llty, size, t);
           Type::array(&llty, size)
       }
 
