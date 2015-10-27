@@ -1483,7 +1483,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                         None if !body.stmts.is_empty() =>
                             match body.stmts.first().unwrap().node {
                                 hir::StmtSemi(ref e, _) => {
-                                    self.ir.tcx.expr_ty(&**e) == t_ret
+                                    match (&self.ir.tcx.expr_ty(&**e).sty, &t_ret.sty) {
+                                        // Type inference causes unsuffixed integer literals
+                                        // to be evaluated as i32 values. We still want to
+                                        // inform the user of a semicolon in this case.
+                                        (&ty::TyInt(ast::TyI32),&ty::TyInt(..)) => true,
+                                        (&ty::TyInt(ast::TyI32),&ty::TyUint(..)) => true,
+                                        (a,b) => (a == b),
+                                    }
                                 },
                                 _ => false
                             },
