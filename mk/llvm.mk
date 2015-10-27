@@ -81,7 +81,7 @@ endif
 
 # LLVM linkage:
 LLVM_LINKAGE_PATH_$(1):=$$(abspath $$(RT_OUTPUT_DIR_$(1))/llvmdeps.rs)
-$$(LLVM_LINKAGE_PATH_$(1)): $(S)src/etc/mklldeps.py $$(LLVM_CONFIG_$(1))
+$$(LLVM_LINKAGE_PATH_$(1)): $(S)src/etc/mklldeps.py $(S)src/llvm $(S)src/rustllvm $$(LLVM_CONFIG_$(1))
 	$(Q)$(CFG_PYTHON) "$$<" "$$@" "$$(LLVM_COMPONENTS)" "$$(CFG_ENABLE_LLVM_STATIC_STDCPP)" \
 		$$(LLVM_CONFIG_$(1)) "$(CFG_STDCPP_NAME)"
 endef
