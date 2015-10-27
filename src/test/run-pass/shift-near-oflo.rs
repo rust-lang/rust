@@ -13,9 +13,6 @@
 // Check that we do *not* overflow on a number of edge cases.
 // (compare with test/run-fail/overflowing-{lsh,rsh}*.rs)
 
-// (Work around constant-evaluation)
-fn id<T>(x: T) -> T { x }
-
 fn main() {
     test_left_shift();
     test_right_shift();
@@ -26,34 +23,34 @@ fn test_left_shift() {
 
     macro_rules! tests {
         ($iN:ty, $uN:ty, $max_rhs:expr, $expect_i:expr, $expect_u:expr) => { {
-            let x = (1 as $iN) << id(0);
+            let x = (1 as $iN) << 0;
             assert_eq!(x, 1);
-            let x = (1 as $uN) << id(0);
+            let x = (1 as $uN) << 0;
             assert_eq!(x, 1);
-            let x = (1 as $iN) << id($max_rhs);
+            let x = (1 as $iN) << $max_rhs;
             assert_eq!(x, $expect_i);
-            let x = (1 as $uN) << id($max_rhs);
+            let x = (1 as $uN) << $max_rhs;
             assert_eq!(x, $expect_u);
             // high-order bits on LHS are silently discarded without panic.
-            let x = (3 as $iN) << id($max_rhs);
+            let x = (3 as $iN) << $max_rhs;
             assert_eq!(x, $expect_i);
-            let x = (3 as $uN) << id($max_rhs);
+            let x = (3 as $uN) << $max_rhs;
             assert_eq!(x, $expect_u);
         } }
     }
 
-    let x = 1_i8 << id(0);
+    let x = 1_i8 << 0;
     assert_eq!(x, 1);
-    let x = 1_u8 << id(0);
+    let x = 1_u8 << 0;
     assert_eq!(x, 1);
-    let x = 1_i8 << id(7);
+    let x = 1_i8 << 7;
     assert_eq!(x, std::i8::MIN);
-    let x = 1_u8 << id(7);
+    let x = 1_u8 << 7;
     assert_eq!(x, 0x80);
     // high-order bits on LHS are silently discarded without panic.
-    let x = 3_i8 << id(7);
+    let x = 3_i8 << 7;
     assert_eq!(x, std::i8::MIN);
-    let x = 3_u8 << id(7);
+    let x = 3_u8 << 7;
     assert_eq!(x, 0x80);
 
     // above is (approximately) expanded from:
@@ -71,23 +68,23 @@ fn test_right_shift() {
         ($iN:ty, $uN:ty, $max_rhs:expr,
          $signbit_i:expr, $highbit_i:expr, $highbit_u:expr) =>
         { {
-            let x = (1 as $iN) >> id(0);
+            let x = (1 as $iN) >> 0;
             assert_eq!(x, 1);
-            let x = (1 as $uN) >> id(0);
+            let x = (1 as $uN) >> 0;
             assert_eq!(x, 1);
-            let x = ($highbit_i) >> id($max_rhs-1);
+            let x = ($highbit_i) >> $max_rhs-1;
             assert_eq!(x, 1);
-            let x = ($highbit_u) >> id($max_rhs);
+            let x = ($highbit_u) >> $max_rhs;
             assert_eq!(x, 1);
             // sign-bit is carried by arithmetic right shift
-            let x = ($signbit_i) >> id($max_rhs);
+            let x = ($signbit_i) >> $max_rhs;
             assert_eq!(x, -1);
             // low-order bits on LHS are silently discarded without panic.
-            let x = ($highbit_i + 1) >> id($max_rhs-1);
+            let x = ($highbit_i + 1) >> $max_rhs-1;
             assert_eq!(x, 1);
-            let x = ($highbit_u + 1) >> id($max_rhs);
+            let x = ($highbit_u + 1) >> $max_rhs;
             assert_eq!(x, 1);
-            let x = ($signbit_i + 1) >> id($max_rhs);
+            let x = ($signbit_i + 1) >> $max_rhs;
             assert_eq!(x, -1);
         } }
     }
