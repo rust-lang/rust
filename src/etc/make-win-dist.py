@@ -50,6 +50,8 @@ def make_win_dist(rust_root, gcc_root, target_triple):
     rustc_dlls = ["libstdc++-6.dll"]
     if target_triple.startswith("i686-"):
         rustc_dlls.append("libgcc_s_dw2-1.dll")
+    else:
+        rustc_dlls.append("libgcc_s_seh-1.dll")
 
     target_libs = [ # MinGW libs
                     "crtbegin.o",
