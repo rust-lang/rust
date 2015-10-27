@@ -1673,7 +1673,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
         hir::TyFixedLengthVec(ref ty, ref e) => {
             let hint = UncheckedExprHint(tcx.types.usize);
-            match const_eval::eval_const_expr_partial(tcx, &e, hint) {
+            match const_eval::eval_const_expr_partial(tcx, &e, hint, None) {
                 Ok(r) => {
                     match r {
                         ConstVal::Int(i) =>

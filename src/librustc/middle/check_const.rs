@@ -473,7 +473,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                     ty::TyUint(_) | ty::TyInt(_) if div_or_rem => {
                         if !self.qualif.intersects(ConstQualif::NOT_CONST) {
                             match const_eval::eval_const_expr_partial(
-                                    self.tcx, ex, ExprTypeChecked) {
+                                    self.tcx, ex, ExprTypeChecked, None) {
                                 Ok(_) => {}
                                 Err(msg) => {
                                     self.tcx.sess.add_lint(::lint::builtin::CONST_ERR, ex.id,

@@ -166,7 +166,8 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
                                 let opt_value =
                                     const_eval::eval_const_expr_partial(
                                         cx.tcx, const_expr,
-                                        const_eval::EvalHint::ExprTypeChecked);
+                                        const_eval::EvalHint::ExprTypeChecked,
+                                        None);
                                 let literal = if let Ok(value) = opt_value {
                                     Literal::Value { value: value }
                                 } else {

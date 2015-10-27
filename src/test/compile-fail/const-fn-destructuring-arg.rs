@@ -8,17 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that error in constant evaluation of enum discriminant
-// provides the context for what caused the evaluation.
+// test that certain things are disallowed in const fn signatures
 
-struct S(i32);
+#![feature(const_fn)]
 
-const CONSTANT: S = S(0);
-//~^ ERROR: constant evaluation error: non-constant path in constant expression [E0080]
-
-enum E {
-    V = CONSTANT,
-    //~^ NOTE: for enum discriminant here
-}
+// no destructuring
+const fn i((a, b): (u32, u32)) -> u32 { a + b } //~ ERROR: E0022
 
 fn main() {}

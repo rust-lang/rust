@@ -19,13 +19,14 @@ use front::map::blocks::FnLikeNode;
 use metadata::csearch;
 use metadata::inline::InlinedItem;
 use middle::{astencode, def, infer, subst, traits};
-use middle::def_id::{DefId};
+use middle::def_id::DefId;
 use middle::pat_util::def_to_path;
 use middle::ty::{self, Ty};
 use middle::astconv_util::ast_ty_to_prim_ty;
 use util::num::ToPrimitive;
+use util::nodemap::NodeMap;
 
-use syntax::ast;
+use syntax::{ast, abi};
 use rustc_front::hir::Expr;
 use rustc_front::hir;
 use rustc_front::visit::FnKind;
@@ -253,6 +254,7 @@ pub enum ConstVal {
     Bool(bool),
     Struct(ast::NodeId),
     Tuple(ast::NodeId),
+    Function(DefId),
 }
 
 /// Note that equality for `ConstVal` means that the it is the same
@@ -260,7 +262,6 @@ pub enum ConstVal {
 /// == NaN` (at least if it's the same NaN; distinct encodings for NaN
 /// are considering unequal).
 impl PartialEq for ConstVal {
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn eq(&self, other: &ConstVal) -> bool {
         match (self, other) {
             (&Float(a), &Float(b)) => unsafe{transmute::<_,u64>(a) == transmute::<_,u64>(b)},
@@ -271,6 +272,7 @@ impl PartialEq for ConstVal {
             (&Bool(a), &Bool(b)) => a == b,
             (&Struct(a), &Struct(b)) => a == b,
             (&Tuple(a), &Tuple(b)) => a == b,
+            (&Function(a), &Function(b)) => a == b,
             _ => false,
         }
     }
@@ -288,6 +290,7 @@ impl ConstVal {
             Bool(_) => "boolean",
             Struct(_) => "struct",
             Tuple(_) => "tuple",
+            Function(_) => "function definition",
         }
     }
 }
@@ -350,12 +353,13 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
 }
 
 pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> ConstVal {
-    match eval_const_expr_partial(tcx, e, ExprTypeChecked) {
+    match eval_const_expr_partial(tcx, e, ExprTypeChecked, None) {
         Ok(r) => r,
         Err(s) => tcx.sess.span_fatal(s.span, &s.description())
     }
 }
 
+pub type FnArgMap<'a> = Option<&'a NodeMap<ConstVal>>;
 
 #[derive(Clone)]
 pub struct ConstEvalErr {
@@ -739,7 +743,8 @@ pub_fn_checked_op!{ const_uint_checked_shr_via_int(a: u64, b: i64,.. UintTy) {
 /// computing the length of an array. (See also the FIXME above EvalHint.)
 pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      e: &Expr,
-                                     ty_hint: EvalHint<'tcx>) -> EvalResult {
+                                     ty_hint: EvalHint<'tcx>,
+                                     fn_args: FnArgMap) -> EvalResult {
     fn fromb(b: bool) -> ConstVal { Int(b as i64) }
 
     // Try to compute the type of the expression based on the EvalHint.
@@ -776,7 +781,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     let result = match e.node {
       hir::ExprUnary(hir::UnNeg, ref inner) => {
-        match try!(eval_const_expr_partial(tcx, &**inner, ty_hint)) {
+        match try!(eval_const_expr_partial(tcx, &**inner, ty_hint, fn_args)) {
           Float(f) => Float(-f),
           Int(n) =>  try!(const_int_checked_neg(n, e, expr_int_type)),
           Uint(i) => {
@@ -786,7 +791,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
       }
       hir::ExprUnary(hir::UnNot, ref inner) => {
-        match try!(eval_const_expr_partial(tcx, &**inner, ty_hint)) {
+        match try!(eval_const_expr_partial(tcx, &**inner, ty_hint, fn_args)) {
           Int(i) => Int(!i),
           Uint(i) => const_uint_not(i, expr_uint_type),
           Bool(b) => Bool(!b),
@@ -804,8 +809,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             }
             _ => ty_hint
         };
-        match (try!(eval_const_expr_partial(tcx, &**a, ty_hint)),
-               try!(eval_const_expr_partial(tcx, &**b, b_ty))) {
+        match (try!(eval_const_expr_partial(tcx, &**a, ty_hint, fn_args)),
+               try!(eval_const_expr_partial(tcx, &**b, b_ty, fn_args))) {
           (Float(a), Float(b)) => {
             match op.node {
               hir::BiAdd => Float(a + b),
@@ -912,7 +917,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             }
         };
 
-        let val = try!(eval_const_expr_partial(tcx, &**base, base_hint));
+        let val = try!(eval_const_expr_partial(tcx, &**base, base_hint, fn_args));
         match cast_const(tcx, val, ety) {
             Ok(val) => val,
             Err(kind) => return Err(ConstEvalErr { span: e.span, kind: kind }),
@@ -990,6 +995,16 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               Some(def::DefStruct(_)) => {
                   return Ok(ConstVal::Struct(e.id))
               }
+              Some(def::DefLocal(_, id)) => {
+                  debug!("DefLocal({:?}): {:?}", id, fn_args);
+                  if let Some(val) = fn_args.and_then(|args| args.get(&id)) {
+                      return Ok(val.clone());
+                  } else {
+                      (None, None)
+                  }
+              },
+              Some(def::DefFn(id, _)) => return Ok(Function(id)),
+              // FIXME: implement const methods?
               _ => (None, None)
           };
           let const_expr = match const_expr {
@@ -1007,14 +1022,76 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           } else {
               ty_hint
           };
-          try!(eval_const_expr_partial(tcx, const_expr, item_hint))
+          try!(eval_const_expr_partial(tcx, const_expr, item_hint, fn_args))
       }
+      hir::ExprCall(ref callee, ref args) => {
+          let sub_ty_hint = if let ExprTypeChecked = ty_hint {
+              ExprTypeChecked
+          } else {
+              UncheckedExprNoHint // we cannot reason about UncheckedExprHint here
+          };
+          let (
+              decl,
+              unsafety,
+              abi,
+              block,
+              constness,
+          ) = match try!(eval_const_expr_partial(tcx, callee, sub_ty_hint, fn_args)) {
+              Function(did) => if did.is_local() {
+                  match tcx.map.find(did.index.as_u32()) {
+                      Some(ast_map::NodeItem(it)) => match it.node {
+                          hir::ItemFn(
+                              ref decl,
+                              unsafety,
+                              constness,
+                              abi,
+                              _, // ducktype generics? types are funky in const_eval
+                              ref block,
+                          ) => (decl, unsafety, abi, block, constness),
+                          _ => signal!(e, NonConstPath),
+                      },
+                      _ => signal!(e, NonConstPath),
+                  }
+              } else {
+                  signal!(e, NonConstPath)
+              },
+              _ => signal!(e, NonConstPath),
+          };
+          if let ExprTypeChecked = ty_hint {
+              // no need to check for constness... either check_const
+              // already forbids this or we const eval over whatever
+              // we want
+          } else {
+              // we don't know much about the function, so we force it to be a const fn
+              // so compilation will fail later in case the const fn's body is not const
+              assert_eq!(constness, hir::Constness::Const)
+          }
+          assert_eq!(decl.inputs.len(), args.len());
+          assert_eq!(unsafety, hir::Unsafety::Normal);
+          assert_eq!(abi, abi::Abi::Rust);
+
+          let mut call_args = NodeMap();
+          for (arg, arg_expr) in decl.inputs.iter().zip(args.iter()) {
+              let arg_val = try!(eval_const_expr_partial(
+                  tcx,
+                  arg_expr,
+                  sub_ty_hint,
+                  fn_args
+              ));
+              debug!("const call arg: {:?}", arg);
+              let old = call_args.insert(arg.pat.id, arg_val);
+              assert!(old.is_none());
+          }
+          let result = block.expr.as_ref().unwrap();
+          debug!("const call({:?})", call_args);
+          try!(eval_const_expr_partial(tcx, &**result, ty_hint, Some(&call_args)))
+      },
       hir::ExprLit(ref lit) => {
           lit_to_const(&**lit, ety)
       }
       hir::ExprBlock(ref block) => {
         match block.expr {
-            Some(ref expr) => try!(eval_const_expr_partial(tcx, &**expr, ty_hint)),
+            Some(ref expr) => try!(eval_const_expr_partial(tcx, &**expr, ty_hint, fn_args)),
             None => Int(0)
         }
       }
@@ -1026,11 +1103,11 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
         } else {
             UncheckedExprNoHint
         };
-        if let Ok(c) = eval_const_expr_partial(tcx, base, base_hint) {
+        if let Ok(c) = eval_const_expr_partial(tcx, base, base_hint, fn_args) {
             if let Tuple(tup_id) = c {
                 if let hir::ExprTup(ref fields) = tcx.map.expect_expr(tup_id).node {
                     if index.node < fields.len() {
-                        return eval_const_expr_partial(tcx, &fields[index.node], base_hint)
+                        return eval_const_expr_partial(tcx, &fields[index.node], base_hint, fn_args)
                     } else {
                         signal!(e, TupleIndexOutOfBounds);
                     }
@@ -1051,14 +1128,14 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
         } else {
             UncheckedExprNoHint
         };
-        if let Ok(c) = eval_const_expr_partial(tcx, base, base_hint) {
+        if let Ok(c) = eval_const_expr_partial(tcx, base, base_hint, fn_args) {
             if let Struct(struct_id) = c {
                 if let hir::ExprStruct(_, ref fields, _) = tcx.map.expect_expr(struct_id).node {
                     // Check that the given field exists and evaluate it
                     // if the idents are compared run-pass/issue-19244 fails
                     if let Some(f) = fields.iter().find(|f| f.name.node
                                                          == field_name.node) {
-                        return eval_const_expr_partial(tcx, &*f.expr, base_hint)
+                        return eval_const_expr_partial(tcx, &*f.expr, base_hint, fn_args)
                     } else {
                         signal!(e, MissingStructField);
                     }
@@ -1237,14 +1314,14 @@ pub fn compare_const_vals(a: &ConstVal, b: &ConstVal) -> Option<Ordering> {
 pub fn compare_lit_exprs<'tcx>(tcx: &ty::ctxt<'tcx>,
                                a: &Expr,
                                b: &Expr) -> Option<Ordering> {
-    let a = match eval_const_expr_partial(tcx, a, ExprTypeChecked) {
+    let a = match eval_const_expr_partial(tcx, a, ExprTypeChecked, None) {
         Ok(a) => a,
         Err(e) => {
             tcx.sess.span_err(a.span, &e.description());
             return None;
         }
     };
-    let b = match eval_const_expr_partial(tcx, b, ExprTypeChecked) {
+    let b = match eval_const_expr_partial(tcx, b, ExprTypeChecked, None) {
         Ok(b) => b,
         Err(e) => {
             tcx.sess.span_err(b.span, &e.description());
