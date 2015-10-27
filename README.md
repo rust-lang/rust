@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 68 lints included in this crate:
+There are 69 lints included in this crate:
 
 name                                                                                                   | default | meaning
 -------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -74,6 +74,7 @@ name                                                                            
 [unstable_as_slice](https://github.com/Manishearth/rust-clippy/wiki#unstable_as_slice)                 | warn    | as_slice is not stable and can be replaced by & v[..]see https://github.com/rust-lang/rust/issues/27729
 [unused_collect](https://github.com/Manishearth/rust-clippy/wiki#unused_collect)                       | warn    | `collect()`ing an iterator without using the result; this is usually better written as a for loop
 [while_let_loop](https://github.com/Manishearth/rust-clippy/wiki#while_let_loop)                       | warn    | `loop { if let { ... } else break }` can be written as a `while let` loop
+[while_let_on_iterator](https://github.com/Manishearth/rust-clippy/wiki#while_let_on_iterator)         | warn    | using a while-let loop instead of a for loop on an iterator
 [wrong_pub_self_convention](https://github.com/Manishearth/rust-clippy/wiki#wrong_pub_self_convention) | allow   | defining a public method named with an established prefix (like "into_") that takes `self` with the wrong convention
 [wrong_self_convention](https://github.com/Manishearth/rust-clippy/wiki#wrong_self_convention)         | warn    | defining a method named with an established prefix (like "into_") that takes `self` with the wrong convention
 [zero_divided_by_zero](https://github.com/Manishearth/rust-clippy/wiki#zero_divided_by_zero)           | warn    | usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN

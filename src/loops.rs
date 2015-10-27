@@ -11,7 +11,8 @@ use std::collections::{HashSet,HashMap};
 use syntax::ast::Lit_::*;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type,
-            in_external_macro, expr_block, span_help_and_lint, is_integer_literal};
+            in_external_macro, expr_block, span_help_and_lint, is_integer_literal,
+            get_enclosing_block};
 use utils::{VEC_PATH, LL_PATH};
 
 declare_lint!{ pub NEEDLESS_RANGE_LOOP, Warn,
@@ -38,6 +39,8 @@ declare_lint!{ pub EXPLICIT_COUNTER_LOOP, Warn,
 
 declare_lint!{ pub EMPTY_LOOP, Warn, "empty `loop {}` detected" }
 
+declare_lint!{ pub WHILE_LET_ON_ITERATOR, Warn, "using a while-let loop instead of a for loop on an iterator" }
+
 #[derive(Copy, Clone)]
 pub struct LoopsPass;
 
@@ -45,7 +48,8 @@ impl LintPass for LoopsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_RANGE_LOOP, EXPLICIT_ITER_LOOP, ITER_NEXT_LOOP,
                     WHILE_LET_LOOP, UNUSED_COLLECT, REVERSE_RANGE_LOOP,
-                    EXPLICIT_COUNTER_LOOP, EMPTY_LOOP)
+                    EXPLICIT_COUNTER_LOOP, EMPTY_LOOP,
+                    WHILE_LET_ON_ITERATOR)
     }
 }
 
@@ -228,6 +232,28 @@ impl LateLintPass for LoopsPass {
                 }
             }
         }
+        if let ExprMatch(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.node {
+            let pat = &arms[0].pats[0].node;
+            if let (&PatEnum(ref path, Some(ref pat_args)),
+                    &ExprMethodCall(method_name, _, ref method_args)) =
+                        (pat, &match_expr.node) {
+                let iter_expr = &method_args[0];
+                if let Some(lhs_constructor) = path.segments.last() {
+                    if method_name.node.as_str() == "next" &&
+                            match_trait_method(cx, match_expr, &["core", "iter", "Iterator"]) &&
+                            lhs_constructor.identifier.name.as_str() == "Some" &&
+                            !is_iterator_used_after_while_let(cx, iter_expr) {
+                        let iterator = snippet(cx, method_args[0].span, "_");
+                        let loop_var = snippet(cx, pat_args[0].span, "_");
+                        span_help_and_lint(cx, WHILE_LET_ON_ITERATOR, expr.span,
+                                           "this loop could be written as a `for` loop",
+                                           &format!("try\nfor {} in {} {{...}}",
+                                                    loop_var,
+                                                    iterator));
+                    }
+                }
+            }
+        }
     }
 
     fn check_stmt(&mut self, cx: &LateContext, stmt: &Stmt) {
@@ -299,6 +325,46 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
         walk_expr(self, expr);
     }
 }
+
+fn is_iterator_used_after_while_let(cx: &LateContext, iter_expr: &Expr) -> bool {
+    let def_id = match var_def_id(cx, iter_expr) {
+        Some(id) => id,
+        None => return false
+    };
+    let mut visitor = VarUsedAfterLoopVisitor {
+        cx: cx,
+        def_id: def_id,
+        iter_expr_id: iter_expr.id,
+        past_while_let: false,
+        var_used_after_while_let: false
+    };
+    if let Some(enclosing_block) = get_enclosing_block(cx, def_id) {
+        walk_block(&mut visitor, enclosing_block);
+    }
+    visitor.var_used_after_while_let
+}
+
+struct VarUsedAfterLoopVisitor<'v, 't: 'v> {
+    cx: &'v LateContext<'v, 't>,
+    def_id: NodeId,
+    iter_expr_id: NodeId,
+    past_while_let: bool,
+    var_used_after_while_let: bool
+}
+
+impl <'v, 't> Visitor<'v> for VarUsedAfterLoopVisitor<'v, 't> {
+    fn visit_expr(&mut self, expr: &'v Expr) {
+        if self.past_while_let {
+            if Some(self.def_id) == var_def_id(self.cx, expr) {
+                self.var_used_after_while_let = true;
+            }
+        } else if self.iter_expr_id == expr.id {
+            self.past_while_let = true;
+        }
+        walk_expr(self, expr);
+    }
+}
+
 
 /// Return true if the type of expr is one that provides IntoIterator impls
 /// for &T and &mut T, such as Vec.
