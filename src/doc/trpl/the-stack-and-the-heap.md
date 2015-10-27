@@ -97,7 +97,7 @@ Because `0` was taken by the first frame, `1` and `2` are used for `foo()`’s
 stack frame. It grows upward, the more functions we call.
 
 
-There’s some important things we have to take note of here. The numbers 0, 1,
+There are some important things we have to take note of here. The numbers 0, 1,
 and 2 are all solely for illustrative purposes, and bear no relationship to the
 actual numbers the computer will actually use. In particular, the series of
 addresses are in reality going to be separated by some number of bytes that
