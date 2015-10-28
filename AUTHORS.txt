@@ -150,7 +150,7 @@ Birunthan Mohanathas <birunthan@mohanathas.com>
 Björn Steinbrink <bsteinbr@gmail.com>
 Blake Loring <Blake.Loring@ig.com>
 blake2-ppc <ulrik.sverdrup@gmail.com>
-Boris Egorov <egorov@linux.com>
+Boris Egorov <jightuse@gmail.com>
 bors <bors@rust-lang.org>
 Bouke van der Bijl <boukevanderbijl@gmail.com>
 Brad King <brad.king@kitware.com>
@@ -610,7 +610,7 @@ Joonas Javanainen <joonas.javanainen@gmail.com>
 Jordan Humphreys <mrsweaters@users.noreply.github.com>
 Jordan Woehr <jordanwoehr@gmail.com>
 Jordi Boggiano <j.boggiano@seld.be>
-Jorge Aparicio <japaricious@gmail.com>
+Jorge Aparicio <japaric@linux.com>
 Jorge Israel Peña <jorge.israel.p@gmail.com>
 Joris Rehm <joris.rehm@wakusei.fr>
 Jormundir <Chaseph@gmail.com>
