@@ -1734,10 +1734,10 @@ mod tests {
         check!(fs::create_dir_all(&Path2::new("/")));
     }
 
-    // FIXME(#12795) depends on lstat to work on windows
     #[cfg(not(windows))]
     #[test]
     fn recursive_rmdir() {
+        use os::unix::fs::symlink;
         let tmpdir = tmpdir();
         let d1 = tmpdir.join("d1");
         let dt = d1.join("t");
@@ -1747,28 +1747,81 @@ mod tests {
         check!(fs::create_dir_all(&dtt));
         check!(fs::create_dir_all(&d2));
         check!(check!(File::create(&canary)).write(b"foo"));
-        check!(fs::soft_link(&d2, &dt.join("d2")));
+        check!(symlink(&d2, &dt.join("d2")));
         check!(fs::remove_dir_all(&d1));
 
         assert!(!d1.is_dir());
         assert!(canary.exists());
     }
 
-    // FIXME(#12795) depends on lstat to work on windows
     #[cfg(not(windows))]
     #[test]
     fn recursive_rmdir_of_symlink() {
+        use os::unix::fs::symlink;
         let tmpdir = tmpdir();
         let d1 = tmpdir.join("d1");
         let d2 = tmpdir.join("d2");
         let canary = d2.join("do_not_delete");
         check!(fs::create_dir_all(&d2));
         check!(check!(File::create(&canary)).write(b"foo"));
-        check!(fs::soft_link(&d2, &d1));
+        check!(symlink(&d2, &d1));
         check!(fs::remove_dir_all(&d1));
 
         assert!(!d1.is_dir());
         assert!(canary.exists());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn recursive_rmdir() {
+        use os::windows::fs::{symlink_file, symlink_dir};
+        let tmpdir = tmpdir();
+        let d1 = tmpdir.join("d1");
+        let dt = d1.join("t");
+        let dtt = dt.join("t");
+        let d2 = tmpdir.join("d2");
+        let canary = d2.join("do_not_delete");
+        check!(fs::create_dir_all(&dtt));
+        check!(fs::create_dir_all(&d2));
+        check!(check!(File::create(&canary)).write(b"foo"));
+        check!(symlink_dir(&d2, &dt.join("d2")));
+        check!(symlink_file(&canary, &d1.join("canary")));
+        check!(fs::remove_dir_all(&d1));
+
+        assert!(!d1.is_dir());
+        assert!(canary.exists());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn recursive_rmdir_of_symlink() {
+        use os::windows::fs::symlink_dir;
+        let tmpdir = tmpdir();
+        let d1 = tmpdir.join("d1");
+        let d2 = tmpdir.join("d2");
+        let canary = d2.join("do_not_delete");
+        check!(fs::create_dir_all(&d2));
+        check!(check!(File::create(&canary)).write(b"foo"));
+        check!(symlink_dir(&d2, &d1));
+        check!(fs::remove_dir_all(&d1));
+
+        assert!(!d1.is_dir());
+        assert!(canary.exists());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn recursive_rmdir_of_file_symlink() {
+        use os::windows::fs::symlink_file;
+        let tmpdir = tmpdir();
+        let f1 = tmpdir.join("f1");
+        let f2 = tmpdir.join("f2");
+        check!(check!(File::create(&f1)).write(b"foo"));
+        check!(symlink_file(&f1, &f2));
+        match fs::remove_dir_all(&f2) {
+            Ok(..) => panic!("wanted a failure"),
+            Err(..) => {}
+        }
     }
 
     #[test]
