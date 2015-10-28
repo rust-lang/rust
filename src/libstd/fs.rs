@@ -1071,21 +1071,41 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 fn _remove_dir_all(path: &Path) -> io::Result<()> {
     let filetype = try!(symlink_metadata(path)).file_type();
     if filetype.is_symlink() {
-        remove_file(path)
+        if cfg!(windows) {
+            // On Windows symlinks to files and directories removed differently
+            // we should remove only directories here and have error on file
+            remove_dir(path)
+        } else {
+            // On unix symlinks are always files
+            remove_file(path)
+        }
     } else {
-        _remove_dir_all_unchecked(path)
+        remove_dir_all_recursive(path)
     }
 }
-fn _remove_dir_all_unchecked(path: &Path) -> io::Result<()> {
+fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
     for child in try!(read_dir(path)) {
         let child = try!(child);
         let child_path = child.path();
-        let mut child_type = try!(child.file_type());
+        let child_type = try!(child.file_type());
         if child_type.is_dir() {
-            try!(_remove_dir_all_unchecked(&*child_path));
+            try!(remove_dir_all_recursive(&*child_path));
         } else {
-            // The FileType::is_dir() is false for symlinks too
-            try!(remove_file(&*child_path));
+            if cfg!(windows) {
+                if child_type.is_symlink() {
+                    let target_type = try!(metadata(&*child_path)).file_type();
+                    if target_type.is_dir() {
+                        try!(remove_dir(&*child_path));
+                    } else {
+                        try!(remove_file(&*child_path));
+                    }
+                } else {
+                    try!(remove_file(&*child_path));
+                }
+            } else {
+                // The FileType::is_dir() is false for symlinks too
+                try!(remove_file(&*child_path));
+            }
         }
     }
     remove_dir(path)
