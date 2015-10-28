@@ -495,6 +495,7 @@ struct Inner {
     name: Option<String>,
     lock: Mutex<bool>,          // true when there is a buffered unpark
     cvar: Condvar,
+    id: u32,
 }
 
 #[derive(Clone)]
@@ -512,6 +513,7 @@ impl Thread {
                 name: name,
                 lock: Mutex::new(false),
                 cvar: Condvar::new(),
+                id: 0,
             })
         }
     }
@@ -533,12 +535,20 @@ impl Thread {
     pub fn name(&self) -> Option<&str> {
         self.inner.name.as_ref().map(|s| &**s)
     }
+
+    /// Gets the thread's unique ID.
+    ///
+    /// This ID is unique across running threads, and a thread that has stopped
+    /// might see its ID reused.
+    pub fn id(&self) -> u32 {
+        self.inner.id
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Thread {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.name(), f)
+        fmt::Debug::fmt(&self.name(), f)  // print ID?
     }
 }
 
