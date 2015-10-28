@@ -156,6 +156,9 @@ pub struct LocalCrateContext<'tcx> {
     /// contexts around the same size.
     n_llvm_insns: Cell<usize>,
 
+    /// Depth of the current type-of computation - used to bail out
+    type_of_depth: Cell<usize>,
+
     trait_cache: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>,
                                     traits::Vtable<'tcx, ()>>>,
 }
@@ -470,6 +473,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 unwind_resume_hooked: Cell::new(false),
                 intrinsics: RefCell::new(FnvHashMap()),
                 n_llvm_insns: Cell::new(0),
+                type_of_depth: Cell::new(0),
                 trait_cache: RefCell::new(FnvHashMap()),
             };
 
@@ -774,6 +778,17 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
                     obj))
     }
 
+    pub fn enter_type_of(&self, ty: Ty<'tcx>) -> TypeOfDepthLock<'b, 'tcx> {
+        let current_depth = self.local.type_of_depth.get();
+        debug!("enter_type_of({:?}) at depth {:?}", ty, current_depth);
+        if current_depth > self.sess().recursion_limit.get() {
+            self.sess().fatal(
+                &format!("overflow representing the type `{}`", ty))
+        }
+        self.local.type_of_depth.set(current_depth + 1);
+        TypeOfDepthLock(self.local)
+    }
+
     pub fn check_overflow(&self) -> bool {
         self.shared.check_overflow
     }
@@ -787,6 +802,14 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn use_dll_storage_attrs(&self) -> bool {
         self.shared.use_dll_storage_attrs()
+    }
+}
+
+pub struct TypeOfDepthLock<'a, 'tcx: 'a>(&'a LocalCrateContext<'tcx>);
+
+impl<'a, 'tcx> Drop for TypeOfDepthLock<'a, 'tcx> {
+    fn drop(&mut self) {
+        self.0.type_of_depth.set(self.0.type_of_depth.get() - 1);
     }
 }
 
