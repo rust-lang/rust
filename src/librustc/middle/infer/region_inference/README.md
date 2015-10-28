@@ -2,13 +2,12 @@ Region inference
 
 # Terminology
 
-Note that we use the terms region and lifetime interchangeably,
-though the term `lifetime` is preferred.
+Note that we use the terms region and lifetime interchangeably.
 
 # Introduction
 
 Region inference uses a somewhat more involved algorithm than type
-inference.  It is not the most efficient thing ever written though it
+inference. It is not the most efficient thing ever written though it
 seems to work well enough in practice (famous last words).  The reason
 that we use a different algorithm is because, unlike with types, it is
 impractical to hand-annotate with regions (in some cases, there aren't
@@ -25,22 +24,42 @@ once.
 
 The constraints are always of one of three possible forms:
 
-- ConstrainVarSubVar(R_i, R_j) states that region variable R_i
-  must be a subregion of R_j
-- ConstrainRegSubVar(R, R_i) states that the concrete region R
-  (which must not be a variable) must be a subregion of the variable R_i
-- ConstrainVarSubReg(R_i, R) is the inverse
+- `ConstrainVarSubVar(Ri, Rj)` states that region variable Ri must be
+  a subregion of Rj
+- `ConstrainRegSubVar(R, Ri)` states that the concrete region R (which
+  must not be a variable) must be a subregion of the variable Ri
+- `ConstrainVarSubReg(Ri, R)` states the variable Ri shoudl be less
+  than the concrete region R. This is kind of deprecated and ought to
+  be replaced with a verify (they essentially play the same role).
+
+In addition to constraints, we also gather up a set of "verifys"
+(what, you don't think Verify is a noun? Get used to it my
+friend!). These represent relations that must hold but which don't
+influence inference proper. These take the form of:
+
+- `VerifyRegSubReg(Ri, Rj)` indicates that Ri <= Rj must hold,
+  where Rj is not an inference variable (and Ri may or may not contain
+  one). This doesn't influence inference because we will already have
+  inferred Ri to be as small as possible, so then we just test whether
+  that result was less than Rj or not.
+- `VerifyGenericBound(R, Vb)` is a more complex expression which tests
+  that the region R must satisfy the bound `Vb`. The bounds themselves
+  may have structure like "must outlive one of the following regions"
+  or "must outlive ALL of the following regions. These bounds arise
+  from constraints like `T: 'a` -- if we know that `T: 'b` and `T: 'c`
+  (say, from where clauses), then we can conclude that `T: 'a` if `'b:
+  'a` *or* `'c: 'a`.
 
 # Building up the constraints
 
 Variables and constraints are created using the following methods:
 
 - `new_region_var()` creates a new, unconstrained region variable;
-- `make_subregion(R_i, R_j)` states that R_i is a subregion of R_j
-- `lub_regions(R_i, R_j) -> R_k` returns a region R_k which is
-  the smallest region that is greater than both R_i and R_j
-- `glb_regions(R_i, R_j) -> R_k` returns a region R_k which is
-  the greatest region that is smaller than both R_i and R_j
+- `make_subregion(Ri, Rj)` states that Ri is a subregion of Rj
+- `lub_regions(Ri, Rj) -> Rk` returns a region Rk which is
+  the smallest region that is greater than both Ri and Rj
+- `glb_regions(Ri, Rj) -> Rk` returns a region Rk which is
+  the greatest region that is smaller than both Ri and Rj
 
 The actual region resolution algorithm is not entirely
 obvious, though it is also not overly complex.
@@ -53,14 +72,6 @@ later you can call `rollback_to()` which undoes the work.
 Alternatively, you can call `commit()` which ends all snapshots.
 Snapshots can be recursive---so you can start a snapshot when another
 is in progress, but only the root snapshot can "commit".
-
-# Resolving constraints
-
-The constraint resolution algorithm is not super complex but also not
-entirely obvious.  Here I describe the problem somewhat abstractly,
-then describe how the current code works.  There may be other, smarter
-ways of doing this with which I am unfamiliar and can't be bothered to
-research at the moment. - NDM
 
 ## The problem
 
@@ -83,31 +94,20 @@ Before resolution begins, we build up the constraints in a hashmap
 that maps `Constraint` keys to spans.  During resolution, we construct
 the actual `Graph` structure that we describe here.
 
-## Our current algorithm
+## Computing the values for region variables
 
-We divide region variables into two groups: Expanding and Contracting.
-Expanding region variables are those that have a concrete region
-predecessor (direct or indirect).  Contracting region variables are
-all others.
+The algorithm is a simple dataflow algorithm. Each region variable
+begins as empty. We iterate over the constraints, and for each constraint
+we grow the relevant region variable to be as big as it must be to meet all the
+constraints. This means the region variables can grow to be `'static` if
+necessary.
 
-We first resolve the values of Expanding region variables and then
-process Contracting ones.  We currently use an iterative, fixed-point
-procedure (but read on, I believe this could be replaced with a linear
-walk).  Basically we iterate over the edges in the graph, ensuring
-that, if the source of the edge has a value, then this value is a
-subregion of the target value.  If the target does not yet have a
-value, it takes the value from the source.  If the target already had
-a value, then the resulting value is Least Upper Bound of the old and
-new values. When we are done, each Expanding node will have the
-smallest region that it could possibly have and still satisfy the
-constraints.
+## Verification
 
-We next process the Contracting nodes.  Here we again iterate over the
-edges, only this time we move values from target to source (if the
-source is a Contracting node).  For each contracting node, we compute
-its value as the GLB of all its successors.  Basically contracting
-nodes ensure that there is overlap between their successors; we will
-ultimately infer the largest overlap possible.
+After all constraints are fully propoagated, we do a "verification"
+step where we walk over the verify bounds and check that they are
+satisfied. These bounds represent the "maximal" values that a region
+variable can take on, basically.
 
 # The Region Hierarchy
 
