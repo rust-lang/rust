@@ -2,6 +2,7 @@
 #![plugin(clippy)]
 
 #![deny(needless_update)]
+#![allow(no_effect)]
 
 struct S {
     pub a: i32,

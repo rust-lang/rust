@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 69 lints included in this crate:
+There are 70 lints included in this crate:
 
 name                                                                                                   | default | meaning
 -------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -46,6 +46,7 @@ name                                                                            
 [needless_range_loop](https://github.com/Manishearth/rust-clippy/wiki#needless_range_loop)             | warn    | for-looping over a range of indices where an iterator over items would do
 [needless_return](https://github.com/Manishearth/rust-clippy/wiki#needless_return)                     | warn    | using a return statement like `return expr;` where an expression would suffice
 [needless_update](https://github.com/Manishearth/rust-clippy/wiki#needless_update)                     | warn    | using `{ ..base }` when there are no missing fields
+[no_effect](https://github.com/Manishearth/rust-clippy/wiki#no_effect)                                 | warn    | statements with no effect
 [non_ascii_literal](https://github.com/Manishearth/rust-clippy/wiki#non_ascii_literal)                 | allow   | using any literal non-ASCII chars in a string literal; suggests using the \\u escape instead
 [nonsensical_open_options](https://github.com/Manishearth/rust-clippy/wiki#nonsensical_open_options)   | warn    | nonsensical combination of options for opening a file
 [option_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#option_unwrap_used)               | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`
