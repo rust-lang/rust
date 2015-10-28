@@ -18,6 +18,11 @@
 # changes. If there are incorrect additions fix it by editing
 # .mailmap and re-running the script.
 
+if [ "${1-}" = "" ]; then
+    echo "Usage: add-authors.sh 1.0.0..rust-lang/master"
+    exit 1
+fi
+
 set -u -e
 
 range="$1"
@@ -27,6 +32,6 @@ tmp_file="./AUTHORS.txt.tmp"
 old_authors="$(cat "$authors_file" | tail -n +2 | sed "/^$/d" | sort)"
 new_authors="$(git log "$range" --format="%aN <%aE>" | sort | uniq)"
 
-echo "Rust was written by these fine people:\n" > "$tmp_file"
-echo "$old_authors\n$new_authors" | sort | uniq >> "$tmp_file"
+printf "%s\n\n" "Rust was written by these fine people:" > "$tmp_file"
+printf "%s\n%s" "$old_authors" "$new_authors" | sort | uniq >> "$tmp_file"
 mv -f "$tmp_file" "$authors_file"
