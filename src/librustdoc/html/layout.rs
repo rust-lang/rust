@@ -36,7 +36,8 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     -> io::Result<()>
 {
     write!(dst,
-r##"<!DOCTYPE html>
+r##"<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -176,7 +177,8 @@ r##"<!DOCTYPE html>
 pub fn redirect(dst: &mut io::Write, url: &str) -> io::Result<()> {
     // <script> triggers a redirect before refresh, so this is fine.
     write!(dst,
-r##"<!DOCTYPE html>
+r##"<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html lang="en">
 <head>
     <meta http-equiv="refresh" content="0;URL={url}">
