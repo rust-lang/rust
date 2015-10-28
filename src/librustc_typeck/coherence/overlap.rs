@@ -147,10 +147,10 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
                   "conflicting implementations for trait `{}`",
                   self.tcx.item_path_str(trait_def_id));
 
-        self.report_overlap_note(impl1, impl2);
+        self.report_overlap_note(impl2);
     }
 
-    fn report_overlap_note(&self, impl1: DefId, impl2: DefId) {
+    fn report_overlap_note(&self, impl2: DefId) {
 
         if impl2.is_local() {
             span_note!(self.tcx.sess, self.span_of_impl(impl2),
@@ -158,9 +158,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         } else {
             let crate_store = &self.tcx.sess.cstore;
             let cdata = crate_store.get_crate_data(impl2.krate);
-            span_note!(self.tcx.sess, self.span_of_impl(impl1),
-                       "conflicting implementation in crate `{}`",
-                       cdata.name);
+            self.tcx.sess.note(&format!("conflicting implementation in crate `{}`", cdata.name));
         }
     }
 
