@@ -184,6 +184,8 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     }
 
     debug!("sizing_type_of {:?}", t);
+    let _recursion_lock = cx.enter_type_of(t);
+
     let llsizingty = match t.sty {
         _ if !type_is_sized(cx.tcx(), t) => {
             Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)

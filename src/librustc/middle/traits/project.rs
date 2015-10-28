@@ -343,7 +343,8 @@ pub fn normalize_projection_type<'a,'b,'tcx>(
                 projection_ty: projection_ty,
                 ty: ty_var
             });
-            let obligation = Obligation::with_depth(cause, depth+1, projection.to_predicate());
+            let obligation = Obligation::with_depth(
+                cause, depth + 1, projection.to_predicate());
             Normalized {
                 value: ty_var,
                 obligations: vec!(obligation)
@@ -382,7 +383,7 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
                    obligations);
 
             if projected_ty.has_projection_types() {
-                let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, depth);
+                let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, depth+1);
                 let normalized_ty = normalizer.fold(&projected_ty);
 
                 debug!("normalize_projection_type: normalized_ty={:?} depth={}",
