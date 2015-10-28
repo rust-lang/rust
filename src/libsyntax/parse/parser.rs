@@ -1203,10 +1203,7 @@ impl<'a> Parser<'a> {
                 let mut generics = try!(p.parse_generics());
 
                 let (explicit_self, d) = try!(p.parse_fn_decl_with_self(|p|{
-                    // This is somewhat dubious; We don't want to allow
-                    // argument names to be left off if there is a
-                    // definition...
-                    p.parse_arg_general(false)
+                    p.parse_arg_general(true)
                 }));
 
                 generics.where_clause = try!(p.parse_where_clause());
