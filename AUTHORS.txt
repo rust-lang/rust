@@ -143,8 +143,6 @@ Birunthan Mohanathas <birunthan@mohanathas.com>
 Björn Steinbrink <bsteinbr@gmail.com>
 blake2-ppc <ulrik.sverdrup@gmail.com>
 Blake Loring <Blake.Loring@ig.com>
-bluss <bluss>
-bluss <bluss@users.noreply.github.com>
 Boris Egorov <egorov@linux.com>
 bors <bors@rust-lang.org>
 Bouke van der Bijl <boukevanderbijl@gmail.com>
@@ -1078,7 +1076,6 @@ Thad Guidry <thadguidry@gmail.com>
 Theo Belaire <theo.belaire@gmail.com>
 theptrk <patrick.tran06@gmail.com>
 Thiago Carvalho <thiago.carvalho@westwing.de>
-thiagopnts <thiagopnts@gmail.com>
 Thiago Pontes <email@thiago.me>
 Thomas Backman <serenity@exscape.org>
 Thomas Bracht Laumann Jespersen <laumann.thomas@gmail.com>
