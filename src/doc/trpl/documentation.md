@@ -373,6 +373,36 @@ we can add the `#[macro_use]` attribute. Second, we’ll need to add our own
 `main()` as well. Finally, a judicious use of `#` to comment out those two
 things, so they don’t show up in the output.
 
+Another case where the use of `#` is handy is when you want to ignore
+error handling. Lets say you want the following,
+
+```rust
+/// use std::io;
+/// let mut input = String::new(); 
+/// try!(io::stdin().read_line(&mut input));
+```
+
+The problem is that `try!` returns a `Result<T, E>` and test functions
+don't return anything so this will give a mismatched types error.
+
+```rust
+/// A doc test using try!
+///
+/// ```
+/// use std::io;
+/// # fn f() -> io::Result<()> {
+/// let mut input = String::new(); 
+/// try!(io::stdin().read_line(&mut input));
+/// # Ok(())
+/// # }
+/// # f();
+/// ```
+```
+
+You can get around this by wrapping the code in a function. This catches
+and swallows the `Result<T, E>` when running tests on the docs. This
+pattern appears regularly in the standard library.
+
 ### Running documentation tests
 
 To run the tests, either:
