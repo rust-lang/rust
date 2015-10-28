@@ -135,7 +135,7 @@ pub enum TypeOrigin {
     RelateOutputImplTypes(Span),
 
     // Computing common supertype in the arms of a match expression
-    MatchExpressionArm(Span, Span),
+    MatchExpressionArm(Span, Span, hir::MatchSource),
 
     // Computing common supertype in an if expression
     IfExpression(Span),
@@ -159,7 +159,10 @@ impl TypeOrigin {
             &TypeOrigin::ExprAssignable(_) => "mismatched types",
             &TypeOrigin::RelateTraitRefs(_) => "mismatched traits",
             &TypeOrigin::MethodCompatCheck(_) => "method not compatible with trait",
-            &TypeOrigin::MatchExpressionArm(_, _) => "match arms have incompatible types",
+            &TypeOrigin::MatchExpressionArm(_, _, source) => match source {
+                hir::MatchSource::IfLetDesugar{..} => "`if let` arms have incompatible types",
+                _ => "match arms have incompatible types",
+            },
             &TypeOrigin::IfExpression(_) => "if and else have incompatible types",
             &TypeOrigin::IfExpressionWithNoElse(_) => "if may be missing an else clause",
             &TypeOrigin::RangeExpression(_) => "start and end of range have incompatible types",
@@ -1534,7 +1537,7 @@ impl TypeOrigin {
             RelateTraitRefs(span) => span,
             RelateSelfType(span) => span,
             RelateOutputImplTypes(span) => span,
-            MatchExpressionArm(match_span, _) => match_span,
+            MatchExpressionArm(match_span, _, _) => match_span,
             IfExpression(span) => span,
             IfExpressionWithNoElse(span) => span,
             RangeExpression(span) => span,
