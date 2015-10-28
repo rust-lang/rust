@@ -47,6 +47,8 @@ pub enum Constraint {
     ConstrainRegSubVar(Region, RegionVid),
 
     // Region variable is subregion of concrete region
+    //
+    // FIXME(#29436) -- should be remove in favor of a Verify
     ConstrainVarSubReg(RegionVid, Region),
 }
 
@@ -972,6 +974,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
     }
 
+    // FIXME(#29436) -- this fn would just go away if we removed ConstrainVarSubReg
     fn contraction(&self,
                    free_regions: &FreeRegionMap,
                    var_data: &mut [VarData]) {
@@ -983,50 +986,31 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                    .unwrap()
                                    );
             match *constraint {
-              ConstrainRegSubVar(..) |
-              ConstrainVarSubVar(..) => {
-                  // Expansion will ensure that these constraints hold. Ignore.
-                  false
-              }
-              ConstrainVarSubReg(a_vid, b_region) => {
-                let a_data = &mut var_data[a_vid.index as usize];
-                self.contract_node(free_regions, a_vid, a_data, b_region)
-              }
+                ConstrainRegSubVar(..) |
+                ConstrainVarSubVar(..) => {
+                    // Expansion will ensure that these constraints hold. Ignore.
+                }
+                ConstrainVarSubReg(a_vid, b_region) => {
+                    let a_data = &mut var_data[a_vid.index as usize];
+                    debug!("contraction: {:?} == {:?}, {:?}", a_vid, a_data.value, b_region);
+
+                    let a_region = match a_data.value {
+                        ErrorValue => return false,
+                        Value(a_region) => a_region,
+                    };
+
+                    if !free_regions.is_subregion_of(self.tcx, a_region, b_region) {
+                        debug!("Setting {:?} to ErrorValue: {:?} not subregion of {:?}",
+                            a_vid,
+                            a_region,
+                            b_region);
+                        a_data.value = ErrorValue;
+                    }
+                }
             }
-        })
-    }
 
-    fn contract_node(&self,
-                     free_regions: &FreeRegionMap,
-                     a_vid: RegionVid,
-                     a_data: &mut VarData,
-                     b_region: Region)
-                     -> bool {
-        debug!("contract_node({:?} == {:?}, {:?})",
-               a_vid, a_data.value, b_region);
-
-        return match a_data.value {
-            ErrorValue => false, // no change
-            Value(a_region) => check_node(self, free_regions, a_vid, a_data, a_region, b_region),
-        };
-
-        fn check_node(this: &RegionVarBindings,
-                      free_regions: &FreeRegionMap,
-                      a_vid: RegionVid,
-                      a_data: &mut VarData,
-                      a_region: Region,
-                      b_region: Region)
-                      -> bool
-        {
-            if !free_regions.is_subregion_of(this.tcx, a_region, b_region) {
-                debug!("Setting {:?} to ErrorValue: {:?} not subregion of {:?}",
-                       a_vid,
-                       a_region,
-                       b_region);
-                a_data.value = ErrorValue;
-            }
             false
-        }
+        })
     }
 
     fn collect_concrete_region_errors(&self,
