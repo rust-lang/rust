@@ -183,21 +183,6 @@ struct EmbargoVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
-    // There are checks inside of privacy which depend on knowing whether a
-    // trait should be exported or not. The two current consumers of this are:
-    //
-    //  1. Should default methods of a trait be exported?
-    //  2. Should the methods of an implementation of a trait be exported?
-    //
-    // The answer to both of these questions partly rely on whether the trait
-    // itself is exported or not. If the trait is somehow exported, then the
-    // answers to both questions must be yes. Right now this question involves
-    // more analysis than is currently done in rustc, so we conservatively
-    // answer "yes" so that all traits need to be exported.
-    fn exported_trait(&self, _id: ast::NodeId) -> bool {
-        true
-    }
-
     // Returns tuple (is_public, is_exported) for a type
     fn is_public_exported_ty(&self, ty: &hir::Ty) -> (bool, bool) {
         if let hir::TyPath(..) = ty.node {
@@ -247,15 +232,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             // added to public/exported sets based on inherited publicity.
             hir::ItemImpl(..) | hir::ItemDefaultImpl(..) | hir::ItemForeignMod(..) => {}
 
-            // Traits are a little special in that even if they themselves are
-            // not public they may still be exported.
-            hir::ItemTrait(..) => {
-                self.prev_public = self.prev_public && item.vis == hir::Public;
-                self.prev_exported = self.exported_trait(item.id);
-
-                self.maybe_insert_id(item.id);
-            }
-
             // Private by default, hence we only retain the "public chain" if
             // `pub` is explicitly listed.
             _ => {
@@ -284,9 +260,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
 
-            // * Inherent impls for public types only have public methods exported
-            // * Inherent impls for private types do not need to export their methods
-            // * Inherent impls themselves are not exported, they are nothing more than
+            // Public items in inherent impls for public/exported types are public/exported
+            // Inherent impls themselves are not public/exported, they are nothing more than
             // containers for other items
             hir::ItemImpl(_, _, _, None, ref ty, ref impl_items) => {
                 let (public_ty, exported_ty) = self.is_public_exported_ty(&ty);
@@ -303,42 +278,29 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
 
-            // Implementations are a little tricky to determine what's exported
-            // out of them. Here's a few cases which are currently defined:
-            //
-            // * Public trait impls for public types must have all methods
-            //   exported.
-            //
-            // * Private trait impls for public types can be ignored
-            //
-            // * Public trait impls for private types have their methods
-            //   exported. I'm not entirely certain that this is the correct
-            //   thing to do, but I have seen use cases of where this will cause
-            //   undefined symbols at linkage time if this case is not handled.
-            //
-            // * Private trait impls for private types can be completely ignored
+            // It's not known until monomorphization if a trait impl item should be reachable
+            // from external crates or not. So, we conservatively mark all of them exported and
+            // the reachability pass (middle::reachable) marks all exported items as reachable.
+            // For example of private trait impl for private type that shoud be reachable see
+            // src/test/auxiliary/issue-11225-3.rs
             hir::ItemImpl(_, _, _, Some(ref trait_ref), ref ty, ref impl_items) => {
                 let (public_ty, _exported_ty) = self.is_public_exported_ty(&ty);
-                let (public_trait, exported_trait) = self.is_public_exported_trait(trait_ref);
+                let (public_trait, _exported_trait) = self.is_public_exported_trait(trait_ref);
 
                 if public_ty && public_trait {
                     self.public_items.insert(item.id);
                 }
-                if exported_trait {
-                    self.exported_items.insert(item.id);
-                }
+                self.exported_items.insert(item.id);
 
                 for impl_item in impl_items {
                     if public_ty && public_trait {
                         self.public_items.insert(impl_item.id);
                     }
-                    if exported_trait {
-                        self.exported_items.insert(impl_item.id);
-                    }
+                    self.exported_items.insert(impl_item.id);
                 }
             }
 
-            // Default trait impls are exported for public traits
+            // Default trait impls are public/exported for public/exported traits
             hir::ItemDefaultImpl(_, ref trait_ref) => {
                 let (public_trait, exported_trait) = self.is_public_exported_trait(trait_ref);
 
@@ -350,8 +312,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
 
-            // Default methods on traits are all public so long as the trait
-            // is public
+            // Default methods on traits are all public/exported so long as the trait
+            // is public/exported
             hir::ItemTrait(_, _, _, ref trait_items) => {
                 for trait_item in trait_items {
                     self.maybe_insert_id(trait_item.id);
