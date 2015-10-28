@@ -435,11 +435,11 @@ impl<'a> Context<'a> {
             let slot = candidates.entry(hash_str)
                                  .or_insert_with(|| (HashMap::new(), HashMap::new()));
             let (ref mut rlibs, ref mut dylibs) = *slot;
-            fs::canonicalize(path).map(|p| {
+            fs::canonicalize(path).map(|_| {
                 if rlib {
-                    rlibs.insert(p, kind);
+                    rlibs.insert(path.to_path_buf(), kind);
                 } else {
-                    dylibs.insert(p, kind);
+                    dylibs.insert(path.to_path_buf(), kind);
                 }
                 FileMatches
             }).unwrap_or(FileDoesntMatch)
