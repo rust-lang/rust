@@ -104,6 +104,10 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
     {in_header}
 </head>
 <body class="rustdoc">
+    <div id="style-changer">
+        <div class="light" onclick="change_style(this);"></div>
+        <div class="dark" onclick="change_style(this);"></div>
+    </div>
     <!--[if lte IE 8]>
     <div class="warning">
         This old browser is unsupported and will most likely display funky

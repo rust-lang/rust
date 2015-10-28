@@ -86,6 +86,7 @@ pub mod html {
     pub mod markdown;
     pub mod render;
     pub mod toc;
+    mod styles;
 }
 pub mod markdown;
 pub mod passes;
@@ -93,6 +94,7 @@ pub mod plugins;
 pub mod visit_ast;
 pub mod test;
 mod flock;
+
 
 type Pass = (&'static str,                                      // name
              fn(clean::Crate) -> plugins::PluginResult,         // fn
