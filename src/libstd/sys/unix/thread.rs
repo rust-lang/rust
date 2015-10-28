@@ -162,6 +162,10 @@ impl Thread {
             debug_assert_eq!(ret, 0);
         }
     }
+
+    pub fn id(&self) -> u32 {
+        self.id as u32
+    }
 }
 
 impl Drop for Thread {

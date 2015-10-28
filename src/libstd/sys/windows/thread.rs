@@ -78,6 +78,10 @@ impl Thread {
             c::Sleep(super::dur2timeout(dur))
         }
     }
+
+    pub fn id(&self) -> u32 {
+        42 // TODO
+    }
 }
 
 pub mod guard {
