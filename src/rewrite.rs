@@ -11,6 +11,7 @@
 // A generic trait to abstract the rewriting of an element (of the AST).
 
 use syntax::codemap::{CodeMap, Span};
+use syntax::parse::ParseSess;
 
 use Indent;
 use config::Config;
@@ -27,6 +28,7 @@ pub trait Rewrite {
 }
 
 pub struct RewriteContext<'a> {
+    pub parse_session: &'a ParseSess,
     pub codemap: &'a CodeMap,
     pub config: &'a Config,
     // Indentation due to nesting of blocks.
@@ -36,6 +38,7 @@ pub struct RewriteContext<'a> {
 impl<'a> RewriteContext<'a> {
     pub fn nested_context(&self) -> RewriteContext<'a> {
         RewriteContext {
+            parse_session: self.parse_session,
             codemap: self.codemap,
             config: self.config,
             block_indent: self.block_indent.block_indent(self.config),

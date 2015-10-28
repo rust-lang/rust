@@ -26,7 +26,8 @@ extern crate diff;
 extern crate term;
 
 use syntax::ast;
-use syntax::codemap::{CodeMap, Span};
+use syntax::codemap::Span;
+use syntax::diagnostic::{EmitterWriter, Handler};
 use syntax::parse::{self, ParseSess};
 
 use std::ops::{Add, Sub};
@@ -288,11 +289,15 @@ impl fmt::Display for FormatReport {
 }
 
 // Formatting which depends on the AST.
-fn fmt_ast(krate: &ast::Crate, codemap: &CodeMap, config: &Config, mode: WriteMode) -> FileMap {
+fn fmt_ast(krate: &ast::Crate,
+           parse_session: &ParseSess,
+           config: &Config,
+           mode: WriteMode)
+           -> FileMap {
     let mut file_map = FileMap::new();
-    for (path, module) in modules::list_files(krate, codemap) {
+    for (path, module) in modules::list_files(krate, parse_session.codemap()) {
         let path = path.to_str().unwrap();
-        let mut visitor = FmtVisitor::from_codemap(codemap, config, Some(mode));
+        let mut visitor = FmtVisitor::from_codemap(parse_session, config, Some(mode));
         visitor.format_separate_mod(module, path);
         file_map.insert(path.to_owned(), visitor.buffer);
     }
@@ -382,9 +387,14 @@ pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
 }
 
 pub fn format(file: &Path, config: &Config, mode: WriteMode) -> FileMap {
-    let parse_session = ParseSess::new();
+    let mut parse_session = ParseSess::new();
     let krate = parse::parse_crate_from_file(file, Vec::new(), &parse_session);
-    let mut file_map = fmt_ast(&krate, parse_session.codemap(), config, mode);
+
+    // Suppress error output after parsing.
+    let emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None));
+    parse_session.span_diagnostic.handler = Handler::with_emitter(false, emitter);
+
+    let mut file_map = fmt_ast(&krate, &parse_session, config, mode);
 
     // For some reason, the codemap does not include terminating
     // newlines so we must add one on for each file. This is sad.
