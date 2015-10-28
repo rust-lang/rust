@@ -1515,6 +1515,10 @@ impl_from! { u16, i32 }
 impl_from! { u16, i64 }
 impl_from! { u32, i64 }
 
+// Note: integers can only be represented with full precision in a float if
+// they fit in the significand, which is 24 bits in f32 and 53 bits in f64.
+// Lossy float conversions are not implemented at this time.
+
 // Signed -> Float
 impl_from! { i8, f32 }
 impl_from! { i8, f64 }
