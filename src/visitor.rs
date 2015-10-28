@@ -10,6 +10,7 @@
 
 use syntax::ast;
 use syntax::codemap::{self, CodeMap, Span, BytePos};
+use syntax::parse::ParseSess;
 use syntax::visit;
 
 use strings::string_buffer::StringBuffer;
@@ -23,6 +24,7 @@ use macros::rewrite_macro;
 use items::rewrite_static;
 
 pub struct FmtVisitor<'a> {
+    pub parse_session: &'a ParseSess,
     pub codemap: &'a CodeMap,
     pub buffer: StringBuffer,
     pub last_pos: BytePos,
@@ -363,12 +365,13 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    pub fn from_codemap(codemap: &'a CodeMap,
+    pub fn from_codemap(parse_session: &'a ParseSess,
                         config: &'a Config,
                         mode: Option<WriteMode>)
                         -> FmtVisitor<'a> {
         FmtVisitor {
-            codemap: codemap,
+            parse_session: parse_session,
+            codemap: parse_session.codemap(),
             buffer: StringBuffer::new(),
             last_pos: BytePos(0),
             block_indent: Indent {
@@ -461,13 +464,10 @@ impl<'a> FmtVisitor<'a> {
         let vis = utils::format_visibility(vis);
         let mut offset = self.block_indent;
         offset.alignment += vis.len() + "use ".len();
-        let context = RewriteContext {
-            codemap: self.codemap,
-            config: self.config,
-            block_indent: self.block_indent,
-        };
         // 1 = ";"
-        match vp.rewrite(&context, self.config.max_width - offset.width() - 1, offset) {
+        match vp.rewrite(&self.get_context(),
+                         self.config.max_width - offset.width() - 1,
+                         offset) {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
                 let prev_span = codemap::mk_sp(self.last_pos, span.lo);
@@ -493,6 +493,7 @@ impl<'a> FmtVisitor<'a> {
 
     pub fn get_context(&self) -> RewriteContext {
         RewriteContext {
+            parse_session: self.parse_session,
             codemap: self.codemap,
             config: self.config,
             block_indent: self.block_indent,

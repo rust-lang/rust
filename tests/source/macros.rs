@@ -27,4 +27,6 @@ fn main() {
     hamkaas!{ () };
 
     macrowithbraces! {dont,    format, me}
+
+    x!(fn);
 }

@@ -422,7 +422,7 @@ impl Rewrite for ast::Block {
             return Some(user_str);
         }
 
-        let mut visitor = FmtVisitor::from_codemap(context.codemap, context.config, None);
+        let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config, None);
         visitor.block_indent = context.block_indent;
 
         let prefix = match self.rules {
@@ -833,7 +833,9 @@ impl Rewrite for ast::Arm {
         let attr_str = if !attrs.is_empty() {
             // We only use this visitor for the attributes, should we use it for
             // more?
-            let mut attr_visitor = FmtVisitor::from_codemap(context.codemap, context.config, None);
+            let mut attr_visitor = FmtVisitor::from_codemap(context.parse_session,
+                                                            context.config,
+                                                            None);
             attr_visitor.block_indent = context.block_indent;
             attr_visitor.last_pos = attrs[0].span.lo;
             if attr_visitor.visit_attrs(attrs) {

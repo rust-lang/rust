@@ -21,7 +21,7 @@
 
 use syntax::ast;
 use syntax::parse::token::{Eof, Comma, Token};
-use syntax::parse::{ParseSess, tts_to_parser};
+use syntax::parse::tts_to_parser;
 use syntax::codemap::{mk_sp, BytePos};
 
 use Indent;
@@ -73,8 +73,7 @@ pub fn rewrite_macro(mac: &ast::Mac,
         };
     }
 
-    let parse_session = ParseSess::new();
-    let mut parser = tts_to_parser(&parse_session, mac.node.tts.clone(), Vec::new());
+    let mut parser = tts_to_parser(context.parse_session, mac.node.tts.clone(), Vec::new());
     let mut expr_vec = Vec::new();
 
     loop {
