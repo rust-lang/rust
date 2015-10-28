@@ -82,26 +82,54 @@ trait FloatMath : Sized {
 
 impl FloatMath for f64 {
     #[inline]
+    #[cfg(stage0)]
     fn exp(self) -> f64 {
         unsafe { intrinsics::expf64(self) }
     }
+    #[inline]
+    #[cfg(not(stage0))]
+    fn exp(self) -> f64 {
+        unsafe { intrinsics::exp(self) }
+    }
 
     #[inline]
+    #[cfg(stage0)]
     fn ln(self) -> f64 {
         unsafe { intrinsics::logf64(self) }
     }
-
     #[inline]
-    fn powf(self, n: f64) -> f64 {
-        unsafe { intrinsics::powf64(self, n) }
+    #[cfg(not(stage0))]
+    fn ln(self) -> f64 {
+        unsafe { intrinsics::log(self) }
     }
 
     #[inline]
+    #[cfg(stage0)]
+    fn powf(self, n: f64) -> f64 {
+        unsafe { intrinsics::powf64(self, n) }
+    }
+    #[inline]
+    #[cfg(not(stage0))]
+    fn powf(self, n: f64) -> f64 {
+        unsafe { intrinsics::pow(self, n) }
+    }
+
+    #[inline]
+    #[cfg(stage0)]
     fn sqrt(self) -> f64 {
         if self < 0.0 {
             f64::NAN
         } else {
             unsafe { intrinsics::sqrtf64(self) }
+        }
+    }
+    #[inline]
+    #[cfg(not(stage0))]
+    fn sqrt(self) -> f64 {
+        if self < 0.0 {
+            f64::NAN
+        } else {
+            unsafe { intrinsics::sqrt(self) }
         }
     }
 }

@@ -224,8 +224,15 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn floor(self) -> f64 {
         unsafe { intrinsics::floorf64(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn floor(self) -> f64 {
+        unsafe { intrinsics::floor(self) }
     }
 
     /// Returns the smallest integer greater than or equal to a number.
@@ -239,8 +246,15 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn ceil(self) -> f64 {
         unsafe { intrinsics::ceilf64(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn ceil(self) -> f64 {
+        unsafe { intrinsics::ceil(self) }
     }
 
     /// Returns the nearest integer to a number. Round half-way cases away from
@@ -255,8 +269,15 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn round(self) -> f64 {
         unsafe { intrinsics::roundf64(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn round(self) -> f64 {
+        unsafe { intrinsics::round(self) }
     }
 
     /// Returns the integer part of a number.
@@ -270,8 +291,15 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn trunc(self) -> f64 {
         unsafe { intrinsics::truncf64(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn trunc(self) -> f64 {
+        unsafe { intrinsics::trunc(self) }
     }
 
     /// Returns the fractional part of a number.
@@ -396,8 +424,15 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn mul_add(self, a: f64, b: f64) -> f64 {
         unsafe { intrinsics::fmaf64(self, a, b) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn mul_add(self, a: f64, b: f64) -> f64 {
+        unsafe { intrinsics::fma(self, a, b) }
     }
 
     /// Takes the reciprocal (inverse) of a number, `1/x`.
@@ -436,8 +471,15 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn powf(self, n: f64) -> f64 {
         unsafe { intrinsics::powf64(self, n) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn powf(self, n: f64) -> f64 {
+        unsafe { intrinsics::pow(self, n) }
     }
 
     /// Takes the square root of a number.
@@ -455,11 +497,22 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn sqrt(self) -> f64 {
         if self < 0.0 {
             NAN
         } else {
             unsafe { intrinsics::sqrtf64(self) }
+        }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn sqrt(self) -> f64 {
+        if self < 0.0 {
+            NAN
+        } else {
+            unsafe { intrinsics::sqrt(self) }
         }
     }
 
@@ -477,8 +530,15 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn exp(self) -> f64 {
         unsafe { intrinsics::expf64(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn exp(self) -> f64 {
+        unsafe { intrinsics::exp(self) }
     }
 
     /// Returns `2^(self)`.
@@ -493,8 +553,15 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn exp2(self) -> f64 {
         unsafe { intrinsics::exp2f64(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn exp2(self) -> f64 {
+        unsafe { intrinsics::exp2(self) }
     }
 
     /// Returns the natural logarithm of the number.
@@ -511,8 +578,15 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn ln(self) -> f64 {
         unsafe { intrinsics::logf64(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn ln(self) -> f64 {
+        unsafe { intrinsics::log(self) }
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -546,8 +620,15 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn log2(self) -> f64 {
         unsafe { intrinsics::log2f64(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn log2(self) -> f64 {
+        unsafe { intrinsics::log2(self) }
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -562,8 +643,15 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn log10(self) -> f64 {
         unsafe { intrinsics::log10f64(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn log10(self) -> f64 {
+        unsafe { intrinsics::log10(self) }
     }
 
     /// Converts radians to degrees.
@@ -765,8 +853,15 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn sin(self) -> f64 {
         unsafe { intrinsics::sinf64(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn sin(self) -> f64 {
+        unsafe { intrinsics::sin(self) }
     }
 
     /// Computes the cosine of a number (in radians).
@@ -782,8 +877,15 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn cos(self) -> f64 {
         unsafe { intrinsics::cosf64(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn cos(self) -> f64 {
+        unsafe { intrinsics::cos(self) }
     }
 
     /// Computes the tangent of a number (in radians).
