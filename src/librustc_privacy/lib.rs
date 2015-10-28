@@ -389,6 +389,7 @@ struct PrivacyVisitor<'a, 'tcx: 'a> {
     external_exports: ExternalExports,
 }
 
+#[derive(Debug)]
 enum PrivacyResult {
     Allowable,
     ExternallyDenied,
@@ -645,9 +646,17 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     /// Guarantee that a particular definition is public. Returns a CheckResult
     /// which contains any errors found. These can be reported using `report_error`.
     /// If the result is `None`, no errors were found.
-    fn ensure_public(&self, span: Span, to_check: DefId,
-                     source_did: Option<DefId>, msg: &str) -> CheckResult {
-        let id = match self.def_privacy(to_check) {
+    fn ensure_public(&self,
+                     span: Span,
+                     to_check: DefId,
+                     source_did: Option<DefId>,
+                     msg: &str)
+                     -> CheckResult {
+        debug!("ensure_public(span={:?}, to_check={:?}, source_did={:?}, msg={:?})",
+               span, to_check, source_did, msg);
+        let def_privacy = self.def_privacy(to_check);
+        debug!("ensure_public: def_privacy={:?}", def_privacy);
+        let id = match def_privacy {
             ExternallyDenied => {
                 return Some((span, format!("{} is private", msg), None))
             }
@@ -662,8 +671,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         // ancestry. (Both the item being checked and its parent must
         // be local.)
         let def_id = source_did.unwrap_or(to_check);
-        let node_id = self.tcx.map.as_local_node_id(def_id).unwrap();
-        let (err_span, err_msg) = if id == node_id {
+        let node_id = self.tcx.map.as_local_node_id(def_id);
+        let (err_span, err_msg) = if Some(id) == node_id {
             return Some((span, format!("{} is private", msg), None));
         } else {
             (span, format!("{} is inaccessible", msg))
