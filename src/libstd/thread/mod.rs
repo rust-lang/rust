@@ -259,10 +259,11 @@ impl Builder {
             = Arc::new(UnsafeCell::new(None));
         let their_packet = my_packet.clone();
 
-        let main = move || {
+        let main = move |id: u32| {
             if let Some(name) = their_thread.name() {
                 imp::Thread::set_name(name);
             }
+            their_thread.inner.id = id;
             unsafe {
                 thread_info::set(imp::guard::current(), their_thread);
                 let mut output = None;
@@ -276,10 +277,12 @@ impl Builder {
             }
         };
 
+        let native = unsafe {
+            try!(imp::Thread::new(stack_size, Box::new(main)))
+        };
+        my_thread.inner.id = native.id();
         Ok(JoinHandle(JoinInner {
-            native: unsafe {
-                Some(try!(imp::Thread::new(stack_size, Box::new(main))))
-            },
+            native: Some(native),
             thread: my_thread,
             packet: Packet(my_packet),
         }))

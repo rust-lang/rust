@@ -14,11 +14,11 @@ use alloc::boxed::FnBox;
 use libc;
 use sys::stack_overflow;
 
-pub unsafe fn start_thread(main: *mut libc::c_void) {
+pub unsafe fn start_thread(main: *mut libc::c_void, id: u32) {
     // Next, set up our stack overflow handler which may get triggered if we run
     // out of stack.
     let _handler = stack_overflow::Handler::new();
 
     // Finally, let's run some code.
-    Box::from_raw(main as *mut Box<FnBox()>)()
+    Box::from_raw(main as *mut Box<FnBox(u32)>)(id)
 }

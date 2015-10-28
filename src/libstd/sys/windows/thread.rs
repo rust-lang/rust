@@ -49,7 +49,7 @@ impl Thread {
         };
 
         extern "system" fn thread_start(main: *mut libc::c_void) -> DWORD {
-            unsafe { start_thread(main); }
+            unsafe { start_thread(main, 42); }
             0
         }
     }
