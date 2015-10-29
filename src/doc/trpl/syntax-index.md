@@ -100,9 +100,9 @@
 * `'ident`: named lifetime or loop label.  See [Lifetimes], [Loops (Loops Labels)].
 * `…u8`, `…i32`, `…f64`, `…usize`, …: numeric literal of specific type.
 * `"…"`: string literal.  See [Strings].
-* `r"…"`, `r#"…"#`, `r##"…"##`, …: raw string literal.
-* `b"…"`: byte string literal.
-* `rb"…"`, `rb#"…"#`, `rb##"…"##`, …: raw byte string literal.
+* `r"…"`, `r#"…"#`, `r##"…"##`, …: raw string literal, escape characters are not processed. See [Reference (Raw String Literals)].
+* `b"…"`: byte string literal, constructs a `[u8]` instead of a string. See [Reference (Byte String Literals)].
+* `br"…"`, `br#"…"#`, `br##"…"##`, …: raw byte string literal, combination of raw and byte string literal. See [Reference (Raw Byte String Literals)].
 * `'…'`: character literal.  See [Primitive Types (`char`)].
 * `b'…'`: ASCII byte literal.
 
@@ -219,6 +219,9 @@
 [Primitive Types (Tuple Indexing)]: primitive-types.html#tuple-indexing
 [Primitive Types (Tuples)]: primitive-types.html#tuples
 [Raw Pointers]: raw-pointers.html
+[Reference (Byte String Literals)]: ../reference.html#byte-string-literals
+[Reference (Raw Byte String Literals)]: ../reference.html#raw-byte-string-literals
+[Reference (Raw String Literals)]: ../reference.html#raw-string-literals
 [References and Borrowing]: references-and-borrowing.html
 [Strings]: strings.html
 [Structs (Update syntax)]: structs.html#update-syntax
