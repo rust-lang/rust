@@ -75,10 +75,7 @@ pub trait ExitStatusExt {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ExitStatusExt for process::ExitStatus {
     fn signal(&self) -> Option<i32> {
-        match *self.as_inner() {
-            sys::process::ExitStatus::Signal(s) => Some(s),
-            _ => None
-        }
+        self.as_inner().signal()
     }
 }
 

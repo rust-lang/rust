@@ -201,21 +201,16 @@ impl Process {
     }
 
     pub fn wait(&self) -> io::Result<ExitStatus> {
-        use libc::{STILL_ACTIVE, INFINITE, WAIT_OBJECT_0};
+        use libc::{INFINITE, WAIT_OBJECT_0};
         use libc::{GetExitCodeProcess, WaitForSingleObject};
 
         unsafe {
-            loop {
-                let mut status = 0;
-                try!(cvt(GetExitCodeProcess(self.handle.raw(), &mut status)));
-                if status != STILL_ACTIVE {
-                    return Ok(ExitStatus(status as i32));
-                }
-                match WaitForSingleObject(self.handle.raw(), INFINITE) {
-                    WAIT_OBJECT_0 => {}
-                    _ => return Err(Error::last_os_error()),
-                }
+            if WaitForSingleObject(self.handle.raw(), INFINITE) != WAIT_OBJECT_0 {
+                return Err(Error::last_os_error())
             }
+            let mut status = 0;
+            try!(cvt(GetExitCodeProcess(self.handle.raw(), &mut status)));
+            Ok(ExitStatus(status))
         }
     }
 
@@ -225,14 +220,14 @@ impl Process {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitStatus(i32);
+pub struct ExitStatus(libc::DWORD);
 
 impl ExitStatus {
     pub fn success(&self) -> bool {
         self.0 == 0
     }
     pub fn code(&self) -> Option<i32> {
-        Some(self.0)
+        Some(self.0 as i32)
     }
 }
 
