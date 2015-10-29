@@ -1182,9 +1182,10 @@ fn link_fn_args(rcx: &Rcx, body_scope: CodeExtent, args: &[hir::Arg]) {
         let arg_ty = rcx.fcx.node_ty(arg.id);
         let re_scope = ty::ReScope(body_scope);
         let arg_cmt = mc.cat_rvalue(arg.id, arg.ty.span, re_scope, arg_ty);
-        debug!("arg_ty={:?} arg_cmt={:?}",
+        debug!("arg_ty={:?} arg_cmt={:?} arg={:?}",
                arg_ty,
-               arg_cmt);
+               arg_cmt,
+               arg);
         link_pattern(rcx, mc, arg_cmt, &*arg.pat);
     }
 }
@@ -1527,9 +1528,10 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 {
     let ty = rcx.resolve_type(ty);
 
-    debug!("type_must_outlive(ty={:?}, region={:?})",
+    debug!("type_must_outlive(ty={:?}, region={:?}, origin={:?})",
            ty,
-           region);
+           region,
+           origin);
 
     assert!(!ty.has_escaping_regions());
 

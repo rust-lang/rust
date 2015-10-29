@@ -259,17 +259,30 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             }
         }
         hir::PatRegion(ref inner, mutbl) => {
-            let inner_ty = fcx.infcx().next_ty_var();
-
-            let mt = ty::TypeAndMut { ty: inner_ty, mutbl: mutbl };
-            let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
-            let rptr_ty = tcx.mk_ref(tcx.mk_region(region), mt);
-
+            let expected = fcx.infcx().shallow_resolve(expected);
             if check_dereferencable(pcx, pat.span, expected, &**inner) {
                 // `demand::subtype` would be good enough, but using
                 // `eqtype` turns out to be equally general. See (*)
                 // below for details.
-                demand::eqtype(fcx, pat.span, expected, rptr_ty);
+
+                // Take region, inner-type from expected type if we
+                // can, to avoid creating needless variables.  This
+                // also helps with the bad interactions of the given
+                // hack detailed in (*) below.
+                let (rptr_ty, inner_ty) = match expected.sty {
+                    ty::TyRef(_, mt) if mt.mutbl == mutbl => {
+                        (expected, mt.ty)
+                    }
+                    _ => {
+                        let inner_ty = fcx.infcx().next_ty_var();
+                        let mt = ty::TypeAndMut { ty: inner_ty, mutbl: mutbl };
+                        let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
+                        let rptr_ty = tcx.mk_ref(tcx.mk_region(region), mt);
+                        demand::eqtype(fcx, pat.span, expected, rptr_ty);
+                        (rptr_ty, inner_ty)
+                    }
+                };
+
                 fcx.write_ty(pat.id, rptr_ty);
                 check_pat(pcx, &**inner, inner_ty);
             } else {
