@@ -175,9 +175,7 @@ struct EmbargoVisitor<'a, 'tcx: 'a> {
     // Items that are directly public without help of reexports or type aliases.
     // These two fields are closely related to one another in that they are only
     // used for generation of the `public_items` set, not for privacy checking at
-    // all. Public items are mostly a subset of exported items with exception of
-    // fields and exported macros - they are public, but not exported.
-    // FIXME: Make fields and exported macros exported as well (requires fixing resulting ICEs)
+    // all. Invariant: at any moment public items are a subset of exported items.
     public_items: PublicItems,
     prev_public: bool,
 }
@@ -251,11 +249,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                     self.maybe_insert_id(variant.node.data.id());
                     for field in variant.node.data.fields() {
                         // Variant fields are always public
-                        if self.prev_public {
-                            self.public_items.insert(field.node.id);
-                        }
-                        // FIXME: Make fields exported (requires fixing resulting ICEs)
-                        // if self.prev_exported { self.exported_items.insert(field.node.id); }
+                        self.maybe_insert_id(field.node.id);
                     }
                 }
             }
@@ -328,11 +322,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 for field in def.fields() {
                     // Struct fields can be public or private, so lets check
                     if field.node.kind.visibility() == hir::Public {
-                        if self.prev_public {
-                            self.public_items.insert(field.node.id);
-                        }
-                        // FIXME: Make fields exported (requires fixing resulting ICEs)
-                        // if self.prev_exported { self.exported_items.insert(field.node.id); }
+                        self.maybe_insert_id(field.node.id);
                     }
                 }
             }
@@ -403,9 +393,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
     }
 
     fn visit_macro_def(&mut self, md: &'v hir::MacroDef) {
-        self.public_items.insert(md.id);
-        // FIXME: Make exported macros exported (requires fixing resulting ICEs)
-        // self.exported_items.insert(md.id);
+        self.maybe_insert_id(md.id);
     }
 }
 

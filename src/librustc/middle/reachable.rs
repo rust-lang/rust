@@ -223,14 +223,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 continue
             }
 
-            match self.tcx.map.find(search_item) {
-                Some(ref item) => self.propagate_node(item, search_item),
-                None if search_item == ast::CRATE_NODE_ID => {}
-                None => {
-                    self.tcx.sess.bug(&format!("found unmapped ID in worklist: \
-                                               {}",
-                                              search_item))
-                }
+            if let Some(ref item) = self.tcx.map.find(search_item) {
+                self.propagate_node(item, search_item);
             }
         }
     }
