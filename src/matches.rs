@@ -39,8 +39,10 @@ impl LateLintPass for MatchPass {
                 // but in some cases, an explicit match is preferred to catch situations
                 // when an enum is extended, so we don't consider these cases
                 arms[1].pats[0].node == PatWild(PatWildSingle) &&
-                // finally, we don't want any content in the second arm (unit or empty block)
-                is_unit_expr(&arms[1].body)
+                // we don't want any content in the second arm (unit or empty block)
+                is_unit_expr(&arms[1].body) &&
+                // finally, MATCH_BOOL doesn't apply here
+                (cx.tcx.expr_ty(ex).sty != ty::TyBool || cx.current_level(MATCH_BOOL) == Allow)
             {
                 span_help_and_lint(cx, SINGLE_MATCH, expr.span,
                                    "you seem to be trying to use match for destructuring a \
