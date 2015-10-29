@@ -354,7 +354,7 @@ impl<T> RawVec<T> {
             // panic.
 
             // Don't actually need any more capacity.
-            // Wrapping in case they give a bas `used_cap`
+            // Wrapping in case they give a bad `used_cap`
             if self.cap().wrapping_sub(used_cap) >= needed_extra_cap {
                 return;
             }
