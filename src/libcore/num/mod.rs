@@ -1473,14 +1473,14 @@ impl fmt::Display for ParseIntError {
 
 pub use num::dec2flt::ParseFloatError;
 
-// Conversion traits for primitive integer types
+// Conversion traits for primitive integer and float types
 // Conversions T -> T are covered by a blanket impl and therefore excluded
 // Some conversions from and to usize/isize are not implemented due to portability concerns
 macro_rules! impl_from {
     ($Small: ty, $Large: ty) => {
-        #[stable(feature = "lossless_int_conv", since = "1.5.0")]
+        #[stable(feature = "lossless_prim_conv", since = "1.5.0")]
         impl From<$Small> for $Large {
-            #[stable(feature = "lossless_int_conv", since = "1.5.0")]
+            #[stable(feature = "lossless_prim_conv", since = "1.5.0")]
             #[inline]
             fn from(small: $Small) -> $Large {
                 small as $Large
@@ -1514,3 +1514,24 @@ impl_from! { u8, i64 }
 impl_from! { u16, i32 }
 impl_from! { u16, i64 }
 impl_from! { u32, i64 }
+
+// Note: integers can only be represented with full precision in a float if
+// they fit in the significand, which is 24 bits in f32 and 53 bits in f64.
+// Lossy float conversions are not implemented at this time.
+
+// Signed -> Float
+impl_from! { i8, f32 }
+impl_from! { i8, f64 }
+impl_from! { i16, f32 }
+impl_from! { i16, f64 }
+impl_from! { i32, f64 }
+
+// Unsigned -> Float
+impl_from! { u8, f32 }
+impl_from! { u8, f64 }
+impl_from! { u16, f32 }
+impl_from! { u16, f64 }
+impl_from! { u32, f64 }
+
+// Float -> Float
+impl_from! { f32, f64 }

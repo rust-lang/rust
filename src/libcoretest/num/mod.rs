@@ -177,4 +177,61 @@ mod tests {
     test_impl_from! { test_u16i32, u16, i32 }
     test_impl_from! { test_u16i64, u16, i64 }
     test_impl_from! { test_u32i64, u32, i64 }
+
+    // Signed -> Float
+    test_impl_from! { test_i8f32, i8, f32 }
+    test_impl_from! { test_i8f64, i8, f64 }
+    test_impl_from! { test_i16f32, i16, f32 }
+    test_impl_from! { test_i16f64, i16, f64 }
+    test_impl_from! { test_i32f64, i32, f64 }
+
+    // Unsigned -> Float
+    test_impl_from! { test_u8f32, u8, f32 }
+    test_impl_from! { test_u8f64, u8, f64 }
+    test_impl_from! { test_u16f32, u16, f32 }
+    test_impl_from! { test_u16f64, u16, f64 }
+    test_impl_from! { test_u32f64, u32, f64 }
+
+    // Float -> Float
+    #[test]
+    fn test_f32f64() {
+        use core::f32;
+
+        let max: f64 = f32::MAX.into();
+        assert_eq!(max as f32, f32::MAX);
+        assert!(max.is_normal());
+
+        let min: f64 = f32::MIN.into();
+        assert_eq!(min as f32, f32::MIN);
+        assert!(min.is_normal());
+
+        let min_positive: f64 = f32::MIN_POSITIVE.into();
+        assert_eq!(min_positive as f32, f32::MIN_POSITIVE);
+        assert!(min_positive.is_normal());
+
+        let epsilon: f64 = f32::EPSILON.into();
+        assert_eq!(epsilon as f32, f32::EPSILON);
+        assert!(epsilon.is_normal());
+
+        let zero: f64 = (0.0f32).into();
+        assert_eq!(zero as f32, 0.0f32);
+        assert!(zero.is_sign_positive());
+
+        let neg_zero: f64 = (-0.0f32).into();
+        assert_eq!(neg_zero as f32, -0.0f32);
+        assert!(neg_zero.is_sign_negative());
+
+        let infinity: f64 = f32::INFINITY.into();
+        assert_eq!(infinity as f32, f32::INFINITY);
+        assert!(infinity.is_infinite());
+        assert!(infinity.is_sign_positive());
+
+        let neg_infinity: f64 = f32::NEG_INFINITY.into();
+        assert_eq!(neg_infinity as f32, f32::NEG_INFINITY);
+        assert!(neg_infinity.is_infinite());
+        assert!(neg_infinity.is_sign_negative());
+
+        let nan: f64 = f32::NAN.into();
+        assert!(nan.is_nan());
+    }
 }
