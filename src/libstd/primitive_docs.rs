@@ -405,6 +405,8 @@ mod prim_u64 { }
 //
 /// The pointer-sized signed integer type.
 ///
+/// `isize` is guaranteed to at least as large as `i16`.
+///
 /// *[See also the `std::isize` module](isize/index.html).*
 ///
 mod prim_isize { }
@@ -412,6 +414,8 @@ mod prim_isize { }
 #[doc(primitive = "usize")]
 //
 /// The pointer-sized unsigned integer type.
+///
+/// `usize` is guaranteed to be at least as large as `u16`.
 ///
 /// *[See also the `std::usize` module](usize/index.html).*
 ///
