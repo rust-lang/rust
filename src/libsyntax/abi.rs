@@ -27,6 +27,7 @@ pub enum Os {
     OsBitrig,
     OsNetbsd,
     OsOpenbsd,
+    OsNaCl,
 }
 
 #[derive(PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Clone, Copy, Debug)]
@@ -143,6 +144,7 @@ impl fmt::Display for Os {
             OsBitrig => "bitrig".fmt(f),
             OsNetbsd => "netbsd".fmt(f),
             OsOpenbsd => "openbsd".fmt(f),
+            OsNaCl => "nacl".fmt(f),
         }
     }
 }

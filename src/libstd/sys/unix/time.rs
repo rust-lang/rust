@@ -77,15 +77,15 @@ mod inner {
 
     // Apparently android provides this in some other library?
     // Bitrig's RT extensions are in the C library, not a separate librt
-    // OpenBSD provide it via libc
+    // OpenBSD and NaCl provide it via libc
     #[cfg(not(any(target_os = "android",
                   target_os = "bitrig",
                   target_os = "netbsd",
                   target_os = "openbsd",
-                  target_env = "musl")))]
+                  target_env = "musl",
+                  target_os = "nacl")))]
     #[link(name = "rt")]
     extern {}
-
 
     extern {
         #[cfg_attr(target_os = "netbsd", link_name = "__clock_gettime50")]

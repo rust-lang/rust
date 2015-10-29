@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![cfg_attr(target_os = "nacl", allow(dead_code))]
+
 use env;
 use io::prelude::*;
 use io;
