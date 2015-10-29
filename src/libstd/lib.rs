@@ -221,6 +221,7 @@
 #![feature(core_simd)]
 #![feature(drain)]
 #![feature(fnbox)]
+#![feature(fmt_flags)]
 #![feature(heap_api)]
 #![feature(int_error_internals)]
 #![feature(into_cow)]
