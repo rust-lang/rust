@@ -2557,11 +2557,11 @@ pub trait Extend<A> {
     ///
     /// ```
     /// // You can extend a String with some chars:
-    /// let mut message = String::from("The first three letters are: ");
+    /// let mut message = String::from("abc");
     ///
-    /// message.extend(['a', 'b', 'c'].iter());
+    /// message.extend(['d', 'e', 'f'].iter());
     ///
-    /// assert_eq!("abc", &message[29..32]);
+    /// assert_eq!("abcdef", &message);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn extend<T: IntoIterator<Item=A>>(&mut self, iterable: T);
