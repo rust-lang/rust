@@ -60,6 +60,7 @@
 * `-` (`- expr`): arithmetic negation.  Overloadable (`Neg`).
 * `-=` (`var -= expr`): arithmetic subtraction & assignment.
 * `->` (`fn(…) -> type`, `|…| -> type`): function and closure return type.  See [Functions], [Closures].
+* `-> !` (`fn(…) -> !`, `|…| -> !`): diverging function or closure. See [Diverging Functions].
 * `.` (`expr.ident`): member access.  See [Structs], [Method Syntax].
 * `..` (`..`, `expr..`, `..expr`, `expr..expr`): right-exclusive range literal.
 * `..` (`..expr`): struct literal update syntax.  See [Structs (Update syntax)].
@@ -99,9 +100,9 @@
 * `'ident`: named lifetime or loop label.  See [Lifetimes], [Loops (Loops Labels)].
 * `…u8`, `…i32`, `…f64`, `…usize`, …: numeric literal of specific type.
 * `"…"`: string literal.  See [Strings].
-* `r"…"`, `r#"…"#`, `r##"…"##`, …: raw string literal.
-* `b"…"`: byte string literal.
-* `rb"…"`, `rb#"…"#`, `rb##"…"##`, …: raw byte string literal.
+* `r"…"`, `r#"…"#`, `r##"…"##`, …: raw string literal, escape characters are not processed. See [Reference (Raw String Literals)].
+* `b"…"`: byte string literal, constructs a `[u8]` instead of a string. See [Reference (Byte String Literals)].
+* `br"…"`, `br#"…"#`, `br##"…"##`, …: raw byte string literal, combination of raw and byte string literal. See [Reference (Raw Byte String Literals)].
 * `'…'`: character literal.  See [Primitive Types (`char`)].
 * `b'…'`: ASCII byte literal.
 
@@ -189,6 +190,7 @@
 [Crates and Modules (Importing External Crates)]: crates-and-modules.html#importing-external-crates
 [Crates and Modules (Importing Modules with `use`)]: crates-and-modules.html#importing-modules-with-use
 [Crates and Modules (Re-exporting with `pub use`)]: crates-and-modules.html#re-exporting-with-pub-use
+[Diverging Functions]: functions.html#diverging-functions
 [Enums]: enums.html
 [Foreign Function Interface]: ffi.html
 [Functions (Early Returns)]: functions.html#early-returns
@@ -217,6 +219,9 @@
 [Primitive Types (Tuple Indexing)]: primitive-types.html#tuple-indexing
 [Primitive Types (Tuples)]: primitive-types.html#tuples
 [Raw Pointers]: raw-pointers.html
+[Reference (Byte String Literals)]: ../reference.html#byte-string-literals
+[Reference (Raw Byte String Literals)]: ../reference.html#raw-byte-string-literals
+[Reference (Raw String Literals)]: ../reference.html#raw-string-literals
 [References and Borrowing]: references-and-borrowing.html
 [Strings]: strings.html
 [Structs (Update syntax)]: structs.html#update-syntax
