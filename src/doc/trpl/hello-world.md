@@ -1,30 +1,33 @@
 % Hello, world!
 
-Now that we have Rust installed, let’s write our first Rust program. It’s
-traditional to make our first program in any new language one that prints the
-text “Hello, world!” to the screen. The nice thing about starting with such a
-simple program is that we can verify that our compiler isn’t just installed, but
-also working properly. And printing information to the screen is a pretty common
-thing to do.
+Now that you have Rust installed, we'll help you write your first Rust program.
+It's traditional when learning a new language to write a little program to
+print the text “Hello, world!” to the screen, and in this section, we'll follow
+that tradition. 
 
-The first thing that we need to do is make a file to put our code in. I like to
-make a `projects` directory in my home directory, and keep all my projects
-there. Rust doesn't care where our code lives.
+The nice thing about starting with such a simple program is that you can
+quickly verify that your compiler is installed, and that it's working properly.
+Printing information to the screen is also just a pretty common thing to do, so
+practicing it early on is good.
 
-This actually leads to one other concern we should address: this guide will
-assume that we have basic familiarity with the command line. Rust itself makes
-no specific demands on our editing tooling, or where our code lives. If we
-prefer an IDE to the command line, we may want to check out
-[SolidOak][solidoak], or wherever plugins are for our favorite IDE. There are a
-number of extensions of varying quality in development by the community. The
-Rust team also ships [plugins for various editors][plugins]. Configuring our
-editor or IDE is out of the scope of this tutorial, so check the documentation
-for our setup, specifically.
+> Note: This book assumes basic familiarity with the command line. Rust itself
+> makes no specific demands about your editing, tooling, or where your code
+> lives, so if you prefer an IDE to the command line, that's an option. You may
+> want to check out [SolidOak], which was built specifically with Rust in mind.
+> There are a number of extensions in development by the community, and the
+> Rust team ships plugins for [various editors]. Configuring your editor or
+> IDE is out of the scope of this tutorial, so check the documentation for your
+> specific setup. 
 
-[solidoak]: https://github.com/oakes/SolidOak
-[plugins]: https://github.com/rust-lang/rust/blob/master/src/etc/CONFIGS.md
+[SolidOak]: https://github.com/oakes/SolidOak
+[various editors]: https://github.com/rust-lang/rust/blob/master/src/etc/CONFIGS.md
 
-With that said, let’s make a directory in our projects directory.
+## Creating a Project File
+
+First, make a file to put your Rust code in. Rust doesn't care where your code
+lives, but for this book, I suggest making a *projects* directory in your home
+directory, and keeping all your projects there. Open a terminal and enter the
+following commands to make a directory for this particular project:
 
 ```bash
 $ mkdir ~/projects
@@ -33,15 +36,17 @@ $ mkdir hello_world
 $ cd hello_world
 ```
 
-If we’re on Windows and not using PowerShell, the `~` may not work. Consult the
-documentation for our shell for more details.
+> Note: If you’re on Windows and not using PowerShell, the `~` may not work.
+> Consult the documentation for your shell for more details.
 
-Let’s make a new source file next. We’ll call our file `main.rs`. Rust files
-always end in a `.rs` extension, and if we’re using more than one word in a
-Rust filename, we use an underscore: for example, `linked_list.rs`, not
-`linkedlist.rs` or `LinkedList.rs`.
+## Writing and Running a Rust Program
 
-Now that we’ve got our file open, type this in:
+Next, make a new source file next and call it *main.rs*. Rust files always end
+in a *.rs* extension. If you’re using more than one word in your filename, use
+an underscore to separate them; for example, you'd use *hello_world.rs* rather
+than *helloworld.rs*.
+
+Now open the *main.rs* file you just created, and type the following code:
 
 ```rust
 fn main() {
@@ -49,15 +54,24 @@ fn main() {
 }
 ```
 
-Save the file, and then type this into our terminal window:
+Save the file, and go back to your terminal window. On Linux or OSX, enter the
+following commands:
 
 ```bash
 $ rustc main.rs
-$ ./main # or main.exe on Windows
+$ ./main 
 Hello, world!
 ```
 
-Success! Let’s go over what just happened in detail.
+In Windows, just replace `main` with `main.exe`. Regardless of your operating
+system, you should see the string `Hello, world!` print to the terminal. If you
+did, then congratulations! You've officially written a Rust program. That makes
+you a Rust programmer! Welcome. 
+
+#Anatomy of a Rust Program
+
+Now, let’s go over what just happened in your "Hello, world!" program in
+detail. Here's the first piece of the puzzle:
 
 ```rust
 fn main() {
@@ -65,107 +79,107 @@ fn main() {
 }
 ```
 
-These lines define a *function* in Rust. The `main` function is special:
-it's the beginning of every Rust program. The first line says "I’m declaring a
-function named `main` which takes no arguments and returns nothing." If there
-were arguments, they would go inside the parentheses (`(` and `)`), and because
-we aren’t returning anything from this function, we can omit the return type
-entirely. We’ll get to it later.
+These lines define a *function* in Rust. The `main` function is special: it's
+the beginning of every Rust program. The first line says, "I’m declaring a
+function named `main` that currently takes no arguments and returns nothing."
+If there were arguments, they would go inside the parentheses (`(` and `)`),
+and because we aren’t returning anything from this function, we can omit the
+return type entirely.
 
-You’ll also note that the function is wrapped in curly braces (`{` and `}`).
-Rust requires these around all function bodies. It is also considered good style
-to put the opening curly brace on the same line as the function declaration,
-with one space in between.
+Also note that the function body is wrapped in curly braces (`{` and `}`). Rust
+requires these around all function bodies. It's considered good style to put
+the opening curly brace on the same line as the function declaration, with one
+line space in between.
 
-Next up is this line:
+Inside the `main()` function, is this line:
 
 ```rust
     println!("Hello, world!");
 ```
 
-This line does all of the work in our little program. There are a number of
-details that are important here. The first is that it’s indented with four
-spaces, not tabs. Please configure your editor of choice to insert four spaces
-with the tab key. We provide some
-[sample configurations for various editors][configs].
+This line does all of the work in this little program: it prints text to the
+screen. There are a number of details that are important here. The first is
+that it’s indented with four spaces, not tabs. If you configure your editor of
+choice to insert four spaces with the tab key, it will make your coding much
+more efficient.
+ 
+The second important part is the `println!()` line. This is calling a Rust
+*[macro]*, which is how metaprogramming is done in Rust. If it were calling a
+function instead, it would look like this: `println()` (without the !). We'll
+discuss Rust macros in more detail in Chapter XX, but for now you just need to
+know that when you see a `!` that means that you’re calling a macro instead of
+a normal function. 
 
-[configs]: https://github.com/rust-lang/rust/tree/master/src/etc/CONFIGS.md
-
-The second point is the `println!()` part. This is calling a Rust
-[macro][macro], which is how metaprogramming is done in Rust. If it were a
-function instead, it would look like this: `println()`. For our purposes, we
-don’t need to worry about this difference. Just know that sometimes, we’ll see a
-`!`, and that means that we’re calling a macro instead of a normal function.
-Rust implements `println!` as a macro rather than a function for good reasons,
-but that's an advanced topic. One last thing to mention: Rust’s macros are
-significantly different from C macros, if you’ve used those. Don’t be scared of
-using macros. We’ll get to the details eventually, you’ll just have to take it
-on trust for now.
 
 [macro]: macros.html
 
-Next, `"Hello, world!"` is a ‘string’. Strings are a surprisingly complicated
-topic in a systems programming language, and this is a ‘statically allocated’
-string. If you want to read further about allocation, check out [the stack and
-the heap][allocation], but you don’t need to right now if you don’t want to. We
-pass this string as an argument to `println!`, which prints the string to the
-screen. Easy enough!
+Next is `"Hello, world!"` which is a *string*. Strings are a surprisingly
+complicated topic in a systems programming language, and this is a *[statically
+allocated]* string. We pass this string as an argument to `println!`, which
+prints the string to the screen. Easy enough!
 
 [allocation]: the-stack-and-the-heap.html
 
-Finally, the line ends with a semicolon (`;`). Rust is an [‘expression oriented’
-language][expression-oriented language], which means that most things are
-expressions, rather than statements. The `;` is used to indicate that this
-expression is over, and the next one is ready to begin. Most lines of Rust code
-end with a `;`.
+The line ends with a semicolon (`;`). Rust is an *[expression oriented]*
+language, which means that most things are expressions, rather than statements.
+The `;` indicates that this expression is over, and the next one is ready to
+begin. Most lines of Rust code end with a `;`.
 
 [expression-oriented language]: glossary.html#expression-oriented-language
 
-Finally, actually compiling and running our program. We can compile with our
-compiler, `rustc`, by passing it the name of our source file:
+# Compiling and Running Are Separate Steps
+
+In "Writing and Running a Rust Program", we showed you how to run a newly
+created program. We'll break that process down and examine each step now. 
+
+Before running a Rust program, you have to compile it. You can use the Rust
+compiler by entering the `rustc` command and passing it the name of your source
+file, like this:
 
 ```bash
 $ rustc main.rs
 ```
 
-This is similar to `gcc` or `clang`, if you come from a C or C++ background.
-Rust will output a binary executable. We can see it with `ls`:
+If you come from a C or C++ background, you'll notice that this is similar to
+`gcc` or `clang`. After compiling successfully, Rust should output a binary
+executable, which you can see on Linux or OSX by entering the `ls` command in
+your shell as follows:
 
 ```bash
 $ ls
 main  main.rs
 ```
 
-Or on Windows:
+On Windows, you'd enter:
 
 ```bash
 $ dir
 main.exe  main.rs
 ```
 
-There are now two files: our source code, with the `.rs` extension, and the
-executable (`main.exe` on Windows, `main` everywhere else).
+This would create two files: the source code, with a `.rs` extension, and the
+executable (`main.exe` on Windows, `main` everywhere else). All that's left to
+do from here is run the `main` or `main.exe` file, like this:
 
 ```bash
 $ ./main  # or main.exe on Windows
 ```
 
-This prints out our `Hello, world!` text to our terminal.
+If *main.rs* were your "Hello, world!" program, this would print `Hello,
+world!` to your terminal.
 
 If you come from a dynamic language like Ruby, Python, or JavaScript, you may
-not be used to these two steps being separate. Rust is an ‘ahead-of-time
-compiled language’, which means that we can compile a program, give it to
-someone else, and they don't need to have Rust installed. If we give someone a
-`.rb` or `.py` or `.js` file, they need to have a Ruby/Python/JavaScript
-implementation installed, but we just need one command to both compile and run
-our program. Everything is a tradeoff in language design, and Rust has made its
-choice.
+not be used to compiling and running a program being separate steps. Rust is an
+*ahead-of-time compiled* language, which means that you can compile a program,
+give it to someone else, and they can run it even without Rust installed. If
+you give someone a `.rb` or `.py` or `.js` file, on the other hand, they need
+to have a Ruby, Python, or JavaScript implementation installed (respectively),
+but you only need one command to both compile and run your program. Everything
+is a tradeoff in language design, and Rust has made its choice.
 
-Congratulations! You have officially written a Rust program. That makes you a
-Rust programmer! Welcome. 🎊🎉👍
+Just compiling with `rustc` is fine for simple programs, but as your project
+grows, you'll want to be able to manage all of the options your project has,
+and make it easy to share your code with other people and projects. Next, I'll
+introduce you to a tool called Cargo, which will help you write real-world Rust
+programs.
 
-Next, I'd like to introduce you to another tool, Cargo, which is used to write
-real-world Rust programs. Just using `rustc` is nice for simple things, but as
-our project grows, we'll want something to help us manage all of the options
-that it has, and to make it easy to share our code with other people and
-projects.
