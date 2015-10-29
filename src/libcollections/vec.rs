@@ -429,7 +429,7 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Shorten a vector, dropping excess elements.
+    /// Shorten a vector to be `len` elements long, dropping excess elements.
     ///
     /// If `len` is greater than the vector's current length, this has no
     /// effect.
@@ -437,7 +437,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec![1, 2, 3, 4];
+    /// let mut vec = vec![1, 2, 3, 4, 5];
     /// vec.truncate(2);
     /// assert_eq!(vec, [1, 2]);
     /// ```
