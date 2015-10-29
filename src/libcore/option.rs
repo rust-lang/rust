@@ -705,6 +705,31 @@ impl<T> Option<T> {
             }
         }
     }
+
+    /// Inserts a `T` into the option and returns a reference to it along with the previous value
+    /// (if there was one).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x: Option<i32> = None;
+    /// {
+    ///     let (y, z) = x.insert(123);
+    ///     *y = 456;
+    ///     assert_eq!(z, None);
+    /// }
+    /// assert_eq!(x, Some(456));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_insert", issue = "29203")]
+    pub fn insert(&mut self, val: T) -> (&mut T, Option<T>) {
+        let prev = self.take();
+        *self = Some(val);
+        match *self {
+            Some(ref mut x) => (x, prev),
+            None            => unreachable!(),
+        }
+    }
 }
 
 impl<'a, T: Clone> Option<&'a T> {
