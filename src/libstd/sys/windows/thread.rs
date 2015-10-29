@@ -20,6 +20,7 @@ use sys::handle::Handle;
 use sys_common::thread::*;
 use time::Duration;
 
+#[derive(PartialEq, Eq)]
 pub struct Thread {
     handle: Handle
 }

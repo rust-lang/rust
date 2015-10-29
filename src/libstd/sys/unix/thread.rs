@@ -26,6 +26,7 @@ use time::Duration;
 
 use sys_common::thread::*;
 
+#[derive(Eq)]
 pub struct Thread {
     id: libc::pthread_t,
 }
@@ -165,6 +166,14 @@ impl Thread {
             let ret = pthread_join(self.id, ptr::null_mut());
             mem::forget(self);
             debug_assert_eq!(ret, 0);
+        }
+    }
+}
+
+impl PartialEq for Thread {
+    fn eq(&self, other: &Self) -> bool {
+        unsafe {
+            pthread_equal(self.id, other.id) != 0
         }
     }
 }
@@ -403,6 +412,7 @@ extern {
                       value: *mut libc::c_void) -> libc::c_int;
     fn pthread_join(native: libc::pthread_t,
                     value: *mut *mut libc::c_void) -> libc::c_int;
+    fn pthread_equal(t1: libc::pthread_t, t2: libc::pthread_t) -> libc::c_int;
     fn pthread_attr_init(attr: *mut libc::pthread_attr_t) -> libc::c_int;
     fn pthread_attr_destroy(attr: *mut libc::pthread_attr_t) -> libc::c_int;
     fn pthread_attr_setstacksize(attr: *mut libc::pthread_attr_t,

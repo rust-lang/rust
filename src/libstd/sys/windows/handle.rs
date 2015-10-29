@@ -20,6 +20,7 @@ use sys::cvt;
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///
 /// All methods are inherited through a `Deref` impl to `RawHandle`
+#[derive(PartialEq, Eq)]
 pub struct Handle(RawHandle);
 
 /// A wrapper type for `HANDLE` objects to give them proper Send/Sync inference
@@ -27,7 +28,7 @@ pub struct Handle(RawHandle);
 ///
 /// This does **not** drop the handle when it goes out of scope, use `Handle`
 /// instead for that.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq)]
 pub struct RawHandle(HANDLE);
 
 unsafe impl Send for RawHandle {}
@@ -104,5 +105,13 @@ impl RawHandle {
                             options)
         }));
         Ok(Handle::new(ret))
+    }
+}
+
+impl PartialEq for RawHandle {
+    fn eq(&self, other: &Self) -> bool {
+        unsafe {
+            libc::CompareObjectHandles(self.0, other.0) != libc::FALSE
+        }
     }
 }
