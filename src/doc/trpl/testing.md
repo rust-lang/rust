@@ -505,5 +505,6 @@ you add more examples.
 We haven’t covered all of the details with writing documentation tests. For more,
 please see the [Documentation chapter](documentation.html)
 
-One final note: Tests *cannot* be run on a binary file. To see more on file arrangement see the [Crates and Modules](crates-and-modules.html) section.
-
+One final note: documentation tests *cannot* be run on binary crates.
+To see more on file arrangement see the [Crates and
+Modules](crates-and-modules.html) section.
