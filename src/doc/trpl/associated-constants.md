@@ -66,7 +66,7 @@ with `i32`. It will then use the default value. But, as in `i64`, we can also
 add our own definition.
 
 Associated constants don’t have to be associated with a trait. An `impl` block
-for a `struct` works fine too:
+for a `struct` or an `enum` works fine too:
 
 ```rust
 #![feature(associated_consts)]
