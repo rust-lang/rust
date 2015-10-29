@@ -51,9 +51,18 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
+    #[cfg(not(target_env = "newlib"))]
     pub fn set_cloexec(&self) {
         unsafe {
             let ret = c::ioctl(self.fd, c::FIOCLEX);
+            debug_assert_eq!(ret, 0);
+        }
+    }
+    #[cfg(target_env = "newlib")]
+    pub fn set_cloexec(&self) {
+        unsafe {
+            let previous = c::fnctl(self.fd, c::F_GETFD);
+            let ret = c::fnctl(self.fd, c::F_SETFD, previous | c::FD_CLOEXEC);
             debug_assert_eq!(ret, 0);
         }
     }
