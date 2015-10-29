@@ -103,6 +103,7 @@ use borrow::{Borrow, IntoCow, ToOwned, Cow};
 use cmp;
 use fmt;
 use fs;
+use hash::{Hash, Hasher};
 use io;
 use iter;
 use mem;
@@ -446,7 +447,7 @@ enum State {
 ///
 /// Does not occur on Unix.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Copy, Clone, Eq, Hash, Debug)]
+#[derive(Copy, Clone, Eq, Debug)]
 pub struct PrefixComponent<'a> {
     /// The prefix as an unparsed `OsStr` slice.
     raw: &'a OsStr,
@@ -487,6 +488,13 @@ impl<'a> cmp::PartialOrd for PrefixComponent<'a> {
 impl<'a> cmp::Ord for PrefixComponent<'a> {
     fn cmp(&self, other: &PrefixComponent<'a>) -> cmp::Ordering {
         cmp::Ord::cmp(&self.parsed, &other.parsed)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> Hash for PrefixComponent<'a> {
+    fn hash<H: Hasher>(&self, h: &mut H) {
+        self.parsed.hash(h);
     }
 }
 
@@ -932,7 +940,7 @@ impl<'a> cmp::Ord for Components<'a> {
 /// path.push("system32");
 /// path.set_extension("dll");
 /// ```
-#[derive(Clone, Hash)]
+#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PathBuf {
     inner: OsString
@@ -1172,6 +1180,13 @@ impl cmp::PartialEq for PathBuf {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl Hash for PathBuf {
+    fn hash<H: Hasher>(&self, h: &mut H) {
+        self.as_path().hash(h)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::Eq for PathBuf {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1224,7 +1239,6 @@ impl Into<OsString> for PathBuf {
 /// let parent_dir = path.parent();
 /// ```
 ///
-#[derive(Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Path {
     inner: OsStr
@@ -1806,6 +1820,15 @@ impl<'a> fmt::Display for Display<'a> {
 impl cmp::PartialEq for Path {
     fn eq(&self, other: &Path) -> bool {
         self.components().eq(other.components())
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Hash for Path {
+    fn hash<H: Hasher>(&self, h: &mut H) {
+        for component in self.components() {
+            component.hash(h);
+        }
     }
 }
 
@@ -3035,6 +3058,14 @@ mod tests {
 
     #[test]
     pub fn test_compare() {
+        use hash::{Hash, Hasher, SipHasher};
+
+        fn hash<T: Hash>(t: T) -> u64 {
+            let mut s = SipHasher::new_with_keys(0, 0);
+            t.hash(&mut s);
+            s.finish()
+        }
+
         macro_rules! tc(
             ($path1:expr, $path2:expr, eq: $eq:expr,
              starts_with: $starts_with:expr, ends_with: $ends_with:expr,
@@ -3045,6 +3076,9 @@ mod tests {
                  let eq = path1 == path2;
                  assert!(eq == $eq, "{:?} == {:?}, expected {:?}, got {:?}",
                          $path1, $path2, $eq, eq);
+                 assert!($eq == (hash(path1) == hash(path2)),
+                         "{:?} == {:?}, expected {:?}, got {} and {}",
+                         $path1, $path2, $eq, hash(path1), hash(path2));
 
                  let starts_with = path1.starts_with(path2);
                  assert!(starts_with == $starts_with,
