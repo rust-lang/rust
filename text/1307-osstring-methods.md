@@ -1,7 +1,7 @@
-- Feature Name: osstring_simple_functions
+- Feature Name: `osstring_simple_functions`
 - Start Date: 2015-10-04
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1307](https://github.com/rust-lang/rfcs/pull/1307)
+- Rust Issue: [rust-lang/rust#29453](https://github.com/rust-lang/rust/issues/29453)
 
 # Summary
 
