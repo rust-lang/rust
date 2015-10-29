@@ -171,6 +171,7 @@ use sys::thread as imp;
 use sys_common::thread_info;
 use sys_common::unwind;
 use sys_common::util;
+use sys_common::{AsInner, IntoInner};
 use time::Duration;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -617,6 +618,14 @@ impl<T> JoinHandle<T> {
     pub fn join(mut self) -> Result<T> {
         self.0.join()
     }
+}
+
+impl<T> AsInner<imp::Thread> for JoinHandle<T> {
+    fn as_inner(&self) -> &imp::Thread { self.0.native.as_ref().unwrap() }
+}
+
+impl<T> IntoInner<imp::Thread> for JoinHandle<T> {
+    fn into_inner(self) -> imp::Thread { self.0.native.unwrap() }
 }
 
 fn _assert_sync_and_send() {

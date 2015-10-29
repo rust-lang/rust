@@ -78,6 +78,10 @@ impl Thread {
             c::Sleep(super::dur2timeout(dur))
         }
     }
+
+    pub fn handle(&self) -> &Handle { &self.handle }
+
+    pub fn into_handle(self) -> Handle { self.handle }
 }
 
 pub mod guard {

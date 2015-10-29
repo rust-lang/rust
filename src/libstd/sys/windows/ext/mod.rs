@@ -21,6 +21,7 @@ pub mod fs;
 pub mod io;
 pub mod raw;
 pub mod process;
+pub mod thread;
 
 /// A prelude for conveniently writing platform-specific code.
 ///
