@@ -1,32 +1,45 @@
 % Hello, Cargo!
 
-[Cargo][cratesio] is a tool that Rustaceans use to help manage their Rust
-projects. Cargo is currently in a pre-1.0 state, and so it is still a work in
-progress. However, it is already good enough to use for many Rust projects, and
-so it is assumed that Rust projects will use Cargo from the beginning.
+Cargo is Rust’s build system and package manager, and Rustaceans use Cargo to
+manage their Rust projects. Cargo manages three things: building your code,
+downloading the libraries your code depends on, and building those libraries.
+We call libraries your code needs ‘dependencies’, since your code depends on
+them.
 
-[cratesio]: http://doc.crates.io
+The simplest Rust programs don’t have any dependencies, so right now, you'd
+only use the first part of its functionality. As you write more complex Rust
+programs, you’ll want to add dependencies, and if you start off using Cargo,
+that will be a lot easier to do.
 
-Cargo manages three things: building our code, downloading the dependencies our
-code needs, and building those dependencies. At first, our program doesn’t have
-any dependencies, so we’ll only be using the first part of its functionality.
-Eventually, we’ll add more. Since we started off by using Cargo, it'll be easy
-to add later.
+As the vast, vast majority of Rust projects use Cargo, we will assume that
+you’re using it for the rest of the book. Cargo comes installed with Rust
+itself, if you used the official installers. If you installed Rust through some
+other means, you can check if you have Cargo installed by typing:
 
-If you installed Rust via the official installers you will also have Cargo. If
-you installed Rust some other way, you may want to
-[check the Cargo README][cargoreadme] for specific instructions about installing
-it.
+```bash
+$ cargo --version
+```
 
-[cargoreadme]: https://github.com/rust-lang/cargo#installing-cargo-from-nightlies
+Into a terminal. If you see a version number, great! If you see an error like
+‘`command not found`’, then you should look at the documentation for the system
+in which you installed Rust, to determine if Cargo is separate.
 
 ## Converting to Cargo
 
-Let’s convert Hello World to Cargo.
+Let’s convert the Hello World program to Cargo. To Cargo-fy a project, you need
+to do three things: 
 
-To Cargo-ify our project, we need to do three things: Make a `Cargo.toml`
-configuration file, put our source file in the right place, and get rid of the
-old executable (`main.exe` on Windows, `main` everywhere else). Let's do that part first:
+1. Put your source file in the right directory.
+2. Get rid of the old executable (`main.exe` on Windows, `main` everywhere else)
+   and make a new one.
+3. Make a Cargo configuration file.
+
+Let's get started!
+
+### Creating a new Executable and Source Directory
+
+First, go back to your terminal, move to your *hello_world* directory, and
+enter the following commands:
 
 ```bash
 $ mkdir src
@@ -34,28 +47,37 @@ $ mv main.rs src/main.rs
 $ rm main  # or 'del main.exe' on Windows
 ```
 
-> Note: since we're creating an executable, we retain `main.rs` as the source
-> filename. If we want to make a library instead, we should use `lib.rs`. This
-> convention is used by Cargo to successfully compile our projects, but it can
-> be overridden if we wish. Custom file locations for the entry point can be
-> specified with a [`[lib]` or `[[bin]]`][crates-custom] key in the TOML file.
+Cargo expects your source files to live inside a *src* directory, so do that
+first. This leaves the top level project directory (in this case,
+*hello_world*) for READMEs, license information, and anything else not related
+to your code. In this way, using Cargo helps you keep your projects nice and
+tidy. There's a place for everything, and everything is in its place. 
 
-[crates-custom]: http://doc.crates.io/manifest.html#configuring-a-target
+Now, copy *main.rs* to the *src* directory, and delete the compiled file you
+created with `rustc`. As usual, replace `main` with `main.exe` if you're on
+Windows.
 
-Cargo expects our source files to live inside a `src` directory. That leaves the
-top level for other things, like READMEs, license information, and anything not
-related to our code. Cargo helps us keep our projects nice and tidy. A place for
-everything, and everything in its place.
+This example retains `main.rs` as the source filename because it's creating an
+executable. If you wanted to make a library instead, you'd name the file
+`lib.rs`. This convention is used by Cargo to successfully compile your
+projects, but it can be overridden if you wish. 
 
-Next, our configuration file:
+### Creating a Configuration File
 
-```bash
-$ editor Cargo.toml # or 'notepad Cargo.toml' on Windows
-```
+Next, create a new file inside your *hello_world* directory, and call it
+`Cargo.toml`.
 
-Make sure to get this name right: we need the capital `C`!
+Make sure to capitalize the `C` in `Cargo.toml`, or Cargo won't know what to do
+with the configuration file. 
 
-Put this inside:
+This file is in the *[TOML]* (Tom's Obvious, Minimal Language) format. TOML is
+similar to INI, but has some extra goodies. According to the TOML docs, TOML
+“aims to be a minimal configuration file format that's easy to read”, and so we
+chose it as the format Cargo uses.
+
+[TOML]: https://github.com/toml-lang/toml
+
+Inside this file, type the following information:
 
 ```toml
 [package]
@@ -65,18 +87,21 @@ version = "0.0.1"
 authors = [ "Your name <you@example.com>" ]
 ```
 
-This file is in the [TOML][toml] format. TOML is similar to INI, but has some
-extra goodies. According to the TOML docs,
+The first line, `[package]`, indicates that the following statements are
+configuring a package. As we add more information to this file, we’ll add other
+sections, but for now, we just have the package configuration.
 
-> TOML aims to be a minimal configuration file format that's easy to read due
-> to obvious semantics. TOML is designed to map unambiguously to a hash table.
-> TOML should be easy to parse into data structures in a wide variety of
-> languages.
+The other three lines set the three bits of configuration that Cargo needs to
+know to compile your program: its name, what version it is, and who wrote it.
 
-[toml]: https://github.com/toml-lang/toml
+Once you've added this information to the *Cargo.toml* file, save it to finish
+creating the configuration file.
 
-Once we have this file in place in our project's root directory, we should be
-ready to build! To do so, run:
+## Building and Running a Cargo Project 
+
+With your *Cargo.toml* file in place in your project's root directory, you
+should be ready to build and run your Hello World program! To do so, enter the
+following commands:
 
 ```bash
 $ cargo build
@@ -85,8 +110,11 @@ $ ./target/debug/hello_world
 Hello, world!
 ```
 
-Bam! We built our project with `cargo build`, and ran it with
-`./target/debug/hello_world`. We can do both in one step with `cargo run`:
+Bam! If all goes well, `Hello, world!` should print to the terminal once more. 
+
+You just built a project with `cargo build` and ran it with
+`./target/debug/hello_world`, but you can actually do both in one step with
+`cargo run` as follows:
 
 ```bash
 $ cargo run
@@ -94,9 +122,10 @@ $ cargo run
 Hello, world!
 ```
 
-Notice that we didn’t re-build the project this time. Cargo figured out that
-we hadn’t changed the source file, and so it just ran the binary. If we had
-made a modification, we would have seen it do both:
+Notice that this example didn’t re-build the project. Cargo figured out that
+the hasn’t changed, and so it just ran the binary. If you'd modified your
+program, Cargo would have built the file before running it, and you would have
+seen something like this:
 
 ```bash
 $ cargo run
@@ -105,15 +134,24 @@ $ cargo run
 Hello, world!
 ```
 
-This hasn’t bought us a whole lot over our simple use of `rustc`, but think
-about the future: when our project gets more complex, we need to do more
-things to get all of the parts to properly compile. With Cargo, as our project
-grows, we can just run `cargo build`, and it’ll work the right way.
+Cargo checks to see if any of your project’s files have been modified, and only
+rebuilds your project if they’ve changed since the last time you built it.
 
-When our project is finally ready for release, we can use `cargo build
---release` to compile our project with optimizations.
+With simple projects, Cargo doesn't bring a whole lot over just using `rustc`,
+but it will become useful in future. When your projects get more complex,
+you'll need to do more things to get all of the parts to properly compile. With
+Cargo, you can just run `cargo build`, and it should work the right way.
 
-You'll also notice that Cargo has created a new file: `Cargo.lock`.
+## Building for Release
+
+When your project is finally ready for release, you can use `cargo build
+--release` to compile your project with optimizations. These optimizations make
+your Rust code run faster, but turning them on makes your program take longer
+to compile. This is why there are two different profiles, one for development,
+and one for building the final program you’ll give to a user.
+
+Running this command also causes Cargo to create a new file called
+*Cargo.lock*, which looks like this:
 
 ```toml
 [root]
@@ -121,14 +159,17 @@ name = "hello_world"
 version = "0.0.1"
 ```
 
-The `Cargo.lock` file is used by Cargo to keep track of dependencies in our
-application. Right now, we don’t have any, so it’s a bit sparse. We won't ever
-need to touch this file ourselves, just let Cargo handle it.
+Cargo uses the *Cargo.lock* file to keep track of dependencies in your
+application. This is the Hello World project's *Cargo.lock* file. This project
+doesn't have dependencies, so the file is a bit sparse. Realistically, you
+won't ever need to touch this file yourself; just let Cargo handle it.
 
-That’s it! We’ve successfully built `hello_world` with Cargo. Even though our
-program is simple, it’s using much of the real tooling that we’ll use for the
-rest of our Rust career. We can expect to do this to get started with virtually
-all Rust projects:
+That’s it! If you've been following along, you should have successfully built
+`hello_world` with Cargo. 
+
+Even though the project is simple, it now uses much of the real tooling you’ll
+use for the rest of your Rust career. In fact, you can expect to start
+virtually all Rust projects with some variation on the following commands:
 
 ```bash
 $ git clone someurl.com/foo
@@ -136,39 +177,28 @@ $ cd foo
 $ cargo build
 ```
 
-## A New Project
+## Making A New Cargo Project the Easy Way
 
-We don’t have to go through this whole process every time we want to start a new
-project! Cargo has the ability to make a bare-bones project directory in which
-we can start developing right away.
+You don’t have to go through that previous process every time you want to start
+a new project! Cargo can quickly make a bare-bones project directory that you
+can start developing in right away.
 
-To start a new project with Cargo, we use `cargo new`:
+To start a new project with Cargo, enter `cargo new` at the command line:
 
 ```bash
 $ cargo new hello_world --bin
 ```
 
-We’re passing `--bin` because our goal is to get straight to making an
+This command passes `--bin` because the goal is to get straight to making an
 executable application, as opposed to a library. Executables are often called
-‘binaries.’ (as in `/usr/bin`, if we’re on a Unix system)
+*binaries* (as in `/usr/bin`, if you’re on a Unix system).
 
-Let's check out what Cargo has generated for us:
+Cargo has generated two files and one directory for us: a `Cargo.toml` and a
+*src* directory with a *main.rs* file inside. These should look familliar,
+they’re exactly what we created by hand, above.
 
-```bash
-$ cd hello_world
-$ tree .
-.
-├── Cargo.toml
-└── src
-    └── main.rs
-
-1 directory, 2 files
-```
-
-If we don't have the `tree` command, we can probably get it from our
-distribution’s package manager. It’s not necessary, but it’s certainly useful.
-
-This is all we need to get started. First, let’s check out `Cargo.toml`:
+This output is all you need to get started. First, open `Cargo.toml`. It should
+look something like this:
 
 ```toml
 [package]
@@ -178,11 +208,11 @@ version = "0.1.0"
 authors = ["Your Name <you@example.com>"]
 ```
 
-Cargo has populated this file with reasonable defaults based off the arguments
-we gave it and our `git` global configuration. You may notice that Cargo has
+Cargo has populated *Cargo.toml* with reasonable defaults based on the arguments
+you gave it and your `git` global configuration. You may notice that Cargo has
 also initialized the `hello_world` directory as a `git` repository.
 
-Here’s what’s in `src/main.rs`:
+Here’s what should be in `src/main.rs`:
 
 ```rust
 fn main() {
@@ -190,21 +220,24 @@ fn main() {
 }
 ```
 
-Cargo has generated a "Hello World!" for us, and we’re ready to start coding!
-Cargo has its own [guide][guide] which covers Cargo’s features in much more
-depth.
+Cargo has generated a "Hello World!" for you, and you’re ready to start coding! 
 
-[guide]: http://doc.crates.io/guide.html
+> Note: If you want to look at Cargo in more detail, check out the official [Cargo
+guide], which covers all of its features.
 
-Now that we’ve got the tools down, let’s actually learn more about the Rust
-language itself. These are the basics that will serve us well through the rest
-of our time with Rust.
+[Cargo guide]: http://doc.crates.io/guide.html
+
+# Closing Thoughts
+
+This chapter covered the basics that will serve you well through the rest of
+this book, and the rest of your time with Rust. Now that you’ve got the tools
+down, we'll cover more about the Rust language itself. 
 
 You have two options: Dive into a project with ‘[Learn Rust][learnrust]’, or
-start from the bottom and work your way up with
-‘[Syntax and Semantics][syntax]’. More experienced systems programmers will
-probably prefer ‘Learn Rust’, while those from dynamic backgrounds may enjoy
-either. Different people learn differently! Choose whatever’s right for you.
+start from the bottom and work your way up with ‘[Syntax and
+Semantics][syntax]’. More experienced systems programmers will probably prefer
+‘Learn Rust’, while those from dynamic backgrounds may enjoy either. Different
+people learn differently! Choose whatever’s right for you.
 
 [learnrust]: learn-rust.html
 [syntax]: syntax-and-semantics.html
