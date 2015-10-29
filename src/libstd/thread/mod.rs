@@ -252,8 +252,8 @@ impl Builder {
 
         let stack_size = stack_size.unwrap_or(util::min_stack());
 
-        let my_thread = Thread::new(name);
-        let their_thread = my_thread.clone();
+        let mut my_thread = Thread::new(name);
+        let mut their_thread = my_thread.clone();
 
         let my_packet : Arc<UnsafeCell<Option<Result<T>>>>
             = Arc::new(UnsafeCell::new(None));
@@ -263,7 +263,7 @@ impl Builder {
             if let Some(name) = their_thread.name() {
                 imp::Thread::set_name(name);
             }
-            their_thread.inner.id = id;
+            their_thread.id = id;
             unsafe {
                 thread_info::set(imp::guard::current(), their_thread);
                 let mut output = None;
@@ -280,7 +280,7 @@ impl Builder {
         let native = unsafe {
             try!(imp::Thread::new(stack_size, Box::new(main)))
         };
-        my_thread.inner.id = native.id();
+        my_thread.id = native.id();
         Ok(JoinHandle(JoinInner {
             native: Some(native),
             thread: my_thread,
@@ -498,7 +498,6 @@ struct Inner {
     name: Option<String>,
     lock: Mutex<bool>,          // true when there is a buffered unpark
     cvar: Condvar,
-    id: u32,
 }
 
 #[derive(Clone)]
@@ -506,6 +505,7 @@ struct Inner {
 /// A handle to a thread.
 pub struct Thread {
     inner: Arc<Inner>,
+    id: u32,
 }
 
 impl Thread {
@@ -516,8 +516,8 @@ impl Thread {
                 name: name,
                 lock: Mutex::new(false),
                 cvar: Condvar::new(),
-                id: 0,
-            })
+            }),
+            id: 0,
         }
     }
 
@@ -544,7 +544,7 @@ impl Thread {
     /// This ID is unique across running threads, and a thread that has stopped
     /// might see its ID reused.
     pub fn id(&self) -> u32 {
-        self.inner.id
+        self.id
     }
 }
 
