@@ -376,7 +376,7 @@ things, so they don’t show up in the output.
 Another case where the use of `#` is handy is when you want to ignore
 error handling. Lets say you want the following,
 
-```rust
+```rust,ignore
 /// use std::io;
 /// let mut input = String::new(); 
 /// try!(io::stdin().read_line(&mut input));
