@@ -576,17 +576,25 @@ pub fn set_print(sink: Box<Write + Send>) -> Option<Box<Write + Send>> {
            issue = "0")]
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
-    let result = LOCAL_STDOUT.with(|s| {
+    let result = _try_print(args);
+    if let Err(e) = result {
+        panic!("failed printing to stdout: {}", e);
+    }
+}
+
+#[unstable(feature = "print",
+           reason = "implementation detail which may disappear or be replaced at any time",
+           issue = "0")]
+#[doc(hidden)]
+pub fn _try_print(args: fmt::Arguments) -> io::Result<()> {
+    LOCAL_STDOUT.with(|s| {
         if s.borrow_state() == BorrowState::Unused {
             if let Some(w) = s.borrow_mut().as_mut() {
                 return w.write_fmt(args);
             }
         }
         stdout().write_fmt(args)
-    });
-    if let Err(e) = result {
-        panic!("failed printing to stdout: {}", e);
-    }
+    })
 }
 
 #[cfg(test)]
