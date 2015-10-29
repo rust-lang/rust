@@ -60,6 +60,7 @@
 * `-` (`- expr`): arithmetic negation.  Overloadable (`Neg`).
 * `-=` (`var -= expr`): arithmetic subtraction & assignment.
 * `->` (`fn(…) -> type`, `|…| -> type`): function and closure return type.  See [Functions], [Closures].
+* `-> !` (`fn(…) -> !`, `|…| -> !`): diverging function or closure. See [Diverging Functions].
 * `.` (`expr.ident`): member access.  See [Structs], [Method Syntax].
 * `..` (`..`, `expr..`, `..expr`, `expr..expr`): right-exclusive range literal.
 * `..` (`..expr`): struct literal update syntax.  See [Structs (Update syntax)].
@@ -189,6 +190,7 @@
 [Crates and Modules (Importing External Crates)]: crates-and-modules.html#importing-external-crates
 [Crates and Modules (Importing Modules with `use`)]: crates-and-modules.html#importing-modules-with-use
 [Crates and Modules (Re-exporting with `pub use`)]: crates-and-modules.html#re-exporting-with-pub-use
+[Diverging Functions]: functions.html#diverging-functions
 [Enums]: enums.html
 [Foreign Function Interface]: ffi.html
 [Functions (Early Returns)]: functions.html#early-returns
