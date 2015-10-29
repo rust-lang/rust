@@ -666,6 +666,20 @@ mod tests {
     }
 
     #[test]
+    fn test_thread_eq() {
+        let (tx, rx) = channel();
+        let t1 = thread::spawn(move|| {
+            tx.send(thread::current()).unwrap();
+        }).thread();
+        let t2 = rx.recv().unwrap();
+        let t3 = thread::spawn(move|| {
+        }).thread();
+        assert!(t1 == t1);
+        assert!(t1 == t2);
+        assert!(t1 != t3);
+    }
+
+    #[test]
     fn test_run_basic() {
         let (tx, rx) = channel();
         thread::spawn(move|| {
