@@ -34,6 +34,8 @@ macro_rules! panic {
 /// This will invoke the `panic!` macro if the provided expression cannot be
 /// evaluated to `true` at runtime.
 ///
+/// This macro has a second version, where a custom panic message can be provided.
+///
 /// # Examples
 ///
 /// ```
@@ -98,6 +100,9 @@ macro_rules! assert_eq {
 ///
 /// This will invoke the `panic!` macro if the provided expression cannot be
 /// evaluated to `true` at runtime.
+///
+/// Like `assert!`, this macro also has a second version, where a custom panic
+/// message can be provided.
 ///
 /// Unlike `assert!`, `debug_assert!` statements are only enabled in non
 /// optimized builds by default. An optimized build will omit all
