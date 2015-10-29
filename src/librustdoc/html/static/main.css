@@ -415,9 +415,12 @@ a {
 .content span.mod, .content a.mod, block a.current.mod { color: #4d76ae; }
 .content span.enum, .content a.enum, .block a.current.enum { color: #5e9766; }
 .content span.struct, .content a.struct, .block a.current.struct { color: #e53700; }
-.content span.fn, .content a.fn, .block a.current.fn { color: #8c6067; }
-.content span.method, .content a.method, .block a.current.method { color: #8c6067; }
-.content span.tymethod, .content a.tymethod, .block a.current.tymethod { color: #8c6067; }
+.content a.primitive { color: #39a7bf; }
+.content a.type { color: #e57300; }
+.content a.macro { color: #068000; }
+.content span.fn, .content a.fn, .block a.current.fn,
+.content span.method, .content a.method, .block a.current.method,
+.content span.tymethod, .content a.tymethod, .block a.current.tymethod,
 .content .fnname { color: #8c6067; }
 .block a.current.crate { font-weight: 500; }
 
