@@ -58,8 +58,6 @@ fn match_bool() {
     };
     
     match test { //~ ERROR you seem to be trying to match on a boolean expression
-        //~^ERROR you seem to be trying to use match
-        //TODO: Remove duplicate warning
         false => { println!("Noooo!"); },
         _ => (),
     };
