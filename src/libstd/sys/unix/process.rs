@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_snake_case)]
+
 use prelude::v1::*;
 use os::unix::prelude::*;
 
@@ -84,33 +86,62 @@ impl Command {
 
 /// Unix exit statuses
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub enum ExitStatus {
-    /// Normal termination with an exit code.
-    Code(i32),
+pub struct ExitStatus(c_int);
 
-    /// Termination by signal, with the signal number.
-    ///
-    /// Never generated on Windows.
-    Signal(i32),
+#[cfg(any(target_os = "linux", target_os = "android",
+          target_os = "nacl"))]
+mod status_imp {
+    pub fn WIFEXITED(status: i32) -> bool { (status & 0xff) == 0 }
+    pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
+    pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
+}
+
+#[cfg(any(target_os = "macos",
+          target_os = "ios",
+          target_os = "freebsd",
+          target_os = "dragonfly",
+          target_os = "bitrig",
+          target_os = "netbsd",
+          target_os = "openbsd"))]
+mod status_imp {
+    pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
+    pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }
+    pub fn WTERMSIG(status: i32) -> i32 { status & 0o177 }
 }
 
 impl ExitStatus {
-    pub fn success(&self) -> bool {
-        *self == ExitStatus::Code(0)
+    fn exited(&self) -> bool {
+        status_imp::WIFEXITED(self.0)
     }
+
+    pub fn success(&self) -> bool {
+        self.code() == Some(0)
+    }
+
     pub fn code(&self) -> Option<i32> {
-        match *self {
-            ExitStatus::Code(c) => Some(c),
-            _ => None
+        if self.exited() {
+            Some(status_imp::WEXITSTATUS(self.0))
+        } else {
+            None
+        }
+    }
+
+    pub fn signal(&self) -> Option<i32> {
+        if !self.exited() {
+            Some(status_imp::WTERMSIG(self.0))
+        } else {
+            None
         }
     }
 }
 
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            ExitStatus::Code(code) =>  write!(f, "exit code: {}", code),
-            ExitStatus::Signal(code) =>  write!(f, "signal: {}", code),
+        if let Some(code) = self.code() {
+            write!(f, "exit code: {}", code)
+        } else {
+            let signal = self.signal().unwrap();
+            write!(f, "signal: {}", signal)
         }
     }
 }
@@ -351,7 +382,7 @@ impl Process {
     pub fn wait(&self) -> io::Result<ExitStatus> {
         let mut status = 0 as c_int;
         try!(cvt_r(|| unsafe { c::waitpid(self.pid, &mut status, 0) }));
-        Ok(translate_status(status))
+        Ok(ExitStatus(status))
     }
 
     pub fn try_wait(&self) -> Option<ExitStatus> {
@@ -360,7 +391,7 @@ impl Process {
             c::waitpid(self.pid, &mut status, c::WNOHANG)
         }) {
             Ok(0) => None,
-            Ok(n) if n == self.pid => Some(translate_status(status)),
+            Ok(n) if n == self.pid => Some(ExitStatus(status)),
             Ok(n) => panic!("unknown pid: {}", n),
             Err(e) => panic!("unknown waitpid error: {}", e),
         }
@@ -415,36 +446,6 @@ fn make_envp(env: Option<&HashMap<OsString, OsString>>)
         (ptrs.as_ptr() as *const _, tmps, ptrs)
     } else {
         (ptr::null(), Vec::new(), Vec::new())
-    }
-}
-
-fn translate_status(status: c_int) -> ExitStatus {
-    #![allow(non_snake_case)]
-    #[cfg(any(target_os = "linux", target_os = "android",
-              target_os = "nacl"))]
-    mod imp {
-        pub fn WIFEXITED(status: i32) -> bool { (status & 0xff) == 0 }
-        pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
-        pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
-    }
-
-    #[cfg(any(target_os = "macos",
-              target_os = "ios",
-              target_os = "freebsd",
-              target_os = "dragonfly",
-              target_os = "bitrig",
-              target_os = "netbsd",
-              target_os = "openbsd"))]
-    mod imp {
-        pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
-        pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }
-        pub fn WTERMSIG(status: i32) -> i32 { status & 0o177 }
-    }
-
-    if imp::WIFEXITED(status) {
-        ExitStatus::Code(imp::WEXITSTATUS(status))
-    } else {
-        ExitStatus::Signal(imp::WTERMSIG(status))
     }
 }
 
