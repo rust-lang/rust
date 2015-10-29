@@ -20,6 +20,12 @@ Breaking Changes
 * [The `str::lines` and `BufRead::lines` iterators treat `\r\n` as
   line breaks in addition to `\n`][crlf].
 * [Loans of `'static` lifetime extend to the end of a function][stat].
+* [`str::parse` no longer introduces avoidable rounding error when
+  parsing floating point numbers. Together with earlier changes to
+  float formatting/output, "round trips" like f.to_string().parse()
+  now preserve the value of f exactly. Additionally, leading plus
+  signs are now accepted][fp3].
+
 
 Language
 --------
@@ -68,19 +74,22 @@ Libraries
   prelude][pr].
 * [`Extend<String>` and `FromIterator<String` are both implemented for
   `String`][es].
-* [`IntoIterator` is implemented for `Option<&T>` and
-  `Result<&T>`][into].
+* [`IntoIterator` is implemented for references into `Option` and
+  `Result`][into2].
 * [`HashMap` and `HashSet` implement `Extend<&T>` where `T:
-  Copy`][ext] as part of [RFC 839].
+  Copy`][ext] as part of [RFC 839]. This will cause type inferance
+  breakage in rare situations.
 * [`BinaryHeap` implements `Debug`][bh2].
 * [`Borrow` and `BorrowMut` are implemented for fixed-size
   arrays][bm].
-* [`extern fn`s of with the "Rust" and "C" ABIs implement common
+* [`extern fn`s with the "Rust" and "C" ABIs implement common
   traits including `Eq`, `Ord`, `Debug`, `Hash`][fp].
 * [String comparison is faster][faststr].
-* `&mut T` where `T: Write` [also implements `Write`][mutw].
-* [A stable regression in `VecDec::push_back` that caused panics for
-  zero-sized types was fixed][vd].
+* `&mut T` where `T: std::fmt::Write` [also implements
+  `std::fmt::Write`][mutw].
+* [A stable regression in `VecDeque::push_back` and other
+  capicity-altering methods that caused panics for zero-sized types
+  was fixed][vd].
 * [Function pointers implement traits for up to 12 parameters][fp2].
 
 Miscellaneous
@@ -151,8 +160,9 @@ Miscellaneous
 [ffi]: https://github.com/rust-lang/rust/pull/28779
 [fp]: https://github.com/rust-lang/rust/pull/28268
 [fp2]: https://github.com/rust-lang/rust/pull/28560
+[fp3]: https://github.com/rust-lang/rust/pull/27307
 [i]: https://github.com/rust-lang/rust/pull/27451
-[into]: https://github.com/rust-lang/rust/pull/28039
+[into2]: https://github.com/rust-lang/rust/pull/28039
 [it]: https://github.com/rust-lang/rust/pull/27652
 [mm]: https://github.com/rust-lang/rust/pull/27338
 [mutw]: https://github.com/rust-lang/rust/pull/28368
