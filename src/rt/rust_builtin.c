@@ -141,7 +141,8 @@ int rust_get_path(void *p, size_t* sz)
   char *key = NULL;
   char *val = NULL;
   char **menv = NULL;
-  size_t maxlen, len;
+  size_t len;
+  size_t maxlen = 0;
   int nenv = 0;
   int i;
 
@@ -155,7 +156,6 @@ int rust_get_path(void *p, size_t* sz)
   mib[3] = KERN_PROC_ENV;
 
   /* get the number of bytes needed to get the env */
-  maxlen = 0;
   if (sysctl(mib, 4, NULL, &maxlen, NULL, 0) == -1)
     return -1;
 
