@@ -31,7 +31,7 @@ old executable (`main.exe` on Windows, `main` everywhere else). Let's do that pa
 ```bash
 $ mkdir src
 $ mv main.rs src/main.rs
-$ rm main  # or 'rm main.exe' on Windows
+$ rm main  # or 'del main.exe' on Windows
 ```
 
 > Note: since we're creating an executable, we retain `main.rs` as the source
