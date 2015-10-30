@@ -246,9 +246,6 @@ for num in nums.iter() {
 These two basic iterators should serve you well. There are some more
 advanced iterators, including ones that are infinite.
 
-That's enough about iterators. Iterator adaptors are the last concept
-we need to talk about with regards to iterators. Let's get to it!
-
 ## Iterator adaptors
 
 *Iterator adaptors* take an iterator and modify it somehow, producing
