@@ -1498,9 +1498,25 @@ do
         done
     fi
 
-    # We need the generator later on for compiler-rt even if LLVM's not built
-    if [ ${is_msvc} -ne 0 ]
+    if [ ${do_reconfigure} -ne 0 ] && [ ${is_msvc} -ne 0 ]
     then
+        msg "configuring LLVM for $t with cmake"
+
+        CMAKE_ARGS="-DLLVM_INCLUDE_TESTS=OFF"
+        if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]; then
+            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Debug"
+        else
+            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release"
+        fi
+        if [ -z "$CFG_ENABLE_LLVM_ASSERTIONS" ]
+        then
+            CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=OFF"
+        else
+            CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=ON"
+        fi
+
+        msg "configuring LLVM with:"
+        msg "$CMAKE_ARGS"
         case "$CFG_MSVC_ROOT" in
             *14.0*)
                 generator="Visual Studio 14 2015"
@@ -1522,32 +1538,8 @@ do
                 err "can only build LLVM for x86 platforms"
                 ;;
         esac
-        CFG_CMAKE_GENERATOR=$generator
-        putvar CFG_CMAKE_GENERATOR
-    fi
-
-    if [ ${do_reconfigure} -ne 0 ] && [ ${is_msvc} -ne 0 ]
-    then
-        msg "configuring LLVM for $t with cmake"
-
-        CMAKE_ARGS="-DLLVM_INCLUDE_TESTS=OFF"
-        if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]; then
-            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Debug"
-        else
-            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release"
-        fi
-        if [ -z "$CFG_ENABLE_LLVM_ASSERTIONS" ]
-        then
-            CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=OFF"
-        else
-            CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=ON"
-        fi
-
-        msg "configuring LLVM with:"
-        msg "$CMAKE_ARGS"
-
         (cd $LLVM_BUILD_DIR && "$CFG_CMAKE" $CFG_LLVM_SRC_DIR \
-                                            -G "$CFG_CMAKE_GENERATOR" \
+                                            -G "$generator" \
                                             $CMAKE_ARGS)
         need_ok "LLVM cmake configure failed"
     fi
