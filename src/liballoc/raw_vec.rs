@@ -15,6 +15,7 @@ use heap;
 use super::oom;
 use super::boxed::Box;
 use core::ops::Drop;
+use core::cmp;
 use core;
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating a
@@ -360,9 +361,15 @@ impl<T> RawVec<T> {
             }
 
             // Nothing we can really do about these checks :(
-            let new_cap = used_cap.checked_add(needed_extra_cap)
-                                  .and_then(|cap| cap.checked_mul(2))
-                                  .expect("capacity overflow");
+            let required_cap = used_cap.checked_add(needed_extra_cap)
+                                       .expect("capacity overflow");
+
+            // Cannot overflow, because `cap <= isize::MAX`, and type of `cap` is `usize`.
+            let double_cap = self.cap * 2;
+
+            // `double_cap` guarantees exponential growth.
+            let new_cap = cmp::max(double_cap, required_cap);
+
             let new_alloc_size = new_cap.checked_mul(elem_size).expect("capacity overflow");
             // FIXME: may crash and burn on over-reserve
             alloc_guard(new_alloc_size);
@@ -485,4 +492,43 @@ fn alloc_guard(alloc_size: usize) {
         assert!(alloc_size <= ::core::isize::MAX as usize,
                 "capacity overflow");
     }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reserve_does_not_overallocate() {
+        {
+            let mut v: RawVec<u32> = RawVec::new();
+            // First `reserve` allocates like `reserve_exact`
+            v.reserve(0, 9);
+            assert_eq!(9, v.cap());
+        }
+
+        {
+            let mut v: RawVec<u32> = RawVec::new();
+            v.reserve(0, 7);
+            assert_eq!(7, v.cap());
+            // 97 if more than double of 7, so `reserve` should work
+            // like `reserve_exact`.
+            v.reserve(7, 90);
+            assert_eq!(97, v.cap());
+        }
+
+        {
+            let mut v: RawVec<u32> = RawVec::new();
+            v.reserve(0, 12);
+            assert_eq!(12, v.cap());
+            v.reserve(12, 3);
+            // 3 is less than half of 12, so `reserve` must grow
+            // exponentially. At the time of writing this test grow
+            // factor is 2, so new capacity is 24, however, grow factor
+            // of 1.5 is OK too. Hence `>= 18` in assert.
+            assert!(v.cap() >= 12 + 12 / 2);
+        }
+    }
+
 }
