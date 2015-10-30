@@ -99,11 +99,11 @@ get_num_cpus() {
     /* get the number of CPUs from the system */
     sysctl(mib, 2, &numCPU, &len, NULL, 0);
 
-    if( numCPU < 1 ) {
+    if(numCPU < 1) {
         mib[1] = HW_NCPU;
         sysctl( mib, 2, &numCPU, &len, NULL, 0 );
 
-        if( numCPU < 1 ) {
+        if(numCPU < 1) {
             numCPU = 1;
         }
     }
