@@ -532,6 +532,10 @@ impl<T: ?Sized> Unique<T> {
     }
 }
 
+#[cfg(not(stage0))] // remove cfg after new snapshot
+#[unstable(feature = "unique", issue = "27730")]
+impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> { }
+
 #[unstable(feature = "unique", issue= "27730")]
 impl<T:?Sized> Deref for Unique<T> {
     type Target = *mut T;
