@@ -65,6 +65,7 @@
 #![feature(dropck_parametricity)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(decode_utf16)]
+#![feature(drop_in_place)]
 #![cfg_attr(test, feature(clone_from_slice, rand, test))]
 
 #![feature(no_std)]

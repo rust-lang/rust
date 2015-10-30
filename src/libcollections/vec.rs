@@ -65,7 +65,7 @@ use alloc::heap::EMPTY;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
-use core::intrinsics::{arith_offset, assume, drop_in_place, needs_drop};
+use core::intrinsics::{arith_offset, assume, needs_drop};
 use core::iter::FromIterator;
 use core::mem;
 use core::ops::{Index, IndexMut, Deref};
@@ -1394,7 +1394,7 @@ impl<T> Drop for Vec<T> {
                 // Without the branch, dropping Vec<u8> takes linear time.
                 if needs_drop::<T>() {
                     for x in self.iter_mut() {
-                        drop_in_place(x);
+                        ptr::drop_in_place(x);
                     }
                 }
             }
