@@ -78,9 +78,10 @@
 //! `std::i32`](i32/index.html) that documents the constant values [`MIN`] and
 //! [`MAX`] (rarely useful).
 //!
-//! Note the documentation for the primitives [`str`] and [`[T]`] (also called
-//! 'slice'). Many method calls on [`String`] and [`Vec<T>`] are actually calls
-//! to methods on [`str`] and [`[T]`] respectively, via [deref coercions].
+//! Note the documentation for the primitives [`str`] and [`[T]`][slice] (also
+//! called 'slice'). Many method calls on [`String`] and [`Vec<T>`] are actually
+//! calls to methods on [`str`] and [`[T]`][slice] respectively, via [deref
+//! coercions].
 //!
 //! Third, the standard library defines [The Rust Prelude], a small collection
 //! of items - mostly traits - that are imported into every module of every
@@ -109,8 +110,8 @@
 //! regions of memory:
 //!
 //! * [`Vec<T>`] - A heap-allocated *vector* that is resizable at runtime.
-//! * [`[T; n]`] - An inline *array* with a fixed size at compile time.
-//! * [`[T]`] - A dynamically sized *slice* into any other kind of contiguous
+//! * [`[T; n]`][array] - An inline *array* with a fixed size at compile time.
+//! * [`[T]`][slice] - A dynamically sized *slice* into any other kind of contiguous
 //!   storage, whether heap-allocated or not.
 //!
 //! Slices can only be handled through some kind of *pointer*, and as such come
@@ -118,7 +119,7 @@
 //!
 //! * `&[T]` - *shared slice*
 //! * `&mut [T]` - *mutable slice*
-//! * [`Box<[T]>`] - *owned slice*
+//! * [`Box<[T]>`][owned slice] - *owned slice*
 //!
 //! [`str`], a UTF-8 string slice, is a primitive type, and the standard library
 //! defines many methods for it. Rust [`str`]s are typically accessed as
@@ -158,7 +159,7 @@
 //! [UDP]: net/struct.UdpSocket.html
 //! [`::std::env::args()`]: env/fn.args.html
 //! [`Arc`]: sync/struct.Arc.html
-//! [`Box<[T]>`]: boxed/index.html
+//! [owned slice]: boxed/index.html
 //! [`Cell`]: cell/struct.Cell.html
 //! [`FromStr`]: str/trait.FromStr.html
 //! [`HashMap<K, V>`]: collections/struct.HashMap.html
@@ -170,8 +171,8 @@
 //! [`Result<T, E>`]: result/enum.Result.html
 //! [`String`]: string/struct.String.html
 //! [`Vec<T>`]: vec/index.html
-//! [`[T; n]`]: primitive.array.html
-//! [`[T]`]: primitive.slice.html
+//! [array]: primitive.array.html
+//! [slice]: primitive.slice.html
 //! [`atomic`]: sync/atomic/index.html
 //! [`collections`]: collections/index.html
 //! [`for`]: ../book/loops.html#for
