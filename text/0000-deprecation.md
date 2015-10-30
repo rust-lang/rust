@@ -40,13 +40,14 @@ strongly advised to make use of it to convey the reason for the deprecation to
 users of their library. The string is interpreted as plain unformatted text 
 (for now) so that rustdoc can include it in the item's documentation without 
 messing up the formatting.
-* `use`, if included, must be the import path (or a comma-separated list of 
+* `use`, if included, must be the import path (or a semicolon-delimited list of 
 paths) to a set of API items that will replace the functionality of the 
 deprecated item. All crates in scope can be reached by this path. E.g. let's 
 say my `foo()` item was superceded by either the `bar()` or `baz()` functions
-in the `bar` crate, I can `#[deprecate(use="bar::{bar,baz}")] foo()`, as long 
-as I have the `bar` crate in the library path. Rustc checks if the item is 
-actually available, otherwise returning an error.
+in the `bar` crate, in conjunction with the `bruzz(_)` function in the `baz`
+crate, I can `#[deprecate(use="bar::{bar,baz};baz::bruzz")] foo()`, as long 
+as I have the `bar` and `baz` crates in the library path. Rustc checks if the 
+item is actually available, otherwise returning an error.
 
 On use of a *deprecated* item, `rustc` will `warn` of the deprecation. Note 
 that during Cargo builds, warnings on dependencies get silenced. Note that 
