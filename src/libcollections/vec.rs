@@ -859,8 +859,9 @@ impl<T> Vec<T> {
 impl<T: Clone> Vec<T> {
     /// Resizes the `Vec` in-place so that `len()` is equal to `new_len`.
     ///
-    /// Calls either `extend()` or `truncate()` depending on whether `new_len`
-    /// is larger than the current value of `len()` or not.
+    /// If `new_len` is greater than `len()`, the `Vec` is extended by the
+    /// difference, with each additional slot filled with `value`.
+    /// If `new_len` is less than `len()`, the `Vec` is simply truncated.
     ///
     /// # Examples
     ///
