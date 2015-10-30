@@ -33,12 +33,12 @@ systems may want to jump around.
     * [Composing `Option` and `Result`](#composing-option-and-result)
     * [The limits of combinators](#the-limits-of-combinators)
     * [Early returns](#early-returns)
-    * [The `try!` macro](#the-try-macro)
+    * [The `try!` macro](#the-try!-macro)
     * [Defining your own error type](#defining-your-own-error-type)
 * [Standard library traits used for error handling](#standard-library-traits-used-for-error-handling)
     * [The `Error` trait](#the-error-trait)
     * [The `From` trait](#the-from-trait)
-    * [The real `try!` macro](#the-real-try-macro)
+    * [The real `try!` macro](#the-real-try!-macro)
     * [Composing custom error types](#composing-custom-error-types)
     * [Advice for library writers](#advice-for-library-writers)
 * [Case study: A program to read population data](#case-study-a-program-to-read-population-data)
@@ -1470,7 +1470,7 @@ representation. But certainly, this will vary depending on use cases.
 At a minimum, you should probably implement the
 [`Error`](../std/error/trait.Error.html)
 trait. This will give users of your library some minimum flexibility for
-[composing errors](#the-real-try-macro). Implementing the `Error` trait also
+[composing errors](#the-real-try!-macro). Implementing the `Error` trait also
 means that users are guaranteed the ability to obtain a string representation
 of an error (because it requires impls for both `fmt::Debug` and
 `fmt::Display`).
