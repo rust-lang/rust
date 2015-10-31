@@ -38,7 +38,7 @@ use syntax::diagnostic::{Level, RenderSpan, Bug, Fatal, Error, Warning, Note, He
 use syntax::parse::token;
 use syntax::feature_gate::UnstableFeatures;
 
-use rustc_front::lowering::lower_crate;
+use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_front::hir;
 
 struct Env<'a, 'tcx: 'a> {
@@ -124,18 +124,19 @@ fn test_env<F>(source_string: &str,
                     .expect("phase 2 aborted");
 
     let krate = driver::assign_node_ids(&sess, krate);
-    let mut hir_forest = hir_map::Forest::new(lower_crate(&krate));
+    let lcx = LoweringContext::new(&sess, Some(&krate));
+    let mut hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate));
     let arenas = ty::CtxtArenas::new();
     let ast_map = driver::make_map(&sess, &mut hir_forest);
     let krate = ast_map.krate();
 
     // run just enough stuff to build a tcx:
-    let lang_items = lang_items::collect_language_items(krate, &sess);
+    let lang_items = lang_items::collect_language_items(&sess, &ast_map);
     let resolve::CrateMap { def_map, freevars, .. } =
         resolve::resolve_crate(&sess, &ast_map, resolve::MakeGlobMap::No);
     let named_region_map = resolve_lifetime::krate(&sess, krate, &def_map);
     let region_map = region::resolve_crate(&sess, krate);
-    ty::ctxt::create_and_enter(sess,
+    ty::ctxt::create_and_enter(&sess,
                                &arenas,
                                def_map,
                                named_region_map,
@@ -195,7 +196,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                       -> Option<ast::NodeId> {
             assert!(idx < names.len());
             for item in &m.items {
-                if item.ident.to_string() == names[idx] {
+                if item.name.to_string() == names[idx] {
                     return search(this, &**item, idx+1, names);
                 }
             }
@@ -295,7 +296,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     {
         let name = token::intern(name);
         ty::ReEarlyBound(ty::EarlyBoundRegion {
-            param_id: ast::DUMMY_NODE_ID,
+            def_id: self.infcx.tcx.map.local_def_id(ast::DUMMY_NODE_ID),
             space: space,
             index: index,
             name: name

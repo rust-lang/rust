@@ -24,21 +24,19 @@ use metadata::decoder;
 use metadata::encoder as e;
 use metadata::inline::{InlinedItem, InlinedItemRef};
 use metadata::tydecode;
-use metadata::tydecode::{DefIdSource, NominalType, TypeWithId};
-use metadata::tydecode::{RegionParameter, ClosureSource};
 use metadata::tyencode;
 use middle::ty::adjustment;
 use middle::ty::cast;
 use middle::check_const::ConstQualif;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::privacy::{AllPublic, LastMod};
 use middle::region;
 use middle::subst;
-use middle::subst::VecPerParamSpace;
 use middle::ty::{self, Ty};
 
 use syntax::{ast, ast_util, codemap};
+use syntax::ast::NodeIdAssigner;
 use syntax::codemap::Span;
 use syntax::ptr::P;
 
@@ -56,8 +54,9 @@ use serialize::EncoderHelpers;
 
 #[cfg(test)] use std::io::Cursor;
 #[cfg(test)] use syntax::parse;
+#[cfg(test)] use syntax::ast::NodeId;
 #[cfg(test)] use rustc_front::print::pprust;
-#[cfg(test)] use rustc_front::lowering::lower_item;
+#[cfg(test)] use rustc_front::lowering::{lower_item, LoweringContext};
 
 struct DecodeContext<'a, 'b, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
@@ -70,10 +69,6 @@ struct DecodeContext<'a, 'b, 'tcx: 'a> {
 
 trait tr {
     fn tr(&self, dcx: &DecodeContext) -> Self;
-}
-
-trait tr_intern {
-    fn tr_intern(&self, dcx: &DecodeContext) -> DefId;
 }
 
 // ______________________________________________________________________
@@ -129,10 +124,13 @@ impl<'a, 'b, 'c, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'c, 'tcx> {
 pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
                                  tcx: &ty::ctxt<'tcx>,
                                  path: Vec<ast_map::PathElem>,
-                                 par_doc: rbml::Doc)
-                                 -> Result<&'tcx InlinedItem, Vec<ast_map::PathElem>> {
+                                 def_path: ast_map::DefPath,
+                                 par_doc: rbml::Doc,
+                                 orig_did: DefId)
+                                 -> Result<&'tcx InlinedItem, (Vec<ast_map::PathElem>,
+                                                               ast_map::DefPath)> {
     match par_doc.opt_child(c::tag_ast) {
-      None => Err(path),
+      None => Err((path, def_path)),
       Some(ast_doc) => {
         let mut path_as_str = None;
         debug!("> Decoding inlined fn: {:?}::?",
@@ -153,20 +151,21 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
             last_filemap_index: Cell::new(0)
         };
         let raw_ii = decode_ast(ast_doc);
-        let ii = ast_map::map_decoded_item(&dcx.tcx.map, path, raw_ii, dcx);
+        let ii = ast_map::map_decoded_item(&dcx.tcx.map, path, def_path, raw_ii, dcx);
 
-        let ident = match *ii {
-            InlinedItem::Item(ref i) => i.ident,
-            InlinedItem::Foreign(ref i) => i.ident,
-            InlinedItem::TraitItem(_, ref ti) => ti.ident,
-            InlinedItem::ImplItem(_, ref ii) => ii.ident
+        let name = match *ii {
+            InlinedItem::Item(ref i) => i.name,
+            InlinedItem::Foreign(ref i) => i.name,
+            InlinedItem::TraitItem(_, ref ti) => ti.name,
+            InlinedItem::ImplItem(_, ref ii) => ii.name
         };
-        debug!("Fn named: {}", ident);
+        debug!("Fn named: {}", name);
         debug!("< Decoded inlined fn: {}::{}",
                path_as_str.unwrap(),
-               ident);
+               name);
         region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
         decode_side_tables(dcx, ast_doc);
+        copy_item_types(dcx, ii, orig_did);
         match *ii {
           InlinedItem::Item(ref i) => {
             debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
@@ -213,22 +212,8 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
     /// be inlined.  Note that even when the inlined function is referencing itself recursively, we
     /// would want `tr_def_id` for that reference--- conceptually the function calls the original,
     /// non-inlined version, and trans deals with linking that recursive call to the inlined copy.
-    ///
-    /// However, there are a *few* cases where def-ids are used but we know that the thing being
-    /// referenced is in fact *internal* to the item being inlined.  In those cases, you should use
-    /// `tr_intern_def_id()` below.
     pub fn tr_def_id(&self, did: DefId) -> DefId {
-
         decoder::translate_def_id(self.cdata, did)
-    }
-
-    /// Translates an INTERNAL def-id, meaning a def-id that is
-    /// known to refer to some part of the item currently being
-    /// inlined.  In that case, we want to convert the def-id to
-    /// refer to the current crate and to the new, inlined node-id.
-    pub fn tr_intern_def_id(&self, did: DefId) -> DefId {
-        assert_eq!(did.krate, LOCAL_CRATE);
-        DefId { krate: LOCAL_CRATE, node: self.tr_id(did.node) }
     }
 
     /// Translates a `Span` from an extern crate to the corresponding `Span`
@@ -286,12 +271,6 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
                   filemap.translated_filemap.start_pos;
 
         codemap::mk_sp(lo, hi)
-    }
-}
-
-impl tr_intern for DefId {
-    fn tr_intern(&self, dcx: &DecodeContext) -> DefId {
-        dcx.tr_intern_def_id(*self)
     }
 }
 
@@ -460,7 +439,11 @@ impl tr for def::Def {
           def::DefStatic(did, m) => { def::DefStatic(did.tr(dcx), m) }
           def::DefConst(did) => { def::DefConst(did.tr(dcx)) }
           def::DefAssociatedConst(did) => def::DefAssociatedConst(did.tr(dcx)),
-          def::DefLocal(nid) => { def::DefLocal(dcx.tr_id(nid)) }
+          def::DefLocal(_, nid) => {
+              let nid = dcx.tr_id(nid);
+              let did = dcx.tcx.map.local_def_id(nid);
+              def::DefLocal(did, nid)
+          }
           def::DefVariant(e_did, v_did, is_s) => {
             def::DefVariant(e_did.tr(dcx), v_did.tr(dcx), is_s)
           },
@@ -471,11 +454,13 @@ impl tr for def::Def {
           def::DefPrimTy(p) => def::DefPrimTy(p),
           def::DefTyParam(s, index, def_id, n) => def::DefTyParam(s, index, def_id.tr(dcx), n),
           def::DefUse(did) => def::DefUse(did.tr(dcx)),
-          def::DefUpvar(nid1, index, nid2) => {
-            def::DefUpvar(dcx.tr_id(nid1), index, dcx.tr_id(nid2))
+          def::DefUpvar(_, nid1, index, nid2) => {
+              let nid1 = dcx.tr_id(nid1);
+              let nid2 = dcx.tr_id(nid2);
+              let did1 = dcx.tcx.map.local_def_id(nid1);
+              def::DefUpvar(did1, nid1, index, nid2)
           }
           def::DefStruct(did) => def::DefStruct(did.tr(dcx)),
-          def::DefRegion(nid) => def::DefRegion(dcx.tr_id(nid)),
           def::DefLabel(nid) => def::DefLabel(dcx.tr_id(nid))
         }
     }
@@ -568,42 +553,8 @@ impl<'a, 'tcx> read_method_callee_helper<'tcx> for reader::Decoder<'a> {
     }
 }
 
-pub fn encode_closure_kind(ebml_w: &mut Encoder, kind: ty::ClosureKind) {
-    kind.encode(ebml_w).unwrap();
-}
-
 pub fn encode_cast_kind(ebml_w: &mut Encoder, kind: cast::CastKind) {
     kind.encode(ebml_w).unwrap();
-}
-
-pub trait vtable_decoder_helpers<'tcx> {
-    fn read_vec_per_param_space<T, F>(&mut self, f: F) -> VecPerParamSpace<T> where
-        F: FnMut(&mut Self) -> T;
-}
-
-impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
-    fn read_vec_per_param_space<T, F>(&mut self, mut f: F) -> VecPerParamSpace<T> where
-        F: FnMut(&mut reader::Decoder<'a>) -> T,
-    {
-        let types = self.read_to_vec(|this| Ok(f(this))).unwrap();
-        let selfs = self.read_to_vec(|this| Ok(f(this))).unwrap();
-        let fns = self.read_to_vec(|this| Ok(f(this))).unwrap();
-        VecPerParamSpace::new(types, selfs, fns)
-    }
-}
-
-// ___________________________________________________________________________
-//
-
-fn encode_vec_per_param_space<T, F>(rbml_w: &mut Encoder,
-                                    v: &subst::VecPerParamSpace<T>,
-                                    mut f: F) where
-    F: FnMut(&mut Encoder, &T),
-{
-    for &space in &subst::ParamSpace::all() {
-        rbml_w.emit_from_vec(v.get_slice(space),
-                             |rbml_w, n| Ok(f(rbml_w, n))).unwrap();
-    }
 }
 
 // ______________________________________________________________________
@@ -625,21 +576,13 @@ impl<'a, 'tcx> get_ty_str_ctxt<'tcx> for e::EncodeContext<'a, 'tcx> {
 }
 
 trait rbml_writer_helpers<'tcx> {
-    fn emit_closure_type<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                             closure_type: &ty::ClosureTy<'tcx>);
     fn emit_region(&mut self, ecx: &e::EncodeContext, r: ty::Region);
     fn emit_ty<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, ty: Ty<'tcx>);
     fn emit_tys<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, tys: &[Ty<'tcx>]);
-    fn emit_type_param_def<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                               type_param_def: &ty::TypeParameterDef<'tcx>);
-    fn emit_region_param_def(&mut self, ecx: &e::EncodeContext,
-                             region_param_def: &ty::RegionParameterDef);
     fn emit_predicate<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                           predicate: &ty::Predicate<'tcx>);
     fn emit_trait_ref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                           ty: &ty::TraitRef<'tcx>);
-    fn emit_type_scheme<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                            type_scheme: ty::TypeScheme<'tcx>);
     fn emit_substs<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                        substs: &subst::Substs<'tcx>);
     fn emit_existential_bounds<'b>(&mut self, ecx: &e::EncodeContext<'b,'tcx>,
@@ -655,14 +598,6 @@ trait rbml_writer_helpers<'tcx> {
 }
 
 impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
-    fn emit_closure_type<'b>(&mut self,
-                             ecx: &e::EncodeContext<'b, 'tcx>,
-                             closure_type: &ty::ClosureTy<'tcx>) {
-        self.emit_opaque(|this| {
-            Ok(e::write_closure_type(ecx, this, closure_type))
-        });
-    }
-
     fn emit_region(&mut self, ecx: &e::EncodeContext, r: ty::Region) {
         self.emit_opaque(|this| Ok(e::write_region(ecx, this, r)));
     }
@@ -680,54 +615,12 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
         self.emit_opaque(|this| Ok(e::write_trait_ref(ecx, this, trait_ref)));
     }
 
-    fn emit_type_param_def<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                               type_param_def: &ty::TypeParameterDef<'tcx>) {
-        self.emit_opaque(|this| {
-            Ok(tyencode::enc_type_param_def(this,
-                                         &ecx.ty_str_ctxt(),
-                                         type_param_def))
-        });
-    }
-    fn emit_region_param_def(&mut self, ecx: &e::EncodeContext,
-                             region_param_def: &ty::RegionParameterDef) {
-        self.emit_opaque(|this| {
-            Ok(tyencode::enc_region_param_def(this,
-                                              &ecx.ty_str_ctxt(),
-                                              region_param_def))
-        });
-    }
     fn emit_predicate<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                           predicate: &ty::Predicate<'tcx>) {
         self.emit_opaque(|this| {
             Ok(tyencode::enc_predicate(this,
                                        &ecx.ty_str_ctxt(),
                                        predicate))
-        });
-    }
-
-    fn emit_type_scheme<'b>(&mut self,
-                            ecx: &e::EncodeContext<'b, 'tcx>,
-                            type_scheme: ty::TypeScheme<'tcx>) {
-        use serialize::Encoder;
-
-        self.emit_struct("TypeScheme", 2, |this| {
-            this.emit_struct_field("generics", 0, |this| {
-                this.emit_struct("Generics", 2, |this| {
-                    this.emit_struct_field("types", 0, |this| {
-                        Ok(encode_vec_per_param_space(
-                            this, &type_scheme.generics.types,
-                            |this, def| this.emit_type_param_def(ecx, def)))
-                    });
-                    this.emit_struct_field("regions", 1, |this| {
-                        Ok(encode_vec_per_param_space(
-                            this, &type_scheme.generics.regions,
-                            |this, def| this.emit_region_param_def(ecx, def)))
-                    })
-                })
-            });
-            this.emit_struct_field("ty", 1, |this| {
-                Ok(this.emit_ty(ecx, type_scheme.ty))
-            })
         });
     }
 
@@ -933,7 +826,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             rbml_w.tag(c::tag_table_upvar_capture_map, |rbml_w| {
                 rbml_w.id(id);
 
-                let var_id = freevar.def.def_id().node;
+                let var_id = freevar.def.var_id();
                 let upvar_id = ty::UpvarId {
                     var_id: var_id,
                     closure_expr_id: id
@@ -948,21 +841,6 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                 rbml_w.emit_upvar_capture(ecx, &upvar_capture);
             })
         }
-    }
-
-    let lid = DefId { krate: LOCAL_CRATE, node: id };
-    if let Some(type_scheme) = tcx.tcache.borrow().get(&lid) {
-        rbml_w.tag(c::tag_table_tcache, |rbml_w| {
-            rbml_w.id(id);
-            rbml_w.emit_type_scheme(ecx, type_scheme.clone());
-        })
-    }
-
-    if let Some(type_param_def) = tcx.ty_param_defs.borrow().get(&id) {
-        rbml_w.tag(c::tag_table_param_defs, |rbml_w| {
-            rbml_w.id(id);
-            rbml_w.emit_type_param_def(ecx, type_param_def)
-        })
     }
 
     let method_call = ty::MethodCall::expr(id);
@@ -993,20 +871,6 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         rbml_w.tag(c::tag_table_adjustments, |rbml_w| {
             rbml_w.id(id);
             rbml_w.emit_auto_adjustment(ecx, adjustment);
-        })
-    }
-
-    if let Some(closure_type) = tcx.tables.borrow().closure_tys.get(&DefId::local(id)) {
-        rbml_w.tag(c::tag_table_closure_tys, |rbml_w| {
-            rbml_w.id(id);
-            rbml_w.emit_closure_type(ecx, closure_type);
-        })
-    }
-
-    if let Some(closure_kind) = tcx.tables.borrow().closure_kinds.get(&DefId::local(id)) {
-        rbml_w.tag(c::tag_table_closure_kinds, |rbml_w| {
-            rbml_w.id(id);
-            encode_closure_kind(rbml_w, *closure_kind)
         })
     }
 
@@ -1049,14 +913,8 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                               -> ty::TraitRef<'tcx>;
     fn read_poly_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                    -> ty::PolyTraitRef<'tcx>;
-    fn read_type_param_def<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                   -> ty::TypeParameterDef<'tcx>;
-    fn read_region_param_def(&mut self, dcx: &DecodeContext)
-                             -> ty::RegionParameterDef;
     fn read_predicate<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                               -> ty::Predicate<'tcx>;
-    fn read_type_scheme<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                -> ty::TypeScheme<'tcx>;
     fn read_existential_bounds<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                        -> ty::ExistentialBounds<'tcx>;
     fn read_substs<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1067,17 +925,12 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                                     -> adjustment::AutoAdjustment<'tcx>;
     fn read_cast_kind<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                  -> cast::CastKind;
-    fn read_closure_kind<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                 -> ty::ClosureKind;
-    fn read_closure_ty<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                               -> ty::ClosureTy<'tcx>;
     fn read_auto_deref_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                    -> adjustment::AutoDerefRef<'tcx>;
     fn read_autoref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                             -> adjustment::AutoRef<'tcx>;
     fn convert_def_id(&mut self,
                       dcx: &DecodeContext,
-                      source: DefIdSource,
                       did: DefId)
                       -> DefId;
 
@@ -1101,7 +954,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         self.read_opaque(|_, doc| {
             Ok(
                 tydecode::TyDecoder::with_doc(tcx, cdata.cnum, doc,
-                                              &mut |_, id| decoder::translate_def_id(cdata, id))
+                                              &mut |id| decoder::translate_def_id(cdata, id))
                     .parse_ty())
         }).unwrap()
     }
@@ -1123,7 +976,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         self.read_opaque(|_, doc| {
             Ok(
                 tydecode::TyDecoder::with_doc(tcx, cdata.cnum, doc,
-                                              &mut |_, id| decoder::translate_def_id(cdata, id))
+                                              &mut |id| decoder::translate_def_id(cdata, id))
                     .parse_substs())
         }).unwrap()
     }
@@ -1136,7 +989,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
             Ok(op(
                 &mut tydecode::TyDecoder::with_doc(
                     dcx.tcx, dcx.cdata.cnum, doc,
-                    &mut |s, a| this.convert_def_id(dcx, s, a))))
+                    &mut |a| this.convert_def_id(dcx, a))))
         }).unwrap();
 
         fn type_string(doc: rbml::Doc) -> String {
@@ -1173,46 +1026,10 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         ty::Binder(self.read_ty_encoded(dcx, |decoder| decoder.parse_trait_ref()))
     }
 
-    fn read_type_param_def<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                   -> ty::TypeParameterDef<'tcx> {
-        self.read_ty_encoded(dcx, |decoder| decoder.parse_type_param_def())
-    }
-    fn read_region_param_def(&mut self, dcx: &DecodeContext)
-                             -> ty::RegionParameterDef {
-        self.read_ty_encoded(dcx, |decoder| decoder.parse_region_param_def())
-    }
     fn read_predicate<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                               -> ty::Predicate<'tcx>
     {
         self.read_ty_encoded(dcx, |decoder| decoder.parse_predicate())
-    }
-
-    fn read_type_scheme<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                -> ty::TypeScheme<'tcx> {
-        self.read_struct("TypeScheme", 3, |this| {
-            Ok(ty::TypeScheme {
-                generics: this.read_struct_field("generics", 0, |this| {
-                    this.read_struct("Generics", 2, |this| {
-                        Ok(ty::Generics {
-                            types:
-                            this.read_struct_field("types", 0, |this| {
-                                Ok(this.read_vec_per_param_space(
-                                    |this| this.read_type_param_def(dcx)))
-                            }).unwrap(),
-
-                            regions:
-                            this.read_struct_field("regions", 1, |this| {
-                                Ok(this.read_vec_per_param_space(
-                                    |this| this.read_region_param_def(dcx)))
-                            }).unwrap(),
-                        })
-                    })
-                }).unwrap(),
-                ty: this.read_struct_field("ty", 1, |this| {
-                    Ok(this.read_ty(dcx))
-                }).unwrap()
-            })
-        }).unwrap()
     }
 
     fn read_existential_bounds<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
@@ -1225,7 +1042,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                            -> subst::Substs<'tcx> {
         self.read_opaque(|this, doc| {
             Ok(tydecode::TyDecoder::with_doc(dcx.tcx, dcx.cdata.cnum, doc,
-                                             &mut |s, a| this.convert_def_id(dcx, s, a))
+                                             &mut |a| this.convert_def_id(dcx, a))
                .parse_substs())
         }).unwrap()
     }
@@ -1332,18 +1149,6 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         Decodable::decode(self).unwrap()
     }
 
-    fn read_closure_kind<'b, 'c>(&mut self, _dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                 -> ty::ClosureKind
-    {
-        Decodable::decode(self).unwrap()
-    }
-
-    fn read_closure_ty<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                               -> ty::ClosureTy<'tcx>
-    {
-        self.read_ty_encoded(dcx, |decoder| decoder.parse_closure_ty())
-    }
-
     /// Converts a def-id that appears in a type.  The correct
     /// translation will depend on what kind of def-id this is.
     /// This is a subtle point: type definitions are not
@@ -1378,14 +1183,10 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     /// def-ids so that all these distinctions were unnecessary.
     fn convert_def_id(&mut self,
                       dcx: &DecodeContext,
-                      source: tydecode::DefIdSource,
                       did: DefId)
                       -> DefId {
-        let r = match source {
-            NominalType | TypeWithId | RegionParameter => dcx.tr_def_id(did),
-            ClosureSource => dcx.tr_intern_def_id(did)
-        };
-        debug!("convert_def_id(source={:?}, did={:?})={:?}", source, did, r);
+        let r = dcx.tr_def_id(did);
+        debug!("convert_def_id(did={:?})={:?}", did, r);
         return r;
     }
 }
@@ -1450,15 +1251,6 @@ fn decode_side_tables(dcx: &DecodeContext,
                         let ub = val_dsr.read_upvar_capture(dcx);
                         dcx.tcx.tables.borrow_mut().upvar_capture_map.insert(upvar_id, ub);
                     }
-                    c::tag_table_tcache => {
-                        let type_scheme = val_dsr.read_type_scheme(dcx);
-                        let lid = DefId { krate: LOCAL_CRATE, node: id };
-                        dcx.tcx.register_item_type(lid, type_scheme);
-                    }
-                    c::tag_table_param_defs => {
-                        let bounds = val_dsr.read_type_param_def(dcx);
-                        dcx.tcx.ty_param_defs.borrow_mut().insert(id, bounds);
-                    }
                     c::tag_table_method_map => {
                         let (autoderef, method) = val_dsr.read_method_callee(dcx);
                         let method_call = ty::MethodCall {
@@ -1471,18 +1263,6 @@ fn decode_side_tables(dcx: &DecodeContext,
                         let adj =
                             val_dsr.read_auto_adjustment(dcx);
                         dcx.tcx.tables.borrow_mut().adjustments.insert(id, adj);
-                    }
-                    c::tag_table_closure_tys => {
-                        let closure_ty =
-                            val_dsr.read_closure_ty(dcx);
-                        dcx.tcx.tables.borrow_mut().closure_tys.insert(DefId::local(id),
-                                                                closure_ty);
-                    }
-                    c::tag_table_closure_kinds => {
-                        let closure_kind =
-                            val_dsr.read_closure_kind(dcx);
-                        dcx.tcx.tables.borrow_mut().closure_kinds.insert(DefId::local(id),
-                                                                  closure_kind);
                     }
                     c::tag_table_cast_kinds => {
                         let cast_kind =
@@ -1503,6 +1283,53 @@ fn decode_side_tables(dcx: &DecodeContext,
         }
 
         debug!(">< Side table doc loaded");
+    }
+}
+
+// copy the tcache entries from the original item to the new
+// inlined item
+fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
+    fn copy_item_type(dcx: &DecodeContext,
+                      inlined_id: ast::NodeId,
+                      remote_did: DefId) {
+        let inlined_did = dcx.tcx.map.local_def_id(inlined_id);
+        dcx.tcx.register_item_type(inlined_did,
+                                   dcx.tcx.lookup_item_type(remote_did));
+
+    }
+    // copy the entry for the item itself
+    let item_node_id = match ii {
+        &InlinedItem::Item(ref i) => i.id,
+        &InlinedItem::TraitItem(_, ref ti) => ti.id,
+        &InlinedItem::ImplItem(_, ref ii) => ii.id,
+        &InlinedItem::Foreign(ref fi) => fi.id
+    };
+    copy_item_type(dcx, item_node_id, orig_did);
+
+    // copy the entries of inner items
+    if let &InlinedItem::Item(ref item) = ii {
+        match item.node {
+            hir::ItemEnum(ref def, _) => {
+                let orig_def = dcx.tcx.lookup_adt_def(orig_did);
+                for (i_variant, orig_variant) in
+                    def.variants.iter().zip(orig_def.variants.iter())
+                {
+                    debug!("astencode: copying variant {:?} => {:?}",
+                           orig_variant.did, i_variant.node.data.id());
+                    copy_item_type(dcx, i_variant.node.data.id(), orig_variant.did);
+                }
+            }
+            hir::ItemStruct(ref def, _) => {
+                if !def.is_struct() {
+                    let ctor_did = dcx.tcx.lookup_adt_def(orig_did)
+                        .struct_variant().did;
+                    debug!("astencode: copying ctor {:?} => {:?}", ctor_did,
+                           def.id());
+                    copy_item_type(dcx, def.id(), ctor_did);
+                }
+            }
+            _ => {}
+        }
     }
 }
 
@@ -1552,6 +1379,22 @@ impl FakeExtCtxt for parse::ParseSess {
 }
 
 #[cfg(test)]
+struct FakeNodeIdAssigner;
+
+#[cfg(test)]
+// It should go without saying that this may give unexpected results. Avoid
+// lowering anything which needs new nodes.
+impl NodeIdAssigner for FakeNodeIdAssigner {
+    fn next_node_id(&self) -> NodeId {
+        0
+    }
+
+    fn peek_node_id(&self) -> NodeId {
+        0
+    }
+}
+
+#[cfg(test)]
 fn mk_ctxt() -> parse::ParseSess {
     parse::ParseSess::new()
 }
@@ -1569,7 +1412,9 @@ fn roundtrip(in_item: P<hir::Item>) {
 #[test]
 fn test_basic() {
     let cx = mk_ctxt();
-    roundtrip(lower_item(&quote_item!(&cx,
+    let fnia = FakeNodeIdAssigner;
+    let lcx = LoweringContext::new(&fnia, None);
+    roundtrip(lower_item(&lcx, &quote_item!(&cx,
         fn foo() {}
     ).unwrap()));
 }
@@ -1577,7 +1422,9 @@ fn test_basic() {
 #[test]
 fn test_smalltalk() {
     let cx = mk_ctxt();
-    roundtrip(lower_item(&quote_item!(&cx,
+    let fnia = FakeNodeIdAssigner;
+    let lcx = LoweringContext::new(&fnia, None);
+    roundtrip(lower_item(&lcx, &quote_item!(&cx,
         fn foo() -> isize { 3 + 4 } // first smalltalk program ever executed.
     ).unwrap()));
 }
@@ -1585,7 +1432,9 @@ fn test_smalltalk() {
 #[test]
 fn test_more() {
     let cx = mk_ctxt();
-    roundtrip(lower_item(&quote_item!(&cx,
+    let fnia = FakeNodeIdAssigner;
+    let lcx = LoweringContext::new(&fnia, None);
+    roundtrip(lower_item(&lcx, &quote_item!(&cx,
         fn foo(x: usize, y: usize) -> usize {
             let z = x + y;
             return z;
@@ -1602,10 +1451,12 @@ fn test_simplification() {
             return alist {eq_fn: eq_int, data: Vec::new()};
         }
     ).unwrap();
-    let hir_item = lower_item(&item);
+    let fnia = FakeNodeIdAssigner;
+    let lcx = LoweringContext::new(&fnia, None);
+    let hir_item = lower_item(&lcx, &item);
     let item_in = InlinedItemRef::Item(&hir_item);
     let item_out = simplify_ast(item_in);
-    let item_exp = InlinedItem::Item(lower_item(&quote_item!(&cx,
+    let item_exp = InlinedItem::Item(lower_item(&lcx, &quote_item!(&cx,
         fn new_int_alist<B>() -> alist<isize, B> {
             return alist {eq_fn: eq_int, data: Vec::new()};
         }

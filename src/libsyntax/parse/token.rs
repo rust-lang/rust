@@ -453,7 +453,7 @@ macro_rules! declare_special_idents_and_keywords {(
             #[allow(non_upper_case_globals)]
             pub const $si_static: ast::Ident = ast::Ident {
                 name: ast::Name($si_name),
-                ctxt: 0,
+                ctxt: ast::EMPTY_CTXT,
             };
          )*
     }
@@ -462,7 +462,7 @@ macro_rules! declare_special_idents_and_keywords {(
         use ast;
         $(
             #[allow(non_upper_case_globals)]
-            pub const $si_static: ast::Name =  ast::Name($si_name);
+            pub const $si_static: ast::Name = ast::Name($si_name);
         )*
     }
 
@@ -729,19 +729,19 @@ pub fn gensym(s: &str) -> ast::Name {
 /// Maps a string to an identifier with an empty syntax context.
 #[inline]
 pub fn str_to_ident(s: &str) -> ast::Ident {
-    ast::Ident::new(intern(s))
+    ast::Ident::with_empty_ctxt(intern(s))
 }
 
 /// Maps a string to a gensym'ed identifier.
 #[inline]
 pub fn gensym_ident(s: &str) -> ast::Ident {
-    ast::Ident::new(gensym(s))
+    ast::Ident::with_empty_ctxt(gensym(s))
 }
 
 // create a fresh name that maps to the same string as the old one.
 // note that this guarantees that str_ptr_eq(ident_to_string(src),interner_get(fresh_name(src)));
 // that is, that the new name and the old one are connected to ptr_eq strings.
-pub fn fresh_name(src: &ast::Ident) -> ast::Name {
+pub fn fresh_name(src: ast::Ident) -> ast::Name {
     let interner = get_ident_interner();
     interner.gensym_copy(src.name)
     // following: debug version. Could work in final except that it's incompatible with
@@ -753,7 +753,7 @@ pub fn fresh_name(src: &ast::Ident) -> ast::Name {
 
 // create a fresh mark.
 pub fn fresh_mark() -> ast::Mrk {
-    gensym("mark").usize() as u32
+    gensym("mark").0
 }
 
 #[cfg(test)]
@@ -763,7 +763,7 @@ mod tests {
     use ext::mtwt;
 
     fn mark_ident(id : ast::Ident, m : ast::Mrk) -> ast::Ident {
-        ast::Ident { name: id.name, ctxt:mtwt::apply_mark(m, id.ctxt) }
+        ast::Ident::new(id.name, mtwt::apply_mark(m, id.ctxt))
     }
 
     #[test] fn mtwt_token_eq_test() {

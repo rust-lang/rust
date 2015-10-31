@@ -12,7 +12,7 @@
 Managing the scope stack. The scopes are tied to lexical scopes, so as
 we descend the HAIR, we push a scope on the stack, translate ite
 contents, and then pop it off. Every scope is named by a
-`H::CodeExtent`.
+`CodeExtent`.
 
 ### SEME Regions
 
@@ -23,7 +23,7 @@ via a `break` or `return` or just by fallthrough, that marks an exit
 from the scope. Each lexical scope thus corresponds to a single-entry,
 multiple-exit (SEME) region in the control-flow graph.
 
-For now, we keep a mapping from each `H::CodeExtent` to its
+For now, we keep a mapping from each `CodeExtent` to its
 corresponding SEME region for later reference (see caveat in next
 paragraph). This is because region scopes are tied to
 them. Eventually, when we shift to non-lexical lifetimes, three should
@@ -87,37 +87,41 @@ should go to.
 */
 
 use build::{BlockAnd, Builder, CFG};
-use hair::Hair;
 use repr::*;
+use rustc::middle::region::CodeExtent;
+use rustc::middle::ty::Ty;
+use syntax::codemap::Span;
 
-pub struct Scope<H:Hair> {
-    extent: H::CodeExtent,
+pub struct Scope<'tcx> {
+    extent: CodeExtent,
     exits: Vec<ExecutionPoint>,
-    drops: Vec<(DropKind, H::Span, Lvalue<H>)>,
+    drops: Vec<(DropKind, Span, Lvalue<'tcx>)>,
     cached_block: Option<BasicBlock>,
 }
 
 #[derive(Clone, Debug)]
-pub struct LoopScope<H:Hair> {
-    pub extent: H::CodeExtent,      // extent of the loop
+pub struct LoopScope {
+    pub extent: CodeExtent, // extent of the loop
     pub continue_block: BasicBlock, // where to go on a `loop`
-    pub break_block: BasicBlock,    // where to go on a `break
+    pub break_block: BasicBlock, // where to go on a `break
 }
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     /// Start a loop scope, which tracks where `continue` and `break`
     /// should branch to. See module comment for more details.
-    pub fn in_loop_scope<F,R>(&mut self,
-                              loop_block: BasicBlock,
-                              break_block: BasicBlock,
-                              f: F)
-                              -> BlockAnd<R>
-        where F: FnOnce(&mut Builder<H>) -> BlockAnd<R>
+    pub fn in_loop_scope<F, R>(&mut self,
+                               loop_block: BasicBlock,
+                               break_block: BasicBlock,
+                               f: F)
+                               -> BlockAnd<R>
+        where F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>
     {
         let extent = self.extent_of_innermost_scope().unwrap();
-        let loop_scope = LoopScope::<H> { extent: extent.clone(),
-                                          continue_block: loop_block,
-                                          break_block: break_block };
+        let loop_scope = LoopScope {
+            extent: extent.clone(),
+            continue_block: loop_block,
+            break_block: break_block,
+        };
         self.loop_scopes.push(loop_scope);
         let r = f(self);
         assert!(self.loop_scopes.pop().unwrap().extent == extent);
@@ -126,12 +130,8 @@ impl<H:Hair> Builder<H> {
 
     /// Start a scope. The closure `f` should translate the contents
     /// of the scope. See module comment for more details.
-    pub fn in_scope<F,R>(&mut self,
-                         extent: H::CodeExtent,
-                         block: BasicBlock,
-                         f: F)
-                         -> BlockAnd<R>
-        where F: FnOnce(&mut Builder<H>) -> BlockAnd<R>
+    pub fn in_scope<F, R>(&mut self, extent: CodeExtent, block: BasicBlock, f: F) -> BlockAnd<R>
+        where F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
 
@@ -171,18 +171,24 @@ impl<H:Hair> Builder<H> {
     /// exit points.
     fn graph_extent(&self, entry: ExecutionPoint, exits: Vec<ExecutionPoint>) -> GraphExtent {
         if exits.len() == 1 && entry.block == exits[0].block {
-            GraphExtent { entry: entry, exit: GraphExtentExit::Statement(exits[0].statement) }
+            GraphExtent {
+                entry: entry,
+                exit: GraphExtentExit::Statement(exits[0].statement),
+            }
         } else {
-            GraphExtent { entry: entry, exit: GraphExtentExit::Points(exits) }
+            GraphExtent {
+                entry: entry,
+                exit: GraphExtentExit::Points(exits),
+            }
         }
     }
 
     /// Finds the loop scope for a given label. This is used for
     /// resolving `break` and `continue`.
     pub fn find_loop_scope(&mut self,
-                           span: H::Span,
-                           label: Option<H::CodeExtent>)
-                           -> LoopScope<H> {
+                           span: Span,
+                           label: Option<CodeExtent>)
+                           -> LoopScope {
         let loop_scope =
             match label {
                 None => {
@@ -202,7 +208,7 @@ impl<H:Hair> Builder<H> {
 
         match loop_scope {
             Some(loop_scope) => loop_scope.clone(),
-            None => self.hir.span_bug(span, "no enclosing loop scope found?")
+            None => self.hir.span_bug(span, "no enclosing loop scope found?"),
         }
     }
 
@@ -211,8 +217,8 @@ impl<H:Hair> Builder<H> {
     /// needed, as well as tracking this exit for the SEME region. See
     /// module comment for details.
     pub fn exit_scope(&mut self,
-                      span: H::Span,
-                      extent: H::CodeExtent,
+                      span: Span,
+                      extent: CodeExtent,
                       block: BasicBlock,
                       target: BasicBlock) {
         let popped_scopes =
@@ -249,12 +255,11 @@ impl<H:Hair> Builder<H> {
     /// Indicates that `lvalue` should be dropped on exit from
     /// `extent`.
     pub fn schedule_drop(&mut self,
-                         span: H::Span,
-                         extent: H::CodeExtent,
+                         span: Span,
+                         extent: CodeExtent,
                          kind: DropKind,
-                         lvalue: &Lvalue<H>,
-                         lvalue_ty: H::Ty)
-    {
+                         lvalue: &Lvalue<'tcx>,
+                         lvalue_ty: Ty<'tcx>) {
         if self.hir.needs_drop(lvalue_ty, span) {
             match self.scopes.iter_mut().rev().find(|s| s.extent == extent) {
                 Some(scope) => {
@@ -267,18 +272,16 @@ impl<H:Hair> Builder<H> {
         }
     }
 
-    pub fn extent_of_innermost_scope(&self) -> Option<H::CodeExtent> {
+    pub fn extent_of_innermost_scope(&self) -> Option<CodeExtent> {
         self.scopes.last().map(|scope| scope.extent)
     }
 
-    pub fn extent_of_outermost_scope(&self) -> Option<H::CodeExtent> {
+    pub fn extent_of_outermost_scope(&self) -> Option<CodeExtent> {
         self.scopes.first().map(|scope| scope.extent)
     }
 }
 
-fn diverge_cleanup_helper<H:Hair>(cfg: &mut CFG<H>,
-                                 scopes: &mut [Scope<H>])
-                                 -> BasicBlock {
+fn diverge_cleanup_helper<'tcx>(cfg: &mut CFG<'tcx>, scopes: &mut [Scope<'tcx>]) -> BasicBlock {
     let len = scopes.len();
 
     if len == 0 {

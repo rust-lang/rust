@@ -37,7 +37,7 @@
 
 fn main() {
     let a = box 1;
-    let b = box() (2, 3.5f64);
+    let b = box (2, 3.5f64);
 
     zzz(); // #break
 }

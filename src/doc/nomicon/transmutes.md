@@ -8,7 +8,7 @@ horribly unsafe thing you can do in Rust. The railguards here are dental floss.
 
 `mem::transmute<T, U>` takes a value of type `T` and reinterprets it to have
 type `U`. The only restriction is that the `T` and `U` are verified to have the
-same size. The ways to cause Undefined Behaviour with this are mind boggling.
+same size. The ways to cause Undefined Behavior with this are mind boggling.
 
 * First and foremost, creating an instance of *any* type with an invalid state
   is going to cause arbitrary chaos that can't really be predicted.
@@ -26,7 +26,7 @@ same size. The ways to cause Undefined Behaviour with this are mind boggling.
 `mem::transmute_copy<T, U>` somehow manages to be *even more* wildly unsafe than
 this. It copies `size_of<U>` bytes out of an `&T` and interprets them as a `U`.
 The size check that `mem::transmute` has is gone (as it may be valid to copy
-out a prefix), though it is Undefined Behaviour for `U` to be larger than `T`.
+out a prefix), though it is Undefined Behavior for `U` to be larger than `T`.
 
 Also of course you can get most of the functionality of these functions using
 pointer casts.

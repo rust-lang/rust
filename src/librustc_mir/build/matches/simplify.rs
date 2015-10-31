@@ -29,19 +29,20 @@ use repr::*;
 
 use std::mem;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn simplify_candidate(&mut self,
                               mut block: BasicBlock,
-                              candidate: &mut Candidate<H>)
-                              -> BlockAnd<()>
-    {
+                              candidate: &mut Candidate<'tcx>)
+                              -> BlockAnd<()> {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
             let match_pairs = mem::replace(&mut candidate.match_pairs, vec![]);
             let mut progress = match_pairs.len(); // count how many were simplified
             for match_pair in match_pairs {
                 match self.simplify_match_pair(block, match_pair, candidate) {
-                    Ok(b) => { block = b; }
+                    Ok(b) => {
+                        block = b;
+                    }
                     Err(match_pair) => {
                         candidate.match_pairs.push(match_pair);
                         progress -= 1; // this one was not simplified
@@ -56,14 +57,14 @@ impl<H:Hair> Builder<H> {
 
     /// Tries to simplify `match_pair`, returning true if
     /// successful. If successful, new match pairs and bindings will
-    /// have been pushed into the candidate. On failure (if false is
-    /// returned), no changes are made to candidate.
+    /// have been pushed into the candidate. If no simplification is
+    /// possible, Err is returned and no changes are made to
+    /// candidate.
     fn simplify_match_pair(&mut self,
                            mut block: BasicBlock,
-                           match_pair: MatchPair<H>,
-                           candidate: &mut Candidate<H>)
-                           -> Result<BasicBlock, MatchPair<H>> // returns Err() if cannot simplify
-    {
+                           match_pair: MatchPair<'tcx>,
+                           candidate: &mut Candidate<'tcx>)
+                           -> Result<BasicBlock, MatchPair<'tcx>> {
         match match_pair.pattern.kind {
             PatternKind::Wild(..) => {
                 // nothing left to do
@@ -114,8 +115,8 @@ impl<H:Hair> Builder<H> {
 
             PatternKind::Leaf { subpatterns } => {
                 // tuple struct, match subpats (if any)
-                candidate.match_pairs.extend(
-                    self.field_match_pairs(match_pair.lvalue, subpatterns));
+                candidate.match_pairs
+                         .extend(self.field_match_pairs(match_pair.lvalue, subpatterns));
                 Ok(block)
             }
 
@@ -128,4 +129,3 @@ impl<H:Hair> Builder<H> {
         }
     }
 }
-

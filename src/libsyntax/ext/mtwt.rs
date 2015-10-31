@@ -35,7 +35,9 @@ use std::collections::HashMap;
 pub struct SCTable {
     table: RefCell<Vec<SyntaxContext_>>,
     mark_memo: RefCell<HashMap<(SyntaxContext,Mrk),SyntaxContext>>,
-    rename_memo: RefCell<HashMap<(SyntaxContext,Ident,Name),SyntaxContext>>,
+    // The pair (Name,SyntaxContext) is actually one Ident, but it needs to be hashed and
+    // compared as pair (name, ctxt) and not as an Ident
+    rename_memo: RefCell<HashMap<(SyntaxContext,(Name,SyntaxContext),Name),SyntaxContext>>,
 }
 
 #[derive(PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy, Clone)]
@@ -66,8 +68,9 @@ pub fn apply_mark(m: Mrk, ctxt: SyntaxContext) -> SyntaxContext {
 /// Extend a syntax context with a given mark and sctable (explicit memoization)
 fn apply_mark_internal(m: Mrk, ctxt: SyntaxContext, table: &SCTable) -> SyntaxContext {
     let key = (ctxt, m);
-    * table.mark_memo.borrow_mut().entry(key)
-        .or_insert_with(|| idx_push(&mut *table.table.borrow_mut(), Mark(m, ctxt)))
+    *table.mark_memo.borrow_mut().entry(key).or_insert_with(|| {
+        SyntaxContext(idx_push(&mut *table.table.borrow_mut(), Mark(m, ctxt)))
+    })
 }
 
 /// Extend a syntax context with a given rename
@@ -81,10 +84,11 @@ fn apply_rename_internal(id: Ident,
                        to: Name,
                        ctxt: SyntaxContext,
                        table: &SCTable) -> SyntaxContext {
-    let key = (ctxt, id, to);
+    let key = (ctxt, (id.name, id.ctxt), to);
 
-    * table.rename_memo.borrow_mut().entry(key)
-        .or_insert_with(|| idx_push(&mut *table.table.borrow_mut(), Rename(id, to, ctxt)))
+    *table.rename_memo.borrow_mut().entry(key).or_insert_with(|| {
+            SyntaxContext(idx_push(&mut *table.table.borrow_mut(), Rename(id, to, ctxt)))
+    })
 }
 
 /// Apply a list of renamings to a context
@@ -185,20 +189,20 @@ fn resolve_internal(id: Ident,
     }
 
     let resolved = {
-        let result = (*table.table.borrow())[id.ctxt as usize];
+        let result = (*table.table.borrow())[id.ctxt.0 as usize];
         match result {
             EmptyCtxt => id.name,
             // ignore marks here:
             Mark(_,subctxt) =>
-                resolve_internal(Ident{name:id.name, ctxt: subctxt},
+                resolve_internal(Ident::new(id.name, subctxt),
                                  table, resolve_table),
             // do the rename if necessary:
             Rename(Ident{name, ctxt}, toname, subctxt) => {
                 let resolvedfrom =
-                    resolve_internal(Ident{name:name, ctxt:ctxt},
+                    resolve_internal(Ident::new(name, ctxt),
                                      table, resolve_table);
                 let resolvedthis =
-                    resolve_internal(Ident{name:id.name, ctxt:subctxt},
+                    resolve_internal(Ident::new(id.name, subctxt),
                                      table, resolve_table);
                 if (resolvedthis == resolvedfrom)
                     && (marksof_internal(ctxt, resolvedthis, table)
@@ -229,7 +233,7 @@ fn marksof_internal(ctxt: SyntaxContext,
     let mut result = Vec::new();
     let mut loopvar = ctxt;
     loop {
-        let table_entry = (*table.table.borrow())[loopvar as usize];
+        let table_entry = (*table.table.borrow())[loopvar.0 as usize];
         match table_entry {
             EmptyCtxt => {
                 return result;
@@ -256,7 +260,7 @@ fn marksof_internal(ctxt: SyntaxContext,
 /// FAILS when outside is not a mark.
 pub fn outer_mark(ctxt: SyntaxContext) -> Mrk {
     with_sctable(|sctable| {
-        match (*sctable.table.borrow())[ctxt as usize] {
+        match (*sctable.table.borrow())[ctxt.0 as usize] {
             Mark(mrk, _) => mrk,
             _ => panic!("can't retrieve outer mark when outside is not a mark")
         }
@@ -302,7 +306,7 @@ mod tests {
     }
 
     fn id(n: u32, s: SyntaxContext) -> Ident {
-        Ident {name: Name(n), ctxt: s}
+        Ident::new(Name(n), s)
     }
 
     // because of the SCTable, I now need a tidy way of
@@ -328,7 +332,7 @@ mod tests {
         let mut result = Vec::new();
         loop {
             let table = table.table.borrow();
-            match (*table)[sc as usize] {
+            match (*table)[sc.0 as usize] {
                 EmptyCtxt => {return result;},
                 Mark(mrk,tail) => {
                     result.push(M(mrk));
@@ -349,15 +353,15 @@ mod tests {
     fn test_unfold_refold(){
         let mut t = new_sctable_internal();
 
-        let test_sc = vec!(M(3),R(id(101,0),Name(14)),M(9));
-        assert_eq!(unfold_test_sc(test_sc.clone(),EMPTY_CTXT,&mut t),4);
+        let test_sc = vec!(M(3),R(id(101,EMPTY_CTXT),Name(14)),M(9));
+        assert_eq!(unfold_test_sc(test_sc.clone(),EMPTY_CTXT,&mut t),SyntaxContext(4));
         {
             let table = t.table.borrow();
-            assert!((*table)[2] == Mark(9,0));
-            assert!((*table)[3] == Rename(id(101,0),Name(14),2));
-            assert!((*table)[4] == Mark(3,3));
+            assert!((*table)[2] == Mark(9,EMPTY_CTXT));
+            assert!((*table)[3] == Rename(id(101,EMPTY_CTXT),Name(14),SyntaxContext(2)));
+            assert!((*table)[4] == Mark(3,SyntaxContext(3)));
         }
-        assert_eq!(refold_test_sc(4,&t),test_sc);
+        assert_eq!(refold_test_sc(SyntaxContext(4),&t),test_sc);
     }
 
     // extend a syntax context with a sequence of marks given
@@ -371,11 +375,11 @@ mod tests {
     #[test] fn unfold_marks_test() {
         let mut t = new_sctable_internal();
 
-        assert_eq!(unfold_marks(vec!(3,7),EMPTY_CTXT,&mut t),3);
+        assert_eq!(unfold_marks(vec!(3,7),EMPTY_CTXT,&mut t),SyntaxContext(3));
         {
             let table = t.table.borrow();
-            assert!((*table)[2] == Mark(7,0));
-            assert!((*table)[3] == Mark(3,2));
+            assert!((*table)[2] == Mark(7,EMPTY_CTXT));
+            assert!((*table)[3] == Mark(3,SyntaxContext(2)));
         }
     }
 
@@ -396,7 +400,7 @@ mod tests {
          assert_eq! (marksof_internal (ans, stopname,&t), [16]);}
         // rename where stop doesn't match:
         { let chain = vec!(M(9),
-                        R(id(name1.usize() as u32,
+                        R(id(name1.0,
                              apply_mark_internal (4, EMPTY_CTXT,&mut t)),
                           Name(100101102)),
                         M(14));
@@ -405,7 +409,7 @@ mod tests {
         // rename where stop does match
         { let name1sc = apply_mark_internal(4, EMPTY_CTXT, &mut t);
          let chain = vec!(M(9),
-                       R(id(name1.usize() as u32, name1sc),
+                       R(id(name1.0, name1sc),
                          stopname),
                        M(14));
          let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
@@ -474,10 +478,10 @@ mod tests {
     #[test]
     fn hashing_tests () {
         let mut t = new_sctable_internal();
-        assert_eq!(apply_mark_internal(12,EMPTY_CTXT,&mut t),2);
-        assert_eq!(apply_mark_internal(13,EMPTY_CTXT,&mut t),3);
+        assert_eq!(apply_mark_internal(12,EMPTY_CTXT,&mut t),SyntaxContext(2));
+        assert_eq!(apply_mark_internal(13,EMPTY_CTXT,&mut t),SyntaxContext(3));
         // using the same one again should result in the same index:
-        assert_eq!(apply_mark_internal(12,EMPTY_CTXT,&mut t),2);
+        assert_eq!(apply_mark_internal(12,EMPTY_CTXT,&mut t),SyntaxContext(2));
         // I'm assuming that the rename table will behave the same....
     }
 
@@ -496,10 +500,10 @@ mod tests {
 
     #[test]
     fn new_resolves_test() {
-        let renames = vec!((Ident{name:Name(23),ctxt:EMPTY_CTXT},Name(24)),
-                           (Ident{name:Name(29),ctxt:EMPTY_CTXT},Name(29)));
+        let renames = vec!((Ident::with_empty_ctxt(Name(23)),Name(24)),
+                           (Ident::with_empty_ctxt(Name(29)),Name(29)));
         let new_ctxt1 = apply_renames(&renames,EMPTY_CTXT);
-        assert_eq!(resolve(Ident{name:Name(23),ctxt:new_ctxt1}),Name(24));
-        assert_eq!(resolve(Ident{name:Name(29),ctxt:new_ctxt1}),Name(29));
+        assert_eq!(resolve(Ident::new(Name(23),new_ctxt1)),Name(24));
+        assert_eq!(resolve(Ident::new(Name(29),new_ctxt1)),Name(29));
     }
 }

@@ -28,7 +28,7 @@ systems may want to jump around.
     * [The `Result` type](#the-result-type)
         * [Parsing integers](#parsing-integers)
         * [The `Result` type alias idiom](#the-result-type-alias-idiom)
-    * [A brief interlude: unwrapping isn't evil](#a-brief-interlude-unwrapping-isn't-evil)
+    * [A brief interlude: unwrapping isn't evil](#a-brief-interlude-unwrapping-isnt-evil)
 * [Working with multiple error types](#working-with-multiple-error-types)
     * [Composing `Option` and `Result`](#composing-option-and-result)
     * [The limits of combinators](#the-limits-of-combinators)
@@ -182,7 +182,7 @@ analysis is the only way to get at the value stored inside an `Option<T>`. This
 means that you, as the programmer, must handle the case when an `Option<T>` is
 `None` instead of `Some(t)`.
 
-But wait, what about `unwrap` used in [`unwrap-double`](#code-unwrap-double)?
+But wait, what about `unwrap`,which we used [`previously`](#code-unwrap-double)?
 There was no case analysis there! Instead, the case analysis was put inside the
 `unwrap` method for you. You could define it yourself if you want:
 
@@ -211,7 +211,7 @@ that makes `unwrap` ergonomic to use. Unfortunately, that `panic!` means that
 
 ### Composing `Option<T>` values
 
-In [`option-ex-string-find`](#code-option-ex-string-find)
+In an [example from before](#code-option-ex-string-find),
 we saw how to use `find` to discover the extension in a file name. Of course,
 not all file names have a `.` in them, so it's possible that the file name has
 no extension. This *possibility of absence* is encoded into the types using
@@ -225,7 +225,7 @@ sense to put it into a function:
 ```rust
 # fn find(_: &str, _: char) -> Option<usize> { None }
 // Returns the extension of the given file name, where the extension is defined
-// as all characters proceding the first `.`.
+// as all characters proceeding the first `.`.
 // If `file_name` has no `.`, then `None` is returned.
 fn extension_explicit(file_name: &str) -> Option<&str> {
     match find(file_name, '.') {
@@ -272,7 +272,7 @@ to get rid of the case analysis:
 ```rust
 # fn find(_: &str, _: char) -> Option<usize> { None }
 // Returns the extension of the given file name, where the extension is defined
-// as all characters proceding the first `.`.
+// as all characters proceeding the first `.`.
 // If `file_name` has no `.`, then `None` is returned.
 fn extension(file_name: &str) -> Option<&str> {
     find(file_name, '.').map(|i| &file_name[i+1..])
@@ -755,7 +755,7 @@ fn main() {
 (N.B. The `AsRef<Path>` is used because those are the
 [same bounds used on
 `std::fs::File::open`](../std/fs/struct.File.html#method.open).
-This makes it ergnomic to use any kind of string as a file path.)
+This makes it ergonomic to use any kind of string as a file path.)
 
 There are three different errors that can occur here:
 
@@ -1284,7 +1284,7 @@ fn file_double<P: AsRef<Path>>(file_path: P) -> Result<i32, String> {
 
 Earlier, we promised that we could get rid of the `map_err` calls. Indeed, all
 we have to do is pick a type that `From` works with. As we saw in the previous
-section, `From` has an impl that let's it convert any error type into a
+section, `From` has an impl that lets it convert any error type into a
 `Box<Error>`:
 
 ```rust
@@ -1470,7 +1470,7 @@ representation. But certainly, this will vary depending on use cases.
 At a minimum, you should probably implement the
 [`Error`](../std/error/trait.Error.html)
 trait. This will give users of your library some minimum flexibility for
-[composing errors](#the-real-try!-macro). Implementing the `Error` trait also
+[composing errors](#the-real-try-macro). Implementing the `Error` trait also
 means that users are guaranteed the ability to obtain a string representation
 of an error (because it requires impls for both `fmt::Debug` and
 `fmt::Display`).
@@ -1552,7 +1552,7 @@ parser and a help message from a vector of options (The fact that it
 is a vector is hidden behind a struct and a set of methods). Once the
 parsing is done, we can decode the program arguments into a Rust
 struct. From there, we can get information about the flags, for
-instance, wether they were passed in, and what arguments they
+instance, whether they were passed in, and what arguments they
 had. Here's our program with the appropriate `extern crate`
 statements, and the basic argument setup for Getopts:
 
@@ -1594,7 +1594,7 @@ then store the first one, knowing that it is our program's name. Once
 that's done, we set up our argument flags, in this case a simplistic
 help message flag. Once we have the argument flags set up, we use
 `Options.parse` to parse the argument vector (starting from index one,
-becouse index 0 is the program name). If this was successful, we
+because index 0 is the program name). If this was successful, we
 assign matches to the parsed object, if not, we panic. Once past that,
 we test if the user passed in the help flag, and if so print the usage
 message. The option help messages are constructed by Getopts, so all
@@ -1896,9 +1896,9 @@ for pop in search(&data_file, &city) {
 ...
 ```
 
-In this peice of code, we take `file` (which has the type
+In this piece of code, we take `file` (which has the type
 `Option<String>`), and convert it to a type that `search` can use, in
-this case, `&Option<AsRef<Path>>`. Do do this, we take a reference of
+this case, `&Option<AsRef<Path>>`. To do this, we take a reference of
 file, and map `Path::new` onto it. In this case, `as_ref()` converts
 the `Option<String>` into an `Option<&str>`, and from there, we can
 execute `Path::new` to the content of the optional, and return the
@@ -2064,7 +2064,7 @@ string and add a flag to the Option variable. Once were done that, Getopts does 
 let mut opts = Options::new();
 opts.optopt("f", "file", "Choose an input file, instead of using STDIN.", "NAME");
 opts.optflag("h", "help", "Show this usage message.");
-opts.optflag("q", "quit", "Silences errors and warnings.");
+opts.optflag("q", "quiet", "Silences errors and warnings.");
 ...
 ```
 
@@ -2120,7 +2120,7 @@ heuristics!
   and
   [`Error`](../std/error/trait.Error.html)
   impls to make the [`try!`](../std/macro.try!.html)
-  macro more ergnomic.
+  macro more ergonomic.
 * If you're writing a library and your code can produce errors, define your own
   error type and implement the
   [`std::error::Error`](../std/error/trait.Error.html)

@@ -744,8 +744,8 @@ mod tests {
                 Some(&ast::TtToken(_, token::Ident(name_zip, token::Plain))),
                 Some(&ast::TtDelimited(_, ref macro_delimed)),
             )
-            if name_macro_rules.name == "macro_rules"
-            && name_zip.name == "zip" => {
+            if name_macro_rules.name.as_str() == "macro_rules"
+            && name_zip.name.as_str() == "zip" => {
                 let tts = &macro_delimed.tts[..];
                 match (tts.len(), tts.get(0), tts.get(1), tts.get(2)) {
                     (
@@ -763,7 +763,7 @@ mod tests {
                                 Some(&ast::TtToken(_, token::Ident(ident, token::Plain))),
                             )
                             if first_delimed.delim == token::Paren
-                            && ident.name == "a" => {},
+                            && ident.name.as_str() == "a" => {},
                             _ => panic!("value 3: {:?}", **first_delimed),
                         }
                         let tts = &second_delimed.tts[..];
@@ -774,7 +774,7 @@ mod tests {
                                 Some(&ast::TtToken(_, token::Ident(ident, token::Plain))),
                             )
                             if second_delimed.delim == token::Paren
-                            && ident.name == "a" => {},
+                            && ident.name.as_str() == "a" => {},
                             _ => panic!("value 4: {:?}", **second_delimed),
                         }
                     },

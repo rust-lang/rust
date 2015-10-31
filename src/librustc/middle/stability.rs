@@ -11,10 +11,13 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
+pub use self::StabilityLevel::*;
+
 use session::Session;
 use lint;
+use metadata::cstore::LOCAL_CRATE;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::ty;
 use middle::privacy::PublicItems;
 use metadata::csearch;
@@ -32,6 +35,18 @@ use rustc_front::visit::{self, FnKind, Visitor};
 
 use std::mem::replace;
 use std::cmp::Ordering;
+
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Copy, Debug, Eq, Hash)]
+pub enum StabilityLevel {
+    Unstable,
+    Stable,
+}
+
+impl StabilityLevel {
+    pub fn from_attr_level(level: &attr::StabilityLevel) -> Self {
+        if level.is_stable() { Stable } else { Unstable }
+    }
+}
 
 /// A stability index, giving the stability level for items and methods.
 pub struct Index<'tcx> {
@@ -66,10 +81,9 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                     // if parent is deprecated and we're not, inherit this by merging
                     // deprecated_since and its reason.
                     if let Some(parent_stab) = self.parent {
-                        if parent_stab.deprecated_since.is_some()
-                        && stab.deprecated_since.is_none() {
-                            stab.deprecated_since = parent_stab.deprecated_since.clone();
-                            stab.reason = parent_stab.reason.clone();
+                        if parent_stab.depr.is_some()
+                        && stab.depr.is_none() {
+                            stab.depr = parent_stab.depr.clone()
                         }
                     }
 
@@ -77,9 +91,9 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
 
                     // Check if deprecated_since < stable_since. If it is,
                     // this is *almost surely* an accident.
-                    let deprecated_predates_stable = match (stab.deprecated_since.as_ref(),
-                                                            stab.since.as_ref()) {
-                        (Some(dep_since), Some(stab_since)) => {
+                    let deprecated_predates_stable = match (&stab.depr, &stab.level) {
+                        (&Some(attr::Deprecation {since: ref dep_since, ..}),
+                               &attr::Stable {since: ref stab_since}) => {
                             // explicit version of iter::order::lt to handle parse errors properly
                             let mut is_less = false;
                             for (dep_v, stab_v) in dep_since.split(".").zip(stab_since.split(".")) {
@@ -112,10 +126,11 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                             "An API can't be stabilized after it is deprecated");
                     }
 
-                    self.index.map.insert(DefId::local(id), Some(stab));
+                    let def_id = self.tcx.map.local_def_id(id);
+                    self.index.map.insert(def_id, Some(stab));
 
                     // Don't inherit #[stable(feature = "rust1", since = "1.0.0")]
-                    if stab.level != attr::Stable {
+                    if !stab.level.is_stable() {
                         let parent = replace(&mut self.parent, Some(stab));
                         f(self);
                         self.parent = parent;
@@ -128,7 +143,8 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                            use_parent, self.parent);
                     if use_parent {
                         if let Some(stab) = self.parent {
-                            self.index.map.insert(DefId::local(id), Some(stab));
+                            let def_id = self.tcx.map.local_def_id(id);
+                            self.index.map.insert(def_id, Some(stab));
                         } else if self.index.staged_api[&LOCAL_CRATE] && required
                             && self.export_map.contains(&id)
                             && !self.tcx.sess.opts.test {
@@ -182,9 +198,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
                       |v| visit::walk_item(v, i), required);
 
         if let hir::ItemStruct(ref sd, _) = i.node {
-            sd.ctor_id.map(|id| {
-                self.annotate(id, true, &i.attrs, i.span, |_| {}, true)
-            });
+            if !sd.is_struct() {
+                self.annotate(sd.id(), true, &i.attrs, i.span, |_| {}, true)
+            }
         }
     }
 
@@ -204,9 +220,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
                       |v| visit::walk_impl_item(v, ii), true);
     }
 
-    fn visit_variant(&mut self, var: &Variant, g: &'v Generics) {
-        self.annotate(var.node.id, true, &var.node.attrs, var.span,
-                      |v| visit::walk_variant(v, var, g), true)
+    fn visit_variant(&mut self, var: &Variant, g: &'v Generics, item_id: NodeId) {
+        self.annotate(var.node.data.id(), true, &var.node.attrs, var.span,
+                      |v| visit::walk_variant(v, var, g, item_id), true)
     }
 
     fn visit_struct_field(&mut self, s: &StructField) {
@@ -258,7 +274,7 @@ impl<'tcx> Index<'tcx> {
 /// features and possibly prints errors. Returns a list of all
 /// features used.
 pub fn check_unstable_api_usage(tcx: &ty::ctxt)
-                                -> FnvHashMap<InternedString, attr::StabilityLevel> {
+                                -> FnvHashMap<InternedString, StabilityLevel> {
     let ref active_lib_features = tcx.sess.features.borrow().declared_lib_features;
 
     // Put the active features into a map for quick lookup
@@ -267,7 +283,8 @@ pub fn check_unstable_api_usage(tcx: &ty::ctxt)
     let mut checker = Checker {
         tcx: tcx,
         active_features: active_features,
-        used_features: FnvHashMap()
+        used_features: FnvHashMap(),
+        in_skip_block: 0,
     };
 
     let krate = tcx.map.krate();
@@ -280,18 +297,27 @@ pub fn check_unstable_api_usage(tcx: &ty::ctxt)
 struct Checker<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     active_features: FnvHashSet<InternedString>,
-    used_features: FnvHashMap<InternedString, attr::StabilityLevel>
+    used_features: FnvHashMap<InternedString, StabilityLevel>,
+    // Within a block where feature gate checking can be skipped.
+    in_skip_block: u32,
 }
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
     fn check(&mut self, id: DefId, span: Span, stab: &Option<&Stability>) {
         // Only the cross-crate scenario matters when checking unstable APIs
         let cross_crate = !id.is_local();
-        if !cross_crate { return }
+        if !cross_crate {
+            return
+        }
+
+        // We don't need to check for stability - presumably compiler generated code.
+        if self.in_skip_block > 0 {
+            return;
+        }
 
         match *stab {
-            Some(&Stability { level: attr::Unstable, ref feature, ref reason, issue, .. }) => {
-                self.used_features.insert(feature.clone(), attr::Unstable);
+            Some(&Stability { level: attr::Unstable {ref reason, issue}, ref feature, .. }) => {
+                self.used_features.insert(feature.clone(), Unstable);
 
                 if !self.active_features.contains(feature) {
                     let msg = match *reason {
@@ -299,13 +325,12 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                                                &feature, &r),
                         None => format!("use of unstable library feature '{}'", &feature)
                     };
-
                     emit_feature_err(&self.tcx.sess.parse_sess.span_diagnostic,
-                                      &feature, span, GateIssue::Library(issue), &msg);
+                                      &feature, span, GateIssue::Library(Some(issue)), &msg);
                 }
             }
-            Some(&Stability { level, ref feature, .. }) => {
-                self.used_features.insert(feature.clone(), level);
+            Some(&Stability { ref level, ref feature, .. }) => {
+                self.used_features.insert(feature.clone(), StabilityLevel::from_attr_level(level));
 
                 // Stable APIs are always ok to call and deprecated APIs are
                 // handled by a lint.
@@ -336,7 +361,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         // When compiling with --test we don't enforce stability on the
         // compiler-generated test module, demarcated with `DUMMY_SP` plus the
         // name `__test`
-        if item.span == DUMMY_SP && item.ident.name == "__test" { return }
+        if item.span == DUMMY_SP && item.name.as_str() == "__test" { return }
 
         check_item(self.tcx, item, true,
                    &mut |id, sp, stab| self.check(id, sp, stab));
@@ -355,10 +380,31 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         visit::walk_path(self, path)
     }
 
+    fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
+        check_path_list_item(self.tcx, item,
+                   &mut |id, sp, stab| self.check(id, sp, stab));
+        visit::walk_path_list_item(self, prefix, item)
+    }
+
     fn visit_pat(&mut self, pat: &hir::Pat) {
         check_pat(self.tcx, pat,
                   &mut |id, sp, stab| self.check(id, sp, stab));
         visit::walk_pat(self, pat)
+    }
+
+    fn visit_block(&mut self, b: &hir::Block) {
+        let old_skip_count = self.in_skip_block;
+        match b.rules {
+            hir::BlockCheckMode::PushUnstableBlock => {
+                self.in_skip_block += 1;
+            }
+            hir::BlockCheckMode::PopUnstableBlock => {
+                self.in_skip_block = self.in_skip_block.checked_sub(1).unwrap();
+            }
+            _ => {}
+        }
+        visit::walk_block(self, b);
+        self.in_skip_block = old_skip_count;
     }
 }
 
@@ -374,7 +420,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &hir::Item, warn_about_defns: bool,
                 Some(cnum) => cnum,
                 None => return,
             };
-            let id = DefId { krate: cnum, node: ast::CRATE_NODE_ID };
+            let id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
             maybe_do_stability_check(tcx, id, item.span, cb);
         }
 
@@ -387,7 +433,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &hir::Item, warn_about_defns: bool,
 
             for impl_item in impl_items {
                 let item = trait_items.iter().find(|item| {
-                    item.name() == impl_item.ident.name
+                    item.name() == impl_item.name
                 }).unwrap();
                 if warn_about_defns {
                     maybe_do_stability_check(tcx, item.def_id(), impl_item.span, cb);
@@ -412,7 +458,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &hir::Expr,
         hir::ExprField(ref base_e, ref field) => {
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
-                ty::TyStruct(def, _) => def.struct_variant().field_named(field.node.name).did,
+                ty::TyStruct(def, _) => def.struct_variant().field_named(field.node).did,
                 _ => tcx.sess.span_bug(e.span,
                                        "stability::check_expr: named field access on non-struct")
             }
@@ -435,7 +481,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &hir::Expr,
                     // in the construction expression.
                     for field in expr_fields {
                         let did = def.struct_variant()
-                            .field_named(field.ident.node.name)
+                            .field_named(field.name.node)
                             .did;
                         maybe_do_stability_check(tcx, did, field.span, cb);
                     }
@@ -465,12 +511,23 @@ pub fn check_path(tcx: &ty::ctxt, path: &hir::Path, id: ast::NodeId,
                   cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
     match tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
         Some(def::DefPrimTy(..)) => {}
+        Some(def::DefSelfTy(..)) => {}
         Some(def) => {
             maybe_do_stability_check(tcx, def.def_id(), path.span, cb);
         }
         None => {}
     }
+}
 
+pub fn check_path_list_item(tcx: &ty::ctxt, item: &hir::PathListItem,
+                  cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
+    match tcx.def_map.borrow().get(&item.node.id()).map(|d| d.full_def()) {
+        Some(def::DefPrimTy(..)) => {}
+        Some(def) => {
+            maybe_do_stability_check(tcx, def.def_id(), item.span, cb);
+        }
+        None => {}
+    }
 }
 
 pub fn check_pat(tcx: &ty::ctxt, pat: &hir::Pat,
@@ -497,7 +554,7 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &hir::Pat,
         // Foo { a, b, c }
         hir::PatStruct(_, ref pat_fields, _) => {
             for field in pat_fields {
-                let did = v.field_named(field.node.ident.name).did;
+                let did = v.field_named(field.node.name).did;
                 maybe_do_stability_check(tcx, did, field.span, cb);
             }
         }
@@ -591,7 +648,7 @@ fn lookup_uncached<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<&'tcx Stabil
 /// libraries, identify activated features that don't exist and error about them.
 pub fn check_unused_or_stable_features(sess: &Session,
                                        lib_features_used: &FnvHashMap<InternedString,
-                                                                      attr::StabilityLevel>) {
+                                                                      StabilityLevel>) {
     let ref declared_lib_features = sess.features.borrow().declared_lib_features;
     let mut remaining_lib_features: FnvHashMap<InternedString, Span>
         = declared_lib_features.clone().into_iter().collect();
@@ -608,7 +665,7 @@ pub fn check_unused_or_stable_features(sess: &Session,
     for (used_lib_feature, level) in lib_features_used {
         match remaining_lib_features.remove(used_lib_feature) {
             Some(span) => {
-                if *level == attr::Stable {
+                if *level == Stable {
                     sess.add_lint(lint::builtin::STABLE_FEATURES,
                                   ast::CRATE_NODE_ID,
                                   span,

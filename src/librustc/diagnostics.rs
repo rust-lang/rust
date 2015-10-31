@@ -1992,6 +1992,39 @@ static A : &'static u32 = &S.a; // ok!
 ```
 "##,
 
+E0496: r##"
+A lifetime name is shadowing another lifetime name. Erroneous code example:
+
+```
+struct Foo<'a> {
+    a: &'a i32,
+}
+
+impl<'a> Foo<'a> {
+    fn f<'a>(x: &'a i32) { // error: lifetime name `'a` shadows a lifetime
+                           //        name that is already in scope
+    }
+}
+```
+
+Please change the name of one of the lifetimes to remove this error. Example:
+
+
+```
+struct Foo<'a> {
+    a: &'a i32,
+}
+
+impl<'a> Foo<'a> {
+    fn f<'b>(x: &'b i32) { // ok!
+    }
+}
+
+fn main() {
+}
+```
+"##,
+
 E0497: r##"
 A stability attribute was used outside of the standard library. Erroneous code
 example:
@@ -2072,6 +2105,6 @@ register_diagnostics! {
     E0491, // in type `..`, reference has a longer lifetime than the data it...
     E0492, // cannot borrow a constant which contains interior mutability
     E0495, // cannot infer an appropriate lifetime due to conflicting requirements
-    E0496, // .. name `..` shadows a .. name that is already in scope
     E0498, // malformed plugin attribute
+    E0514, // metadata version mismatch
 }

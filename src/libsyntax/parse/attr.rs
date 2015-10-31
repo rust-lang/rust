@@ -40,11 +40,11 @@ impl<'a> ParserAttr for Parser<'a> {
               token::DocComment(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
                     attr::mk_attr_id(),
-                    self.id_to_interned_str(s.ident()),
+                    self.id_to_interned_str(ast::Ident::with_empty_ctxt(s)),
                     self.span.lo,
                     self.span.hi
                 );
-                if attr.node.style != ast::AttrOuter {
+                if attr.node.style != ast::AttrStyle::Outer {
                   panic!(self.fatal("expected outer comment"));
                 }
                 attrs.push(attr);
@@ -79,9 +79,9 @@ impl<'a> ParserAttr for Parser<'a> {
                         self.fileline_help(span,
                                        "place inner attribute at the top of the module or block");
                     }
-                    ast::AttrInner
+                    ast::AttrStyle::Inner
                 } else {
-                    ast::AttrOuter
+                    ast::AttrStyle::Outer
                 };
 
                 panictry!(self.expect(&token::OpenDelim(token::Bracket)));
@@ -101,7 +101,7 @@ impl<'a> ParserAttr for Parser<'a> {
             panictry!(self.bump());
             self.span_warn(span, "this inner attribute syntax is deprecated. \
                            The new syntax is `#![foo]`, with a bang and no semicolon");
-            style = ast::AttrInner;
+            style = ast::AttrStyle::Inner;
         }
 
         return Spanned {
@@ -131,16 +131,15 @@ impl<'a> ParserAttr for Parser<'a> {
                     }
 
                     let attr = self.parse_attribute(true);
-                    assert!(attr.node.style == ast::AttrInner);
+                    assert!(attr.node.style == ast::AttrStyle::Inner);
                     attrs.push(attr);
                 }
                 token::DocComment(s) => {
                     // we need to get the position of this token before we bump.
                     let Span { lo, hi, .. } = self.span;
-                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(),
-                                                         self.id_to_interned_str(s.ident()),
-                                                         lo, hi);
-                    if attr.node.style == ast::AttrInner {
+                    let str = self.id_to_interned_str(ast::Ident::with_empty_ctxt(s));
+                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), str, lo, hi);
+                    if attr.node.style == ast::AttrStyle::Inner {
                         attrs.push(attr);
                         panictry!(self.bump());
                     } else {

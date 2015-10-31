@@ -13,7 +13,7 @@ pub use self::SyntaxExtension::*;
 use ast;
 use ast::Name;
 use codemap;
-use codemap::{CodeMap, Span, ExpnId, ExpnInfo, NO_EXPANSION, CompilerExpansion};
+use codemap::{CodeMap, Span, ExpnId, ExpnInfo, NO_EXPANSION};
 use ext;
 use ext::expand;
 use ext::tt::macro_rules;
@@ -544,12 +544,6 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
     syntax_expanders.insert(intern("cfg"),
                             builtin_normal_expander(
                                     ext::cfg::expand_cfg));
-    syntax_expanders.insert(intern("push_unsafe"),
-                            builtin_normal_expander(
-                                ext::pushpop_safe::expand_push_unsafe));
-    syntax_expanders.insert(intern("pop_unsafe"),
-                            builtin_normal_expander(
-                                ext::pushpop_safe::expand_pop_unsafe));
     syntax_expanders.insert(intern("trace_macros"),
                             builtin_normal_expander(
                                     ext::trace_macros::expand_trace_macros));
@@ -593,14 +587,14 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    #[unstable(feature = "rustc_private")]
+    #[unstable(feature = "rustc_private", issue = "0")]
     #[deprecated(since = "1.0.0",
                  reason = "Replaced with `expander().fold_expr()`")]
     pub fn expand_expr(&mut self, e: P<ast::Expr>) -> P<ast::Expr> {
         self.expander().fold_expr(e)
     }
 
-    /// Returns a `Folder` for deeply expanding all macros in a AST node.
+    /// Returns a `Folder` for deeply expanding all macros in an AST node.
     pub fn expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a> {
         expand::MacroExpander::new(self)
     }
@@ -646,15 +640,12 @@ impl<'a> ExtCtxt<'a> {
         loop {
             if self.codemap().with_expn_info(expn_id, |info| {
                 info.map_or(None, |i| {
-                    if i.callee.name() == "include" {
+                    if i.callee.name().as_str() == "include" {
                         // Stop going up the backtrace once include! is encountered
                         return None;
                     }
                     expn_id = i.call_site.expn_id;
-                    match i.callee.format {
-                        CompilerExpansion(..) => (),
-                        _ => last_macro = Some(i.call_site),
-                    }
+                    last_macro = Some(i.call_site);
                     return Some(());
                 })
             }).is_none() {
@@ -899,9 +890,9 @@ impl SyntaxEnv {
         unreachable!()
     }
 
-    pub fn find(&self, k: &Name) -> Option<Rc<SyntaxExtension>> {
+    pub fn find(&self, k: Name) -> Option<Rc<SyntaxExtension>> {
         for frame in self.chain.iter().rev() {
-            match frame.map.get(k) {
+            match frame.map.get(&k) {
                 Some(v) => return Some(v.clone()),
                 None => {}
             }

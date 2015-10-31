@@ -41,7 +41,7 @@ pub enum RvalueFunc {
 /// Determines the category for a given expression. Note that scope
 /// and paren expressions have no category.
 impl Category {
-    pub fn of<H:Hair>(ek: &ExprKind<H>) -> Option<Category> {
+    pub fn of<'tcx>(ek: &ExprKind<'tcx>) -> Option<Category> {
         match *ek {
             ExprKind::Scope { .. } => None,
 

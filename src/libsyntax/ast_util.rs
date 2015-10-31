@@ -28,12 +28,12 @@ pub fn path_name_i(idents: &[Ident]) -> String {
     idents.iter().map(|i| i.to_string()).collect::<Vec<String>>().join("::")
 }
 
-pub fn stmt_id(s: &Stmt) -> NodeId {
+pub fn stmt_id(s: &Stmt) -> Option<NodeId> {
     match s.node {
-      StmtDecl(_, id) => id,
-      StmtExpr(_, id) => id,
-      StmtSemi(_, id) => id,
-      StmtMac(..) => panic!("attempted to analyze unexpanded stmt")
+      StmtDecl(_, id) => Some(id),
+      StmtExpr(_, id) => Some(id),
+      StmtSemi(_, id) => Some(id),
+      StmtMac(..) => None,
     }
 }
 
@@ -101,10 +101,9 @@ pub fn is_by_value_unop(u: UnOp) -> bool {
 
 pub fn unop_to_string(op: UnOp) -> &'static str {
     match op {
-      UnUniq => "box() ",
-      UnDeref => "*",
-      UnNot => "!",
-      UnNeg => "-",
+        UnDeref => "*",
+        UnNot => "!",
+        UnNeg => "-",
     }
 }
 
@@ -361,11 +360,6 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
                     }
                 }
             }
-            ItemEnum(ref enum_definition, _) => {
-                for variant in &enum_definition.variants {
-                    self.operation.visit_id(variant.node.id)
-                }
-            }
             _ => {}
         }
 
@@ -385,7 +379,8 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
     }
 
     fn visit_stmt(&mut self, statement: &Stmt) {
-        self.operation.visit_id(ast_util::stmt_id(statement));
+        self.operation
+            .visit_id(ast_util::stmt_id(statement).expect("attempted to visit unexpanded stmt"));
         visit::walk_stmt(self, statement)
     }
 
@@ -457,13 +452,13 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         visit::walk_struct_field(self, struct_field)
     }
 
-    fn visit_struct_def(&mut self,
-                        struct_def: &StructDef,
+    fn visit_variant_data(&mut self,
+                        struct_def: &VariantData,
                         _: ast::Ident,
                         _: &ast::Generics,
-                        id: NodeId) {
-        self.operation.visit_id(id);
-        struct_def.ctor_id.map(|ctor_id| self.operation.visit_id(ctor_id));
+                        _: NodeId,
+                        _: Span) {
+        self.operation.visit_id(struct_def.id());
         visit::walk_struct_def(self, struct_def);
     }
 
@@ -477,12 +472,12 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         visit::walk_impl_item(self, ii);
     }
 
-    fn visit_lifetime_ref(&mut self, lifetime: &Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &Lifetime) {
         self.operation.visit_id(lifetime.id);
     }
 
     fn visit_lifetime_def(&mut self, def: &LifetimeDef) {
-        self.visit_lifetime_ref(&def.lifetime);
+        self.visit_lifetime(&def.lifetime);
     }
 
     fn visit_trait_ref(&mut self, trait_ref: &TraitRef) {
@@ -529,12 +524,6 @@ pub fn compute_id_range_for_fn_body(fk: FnKind,
     id_visitor.operation.result
 }
 
-/// Returns true if the given struct def is tuple-like; i.e. that its fields
-/// are unnamed.
-pub fn struct_def_is_tuple_like(struct_def: &ast::StructDef) -> bool {
-    struct_def.ctor_id.is_some()
-}
-
 /// Returns true if the given pattern consists solely of an identifier
 /// and false otherwise.
 pub fn pat_is_ident(pat: P<ast::Pat>) -> bool {
@@ -577,21 +566,21 @@ mod tests {
     use ast::*;
     use super::*;
 
-    fn ident_to_segment(id : &Ident) -> PathSegment {
-        PathSegment {identifier: id.clone(),
+    fn ident_to_segment(id: Ident) -> PathSegment {
+        PathSegment {identifier: id,
                      parameters: PathParameters::none()}
     }
 
     #[test] fn idents_name_eq_test() {
         assert!(segments_name_eq(
-            &[Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>(),
-            &[Ident{name:Name(3),ctxt:104}, Ident{name:Name(78),ctxt:182}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()));
+            &[Ident::new(Name(3),SyntaxContext(4)), Ident::new(Name(78),SyntaxContext(82))]
+                .iter().cloned().map(ident_to_segment).collect::<Vec<PathSegment>>(),
+            &[Ident::new(Name(3),SyntaxContext(104)), Ident::new(Name(78),SyntaxContext(182))]
+                .iter().cloned().map(ident_to_segment).collect::<Vec<PathSegment>>()));
         assert!(!segments_name_eq(
-            &[Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>(),
-            &[Ident{name:Name(3),ctxt:104}, Ident{name:Name(77),ctxt:182}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()));
+            &[Ident::new(Name(3),SyntaxContext(4)), Ident::new(Name(78),SyntaxContext(82))]
+                .iter().cloned().map(ident_to_segment).collect::<Vec<PathSegment>>(),
+            &[Ident::new(Name(3),SyntaxContext(104)), Ident::new(Name(77),SyntaxContext(182))]
+                .iter().cloned().map(ident_to_segment).collect::<Vec<PathSegment>>()));
     }
 }

@@ -100,7 +100,9 @@ pub trait Hash {
 
     /// Feeds a slice of this type into the state provided.
     #[stable(feature = "hash_slice", since = "1.3.0")]
-    fn hash_slice<H: Hasher>(data: &[Self], state: &mut H) where Self: Sized {
+    fn hash_slice<H: Hasher>(data: &[Self], state: &mut H)
+        where Self: Sized
+    {
         for piece in data {
             piece.hash(state);
         }
@@ -121,7 +123,9 @@ pub trait Hasher {
     /// Write a single `u8` into this hasher
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
-    fn write_u8(&mut self, i: u8) { self.write(&[i]) }
+    fn write_u8(&mut self, i: u8) {
+        self.write(&[i])
+    }
     /// Write a single `u16` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
@@ -145,8 +149,7 @@ pub trait Hasher {
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_usize(&mut self, i: usize) {
         let bytes = unsafe {
-            ::slice::from_raw_parts(&i as *const usize as *const u8,
-                                    mem::size_of::<usize>())
+            ::slice::from_raw_parts(&i as *const usize as *const u8, mem::size_of::<usize>())
         };
         self.write(bytes);
     }
@@ -154,23 +157,33 @@ pub trait Hasher {
     /// Write a single `i8` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
-    fn write_i8(&mut self, i: i8) { self.write_u8(i as u8) }
+    fn write_i8(&mut self, i: i8) {
+        self.write_u8(i as u8)
+    }
     /// Write a single `i16` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
-    fn write_i16(&mut self, i: i16) { self.write_u16(i as u16) }
+    fn write_i16(&mut self, i: i16) {
+        self.write_u16(i as u16)
+    }
     /// Write a single `i32` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
-    fn write_i32(&mut self, i: i32) { self.write_u32(i as u32) }
+    fn write_i32(&mut self, i: i32) {
+        self.write_u32(i as u32)
+    }
     /// Write a single `i64` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
-    fn write_i64(&mut self, i: i64) { self.write_u64(i as u64) }
+    fn write_i64(&mut self, i: i64) {
+        self.write_u64(i as u64)
+    }
     /// Write a single `isize` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
-    fn write_isize(&mut self, i: isize) { self.write_usize(i as usize) }
+    fn write_isize(&mut self, i: isize) {
+        self.write_usize(i as usize)
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////

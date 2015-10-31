@@ -408,7 +408,7 @@ pub fn upcast<'tcx>(tcx: &ty::ctxt<'tcx>,
         .collect()
 }
 
-/// Given an trait `trait_ref`, returns the number of vtable entries
+/// Given a trait `trait_ref`, returns the number of vtable entries
 /// that come from `trait_ref`, excluding its supertraits. Used in
 /// computing the vtable base for an upcast trait of a trait object.
 pub fn count_own_vtable_entries<'tcx>(tcx: &ty::ctxt<'tcx>,

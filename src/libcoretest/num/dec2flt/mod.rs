@@ -16,7 +16,7 @@ use test;
 mod parse;
 mod rawfp;
 
-// Take an float literal, turn it into a string in various ways (that are all trusted
+// Take a float literal, turn it into a string in various ways (that are all trusted
 // to be correct) and see if those strings are parsed back to the value of the literal.
 // Requires a *polymorphic literal*, i.e. one that can serve as f64 as well as f32.
 macro_rules! test_literal {
@@ -99,6 +99,18 @@ fn fast_path_correct() {
 #[test]
 fn lonely_dot() {
     assert_eq!(".".parse(), Ok(0.0));
+}
+
+#[test]
+fn lonely_sign() {
+    assert!("+".parse::<f32>().is_err());
+    assert!("-".parse::<f64>().is_err());
+}
+
+#[test]
+fn whitespace() {
+    assert!(" 1.0".parse::<f32>().is_err());
+    assert!("1.0 ".parse::<f64>().is_err());
 }
 
 #[test]

@@ -98,3 +98,4 @@ languages:
 - [Korean](https://github.com/rust-kr/doc.rust-kr.org)
 - [Chinese](https://github.com/KaiserY/rust-book-chinese)
 - [Spanish](https://goyox86.github.io/elpr)
+- [German](https://panicbit.github.io/rustbook-de)

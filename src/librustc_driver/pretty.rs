@@ -47,7 +47,7 @@ use std::str::FromStr;
 use rustc::front::map as hir_map;
 use rustc::front::map::{blocks, NodePrinter};
 use rustc_front::hir;
-use rustc_front::lowering::lower_crate;
+use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_front::print::pprust as pprust_hir;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -131,7 +131,7 @@ pub fn parse_pretty(sess: &Session,
 impl PpSourceMode {
     /// Constructs a `PrinterSupport` object and passes it to `f`.
     fn call_with_pp_support<'tcx, A, B, F>(&self,
-                                           sess: Session,
+                                           sess: &'tcx Session,
                                            ast_map: Option<hir_map::Map<'tcx>>,
                                            payload: B,
                                            f: F) -> A where
@@ -155,7 +155,7 @@ impl PpSourceMode {
         }
     }
     fn call_with_pp_support_hir<'tcx, A, B, F>(&self,
-                                               sess: Session,
+                                               sess: &'tcx Session,
                                                ast_map: &hir_map::Map<'tcx>,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                id: String,
@@ -185,7 +185,7 @@ impl PpSourceMode {
                                                     |tcx, _| {
                     let annotation = TypedAnnotation { tcx: tcx };
                     f(&annotation, payload, &ast_map.forest.krate)
-                }).1
+                })
             }
             _ => panic!("Should use call_with_pp_support"),
         }
@@ -225,12 +225,12 @@ trait HirPrinterSupport<'ast>: pprust_hir::PpAnn {
 }
 
 struct NoAnn<'ast> {
-    sess: Session,
+    sess: &'ast Session,
     ast_map: Option<hir_map::Map<'ast>>
 }
 
 impl<'ast> PrinterSupport<'ast> for NoAnn<'ast> {
-    fn sess<'a>(&'a self) -> &'a Session { &self.sess }
+    fn sess<'a>(&'a self) -> &'a Session { self.sess }
 
     fn ast_map<'a>(&'a self) -> Option<&'a hir_map::Map<'ast>> {
         self.ast_map.as_ref()
@@ -240,7 +240,7 @@ impl<'ast> PrinterSupport<'ast> for NoAnn<'ast> {
 }
 
 impl<'ast> HirPrinterSupport<'ast> for NoAnn<'ast> {
-    fn sess<'a>(&'a self) -> &'a Session { &self.sess }
+    fn sess<'a>(&'a self) -> &'a Session { self.sess }
 
     fn ast_map<'a>(&'a self) -> Option<&'a hir_map::Map<'ast>> {
         self.ast_map.as_ref()
@@ -253,12 +253,12 @@ impl<'ast> pprust::PpAnn for NoAnn<'ast> {}
 impl<'ast> pprust_hir::PpAnn for NoAnn<'ast> {}
 
 struct IdentifiedAnnotation<'ast> {
-    sess: Session,
+    sess: &'ast Session,
     ast_map: Option<hir_map::Map<'ast>>,
 }
 
 impl<'ast> PrinterSupport<'ast> for IdentifiedAnnotation<'ast> {
-    fn sess<'a>(&'a self) -> &'a Session { &self.sess }
+    fn sess<'a>(&'a self) -> &'a Session { self.sess }
 
     fn ast_map<'a>(&'a self) -> Option<&'a hir_map::Map<'ast>> {
         self.ast_map.as_ref()
@@ -308,7 +308,7 @@ impl<'ast> pprust::PpAnn for IdentifiedAnnotation<'ast> {
 }
 
 impl<'ast> HirPrinterSupport<'ast> for IdentifiedAnnotation<'ast> {
-    fn sess<'a>(&'a self) -> &'a Session { &self.sess }
+    fn sess<'a>(&'a self) -> &'a Session { self.sess }
 
     fn ast_map<'a>(&'a self) -> Option<&'a hir_map::Map<'ast>> {
         self.ast_map.as_ref()
@@ -330,8 +330,7 @@ impl<'ast> pprust_hir::PpAnn for IdentifiedAnnotation<'ast> {
             s: &mut pprust_hir::State,
             node: pprust_hir::AnnNode) -> io::Result<()> {
         match node {
-            pprust_hir::NodeIdent(_) | pprust_hir::NodeName(_) => Ok(()),
-
+            pprust_hir::NodeName(_) => Ok(()),
             pprust_hir::NodeItem(item) => {
                 try!(pp::space(&mut s.s));
                 s.synth_comment(item.id.to_string())
@@ -358,12 +357,12 @@ impl<'ast> pprust_hir::PpAnn for IdentifiedAnnotation<'ast> {
 }
 
 struct HygieneAnnotation<'ast> {
-    sess: Session,
+    sess: &'ast Session,
     ast_map: Option<hir_map::Map<'ast>>,
 }
 
 impl<'ast> PrinterSupport<'ast> for HygieneAnnotation<'ast> {
-    fn sess<'a>(&'a self) -> &'a Session { &self.sess }
+    fn sess<'a>(&'a self) -> &'a Session { self.sess }
 
     fn ast_map<'a>(&'a self) -> Option<&'a hir_map::Map<'ast>> {
         self.ast_map.as_ref()
@@ -381,7 +380,7 @@ impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
                 try!(pp::space(&mut s.s));
                 // FIXME #16420: this doesn't display the connections
                 // between syntax contexts
-                s.synth_comment(format!("{}#{}", nm, ctxt))
+                s.synth_comment(format!("{}#{}", nm, ctxt.0))
             }
             pprust::NodeName(&ast::Name(nm)) => {
                 try!(pp::space(&mut s.s));
@@ -671,9 +670,10 @@ pub fn pretty_print_input(sess: Session,
     // There is some twisted, god-forsaken tangle of lifetimes here which makes
     // the ordering of stuff super-finicky.
     let mut hir_forest;
+    let lcx = LoweringContext::new(&sess, Some(&krate));
     let arenas = ty::CtxtArenas::new();
     let ast_map = if compute_ast_map {
-        hir_forest = hir_map::Forest::new(lower_crate(&krate));
+        hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate));
         let map = driver::make_map(&sess, &mut hir_forest);
         Some(map)
     } else {
@@ -696,7 +696,7 @@ pub fn pretty_print_input(sess: Session,
             // Silently ignores an identified node.
             let out: &mut Write = &mut out;
             s.call_with_pp_support(
-                sess, ast_map, box out, |annotation, out| {
+                &sess, ast_map, box out, |annotation, out| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust::print_crate(sess.codemap(),
@@ -713,7 +713,7 @@ pub fn pretty_print_input(sess: Session,
         (PpmHir(s), None) => {
             let out: &mut Write = &mut out;
             s.call_with_pp_support_hir(
-                sess, &ast_map.unwrap(), &arenas, id, box out, |annotation, out, krate| {
+                &sess, &ast_map.unwrap(), &arenas, id, box out, |annotation, out, krate| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust_hir::print_crate(sess.codemap(),
@@ -729,7 +729,7 @@ pub fn pretty_print_input(sess: Session,
 
         (PpmHir(s), Some(uii)) => {
             let out: &mut Write = &mut out;
-            s.call_with_pp_support_hir(sess,
+            s.call_with_pp_support_hir(&sess,
                                        &ast_map.unwrap(),
                                        &arenas,
                                        id,
@@ -777,14 +777,14 @@ pub fn pretty_print_input(sess: Session,
             match code {
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
-                    driver::phase_3_run_analysis_passes(sess,
+                    driver::phase_3_run_analysis_passes(&sess,
                                                         ast_map,
                                                         &arenas,
                                                         id,
                                                         resolve::MakeGlobMap::No,
                                                         |tcx, _| {
                         print_flowgraph(variants, tcx, code, mode, out)
-                    }).1
+                    })
                 }
                 None => {
                     let message = format!("--pretty=flowgraph needs \

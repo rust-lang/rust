@@ -4,14 +4,6 @@ By default, `std` is linked to every Rust crate. In some contexts,
 this is undesirable, and can be avoided with the `#![no_std]`
 attribute attached to the crate.
 
-```ignore
-// a minimal library
-#![crate_type="lib"]
-#![feature(no_std)]
-#![no_std]
-# // fn main() {} tricked you, rustdoc!
-```
-
 Obviously there's more to life than just libraries: one can use
 `#[no_std]` with an executable, controlling the entry point is
 possible in two ways: the `#[start]` attribute, or overriding the
@@ -21,7 +13,10 @@ The function marked `#[start]` is passed the command line parameters
 in the same format as C:
 
 ```rust
-#![feature(lang_items, start, no_std, libc)]
+# #![feature(libc)]
+#![feature(lang_items)]
+#![feature(start)]
+#![feature(no_std)]
 #![no_std]
 
 // Pull in the system libc library for what crt0.o likely requires
@@ -47,11 +42,13 @@ with `#![no_main]` and then create the appropriate symbol with the
 correct ABI and the correct name, which requires overriding the
 compiler's name mangling too:
 
-```ignore
+```rust
+# #![feature(libc)]
 #![feature(no_std)]
+#![feature(lang_items)]
+#![feature(start)]
 #![no_std]
 #![no_main]
-#![feature(lang_items, start)]
 
 extern crate libc;
 
@@ -92,19 +89,24 @@ instead.
 
 The core library has very few dependencies and is much more portable than the
 standard library itself. Additionally, the core library has most of the
-necessary functionality for writing idiomatic and effective Rust code.
+necessary functionality for writing idiomatic and effective Rust code. When
+using `#![no_std]`, Rust will automatically inject the `core` crate, just like
+we do for `std` when we’re using it.
 
 As an example, here is a program that will calculate the dot product of two
 vectors provided from C, using idiomatic Rust practices.
 
-```ignore
-#![feature(lang_items, start, no_std, core, libc)]
+```rust
+# #![feature(libc)]
+#![feature(lang_items)]
+#![feature(start)]
+#![feature(no_std)]
+#![feature(core)]
+#![feature(core_slice_ext)]
+#![feature(raw)]
 #![no_std]
 
-# extern crate libc;
-extern crate core;
-
-use core::prelude::*;
+extern crate libc;
 
 use core::mem;
 

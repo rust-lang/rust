@@ -22,6 +22,7 @@ pub fn target() -> Target {
         arch: "x86_64".to_string(),
         target_os: "linux".to_string(),
         target_env: "gnu".to_string(),
+        target_vendor: "unknown".to_string(),
         options: base,
     }
 }

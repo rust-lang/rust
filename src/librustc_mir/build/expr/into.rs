@@ -15,14 +15,16 @@ use build::expr::category::{Category, RvalueFunc};
 use build::scope::LoopScope;
 use hair::*;
 use repr::*;
+use rustc::middle::region::CodeExtent;
+use syntax::codemap::Span;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
     pub fn into_expr(&mut self,
-                     destination: &Lvalue<H>,
+                     destination: &Lvalue<'tcx>,
                      mut block: BasicBlock,
-                     expr: Expr<H>)
+                     expr: Expr<'tcx>)
                      -> BlockAnd<()>
     {
         debug!("into_expr(destination={:?}, block={:?}, expr={:?})",
@@ -36,9 +38,7 @@ impl<H:Hair> Builder<H> {
 
         match expr.kind {
             ExprKind::Scope { extent, value } => {
-                this.in_scope(extent, block, |this| {
-                    this.into(destination, block, value)
-                })
+                this.in_scope(extent, block, |this| this.into(destination, block, value))
             }
             ExprKind::Block { body: ast_block } => {
                 this.ast_block(destination, block, ast_block)
@@ -99,14 +99,16 @@ impl<H:Hair> Builder<H> {
                     true_block, expr_span, destination,
                     Constant {
                         span: expr_span,
-                        kind: ConstantKind::Literal(Literal::Bool { value: true }),
+                        ty: this.hir.bool_ty(),
+                        literal: this.hir.true_literal(),
                     });
 
                 this.cfg.push_assign_constant(
                     false_block, expr_span, destination,
                     Constant {
                         span: expr_span,
-                        kind: ConstantKind::Literal(Literal::Bool { value: false }),
+                        ty: this.hir.bool_ty(),
+                        literal: this.hir.false_literal(),
                     });
 
                 this.cfg.terminate(true_block, Terminator::Goto { target: join_block });
@@ -200,8 +202,7 @@ impl<H:Hair> Builder<H> {
                                        |loop_scope| loop_scope.continue_block)
             }
             ExprKind::Break { label } => {
-                this.break_or_continue(expr_span, label, block,
-                                       |loop_scope| loop_scope.break_block)
+                this.break_or_continue(expr_span, label, block, |loop_scope| loop_scope.break_block)
             }
             ExprKind::Return { value } => {
                 unpack!(block = this.into(&Lvalue::ReturnPointer, block, value));
@@ -222,9 +223,9 @@ impl<H:Hair> Builder<H> {
                                        data: CallData {
                                            destination: destination.clone(),
                                            func: fun,
-                                           args: args
+                                           args: args,
                                        },
-                                       targets: [success, panic]
+                                       targets: [success, panic],
                                    });
                 success.unit()
             }
@@ -264,12 +265,12 @@ impl<H:Hair> Builder<H> {
     }
 
     fn break_or_continue<F>(&mut self,
-                            span: H::Span,
-                            label: Option<H::CodeExtent>,
+                            span: Span,
+                            label: Option<CodeExtent>,
                             block: BasicBlock,
                             exit_selector: F)
                             -> BlockAnd<()>
-        where F: FnOnce(&LoopScope<H>) -> BasicBlock
+        where F: FnOnce(&LoopScope) -> BasicBlock
     {
         let loop_scope = self.find_loop_scope(span, label);
         let exit_block = exit_selector(&loop_scope);

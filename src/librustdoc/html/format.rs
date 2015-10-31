@@ -18,9 +18,9 @@
 use std::fmt;
 use std::iter::repeat;
 
-use rustc::middle::def_id::{DefId, LOCAL_CRATE};
+use rustc::metadata::cstore::LOCAL_CRATE;
+use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
 use syntax::abi::Abi;
-use syntax::ast;
 use rustc_front::hir;
 
 use clean;
@@ -386,7 +386,7 @@ fn primitive_link(f: &mut fmt::Formatter,
         Some(&cnum) => {
             let path = &m.paths[&DefId {
                 krate: cnum,
-                node: ast::CRATE_NODE_ID,
+                index: CRATE_DEF_INDEX,
             }];
             let loc = match m.extern_locations[&cnum] {
                 (_, render::Remote(ref s)) => Some(s.to_string()),

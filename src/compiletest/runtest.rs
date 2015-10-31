@@ -1669,8 +1669,7 @@ fn compile_test_and_save_ir(config: &Config, props: &TestProps,
     // FIXME (#9639): This needs to handle non-utf8 paths
     let mut link_args = vec!("-L".to_owned(),
                              aux_dir.to_str().unwrap().to_owned());
-    let llvm_args = vec!("--emit=llvm-ir".to_owned(),
-                         "--crate-type=lib".to_owned());
+    let llvm_args = vec!("--emit=llvm-ir".to_owned(),);
     link_args.extend(llvm_args);
     let args = make_compile_args(config,
                                  props,

@@ -52,9 +52,9 @@ pub fn is_doc_comment(s: &str) -> bool {
 pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
     assert!(is_doc_comment(comment));
     if comment.starts_with("//!") || comment.starts_with("/*!") {
-        ast::AttrInner
+        ast::AttrStyle::Inner
     } else {
-        ast::AttrOuter
+        ast::AttrStyle::Outer
     }
 }
 

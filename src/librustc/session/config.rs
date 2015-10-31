@@ -15,7 +15,6 @@ pub use self::EntryFnType::*;
 pub use self::CrateType::*;
 pub use self::Passes::*;
 pub use self::OptLevel::*;
-pub use self::OutputType::*;
 pub use self::DebugInfoLevel::*;
 
 use session::{early_error, early_warn, Session};
@@ -62,14 +61,14 @@ pub enum DebugInfoLevel {
     FullDebugInfo,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum OutputType {
-    OutputTypeBitcode,
-    OutputTypeAssembly,
-    OutputTypeLlvmAssembly,
-    OutputTypeObject,
-    OutputTypeExe,
-    OutputTypeDepInfo,
+    Bitcode,
+    Assembly,
+    LlvmAssembly,
+    Object,
+    Exe,
+    DepInfo,
 }
 
 #[derive(Clone)]
@@ -85,7 +84,7 @@ pub struct Options {
     pub lint_opts: Vec<(String, lint::Level)>,
     pub lint_cap: Option<lint::Level>,
     pub describe_lints: bool,
-    pub output_types: Vec<OutputType>,
+    pub output_types: HashMap<OutputType, Option<PathBuf>>,
     // This was mutable for rustpkg, which updates search paths based on the
     // parsed code. It remains mutable in case its replacements wants to use
     // this.
@@ -102,11 +101,8 @@ pub struct Options {
     pub parse_only: bool,
     pub no_trans: bool,
     pub treat_err_as_bug: bool,
-    pub always_build_mir: bool,
     pub no_analysis: bool,
     pub debugging_opts: DebuggingOptions,
-    /// Whether to write dependency files. It's (enabled, optional filename).
-    pub write_dependency_info: (bool, Option<PathBuf>),
     pub prints: Vec<PrintRequest>,
     pub cg: CodegenOptions,
     pub color: ColorConfig,
@@ -151,26 +147,25 @@ pub struct OutputFilenames {
     pub out_filestem: String,
     pub single_output_file: Option<PathBuf>,
     pub extra: String,
+    pub outputs: HashMap<OutputType, Option<PathBuf>>,
 }
 
 impl OutputFilenames {
     pub fn path(&self, flavor: OutputType) -> PathBuf {
-        match self.single_output_file {
-            Some(ref path) => return path.clone(),
-            None => {}
-        }
-        self.temp_path(flavor)
+        self.outputs.get(&flavor).and_then(|p| p.to_owned())
+            .or_else(|| self.single_output_file.clone())
+            .unwrap_or_else(|| self.temp_path(flavor))
     }
 
     pub fn temp_path(&self, flavor: OutputType) -> PathBuf {
         let base = self.out_directory.join(&self.filestem());
         match flavor {
-            OutputTypeBitcode => base.with_extension("bc"),
-            OutputTypeAssembly => base.with_extension("s"),
-            OutputTypeLlvmAssembly => base.with_extension("ll"),
-            OutputTypeObject => base.with_extension("o"),
-            OutputTypeDepInfo => base.with_extension("d"),
-            OutputTypeExe => base,
+            OutputType::Bitcode => base.with_extension("bc"),
+            OutputType::Assembly => base.with_extension("s"),
+            OutputType::LlvmAssembly => base.with_extension("ll"),
+            OutputType::Object => base.with_extension("o"),
+            OutputType::DepInfo => base.with_extension("d"),
+            OutputType::Exe => base,
         }
     }
 
@@ -206,7 +201,7 @@ pub fn basic_options() -> Options {
         lint_opts: Vec::new(),
         lint_cap: None,
         describe_lints: false,
-        output_types: Vec::new(),
+        output_types: HashMap::new(),
         search_paths: SearchPaths::new(),
         maybe_sysroot: None,
         target_triple: host_triple().to_string(),
@@ -215,10 +210,8 @@ pub fn basic_options() -> Options {
         parse_only: false,
         no_trans: false,
         treat_err_as_bug: false,
-        always_build_mir: false,
         no_analysis: false,
         debugging_opts: basic_debugging_options(),
-        write_dependency_info: (false, None),
         prints: Vec::new(),
         cg: basic_codegen_options(),
         color: Auto,
@@ -583,8 +576,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "Run all passes except translation; no output"),
     treat_err_as_bug: bool = (false, parse_bool,
           "Treat all errors that occur as bugs"),
-    always_build_mir: bool = (false, parse_bool,
-          "Always build MIR for all fns, even without a #[rustc_mir] annotation"),
     no_analysis: bool = (false, parse_bool,
           "Parse and expand the source, but run no analysis"),
     extra_plugins: Vec<String> = (Vec::new(), parse_list,
@@ -617,6 +608,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let wordsz = &sess.target.target.target_pointer_width;
     let os = &sess.target.target.target_os;
     let env = &sess.target.target.target_env;
+    let vendor = &sess.target.target.target_vendor;
 
     let fam = match sess.target.target.options.is_like_windows {
         true  => InternedString::new("windows"),
@@ -632,6 +624,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
          mk(InternedString::new("target_endian"), intern(end)),
          mk(InternedString::new("target_pointer_width"), intern(wordsz)),
          mk(InternedString::new("target_env"), intern(env)),
+         mk(InternedString::new("target_vendor"), intern(vendor)),
     ];
     if sess.opts.debug_assertions {
         ret.push(attr::mk_word_item(InternedString::new("debug_assertions")));
@@ -898,38 +891,36 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let parse_only = debugging_opts.parse_only;
     let no_trans = debugging_opts.no_trans;
     let treat_err_as_bug = debugging_opts.treat_err_as_bug;
-    let always_build_mir = debugging_opts.always_build_mir;
     let no_analysis = debugging_opts.no_analysis;
 
     if debugging_opts.debug_llvm {
         unsafe { llvm::LLVMSetDebug(1); }
     }
 
-    let mut output_types = Vec::new();
+    let mut output_types = HashMap::new();
     if !debugging_opts.parse_only && !no_trans {
-        let unparsed_output_types = matches.opt_strs("emit");
-        for unparsed_output_type in &unparsed_output_types {
-            for part in unparsed_output_type.split(',') {
-                let output_type = match part {
-                    "asm" => OutputTypeAssembly,
-                    "llvm-ir" => OutputTypeLlvmAssembly,
-                    "llvm-bc" => OutputTypeBitcode,
-                    "obj" => OutputTypeObject,
-                    "link" => OutputTypeExe,
-                    "dep-info" => OutputTypeDepInfo,
-                    _ => {
+        for list in matches.opt_strs("emit") {
+            for output_type in list.split(',') {
+                let mut parts = output_type.splitn(2, '=');
+                let output_type = match parts.next().unwrap() {
+                    "asm" => OutputType::Assembly,
+                    "llvm-ir" => OutputType::LlvmAssembly,
+                    "llvm-bc" => OutputType::Bitcode,
+                    "obj" => OutputType::Object,
+                    "link" => OutputType::Exe,
+                    "dep-info" => OutputType::DepInfo,
+                    part => {
                         early_error(color, &format!("unknown emission type: `{}`",
                                                     part))
                     }
                 };
-                output_types.push(output_type)
+                let path = parts.next().map(PathBuf::from);
+                output_types.insert(output_type, path);
             }
         }
     };
-    output_types.sort();
-    output_types.dedup();
     if output_types.is_empty() {
-        output_types.push(OutputTypeExe);
+        output_types.insert(OutputType::Exe, None);
     }
 
     let cg = build_codegen_options(matches, color);
@@ -1002,7 +993,6 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
     let test = matches.opt_present("test");
-    let write_dependency_info = (output_types.contains(&OutputTypeDepInfo), None);
 
     let prints = matches.opt_strs("print").into_iter().map(|s| {
         match &*s {
@@ -1054,10 +1044,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         parse_only: parse_only,
         no_trans: no_trans,
         treat_err_as_bug: treat_err_as_bug,
-        always_build_mir: always_build_mir,
         no_analysis: no_analysis,
         debugging_opts: debugging_opts,
-        write_dependency_info: write_dependency_info,
         prints: prints,
         cg: cg,
         color: color,

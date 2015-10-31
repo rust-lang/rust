@@ -23,12 +23,12 @@ struct B(isize);
 
 #[derive(FromPrimitive)]
 enum C { Foo(isize), Bar(usize) }
-//~^^ ERROR `FromPrimitive` cannot be derived for enum variants with arguments
-//~^^^ ERROR `FromPrimitive` cannot be derived for enum variants with arguments
+//~^^ ERROR `FromPrimitive` cannot be derived for enums with non-unit variants
+//~^^^ ERROR `FromPrimitive` cannot be derived for enums with non-unit variants
 
 #[derive(FromPrimitive)]
 enum D { Baz { x: isize } }
-//~^^ ERROR `FromPrimitive` cannot be derived for enums with struct variants
-//~^^^ ERROR `FromPrimitive` cannot be derived for enums with struct variants
+//~^^ ERROR `FromPrimitive` cannot be derived for enums with non-unit variants
+//~^^^ ERROR `FromPrimitive` cannot be derived for enums with non-unit variants
 
 pub fn main() {}

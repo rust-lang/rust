@@ -12,7 +12,7 @@
 
 use std::marker::PhantomData;
 
-// A erroneous variant of `run-pass/unboxed_closures-infer-recursive-fn.rs`
+// An erroneous variant of `run-pass/unboxed_closures-infer-recursive-fn.rs`
 // where we attempt to perform mutation in the recursive function. This fails to compile
 // because it winds up requiring `FnMut` which enforces linearity.
 

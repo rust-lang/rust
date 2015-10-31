@@ -11,58 +11,57 @@
 use hair::*;
 use repr::*;
 
-use tcx::Cx;
 use tcx::pattern::PatNode;
-use tcx::rustc_front::hir;
-use tcx::syntax::ptr::P;
+use rustc_front::hir;
+use syntax::ptr::P;
 
-pub trait ToRef<H> {
+pub trait ToRef {
     type Output;
     fn to_ref(self) -> Self::Output;
 }
 
-impl<'a,'tcx:'a> ToRef<Cx<'a,'tcx>> for &'tcx hir::Expr {
-    type Output = ExprRef<Cx<'a,'tcx>>;
+impl<'a,'tcx:'a> ToRef for &'tcx hir::Expr {
+    type Output = ExprRef<'tcx>;
 
-    fn to_ref(self) -> ExprRef<Cx<'a,'tcx>> {
+    fn to_ref(self) -> ExprRef<'tcx> {
         ExprRef::Hair(self)
     }
 }
 
-impl<'a,'tcx:'a> ToRef<Cx<'a,'tcx>> for &'tcx P<hir::Expr> {
-    type Output = ExprRef<Cx<'a,'tcx>>;
+impl<'a,'tcx:'a> ToRef for &'tcx P<hir::Expr> {
+    type Output = ExprRef<'tcx>;
 
-    fn to_ref(self) -> ExprRef<Cx<'a,'tcx>> {
+    fn to_ref(self) -> ExprRef<'tcx> {
         ExprRef::Hair(&**self)
     }
 }
 
-impl<'a,'tcx:'a> ToRef<Cx<'a,'tcx>> for Expr<Cx<'a,'tcx>> {
-    type Output = ExprRef<Cx<'a,'tcx>>;
+impl<'a,'tcx:'a> ToRef for Expr<'tcx> {
+    type Output = ExprRef<'tcx>;
 
-    fn to_ref(self) -> ExprRef<Cx<'a,'tcx>> {
+    fn to_ref(self) -> ExprRef<'tcx> {
         ExprRef::Mirror(Box::new(self))
     }
 }
 
-impl<'a,'tcx:'a> ToRef<Cx<'a,'tcx>> for PatNode<'tcx> {
-    type Output = PatternRef<Cx<'a,'tcx>>;
+impl<'a,'tcx:'a> ToRef for PatNode<'tcx> {
+    type Output = PatternRef<'tcx>;
 
-    fn to_ref(self) -> PatternRef<Cx<'a,'tcx>> {
+    fn to_ref(self) -> PatternRef<'tcx> {
         PatternRef::Hair(self)
     }
 }
 
-impl<'a,'tcx:'a> ToRef<Cx<'a,'tcx>> for Pattern<Cx<'a,'tcx>> {
-    type Output = PatternRef<Cx<'a,'tcx>>;
+impl<'a,'tcx:'a> ToRef for Pattern<'tcx> {
+    type Output = PatternRef<'tcx>;
 
-    fn to_ref(self) -> PatternRef<Cx<'a,'tcx>> {
+    fn to_ref(self) -> PatternRef<'tcx> {
         PatternRef::Mirror(Box::new(self))
     }
 }
 
-impl<'a,'tcx:'a,T,U> ToRef<Cx<'a,'tcx>> for &'tcx Option<T>
-    where &'tcx T: ToRef<Cx<'a,'tcx>, Output=U>
+impl<'a,'tcx:'a,T,U> ToRef for &'tcx Option<T>
+    where &'tcx T: ToRef<Output=U>
 {
     type Output = Option<U>;
 
@@ -71,8 +70,8 @@ impl<'a,'tcx:'a,T,U> ToRef<Cx<'a,'tcx>> for &'tcx Option<T>
     }
 }
 
-impl<'a,'tcx:'a,T,U> ToRef<Cx<'a,'tcx>> for &'tcx Vec<T>
-    where &'tcx T: ToRef<Cx<'a,'tcx>, Output=U>
+impl<'a,'tcx:'a,T,U> ToRef for &'tcx Vec<T>
+    where &'tcx T: ToRef<Output=U>
 {
     type Output = Vec<U>;
 
@@ -81,14 +80,13 @@ impl<'a,'tcx:'a,T,U> ToRef<Cx<'a,'tcx>> for &'tcx Vec<T>
     }
 }
 
-impl<'a,'tcx:'a> ToRef<Cx<'a,'tcx>> for &'tcx hir::Field {
-    type Output = FieldExprRef<Cx<'a,'tcx>>;
+impl<'a,'tcx:'a> ToRef for &'tcx hir::Field {
+    type Output = FieldExprRef<'tcx>;
 
-    fn to_ref(self) -> FieldExprRef<Cx<'a,'tcx>> {
+    fn to_ref(self) -> FieldExprRef<'tcx> {
         FieldExprRef {
-            name: Field::Named(self.ident.node.name),
-            expr: self.expr.to_ref()
+            name: Field::Named(self.name.node),
+            expr: self.expr.to_ref(),
         }
     }
 }
-

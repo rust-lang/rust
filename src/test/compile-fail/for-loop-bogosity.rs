@@ -25,9 +25,6 @@ pub fn main() {
         y: 2,
     };
     for x in bogus { //~ ERROR `core::iter::Iterator` is not implemented for the type `MyStruct`
-    //~^ ERROR
-    //~^^ ERROR
-    // FIXME(#21528) not fulfilled obligation error should be reported once, not thrice
         drop(x);
     }
 }

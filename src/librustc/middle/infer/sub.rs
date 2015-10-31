@@ -18,7 +18,7 @@ use middle::ty::TyVar;
 use middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
 use std::mem;
 
-/// "Greatest lower bound" (common subtype)
+/// Ensures `a` is made a subtype of `b`. Returns `a` on success.
 pub struct Sub<'a, 'tcx: 'a> {
     fields: CombineFields<'a, 'tcx>,
 }
@@ -90,7 +90,8 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
             }
 
             _ => {
-                combine::super_combine_tys(self.fields.infcx, self, a, b)
+                try!(combine::super_combine_tys(self.fields.infcx, self, a, b));
+                Ok(a)
             }
         }
     }

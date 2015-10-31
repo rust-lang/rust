@@ -39,6 +39,7 @@ mod arch {
     pub type time_t = i32;
 
     #[repr(C)]
+    #[derive(Clone)]
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub struct stat {
         #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -108,6 +109,7 @@ mod arch {
     pub type time_t = i64;
 
     #[repr(C)]
+    #[derive(Clone)]
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub struct stat {
         #[stable(feature = "raw_ext", since = "1.1.0")]

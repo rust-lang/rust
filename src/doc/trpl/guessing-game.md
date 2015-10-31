@@ -99,9 +99,12 @@ use std::io;
 We’ll need to take user input, and then print the result as output. As such, we
 need the `io` library from the standard library. Rust only imports a few things
 by default into every program, [the ‘prelude’][prelude]. If it’s not in the
-prelude, you’ll have to `use` it directly.
+prelude, you’ll have to `use` it directly. There is also a second ‘prelude’, the
+[`io` prelude][ioprelude], which serves a similar function: you import it, and it
+imports a number of useful, `io`-related things.
 
 [prelude]: ../std/prelude/index.html
+[ioprelude]: ../std/io/prelude/index.html
 
 ```rust,ignore
 fn main() {

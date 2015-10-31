@@ -57,7 +57,7 @@ use rustc::metadata::csearch;
 use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use rustc::middle::def::*;
 use rustc::middle::def_id::DefId;
-use rustc::middle::pat_util::pat_bindings;
+use rustc::middle::pat_util::pat_bindings_hygienic;
 use rustc::middle::privacy::*;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
@@ -65,7 +65,7 @@ use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 use rustc::util::lev_distance::lev_distance;
 
 use syntax::ast;
-use syntax::ast::{Ident, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
+use syntax::ast::{CRATE_NODE_ID, Ident, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
 use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64, TyF64, TyF32};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;
@@ -491,7 +491,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         }
         visit::walk_poly_trait_ref(self, tref, m);
     }
-    fn visit_variant(&mut self, variant: &hir::Variant, generics: &Generics) {
+    fn visit_variant(&mut self, variant: &hir::Variant, generics: &Generics, item_id: ast::NodeId) {
         execute_callback!(hir_map::Node::NodeVariant(variant), self);
         if let Some(ref dis_expr) = variant.node.disr_expr {
             // resolve the discriminator expr as a constant
@@ -501,19 +501,8 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         }
 
         // `visit::walk_variant` without the discriminant expression.
-        match variant.node.kind {
-            hir::TupleVariantKind(ref variant_arguments) => {
-                for variant_argument in variant_arguments {
-                    self.visit_ty(&*variant_argument.ty);
-                }
-            }
-            hir::StructVariantKind(ref struct_definition) => {
-                self.visit_struct_def(&**struct_definition,
-                                      variant.node.name,
-                                      generics,
-                                      variant.node.id);
-            }
-        }
+        self.visit_variant_data(&variant.node.data, variant.node.name,
+                              generics, item_id, variant.span);
     }
     fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem) {
         execute_callback!(hir_map::Node::NodeForeignItem(foreign_item), self);
@@ -1188,8 +1177,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
            make_glob_map: MakeGlobMap) -> Resolver<'a, 'tcx> {
         let graph_root = NameBindings::new();
 
+        let root_def_id = ast_map.local_def_id(CRATE_NODE_ID);
         graph_root.define_module(NoParentLink,
-                                 Some(DefId { krate: 0, node: 0 }),
+                                 Some(root_def_id),
                                  NormalModuleKind,
                                  false,
                                  true,
@@ -1257,8 +1247,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn get_trait_name(&self, did: DefId) -> Name {
-        if did.is_local() {
-            self.ast_map.expect_item(did.node).ident.name
+        if let Some(node_id) = self.ast_map.as_local_node_id(did) {
+            self.ast_map.expect_item(node_id).name
         } else {
             csearch::get_trait_name(&self.session.cstore, did)
         }
@@ -1981,7 +1971,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.session.span_bug(span,
                     &format!("unexpected {:?} in bindings", def))
             }
-            DefLocal(node_id) => {
+            DefLocal(_, node_id) => {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind => {
@@ -1989,11 +1979,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         ClosureRibKind(function_id) => {
                             let prev_def = def;
+                            let node_def_id = self.ast_map.local_def_id(node_id);
 
                             let mut seen = self.freevars_seen.borrow_mut();
                             let seen = seen.entry(function_id).or_insert_with(|| NodeMap());
                             if let Some(&index) = seen.get(&node_id) {
-                                def = DefUpvar(node_id, index, function_id);
+                                def = DefUpvar(node_def_id, node_id, index, function_id);
                                 continue;
                             }
                             let mut freevars = self.freevars.borrow_mut();
@@ -2002,7 +1993,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             let depth = vec.len();
                             vec.push(Freevar { def: prev_def, span: span });
 
-                            def = DefUpvar(node_id, depth, function_id);
+                            def = DefUpvar(node_def_id, node_id, depth, function_id);
                             seen.insert(node_id, depth);
                         }
                         ItemRibKind | MethodRibKind => {
@@ -2109,7 +2100,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn resolve_item(&mut self, item: &Item) {
-        let name = item.ident.name;
+        let name = item.name;
 
         debug!("(resolving item) resolving {}",
                name);
@@ -2156,9 +2147,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                TypeSpace,
                                                                ItemRibKind),
                                              |this| {
-                    this.with_self_rib(DefSelfTy(Some(DefId::local(item.id)), None), |this| {
+                    let local_def_id = this.ast_map.local_def_id(item.id);
+                    this.with_self_rib(DefSelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
-                        visit::walk_ty_param_bounds_helper(this, bounds);
+                        walk_list!(this, visit_ty_param_bound, bounds);
 
                         for trait_item in trait_items {
                             match trait_item.node {
@@ -2184,7 +2176,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     });
                                 }
                                 hir::TypeTraitItem(..) => {
-                                    this.check_if_primitive_type_name(trait_item.ident.name,
+                                    this.check_if_primitive_type_name(trait_item.name,
                                                                       trait_item.span);
                                     this.with_type_parameter_rib(NoTypeParameters, |this| {
                                         visit::walk_trait_item(this, trait_item)
@@ -2210,23 +2202,39 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ItemUse(ref view_path) => {
                 // check for imports shadowing primitive types
-                let check_rename = |id, ident: Ident| {
-                    match self.def_map.borrow().get(&id).map(|d| d.full_def()) {
+                let check_rename = |this: &Self, id, name| {
+                    match this.def_map.borrow().get(&id).map(|d| d.full_def()) {
                         Some(DefTy(..)) | Some(DefStruct(..)) | Some(DefTrait(..)) | None => {
-                            self.check_if_primitive_type_name(ident.name, item.span);
+                            this.check_if_primitive_type_name(name, item.span);
                         }
                         _ => {}
                     }
                 };
 
                 match view_path.node {
-                    hir::ViewPathSimple(ident, _) => {
-                        check_rename(item.id, ident);
+                    hir::ViewPathSimple(name, _) => {
+                        check_rename(self, item.id, name);
                     }
-                    hir::ViewPathList(_, ref items) => {
+                    hir::ViewPathList(ref prefix, ref items) => {
                         for item in items {
-                            if let Some(ident) = item.node.rename() {
-                                check_rename(item.node.id(), ident);
+                            if let Some(name) = item.node.rename() {
+                                check_rename(self, item.node.id(), name);
+                            }
+                        }
+
+                        // Resolve prefix of an import with empty braces (issue #28388)
+                        if items.is_empty() && !prefix.segments.is_empty() {
+                            match self.resolve_crate_relative_path(prefix.span,
+                                                                   &prefix.segments,
+                                                                   TypeNS) {
+                                Some((def, lp)) => self.record_def(item.id,
+                                                   PathResolution::new(def, lp, 0)),
+                                None => {
+                                    resolve_error(self,
+                                                  prefix.span,
+                                                  ResolutionError::FailedToResolve(
+                                                      &path_names_to_string(prefix, 0)));
+                                }
                             }
                         }
                     }
@@ -2248,7 +2256,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let mut function_type_rib = Rib::new(rib_kind);
                 let mut seen_bindings = HashSet::new();
                 for (index, type_parameter) in generics.ty_params.iter().enumerate() {
-                    let name = type_parameter.ident.name;
+                    let name = type_parameter.name;
                     debug!("with_type_parameter_rib: {}", type_parameter.id);
 
                     if seen_bindings.contains(&name) {
@@ -2264,7 +2272,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     function_type_rib.bindings.insert(name,
                         DlDef(DefTyParam(space,
                                          index as u32,
-                                         DefId::local(type_parameter.id),
+                                         self.ast_map.local_def_id(type_parameter.id),
                                          name)));
                 }
                 self.type_ribs.push(function_type_rib);
@@ -2374,7 +2382,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_generics(&mut self, generics: &Generics) {
         for type_parameter in generics.ty_params.iter() {
-            self.check_if_primitive_type_name(type_parameter.ident.name, type_parameter.span);
+            self.check_if_primitive_type_name(type_parameter.name, type_parameter.span);
         }
         for predicate in &generics.where_clause.predicates {
             match predicate {
@@ -2470,7 +2478,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 ConstImplItem(..) => {
                                     // If this is a trait impl, ensure the const
                                     // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
+                                    this.check_trait_item(impl_item.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::ConstNotMemberOfTrait(n, s));
                                     this.with_constant_rib(|this| {
@@ -2480,7 +2488,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 MethodImplItem(ref sig, _) => {
                                     // If this is a trait impl, ensure the method
                                     // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
+                                    this.check_trait_item(impl_item.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::MethodNotMemberOfTrait(n, s));
 
@@ -2497,7 +2505,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 TypeImplItem(ref ty) => {
                                     // If this is a trait impl, ensure the type
                                     // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
+                                    this.check_trait_item(impl_item.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::TypeNotMemberOfTrait(n, s));
 
@@ -2526,10 +2534,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_local(&mut self, local: &Local) {
         // Resolve the type.
-        visit::walk_ty_opt(self, &local.ty);
+        walk_list!(self, visit_ty, &local.ty);
 
         // Resolve the initializer.
-        visit::walk_expr_opt(self, &local.init);
+        walk_list!(self, visit_expr, &local.init);
 
         // Resolve the pattern.
         self.resolve_pattern(&*local.pat,
@@ -2543,7 +2551,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut result = HashMap::new();
-        pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path1| {
+        pat_bindings_hygienic(&self.def_map, pat, |binding_mode, _id, sp, path1| {
             let name = mtwt::resolve(path1.node);
             result.insert(name, BindingInfo {
                 span: sp,
@@ -2606,7 +2614,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // pat_idents are variants
         self.check_consistent_bindings(arm);
 
-        visit::walk_expr_opt(self, &arm.guard);
+        walk_list!(self, visit_expr, &arm.guard);
         self.visit_expr(&*arm.body);
 
         if !self.resolved {
@@ -2799,7 +2807,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             debug!("(resolving pattern) binding `{}`",
                                    renamed);
 
-                            let def = DefLocal(pattern.id);
+                            let def_id = self.ast_map.local_def_id(pattern.id);
+                            let def = DefLocal(def_id, pattern.id);
 
                             // Record the definition so that later passes
                             // will be able to distinguish variants from
@@ -3481,8 +3490,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         fn is_static_method(this: &Resolver, did: DefId) -> bool {
-            if did.is_local() {
-                let sig = match this.ast_map.get(did.node) {
+            if let Some(node_id) = this.ast_map.as_local_node_id(did) {
+                let sig = match this.ast_map.get(node_id) {
                     hir_map::NodeTraitItem(trait_item) => match trait_item.node {
                         hir::MethodTraitItem(ref sig, _) => sig,
                         _ => return false
@@ -3694,7 +3703,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 false // Stop advancing
                             });
 
-                            if method_scope && special_names::self_ == path_name {
+                            if method_scope && special_names::self_.as_str() == &path_name[..] {
                                 resolve_error(
                                     self,
                                     expr.span,
@@ -3801,19 +3810,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn record_candidate_traits_for_expr_if_necessary(&mut self, expr: &Expr) {
         match expr.node {
-            ExprField(_, ident) => {
+            ExprField(_, name) => {
                 // FIXME(#6890): Even though you can't treat a method like a
                 // field, we need to add any trait methods we find that match
                 // the field name so that we can do some nice error reporting
                 // later on in typeck.
-                let traits = self.get_traits_containing_item(ident.node.name);
+                let traits = self.get_traits_containing_item(name.node);
                 self.trait_map.insert(expr.id, traits);
             }
-            ExprMethodCall(ident, _, _) => {
+            ExprMethodCall(name, _, _) => {
                 debug!("(recording candidate traits for expr) recording \
                         traits for {}",
                        expr.id);
-                let traits = self.get_traits_containing_item(ident.node.name);
+                let traits = self.get_traits_containing_item(name.node);
                 self.trait_map.insert(expr.id, traits);
             }
             _ => {
@@ -3829,9 +3838,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         fn add_trait_info(found_traits: &mut Vec<DefId>,
                           trait_def_id: DefId,
                           name: Name) {
-            debug!("(adding trait info) found trait {}:{} for method '{}'",
-                trait_def_id.krate,
-                trait_def_id.node,
+            debug!("(adding trait info) found trait {:?} for method '{}'",
+                trait_def_id,
                 name);
             found_traits.push(trait_def_id);
         }

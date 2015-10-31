@@ -21,7 +21,6 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
 use rustc::front::map as hir_map;
-use rustc::middle::def_id::DefId;
 use rustc::middle::stability;
 
 use rustc_front::hir;
@@ -63,8 +62,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     fn stability(&self, id: ast::NodeId) -> Option<attr::Stability> {
-        self.cx.tcx_opt().and_then(
-            |tcx| stability::lookup(tcx, DefId::local(id)).map(|x| x.clone()))
+        self.cx.tcx_opt().and_then(|tcx| {
+            self.cx.map.opt_local_def_id(id)
+                       .and_then(|def_id| stability::lookup(tcx, def_id))
+                       .cloned()
+        })
     }
 
     pub fn visit(&mut self, krate: &hir::Crate) {
@@ -82,8 +84,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         self.module.is_crate = true;
     }
 
-    pub fn visit_struct_def(&mut self, item: &hir::Item,
-                            name: ast::Ident, sd: &hir::StructDef,
+    pub fn visit_variant_data(&mut self, item: &hir::Item,
+                            name: ast::Name, sd: &hir::VariantData,
                             generics: &hir::Generics) -> Struct {
         debug!("Visiting struct");
         let struct_type = struct_type_from_def(&*sd);
@@ -95,13 +97,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             stab: self.stability(item.id),
             attrs: item.attrs.clone(),
             generics: generics.clone(),
-            fields: sd.fields.clone(),
+            fields: sd.fields().cloned().collect(),
             whence: item.span
         }
     }
 
     pub fn visit_enum_def(&mut self, it: &hir::Item,
-                          name: ast::Ident, def: &hir::EnumDef,
+                          name: ast::Name, def: &hir::EnumDef,
                           params: &hir::Generics) -> Enum {
         debug!("Visiting enum");
         Enum {
@@ -109,9 +111,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             variants: def.variants.iter().map(|v| Variant {
                 name: v.node.name,
                 attrs: v.node.attrs.clone(),
-                stab: self.stability(v.node.id),
-                id: v.node.id,
-                kind: v.node.kind.clone(),
+                stab: self.stability(v.node.data.id()),
+                def: v.node.data.clone(),
                 whence: v.span,
             }).collect(),
             vis: it.vis,
@@ -124,7 +125,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     pub fn visit_fn(&mut self, item: &hir::Item,
-                    name: ast::Ident, fd: &hir::FnDecl,
+                    name: ast::Name, fd: &hir::FnDecl,
                     unsafety: &hir::Unsafety,
                     constness: hir::Constness,
                     abi: &abi::Abi,
@@ -148,7 +149,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn visit_mod_contents(&mut self, span: Span, attrs: Vec<ast::Attribute> ,
                               vis: hir::Visibility, id: ast::NodeId,
                               m: &hir::Mod,
-                              name: Option<ast::Ident>) -> Module {
+                              name: Option<ast::Name>) -> Module {
         let mut om = Module::new(name);
         om.where_outer = span;
         om.where_inner = m.inner;
@@ -199,23 +200,25 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     }
 
-    fn resolve_id(&mut self, id: ast::NodeId, renamed: Option<ast::Ident>,
+    fn resolve_id(&mut self, id: ast::NodeId, renamed: Option<ast::Name>,
                   glob: bool, om: &mut Module, please_inline: bool) -> bool {
         let tcx = match self.cx.tcx_opt() {
             Some(tcx) => tcx,
             None => return false
         };
         let def = tcx.def_map.borrow()[&id].def_id();
-        if !def.is_local() { return false }
+        let def_node_id = match tcx.map.as_local_node_id(def) {
+            Some(n) => n, None => return false
+        };
         let analysis = match self.analysis {
             Some(analysis) => analysis, None => return false
         };
-        if !please_inline && analysis.public_items.contains(&def.node) {
+        if !please_inline && analysis.public_items.contains(&def) {
             return false
         }
-        if !self.view_item_stack.insert(def.node) { return false }
+        if !self.view_item_stack.insert(def_node_id) { return false }
 
-        let ret = match tcx.map.get(def.node) {
+        let ret = match tcx.map.get(def_node_id) {
             hir_map::NodeItem(it) => {
                 if glob {
                     let prev = mem::replace(&mut self.inlining_from_glob, true);
@@ -236,14 +239,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             _ => false,
         };
-        self.view_item_stack.remove(&id);
+        self.view_item_stack.remove(&def_node_id);
         return ret;
     }
 
     pub fn visit_item(&mut self, item: &hir::Item,
-                      renamed: Option<ast::Ident>, om: &mut Module) {
+                      renamed: Option<ast::Name>, om: &mut Module) {
         debug!("Visiting item {:?}", item);
-        let name = renamed.unwrap_or(item.ident);
+        let name = renamed.unwrap_or(item.name);
         match item.node {
             hir::ItemExternCrate(ref p) => {
                 let path = match *p {
@@ -295,7 +298,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemEnum(ref ed, ref gen) =>
                 om.enums.push(self.visit_enum_def(item, name, ed, gen)),
             hir::ItemStruct(ref sd, ref gen) =>
-                om.structs.push(self.visit_struct_def(item, name, &**sd, gen)),
+                om.structs.push(self.visit_variant_data(item, name, &**sd, gen)),
             hir::ItemFn(ref fd, ref unsafety, constness, ref abi, ref gen, _) =>
                 om.fns.push(self.visit_fn(item, name, &**fd, unsafety,
                                           constness, abi, gen)),
@@ -398,7 +401,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         Macro {
             id: def.id,
             attrs: def.attrs.clone(),
-            name: def.ident,
+            name: def.name,
             whence: def.span,
             stab: self.stability(def.id),
             imported_from: def.imported_from,

@@ -352,7 +352,7 @@ enum dwarf_macro_record_type
     DW_MACRO_GNU_lo_user = 0xe0,
     DW_MACRO_GNU_hi_user = 0xff
   };
-
+
 /* @@@ For use with GNU frame unwind information.  */
 
 #define DW_EH_PE_absptr		0x00

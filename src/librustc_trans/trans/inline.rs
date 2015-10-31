@@ -30,7 +30,8 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
             // Already inline
             debug!("instantiate_inline({}): already inline as node id {}",
                    ccx.tcx().item_path_str(fn_id), node_id);
-            return Some(DefId::local(node_id));
+            let node_def_id = ccx.tcx().map.local_def_id(node_id);
+            return Some(node_def_id);
         }
         Some(&None) => {
             return None; // Not inlinable
@@ -43,7 +44,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
     let csearch_result =
         csearch::maybe_get_item_ast(
             ccx.tcx(), fn_id,
-            Box::new(|a,b,c,d| astencode::decode_inlined_item(a, b, c, d)));
+            Box::new(astencode::decode_inlined_item));
 
     let inline_id = match csearch_result {
         csearch::FoundAst::NotFound => {
@@ -109,18 +110,17 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
                     let ty_vs = &ccx.tcx().lookup_adt_def(parent_id).variants;
                     assert_eq!(ast_vs.len(), ty_vs.len());
                     for (ast_v, ty_v) in ast_vs.iter().zip(ty_vs.iter()) {
-                        if ty_v.did == fn_id { my_id = ast_v.node.id; }
-                        ccx.external().borrow_mut().insert(ty_v.did, Some(ast_v.node.id));
+                        if ty_v.did == fn_id { my_id = ast_v.node.data.id(); }
+                        ccx.external().borrow_mut().insert(ty_v.did, Some(ast_v.node.data.id()));
                     }
                 }
                 hir::ItemStruct(ref struct_def, _) => {
-                    match struct_def.ctor_id {
-                        None => ccx.sess().bug("instantiate_inline: called on a \
-                                                non-tuple struct"),
-                        Some(ctor_id) => {
-                            ccx.external().borrow_mut().insert(fn_id, Some(ctor_id));
-                            my_id = ctor_id;
-                        }
+                    if struct_def.is_struct() {
+                        ccx.sess().bug("instantiate_inline: called on a \
+                                                                 non-tuple struct")
+                    } else {
+                        ccx.external().borrow_mut().insert(fn_id, Some(struct_def.id()));
+                        my_id = struct_def.id();
                     }
                 }
                 _ => ccx.sess().bug("instantiate_inline: item has a \
@@ -144,8 +144,9 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
             // reuse that code, it needs to be able to look up the traits for
             // inlined items.
             let ty_trait_item = ccx.tcx().impl_or_trait_item(fn_id).clone();
+            let trait_item_def_id = ccx.tcx().map.local_def_id(trait_item.id);
             ccx.tcx().impl_or_trait_items.borrow_mut()
-                     .insert(DefId::local(trait_item.id), ty_trait_item);
+                     .insert(trait_item_def_id, ty_trait_item);
 
             // If this is a default method, we can't look up the
             // impl type. But we aren't going to translate anyways, so
@@ -185,12 +186,13 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
         }
     };
 
-    Some(DefId::local(inline_id))
+    let inline_def_id = ccx.tcx().map.local_def_id(inline_id);
+    Some(inline_def_id)
 }
 
 pub fn get_local_instance(ccx: &CrateContext, fn_id: DefId)
     -> Option<DefId> {
-    if fn_id.is_local() {
+    if let Some(_) = ccx.tcx().map.as_local_node_id(fn_id) {
         Some(fn_id)
     } else {
         instantiate_inline(ccx, fn_id)

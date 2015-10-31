@@ -14,7 +14,6 @@
 fn main() {
     fn bar<T>(_: T) {}
     [0][0u8]; //~ ERROR: the trait `core::ops::Index<u8>` is not implemented
-    //~^ ERROR: the trait `core::ops::Index<u8>` is not implemented
 
     [0][0]; // should infer to be a usize
 

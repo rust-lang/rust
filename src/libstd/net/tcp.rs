@@ -235,7 +235,7 @@ impl TcpListener {
     /// to this listener. The port allocated can be queried via the
     /// `socket_addr` function.
     ///
-    /// The address type can be any implementer of `ToSocketAddrs` trait. See
+    /// The address type can be any implementor of `ToSocketAddrs` trait. See
     /// its documentation for concrete examples.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {

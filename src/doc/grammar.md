@@ -9,7 +9,7 @@ provides only one kind of material:
 
 This document does not serve as an introduction to the language. Background
 familiarity with the language is assumed. A separate [guide] is available to
-help acquire such background familiarity.
+help acquire such background.
 
 This document also does not serve as a reference to the [standard] library
 included in the language distribution. Those libraries are documented
@@ -258,8 +258,8 @@ symbol : "::" | "->"
        | ',' | ';' ;
 ```
 
-Symbols are a general class of printable [token](#tokens) that play structural
-roles in a variety of grammar productions. They are catalogued here for
+Symbols are a general class of printable [tokens](#tokens) that play structural
+roles in a variety of grammar productions. They are cataloged here for
 completeness as the set of remaining miscellaneous printable tokens that do not
 otherwise appear as [unary operators](#unary-operator-expressions), [binary
 operators](#binary-operator-expressions), or [keywords](#keywords).
@@ -773,7 +773,7 @@ bound := path | lifetime
 
 ## Type kinds
 
-**FIXME:** this this probably not relevant to the grammar...
+**FIXME:** this is probably not relevant to the grammar...
 
 # Memory and concurrency models
 

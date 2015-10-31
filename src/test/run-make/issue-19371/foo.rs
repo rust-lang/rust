@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_private, path, convert)]
+#![feature(rustc_private)]
 
 extern crate rustc;
 extern crate rustc_driver;
@@ -16,7 +16,7 @@ extern crate rustc_lint;
 extern crate syntax;
 
 use rustc::session::{build_session, Session};
-use rustc::session::config::{basic_options, build_configuration, Input, OutputTypeExe};
+use rustc::session::config::{basic_options, build_configuration, Input, OutputType};
 use rustc_driver::driver::{compile_input, CompileController};
 use syntax::diagnostics::registry::Registry;
 
@@ -46,7 +46,7 @@ fn main() {
 
 fn basic_sess(sysroot: PathBuf) -> Session {
     let mut opts = basic_options();
-    opts.output_types = vec![OutputTypeExe];
+    opts.output_types.insert(OutputType::Exe, None);
     opts.maybe_sysroot = Some(sysroot);
 
     let descriptions = Registry::new(&rustc::DIAGNOSTICS);

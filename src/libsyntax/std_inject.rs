@@ -154,7 +154,7 @@ impl fold::Folder for PreludeInjector {
                 span: self.span,
                 node: ast::Attribute_ {
                     id: attr::mk_attr_id(),
-                    style: ast::AttrOuter,
+                    style: ast::AttrStyle::Outer,
                     value: P(ast::MetaItem {
                         span: self.span,
                         node: ast::MetaWord(special_idents::prelude_import.name.as_str()),

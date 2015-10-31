@@ -18,5 +18,4 @@ fn main() {
     });
     2_usize + (loop {});
     //~^ ERROR E0277
-    //~| ERROR E0277
 }

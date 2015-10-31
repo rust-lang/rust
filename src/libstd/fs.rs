@@ -60,6 +60,7 @@ pub struct File {
 /// represents known metadata about a file such as its permissions, size,
 /// modification times, etc.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Clone)]
 pub struct Metadata(fs_imp::FileAttr);
 
 /// Iterator over the entries in a directory.
@@ -2081,6 +2082,15 @@ mod tests {
         let tmpdir = tmpdir();
         let path = tmpdir.join("file");
         check!(fs::create_dir_all(&path.join("a/")));
+    }
+
+    #[test]
+    fn canonicalize_works_simple() {
+        let tmpdir = tmpdir();
+        let tmpdir = fs::canonicalize(tmpdir.path()).unwrap();
+        let file = tmpdir.join("test");
+        File::create(&file).unwrap();
+        assert_eq!(fs::canonicalize(&file).unwrap(), file);
     }
 
     #[test]

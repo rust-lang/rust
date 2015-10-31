@@ -86,7 +86,7 @@ fn test_find_str() {
     assert_eq!(data[43..86].find("iệt"), Some(77 - 43));
     assert_eq!(data[43..86].find("Nam"), Some(83 - 43));
 
-    // find every substring -- assert that it finds it, or an earlier occurence.
+    // find every substring -- assert that it finds it, or an earlier occurrence.
     let string = "Việt Namacbaabcaabaaba";
     for (i, ci) in string.char_indices() {
         let ip = i + ci.len_utf8();
@@ -1047,7 +1047,7 @@ fn test_pattern_deref_forward() {
 fn test_empty_match_indices() {
     let data = "aä中!";
     let vec: Vec<_> = data.match_indices("").collect();
-    assert_eq!(vec, [(0, 0), (1, 1), (3, 3), (6, 6), (7, 7)]);
+    assert_eq!(vec, [(0, ""), (1, ""), (3, ""), (6, ""), (7, "")]);
 }
 
 #[test]
@@ -1477,7 +1477,7 @@ generate_iterator_test! {
 
 generate_iterator_test! {
     double_ended_match_indices {
-        ("a1b2c3", char::is_numeric) -> [(1, 2), (3, 4), (5, 6)];
+        ("a1b2c3", char::is_numeric) -> [(1, "1"), (3, "2"), (5, "3")];
     }
     with str::match_indices, str::rmatch_indices;
 }

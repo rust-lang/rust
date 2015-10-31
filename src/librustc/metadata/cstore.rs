@@ -59,13 +59,16 @@ pub struct ImportedFileMap {
 pub struct crate_metadata {
     pub name: String,
     pub local_path: RefCell<SmallVector<ast_map::PathElem>>,
+    pub local_def_path: RefCell<ast_map::DefPath>,
     pub data: MetadataBlob,
     pub cnum_map: RefCell<cnum_map>,
     pub cnum: ast::CrateNum,
     pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
     pub span: codemap::Span,
     pub staged_api: bool,
+
     pub index: index::Index,
+    pub xref_index: index::DenseIndex,
 
     /// Flag if this crate is required by an rlib version of this crate, or in
     /// other words whether it was explicitly linked to. An example of a crate
@@ -108,6 +111,10 @@ pub struct CStore {
     statically_included_foreign_items: RefCell<NodeSet>,
     pub intr: Rc<IdentInterner>,
 }
+
+/// Item definitions in the currently-compiled crate would have the CrateNum
+/// LOCAL_CRATE in their DefId.
+pub const LOCAL_CRATE: ast::CrateNum = 0;
 
 impl CStore {
     pub fn new(intr: Rc<IdentInterner>) -> CStore {
@@ -305,6 +312,23 @@ impl crate_metadata {
                     *cpath = candidate;
                 }
             },
+        }
+    }
+
+    pub fn local_def_path(&self) -> ast_map::DefPath {
+        let local_def_path = self.local_def_path.borrow();
+        if local_def_path.is_empty() {
+            let name = ast_map::DefPathData::DetachedCrate(token::intern(&self.name));
+            vec![ast_map::DisambiguatedDefPathData { data: name, disambiguator: 0 }]
+        } else {
+            local_def_path.clone()
+        }
+    }
+
+    pub fn update_local_def_path(&self, candidate: ast_map::DefPath) {
+        let mut local_def_path = self.local_def_path.borrow_mut();
+        if local_def_path.is_empty() || candidate.len() < local_def_path.len() {
+            *local_def_path = candidate;
         }
     }
 

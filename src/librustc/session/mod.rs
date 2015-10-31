@@ -15,7 +15,7 @@ use middle::dependency_format;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeMap, FnvHashMap};
 
-use syntax::ast::NodeId;
+use syntax::ast::{NodeId, NodeIdAssigner};
 use syntax::codemap::Span;
 use syntax::diagnostic::{self, Emitter};
 use syntax::diagnostics;
@@ -236,9 +236,6 @@ impl Session {
         }
         lints.insert(id, vec!((lint_id, sp, msg)));
     }
-    pub fn next_node_id(&self) -> ast::NodeId {
-        self.reserve_node_ids(1)
-    }
     pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
         let id = self.next_node_id.get();
 
@@ -317,6 +314,16 @@ impl Session {
     }
 }
 
+impl NodeIdAssigner for Session {
+    fn next_node_id(&self) -> NodeId {
+        self.reserve_node_ids(1)
+    }
+
+    fn peek_node_id(&self) -> NodeId {
+        self.next_node_id.get().checked_add(1).unwrap()
+    }
+}
+
 fn split_msg_into_multilines(msg: &str) -> Option<String> {
     // Conditions for enabling multi-line errors:
     if !msg.contains("mismatched types") &&
@@ -331,10 +338,10 @@ fn split_msg_into_multilines(msg: &str) -> Option<String> {
     let first = msg.match_indices("expected").filter(|s| {
         s.0 > 0 && (msg.char_at_reverse(s.0) == ' ' ||
                     msg.char_at_reverse(s.0) == '(')
-    }).map(|(a, b)| (a - 1, b));
+    }).map(|(a, b)| (a - 1, a + b.len()));
     let second = msg.match_indices("found").filter(|s| {
         msg.char_at_reverse(s.0) == ' '
-    }).map(|(a, b)| (a - 1, b));
+    }).map(|(a, b)| (a - 1, a + b.len()));
 
     let mut new_msg = String::new();
     let mut head = 0;

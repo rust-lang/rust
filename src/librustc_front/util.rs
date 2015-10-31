@@ -12,14 +12,18 @@ use hir;
 use hir::*;
 use visit::{self, Visitor, FnKind};
 use syntax::ast_util;
-use syntax::ast::{Ident, NodeId, DUMMY_NODE_ID};
+use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID};
 use syntax::codemap::Span;
 use syntax::ptr::P;
 use syntax::owned_slice::OwnedSlice;
 
-pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool where F: FnMut(&Pat) -> bool {
+pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool
+    where F: FnMut(&Pat) -> bool
+{
     // FIXME(#19596) this is a workaround, but there should be a better way
-    fn walk_pat_<G>(pat: &Pat, it: &mut G) -> bool where G: FnMut(&Pat) -> bool {
+    fn walk_pat_<G>(pat: &Pat, it: &mut G) -> bool
+        where G: FnMut(&Pat) -> bool
+    {
         if !(*it)(pat) {
             return false;
         }
@@ -40,8 +44,12 @@ pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool where F: FnMut(&Pat) -> bool {
                 slice.iter().all(|p| walk_pat_(&**p, it)) &&
                 after.iter().all(|p| walk_pat_(&**p, it))
             }
-            PatWild(_) | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
-            PatEnum(_, _) | PatQPath(_, _) => {
+            PatWild(_) |
+            PatLit(_) |
+            PatRange(_, _) |
+            PatIdent(_, _, _) |
+            PatEnum(_, _) |
+            PatQPath(_, _) => {
                 true
             }
         }
@@ -69,47 +77,49 @@ pub fn binop_to_string(op: BinOp_) -> &'static str {
         BiLe => "<=",
         BiNe => "!=",
         BiGe => ">=",
-        BiGt => ">"
+        BiGt => ">",
     }
-}
-
-/// Returns true if the given struct def is tuple-like; i.e. that its fields
-/// are unnamed.
-pub fn struct_def_is_tuple_like(struct_def: &hir::StructDef) -> bool {
-    struct_def.ctor_id.is_some()
 }
 
 pub fn stmt_id(s: &Stmt) -> NodeId {
     match s.node {
-      StmtDecl(_, id) => id,
-      StmtExpr(_, id) => id,
-      StmtSemi(_, id) => id,
+        StmtDecl(_, id) => id,
+        StmtExpr(_, id) => id,
+        StmtSemi(_, id) => id,
     }
 }
 
 pub fn lazy_binop(b: BinOp_) -> bool {
     match b {
-      BiAnd => true,
-      BiOr => true,
-      _ => false
+        BiAnd => true,
+        BiOr => true,
+        _ => false,
     }
 }
 
 pub fn is_shift_binop(b: BinOp_) -> bool {
     match b {
-      BiShl => true,
-      BiShr => true,
-      _ => false
+        BiShl => true,
+        BiShr => true,
+        _ => false,
     }
 }
 
 pub fn is_comparison_binop(b: BinOp_) -> bool {
     match b {
-        BiEq | BiLt | BiLe | BiNe | BiGt | BiGe =>
-            true,
-        BiAnd | BiOr | BiAdd | BiSub | BiMul | BiDiv | BiRem |
-        BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr =>
-            false,
+        BiEq | BiLt | BiLe | BiNe | BiGt | BiGe => true,
+        BiAnd |
+        BiOr |
+        BiAdd |
+        BiSub |
+        BiMul |
+        BiDiv |
+        BiRem |
+        BiBitXor |
+        BiBitAnd |
+        BiBitOr |
+        BiShl |
+        BiShr => false,
     }
 }
 
@@ -128,14 +138,13 @@ pub fn is_by_value_unop(u: UnOp) -> bool {
 
 pub fn unop_to_string(op: UnOp) -> &'static str {
     match op {
-      UnUniq => "box() ",
-      UnDeref => "*",
-      UnNot => "!",
-      UnNeg => "-",
+        UnDeref => "*",
+        UnNot => "!",
+        UnNeg => "-",
     }
 }
 
-pub struct IdVisitor<'a, O:'a> {
+pub struct IdVisitor<'a, O: 'a> {
     pub operation: &'a mut O,
     pub pass_through_items: bool,
     pub visited_outermost: bool,
@@ -153,10 +162,7 @@ impl<'a, O: ast_util::IdVisitingOperation> IdVisitor<'a, O> {
 }
 
 impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
-    fn visit_mod(&mut self,
-                 module: &Mod,
-                 _: Span,
-                 node_id: NodeId) {
+    fn visit_mod(&mut self, module: &Mod, _: Span, node_id: NodeId) {
         self.operation.visit_id(node_id);
         visit::walk_mod(self, module)
     }
@@ -186,11 +192,6 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
                             self.operation.visit_id(path.node.id())
                         }
                     }
-                }
-            }
-            ItemEnum(ref enum_definition, _) => {
-                for variant in &enum_definition.variants {
-                    self.operation.visit_id(variant.node.id)
                 }
             }
             _ => {}
@@ -266,11 +267,7 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
             self.operation.visit_id(argument.id)
         }
 
-        visit::walk_fn(self,
-                       function_kind,
-                       function_declaration,
-                       block,
-                       span);
+        visit::walk_fn(self, function_kind, function_declaration, block, span);
 
         if !self.pass_through_items {
             if let FnKind::Method(..) = function_kind {
@@ -284,13 +281,13 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
         visit::walk_struct_field(self, struct_field)
     }
 
-    fn visit_struct_def(&mut self,
-                        struct_def: &StructDef,
-                        _: Ident,
+    fn visit_variant_data(&mut self,
+                        struct_def: &VariantData,
+                        _: Name,
                         _: &hir::Generics,
-                        id: NodeId) {
-        self.operation.visit_id(id);
-        struct_def.ctor_id.map(|ctor_id| self.operation.visit_id(ctor_id));
+                        _: NodeId,
+                        _: Span) {
+        self.operation.visit_id(struct_def.id());
         visit::walk_struct_def(self, struct_def);
     }
 
@@ -304,12 +301,12 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
         visit::walk_impl_item(self, ii);
     }
 
-    fn visit_lifetime_ref(&mut self, lifetime: &Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &Lifetime) {
         self.operation.visit_id(lifetime.id);
     }
 
     fn visit_lifetime_def(&mut self, def: &LifetimeDef) {
-        self.visit_lifetime_ref(&def.lifetime);
+        self.visit_lifetime(&def.lifetime);
     }
 
     fn visit_trait_ref(&mut self, trait_ref: &TraitRef) {
@@ -324,11 +321,8 @@ pub fn compute_id_range_for_fn_body(fk: FnKind,
                                     body: &Block,
                                     sp: Span,
                                     id: NodeId)
-                                    -> ast_util::IdRange
-{
-    let mut visitor = ast_util::IdRangeComputingVisitor {
-        result: ast_util::IdRange::max()
-    };
+                                    -> ast_util::IdRange {
+    let mut visitor = ast_util::IdRangeComputingVisitor { result: ast_util::IdRange::max() };
     let mut id_visitor = IdVisitor {
         operation: &mut visitor,
         pass_through_items: false,
@@ -339,7 +333,10 @@ pub fn compute_id_range_for_fn_body(fk: FnKind,
 }
 
 pub fn is_path(e: P<Expr>) -> bool {
-    match e.node { ExprPath(..) => true, _ => false }
+    match e.node {
+        ExprPath(..) => true,
+        _ => false,
+    }
 }
 
 pub fn empty_generics() -> Generics {
@@ -349,25 +346,23 @@ pub fn empty_generics() -> Generics {
         where_clause: WhereClause {
             id: DUMMY_NODE_ID,
             predicates: Vec::new(),
-        }
+        },
     }
 }
 
 // convert a span and an identifier to the corresponding
 // 1-segment path
-pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
+pub fn ident_to_path(s: Span, ident: Ident) -> Path {
     hir::Path {
         span: s,
         global: false,
-        segments: vec!(
-            hir::PathSegment {
-                identifier: identifier,
-                parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
-                    lifetimes: Vec::new(),
-                    types: OwnedSlice::empty(),
-                    bindings: OwnedSlice::empty(),
-                })
-            }
-        ),
+        segments: vec!(hir::PathSegment {
+            identifier: ident,
+            parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
+                lifetimes: Vec::new(),
+                types: OwnedSlice::empty(),
+                bindings: OwnedSlice::empty(),
+            }),
+        }),
     }
 }

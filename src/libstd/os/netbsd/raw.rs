@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! NetBSD/OpenBSD-specific raw type definitions
+//! NetBSD-specific raw type definitions
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
 
@@ -17,7 +17,7 @@ use os::unix::raw::{uid_t, gid_t};
 
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = i64;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = u32;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type dev_t = i32;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type dev_t = u64;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type fflags_t = u32;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type ino_t = u64;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type mode_t = u32;
@@ -26,6 +26,7 @@ use os::unix::raw::{uid_t, gid_t};
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type time_t = i64;
 
 #[repr(C)]
+#[derive(Clone)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
 pub struct stat {
     #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -55,6 +56,10 @@ pub struct stat {
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_ctime_nsec: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_birthtime: time_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_birthtime_nsec: c_long,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_size: off_t,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_blocks: blkcnt_t,
@@ -64,8 +69,5 @@ pub struct stat {
     pub st_flags: fflags_t,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_gen: u32,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_birthtime: time_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_birthtime_nsec: c_long,
+    st_spare: [u32; 2],
 }

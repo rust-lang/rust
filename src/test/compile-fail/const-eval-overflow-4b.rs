@@ -23,7 +23,6 @@ const A_I8_T
     : [u32; (i8::MAX as i8 + 1u8) as usize]
     //~^ ERROR mismatched types
     //~| the trait `core::ops::Add<u8>` is not implemented for the type `i8`
-    //~| the trait `core::ops::Add<u8>` is not implemented for the type `i8`
     = [0; (i8::MAX as usize) + 1];
 
 fn main() {
@@ -33,4 +32,3 @@ fn main() {
 fn foo<T:fmt::Debug>(x: T) {
     println!("{:?}", x);
 }
-

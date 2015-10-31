@@ -130,7 +130,7 @@ pub trait LintPass {
 // FIXME: eliminate the duplication with `Visitor`. But this also
 // contains a few lint-specific methods with no equivalent in `Visitor`.
 pub trait LateLintPass: LintPass {
-    fn check_ident(&mut self, _: &LateContext, _: Span, _: ast::Ident) { }
+    fn check_name(&mut self, _: &LateContext, _: Span, _: ast::Name) { }
     fn check_crate(&mut self, _: &LateContext, _: &hir::Crate) { }
     fn check_mod(&mut self, _: &LateContext, _: &hir::Mod, _: Span, _: ast::NodeId) { }
     fn check_foreign_item(&mut self, _: &LateContext, _: &hir::ForeignItem) { }
@@ -150,17 +150,17 @@ pub trait LateLintPass: LintPass {
     fn check_trait_item(&mut self, _: &LateContext, _: &hir::TraitItem) { }
     fn check_impl_item(&mut self, _: &LateContext, _: &hir::ImplItem) { }
     fn check_struct_def(&mut self, _: &LateContext,
-        _: &hir::StructDef, _: ast::Ident, _: &hir::Generics, _: ast::NodeId) { }
+        _: &hir::VariantData, _: ast::Name, _: &hir::Generics, _: ast::NodeId) { }
     fn check_struct_def_post(&mut self, _: &LateContext,
-        _: &hir::StructDef, _: ast::Ident, _: &hir::Generics, _: ast::NodeId) { }
+        _: &hir::VariantData, _: ast::Name, _: &hir::Generics, _: ast::NodeId) { }
     fn check_struct_field(&mut self, _: &LateContext, _: &hir::StructField) { }
     fn check_variant(&mut self, _: &LateContext, _: &hir::Variant, _: &hir::Generics) { }
     fn check_variant_post(&mut self, _: &LateContext, _: &hir::Variant, _: &hir::Generics) { }
-    fn check_opt_lifetime_ref(&mut self, _: &LateContext, _: Span, _: &Option<hir::Lifetime>) { }
-    fn check_lifetime_ref(&mut self, _: &LateContext, _: &hir::Lifetime) { }
+    fn check_lifetime(&mut self, _: &LateContext, _: &hir::Lifetime) { }
     fn check_lifetime_def(&mut self, _: &LateContext, _: &hir::LifetimeDef) { }
     fn check_explicit_self(&mut self, _: &LateContext, _: &hir::ExplicitSelf) { }
     fn check_path(&mut self, _: &LateContext, _: &hir::Path, _: ast::NodeId) { }
+    fn check_path_list_item(&mut self, _: &LateContext, _: &hir::PathListItem) { }
     fn check_attribute(&mut self, _: &LateContext, _: &ast::Attribute) { }
 
     /// Called when entering a syntax node that can have lint attributes such
@@ -192,20 +192,17 @@ pub trait EarlyLintPass: LintPass {
     fn check_trait_item(&mut self, _: &EarlyContext, _: &ast::TraitItem) { }
     fn check_impl_item(&mut self, _: &EarlyContext, _: &ast::ImplItem) { }
     fn check_struct_def(&mut self, _: &EarlyContext,
-        _: &ast::StructDef, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
+        _: &ast::VariantData, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
     fn check_struct_def_post(&mut self, _: &EarlyContext,
-        _: &ast::StructDef, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
+        _: &ast::VariantData, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
     fn check_struct_field(&mut self, _: &EarlyContext, _: &ast::StructField) { }
     fn check_variant(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
     fn check_variant_post(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
-    fn check_opt_lifetime_ref(&mut self,
-                              _: &EarlyContext,
-                              _: Span,
-                              _: &Option<ast::Lifetime>) { }
-    fn check_lifetime_ref(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
+    fn check_lifetime(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
     fn check_lifetime_def(&mut self, _: &EarlyContext, _: &ast::LifetimeDef) { }
     fn check_explicit_self(&mut self, _: &EarlyContext, _: &ast::ExplicitSelf) { }
     fn check_path(&mut self, _: &EarlyContext, _: &ast::Path, _: ast::NodeId) { }
+    fn check_path_list_item(&mut self, _: &EarlyContext, _: &ast::PathListItem) { }
     fn check_attribute(&mut self, _: &EarlyContext, _: &ast::Attribute) { }
 
     /// Called when entering a syntax node that can have lint attributes such

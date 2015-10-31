@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Regression test for #24085. Errors were occuring in region
+// Regression test for #24085. Errors were occurring in region
 // inference due to the requirement that `'a:b'`, which was getting
 // incorrectly translated in connection with the closure below.
 

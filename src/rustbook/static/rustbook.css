@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+ * Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
  * file at the top-level directory of this distribution and at
  * http://rust-lang.org/COPYRIGHT.
  *
@@ -10,12 +10,11 @@
  * except according to those terms.
  */
 
-@import url("../rust.css");
+@import url('../rust.css');
 
 body {
-    max-width:none;
-    font: 16px/1.4 'Source Serif Pro', Georgia, Times, 'Times New Roman', serif;
-    line-height: 1.6;
+    max-width: none;
+    font: 16px/1.6 'Source Serif Pro', Georgia, Times, 'Times New Roman', serif;
     color: #333;
 }
 
@@ -28,68 +27,64 @@ h1, h2, h3, h4, h5, h6 {
 @media only screen {
     #toc {
         position: fixed;
-        left: 0px;
-        top: 0px;
-        bottom: 0px;
+        top: 0;
+        left: 0;
+        bottom: 0;
         width: 300px;
         overflow-y: auto;
-        border-right: 1px solid rgba(0, 0, 0, 0.07);
-        padding: 10px 10px;
+        border-right: 1px solid #e8e8e8;
+        padding: 0 15px;
         font-size: 14px;
-        box-sizing: border-box;
-        -webkit-overflow-scrolling: touch;
         background-color: #fafafa;
-        color: #364149;
+        -webkit-overflow-scrolling: touch;
     }
 
     #page-wrapper {
         position: absolute;
-        left: 310px;
-        right: 0px;
-        top: 0px;
-        box-sizing: border-box;
-        background: none repeat scroll 0% 0% #FFF;
+        top: 0;
+        left: 300px;
+        right: 0;
+        padding: 0 15px;
         -webkit-overflow-scrolling: touch;
     }
 }
 
 @media only print {
-    #toc, #nav, #menu-bar {
+    #toc, #nav {
         display: none;
     }
 }
 
-@media only screen and (max-width: 1060px) {
+@media only screen and (max-width: 1023px) {
     #toc {
         width: 100%;
-        margin-right: 0;
         top: 40px;
     }
+
     #page-wrapper {
         top: 40px;
-        left: 15px;
-        padding-right: 15px;
+        left: 0;
     }
+
     .mobile-hidden {
         display: none;
     }
 }
 
 #page {
-    margin-left: auto;
-    margin-right:auto;
+    margin: 0 auto;
     max-width: 750px;
     padding-bottom: 50px;
 }
 
 .chapter {
-    list-style: none outside none;
-    padding-left: 0px;
+    list-style: none;
+    padding-left: 0;
     line-height: 30px;
 }
 
 .section {
-    list-style: none outside none;
+    list-style: none;
     padding-left: 20px;
     line-height: 40px;
 }
@@ -105,28 +100,21 @@ h1, h2, h3, h4, h5, h6 {
     padding: 5px 0;
 }
 
-.chapter li a.active {
-    color: #008cff;
-}
-
+.chapter li a.active,
 .chapter li a:hover {
     color: #008cff;
     text-decoration: none;
 }
 
 #toggle-nav {
-    height: 20px;
-    width:  30px;
-    padding: 3px 3px 0 3px;
-}
-
-#toggle-nav {
+    cursor: pointer;
     margin-top: 5px;
     width: 30px;
     height: 30px;
-    background-color: #FFF;
+    background-color: #fff;
     border: 1px solid #666;
-    border-radius: 3px 3px 3px 3px;
+    border-radius: 3px;
+    padding: 3px 3px 0 3px;
 }
 
 .sr-only {
@@ -151,17 +139,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 pre {
-    padding: 16px;
+    padding: 11px;
     overflow: auto;
     font-size: 85%;
     line-height: 1.45;
     background-color: #f7f7f7;
     border: 0;
     border-radius: 3px;
-}
-
-.nav-previous-next {
-    margin-top: 60px;
 }
 
 .left {

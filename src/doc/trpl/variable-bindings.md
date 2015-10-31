@@ -1,7 +1,8 @@
 % Variable Bindings
 
 Virtually every non-'Hello World’ Rust program uses *variable bindings*. They
-look like this:
+bind some value to a name, so it can be used later. `let` is
+used to introduce a binding, just like this:
 
 ```rust
 fn main() {
@@ -13,10 +14,12 @@ Putting `fn main() {` in each example is a bit tedious, so we’ll leave that ou
 in the future. If you’re following along, make sure to edit your `main()`
 function, rather than leaving it off. Otherwise, you’ll get an error.
 
-In many languages, this is called a *variable*, but Rust’s variable bindings
-have a few tricks up their sleeves. For example the left-hand side of a `let`
-expression is a ‘[pattern][pattern]’, not just a variable name. This means we
-can do things like:
+# Patterns
+
+In many languages, a variable binding would be called a *variable*, but Rust’s
+variable bindings have a few tricks up their sleeves. For example the
+left-hand side of a `let` expression is a ‘[pattern][pattern]’, not just a
+variable name. This means we can do things like:
 
 ```rust
 let (x, y) = (1, 2);
@@ -28,6 +31,8 @@ book. We don’t need those features for now, so we’ll just keep this in the b
 of our minds as we go forward.
 
 [pattern]: patterns.html
+
+# Type annotations
 
 Rust is a statically typed language, which means that we specify our types up
 front, and they’re checked at compile time. So why does our first example
@@ -63,6 +68,8 @@ Note the similarities between this annotation and the syntax you use with
 occasionally include them to help you understand what the types that Rust
 infers are.
 
+# Mutability
+
 By default, bindings are *immutable*. This code will not compile:
 
 ```rust,ignore
@@ -97,9 +104,11 @@ out of the scope of this guide. In general, you can often avoid explicit
 mutation, and so it is preferable in Rust. That said, sometimes, mutation is
 what you need, so it’s not verboten.
 
-Let’s get back to bindings. Rust variable bindings have one more aspect that
-differs from other languages: bindings are required to be initialized with a
-value before you're allowed to use them.
+# Initializing bindings
+
+Rust variable bindings have one more aspect that differs from other languages:
+bindings are required to be initialized with a value before you're allowed to
+use them.
 
 Let’s try it out. Change your `src/main.rs` file to look like this:
 
@@ -167,3 +176,77 @@ For now, we'll just stick to the default: integers aren't very complicated to
 print.
 
 [format]: ../std/fmt/index.html
+
+# Scope and shadowing
+
+Let’s get back to bindings. Variable bindings have a scope - they are
+constrained to live in a block they were defined in. A block is a collection
+of statements enclosed by `{` and `}`. Function definitions are also blocks!
+In the following example we define two variable bindings, `x` and `y`, which
+live in different blocks. `x` can be accessed from inside the `fn main() {}`
+block, while `y` can be accessed only from inside the inner block:
+
+```rust,ignore
+fn main() {
+    let x: i32 = 17;
+    {
+        let y: i32 = 3;
+        println!("The value of x is {} and value of y is {}", x, y);
+    }
+    println!("The value of x is {} and value of y is {}", x, y); // This won't work
+}
+```
+
+The first `println!` would print "The value of x is 17 and the value of y is
+3", but this example cannot be compiled successfully, because the second
+`println!` cannot access the value of `y`, since it is not in scope anymore.
+Instead we get this error:
+
+```bash
+$ cargo build
+   Compiling hello v0.1.0 (file:///home/you/projects/hello_world)
+main.rs:7:62: 7:63 error: unresolved name `y`. Did you mean `x`? [E0425]
+main.rs:7     println!("The value of x is {} and value of y is {}", x, y); // This won't work
+                                                                       ^
+note: in expansion of format_args!
+<std macros>:2:25: 2:56 note: expansion site
+<std macros>:1:1: 2:62 note: in expansion of print!
+<std macros>:3:1: 3:54 note: expansion site
+<std macros>:1:1: 3:58 note: in expansion of println!
+main.rs:7:5: 7:65 note: expansion site
+main.rs:7:62: 7:63 help: run `rustc --explain E0425` to see a detailed explanation
+error: aborting due to previous error
+Could not compile `hello`.
+
+To learn more, run the command again with --verbose.
+```
+
+Additionally, variable bindings can be shadowed. This means that a later
+variable binding with the same name as another binding, that's currently in
+scope, will override the previous binding.
+
+```rust
+let x: i32 = 8;
+{
+    println!("{}", x); // Prints "8"
+    let x = 12;
+    println!("{}", x); // Prints "12"
+}
+println!("{}", x); // Prints "8"
+let x =  42;
+println!("{}", x); // Prints "42"
+```
+
+Shadowing and mutable bindings may appear as two sides of the same coin, but
+they are two distinct concepts that can't always be used interchangeably. For
+one, shadowing enables us to rebind a name to a value of a different type. It
+is also possible to change the mutability of a binding.
+
+```rust
+let mut x: i32 = 1;
+x = 7;
+let x = x; // x is now immutable and is bound to 7
+
+let y = 4;
+let y = "I can also be bound to text!"; // y is now of a different type
+```

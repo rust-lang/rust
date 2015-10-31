@@ -42,7 +42,7 @@ In the example above `x` and `y` have arity 2. `z` has arity 3.
 
 A type without a statically known size or alignment. ([more info][link])
 
-[link]: ../nomicon/exotic-sizes.html#dynamically-sized-types-(dsts)
+[link]: ../nomicon/exotic-sizes.html#dynamically-sized-types-dsts
 
 ### Expression
 

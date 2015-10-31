@@ -10,6 +10,8 @@
 
 // compile-flags: -C no-prepopulate-passes
 
+#![crate_type = "lib"]
+
 // CHECK: @VAR1 = constant i32 1, section ".test_one"
 #[no_mangle]
 #[link_section = ".test_one"]

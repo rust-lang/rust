@@ -17,7 +17,7 @@
 
 use front::map as ast_map;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::ty;
 use middle::privacy;
 use session::config;
@@ -61,20 +61,15 @@ fn method_might_be_inlined(tcx: &ty::ctxt, sig: &hir::MethodSig,
         generics_require_inlining(&sig.generics) {
         return true
     }
-    if impl_src.is_local() {
-        {
-            match tcx.map.find(impl_src.node) {
-                Some(ast_map::NodeItem(item)) => {
-                    item_might_be_inlined(&*item)
-                }
-                Some(..) | None => {
-                    tcx.sess.span_bug(impl_item.span, "impl did is not an item")
-                }
-            }
+    if let Some(impl_node_id) = tcx.map.as_local_node_id(impl_src) {
+        match tcx.map.find(impl_node_id) {
+            Some(ast_map::NodeItem(item)) =>
+                item_might_be_inlined(&*item),
+            Some(..) | None =>
+                tcx.sess.span_bug(impl_item.span, "impl did is not an item")
         }
     } else {
-        tcx.sess.span_bug(impl_item.span, "found a foreign impl as a parent \
-                                           of a local method")
+        tcx.sess.span_bug(impl_item.span, "found a foreign impl as a parent of a local method")
     }
 }
 
@@ -106,22 +101,22 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
                 };
 
                 let def_id = def.def_id();
-                if def_id.is_local() {
+                if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
                     if self.def_id_represents_local_inlined_item(def_id) {
-                        self.worklist.push(def_id.node)
+                        self.worklist.push(node_id);
                     } else {
                         match def {
                             // If this path leads to a constant, then we need to
                             // recurse into the constant to continue finding
                             // items that are reachable.
                             def::DefConst(..) | def::DefAssociatedConst(..) => {
-                                self.worklist.push(def_id.node);
+                                self.worklist.push(node_id);
                             }
 
                             // If this wasn't a static, then the destination is
                             // surely reachable.
                             _ => {
-                                self.reachable_symbols.insert(def_id.node);
+                                self.reachable_symbols.insert(node_id);
                             }
                         }
                     }
@@ -132,11 +127,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
                 let def_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
                 match self.tcx.impl_or_trait_item(def_id).container() {
                     ty::ImplContainer(_) => {
-                        if def_id.is_local() {
+                        if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
                             if self.def_id_represents_local_inlined_item(def_id) {
-                                self.worklist.push(def_id.node)
+                                self.worklist.push(node_id)
                             }
-                            self.reachable_symbols.insert(def_id.node);
+                            self.reachable_symbols.insert(node_id);
                         }
                     }
                     ty::TraitContainer(_) => {}
@@ -171,11 +166,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // Returns true if the given def ID represents a local item that is
     // eligible for inlining and false otherwise.
     fn def_id_represents_local_inlined_item(&self, def_id: DefId) -> bool {
-        if def_id.krate != LOCAL_CRATE {
-            return false
-        }
+        let node_id = match self.tcx.map.as_local_node_id(def_id) {
+            Some(node_id) => node_id,
+            None => { return false; }
+        };
 
-        let node_id = def_id.node;
         match self.tcx.map.find(node_id) {
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
@@ -204,11 +199,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             // Check the impl. If the generics on the self
                             // type of the impl require inlining, this method
                             // does too.
-                            assert!(impl_did.is_local());
-                            match self.tcx
-                                      .map
-                                      .expect_item(impl_did.node)
-                                      .node {
+                            let impl_node_id = self.tcx.map.as_local_node_id(impl_did).unwrap();
+                            match self.tcx.map.expect_item(impl_node_id).node {
                                 hir::ItemImpl(_, _, ref generics, _, _, _) => {
                                     generics_require_inlining(generics)
                                 }
@@ -348,13 +340,17 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // this properly would result in the necessity of computing *type*
     // reachability, which might result in a compile time loss.
     fn mark_destructors_reachable(&mut self) {
-        for adt in self.tcx.adt_defs() {
-            if let Some(destructor_def_id) = adt.destructor() {
-                if destructor_def_id.is_local() {
-                    self.reachable_symbols.insert(destructor_def_id.node);
+        let drop_trait = match self.tcx.lang_items.drop_trait() {
+            Some(id) => self.tcx.lookup_trait_def(id), None => { return }
+        };
+        drop_trait.for_each_impl(self.tcx, |drop_impl| {
+            for destructor in &self.tcx.impl_items.borrow()[&drop_impl] {
+                let destructor_did = destructor.def_id();
+                if let Some(destructor_node_id) = self.tcx.map.as_local_node_id(destructor_did) {
+                    self.reachable_symbols.insert(destructor_node_id);
                 }
             }
-        }
+        })
     }
 }
 
@@ -373,8 +369,10 @@ pub fn find_reachable(tcx: &ty::ctxt,
     }
     for (_, item) in tcx.lang_items.items() {
         match *item {
-            Some(did) if did.is_local() => {
-                reachable_context.worklist.push(did.node);
+            Some(did) => {
+                if let Some(node_id) = tcx.map.as_local_node_id(did) {
+                    reachable_context.worklist.push(node_id);
+                }
             }
             _ => {}
         }

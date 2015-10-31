@@ -75,8 +75,8 @@ fn to_utf16_os(s: &OsStr) -> Vec<u16> {
     v
 }
 
-// Many Windows APIs follow a pattern of where we hand the a buffer and then
-// they will report back to us how large the buffer should be or how many bytes
+// Many Windows APIs follow a pattern of where we hand a buffer and then they
+// will report back to us how large the buffer should be or how many bytes
 // currently reside in the buffer. This function is an abstraction over these
 // functions by making them easier to call.
 //

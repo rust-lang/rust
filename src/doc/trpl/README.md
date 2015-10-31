@@ -9,9 +9,8 @@ requirements, and writing low-level code, like device drivers and operating
 systems. It improves on current languages targeting this space by having a
 number of compile-time safety checks that produce no runtime overhead, while
 eliminating all data races. Rust also aims to achieve ‘zero-cost abstractions’
-even though some of these abstractions feel like those of a high-level
-language. Even then, Rust still allows precise control like a low-level
-language would.
+even though some of these abstractions feel like those of a high-level language.
+Even then, Rust still allows precise control like a low-level language would.
 
 [rust]: https://www.rust-lang.org
 
@@ -34,15 +33,15 @@ is the first. After this:
 [gl]: glossary.html
 [bi]: bibliography.html
 
-After reading this introduction, you’ll want to dive into either ‘Learn Rust’
-or ‘Syntax and Semantics’, depending on your preference: ‘Learn Rust’ if you
-want to dive in with a project, or ‘Syntax and Semantics’ if you prefer to
-start small, and learn a single concept thoroughly before moving onto the next.
+After reading this introduction, you’ll want to dive into either ‘Learn Rust’ or
+‘Syntax and Semantics’, depending on your preference: ‘Learn Rust’ if you want
+to dive in with a project, or ‘Syntax and Semantics’ if you prefer to start
+small, and learn a single concept thoroughly before moving onto the next.
 Copious cross-linking connects these parts together.
 
 ### Contributing
 
-The source files from which this book is generated can be found on Github:
+The source files from which this book is generated can be found on GitHub:
 [github.com/rust-lang/rust/tree/master/src/doc/trpl](https://github.com/rust-lang/rust/tree/master/src/doc/trpl)
 
 ## A brief introduction to Rust
@@ -76,11 +75,11 @@ type inference to balance out the power of static typing with the verbosity of
 annotating types.
 
 Rust prefers stack allocation to heap allocation: `x` is placed directly on the
-stack. However, the `Vec<T>` type allocates space for the elements of the
-vector on the heap. If you’re not familiar with this distinction, you can
-ignore it for now, or check out [‘The Stack and the Heap’][heap]. As a systems
-programming language, Rust gives you the ability to control how your memory is
-allocated, but when we’re getting started, it’s less of a big deal.
+stack. However, the `Vec<T>` type allocates space for the elements of the vector
+on the heap. If you’re not familiar with this distinction, you can ignore it for
+now, or check out [‘The Stack and the Heap’][heap]. As a systems programming
+language, Rust gives us the ability to control how our memory is allocated, but
+when we’re getting started, it’s less of a big deal.
 
 [var]: variable-bindings.html
 [macro]: macros.html
@@ -90,10 +89,10 @@ Earlier, we mentioned that ‘ownership’ is the key new concept in Rust. In Ru
 parlance, `x` is said to ‘own’ the vector. This means that when `x` goes out of
 scope, the vector’s memory will be de-allocated. This is done deterministically
 by the Rust compiler, rather than through a mechanism such as a garbage
-collector. In other words, in Rust, you don’t call functions like `malloc` and
-`free` yourself: the compiler statically determines when you need to allocate
-or deallocate memory, and inserts those calls itself. To err is to be human,
-but compilers never forget.
+collector. In other words, in Rust, we don’t call functions like `malloc` and
+`free` ourselves: the compiler statically determines when we need to allocate or
+deallocate memory, and inserts those calls itself. To err is to be human, but
+compilers never forget.
 
 Let’s add another line to our example:
 
@@ -105,13 +104,13 @@ fn main() {
 }
 ```
 
-We’ve introduced another binding, `y`. In this case, `y` is a ‘reference’ to
-the first element of the vector. Rust’s references are similar to pointers in
-other languages, but with additional compile-time safety checks. References
-interact with the ownership system by [‘borrowing’][borrowing] what they point
-to, rather than owning it. The difference is, when the reference goes out of
-scope, it will not deallocate the underlying memory. If it did, we’d
-de-allocate twice, which is bad!
+We’ve introduced another binding, `y`. In this case, `y` is a ‘reference’ to the
+first element of the vector. Rust’s references are similar to pointers in other
+languages, but with additional compile-time safety checks. References interact
+with the ownership system by [‘borrowing’][borrowing] what they point to, rather
+than owning it. The difference is, when the reference goes out of scope, it
+won't deallocate the underlying memory. If it did, we’d de-allocate twice, which
+is bad!
 
 [borrowing]: references-and-borrowing.html
 
@@ -147,7 +146,7 @@ fn main() {
 
 Whew! The Rust compiler gives quite detailed errors at times, and this is one
 of those times. As the error explains, while we made our binding mutable, we
-still cannot call `push`. This is because we already have a reference to an
+still can't call `push`. This is because we already have a reference to an
 element of the vector, `y`. Mutating something while another reference exists
 is dangerous, because we may invalidate the reference. In this specific case,
 when we create the vector, we may have only allocated space for two elements.

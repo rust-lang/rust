@@ -244,7 +244,7 @@ impl OverloadedCallType {
 // can just use the tcx as the typer.
 //
 // FIXME(stage0): the :'t here is probably only important for stage0
-pub struct ExprUseVisitor<'d, 't, 'a: 't, 'tcx:'a+'d+'t> {
+pub struct ExprUseVisitor<'d, 't, 'a: 't, 'tcx:'a+'d> {
     typer: &'t infer::InferCtxt<'a, 'tcx>,
     mc: mc::MemCategorizationContext<'t, 'a, 'tcx>,
     delegate: &'d mut Delegate<'tcx>,
@@ -276,17 +276,13 @@ enum PassArgs {
 }
 
 impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
-    pub fn new(delegate: &'d mut Delegate<'tcx>,
+    pub fn new(delegate: &'d mut (Delegate<'tcx>),
                typer: &'t infer::InferCtxt<'a, 'tcx>)
-               -> ExprUseVisitor<'d,'t,'a,'tcx>
+               -> ExprUseVisitor<'d,'t,'a,'tcx> where 'tcx:'a
     {
-        let result = ExprUseVisitor {
-            typer: typer,
-            mc: mc::MemCategorizationContext::new(typer),
-            delegate: delegate,
-        };
-
-        result
+        let mc: mc::MemCategorizationContext<'t, 'a, 'tcx> =
+            mc::MemCategorizationContext::new(typer);
+        ExprUseVisitor { typer: typer, mc: mc, delegate: delegate }
     }
 
     pub fn walk_fn(&mut self,
@@ -544,17 +540,8 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 self.walk_captures(expr)
             }
 
-            hir::ExprBox(ref place, ref base) => {
-                match *place {
-                    Some(ref place) => self.consume_expr(&**place),
-                    None => {}
-                }
+            hir::ExprBox(ref base) => {
                 self.consume_expr(&**base);
-                if place.is_some() {
-                    self.tcx().sess.span_bug(
-                        expr.span,
-                        "box with explicit place remains after expansion");
-                }
             }
         }
     }
@@ -710,7 +697,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                                 -> bool
         {
             fields.iter().any(
-                |f| f.ident.node.name == field.name)
+                |f| f.name.node == field.name)
         }
     }
 
@@ -926,7 +913,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         self.consume_expr(&*arm.body);
     }
 
-    /// Walks an pat that occurs in isolation (i.e. top-level of fn
+    /// Walks a pat that occurs in isolation (i.e. top-level of fn
     /// arg or let binding.  *Not* a match arm or nested pat.)
     fn walk_irrefutable_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat) {
         let mut mode = Unknown;
@@ -1149,7 +1136,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 }
 
                 hir::PatIdent(_, _, Some(_)) => {
-                    // Do nothing; this is a binding (not a enum
+                    // Do nothing; this is a binding (not an enum
                     // variant or struct), and the cat_pattern call
                     // will visit the substructure recursively.
                 }
@@ -1158,7 +1145,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 hir::PatRegion(..) | hir::PatLit(..) | hir::PatRange(..) |
                 hir::PatVec(..) => {
                     // Similarly, each of these cases does not
-                    // correspond to a enum variant or struct, so we
+                    // correspond to an enum variant or struct, so we
                     // do not do any `matched_pat` calls for these
                     // cases either.
                 }
@@ -1171,7 +1158,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
 
         self.tcx().with_freevars(closure_expr.id, |freevars| {
             for freevar in freevars {
-                let id_var = freevar.def.def_id().node;
+                let id_var = freevar.def.var_id();
                 let upvar_id = ty::UpvarId { var_id: id_var,
                                              closure_expr_id: closure_expr.id };
                 let upvar_capture = self.typer.upvar_capture(upvar_id).unwrap();
@@ -1203,7 +1190,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                         -> mc::McResult<mc::cmt<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_id = upvar_def.def_id().node;
+        let var_id = upvar_def.var_id();
         let var_ty = try!(self.typer.node_ty(var_id));
         self.mc.cat_def(closure_id, closure_span, var_ty, upvar_def)
     }

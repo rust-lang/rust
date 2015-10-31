@@ -38,7 +38,7 @@ dropping the old value: `write`, `copy`, and `copy_nonoverlapping`.
   (this is equivalent to memcpy -- note that the argument order is reversed!)
 
 It should go without saying that these functions, if misused, will cause serious
-havoc or just straight up Undefined Behaviour. The only things that these
+havoc or just straight up Undefined Behavior. The only things that these
 functions *themselves* require is that the locations you want to read and write
 are allocated. However the ways writing arbitrary bits to arbitrary
 locations of memory can break things are basically uncountable!

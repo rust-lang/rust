@@ -45,7 +45,7 @@ Rust keeps track of these comments, and uses them when generating
 documentation. This is important when documenting things like enums:
 
 ```rust
-/// The `Option` type. See [the module level documentation](../) for more.
+/// The `Option` type. See [the module level documentation](index.html) for more.
 enum Option<T> {
     /// No value
     None,
@@ -57,7 +57,7 @@ enum Option<T> {
 The above works, but this does not:
 
 ```rust,ignore
-/// The `Option` type. See [the module level documentation](../) for more.
+/// The `Option` type. See [the module level documentation](index.html) for more.
 enum Option<T> {
     None, /// No value
     Some(T), /// Some value `T`
@@ -279,6 +279,8 @@ println!("{}", x + y);
 
 Here's an explanation, rendered:
 
+-------------------------------------------------------------------------------
+
 First, we set `x` to five:
 
 ```rust
@@ -303,7 +305,11 @@ Finally, we print the sum of `x` and `y`:
 println!("{}", x + y);
 ```
 
+-------------------------------------------------------------------------------
+
 Here's the same explanation, in raw text:
+
+-------------------------------------------------------------------------------
 
 > First, we set `x` to five:
 >
@@ -328,6 +334,8 @@ Here's the same explanation, in raw text:
 > # let y = 6;
 > println!("{}", x + y);
 > ```
+
+-------------------------------------------------------------------------------
 
 By repeating all parts of the example, you can ensure that your example still
 compiles, while only showing the parts that are relevant to that part of your
@@ -536,6 +544,38 @@ extern crate foo;
 
 #[doc(no_inline)]
 pub use foo::bar;
+```
+
+## Missing documentation
+
+Sometimes you want to make sure that every single public thing in your project
+is documented, especially when you are working on a library. Rust allows you to
+to generate warnings or errors, when an item is missing documentation.
+To generate warnings you use `warn`:
+
+```rust
+#![warn(missing_docs)]
+```
+
+And to generate errors you use `deny`:
+
+```rust,ignore
+#![deny(missing_docs)]
+```
+
+There are cases where you want to disable these warnings/errors to explicitly
+leave something undocumented. This is done by using `allow`:
+
+```rust
+#[allow(missing_docs)]
+struct Undocumented;
+```
+
+You might even want to hide items from the documentation completely:
+
+```rust
+#[doc(hidden)]
+struct Hidden;
 ```
 
 ### Controlling HTML

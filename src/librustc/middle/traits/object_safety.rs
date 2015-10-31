@@ -27,7 +27,7 @@ use middle::ty::{self, ToPolyTraitRef, Ty};
 use std::rc::Rc;
 use syntax::ast;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObjectSafetyViolation<'tcx> {
     /// Self : Sized declared on the trait
     SizedSelf,
@@ -76,6 +76,27 @@ pub fn is_object_safe<'tcx>(tcx: &ty::ctxt<'tcx>,
     result
 }
 
+/// Returns the object safety violations that affect
+/// astconv - currently, Self in supertraits. This is needed
+/// because `object_safety_violations` can't be used during
+/// type collection.
+pub fn astconv_object_safety_violations<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                              trait_def_id: DefId)
+                                              -> Vec<ObjectSafetyViolation<'tcx>>
+{
+    let mut violations = vec![];
+
+    if supertraits_reference_self(tcx, trait_def_id) {
+        violations.push(ObjectSafetyViolation::SupertraitSelf);
+    }
+
+    debug!("object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
+           trait_def_id,
+           violations);
+
+    violations
+}
+
 pub fn object_safety_violations<'tcx>(tcx: &ty::ctxt<'tcx>,
                                       trait_def_id: DefId)
                                       -> Vec<ObjectSafetyViolation<'tcx>>
@@ -118,9 +139,9 @@ fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
     violations
 }
 
-fn supertraits_reference_self<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                    trait_def_id: DefId)
-                                    -> bool
+pub fn supertraits_reference_self<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                        trait_def_id: DefId)
+                                        -> bool
 {
     let trait_def = tcx.lookup_trait_def(trait_def_id);
     let trait_ref = trait_def.trait_ref.clone();

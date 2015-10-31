@@ -6,7 +6,7 @@ value of alignment `n` must only be stored at an address that is a multiple of
 `n`. So alignment 2 means you must be stored at an even address, and 1 means
 that you can be stored anywhere. Alignment is at least 1, and always a power of
 2. Most primitives are generally aligned to their size, although this is
-platform-specific behaviour. In particular, on x86 `u64` and `f64` may be only
+platform-specific behavior. In particular, on x86 `u64` and `f64` may be only
 aligned to 32 bits.
 
 A type's size must always be a multiple of its alignment. This ensures that an
@@ -151,4 +151,4 @@ use fairly elaborate algorithms to cache bits throughout nested types with
 special constrained representations. As such it is *especially* desirable that
 we leave enum layout unspecified today.
 
-[dst]: exotic-sizes.html#dynamically-sized-types-(dsts)
+[dst]: exotic-sizes.html#dynamically-sized-types-dsts

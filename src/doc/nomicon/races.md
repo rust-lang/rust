@@ -6,7 +6,7 @@ Safe Rust guarantees an absence of data races, which are defined as:
 * one of them is a write
 * one of them is unsynchronized
 
-A data race has Undefined Behaviour, and is therefore impossible to perform
+A data race has Undefined Behavior, and is therefore impossible to perform
 in Safe Rust. Data races are *mostly* prevented through rust's ownership system:
 it's impossible to alias a mutable reference, so it's impossible to perform a
 data race. Interior mutability makes this more complicated, which is largely why
@@ -53,7 +53,7 @@ thread::spawn(move || {
 // bounds checked, and there's no chance of the value getting changed
 // in the middle. However our program may panic if the thread we spawned
 // managed to increment before this ran. A race condition because correct
-// program execution (panicing is rarely correct) depends on order of
+// program execution (panicking is rarely correct) depends on order of
 // thread execution.
 println!("{}", data[idx.load(Ordering::SeqCst)]);
 ```

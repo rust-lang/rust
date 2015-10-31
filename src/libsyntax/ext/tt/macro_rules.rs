@@ -282,7 +282,7 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     };
 
     // Extract the arguments:
-    let lhses = match **argument_map.get(&lhs_nm).unwrap() {
+    let lhses = match **argument_map.get(&lhs_nm.name).unwrap() {
         MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
         _ => cx.span_bug(def.span, "wrong-structured lhs")
     };
@@ -291,7 +291,7 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
         check_lhs_nt_follows(cx, &**lhs, def.span);
     }
 
-    let rhses = match **argument_map.get(&rhs_nm).unwrap() {
+    let rhses = match **argument_map.get(&rhs_nm.name).unwrap() {
         MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
         _ => cx.span_bug(def.span, "wrong-structured rhs")
     };
@@ -497,7 +497,7 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
                 Ok(true)
             },
             "block" => {
-                // anything can follow block, the braces provide a easy boundary to
+                // anything can follow block, the braces provide an easy boundary to
                 // maintain
                 Ok(true)
             },
@@ -510,14 +510,14 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
             "pat" => {
                 match *tok {
                     FatArrow | Comma | Eq => Ok(true),
-                    Ident(i, _) if i.name == "if" || i.name == "in" => Ok(true),
+                    Ident(i, _) if i.name.as_str() == "if" || i.name.as_str() == "in" => Ok(true),
                     _ => Ok(false)
                 }
             },
             "path" | "ty" => {
                 match *tok {
                     Comma | FatArrow | Colon | Eq | Gt | Semi => Ok(true),
-                    Ident(i, _) if i.name == "as" => Ok(true),
+                    Ident(i, _) if i.name.as_str() == "as" => Ok(true),
                     _ => Ok(false)
                 }
             },

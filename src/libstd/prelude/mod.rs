@@ -74,7 +74,7 @@
 //!     [`Eq`](../cmp/trait.Eq.html),
 //!     [`Ord`](../cmp/trait.Ord.html)
 //!   }.
-//!   The comparision traits, which implement the comparison operators
+//!   The comparison traits, which implement the comparison operators
 //!   and are often seen in trait bounds.
 //! * `std::convert::`{
 //!     [`AsRef`](../convert/trait.AsRef.html),
@@ -84,7 +84,7 @@
 //!   }.
 //!   Generic conversions, used by savvy API authors to create
 //!   overloaded methods.
-//! * `std::default::`[`Default`](../default/trait.Default).
+//! * `std::default::`[`Default`](../default/trait.Default.html).
 //!   Types that have default values.
 //! * `std::iter::`{
 //!     [`Iterator`](../iter/trait.Iterator.html),

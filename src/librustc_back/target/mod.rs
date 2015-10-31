@@ -77,6 +77,8 @@ pub struct Target {
     pub target_os: String,
     /// Environment name to use for conditional compilation.
     pub target_env: String,
+    /// Vendor name to use for conditional compilation.
+    pub target_vendor: String,
     /// Architecture to use for ABI considerations. Valid options: "x86", "x86_64", "arm",
     /// "aarch64", "mips", and "powerpc". "mips" includes "mipsel".
     pub arch: String,
@@ -157,6 +159,9 @@ pub struct TargetOptions {
     /// Whether to disable linking to compiler-rt. Defaults to false, as LLVM
     /// will emit references to the functions that compiler-rt provides.
     pub no_compiler_rt: bool,
+    /// Whether to disable linking to the default libraries, typically corresponds
+    /// to `-nodefaultlibs`. Defaults to true.
+    pub no_default_libraries: bool,
     /// Dynamically linked executables can be compiled as position independent
     /// if the default relocation model of position independent code is not
     /// changed. This is a requirement to take advantage of ASLR, as otherwise
@@ -212,6 +217,7 @@ impl Default for TargetOptions {
             linker_is_gnu: false,
             has_rpath: false,
             no_compiler_rt: false,
+            no_default_libraries: true,
             position_independent_executables: false,
             pre_link_objects: Vec::new(),
             post_link_objects: Vec::new(),
@@ -256,14 +262,20 @@ impl Target {
             }
         };
 
+        let get_opt_field = |name: &str, default: &str| {
+            obj.find(name).and_then(|s| s.as_string())
+               .map(|s| s.to_string())
+               .unwrap_or(default.to_string())
+        };
+
         let mut base = Target {
             llvm_target: get_req_field("llvm-target"),
             target_endian: get_req_field("target-endian"),
             target_pointer_width: get_req_field("target-pointer-width"),
             arch: get_req_field("arch"),
             target_os: get_req_field("os"),
-            target_env: obj.find("env").and_then(|s| s.as_string())
-                           .map(|s| s.to_string()).unwrap_or(String::new()),
+            target_env: get_opt_field("env", ""),
+            target_vendor: get_opt_field("vendor", "unknown"),
             options: Default::default(),
         };
 
@@ -319,6 +331,7 @@ impl Target {
         key!(linker_is_gnu, bool);
         key!(has_rpath, bool);
         key!(no_compiler_rt, bool);
+        key!(no_default_libraries, bool);
         key!(pre_link_args, list);
         key!(post_link_args, list);
         key!(allow_asm, bool);
@@ -398,6 +411,7 @@ impl Target {
             x86_64_unknown_bitrig,
             x86_64_unknown_openbsd,
             x86_64_unknown_netbsd,
+            x86_64_rumprun_netbsd,
 
             x86_64_apple_darwin,
             i686_apple_darwin,
@@ -444,7 +458,7 @@ impl Target {
     }
 }
 
-fn best_allocator() -> String {
+fn maybe_jemalloc() -> String {
     if cfg!(disable_jemalloc) {
         "alloc_system".to_string()
     } else {

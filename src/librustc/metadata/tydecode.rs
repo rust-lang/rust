@@ -16,11 +16,9 @@
 
 #![allow(non_camel_case_types)]
 
-pub use self::DefIdSource::*;
-
 use rustc_front::hir;
 
-use middle::def_id::DefId;
+use middle::def_id::{DefId, DefIndex};
 use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
@@ -36,32 +34,7 @@ use syntax::parse::token;
 // parse_from_str. Extra parameters are for converting to/from def_ids in the
 // data buffer. Whatever format you choose should not contain pipe characters.
 
-// Def id conversion: when we encounter def-ids, they have to be translated.
-// For example, the crate number must be converted from the crate number used
-// in the library we are reading from into the local crate numbers in use
-// here.  To perform this translation, the type decoder is supplied with a
-// conversion function of type `conv_did`.
-//
-// Sometimes, particularly when inlining, the correct translation of the
-// def-id will depend on where it originated from.  Therefore, the conversion
-// function is given an indicator of the source of the def-id.  See
-// astencode.rs for more information.
-#[derive(Copy, Clone, Debug)]
-pub enum DefIdSource {
-    // Identifies a struct, trait, enum, etc.
-    NominalType,
-
-    // Identifies a type alias (`type X = ...`).
-    TypeWithId,
-
-    // Identifies a region parameter (`fn foo<'X>() { ... }`).
-    RegionParameter,
-
-    // Identifies a closure
-    ClosureSource
-}
-
-pub type DefIdConvert<'a> = &'a mut FnMut(DefIdSource, DefId) -> DefId;
+pub type DefIdConvert<'a> = &'a mut FnMut(DefId) -> DefId;
 
 pub struct TyDecoder<'a, 'tcx: 'a> {
     data: &'a [u8],
@@ -125,6 +98,12 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         return &self.data[start_pos..end_pos];
     }
 
+    fn parse_vuint(&mut self) -> usize {
+        let res = rbml::reader::vuint_at(self.data, self.pos).unwrap();
+        self.pos = res.next;
+        res.val
+    }
+
     fn parse_name(&mut self, last: char) -> ast::Name {
         fn is_last(b: char, c: char) -> bool { return c == b; }
         let bytes = self.scan(|a| is_last(last, a));
@@ -183,9 +162,9 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 ty::BrAnon(id)
             }
             '[' => {
-                let def = self.parse_def(RegionParameter);
-                let ident = token::str_to_ident(&self.parse_str(']'));
-                ty::BrNamed(def, ident.name)
+                let def = self.parse_def();
+                let name = token::intern(&self.parse_str(']'));
+                ty::BrNamed(def, name)
             }
             'f' => {
                 let id = self.parse_u32();
@@ -209,22 +188,17 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'B' => {
                 assert_eq!(self.next(), '[');
-                // this is the wrong NodeId, but `param_id` is only accessed
-                // by the receiver-matching code in collect, which won't
-                // be going down this code path, and anyway I will kill it
-                // the moment wfcheck becomes the standard.
-                let node_id = self.parse_uint() as ast::NodeId;
-                assert_eq!(self.next(), '|');
+                let def_id = self.parse_def();
                 let space = self.parse_param_space();
                 assert_eq!(self.next(), '|');
                 let index = self.parse_u32();
                 assert_eq!(self.next(), '|');
-                let nm = token::str_to_ident(&self.parse_str(']'));
+                let name = token::intern(&self.parse_str(']'));
                 ty::ReEarlyBound(ty::EarlyBoundRegion {
-                    param_id: node_id,
+                    def_id: def_id,
                     space: space,
                     index: index,
-                    name: nm.name
+                    name: name
                 })
             }
             'f' => {
@@ -314,7 +288,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     }
 
     pub fn parse_trait_ref(&mut self) -> ty::TraitRef<'tcx> {
-        let def = self.parse_def(NominalType);
+        let def = self.parse_def();
         let substs = self.tcx.mk_substs(self.parse_substs());
         ty::TraitRef {def_id: def, substs: substs}
     }
@@ -343,7 +317,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             'c' => return tcx.types.char,
             't' => {
                 assert_eq!(self.next(), '[');
-                let did = self.parse_def(NominalType);
+                let did = self.parse_def();
                 let substs = self.parse_substs();
                 assert_eq!(self.next(), ']');
                 let def = self.tcx.lookup_adt_def(did);
@@ -390,7 +364,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 return tcx.mk_tup(params);
             }
             'F' => {
-                let def_id = self.parse_def(NominalType);
+                let def_id = self.parse_def();
                 return tcx.mk_fn(Some(def_id), tcx.mk_bare_fn(self.parse_bare_fn_ty()));
             }
             'G' => {
@@ -405,11 +379,8 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 // we return it (modulo closure types, see below). But if not, then we
                 // jump to offset 123 and read the type from there.
 
-                let pos = self.parse_hex();
-                assert_eq!(self.next(), ':');
-                let len = self.parse_hex();
-                assert_eq!(self.next(), '#');
-                let key = ty::CReaderCacheKey {cnum: self.krate, pos: pos, len: len };
+                let pos = self.parse_vuint();
+                let key = ty::CReaderCacheKey { cnum: self.krate, pos: pos };
                 match tcx.rcache.borrow().get(&key).cloned() {
                     Some(tt) => {
                         // If there is a closure buried in the type some where, then we
@@ -432,13 +403,13 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 return tt;
             }
             '\"' => {
-                let _ = self.parse_def(TypeWithId);
+                let _ = self.parse_def();
                 let inner = self.parse_ty();
                 inner
             }
             'a' => {
                 assert_eq!(self.next(), '[');
-                let did = self.parse_def(NominalType);
+                let did = self.parse_def();
                 let substs = self.parse_substs();
                 assert_eq!(self.next(), ']');
                 let def = self.tcx.lookup_adt_def(did);
@@ -446,7 +417,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'k' => {
                 assert_eq!(self.next(), '[');
-                let did = self.parse_def(ClosureSource);
+                let did = self.parse_def();
                 let substs = self.parse_substs();
                 let mut tys = vec![];
                 while self.peek() != '.' {
@@ -481,9 +452,9 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         ty::TypeAndMut { ty: self.parse_ty(), mutbl: m }
     }
 
-    fn parse_def(&mut self, source: DefIdSource) -> DefId {
+    fn parse_def(&mut self) -> DefId {
         let def_id = parse_defid(self.scan(|c| c == '|'));
-        return (self.conv_def_id)(source, def_id);
+        return (self.conv_def_id)(def_id);
     }
 
     fn parse_uint(&mut self) -> usize {
@@ -506,19 +477,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
 
     fn parse_param_space(&mut self) -> subst::ParamSpace {
         subst::ParamSpace::from_uint(self.parse_uint())
-    }
-
-    fn parse_hex(&mut self) -> usize {
-        let mut n = 0;
-        loop {
-            let cur = self.peek();
-            if (cur < '0' || cur > '9') && (cur < 'a' || cur > 'f') { return n; }
-            self.pos = self.pos + 1;
-            n *= 16;
-            if '0' <= cur && cur <= '9' {
-                n += (cur as usize) - ('0' as usize);
-            } else { n += 10 + (cur as usize) - ('a' as usize); }
-        };
     }
 
     fn parse_abi_set(&mut self) -> abi::Abi {
@@ -586,7 +544,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             'p' => ty::Binder(self.parse_projection_predicate()).to_predicate(),
             'w' => ty::Predicate::WellFormed(self.parse_ty()),
             'O' => {
-                let def_id = self.parse_def(NominalType);
+                let def_id = self.parse_def();
                 assert_eq!(self.next(), '|');
                 ty::Predicate::ObjectSafe(def_id)
             }
@@ -598,7 +556,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         ty::ProjectionPredicate {
             projection_ty: ty::ProjectionTy {
                 trait_ref: self.parse_trait_ref(),
-                item_name: token::str_to_ident(&self.parse_str('|')).name,
+                item_name: token::intern(&self.parse_str('|')),
             },
             ty: self.parse_ty(),
         }
@@ -606,12 +564,12 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
 
     pub fn parse_type_param_def(&mut self) -> ty::TypeParameterDef<'tcx> {
         let name = self.parse_name(':');
-        let def_id = self.parse_def(NominalType);
+        let def_id = self.parse_def();
         let space = self.parse_param_space();
         assert_eq!(self.next(), '|');
         let index = self.parse_u32();
         assert_eq!(self.next(), '|');
-        let default_def_id = self.parse_def(NominalType);
+        let default_def_id = self.parse_def();
         let default = self.parse_opt(|this| this.parse_ty());
         let object_lifetime_default = self.parse_object_lifetime_default();
 
@@ -628,7 +586,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
 
     pub fn parse_region_param_def(&mut self) -> ty::RegionParameterDef {
         let name = self.parse_name(':');
-        let def_id = self.parse_def(NominalType);
+        let def_id = self.parse_def();
         let space = self.parse_param_space();
         assert_eq!(self.next(), '|');
         let index = self.parse_u32();
@@ -736,11 +694,12 @@ fn parse_defid(buf: &[u8]) -> DefId {
     let def_num = match str::from_utf8(def_part).ok().and_then(|s| {
         s.parse::<usize>().ok()
     }) {
-        Some(dn) => dn as ast::NodeId,
+        Some(dn) => dn,
         None => panic!("internal error: parse_defid: id expected, found {:?}",
                        def_part)
     };
-    DefId { krate: crate_num, node: def_num }
+    let index = DefIndex::new(def_num);
+    DefId { krate: crate_num, index: index }
 }
 
 fn parse_unsafety(c: char) -> hir::Unsafety {

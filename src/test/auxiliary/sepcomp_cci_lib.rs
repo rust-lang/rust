@@ -13,5 +13,4 @@ pub fn cci_fn() -> usize {
     1200
 }
 
-#[inline]
-pub static CCI_STATIC: usize = 34;
+pub const CCI_CONST: usize = 34;

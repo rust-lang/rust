@@ -255,6 +255,9 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         traits::ObligationCause::misc(span, fcx.body_id),
         &method_bounds);
 
+    // Also register an obligation for the method type being well-formed.
+    fcx.register_wf_obligation(fty, span, traits::MiscObligation);
+
     // FIXME(#18653) -- Try to resolve obligations, giving us more
     // typing information, which can sometimes be needed to avoid
     // pathological region inference failures.

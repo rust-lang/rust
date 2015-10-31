@@ -563,8 +563,8 @@ What's going on here?
 First, both `extern crate` and `use` allow renaming the thing that is being
 imported. So the crate is still called "phrases", but here we will refer
 to it as "sayings". Similarly, the first `use` statement pulls in the
-`japanese::farewells` module from the crate, but makes it available as
-`jp_farewells` as opposed to simply `farewells`. This can help to avoid
+`japanese::greetings` module from the crate, but makes it available as
+`ja_greetings` as opposed to simply `greetings`. This can help to avoid
 ambiguity when importing similarly-named items from different places.
 
 The second `use` statement uses a star glob to bring in _all_ symbols from the
@@ -576,11 +576,13 @@ The third `use` statement bears more explanation. It's using "brace expansion"
 globbing to compress three `use` statements into one (this sort of syntax
 may be familiar if you've written Linux shell scripts before). The
 uncompressed form of this statement would be:
+
 ```rust,ignore
 use sayings::english;
 use sayings::english::greetings as en_greetings;
 use sayings::english::farewells as en_farewells;
 ```
+
 As you can see, the curly brackets compress `use` statements for several items
 under the same path, and in this context `self` just refers back to that path.
 Note: The curly brackets cannot be nested or mixed with star globbing.

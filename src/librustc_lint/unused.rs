@@ -47,10 +47,10 @@ impl UnusedMut {
         let mut mutables = FnvHashMap();
         for p in pats {
             pat_util::pat_bindings(&cx.tcx.def_map, p, |mode, id, _, path1| {
-                let ident = path1.node;
+                let name = path1.node;
                 if let hir::BindByValue(hir::MutMutable) = mode {
-                    if !ident.name.as_str().starts_with("_") {
-                        match mutables.entry(ident.name.usize()) {
+                    if !name.as_str().starts_with("_") {
+                        match mutables.entry(name.0 as usize) {
                             Vacant(entry) => { entry.insert(vec![id]); },
                             Occupied(mut entry) => { entry.get_mut().push(id); },
                         }
@@ -139,8 +139,8 @@ impl LateLintPass for UnusedResults {
             ty::TyBool => return,
             ty::TyStruct(def, _) |
             ty::TyEnum(def, _) => {
-                if def.did.is_local() {
-                    if let hir_map::NodeItem(it) = cx.tcx.map.get(def.did.node) {
+                if let Some(def_node_id) = cx.tcx.map.as_local_node_id(def.did) {
+                    if let hir_map::NodeItem(it) = cx.tcx.map.get(def_node_id) {
                         check_must_use(cx, &it.attrs, s.span)
                     } else {
                         false
@@ -235,7 +235,7 @@ impl LateLintPass for PathStatements {
 }
 
 declare_lint! {
-    UNUSED_ATTRIBUTES,
+    pub UNUSED_ATTRIBUTES,
     Warn,
     "detects attributes that were not used by the compiler"
 }
@@ -285,10 +285,10 @@ impl LateLintPass for UnusedAttributes {
                                                     }).is_some();
             if  known_crate || plugin_crate {
                 let msg = match attr.node.style {
-                    ast::AttrOuter => "crate-level attribute should be an inner \
-                                       attribute: add an exclamation mark: #![foo]",
-                    ast::AttrInner => "crate-level attribute should be in the \
-                                       root module",
+                    ast::AttrStyle::Outer => "crate-level attribute should be an inner \
+                                              attribute: add an exclamation mark: #![foo]",
+                    ast::AttrStyle::Inner => "crate-level attribute should be in the \
+                                              root module",
                 };
                 cx.span_lint(UNUSED_ATTRIBUTES, attr.span, msg);
             }
@@ -363,12 +363,10 @@ impl EarlyLintPass for UnusedParens {
         let (value, msg, struct_lit_needs_parens) = match e.node {
             ast::ExprIf(ref cond, _, _) => (cond, "`if` condition", true),
             ast::ExprWhile(ref cond, _, _) => (cond, "`while` condition", true),
-            ast::ExprMatch(ref head, _, source) => match source {
-                ast::MatchSource::Normal => (head, "`match` head expression", true),
-                ast::MatchSource::IfLetDesugar { .. } => (head, "`if let` head expression", true),
-                ast::MatchSource::WhileLetDesugar => (head, "`while let` head expression", true),
-                ast::MatchSource::ForLoopDesugar => (head, "`for` head expression", true),
-            },
+            ast::ExprIfLet(_, ref cond, _, _) => (cond, "`if let` head expression", true),
+            ast::ExprWhileLet(_, ref cond, _, _) => (cond, "`while let` head expression", true),
+            ast::ExprForLoop(_, ref cond, _, _) => (cond, "`for` head expression", true),
+            ast::ExprMatch(ref head, _) => (head, "`match` head expression", true),
             ast::ExprRet(Some(ref value)) => (value, "`return` value", false),
             ast::ExprAssign(_, ref value) => (value, "assigned value", false),
             ast::ExprAssignOp(_, _, ref value) => (value, "assigned value", false),
@@ -442,7 +440,7 @@ impl LintPass for UnusedAllocation {
 impl LateLintPass for UnusedAllocation {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         match e.node {
-            hir::ExprUnary(hir::UnUniq, _) => (),
+            hir::ExprBox(_) => {}
             _ => return
         }
 

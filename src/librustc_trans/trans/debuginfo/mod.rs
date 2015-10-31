@@ -242,7 +242,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             match item.node {
                 hir::ItemFn(ref fn_decl, _, _, _, ref generics, ref top_level_block) => {
-                    (item.ident.name, fn_decl, generics, top_level_block, item.span, true)
+                    (item.name, fn_decl, generics, top_level_block, item.span, true)
                 }
                 _ => {
                     cx.sess().span_bug(item.span,
@@ -257,7 +257,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
-                    (impl_item.ident.name,
+                    (impl_item.name,
                      &sig.decl,
                      &sig.generics,
                      body,
@@ -296,7 +296,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
-                    (trait_item.ident.name,
+                    (trait_item.name,
                      &sig.decl,
                      &sig.generics,
                      body,
@@ -351,7 +351,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // somehow (storing a path in the hir_map, or construct a path using the
     // enclosing function).
     let (linkage_name, containing_scope) = if has_path {
-        let namespace_node = namespace_for_item(cx, DefId::local(fn_ast_id));
+        let fn_ast_def_id = cx.tcx().map.local_def_id(fn_ast_id);
+        let namespace_node = namespace_for_item(cx, fn_ast_def_id);
         let linkage_name = namespace_node.mangled_name_of_contained_item(
             &function_name[..]);
         let containing_scope = namespace_node.scope;
@@ -520,7 +521,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         // Handle other generic parameters
         let actual_types = param_substs.types.get_slice(subst::FnSpace);
-        for (index, &hir::TyParam{ ident, .. }) in generics.ty_params.iter().enumerate() {
+        for (index, &hir::TyParam{ name, .. }) in generics.ty_params.iter().enumerate() {
             let actual_type = actual_types[index];
             // Add actual type name to <...> clause of function name
             let actual_type_name = compute_debuginfo_type_name(cx,
@@ -535,7 +536,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // Again, only create type information if full debuginfo is enabled
             if cx.sess().opts.debuginfo == FullDebugInfo {
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
-                let name = CString::new(ident.name.as_str().as_bytes()).unwrap();
+                let name = CString::new(name.as_str().as_bytes()).unwrap();
                 let param_metadata = unsafe {
                     llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                         DIB(cx),

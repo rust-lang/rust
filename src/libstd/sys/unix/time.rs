@@ -86,7 +86,9 @@ mod inner {
     #[link(name = "rt")]
     extern {}
 
+
     extern {
+        #[cfg_attr(target_os = "netbsd", link_name = "__clock_gettime50")]
         fn clock_gettime(clk_id: libc::c_int, tp: *mut libc::timespec) -> libc::c_int;
     }
 

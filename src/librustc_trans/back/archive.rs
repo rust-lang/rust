@@ -145,10 +145,13 @@ impl<'a> ArchiveBuilder<'a> {
 
     /// Adds all of the contents of a native library to this archive. This will
     /// search in the relevant locations for a library named `name`.
-    pub fn add_native_library(&mut self, name: &str) -> io::Result<()> {
+    pub fn add_native_library(&mut self, name: &str) {
         let location = find_library(name, &self.config.lib_search_paths,
                                     self.config.sess);
-        self.add_archive(&location, name, |_| false)
+        self.add_archive(&location, name, |_| false).unwrap_or_else(|e| {
+            self.config.sess.fatal(&format!("failed to add native library {}: {}",
+                                            location.to_string_lossy(), e));
+        });
     }
 
     /// Adds all of the contents of the rlib at the specified path to this

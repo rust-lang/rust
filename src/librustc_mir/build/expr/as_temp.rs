@@ -15,32 +15,22 @@ use build::expr::category::Category;
 use hair::*;
 use repr::*;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
-    pub fn as_temp<M>(&mut self,
-                      block: BasicBlock,
-                      expr: M)
-                      -> BlockAnd<Lvalue<H>>
-        where M: Mirror<H, Output=Expr<H>>
+    pub fn as_temp<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Lvalue<'tcx>>
+        where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
         self.expr_as_temp(block, expr)
     }
 
-    fn expr_as_temp(&mut self,
-                    mut block: BasicBlock,
-                    expr: Expr<H>)
-                    -> BlockAnd<Lvalue<H>>
-    {
-        debug!("expr_as_temp(block={:?}, expr={:?})",
-               block, expr);
+    fn expr_as_temp(&mut self, mut block: BasicBlock, expr: Expr<'tcx>) -> BlockAnd<Lvalue<'tcx>> {
+        debug!("expr_as_temp(block={:?}, expr={:?})", block, expr);
         let this = self;
 
         if let ExprKind::Scope { extent, value } = expr.kind {
-            return this.in_scope(extent, block, |this| {
-                this.as_temp(block, value)
-            });
+            return this.in_scope(extent, block, |this| this.as_temp(block, value));
         }
 
         let expr_ty = expr.ty.clone();
@@ -48,9 +38,7 @@ impl<H:Hair> Builder<H> {
         let temp_lifetime = match expr.temp_lifetime {
             Some(t) => t,
             None => {
-                this.hir.span_bug(
-                    expr.span,
-                    &format!("no temp_lifetime for expr"));
+                this.hir.span_bug(expr.span, &format!("no temp_lifetime for expr"));
             }
         };
         this.schedule_drop(expr.span, temp_lifetime, DropKind::Deep, &temp, expr_ty);

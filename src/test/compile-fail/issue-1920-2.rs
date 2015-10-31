@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Test that when a crate is linked under another name that that name is used in global paths
+//! Test that when a crate is linked under another name that name is used in global paths
 
 extern crate core as bar;
 

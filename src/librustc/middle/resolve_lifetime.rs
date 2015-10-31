@@ -73,7 +73,7 @@ struct LifetimeContext<'a> {
     trait_ref_hack: bool,
 
     // List of labels in the function/method currently under analysis.
-    labels_in_fn: Vec<(ast::Ident, Span)>,
+    labels_in_fn: Vec<(ast::Name, Span)>,
 }
 
 enum ScopeChain<'a> {
@@ -195,7 +195,6 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     fn visit_ty(&mut self, ty: &hir::Ty) {
         match ty.node {
             hir::TyBareFn(ref c) => {
-                visit::walk_lifetime_decls_helper(self, &c.lifetimes);
                 self.with(LateScope(&c.lifetimes, self.scope), |old_scope, this| {
                     // a bare fn has no bounds, so everything
                     // contained within is scoped within its binder.
@@ -245,7 +244,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                   |_, this| visit::walk_block(this, b));
     }
 
-    fn visit_lifetime_ref(&mut self, lifetime_ref: &hir::Lifetime) {
+    fn visit_lifetime(&mut self, lifetime_ref: &hir::Lifetime) {
         if lifetime_ref.name == special_idents::static_lifetime.name {
             self.insert_lifetime(lifetime_ref, DefStaticRegion);
             return;
@@ -255,7 +254,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
 
     fn visit_generics(&mut self, generics: &hir::Generics) {
         for ty_param in generics.ty_params.iter() {
-            visit::walk_ty_param_bounds_helper(self, &ty_param.bounds);
+            walk_list!(self, visit_ty_param_bound, &ty_param.bounds);
             match ty_param.default {
                 Some(ref ty) => self.visit_ty(&**ty),
                 None => {}
@@ -273,22 +272,22 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                                                |old_scope, this| {
                             this.check_lifetime_defs(old_scope, bound_lifetimes);
                             this.visit_ty(&**bounded_ty);
-                            visit::walk_ty_param_bounds_helper(this, bounds);
+                            walk_list!(this, visit_ty_param_bound, bounds);
                         });
                         self.trait_ref_hack = false;
                         result
                     } else {
                         self.visit_ty(&**bounded_ty);
-                        visit::walk_ty_param_bounds_helper(self, bounds);
+                        walk_list!(self, visit_ty_param_bound, bounds);
                     }
                 }
                 &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate{ref lifetime,
                                                                                 ref bounds,
                                                                                 .. }) => {
 
-                    self.visit_lifetime_ref(lifetime);
+                    self.visit_lifetime(lifetime);
                     for bound in bounds {
-                        self.visit_lifetime_ref(bound);
+                        self.visit_lifetime(bound);
                     }
                 }
                 &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate{ id,
@@ -381,7 +380,7 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
     struct GatherLabels<'a> {
         sess: &'a Session,
         scope: Scope<'a>,
-        labels_in_fn: &'a mut Vec<(ast::Ident, Span)>,
+        labels_in_fn: &'a mut Vec<(ast::Name, Span)>,
     }
 
     let mut gather = GatherLabels {
@@ -403,9 +402,9 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
             if let Some(label) = expression_label(ex) {
                 for &(prior, prior_span) in &self.labels_in_fn[..] {
                     // FIXME (#24278): non-hygienic comparison
-                    if label.name == prior.name {
+                    if label == prior {
                         signal_shadowing_problem(self.sess,
-                                                 label.name,
+                                                 label,
                                                  original_label(prior_span),
                                                  shadower_label(ex.span));
                     }
@@ -426,17 +425,17 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
         }
     }
 
-    fn expression_label(ex: &hir::Expr) -> Option<ast::Ident> {
+    fn expression_label(ex: &hir::Expr) -> Option<ast::Name> {
         match ex.node {
             hir::ExprWhile(_, _, Some(label)) |
-            hir::ExprLoop(_, Some(label)) => Some(label),
+            hir::ExprLoop(_, Some(label)) => Some(label.name),
             _ => None,
         }
     }
 
     fn check_if_label_shadows_lifetime<'a>(sess: &'a Session,
                                            mut scope: Scope<'a>,
-                                           label: ast::Ident,
+                                           label: ast::Name,
                                            label_span: Span) {
         loop {
             match *scope {
@@ -447,10 +446,10 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
                 LateScope(lifetimes, s) => {
                     for lifetime_def in lifetimes {
                         // FIXME (#24278): non-hygienic comparison
-                        if label.name == lifetime_def.lifetime.name {
+                        if label == lifetime_def.lifetime.name {
                             signal_shadowing_problem(
                                 sess,
-                                label.name,
+                                label,
                                 original_lifetime(&lifetime_def.lifetime),
                                 shadower_label(label_span));
                             return;
@@ -703,7 +702,7 @@ impl<'a> LifetimeContext<'a> {
     {
         for &(label, label_span) in &self.labels_in_fn {
             // FIXME (#24278): non-hygienic comparison
-            if lifetime.name == label.name {
+            if lifetime.name == label {
                 signal_shadowing_problem(self.sess,
                                          lifetime.name,
                                          original_label(label_span),
@@ -799,7 +798,7 @@ fn early_bound_lifetime_names(generics: &hir::Generics) -> Vec<ast::Name> {
             FreeLifetimeCollector { early_bound: &mut early_bound,
                                     late_bound: &mut late_bound };
         for ty_param in generics.ty_params.iter() {
-            visit::walk_ty_param_bounds_helper(&mut collector, &ty_param.bounds);
+            walk_list!(&mut collector, visit_ty_param_bound, &ty_param.bounds);
         }
         for predicate in &generics.where_clause.predicates {
             match predicate {
@@ -807,15 +806,15 @@ fn early_bound_lifetime_names(generics: &hir::Generics) -> Vec<ast::Name> {
                                                                               ref bounded_ty,
                                                                               ..}) => {
                     collector.visit_ty(&**bounded_ty);
-                    visit::walk_ty_param_bounds_helper(&mut collector, bounds);
+                    walk_list!(&mut collector, visit_ty_param_bound, bounds);
                 }
                 &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate{ref lifetime,
                                                                                 ref bounds,
                                                                                 ..}) => {
-                    collector.visit_lifetime_ref(lifetime);
+                    collector.visit_lifetime(lifetime);
 
                     for bound in bounds {
-                        collector.visit_lifetime_ref(bound);
+                        collector.visit_lifetime(bound);
                     }
                 }
                 &hir::WherePredicate::EqPredicate(_) => unimplemented!()
@@ -843,7 +842,7 @@ fn early_bound_lifetime_names(generics: &hir::Generics) -> Vec<ast::Name> {
     }
 
     impl<'a, 'v> Visitor<'v> for FreeLifetimeCollector<'a> {
-        fn visit_lifetime_ref(&mut self, lifetime_ref: &hir::Lifetime) {
+        fn visit_lifetime(&mut self, lifetime_ref: &hir::Lifetime) {
             shuffle(self.early_bound, self.late_bound,
                     lifetime_ref.name);
         }

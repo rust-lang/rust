@@ -27,7 +27,7 @@ pub fn opts() -> TargetOptions {
         ),
         position_independent_executables: true,
         archive_format: "gnu".to_string(),
-        exe_allocation_crate: super::best_allocator(),
+        exe_allocation_crate: "alloc_system".to_string(),
         .. Default::default()
     }
 }

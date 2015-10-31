@@ -48,7 +48,7 @@ pub enum AutoAdjustment<'tcx> {
 ///
 /// 1. The simplest cases are where the pointer is not adjusted fat vs thin.
 /// Here the pointer will be dereferenced N times (where a dereference can
-/// happen to to raw or borrowed pointers or any smart pointer which implements
+/// happen to raw or borrowed pointers or any smart pointer which implements
 /// Deref, including Box<_>). The number of dereferences is given by
 /// `autoderefs`.  It can then be auto-referenced zero or one times, indicated
 /// by `autoref`, to either a raw or borrowed pointer. In these cases unsize is

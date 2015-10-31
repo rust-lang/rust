@@ -435,6 +435,28 @@ pub trait LintContext: Sized {
         self.lookup_and_emit(lint, Some(span), msg);
     }
 
+    /// Emit a lint and note at the appropriate level, for a particular span.
+    fn span_lint_note(&self, lint: &'static Lint, span: Span, msg: &str,
+                      note_span: Span, note: &str) {
+        self.span_lint(lint, span, msg);
+        if self.current_level(lint) != Level::Allow {
+            if note_span == span {
+                self.sess().fileline_note(note_span, note)
+            } else {
+                self.sess().span_note(note_span, note)
+            }
+        }
+    }
+
+    /// Emit a lint and help at the appropriate level, for a particular span.
+    fn span_lint_help(&self, lint: &'static Lint, span: Span,
+                      msg: &str, help: &str) {
+        self.span_lint(lint, span, msg);
+        if self.current_level(lint) != Level::Allow {
+            self.sess().span_help(span, help)
+        }
+    }
+
     /// Emit a lint at the appropriate level, with no associated span.
     fn lint(&self, lint: &'static Lint, msg: &str) {
         self.lookup_and_emit(lint, None, msg);
@@ -661,14 +683,15 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
         hir_visit::walk_fn(self, fk, decl, body, span);
     }
 
-    fn visit_struct_def(&mut self,
-                        s: &hir::StructDef,
-                        ident: ast::Ident,
+    fn visit_variant_data(&mut self,
+                        s: &hir::VariantData,
+                        name: ast::Name,
                         g: &hir::Generics,
-                        id: ast::NodeId) {
-        run_lints!(self, check_struct_def, late_passes, s, ident, g, id);
+                        item_id: ast::NodeId,
+                        _: Span) {
+        run_lints!(self, check_struct_def, late_passes, s, name, g, item_id);
         hir_visit::walk_struct_def(self, s);
-        run_lints!(self, check_struct_def_post, late_passes, s, ident, g, id);
+        run_lints!(self, check_struct_def_post, late_passes, s, name, g, item_id);
     }
 
     fn visit_struct_field(&mut self, s: &hir::StructField) {
@@ -678,10 +701,10 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
         })
     }
 
-    fn visit_variant(&mut self, v: &hir::Variant, g: &hir::Generics) {
+    fn visit_variant(&mut self, v: &hir::Variant, g: &hir::Generics, item_id: ast::NodeId) {
         self.with_lint_attrs(&v.node.attrs, |cx| {
             run_lints!(cx, check_variant, late_passes, v, g);
-            hir_visit::walk_variant(cx, v, g);
+            hir_visit::walk_variant(cx, v, g, item_id);
             run_lints!(cx, check_variant_post, late_passes, v, g);
         })
     }
@@ -691,8 +714,8 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
         hir_visit::walk_ty(self, t);
     }
 
-    fn visit_ident(&mut self, sp: Span, id: ast::Ident) {
-        run_lints!(self, check_ident, late_passes, sp, id);
+    fn visit_name(&mut self, sp: Span, name: ast::Name) {
+        run_lints!(self, check_name, late_passes, sp, name);
     }
 
     fn visit_mod(&mut self, m: &hir::Mod, s: Span, n: ast::NodeId) {
@@ -745,12 +768,8 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
         });
     }
 
-    fn visit_opt_lifetime_ref(&mut self, sp: Span, lt: &Option<hir::Lifetime>) {
-        run_lints!(self, check_opt_lifetime_ref, late_passes, sp, lt);
-    }
-
-    fn visit_lifetime_ref(&mut self, lt: &hir::Lifetime) {
-        run_lints!(self, check_lifetime_ref, late_passes, lt);
+    fn visit_lifetime(&mut self, lt: &hir::Lifetime) {
+        run_lints!(self, check_lifetime, late_passes, lt);
     }
 
     fn visit_lifetime_def(&mut self, lt: &hir::LifetimeDef) {
@@ -765,6 +784,11 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     fn visit_path(&mut self, p: &hir::Path, id: ast::NodeId) {
         run_lints!(self, check_path, late_passes, p, id);
         hir_visit::walk_path(self, p);
+    }
+
+    fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
+        run_lints!(self, check_path_list_item, late_passes, item);
+        hir_visit::walk_path_list_item(self, prefix, item);
     }
 
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
@@ -809,14 +833,15 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
         ast_visit::walk_fn(self, fk, decl, body, span);
     }
 
-    fn visit_struct_def(&mut self,
-                        s: &ast::StructDef,
+    fn visit_variant_data(&mut self,
+                        s: &ast::VariantData,
                         ident: ast::Ident,
                         g: &ast::Generics,
-                        id: ast::NodeId) {
-        run_lints!(self, check_struct_def, early_passes, s, ident, g, id);
+                        item_id: ast::NodeId,
+                        _: Span) {
+        run_lints!(self, check_struct_def, early_passes, s, ident, g, item_id);
         ast_visit::walk_struct_def(self, s);
-        run_lints!(self, check_struct_def_post, early_passes, s, ident, g, id);
+        run_lints!(self, check_struct_def_post, early_passes, s, ident, g, item_id);
     }
 
     fn visit_struct_field(&mut self, s: &ast::StructField) {
@@ -826,10 +851,10 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
         })
     }
 
-    fn visit_variant(&mut self, v: &ast::Variant, g: &ast::Generics) {
+    fn visit_variant(&mut self, v: &ast::Variant, g: &ast::Generics, item_id: ast::NodeId) {
         self.with_lint_attrs(&v.node.attrs, |cx| {
             run_lints!(cx, check_variant, early_passes, v, g);
-            ast_visit::walk_variant(cx, v, g);
+            ast_visit::walk_variant(cx, v, g, item_id);
             run_lints!(cx, check_variant_post, early_passes, v, g);
         })
     }
@@ -893,12 +918,8 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
         });
     }
 
-    fn visit_opt_lifetime_ref(&mut self, sp: Span, lt: &Option<ast::Lifetime>) {
-        run_lints!(self, check_opt_lifetime_ref, early_passes, sp, lt);
-    }
-
-    fn visit_lifetime_ref(&mut self, lt: &ast::Lifetime) {
-        run_lints!(self, check_lifetime_ref, early_passes, lt);
+    fn visit_lifetime(&mut self, lt: &ast::Lifetime) {
+        run_lints!(self, check_lifetime, early_passes, lt);
     }
 
     fn visit_lifetime_def(&mut self, lt: &ast::LifetimeDef) {
@@ -913,6 +934,11 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
     fn visit_path(&mut self, p: &ast::Path, id: ast::NodeId) {
         run_lints!(self, check_path, early_passes, p, id);
         ast_visit::walk_path(self, p);
+    }
+
+    fn visit_path_list_item(&mut self, prefix: &ast::Path, item: &ast::PathListItem) {
+        run_lints!(self, check_path_list_item, early_passes, item);
+        ast_visit::walk_path_list_item(self, prefix, item);
     }
 
     fn visit_attribute(&mut self, attr: &ast::Attribute) {

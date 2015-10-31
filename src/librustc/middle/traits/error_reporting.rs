@@ -28,10 +28,31 @@ use middle::def_id::DefId;
 use middle::infer::InferCtxt;
 use middle::ty::{self, ToPredicate, HasTypeFlags, ToPolyTraitRef, TraitRef, Ty};
 use middle::ty::fold::TypeFoldable;
-use std::collections::HashMap;
+use util::nodemap::{FnvHashMap, FnvHashSet};
+
 use std::fmt;
 use syntax::codemap::Span;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct TraitErrorKey<'tcx> {
+    is_warning: bool,
+    span: Span,
+    predicate: ty::Predicate<'tcx>
+}
+
+impl<'tcx> TraitErrorKey<'tcx> {
+    fn from_error<'a>(infcx: &InferCtxt<'a, 'tcx>,
+                      e: &FulfillmentError<'tcx>) -> Self {
+        let predicate =
+            infcx.resolve_type_vars_if_possible(&e.obligation.predicate);
+        TraitErrorKey {
+            is_warning: is_warning(&e.obligation),
+            span: e.obligation.cause.span,
+            predicate: infcx.tcx.erase_regions(&predicate)
+        }
+    }
+}
 
 pub fn report_fulfillment_errors<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                            errors: &Vec<FulfillmentError<'tcx>>) {
@@ -42,6 +63,13 @@ pub fn report_fulfillment_errors<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 
 fn report_fulfillment_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                       error: &FulfillmentError<'tcx>) {
+    let error_key = TraitErrorKey::from_error(infcx, error);
+    debug!("report_fulfillment_errors({:?}) - key={:?}",
+           error, error_key);
+    if !infcx.reported_trait_errors.borrow_mut().insert(error_key) {
+        debug!("report_fulfillment_errors: skipping duplicate");
+        return;
+    }
     match error.code {
         FulfillmentErrorCode::CodeSelectionError(ref e) => {
             report_selection_error(infcx, &error.obligation, e);
@@ -97,7 +125,7 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                                (gen.name.as_str().to_string(),
                                                 trait_ref.substs.types.get(param, i)
                                                          .to_string())
-                                              }).collect::<HashMap<String, String>>();
+                                              }).collect::<FnvHashMap<String, String>>();
                 generic_map.insert("Self".to_string(),
                                    trait_ref.self_ty().to_string());
                 let parser = Parser::new(&istring);
@@ -188,7 +216,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                     is_warning, infcx.tcx.sess, obligation.cause.span, E0276,
                     "the requirement `{}` appears on the impl \
                      method but not on the corresponding trait method",
-                    obligation.predicate);;
+                    obligation.predicate);
             } else {
                 match obligation.predicate {
                     ty::Predicate::Trait(ref trait_predicate) => {
@@ -248,9 +276,12 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                     }
 
                     ty::Predicate::ObjectSafe(trait_def_id) => {
+                        let violations = object_safety_violations(
+                            infcx.tcx, trait_def_id);
                         report_object_safety_error(infcx.tcx,
                                                    obligation.cause.span,
                                                    trait_def_id,
+                                                   violations,
                                                    is_warning);
                         note_obligation_cause(infcx, obligation);
                     }
@@ -286,7 +317,9 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
         }
 
         TraitNotObjectSafe(did) => {
-            report_object_safety_error(infcx.tcx, obligation.cause.span, did, is_warning);
+            let violations = object_safety_violations(infcx.tcx, did);
+            report_object_safety_error(infcx.tcx, obligation.cause.span, did,
+                                       violations, is_warning);
             note_obligation_cause(infcx, obligation);
         }
     }
@@ -295,6 +328,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 pub fn report_object_safety_error<'tcx>(tcx: &ty::ctxt<'tcx>,
                                         span: Span,
                                         trait_def_id: DefId,
+                                        violations: Vec<ObjectSafetyViolation>,
                                         is_warning: bool)
 {
     span_err_or_warn!(
@@ -302,7 +336,11 @@ pub fn report_object_safety_error<'tcx>(tcx: &ty::ctxt<'tcx>,
         "the trait `{}` cannot be made into an object",
         tcx.item_path_str(trait_def_id));
 
-    for violation in object_safety_violations(tcx, trait_def_id) {
+    let mut reported_violations = FnvHashSet();
+    for violation in violations {
+        if !reported_violations.insert(violation.clone()) {
+            continue;
+        }
         match violation {
             ObjectSafetyViolation::SizedSelf => {
                 tcx.sess.fileline_note(
@@ -417,7 +455,7 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
             if !infcx.tcx.sess.has_errors() {
                 span_err!(infcx.tcx.sess, obligation.cause.span, E0284,
                         "type annotations required: cannot resolve `{}`",
-                        predicate);;
+                        predicate);
                 note_obligation_cause(infcx, obligation);
             }
         }

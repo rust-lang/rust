@@ -34,7 +34,7 @@ impl Drop for Handler {
 #[cfg(any(target_os = "linux",
           target_os = "macos",
           target_os = "bitrig",
-          target_os = "netbsd",
+          all(target_os = "netbsd", not(target_vendor = "rumprun")),
           target_os = "openbsd"))]
 mod imp {
     use super::Handler;
@@ -143,7 +143,7 @@ mod imp {
 #[cfg(not(any(target_os = "linux",
               target_os = "macos",
               target_os = "bitrig",
-              target_os = "netbsd",
+              all(target_os = "netbsd", not(target_vendor = "rumprun")),
               target_os = "openbsd")))]
 mod imp {
     use ptr;

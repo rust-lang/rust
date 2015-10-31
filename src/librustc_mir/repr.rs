@@ -8,22 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hair::Hair;
+use rustc::middle::const_eval::ConstVal;
+use rustc::middle::def_id::DefId;
+use rustc::middle::region::CodeExtent;
+use rustc::middle::subst::Substs;
+use rustc::middle::ty::{AdtDef, ClosureSubsts, Region, Ty};
 use rustc_data_structures::fnv::FnvHashMap;
+use rustc_front::hir::InlineAsm;
+use syntax::ast::Name;
+use syntax::codemap::Span;
 use std::fmt::{Debug, Formatter, Error};
 use std::slice;
 use std::u32;
 
 /// Lowered representation of a single function.
-pub struct Mir<H:Hair> {
-    pub basic_blocks: Vec<BasicBlockData<H>>,
+pub struct Mir<'tcx> {
+    pub basic_blocks: Vec<BasicBlockData<'tcx>>,
 
     // for every node id
-    pub extents: FnvHashMap<H::CodeExtent, Vec<GraphExtent>>,
+    pub extents: FnvHashMap<CodeExtent, Vec<GraphExtent>>,
 
-    pub var_decls: Vec<VarDecl<H>>,
-    pub arg_decls: Vec<ArgDecl<H>>,
-    pub temp_decls: Vec<TempDecl<H>>,
+    pub var_decls: Vec<VarDecl<'tcx>>,
+    pub arg_decls: Vec<ArgDecl<'tcx>>,
+    pub temp_decls: Vec<TempDecl<'tcx>>,
 }
 
 /// where execution begins
@@ -35,18 +42,18 @@ pub const END_BLOCK: BasicBlock = BasicBlock(1);
 /// where execution ends, on panic
 pub const DIVERGE_BLOCK: BasicBlock = BasicBlock(2);
 
-impl<H:Hair> Mir<H> {
+impl<'tcx> Mir<'tcx> {
     pub fn all_basic_blocks(&self) -> Vec<BasicBlock> {
         (0..self.basic_blocks.len())
             .map(|i| BasicBlock::new(i))
             .collect()
     }
 
-    pub fn basic_block_data(&self, bb: BasicBlock) -> &BasicBlockData<H> {
+    pub fn basic_block_data(&self, bb: BasicBlock) -> &BasicBlockData<'tcx> {
         &self.basic_blocks[bb.index()]
     }
 
-    pub fn basic_block_data_mut(&mut self, bb: BasicBlock) -> &mut BasicBlockData<H> {
+    pub fn basic_block_data_mut(&mut self, bb: BasicBlock) -> &mut BasicBlockData<'tcx> {
         &mut self.basic_blocks[bb.index()]
     }
 }
@@ -103,7 +110,7 @@ pub enum BorrowKind {
     Unique,
 
     /// Data is mutable and not aliasable.
-    Mut
+    Mut,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -111,16 +118,16 @@ pub enum BorrowKind {
 
 // A "variable" is a binding declared by the user as part of the fn
 // decl, a let, etc.
-pub struct VarDecl<H:Hair> {
+pub struct VarDecl<'tcx> {
     pub mutability: Mutability,
-    pub name: H::Ident,
-    pub ty: H::Ty,
+    pub name: Name,
+    pub ty: Ty<'tcx>,
 }
 
 // A "temp" is a temporary that we place on the stack. They are
 // anonymous, always mutable, and have only a type.
-pub struct TempDecl<H:Hair> {
-    pub ty: H::Ty,
+pub struct TempDecl<'tcx> {
+    pub ty: Ty<'tcx>,
 }
 
 // A "arg" is one of the function's formal arguments. These are
@@ -134,8 +141,8 @@ pub struct TempDecl<H:Hair> {
 //
 // there is only one argument, of type `(i32, u32)`, but two bindings
 // (`x` and `y`).
-pub struct ArgDecl<H:Hair> {
-    pub ty: H::Ty,
+pub struct ArgDecl<'tcx> {
+    pub ty: Ty<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -212,24 +219,34 @@ impl Debug for BasicBlock {
 // BasicBlock and Terminator
 
 #[derive(Debug)]
-pub struct BasicBlockData<H:Hair> {
-    pub statements: Vec<Statement<H>>,
-    pub terminator: Terminator<H>,
+pub struct BasicBlockData<'tcx> {
+    pub statements: Vec<Statement<'tcx>>,
+    pub terminator: Terminator<'tcx>,
 }
 
-pub enum Terminator<H:Hair> {
+pub enum Terminator<'tcx> {
     /// block should have one successor in the graph; we jump there
-    Goto { target: BasicBlock },
+    Goto {
+        target: BasicBlock,
+    },
 
     /// block should initiate unwinding; should be one successor
     /// that does cleanup and branches to DIVERGE_BLOCK
-    Panic { target: BasicBlock },
+    Panic {
+        target: BasicBlock,
+    },
 
     /// jump to branch 0 if this lvalue evaluates to true
-    If { cond: Operand<H>, targets: [BasicBlock; 2] },
+    If {
+        cond: Operand<'tcx>,
+        targets: [BasicBlock; 2],
+    },
 
     /// lvalue evaluates to some enum; jump depending on the branch
-    Switch { discr: Lvalue<H>, targets: Vec<BasicBlock> },
+    Switch {
+        discr: Lvalue<'tcx>,
+        targets: Vec<BasicBlock>,
+    },
 
     /// Indicates that the last statement in the block panics, aborts,
     /// etc. No successors. This terminator appears on exactly one
@@ -247,10 +264,13 @@ pub enum Terminator<H:Hair> {
     /// block ends with a call; it should have two successors. The
     /// first successor indicates normal return. The second indicates
     /// unwinding.
-    Call { data: CallData<H>, targets: [BasicBlock; 2] },
+    Call {
+        data: CallData<'tcx>,
+        targets: [BasicBlock; 2],
+    },
 }
 
-impl<H:Hair> Terminator<H> {
+impl<'tcx> Terminator<'tcx> {
     pub fn successors(&self) -> &[BasicBlock] {
         use self::Terminator::*;
         match *self {
@@ -266,19 +286,19 @@ impl<H:Hair> Terminator<H> {
 }
 
 #[derive(Debug)]
-pub struct CallData<H:Hair> {
+pub struct CallData<'tcx> {
     /// where the return value is written to
-    pub destination: Lvalue<H>,
+    pub destination: Lvalue<'tcx>,
 
     /// the fn being called
-    pub func: Lvalue<H>,
+    pub func: Lvalue<'tcx>,
 
     /// the arguments
-    pub args: Vec<Lvalue<H>>,
+    pub args: Vec<Lvalue<'tcx>>,
 }
 
-impl<H:Hair> BasicBlockData<H> {
-    pub fn new(terminator: Terminator<H>) -> BasicBlockData<H> {
+impl<'tcx> BasicBlockData<'tcx> {
+    pub fn new(terminator: Terminator<'tcx>) -> BasicBlockData<'tcx> {
         BasicBlockData {
             statements: vec![],
             terminator: terminator,
@@ -286,7 +306,7 @@ impl<H:Hair> BasicBlockData<H> {
     }
 }
 
-impl<H:Hair> Debug for Terminator<H> {
+impl<'tcx> Debug for Terminator<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Terminator::*;
         match *self {
@@ -305,7 +325,9 @@ impl<H:Hair> Debug for Terminator<H> {
             Call { data: ref c, targets } => {
                 try!(write!(fmt, "{:?} = {:?}(", c.destination, c.func));
                 for (index, arg) in c.args.iter().enumerate() {
-                    if index > 0 { try!(write!(fmt, ", ")); }
+                    if index > 0 {
+                        try!(write!(fmt, ", "));
+                    }
                     try!(write!(fmt, "{:?}", arg));
                 }
                 write!(fmt, ") -> {:?}", targets)
@@ -318,24 +340,24 @@ impl<H:Hair> Debug for Terminator<H> {
 ///////////////////////////////////////////////////////////////////////////
 // Statements
 
-pub struct Statement<H:Hair> {
-    pub span: H::Span,
-    pub kind: StatementKind<H>,
+pub struct Statement<'tcx> {
+    pub span: Span,
+    pub kind: StatementKind<'tcx>,
 }
 
 #[derive(Debug)]
-pub enum StatementKind<H:Hair> {
-    Assign(Lvalue<H>, Rvalue<H>),
-    Drop(DropKind, Lvalue<H>),
+pub enum StatementKind<'tcx> {
+    Assign(Lvalue<'tcx>, Rvalue<'tcx>),
+    Drop(DropKind, Lvalue<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DropKind {
     Shallow,
-    Deep
+    Deep,
 }
 
-impl<H:Hair> Debug for Statement<H> {
+impl<'tcx> Debug for Statement<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::StatementKind::*;
         match self.kind {
@@ -351,7 +373,7 @@ impl<H:Hair> Debug for Statement<H> {
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
 #[derive(Clone, PartialEq)]
-pub enum Lvalue<H:Hair> {
+pub enum Lvalue<'tcx> {
     /// local variable declared by the user
     Var(u32),
 
@@ -363,13 +385,13 @@ pub enum Lvalue<H:Hair> {
     Arg(u32),
 
     /// static or static mut variable
-    Static(H::DefId),
+    Static(DefId),
 
     /// the return pointer of the fn
     ReturnPointer,
 
     /// projection out of an lvalue (access a field, deref a pointer, etc)
-    Projection(Box<LvalueProjection<H>>)
+    Projection(Box<LvalueProjection<'tcx>>),
 }
 
 /// The `Projection` data structure defines things of the form `B.x`
@@ -377,15 +399,15 @@ pub enum Lvalue<H:Hair> {
 /// shared between `Constant` and `Lvalue`. See the aliases
 /// `LvalueProjection` etc below.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Projection<H:Hair,B,V> {
+pub struct Projection<'tcx, B, V> {
     pub base: B,
-    pub elem: ProjectionElem<H,V>,
+    pub elem: ProjectionElem<'tcx, V>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ProjectionElem<H:Hair,V> {
+pub enum ProjectionElem<'tcx, V> {
     Deref,
-    Field(Field<H>),
+    Field(Field),
     Index(V),
 
     // These indices are generated by slice patterns. Easiest to explain
@@ -406,44 +428,47 @@ pub enum ProjectionElem<H:Hair,V> {
     // "Downcast" to a variant of an ADT. Currently, we only introduce
     // this for ADTs with more than one variant. It may be better to
     // just introduce it always, or always for enums.
-    Downcast(H::AdtDef, usize),
+    Downcast(AdtDef<'tcx>, usize),
 }
 
 /// Alias for projections as they appear in lvalues, where the base is an lvalue
 /// and the index is an operand.
-pub type LvalueProjection<H> =
-    Projection<H,Lvalue<H>,Operand<H>>;
+pub type LvalueProjection<'tcx> =
+    Projection<'tcx,Lvalue<'tcx>,Operand<'tcx>>;
 
 /// Alias for projections as they appear in lvalues, where the base is an lvalue
 /// and the index is an operand.
-pub type LvalueElem<H> =
-    ProjectionElem<H,Operand<H>>;
+pub type LvalueElem<'tcx> =
+    ProjectionElem<'tcx,Operand<'tcx>>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Field<H:Hair> {
-    Named(H::Name),
+pub enum Field {
+    Named(Name),
     Indexed(usize),
 }
 
-impl<H:Hair> Lvalue<H> {
-    pub fn field(self, f: Field<H>) -> Lvalue<H> {
+impl<'tcx> Lvalue<'tcx> {
+    pub fn field(self, f: Field) -> Lvalue<'tcx> {
         self.elem(ProjectionElem::Field(f))
     }
 
-    pub fn deref(self) -> Lvalue<H> {
+    pub fn deref(self) -> Lvalue<'tcx> {
         self.elem(ProjectionElem::Deref)
     }
 
-    pub fn index(self, index: Operand<H>) -> Lvalue<H> {
+    pub fn index(self, index: Operand<'tcx>) -> Lvalue<'tcx> {
         self.elem(ProjectionElem::Index(index))
     }
 
-    pub fn elem(self, elem: LvalueElem<H>) -> Lvalue<H> {
-        Lvalue::Projection(Box::new(LvalueProjection { base: self, elem: elem }))
+    pub fn elem(self, elem: LvalueElem<'tcx>) -> Lvalue<'tcx> {
+        Lvalue::Projection(Box::new(LvalueProjection {
+            base: self,
+            elem: elem,
+        }))
     }
 }
 
-impl<H:Hair> Debug for Lvalue<H> {
+impl<'tcx> Debug for Lvalue<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Lvalue::*;
 
@@ -487,12 +512,12 @@ impl<H:Hair> Debug for Lvalue<H> {
 // being nested in one another.
 
 #[derive(Clone, PartialEq)]
-pub enum Operand<H:Hair> {
-    Consume(Lvalue<H>),
-    Constant(Constant<H>),
+pub enum Operand<'tcx> {
+    Consume(Lvalue<'tcx>),
+    Constant(Constant<'tcx>),
 }
 
-impl<H:Hair> Debug for Operand<H> {
+impl<'tcx> Debug for Operand<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Operand::*;
         match *self {
@@ -506,34 +531,34 @@ impl<H:Hair> Debug for Operand<H> {
 // Rvalues
 
 #[derive(Clone)]
-pub enum Rvalue<H:Hair> {
+pub enum Rvalue<'tcx> {
     // x (either a move or copy, depending on type of x)
-    Use(Operand<H>),
+    Use(Operand<'tcx>),
 
     // [x; 32]
-    Repeat(Operand<H>, Operand<H>),
+    Repeat(Operand<'tcx>, Operand<'tcx>),
 
     // &x or &mut x
-    Ref(H::Region, BorrowKind, Lvalue<H>),
+    Ref(Region, BorrowKind, Lvalue<'tcx>),
 
     // length of a [X] or [X;n] value
-    Len(Lvalue<H>),
+    Len(Lvalue<'tcx>),
 
-    Cast(CastKind, Operand<H>, H::Ty),
+    Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
-    BinaryOp(BinOp, Operand<H>, Operand<H>),
+    BinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
 
-    UnaryOp(UnOp, Operand<H>),
+    UnaryOp(UnOp, Operand<'tcx>),
 
     // Creates an *uninitialized* Box
-    Box(H::Ty),
+    Box(Ty<'tcx>),
 
     // Create an aggregate value, like a tuple or struct.  This is
     // only needed because we want to distinguish `dest = Foo { x:
     // ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case
     // that `Foo` has a destructor. These rvalues can be optimized
     // away after type-checking and before lowering.
-    Aggregate(AggregateKind<H>, Vec<Operand<H>>),
+    Aggregate(AggregateKind<'tcx>, Vec<Operand<'tcx>>),
 
     // Generates a slice of the form `&input[from_start..L-from_end]`
     // where `L` is the length of the slice. This is only created by
@@ -541,12 +566,12 @@ pub enum Rvalue<H:Hair> {
     // .., z]` might create a slice with `from_start=2` and
     // `from_end=1`.
     Slice {
-        input: Lvalue<H>,
+        input: Lvalue<'tcx>,
         from_start: usize,
         from_end: usize,
     },
 
-    InlineAsm(H::InlineAsm),
+    InlineAsm(&'tcx InlineAsm),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -568,11 +593,11 @@ pub enum CastKind {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum AggregateKind<H:Hair> {
+pub enum AggregateKind<'tcx> {
     Vec,
     Tuple,
-    Adt(H::AdtDef, usize, H::Substs),
-    Closure(H::DefId, H::ClosureSubsts),
+    Adt(AdtDef<'tcx>, usize, &'tcx Substs<'tcx>),
+    Closure(DefId, &'tcx ClosureSubsts<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -616,10 +641,10 @@ pub enum UnOp {
     /// The `!` operator for logical inversion
     Not,
     /// The `-` operator for negation
-    Neg
+    Neg,
 }
 
-impl<H:Hair> Debug for Rvalue<H> {
+impl<'tcx> Debug for Rvalue<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Rvalue::*;
 
@@ -634,56 +659,33 @@ impl<H:Hair> Debug for Rvalue<H> {
             Box(ref t) => write!(fmt, "Box {:?}", t),
             Aggregate(ref kind, ref lvs) => write!(fmt, "Aggregate<{:?}>({:?})", kind, lvs),
             InlineAsm(ref asm) => write!(fmt, "InlineAsm({:?})", asm),
-            Slice { ref input, from_start, from_end } => write!(fmt, "{:?}[{:?}..-{:?}]",
-                                                                input, from_start, from_end),
+            Slice { ref input, from_start, from_end } =>
+                write!(fmt, "{:?}[{:?}..-{:?}]", input, from_start, from_end),
         }
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////
 // Constants
+//
+// Two constants are equal if they are the same constant. Note that
+// this does not necessarily mean that they are "==" in Rust -- in
+// particular one must be wary of `NaN`!
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Constant<H:Hair> {
-    pub span: H::Span,
-    pub kind: ConstantKind<H>
+pub struct Constant<'tcx> {
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub literal: Literal<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ConstantKind<H:Hair> {
-    Literal(Literal<H>),
-    Aggregate(AggregateKind<H>, Vec<Constant<H>>),
-    Call(Box<Constant<H>>, Vec<Constant<H>>),
-    Cast(Box<Constant<H>>, H::Ty),
-    Repeat(Box<Constant<H>>, Box<Constant<H>>),
-    Ref(BorrowKind, Box<Constant<H>>),
-    BinaryOp(BinOp, Box<Constant<H>>, Box<Constant<H>>),
-    UnaryOp(UnOp, Box<Constant<H>>),
-    Projection(Box<ConstantProjection<H>>)
-}
-
-pub type ConstantProjection<H> =
-    Projection<H,Constant<H>,Constant<H>>;
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Literal<H:Hair> {
-    Item { def_id: H::DefId, substs: H::Substs },
-    Projection { projection: H::Projection },
-    Int { bits: IntegralBits, value: i64 },
-    Uint { bits: IntegralBits, value: u64 },
-    Float { bits: FloatBits, value: f64 },
-    Char { c: char },
-    Bool { value: bool },
-    Bytes { value: H::Bytes },
-    String { value: H::InternedString },
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
-pub enum IntegralBits {
-    B8, B16, B32, B64, BSize
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
-pub enum FloatBits {
-    F32, F64
+pub enum Literal<'tcx> {
+    Item {
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>,
+    },
+    Value {
+        value: ConstVal,
+    },
 }

@@ -23,7 +23,7 @@ use std::fmt;
 use std::ops;
 use std::mem;
 use syntax::abi;
-use syntax::ast::{self, Name, NodeId};
+use syntax::ast::{self, Name};
 use syntax::parse::token::special_idents;
 
 use rustc_front::hir;
@@ -126,7 +126,7 @@ pub enum TypeVariants<'tcx> {
     TyRef(&'tcx Region, TypeAndMut<'tcx>),
 
     /// If the def-id is Some(_), then this is the type of a specific
-    /// fn item. Otherwise, if None(_), it a fn pointer type.
+    /// fn item. Otherwise, if None(_), it is a fn pointer type.
     ///
     /// FIXME: Conflating function pointers and the type of a
     /// function is probably a terrible idea; a function pointer is a
@@ -675,7 +675,7 @@ pub enum Region {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct EarlyBoundRegion {
-    pub param_id: NodeId,
+    pub def_id: DefId,
     pub space: subst::ParamSpace,
     pub index: u32,
     pub name: Name,

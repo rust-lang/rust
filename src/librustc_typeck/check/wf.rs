@@ -12,7 +12,6 @@ use astconv::AstConv;
 use check::{FnCtxt, Inherited, blank_fn_ctxt, regionck, wfcheck};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
-use middle::def_id::DefId;
 use middle::region;
 use middle::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
 use middle::traits;
@@ -55,9 +54,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     /// the types first.
     fn check_item_well_formed(&mut self, item: &hir::Item) {
         let ccx = self.ccx;
-        debug!("check_item_well_formed(it.id={}, it.ident={})",
+        debug!("check_item_well_formed(it.id={}, it.name={})",
                item.id,
-               ccx.tcx.item_path_str(DefId::local(item.id)));
+               ccx.tcx.item_path_str(ccx.tcx.map.local_def_id(item.id)));
 
         match item.node {
             /// Right now we check that every default trait implementation
@@ -81,7 +80,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 self.check_impl(item);
             }
             hir::ItemImpl(_, hir::ImplPolarity::Negative, _, Some(_), _, _) => {
-                let trait_ref = ccx.tcx.impl_trait_ref(DefId::local(item.id)).unwrap();
+                let item_def_id = ccx.tcx.map.local_def_id(item.id);
+                let trait_ref = ccx.tcx.impl_trait_ref(item_def_id).unwrap();
                 ccx.tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id);
                 match ccx.tcx.lang_items.to_builtin_kind(trait_ref.def_id) {
                     Some(ty::BoundSend) | Some(ty::BoundSync) => {}
@@ -117,9 +117,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             }
             hir::ItemTrait(_, _, _, ref items) => {
                 let trait_predicates =
-                    ccx.tcx.lookup_predicates(DefId::local(item.id));
+                    ccx.tcx.lookup_predicates(ccx.tcx.map.local_def_id(item.id));
                 reject_non_type_param_bounds(ccx.tcx, item.span, &trait_predicates);
-                if ccx.tcx.trait_has_default_impl(DefId::local(item.id)) {
+                if ccx.tcx.trait_has_default_impl(ccx.tcx.map.local_def_id(item.id)) {
                     if !items.is_empty() {
                         wfcheck::error_380(ccx, item.span);
                     }
@@ -133,7 +133,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         F: for<'fcx> FnMut(&mut CheckTypeWellFormedVisitor<'ccx, 'tcx>, &FnCtxt<'fcx, 'tcx>),
     {
         let ccx = self.ccx;
-        let item_def_id = DefId::local(item.id);
+        let item_def_id = ccx.tcx.map.local_def_id(item.id);
         let type_scheme = ccx.tcx.lookup_item_type(item_def_id);
         let type_predicates = ccx.tcx.lookup_predicates(item_def_id);
         reject_non_type_param_bounds(ccx.tcx, item.span, &type_predicates);
@@ -194,7 +194,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         Some(&mut this.cache));
             debug!("check_item_type at bounds_checker.scope: {:?}", bounds_checker.scope);
 
-            let type_scheme = fcx.tcx().lookup_item_type(DefId::local(item.id));
+            let item_def_id = fcx.tcx().map.local_def_id(item.id);
+            let type_scheme = fcx.tcx().lookup_item_type(item_def_id);
             let item_ty = fcx.instantiate_type_scheme(item.span,
                                                       &fcx.inh
                                                           .infcx
@@ -230,7 +231,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
             // Similarly, obtain an "inside" reference to the trait
             // that the impl implements.
-            let trait_ref = match fcx.tcx().impl_trait_ref(DefId::local(item.id)) {
+            let trait_ref = match fcx.tcx().impl_trait_ref(fcx.tcx().map.local_def_id(item.id)) {
                 None => { return; }
                 Some(t) => { t }
             };
@@ -279,7 +280,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                      item: &hir::Item,
                                      ast_generics: &hir::Generics)
     {
-        let item_def_id = DefId::local(item.id);
+        let item_def_id = self.tcx().map.local_def_id(item.id);
         let ty_predicates = self.tcx().lookup_predicates(item_def_id);
         let variances = self.tcx().item_variances(item_def_id);
 
@@ -324,7 +325,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 -> ty::ParamTy
     {
         let name = match space {
-            TypeSpace => ast_generics.ty_params[index].ident.name,
+            TypeSpace => ast_generics.ty_params[index].name,
             SelfSpace => special_idents::type_self.name,
             FnSpace => self.tcx().sess.bug("Fn space occupied?"),
         };
@@ -431,7 +432,7 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         match fk {
             FnKind::Closure | FnKind::ItemFn(..) => {}
             FnKind::Method(..) => {
-                match self.tcx().impl_or_trait_item(DefId::local(id)) {
+                match self.tcx().impl_or_trait_item(self.tcx().map.local_def_id(id)) {
                     ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {
                         reject_shadowing_type_parameters(self.tcx(), span, &ty_method.generics)
                     }
@@ -444,7 +445,7 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'v hir::TraitItem) {
         if let hir::MethodTraitItem(_, None) = trait_item.node {
-            match self.tcx().impl_or_trait_item(DefId::local(trait_item.id)) {
+            match self.tcx().impl_or_trait_item(self.tcx().map.local_def_id(trait_item.id)) {
                 ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {
                     reject_non_type_param_bounds(
                         self.tcx(),
@@ -623,11 +624,10 @@ struct AdtField<'tcx> {
 }
 
 fn struct_variant<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                            struct_def: &hir::StructDef)
+                            struct_def: &hir::VariantData)
                             -> AdtVariant<'tcx> {
     let fields =
-        struct_def.fields
-        .iter()
+        struct_def.fields()
         .map(|field| {
             let field_ty = fcx.tcx().node_id_to_type(field.node.id);
             let field_ty = fcx.instantiate_type_scheme(field.span,
@@ -646,41 +646,7 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                            enum_def: &hir::EnumDef)
                            -> Vec<AdtVariant<'tcx>> {
     enum_def.variants.iter()
-        .map(|variant| {
-            match variant.node.kind {
-                hir::TupleVariantKind(ref args) if !args.is_empty() => {
-                    let ctor_ty = fcx.tcx().node_id_to_type(variant.node.id);
-
-                    // the regions in the argument types come from the
-                    // enum def'n, and hence will all be early bound
-                    let arg_tys = fcx.tcx().no_late_bound_regions(&ctor_ty.fn_args()).unwrap();
-                    AdtVariant {
-                        fields: args.iter().enumerate().map(|(index, arg)| {
-                            let arg_ty = arg_tys[index];
-                            let arg_ty =
-                                fcx.instantiate_type_scheme(variant.span,
-                                                            &fcx.inh
-                                                                .infcx
-                                                                .parameter_environment
-                                                                .free_substs,
-                                                            &arg_ty);
-                            AdtField {
-                                ty: arg_ty,
-                                span: arg.ty.span
-                            }
-                        }).collect()
-                    }
-                }
-                hir::TupleVariantKind(_) => {
-                    AdtVariant {
-                        fields: Vec::new()
-                    }
-                }
-                hir::StructVariantKind(ref struct_def) => {
-                    struct_variant(fcx, &**struct_def)
-                }
-            }
-        })
+        .map(|variant| struct_variant(fcx, &variant.node.data))
         .collect()
 }
 

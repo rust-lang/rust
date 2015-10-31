@@ -15,7 +15,7 @@ implement, and other unsafe code can assume that they are correctly
 implemented. Since they're *marker traits* (they have no associated items like
 methods), correctly implemented simply means that they have the intrinsic
 properties an implementor should have. Incorrectly implementing Send or Sync can
-cause Undefined Behaviour.
+cause Undefined Behavior.
 
 Send and Sync are also automatically derived traits. This means that, unlike
 every other trait, if a type is composed entirely of Send or Sync types, then it

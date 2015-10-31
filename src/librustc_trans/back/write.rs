@@ -12,7 +12,7 @@ use back::lto;
 use back::link::{get_linker, remove};
 use session::config::{OutputFilenames, Passes, SomePasses, AllPasses};
 use session::Session;
-use session::config;
+use session::config::{self, OutputType};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef, ContextRef};
 use llvm::SMDiagnosticRef;
@@ -23,24 +23,16 @@ use syntax::codemap;
 use syntax::diagnostic;
 use syntax::diagnostic::{Emitter, Handler, Level};
 
+use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::ptr;
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
 use std::thread;
 use libc::{self, c_uint, c_int, c_void};
-
-#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
-pub enum OutputType {
-    OutputTypeBitcode,
-    OutputTypeAssembly,
-    OutputTypeLlvmAssembly,
-    OutputTypeObject,
-    OutputTypeExe,
-}
 
 pub fn llvm_err(handler: &diagnostic::Handler, msg: String) -> ! {
     unsafe {
@@ -496,7 +488,8 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         match cgcx.lto_ctxt {
             Some((sess, reachable)) if sess.lto() =>  {
                 time(sess.time_passes(), "all lto passes", ||
-                     lto::run(sess, llmod, tm, reachable, &config));
+                     lto::run(sess, llmod, tm, reachable, &config,
+                              &name_extra, &output_names));
 
                 if config.emit_lto_bc {
                     let name = format!("{}.lto.bc", name_extra);
@@ -570,7 +563,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
 pub fn run_passes(sess: &Session,
                   trans: &CrateTranslation,
-                  output_types: &[config::OutputType],
+                  output_types: &HashMap<OutputType, Option<PathBuf>>,
                   crate_output: &OutputFilenames) {
     // It's possible that we have `codegen_units > 1` but only one item in
     // `trans.modules`.  We could theoretically proceed and do LTO in that
@@ -610,32 +603,32 @@ pub fn run_passes(sess: &Session,
     // archive in order to allow LTO against it.
     let needs_crate_bitcode =
             sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
-            sess.opts.output_types.contains(&config::OutputTypeExe);
+            sess.opts.output_types.contains_key(&OutputType::Exe);
     let needs_crate_object =
-            sess.opts.output_types.contains(&config::OutputTypeExe);
+            sess.opts.output_types.contains_key(&OutputType::Exe);
     if needs_crate_bitcode {
         modules_config.emit_bc = true;
     }
 
-    for output_type in output_types {
+    for output_type in output_types.keys() {
         match *output_type {
-            config::OutputTypeBitcode => { modules_config.emit_bc = true; },
-            config::OutputTypeLlvmAssembly => { modules_config.emit_ir = true; },
-            config::OutputTypeAssembly => {
+            OutputType::Bitcode => { modules_config.emit_bc = true; },
+            OutputType::LlvmAssembly => { modules_config.emit_ir = true; },
+            OutputType::Assembly => {
                 modules_config.emit_asm = true;
                 // If we're not using the LLVM assembler, this function
                 // could be invoked specially with output_type_assembly, so
                 // in this case we still want the metadata object file.
-                if !sess.opts.output_types.contains(&config::OutputTypeAssembly) {
+                if !sess.opts.output_types.contains_key(&OutputType::Assembly) {
                     metadata_config.emit_obj = true;
                 }
             },
-            config::OutputTypeObject => { modules_config.emit_obj = true; },
-            config::OutputTypeExe => {
+            OutputType::Object => { modules_config.emit_obj = true; },
+            OutputType::Exe => {
                 modules_config.emit_obj = true;
                 metadata_config.emit_obj = true;
             },
-            config::OutputTypeDepInfo => {}
+            OutputType::DepInfo => {}
         }
     }
 
@@ -685,8 +678,9 @@ pub fn run_passes(sess: &Session,
         }
     };
 
-    let copy_if_one_unit = |ext: &str, output_type: config::OutputType, keep_numbered: bool| {
-        // Three cases:
+    let copy_if_one_unit = |ext: &str,
+                            output_type: OutputType,
+                            keep_numbered: bool| {
         if sess.opts.cg.codegen_units == 1 {
             // 1) Only one codegen unit.  In this case it's no difficulty
             //    to copy `foo.0.x` to `foo.x`.
@@ -696,17 +690,20 @@ pub fn run_passes(sess: &Session,
                 // The user just wants `foo.x`, not `foo.0.x`.
                 remove(sess, &crate_output.with_extension(ext));
             }
+        } else if crate_output.outputs.contains_key(&output_type) {
+            // 2) Multiple codegen units, with `--emit foo=some_name`.  We have
+            //    no good solution for this case, so warn the user.
+            sess.warn(&format!("ignoring emit path because multiple .{} files \
+                                were produced", ext));
+        } else if crate_output.single_output_file.is_some() {
+            // 3) Multiple codegen units, with `-o some_name`.  We have
+            //    no good solution for this case, so warn the user.
+            sess.warn(&format!("ignoring -o because multiple .{} files \
+                                were produced", ext));
         } else {
-            if crate_output.single_output_file.is_some() {
-                // 2) Multiple codegen units, with `-o some_name`.  We have
-                //    no good solution for this case, so warn the user.
-                sess.warn(&format!("ignoring -o because multiple .{} files were produced",
-                                  ext));
-            } else {
-                // 3) Multiple codegen units, but no `-o some_name`.  We
-                //    just leave the `foo.0.x` files in place.
-                // (We don't have to do any work in this case.)
-            }
+            // 4) Multiple codegen units, but no explicit name.  We
+            //    just leave the `foo.0.x` files in place.
+            // (We don't have to do any work in this case.)
         }
     };
 
@@ -715,27 +712,27 @@ pub fn run_passes(sess: &Session,
     // to get rid of it.
     let mut user_wants_bitcode = false;
     let mut user_wants_objects = false;
-    for output_type in output_types {
+    for output_type in output_types.keys() {
         match *output_type {
-            config::OutputTypeBitcode => {
+            OutputType::Bitcode => {
                 user_wants_bitcode = true;
                 // Copy to .bc, but always keep the .0.bc.  There is a later
                 // check to figure out if we should delete .0.bc files, or keep
                 // them for making an rlib.
-                copy_if_one_unit("0.bc", config::OutputTypeBitcode, true);
+                copy_if_one_unit("0.bc", OutputType::Bitcode, true);
             }
-            config::OutputTypeLlvmAssembly => {
-                copy_if_one_unit("0.ll", config::OutputTypeLlvmAssembly, false);
+            OutputType::LlvmAssembly => {
+                copy_if_one_unit("0.ll", OutputType::LlvmAssembly, false);
             }
-            config::OutputTypeAssembly => {
-                copy_if_one_unit("0.s", config::OutputTypeAssembly, false);
+            OutputType::Assembly => {
+                copy_if_one_unit("0.s", OutputType::Assembly, false);
             }
-            config::OutputTypeObject => {
+            OutputType::Object => {
                 user_wants_objects = true;
-                copy_if_one_unit("0.o", config::OutputTypeObject, true);
+                copy_if_one_unit("0.o", OutputType::Object, true);
             }
-            config::OutputTypeExe |
-            config::OutputTypeDepInfo => {}
+            OutputType::Exe |
+            OutputType::DepInfo => {}
         }
     }
     let user_wants_bitcode = user_wants_bitcode;
@@ -912,8 +909,8 @@ fn run_work_multithreaded(sess: &Session,
 pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
     let (pname, mut cmd) = get_linker(sess);
 
-    cmd.arg("-c").arg("-o").arg(&outputs.path(config::OutputTypeObject))
-                           .arg(&outputs.temp_path(config::OutputTypeAssembly));
+    cmd.arg("-c").arg("-o").arg(&outputs.path(OutputType::Object))
+                           .arg(&outputs.temp_path(OutputType::Assembly));
     debug!("{:?}", cmd);
 
     match cmd.output() {

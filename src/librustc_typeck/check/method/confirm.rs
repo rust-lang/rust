@@ -103,22 +103,23 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // Unify the (adjusted) self type with what the method expects.
         self.unify_receivers(self_ty, method_self_ty);
 
-        // Add any trait/regions obligations specified on the method's type parameters.
-        self.add_obligations(&pick, &all_substs, &method_predicates);
-
-        // Create the final `MethodCallee`.
+        // Create the method type
         let method_ty = pick.item.as_opt_method().unwrap();
         let fty = self.tcx().mk_fn(None, self.tcx().mk_bare_fn(ty::BareFnTy {
             sig: ty::Binder(method_sig),
             unsafety: method_ty.fty.unsafety,
             abi: method_ty.fty.abi.clone(),
         }));
+
+        // Add any trait/regions obligations specified on the method's type parameters.
+        self.add_obligations(fty, &all_substs, &method_predicates);
+
+        // Create the final `MethodCallee`.
         let callee = ty::MethodCallee {
             def_id: pick.item.def_id(),
             ty: fty,
             substs: self.tcx().mk_substs(all_substs)
         };
-
         // If this is an `&mut self` method, bias the receiver
         // expression towards mutability (this will switch
         // e.g. `Deref` to `DerefMut` in overloaded derefs and so on).
@@ -422,11 +423,11 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn add_obligations(&mut self,
-                       pick: &probe::Pick<'tcx>,
+                       fty: Ty<'tcx>,
                        all_substs: &subst::Substs<'tcx>,
                        method_predicates: &ty::InstantiatedPredicates<'tcx>) {
-        debug!("add_obligations: pick={:?} all_substs={:?} method_predicates={:?}",
-               pick,
+        debug!("add_obligations: fty={:?} all_substs={:?} method_predicates={:?}",
+               fty,
                all_substs,
                method_predicates);
 
@@ -439,6 +440,11 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         self.fcx.add_wf_bounds(
             all_substs,
             self.call_expr);
+
+        // the function type must also be well-formed (this is not
+        // implied by the substs being well-formed because of inherent
+        // impls and late-bound regions - see issue #28609).
+        self.fcx.register_wf_obligation(fty, self.span, traits::MiscObligation);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -620,13 +626,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             ty::TraitContainer(trait_def_id) => {
                 callee::check_legal_trait_for_method_call(self.fcx.ccx, self.span, trait_def_id)
             }
-            ty::ImplContainer(..) => {
-                // Since `drop` is a trait method, we expect that any
-                // potential calls to it will wind up in the other
-                // arm. But just to be sure, check that the method id
-                // does not appear in the list of destructors.
-                assert!(!self.tcx().destructors.borrow().contains(&pick.item.def_id()));
-            }
+            ty::ImplContainer(..) => {}
         }
     }
 

@@ -14,11 +14,11 @@ use hair::*;
 use repr::*;
 use std::u32;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn field_match_pairs(&mut self,
-                             lvalue: Lvalue<H>,
-                             subpatterns: Vec<FieldPatternRef<H>>)
-                             -> Vec<MatchPair<H>> {
+                             lvalue: Lvalue<'tcx>,
+                             subpatterns: Vec<FieldPatternRef<'tcx>>)
+                             -> Vec<MatchPair<'tcx>> {
         subpatterns.into_iter()
                    .map(|fieldpat| {
                        let lvalue = lvalue.clone().field(fieldpat.field);
@@ -27,7 +27,10 @@ impl<H:Hair> Builder<H> {
                    .collect()
     }
 
-    pub fn match_pair(&mut self, lvalue: Lvalue<H>, pattern: PatternRef<H>) -> MatchPair<H> {
+    pub fn match_pair(&mut self,
+                      lvalue: Lvalue<'tcx>,
+                      pattern: PatternRef<'tcx>)
+                      -> MatchPair<'tcx> {
         let pattern = self.hir.mirror(pattern);
         MatchPair::new(lvalue, pattern)
     }
@@ -47,23 +50,24 @@ impl<H:Hair> Builder<H> {
     ///
     /// and creates a match pair `tmp0 @ s`
     pub fn prefix_suffix_slice(&mut self,
-                               match_pairs: &mut Vec<MatchPair<H>>,
+                               match_pairs: &mut Vec<MatchPair<'tcx>>,
                                block: BasicBlock,
-                               lvalue: Lvalue<H>,
-                               prefix: Vec<PatternRef<H>>,
-                               opt_slice: Option<PatternRef<H>>,
-                               suffix: Vec<PatternRef<H>>)
-                               -> BlockAnd<()>
-    {
+                               lvalue: Lvalue<'tcx>,
+                               prefix: Vec<PatternRef<'tcx>>,
+                               opt_slice: Option<PatternRef<'tcx>>,
+                               suffix: Vec<PatternRef<'tcx>>)
+                               -> BlockAnd<()> {
         // If there is a `..P` pattern, create a temporary `t0` for
         // the slice and then a match pair `t0 @ P`:
         if let Some(slice) = opt_slice {
             let slice = self.hir.mirror(slice);
             let prefix_len = prefix.len();
             let suffix_len = suffix.len();
-            let rvalue = Rvalue::Slice { input: lvalue.clone(),
-                                         from_start: prefix_len,
-                                         from_end: suffix_len };
+            let rvalue = Rvalue::Slice {
+                input: lvalue.clone(),
+                from_start: prefix_len,
+                from_end: suffix_len,
+            };
             let temp = self.temp(slice.ty.clone()); // no need to schedule drop, temp is always copy
             self.cfg.push_assign(block, slice.span, &temp, rvalue);
             match_pairs.push(MatchPair::new(temp, slice));
@@ -76,11 +80,10 @@ impl<H:Hair> Builder<H> {
 
     /// Helper for `prefix_suffix_slice` which just processes the prefix and suffix.
     fn prefix_suffix(&mut self,
-                     match_pairs: &mut Vec<MatchPair<H>>,
-                     lvalue: Lvalue<H>,
-                     prefix: Vec<PatternRef<H>>,
-                     suffix: Vec<PatternRef<H>>)
-    {
+                     match_pairs: &mut Vec<MatchPair<'tcx>>,
+                     lvalue: Lvalue<'tcx>,
+                     prefix: Vec<PatternRef<'tcx>>,
+                     suffix: Vec<PatternRef<'tcx>>) {
         let min_length = prefix.len() + suffix.len();
         assert!(min_length < u32::MAX as usize);
         let min_length = min_length as u32;
@@ -118,8 +121,11 @@ impl<H:Hair> Builder<H> {
     }
 }
 
-impl<H:Hair> MatchPair<H> {
-    pub fn new(lvalue: Lvalue<H>, pattern: Pattern<H>) -> MatchPair<H> {
-        MatchPair { lvalue: lvalue, pattern: pattern }
+impl<'tcx> MatchPair<'tcx> {
+    pub fn new(lvalue: Lvalue<'tcx>, pattern: Pattern<'tcx>) -> MatchPair<'tcx> {
+        MatchPair {
+            lvalue: lvalue,
+            pattern: pattern,
+        }
     }
 }

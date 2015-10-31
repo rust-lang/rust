@@ -26,7 +26,7 @@ pub use self::Code::*;
 use front::map::{self, Node};
 use syntax::abi;
 use rustc_front::hir::{Block, FnDecl};
-use syntax::ast::{NodeId, Ident};
+use syntax::ast::{Name, NodeId};
 use rustc_front::hir as ast;
 use syntax::codemap::Span;
 use rustc_front::visit::FnKind;
@@ -107,7 +107,7 @@ impl<'a> Code<'a> {
 /// These are all the components one can extract from a fn item for
 /// use when implementing FnLikeNode operations.
 struct ItemFnParts<'a> {
-    ident:    Ident,
+    name:     Name,
     decl:     &'a ast::FnDecl,
     unsafety: ast::Unsafety,
     constness: ast::Constness,
@@ -189,13 +189,13 @@ impl<'a> FnLikeNode<'a> {
 
     pub fn kind(self) -> FnKind<'a> {
         let item = |p: ItemFnParts<'a>| -> FnKind<'a> {
-            FnKind::ItemFn(p.ident, p.generics, p.unsafety, p.constness, p.abi, p.vis)
+            FnKind::ItemFn(p.name, p.generics, p.unsafety, p.constness, p.abi, p.vis)
         };
         let closure = |_: ClosureParts| {
             FnKind::Closure
         };
-        let method = |_, ident, sig: &'a ast::MethodSig, vis, _, _| {
-            FnKind::Method(ident, sig, vis)
+        let method = |_, name: Name, sig: &'a ast::MethodSig, vis, _, _| {
+            FnKind::Method(name, sig, vis)
         };
         self.handle(item, method, closure)
     }
@@ -203,7 +203,7 @@ impl<'a> FnLikeNode<'a> {
     fn handle<A, I, M, C>(self, item_fn: I, method: M, closure: C) -> A where
         I: FnOnce(ItemFnParts<'a>) -> A,
         M: FnOnce(NodeId,
-                  Ident,
+                  Name,
                   &'a ast::MethodSig,
                   Option<ast::Visibility>,
                   &'a ast::Block,
@@ -216,7 +216,7 @@ impl<'a> FnLikeNode<'a> {
                 ast::ItemFn(ref decl, unsafety, constness, abi, ref generics, ref block) =>
                     item_fn(ItemFnParts {
                         id: i.id,
-                        ident: i.ident,
+                        name: i.name,
                         decl: &**decl,
                         unsafety: unsafety,
                         body: &**block,
@@ -230,14 +230,14 @@ impl<'a> FnLikeNode<'a> {
             },
             map::NodeTraitItem(ti) => match ti.node {
                 ast::MethodTraitItem(ref sig, Some(ref body)) => {
-                    method(ti.id, ti.ident, sig, None, body, ti.span)
+                    method(ti.id, ti.name, sig, None, body, ti.span)
                 }
                 _ => panic!("trait method FnLikeNode that is not fn-like"),
             },
             map::NodeImplItem(ii) => {
                 match ii.node {
                     ast::MethodImplItem(ref sig, ref body) => {
-                        method(ii.id, ii.ident, sig, Some(ii.vis), body, ii.span)
+                        method(ii.id, ii.name, sig, Some(ii.vis), body, ii.span)
                     }
                     _ => {
                         panic!("impl method FnLikeNode that is not fn-like")

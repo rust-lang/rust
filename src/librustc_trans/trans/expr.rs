@@ -664,8 +664,8 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         hir::ExprPath(..) => {
             trans_def(bcx, expr, bcx.def(expr.id))
         }
-        hir::ExprField(ref base, ident) => {
-            trans_rec_field(bcx, &**base, ident.node.name)
+        hir::ExprField(ref base, name) => {
+            trans_rec_field(bcx, &**base, name.node)
         }
         hir::ExprTupField(ref base, idx) => {
             trans_rec_tup_field(bcx, &**base, idx.node)
@@ -673,7 +673,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         hir::ExprIndex(ref base, ref idx) => {
             trans_index(bcx, expr, &**base, &**idx, MethodCall::expr(expr.id))
         }
-        hir::ExprBox(_, ref contents) => {
+        hir::ExprBox(ref contents) => {
             // Special case for `Box<T>`
             let box_ty = expr_ty(bcx, expr);
             let contents_ty = expr_ty(bcx, &**contents);
@@ -923,13 +923,13 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let const_ty = expr_ty(bcx, ref_expr);
 
             // For external constants, we don't inline.
-            let val = if did.is_local() {
+            let val = if let Some(node_id) = bcx.tcx().map.as_local_node_id(did) {
                 // Case 1.
 
                 // The LLVM global has the type of its initializer,
                 // which may not be equal to the enum's type for
                 // non-C-like enums.
-                let val = base::get_item_val(bcx.ccx(), did.node);
+                let val = base::get_item_val(bcx.ccx(), node_id);
                 let pty = type_of::type_of(bcx.ccx(), const_ty).ptr_to();
                 PointerCast(bcx, val, pty)
             } else {
@@ -963,10 +963,10 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     match expr.node {
         hir::ExprBreak(label_opt) => {
-            controlflow::trans_break(bcx, expr, label_opt.map(|l| l.node))
+            controlflow::trans_break(bcx, expr, label_opt.map(|l| l.node.name))
         }
         hir::ExprAgain(label_opt) => {
-            controlflow::trans_cont(bcx, expr, label_opt.map(|l| l.node))
+            controlflow::trans_cont(bcx, expr, label_opt.map(|l| l.node.name))
         }
         hir::ExprRet(ref ex) => {
             // Check to see if the return expression itself is reachable.
@@ -1114,7 +1114,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // trans. Shudder.
             fn make_field(field_name: &str, expr: P<hir::Expr>) -> hir::Field {
                 hir::Field {
-                    ident: codemap::dummy_spanned(token::str_to_ident(field_name)),
+                    name: codemap::dummy_spanned(token::intern(field_name)),
                     expr: expr,
                     span: codemap::DUMMY_SP,
                 }
@@ -1195,14 +1195,23 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 SaveIn(lldest) => closure::Dest::SaveIn(bcx, lldest),
                 Ignore => closure::Dest::Ignore(bcx.ccx())
             };
-            let substs = match expr_ty(bcx, expr).sty {
-                ty::TyClosure(_, ref substs) => substs,
+
+            // NB. To get the id of the closure, we don't use
+            // `local_def_id(id)`, but rather we extract the closure
+            // def-id from the expr's type. This is because this may
+            // be an inlined expression from another crate, and we
+            // want to get the ORIGINAL closure def-id, since that is
+            // the key we need to find the closure-kind and
+            // closure-type etc.
+            let (def_id, substs) = match expr_ty(bcx, expr).sty {
+                ty::TyClosure(def_id, ref substs) => (def_id, substs),
                 ref t =>
                     bcx.tcx().sess.span_bug(
                         expr.span,
                         &format!("closure expr without closure type: {:?}", t)),
             };
-            closure::trans_closure_expr(dest, decl, body, expr.id, substs).unwrap_or(bcx)
+
+            closure::trans_closure_expr(dest, decl, body, expr.id, def_id, substs).unwrap_or(bcx)
         }
         hir::ExprCall(ref f, ref args) => {
             if bcx.tcx().is_method_call(expr.id) {
@@ -1358,7 +1367,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_local_var");
 
     match def {
-        def::DefUpvar(nid, _, _) => {
+        def::DefUpvar(_, nid, _, _) => {
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
             let lval = Lvalue::new_with_hint("expr::trans_local_var (upvar)",
@@ -1372,7 +1381,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
             }
         }
-        def::DefLocal(nid) => {
+        def::DefLocal(_, nid) => {
             let datum = match bcx.fcx.lllocals.borrow().get(&nid) {
                 Some(&v) => v,
                 None => {
@@ -1408,7 +1417,7 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut need_base = vec![true; vinfo.fields.len()];
 
     let numbered_fields = fields.iter().map(|field| {
-        let pos = vinfo.field_index(field.ident.node.name);
+        let pos = vinfo.field_index(field.name.node);
         need_base[pos] = false;
         (pos, &*field.expr)
     }).collect::<Vec<_>>();
@@ -1649,9 +1658,6 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
             immediate_rvalue_bcx(bcx, llneg, un_ty).to_expr_datumblock()
         }
-        hir::UnUniq => {
-            trans_uniq_expr(bcx, expr, un_ty, sub_expr, expr_ty(bcx, sub_expr))
-        }
         hir::UnDeref => {
             let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
             deref_once(bcx, expr, datum, method_call)
@@ -1694,16 +1700,6 @@ fn trans_uniq_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     immediate_rvalue_bcx(bcx, val, box_ty).to_expr_datumblock()
 }
 
-fn ref_fat_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                           lval: Datum<'tcx, Lvalue>)
-                           -> DatumBlock<'blk, 'tcx, Expr> {
-    let dest_ty = bcx.tcx().mk_imm_ref(bcx.tcx().mk_region(ty::ReStatic), lval.ty);
-    let scratch = rvalue_scratch_datum(bcx, dest_ty, "__fat_ptr");
-    memcpy_ty(bcx, scratch.val, lval.val, scratch.ty);
-
-    DatumBlock::new(bcx, scratch.to_expr_datum())
-}
-
 fn trans_addr_of<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              expr: &hir::Expr,
                              subexpr: &hir::Expr)
@@ -1711,12 +1707,13 @@ fn trans_addr_of<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_addr_of");
     let mut bcx = bcx;
     let sub_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, subexpr, "addr_of"));
+    let ty = expr_ty(bcx, expr);
     if !type_is_sized(bcx.tcx(), sub_datum.ty) {
-        // DST lvalue, close to a fat pointer
-        ref_fat_ptr(bcx, sub_datum)
+        // Always generate an lvalue datum, because this pointer doesn't own
+        // the data and cleanup is scheduled elsewhere.
+        DatumBlock::new(bcx, Datum::new(sub_datum.val, ty, LvalueExpr(sub_datum.kind)))
     } else {
         // Sized value, ref to a thin pointer
-        let ty = expr_ty(bcx, expr);
         immediate_rvalue_bcx(bcx, sub_datum.val, ty).to_expr_datumblock()
     }
 }
@@ -2529,7 +2526,7 @@ impl OverflowOpViaInputCheck {
         // Note that the mask's value is derived from the LHS type
         // (since that is where the 32/64 distinction is relevant) but
         // the mask's type must match the RHS type (since they will
-        // both be fed into a and-binop)
+        // both be fed into an and-binop)
         let invert_mask = shift_mask_val(bcx, lhs_llty, rhs_llty, true);
 
         let outer_bits = And(bcx, rhs, invert_mask, binop_debug_loc);
@@ -2769,24 +2766,11 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
 
         hir::ExprLit(_) | // Note: LitStr is carved out above
         hir::ExprUnary(..) |
-        hir::ExprBox(None, _) |
+        hir::ExprBox(_) |
         hir::ExprAddrOf(..) |
         hir::ExprBinary(..) |
         hir::ExprCast(..) => {
             ExprKind::RvalueDatum
-        }
-
-        hir::ExprBox(Some(ref place), _) => {
-            // Special case `Box<T>` for now:
-            let def_id = match tcx.def_map.borrow().get(&place.id) {
-                Some(def) => def.def_id(),
-                None => panic!("no def for place"),
-            };
-            if tcx.lang_items.exchange_heap() == Some(def_id) {
-                ExprKind::RvalueDatum
-            } else {
-                ExprKind::RvalueDps
-            }
         }
     }
 }

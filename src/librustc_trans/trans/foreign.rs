@@ -27,11 +27,12 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of::*;
 use trans::type_of;
+use middle::infer;
 use middle::ty::{self, Ty};
 use middle::subst::Substs;
-use rustc::front::map as hir_map;
 
 use std::cmp;
+use std::iter::once;
 use libc::c_uint;
 use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
 use syntax::abi::{PlatformIntrinsic, RustIntrinsic, Rust, RustCall, Stdcall, Fastcall, System};
@@ -254,6 +255,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         _ => ccx.sess().bug("trans_native_call called on non-function type")
     };
     let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
+    let fn_sig = infer::normalize_associated_type(ccx.tcx(), &fn_sig);
     let llsig = foreign_signature(ccx, &fn_sig, &passed_arg_tys[..]);
     let fn_type = cabi::compute_abi_info(ccx,
                                          &llsig.llarg_tys,
@@ -558,8 +560,6 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
                                          -> ValueRef {
     let _icx = push_ctxt("foreign::register_foreign_fn");
 
-    let tys = foreign_types_for_id(ccx, node_id);
-    let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
     let t = ccx.tcx().node_id_to_type(node_id);
     let cconv = match t.sty {
         ty::TyBareFn(_, ref fn_ty) => {
@@ -567,6 +567,8 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
         }
         _ => panic!("expected bare fn in register_rust_fn_with_foreign_abi")
     };
+    let tys = foreign_types_for_fn_ty(ccx, t);
+    let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
     let llfn = base::register_fn_llvmty(ccx, sp, sym, node_id, cconv, llfn_ty);
     add_argument_attributes(&tys, llfn);
     debug!("register_rust_fn_with_foreign_abi(node_id={}, llfn_ty={}, llfn={})",
@@ -610,10 +612,12 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let t = tcx.node_id_to_type(id);
         let t = monomorphize::apply_param_substs(tcx, param_substs, &t);
 
-        let ps = ccx.tcx().map.with_path(id, |path| {
-            let abi = Some(hir_map::PathName(special_idents::clownshoe_abi.name));
-            link::mangle(path.chain(abi), hash)
-        });
+        let path =
+            tcx.map.def_path_from_id(id)
+                   .into_iter()
+                   .map(|e| e.data.as_interned_str())
+                   .chain(once(special_idents::clownshoe_abi.name.as_str()));
+        let ps = link::mangle(path, hash);
 
         // Compute the type that the function would have if it were just a
         // normal Rust function. This will be the type of the wrappee fn.
@@ -908,7 +912,7 @@ pub fn link_name(i: &hir::ForeignItem) -> InternedString {
         Some(ln) => ln.clone(),
         None => match weak_lang_items::link_name(&i.attrs) {
             Some(name) => name,
-            None => i.ident.name.as_str(),
+            None => i.name.as_str(),
         }
     }
 }
@@ -935,11 +939,6 @@ fn foreign_signature<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn foreign_types_for_id<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                  id: ast::NodeId) -> ForeignTypes<'tcx> {
-    foreign_types_for_fn_ty(ccx, ccx.tcx().node_id_to_type(id))
-}
-
 fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      ty: Ty<'tcx>) -> ForeignTypes<'tcx> {
     let fn_sig = match ty.sty {
@@ -947,6 +946,7 @@ fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         _ => ccx.sess().bug("foreign_types_for_fn_ty called on non-function type")
     };
     let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
+    let fn_sig = infer::normalize_associated_type(ccx.tcx(), &fn_sig);
     let llsig = foreign_signature(ccx, &fn_sig, &fn_sig.inputs);
     let fn_ty = cabi::compute_abi_info(ccx,
                                        &llsig.llarg_tys,
