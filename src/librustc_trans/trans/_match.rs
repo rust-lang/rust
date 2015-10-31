@@ -866,7 +866,7 @@ fn pick_column_to_specialize(def_map: &DefMap, m: &[Match]) -> Option<usize> {
 
     let column_contains_any_nonwild_patterns = |&col: &usize| -> bool {
         m.iter().any(|row| match row.pats[col].node {
-            hir::PatWild(_) => false,
+            hir::PatWild => false,
             _ => true
         })
     };
@@ -1629,7 +1629,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
     // to the default arm.
     let has_default = arms.last().map_or(false, |arm| {
         arm.pats.len() == 1
-        && arm.pats.last().unwrap().node == hir::PatWild(hir::PatWildSingle)
+        && arm.pats.last().unwrap().node == hir::PatWild
     });
 
     compile_submatch(bcx, &matches[..], &[discr_datum.match_input()], &chk, has_default);
@@ -1948,7 +1948,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         cleanup_scope)
                 });
         }
-        hir::PatQPath(..) | hir::PatWild(_) | hir::PatLit(_) |
+        hir::PatQPath(..) | hir::PatWild | hir::PatLit(_) |
         hir::PatRange(_, _) => ()
     }
     return bcx;

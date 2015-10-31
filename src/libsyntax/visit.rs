@@ -451,7 +451,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
             visitor.visit_expr(lower_bound);
             visitor.visit_expr(upper_bound)
         }
-        PatWild(_) => (),
+        PatWild => (),
         PatVec(ref prepatterns, ref slice_pattern, ref postpatterns) => {
             walk_list!(visitor, visit_pat, prepatterns);
             walk_list!(visitor, visit_pat, slice_pattern);

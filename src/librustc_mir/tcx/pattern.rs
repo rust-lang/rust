@@ -139,7 +139,7 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
 
     fn make_mirror<'a>(self, cx: &mut Cx<'a, 'tcx>) -> Pattern<'tcx> {
         let kind = match self.pat.node {
-            hir::PatWild(..) => PatternKind::Wild,
+            hir::PatWild => PatternKind::Wild,
 
             hir::PatLit(ref value) => {
                 let value = const_eval::eval_const_expr(cx.tcx, value);

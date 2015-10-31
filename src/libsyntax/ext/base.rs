@@ -356,7 +356,7 @@ impl DummyResult {
     pub fn raw_pat(sp: Span) -> ast::Pat {
         ast::Pat {
             id: ast::DUMMY_NODE_ID,
-            node: ast::PatWild(ast::PatWildSingle),
+            node: ast::PatWild,
             span: sp,
         }
     }

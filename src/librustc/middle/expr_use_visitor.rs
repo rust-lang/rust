@@ -1141,7 +1141,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                     // will visit the substructure recursively.
                 }
 
-                hir::PatWild(_) | hir::PatTup(..) | hir::PatBox(..) |
+                hir::PatWild | hir::PatTup(..) | hir::PatBox(..) |
                 hir::PatRegion(..) | hir::PatLit(..) | hir::PatRange(..) |
                 hir::PatVec(..) => {
                     // Similarly, each of these cases does not

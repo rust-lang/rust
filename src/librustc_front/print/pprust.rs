@@ -1719,8 +1719,7 @@ impl<'a> State<'a> {
         /* Pat isn't normalized, but the beauty of it
          is that it doesn't matter */
         match pat.node {
-            hir::PatWild(hir::PatWildSingle) => try!(word(&mut self.s, "_")),
-            hir::PatWild(hir::PatWildMulti) => try!(word(&mut self.s, "..")),
+            hir::PatWild => try!(word(&mut self.s, "_")),
             hir::PatIdent(binding_mode, ref path1, ref sub) => {
                 match binding_mode {
                     hir::BindByRef(mutbl) => {
@@ -1815,13 +1814,10 @@ impl<'a> State<'a> {
                     if !before.is_empty() {
                         try!(self.word_space(","));
                     }
-                    try!(self.print_pat(&**p));
-                    match **p {
-                        hir::Pat { node: hir::PatWild(hir::PatWildMulti), .. } => {
-                            // this case is handled by print_pat
-                        }
-                        _ => try!(word(&mut self.s, "..")),
+                    if p.node != hir::PatWild {
+                        try!(self.print_pat(&**p));
                     }
+                    try!(word(&mut self.s, ".."));
                     if !after.is_empty() {
                         try!(self.word_space(","));
                     }
