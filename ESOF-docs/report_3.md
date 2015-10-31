@@ -30,13 +30,13 @@ Each one of this view has one or more type of UML diagrams that can be used to r
 
 This kind of view concerns the functionality that the language provides to the end-user. The UML diagrams that can be used to represent the logical view are: [Sequece Diagram], [Communication Diagram] and [Class Diagram].
 
-A ##Sequence Diagram## shows how processes operate with one another and in what order.
+A **Sequence Diagram** shows how processes operate with one another and in what order.
 
 It also shows object interactions arranged in time sequence.
 
-A ##Communication Diagram## represent a combination of information taken from ##Class##, ##Sequence## and                ##Use Case Diagrams## describing both the static structure and dynamic behavior of the system.
+A **Communication Diagram** represent a combination of information taken from **Class**, **Sequence** and                **Use Case Diagrams** describing both the static structure and dynamic behavior of the system.
 
-A ##Class Diagram## describes the structure of a system by showing the system´s ##classes##,their atributes,methods and the relationships among objects.
+A **Class Diagram** describes the structure of a system by showing the system´s **classes**,their atributes,methods and the relationships among objects.
 
 
 [Sequece Diagram]:https://en.wikipedia.org/wiki/Sequence_diagram
