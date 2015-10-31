@@ -13,6 +13,10 @@
 
 This report aims to explain some apects relating the software architecture of the Rust project, according to the [4+1 Architecture view model].
 
+**4+1** is a **view model** designed for describing the architecture of software-intensive systems.
+
+The **views** are used to describe the system from the viewpoint of different stakeholders,such as developers and project managers.
+
 We will be presenting four components regarding the [4+1 Architecture view model] which are:
 
 1. [Logical View](#logical-view)
