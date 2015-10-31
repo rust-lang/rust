@@ -86,7 +86,7 @@ It is concerned with the topology of software components on the physical layer, 
 
 A **Deployment Diagram** models the physical deployment of artifacts on nodes.
 
-![alt tag](https://github.com/martapips/rust/blob/master/ESOF-docs/res/deploymentDiagram.jpg?raw=true)
+![alt tag](https://github.com/martapips/rust/blob/master/ESOF-docs/res/deploy.jpg?raw=true)
 
 [Deployment Diagrams]:https://en.wikipedia.org/wiki/Deployment_diagram
 
