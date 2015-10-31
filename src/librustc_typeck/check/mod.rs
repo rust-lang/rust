@@ -371,11 +371,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
             hir::TyFixedLengthVec(_, ref expr) => {
                 check_const_in_type(self.ccx, &**expr, self.ccx.tcx.types.usize);
             }
-            hir::TyBareFn(ref function_declaration) => {
-                visit::walk_fn_decl_nopat(self, &function_declaration.decl);
-                walk_list!(self, visit_lifetime_def, &function_declaration.lifetimes);
-                return
-            }
             _ => {}
         }
 
