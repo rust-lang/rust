@@ -416,7 +416,7 @@ impl Error for JoinPathsError {
     fn description(&self) -> &str { self.inner.description() }
 }
 
-/// Optionally returns the path to the current user's home directory if known.
+/// Returns the path to the current user's home directory if known.
 ///
 /// # Unix
 ///
@@ -480,8 +480,8 @@ pub fn temp_dir() -> PathBuf {
     os_imp::temp_dir()
 }
 
-/// Optionally returns the filesystem path to the current executable which is
-/// running but with the executable name.
+/// Returns the filesystem path to the current executable which is running but
+/// with the executable name.
 ///
 /// The path returned is not necessarily a "real path" to the executable as
 /// there may be intermediate symlinks.
