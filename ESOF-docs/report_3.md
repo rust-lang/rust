@@ -82,6 +82,9 @@ Activity diagrams are constructed from a limited number of shapes,connected with
 ## Deployment View
 
 This view shows the program in the system engineer's prespective.  To represent this view we use [Deployment Diagrams].
+It is concerned with the topology of software components on the physical layer, as well as the physical connections between these components.
+
+A **Deployment Diagram** models the physical deployment of artifacts on nodes.
 
 ![alt tag](https://github.com/martapips/rust/blob/master/ESOF-docs/res/deploymentDiagram.jpg?raw=true)
 
