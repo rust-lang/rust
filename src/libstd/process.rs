@@ -209,7 +209,9 @@ impl Command {
     /// Add multiple arguments to pass to the program.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn args<S: AsRef<OsStr>>(&mut self, args: &[S]) -> &mut Command {
-        self.inner.args(args.iter().map(AsRef::as_ref));
+        for arg in args {
+            self.arg(arg.as_ref());
+        }
         self
     }
 

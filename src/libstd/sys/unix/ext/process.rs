@@ -12,8 +12,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use os::unix::raw::{uid_t, gid_t};
 use os::unix::io::{FromRawFd, RawFd, AsRawFd, IntoRawFd};
+use os::unix::raw::{uid_t, gid_t};
 use process;
 use sys;
 use sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
