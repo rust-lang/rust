@@ -43,6 +43,8 @@ This view is foccused on the runtime behaviour of the program. It is in this vie
 
 This view shows the program in the system engineer's prespective.  To represent this view we use [Deployment Diagrams].
 
+![alt tag](https://github.com/martapips/rust/blob/master/ESOF-docs/res/deploymentDiagram.jpg?raw=true)
+
 [Deployment Diagrams]:https://en.wikipedia.org/wiki/Deployment_diagram
 
 ## Critical Analysis
