@@ -35,6 +35,8 @@ This view shows the program from a different prespective than the previous one. 
 
 This view is foccused on the runtime behaviour of the program. It is in this view that the programs processes are explained as well as the way they use to communicate between them. [Activity Diagrams] are the ones used to describe this view.
 
+![alt tag](https://github.com/martapips/rust/blob/master/ESOF-docs/res/processDiagram.jpg?raw=true)
+
 [Activity Diagrams]:https://en.wikipedia.org/wiki/Activity_diagram
 
 ## Deployment View
