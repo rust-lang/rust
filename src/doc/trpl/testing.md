@@ -237,7 +237,11 @@ some known arguments and compare it to the expected output.
 Sometimes a few specific tests can be very time-consuming to execute. These
 can be disabled by default by using the `ignore` attribute:
 
-```rust
+```rust,ignore
+pub fn add_two(a: i32) -> i32 {
+    a + 2
+}
+
 #[test]
 fn it_works() {
     assert_eq!(4, add_two(2));
