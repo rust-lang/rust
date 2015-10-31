@@ -74,9 +74,6 @@ impl Command {
     pub fn arg(&mut self, arg: &OsStr) {
         self.args.push(arg.to_os_string())
     }
-    pub fn args<'a, I: Iterator<Item = &'a OsStr>>(&mut self, args: I) {
-        self.args.extend(args.map(OsStr::to_os_string))
-    }
     fn init_env_map(&mut self){
         if self.env.is_none() {
             self.env = Some(env::vars_os().map(|(key, val)| {
