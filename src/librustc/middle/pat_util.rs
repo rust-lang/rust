@@ -101,7 +101,7 @@ pub fn pat_is_binding(dm: &DefMap, pat: &hir::Pat) -> bool {
 pub fn pat_is_binding_or_wild(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
         hir::PatIdent(..) => pat_is_binding(dm, pat),
-        hir::PatWild(_) => true,
+        hir::PatWild => true,
         _ => false
     }
 }

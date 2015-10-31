@@ -2528,8 +2528,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
     debug!("Trying to get a name from pattern: {:?}", p);
 
     match p.node {
-        PatWild(PatWildSingle) => "_".to_string(),
-        PatWild(PatWildMulti) => "..".to_string(),
+        PatWild => "_".to_string(),
         PatIdent(_, ref p, _) => p.node.to_string(),
         PatEnum(ref p, _) => path_to_string(p),
         PatQPath(..) => panic!("tried to get argument name from PatQPath, \

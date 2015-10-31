@@ -44,7 +44,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
            expected);
 
     match pat.node {
-        hir::PatWild(_) => {
+        hir::PatWild => {
             fcx.write_ty(pat.id, expected);
         }
         hir::PatLit(ref lt) => {

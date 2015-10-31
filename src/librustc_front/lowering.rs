@@ -818,7 +818,7 @@ pub fn lower_pat(_lctx: &LoweringContext, p: &Pat) -> P<hir::Pat> {
     P(hir::Pat {
         id: p.id,
         node: match p.node {
-            PatWild(k) => hir::PatWild(lower_pat_wild_kind(_lctx, k)),
+            PatWild => hir::PatWild,
             PatIdent(ref binding_mode, pth1, ref sub) => {
                 hir::PatIdent(lower_binding_mode(_lctx, binding_mode),
                               pth1,
@@ -1482,13 +1482,6 @@ pub fn lower_block_check_mode(_lctx: &LoweringContext, b: &BlockCheckMode) -> hi
     }
 }
 
-pub fn lower_pat_wild_kind(_lctx: &LoweringContext, p: PatWildKind) -> hir::PatWildKind {
-    match p {
-        PatWildSingle => hir::PatWildSingle,
-        PatWildMulti => hir::PatWildMulti,
-    }
-}
-
 pub fn lower_binding_mode(_lctx: &LoweringContext, b: &BindingMode) -> hir::BindingMode {
     match *b {
         BindByRef(m) => hir::BindByRef(lower_mutability(_lctx, m)),
@@ -1670,7 +1663,7 @@ fn pat_ident_binding_mode(lctx: &LoweringContext,
 }
 
 fn pat_wild(lctx: &LoweringContext, span: Span) -> P<hir::Pat> {
-    pat(lctx, span, hir::PatWild(hir::PatWildSingle))
+    pat(lctx, span, hir::PatWild)
 }
 
 fn pat(lctx: &LoweringContext, span: Span, pat: hir::Pat_) -> P<hir::Pat> {

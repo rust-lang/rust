@@ -44,7 +44,7 @@ pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool
                 slice.iter().all(|p| walk_pat_(&**p, it)) &&
                 after.iter().all(|p| walk_pat_(&**p, it))
             }
-            PatWild(_) |
+            PatWild |
             PatLit(_) |
             PatRange(_, _) |
             PatIdent(_, _, _) |

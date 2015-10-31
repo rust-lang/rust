@@ -235,7 +235,7 @@ fn walk_pattern(cx: &CrateContext,
             }
         }
 
-        hir::PatWild(_) => {
+        hir::PatWild => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
         }
 

@@ -104,7 +104,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             hir::PatQPath(..) |
             hir::PatLit(..) |
             hir::PatRange(..) |
-            hir::PatWild(_) => {
+            hir::PatWild => {
                 self.add_ast_node(pat.id, &[pred])
             }
 
