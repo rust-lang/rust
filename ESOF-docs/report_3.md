@@ -13,6 +13,10 @@
 
 This report aims to explain some apects relating the software architecture of the Rust project, according to the [4+1 Architecture view model].
 
+We will be presenting four components regarding the [4+1 Architecture view model] which are [Logical View],[Implementation View],[Process View] and [Deployment View].
+
+Each one of this view has one or more type of UML diagrams that can be used to represent itself.
+
 ![alt tag](https://raw.githubusercontent.com/martapips/rust/master/ESOF-docs/res/4plus1.gif)
 
 [4+1 Architecture view model]:https://en.wikipedia.org/wiki/4%2B1_architectural_view_model
