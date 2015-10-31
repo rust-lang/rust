@@ -51,6 +51,18 @@ A **Class Diagram** describes the structure of a system by showing the system´s
 
 This view shows the program from a different prespective than the previous one. From the prespective of the programmer. It is used the [Component Diagram] to show the programmer the program's different components.
 
+**Component Diagrams** are used to model physical aspects of a system.
+
+Physical aspects are the elements like executables,libraries,files and documents which reside in a node.
+
+The purpose of the component diagram can be summarized as :
+
+*Visualize the components of the system
+
+*Contruct executables by using reverse engineering
+
+*Describe the organization and relationships of the components
+
 [Component Diagram]:http://www.tutorialspoint.com/uml/uml_component_diagram.htm
 
 ## Process View
