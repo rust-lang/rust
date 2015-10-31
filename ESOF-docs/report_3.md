@@ -75,7 +75,7 @@ In UML activity diagrams are intended to model both computational and organizati
 
 Activity diagrams are constructed from a limited number of shapes,connected with arrows.
 
-![alt tag](https://github.com/martapips/rust/blob/master/ESOF-docs/res/processDiagram.jpg?raw=true)
+![alt tag](https://github.com/martapips/rust/blob/master/ESOF-docs/res/activity.jpg?raw=true)
 
 [Activity Diagrams]:https://en.wikipedia.org/wiki/Activity_diagram
 
