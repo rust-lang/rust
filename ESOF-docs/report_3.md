@@ -57,11 +57,11 @@ Physical aspects are the elements like executables,libraries,files and documents
 
 The purpose of the component diagram can be summarized as :
 
-*Visualize the components of the system
+* Visualize the components of the system
 
-*Contruct executables by using reverse engineering
+* Contruct executables by using reverse engineering
 
-*Describe the organization and relationships of the components
+* Describe the organization and relationships of the components
 
 [Component Diagram]:http://www.tutorialspoint.com/uml/uml_component_diagram.htm
 
