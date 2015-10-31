@@ -5,6 +5,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use rustc::middle::ty;
+use rustc::front::map::Node;
 
 use utils::{span_lint, match_type};
 use utils::{STRING_PATH, VEC_PATH};
@@ -34,6 +35,11 @@ impl LateLintPass for PtrArg {
 
     fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
         if let &MethodImplItem(ref sig, _) = &item.node {
+            if let Some(Node::NodeItem(it)) = cx.tcx.map.find(cx.tcx.map.get_parent(item.id)) {
+                if let ItemImpl(_, _, _, Some(_), _, _) = it.node {
+                    return; // ignore trait impls
+                }
+            }
             check_fn(cx, &sig.decl);
         }
     }
@@ -47,8 +53,8 @@ impl LateLintPass for PtrArg {
 
 fn check_fn(cx: &LateContext, decl: &FnDecl) {
     for arg in &decl.inputs {
-        if let Some(pat_ty) = cx.tcx.pat_ty_opt(&arg.pat) {
-            if let ty::TyRef(_, ty::TypeAndMut { ty, mutbl: MutImmutable }) = pat_ty.sty {
+        if let Some(ty) = cx.tcx.ast_ty_to_ty_cache.borrow().get(&arg.ty.id) {
+            if let ty::TyRef(_, ty::TypeAndMut { ty, mutbl: MutImmutable }) = ty.sty {
                 if match_type(cx, ty, &VEC_PATH) {
                     span_lint(cx, PTR_ARG, arg.ty.span,
                               "writing `&Vec<_>` instead of `&[_]` involves one more reference \
