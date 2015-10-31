@@ -7,6 +7,7 @@
 3. [Implementation View](#implementation-view)
 4. [Process View](#process-view)
 5. [Deployment View](#deployment-view)
+6. [Critical Analysis](#critical-analysis)
 
 ## Introduction
 
@@ -20,3 +21,5 @@
 ## Process View
 
 ## Deployment View
+
+## Critical Analysis
