@@ -2218,7 +2218,7 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
     for i in &decl.inputs {
         match (*i).pat.node {
             hir::PatIdent(_, _, _) => (),
-            hir::PatWild(hir::PatWildSingle) => (),
+            hir::PatWild => (),
             _ => {
                 span_err!(ccx.tcx.sess, (*i).pat.span, E0130,
                           "patterns aren't allowed in foreign function declarations");

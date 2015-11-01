@@ -24,7 +24,6 @@ pub use self::Item_::*;
 pub use self::Mutability::*;
 pub use self::Pat_::*;
 pub use self::PathListItem_::*;
-pub use self::PatWildKind::*;
 pub use self::PrimTy::*;
 pub use self::Stmt_::*;
 pub use self::StructFieldKind::*;
@@ -393,19 +392,10 @@ pub enum BindingMode {
     BindByValue(Mutability),
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum PatWildKind {
-    /// Represents the wildcard pattern `_`
-    PatWildSingle,
-
-    /// Represents the wildcard pattern `..`
-    PatWildMulti,
-}
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Pat_ {
-    /// Represents a wildcard pattern (either `_` or `..`)
-    PatWild(PatWildKind),
+    /// Represents a wildcard pattern (`_`)
+    PatWild,
 
     /// A PatIdent may either be a new bound variable,
     /// or a nullary enum (in which case the third field

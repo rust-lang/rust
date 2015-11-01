@@ -10,7 +10,7 @@ digraph block {
     N8[label="(dummy_node)"];
     N9[label="local x"];
     N10[label="local y"];
-    N11[label="pat .."];
+    N11[label="pat _"];
     N12[label="pat [x, y, ..]"];
     N13[label="expr x"];
     N14[label="expr y"];

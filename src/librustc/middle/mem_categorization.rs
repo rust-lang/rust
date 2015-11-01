@@ -1211,7 +1211,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         };
 
         match pat.node {
-          hir::PatWild(_) => {
+          hir::PatWild => {
             // _
           }
 

@@ -47,7 +47,7 @@ use util::nodemap::FnvHashMap;
 
 pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
     id: DUMMY_NODE_ID,
-    node: hir::PatWild(hir::PatWildSingle),
+    node: hir::PatWild,
     span: DUMMY_SP
 };
 
@@ -521,7 +521,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
             if let VariantKind::Struct = v.kind() {
                 let field_pats: Vec<_> = v.fields.iter()
                     .zip(pats)
-                    .filter(|&(_, ref pat)| pat.node != hir::PatWild(hir::PatWildSingle))
+                    .filter(|&(_, ref pat)| pat.node != hir::PatWild)
                     .map(|(field, pat)| Spanned {
                         span: DUMMY_SP,
                         node: hir::FieldPat {
@@ -553,7 +553,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
                     },
                     _ => unreachable!()
                 },
-                ty::TyStr => hir::PatWild(hir::PatWildSingle),
+                ty::TyStr => hir::PatWild,
 
                 _ => {
                     assert_eq!(pats_len, 1);
@@ -570,7 +570,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
         _ => {
             match *ctor {
                 ConstantValue(ref v) => hir::PatLit(const_val_to_expr(v)),
-                _ => hir::PatWild(hir::PatWildSingle),
+                _ => hir::PatWild,
             }
         }
     };
@@ -799,7 +799,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
             },
         hir::PatBox(_) | hir::PatTup(_) | hir::PatRegion(..) =>
             vec!(Single),
-        hir::PatWild(_) =>
+        hir::PatWild =>
             vec!(),
     }
 }
@@ -862,7 +862,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         id: pat_id, ref node, span: pat_span
     } = raw_pat(r[col]);
     let head: Option<Vec<&Pat>> = match *node {
-        hir::PatWild(_) =>
+        hir::PatWild =>
             Some(vec![DUMMY_WILD_PAT; arity]),
 
         hir::PatIdent(_, _, _) => {

@@ -176,7 +176,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         if mode == Mode::ConstFn {
             for arg in &fd.inputs {
                 match arg.pat.node {
-                    hir::PatWild(_) => {}
+                    hir::PatWild => {}
                     hir::PatIdent(hir::BindByValue(hir::MutImmutable), _, None) => {}
                     _ => {
                         span_err!(self.tcx.sess, arg.pat.span, E0022,

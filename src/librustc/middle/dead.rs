@@ -142,7 +142,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             _ => self.tcx.sess.span_bug(lhs.span, "non-ADT in struct pattern")
         };
         for pat in pats {
-            if let hir::PatWild(hir::PatWildSingle) = pat.node.pat.node {
+            if let hir::PatWild = pat.node.pat.node {
                 continue;
             }
             self.insert_def_id(variant.field_named(pat.node.name).did);
