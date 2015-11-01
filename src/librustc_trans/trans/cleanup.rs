@@ -732,7 +732,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                             "create_landing_pad() should have set this");
                         let lp = build::Load(prev_bcx, personality);
                         base::call_lifetime_end(prev_bcx, personality);
-                        build::Resume(prev_bcx, lp);
+                        base::trans_unwind_resume(prev_bcx, lp);
                         prev_llbb = prev_bcx.llbb;
                         break;
                     }
@@ -844,8 +844,6 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         let pad_bcx;
 
         debug!("get_or_create_landing_pad");
-
-        self.inject_unwind_resume_hook();
 
         // Check if a landing pad block exists; if not, create one.
         {

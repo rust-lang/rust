@@ -34,6 +34,8 @@ fn start(_argc: isize, _argv: *const *const u8) -> isize {
 #[lang = "eh_personality"] extern fn eh_personality() {}
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
 # #[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
+# #[no_mangle] pub extern fn rust_eh_register_frames () {}
+# #[no_mangle] pub extern fn rust_eh_unregister_frames () {}
 # // fn main() {} tricked you, rustdoc!
 ```
 
@@ -60,6 +62,8 @@ pub extern fn main(argc: i32, argv: *const *const u8) -> i32 {
 #[lang = "eh_personality"] extern fn eh_personality() {}
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
 # #[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
+# #[no_mangle] pub extern fn rust_eh_register_frames () {}
+# #[no_mangle] pub extern fn rust_eh_unregister_frames () {}
 # // fn main() {} tricked you, rustdoc!
 ```
 
@@ -145,8 +149,10 @@ extern fn panic_fmt(args: &core::fmt::Arguments,
 }
 
 #[lang = "eh_personality"] extern fn eh_personality() {}
-# #[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
 # #[start] fn start(argc: isize, argv: *const *const u8) -> isize { 0 }
+# #[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
+# #[no_mangle] pub extern fn rust_eh_register_frames () {}
+# #[no_mangle] pub extern fn rust_eh_unregister_frames () {}
 # fn main() {}
 ```
 

@@ -852,7 +852,13 @@ fn link_natively(sess: &Session, dylib: bool,
 
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);
-    for obj in &sess.target.target.options.pre_link_objects {
+
+    let pre_link_objects = if dylib {
+        &sess.target.target.options.pre_link_objects_dll
+    } else {
+        &sess.target.target.options.pre_link_objects_exe
+    };
+    for obj in pre_link_objects {
         cmd.arg(root.join(obj));
     }
 
@@ -868,6 +874,7 @@ fn link_natively(sess: &Session, dylib: bool,
             linker.link_staticlib("compiler-rt");
         }
     }
+    cmd.args(&sess.target.target.options.late_link_args);
     for obj in &sess.target.target.options.post_link_objects {
         cmd.arg(root.join(obj));
     }

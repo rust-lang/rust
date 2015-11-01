@@ -190,17 +190,10 @@ unsafe extern fn rust_eh_personality(
     ExceptionContinueSearch
 }
 
-// The `resume` instruction, found at the end of the landing pads, and whose job
-// is to resume stack unwinding, is typically lowered by LLVM into a call to
-// `_Unwind_Resume` routine.  To avoid confusion with the same symbol exported
-// from libgcc, we redirect it to `rust_eh_unwind_resume`.
-// Since resolution of this symbol is done by the linker, `rust_eh_unwind_resume`
-// must be marked `pub` + `#[no_mangle]`.  (Can we make it a lang item?)
-
-#[lang = "eh_unwind_resume"]
 #[cfg(not(test))]
+#[lang = "eh_unwind_resume"]
 #[unwind]
-unsafe extern fn rust_eh_unwind_resume(panic_ctx: LPVOID) {
+unsafe extern fn rust_eh_unwind_resume(panic_ctx: LPVOID) -> ! {
     let params = [panic_ctx as ULONG_PTR];
     RaiseException(RUST_PANIC,
                    EXCEPTION_NONCONTINUABLE,

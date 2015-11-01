@@ -1154,7 +1154,7 @@ fn trans_msvc_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // The "catch-resume" block is where we're running this landing pad but
         // we actually need to not catch the exception, so just resume the
         // exception to return.
-        Resume(catch_resume, vals);
+        trans_unwind_resume(catch_resume, vals);
 
         // On the successful branch we just return null.
         Ret(then, C_null(Type::i8p(ccx)), dloc);

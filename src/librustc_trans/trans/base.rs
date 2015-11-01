@@ -943,6 +943,19 @@ pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
     Call(cx, lifetime_end, &[C_u64(ccx, size), ptr], None, DebugLoc::None);
 }
 
+// Generates code for resumption of unwind at the end of a landing pad.
+pub fn trans_unwind_resume(bcx: Block, lpval: ValueRef) {
+    if !bcx.sess().target.target.options.custom_unwind_resume {
+        Resume(bcx, lpval);
+    } else {
+        let exc_ptr = ExtractValue(bcx, lpval, 0);
+        let llunwresume = bcx.fcx.eh_unwind_resume();
+        Call(bcx, llunwresume, &[exc_ptr], None, DebugLoc::None);
+        Unreachable(bcx);
+    }
+}
+
+
 pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
     let _icx = push_ctxt("call_memcpy");
     let ccx = cx.ccx();
