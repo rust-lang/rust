@@ -1125,7 +1125,7 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
     p.map(|Pat {id, node, span}| Pat {
         id: folder.new_id(id),
         node: match node {
-            PatWild(k) => PatWild(k),
+            PatWild => PatWild,
             PatIdent(binding_mode, pth1, sub) => {
                 PatIdent(binding_mode,
                         Spanned{span: folder.new_span(pth1.span),

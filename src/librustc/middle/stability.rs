@@ -541,13 +541,9 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &hir::Pat,
     };
     match pat.node {
         // Foo(a, b, c)
+        // A Variant(..) pattern `hir::PatEnum(_, None)` doesn't have to be recursed into.
         hir::PatEnum(_, Some(ref pat_fields)) => {
             for (field, struct_field) in pat_fields.iter().zip(&v.fields) {
-                // a .. pattern is fine, but anything positional is
-                // not.
-                if let hir::PatWild(hir::PatWildMulti) = field.node {
-                    continue
-                }
                 maybe_do_stability_check(tcx, struct_field.did, field.span, cb)
             }
         }

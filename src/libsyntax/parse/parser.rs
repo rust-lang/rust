@@ -41,8 +41,7 @@ use ast::{MutImmutable, MutMutable, Mac_};
 use ast::{MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
 use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatQPath, PatMac, PatRange};
-use ast::{PatRegion, PatStruct, PatTup, PatVec, PatWild, PatWildMulti};
-use ast::PatWildSingle;
+use ast::{PatRegion, PatStruct, PatTup, PatVec, PatWild};
 use ast::{PolyTraitRef, QSelf};
 use ast::{Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, VariantData, StructField};
@@ -3078,7 +3077,7 @@ impl<'a> Parser<'a> {
                             self.check(&token::CloseDelim(token::Bracket)) {
                         slice = Some(P(ast::Pat {
                             id: ast::DUMMY_NODE_ID,
-                            node: PatWild(PatWildMulti),
+                            node: PatWild,
                             span: self.span,
                         }));
                         before_slice = false;
@@ -3215,7 +3214,7 @@ impl<'a> Parser<'a> {
           token::Underscore => {
             // Parse _
             try!(self.bump());
-            pat = PatWild(PatWildSingle);
+            pat = PatWild;
           }
           token::BinOp(token::And) | token::AndAnd => {
             // Parse &pat / &mut pat

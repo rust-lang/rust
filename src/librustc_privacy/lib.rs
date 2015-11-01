@@ -962,7 +962,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 match self.tcx.pat_ty(pattern).sty {
                     ty::TyStruct(def, _) => {
                         for (i, field) in fields.iter().enumerate() {
-                            if let hir::PatWild(..) = field.node {
+                            if let hir::PatWild = field.node {
                                 continue
                             }
                             self.check_field(field.span,
