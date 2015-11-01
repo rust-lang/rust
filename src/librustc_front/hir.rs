@@ -439,8 +439,8 @@ pub enum Pat_ {
     PatLit(P<Expr>),
     /// A range pattern, e.g. `1...2`
     PatRange(P<Expr>, P<Expr>),
-    /// [a, b, ..i, y, z] is represented as:
-    ///     PatVec(box [a, b], Some(i), box [y, z])
+    /// `[a, b, ..i, y, z]` is represented as:
+    ///     `PatVec(box [a, b], Some(i), box [y, z])`
     PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
 }
 
