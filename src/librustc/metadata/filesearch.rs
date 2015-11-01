@@ -258,7 +258,6 @@ pub fn rust_path() -> Vec<PathBuf> {
 }
 
 // The name of the directory rustc expects libraries to be located.
-// On Unix should be "lib", on windows "bin"
 #[cfg(unix)]
 fn find_libdir(sysroot: &Path) -> String {
     // FIXME: This is a quick hack to make the rustc binary able to locate
@@ -295,7 +294,7 @@ fn find_libdir(sysroot: &Path) -> String {
 
 #[cfg(windows)]
 fn find_libdir(_sysroot: &Path) -> String {
-    "bin".to_string()
+    "lib".to_string()
 }
 
 // The name of rustc's own place to organize libraries.
