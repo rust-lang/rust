@@ -384,7 +384,7 @@ extern "rust-intrinsic" {
     pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
 
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
-    /// bytes of memory starting at `dst` to `c`.
+    /// bytes of memory starting at `dst` to `val`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 
