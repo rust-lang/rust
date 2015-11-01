@@ -12,14 +12,19 @@
 //!
 //! `(digits | digits? '.'? digits?) (('e' | 'E') ('+' | '-')? digits)?`
 //!
-//! In other words, standard floating-point syntax, with two exceptions: No sign, and no
-//! handling of "inf" and "NaN". These are handled by the driver function (super::dec2flt).
+//! In other words, standard floating-point syntax, with two exceptions: No
+//! sign, and no
+//! handling of "inf" and "NaN". These are handled by the driver function
+//! (super::dec2flt).
 //!
-//! Although recognizing valid inputs is relatively easy, this module also has to reject the
-//! countless invalid variations, never panic, and perform numerous checks that the other
+//! Although recognizing valid inputs is relatively easy, this module also has
+//! to reject the
+//! countless invalid variations, never panic, and perform numerous checks that
+//! the other
 //! modules rely on to not panic (or overflow) in turn.
 //! To make matters worse, all that happens in a single pass over the input.
-//! So, be careful when modifying anything, and double-check with the other modules.
+//! So, be careful when modifying anything, and double-check with the other
+//! modules.
 use prelude::v1::*;
 use super::num;
 use self::ParseResult::{Valid, ShortcutToInf, ShortcutToZero, Invalid};
@@ -41,7 +46,11 @@ pub struct Decimal<'a> {
 
 impl<'a> Decimal<'a> {
     pub fn new(integral: &'a [u8], fractional: &'a [u8], exp: i64) -> Decimal<'a> {
-        Decimal { integral: integral, fractional: fractional, exp: exp }
+        Decimal {
+            integral: integral,
+            fractional: fractional,
+            exp: exp,
+        }
     }
 }
 
@@ -110,10 +119,14 @@ fn parse_exp<'a>(integral: &'a [u8], fractional: &'a [u8], rest: &'a [u8]) -> Pa
     if number.is_empty() {
         return Invalid; // Empty exponent
     }
-    // At this point, we certainly have a valid string of digits. It may be too long to put into
-    // an `i64`, but if it's that huge, the input is certainly zero or infinity. Since each zero
-    // in the decimal digits only adjusts the exponent by +/- 1, at exp = 10^18 the input would
-    // have to be 17 exabyte (!) of zeros to get even remotely close to being finite.
+    // At this point, we certainly have a valid string of digits. It may be too
+    // long to put into
+    // an `i64`, but if it's that huge, the input is certainly zero or infinity.
+    // Since each zero
+    // in the decimal digits only adjusts the exponent by +/- 1, at exp = 10^18 the
+    // input would
+    // have to be 17 exabyte (!) of zeros to get even remotely close to being
+    // finite.
     // This is not exactly a use case we need to cater to.
     while number.first() == Some(&b'0') {
         number = &number[1..];

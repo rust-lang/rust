@@ -21,8 +21,10 @@ use num::dec2flt::num::{self, Big};
 /// Number of significand bits in Fp
 const P: u32 = 64;
 
-// We simply store the best approximation for *all* exponents, so the variable "h" and the
-// associated conditions can be omitted. This trades performance for a couple kilobytes of space.
+// We simply store the best approximation for *all* exponents, so the variable
+// "h" and the
+// associated conditions can be omitted. This trades performance for a couple
+// kilobytes of space.
 
 fn power_of_ten(e: i16) -> Fp {
     assert!(e >= table::MIN_E);
@@ -47,8 +49,10 @@ fn power_of_ten(e: i16) -> Fp {
 /// FIXME: It would nevertheless be nice if we had a good way to detect and deal with x87.
 pub fn fast_path<T: RawFloat>(integral: &[u8], fractional: &[u8], e: i64) -> Option<T> {
     let num_digits = integral.len() + fractional.len();
-    // log_10(f64::max_sig) ~ 15.95. We compare the exact value to max_sig near the end,
-    // this is just a quick, cheap rejection (and also frees the rest of the code from
+    // log_10(f64::max_sig) ~ 15.95. We compare the exact value to max_sig near the
+    // end,
+    // this is just a quick, cheap rejection (and also frees the rest of the code
+    // from
     // worrying about underflow).
     if num_digits > 16 {
         return None;
@@ -93,9 +97,17 @@ pub fn bellerophon<T: RawFloat>(f: &Big, e: i16) -> T {
     let slop;
     if f <= &Big::from_u64(T::max_sig()) {
         // The cases abs(e) < log5(2^N) are in fast_path()
-        slop = if e >= 0 { 0 } else { 3 };
+        slop = if e >= 0 {
+            0
+        } else {
+            3
+        };
     } else {
-        slop = if e >= 0 { 1 } else { 4 };
+        slop = if e >= 0 {
+            1
+        } else {
+            4
+        };
     }
     let z = rawfp::big_to_fp(f).mul(&power_of_ten(e)).normalize();
     let exp_p_n = 1 << (P - T::sig_bits() as u32);
@@ -122,16 +134,20 @@ fn algorithm_r<T: RawFloat>(f: &Big, e: i16, z0: T) -> T {
         let mut x = f.clone();
         let mut y = Big::from_u64(m);
 
-        // Find positive integers `x`, `y` such that `x / y` is exactly `(f * 10^e) / (m * 2^k)`.
-        // This not only avoids dealing with the signs of `e` and `k`, we also eliminate the
+        // Find positive integers `x`, `y` such that `x / y` is exactly `(f * 10^e) /
+        // (m * 2^k)`.
+        // This not only avoids dealing with the signs of `e` and `k`, we also
+        // eliminate the
         // power of two common to `10^e` and `2^k` to make the numbers smaller.
         make_ratio(&mut x, &mut y, e, k);
 
         let m_digits = [(m & 0xFF_FF_FF_FF) as u32, (m >> 32) as u32];
         // This is written a bit awkwardly because our bignums don't support
         // negative numbers, so we use the absolute value + sign information.
-        // The multiplication with m_digits can't overflow. If `x` or `y` are large enough that
-        // we need to worry about overflow, then they are also large enough that`make_ratio` has
+        // The multiplication with m_digits can't overflow. If `x` or `y` are large
+        // enough that
+        // we need to worry about overflow, then they are also large enough
+        // that`make_ratio` has
         // reduced the fraction by a factor of 2^64 or more.
         let (d2, d_negative) = if x >= y {
             // Don't need x any more, save a clone().
@@ -179,14 +195,17 @@ fn make_ratio(x: &mut Big, y: &mut Big, e: i16, k: i16) {
     let (e_abs, k_abs) = (e.abs() as usize, k.abs() as usize);
     if e >= 0 {
         if k >= 0 {
-            // x = f * 10^e, y = m * 2^k, except that we reduce the fraction by some power of two.
+            // x = f * 10^e, y = m * 2^k, except that we reduce the fraction by some power
+            // of two.
             let common = min(e_abs, k_abs);
             x.mul_pow5(e_abs).mul_pow2(e_abs - common);
             y.mul_pow2(k_abs - common);
         } else {
             // x = f * 10^e * 2^abs(k), y = m
-            // This can't overflow because it requires positive `e` and negative `k`, which can
-            // only happen for values extremely close to 1, which means that `e` and `k` will be
+            // This can't overflow because it requires positive `e` and negative `k`, which
+            // can
+            // only happen for values extremely close to 1, which means that `e` and `k`
+            // will be
             // comparatively tiny.
             x.mul_pow5(e_abs).mul_pow2(e_abs + k_abs);
         }
@@ -231,7 +250,8 @@ pub fn algorithm_m<T: RawFloat>(f: &Big, e: i16) -> T {
         v = Big::from_small(1);
         v.mul_pow5(e_abs).mul_pow2(e_abs);
     } else {
-        // FIXME possible optimization: generalize big_to_fp so that we can do the equivalent of
+        // FIXME possible optimization: generalize big_to_fp so that we can do the
+        // equivalent of
         // fp_to_float(big_to_fp(u)) here, only without the double rounding.
         u = f.clone();
         u.mul_pow5(e_abs).mul_pow2(e_abs);
@@ -245,10 +265,13 @@ pub fn algorithm_m<T: RawFloat>(f: &Big, e: i16) -> T {
     loop {
         u.div_rem(&v, &mut x, &mut rem);
         if k == T::min_exp_int() {
-            // We have to stop at the minimum exponent, if we wait until `k < T::min_exp_int()`,
-            // then we'd be off by a factor of two. Unfortunately this means we have to special-
+            // We have to stop at the minimum exponent, if we wait until `k <
+            // T::min_exp_int()`,
+            // then we'd be off by a factor of two. Unfortunately this means we have to
+            // special-
             // case normal numbers with the minimum exponent.
-            // FIXME find a more elegant formulation, but run the `tiny-pow10` test to make sure
+            // FIXME find a more elegant formulation, but run the `tiny-pow10` test to make
+            // sure
             // that it's actually correct!
             if x >= min_sig && x <= max_sig {
                 break;
@@ -275,13 +298,18 @@ pub fn algorithm_m<T: RawFloat>(f: &Big, e: i16) -> T {
 
 /// Skip over most AlgorithmM iterations by checking the bit length.
 fn quick_start<T: RawFloat>(u: &mut Big, v: &mut Big, k: &mut i16) {
-    // The bit length is an estimate of the base two logarithm, and log(u / v) = log(u) - log(v).
-    // The estimate is off by at most 1, but always an under-estimate, so the error on log(u)
-    // and log(v) are of the same sign and cancel out (if both are large). Therefore the error
+    // The bit length is an estimate of the base two logarithm, and log(u / v) =
+    // log(u) - log(v).
+    // The estimate is off by at most 1, but always an under-estimate, so the error
+    // on log(u)
+    // and log(v) are of the same sign and cancel out (if both are large).
+    // Therefore the error
     // for log(u / v) is at most one as well.
-    // The target ratio is one where u/v is in an in-range significand. Thus our termination
+    // The target ratio is one where u/v is in an in-range significand. Thus our
+    // termination
     // condition is log2(u / v) being the significand bits, plus/minus one.
-    // FIXME Looking at the second bit could improve the estimate and avoid some more divisions.
+    // FIXME Looking at the second bit could improve the estimate and avoid some
+    // more divisions.
     let target_ratio = f64::sig_bits() as i16;
     let log2_u = u.bit_length() as i16;
     let log2_v = v.bit_length() as i16;
@@ -318,8 +346,10 @@ fn underflow<T: RawFloat>(x: Big, v: Big, rem: Big) -> T {
         let z = rawfp::encode_subnormal(q);
         return round_by_remainder(v, rem, q, z);
     }
-    // Ratio isn't an in-range significand with the minimum exponent, so we need to round off
-    // excess bits and adjust the exponent accordingly. The real value now looks like this:
+    // Ratio isn't an in-range significand with the minimum exponent, so we need to
+    // round off
+    // excess bits and adjust the exponent accordingly. The real value now looks
+    // like this:
     //
     //        x        lsb
     // /--------------\/
@@ -328,8 +358,10 @@ fn underflow<T: RawFloat>(x: Big, v: Big, rem: Big) -> T {
     //    q     trunc.    (represented by rem)
     //
     // Therefore, when the rounded-off bits are != 0.5 ULP, they decide the rounding
-    // on their own. When they are equal and the remainder is non-zero, the value still
-    // needs to be rounded up. Only when the rounded off bits are 1/2 and the remainer
+    // on their own. When they are equal and the remainder is non-zero, the value
+    // still
+    // needs to be rounded up. Only when the rounded off bits are 1/2 and the
+    // remainer
     // is zero, we have a half-to-even situation.
     let bits = x.bit_length();
     let lsb = bits - T::sig_bits() as usize;

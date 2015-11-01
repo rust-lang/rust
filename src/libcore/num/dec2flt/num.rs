@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Utility functions for bignums that don't make too much sense to turn into methods.
+//! Utility functions for bignums that don't make too much sense to turn into
+//! methods.
 
-// FIXME This module's name is a bit unfortunate, since other modules also import `core::num`.
+// FIXME This module's name is a bit unfortunate, since other modules also
+// import `core::num`.
 
 use prelude::v1::*;
 use cmp::Ordering::{self, Less, Equal, Greater};
@@ -29,7 +31,8 @@ pub fn compare_with_half_ulp(f: &Big, ones_place: usize) -> Ordering {
         return Less;
     }
     // If all remaining bits are zero, it's = 0.5 ULP, otherwise > 0.5
-    // If there are no more bits (half_bit == 0), the below also correctly returns Equal.
+    // If there are no more bits (half_bit == 0), the below also correctly returns
+    // Equal.
     for i in 0..half_bit {
         if f.get_bit(i) == 1 {
             return Greater;
@@ -47,7 +50,9 @@ pub fn compare_with_half_ulp(f: &Big, ones_place: usize) -> Ordering {
 /// 1. using `FromStr` on `&[u8]` requires `from_utf8_unchecked`, which is bad, and
 /// 2. piecing together the results of `integral.parse()` and `fractional.parse()` is
 ///    more complicated than this entire function.
-pub fn from_str_unchecked<'a, T>(bytes: T) -> u64 where T : IntoIterator<Item=&'a u8> {
+pub fn from_str_unchecked<'a, T>(bytes: T) -> u64
+    where T: IntoIterator<Item = &'a u8>
+{
     let mut result = 0;
     for &c in bytes {
         result = result * 10 + (c - b'0') as u64;

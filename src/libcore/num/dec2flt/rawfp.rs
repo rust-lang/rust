@@ -8,25 +8,35 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Bit fiddling on positive IEEE 754 floats. Negative numbers aren't and needn't be handled.
-//! Normal floating point numbers have a canonical representation as (frac, exp) such that the
-//! value is 2^exp * (1 + sum(frac[N-i] / 2^i)) where N is the number of bits. Subnormals are
+//! Bit fiddling on positive IEEE 754 floats. Negative numbers aren't and
+//! needn't be handled.
+//! Normal floating point numbers have a canonical representation as (frac,
+//! exp) such that the
+//! value is 2^exp * (1 + sum(frac[N-i] / 2^i)) where N is the number of bits.
+//! Subnormals are
 //! slightly different and weird, but the same principle applies.
 //!
-//! Here, however, we represent them as (sig, k) with f positive, such that the value is f * 2^e.
-//! Besides making the "hidden bit" explicit, this changes the exponent by the so-called
+//! Here, however, we represent them as (sig, k) with f positive, such that the
+//! value is f * 2^e.
+//! Besides making the "hidden bit" explicit, this changes the exponent by the
+//! so-called
 //! mantissa shift.
 //!
-//! Put another way, normally floats are written as (1) but here they are written as (2):
+//! Put another way, normally floats are written as (1) but here they are
+//! written as (2):
 //!
 //! 1. `1.101100...11 * 2^m`
 //! 2. `1101100...11 * 2^n`
 //!
-//! We call (1) the **fractional representation** and (2) the **integral representation**.
+//! We call (1) the **fractional representation** and (2) the **integral
+//! representation**.
 //!
-//! Many functions in this module only handle normal numbers. The dec2flt routines conservatively
-//! take the universally-correct slow path (Algorithm M) for very small and very large numbers.
-//! That algorithm needs only next_float() which does handle subnormals and zeros.
+//! Many functions in this module only handle normal numbers. The dec2flt
+//! routines conservatively
+//! take the universally-correct slow path (Algorithm M) for very small and
+//! very large numbers.
+//! That algorithm needs only next_float() which does handle subnormals and
+//! zeros.
 use prelude::v1::*;
 use u32;
 use cmp::Ordering::{Less, Equal, Greater};
@@ -73,16 +83,19 @@ pub trait RawFloat : Float + Copy + Debug + LowerExp
     /// represented, the other code in this module makes sure to never let that happen.
     fn from_int(x: u64) -> Self;
 
-    // FIXME Everything that follows should be associated constants, but taking the value of an
+    // FIXME Everything that follows should be associated constants, but taking the
+    // value of an
     // associated constant from a type parameter does not work (yet?)
-    // A possible workaround is having a `FloatInfo` struct for all the constants, but so far
+    // A possible workaround is having a `FloatInfo` struct for all the constants,
+    // but so far
     // the methods aren't painful enough to rewrite.
 
     /// What the name says. It's easier to hard code than juggling intrinsics and
     /// hoping LLVM constant folds it.
     fn ceil_log5_of_max_sig() -> i16;
 
-    // A conservative bound on the decimal digits of inputs that can't produce overflow or zero or
+    // A conservative bound on the decimal digits of inputs that can't produce
+    // overflow or zero or
     /// subnormals. Probably the decimal exponent of the maximum normal value, hence the name.
     fn max_normal_digits() -> usize;
 
@@ -243,7 +256,7 @@ pub fn fp_to_float<T: RawFloat>(x: Fp) -> T {
     let e = x.e + 63;
     if e > T::max_exp() {
         panic!("fp_to_float: exponent {} too large", e)
-    }  else if e > T::min_exp() {
+    } else if e > T::min_exp() {
         encode_normal(round_normal::<T>(x))
     } else {
         panic!("fp_to_float: exponent {} too small", e)
@@ -273,13 +286,13 @@ pub fn round_normal<T: RawFloat>(x: Fp) -> Unpacked {
 /// Panics if the significand or exponent are not valid for normalized numbers.
 pub fn encode_normal<T: RawFloat>(x: Unpacked) -> T {
     debug_assert!(T::min_sig() <= x.sig && x.sig <= T::max_sig(),
-        "encode_normal: significand not normalized");
+                  "encode_normal: significand not normalized");
     // Remove the hidden bit
     let sig_enc = x.sig & !(1 << T::explicit_sig_bits());
     // Adjust the exponent for exponent bias and mantissa shift
     let k_enc = x.k + T::max_exp() + T::explicit_sig_bits() as i16;
     debug_assert!(k_enc != 0 && k_enc < T::max_encoded_exp(),
-        "encode_normal: exponent out of range");
+                  "encode_normal: exponent out of range");
     // Leave sign bit at 0 ("+"), our numbers are all positive
     let bits = (k_enc as u64) << T::explicit_sig_bits() | sig_enc;
     T::from_bits(bits)
@@ -287,8 +300,10 @@ pub fn encode_normal<T: RawFloat>(x: Unpacked) -> T {
 
 /// Construct the subnormal. A mantissa of 0 is allowed and constructs zero.
 pub fn encode_subnormal<T: RawFloat>(significand: u64) -> T {
-    assert!(significand < T::min_sig(), "encode_subnormal: not actually subnormal");
-    // Êncoded exponent is 0, the sign bit is 0, so we just have to reinterpret the bits.
+    assert!(significand < T::min_sig(),
+            "encode_subnormal: not actually subnormal");
+    // Êncoded exponent is 0, the sign bit is 0, so we just have to reinterpret the
+    // bits.
     T::from_bits(significand)
 }
 
@@ -298,7 +313,8 @@ pub fn big_to_fp(f: &Big) -> Fp {
     assert!(end != 0, "big_to_fp: unexpectedly, input is zero");
     let start = end.saturating_sub(64);
     let leading = num::get_bits(f, start, end);
-    // We cut off all bits prior to the index `start`, i.e., we effectively right-shift by
+    // We cut off all bits prior to the index `start`, i.e., we effectively
+    // right-shift by
     // an amount of `start`, so this is also the exponent we need.
     let e = start as i16;
     let rounded_down = Fp { f: leading, e: e }.normalize();
@@ -308,8 +324,11 @@ pub fn big_to_fp(f: &Big) -> Fp {
         Equal if leading % 2 == 0 => rounded_down,
         Equal | Greater => match leading.checked_add(1) {
             Some(f) => Fp { f: f, e: e }.normalize(),
-            None => Fp { f: 1 << 63, e: e + 1 },
-        }
+            None => Fp {
+                f: 1 << 63,
+                e: e + 1,
+            },
+        },
     }
 }
 
@@ -334,8 +353,10 @@ pub fn prev_float<T: RawFloat>(x: T) -> T {
 
 // Find the smallest floating point number strictly larger than the argument.
 // This operation is saturating, i.e. next_float(inf) == inf.
-// Unlike most code in this module, this function does handle zero, subnormals, and infinities.
-// However, like all other code here, it does not deal with NaN and negative numbers.
+// Unlike most code in this module, this function does handle zero, subnormals,
+// and infinities.
+// However, like all other code here, it does not deal with NaN and negative
+// numbers.
 pub fn next_float<T: RawFloat>(x: T) -> T {
     match x.classify() {
         Nan => panic!("next_float: argument is NaN"),

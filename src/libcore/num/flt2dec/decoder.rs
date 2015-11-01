@@ -58,16 +58,23 @@ pub trait DecodableFloat: Float + Copy {
 }
 
 impl DecodableFloat for f32 {
-    fn min_pos_norm_value() -> Self { f32::MIN_POSITIVE }
+    fn min_pos_norm_value() -> Self {
+        f32::MIN_POSITIVE
+    }
 }
 
 impl DecodableFloat for f64 {
-    fn min_pos_norm_value() -> Self { f64::MIN_POSITIVE }
+    fn min_pos_norm_value() -> Self {
+        f64::MIN_POSITIVE
+    }
 }
 
 /// Returns a sign (true when negative) and `FullDecoded` value
 /// from given floating point number.
-pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
+pub fn decode<T: DecodableFloat>(v: T)
+                                 -> (// negative?
+                                     bool,
+                                     FullDecoded) {
     let (mant, exp, sign) = v.integer_decode();
     let even = (mant & 1) == 0;
     let decoded = match v.classify() {
@@ -78,23 +85,37 @@ pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
             // neighbors: (mant - 2, exp) -- (mant, exp) -- (mant + 2, exp)
             // Float::integer_decode always preserves the exponent,
             // so the mantissa is scaled for subnormals.
-            FullDecoded::Finite(Decoded { mant: mant, minus: 1, plus: 1,
-                                          exp: exp, inclusive: even })
+            FullDecoded::Finite(Decoded {
+                mant: mant,
+                minus: 1,
+                plus: 1,
+                exp: exp,
+                inclusive: even,
+            })
         }
         FpCategory::Normal => {
             let minnorm = <T as DecodableFloat>::min_pos_norm_value().integer_decode();
             if mant == minnorm.0 {
                 // neighbors: (maxmant, exp - 1) -- (minnormmant, exp) -- (minnormmant + 1, exp)
                 // where maxmant = minnormmant * 2 - 1
-                FullDecoded::Finite(Decoded { mant: mant << 2, minus: 1, plus: 2,
-                                              exp: exp - 2, inclusive: even })
+                FullDecoded::Finite(Decoded {
+                    mant: mant << 2,
+                    minus: 1,
+                    plus: 2,
+                    exp: exp - 2,
+                    inclusive: even,
+                })
             } else {
                 // neighbors: (mant - 1, exp) -- (mant, exp) -- (mant + 1, exp)
-                FullDecoded::Finite(Decoded { mant: mant << 1, minus: 1, plus: 1,
-                                              exp: exp - 1, inclusive: even })
+                FullDecoded::Finite(Decoded {
+                    mant: mant << 1,
+                    minus: 1,
+                    plus: 1,
+                    exp: exp - 1,
+                    inclusive: even,
+                })
             }
         }
     };
     (sign < 0, decoded)
 }
-

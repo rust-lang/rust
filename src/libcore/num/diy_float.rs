@@ -10,7 +10,8 @@
 
 //! Extended precision "soft float", for internal use only.
 
-// This module is only for dec2flt and flt2dec, and only public because of libcoretest.
+// This module is only for dec2flt and flt2dec, and only public because of
+// libcoretest.
 // It is not intended to ever be stabilized.
 #![doc(hidden)]
 #![unstable(feature = "core_private_diy_float",
@@ -49,12 +50,30 @@ impl Fp {
     pub fn normalize(&self) -> Fp {
         let mut f = self.f;
         let mut e = self.e;
-        if f >> (64 - 32) == 0 { f <<= 32; e -= 32; }
-        if f >> (64 - 16) == 0 { f <<= 16; e -= 16; }
-        if f >> (64 -  8) == 0 { f <<=  8; e -=  8; }
-        if f >> (64 -  4) == 0 { f <<=  4; e -=  4; }
-        if f >> (64 -  2) == 0 { f <<=  2; e -=  2; }
-        if f >> (64 -  1) == 0 { f <<=  1; e -=  1; }
+        if f >> (64 - 32) == 0 {
+            f <<= 32;
+            e -= 32;
+        }
+        if f >> (64 - 16) == 0 {
+            f <<= 16;
+            e -= 16;
+        }
+        if f >> (64 - 8) == 0 {
+            f <<= 8;
+            e -= 8;
+        }
+        if f >> (64 - 4) == 0 {
+            f <<= 4;
+            e -= 4;
+        }
+        if f >> (64 - 2) == 0 {
+            f <<= 2;
+            e -= 2;
+        }
+        if f >> (64 - 1) == 0 {
+            f <<= 1;
+            e -= 1;
+        }
         debug_assert!(f >= (1 >> 63));
         Fp { f: f, e: e }
     }
@@ -66,6 +85,9 @@ impl Fp {
         assert!(edelta >= 0);
         let edelta = edelta as usize;
         assert_eq!(self.f << edelta >> edelta, self.f);
-        Fp { f: self.f << edelta, e: e }
+        Fp {
+            f: self.f << edelta,
+            e: e,
+        }
     }
 }
