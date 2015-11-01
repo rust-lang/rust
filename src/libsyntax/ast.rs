@@ -593,7 +593,7 @@ pub enum Pat_ {
     /// set (of "PatIdents that refer to nullary enums")
     PatIdent(BindingMode, SpannedIdent, Option<P<Pat>>),
 
-    /// "None" means a * pattern where we don't bind the fields to names.
+    /// "None" means a `Variant(..)` pattern where we don't bind the fields to names.
     PatEnum(Path, Option<Vec<P<Pat>>>),
 
     /// An associated const named using the qualified path `<T>::CONST` or
