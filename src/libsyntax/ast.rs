@@ -583,7 +583,7 @@ pub enum Pat_ {
     /// set (of "PatIdents that refer to nullary enums")
     PatIdent(BindingMode, SpannedIdent, Option<P<Pat>>),
 
-    /// "None" means a * pattern where we don't bind the fields to names.
+    /// "None" means a `Variant(..)` pattern where we don't bind the fields to names.
     PatEnum(Path, Option<Vec<P<Pat>>>),
 
     /// An associated const named using the qualified path `<T>::CONST` or
@@ -605,8 +605,8 @@ pub enum Pat_ {
     PatLit(P<Expr>),
     /// A range pattern, e.g. `1...2`
     PatRange(P<Expr>, P<Expr>),
-    /// [a, b, ..i, y, z] is represented as:
-    ///     PatVec(box [a, b], Some(i), box [y, z])
+    /// `[a, b, ..i, y, z]` is represented as:
+    ///     `PatVec(box [a, b], Some(i), box [y, z])`
     PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
     /// A macro pattern; pre-expansion
     PatMac(Mac),
