@@ -1706,7 +1706,7 @@ impl str {
     /// assert_eq!(s, s.replace("cookie monster", "little lamb"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn replace(&self, from: &str, to: &str) -> String {
+    pub fn replace<'a, P: Pattern<'a>>(&'a self, from: P, to: &str) -> String {
         let mut result = String::new();
         let mut last_end = 0;
         for (start, part) in self.match_indices(from) {
