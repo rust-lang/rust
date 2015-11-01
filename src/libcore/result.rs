@@ -117,16 +117,15 @@
 //! warning (by default, controlled by the `unused_must_use` lint).
 //!
 //! You might instead, if you don't want to handle the error, simply
-//! panic, by converting to an `Option` with `ok`, then asserting
-//! success with `expect`. This will panic if the write fails, proving
-//! a marginally useful message indicating why:
+//! assert success with `expect`. This will panic if the
+//! write fails, providing a marginally useful message indicating why:
 //!
 //! ```{.no_run}
 //! use std::fs::File;
 //! use std::io::prelude::*;
 //!
 //! let mut file = File::create("valuable_data.txt").unwrap();
-//! file.write_all(b"important message").ok().expect("failed to write message");
+//! file.write_all(b"important message").expect("failed to write message");
 //! ```
 //!
 //! You might also simply assert success:
