@@ -7029,6 +7029,7 @@ pub mod funcs {
                                        dwOptions: DWORD)
                                        -> BOOL;
                 pub fn CloseHandle(hObject: HANDLE) -> BOOL;
+                pub fn CompareObjectHandles(h1: HANDLE, h2: HANDLE) -> BOOL;
                 pub fn OpenProcess(dwDesiredAccess: DWORD,
                                    bInheritHandle: BOOL,
                                    dwProcessId: DWORD)

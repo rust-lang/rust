@@ -590,6 +590,14 @@ impl<T> JoinInner<T> {
     }
 }
 
+impl<T> PartialEq for JoinInner<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.native == other.native
+    }
+}
+
+impl<T> Eq for JoinInner<T> {}
+
 /// An owned permission to join on a thread (block on its termination).
 ///
 /// A `JoinHandle` *detaches* the child thread when it is dropped.
@@ -597,6 +605,7 @@ impl<T> JoinInner<T> {
 /// Due to platform restrictions, it is not possible to `Clone` this
 /// handle: the ability to join a child thread is a uniquely-owned
 /// permission.
+#[derive(Eq, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct JoinHandle<T>(JoinInner<T>);
 
@@ -633,6 +642,7 @@ mod tests {
 
     use any::Any;
     use sync::mpsc::{channel, Sender};
+    use sync::{Barrier, Arc};
     use result;
     use super::{Builder};
     use thread;
@@ -663,6 +673,17 @@ mod tests {
             tx.send(()).unwrap();
         });
         rx.recv().unwrap();
+    }
+
+    #[test]
+    fn test_thread_guard_equality() {
+        let barrier = Arc::new(Barrier::new(2));
+        let b = barrier.clone();
+        let h = thread::spawn(move|| {
+            b.wait();
+        });
+        assert!(h == h);
+        barrier.wait();
     }
 
     #[test]
