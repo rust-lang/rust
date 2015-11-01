@@ -346,6 +346,7 @@ impl Target {
         key!(pre_link_args, list);
         key!(post_link_args, list);
         key!(allow_asm, bool);
+        key!(custom_unwind_resume, bool);
 
         base
     }
