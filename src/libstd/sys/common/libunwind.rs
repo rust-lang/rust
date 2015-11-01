@@ -131,6 +131,8 @@ extern "C" {
 
     pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
 
+    // remove cfg after new snapshot
+    #[cfg(not(all(stage0, target_os="windows", target_arch="x86_64")))]
     #[unwind]
     pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
 }
