@@ -254,60 +254,19 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
             "nearbyintf64" => (0, vec!( tcx.types.f64 ), tcx.types.f64),
             "roundf32"     => (0, vec!( tcx.types.f32 ), tcx.types.f32),
             "roundf64"     => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "ctpop8"       => (0, vec!( tcx.types.u8  ), tcx.types.u8),
-            "ctpop16"      => (0, vec!( tcx.types.u16 ), tcx.types.u16),
-            "ctpop32"      => (0, vec!( tcx.types.u32 ), tcx.types.u32),
-            "ctpop64"      => (0, vec!( tcx.types.u64 ), tcx.types.u64),
-            "ctlz8"        => (0, vec!( tcx.types.u8  ), tcx.types.u8),
-            "ctlz16"       => (0, vec!( tcx.types.u16 ), tcx.types.u16),
-            "ctlz32"       => (0, vec!( tcx.types.u32 ), tcx.types.u32),
-            "ctlz64"       => (0, vec!( tcx.types.u64 ), tcx.types.u64),
-            "cttz8"        => (0, vec!( tcx.types.u8  ), tcx.types.u8),
-            "cttz16"       => (0, vec!( tcx.types.u16 ), tcx.types.u16),
-            "cttz32"       => (0, vec!( tcx.types.u32 ), tcx.types.u32),
-            "cttz64"       => (0, vec!( tcx.types.u64 ), tcx.types.u64),
-            "bswap16"      => (0, vec!( tcx.types.u16 ), tcx.types.u16),
-            "bswap32"      => (0, vec!( tcx.types.u32 ), tcx.types.u32),
-            "bswap64"      => (0, vec!( tcx.types.u64 ), tcx.types.u64),
 
             "volatile_load" =>
                 (1, vec!( tcx.mk_imm_ptr(param(ccx, 0)) ), param(ccx, 0)),
             "volatile_store" =>
                 (1, vec!( tcx.mk_mut_ptr(param(ccx, 0)), param(ccx, 0) ), tcx.mk_nil()),
 
-            "i8_add_with_overflow" | "i8_sub_with_overflow" | "i8_mul_with_overflow" =>
-                (0, vec!(tcx.types.i8, tcx.types.i8),
-                tcx.mk_tup(vec!(tcx.types.i8, tcx.types.bool))),
+            "ctpop" | "ctlz" | "cttz" | "bswap" => (1, vec!(param(ccx, 0)), param(ccx, 0)),
 
-            "i16_add_with_overflow" | "i16_sub_with_overflow" | "i16_mul_with_overflow" =>
-                (0, vec!(tcx.types.i16, tcx.types.i16),
-                tcx.mk_tup(vec!(tcx.types.i16, tcx.types.bool))),
+            "add_with_overflow" | "sub_with_overflow"  | "mul_with_overflow" =>
+                (1, vec!(param(ccx, 0), param(ccx, 0)),
+                tcx.mk_tup(vec!(param(ccx, 0), tcx.types.bool))),
 
-            "i32_add_with_overflow" | "i32_sub_with_overflow" | "i32_mul_with_overflow" =>
-                (0, vec!(tcx.types.i32, tcx.types.i32),
-                tcx.mk_tup(vec!(tcx.types.i32, tcx.types.bool))),
-
-            "i64_add_with_overflow" | "i64_sub_with_overflow" | "i64_mul_with_overflow" =>
-                (0, vec!(tcx.types.i64, tcx.types.i64),
-                tcx.mk_tup(vec!(tcx.types.i64, tcx.types.bool))),
-
-            "u8_add_with_overflow" | "u8_sub_with_overflow" | "u8_mul_with_overflow" =>
-                (0, vec!(tcx.types.u8, tcx.types.u8),
-                tcx.mk_tup(vec!(tcx.types.u8, tcx.types.bool))),
-
-            "u16_add_with_overflow" | "u16_sub_with_overflow" | "u16_mul_with_overflow" =>
-                (0, vec!(tcx.types.u16, tcx.types.u16),
-                tcx.mk_tup(vec!(tcx.types.u16, tcx.types.bool))),
-
-            "u32_add_with_overflow" | "u32_sub_with_overflow" | "u32_mul_with_overflow"=>
-                (0, vec!(tcx.types.u32, tcx.types.u32),
-                tcx.mk_tup(vec!(tcx.types.u32, tcx.types.bool))),
-
-            "u64_add_with_overflow" | "u64_sub_with_overflow"  | "u64_mul_with_overflow" =>
-                (0, vec!(tcx.types.u64, tcx.types.u64),
-                tcx.mk_tup(vec!(tcx.types.u64, tcx.types.bool))),
-
-            "unchecked_udiv" | "unchecked_sdiv" | "unchecked_urem" | "unchecked_srem" =>
+            "unchecked_div" | "unchecked_rem" =>
                 (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
 
             "overflowing_add" | "overflowing_sub" | "overflowing_mul" =>

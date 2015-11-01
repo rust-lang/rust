@@ -511,113 +511,171 @@ extern "rust-intrinsic" {
     pub fn roundf64(x: f64) -> f64;
 
     /// Returns the number of bits set in a `u8`.
+    #[cfg(stage0)]
     pub fn ctpop8(x: u8) -> u8;
     /// Returns the number of bits set in a `u16`.
+    #[cfg(stage0)]
     pub fn ctpop16(x: u16) -> u16;
     /// Returns the number of bits set in a `u32`.
+    #[cfg(stage0)]
     pub fn ctpop32(x: u32) -> u32;
     /// Returns the number of bits set in a `u64`.
+    #[cfg(stage0)]
     pub fn ctpop64(x: u64) -> u64;
+    /// Returns the number of bits set in an integer type `T`
+    #[cfg(not(stage0))]
+    pub fn ctpop<T>(x: T) -> T;
 
     /// Returns the number of leading bits unset in a `u8`.
+    #[cfg(stage0)]
     pub fn ctlz8(x: u8) -> u8;
     /// Returns the number of leading bits unset in a `u16`.
+    #[cfg(stage0)]
     pub fn ctlz16(x: u16) -> u16;
     /// Returns the number of leading bits unset in a `u32`.
+    #[cfg(stage0)]
     pub fn ctlz32(x: u32) -> u32;
     /// Returns the number of leading bits unset in a `u64`.
+    #[cfg(stage0)]
     pub fn ctlz64(x: u64) -> u64;
+    /// Returns the number of leading bits unset in an integer type `T`
+    #[cfg(not(stage0))]
+    pub fn ctlz<T>(x: T) -> T;
 
     /// Returns the number of trailing bits unset in a `u8`.
+    #[cfg(stage0)]
     pub fn cttz8(x: u8) -> u8;
     /// Returns the number of trailing bits unset in a `u16`.
+    #[cfg(stage0)]
     pub fn cttz16(x: u16) -> u16;
     /// Returns the number of trailing bits unset in a `u32`.
+    #[cfg(stage0)]
     pub fn cttz32(x: u32) -> u32;
     /// Returns the number of trailing bits unset in a `u64`.
+    #[cfg(stage0)]
     pub fn cttz64(x: u64) -> u64;
+    /// Returns the number of trailing bits unset in an integer type `T`
+    #[cfg(not(stage0))]
+    pub fn cttz<T>(x: T) -> T;
 
     /// Reverses the bytes in a `u16`.
+    #[cfg(stage0)]
     pub fn bswap16(x: u16) -> u16;
     /// Reverses the bytes in a `u32`.
+    #[cfg(stage0)]
     pub fn bswap32(x: u32) -> u32;
     /// Reverses the bytes in a `u64`.
+    #[cfg(stage0)]
     pub fn bswap64(x: u64) -> u64;
+    /// Reverses the bytes in an integer type `T`.
+    #[cfg(not(stage0))]
+    pub fn bswap<T>(x: T) -> T;
 
     /// Performs checked `i8` addition.
+    #[cfg(stage0)]
     pub fn i8_add_with_overflow(x: i8, y: i8) -> (i8, bool);
     /// Performs checked `i16` addition.
+    #[cfg(stage0)]
     pub fn i16_add_with_overflow(x: i16, y: i16) -> (i16, bool);
     /// Performs checked `i32` addition.
+    #[cfg(stage0)]
     pub fn i32_add_with_overflow(x: i32, y: i32) -> (i32, bool);
     /// Performs checked `i64` addition.
+    #[cfg(stage0)]
     pub fn i64_add_with_overflow(x: i64, y: i64) -> (i64, bool);
 
     /// Performs checked `u8` addition.
+    #[cfg(stage0)]
     pub fn u8_add_with_overflow(x: u8, y: u8) -> (u8, bool);
     /// Performs checked `u16` addition.
+    #[cfg(stage0)]
     pub fn u16_add_with_overflow(x: u16, y: u16) -> (u16, bool);
     /// Performs checked `u32` addition.
+    #[cfg(stage0)]
     pub fn u32_add_with_overflow(x: u32, y: u32) -> (u32, bool);
     /// Performs checked `u64` addition.
+    #[cfg(stage0)]
     pub fn u64_add_with_overflow(x: u64, y: u64) -> (u64, bool);
 
+    /// Performs checked integer addition.
+    #[cfg(not(stage0))]
+    pub fn add_with_overflow<T>(x: T, y: T) -> (T, bool);
+
     /// Performs checked `i8` subtraction.
+    #[cfg(stage0)]
     pub fn i8_sub_with_overflow(x: i8, y: i8) -> (i8, bool);
     /// Performs checked `i16` subtraction.
+    #[cfg(stage0)]
     pub fn i16_sub_with_overflow(x: i16, y: i16) -> (i16, bool);
     /// Performs checked `i32` subtraction.
+    #[cfg(stage0)]
     pub fn i32_sub_with_overflow(x: i32, y: i32) -> (i32, bool);
     /// Performs checked `i64` subtraction.
+    #[cfg(stage0)]
     pub fn i64_sub_with_overflow(x: i64, y: i64) -> (i64, bool);
 
     /// Performs checked `u8` subtraction.
+    #[cfg(stage0)]
     pub fn u8_sub_with_overflow(x: u8, y: u8) -> (u8, bool);
     /// Performs checked `u16` subtraction.
+    #[cfg(stage0)]
     pub fn u16_sub_with_overflow(x: u16, y: u16) -> (u16, bool);
     /// Performs checked `u32` subtraction.
+    #[cfg(stage0)]
     pub fn u32_sub_with_overflow(x: u32, y: u32) -> (u32, bool);
     /// Performs checked `u64` subtraction.
+    #[cfg(stage0)]
     pub fn u64_sub_with_overflow(x: u64, y: u64) -> (u64, bool);
 
+    /// Performs checked integer subtraction
+    #[cfg(not(stage0))]
+    pub fn sub_with_overflow<T>(x: T, y: T) -> (T, bool);
+
     /// Performs checked `i8` multiplication.
+    #[cfg(stage0)]
     pub fn i8_mul_with_overflow(x: i8, y: i8) -> (i8, bool);
     /// Performs checked `i16` multiplication.
+    #[cfg(stage0)]
     pub fn i16_mul_with_overflow(x: i16, y: i16) -> (i16, bool);
     /// Performs checked `i32` multiplication.
+    #[cfg(stage0)]
     pub fn i32_mul_with_overflow(x: i32, y: i32) -> (i32, bool);
     /// Performs checked `i64` multiplication.
+    #[cfg(stage0)]
     pub fn i64_mul_with_overflow(x: i64, y: i64) -> (i64, bool);
 
     /// Performs checked `u8` multiplication.
+    #[cfg(stage0)]
     pub fn u8_mul_with_overflow(x: u8, y: u8) -> (u8, bool);
     /// Performs checked `u16` multiplication.
+    #[cfg(stage0)]
     pub fn u16_mul_with_overflow(x: u16, y: u16) -> (u16, bool);
     /// Performs checked `u32` multiplication.
+    #[cfg(stage0)]
     pub fn u32_mul_with_overflow(x: u32, y: u32) -> (u32, bool);
     /// Performs checked `u64` multiplication.
+    #[cfg(stage0)]
     pub fn u64_mul_with_overflow(x: u64, y: u64) -> (u64, bool);
 
-    /// Returns (a + b) mod 2^N, where N is the width of N in bits.
+    /// Performs checked integer multiplication
+    #[cfg(not(stage0))]
+    pub fn mul_with_overflow<T>(x: T, y: T) -> (T, bool);
+
+    /// Performs an unchecked division, resulting in undefined behavior
+    /// where y = 0 or x = `T::min_value()` and y = -1
+    #[cfg(not(stage0))]
+    pub fn unchecked_div<T>(x: T, y: T) -> T;
+    /// Returns the remainder of an unchecked division, resulting in
+    /// undefined behavior where y = 0 or x = `T::min_value()` and y = -1
+    #[cfg(not(stage0))]
+    pub fn unchecked_rem<T>(x: T, y: T) -> T;
+
+    /// Returns (a + b) mod 2^N, where N is the width of T in bits.
     pub fn overflowing_add<T>(a: T, b: T) -> T;
-    /// Returns (a - b) mod 2^N, where N is the width of N in bits.
+    /// Returns (a - b) mod 2^N, where N is the width of T in bits.
     pub fn overflowing_sub<T>(a: T, b: T) -> T;
-    /// Returns (a * b) mod 2^N, where N is the width of N in bits.
+    /// Returns (a * b) mod 2^N, where N is the width of T in bits.
     pub fn overflowing_mul<T>(a: T, b: T) -> T;
-
-    /// Performs an unchecked signed division, which results in undefined behavior,
-    /// in cases where y == 0, or x == isize::MIN and y == -1
-    pub fn unchecked_sdiv<T>(x: T, y: T) -> T;
-    /// Performs an unchecked unsigned division, which results in undefined behavior,
-    /// in cases where y == 0
-    pub fn unchecked_udiv<T>(x: T, y: T) -> T;
-
-    /// Returns the remainder of an unchecked signed division, which results in
-    /// undefined behavior, in cases where y == 0, or x == isize::MIN and y == -1
-    pub fn unchecked_srem<T>(x: T, y: T) -> T;
-    /// Returns the remainder of an unchecked unsigned division, which results in
-    /// undefined behavior, in cases where y == 0
-    pub fn unchecked_urem<T>(x: T, y: T) -> T;
 
     /// Returns the value of the discriminant for the variant in 'v',
     /// cast to a `u64`; if `T` has no discriminant, returns 0.

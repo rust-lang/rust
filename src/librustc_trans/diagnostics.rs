@@ -79,12 +79,10 @@ Transmute with two differently sized types was attempted. Erroneous code
 example:
 
 ```
-extern "rust-intrinsic" {
-    pub fn ctpop8(x: u8) -> u8;
-}
+fn takes_u8(_: u8) {}
 
 fn main() {
-    unsafe { ctpop8(::std::mem::transmute(0u16)); }
+    unsafe { takes_u8(::std::mem::transmute(0u16)); }
     // error: transmute called with differently sized types
 }
 ```
@@ -92,14 +90,12 @@ fn main() {
 Please use types with same size or use the expected type directly. Example:
 
 ```
-extern "rust-intrinsic" {
-    pub fn ctpop8(x: u8) -> u8;
-}
+fn takes_u8(_: u8) {}
 
 fn main() {
-    unsafe { ctpop8(::std::mem::transmute(0i8)); } // ok!
+    unsafe { takes_u8(::std::mem::transmute(0i8)); } // ok!
     // or:
-    unsafe { ctpop8(0u8); } // ok!
+    unsafe { takes_u8(0u8); } // ok!
 }
 ```
 "##,
@@ -118,5 +114,4 @@ Example:
 let x = &[0, 1, 2][2]; // ok
 ```
 "##,
-
 }
