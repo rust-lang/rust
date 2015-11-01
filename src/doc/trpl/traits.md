@@ -400,7 +400,9 @@ fn inverse<T>() -> T
 
 This shows off the additional feature of `where` clauses: they allow bounds
 where the left-hand side is an arbitrary type (`i32` in this case), not just a
-plain type parameter (like `T`).
+plain type parameter (like `T`). In this example, `i32` must implement
+`ConvertTo<T>`. Rather than defining what `i32` is (since that's obvious), the
+`where` clause here is a constraint on `T`.
 
 # Default methods
 
