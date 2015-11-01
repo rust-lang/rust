@@ -356,6 +356,7 @@ pub type PVECTORED_EXCEPTION_HANDLER = extern "system"
 
 #[link(name = "ws2_32")]
 #[link(name = "userenv")]
+#[link(name = "shell32")]
 extern "system" {
     pub fn WSAStartup(wVersionRequested: libc::WORD,
                       lpWSAData: LPWSADATA) -> libc::c_int;

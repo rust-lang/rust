@@ -99,35 +99,23 @@ pub type _Unwind_Exception_Cleanup_Fn =
         extern "C" fn(unwind_code: _Unwind_Reason_Code,
                       exception: *mut _Unwind_Exception);
 
-#[cfg(any(all(target_os = "linux", not(target_env = "musl")),
-          target_os = "freebsd"))]
-#[link(name = "gcc_s")]
-extern {}
-
-#[cfg(all(target_os = "linux", target_env = "musl", not(test)))]
-#[link(name = "unwind", kind = "static")]
-extern {}
-
-#[cfg(any(target_os = "android", target_os = "openbsd"))]
-#[link(name = "gcc")]
-extern {}
-
-#[cfg(all(target_os = "netbsd", not(target_vendor = "rumprun")))]
-#[link(name = "gcc")]
-extern {}
-
-#[cfg(all(target_os = "netbsd", target_vendor = "rumprun"))]
-#[link(name = "unwind")]
-extern {}
-
-#[cfg(target_os = "dragonfly")]
-#[link(name = "gcc_pic")]
-extern {}
-
-#[cfg(target_os = "bitrig")]
-#[link(name = "c++abi")]
-extern {}
-
+#[cfg_attr(any(all(target_os = "linux", not(target_env = "musl")),
+               target_os = "freebsd"),
+           link(name = "gcc_s"))]
+#[cfg_attr(all(target_os = "linux", target_env = "musl", not(test)),
+           link(name = "unwind", kind = "static"))]
+#[cfg_attr(any(target_os = "android", target_os = "openbsd"),
+           link(name = "gcc"))]
+#[cfg_attr(all(target_os = "netbsd", not(target_vendor = "rumprun")),
+           link(name = "gcc"))]
+#[cfg_attr(all(target_os = "netbsd", target_vendor = "rumprun"),
+           link(name = "unwind"))]
+#[cfg_attr(target_os = "dragonfly",
+           link(name = "gcc_pic"))]
+#[cfg_attr(target_os = "bitrig",
+           link(name = "c++abi"))]
+#[cfg_attr(all(target_os = "windows", target_env="gnu"),
+           link(name = "gcc_eh"))]
 extern "C" {
     // iOS on armv7 uses SjLj exceptions and requires to link
     // against corresponding routine (..._SjLj_...)
@@ -142,6 +130,11 @@ extern "C" {
                                    -> _Unwind_Reason_Code;
 
     pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
+
+    // remove cfg after new snapshot
+    #[cfg(not(all(stage0, target_os="windows", target_arch="x86_64")))]
+    #[unwind]
+    pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
 }
 
 // ... and now we just providing access to SjLj counterspart

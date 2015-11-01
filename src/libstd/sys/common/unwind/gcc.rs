@@ -231,3 +231,36 @@ pub mod eabi {
         }
     }
 }
+
+// See docs in the `unwind` module.
+#[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu", not(test)))]
+#[lang = "eh_unwind_resume"]
+#[unwind]
+unsafe extern fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
+    uw::_Unwind_Resume(panic_ctx as *mut uw::_Unwind_Exception);
+}
+
+#[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
+pub mod eh_frame_registry {
+    // The implementation of stack unwinding is (for now) deferred to libgcc_eh, however Rust
+    // crates use these Rust-specific entry points to avoid potential clashes with GCC runtime.
+    // See also: rtbegin.rs, `unwind` module.
+
+    #[link(name = "gcc_eh")]
+    extern {
+        fn __register_frame_info(eh_frame_begin: *const u8, object: *mut u8);
+        fn __deregister_frame_info(eh_frame_begin: *const u8, object: *mut u8);
+    }
+    #[cfg(not(test))]
+    #[no_mangle]
+    pub unsafe extern fn rust_eh_register_frames(eh_frame_begin: *const u8,
+                                                 object: *mut u8) {
+        __register_frame_info(eh_frame_begin, object);
+    }
+    #[cfg(not(test))]
+    #[no_mangle]
+    pub  unsafe extern fn rust_eh_unregister_frames(eh_frame_begin: *const u8,
+                                                   object: *mut u8) {
+        __deregister_frame_info(eh_frame_begin, object);
+    }
+}

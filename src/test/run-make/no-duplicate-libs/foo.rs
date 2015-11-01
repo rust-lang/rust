@@ -20,4 +20,5 @@ pub extern fn foo() {}
 #[lang = "eh_personality"] fn eh_personality() {}
 #[lang = "eh_unwind_resume"] fn eh_unwind_resume() {}
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
-
+#[no_mangle] pub extern fn rust_eh_register_frames () {}
+#[no_mangle] pub extern fn rust_eh_unregister_frames () {}
