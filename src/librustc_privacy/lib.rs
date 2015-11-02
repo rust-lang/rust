@@ -234,7 +234,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             // `pub` is explicitly listed.
             _ => {
                 self.prev_public = self.prev_public && item.vis == hir::Public;
-                self.prev_exported = self.prev_exported && item.vis == hir::Public ||
+                self.prev_exported = (self.prev_exported && item.vis == hir::Public) ||
                                      self.reexports.contains(&item.id);
 
                 self.maybe_insert_id(item.id);
@@ -275,7 +275,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             // It's not known until monomorphization if a trait impl item should be reachable
             // from external crates or not. So, we conservatively mark all of them exported and
             // the reachability pass (middle::reachable) marks all exported items as reachable.
-            // For example of private trait impl for private type that shoud be reachable see
+            // For example of private trait impl for private type that should be reachable see
             // src/test/auxiliary/issue-11225-3.rs
             hir::ItemImpl(_, _, _, Some(ref trait_ref), ref ty, ref impl_items) => {
                 let (public_ty, _exported_ty) = self.is_public_exported_ty(&ty);
@@ -344,7 +344,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
                     let public = self.prev_public && foreign_item.vis == hir::Public;
-                    let exported = self.prev_exported && foreign_item.vis == hir::Public ||
+                    let exported = (self.prev_exported && foreign_item.vis == hir::Public) ||
                                    self.reexports.contains(&foreign_item.id);
 
                     if public {
@@ -1471,7 +1471,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     // expression/block context can't possibly contain exported things.
     // (Making them no-ops stops us from traversing the whole AST without
     // having to be super careful about our `walk_...` calls above.)
-    // FIXME: Unfortunately this ^^^ is not true, blocks can contain
+    // FIXME(#29524): Unfortunately this ^^^ is not true, blocks can contain
     // exported items (e.g. impls) and actual code in rustc itself breaks
     // if we don't traverse blocks in `EmbargoVisitor`
     fn visit_block(&mut self, _: &hir::Block) {}
