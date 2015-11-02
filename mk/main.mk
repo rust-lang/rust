@@ -184,7 +184,7 @@ include $(CFG_SRC_DIR)mk/platform.mk
 
 # Run the stage1/2 compilers under valgrind
 ifdef VALGRIND_COMPILE
-  CFG_VALGRIND_COMPILE :=$(CFG_VALGRIND)
+  CFG_VALGRIND_COMPILE := $(CFG_VALGRIND)
 else
   CFG_VALGRIND_COMPILE :=
 endif
