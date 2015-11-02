@@ -464,7 +464,7 @@ which syntactic form it matches.
 
 * `ident`: an identifier. Examples: `x`; `foo`.
 * `path`: a qualified name. Example: `T::SpecialA`.
-* `expr`: an expression. Examples: `2 + 2`; `if true then { 1 } else { 2 }`; `f(42)`.
+* `expr`: an expression. Examples: `2 + 2`; `if true { 1 } else { 2 }`; `f(42)`.
 * `ty`: a type. Examples: `i32`; `Vec<(char, String)>`; `&T`.
 * `pat`: a pattern. Examples: `Some(t)`; `(17, 'a')`; `_`.
 * `stmt`: a single statement. Example: `let x = 3`.
