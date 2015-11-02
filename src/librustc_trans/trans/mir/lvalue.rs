@@ -20,7 +20,7 @@ use trans::debuginfo::DebugLoc;
 use trans::machine;
 use trans::tvec;
 
-use super::MirContext;
+use super::{MirContext, TempRef};
 
 #[derive(Copy, Clone)]
 pub struct LvalueRef<'tcx> {
@@ -58,7 +58,12 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let tcx = bcx.tcx();
         match *lvalue {
             mir::Lvalue::Var(index) => self.vars[index as usize],
-            mir::Lvalue::Temp(index) => self.temps[index as usize],
+            mir::Lvalue::Temp(index) => match self.temps[index as usize] {
+                TempRef::Lvalue(lvalue) =>
+                    lvalue,
+                TempRef::Operand(..) =>
+                    tcx.sess.bug(&format!("using operand temp {:?} as lvalue", lvalue)),
+            },
             mir::Lvalue::Arg(index) => self.args[index as usize],
             mir::Lvalue::Static(_def_id) => unimplemented!(),
             mir::Lvalue::ReturnPointer => {

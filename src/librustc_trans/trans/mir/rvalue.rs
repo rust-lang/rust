@@ -53,12 +53,87 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 unimplemented!()
             }
 
+            mir::Rvalue::Aggregate(_, ref operands) => {
+                for (i, operand) in operands.iter().enumerate() {
+                    let lldest_i = build::GEPi(bcx, lldest, &[0, i]);
+                    self.trans_operand_into(bcx, lldest_i, operand);
+                }
+                bcx
+            }
+
+            mir::Rvalue::Slice { ref input, from_start, from_end } => {
+                let ccx = bcx.ccx();
+                let input = self.trans_lvalue(bcx, input);
+                let (llbase, lllen) = tvec::get_base_and_len(bcx,
+                                                             input.llval,
+                                                             input.ty.to_ty(bcx.tcx()));
+                let llbase1 = build::GEPi(bcx, llbase, &[from_start]);
+                let adj = common::C_uint(ccx, from_start + from_end);
+                let lllen1 = build::Sub(bcx, lllen, adj, DebugLoc::None);
+                build::Store(bcx, llbase1, build::GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]));
+                build::Store(bcx, lllen1, build::GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]));
+                bcx
+            }
+
+            mir::Rvalue::InlineAsm(inline_asm) => {
+                asm::trans_inline_asm(bcx, inline_asm)
+            }
+
+            _ => {
+                assert!(self.rvalue_creates_operand(rvalue));
+                let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
+                build::Store(bcx, temp.llval, lldest);
+                bcx
+            }
+        }
+    }
+
+    pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
+        match *rvalue {
+            mir::Rvalue::Use(..) | // (*)
+            mir::Rvalue::Ref(..) |
+            mir::Rvalue::Len(..) |
+            mir::Rvalue::Cast(..) | // (*)
+            mir::Rvalue::BinaryOp(..) |
+            mir::Rvalue::UnaryOp(..) |
+            mir::Rvalue::Box(..) =>
+                true,
+            mir::Rvalue::Repeat(..) |
+            mir::Rvalue::Aggregate(..) |
+            mir::Rvalue::Slice { .. } |
+            mir::Rvalue::InlineAsm(..) =>
+                false,
+        }
+
+        // (*) this is only true if the type is suitable
+    }
+
+    pub fn trans_rvalue_operand(&mut self,
+                                bcx: Block<'bcx, 'tcx>,
+                                rvalue: &mir::Rvalue<'tcx>)
+                                -> (Block<'bcx, 'tcx>, OperandRef<'tcx>)
+    {
+        assert!(self.rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
+
+        match *rvalue {
+            mir::Rvalue::Use(ref operand) => {
+                let operand = self.trans_operand(bcx, operand);
+                (bcx, operand)
+            }
+
+            mir::Rvalue::Cast(..) => {
+                unimplemented!()
+            }
+
             mir::Rvalue::Ref(_, _, ref lvalue) => {
                 let tr_lvalue = self.trans_lvalue(bcx, lvalue);
+
                 // Note: lvalues are indirect, so storing the `llval` into the
                 // destination effectively creates a reference.
-                build::Store(bcx, tr_lvalue.llval, lldest);
-                bcx
+                (bcx, OperandRef {
+                    llval: tr_lvalue.llval,
+                    ty: tr_lvalue.ty.to_ty(bcx.tcx()),
+                })
             }
 
             mir::Rvalue::Len(ref lvalue) => {
@@ -66,8 +141,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let (_, lllen) = tvec::get_base_and_len(bcx,
                                                         tr_lvalue.llval,
                                                         tr_lvalue.ty.to_ty(bcx.tcx()));
-                build::Store(bcx, lllen, lldest);
-                bcx
+                (bcx, OperandRef {
+                    llval: lllen,
+                    ty: bcx.tcx().types.usize,
+                })
             }
 
             mir::Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
@@ -170,8 +247,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     mir::BinOp::Gt => base::compare_scalar_types(bcx, lhs.llval, rhs.llval, lhs.ty,
                                                                  hir::BiGt, binop_debug_loc),
                 };
-                build::Store(bcx, llval, lldest);
-                bcx
+                (bcx, OperandRef {
+                    llval: llval,
+                    ty: lhs.ty,
+                })
             }
 
             mir::Rvalue::UnaryOp(op, ref operand) => {
@@ -186,12 +265,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         build::Neg(bcx, operand.llval, debug_loc)
                     }
                 };
-                build::Store(bcx, llval, lldest);
-                bcx
+                (bcx, OperandRef {
+                    llval: llval,
+                    ty: operand.ty,
+                })
             }
 
             mir::Rvalue::Box(content_ty) => {
-                let content_ty: Ty<'tcx> = content_ty;
+                let content_ty: Ty<'tcx> = bcx.monomorphize(&content_ty);
                 let llty = type_of::type_of(bcx.ccx(), content_ty);
                 let llsize = machine::llsize_of(bcx.ccx(), llty);
                 let align = type_of::align_of(bcx.ccx(), content_ty);
@@ -204,34 +285,17 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                                       llsize,
                                                                       llalign,
                                                                       DebugLoc::None);
-                build::Store(bcx, llval, lldest);
-                bcx
+                (bcx, OperandRef {
+                    llval: llval,
+                    ty: box_ty,
+                })
             }
 
-            mir::Rvalue::Aggregate(_, ref operands) => {
-                for (i, operand) in operands.iter().enumerate() {
-                    let lldest_i = build::GEPi(bcx, lldest, &[0, i]);
-                    self.trans_operand_into(bcx, lldest_i, operand);
-                }
-                bcx
-            }
-
-            mir::Rvalue::Slice { ref input, from_start, from_end } => {
-                let ccx = bcx.ccx();
-                let input = self.trans_lvalue(bcx, input);
-                let (llbase, lllen) = tvec::get_base_and_len(bcx,
-                                                             input.llval,
-                                                             input.ty.to_ty(bcx.tcx()));
-                let llbase1 = build::GEPi(bcx, llbase, &[from_start]);
-                let adj = common::C_uint(ccx, from_start + from_end);
-                let lllen1 = build::Sub(bcx, lllen, adj, DebugLoc::None);
-                build::Store(bcx, llbase1, build::GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]));
-                build::Store(bcx, lllen1, build::GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]));
-                bcx
-            }
-
-            mir::Rvalue::InlineAsm(inline_asm) => {
-                asm::trans_inline_asm(bcx, inline_asm)
+            mir::Rvalue::Repeat(..) |
+            mir::Rvalue::Aggregate(..) |
+            mir::Rvalue::Slice { .. } |
+            mir::Rvalue::InlineAsm(..) => {
+                bcx.tcx().sess.bug(&format!("cannot generate operand from rvalue {:?}", rvalue));
             }
         }
     }
