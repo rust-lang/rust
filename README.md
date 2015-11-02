@@ -68,7 +68,8 @@ Read ["Installing Rust"] from [The Book].
    # Update package mirrors (may be needed if you have a fresh install of MSYS2)
    $ pacman -Sy pacman-mirrors
 
-   # Choose one based on platform: (+++ see the note below +++)
+   # Choose one based on platform: 
+   # *** see the note below ***
    $ pacman -S mingw-w64-i686-toolchain
    $ pacman -S mingw-w64-x86_64-toolchain
 
