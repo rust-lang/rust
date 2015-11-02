@@ -10,9 +10,9 @@
 
 use libc::c_uint;
 use llvm::{self, ValueRef};
+use rustc_data_structures::fnv::FnvHashSet;
 use rustc_mir::repr as mir;
 use rustc_mir::tcx::LvalueTy;
-use std::cell::Cell;
 use trans::base;
 use trans::build;
 use trans::common::{self, Block};
@@ -21,6 +21,7 @@ use trans::expr;
 use trans::type_of;
 
 use self::lvalue::LvalueRef;
+use self::operand::OperandRef;
 
 // FIXME DebugLoc is always None right now
 
@@ -43,13 +44,29 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
     /// An LLVM alloca for each MIR `VarDecl`
     vars: Vec<LvalueRef<'tcx>>,
 
-    /// An LLVM alloca for each MIR `TempDecl`
-    temps: Vec<LvalueRef<'tcx>>,
+    /// The location where each MIR `TempDecl` is stored. This is
+    /// usually an `LvalueRef` representing an alloca, but not always:
+    /// sometimes we can skip the alloca and just store the value
+    /// directly using an `OperandRef`, which makes for tighter LLVM
+    /// IR. The conditions for using an `OperandRef` are as follows:
+    ///
+    /// - the type of the temporary must be judged "immediate" by `type_is_immediate`
+    /// - the operand must never be referenced indirectly
+    ///     - we should not take its address using the `&` operator
+    ///     - nor should it appear in an lvalue path like `tmp.a`
+    /// - the operand must be defined by an rvalue that can generate immediate
+    ///   values
+    temps: Vec<TempRef<'tcx>>,
 
     /// The arguments to the function; as args are lvalues, these are
     /// always indirect, though we try to avoid creating an alloca
     /// when we can (and just reuse the pointer the caller provided).
     args: Vec<LvalueRef<'tcx>>,
+}
+
+enum TempRef<'tcx> {
+    Lvalue(LvalueRef<'tcx>),
+    Operand(Option<OperandRef<'tcx>>),
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -60,6 +77,10 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>) {
 
     let mir_blocks = bcx.mir().all_basic_blocks();
 
+    // Analyze the temps to determine which must be lvalues
+    // FIXME
+    let lvalue_temps: FnvHashSet<usize> = (0..mir.temp_decls.len()).collect();
+
     // Allocate variable and temp allocas
     let vars = mir.var_decls.iter()
                             .map(|decl| (bcx.monomorphize(&decl.ty), decl.name))
@@ -68,7 +89,16 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>) {
     let temps = mir.temp_decls.iter()
                               .map(|decl| bcx.monomorphize(&decl.ty))
                               .enumerate()
-                              .map(|(i, mty)| LvalueRef::alloca(bcx, mty, &format!("temp{:?}", i)))
+                              .map(|(i, mty)| if lvalue_temps.contains(&i) {
+                                  TempRef::Lvalue(LvalueRef::alloca(bcx,
+                                                                    mty,
+                                                                    &format!("temp{:?}", i)))
+                              } else {
+                                  // If this is an immediate temp, we do not create an
+                                  // alloca in advance. Instead we wait until we see the
+                                  // definition and update the operand there.
+                                  TempRef::Operand(None)
+                              })
                               .collect();
     let args = arg_value_refs(bcx, mir);
 
