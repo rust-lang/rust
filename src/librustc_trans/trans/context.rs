@@ -24,6 +24,7 @@ use trans::debuginfo;
 use trans::declare;
 use trans::glue::DropGlueKind;
 use trans::monomorphize::MonoId;
+use trans::collector::{TransItem, TransItemState};
 use trans::type_::{Type, TypeNames};
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
@@ -77,6 +78,8 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 
     available_drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, String>>,
     use_dll_storage_attrs: bool,
+
+    translation_items: RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>>,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
@@ -245,7 +248,6 @@ impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
     }
 }
 
-
 unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
     let llcx = llvm::LLVMContextCreate();
     let mod_name = CString::new(mod_name).unwrap();
@@ -354,6 +356,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             check_drop_flag_for_sanity: check_drop_flag_for_sanity,
             available_drop_glues: RefCell::new(FnvHashMap()),
             use_dll_storage_attrs: use_dll_storage_attrs,
+            translation_items: RefCell::new(FnvHashMap()),
         };
 
         for i in 0..local_count {
@@ -828,6 +831,24 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn mir_map(&self) -> &'b MirMap<'tcx> {
         self.shared.mir_map
+    }
+
+    pub fn translation_items(&self) -> &RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>> {
+        &self.shared.translation_items
+    }
+
+    pub fn record_translation_item_as_generated(&self, cgi: TransItem<'tcx>) {
+        if self.sess().opts.debugging_opts.print_trans_items.is_none() {
+            return;
+        }
+
+        let mut codegen_items = self.translation_items().borrow_mut();
+
+        if codegen_items.contains_key(&cgi) {
+            codegen_items.insert(cgi, TransItemState::PredictedAndGenerated);
+        } else {
+            codegen_items.insert(cgi, TransItemState::NotPredictedButGenerated);
+        }
     }
 }
 
