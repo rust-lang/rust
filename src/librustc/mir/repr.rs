@@ -720,7 +720,7 @@ pub enum Rvalue<'tcx> {
     InlineAsm(InlineAsm),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum CastKind {
     Misc,
 

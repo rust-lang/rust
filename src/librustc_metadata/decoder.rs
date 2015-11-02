@@ -834,6 +834,8 @@ pub fn maybe_get_item_mir<'tcx>(cdata: Cmd,
             })
         }).unwrap();
 
+        assert!(decoder.position() == mir_doc.end);
+
         let mut def_id_and_span_translator = MirDefIdAndSpanTranslator {
             crate_metadata: cdata,
             codemap: tcx.sess.codemap(),

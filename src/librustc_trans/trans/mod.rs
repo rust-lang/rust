@@ -55,6 +55,7 @@ mod _match;
 mod meth;
 mod mir;
 mod monomorphize;
+mod collect;
 mod tvec;
 mod type_;
 mod type_of;

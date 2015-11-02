@@ -408,6 +408,9 @@ pub struct ctxt<'tcx> {
     /// fragmented data to the set of unfragmented pieces that
     /// constitute it.
     pub fragment_infos: RefCell<DefIdMap<Vec<ty::FragmentInfo>>>,
+
+    /// Maps inlined closures from their original DefId to their local NodeId
+    pub inlined_closures: RefCell<DepTrackingMap<maps::InlinedClosures<'tcx>>>,
 }
 
 impl<'tcx> ctxt<'tcx> {
@@ -563,6 +566,7 @@ impl<'tcx> ctxt<'tcx> {
             custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
             cast_kinds: RefCell::new(NodeMap()),
             fragment_infos: RefCell::new(DefIdMap()),
+            inlined_closures: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
        }, f)
     }
 }

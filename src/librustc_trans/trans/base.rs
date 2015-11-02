@@ -36,7 +36,7 @@ use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
 use middle::cfg;
 use middle::cstore::CrateStore;
-use middle::def_id::DefId;
+use middle::def_id::{DefId, DefIndex};
 use middle::infer;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
@@ -59,6 +59,7 @@ use trans::callee;
 use trans::cleanup::{self, CleanupMethods, DropHint};
 use trans::closure;
 use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_uint, C_integral};
+use trans::collect::{self, TransItem, TransItemState, TransItemCollectionMode};
 use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
 use trans::common::{CrateContext, DropFlagHintsMap, Field, FunctionContext};
 use trans::common::{Result, NodeIdAndSpan, VariantInfo};
@@ -95,7 +96,7 @@ use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::str;
-use std::{i8, i16, i32, i64};
+use std::{i8, i16, i32, i64, u32};
 use syntax::abi::{Rust, RustCall, RustIntrinsic, PlatformIntrinsic, Abi};
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
@@ -1964,6 +1965,15 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                    closure_env: closure::ClosureEnv<'b>) {
     ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
 
+    ccx.record_translation_item_as_generated(TransItem::Fn {
+        node_id: fn_ast_id,
+        substs: ccx.tcx().mk_substs(ccx.tcx().erase_regions(param_substs)),
+        original_definition: DefId {
+            krate: 0,
+            index: DefIndex::from_u32(u32::MAX)
+        }
+    });
+
     let _icx = push_ctxt("trans_closure");
     attributes::emit_uwtable(llfndecl, true);
 
@@ -3160,6 +3170,8 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
         // First, verify intrinsics.
         intrinsic::check_intrinsics(&ccx);
 
+        collect_translation_items(&ccx);
+
         // Next, translate all items. See `TransModVisitor` for
         // details on why we walk in this particular way.
         {
@@ -3167,6 +3179,8 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
             intravisit::walk_mod(&mut TransItemsWithinModVisitor { ccx: &ccx }, &krate.module);
             krate.visit_all_items(&mut TransModVisitor { ccx: &ccx });
         }
+
+        collect::print_collection_results(&ccx);
     }
 
     for ccx in shared_ccx.iter() {
@@ -3327,6 +3341,51 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TransItemsWithinModVisitor<'a, 'tcx> {
 
                 intravisit::walk_item(self, i);
             }
+        }
+    }
+}
+
+fn collect_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
+    let time_passes = ccx.sess().time_passes();
+
+    let collection_mode = match ccx.sess().opts.debugging_opts.print_trans_items {
+        Some(ref s) => {
+            let mode_string = s.to_lowercase();
+            let mode_string = mode_string.trim();
+            if mode_string == "eager" {
+                TransItemCollectionMode::Eager
+            } else {
+                if mode_string != "lazy" {
+                    let message = format!("Unknown codegen-item collection mode '{}'. \
+                                           Falling back to 'lazy' mode.",
+                                           mode_string);
+                    ccx.sess().warn(&message);
+                }
+
+                TransItemCollectionMode::Lazy
+            }
+        }
+        None => TransItemCollectionMode::Lazy
+    };
+
+    let items = time(time_passes, "codegen item collection", || {
+        collect::collect_crate_translation_items(&ccx, collection_mode)
+    });
+
+    if ccx.sess().opts.debugging_opts.print_trans_items.is_some() {
+        let mut item_keys: Vec<_> = items.iter()
+                                         .map(|i| i.to_string(ccx))
+                                         .collect();
+        item_keys.sort();
+
+        for item in item_keys {
+            println!("TRANS_ITEM {}", item);
+        }
+
+        let mut ccx_map = ccx.translation_items().borrow_mut();
+
+        for cgi in items {
+            ccx_map.insert(cgi, TransItemState::PredictedButNotGenerated);
         }
     }
 }

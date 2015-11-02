@@ -29,6 +29,7 @@ use middle::const_eval::eval_const_expr_partial;
 use middle::def_id::DefId;
 use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
+use trans::collect::TransItem;
 use trans::common::{self, type_is_sized, ExprOrMethodCall, node_id_substs, C_nil, const_get_elt};
 use trans::common::{CrateContext, C_integral, C_floating, C_bool, C_str_slice, C_bytes, val_ty};
 use trans::common::{C_struct, C_undef, const_to_opt_int, const_to_opt_uint, VariantInfo, C_uint};
@@ -1012,6 +1013,9 @@ pub fn trans_static(ccx: &CrateContext,
                     id: ast::NodeId,
                     attrs: &[ast::Attribute])
                     -> Result<ValueRef, ConstEvalErr> {
+
+    ccx.record_translation_item_as_generated(TransItem::Static(id));
+
     unsafe {
         let _icx = push_ctxt("trans_static");
         let g = base::get_item_val(ccx, id);

@@ -14,10 +14,12 @@
 
 use rustc::front::map as ast_map;
 use rustc::session::Session;
+use rustc::util::common::MemoizationMap;
 
 use rustc_front::hir;
 use rustc_front::fold;
 use rustc_front::fold::Folder;
+use rustc_front::intravisit;
 
 use common as c;
 use cstore;
@@ -177,6 +179,8 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
           }
           _ => { }
         }
+        register_inlined_closures(dcx.tcx, ii);
+
         Ok(ii)
       }
     }
@@ -1272,6 +1276,41 @@ fn inlined_item_id_range(v: &InlinedItem) -> ast_util::IdRange {
     let mut visitor = ast_util::IdRangeComputingVisitor::new();
     v.visit_ids(&mut visitor);
     visitor.result()
+}
+
+fn register_inlined_closures<'tcx, 'ii>(tcx: &ty::ctxt<'tcx>,
+                                        ii: &'ii InlinedItem)
+    where 'tcx: 'ii {
+
+    let mut visitor = ClosureVisitor { tcx: tcx };
+    ii.visit(&mut visitor);
+
+    struct ClosureVisitor<'a, 'tcx>
+        where 'tcx: 'a {
+        tcx: &'a ty::ctxt<'tcx>
+    }
+
+    impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for ClosureVisitor<'a, 'tcx>
+        where 'tcx: 'a,
+              'tcx: 'v {
+
+        fn visit_fn(&mut self,
+                    fk: intravisit::FnKind<'v>,
+                    fd: &'v hir::FnDecl,
+                    b: &'v hir::Block,
+                    s: codemap::Span,
+                    id: ast::NodeId) {
+
+            if let intravisit::FnKind::Closure = fk {
+                let ty = self.tcx.node_id_to_type(id);
+                if let ty::TyClosure(def_id, _) = ty.sty {
+                    self.tcx.inlined_closures.memoize(def_id, || id );
+                }
+            }
+
+            intravisit::walk_fn(self, fk, fd, b, s)
+        }
+    }
 }
 
 // ______________________________________________________________________
