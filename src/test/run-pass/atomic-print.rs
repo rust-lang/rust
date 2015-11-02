@@ -41,7 +41,7 @@ fn main(){
             match line.chars().next().unwrap() {
                 '1' => assert_eq!(line, "11111"),
                 '2' => assert_eq!(line, "22222"),
-                _   => panic!("Unexpected character")
+                chr => panic!("unexpected character {:?}", chr)
             }
         }
     }
