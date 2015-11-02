@@ -201,6 +201,7 @@ endif
 
 ifdef CFG_ENABLE_VALGRIND
   $(info cfg: enabling valgrind (CFG_ENABLE_VALGRIND))
+  CFG_JEMALLOC_FLAGS += --enable-valgrind
 else
   CFG_VALGRIND :=
 endif
