@@ -177,7 +177,8 @@ build  deps  examples  libembed.so  native
 
 That `libembed.so` is our ‘shared object’ library. We can use this file
 just like any shared object library written in C! As an aside, this may be
-`embed.dll` or `libembed.dylib`, depending on the platform.
+`embed.dll` (Microsoft Windows) or `libembed.dylib` (Mac OS X), depending on 
+your operating system.
 
 Now that we’ve got our Rust library built, let’s use it from our Ruby.
 
