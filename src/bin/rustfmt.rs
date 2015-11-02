@@ -17,7 +17,7 @@ extern crate toml;
 extern crate env_logger;
 extern crate getopts;
 
-use rustfmt::{WriteMode, run};
+use rustfmt::{WriteMode, run, run_from_stdin};
 use rustfmt::config::Config;
 
 use std::env;
@@ -35,6 +35,8 @@ enum Operation {
     Help,
     /// Invalid program input, including reason.
     InvalidInput(String),
+    /// No file specified, read from stdin
+    Stdin(String, WriteMode),
 }
 
 /// Try to find a project file in the input file directory and its parents.
@@ -76,7 +78,7 @@ fn execute() -> i32 {
     opts.optopt("",
                 "write-mode",
                 "mode to write in",
-                "[replace|overwrite|display|diff|coverage]");
+                "[replace|overwrite|display|plain|diff|coverage]");
 
     let operation = determine_operation(&opts, env::args().skip(1));
 
@@ -87,6 +89,18 @@ fn execute() -> i32 {
         }
         Operation::Help => {
             print_usage(&opts, "");
+            0
+        }
+        Operation::Stdin(input, write_mode) => {
+            // try to read config from local directory
+            let config = match lookup_and_read_project_file(&Path::new(".")) {
+                Ok((path, toml)) => {
+                    Config::from_toml(&toml)
+                }
+                Err(_) => Default::default(),
+            };
+
+            run_from_stdin(input, write_mode, &config);
             0
         }
         Operation::Format(file, write_mode) => {
@@ -138,6 +152,32 @@ fn determine_operation<I>(opts: &Options, args: I) -> Operation
         return Operation::Help;
     }
 
+    // if no file argument is supplied, read from stdin
+    if matches.free.len() != 1 {
+
+        // make sure the write mode is plain or not set
+        // (the other options would require a file)
+        match matches.opt_str("write-mode") {
+            Some(mode) => {
+                match mode.parse() {
+                    Ok(WriteMode::Plain) => (),
+                    _ => return Operation::InvalidInput("Using stdin requires write-mode to be \
+                                                         plain"
+                                                            .into()),
+                }
+            }
+            _ => (),
+        }
+
+        let mut buffer = String::new();
+        match io::stdin().read_to_string(&mut buffer) {
+            Ok(..) => (),
+            Err(e) => return Operation::InvalidInput(e.to_string()),
+        }
+
+        return Operation::Stdin(buffer, WriteMode::Plain);
+    }
+
     let write_mode = match matches.opt_str("write-mode") {
         Some(mode) => {
             match mode.parse() {
@@ -147,10 +187,6 @@ fn determine_operation<I>(opts: &Options, args: I) -> Operation
         }
         None => WriteMode::Replace,
     };
-
-    if matches.free.len() != 1 {
-        return Operation::InvalidInput("Please provide one file to format".into());
-    }
 
     Operation::Format(PathBuf::from(&matches.free[0]), write_mode)
 }
