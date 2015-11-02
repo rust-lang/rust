@@ -34,6 +34,8 @@ impl Drop for Handler {
 #[cfg(any(target_os = "linux",
           target_os = "macos",
           target_os = "bitrig",
+          target_os = "dragonfly",
+          target_os = "freebsd",
           all(target_os = "netbsd", not(target_vendor = "rumprun")),
           target_os = "openbsd"))]
 mod imp {
@@ -143,6 +145,8 @@ mod imp {
 #[cfg(not(any(target_os = "linux",
               target_os = "macos",
               target_os = "bitrig",
+              target_os = "dragonfly",
+              target_os = "freebsd",
               all(target_os = "netbsd", not(target_vendor = "rumprun")),
               target_os = "openbsd")))]
 mod imp {
