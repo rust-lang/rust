@@ -16,6 +16,7 @@ use borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
 use borrowck::move_data::*;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
+use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::InteriorOffsetKind as Kind;
 use rustc::middle::ty;
 
@@ -163,22 +164,22 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                                cmt: &mc::cmt<'tcx>)
                                                -> Option<mc::cmt<'tcx>> {
     match cmt.cat {
-        mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
-        mc::cat_deref(_, _, mc::Implicit(..)) |
-        mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-        mc::cat_static_item => {
+        Categorization::Deref(_, _, mc::BorrowedPtr(..)) |
+        Categorization::Deref(_, _, mc::Implicit(..)) |
+        Categorization::Deref(_, _, mc::UnsafePtr(..)) |
+        Categorization::StaticItem => {
             Some(cmt.clone())
         }
 
-        mc::cat_rvalue(..) |
-        mc::cat_local(..) |
-        mc::cat_upvar(..) => {
+        Categorization::Rvalue(..) |
+        Categorization::Local(..) |
+        Categorization::Upvar(..) => {
             None
         }
 
-        mc::cat_downcast(ref b, _) |
-        mc::cat_interior(ref b, mc::InteriorField(_)) |
-        mc::cat_interior(ref b, mc::InteriorElement(Kind::Pattern, _)) => {
+        Categorization::Downcast(ref b, _) |
+        Categorization::Interior(ref b, mc::InteriorField(_)) |
+        Categorization::Interior(ref b, mc::InteriorElement(Kind::Pattern, _)) => {
             match b.ty.sty {
                 ty::TyStruct(def, _) | ty::TyEnum(def, _) => {
                     if def.has_dtor() {
@@ -193,12 +194,12 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             }
         }
 
-        mc::cat_interior(_, mc::InteriorElement(Kind::Index, _)) => {
+        Categorization::Interior(_, mc::InteriorElement(Kind::Index, _)) => {
             // Forbid move of arr[i] for arr: [T; 3]; see RFC 533.
             Some(cmt.clone())
         }
 
-        mc::cat_deref(ref b, _, mc::Unique) => {
+        Categorization::Deref(ref b, _, mc::Unique) => {
             check_and_get_illegal_move_origin(bccx, b)
         }
     }
