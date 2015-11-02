@@ -125,16 +125,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
             hir::ExprMethodCall(..) => {
                 let method_call = ty::MethodCall::expr(expr.id);
                 let def_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
-                match self.tcx.impl_or_trait_item(def_id).container() {
-                    ty::ImplContainer(_) => {
-                        if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
-                            if self.def_id_represents_local_inlined_item(def_id) {
-                                self.worklist.push(node_id)
-                            }
-                            self.reachable_symbols.insert(node_id);
-                        }
+                if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
+                    if self.def_id_represents_local_inlined_item(def_id) {
+                        self.worklist.push(node_id)
                     }
-                    ty::TraitContainer(_) => {}
+                    self.reachable_symbols.insert(node_id);
                 }
             }
             _ => {}
@@ -228,14 +223,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 continue
             }
 
-            match self.tcx.map.find(search_item) {
-                Some(ref item) => self.propagate_node(item, search_item),
-                None if search_item == ast::CRATE_NODE_ID => {}
-                None => {
-                    self.tcx.sess.bug(&format!("found unmapped ID in worklist: \
-                                               {}",
-                                              search_item))
-                }
+            if let Some(ref item) = self.tcx.map.find(search_item) {
+                self.propagate_node(item, search_item);
             }
         }
     }
