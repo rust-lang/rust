@@ -177,6 +177,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
           }
           _ => { }
         }
+
         Ok(ii)
       }
     }

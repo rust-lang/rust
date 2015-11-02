@@ -223,6 +223,8 @@ pub trait CrateStore<'tcx> : Any {
                           -> FoundAst<'tcx>;
     fn maybe_get_item_mir(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
                           -> Option<Mir<'tcx>>;
+    fn is_item_mir_available(&self, def: DefId) -> bool;
+
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
     fn crates(&self) -> Vec<ast::CrateNum>;
@@ -401,6 +403,9 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                           -> FoundAst<'tcx> { unimplemented!() }
     fn maybe_get_item_mir(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
                           -> Option<Mir<'tcx>> { unimplemented!() }
+    fn is_item_mir_available(&self, def: DefId) -> bool {
+        unimplemented!()
+    }
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.

@@ -55,9 +55,7 @@ use back::abi;
 use llvm::{self, ValueRef, TypeKind};
 use middle::const_qualif::ConstQualif;
 use middle::def::Def;
-use middle::lang_items::CoerceUnsizedTraitLangItem;
-use middle::subst::{Substs, VecPerParamSpace};
-use middle::traits;
+use middle::subst::Substs;
 use trans::{_match, adt, asm, base, callee, closure, consts, controlflow};
 use trans::base::*;
 use trans::build::*;
@@ -500,24 +498,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let source = unpack_datum!(bcx, source.to_ref_datum(bcx));
             assert!(target.kind.is_by_ref());
 
-            let trait_substs = Substs::erased(VecPerParamSpace::new(vec![target.ty],
-                                                                    vec![source.ty],
-                                                                    Vec::new()));
-            let trait_ref = ty::Binder(ty::TraitRef {
-                def_id: langcall(bcx, Some(span), "coercion",
-                                 CoerceUnsizedTraitLangItem),
-                substs: bcx.tcx().mk_substs(trait_substs)
-            });
-
-            let kind = match fulfill_obligation(bcx.ccx(), span, trait_ref) {
-                traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
-                    bcx.tcx().custom_coerce_unsized_kind(impl_def_id)
-                }
-                vtable => {
-                    bcx.sess().span_bug(span, &format!("invalid CoerceUnsized vtable: {:?}",
-                                                       vtable));
-                }
-            };
+            let kind = custom_coerce_unsize_info(bcx.ccx(), source.ty, target.ty);
 
             let repr_source = adt::represent_type(bcx.ccx(), source.ty);
             let src_fields = match &*repr_source {

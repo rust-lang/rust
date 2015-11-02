@@ -13,7 +13,7 @@ use middle::def_id::DefId;
 use middle::ty;
 use std::marker::PhantomData;
 use std::rc::Rc;
-use syntax::attr;
+use syntax::{attr, ast};
 
 macro_rules! dep_map_ty {
     ($ty_name:ident : $node_name:ident ($key:ty) -> $value:ty) => {
@@ -42,3 +42,4 @@ dep_map_ty! { InherentImpls: InherentImpls(DefId) -> Rc<Vec<DefId>> }
 dep_map_ty! { ImplItems: ImplItems(DefId) -> Vec<ty::ImplOrTraitItemId> }
 dep_map_ty! { TraitItems: TraitItems(DefId) -> Rc<Vec<ty::ImplOrTraitItem<'tcx>>> }
 dep_map_ty! { ReprHints: ReprHints(DefId) -> Rc<Vec<attr::ReprAttr>> }
+dep_map_ty! { InlinedClosures: Hir(DefId) -> ast::NodeId }
