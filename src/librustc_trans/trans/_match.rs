@@ -198,6 +198,7 @@ use middle::expr_use_visitor as euv;
 use middle::infer;
 use middle::lang_items::StrEqFnLangItem;
 use middle::mem_categorization as mc;
+use middle::mem_categorization::Categorization;
 use middle::pat_util::*;
 use trans::adt;
 use trans::base::*;
@@ -1496,12 +1497,12 @@ impl<'tcx> euv::Delegate<'tcx> for ReassignmentChecker {
 
     fn mutate(&mut self, _: ast::NodeId, _: Span, cmt: mc::cmt, _: euv::MutateMode) {
         match cmt.cat {
-            mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
-            mc::cat_local(vid) => self.reassigned |= self.node == vid,
-            mc::cat_interior(ref base_cmt, mc::InteriorField(field)) => {
+            Categorization::Upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
+            Categorization::Local(vid) => self.reassigned |= self.node == vid,
+            Categorization::Interior(ref base_cmt, mc::InteriorField(field)) => {
                 match base_cmt.cat {
-                    mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
-                    mc::cat_local(vid) => {
+                    Categorization::Upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
+                    Categorization::Local(vid) => {
                         self.reassigned |= self.node == vid &&
                             (self.field.is_none() || Some(field) == self.field)
                     },

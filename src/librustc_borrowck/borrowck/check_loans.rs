@@ -23,6 +23,7 @@ use borrowck::InteriorKind::{InteriorElement, InteriorField};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::infer;
 use rustc::middle::mem_categorization as mc;
+use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
 use rustc::middle::ty;
 use syntax::ast;
@@ -796,7 +797,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         // Check for reassignments to (immutable) local variables. This
         // needs to be done here instead of in check_loans because we
         // depend on move data.
-        if let mc::cat_local(local_id) = assignee_cmt.cat {
+        if let Categorization::Local(local_id) = assignee_cmt.cat {
             let lp = opt_loan_path(&assignee_cmt).unwrap();
             self.move_data.each_assignment_of(assignment_id, &lp, |assign| {
                 if assignee_cmt.mutbl.is_mutable() {
