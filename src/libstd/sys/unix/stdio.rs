@@ -8,53 +8,54 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use sys::inner::*;
+use sys::error::Result;
+use io::prelude::*;
 use io;
 use libc;
-use sys::fd::FileDesc;
+use sys::unix::fd::FileDesc;
+
+pub use sys::common::stdio::dumb_print;
 
 pub struct Stdin(());
 pub struct Stdout(());
 pub struct Stderr(());
 
-impl Stdin {
-    pub fn new() -> io::Result<Stdin> { Ok(Stdin(())) }
+pub fn stdin() -> Result<Stdin> { Ok(Stdin(())) }
+pub fn stdout() -> Result<Stdout> { Ok(Stdout(())) }
+pub fn stderr() -> Result<Stderr> { Ok(Stderr(())) }
 
-    pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
-        let fd = FileDesc::new(libc::STDIN_FILENO);
+impl Read for Stdin {
+    fn read(&mut self, data: &mut [u8]) -> io::Result<usize> {
+        let fd = FileDesc::from_inner(libc::STDIN_FILENO);
         let ret = fd.read(data);
-        fd.into_raw();
-        ret
+        fd.into_inner();
+        ret.map_err(From::from)
     }
 }
 
-impl Stdout {
-    pub fn new() -> io::Result<Stdout> { Ok(Stdout(())) }
-
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        let fd = FileDesc::new(libc::STDOUT_FILENO);
-        let ret = fd.write(data);
-        fd.into_raw();
-        ret
-    }
-}
-
-impl Stderr {
-    pub fn new() -> io::Result<Stderr> { Ok(Stderr(())) }
-
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        let fd = FileDesc::new(libc::STDERR_FILENO);
-        let ret = fd.write(data);
-        fd.into_raw();
-        ret
-    }
-}
-
-// FIXME: right now this raw stderr handle is used in a few places because
-//        std::io::stderr_raw isn't exposed, but once that's exposed this impl
-//        should go away
-impl io::Write for Stderr {
+impl Write for Stdout {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        Stderr::write(self, data)
+        let fd = FileDesc::from_inner(libc::STDOUT_FILENO);
+        let ret = fd.write(data);
+        fd.into_inner();
+        ret.map_err(From::from)
     }
+
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
+}
+
+impl Write for Stderr {
+    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+        let fd = FileDesc::from_inner(libc::STDERR_FILENO);
+        let ret = fd.write(data);
+        fd.into_inner();
+        ret.map_err(From::from)
+    }
+
+    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+}
+
+pub fn is_ebadf(e: &io::Error) -> bool {
+    e.raw_os_error() == Some(libc::EBADF)
 }

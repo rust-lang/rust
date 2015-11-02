@@ -10,17 +10,17 @@
 
 #![allow(deprecated)]
 
-use sys_common::backtrace::{output, output_fileline};
+use backtrace::{output, output_fileline};
+use sys::error::Result;
 use ffi::CStr;
 use dynamic_lib::DynamicLibrary;
 use super::{SymFromAddrFn, SymGetLineFromAddr64Fn, SYMBOL_INFO, MAX_SYM_NAME, IMAGEHLP_LINE64};
-use io;
 use io::prelude::*;
 use intrinsics;
 use libc;
 
 pub fn print(w: &mut Write, i: isize, addr: u64, dbghelp: &DynamicLibrary, process: libc::HANDLE)
-        -> io::Result<()> {
+        -> Result<()> {
     let SymFromAddr = sym!(dbghelp, "SymFromAddr", SymFromAddrFn);
     let SymGetLineFromAddr64 = sym!(dbghelp, "SymGetLineFromAddr64", SymGetLineFromAddr64Fn);
 
@@ -41,7 +41,7 @@ pub fn print(w: &mut Write, i: isize, addr: u64, dbghelp: &DynamicLibrary, proce
         None
     };
 
-    try!(output(w, i, addr as usize as *mut libc::c_void, name));
+    try!(output(w, i, addr as usize as *mut (), name));
 
     // Now find out the filename and line number
     let mut line: IMAGEHLP_LINE64 = unsafe { intrinsics::init() };

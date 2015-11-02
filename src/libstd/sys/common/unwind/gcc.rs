@@ -10,10 +10,10 @@
 
 #![allow(private_no_mangle_fns)]
 
-use prelude::v1::*;
-
+use sys::unwind as sys;
+use sys::common::libunwind as uw;
 use any::Any;
-use sys_common::libunwind as uw;
+use boxed::Box;
 
 struct Exception {
     uwe: uw::_Unwind_Exception,
@@ -21,14 +21,14 @@ struct Exception {
 }
 
 pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
-    let exception: Box<_> = box Exception {
+    let exception: Box<_> = Box::new(Exception {
         uwe: uw::_Unwind_Exception {
             exception_class: rust_exception_class(),
             exception_cleanup: exception_cleanup,
             private: [0; uw::unwinder_private_data_size],
         },
         cause: Some(data),
-    };
+    });
     let exception_param = Box::into_raw(exception) as *mut uw::_Unwind_Exception;
     let error = uw::_Unwind_RaiseException(exception_param);
     rtabort!("Could not unwind stack, error = {}", error as isize);
@@ -78,7 +78,7 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
           not(all(windows, target_arch = "x86_64")),
           not(test)))]
 pub mod eabi {
-    use sys_common::libunwind as uw;
+    use sys::common::libunwind as uw;
     use libc::c_int;
 
     extern {

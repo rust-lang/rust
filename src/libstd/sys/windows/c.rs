@@ -16,6 +16,9 @@ use libc;
 use libc::{c_uint, c_ulong};
 use libc::{DWORD, BOOL, BOOLEAN, ERROR_CALL_NOT_IMPLEMENTED, LPVOID, HANDLE};
 use libc::{LPCWSTR, LONG};
+use vec::Vec;
+use sys::error;
+use time::Duration;
 use ptr;
 
 pub use self::GET_FILEEX_INFO_LEVELS::*;
@@ -26,6 +29,89 @@ pub use libc::consts::os::extra::{
     WSAPROTOCOL_LEN,
 };
 pub use libc::types::os::arch::extra::{GROUP, GUID, WSAPROTOCOLCHAIN};
+pub use sys::common::c::{cvt_zero as cvt, cvt_neg1};
+
+pub fn dur2timeout(dur: Duration) -> libc::DWORD {
+    // Note that a duration is a (u64, u32) (seconds, nanoseconds) pair, and the
+    // timeouts in windows APIs are typically u32 milliseconds. To translate, we
+    // have two pieces to take care of:
+    //
+    // * Nanosecond precision is rounded up
+    // * Greater than u32::MAX milliseconds (50 days) is rounded up to INFINITE
+    //   (never time out).
+    dur.as_secs().checked_mul(1000).and_then(|ms| {
+        ms.checked_add((dur.subsec_nanos() as u64) / 1_000_000)
+    }).and_then(|ms| {
+        ms.checked_add(if dur.subsec_nanos() % 1_000_000 > 0 {1} else {0})
+    }).map(|ms| {
+        if ms > <libc::DWORD>::max_value() as u64 {
+            libc::INFINITE
+        } else {
+            ms as libc::DWORD
+        }
+    }).unwrap_or(libc::INFINITE)
+}
+
+// Many Windows APIs follow a pattern of where we hand a buffer and then they
+// will report back to us how large the buffer should be or how many bytes
+// currently reside in the buffer. This function is an abstraction over these
+// functions by making them easier to call.
+//
+// The first callback, `f1`, is yielded a (pointer, len) pair which can be
+// passed to a syscall. The `ptr` is valid for `len` items (u16 in this case).
+// The closure is expected to return what the syscall returns which will be
+// interpreted by this function to determine if the syscall needs to be invoked
+// again (with more buffer space).
+//
+// Once the syscall has completed (errors bail out early) the second closure is
+// yielded the data which has been read from the syscall. The return value
+// from this closure is then the return value of the function.
+pub fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> error::Result<T>
+    where F1: FnMut(*mut u16, libc::DWORD) -> libc::DWORD,
+          F2: FnOnce(&[u16]) -> T
+{
+    // Start off with a stack buf but then spill over to the heap if we end up
+    // needing more space.
+    let mut stack_buf = [0u16; 512];
+    let mut heap_buf = Vec::new();
+    unsafe {
+        let mut n = stack_buf.len();
+        loop {
+            let buf = if n <= stack_buf.len() {
+                &mut stack_buf[..]
+            } else {
+                let extra = n - heap_buf.len();
+                heap_buf.reserve(extra);
+                heap_buf.set_len(n);
+                &mut heap_buf[..]
+            };
+
+            // This function is typically called on windows API functions which
+            // will return the correct length of the string, but these functions
+            // also return the `0` on error. In some cases, however, the
+            // returned "correct length" may actually be 0!
+            //
+            // To handle this case we call `SetLastError` to reset it to 0 and
+            // then check it again if we get the "0 error value". If the "last
+            // error" is still 0 then we interpret it as a 0 length buffer and
+            // not an actual error.
+            SetLastError(0);
+            let k = match f1(buf.as_mut_ptr(), n as libc::DWORD) {
+                0 if libc::GetLastError() == 0 => 0,
+                0 => return error::expect_last_result(),
+                n => n,
+            } as usize;
+            if k == n && libc::GetLastError() ==
+                            libc::ERROR_INSUFFICIENT_BUFFER as libc::DWORD {
+                n *= 2;
+            } else if k >= n {
+                n = k;
+            } else {
+                return Ok(f2(&buf[..k]))
+            }
+        }
+    }
+}
 
 pub const WSADESCRIPTION_LEN: usize = 256;
 pub const WSASYS_STATUS_LEN: usize = 128;

@@ -9,15 +9,14 @@
 // except according to those terms.
 
 use prelude::v1::*;
+use sys::inner::*;
+use sys::net as sys;
 
 use fmt;
 use hash;
 use io;
-use libc::{self, socklen_t, sa_family_t};
-use mem;
-use net::{lookup_host, ntoh, hton, IpAddr, Ipv4Addr, Ipv6Addr};
+use net::{lookup_host, IpAddr, Ipv4Addr, Ipv6Addr};
 use option;
-use sys_common::{FromInner, AsInner, IntoInner};
 use vec;
 
 /// Representation of a socket address for networking applications.
@@ -39,12 +38,12 @@ pub enum SocketAddr {
 /// An IPv4 socket address which is a (ip, port) combination.
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct SocketAddrV4 { inner: libc::sockaddr_in }
+pub struct SocketAddrV4 { inner: sys::SocketAddrV4 }
 
 /// An IPv6 socket address.
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct SocketAddrV6 { inner: libc::sockaddr_in6 }
+pub struct SocketAddrV6 { inner: sys::SocketAddrV6 }
 
 impl SocketAddr {
     /// Creates a new socket address from the (ip, port) pair.
@@ -80,26 +79,17 @@ impl SocketAddrV4 {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(ip: Ipv4Addr, port: u16) -> SocketAddrV4 {
         SocketAddrV4 {
-            inner: libc::sockaddr_in {
-                sin_family: libc::AF_INET as sa_family_t,
-                sin_port: hton(port),
-                sin_addr: *ip.as_inner(),
-                .. unsafe { mem::zeroed() }
-            },
+            inner: sys::SocketAddrV4::new(*ip.as_inner(), port),
         }
     }
 
     /// Returns the IP address associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn ip(&self) -> &Ipv4Addr {
-        unsafe {
-            &*(&self.inner.sin_addr as *const libc::in_addr as *const Ipv4Addr)
-        }
-    }
+    pub fn ip(&self) -> &Ipv4Addr { FromInner::from_inner(self.inner.addr()) }
 
     /// Returns the port number associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn port(&self) -> u16 { ntoh(self.inner.sin_port) }
+    pub fn port(&self) -> u16 { self.inner.port() }
 }
 
 impl SocketAddrV6 {
@@ -109,62 +99,68 @@ impl SocketAddrV6 {
     pub fn new(ip: Ipv6Addr, port: u16, flowinfo: u32, scope_id: u32)
                -> SocketAddrV6 {
         SocketAddrV6 {
-            inner: libc::sockaddr_in6 {
-                sin6_family: libc::AF_INET6 as sa_family_t,
-                sin6_port: hton(port),
-                sin6_addr: *ip.as_inner(),
-                sin6_flowinfo: hton(flowinfo),
-                sin6_scope_id: hton(scope_id),
-                .. unsafe { mem::zeroed() }
-            },
+            inner: sys::SocketAddrV6::new(*ip.as_inner(), port, flowinfo, scope_id),
         }
     }
 
     /// Returns the IP address associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn ip(&self) -> &Ipv6Addr {
-        unsafe {
-            &*(&self.inner.sin6_addr as *const libc::in6_addr as *const Ipv6Addr)
-        }
-    }
+    pub fn ip(&self) -> &Ipv6Addr { FromInner::from_inner(self.inner.addr()) }
 
     /// Returns the port number associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn port(&self) -> u16 { ntoh(self.inner.sin6_port) }
+    pub fn port(&self) -> u16 { self.inner.port() }
 
     /// Returns scope ID associated with this address, corresponding to the
     /// `sin6_flowinfo` field in C.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn flowinfo(&self) -> u32 { ntoh(self.inner.sin6_flowinfo) }
+    pub fn flowinfo(&self) -> u32 { self.inner.flowinfo() }
 
     /// Returns scope ID associated with this address, corresponding to the
     /// `sin6_scope_id` field in C.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn scope_id(&self) -> u32 { ntoh(self.inner.sin6_scope_id) }
+    pub fn scope_id(&self) -> u32 { self.inner.scope_id() }
 }
 
-impl FromInner<libc::sockaddr_in> for SocketAddrV4 {
-    fn from_inner(addr: libc::sockaddr_in) -> SocketAddrV4 {
+impl FromInner<sys::SocketAddrV4> for SocketAddrV4 {
+    fn from_inner(addr: sys::SocketAddrV4) -> SocketAddrV4 {
         SocketAddrV4 { inner: addr }
     }
 }
 
-impl FromInner<libc::sockaddr_in6> for SocketAddrV6 {
-    fn from_inner(addr: libc::sockaddr_in6) -> SocketAddrV6 {
+impl FromInner<sys::SocketAddrV6> for SocketAddrV6 {
+    fn from_inner(addr: sys::SocketAddrV6) -> SocketAddrV6 {
         SocketAddrV6 { inner: addr }
     }
 }
 
-impl<'a> IntoInner<(*const libc::sockaddr, socklen_t)> for &'a SocketAddr {
-    fn into_inner(self) -> (*const libc::sockaddr, socklen_t) {
-        match *self {
-            SocketAddr::V4(ref a) => {
-                (a as *const _ as *const _, mem::size_of_val(a) as socklen_t)
-            }
-            SocketAddr::V6(ref a) => {
-                (a as *const _ as *const _, mem::size_of_val(a) as socklen_t)
-            }
+impl FromInner<sys::SocketAddr> for SocketAddr {
+    fn from_inner(addr: sys::SocketAddr) -> SocketAddr {
+        match addr {
+            sys::SocketAddr::V4(addr) => SocketAddr::V4(FromInner::from_inner(addr)),
+            sys::SocketAddr::V6(addr) => SocketAddr::V6(FromInner::from_inner(addr)),
         }
+    }
+}
+
+impl<'a> IntoInner<sys::SocketAddr> for &'a SocketAddr {
+    fn into_inner(self) -> sys::SocketAddr {
+        match *self {
+            SocketAddr::V4(ref addr) => sys::SocketAddr::V4(*addr.as_inner()),
+            SocketAddr::V6(ref addr) => sys::SocketAddr::V6(*addr.as_inner()),
+        }
+    }
+}
+
+impl AsInner<sys::SocketAddrV4> for SocketAddrV4 {
+    fn as_inner(&self) -> &sys::SocketAddrV4 {
+        &self.inner
+    }
+}
+
+impl AsInner<sys::SocketAddrV6> for SocketAddrV6 {
+    fn as_inner(&self) -> &sys::SocketAddrV6 {
+        &self.inner
     }
 }
 
@@ -218,17 +214,13 @@ impl Clone for SocketAddrV6 {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for SocketAddrV4 {
     fn eq(&self, other: &SocketAddrV4) -> bool {
-        self.inner.sin_port == other.inner.sin_port &&
-            self.inner.sin_addr.s_addr == other.inner.sin_addr.s_addr
+        self.inner == other.inner
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for SocketAddrV6 {
     fn eq(&self, other: &SocketAddrV6) -> bool {
-        self.inner.sin6_port == other.inner.sin6_port &&
-            self.inner.sin6_addr.s6_addr == other.inner.sin6_addr.s6_addr &&
-            self.inner.sin6_flowinfo == other.inner.sin6_flowinfo &&
-            self.inner.sin6_scope_id == other.inner.sin6_scope_id
+        self.inner == other.inner
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -239,14 +231,13 @@ impl Eq for SocketAddrV6 {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for SocketAddrV4 {
     fn hash<H: hash::Hasher>(&self, s: &mut H) {
-        (self.inner.sin_port, self.inner.sin_addr.s_addr).hash(s)
+        self.inner.hash(s)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for SocketAddrV6 {
     fn hash<H: hash::Hasher>(&self, s: &mut H) {
-        (self.inner.sin6_port, &self.inner.sin6_addr.s6_addr,
-         self.inner.sin6_flowinfo, self.inner.sin6_scope_id).hash(s)
+        self.inner.hash(s)
     }
 }
 

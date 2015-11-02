@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ops::{Add, Sub, Mul, Div};
-use sys::time::SteadyTime;
+use sys::time as sys;
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
@@ -67,9 +67,9 @@ impl Duration {
                          abstraction",
                issue = "27799")]
     pub fn span<F>(f: F) -> Duration where F: FnOnce() {
-        let start = SteadyTime::now();
+        let start = sys::SteadyTime::now().unwrap();
         f();
-        &SteadyTime::now() - &start
+        sys::SteadyTime::delta(&sys::SteadyTime::now().unwrap(), &start)
     }
 
     /// Creates a new `Duration` from the specified number of seconds.

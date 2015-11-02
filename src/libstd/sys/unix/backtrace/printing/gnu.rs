@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use sys_common::gnu::libbacktrace::print;
+pub use sys::common::gnu::libbacktrace::print;

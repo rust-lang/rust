@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use sys::inner::*;
 use cell::UnsafeCell;
 use libc;
 use ptr;
-use sys::mutex::{self, Mutex};
+use sys::unix::mutex::Mutex;
 use sys::time;
-use sys::sync as ffi;
+use sys::unix::sync as ffi;
 use time::Duration;
 
 pub struct Condvar { inner: UnsafeCell<ffi::pthread_cond_t> }
@@ -22,12 +23,12 @@ unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 
 impl Condvar {
-    pub const fn new() -> Condvar {
-        // Might be moved and address is changing it is better to avoid
-        // initialization of potentially opaque OS data before it landed
-        Condvar { inner: UnsafeCell::new(ffi::PTHREAD_COND_INITIALIZER) }
-    }
+    // Might be moved and address is changing it is better to avoid
+    // initialization of potentially opaque OS data before it landed
+    pub const fn new() -> Condvar { Condvar { inner: UnsafeCell::new(ffi::PTHREAD_COND_INITIALIZER) } }
+}
 
+impl Condvar {
     #[inline]
     pub unsafe fn notify_one(&self) {
         let r = ffi::pthread_cond_signal(self.inner.get());
@@ -42,7 +43,7 @@ impl Condvar {
 
     #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
-        let r = ffi::pthread_cond_wait(self.inner.get(), mutex::raw(mutex));
+        let r = ffi::pthread_cond_wait(self.inner.get(), mutex.as_inner().get());
         debug_assert_eq!(r, 0);
     }
 
@@ -54,7 +55,7 @@ impl Condvar {
         // stable time.  pthread_cond_timedwait uses system time, but we want to
         // report timeout based on stable time.
         let mut sys_now = libc::timeval { tv_sec: 0, tv_usec: 0 };
-        let stable_now = time::SteadyTime::now();
+        let stable_now = time::SteadyTime::now().unwrap();
         let r = ffi::gettimeofday(&mut sys_now, ptr::null_mut());
         debug_assert_eq!(r, 0);
 
@@ -76,13 +77,14 @@ impl Condvar {
         });
 
         // And wait!
-        let r = ffi::pthread_cond_timedwait(self.inner.get(), mutex::raw(mutex),
+        let r = ffi::pthread_cond_timedwait(self.inner.get(), mutex.as_inner().get(),
                                             &timeout);
         debug_assert!(r == libc::ETIMEDOUT || r == 0);
 
         // ETIMEDOUT is not a totally reliable method of determining timeout due
         // to clock shifts, so do the check ourselves
-        &time::SteadyTime::now() - &stable_now < dur
+        let stable_done = time::SteadyTime::now().unwrap();
+        time::SteadyTime::delta(&stable_done, &stable_now) < dur
     }
 
     #[inline]

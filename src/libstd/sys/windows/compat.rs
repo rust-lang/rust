@@ -68,7 +68,7 @@ macro_rules! compat_fn {
             static PTR: AtomicUsize = AtomicUsize::new(0);
 
             fn load() -> usize {
-                ::sys::compat::store_func(&PTR,
+                ::sys::windows::compat::store_func(&PTR,
                                           stringify!($module),
                                           stringify!($symbol),
                                           fallback as usize)

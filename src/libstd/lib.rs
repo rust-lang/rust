@@ -240,11 +240,11 @@
 #![feature(int_error_internals)]
 #![feature(into_cow)]
 #![feature(lang_items)]
-#![feature(libc)]
 #![feature(linkage, thread_local, asm)]
 #![feature(macro_reexport)]
 #![feature(slice_concat_ext)]
 #![feature(no_std)]
+#![feature(nonzero)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
 #![feature(placement_in_syntax)]
@@ -262,16 +262,18 @@
 #![feature(dropck_parametricity)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(decode_utf16)]
-#![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(wrapping)]
 #![feature(zero_one)]
 #![feature(drop_in_place)]
-
+#![feature(libc)]
 #![cfg_attr(windows, feature(str_utf16))]
 #![cfg_attr(test, feature(float_from_str_radix, range_inclusive, float_extras))]
 #![cfg_attr(test, feature(test, rustc_private))]
+#![cfg_attr(target_family = "windows", feature(str_utf16))]
+#![cfg_attr(target_family = "windows", feature(unwind_attributes))]
 #![cfg_attr(target_env = "msvc", feature(link_args))]
+#![cfg_attr(target_os = "netbsd", feature(cfg_target_vendor))]
 
 // Don't link to std. We are std.
 #![no_std]
@@ -295,6 +297,7 @@ extern crate collections as core_collections;
 #[allow(deprecated)] extern crate rand as core_rand;
 extern crate alloc;
 extern crate rustc_unicode;
+#[cfg(any(unix, windows))]
 extern crate libc;
 
 // Make std testable by not duplicating lang items and other globals. See #2912
@@ -339,8 +342,6 @@ pub use rustc_unicode::char;
 #[macro_use]
 mod macros;
 
-mod rtdeps;
-
 /* The Prelude. */
 
 pub mod prelude;
@@ -364,8 +365,8 @@ pub use core::u16;
 pub use core::u32;
 pub use core::u64;
 
-#[path = "num/f32.rs"]   pub mod f32;
-#[path = "num/f64.rs"]   pub mod f64;
+#[path = "num/f32.rs"] pub mod f32;
+#[path = "num/f64.rs"] pub mod f64;
 
 pub mod ascii;
 
@@ -378,6 +379,10 @@ pub mod num;
 #[macro_use]
 pub mod thread;
 
+mod sys;
+
+pub use sys::os;
+
 pub mod collections;
 pub mod dynamic_lib;
 pub mod env;
@@ -385,22 +390,15 @@ pub mod ffi;
 pub mod fs;
 pub mod io;
 pub mod net;
-pub mod os;
 pub mod path;
 pub mod process;
 pub mod sync;
 pub mod time;
 
-#[macro_use]
-#[path = "sys/common/mod.rs"] mod sys_common;
-
-#[cfg(unix)]
-#[path = "sys/unix/mod.rs"] mod sys;
-#[cfg(windows)]
-#[path = "sys/windows/mod.rs"] mod sys;
-
-pub mod rt;
 mod panicking;
+mod backtrace;
+mod at_exit;
+
 mod rand;
 
 // Some external utilities of the standard library rely on randomness (aka
@@ -412,6 +410,21 @@ mod rand;
 #[unstable(feature = "rand", issue = "0")]
 pub mod __rand {
     pub use rand::{thread_rng, ThreadRng, Rng};
+}
+
+// Reexport some of our utilities which are expected by other crates.
+#[doc(hidden)]
+#[unstable(feature = "rt",
+            reason = "this public module should not exist and is highly likely \
+                      to disappear",
+            issue = "0")]
+pub mod rt {
+    pub use sys::unwind::{begin_unwind_fmt, begin_unwind};
+
+    // Rust runtime's startup objects depend on these symbols, so they must be public.
+    // Since sys isn't public, we have to re-export them here.
+    #[cfg(all(target_os="windows", target_arch = "x86", target_env = "gnu"))]
+    pub use sys::common::unwind::imp::eh_frame_registry::*;
 }
 
 // Include a number of private modules that exist solely to provide

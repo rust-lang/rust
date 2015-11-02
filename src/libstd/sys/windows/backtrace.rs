@@ -33,6 +33,19 @@ use libc;
 use path::Path;
 use ptr;
 use sync::StaticMutex;
+use sys::error::Result;
+
+pub struct Backtrace(());
+
+impl Backtrace {
+    pub const fn new() -> Self { Backtrace(()) }
+}
+
+impl Backtrace {
+    pub fn write(&mut self, w: &mut io::Write) -> Result<()> {
+        write(w)
+    }
+}
 
 macro_rules! sym{ ($lib:expr, $e:expr, $t:ident) => (unsafe {
     let lib = $lib;
@@ -315,7 +328,7 @@ impl Drop for Cleanup {
     fn drop(&mut self) { (self.SymCleanup)(self.handle); }
 }
 
-pub fn write(w: &mut Write) -> io::Result<()> {
+fn write(w: &mut Write) -> Result<()> {
     // According to windows documentation, all dbghelp functions are
     // single-threaded.
     static LOCK: StaticMutex = StaticMutex::new();
@@ -351,7 +364,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     // Start from -1 to avoid printing this stack frame, which will
     // always be exactly the same.
     let mut i = -1;
-    try!(write!(w, "stack backtrace:\n"));
+    let _ = write!(w, "stack backtrace:\n");
     while StackWalk64(image, process, thread, &mut frame, &mut context,
                       ptr::null_mut(),
                       ptr::null_mut(),

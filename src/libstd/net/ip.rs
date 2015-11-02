@@ -14,13 +14,13 @@
             issue = "27709")]
 
 use prelude::v1::*;
+use sys::inner::*;
+use sys::net as sys;
 
 use cmp::Ordering;
 use hash;
 use fmt;
-use libc;
-use sys_common::{AsInner, FromInner};
-use net::{hton, ntoh};
+use mem;
 
 /// An IP address, either an IPv4 or IPv6 address.
 #[unstable(feature = "ip_addr", reason = "recent addition", issue = "27801")]
@@ -36,14 +36,14 @@ pub enum IpAddr {
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv4Addr {
-    inner: libc::in_addr,
+    inner: sys::IpAddrV4,
 }
 
 /// Representation of an IPv6 address.
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
-    inner: libc::in6_addr,
+    inner: sys::IpAddrV6,
 }
 
 #[allow(missing_docs)]
@@ -58,6 +58,15 @@ pub enum Ipv6MulticastScope {
     Global
 }
 
+impl IntoInner<sys::IpAddr> for IpAddr {
+    fn into_inner(self) -> sys::IpAddr {
+        match self {
+            IpAddr::V4(addr) => sys::IpAddr::V4(*addr.as_inner()),
+            IpAddr::V6(addr) => sys::IpAddr::V6(*addr.as_inner()),
+        }
+    }
+}
+
 impl Ipv4Addr {
     /// Creates a new IPv4 address from four eight-bit octets.
     ///
@@ -65,25 +74,19 @@ impl Ipv4Addr {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
         Ipv4Addr {
-            inner: libc::in_addr {
-                s_addr: hton(((a as u32) << 24) |
-                             ((b as u32) << 16) |
-                             ((c as u32) <<  8) |
-                              (d as u32)),
-            }
+            inner: sys::IpAddrV4::new(a, b, c, d),
         }
     }
 
     /// Returns the four eight-bit integers that make up this address.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn octets(&self) -> [u8; 4] {
-        let bits = ntoh(self.inner.s_addr);
-        [(bits >> 24) as u8, (bits >> 16) as u8, (bits >> 8) as u8, bits as u8]
+        self.inner.octets()
     }
 
     /// Returns true for the special 'unspecified' address 0.0.0.0.
     pub fn is_unspecified(&self) -> bool {
-        self.inner.s_addr == 0
+        self.octets() == [0; 4]
     }
 
     /// Returns true if this is a loopback address (127.0.0.0/8).
@@ -211,7 +214,7 @@ impl Clone for Ipv4Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for Ipv4Addr {
     fn eq(&self, other: &Ipv4Addr) -> bool {
-        self.inner.s_addr == other.inner.s_addr
+        self.inner == other.inner
     }
 }
 
@@ -221,7 +224,7 @@ impl Eq for Ipv4Addr {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for Ipv4Addr {
     fn hash<H: hash::Hasher>(&self, s: &mut H) {
-        self.inner.s_addr.hash(s)
+        self.inner.hash(s)
     }
 }
 
@@ -235,16 +238,23 @@ impl PartialOrd for Ipv4Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ipv4Addr {
     fn cmp(&self, other: &Ipv4Addr) -> Ordering {
-        self.inner.s_addr.cmp(&other.inner.s_addr)
+        self.inner.cmp(&other.inner)
     }
 }
 
-impl AsInner<libc::in_addr> for Ipv4Addr {
-    fn as_inner(&self) -> &libc::in_addr { &self.inner }
+impl AsInner<sys::IpAddrV4> for Ipv4Addr {
+    fn as_inner(&self) -> &sys::IpAddrV4 { &self.inner }
 }
-impl FromInner<libc::in_addr> for Ipv4Addr {
-    fn from_inner(addr: libc::in_addr) -> Ipv4Addr {
+
+impl FromInner<sys::IpAddrV4> for Ipv4Addr {
+    fn from_inner(addr: sys::IpAddrV4) -> Ipv4Addr {
         Ipv4Addr { inner: addr }
+    }
+}
+
+impl<'a> FromInner<&'a sys::IpAddrV4> for &'a Ipv4Addr {
+    fn from_inner(addr: &'a sys::IpAddrV4) -> &'a Ipv4Addr {
+        unsafe { mem::transmute(addr) }
     }
 }
 
@@ -271,24 +281,14 @@ impl Ipv6Addr {
     pub fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16,
                h: u16) -> Ipv6Addr {
         Ipv6Addr {
-            inner: libc::in6_addr {
-                s6_addr: [hton(a), hton(b), hton(c), hton(d),
-                          hton(e), hton(f), hton(g), hton(h)]
-            }
+            inner: sys::IpAddrV6::new(a, b, c, d, e, f, g, h),
         }
     }
 
     /// Returns the eight 16-bit segments that make up this address.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn segments(&self) -> [u16; 8] {
-        [ntoh(self.inner.s6_addr[0]),
-         ntoh(self.inner.s6_addr[1]),
-         ntoh(self.inner.s6_addr[2]),
-         ntoh(self.inner.s6_addr[3]),
-         ntoh(self.inner.s6_addr[4]),
-         ntoh(self.inner.s6_addr[5]),
-         ntoh(self.inner.s6_addr[6]),
-         ntoh(self.inner.s6_addr[7])]
+        self.inner.segments()
     }
 
     /// Returns true for the special 'unspecified' address ::.
@@ -474,7 +474,7 @@ impl Clone for Ipv6Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for Ipv6Addr {
     fn eq(&self, other: &Ipv6Addr) -> bool {
-        self.inner.s6_addr == other.inner.s6_addr
+        self.inner == other.inner
     }
 }
 
@@ -484,7 +484,7 @@ impl Eq for Ipv6Addr {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for Ipv6Addr {
     fn hash<H: hash::Hasher>(&self, s: &mut H) {
-        self.inner.s6_addr.hash(s)
+        self.inner.hash(s)
     }
 }
 
@@ -498,16 +498,23 @@ impl PartialOrd for Ipv6Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ipv6Addr {
     fn cmp(&self, other: &Ipv6Addr) -> Ordering {
-        self.inner.s6_addr.cmp(&other.inner.s6_addr)
+        self.inner.cmp(&other.inner)
     }
 }
 
-impl AsInner<libc::in6_addr> for Ipv6Addr {
-    fn as_inner(&self) -> &libc::in6_addr { &self.inner }
+impl AsInner<sys::IpAddrV6> for Ipv6Addr {
+    fn as_inner(&self) -> &sys::IpAddrV6 { &self.inner }
 }
-impl FromInner<libc::in6_addr> for Ipv6Addr {
-    fn from_inner(addr: libc::in6_addr) -> Ipv6Addr {
+
+impl FromInner<sys::IpAddrV6> for Ipv6Addr {
+    fn from_inner(addr: sys::IpAddrV6) -> Ipv6Addr {
         Ipv6Addr { inner: addr }
+    }
+}
+
+impl<'a> FromInner<&'a sys::IpAddrV6> for &'a Ipv6Addr {
+    fn from_inner(addr: &'a sys::IpAddrV6) -> &'a Ipv6Addr {
+        unsafe { mem::transmute(addr) }
     }
 }
 

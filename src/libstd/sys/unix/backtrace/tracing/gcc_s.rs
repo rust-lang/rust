@@ -8,37 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io;
-use io::prelude::*;
+use sys::inner::*;
+use sys::error::{Error, Result};
 use libc;
 use mem;
-use sync::StaticMutex;
+use io;
 
-use super::super::printing::print;
+use sys::unix::backtrace::printing::print;
 
 #[inline(never)] // if we know this is a function call, we can skip it when
                  // tracing
-pub fn write(w: &mut Write) -> io::Result<()> {
+pub fn write(w: &mut io::Write) -> Result<()> {
     struct Context<'a> {
         idx: isize,
-        writer: &'a mut (Write+'a),
-        last_error: Option<io::Error>,
+        writer: &'a mut io::Write,
+        last_error: Option<Error>,
     }
 
-    // When using libbacktrace, we use some necessary global state, so we
-    // need to prevent more than one thread from entering this block. This
-    // is semi-reasonable in terms of printing anyway, and we know that all
-    // I/O done here is blocking I/O, not green I/O, so we don't have to
-    // worry about this being a native vs green mutex.
-    static LOCK: StaticMutex = StaticMutex::new();
-    let _g = LOCK.lock();
-
-    try!(writeln!(w, "stack backtrace:"));
+    try!(writeln!(w, "stack backtrace:").map_err(IntoInner::into_inner));
 
     let mut cx = Context { writer: w, last_error: None, idx: 0 };
     return match unsafe {
         uw::_Unwind_Backtrace(trace_fn,
-                              &mut cx as *mut Context as *mut libc::c_void)
+                              &mut cx as *mut _ as *mut libc::c_void)
     } {
         uw::_URC_NO_REASON => {
             match cx.last_error {
@@ -85,7 +77,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
         if cx.idx > 100 {
             match write!(cx.writer, " ... <frames omitted>\n") {
                 Ok(()) => {}
-                Err(e) => { cx.last_error = Some(e); }
+                Err(e) => { cx.last_error = Some(IntoInner::into_inner(e)); }
             }
             return uw::_URC_FAILURE
         }
@@ -93,7 +85,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
         // Once we hit an error, stop trying to print more frames
         if cx.last_error.is_some() { return uw::_URC_FAILURE }
 
-        match print(cx.writer, cx.idx, ip, symaddr) {
+        match print(cx.writer, cx.idx, ip as *mut (), symaddr as *mut _) {
             Ok(()) => {}
             Err(e) => { cx.last_error = Some(e); }
         }

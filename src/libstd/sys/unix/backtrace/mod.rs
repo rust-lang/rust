@@ -83,9 +83,24 @@
 /// to symbols. This is a bit of a hokey implementation as-is, but it works for
 /// all unix platforms we support right now, so it at least gets the job done.
 
-pub use self::tracing::write;
+use sys::error::Result;
+use io;
+
+use self::tracing::write;
 
 // tracing impls:
 mod tracing;
 // symbol resolvers:
 mod printing;
+
+pub struct Backtrace(());
+
+impl Backtrace {
+    pub const fn new() -> Self { Backtrace(()) }
+}
+
+impl Backtrace {
+    pub fn write(&mut self, w: &mut io::Write) -> Result<()> {
+        write(w)
+    }
+}

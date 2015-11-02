@@ -67,21 +67,22 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use prelude::v1::*;
-
+use sys::thread_local::StaticOsKey;
+use sys::rt;
 use any::Any;
-use boxed;
+use boxed::Box;
+use string::String;
+use panicking;
 use cmp;
-use panicking::{self,PANIC_COUNT};
 use fmt;
 use intrinsics;
 use mem;
-use sync::atomic::{self, Ordering};
-use sys_common::mutex::Mutex;
 
 // The actual unwinding implementation is cfg'd here, and we've got two current
 // implementations. One goes through SEH on Windows and the other goes through
 // libgcc via the libunwind-like API.
+
+static PANIC_COUNT: StaticOsKey = StaticOsKey::new(None);
 
 // i686-pc-windows-msvc
 #[cfg(all(windows, target_arch = "x86", target_env = "msvc"))]
@@ -145,17 +146,15 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
     // care of exposing correctly.
     unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
                         -> Result<(), Box<Any + Send>> {
-        PANIC_COUNT.with(|s| {
-            let prev = s.get();
-            s.set(0);
-            let ep = intrinsics::try(f, data);
-            s.set(prev);
-            if ep.is_null() {
-                Ok(())
-            } else {
-                Err(imp::cleanup(ep))
-            }
-        })
+        let prev = PANIC_COUNT.get();
+        PANIC_COUNT.set(0 as *mut _);
+        let ep = intrinsics::try(f, data);
+        PANIC_COUNT.set(prev);
+        if ep.is_null() {
+            Ok(())
+        } else {
+            Err(imp::cleanup(ep))
+        }
     }
 
     fn try_fn<F: FnOnce()>(opt_closure: *mut u8) {
@@ -174,8 +173,17 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
 }
 
 /// Determines whether the current thread is unwinding because of panic.
-pub fn panicking() -> bool {
-    PANIC_COUNT.with(|s| s.get() != 0)
+pub fn is_panicking() -> bool {
+    unsafe { PANIC_COUNT.get() as usize != 0 }
+}
+
+/// Increases the thread-local panic count by one, returning the previous value.
+pub fn panic_inc() -> usize {
+    unsafe {
+        let panics = PANIC_COUNT.get() as usize;
+        PANIC_COUNT.set((panics + 1) as *mut _);
+        panics
+    }
 }
 
 // An uninlined, unmangled function upon which to slap yer breakpoints
@@ -191,7 +199,6 @@ fn rust_panic(cause: Box<Any + Send + 'static>) -> ! {
 #[cfg(not(test))]
 /// Entry point of panic from the libcore crate.
 #[lang = "panic_fmt"]
-#[unwind]
 pub extern fn rust_begin_unwind(msg: fmt::Arguments,
                                 file: &'static str, line: u32) -> ! {
     begin_unwind_fmt(msg, &(file, line))

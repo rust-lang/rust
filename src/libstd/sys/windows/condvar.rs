@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use sys::inner::IntoInner;
 use cell::UnsafeCell;
 use libc::{self, DWORD};
-use sys::c;
-use sys::mutex::{self, Mutex};
-use sys::os;
+use sys::windows::{c, error};
+use sys::sync::Mutex;
 use time::Duration;
 
 pub struct Condvar { inner: UnsafeCell<c::CONDITION_VARIABLE> }
@@ -28,7 +28,7 @@ impl Condvar {
     #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
         let r = c::SleepConditionVariableSRW(self.inner.get(),
-                                             mutex::raw(mutex),
+                                             mutex.into_inner(),
                                              libc::INFINITE,
                                              0);
         debug_assert!(r != 0);
@@ -36,12 +36,12 @@ impl Condvar {
 
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         let r = c::SleepConditionVariableSRW(self.inner.get(),
-                                             mutex::raw(mutex),
-                                             super::dur2timeout(dur),
+                                             mutex.into_inner(),
+                                             c::dur2timeout(dur),
                                              0);
         if r == 0 {
             const ERROR_TIMEOUT: DWORD = 0x5B4;
-            debug_assert_eq!(os::errno() as usize, ERROR_TIMEOUT as usize);
+            debug_assert_eq!(error::expect_last_error().code(), ERROR_TIMEOUT as i32);
             false
         } else {
             true

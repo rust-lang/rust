@@ -8,17 +8,40 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
-use io::prelude::*;
-
-use io::{self, Cursor};
+use io::{self, Cursor, Read, Write};
 use libc;
 use ptr;
 use str;
+use vec::Vec;
+use string::String;
 use sync::Mutex;
-use sys::c;
-use sys::cvt;
-use sys::handle::Handle;
+use sys::windows::c::{self, cvt};
+use sys::windows::handle::Handle;
+use sys::error::{self, Result, Error};
+use sys::inner::*;
+
+pub use sys::common::stdio::dumb_print;
+
+pub fn is_ebadf(e: &io::Error) -> bool {
+    e.raw_os_error() == Some(libc::ERROR_INVALID_HANDLE)
+}
+
+pub fn stdin() -> Result<Stdin> {
+    get(c::STD_INPUT_HANDLE).map(|handle| {
+        Stdin {
+            handle: handle,
+            utf8: Mutex::new(Cursor::new(Vec::new())),
+        }
+    })
+}
+
+pub fn stdout() -> Result<Stdout> {
+    get(c::STD_OUTPUT_HANDLE).map(Stdout)
+}
+
+pub fn stderr() -> Result<Stderr> {
+    get(c::STD_ERROR_HANDLE).map(Stderr)
+}
 
 pub struct NoClose(Option<Handle>);
 
@@ -34,13 +57,12 @@ pub struct Stdin {
 pub struct Stdout(Output);
 pub struct Stderr(Output);
 
-pub fn get(handle: libc::DWORD) -> io::Result<Output> {
+pub fn get(handle: libc::DWORD) -> Result<Output> {
     let handle = unsafe { c::GetStdHandle(handle) };
     if handle == libc::INVALID_HANDLE_VALUE {
-        Err(io::Error::last_os_error())
+        error::expect_last_result()
     } else if handle.is_null() {
-        Err(io::Error::new(io::ErrorKind::Other,
-                           "no stdio handle available for this process"))
+        Err(Error::NoStdioHandle)
     } else {
         let ret = NoClose::new(handle);
         let mut out = 0;
@@ -53,12 +75,12 @@ pub fn get(handle: libc::DWORD) -> io::Result<Output> {
 
 fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
     let handle = match *out {
-        Output::Console(ref c) => c.get().raw(),
-        Output::Pipe(ref p) => return p.get().write(data),
+        Output::Console(ref c) => *c.get().as_inner(),
+        Output::Pipe(ref p) => return p.get().write(data).map_err(From::from),
     };
     let utf16 = match str::from_utf8(data).ok() {
         Some(utf8) => utf8.utf16_units().collect::<Vec<u16>>(),
-        None => return Err(invalid_encoding()),
+        None => return Err(Error::InvalidEncoding.into()),
     };
     let mut written = 0;
     try!(cvt(unsafe {
@@ -75,20 +97,11 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
     Ok(data.len())
 }
 
-impl Stdin {
-    pub fn new() -> io::Result<Stdin> {
-        get(c::STD_INPUT_HANDLE).map(|handle| {
-            Stdin {
-                handle: handle,
-                utf8: Mutex::new(Cursor::new(Vec::new())),
-            }
-        })
-    }
-
-    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+impl io::Read for Stdin {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let handle = match self.handle {
-            Output::Console(ref c) => c.get().raw(),
-            Output::Pipe(ref p) => return p.get().read(buf),
+            Output::Console(ref c) => *c.get().as_inner(),
+            Output::Pipe(ref p) => return p.get().read(buf).map_err(From::from),
         };
         let mut utf8 = self.utf8.lock().unwrap();
         // Read more if the buffer is empty
@@ -106,7 +119,7 @@ impl Stdin {
             // FIXME: what to do about this data that has already been read?
             let data = match String::from_utf16(&utf16) {
                 Ok(utf8) => utf8.into_bytes(),
-                Err(..) => return Err(invalid_encoding()),
+                Err(..) => return Err(Error::InvalidEncoding.into()),
             };
             *utf8 = Cursor::new(data);
         }
@@ -116,39 +129,23 @@ impl Stdin {
     }
 }
 
-impl Stdout {
-    pub fn new() -> io::Result<Stdout> {
-        get(c::STD_OUTPUT_HANDLE).map(Stdout)
-    }
-
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        write(&self.0, data)
-    }
-}
-
-impl Stderr {
-    pub fn new() -> io::Result<Stderr> {
-        get(c::STD_ERROR_HANDLE).map(Stderr)
-    }
-
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        write(&self.0, data)
-    }
-}
-
-// FIXME: right now this raw stderr handle is used in a few places because
-//        std::io::stderr_raw isn't exposed, but once that's exposed this impl
-//        should go away
 impl io::Write for Stderr {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        Stderr::write(self, data)
+        write(&self.0, data).map_err(From::from)
+    }
+    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+}
+
+impl io::Write for Stdout {
+    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+        write(&self.0, data).map_err(From::from)
     }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
 impl NoClose {
     fn new(handle: libc::HANDLE) -> NoClose {
-        NoClose(Some(Handle::new(handle)))
+        NoClose(Some(Handle::from_inner(handle)))
     }
 
     fn get(&self) -> &Handle { self.0.as_ref().unwrap() }
@@ -156,7 +153,7 @@ impl NoClose {
 
 impl Drop for NoClose {
     fn drop(&mut self) {
-        self.0.take().unwrap().into_raw();
+        self.0.take().unwrap().into_inner();
     }
 }
 
@@ -168,8 +165,4 @@ impl Output {
         };
         nc.0.as_ref().unwrap()
     }
-}
-
-fn invalid_encoding() -> io::Error {
-    io::Error::new(io::ErrorKind::InvalidData, "text was not valid unicode")
 }

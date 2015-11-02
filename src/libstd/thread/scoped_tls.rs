@@ -83,25 +83,9 @@ macro_rules! scoped_thread_local {
            reason = "should not be necessary")]
 #[macro_export]
 #[allow_internal_unstable]
-#[cfg(no_elf_tls)]
 macro_rules! __scoped_thread_local_inner {
     ($t:ty) => {{
-        static _KEY: $crate::thread::__ScopedKeyInner<$t> =
-            $crate::thread::__ScopedKeyInner::new();
-        fn _getit() -> &'static $crate::thread::__ScopedKeyInner<$t> { &_KEY }
-        $crate::thread::ScopedKey::new(_getit)
-    }}
-}
-
-#[doc(hidden)]
-#[unstable(feature = "thread_local_internals",
-           reason = "should not be necessary")]
-#[macro_export]
-#[allow_internal_unstable]
-#[cfg(not(no_elf_tls))]
-macro_rules! __scoped_thread_local_inner {
-    ($t:ty) => {{
-        #[cfg_attr(not(any(windows,
+        #[cfg_attr(not(any(windows, not(no_elf_tls),
                            target_os = "android",
                            target_os = "ios",
                            target_os = "netbsd",
@@ -252,10 +236,10 @@ mod imp {
 mod imp {
     use cell::Cell;
     use marker;
-    use sys_common::thread_local::StaticKey as OsStaticKey;
+    use sys::thread_local::StaticOsKey;
 
     pub struct KeyInner<T> {
-        pub inner: OsStaticKey,
+        pub inner: StaticOsKey,
         pub marker: marker::PhantomData<Cell<T>>,
     }
 
@@ -264,7 +248,7 @@ mod imp {
     impl<T> KeyInner<T> {
         pub const fn new() -> KeyInner<T> {
             KeyInner {
-                inner: OsStaticKey::new(None),
+                inner: StaticOsKey::new(None),
                 marker: marker::PhantomData
             }
         }

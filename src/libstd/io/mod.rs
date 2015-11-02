@@ -264,6 +264,7 @@ pub use self::stdio::{stdin, stdout, stderr, _print, Stdin, Stdout, Stderr};
 pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
+pub use self::read_uninitialized::read_to_end_uninitialized;
 
 pub mod prelude;
 mod buffered;
@@ -273,6 +274,7 @@ mod impls;
 mod lazy;
 mod util;
 mod stdio;
+mod read_uninitialized;
 
 const DEFAULT_BUF_SIZE: usize = 64 * 1024;
 

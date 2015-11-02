@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use sys::rt::strlen;
+use os::raw as libc;
 use ascii;
 use borrow::{Cow, ToOwned, Borrow};
 use boxed::Box;
@@ -17,7 +19,6 @@ use error::Error;
 use fmt::{self, Write};
 use io;
 use iter::Iterator;
-use libc;
 use mem;
 use ops::Deref;
 use option::Option::{self, Some, None};
@@ -231,7 +232,7 @@ impl CString {
     /// using the pointer.
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut libc::c_char) -> CString {
-        let len = libc::strlen(ptr) + 1; // Including the NUL byte
+        let len = strlen(ptr) + 1; // Including the NUL byte
         let slice = slice::from_raw_parts(ptr, len as usize);
         CString { inner: mem::transmute(slice) }
     }
@@ -446,7 +447,7 @@ impl CStr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_ptr<'a>(ptr: *const libc::c_char) -> &'a CStr {
-        let len = libc::strlen(ptr);
+        let len = strlen(ptr);
         mem::transmute(slice::from_raw_parts(ptr, len as usize + 1))
     }
 
@@ -559,8 +560,8 @@ impl ToOwned for CStr {
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;
+    use sys::c::prelude as libc;
     use super::*;
-    use libc;
     use borrow::Cow::{Borrowed, Owned};
     use hash::{SipHasher, Hash, Hasher};
 

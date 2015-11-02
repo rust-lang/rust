@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use sys::inner::*;
+use sys::error as sys;
+
 use boxed::Box;
 use convert::Into;
 use error;
@@ -15,7 +18,6 @@ use fmt;
 use marker::{Send, Sync};
 use option::Option::{self, Some, None};
 use result;
-use sys;
 
 /// A specialized [`Result`](../result/enum.Result.html) type for I/O
 /// operations.
@@ -63,7 +65,7 @@ pub struct Error {
 }
 
 enum Repr {
-    Os(i32),
+    Os(sys::Error),
     Custom(Box<Custom>),
 }
 
@@ -209,13 +211,13 @@ impl Error {
     /// `Error` for the error code.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn last_os_error() -> Error {
-        Error::from_raw_os_error(sys::os::errno() as i32)
+        Error::from(sys::expect_last_error())
     }
 
     /// Creates a new instance of an `Error` from a particular OS error code.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_raw_os_error(code: i32) -> Error {
-        Error { repr: Repr::Os(code) }
+        Error::from(sys::Error::from_code(code))
     }
 
     /// Returns the OS error that this error represents (if any).
@@ -226,7 +228,7 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn raw_os_error(&self) -> Option<i32> {
         match self.repr {
-            Repr::Os(i) => Some(i),
+            Repr::Os(ref i) => Some(i.code()),
             Repr::Custom(..) => None,
         }
     }
@@ -272,7 +274,7 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn kind(&self) -> ErrorKind {
         match self.repr {
-            Repr::Os(code) => sys::decode_error_kind(code),
+            Repr::Os(ref e) => e.kind(),
             Repr::Custom(ref c) => c.kind,
         }
     }
@@ -281,9 +283,9 @@ impl Error {
 impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Repr::Os(ref code) =>
-                fmt.debug_struct("Os").field("code", code)
-                   .field("message", &sys::os::error_string(*code)).finish(),
+            Repr::Os(ref e) =>
+                fmt.debug_struct("Os").field("code", &e.code())
+                   .field("message", &e.description().to_string_lossy()).finish(),
             Repr::Custom(ref c) => fmt.debug_tuple("Custom").field(c).finish(),
         }
     }
@@ -293,9 +295,9 @@ impl fmt::Debug for Repr {
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self.repr {
-            Repr::Os(code) => {
-                let detail = sys::os::error_string(code);
-                write!(fmt, "{} (os error {})", detail, code)
+            Repr::Os(ref e) => {
+                let detail = e.description();
+                write!(fmt, "{} (os error {})", detail.to_string_lossy(), e.code())
             }
             Repr::Custom(ref c) => c.error.fmt(fmt),
         }
@@ -319,6 +321,21 @@ impl error::Error for Error {
     }
 }
 
+impl From<sys::Error> for Error {
+    fn from(e: sys::Error) -> Self {
+        Error { repr: Repr::Os(e) }
+    }
+}
+
+impl IntoInner<sys::Error> for Error {
+    fn into_inner(self) -> sys::Error {
+        match self.repr {
+            Repr::Os(e) => e,
+            _ => sys::Error::default(),
+        }
+    }
+}
+
 fn _assert_error_is_sync_send() {
     fn _is_sync_send<T: Sync+Send>() {}
     _is_sync_send::<Error>();
@@ -327,17 +344,18 @@ fn _assert_error_is_sync_send() {
 #[cfg(test)]
 mod test {
     use prelude::v1::*;
+    use sys::error as sys;
     use super::{Error, ErrorKind};
     use error;
     use error::Error as error_Error;
     use fmt;
-    use sys::os::error_string;
 
     #[test]
     fn test_debug_error() {
         let code = 6;
-        let msg = error_string(code);
-        let err = Error { repr: super::Repr::Os(code) };
+        let msg = sys::Error::from_code(code).description();
+        let msg = msg.to_str().unwrap();
+        let err = Error { repr: super::Repr::Os(sys::Error::from_code(code)) };
         let expected = format!("Error {{ repr: Os {{ code: {:?}, message: {:?} }} }}", code, msg);
         assert_eq!(format!("{:?}", err), expected);
     }

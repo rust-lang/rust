@@ -29,6 +29,9 @@
 //! for conversion to/from various other string types. Eventually these types
 //! will offer a full-fledged string API.
 
+use sys::os_str::{OsString as Buf, OsStr as Slice};
+use sys::inner::*;
+
 use borrow::{Borrow, Cow, ToOwned};
 use ffi::CString;
 use fmt::{self, Debug};
@@ -38,9 +41,6 @@ use ops;
 use cmp;
 use hash::{Hash, Hasher};
 use vec::Vec;
-
-use sys::os_str::{Buf, Slice};
-use sys_common::{AsInner, IntoInner, FromInner};
 
 /// Owned, mutable OS strings.
 #[derive(Clone)]
@@ -73,18 +73,7 @@ impl OsString {
     /// convert; non UTF-8 data will produce `None`.
     #[unstable(feature = "convert", reason = "recently added", issue = "27704")]
     pub fn from_bytes<B>(bytes: B) -> Option<OsString> where B: Into<Vec<u8>> {
-        Self::_from_bytes(bytes.into())
-    }
-
-    #[cfg(unix)]
-    fn _from_bytes(vec: Vec<u8>) -> Option<OsString> {
-        use os::unix::ffi::OsStringExt;
-        Some(OsString::from_vec(vec))
-    }
-
-    #[cfg(windows)]
-    fn _from_bytes(vec: Vec<u8>) -> Option<OsString> {
-        String::from_utf8(vec).ok().map(OsString::from)
+        Buf::from_bytes(bytes.into()).map(FromInner::from_inner)
     }
 
     /// Converts to an `OsStr` slice.
@@ -128,7 +117,7 @@ impl ops::Index<ops::RangeFull> for OsString {
 
     #[inline]
     fn index(&self, _index: ops::RangeFull) -> &OsStr {
-        OsStr::from_inner(self.inner.as_slice())
+        FromInner::from_inner(self.inner.borrow())
     }
 }
 
@@ -220,10 +209,6 @@ impl OsStr {
         s.as_ref()
     }
 
-    fn from_inner(inner: &Slice) -> &OsStr {
-        unsafe { mem::transmute(inner) }
-    }
-
     /// Yields a `&str` slice if the `OsStr` is valid unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
@@ -257,11 +242,7 @@ impl OsStr {
     /// data. This may entail checking validity.
     #[unstable(feature = "convert", reason = "recently added", issue = "27704")]
     pub fn to_bytes(&self) -> Option<&[u8]> {
-        if cfg!(windows) {
-            self.to_str().map(|s| s.as_bytes())
-        } else {
-            Some(self.bytes())
-        }
+        self.inner.to_bytes()
     }
 
     /// Creates a `CString` containing this `OsStr` data.
@@ -385,7 +366,7 @@ impl AsRef<OsStr> for OsString {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for str {
     fn as_ref(&self) -> &OsStr {
-        OsStr::from_inner(Slice::from_str(self))
+        FromInner::from_inner(Slice::from_str(self))
     }
 }
 
@@ -405,6 +386,18 @@ impl FromInner<Buf> for OsString {
 impl IntoInner<Buf> for OsString {
     fn into_inner(self) -> Buf {
         self.inner
+    }
+}
+
+impl AsInnerMut<Buf> for OsString {
+    fn as_inner_mut(&mut self) -> &mut Buf {
+        &mut self.inner
+    }
+}
+
+impl<'a> FromInner<&'a Slice> for &'a OsStr {
+    fn from_inner(inner: &Slice) -> Self {
+        unsafe { mem::transmute(inner) }
     }
 }
 

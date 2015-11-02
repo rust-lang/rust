@@ -13,9 +13,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use prelude::v1::*;
+use sys::inner::*;
+use sys::net as sys;
+use sys::error;
 
 use io::{self, Error, ErrorKind};
-use sys_common::net as net_imp;
 
 pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
@@ -49,30 +51,14 @@ pub enum Shutdown {
     Both,
 }
 
-#[doc(hidden)]
-trait NetInt {
-    fn from_be(i: Self) -> Self;
-    fn to_be(&self) -> Self;
-}
-macro_rules! doit {
-    ($($t:ident)*) => ($(impl NetInt for $t {
-        fn from_be(i: Self) -> Self { <$t>::from_be(i) }
-        fn to_be(&self) -> Self { <$t>::to_be(*self) }
-    })*)
-}
-doit! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
-
-fn hton<I: NetInt>(i: I) -> I { i.to_be() }
-fn ntoh<I: NetInt>(i: I) -> I { I::from_be(i) }
-
 fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
-    where F: FnMut(&SocketAddr) -> io::Result<T>
+    where F: FnMut(&sys::SocketAddr) -> error::Result<T>
 {
     let mut last_err = None;
     for addr in try!(addr.to_socket_addrs()) {
-        match f(&addr) {
+        match f(&addr.into_inner()) {
             Ok(l) => return Ok(l),
-            Err(e) => last_err = Some(e),
+            Err(e) => last_err = Some(e.into()),
         }
     }
     Err(last_err.unwrap_or_else(|| {
@@ -86,7 +72,7 @@ fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
                                               iterator and returning socket \
                                               addresses",
            issue = "27705")]
-pub struct LookupHost(net_imp::LookupHost);
+pub struct LookupHost(sys::LookupHost);
 
 #[unstable(feature = "lookup_host", reason = "unsure about the returned \
                                               iterator and returning socket \
@@ -94,7 +80,7 @@ pub struct LookupHost(net_imp::LookupHost);
            issue = "27705")]
 impl Iterator for LookupHost {
     type Item = io::Result<SocketAddr>;
-    fn next(&mut self) -> Option<io::Result<SocketAddr>> { self.0.next() }
+    fn next(&mut self) -> Option<io::Result<SocketAddr>> { self.0.next().map(|i| i.map(FromInner::from_inner).map_err(From::from)) }
 }
 
 /// Resolve the host specified by `host` as a number of `SocketAddr` instances.
@@ -121,7 +107,7 @@ impl Iterator for LookupHost {
                                               addresses",
            issue = "27705")]
 pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
-    net_imp::lookup_host(host).map(LookupHost)
+    sys::lookup_host(host).map(LookupHost).map_err(From::from)
 }
 
 /// Resolve the given address to a hostname.
@@ -132,5 +118,5 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
 #[unstable(feature = "lookup_addr", reason = "recent addition",
            issue = "27705")]
 pub fn lookup_addr(addr: &IpAddr) -> io::Result<String> {
-    net_imp::lookup_addr(addr)
+    sys::lookup_addr(&addr.into_inner()).map(|a| String::from_utf8_lossy(a.as_bytes()).into_owned()).map_err(From::from)
 }

@@ -17,6 +17,10 @@ pub use self::os::{PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_RECURSIVE, pthread_m
 pub use self::os::{PTHREAD_COND_INITIALIZER, pthread_cond_t};
 pub use self::os::{PTHREAD_RWLOCK_INITIALIZER, pthread_rwlock_t};
 
+pub use sys::unix::mutex::{Mutex, ReentrantMutex};
+pub use sys::unix::condvar::Condvar;
+pub use sys::unix::rwlock::RwLock;
+
 extern {
     // mutexes
     pub fn pthread_mutex_init(lock: *mut pthread_mutex_t, attr: *const pthread_mutexattr_t)

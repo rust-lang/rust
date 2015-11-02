@@ -15,15 +15,15 @@
 
 use prelude::v1::*;
 use io::prelude::*;
+use sys::inner::*;
+use sys::rt;
+use sys::process as sys;
 
 use ffi::OsStr;
 use fmt;
 use io::{self, Error, ErrorKind};
 use path;
 use sync::mpsc::{channel, Receiver};
-use sys::pipe::{self, AnonPipe};
-use sys::process as imp;
-use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use thread;
 
 /// Representation of a running or exited child process.
@@ -49,10 +49,10 @@ use thread;
 /// ```
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Child {
-    handle: imp::Process,
+    handle: sys::Process,
 
     /// None until wait() or wait_with_output() is called.
-    status: Option<imp::ExitStatus>,
+    status: Option<sys::ExitStatus>,
 
     /// The handle for writing to the child's stdin, if it has been captured
     #[stable(feature = "process", since = "1.0.0")]
@@ -67,24 +67,24 @@ pub struct Child {
     pub stderr: Option<ChildStderr>,
 }
 
-impl AsInner<imp::Process> for Child {
-    fn as_inner(&self) -> &imp::Process { &self.handle }
+impl AsInner<sys::Process> for Child {
+    fn as_inner(&self) -> &sys::Process { &self.handle }
 }
 
-impl IntoInner<imp::Process> for Child {
-    fn into_inner(self) -> imp::Process { self.handle }
+impl IntoInner<sys::Process> for Child {
+    fn into_inner(self) -> sys::Process { self.handle }
 }
 
 /// A handle to a child process's stdin
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdin {
-    inner: AnonPipe
+    inner: sys::PipeWrite
 }
 
 #[stable(feature = "process", since = "1.0.0")]
 impl Write for ChildStdin {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.inner.write(buf)
+        self.inner.write(buf).map_err(From::from)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -92,54 +92,54 @@ impl Write for ChildStdin {
     }
 }
 
-impl AsInner<AnonPipe> for ChildStdin {
-    fn as_inner(&self) -> &AnonPipe { &self.inner }
+impl AsInner<sys::PipeWrite> for ChildStdin {
+    fn as_inner(&self) -> &sys::PipeWrite { &self.inner }
 }
 
-impl IntoInner<AnonPipe> for ChildStdin {
-    fn into_inner(self) -> AnonPipe { self.inner }
+impl IntoInner<sys::PipeWrite> for ChildStdin {
+    fn into_inner(self) -> sys::PipeWrite { self.inner }
 }
 
 /// A handle to a child process's stdout
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
-    inner: AnonPipe
+    inner: sys::PipeRead
 }
 
 #[stable(feature = "process", since = "1.0.0")]
 impl Read for ChildStdout {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.inner.read(buf)
+        self.inner.read(buf).map_err(From::from)
     }
 }
 
-impl AsInner<AnonPipe> for ChildStdout {
-    fn as_inner(&self) -> &AnonPipe { &self.inner }
+impl AsInner<sys::PipeRead> for ChildStdout {
+    fn as_inner(&self) -> &sys::PipeRead { &self.inner }
 }
 
-impl IntoInner<AnonPipe> for ChildStdout {
-    fn into_inner(self) -> AnonPipe { self.inner }
+impl IntoInner<sys::PipeRead> for ChildStdout {
+    fn into_inner(self) -> sys::PipeRead { self.inner }
 }
 
 /// A handle to a child process's stderr
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStderr {
-    inner: AnonPipe
+    inner: sys::PipeRead
 }
 
 #[stable(feature = "process", since = "1.0.0")]
 impl Read for ChildStderr {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.inner.read(buf)
+        self.inner.read(buf).map_err(From::from)
     }
 }
 
-impl AsInner<AnonPipe> for ChildStderr {
-    fn as_inner(&self) -> &AnonPipe { &self.inner }
+impl AsInner<sys::PipeRead> for ChildStderr {
+    fn as_inner(&self) -> &sys::PipeRead { &self.inner }
 }
 
-impl IntoInner<AnonPipe> for ChildStderr {
-    fn into_inner(self) -> AnonPipe { self.inner }
+impl IntoInner<sys::PipeRead> for ChildStderr {
+    fn into_inner(self) -> sys::PipeRead { self.inner }
 }
 
 /// The `Command` type acts as a process builder, providing fine-grained control
@@ -160,7 +160,7 @@ impl IntoInner<AnonPipe> for ChildStderr {
 /// ```
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Command {
-    inner: imp::Command,
+    inner: sys::Command,
 
     // Details explained in the builder methods
     stdin: Option<Stdio>,
@@ -182,7 +182,7 @@ impl Command {
     #[stable(feature = "process", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr>>(program: S) -> Command {
         Command {
-            inner: imp::Command::new(program.as_ref()),
+            inner: sys::Command::new(program.as_ref()).unwrap(),
             stdin: None,
             stdout: None,
             stderr: None,
@@ -232,7 +232,7 @@ impl Command {
     /// Sets the working directory for the child process.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn current_dir<P: AsRef<path::Path>>(&mut self, dir: P) -> &mut Command {
-        self.inner.cwd(dir.as_ref().as_ref());
+        self.inner.cwd(dir.as_ref().as_os_str());
         self
     }
 
@@ -257,29 +257,21 @@ impl Command {
         self
     }
 
-    fn spawn_inner(&self, default_io: StdioImp) -> io::Result<Child> {
+    fn spawn_inner(&self, default_io: sys::Stdio) -> io::Result<Child> {
         let default_io = Stdio(default_io);
 
-        // See comment on `setup_io` for what `_drop_later` is.
-        let (their_stdin, our_stdin, _drop_later) = try!(
-            setup_io(self.stdin.as_ref().unwrap_or(&default_io), true)
-        );
-        let (their_stdout, our_stdout, _drop_later) = try!(
-            setup_io(self.stdout.as_ref().unwrap_or(&default_io), false)
-        );
-        let (their_stderr, our_stderr, _drop_later) = try!(
-            setup_io(self.stderr.as_ref().unwrap_or(&default_io), false)
-        );
+        let stdin = &self.stdin.as_ref().unwrap_or(&default_io).0;
+        let stdout = &self.stdout.as_ref().unwrap_or(&default_io).0;
+        let stderr = &self.stderr.as_ref().unwrap_or(&default_io).0;
 
-        match imp::Process::spawn(&self.inner, their_stdin, their_stdout,
-                                  their_stderr) {
-            Err(e) => Err(e),
-            Ok(handle) => Ok(Child {
-                handle: handle,
+        match sys::spawn(&self.inner, stdin, stdout, stderr) {
+            Err(e) => Err(e.into()),
+            Ok(mut handle) => Ok(Child {
                 status: None,
-                stdin: our_stdin.map(|fd| ChildStdin { inner: fd }),
-                stdout: our_stdout.map(|fd| ChildStdout { inner: fd }),
-                stderr: our_stderr.map(|fd| ChildStderr { inner: fd }),
+                stdin: handle.stdin().take().map(|fd| ChildStdin { inner: fd }),
+                stdout: handle.stdout().take().map(|fd| ChildStdout { inner: fd }),
+                stderr: handle.stderr().take().map(|fd| ChildStderr { inner: fd }),
+                handle: handle,
             })
         }
     }
@@ -289,7 +281,7 @@ impl Command {
     /// By default, stdin, stdout and stderr are inherited from the parent.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn spawn(&mut self) -> io::Result<Child> {
-        self.spawn_inner(StdioImp::Inherit)
+        self.spawn_inner(sys::Stdio::Inherit)
     }
 
     /// Executes the command as a child process, waiting for it to finish and
@@ -312,7 +304,7 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn output(&mut self) -> io::Result<Output> {
-        self.spawn_inner(StdioImp::MakePipe).and_then(|p| p.wait_with_output())
+        self.spawn_inner(sys::Stdio::MakePipe).and_then(|p| p.wait_with_output())
     }
 
     /// Executes a command as a child process, waiting for it to finish and
@@ -339,51 +331,17 @@ impl Command {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Command {
-    /// Format the program and arguments of a Command for display. Any
-    /// non-utf8 data is lossily converted using the utf8 replacement
-    /// character.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{:?}", self.inner.program));
-        for arg in &self.inner.args {
-            try!(write!(f, " {:?}", arg));
-        }
-        Ok(())
+        self.inner.fmt(f)
     }
 }
 
-impl AsInner<imp::Command> for Command {
-    fn as_inner(&self) -> &imp::Command { &self.inner }
+impl AsInner<sys::Command> for Command {
+    fn as_inner(&self) -> &sys::Command { &self.inner }
 }
 
-impl AsInnerMut<imp::Command> for Command {
-    fn as_inner_mut(&mut self) -> &mut imp::Command { &mut self.inner }
-}
-
-// Takes a `Stdio` configuration (this module) and whether the to-be-owned
-// handle will be readable.
-//
-// Returns a triple of (stdio to spawn with, stdio to store, stdio to drop). The
-// stdio to spawn with is passed down to the `sys` module and indicates how the
-// stdio stream should be set up. The "stdio to store" is an object which
-// should be returned in the `Child` that makes its way out. The "stdio to drop"
-// represents the raw value of "stdio to spawn with", but is the owned variant
-// for it. This needs to be dropped after the child spawns
-fn setup_io(io: &Stdio, readable: bool)
-            -> io::Result<(imp::Stdio, Option<AnonPipe>, Option<AnonPipe>)>
-{
-    Ok(match io.0 {
-        StdioImp::MakePipe => {
-            let (reader, writer) = try!(pipe::anon_pipe());
-            if readable {
-                (imp::Stdio::Raw(reader.raw()), Some(writer), Some(reader))
-            } else {
-                (imp::Stdio::Raw(writer.raw()), Some(reader), Some(writer))
-            }
-        }
-        StdioImp::Raw(ref owned) => (imp::Stdio::Raw(owned.raw()), None, None),
-        StdioImp::Inherit => (imp::Stdio::Inherit, None, None),
-        StdioImp::None => (imp::Stdio::None, None, None),
-    })
+impl AsInnerMut<sys::Command> for Command {
+    fn as_inner_mut(&mut self) -> &mut sys::Command { &mut self.inner }
 }
 
 /// The output of a finished process.
@@ -403,41 +361,33 @@ pub struct Output {
 
 /// Describes what to do with a standard I/O stream for a child process.
 #[stable(feature = "process", since = "1.0.0")]
-pub struct Stdio(StdioImp);
-
-// The internal enum for stdio setup; see below for descriptions.
-enum StdioImp {
-    MakePipe,
-    Raw(imp::RawStdio),
-    Inherit,
-    None,
-}
+pub struct Stdio(sys::Stdio);
 
 impl Stdio {
     /// A new pipe should be arranged to connect the parent and child processes.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn piped() -> Stdio { Stdio(StdioImp::MakePipe) }
+    pub fn piped() -> Stdio { Stdio(sys::Stdio::MakePipe) }
 
     /// The child inherits from the corresponding parent descriptor.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn inherit() -> Stdio { Stdio(StdioImp::Inherit) }
+    pub fn inherit() -> Stdio { Stdio(sys::Stdio::Inherit) }
 
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn null() -> Stdio { Stdio(StdioImp::None) }
+    pub fn null() -> Stdio { Stdio(sys::Stdio::None) }
 }
 
-impl FromInner<imp::RawStdio> for Stdio {
-    fn from_inner(inner: imp::RawStdio) -> Stdio {
-        Stdio(StdioImp::Raw(inner))
+impl FromInner<sys::RawFd> for Stdio {
+    fn from_inner(inner: sys::RawFd) -> Stdio {
+        Stdio(sys::Stdio::Raw(inner))
     }
 }
 
 /// Describes the result of a process after it has terminated.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
-pub struct ExitStatus(imp::ExitStatus);
+pub struct ExitStatus(sys::ExitStatus);
 
 impl ExitStatus {
     /// Was termination successful? Signal termination not considered a success,
@@ -458,8 +408,8 @@ impl ExitStatus {
     }
 }
 
-impl AsInner<imp::ExitStatus> for ExitStatus {
-    fn as_inner(&self) -> &imp::ExitStatus { &self.0 }
+impl AsInner<sys::ExitStatus> for ExitStatus {
+    fn as_inner(&self) -> &sys::ExitStatus { &self.0 }
 }
 
 #[stable(feature = "process", since = "1.0.0")]
@@ -474,22 +424,17 @@ impl Child {
     /// SIGKILL on unix platforms.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn kill(&mut self) -> io::Result<()> {
-        #[cfg(unix)] fn collect_status(p: &mut Child) {
-            // On Linux (and possibly other unices), a process that has exited will
-            // continue to accept signals because it is "defunct". The delivery of
-            // signals will only fail once the child has been reaped. For this
-            // reason, if the process hasn't exited yet, then we attempt to collect
-            // their status with WNOHANG.
-            if p.status.is_none() {
-                match p.handle.try_wait() {
-                    Some(status) => { p.status = Some(status); }
-                    None => {}
-                }
+        // On Linux (and possibly other unices), a process that has exited will
+        // continue to accept signals because it is "defunct". The delivery of
+        // signals will only fail once the child has been reaped. For this
+        // reason, if the process hasn't exited yet, then we attempt to collect
+        // their status with WNOHANG.
+        if self.status.is_none() {
+            match self.handle.try_wait() {
+                Some(status) => { self.status = Some(status); }
+                None => {}
             }
         }
-        #[cfg(windows)] fn collect_status(_p: &mut Child) {}
-
-        collect_status(self);
 
         // if the process has finished, and therefore had waitpid called,
         // and we kill it, then on unix we might ending up killing a
@@ -501,13 +446,13 @@ impl Child {
             ))
         }
 
-        unsafe { self.handle.kill() }
+        unsafe { self.handle.kill().map_err(From::from) }
     }
 
     /// Returns the OS-assigned process identifier associated with this child.
     #[stable(feature = "process_id", since = "1.3.0")]
     pub fn id(&self) -> u32 {
-        self.handle.id()
+        self.handle.id().unwrap()
     }
 
     /// Waits for the child to exit completely, returning the status that it
@@ -582,8 +527,11 @@ impl Child {
 /// to run.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn exit(code: i32) -> ! {
-    ::sys_common::cleanup();
-    ::sys::os::exit(code)
+    unsafe {
+        rt::std_cleanup();
+        rt::cleanup();
+    }
+    sys::exit(code)
 }
 
 #[cfg(test)]

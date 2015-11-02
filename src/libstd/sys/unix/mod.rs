@@ -11,7 +11,6 @@
 #![allow(missing_docs)]
 #![allow(non_camel_case_types)]
 
-use io::{self, ErrorKind};
 use libc;
 use num::One;
 use ops::Neg;
@@ -28,17 +27,19 @@ use ops::Neg;
 #[cfg(target_os = "openbsd")]   pub use os::openbsd as platform;
 
 pub mod backtrace;
+
 pub mod c;
 pub mod condvar;
-pub mod ext;
+pub mod dynamic_lib;
 pub mod fd;
 pub mod fs;
 pub mod mutex;
 pub mod net;
-pub mod os;
-pub mod os_str;
+pub mod raw;
+pub mod path;
 pub mod pipe;
 pub mod process;
+pub mod rand;
 pub mod rwlock;
 pub mod stack_overflow;
 pub mod sync;
@@ -46,66 +47,22 @@ pub mod thread;
 pub mod thread_local;
 pub mod time;
 pub mod stdio;
+pub mod error;
+pub mod env;
+pub mod rt;
+pub use sys::common::unwind;
+pub use sys::common::os_str::u8 as os_str;
 
-#[cfg(not(target_os = "nacl"))]
-pub fn init() {
-    use libc::funcs::posix01::signal::signal;
-    // By default, some platforms will send a *signal* when an EPIPE error
-    // would otherwise be delivered. This runtime doesn't install a SIGPIPE
-    // handler, causing it to kill the program, which isn't exactly what we
-    // want!
-    //
-    // Hence, we set SIGPIPE to ignore when the program starts up in order
-    // to prevent this problem.
-    unsafe {
-        assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != !0);
-    }
-}
-#[cfg(target_os = "nacl")]
-pub fn init() { }
+pub mod deps;
+pub mod args;
 
-pub fn decode_error_kind(errno: i32) -> ErrorKind {
-    match errno as libc::c_int {
-        libc::ECONNREFUSED => ErrorKind::ConnectionRefused,
-        libc::ECONNRESET => ErrorKind::ConnectionReset,
-        libc::EPERM | libc::EACCES => ErrorKind::PermissionDenied,
-        libc::EPIPE => ErrorKind::BrokenPipe,
-        libc::ENOTCONN => ErrorKind::NotConnected,
-        libc::ECONNABORTED => ErrorKind::ConnectionAborted,
-        libc::EADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
-        libc::EADDRINUSE => ErrorKind::AddrInUse,
-        libc::ENOENT => ErrorKind::NotFound,
-        libc::EINTR => ErrorKind::Interrupted,
-        libc::EINVAL => ErrorKind::InvalidInput,
-        libc::ETIMEDOUT => ErrorKind::TimedOut,
-        libc::consts::os::posix88::EEXIST => ErrorKind::AlreadyExists,
+pub use sys::common::c::cvt_neg1 as cvt;
 
-        // These two constants can have the same value on some systems,
-        // but different values on others, so we can't use a match
-        // clause
-        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
-            ErrorKind::WouldBlock,
-
-        _ => ErrorKind::Other,
-    }
-}
-
-pub fn cvt<T: One + PartialEq + Neg<Output=T>>(t: T) -> io::Result<T> {
-    let one: T = T::one();
-    if t == -one {
-        Err(io::Error::last_os_error())
-    } else {
-        Ok(t)
-    }
-}
-
-pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
-    where T: One + PartialEq + Neg<Output=T>, F: FnMut() -> T
-{
+pub fn cvt_r<T: One + PartialEq + Neg<Output=T>, F: FnMut() -> T>(mut f: F) -> error::Result<T> {
     loop {
-        match cvt(f()) {
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-            other => return other,
+        return match cvt(f()) {
+            Err(ref e) if e.code() == libc::EINTR => continue,
+            r => r,
         }
     }
 }

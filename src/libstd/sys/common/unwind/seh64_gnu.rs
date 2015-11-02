@@ -18,7 +18,7 @@ use prelude::v1::*;
 
 use any::Any;
 use self::EXCEPTION_DISPOSITION::*;
-use sys_common::dwarf::eh;
+use sys::common::dwarf::eh;
 use core::mem;
 use core::ptr;
 use libc::{c_void, c_ulonglong, DWORD, LPVOID};

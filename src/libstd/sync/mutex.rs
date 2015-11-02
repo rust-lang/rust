@@ -10,14 +10,15 @@
 
 use prelude::v1::*;
 
+use sys::sync as sys;
+
 use cell::UnsafeCell;
 use fmt;
 use marker;
 use mem;
 use ops::{Deref, DerefMut};
 use ptr;
-use sys_common::mutex as sys;
-use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
+use sync::poison::{self, TryLockError, TryLockResult, LockResult};
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///

@@ -13,11 +13,19 @@ use prelude::v1::*;
 use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
 
 use ptr;
-use sys_common;
-use sys_common::mutex::Mutex;
+use sys::sync::Mutex;
+use core::nonzero::NonZero;
+use sys::inner::*;
+use sys::common::thread_local as sys;
 
-pub type Key = DWORD;
-pub type Dtor = unsafe extern fn(*mut u8);
+#[derive(Copy, Clone)]
+pub struct OsKeyValue(DWORD);
+impl_inner!(OsKeyValue(DWORD));
+
+pub type OsKey = sys::OsKey<OsKeyValue>;
+pub type StaticOsKey = sys::StaticOsKey<OsKeyValue>;
+
+pub type Key<T> = sys::Key<T, OsKeyValue>;
 
 // Turns out, like pretty much everything, Windows is pretty close the
 // functionality that Unix provides, but slightly different! In the case of
@@ -58,7 +66,7 @@ pub type Dtor = unsafe extern fn(*mut u8);
 // the thread infrastructure to be in place (useful on the borders of
 // initialization/destruction).
 static DTOR_LOCK: Mutex = Mutex::new();
-static mut DTORS: *mut Vec<(Key, Dtor)> = ptr::null_mut();
+static mut DTORS: *mut Vec<(DWORD, unsafe extern fn(*mut u8))> = ptr::null_mut();
 
 // -------------------------------------------------------------------------
 // Native bindings
@@ -66,49 +74,73 @@ static mut DTORS: *mut Vec<(Key, Dtor)> = ptr::null_mut();
 // This section is just raw bindings to the native functions that Windows
 // provides, There's a few extra calls to deal with destructors.
 
-#[inline]
-pub unsafe fn create(dtor: Option<Dtor>) -> Key {
-    const TLS_OUT_OF_INDEXES: DWORD = 0xFFFFFFFF;
-    let key = TlsAlloc();
-    assert!(key != TLS_OUT_OF_INDEXES);
-    match dtor {
-        Some(f) => register_dtor(key, f),
-        None => {}
+impl OsKeyValue {
+    #[inline]
+    unsafe fn create_raw(dtor: Option<unsafe extern fn(*mut u8)>) -> DWORD {
+        const TLS_OUT_OF_INDEXES: DWORD = 0xFFFFFFFF;
+        let key = TlsAlloc();
+        assert!(key != TLS_OUT_OF_INDEXES);
+        match dtor {
+            Some(f) => register_dtor(key, f),
+            None => {}
+        }
+        return key;
     }
-    return key;
 }
 
-#[inline]
-pub unsafe fn set(key: Key, value: *mut u8) {
-    let r = TlsSetValue(key, value as LPVOID);
-    debug_assert!(r != 0);
-}
+impl sys::OsKeyImp for OsKeyValue {
+    unsafe fn create(dtor: Option<unsafe extern fn(*mut u8)>) -> Self {
+        let key = Self::create_raw(dtor);
+        OsKeyValue(match key {
+            0 => key,
+            key => {
+                let key_ = Self::create_raw(dtor);
+                OsKeyValue(key).destroy();
+                key_
+            },
+        })
+    }
 
-#[inline]
-pub unsafe fn get(key: Key) -> *mut u8 {
-    TlsGetValue(key) as *mut u8
-}
+    #[inline]
+    unsafe fn get(&self) -> *mut u8 {
+        TlsGetValue(self.into_inner()) as *mut u8
+    }
 
-#[inline]
-pub unsafe fn destroy(key: Key) {
-    if unregister_dtor(key) {
-        // FIXME: Currently if a key has a destructor associated with it we
-        // can't actually ever unregister it. If we were to
-        // unregister it, then any key destruction would have to be
-        // serialized with respect to actually running destructors.
-        //
-        // We want to avoid a race where right before run_dtors runs
-        // some destructors TlsFree is called. Allowing the call to
-        // TlsFree would imply that the caller understands that *all
-        // known threads* are not exiting, which is quite a difficult
-        // thing to know!
-        //
-        // For now we just leak all keys with dtors to "fix" this.
-        // Note that source [2] above shows precedent for this sort
-        // of strategy.
-    } else {
-        let r = TlsFree(key);
+    #[inline]
+    unsafe fn set(&self, value: *mut u8) {
+        let r = TlsSetValue(self.into_inner(), value as LPVOID);
         debug_assert!(r != 0);
+    }
+
+    #[inline]
+    unsafe fn destroy(&self) {
+        if unregister_dtor(self.into_inner()) {
+            // FIXME: Currently if a key has a destructor associated with it we
+            // can't actually ever unregister it. If we were to
+            // unregister it, then any key destruction would have to be
+            // serialized with respect to actually running destructors.
+            //
+            // We want to avoid a race where right before run_dtors runs
+            // some destructors TlsFree is called. Allowing the call to
+            // TlsFree would imply that the caller understands that *all
+            // known threads* are not exiting, which is quite a difficult
+            // thing to know!
+            //
+            // For now we just leak all keys with dtors to "fix" this.
+            // Note that source [2] above shows precedent for this sort
+            // of strategy.
+        } else {
+            let r = TlsFree(self.into_inner());
+            debug_assert!(r != 0);
+        }
+    }
+
+    unsafe fn from_usize(value: usize) -> Self {
+        OsKeyValue(value as DWORD)
+    }
+
+    unsafe fn into_usize(&self) -> NonZero<usize> {
+        NonZero::new(self.into_inner() as usize)
     }
 }
 
@@ -131,9 +163,9 @@ extern "system" {
 unsafe fn init_dtors() {
     if !DTORS.is_null() { return }
 
-    let dtors = box Vec::<(Key, Dtor)>::new();
+    let dtors = box Vec::<(DWORD, unsafe extern fn(*mut u8))>::new();
 
-    let res = sys_common::at_exit(move|| {
+    let res = ::at_exit::at_exit(move|| {
         DTOR_LOCK.lock();
         let dtors = DTORS;
         DTORS = 1 as *mut _;
@@ -148,7 +180,7 @@ unsafe fn init_dtors() {
     }
 }
 
-unsafe fn register_dtor(key: Key, dtor: Dtor) {
+unsafe fn register_dtor(key: DWORD, dtor: unsafe extern fn(*mut u8)) {
     DTOR_LOCK.lock();
     init_dtors();
     assert!(DTORS as usize != 0);
@@ -158,7 +190,7 @@ unsafe fn register_dtor(key: Key, dtor: Dtor) {
     DTOR_LOCK.unlock();
 }
 
-unsafe fn unregister_dtor(key: Key) -> bool {
+unsafe fn unregister_dtor(key: DWORD) -> bool {
     DTOR_LOCK.lock();
     init_dtors();
     assert!(DTORS as usize != 0);
@@ -269,7 +301,6 @@ unsafe extern "system" fn on_tls_callback(h: LPVOID,
     unsafe fn reference_tls_used() {}
 }
 
-#[allow(dead_code)] // actually called above
 unsafe fn run_dtors() {
     let mut any_run = true;
     for _ in 0..5 {

@@ -11,14 +11,14 @@
 #![allow(deprecated)]
 
 use dynamic_lib::DynamicLibrary;
-use io;
 use io::prelude::*;
 use libc;
+use sys::error::Result;
 
-use sys_common::gnu::libbacktrace;
+use sys::common::gnu::libbacktrace;
 
 pub fn print(w: &mut Write, i: isize, addr: u64, _: &DynamicLibrary, _: libc::HANDLE)
-        -> io::Result<()> {
-    let addr = addr as usize as *mut libc::c_void;
+        -> Result<()> {
+    let addr = addr as usize as *mut ();
     libbacktrace::print(w, i, addr, addr)
 }

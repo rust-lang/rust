@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use sys::fd::FileDesc;
+use sys::inner::*;
+use sys::error::{self, Result};
+use sys::unix::fd::FileDesc;
 use io;
 use libc;
 
@@ -18,31 +20,36 @@ use libc;
 
 pub struct AnonPipe(FileDesc);
 
-pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
+pub fn anon_pipe() -> Result<(AnonPipe, AnonPipe)> {
     let mut fds = [0; 2];
     if unsafe { libc::pipe(fds.as_mut_ptr()) == 0 } {
-        Ok((AnonPipe::from_fd(fds[0]), AnonPipe::from_fd(fds[1])))
+        Ok((AnonPipe::from_inner(fds[0]), AnonPipe::from_inner(fds[1])))
     } else {
-        Err(io::Error::last_os_error())
+        error::expect_last_result()
     }
 }
 
-impl AnonPipe {
-    pub fn from_fd(fd: libc::c_int) -> AnonPipe {
-        let fd = FileDesc::new(fd);
+impl_inner!(AnonPipe(FileDesc(libc::c_int)): AsInner + IntoInner);
+impl_inner!(AnonPipe(FileDesc));
+
+impl FromInner<libc::c_int> for AnonPipe {
+    fn from_inner(fd: libc::c_int) -> Self {
+        let fd = FileDesc::from_inner(fd);
         fd.set_cloexec();
         AnonPipe(fd)
     }
+}
 
-    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        self.0.read(buf)
+impl io::Read for AnonPipe {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.read(buf).map_err(From::from)
+    }
+}
+
+impl io::Write for AnonPipe {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf).map_err(From::from)
     }
 
-    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        self.0.write(buf)
-    }
-
-    pub fn raw(&self) -> libc::c_int { self.0.raw() }
-    pub fn fd(&self) -> &FileDesc { &self.0 }
-    pub fn into_fd(self) -> FileDesc { self.0 }
+    fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }

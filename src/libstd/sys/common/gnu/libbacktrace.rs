@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io;
-use io::prelude::*;
+use sys::error::Result;
+use backtrace;
 use libc;
-use sys_common::backtrace::{output, output_fileline};
+use io;
 
-pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
-             symaddr: *mut libc::c_void) -> io::Result<()> {
-    use env;
+pub fn print(w: &mut io::Write, idx: isize, addr: *mut (),
+             symaddr: *mut ()) -> Result<()> {
+    use sys::env;
     use ffi::CStr;
     use ptr;
 
@@ -39,9 +39,6 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
                       msg: *const libc::c_char,
                       errnum: libc::c_int);
     enum backtrace_state {}
-    #[link(name = "backtrace", kind = "static")]
-    #[cfg(not(test))]
-    extern {}
 
     extern {
         fn backtrace_create_state(filename: *const libc::c_char,
@@ -134,7 +131,7 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
             } else {
                 None
             };
-        let filename = match selfname.as_ref().and_then(|s| s.as_os_str().to_bytes()) {
+        let filename = match selfname.as_ref().and_then(|s| s.to_bytes()) {
             Some(path) => {
                 let bytes = path;
                 if bytes.len() < LAST_FILENAME.len() {
@@ -162,7 +159,7 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
     // errors are reported
     let state = unsafe { init_state() };
     if state.is_null() {
-        return output(w, idx, addr, None)
+        return backtrace::output(w, idx, addr, None)
     }
     let mut data = ptr::null();
     let data_addr = &mut data as *mut *const libc::c_char;
@@ -172,9 +169,9 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
                           data_addr as *mut libc::c_void)
     };
     if ret == 0 || data.is_null() {
-        try!(output(w, idx, addr, None));
+        try!(backtrace::output(w, idx, addr, None));
     } else {
-        try!(output(w, idx, addr, Some(unsafe { CStr::from_ptr(data).to_bytes() })));
+        try!(backtrace::output(w, idx, addr, Some(unsafe { CStr::from_ptr(data).to_bytes() })));
     }
 
     // pcinfo may return an arbitrary number of file:line pairs,
@@ -198,7 +195,7 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
         for (i, &(file, line)) in fileline_buf[..fileline_count].iter().enumerate() {
             if file.is_null() { continue; } // just to be sure
             let file = unsafe { CStr::from_ptr(file).to_bytes() };
-            try!(output_fileline(w, file, line, i == FILELINE_SIZE - 1));
+            try!(backtrace::output_fileline(w, file, line, i == FILELINE_SIZE - 1));
         }
     }
 

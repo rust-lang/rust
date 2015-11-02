@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
+
 //! OS-based thread local storage
 //!
 //! This module provides an implementation of OS-based thread local storage,
@@ -34,7 +36,7 @@
 //! among many threads via an `Arc`.
 //!
 //! ```rust,ignore
-//! let key = Key::new(None);
+//! let key = OsKey::new(None);
 //! assert!(key.get().is_null());
 //! key.set(1 as *mut u8);
 //! assert!(!key.get().is_null());
@@ -46,7 +48,7 @@
 //! with, however.
 //!
 //! ```rust,ignore
-//! static KEY: StaticKey = INIT;
+//! static KEY: StaticOsKey = INIT;
 //!
 //! unsafe {
 //!     assert!(KEY.get().is_null());
@@ -54,13 +56,22 @@
 //! }
 //! ```
 
-#![allow(non_camel_case_types)]
-#![unstable(feature = "thread_local_internals", issue = "0")]
-#![allow(dead_code)] // sys isn't exported yet
-
 use sync::atomic::{self, AtomicUsize, Ordering};
+use core::nonzero::NonZero;
+use cell::{Cell, UnsafeCell};
+use boxed::Box;
+use marker;
+use ptr;
 
-use sys::thread_local as imp;
+pub trait OsKeyImp: Sized {
+    unsafe fn create(dtor: Option<unsafe extern fn(*mut u8)>) -> Self;
+    unsafe fn get(&self) -> *mut u8;
+    unsafe fn set(&self, value: *mut u8);
+    unsafe fn destroy(&self);
+
+    unsafe fn from_usize(value: usize) -> Self;
+    unsafe fn into_usize(&self) -> NonZero<usize>;
+}
 
 /// A type for TLS keys that are statically allocated.
 ///
@@ -74,29 +85,30 @@ use sys::thread_local as imp;
 /// # Examples
 ///
 /// ```ignore
-/// use tls::os::{StaticKey, INIT};
+/// use sys::os::{StaticOsKey, INIT};
 ///
-/// static KEY: StaticKey = INIT;
+/// static KEY: StaticOsKey = INIT;
 ///
 /// unsafe {
 ///     assert!(KEY.get().is_null());
 ///     KEY.set(1 as *mut u8);
 /// }
 /// ```
-pub struct StaticKey {
+pub struct StaticOsKey<K> {
     /// Inner static TLS key (internals).
     key: AtomicUsize,
     /// Destructor for the TLS value.
     ///
-    /// See `Key::new` for information about when the destructor runs and how
+    /// See `OsKey::new` for information about when the destructor runs and how
     /// it runs.
     dtor: Option<unsafe extern fn(*mut u8)>,
+    data: marker::PhantomData<K>,
 }
 
 /// A type for a safely managed OS-based TLS slot.
 ///
 /// This type allocates an OS TLS key when it is initialized and will deallocate
-/// the key when it falls out of scope. When compared with `StaticKey`, this
+/// the key when it falls out of scope. When compared with `StaticOsKey`, this
 /// type is entirely safe to use.
 ///
 /// Implementations will likely, however, contain unsafe code as this type only
@@ -105,45 +117,33 @@ pub struct StaticKey {
 /// # Examples
 ///
 /// ```rust,ignore
-/// use tls::os::Key;
+/// use sys::os::OsKey;
 ///
-/// let key = Key::new(None);
+/// let key = OsKey::new(None);
 /// assert!(key.get().is_null());
 /// key.set(1 as *mut u8);
 /// assert!(!key.get().is_null());
 ///
 /// drop(key); // deallocate this TLS slot.
 /// ```
-pub struct Key {
-    key: imp::Key,
+pub struct OsKey<K: OsKeyImp> {
+    key: K,
 }
 
-/// Constant initialization value for static TLS keys.
-///
-/// This value specifies no destructor by default.
-pub const INIT: StaticKey = StaticKey::new(None);
-
-impl StaticKey {
-    pub const fn new(dtor: Option<unsafe extern fn(*mut u8)>) -> StaticKey {
-        StaticKey {
-            key: atomic::AtomicUsize::new(0),
-            dtor: dtor
-        }
-    }
-
+impl<K: OsKeyImp> StaticOsKey<K> {
     /// Gets the value associated with this TLS key
     ///
     /// This will lazily allocate a TLS key from the OS if one has not already
     /// been allocated.
     #[inline]
-    pub unsafe fn get(&self) -> *mut u8 { imp::get(self.key()) }
+    pub unsafe fn get(&self) -> *mut u8 { self.key().get() }
 
     /// Sets this TLS key to a new value.
     ///
     /// This will lazily allocate a TLS key from the OS if one has not already
     /// been allocated.
     #[inline]
-    pub unsafe fn set(&self, val: *mut u8) { imp::set(self.key(), val) }
+    pub unsafe fn set(&self, val: *mut u8) { self.key().set(val) }
 
     /// Deallocates this OS TLS key.
     ///
@@ -155,47 +155,38 @@ impl StaticKey {
     pub unsafe fn destroy(&self) {
         match self.key.swap(0, Ordering::SeqCst) {
             0 => {}
-            n => { imp::destroy(n as imp::Key) }
+            n => { K::from_usize(n).destroy() }
+        }
+    }
+
+    pub const fn new(dtor: Option<unsafe extern fn(*mut u8)>) -> Self {
+        StaticOsKey {
+            key: atomic::AtomicUsize::new(0),
+            data: marker::PhantomData,
+            dtor: dtor
         }
     }
 
     #[inline]
-    unsafe fn key(&self) -> imp::Key {
+    unsafe fn key(&self) -> K {
         match self.key.load(Ordering::Relaxed) {
-            0 => self.lazy_init() as imp::Key,
-            n => n as imp::Key
+            0 => self.lazy_init(),
+            n => K::from_usize(n)
         }
     }
 
-    unsafe fn lazy_init(&self) -> usize {
-        // POSIX allows the key created here to be 0, but the compare_and_swap
-        // below relies on using 0 as a sentinel value to check who won the
-        // race to set the shared TLS key. As far as I know, there is no
-        // guaranteed value that cannot be returned as a posix_key_create key,
-        // so there is no value we can initialize the inner key with to
-        // prove that it has not yet been set. As such, we'll continue using a
-        // value of 0, but with some gyrations to make sure we have a non-0
-        // value returned from the creation routine.
-        // FIXME: this is clearly a hack, and should be cleaned up.
-        let key1 = imp::create(self.dtor);
-        let key = if key1 != 0 {
-            key1
-        } else {
-            let key2 = imp::create(self.dtor);
-            imp::destroy(key1);
-            key2
-        };
-        assert!(key != 0);
-        match self.key.compare_and_swap(0, key as usize, Ordering::SeqCst) {
+    unsafe fn lazy_init(&self) -> K {
+        let key = K::create(self.dtor);
+        match self.key.compare_and_swap(0, *key.into_usize(), Ordering::SeqCst) {
             // The CAS succeeded, so we've created the actual key
-            0 => key as usize,
+            0 => { key },
             // If someone beat us to the punch, use their key instead
-            n => { imp::destroy(key); n }
+            n => { key.destroy(); K::from_usize(n) }
         }
     }
 }
 
-impl Key {
+impl<K: OsKeyImp> OsKey<K> {
     /// Creates a new managed OS TLS key.
     ///
     /// This key will be deallocated when the key falls out of scope.
@@ -205,36 +196,92 @@ impl Key {
     /// is non-null the destructor will be invoked. The TLS value will be reset
     /// to null before the destructor is invoked.
     ///
-    /// Note that the destructor will not be run when the `Key` goes out of
+    /// Note that the destructor will not be run when the `OsKey` goes out of
     /// scope.
     #[inline]
-    pub fn new(dtor: Option<unsafe extern fn(*mut u8)>) -> Key {
-        Key { key: unsafe { imp::create(dtor) } }
+    pub fn new(dtor: Option<unsafe extern fn(*mut u8)>) -> Self {
+        OsKey { key: unsafe { K::create(dtor) } }
     }
 
-    /// See StaticKey::get
+    /// See StaticOsKey::get
     #[inline]
     pub fn get(&self) -> *mut u8 {
-        unsafe { imp::get(self.key) }
+        unsafe { self.key.get() }
     }
 
-    /// See StaticKey::set
+    /// See StaticOsKey::set
     #[inline]
     pub fn set(&self, val: *mut u8) {
-        unsafe { imp::set(self.key, val) }
+        unsafe { self.key.set(val) }
     }
 }
 
-impl Drop for Key {
+impl<K: OsKeyImp> Drop for OsKey<K> {
     fn drop(&mut self) {
-        unsafe { imp::destroy(self.key) }
+        unsafe { self.key.destroy() }
     }
+}
+
+pub struct Key<T, K> {
+    // OS-TLS key that we'll use to key off.
+    os: StaticOsKey<K>,
+    marker: marker::PhantomData<Cell<T>>,
+}
+
+unsafe impl<T, K: OsKeyImp> marker::Sync for Key<T, K> { }
+
+struct Value<T: 'static, K: 'static> {
+    key: &'static Key<T, K>,
+    value: UnsafeCell<Option<T>>,
+}
+
+impl<T: 'static, K: OsKeyImp + 'static> Key<T, K> {
+    pub const fn new() -> Self {
+        Key {
+            os: StaticOsKey::new(Some(destroy_value::<T, K>)),
+            marker: marker::PhantomData
+        }
+    }
+
+    pub unsafe fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
+        let ptr = self.os.get() as *mut Value<T, K>;
+        if !ptr.is_null() {
+            if ptr as usize == 1 {
+                return None
+            }
+            return Some(&(*ptr).value);
+        }
+
+        // If the lookup returned null, we haven't initialized our own local
+        // copy, so do that now.
+        let ptr: Box<Value<T, K>> = Box::new(Value {
+            key: self,
+            value: UnsafeCell::new(None),
+        });
+        let ptr = Box::into_raw(ptr);
+        self.os.set(ptr as *mut u8);
+        Some(&(*ptr).value)
+    }
+}
+
+unsafe extern fn destroy_value<T: 'static, K: OsKeyImp + 'static>(ptr: *mut u8) {
+    // The OS TLS ensures that this key contains a NULL value when this
+    // destructor starts to run. We set it back to a sentinel value of 1 to
+    // ensure that any future calls to `get` for this thread will return
+    // `None`.
+    //
+    // Note that to prevent an infinite loop we reset it back to null right
+    // before we return from the destructor ourselves.
+    let ptr = Box::from_raw(ptr as *mut Value<T, K>);
+    let key = ptr.key;
+    key.os.set(1 as *mut u8);
+    drop(ptr);
+    key.os.set(ptr::null_mut());
 }
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-    use super::{Key, StaticKey};
+    use super::{Key, StaticOsKey};
 
     fn assert_sync<T: Sync>() {}
     fn assert_send<T: Send>() {}
@@ -256,8 +303,8 @@ mod tests {
 
     #[test]
     fn statik() {
-        static K1: StaticKey = StaticKey::new(None);
-        static K2: StaticKey = StaticKey::new(None);
+        static K1: StaticOsKey = StaticOsKey::new(None);
+        static K2: StaticOsKey = StaticOsKey::new(None);
 
         unsafe {
             assert!(K1.get().is_null());

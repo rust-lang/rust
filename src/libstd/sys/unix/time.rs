@@ -16,9 +16,9 @@ const NSEC_PER_SEC: u64 = 1_000_000_000;
 mod inner {
     use libc;
     use time::Duration;
-    use ops::Sub;
     use sync::Once;
     use super::NSEC_PER_SEC;
+    use sys::error::Result;
 
     pub struct SteadyTime {
         t: u64
@@ -30,10 +30,17 @@ mod inner {
     }
 
     impl SteadyTime {
-        pub fn now() -> SteadyTime {
-            SteadyTime {
+        fn now() -> Result<Self> {
+            Ok(SteadyTime {
                 t: unsafe { mach_absolute_time() },
-            }
+            })
+        }
+
+        fn delta(&self, other: &SteadyTime) -> Duration {
+            let info = info();
+            let diff = self.t as u64 - other.t as u64;
+            let nanos = diff * info.numer as u64 / info.denom as u64;
+            Duration::new(nanos / NSEC_PER_SEC, (nanos % NSEC_PER_SEC) as u32)
         }
     }
 
@@ -51,25 +58,15 @@ mod inner {
             &INFO
         }
     }
-
-    impl<'a> Sub for &'a SteadyTime {
-        type Output = Duration;
-
-        fn sub(self, other: &SteadyTime) -> Duration {
-            let info = info();
-            let diff = self.t as u64 - other.t as u64;
-            let nanos = diff * info.numer as u64 / info.denom as u64;
-            Duration::new(nanos / NSEC_PER_SEC, (nanos % NSEC_PER_SEC) as u32)
-        }
-    }
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 mod inner {
+    use sys::error;
     use libc;
     use time::Duration;
-    use ops::Sub;
     use super::NSEC_PER_SEC;
+    use sys::error::Result;
 
     pub struct SteadyTime {
         t: libc::timespec,
@@ -93,7 +90,7 @@ mod inner {
     }
 
     impl SteadyTime {
-        pub fn now() -> SteadyTime {
+        pub fn now() -> Result<SteadyTime> {
             let mut t = SteadyTime {
                 t: libc::timespec {
                     tv_sec: 0,
@@ -101,16 +98,15 @@ mod inner {
                 }
             };
             unsafe {
-                assert_eq!(0, clock_gettime(libc::CLOCK_MONOTONIC, &mut t.t));
+                if clock_gettime(libc::CLOCK_MONOTONIC, &mut t.t) != 0 {
+                    error::expect_last_result()
+                } else {
+                    Ok(t)
+                }
             }
-            t
         }
-    }
 
-    impl<'a> Sub for &'a SteadyTime {
-        type Output = Duration;
-
-        fn sub(self, other: &SteadyTime) -> Duration {
+        pub fn delta(&self, other: &SteadyTime) -> Duration {
             if self.t.tv_nsec >= other.t.tv_nsec {
                 Duration::new(self.t.tv_sec as u64 - other.t.tv_sec as u64,
                               self.t.tv_nsec as u32 - other.t.tv_nsec as u32)

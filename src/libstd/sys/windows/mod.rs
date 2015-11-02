@@ -12,7 +12,42 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-use prelude::v1::*;
+pub mod deps;
+
+#[macro_use] pub mod compat;
+pub mod handle;
+pub mod time;
+pub mod stack_overflow;
+pub mod stdio;
+pub mod c;
+pub mod error;
+pub mod thread;
+pub mod backtrace;
+pub mod path;
+pub mod rand;
+pub mod dynamic_lib;
+pub mod net;
+pub mod rt;
+pub mod fs;
+pub mod process;
+pub mod env;
+pub mod thread_local;
+
+mod pipe;
+mod mutex;
+mod rwlock;
+mod condvar;
+
+pub mod sync {
+    pub use super::mutex::{Mutex, ReentrantMutex};
+    pub use super::rwlock::RwLock;
+    pub use super::condvar::Condvar;
+}
+
+pub use sys::common::unwind;
+pub use sys::common::os_str::wtf8 as os_str;
+
+/*use prelude::v1::*;
 
 use ffi::{OsStr, OsString};
 use io::{self, ErrorKind};
@@ -22,18 +57,19 @@ use os::windows::ffi::{OsStrExt, OsStringExt};
 use path::PathBuf;
 use time::Duration;
 
+pub use sys::common::os_str::wtf8 as os_str;
+pub use sys::common::unwind;
+
 #[macro_use] pub mod compat;
 
 pub mod backtrace;
 pub mod c;
 pub mod condvar;
-pub mod ext;
 pub mod fs;
 pub mod handle;
 pub mod mutex;
 pub mod net;
 pub mod os;
-pub mod os_str;
 pub mod pipe;
 pub mod process;
 pub mod rwlock;
@@ -70,73 +106,6 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     }
 }
 
-fn to_utf16_os(s: &OsStr) -> Vec<u16> {
-    let mut v: Vec<_> = s.encode_wide().collect();
-    v.push(0);
-    v
-}
-
-// Many Windows APIs follow a pattern of where we hand a buffer and then they
-// will report back to us how large the buffer should be or how many bytes
-// currently reside in the buffer. This function is an abstraction over these
-// functions by making them easier to call.
-//
-// The first callback, `f1`, is yielded a (pointer, len) pair which can be
-// passed to a syscall. The `ptr` is valid for `len` items (u16 in this case).
-// The closure is expected to return what the syscall returns which will be
-// interpreted by this function to determine if the syscall needs to be invoked
-// again (with more buffer space).
-//
-// Once the syscall has completed (errors bail out early) the second closure is
-// yielded the data which has been read from the syscall. The return value
-// from this closure is then the return value of the function.
-fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> io::Result<T>
-    where F1: FnMut(*mut u16, libc::DWORD) -> libc::DWORD,
-          F2: FnOnce(&[u16]) -> T
-{
-    // Start off with a stack buf but then spill over to the heap if we end up
-    // needing more space.
-    let mut stack_buf = [0u16; 512];
-    let mut heap_buf = Vec::new();
-    unsafe {
-        let mut n = stack_buf.len();
-        loop {
-            let buf = if n <= stack_buf.len() {
-                &mut stack_buf[..]
-            } else {
-                let extra = n - heap_buf.len();
-                heap_buf.reserve(extra);
-                heap_buf.set_len(n);
-                &mut heap_buf[..]
-            };
-
-            // This function is typically called on windows API functions which
-            // will return the correct length of the string, but these functions
-            // also return the `0` on error. In some cases, however, the
-            // returned "correct length" may actually be 0!
-            //
-            // To handle this case we call `SetLastError` to reset it to 0 and
-            // then check it again if we get the "0 error value". If the "last
-            // error" is still 0 then we interpret it as a 0 length buffer and
-            // not an actual error.
-            c::SetLastError(0);
-            let k = match f1(buf.as_mut_ptr(), n as libc::DWORD) {
-                0 if libc::GetLastError() == 0 => 0,
-                0 => return Err(io::Error::last_os_error()),
-                n => n,
-            } as usize;
-            if k == n && libc::GetLastError() ==
-                            libc::ERROR_INSUFFICIENT_BUFFER as libc::DWORD {
-                n *= 2;
-            } else if k >= n {
-                n = k;
-            } else {
-                return Ok(f2(&buf[..k]))
-            }
-        }
-    }
-}
-
 fn os2path(s: &[u16]) -> PathBuf {
     PathBuf::from(OsString::from_wide(s))
 }
@@ -146,14 +115,6 @@ pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
         // don't include the 0
         Some(i) => &v[..i],
         None => v
-    }
-}
-
-fn cvt<I: PartialEq + Zero>(i: I) -> io::Result<I> {
-    if i == I::zero() {
-        Err(io::Error::last_os_error())
-    } else {
-        Ok(i)
     }
 }
 
@@ -176,4 +137,4 @@ fn dur2timeout(dur: Duration) -> libc::DWORD {
             ms as libc::DWORD
         }
     }).unwrap_or(libc::INFINITE)
-}
+}*/

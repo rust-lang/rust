@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use libc::{self, LONG};
-use sys_common::util::report_overflow;
-use sys::c;
+use panicking::report_overflow;
+use sys::windows::c;
 
 pub struct Handler;
 

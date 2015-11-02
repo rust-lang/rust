@@ -10,12 +10,12 @@
 
 use prelude::v1::*;
 
+use sys::sync as sys;
+
+use sys::time::*;
 use sync::atomic::{AtomicUsize, Ordering};
 use sync::{mutex, MutexGuard, PoisonError};
-use sys_common::condvar as sys;
-use sys_common::mutex as sys_mutex;
-use sys_common::poison::{self, LockResult};
-use sys::time::SteadyTime;
+use sync::poison::{self, LockResult};
 use time::Duration;
 
 /// A type indicating whether a timed wait on a condition variable returned
@@ -228,7 +228,7 @@ impl Condvar {
     ///
     /// To wake up all threads, see `notify_all()`.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn notify_one(&self) { unsafe { self.inner.inner.notify_one() } }
+    pub fn notify_one(&self) { unsafe { sys::Condvar::notify_one(&self.inner.inner) } }
 
     /// Wakes up all blocked threads on this condvar.
     ///
@@ -238,13 +238,13 @@ impl Condvar {
     ///
     /// To wake up only one thread, see `notify_one()`.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn notify_all(&self) { unsafe { self.inner.inner.notify_all() } }
+    pub fn notify_all(&self) { unsafe { sys::Condvar::notify_all(&self.inner.inner) } }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Drop for Condvar {
     fn drop(&mut self) {
-        unsafe { self.inner.inner.destroy() }
+        unsafe { sys::Condvar::destroy(&self.inner.inner) }
     }
 }
 
@@ -272,7 +272,7 @@ impl StaticCondvar {
         let poisoned = unsafe {
             let lock = mutex::guard_lock(&guard);
             self.verify(lock);
-            self.inner.wait(lock);
+            sys::Condvar::wait(&self.inner, &lock);
             mutex::guard_poison(&guard).get()
         };
         if poisoned {
@@ -314,7 +314,7 @@ impl StaticCondvar {
         let (poisoned, result) = unsafe {
             let lock = mutex::guard_lock(&guard);
             self.verify(lock);
-            let success = self.inner.wait_timeout(lock, timeout);
+            let success = sys::Condvar::wait_timeout(&self.inner, lock, timeout);
             (mutex::guard_poison(&guard).get(), WaitTimeoutResult(!success))
         };
         if poisoned {
@@ -342,14 +342,14 @@ impl StaticCondvar {
             where F: FnMut(LockResult<&mut T>) -> bool {
         // This could be made more efficient by pushing the implementation into
         // sys::condvar
-        let start = SteadyTime::now();
+        let start = SteadyTime::now().unwrap();
         let mut guard_result: LockResult<MutexGuard<'a, T>> = Ok(guard);
         while !f(guard_result
                     .as_mut()
                     .map(|g| &mut **g)
                     .map_err(|e| PoisonError::new(&mut **e.get_mut()))) {
-            let now = SteadyTime::now();
-            let consumed = &now - &start;
+            let now = SteadyTime::now().unwrap();
+            let consumed = now.delta(&start);
             let guard = guard_result.unwrap_or_else(|e| e.into_inner());
             let (new_guard_result, timed_out) = if consumed > dur {
                 (Ok(guard), WaitTimeoutResult(true))
@@ -382,7 +382,7 @@ impl StaticCondvar {
     #[unstable(feature = "static_condvar",
                reason = "may be merged with Condvar in the future",
                issue = "27717")]
-    pub fn notify_one(&'static self) { unsafe { self.inner.notify_one() } }
+    pub fn notify_one(&'static self) { unsafe { sys::Condvar::notify_one(&self.inner) } }
 
     /// Wakes up all blocked threads on this condvar.
     ///
@@ -390,7 +390,7 @@ impl StaticCondvar {
     #[unstable(feature = "static_condvar",
                reason = "may be merged with Condvar in the future",
                issue = "27717")]
-    pub fn notify_all(&'static self) { unsafe { self.inner.notify_all() } }
+    pub fn notify_all(&'static self) { unsafe { sys::Condvar::notify_all(&self.inner) } }
 
     /// Deallocates all resources associated with this static condvar.
     ///
@@ -402,10 +402,10 @@ impl StaticCondvar {
                reason = "may be merged with Condvar in the future",
                issue = "27717")]
     pub unsafe fn destroy(&'static self) {
-        self.inner.destroy()
+        sys::Condvar::destroy(&self.inner)
     }
 
-    fn verify(&self, mutex: &sys_mutex::Mutex) {
+    fn verify(&self, mutex: &sys::Mutex) {
         let addr = mutex as *const _ as usize;
         match self.mutex.compare_and_swap(0, addr, Ordering::SeqCst) {
             // If we got out 0, then we have successfully bound the mutex to

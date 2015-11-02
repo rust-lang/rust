@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 use libc;
-use ops::Sub;
 use time::Duration;
 use sync::Once;
+use sys::error::Result;
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 
@@ -19,10 +19,10 @@ pub struct SteadyTime {
 }
 
 impl SteadyTime {
-    pub fn now() -> SteadyTime {
+    pub fn now() -> Result<SteadyTime> {
         let mut t = SteadyTime { t: 0 };
         unsafe { libc::QueryPerformanceCounter(&mut t.t); }
-        t
+        Ok(t)
     }
 }
 
@@ -38,10 +38,8 @@ fn frequency() -> libc::LARGE_INTEGER {
     }
 }
 
-impl<'a> Sub for &'a SteadyTime {
-    type Output = Duration;
-
-    fn sub(self, other: &SteadyTime) -> Duration {
+impl SteadyTime {
+    pub fn delta(&self, other: &SteadyTime) -> Duration {
         let diff = self.t as u64 - other.t as u64;
         let nanos = mul_div_u64(diff, NANOS_PER_SEC, frequency() as u64);
         Duration::new(nanos / NANOS_PER_SEC, (nanos % NANOS_PER_SEC) as u32)

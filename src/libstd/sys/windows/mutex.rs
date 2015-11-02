@@ -31,11 +31,12 @@
 
 use prelude::v1::*;
 
+use sys::inner::IntoInner;
 use cell::UnsafeCell;
 use mem;
 use sync::atomic::{AtomicUsize, Ordering};
-use sys::c;
-use sys::compat;
+use sys::windows::c;
+use sys::windows::compat;
 
 pub struct Mutex {
     lock: AtomicUsize,
@@ -51,10 +52,12 @@ enum Kind {
     CriticalSection = 2,
 }
 
-#[inline]
-pub unsafe fn raw(m: &Mutex) -> c::PSRWLOCK {
-    debug_assert!(mem::size_of::<c::SRWLOCK>() <= mem::size_of_val(&m.lock));
-    &m.lock as *const _ as *mut _
+impl<'a> IntoInner<c::PSRWLOCK> for &'a Mutex {
+    #[inline]
+    fn into_inner(self) -> c::PSRWLOCK {
+        debug_assert!(mem::size_of::<c::SRWLOCK>() <= mem::size_of_val(&self.lock));
+        &self.lock as *const _ as *mut _
+    }
 }
 
 impl Mutex {
@@ -66,7 +69,7 @@ impl Mutex {
     }
     pub unsafe fn lock(&self) {
         match kind() {
-            Kind::SRWLock => c::AcquireSRWLockExclusive(raw(self)),
+            Kind::SRWLock => c::AcquireSRWLockExclusive(self.into_inner()),
             Kind::CriticalSection => {
                 let re = self.remutex();
                 (*re).lock();
@@ -79,7 +82,7 @@ impl Mutex {
     }
     pub unsafe fn try_lock(&self) -> bool {
         match kind() {
-            Kind::SRWLock => c::TryAcquireSRWLockExclusive(raw(self)) != 0,
+            Kind::SRWLock => c::TryAcquireSRWLockExclusive(self.into_inner()) != 0,
             Kind::CriticalSection => {
                 let re = self.remutex();
                 if !(*re).try_lock() {
@@ -96,7 +99,7 @@ impl Mutex {
     pub unsafe fn unlock(&self) {
         *self.held.get() = false;
         match kind() {
-            Kind::SRWLock => c::ReleaseSRWLockExclusive(raw(self)),
+            Kind::SRWLock => c::ReleaseSRWLockExclusive(self.into_inner()),
             Kind::CriticalSection => (*self.remutex()).unlock(),
         }
     }

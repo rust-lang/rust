@@ -16,8 +16,8 @@
 #![allow(missing_docs)]
 
 use core::num;
+use os::raw::c_int;
 use intrinsics;
-use libc::c_int;
 use num::{FpCategory, ParseFloatError};
 
 pub use core::f64::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
@@ -28,7 +28,7 @@ pub use core::f64::consts;
 
 #[allow(dead_code)]
 mod cmath {
-    use libc::{c_double, c_int};
+    use os::raw::{c_double, c_int};
 
     #[link_name = "m"]
     extern {

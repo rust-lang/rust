@@ -10,13 +10,13 @@
 
 use prelude::v1::*;
 use io::prelude::*;
+use sys::inner::*;
+use sys::net as sys;
 
 use fmt;
 use io;
 use net::{ToSocketAddrs, SocketAddr, Shutdown};
-use sys_common::io::read_to_end_uninitialized;
-use sys_common::net as net_imp;
-use sys_common::{AsInner, FromInner, IntoInner};
+use io::read_to_end_uninitialized;
 use time::Duration;
 
 /// A structure which represents a TCP stream between a local socket and a
@@ -39,7 +39,7 @@ use time::Duration;
 /// } // the stream is closed here
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct TcpStream(net_imp::TcpStream);
+pub struct TcpStream(sys::TcpStream);
 
 /// A structure representing a socket server.
 ///
@@ -72,7 +72,7 @@ pub struct TcpStream(net_imp::TcpStream);
 /// drop(listener);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct TcpListener(net_imp::TcpListener);
+pub struct TcpListener(sys::TcpListener);
 
 /// An infinite iterator over the connections from a `TcpListener`.
 ///
@@ -89,19 +89,19 @@ impl TcpStream {
     /// documentation for concrete examples.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
-        super::each_addr(addr, net_imp::TcpStream::connect).map(TcpStream)
+        super::each_addr(addr, sys::connect_tcp).map(TcpStream)
     }
 
     /// Returns the socket address of the remote peer of this TCP connection.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        self.0.peer_addr()
+        self.0.peer_addr().map(FromInner::from_inner).map_err(From::from)
     }
 
     /// Returns the socket address of the local half of this TCP connection.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        self.0.socket_addr()
+        self.0.socket_addr().map(FromInner::from_inner).map_err(From::from)
     }
 
     /// Shuts down the read, write, or both halves of this connection.
@@ -111,7 +111,7 @@ impl TcpStream {
     /// documentation of `Shutdown`).
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
-        self.0.shutdown(how)
+        self.0.shutdown(how).map_err(From::from)
     }
 
     /// Creates a new independently owned handle to the underlying socket.
@@ -122,7 +122,7 @@ impl TcpStream {
     /// stream.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_clone(&self) -> io::Result<TcpStream> {
-        self.0.duplicate().map(TcpStream)
+        self.0.duplicate().map(TcpStream).map_err(From::from)
     }
 
     /// Sets the read timeout to the timeout specified.
@@ -138,7 +138,7 @@ impl TcpStream {
     /// error of the kind `WouldBlock`, but Windows may return `TimedOut`.
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.0.set_read_timeout(dur)
+        self.0.set_read_timeout(dur).map_err(From::from)
     }
 
     /// Sets the write timeout to the timeout specified.
@@ -154,7 +154,7 @@ impl TcpStream {
     /// an error of the kind `WouldBlock`, but Windows may return `TimedOut`.
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.0.set_write_timeout(dur)
+        self.0.set_write_timeout(dur).map_err(From::from)
     }
 
     /// Returns the read timeout of this socket.
@@ -166,7 +166,7 @@ impl TcpStream {
     /// Some platforms do not provide access to the current timeout.
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        self.0.read_timeout()
+        self.0.read_timeout().map_err(From::from)
     }
 
     /// Returns the write timeout of this socket.
@@ -178,50 +178,62 @@ impl TcpStream {
     /// Some platforms do not provide access to the current timeout.
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        self.0.write_timeout()
+        self.0.write_timeout().map_err(From::from)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for TcpStream {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf).map_err(From::from) }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         unsafe { read_to_end_uninitialized(self, buf) }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for TcpStream {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf).map_err(From::from) }
+    fn flush(&mut self) -> io::Result<()> { self.0.flush().map_err(From::from) }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Read for &'a TcpStream {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf).map_err(From::from) }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         unsafe { read_to_end_uninitialized(self, buf) }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for &'a TcpStream {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf).map_err(From::from) }
+    fn flush(&mut self) -> io::Result<()> { self.0.flush().map_err(From::from) }
 }
 
-impl AsInner<net_imp::TcpStream> for TcpStream {
-    fn as_inner(&self) -> &net_imp::TcpStream { &self.0 }
+impl AsInner<sys::TcpStream> for TcpStream {
+    fn as_inner(&self) -> &sys::TcpStream { &self.0 }
 }
 
-impl FromInner<net_imp::TcpStream> for TcpStream {
-    fn from_inner(inner: net_imp::TcpStream) -> TcpStream { TcpStream(inner) }
+impl FromInner<sys::TcpStream> for TcpStream {
+    fn from_inner(inner: sys::TcpStream) -> TcpStream { TcpStream(inner) }
 }
 
-impl IntoInner<net_imp::TcpStream> for TcpStream {
-    fn into_inner(self) -> net_imp::TcpStream { self.0 }
+impl IntoInner<sys::TcpStream> for TcpStream {
+    fn into_inner(self) -> sys::TcpStream { self.0 }
 }
 
 impl fmt::Debug for TcpStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+        let mut res = f.debug_struct("TcpStream");
+
+        if let Ok(addr) = self.local_addr() {
+            res.field("addr", &addr);
+        }
+
+        if let Ok(addr) = self.peer_addr() {
+            res.field("peer", &addr);
+        }
+
+        let name = if cfg!(windows) {"socket"} else {"fd"};
+        res.field(name, AsInner::<sys::Socket>::as_inner(&self.0))
+            .finish()
     }
 }
 
@@ -233,19 +245,19 @@ impl TcpListener {
     ///
     /// Binding with a port number of 0 will request that the OS assigns a port
     /// to this listener. The port allocated can be queried via the
-    /// `socket_addr` function.
+    /// `local_addr` function.
     ///
     /// The address type can be any implementor of `ToSocketAddrs` trait. See
     /// its documentation for concrete examples.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
-        super::each_addr(addr, net_imp::TcpListener::bind).map(TcpListener)
+        super::each_addr(addr, sys::bind_tcp).map(TcpListener)
     }
 
     /// Returns the local socket address of this listener.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        self.0.socket_addr()
+        self.0.socket_addr().map(FromInner::from_inner).map_err(From::from)
     }
 
     /// Creates a new independently owned handle to the underlying socket.
@@ -255,7 +267,7 @@ impl TcpListener {
     /// connections and options set on one listener will affect the other.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_clone(&self) -> io::Result<TcpListener> {
-        self.0.duplicate().map(TcpListener)
+        self.0.duplicate().map(TcpListener).map_err(From::from)
     }
 
     /// Accept a new incoming connection from this listener.
@@ -265,7 +277,7 @@ impl TcpListener {
     /// remote peer's address will be returned.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
-        self.0.accept().map(|(a, b)| (TcpStream(a), b))
+        self.0.accept().map(|(a, b)| (TcpStream(a), FromInner::from_inner(b))).map_err(From::from)
     }
 
     /// Returns an iterator over the connections being received on this
@@ -287,23 +299,31 @@ impl<'a> Iterator for Incoming<'a> {
     }
 }
 
-impl AsInner<net_imp::TcpListener> for TcpListener {
-    fn as_inner(&self) -> &net_imp::TcpListener { &self.0 }
+impl AsInner<sys::TcpListener> for TcpListener {
+    fn as_inner(&self) -> &sys::TcpListener { &self.0 }
 }
 
-impl FromInner<net_imp::TcpListener> for TcpListener {
-    fn from_inner(inner: net_imp::TcpListener) -> TcpListener {
+impl FromInner<sys::TcpListener> for TcpListener {
+    fn from_inner(inner: sys::TcpListener) -> TcpListener {
         TcpListener(inner)
     }
 }
 
-impl IntoInner<net_imp::TcpListener> for TcpListener {
-    fn into_inner(self) -> net_imp::TcpListener { self.0 }
+impl IntoInner<sys::TcpListener> for TcpListener {
+    fn into_inner(self) -> sys::TcpListener { self.0 }
 }
 
 impl fmt::Debug for TcpListener {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+        let mut res = f.debug_struct("TcpListener");
+
+        if let Ok(addr) = self.local_addr() {
+            res.field("addr", &addr);
+        }
+
+        let name = if cfg!(windows) {"socket"} else {"fd"};
+        res.field(name, AsInner::<sys::Socket>::as_inner(&self.0))
+            .finish()
     }
 }
 
@@ -313,11 +333,11 @@ mod tests {
 
     use io::ErrorKind;
     use io::prelude::*;
+    use sys::inner::prelude::*;
     use net::*;
     use net::test::{next_test_ip4, next_test_ip6};
     use sync::mpsc::channel;
-    use sys_common::AsInner;
-    use time::Duration;
+    use time::{self, Duration};
     use thread;
 
     fn each_ip(f: &mut FnMut(SocketAddr)) {
@@ -880,18 +900,20 @@ mod tests {
 
     #[test]
     fn debug() {
+        use sys::net::prelude as sys;
+
         let name = if cfg!(windows) {"socket"} else {"fd"};
         let socket_addr = next_test_ip4();
 
         let listener = t!(TcpListener::bind(&socket_addr));
-        let listener_inner = listener.0.socket().as_inner();
+        let listener_inner = AsInner::<sys::Socket>::as_inner(&listener.0);
         let compare = format!("TcpListener {{ addr: {:?}, {}: {:?} }}",
                               socket_addr, name, listener_inner);
         assert_eq!(format!("{:?}", listener), compare);
 
         let stream = t!(TcpStream::connect(&("localhost",
                                                  socket_addr.port())));
-        let stream_inner = stream.0.socket().as_inner();
+        let stream_inner = AsInner::<sys::Socket>::as_inner(&stream.0);
         let compare = format!("TcpStream {{ addr: {:?}, \
                               peer: {:?}, {}: {:?} }}",
                               stream.local_addr().unwrap(),
@@ -938,7 +960,7 @@ mod tests {
         t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
 
         let mut buf = [0; 10];
-        let wait = Duration::span(|| {
+        let wait = time::span(|| {
             let kind = stream.read(&mut buf).err().expect("expected error").kind();
             assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
         });
@@ -960,7 +982,7 @@ mod tests {
         t!(stream.read(&mut buf));
         assert_eq!(b"hello world", &buf[..]);
 
-        let wait = Duration::span(|| {
+        let wait = time::span(|| {
             let kind = stream.read(&mut buf).err().expect("expected error").kind();
             assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
         });

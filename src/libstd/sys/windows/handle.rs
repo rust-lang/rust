@@ -9,61 +9,25 @@
 // except according to those terms.
 
 use io::ErrorKind;
-use io;
 use libc::funcs::extra::kernel32::{GetCurrentProcess, DuplicateHandle};
 use libc::{self, HANDLE};
-use mem;
-use ops::Deref;
 use ptr;
-use sys::cvt;
+use sys::windows::c::cvt;
+use sys::error::Result;
+use sys::inner::*;
 
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///
 /// All methods are inherited through a `Deref` impl to `RawHandle`
-pub struct Handle(RawHandle);
+pub struct Handle(HANDLE);
 
-/// A wrapper type for `HANDLE` objects to give them proper Send/Sync inference
-/// as well as Rust-y methods.
-///
-/// This does **not** drop the handle when it goes out of scope, use `Handle`
-/// instead for that.
-#[derive(Copy, Clone)]
-pub struct RawHandle(HANDLE);
+impl_inner!(Handle(HANDLE): AsInner + IntoInnerForget + FromInner);
 
-unsafe impl Send for RawHandle {}
-unsafe impl Sync for RawHandle {}
+unsafe impl Send for Handle {}
+unsafe impl Sync for Handle {}
 
 impl Handle {
-    pub fn new(handle: HANDLE) -> Handle {
-        Handle(RawHandle::new(handle))
-    }
-
-    pub fn into_raw(self) -> HANDLE {
-        let ret = self.raw();
-        mem::forget(self);
-        return ret;
-    }
-}
-
-impl Deref for Handle {
-    type Target = RawHandle;
-    fn deref(&self) -> &RawHandle { &self.0 }
-}
-
-impl Drop for Handle {
-    fn drop(&mut self) {
-        unsafe { let _ = libc::CloseHandle(self.raw()); }
-    }
-}
-
-impl RawHandle {
-    pub fn new(handle: HANDLE) -> RawHandle {
-        RawHandle(handle)
-    }
-
-    pub fn raw(&self) -> HANDLE { self.0 }
-
-    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+    pub fn read(&self, buf: &mut [u8]) -> Result<usize> {
         let mut read = 0;
         let res = cvt(unsafe {
             libc::ReadFile(self.0, buf.as_ptr() as libc::LPVOID,
@@ -84,7 +48,7 @@ impl RawHandle {
         }
     }
 
-    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+    pub fn write(&self, buf: &[u8]) -> Result<usize> {
         let mut amt = 0;
         try!(cvt(unsafe {
             libc::WriteFile(self.0, buf.as_ptr() as libc::LPVOID,
@@ -95,7 +59,7 @@ impl RawHandle {
     }
 
     pub fn duplicate(&self, access: libc::DWORD, inherit: bool,
-                     options: libc::DWORD) -> io::Result<Handle> {
+                     options: libc::DWORD) -> Result<Handle> {
         let mut ret = 0 as libc::HANDLE;
         try!(cvt(unsafe {
             let cur_proc = GetCurrentProcess();
@@ -103,6 +67,12 @@ impl RawHandle {
                             access, inherit as libc::BOOL,
                             options)
         }));
-        Ok(Handle::new(ret))
+        Ok(Handle::from_inner(ret))
+    }
+}
+
+impl Drop for Handle {
+    fn drop(&mut self) {
+        unsafe { let _ = libc::CloseHandle(*self.as_inner()); }
     }
 }

@@ -10,17 +10,18 @@
 
 use libc;
 use cell::UnsafeCell;
-use sys::sync as ffi;
+use sys::unix::sync as ffi;
 
-pub struct RWLock { inner: UnsafeCell<ffi::pthread_rwlock_t> }
+pub struct RwLock { inner: UnsafeCell<ffi::pthread_rwlock_t> }
 
-unsafe impl Send for RWLock {}
-unsafe impl Sync for RWLock {}
+unsafe impl Send for RwLock {}
+unsafe impl Sync for RwLock {}
 
-impl RWLock {
-    pub const fn new() -> RWLock {
-        RWLock { inner: UnsafeCell::new(ffi::PTHREAD_RWLOCK_INITIALIZER) }
-    }
+impl RwLock {
+    pub const fn new() -> RwLock { RwLock { inner: UnsafeCell::new(ffi::PTHREAD_RWLOCK_INITIALIZER) } }
+}
+
+impl RwLock {
     #[inline]
     pub unsafe fn read(&self) {
         let r = ffi::pthread_rwlock_rdlock(self.inner.get());

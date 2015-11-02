@@ -8,73 +8,98 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
-use os::unix::prelude::*;
-
-use collections::HashMap;
-use env;
-use ffi::{OsString, OsStr, CString, CStr};
+use io::prelude::*;
+use sys::inner::*;
+use sys::error::{Error, Result};
+use sys::env;
+use os::unix::ffi::OsStrExt;
+use ffi::{OsStr, OsString, CStr, CString};
+use borrow::ToOwned;
+use collections::btree_map::BTreeMap;
+use vec::Vec;
 use fmt;
-use io::{self, Error, ErrorKind};
-use libc::{self, pid_t, c_void, c_int, gid_t, uid_t};
+use libc::{self, c_int};
 use ptr;
-use sys::fd::FileDesc;
-use sys::fs::{File, OpenOptions};
-use sys::pipe::AnonPipe;
-use sys::{self, c, cvt, cvt_r};
+use sys::unix::fd::FileDesc;
+use sys::unix::pipe::{self, AnonPipe};
+use sys::unix::env::environ;
+use sys::unix::{c, cvt, cvt_r};
+use sys::fs as fs;
+
+pub use sys::common::process::Stdio;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
 ////////////////////////////////////////////////////////////////////////////////
 
+pub type PipeWrite = AnonPipe;
+pub type PipeRead = AnonPipe;
+pub type RawFd = FileDesc;
+
 #[derive(Clone)]
 pub struct Command {
-    pub program: CString,
-    pub args: Vec<CString>,
-    pub env: Option<HashMap<OsString, OsString>>,
-    pub cwd: Option<CString>,
-    pub uid: Option<uid_t>,
-    pub gid: Option<gid_t>,
+    program: CString,
+    args: Vec<CString>,
+    env: Option<BTreeMap<OsString, OsString>>,
+    cwd: Option<CString>,
+    pub uid: Option<libc::uid_t>,
+    pub gid: Option<libc::gid_t>,
     pub session_leader: bool,
 }
 
 impl Command {
-    pub fn new(program: &OsStr) -> Command {
-        Command {
-            program: program.to_cstring().unwrap(),
+    pub fn new(program: &OsStr) -> Result<Command> {
+        Ok(Command {
+            program: try!(CString::new(program.as_bytes())),
             args: Vec::new(),
             env: None,
             cwd: None,
             uid: None,
             gid: None,
             session_leader: false,
-        }
+        })
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
-        self.args.push(arg.to_cstring().unwrap())
+        self.args.push(CString::new(arg.as_bytes()).unwrap());
     }
     pub fn args<'a, I: Iterator<Item = &'a OsStr>>(&mut self, args: I) {
-        self.args.extend(args.map(|s| s.to_cstring().unwrap()))
-    }
-    fn init_env_map(&mut self) {
-        if self.env.is_none() {
-            self.env = Some(env::vars_os().collect());
-        }
+        self.args.extend(args.map(|s| CString::new(s.as_bytes()).unwrap()))
     }
     pub fn env(&mut self, key: &OsStr, val: &OsStr) {
         self.init_env_map();
-        self.env.as_mut().unwrap().insert(key.to_os_string(), val.to_os_string());
+        self.env.as_mut().unwrap().insert(key.to_owned(), val.to_owned());
     }
     pub fn env_remove(&mut self, key: &OsStr) {
         self.init_env_map();
-        self.env.as_mut().unwrap().remove(&key.to_os_string());
+        self.env.as_mut().unwrap().remove(key);
     }
     pub fn env_clear(&mut self) {
-        self.env = Some(HashMap::new())
+        self.env = Some(BTreeMap::new())
     }
     pub fn cwd(&mut self, dir: &OsStr) {
-        self.cwd = Some(dir.to_cstring().unwrap())
+        self.cwd = Some(CString::new(dir.as_bytes()).unwrap())
+    }
+}
+
+impl Command {
+    fn init_env_map(&mut self) {
+        if self.env.is_none() {
+            self.env = Some(env::vars().unwrap().collect());
+        }
+    }
+}
+
+impl fmt::Debug for Command {
+    /// Format the program and arguments of a Command for display. Any
+    /// non-utf8 data is lossily converted using the utf8 replacement
+    /// character.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "{:?}", self.program));
+        for arg in &self.args {
+            try!(write!(f, " {:?}", arg));
+        }
+        Ok(())
     }
 }
 
@@ -98,6 +123,7 @@ impl ExitStatus {
     pub fn success(&self) -> bool {
         *self == ExitStatus::Code(0)
     }
+
     pub fn code(&self) -> Option<i32> {
         match *self {
             ExitStatus::Code(c) => Some(c),
@@ -115,89 +141,144 @@ impl fmt::Display for ExitStatus {
     }
 }
 
-/// The unique id of the process (this should never be negative).
-pub struct Process {
-    pid: pid_t
-}
-
-pub enum Stdio {
+pub enum StdioImp {
+    Fd(FileDesc),
+    Raw(c_int),
     Inherit,
     None,
-    Raw(c_int),
 }
 
-pub type RawStdio = FileDesc;
+impl<'a> From<&'a Stdio> for StdioImp {
+    fn from(stdio: &'a Stdio) -> Self {
+        match *stdio {
+            Stdio::MakePipe | Stdio::None => StdioImp::None,
+            Stdio::Inherit => StdioImp::Inherit,
+            Stdio::Raw(ref fd) => StdioImp::Raw(*fd.as_inner()),
+        }
+    }
+}
+
+/// The unique id of the process (this should never be negative).
+pub struct Process {
+    pid: libc::pid_t,
+    stdin_pipe: Option<AnonPipe>,
+    stdout_pipe: Option<AnonPipe>,
+    stderr_pipe: Option<AnonPipe>,
+}
 
 const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
 impl Process {
-    pub unsafe fn kill(&self) -> io::Result<()> {
-        try!(cvt(libc::funcs::posix88::signal::kill(self.pid, libc::SIGKILL)));
-        Ok(())
+    pub unsafe fn kill(&self) -> Result<()> {
+        cvt(libc::funcs::posix88::signal::kill(self.pid, libc::SIGKILL)).map(drop)
     }
 
-    pub fn spawn(cfg: &Command,
-                 in_fd: Stdio,
-                 out_fd: Stdio,
-                 err_fd: Stdio) -> io::Result<Process> {
-        let dirp = cfg.cwd.as_ref().map(|c| c.as_ptr()).unwrap_or(ptr::null());
+    pub fn stdin(&mut self) -> &mut Option<PipeWrite> { &mut self.stdin_pipe }
+    pub fn stdout(&mut self) -> &mut Option<PipeRead> { &mut self.stdout_pipe }
+    pub fn stderr(&mut self) -> &mut Option<PipeRead> { &mut self.stderr_pipe }
 
-        let (envp, _a, _b) = make_envp(cfg.env.as_ref());
-        let (argv, _a) = make_argv(&cfg.program, &cfg.args);
-        let (input, output) = try!(sys::pipe::anon_pipe());
+    pub fn id(&self) -> Result<u32> {
+        Ok(self.pid as u32)
+    }
 
-        let pid = unsafe {
-            match libc::fork() {
-                0 => {
-                    drop(input);
-                    Process::child_after_fork(cfg, output, argv, envp, dirp,
-                                              in_fd, out_fd, err_fd)
-                }
-                n if n < 0 => return Err(Error::last_os_error()),
-                n => n,
-            }
-        };
+    pub fn wait(&self) -> Result<ExitStatus> {
+        let mut status = 0 as c_int;
+        try!(cvt_r(|| unsafe { c::waitpid(self.pid, &mut status, 0) }));
+        Ok(translate_status(status))
+    }
 
-        let p = Process{ pid: pid };
-        drop(output);
-        let mut bytes = [0; 8];
-
-        // loop to handle EINTR
-        loop {
-            match input.read(&mut bytes) {
-                Ok(0) => return Ok(p),
-                Ok(8) => {
-                    assert!(combine(CLOEXEC_MSG_FOOTER) == combine(&bytes[4.. 8]),
-                            "Validation on the CLOEXEC pipe failed: {:?}", bytes);
-                    let errno = combine(&bytes[0.. 4]);
-                    assert!(p.wait().is_ok(),
-                            "wait() should either return Ok or panic");
-                    return Err(Error::from_raw_os_error(errno))
-                }
-                Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-                Err(e) => {
-                    assert!(p.wait().is_ok(),
-                            "wait() should either return Ok or panic");
-                    panic!("the CLOEXEC pipe failed: {:?}", e)
-                },
-                Ok(..) => { // pipe I/O up to PIPE_BUF bytes should be atomic
-                    assert!(p.wait().is_ok(),
-                            "wait() should either return Ok or panic");
-                    panic!("short read on the CLOEXEC pipe")
-                }
-            }
+    pub fn try_wait(&self) -> Option<ExitStatus> {
+        let mut status = 0 as c_int;
+        match cvt_r(|| unsafe {
+            c::waitpid(self.pid, &mut status, c::WNOHANG)
+        }) {
+            Ok(0) => None,
+            Ok(n) if n == self.pid => Some(translate_status(status)),
+            Ok(n) => panic!("unknown pid: {}", n),
+            Err(e) => panic!("unknown waitpid error: {}", e),
         }
+    }
+}
 
-        fn combine(arr: &[u8]) -> i32 {
-            let a = arr[0] as u32;
-            let b = arr[1] as u32;
-            let c = arr[2] as u32;
-            let d = arr[3] as u32;
+pub fn exit(code: i32) -> ! {
+    unsafe { libc::_exit(code as c_int) }
+}
 
-            ((a << 24) | (b << 16) | (c << 8) | (d << 0)) as i32
+pub fn spawn(cfg: &Command, stdin: &Stdio, stdout: &Stdio, stderr: &Stdio) -> Result<Process> {
+    let dirp = cfg.cwd.as_ref().map(|c| c.as_ptr()).unwrap_or(ptr::null());
+
+    let (envp, _a, _b) = make_envp(cfg.env.as_ref());
+    let (argv, _a) = make_argv(&cfg.program, &cfg.args);
+    let (mut input, output) = try!(pipe::anon_pipe());
+
+    let (stdin, stdin_pipe) = match *stdin {
+        Stdio::MakePipe => { let (r, w) = try!(pipe::anon_pipe()); (StdioImp::Fd(r.into_inner()), Some(w)) },
+        ref stdio => (stdio.into(), None),
+    };
+
+    let (stdout, stdout_pipe) = match *stdout {
+        Stdio::MakePipe => { let (r, w) = try!(pipe::anon_pipe()); (StdioImp::Fd(w.into_inner()), Some(r)) },
+        ref stdio => (stdio.into(), None),
+    };
+
+    let (stderr, stderr_pipe) = match *stderr {
+        Stdio::MakePipe => { let (r, w) = try!(pipe::anon_pipe()); (StdioImp::Fd(w.into_inner()), Some(r)) },
+        ref stdio => (stdio.into(), None),
+    };
+
+    let pid = unsafe {
+        match try!(cvt(libc::fork())) {
+            0 => {
+                drop(input);
+                Process::child_after_fork(cfg, output, argv, envp, dirp,
+                                          stdin, stdout, stderr)
+            }
+            n => n,
+        }
+    };
+
+    let p = Process { pid: pid, stdin_pipe: stdin_pipe, stdout_pipe: stdout_pipe, stderr_pipe: stderr_pipe };
+    drop(output);
+    let mut bytes = [0; 8];
+
+    // loop to handle EINTR
+    loop {
+        match input.read(&mut bytes) {
+            Ok(0) => return Ok(p),
+            Ok(8) => {
+                assert!(combine(CLOEXEC_MSG_FOOTER) == combine(&bytes[4.. 8]),
+                        "Validation on the CLOEXEC pipe failed: {:?}", bytes);
+                let errno = combine(&bytes[0.. 4]);
+                assert!(p.wait().is_ok(),
+                        "wait() should either return Ok or panic");
+                return Err(Error::from_code(errno))
+            }
+            Err(ref e) if e.raw_os_error() == Some(libc::EINTR) => {}
+            Err(e) => {
+                assert!(p.wait().is_ok(),
+                        "wait() should either return Ok or panic");
+                panic!("the CLOEXEC pipe failed: {:?}", e)
+            },
+            Ok(..) => { // pipe I/O up to PIPE_BUF bytes should be atomic
+                assert!(p.wait().is_ok(),
+                        "wait() should either return Ok or panic");
+                panic!("short read on the CLOEXEC pipe")
+            }
         }
     }
 
+    fn combine(arr: &[u8]) -> i32 {
+        let a = arr[0] as u32;
+        let b = arr[1] as u32;
+        let c = arr[2] as u32;
+        let d = arr[3] as u32;
+
+        ((a << 24) | (b << 16) | (c << 8) | (d << 0)) as i32
+    }
+}
+
+
+impl Process {
     // And at this point we've reached a special time in the life of the
     // child. The child must now be considered hamstrung and unable to
     // do anything other than syscalls really. Consider the following
@@ -233,11 +314,11 @@ impl Process {
                                argv: *const *const libc::c_char,
                                envp: *const libc::c_void,
                                dirp: *const libc::c_char,
-                               in_fd: Stdio,
-                               out_fd: Stdio,
-                               err_fd: Stdio) -> ! {
+                               stdin: StdioImp,
+                               stdout: StdioImp,
+                               stderr: StdioImp) -> ! {
         fn fail(output: &mut AnonPipe) -> ! {
-            let errno = sys::os::errno() as u32;
+            let errno = Error::last_error().as_ref().map(Error::code).unwrap_or(0) as u32;
             let bytes = [
                 (errno >> 24) as u8,
                 (errno >> 16) as u8,
@@ -253,24 +334,25 @@ impl Process {
             unsafe { libc::_exit(1) }
         }
 
-        let setup = |src: Stdio, dst: c_int| {
+        let setup = |src: StdioImp, dst: c_int| {
             match src {
-                Stdio::Inherit => true,
-                Stdio::Raw(fd) => cvt_r(|| libc::dup2(fd, dst)).is_ok(),
+                StdioImp::Inherit => true,
+                StdioImp::Raw(fd) => cvt_r(|| libc::dup2(fd, dst)).is_ok(),
+                StdioImp::Fd(fd) => cvt_r(|| libc::dup2(*fd.as_inner(), dst)).is_ok(),
 
                 // If a stdio file descriptor is set to be ignored, we open up
                 // /dev/null into that file descriptor. Otherwise, the first
                 // file descriptor opened up in the child would be numbered as
                 // one of the stdio file descriptors, which is likely to wreak
                 // havoc.
-                Stdio::None => {
-                    let mut opts = OpenOptions::new();
+                StdioImp::None => {
+                    let mut opts = fs::OpenOptions::new();
                     opts.read(dst == libc::STDIN_FILENO);
                     opts.write(dst != libc::STDIN_FILENO);
                     let devnull = CStr::from_ptr(b"/dev/null\0".as_ptr()
                                                     as *const _);
-                    if let Ok(f) = File::open_c(devnull, &opts) {
-                        cvt_r(|| libc::dup2(f.fd().raw(), dst)).is_ok()
+                    if let Ok(f) = fs::File::open_c(devnull, &opts) {
+                        cvt_r(|| libc::dup2(*f.as_inner(), dst)).is_ok()
                     } else {
                         false
                     }
@@ -278,9 +360,9 @@ impl Process {
             }
         };
 
-        if !setup(in_fd, libc::STDIN_FILENO) { fail(&mut output) }
-        if !setup(out_fd, libc::STDOUT_FILENO) { fail(&mut output) }
-        if !setup(err_fd, libc::STDERR_FILENO) { fail(&mut output) }
+        if !setup(stdin, libc::STDIN_FILENO) { fail(&mut output) }
+        if !setup(stdout, libc::STDOUT_FILENO) { fail(&mut output) }
+        if !setup(stderr, libc::STDERR_FILENO) { fail(&mut output) }
 
         if let Some(u) = cfg.gid {
             if libc::setgid(u as libc::gid_t) != 0 {
@@ -311,12 +393,13 @@ impl Process {
             fail(&mut output);
         }
         if !envp.is_null() {
-            *sys::os::environ() = envp as *const _;
+            *environ() = envp as *const _;
         }
 
         #[cfg(not(target_os = "nacl"))]
         unsafe fn reset_signal_handling(output: &mut AnonPipe) {
             use mem;
+
             // Reset signal handling so the child process starts in a
             // standardized state. libstd ignores SIGPIPE, and signal-handling
             // libraries often set a mask. Child processes inherit ignored
@@ -329,8 +412,7 @@ impl Process {
                 c::pthread_sigmask(c::SIG_SETMASK, &set, ptr::null_mut()) != 0 ||
                 libc::funcs::posix01::signal::signal(
                     libc::SIGPIPE, mem::transmute(c::SIG_DFL)
-                        ) == mem::transmute(c::SIG_ERR)
-            {
+                ) == mem::transmute(c::SIG_ERR) {
                 fail(output);
             }
         }
@@ -344,27 +426,6 @@ impl Process {
         fail(&mut output)
     }
 
-    pub fn id(&self) -> u32 {
-        self.pid as u32
-    }
-
-    pub fn wait(&self) -> io::Result<ExitStatus> {
-        let mut status = 0 as c_int;
-        try!(cvt_r(|| unsafe { c::waitpid(self.pid, &mut status, 0) }));
-        Ok(translate_status(status))
-    }
-
-    pub fn try_wait(&self) -> Option<ExitStatus> {
-        let mut status = 0 as c_int;
-        match cvt_r(|| unsafe {
-            c::waitpid(self.pid, &mut status, c::WNOHANG)
-        }) {
-            Ok(0) => None,
-            Ok(n) if n == self.pid => Some(translate_status(status)),
-            Ok(n) => panic!("unknown pid: {}", n),
-            Err(e) => panic!("unknown waitpid error: {}", e),
-        }
-    }
 }
 
 fn make_argv(prog: &CString, args: &[CString])
@@ -386,8 +447,8 @@ fn make_argv(prog: &CString, args: &[CString])
     (ptrs.as_ptr(), ptrs)
 }
 
-fn make_envp(env: Option<&HashMap<OsString, OsString>>)
-             -> (*const c_void, Vec<Vec<u8>>, Vec<*const libc::c_char>)
+fn make_envp(env: Option<&BTreeMap<OsString, OsString>>)
+             -> (*const libc::c_void, Vec<Vec<u8>>, Vec<*const libc::c_char>)
 {
     // On posixy systems we can pass a char** for envp, which is a
     // null-terminated array of "k=v\0" strings. Since we must create
@@ -451,23 +512,13 @@ fn translate_status(status: c_int) -> ExitStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use prelude::v1::*;
 
     use ffi::OsStr;
-    use mem;
-    use ptr;
+    use core::mem;
+    use core::ptr;
+    use core::slice;
+    use unix::{c, pipe};
     use libc;
-    use slice;
-    use sys::{self, c, cvt, pipe};
-
-    macro_rules! t {
-        ($e:expr) => {
-            match $e {
-                Ok(t) => t,
-                Err(e) => panic!("received error for `{}`: {}", stringify!($e), e),
-            }
-        }
-    }
 
     #[cfg(not(target_os = "android"))]
     extern {
@@ -493,26 +544,26 @@ mod tests {
         unsafe {
             // Test to make sure that a signal mask does not get inherited.
             let cmd = Command::new(OsStr::new("cat"));
-            let (stdin_read, stdin_write) = t!(sys::pipe::anon_pipe());
-            let (stdout_read, stdout_write) = t!(sys::pipe::anon_pipe());
+            let (stdin_read, mut stdin_write) = pipe::anon_pipe().unwrap();
+            let (mut stdout_read, stdout_write) = pipe::anon_pipe().unwrap();
 
             let mut set: c::sigset_t = mem::uninitialized();
             let mut old_set: c::sigset_t = mem::uninitialized();
-            t!(cvt(c::sigemptyset(&mut set)));
-            t!(cvt(sigaddset(&mut set, libc::SIGINT)));
-            t!(cvt(c::pthread_sigmask(c::SIG_SETMASK, &set, &mut old_set)));
+            assert_eq!(0, c::sigemptyset(&mut set));
+            assert_eq!(0, sigaddset(&mut set, libc::SIGINT));
+            assert_eq!(0, c::pthread_sigmask(c::SIG_SETMASK, &set, &mut old_set));
 
-            let cat = t!(Process::spawn(&cmd, Stdio::Raw(stdin_read.raw()),
+            let cat = assert!(Process::spawn(&cmd, Stdio::Raw(stdin_read.raw()),
                                               Stdio::Raw(stdout_write.raw()),
-                                              Stdio::None));
+                                              Stdio::None).is_ok());
             drop(stdin_read);
             drop(stdout_write);
 
-            t!(cvt(c::pthread_sigmask(c::SIG_SETMASK, &old_set,
-                                      ptr::null_mut())));
+            assert_eq!(0, c::pthread_sigmask(c::SIG_SETMASK, &old_set,
+                                      ptr::null_mut()));
 
-            t!(cvt(libc::funcs::posix88::signal::kill(cat.id() as libc::pid_t,
-                                                      libc::SIGINT)));
+            assert_eq!(0, libc::funcs::posix88::signal::kill(cat.id() as libc::pid_t,
+                                                      libc::SIGINT));
             // We need to wait until SIGINT is definitely delivered. The
             // easiest way is to write something to cat, and try to read it
             // back: if SIGINT is unmasked, it'll get delivered when cat is
@@ -526,7 +577,7 @@ mod tests {
                 assert!(ret == 0);
             }
 
-            t!(cat.wait());
+            assert!(cat.wait().is_ok());
         }
     }
 }

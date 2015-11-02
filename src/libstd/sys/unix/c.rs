@@ -128,6 +128,12 @@ pub struct passwd {
     pub pw_shell: *mut libc::c_char,
 }
 
+pub fn page_size() -> usize {
+    unsafe {
+        libc::sysconf(libc::_SC_PAGESIZE) as usize
+    }
+}
+
 // This is really a function pointer (or a union of multiple function
 // pointers), except for constants like SIG_DFL.
 pub type sighandler_t = *mut libc::c_void;

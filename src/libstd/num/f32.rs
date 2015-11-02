@@ -17,7 +17,7 @@
 
 use core::num;
 use intrinsics;
-use libc::c_int;
+use os::raw::c_int;
 use num::{FpCategory, ParseFloatError};
 
 pub use core::f32::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
@@ -28,7 +28,7 @@ pub use core::f32::consts;
 
 #[allow(dead_code)]
 mod cmath {
-    use libc::{c_float, c_int};
+    use os::raw::{c_float, c_int};
 
     extern {
         pub fn cbrtf(n: c_float) -> c_float;
@@ -72,7 +72,7 @@ mod cmath {
     pub use self::shims::*;
     #[cfg(target_env = "msvc")]
     mod shims {
-        use libc::{c_float, c_int};
+        use os::raw::{c_float, c_int};
 
         pub unsafe fn acosf(n: c_float) -> c_float {
             f64::acos(n as f64) as c_float
