@@ -495,7 +495,23 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     impl_def_id: id,
                     substs,
                     nested: _ }) => {
-                emit_vtable_methods(ccx, id, substs, param_substs).into_iter()
+                let nullptr = C_null(Type::nil(ccx).ptr_to());
+                get_vtable_methods(ccx, id, substs)
+                    .into_iter()
+                    .map(|opt_mth| {
+                        match opt_mth {
+                            Some(mth) => {
+                                trans_fn_ref_with_substs(ccx,
+                                                         mth.method.def_id,
+                                                         ExprId(0),
+                                                         param_substs,
+                                                         mth.substs).val
+                            }
+                            None => nullptr
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .into_iter()
             }
             traits::VtableClosure(
                 traits::VtableClosureData {
@@ -549,18 +565,14 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     vtable
 }
 
-fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                 impl_id: DefId,
-                                 substs: subst::Substs<'tcx>,
-                                 param_substs: &'tcx subst::Substs<'tcx>)
-                                 -> Vec<ValueRef>
+pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                    impl_id: DefId,
+                                    substs: subst::Substs<'tcx>)
+                                    -> Vec<Option<ty::util::ImplMethod<'tcx>>>
 {
     let tcx = ccx.tcx();
 
-    debug!("emit_vtable_methods(impl_id={:?}, substs={:?}, param_substs={:?})",
-           impl_id,
-           substs,
-           param_substs);
+    debug!("get_vtable_methods(impl_id={:?}, substs={:?}", impl_id, substs);
 
     let trt_id = match tcx.impl_trait_ref(impl_id) {
         Some(t_id) => t_id.def_id,
@@ -570,7 +582,6 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     tcx.populate_implementations_for_trait_if_necessary(trt_id);
 
-    let nullptr = C_null(Type::nil(ccx).ptr_to());
     let trait_item_def_ids = tcx.trait_item_def_ids(trt_id);
     trait_item_def_ids
         .iter()
@@ -587,7 +598,7 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // method could never be called from this object, just supply
         // null.
         .map(|trait_method_def_id| {
-            debug!("emit_vtable_methods: trait_method_def_id={:?}",
+            debug!("get_vtable_methods: trait_method_def_id={:?}",
                    trait_method_def_id);
 
             let trait_method_type = match tcx.impl_or_trait_item(trait_method_def_id) {
@@ -598,18 +609,18 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
             // Some methods cannot be called on an object; skip those.
             if !traits::is_vtable_safe_method(tcx, trt_id, &trait_method_type) {
-                debug!("emit_vtable_methods: not vtable safe");
-                return nullptr;
+                debug!("get_vtable_methods: not vtable safe");
+                return None;
             }
 
-            debug!("emit_vtable_methods: trait_method_type={:?}",
+            debug!("get_vtable_methods: trait_method_type={:?}",
                    trait_method_type);
 
             // The substitutions we have are on the impl, so we grab
             // the method type from the impl to substitute into.
             let mth = tcx.get_impl_method(impl_id, substs.clone(), name);
 
-            debug!("emit_vtable_methods: mth={:?}", mth);
+            debug!("get_vtable_methods: mth={:?}", mth);
 
             // If this is a default method, it's possible that it
             // relies on where clauses that do not hold for this
@@ -619,16 +630,12 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             if mth.is_provided {
                 let predicates = mth.method.predicates.predicates.subst(tcx, &mth.substs);
                 if !normalize_and_test_predicates(ccx, predicates.into_vec()) {
-                    debug!("emit_vtable_methods: predicates do not hold");
-                    return nullptr;
+                    debug!("get_vtable_methods: predicates do not hold");
+                    return None;
                 }
             }
 
-            trans_fn_ref_with_substs(ccx,
-                                     mth.method.def_id,
-                                     ExprId(0),
-                                     param_substs,
-                                     mth.substs).val
+            Some(mth)
         })
         .collect()
 }
