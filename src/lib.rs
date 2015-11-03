@@ -193,6 +193,8 @@ pub enum WriteMode {
     Return,
     // Display how much of the input file was processed
     Coverage,
+    // Unfancy stdout
+    Plain,
 }
 
 impl FromStr for WriteMode {
@@ -205,6 +207,7 @@ impl FromStr for WriteMode {
             "overwrite" => Ok(WriteMode::Overwrite),
             "diff" => Ok(WriteMode::Diff),
             "coverage" => Ok(WriteMode::Coverage),
+            "plain" => Ok(WriteMode::Plain),
             _ => Err(()),
         }
     }
@@ -386,6 +389,33 @@ pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     report
 }
 
+pub fn format_string(input: String, config: &Config, mode: WriteMode) -> FileMap {
+    let path = "stdin";
+    let mut parse_session = ParseSess::new();
+    let krate = parse::parse_crate_from_source_str(path.to_owned(),
+                                                   input,
+                                                   Vec::new(),
+                                                   &parse_session);
+
+    // Suppress error output after parsing.
+    let emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None));
+    parse_session.span_diagnostic.handler = Handler::with_emitter(false, emitter);
+
+    // FIXME: we still use a FileMap even though we only have
+    // one file, because fmt_lines requires a FileMap
+    let mut file_map = FileMap::new();
+
+    // do the actual formatting
+    let mut visitor = FmtVisitor::from_codemap(&parse_session, config, Some(mode));
+    visitor.format_separate_mod(&krate.module, path);
+
+    // append final newline
+    visitor.buffer.push_str("\n");
+    file_map.insert(path.to_owned(), visitor.buffer);
+
+    return file_map;
+}
+
 pub fn format(file: &Path, config: &Config, mode: WriteMode) -> FileMap {
     let mut parse_session = ParseSess::new();
     let krate = parse::parse_crate_from_file(file, Vec::new(), &parse_session);
@@ -416,5 +446,17 @@ pub fn run(file: &Path, write_mode: WriteMode, config: &Config) {
 
     if let Err(msg) = write_result {
         println!("Error writing files: {}", msg);
+    }
+}
+
+// Similar to run, but takes an input String instead of a file to format
+pub fn run_from_stdin(input: String, mode: WriteMode, config: &Config) {
+    let mut result = format_string(input, config, mode);
+    fmt_lines(&mut result, config);
+
+    let write_result = filemap::write_file(&result["stdin"], "stdin", mode, config);
+
+    if let Err(msg) = write_result {
+        panic!("Error writing to stdout: {}", msg);
     }
 }

@@ -46,11 +46,11 @@ pub fn write_all_files(file_map: &FileMap,
     Ok(result)
 }
 
-fn write_file(text: &StringBuffer,
-              filename: &str,
-              mode: WriteMode,
-              config: &Config)
-              -> Result<Option<String>, io::Error> {
+pub fn write_file(text: &StringBuffer,
+                  filename: &str,
+                  mode: WriteMode,
+                  config: &Config)
+                  -> Result<Option<String>, io::Error> {
 
     // prints all newlines either as `\n` or as `\r\n`
     fn write_system_newlines<T>(mut writer: T,
@@ -100,11 +100,16 @@ fn write_file(text: &StringBuffer,
             let file = try!(File::create(&filename));
             try!(write_system_newlines(file, text, config));
         }
+        WriteMode::Plain => {
+            let stdout = stdout();
+            let stdout = stdout.lock();
+            try!(write_system_newlines(stdout, text, config));
+        }
         WriteMode::Display | WriteMode::Coverage => {
             println!("{}:\n", filename);
             let stdout = stdout();
-            let stdout_lock = stdout.lock();
-            try!(write_system_newlines(stdout_lock, text, config));
+            let stdout = stdout.lock();
+            try!(write_system_newlines(stdout, text, config));
         }
         WriteMode::Diff => {
             println!("Diff of {}:\n", filename);
