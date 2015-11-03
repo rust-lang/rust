@@ -14,3 +14,6 @@
 [submodule "src/rust-installer"]
 	path = src/rust-installer
 	url = https://github.com/rust-lang/rust-installer
+[submodule "src/liblibc"]
+	path = src/liblibc
+	url = https://github.com/rust-lang/libc
