@@ -14,9 +14,8 @@ concepts. Upon completing the book, you'll be an intermediate Rust
 developer, and will have a good grasp of the fundamental ideas behind
 Rust.
 
-[Rust By Example][rbe] was originally a community resource, but was then
-donated to the Rust project. As the name implies, it teaches you Rust through a
-series of small examples.
+[Rust By Example][rbe] teaches you Rust through a series of small
+examples.
 
 [rbe]: http://rustbyexample.com/
 
