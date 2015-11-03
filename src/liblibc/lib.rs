@@ -22,7 +22,8 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/",
-       issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
+       issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
+       test(attr(deny(warnings))))]
 #![cfg_attr(test, feature(test))]
 #![cfg_attr(not(feature = "cargo-build"), feature(cfg_target_vendor))]
 
