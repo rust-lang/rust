@@ -27,7 +27,8 @@ use metadata::cstore;
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::diagnostic::{ColorConfig, Auto, Always, Never, SpanHandler};
+use syntax::diagnostic;
+use syntax::diagnostic::{ColorConfig, EmitterConfig, SpanHandler};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
@@ -37,6 +38,7 @@ use std::collections::HashMap;
 use std::env;
 use std::fmt;
 use std::path::PathBuf;
+use std::default;
 
 use llvm;
 
@@ -105,7 +107,7 @@ pub struct Options {
     pub debugging_opts: DebuggingOptions,
     pub prints: Vec<PrintRequest>,
     pub cg: CodegenOptions,
-    pub color: ColorConfig,
+    pub emit_cfg: diagnostic::EmitterConfig,
     pub show_span: Option<String>,
     pub externs: HashMap<String, Vec<String>>,
     pub crate_name: Option<String>,
@@ -214,7 +216,7 @@ pub fn basic_options() -> Options {
         debugging_opts: basic_debugging_options(),
         prints: Vec::new(),
         cg: basic_codegen_options(),
-        color: Auto,
+        emit_cfg: default::Default::default(),
         show_span: None,
         externs: HashMap::new(),
         crate_name: None,
@@ -282,7 +284,7 @@ macro_rules! options {
         $struct_name { $($opt: $init),* }
     }
 
-    pub fn $buildfn(matches: &getopts::Matches, color: ColorConfig) -> $struct_name
+    pub fn $buildfn(matches: &getopts::Matches, cfg: EmitterConfig) -> $struct_name
     {
         let mut op = $defaultfn();
         for option in matches.opt_strs($prefix) {
@@ -296,17 +298,17 @@ macro_rules! options {
                 if !setter(&mut op, value) {
                     match (value, opt_type_desc) {
                         (Some(..), None) => {
-                            early_error(color, &format!("{} option `{}` takes no \
+                            early_error(cfg, &format!("{} option `{}` takes no \
                                                          value", $outputname, key))
                         }
                         (None, Some(type_desc)) => {
-                            early_error(color, &format!("{0} option `{1}` requires \
+                            early_error(cfg, &format!("{0} option `{1}` requires \
                                                          {2} ({3} {1}=<value>)",
                                                         $outputname, key,
                                                         type_desc, $prefix))
                         }
                         (Some(value), Some(type_desc)) => {
-                            early_error(color, &format!("incorrect value `{}` for {} \
+                            early_error(cfg, &format!("incorrect value `{}` for {} \
                                                          option `{}` - {} was expected",
                                                         value, $outputname,
                                                         key, type_desc))
@@ -318,7 +320,7 @@ macro_rules! options {
                 break;
             }
             if !found {
-                early_error(color, &format!("unknown {} option: `{}`",
+                early_error(cfg, &format!("unknown {} option: `{}`",
                                             $outputname, key));
             }
         }
@@ -818,6 +820,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             auto   = colorize, if output goes to a tty (default);
             always = always colorize output;
             never  = never colorize output", "auto|always|never"),
+        opt::flag("", "drawing", "Use drawing characters in diagnostic output"),
 
         opt::flagopt_u("", "pretty",
                    "Pretty-print the input instead of compiling;
@@ -849,23 +852,28 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
 }
 
 pub fn build_session_options(matches: &getopts::Matches) -> Options {
-    let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
-        Some("auto")   => Auto,
-        Some("always") => Always,
-        Some("never")  => Never,
+    let mut emit_cfg: diagnostic::EmitterConfig = default::Default::default();
+    emit_cfg.color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
+        Some("auto")   => ColorConfig::Auto,
+        Some("always") => ColorConfig::Always,
+        Some("never")  => ColorConfig::Never,
 
-        None => Auto,
+        None => ColorConfig::Auto,
 
         Some(arg) => {
-            early_error(Auto, &format!("argument for --color must be auto, always \
-                                        or never (instead was `{}`)",
-                                       arg))
+            early_error(emit_cfg,
+                        &format!("argument for --color must be auto, always \
+                                  or never (instead was `{}`)",
+                                 arg))
         }
     };
+    if matches.opt_present("drawing") {
+        emit_cfg.drawing = true;
+    }
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
-        .unwrap_or_else(|e| early_error(color, &e[..]));
+        .unwrap_or_else(|e| early_error(emit_cfg, &e[..]));
 
     let mut lint_opts = vec!();
     let mut describe_lints = false;
@@ -882,11 +890,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let lint_cap = matches.opt_str("cap-lints").map(|cap| {
         lint::Level::from_str(&cap).unwrap_or_else(|| {
-            early_error(color, &format!("unknown lint level: `{}`", cap))
+            early_error(emit_cfg, &format!("unknown lint level: `{}`", cap))
         })
     });
 
-    let debugging_opts = build_debugging_options(matches, color);
+    let debugging_opts = build_debugging_options(matches, emit_cfg);
 
     let parse_only = debugging_opts.parse_only;
     let no_trans = debugging_opts.no_trans;
@@ -910,7 +918,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                     "link" => OutputType::Exe,
                     "dep-info" => OutputType::DepInfo,
                     part => {
-                        early_error(color, &format!("unknown emission type: `{}`",
+                        early_error(emit_cfg, &format!("unknown emission type: `{}`",
                                                     part))
                     }
                 };
@@ -923,7 +931,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         output_types.insert(OutputType::Exe, None);
     }
 
-    let cg = build_codegen_options(matches, color);
+    let cg = build_codegen_options(matches, emit_cfg);
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
     let target = matches.opt_str("target").unwrap_or(
@@ -931,7 +939,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let opt_level = {
         if matches.opt_present("O") {
             if cg.opt_level.is_some() {
-                early_error(color, "-O and -C opt-level both provided");
+                early_error(emit_cfg, "-O and -C opt-level both provided");
             }
             Default
         } else {
@@ -942,7 +950,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 Some(2) => Default,
                 Some(3) => Aggressive,
                 Some(arg) => {
-                    early_error(color, &format!("optimization level needs to be \
+                    early_error(emit_cfg, &format!("optimization level needs to be \
                                                  between 0-3 (instead was `{}`)",
                                                 arg));
                 }
@@ -953,7 +961,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let gc = debugging_opts.gc;
     let debuginfo = if matches.opt_present("g") {
         if cg.debuginfo.is_some() {
-            early_error(color, "-g and -C debuginfo both provided");
+            early_error(emit_cfg, "-g and -C debuginfo both provided");
         }
         FullDebugInfo
     } else {
@@ -962,7 +970,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             Some(1) => LimitedDebugInfo,
             Some(2) => FullDebugInfo,
             Some(arg) => {
-                early_error(color, &format!("debug info level needs to be between \
+                early_error(emit_cfg, &format!("debug info level needs to be between \
                                              0-2 (instead was `{}`)",
                                             arg));
             }
@@ -971,7 +979,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let mut search_paths = SearchPaths::new();
     for s in &matches.opt_strs("L") {
-        search_paths.add_path(&s[..], color);
+        search_paths.add_path(&s[..], emit_cfg);
     }
 
     let libs = matches.opt_strs("l").into_iter().map(|s| {
@@ -983,7 +991,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             (Some(name), "framework") => (name, cstore::NativeFramework),
             (Some(name), "static") => (name, cstore::NativeStatic),
             (_, s) => {
-                early_error(color, &format!("unknown library kind `{}`, expected \
+                early_error(emit_cfg, &format!("unknown library kind `{}`, expected \
                                              one of dylib, framework, or static",
                                             s));
             }
@@ -1000,13 +1008,13 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             "file-names" => PrintRequest::FileNames,
             "sysroot" => PrintRequest::Sysroot,
             req => {
-                early_error(color, &format!("unknown print request `{}`", req))
+                early_error(emit_cfg, &format!("unknown print request `{}`", req))
             }
         }
     }).collect::<Vec<_>>();
 
     if !cg.remark.is_empty() && debuginfo == NoDebugInfo {
-        early_warn(color, "-C remark will not show source locations without \
+        early_warn(emit_cfg, "-C remark will not show source locations without \
                            --debuginfo");
     }
 
@@ -1015,11 +1023,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         let mut parts = arg.splitn(2, '=');
         let name = match parts.next() {
             Some(s) => s,
-            None => early_error(color, "--extern value must not be empty"),
+            None => early_error(emit_cfg, "--extern value must not be empty"),
         };
         let location = match parts.next() {
             Some(s) => s,
-            None => early_error(color, "--extern value must be of the format `foo=bar`"),
+            None => early_error(emit_cfg, "--extern value must be of the format `foo=bar`"),
         };
 
         externs.entry(name.to_string()).or_insert(vec![]).push(location.to_string());
@@ -1048,7 +1056,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         debugging_opts: debugging_opts,
         prints: prints,
         cg: cg,
-        color: color,
+        emit_cfg: emit_cfg,
         show_span: None,
         externs: externs,
         crate_name: crate_name,

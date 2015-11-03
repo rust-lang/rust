@@ -123,7 +123,7 @@ pub fn run_compiler<'a>(args: &[String],
 
     let descriptions = diagnostics_registry();
 
-    do_or_return!(callbacks.early_callback(&matches, &descriptions, sopts.color));
+    do_or_return!(callbacks.early_callback(&matches, &descriptions, sopts.emit_cfg));
 
     let (odir, ofile) = make_output(&matches);
     let (input, input_file_path) = match make_input(&matches.free) {
@@ -208,7 +208,7 @@ pub trait CompilerCalls<'a> {
     fn early_callback(&mut self,
                       _: &getopts::Matches,
                       _: &diagnostics::registry::Registry,
-                      _: diagnostic::ColorConfig)
+                      _: diagnostic::EmitterConfig)
                       -> Compilation {
         Compilation::Continue
     }
@@ -281,7 +281,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn early_callback(&mut self,
                       matches: &getopts::Matches,
                       descriptions: &diagnostics::registry::Registry,
-                      color: diagnostic::ColorConfig)
+                      cfg: diagnostic::EmitterConfig)
                       -> Compilation {
         match matches.opt_str("explain") {
             Some(ref code) => {
@@ -296,7 +296,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                         print!("{}", &description[1..]);
                     }
                     None => {
-                        early_error(color, &format!("no extended information for {}", code));
+                        early_error(cfg, &format!("no extended information for {}", code));
                     }
                 }
                 return Compilation::Stop;
@@ -328,10 +328,10 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 if should_stop == Compilation::Stop {
                     return None;
                 }
-                early_error(sopts.color, "no input filename given");
+                early_error(sopts.emit_cfg, "no input filename given");
             }
             1 => panic!("make_input should have provided valid inputs"),
-            _ => early_error(sopts.color, "multiple input filenames provided")
+            _ => early_error(sopts.emit_cfg, "multiple input filenames provided")
         }
 
         None
@@ -426,7 +426,7 @@ impl RustcDefaultCalls {
                     println!("{}", String::from_utf8(v).unwrap());
                 }
                 &Input::Str(_) => {
-                    early_error(sess.opts.color, "cannot list metadata for stdin");
+                    early_error(sess.opts.emit_cfg, "cannot list metadata for stdin");
                 }
             }
             return Compilation::Stop;
@@ -453,7 +453,7 @@ impl RustcDefaultCalls {
                 PrintRequest::CrateName => {
                     let input = match input {
                         Some(input) => input,
-                        None => early_error(sess.opts.color, "no input file provided"),
+                        None => early_error(sess.opts.emit_cfg, "no input file provided"),
                     };
                     let attrs = attrs.as_ref().unwrap();
                     let t_outputs = driver::build_output_filenames(input,
@@ -713,15 +713,16 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
                             &opt.opt_group.short_name
                         };
                         if m.opt_present(opt_name) {
-                            early_error(diagnostic::Auto, &format!("use of unstable option '{}' \
-                                                                    requires -Z unstable-options",
-                                                                   opt_name));
+                            early_error(Default::default(),
+                                        &format!("use of unstable option '{}' \
+                                                  requires -Z unstable-options",
+                                                 opt_name));
                         }
                     }
                 }
                 m
             }
-            Err(f) => early_error(diagnostic::Auto, &f.to_string())
+            Err(f) => early_error(Default::default(), &f.to_string())
         }
     }
 
@@ -826,7 +827,8 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic
             if !value.is::<diagnostic::FatalError>() {
-                let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
+                let mut emitter = diagnostic::EmitterWriter::stderr(
+                    Default::default(), None);
 
                 // a .span_bug or .bug call has already printed what
                 // it wants to print.

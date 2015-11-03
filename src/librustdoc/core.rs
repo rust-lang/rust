@@ -26,6 +26,7 @@ use syntax::feature_gate::UnstableFeatures;
 
 use std::cell::{RefCell, Cell};
 use std::collections::{HashMap, HashSet};
+use std::default::Default;
 
 use visit_ast::RustdocVisitor;
 use clean;
@@ -114,7 +115,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     };
 
     let codemap = codemap::CodeMap::new();
-    let diagnostic_handler = diagnostic::Handler::new(diagnostic::Auto, None, true);
+    let diagnostic_handler = diagnostic::Handler::new(Default::default(), None, true);
     let span_diagnostic_handler =
         diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 

@@ -12,7 +12,7 @@
 
 use ast;
 use codemap::{self, Span, CodeMap, FileMap};
-use diagnostic::{SpanHandler, Handler, Auto, FatalError};
+use diagnostic::{SpanHandler, Handler, FatalError};
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
 use parse::token::InternedString;
@@ -24,6 +24,7 @@ use std::io::Read;
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::default::Default;
 use std::str;
 
 pub type PResult<T> = Result<T, FatalError>;
@@ -48,7 +49,7 @@ pub struct ParseSess {
 
 impl ParseSess {
     pub fn new() -> ParseSess {
-        let handler = SpanHandler::new(Handler::new(Auto, None, true), CodeMap::new());
+        let handler = SpanHandler::new(Handler::new(Default::default(), None, true), CodeMap::new());
         ParseSess::with_span_handler(handler)
     }
 

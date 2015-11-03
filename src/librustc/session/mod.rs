@@ -401,7 +401,7 @@ pub fn build_session(sopts: config::Options,
 
     let codemap = codemap::CodeMap::new();
     let diagnostic_handler =
-        diagnostic::Handler::new(sopts.color, Some(registry), can_print_warnings);
+        diagnostic::Handler::new(sopts.emit_cfg, Some(registry), can_print_warnings);
     let span_diagnostic_handler =
         diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 
@@ -480,13 +480,13 @@ pub fn expect<T, M>(sess: &Session, opt: Option<T>, msg: M) -> T where
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
-pub fn early_error(color: diagnostic::ColorConfig, msg: &str) -> ! {
-    let mut emitter = diagnostic::EmitterWriter::stderr(color, None);
+pub fn early_error(cfg: diagnostic::EmitterConfig, msg: &str) -> ! {
+    let mut emitter = diagnostic::EmitterWriter::stderr(cfg, None);
     emitter.emit(None, msg, None, diagnostic::Fatal);
     panic!(diagnostic::FatalError);
 }
 
-pub fn early_warn(color: diagnostic::ColorConfig, msg: &str) {
-    let mut emitter = diagnostic::EmitterWriter::stderr(color, None);
+pub fn early_warn(cfg: diagnostic::EmitterConfig, msg: &str) {
+    let mut emitter = diagnostic::EmitterWriter::stderr(cfg, None);
     emitter.emit(None, msg, None, diagnostic::Warning);
 }

@@ -36,6 +36,7 @@ use util::nodemap::FnvHashMap;
 
 use std::cell::RefCell;
 use std::cmp;
+use std::default;
 use std::mem;
 use syntax::ast_util::{self, IdVisitingOperation};
 use syntax::attr::{self, AttrMetaMethods};
@@ -46,7 +47,6 @@ use rustc_front::hir;
 use rustc_front::util;
 use rustc_front::visit as hir_visit;
 use syntax::visit as ast_visit;
-use syntax::diagnostic;
 
 /// Information about the registered lints.
 ///
@@ -166,7 +166,7 @@ impl LintStore {
                 match (sess, from_plugin) {
                     // We load builtin lints first, so a duplicate is a compiler bug.
                     // Use early_error when handling -W help with no crate.
-                    (None, _) => early_error(diagnostic::Auto, &msg[..]),
+                    (None, _) => early_error(default::Default::default(), &msg[..]),
                     (Some(sess), false) => sess.bug(&msg[..]),
 
                     // A duplicate name from a plugin is a user error.
@@ -190,7 +190,7 @@ impl LintStore {
             match (sess, from_plugin) {
                 // We load builtin lints first, so a duplicate is a compiler bug.
                 // Use early_error when handling -W help with no crate.
-                (None, _) => early_error(diagnostic::Auto, &msg[..]),
+                (None, _) => early_error(default::Default::default(), &msg[..]),
                 (Some(sess), false) => sess.bug(&msg[..]),
 
                 // A duplicate name from a plugin is a user error.
