@@ -16,7 +16,6 @@ use cmp;
 use fmt;
 use io::lazy::Lazy;
 use io::{self, BufReader, LineWriter};
-use libc;
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
 use sys_common::io::{read_to_end_uninitialized};
@@ -121,9 +120,9 @@ impl<R: io::Read> io::Read for Maybe<R> {
 
 fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
     #[cfg(windows)]
-    const ERR: libc::c_int = libc::ERROR_INVALID_HANDLE;
+    const ERR: i32 = ::sys::c::ERROR_INVALID_HANDLE as i32;
     #[cfg(not(windows))]
-    const ERR: libc::c_int = libc::EBADF;
+    const ERR: i32 = ::libc::EBADF as i32;
 
     match r {
         Err(ref e) if e.raw_os_error() == Some(ERR) => Ok(default),

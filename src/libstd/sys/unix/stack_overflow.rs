@@ -43,11 +43,11 @@ mod imp {
     use sys_common::util::report_overflow;
     use mem;
     use ptr;
-    use sys::c::{siginfo, sigaction, SIGBUS, SIG_DFL,
-                 SA_SIGINFO, SA_ONSTACK, sigaltstack,
-                 SIGSTKSZ, sighandler_t};
+    use libc::{sigaction, SIGBUS, SIG_DFL,
+               SA_SIGINFO, SA_ONSTACK, sigaltstack,
+               SIGSTKSZ, sighandler_t};
     use libc;
-    use libc::funcs::posix88::mman::{mmap, munmap};
+    use libc::{mmap, munmap};
     use libc::{SIGSEGV, PROT_READ, PROT_WRITE, MAP_PRIVATE, MAP_ANON};
     use libc::MAP_FAILED;
 
@@ -56,6 +56,22 @@ mod imp {
 
     // This is initialized in init() and only read from after
     static mut PAGE_SIZE: usize = 0;
+
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> *mut libc::c_void {
+        #[repr(C)]
+        struct siginfo_t {
+            a: [libc::c_int; 3], // si_signo, si_code, si_errno,
+            si_addr: *mut libc::c_void,
+        }
+
+        (*(info as *const siginfo_t)).si_addr
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> *mut libc::c_void {
+        (*info).si_addr
+    }
 
     // Signal handler for the SIGSEGV and SIGBUS handlers. We've got guard pages
     // (unmapped pages) at the end of every thread's stack, so if a thread ends
@@ -76,10 +92,10 @@ mod imp {
     // handler to work. For a more detailed explanation see the comments on
     // #26458.
     unsafe extern fn signal_handler(signum: libc::c_int,
-                                    info: *mut siginfo,
+                                    info: *mut libc::siginfo_t,
                                     _data: *mut libc::c_void) {
         let guard = thread_info::stack_guard().unwrap_or(0);
-        let addr = (*info).si_addr as usize;
+        let addr = siginfo_si_addr(info) as usize;
 
         // If the faulting address is within the guard page, then we print a
         // message saying so.
@@ -126,7 +142,7 @@ mod imp {
             panic!("failed to allocate an alternative stack");
         }
 
-        let mut stack: sigaltstack = mem::zeroed();
+        let mut stack: libc::stack_t = mem::zeroed();
 
         stack.ss_sp = alt_stack;
         stack.ss_flags = 0;

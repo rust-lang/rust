@@ -19,8 +19,7 @@ use error::Error as StdError;
 use ffi::{OsString, OsStr};
 use fmt;
 use io;
-use libc::types::os::arch::extra::LPWCH;
-use libc::{self, c_int, c_void};
+use libc::{c_int, c_void};
 use ops::Range;
 use os::windows::ffi::EncodeWide;
 use path::{self, PathBuf};
@@ -29,52 +28,27 @@ use slice;
 use sys::{c, cvt};
 use sys::handle::Handle;
 
-use libc::funcs::extra::kernel32::{
-    GetEnvironmentStringsW,
-    FreeEnvironmentStringsW
-};
-
 pub fn errno() -> i32 {
-    unsafe { libc::GetLastError() as i32 }
+    unsafe { c::GetLastError() as i32 }
 }
 
 /// Gets a detailed string description for the given error number.
 pub fn error_string(errnum: i32) -> String {
-    use libc::types::os::arch::extra::DWORD;
-    use libc::types::os::arch::extra::LPWSTR;
-    use libc::types::os::arch::extra::LPVOID;
-    use libc::types::os::arch::extra::WCHAR;
-
-    #[link_name = "kernel32"]
-    extern "system" {
-        fn FormatMessageW(flags: DWORD,
-                          lpSrc: LPVOID,
-                          msgId: DWORD,
-                          langId: DWORD,
-                          buf: LPWSTR,
-                          nsize: DWORD,
-                          args: *const c_void)
-                          -> DWORD;
-    }
-
-    const FORMAT_MESSAGE_FROM_SYSTEM: DWORD = 0x00001000;
-    const FORMAT_MESSAGE_IGNORE_INSERTS: DWORD = 0x00000200;
-
     // This value is calculated from the macro
     // MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)
-    let langId = 0x0800 as DWORD;
+    let langId = 0x0800 as c::DWORD;
 
-    let mut buf = [0 as WCHAR; 2048];
+    let mut buf = [0 as c::WCHAR; 2048];
 
     unsafe {
-        let res = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM |
-                                 FORMAT_MESSAGE_IGNORE_INSERTS,
-                                 ptr::null_mut(),
-                                 errnum as DWORD,
-                                 langId,
-                                 buf.as_mut_ptr(),
-                                 buf.len() as DWORD,
-                                 ptr::null()) as usize;
+        let res = c::FormatMessageW(c::FORMAT_MESSAGE_FROM_SYSTEM |
+                                        c::FORMAT_MESSAGE_IGNORE_INSERTS,
+                                    ptr::null_mut(),
+                                    errnum as c::DWORD,
+                                    langId,
+                                    buf.as_mut_ptr(),
+                                    buf.len() as c::DWORD,
+                                    ptr::null()) as usize;
         if res == 0 {
             // Sometimes FormatMessageW can fail e.g. system doesn't like langId,
             let fm_err = errno();
@@ -96,8 +70,8 @@ pub fn error_string(errnum: i32) -> String {
 }
 
 pub struct Env {
-    base: LPWCH,
-    cur: LPWCH,
+    base: c::LPWCH,
+    cur: c::LPWCH,
 }
 
 impl Iterator for Env {
@@ -126,13 +100,13 @@ impl Iterator for Env {
 
 impl Drop for Env {
     fn drop(&mut self) {
-        unsafe { FreeEnvironmentStringsW(self.base); }
+        unsafe { c::FreeEnvironmentStringsW(self.base); }
     }
 }
 
 pub fn env() -> Env {
     unsafe {
-        let ch = GetEnvironmentStringsW();
+        let ch = c::GetEnvironmentStringsW();
         if ch as usize == 0 {
             panic!("failure getting env string from OS: {}",
                    io::Error::last_os_error());
@@ -233,13 +207,13 @@ impl StdError for JoinPathsError {
 
 pub fn current_exe() -> io::Result<PathBuf> {
     super::fill_utf16_buf(|buf, sz| unsafe {
-        libc::GetModuleFileNameW(ptr::null_mut(), buf, sz)
+        c::GetModuleFileNameW(ptr::null_mut(), buf, sz)
     }, super::os2path)
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
     super::fill_utf16_buf(|buf, sz| unsafe {
-        libc::GetCurrentDirectoryW(sz, buf)
+        c::GetCurrentDirectoryW(sz, buf)
     }, super::os2path)
 }
 
@@ -249,23 +223,26 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     p.push(0);
 
     cvt(unsafe {
-        libc::SetCurrentDirectoryW(p.as_ptr())
+        c::SetCurrentDirectoryW(p.as_ptr())
     }).map(|_| ())
 }
 
 pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
     let k = super::to_utf16_os(k);
     let res = super::fill_utf16_buf(|buf, sz| unsafe {
-        libc::GetEnvironmentVariableW(k.as_ptr(), buf, sz)
+        c::GetEnvironmentVariableW(k.as_ptr(), buf, sz)
     }, |buf| {
         OsStringExt::from_wide(buf)
     });
     match res {
         Ok(value) => Ok(Some(value)),
-        Err(ref e) if e.raw_os_error() == Some(c::ERROR_ENVVAR_NOT_FOUND) => {
-            Ok(None)
+        Err(e) => {
+            if e.raw_os_error() == Some(c::ERROR_ENVVAR_NOT_FOUND as i32) {
+                Ok(None)
+            } else {
+                Err(e)
+            }
         }
-        Err(e) => Err(e)
     }
 }
 
@@ -274,14 +251,14 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let v = super::to_utf16_os(v);
 
     cvt(unsafe {
-        libc::SetEnvironmentVariableW(k.as_ptr(), v.as_ptr())
+        c::SetEnvironmentVariableW(k.as_ptr(), v.as_ptr())
     }).map(|_| ())
 }
 
 pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     let v = super::to_utf16_os(n);
     cvt(unsafe {
-        libc::SetEnvironmentVariableW(v.as_ptr(), ptr::null())
+        c::SetEnvironmentVariableW(v.as_ptr(), ptr::null())
     }).map(|_| ())
 }
 
@@ -350,14 +327,14 @@ pub fn home_dir() -> Option<PathBuf> {
         let _handle = Handle::new(token);
         super::fill_utf16_buf(|buf, mut sz| {
             match c::GetUserProfileDirectoryW(token, buf, &mut sz) {
-                0 if libc::GetLastError() != 0 => 0,
+                0 if c::GetLastError() != 0 => 0,
                 0 => sz,
-                n => n as libc::DWORD,
+                n => n as c::DWORD,
             }
         }, super::os2path).ok()
     })
 }
 
 pub fn exit(code: i32) -> ! {
-    unsafe { c::ExitProcess(code as libc::c_uint) }
+    unsafe { c::ExitProcess(code as c::UINT) }
 }

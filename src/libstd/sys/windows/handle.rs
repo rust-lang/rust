@@ -10,11 +10,10 @@
 
 use io::ErrorKind;
 use io;
-use libc::funcs::extra::kernel32::{GetCurrentProcess, DuplicateHandle};
-use libc::{self, HANDLE};
 use mem;
 use ops::Deref;
 use ptr;
+use sys::c;
 use sys::cvt;
 
 /// An owned container for `HANDLE` object, closing them on Drop.
@@ -28,17 +27,17 @@ pub struct Handle(RawHandle);
 /// This does **not** drop the handle when it goes out of scope, use `Handle`
 /// instead for that.
 #[derive(Copy, Clone)]
-pub struct RawHandle(HANDLE);
+pub struct RawHandle(c::HANDLE);
 
 unsafe impl Send for RawHandle {}
 unsafe impl Sync for RawHandle {}
 
 impl Handle {
-    pub fn new(handle: HANDLE) -> Handle {
+    pub fn new(handle: c::HANDLE) -> Handle {
         Handle(RawHandle::new(handle))
     }
 
-    pub fn into_raw(self) -> HANDLE {
+    pub fn into_raw(self) -> c::HANDLE {
         let ret = self.raw();
         mem::forget(self);
         return ret;
@@ -52,22 +51,22 @@ impl Deref for Handle {
 
 impl Drop for Handle {
     fn drop(&mut self) {
-        unsafe { let _ = libc::CloseHandle(self.raw()); }
+        unsafe { let _ = c::CloseHandle(self.raw()); }
     }
 }
 
 impl RawHandle {
-    pub fn new(handle: HANDLE) -> RawHandle {
+    pub fn new(handle: c::HANDLE) -> RawHandle {
         RawHandle(handle)
     }
 
-    pub fn raw(&self) -> HANDLE { self.0 }
+    pub fn raw(&self) -> c::HANDLE { self.0 }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let mut read = 0;
         let res = cvt(unsafe {
-            libc::ReadFile(self.0, buf.as_ptr() as libc::LPVOID,
-                           buf.len() as libc::DWORD, &mut read,
+            c::ReadFile(self.0, buf.as_ptr() as c::LPVOID,
+                           buf.len() as c::DWORD, &mut read,
                            ptr::null_mut())
         });
 
@@ -87,20 +86,20 @@ impl RawHandle {
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let mut amt = 0;
         try!(cvt(unsafe {
-            libc::WriteFile(self.0, buf.as_ptr() as libc::LPVOID,
-                            buf.len() as libc::DWORD, &mut amt,
+            c::WriteFile(self.0, buf.as_ptr() as c::LPVOID,
+                            buf.len() as c::DWORD, &mut amt,
                             ptr::null_mut())
         }));
         Ok(amt as usize)
     }
 
-    pub fn duplicate(&self, access: libc::DWORD, inherit: bool,
-                     options: libc::DWORD) -> io::Result<Handle> {
-        let mut ret = 0 as libc::HANDLE;
+    pub fn duplicate(&self, access: c::DWORD, inherit: bool,
+                     options: c::DWORD) -> io::Result<Handle> {
+        let mut ret = 0 as c::HANDLE;
         try!(cvt(unsafe {
-            let cur_proc = GetCurrentProcess();
-            DuplicateHandle(cur_proc, self.0, cur_proc, &mut ret,
-                            access, inherit as libc::BOOL,
+            let cur_proc = c::GetCurrentProcess();
+            c::DuplicateHandle(cur_proc, self.0, cur_proc, &mut ret,
+                            access, inherit as c::BOOL,
                             options)
         }));
         Ok(Handle::new(ret))

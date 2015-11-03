@@ -10,13 +10,12 @@
 
 use prelude::v1::*;
 
-use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
-
 use ptr;
-use sys_common;
+use sys::c;
 use sys_common::mutex::Mutex;
+use sys_common;
 
-pub type Key = DWORD;
+pub type Key = c::DWORD;
 pub type Dtor = unsafe extern fn(*mut u8);
 
 // Turns out, like pretty much everything, Windows is pretty close the
@@ -68,9 +67,8 @@ static mut DTORS: *mut Vec<(Key, Dtor)> = ptr::null_mut();
 
 #[inline]
 pub unsafe fn create(dtor: Option<Dtor>) -> Key {
-    const TLS_OUT_OF_INDEXES: DWORD = 0xFFFFFFFF;
-    let key = TlsAlloc();
-    assert!(key != TLS_OUT_OF_INDEXES);
+    let key = c::TlsAlloc();
+    assert!(key != c::TLS_OUT_OF_INDEXES);
     match dtor {
         Some(f) => register_dtor(key, f),
         None => {}
@@ -80,13 +78,13 @@ pub unsafe fn create(dtor: Option<Dtor>) -> Key {
 
 #[inline]
 pub unsafe fn set(key: Key, value: *mut u8) {
-    let r = TlsSetValue(key, value as LPVOID);
+    let r = c::TlsSetValue(key, value as c::LPVOID);
     debug_assert!(r != 0);
 }
 
 #[inline]
 pub unsafe fn get(key: Key) -> *mut u8 {
-    TlsGetValue(key) as *mut u8
+    c::TlsGetValue(key) as *mut u8
 }
 
 #[inline]
@@ -107,16 +105,9 @@ pub unsafe fn destroy(key: Key) {
         // Note that source [2] above shows precedent for this sort
         // of strategy.
     } else {
-        let r = TlsFree(key);
+        let r = c::TlsFree(key);
         debug_assert!(r != 0);
     }
-}
-
-extern "system" {
-    fn TlsAlloc() -> DWORD;
-    fn TlsFree(dwTlsIndex: DWORD) -> BOOL;
-    fn TlsGetValue(dwTlsIndex: DWORD) -> LPVOID;
-    fn TlsSetValue(dwTlsIndex: DWORD, lpTlsvalue: LPVOID) -> BOOL;
 }
 
 // -------------------------------------------------------------------------
@@ -243,17 +234,15 @@ unsafe fn unregister_dtor(key: Key) -> bool {
 #[link_section = ".CRT$XLB"]
 #[linkage = "external"]
 #[allow(warnings)]
-pub static p_thread_callback: unsafe extern "system" fn(LPVOID, DWORD,
-                                                        LPVOID) =
+pub static p_thread_callback: unsafe extern "system" fn(c::LPVOID, c::DWORD,
+                                                        c::LPVOID) =
         on_tls_callback;
 
 #[allow(warnings)]
-unsafe extern "system" fn on_tls_callback(h: LPVOID,
-                                          dwReason: DWORD,
-                                          pv: LPVOID) {
-    const DLL_THREAD_DETACH: DWORD = 3;
-    const DLL_PROCESS_DETACH: DWORD = 0;
-    if dwReason == DLL_THREAD_DETACH || dwReason == DLL_PROCESS_DETACH {
+unsafe extern "system" fn on_tls_callback(h: c::LPVOID,
+                                          dwReason: c::DWORD,
+                                          pv: c::LPVOID) {
+    if dwReason == c::DLL_THREAD_DETACH || dwReason == c::DLL_PROCESS_DETACH {
         run_dtors();
     }
 
@@ -286,9 +275,9 @@ unsafe fn run_dtors() {
             ret
         };
         for &(key, dtor) in &dtors {
-            let ptr = TlsGetValue(key);
+            let ptr = c::TlsGetValue(key);
             if !ptr.is_null() {
-                TlsSetValue(key, ptr::null_mut());
+                c::TlsSetValue(key, ptr::null_mut());
                 dtor(ptr as *mut _);
                 any_run = true;
             }

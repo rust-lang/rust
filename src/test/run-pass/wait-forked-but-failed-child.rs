@@ -15,8 +15,6 @@ extern crate libc;
 
 use std::process::Command;
 
-use libc::funcs::posix88::unistd;
-
 // The output from "ps -A -o pid,ppid,args" should look like this:
 //   PID  PPID COMMAND
 //     1     0 /sbin/init
@@ -34,7 +32,7 @@ use libc::funcs::posix88::unistd;
 
 #[cfg(unix)]
 fn find_zombies() {
-    let my_pid = unsafe { unistd::getpid() };
+    let my_pid = unsafe { libc::getpid() };
 
     // http://pubs.opengroup.org/onlinepubs/9699919799/utilities/ps.html
     let ps_cmd_output = Command::new("ps").args(&["-A", "-o", "pid,ppid,args"]).output().unwrap();

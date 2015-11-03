@@ -12,7 +12,6 @@ use prelude::v1::*;
 use io::prelude::*;
 
 use io::{self, Cursor};
-use libc;
 use ptr;
 use str;
 use sync::Mutex;
@@ -34,9 +33,9 @@ pub struct Stdin {
 pub struct Stdout(Output);
 pub struct Stderr(Output);
 
-pub fn get(handle: libc::DWORD) -> io::Result<Output> {
+pub fn get(handle: c::DWORD) -> io::Result<Output> {
     let handle = unsafe { c::GetStdHandle(handle) };
-    if handle == libc::INVALID_HANDLE_VALUE {
+    if handle == c::INVALID_HANDLE_VALUE {
         Err(io::Error::last_os_error())
     } else if handle.is_null() {
         Err(io::Error::new(io::ErrorKind::Other,
@@ -63,7 +62,7 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
     let mut written = 0;
     try!(cvt(unsafe {
         c::WriteConsoleW(handle,
-                         utf16.as_ptr() as libc::LPCVOID,
+                         utf16.as_ptr() as c::LPCVOID,
                          utf16.len() as u32,
                          &mut written,
                          ptr::null_mut())
@@ -97,7 +96,7 @@ impl Stdin {
             let mut num = 0;
             try!(cvt(unsafe {
                 c::ReadConsoleW(handle,
-                                utf16.as_mut_ptr() as libc::LPVOID,
+                                utf16.as_mut_ptr() as c::LPVOID,
                                 utf16.len() as u32,
                                 &mut num,
                                 ptr::null_mut())
@@ -147,7 +146,7 @@ impl io::Write for Stderr {
 }
 
 impl NoClose {
-    fn new(handle: libc::HANDLE) -> NoClose {
+    fn new(handle: c::HANDLE) -> NoClose {
         NoClose(Some(Handle::new(handle)))
     }
 

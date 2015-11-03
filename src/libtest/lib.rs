@@ -777,11 +777,14 @@ fn stdout_isatty() -> bool {
 }
 #[cfg(windows)]
 fn stdout_isatty() -> bool {
-    const STD_OUTPUT_HANDLE: libc::DWORD = -11i32 as libc::DWORD;
+    type DWORD = u32;
+    type BOOL = i32;
+    type HANDLE = *mut u8;
+    type LPDWORD = *mut u32;
+    const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
     extern "system" {
-        fn GetStdHandle(which: libc::DWORD) -> libc::HANDLE;
-        fn GetConsoleMode(hConsoleHandle: libc::HANDLE,
-                          lpMode: libc::LPDWORD) -> libc::BOOL;
+        fn GetStdHandle(which: DWORD) -> HANDLE;
+        fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: LPDWORD) -> BOOL;
     }
     unsafe {
         let handle = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -882,10 +885,28 @@ fn get_concurrency() -> usize {
     };
 
     #[cfg(windows)]
+    #[allow(bad_style)]
     fn num_cpus() -> usize {
+        #[repr(C)]
+        struct SYSTEM_INFO {
+            wProcessorArchitecture: u16,
+            wReserved: u16,
+            dwPageSize: u32,
+            lpMinimumApplicationAddress: *mut u8,
+            lpMaximumApplicationAddress: *mut u8,
+            dwActiveProcessorMask: *mut u8,
+            dwNumberOfProcessors: u32,
+            dwProcessorType: u32,
+            dwAllocationGranularity: u32,
+            wProcessorLevel: u16,
+            wProcessorRevision: u16,
+        }
+        extern "system" {
+            fn GetSystemInfo(info: *mut SYSTEM_INFO) -> i32;
+        }
         unsafe {
             let mut sysinfo = std::mem::zeroed();
-            libc::GetSystemInfo(&mut sysinfo);
+            GetSystemInfo(&mut sysinfo);
             sysinfo.dwNumberOfProcessors as usize
         }
     }

@@ -14,7 +14,6 @@ use os::windows::prelude::*;
 use ffi::OsString;
 use fmt;
 use io::{self, Error, SeekFrom};
-use libc::{self, HANDLE};
 use mem;
 use path::{Path, PathBuf};
 use ptr;
@@ -30,7 +29,7 @@ pub struct File { handle: Handle }
 #[derive(Clone)]
 pub struct FileAttr {
     data: c::WIN32_FILE_ATTRIBUTE_DATA,
-    reparse_tag: libc::DWORD,
+    reparse_tag: c::DWORD,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -41,17 +40,17 @@ pub enum FileType {
 pub struct ReadDir {
     handle: FindNextFileHandle,
     root: Arc<PathBuf>,
-    first: Option<libc::WIN32_FIND_DATAW>,
+    first: Option<c::WIN32_FIND_DATAW>,
 }
 
-struct FindNextFileHandle(libc::HANDLE);
+struct FindNextFileHandle(c::HANDLE);
 
 unsafe impl Send for FindNextFileHandle {}
 unsafe impl Sync for FindNextFileHandle {}
 
 pub struct DirEntry {
     root: Arc<PathBuf>,
-    data: libc::WIN32_FIND_DATAW,
+    data: c::WIN32_FIND_DATAW,
 }
 
 #[derive(Clone, Default)]
@@ -61,15 +60,15 @@ pub struct OpenOptions {
     read: bool,
     write: bool,
     truncate: bool,
-    desired_access: Option<libc::DWORD>,
-    share_mode: Option<libc::DWORD>,
-    creation_disposition: Option<libc::DWORD>,
-    flags_and_attributes: Option<libc::DWORD>,
+    desired_access: Option<c::DWORD>,
+    share_mode: Option<c::DWORD>,
+    creation_disposition: Option<c::DWORD>,
+    flags_and_attributes: Option<c::DWORD>,
     security_attributes: usize, // *mut T doesn't have a Default impl
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct FilePermissions { attrs: libc::DWORD }
+pub struct FilePermissions { attrs: c::DWORD }
 
 pub struct DirBuilder;
 
@@ -84,9 +83,8 @@ impl Iterator for ReadDir {
         unsafe {
             let mut wfd = mem::zeroed();
             loop {
-                if libc::FindNextFileW(self.handle.0, &mut wfd) == 0 {
-                    if libc::GetLastError() ==
-                        c::ERROR_NO_MORE_FILES as libc::DWORD {
+                if c::FindNextFileW(self.handle.0, &mut wfd) == 0 {
+                    if c::GetLastError() == c::ERROR_NO_MORE_FILES {
                         return None
                     } else {
                         return Some(Err(Error::last_os_error()))
@@ -102,13 +100,13 @@ impl Iterator for ReadDir {
 
 impl Drop for FindNextFileHandle {
     fn drop(&mut self) {
-        let r = unsafe { libc::FindClose(self.0) };
+        let r = unsafe { c::FindClose(self.0) };
         debug_assert!(r != 0);
     }
 }
 
 impl DirEntry {
-    fn new(root: &Arc<PathBuf>, wfd: &libc::WIN32_FIND_DATAW) -> Option<DirEntry> {
+    fn new(root: &Arc<PathBuf>, wfd: &c::WIN32_FIND_DATAW) -> Option<DirEntry> {
         match &wfd.cFileName[0..3] {
             // check for '.' and '..'
             [46, 0, ..] |
@@ -170,50 +168,50 @@ impl OpenOptions {
     pub fn share_mode(&mut self, val: u32) {
         self.share_mode = Some(val);
     }
-    pub fn security_attributes(&mut self, attrs: libc::LPSECURITY_ATTRIBUTES) {
+    pub fn security_attributes(&mut self, attrs: c::LPSECURITY_ATTRIBUTES) {
         self.security_attributes = attrs as usize;
     }
 
-    fn get_desired_access(&self) -> libc::DWORD {
+    fn get_desired_access(&self) -> c::DWORD {
         self.desired_access.unwrap_or({
-            let mut base = if self.read {libc::FILE_GENERIC_READ} else {0} |
-                           if self.write {libc::FILE_GENERIC_WRITE} else {0};
+            let mut base = if self.read {c::FILE_GENERIC_READ} else {0} |
+                           if self.write {c::FILE_GENERIC_WRITE} else {0};
             if self.append {
-                base &= !libc::FILE_WRITE_DATA;
-                base |= libc::FILE_APPEND_DATA;
+                base &= !c::FILE_WRITE_DATA;
+                base |= c::FILE_APPEND_DATA;
             }
             base
         })
     }
 
-    fn get_share_mode(&self) -> libc::DWORD {
+    fn get_share_mode(&self) -> c::DWORD {
         // libuv has a good comment about this, but the basic idea is that
         // we try to emulate unix semantics by enabling all sharing by
         // allowing things such as deleting a file while it's still open.
-        self.share_mode.unwrap_or(libc::FILE_SHARE_READ |
-                                  libc::FILE_SHARE_WRITE |
-                                  libc::FILE_SHARE_DELETE)
+        self.share_mode.unwrap_or(c::FILE_SHARE_READ |
+                                  c::FILE_SHARE_WRITE |
+                                  c::FILE_SHARE_DELETE)
     }
 
-    fn get_creation_disposition(&self) -> libc::DWORD {
+    fn get_creation_disposition(&self) -> c::DWORD {
         self.creation_disposition.unwrap_or({
             match (self.create, self.truncate) {
-                (true, true) => libc::CREATE_ALWAYS,
-                (true, false) => libc::OPEN_ALWAYS,
-                (false, false) => libc::OPEN_EXISTING,
+                (true, true) => c::CREATE_ALWAYS,
+                (true, false) => c::OPEN_ALWAYS,
+                (false, false) => c::OPEN_EXISTING,
                 (false, true) => {
                     if self.write && !self.append {
-                        libc::CREATE_ALWAYS
+                        c::CREATE_ALWAYS
                     } else {
-                        libc::TRUNCATE_EXISTING
+                        c::TRUNCATE_EXISTING
                     }
                 }
             }
         })
     }
 
-    fn get_flags_and_attributes(&self) -> libc::DWORD {
-        self.flags_and_attributes.unwrap_or(libc::FILE_ATTRIBUTE_NORMAL)
+    fn get_flags_and_attributes(&self) -> c::DWORD {
+        self.flags_and_attributes.unwrap_or(c::FILE_ATTRIBUTE_NORMAL)
     }
 }
 
@@ -230,15 +228,15 @@ impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let path = to_utf16(path);
         let handle = unsafe {
-            libc::CreateFileW(path.as_ptr(),
-                              opts.get_desired_access(),
-                              opts.get_share_mode(),
-                              opts.security_attributes as *mut _,
-                              opts.get_creation_disposition(),
-                              opts.get_flags_and_attributes(),
-                              ptr::null_mut())
+            c::CreateFileW(path.as_ptr(),
+                           opts.get_desired_access(),
+                           opts.get_share_mode(),
+                           opts.security_attributes as *mut _,
+                           opts.get_creation_disposition(),
+                           opts.get_flags_and_attributes(),
+                           ptr::null_mut())
         };
-        if handle == libc::INVALID_HANDLE_VALUE {
+        if handle == c::INVALID_HANDLE_VALUE {
             Err(Error::last_os_error())
         } else {
             Ok(File { handle: Handle::new(handle) })
@@ -246,7 +244,7 @@ impl File {
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        try!(cvt(unsafe { libc::FlushFileBuffers(self.handle.raw()) }));
+        try!(cvt(unsafe { c::FlushFileBuffers(self.handle.raw()) }));
         Ok(())
     }
 
@@ -254,14 +252,14 @@ impl File {
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
         let mut info = c::FILE_END_OF_FILE_INFO {
-            EndOfFile: size as libc::LARGE_INTEGER,
+            EndOfFile: size as c::LARGE_INTEGER,
         };
         let size = mem::size_of_val(&info);
         try!(cvt(unsafe {
             c::SetFileInformationByHandle(self.handle.raw(),
                                           c::FileEndOfFileInfo,
                                           &mut info as *mut _ as *mut _,
-                                          size as libc::DWORD)
+                                          size as c::DWORD)
         }));
         Ok(())
     }
@@ -304,15 +302,15 @@ impl File {
 
     pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
         let (whence, pos) = match pos {
-            SeekFrom::Start(n) => (libc::FILE_BEGIN, n as i64),
-            SeekFrom::End(n) => (libc::FILE_END, n),
-            SeekFrom::Current(n) => (libc::FILE_CURRENT, n),
+            SeekFrom::Start(n) => (c::FILE_BEGIN, n as i64),
+            SeekFrom::End(n) => (c::FILE_END, n),
+            SeekFrom::Current(n) => (c::FILE_CURRENT, n),
         };
-        let pos = pos as libc::LARGE_INTEGER;
+        let pos = pos as c::LARGE_INTEGER;
         let mut newpos = 0;
         try!(cvt(unsafe {
-            libc::SetFilePointerEx(self.handle.raw(), pos,
-                                   &mut newpos, whence)
+            c::SetFilePointerEx(self.handle.raw(), pos,
+                                &mut newpos, whence)
         }));
         Ok(newpos as u64)
     }
@@ -323,7 +321,7 @@ impl File {
 
     fn reparse_point<'a>(&self,
                          space: &'a mut [u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE])
-                         -> io::Result<(libc::DWORD, &'a c::REPARSE_DATA_BUFFER)> {
+                         -> io::Result<(c::DWORD, &'a c::REPARSE_DATA_BUFFER)> {
         unsafe {
             let mut bytes = 0;
             try!(cvt({
@@ -332,7 +330,7 @@ impl File {
                                    ptr::null_mut(),
                                    0,
                                    space.as_mut_ptr() as *mut _,
-                                   space.len() as libc::DWORD,
+                                   space.len() as c::DWORD,
                                    &mut bytes,
                                    ptr::null_mut())
             }));
@@ -361,8 +359,8 @@ impl File {
     }
 }
 
-impl FromInner<libc::HANDLE> for File {
-    fn from_inner(handle: libc::HANDLE) -> File {
+impl FromInner<c::HANDLE> for File {
+    fn from_inner(handle: c::HANDLE) -> File {
         File { handle: Handle::new(handle) }
     }
 }
@@ -402,12 +400,12 @@ impl FileAttr {
     pub fn accessed(&self) -> u64 { self.to_u64(&self.data.ftLastAccessTime) }
     pub fn modified(&self) -> u64 { self.to_u64(&self.data.ftLastWriteTime) }
 
-    fn to_u64(&self, ft: &libc::FILETIME) -> u64 {
+    fn to_u64(&self, ft: &c::FILETIME) -> u64 {
         (ft.dwLowDateTime as u64) | ((ft.dwHighDateTime as u64) << 32)
     }
 
     fn is_reparse_point(&self) -> bool {
-        self.data.dwFileAttributes & libc::FILE_ATTRIBUTE_REPARSE_POINT != 0
+        self.data.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0
     }
 }
 
@@ -426,8 +424,8 @@ impl FilePermissions {
 }
 
 impl FileType {
-    fn new(attrs: libc::DWORD, reparse_tag: libc::DWORD) -> FileType {
-        if attrs & libc::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+    fn new(attrs: c::DWORD, reparse_tag: c::DWORD) -> FileType {
+        if attrs & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
             match reparse_tag {
                 c::IO_REPARSE_TAG_SYMLINK => FileType::Symlink,
                 c::IO_REPARSE_TAG_MOUNT_POINT => FileType::MountPoint,
@@ -453,7 +451,7 @@ impl DirBuilder {
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
         let p = to_utf16(p);
         try!(cvt(unsafe {
-            libc::CreateDirectoryW(p.as_ptr(), ptr::null_mut())
+            c::CreateDirectoryW(p.as_ptr(), ptr::null_mut())
         }));
         Ok(())
     }
@@ -466,8 +464,8 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 
     unsafe {
         let mut wfd = mem::zeroed();
-        let find_handle = libc::FindFirstFileW(path.as_ptr(), &mut wfd);
-        if find_handle != libc::INVALID_HANDLE_VALUE {
+        let find_handle = c::FindFirstFileW(path.as_ptr(), &mut wfd);
+        if find_handle != c::INVALID_HANDLE_VALUE {
             Ok(ReadDir {
                 handle: FindNextFileHandle(find_handle),
                 root: Arc::new(root),
@@ -481,7 +479,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 
 pub fn unlink(p: &Path) -> io::Result<()> {
     let p_utf16 = to_utf16(p);
-    try!(cvt(unsafe { libc::DeleteFileW(p_utf16.as_ptr()) }));
+    try!(cvt(unsafe { c::DeleteFileW(p_utf16.as_ptr()) }));
     Ok(())
 }
 
@@ -489,8 +487,7 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     let old = to_utf16(old);
     let new = to_utf16(new);
     try!(cvt(unsafe {
-        libc::MoveFileExW(old.as_ptr(), new.as_ptr(),
-                          libc::MOVEFILE_REPLACE_EXISTING)
+        c::MoveFileExW(old.as_ptr(), new.as_ptr(), c::MOVEFILE_REPLACE_EXISTING)
     }));
     Ok(())
 }
@@ -515,7 +512,7 @@ pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
     let dst = to_utf16(dst);
     let flags = if dir { c::SYMBOLIC_LINK_FLAG_DIRECTORY } else { 0 };
     try!(cvt(unsafe {
-        c::CreateSymbolicLinkW(dst.as_ptr(), src.as_ptr(), flags) as libc::BOOL
+        c::CreateSymbolicLinkW(dst.as_ptr(), src.as_ptr(), flags) as c::BOOL
     }));
     Ok(())
 }
@@ -524,7 +521,7 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
     let src = to_utf16(src);
     let dst = to_utf16(dst);
     try!(cvt(unsafe {
-        libc::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::null_mut())
+        c::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::null_mut())
     }));
     Ok(())
 }
@@ -575,7 +572,7 @@ pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
 fn get_path(f: &File) -> io::Result<PathBuf> {
     super::fill_utf16_buf(|buf, sz| unsafe {
         c::GetFinalPathNameByHandleW(f.handle.raw(), buf, sz,
-                                     libc::VOLUME_NAME_DOS)
+                                     c::VOLUME_NAME_DOS)
     }, |buf| {
         PathBuf::from(OsString::from_wide(buf))
     })
@@ -592,16 +589,16 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     unsafe extern "system" fn callback(
-        _TotalFileSize: libc::LARGE_INTEGER,
-        TotalBytesTransferred: libc::LARGE_INTEGER,
-        _StreamSize: libc::LARGE_INTEGER,
-        _StreamBytesTransferred: libc::LARGE_INTEGER,
-        _dwStreamNumber: libc::DWORD,
-        _dwCallbackReason: libc::DWORD,
-        _hSourceFile: HANDLE,
-        _hDestinationFile: HANDLE,
-        lpData: libc::LPVOID,
-    ) -> libc::DWORD {
+        _TotalFileSize: c::LARGE_INTEGER,
+        TotalBytesTransferred: c::LARGE_INTEGER,
+        _StreamSize: c::LARGE_INTEGER,
+        _StreamBytesTransferred: c::LARGE_INTEGER,
+        _dwStreamNumber: c::DWORD,
+        _dwCallbackReason: c::DWORD,
+        _hSourceFile: c::HANDLE,
+        _hDestinationFile: c::HANDLE,
+        lpData: c::LPVOID,
+    ) -> c::DWORD {
         *(lpData as *mut i64) = TotalBytesTransferred;
         c::PROGRESS_CONTINUE
     }
@@ -673,10 +670,10 @@ fn directory_junctions_are_directories() {
             *buf.offset(i) = 0;
             i += 1;
             (*db).ReparseTag = c::IO_REPARSE_TAG_MOUNT_POINT;
-            (*db).ReparseTargetMaximumLength = (i * 2) as libc::WORD;
-            (*db).ReparseTargetLength = ((i - 1) * 2) as libc::WORD;
+            (*db).ReparseTargetMaximumLength = (i * 2) as c::WORD;
+            (*db).ReparseTargetLength = ((i - 1) * 2) as c::WORD;
             (*db).ReparseDataLength =
-                    (*db).ReparseTargetLength as libc::DWORD + 12;
+                    (*db).ReparseTargetLength as c::DWORD + 12;
 
             let mut ret = 0;
             cvt(c::DeviceIoControl(h as *mut _,
@@ -707,10 +704,10 @@ fn directory_junctions_are_directories() {
                                               &mut tp.Privileges[0].Luid)));
             tp.PrivilegeCount = 1;
             tp.Privileges[0].Attributes = c::SE_PRIVILEGE_ENABLED;
-            let size = mem::size_of::<c::TOKEN_PRIVILEGES>() as libc::DWORD;
-            try!(cvt(c::AdjustTokenPrivileges(token, libc::FALSE, &mut tp, size,
+            let size = mem::size_of::<c::TOKEN_PRIVILEGES>() as c::DWORD;
+            try!(cvt(c::AdjustTokenPrivileges(token, c::FALSE, &mut tp, size,
                                               ptr::null_mut(), ptr::null_mut())));
-            try!(cvt(libc::CloseHandle(token)));
+            try!(cvt(c::CloseHandle(token)));
 
             File::open_reparse_point(p, write)
         }

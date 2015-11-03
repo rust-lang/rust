@@ -16,6 +16,8 @@
 #![allow(dead_code)]
 #![allow(trivial_casts)]
 
+#![cfg_attr(stage0, allow(improper_ctypes))]
+
 #![crate_name = "rustc_llvm"]
 #![unstable(feature = "rustc_private", issue = "27812")]
 #![staged_api]

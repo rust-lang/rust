@@ -15,6 +15,7 @@ use os::windows::raw;
 use net;
 use sys_common::{self, AsInner, FromInner, IntoInner};
 use sys;
+use sys::c;
 
 /// Raw HANDLEs.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -73,7 +74,7 @@ impl AsRawHandle for fs::File {
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawHandle for fs::File {
     unsafe fn from_raw_handle(handle: RawHandle) -> fs::File {
-        let handle = handle as ::libc::HANDLE;
+        let handle = handle as c::HANDLE;
         fs::File::from_inner(sys::fs::File::from_inner(handle))
     }
 }

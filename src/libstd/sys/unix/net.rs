@@ -13,16 +13,16 @@ use prelude::v1::*;
 use ffi::CStr;
 use io;
 use libc::{self, c_int, size_t};
-use net::SocketAddr;
+use net::{SocketAddr, Shutdown};
 use str;
-use sync::atomic::{self, AtomicBool};
-use sys::c;
+use sync::atomic::{AtomicBool, Ordering};
 use sys::fd::FileDesc;
 use sys_common::{AsInner, FromInner, IntoInner};
 use sys_common::net::{getsockopt, setsockopt};
 use time::Duration;
 
 pub use sys::{cvt, cvt_r};
+pub use libc as netc;
 
 pub type wrlen_t = size_t;
 
@@ -34,7 +34,7 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
     if err == 0 { return Ok(()) }
 
     let detail = unsafe {
-        str::from_utf8(CStr::from_ptr(c::gai_strerror(err)).to_bytes()).unwrap()
+        str::from_utf8(CStr::from_ptr(libc::gai_strerror(err)).to_bytes()).unwrap()
             .to_owned()
     };
     Err(io::Error::new(io::ErrorKind::Other,
@@ -67,29 +67,44 @@ impl Socket {
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {
-        use libc::funcs::posix88::fcntl::fcntl;
+        // We want to atomically duplicate this file descriptor and set the
+        // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This
+        // flag, however, isn't supported on older Linux kernels (earlier than
+        // 2.6.24).
+        //
+        // To detect this and ensure that CLOEXEC is still set, we
+        // follow a strategy similar to musl [1] where if passing
+        // F_DUPFD_CLOEXEC causes `fcntl` to return EINVAL it means it's not
+        // supported (the third parameter, 0, is always valid), so we stop
+        // trying that. We also *still* call the `set_cloexec` method as
+        // apparently some kernel at some point stopped setting CLOEXEC even
+        // though it reported doing so on F_DUPFD_CLOEXEC.
+        //
+        // Also note that Android doesn't have F_DUPFD_CLOEXEC, but get it to
+        // resolve so we at least compile this.
+        //
+        // [1]: http://comments.gmane.org/gmane.linux.lib.musl.general/2963
+        #[cfg(target_os = "android")]
+        use libc::F_DUPFD as F_DUPFD_CLOEXEC;
+        #[cfg(not(target_os = "android"))]
+        use libc::F_DUPFD_CLOEXEC;
+
         let make_socket = |fd| {
             let fd = FileDesc::new(fd);
             fd.set_cloexec();
             Socket(fd)
         };
-        static EMULATE_F_DUPFD_CLOEXEC: AtomicBool = AtomicBool::new(false);
-        if !EMULATE_F_DUPFD_CLOEXEC.load(atomic::Ordering::Relaxed) {
-            match cvt(unsafe { fcntl(self.0.raw(), libc::F_DUPFD_CLOEXEC, 0) }) {
-                // `EINVAL` can only be returned on two occasions: Invalid
-                // command (second parameter) or invalid third parameter. 0 is
-                // always a valid third parameter, so it must be the second
-                // parameter.
-                //
-                // Store the result in a global variable so we don't try each
-                // syscall twice.
+        static TRY_CLOEXEC: AtomicBool = AtomicBool::new(true);
+        let fd = self.0.raw();
+        if !cfg!(target_os = "android") && TRY_CLOEXEC.load(Ordering::Relaxed) {
+            match cvt(unsafe { libc::fcntl(fd, F_DUPFD_CLOEXEC, 0) }) {
                 Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {
-                    EMULATE_F_DUPFD_CLOEXEC.store(true, atomic::Ordering::Relaxed);
+                    TRY_CLOEXEC.store(false, Ordering::Relaxed);
                 }
                 res => return res.map(make_socket),
             }
         }
-        cvt(unsafe { fcntl(self.0.raw(), libc::F_DUPFD, 0) }).map(make_socket)
+        cvt(unsafe { libc::fcntl(fd, libc::F_DUPFD, 0) }).map(make_socket)
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -137,6 +152,16 @@ impl Socket {
             let nsec = (raw.tv_usec as u32) * 1000;
             Ok(Some(Duration::new(sec, nsec)))
         }
+    }
+
+    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
+        let how = match how {
+            Shutdown::Write => libc::SHUT_WR,
+            Shutdown::Read => libc::SHUT_RD,
+            Shutdown::Both => libc::SHUT_RDWR,
+        };
+        try!(cvt(unsafe { libc::shutdown(self.0.raw(), how) }));
+        Ok(())
     }
 }
 
