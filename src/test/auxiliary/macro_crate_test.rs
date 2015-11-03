@@ -54,7 +54,7 @@ fn expand_identity(cx: &mut ExtCtxt, _span: Span, tts: &[TokenTree])
     // Parse an expression and emit it unchanged.
     let mut parser = parse::new_parser_from_tts(cx.parse_sess(),
         cx.cfg(), tts.to_vec());
-    let expr = parser.parse_expr();
+    let expr = parser.parse_expr_panic();
     MacEager::expr(quote_expr!(&mut *cx, $expr))
 }
 

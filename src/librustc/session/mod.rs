@@ -94,7 +94,7 @@ impl Session {
         if self.opts.treat_err_as_bug {
             self.bug(msg);
         }
-        self.diagnostic().handler().fatal(msg)
+        panic!(self.diagnostic().handler().fatal(msg))
     }
     pub fn span_err_or_warn(&self, is_warning: bool, sp: Span, msg: &str) {
         if is_warning {
@@ -415,8 +415,8 @@ pub fn build_session_(sopts: config::Options,
     let host = match Target::search(config::host_triple()) {
         Ok(t) => t,
         Err(e) => {
-            span_diagnostic.handler()
-                .fatal(&format!("Error loading host specification: {}", e));
+            panic!(span_diagnostic.handler()
+                                  .fatal(&format!("Error loading host specification: {}", e)));
     }
     };
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);

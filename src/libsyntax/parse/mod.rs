@@ -13,7 +13,6 @@
 use ast;
 use codemap::{self, Span, CodeMap, FileMap};
 use diagnostic::{SpanHandler, Handler, Auto, FatalError};
-use parse::attr::ParserAttr;
 use parse::parser::Parser;
 use parse::token::InternedString;
 use ptr::P;
@@ -83,7 +82,8 @@ pub fn parse_crate_attrs_from_file(
     cfg: ast::CrateConfig,
     sess: &ParseSess
 ) -> Vec<ast::Attribute> {
-    new_parser_from_file(sess, cfg, input).parse_inner_attributes()
+    // FIXME: maybe_aborted?
+    panictry!(new_parser_from_file(sess, cfg, input).parse_inner_attributes())
 }
 
 pub fn parse_crate_from_source_str(name: String,
@@ -107,7 +107,7 @@ pub fn parse_crate_attrs_from_source_str(name: String,
                                            cfg,
                                            name,
                                            source);
-    maybe_aborted(p.parse_inner_attributes(), p)
+    maybe_aborted(panictry!(p.parse_inner_attributes()), p)
 }
 
 pub fn parse_expr_from_source_str(name: String,
@@ -116,7 +116,7 @@ pub fn parse_expr_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> P<ast::Expr> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(p.parse_expr(), p)
+    maybe_aborted(panictry!(p.parse_expr_nopanic()), p)
 }
 
 pub fn parse_item_from_source_str(name: String,
@@ -125,7 +125,7 @@ pub fn parse_item_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> Option<P<ast::Item>> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(p.parse_item(),p)
+    maybe_aborted(panictry!(p.parse_item_nopanic()), p)
 }
 
 pub fn parse_meta_from_source_str(name: String,
@@ -134,7 +134,7 @@ pub fn parse_meta_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> P<ast::MetaItem> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(p.parse_meta_item(),p)
+    maybe_aborted(panictry!(p.parse_meta_item()), p)
 }
 
 pub fn parse_stmt_from_source_str(name: String,
@@ -148,7 +148,7 @@ pub fn parse_stmt_from_source_str(name: String,
         name,
         source
     );
-    maybe_aborted(p.parse_stmt(), p)
+    maybe_aborted(panictry!(p.parse_stmt_nopanic()), p)
 }
 
 // Warning: This parses with quote_depth > 0, which is not the default.
@@ -235,7 +235,7 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
             let msg = format!("couldn't read {:?}: {}", path.display(), e);
             match spanopt {
                 Some(sp) => panic!(sess.span_diagnostic.span_fatal(sp, &msg)),
-                None => sess.span_diagnostic.handler().fatal(&msg)
+                None => panic!(sess.span_diagnostic.handler().fatal(&msg))
             }
         }
     }
@@ -856,7 +856,7 @@ mod tests {
 
     #[test] fn parse_stmt_1 () {
         assert!(string_to_stmt("b;".to_string()) ==
-                   P(Spanned{
+                   Some(P(Spanned{
                        node: ast::StmtExpr(P(ast::Expr {
                            id: ast::DUMMY_NODE_ID,
                            node: ast::ExprPath(None, ast::Path {
@@ -871,7 +871,7 @@ mod tests {
                             }),
                            span: sp(0,1)}),
                                            ast::DUMMY_NODE_ID),
-                       span: sp(0,1)}))
+                       span: sp(0,1)})))
 
     }
 

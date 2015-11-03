@@ -85,7 +85,6 @@ use codemap::{BytePos, mk_sp, Span};
 use codemap;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
-use parse::attr::ParserAttr;
 use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
 use parse::token::{Eof, DocComment, MatchNt, SubstNt};
 use parse::token::{Token, Nonterminal};
@@ -503,18 +502,18 @@ pub fn parse_nt(p: &mut Parser, sp: Span, name: &str) -> Nonterminal {
     // check at the beginning and the parser checks after each bump
     panictry!(p.check_unknown_macro_variable());
     match name {
-        "item" => match p.parse_item() {
+        "item" => match panictry!(p.parse_item_nopanic()) {
             Some(i) => token::NtItem(i),
             None => panic!(p.fatal("expected an item keyword"))
         },
         "block" => token::NtBlock(panictry!(p.parse_block())),
-        "stmt" => match p.parse_stmt() {
+        "stmt" => match panictry!(p.parse_stmt_nopanic()) {
             Some(s) => token::NtStmt(s),
             None => panic!(p.fatal("expected a statement"))
         },
-        "pat" => token::NtPat(p.parse_pat()),
-        "expr" => token::NtExpr(p.parse_expr()),
-        "ty" => token::NtTy(p.parse_ty()),
+        "pat" => token::NtPat(panictry!(p.parse_pat_nopanic())),
+        "expr" => token::NtExpr(panictry!(p.parse_expr_nopanic())),
+        "ty" => token::NtTy(panictry!(p.parse_ty_nopanic())),
         // this could be handled like a token, since it is one
         "ident" => match p.token {
             token::Ident(sn,b) => { panictry!(p.bump()); token::NtIdent(Box::new(sn),b) }
@@ -527,7 +526,7 @@ pub fn parse_nt(p: &mut Parser, sp: Span, name: &str) -> Nonterminal {
         "path" => {
             token::NtPath(Box::new(panictry!(p.parse_path(LifetimeAndTypesWithoutColons))))
         },
-        "meta" => token::NtMeta(p.parse_meta_item()),
+        "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
         _ => {
             panic!(p.span_fatal_help(sp,
                             &format!("invalid fragment specifier `{}`", name),

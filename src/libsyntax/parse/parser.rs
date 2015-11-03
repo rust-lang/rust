@@ -63,7 +63,6 @@ use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp, CodeMap};
 use diagnostic;
 use ext::tt::macro_parser;
 use parse;
-use parse::attr::ParserAttr;
 use parse::classify;
 use parse::common::{SeqSep, seq_sep_none, seq_sep_trailing_allowed};
 use parse::lexer::{Reader, TokenAndSpan};
@@ -358,29 +357,34 @@ impl<'a> Parser<'a> {
     }
 
     // Panicing fns (for now!)
-    // This is so that the quote_*!() syntax extensions
-    pub fn parse_expr(&mut self) -> P<Expr> {
+    // These functions are used by the quote_*!() syntax extensions, but shouldn't
+    // be used otherwise.
+    pub fn parse_expr_panic(&mut self) -> P<Expr> {
         panictry!(self.parse_expr_nopanic())
     }
 
-    pub fn parse_item(&mut self) -> Option<P<Item>> {
+    pub fn parse_item_panic(&mut self) -> Option<P<Item>> {
         panictry!(self.parse_item_nopanic())
     }
 
-    pub fn parse_pat(&mut self) -> P<Pat> {
+    pub fn parse_pat_panic(&mut self) -> P<Pat> {
         panictry!(self.parse_pat_nopanic())
     }
 
-    pub fn parse_arm(&mut self) -> Arm {
+    pub fn parse_arm_panic(&mut self) -> Arm {
         panictry!(self.parse_arm_nopanic())
     }
 
-    pub fn parse_ty(&mut self) -> P<Ty> {
+    pub fn parse_ty_panic(&mut self) -> P<Ty> {
         panictry!(self.parse_ty_nopanic())
     }
 
-    pub fn parse_stmt(&mut self) -> Option<P<Stmt>> {
+    pub fn parse_stmt_panic(&mut self) -> Option<P<Stmt>> {
         panictry!(self.parse_stmt_nopanic())
+    }
+
+    pub fn parse_attribute_panic(&mut self, permit_inner: bool) -> ast::Attribute {
+        panictry!(self.parse_attribute(permit_inner))
     }
 
     /// Convert a token to a string using self's reader
@@ -1173,7 +1177,7 @@ impl<'a> Parser<'a> {
             seq_sep_none(),
             |p| -> PResult<P<TraitItem>> {
             maybe_whole!(no_clone p, NtTraitItem);
-            let mut attrs = p.parse_outer_attributes();
+            let mut attrs = try!(p.parse_outer_attributes());
             let lo = p.span.lo;
 
             let (name, node) = if try!(p.eat_keyword(keywords::Type)) {
@@ -2961,7 +2965,7 @@ impl<'a> Parser<'a> {
     pub fn parse_arm_nopanic(&mut self) -> PResult<Arm> {
         maybe_whole!(no_clone self, NtArm);
 
-        let attrs = self.parse_outer_attributes();
+        let attrs = try!(self.parse_outer_attributes());
         let pats = try!(self.parse_pats());
         let mut guard = None;
         if try!(self.eat_keyword(keywords::If) ){
@@ -3470,7 +3474,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let attrs = self.parse_outer_attributes();
+        let attrs = try!(self.parse_outer_attributes());
         let lo = self.span.lo;
 
         Ok(Some(if self.check_keyword(keywords::Let) {
@@ -3612,7 +3616,7 @@ impl<'a> Parser<'a> {
 
         let lo = self.span.lo;
         try!(self.expect(&token::OpenDelim(token::Brace)));
-        Ok((self.parse_inner_attributes(),
+        Ok((try!(self.parse_inner_attributes()),
          try!(self.parse_block_tail(lo, DefaultBlock))))
     }
 
@@ -4436,7 +4440,7 @@ impl<'a> Parser<'a> {
     pub fn parse_impl_item(&mut self) -> PResult<P<ImplItem>> {
         maybe_whole!(no_clone self, NtImplItem);
 
-        let mut attrs = self.parse_outer_attributes();
+        let mut attrs = try!(self.parse_outer_attributes());
         let lo = self.span.lo;
         let vis = try!(self.parse_visibility());
         let (name, node) = if try!(self.eat_keyword(keywords::Type)) {
@@ -4613,7 +4617,7 @@ impl<'a> Parser<'a> {
             generics.where_clause = try!(self.parse_where_clause());
 
             try!(self.expect(&token::OpenDelim(token::Brace)));
-            let attrs = self.parse_inner_attributes();
+            let attrs = try!(self.parse_inner_attributes());
 
             let mut impl_items = vec![];
             while !try!(self.eat(&token::CloseDelim(token::Brace))) {
@@ -4732,7 +4736,7 @@ impl<'a> Parser<'a> {
             &token::CloseDelim(token::Paren),
             seq_sep_trailing_allowed(token::Comma),
             |p| {
-                let attrs = p.parse_outer_attributes();
+                let attrs = try!(p.parse_outer_attributes());
                 let lo = p.span.lo;
                 let struct_field_ = ast::StructField_ {
                     kind: UnnamedField(try!(p.parse_visibility())),
@@ -4774,7 +4778,7 @@ impl<'a> Parser<'a> {
     /// Parse an element of a struct definition
     fn parse_struct_decl_field(&mut self, allow_pub: bool) -> PResult<StructField> {
 
-        let attrs = self.parse_outer_attributes();
+        let attrs = try!(self.parse_outer_attributes());
 
         if try!(self.eat_keyword(keywords::Pub) ){
             if !allow_pub {
@@ -4846,7 +4850,7 @@ impl<'a> Parser<'a> {
             let mod_inner_lo = self.span.lo;
             let old_owns_directory = self.owns_directory;
             self.owns_directory = true;
-            let attrs = self.parse_inner_attributes();
+            let attrs = try!(self.parse_inner_attributes());
             let m = try!(self.parse_mod_items(&token::CloseDelim(token::Brace), mod_inner_lo));
             self.owns_directory = old_owns_directory;
             self.pop_mod_path();
@@ -4995,7 +4999,7 @@ impl<'a> Parser<'a> {
                                               Some(name),
                                               id_sp);
         let mod_inner_lo = p0.span.lo;
-        let mod_attrs = p0.parse_inner_attributes();
+        let mod_attrs = try!(p0.parse_inner_attributes());
         let m0 = try!(p0.parse_mod_items(&token::Eof, mod_inner_lo));
         self.sess.included_mod_stack.borrow_mut().pop();
         Ok((ast::ItemMod(m0), mod_attrs))
@@ -5098,7 +5102,7 @@ impl<'a> Parser<'a> {
 
         let abi = opt_abi.unwrap_or(abi::C);
 
-        attrs.extend(self.parse_inner_attributes());
+        attrs.extend(try!(self.parse_inner_attributes()));
 
         let mut foreign_items = vec![];
         while let Some(item) = try!(self.parse_foreign_item()) {
@@ -5148,7 +5152,7 @@ impl<'a> Parser<'a> {
         let mut all_nullary = true;
         let mut any_disr = None;
         while self.token != token::CloseDelim(token::Brace) {
-            let variant_attrs = self.parse_outer_attributes();
+            let variant_attrs = try!(self.parse_outer_attributes());
             let vlo = self.span.lo;
 
             let struct_def;
@@ -5510,7 +5514,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a foreign item.
     fn parse_foreign_item(&mut self) -> PResult<Option<P<ForeignItem>>> {
-        let attrs = self.parse_outer_attributes();
+        let attrs = try!(self.parse_outer_attributes());
         let lo = self.span.lo;
         let visibility = try!(self.parse_visibility());
 
@@ -5610,7 +5614,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_item_nopanic(&mut self) -> PResult<Option<P<Item>>> {
-        let attrs = self.parse_outer_attributes();
+        let attrs = try!(self.parse_outer_attributes());
         self.parse_item_(attrs, true)
     }
 
@@ -5729,7 +5733,7 @@ impl<'a> Parser<'a> {
     pub fn parse_crate_mod(&mut self) -> PResult<Crate> {
         let lo = self.span.lo;
         Ok(ast::Crate {
-            attrs: self.parse_inner_attributes(),
+            attrs: try!(self.parse_inner_attributes()),
             module: try!(self.parse_mod_items(&token::Eof, lo)),
             config: self.cfg.clone(),
             span: mk_sp(lo, self.span.lo),
