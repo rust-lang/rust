@@ -693,7 +693,7 @@ impl<'a> FmtVisitor<'a> {
         let fmt = ListFormatting {
             tactic: DefinitiveListTactic::Vertical,
             separator: ",",
-            trailing_separator: SeparatorTactic::Always,
+            trailing_separator: SeparatorTactic::from_bool(self.config.enum_trailing_comma),
             indent: self.block_indent,
             width: budget,
             ends_with_newline: true,

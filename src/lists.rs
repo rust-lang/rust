@@ -46,6 +46,16 @@ pub enum SeparatorTactic {
 
 impl_enum_decodable!(SeparatorTactic, Always, Never, Vertical);
 
+impl SeparatorTactic {
+    pub fn from_bool(b: bool) -> SeparatorTactic {
+        if b {
+            SeparatorTactic::Always
+        } else {
+            SeparatorTactic::Never
+        }
+    }
+}
+
 pub struct ListFormatting<'a> {
     pub tactic: DefinitiveListTactic,
     pub separator: &'a str,
