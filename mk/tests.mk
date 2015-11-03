@@ -26,7 +26,7 @@ TEST_TARGET_CRATES = $(filter-out core rustc_unicode alloc_system \
 		     		  alloc_jemalloc,$(TARGET_CRATES)) \
 			collectionstest coretest
 TEST_DOC_CRATES = $(DOC_CRATES) arena flate fmt_macros getopts graphviz \
-                log rand
+                log rand rbml
 TEST_HOST_CRATES = $(filter-out rustc_typeck rustc_borrowck rustc_resolve \
 		   		rustc_trans rustc_lint,\
                      $(HOST_CRATES))
