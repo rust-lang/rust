@@ -190,6 +190,7 @@ impl<'a> Iterator for Utf16Items<'a> {
 ///
 /// ```
 /// #![feature(unicode, decode_utf16)]
+/// # #![allow(deprecated)]
 ///
 /// extern crate rustc_unicode;
 ///
