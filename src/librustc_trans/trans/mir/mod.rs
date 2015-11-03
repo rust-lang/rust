@@ -159,7 +159,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>,
                llarg
            } else if common::type_is_fat_ptr(tcx, arg_ty) {
                // we pass fat pointers as two words, but we want to
-               // represent them internally as a pointer two two words,
+               // represent them internally as a pointer to two words,
                // so make an alloca to store them in.
                let lldata = llvm::get_param(fcx.llfn, idx);
                let llextra = llvm::get_param(fcx.llfn, idx + 1);

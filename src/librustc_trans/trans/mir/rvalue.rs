@@ -172,7 +172,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         //
                         // Note that this is currently duplicated with src/libcore/ops.rs
                         // which does the same thing, and it would be nice to perhaps unify
-                        // these two implementations on day! Also note that we call `fmod`
+                        // these two implementations one day! Also note that we call `fmod`
                         // for both 32 and 64-bit floats because if we emit any FRem
                         // instruction at all then LLVM is capable of optimizing it into a
                         // 32-bit FRem (which we're trying to avoid).
