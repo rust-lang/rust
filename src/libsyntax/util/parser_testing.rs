@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use parse::{ParseSess,filemap_to_tts};
+use parse::{ParseSess,PResult,filemap_to_tts};
 use parse::new_parser_from_source_str;
 use parse::parser::Parser;
 use parse::token;
@@ -31,11 +31,11 @@ pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a>
 }
 
 fn with_error_checking_parse<T, F>(s: String, f: F) -> T where
-    F: FnOnce(&mut Parser) -> T,
+    F: FnOnce(&mut Parser) -> PResult<T>,
 {
     let ps = ParseSess::new();
     let mut p = string_to_parser(&ps, s);
-    let x = f(&mut p);
+    let x = panictry!(f(&mut p));
     p.abort_if_errors();
     x
 }
@@ -43,39 +43,37 @@ fn with_error_checking_parse<T, F>(s: String, f: F) -> T where
 /// Parse a string, return a crate.
 pub fn string_to_crate (source_str : String) -> ast::Crate {
     with_error_checking_parse(source_str, |p| {
-        panictry!(p.parse_crate_mod())
+        p.parse_crate_mod()
     })
 }
 
 /// Parse a string, return an expr
 pub fn string_to_expr (source_str : String) -> P<ast::Expr> {
     with_error_checking_parse(source_str, |p| {
-        p.parse_expr()
+        p.parse_expr_nopanic()
     })
 }
 
 /// Parse a string, return an item
 pub fn string_to_item (source_str : String) -> Option<P<ast::Item>> {
     with_error_checking_parse(source_str, |p| {
-        p.parse_item()
+        p.parse_item_nopanic()
     })
 }
 
 /// Parse a string, return a stmt
-pub fn string_to_stmt(source_str : String) -> P<ast::Stmt> {
+pub fn string_to_stmt(source_str : String) -> Option<P<ast::Stmt>> {
     with_error_checking_parse(source_str, |p| {
-        p.parse_stmt().unwrap()
+        p.parse_stmt_nopanic()
     })
 }
 
 /// Parse a string, return a pat. Uses "irrefutable"... which doesn't
 /// (currently) affect parsing.
 pub fn string_to_pat(source_str: String) -> P<ast::Pat> {
-    // Binding `sess` and `parser` works around dropck-injected
-    // region-inference issues; see #25212, #22323, #22321.
-    let sess = ParseSess::new();
-    let mut parser = string_to_parser(&sess, source_str);
-    parser.parse_pat()
+    with_error_checking_parse(source_str, |p| {
+        p.parse_pat_nopanic()
+    })
 }
 
 /// Convert a vector of strings to a vector of ast::Ident's

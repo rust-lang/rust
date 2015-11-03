@@ -93,7 +93,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         ecx.span_err(sp, "requires at least a format string argument");
         return None;
     }
-    let fmtstr = p.parse_expr();
+    let fmtstr = panictry!(p.parse_expr_nopanic());
     let mut named = false;
     while p.token != token::Eof {
         if !panictry!(p.eat(&token::Comma)) {
@@ -124,7 +124,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             let name: &str = &ident.name.as_str();
 
             panictry!(p.expect(&token::Eq));
-            let e = p.parse_expr();
+            let e = panictry!(p.parse_expr_nopanic());
             match names.get(name) {
                 None => {}
                 Some(prev) => {
@@ -138,7 +138,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             order.push(name.to_string());
             names.insert(name.to_string(), e);
         } else {
-            args.push(p.parse_expr());
+            args.push(panictry!(p.parse_expr_nopanic()));
         }
     }
     Some((fmtstr, args, order, names))
