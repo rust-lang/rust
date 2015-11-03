@@ -10,7 +10,6 @@
 
 use libc::c_uint;
 use llvm::{self, ValueRef};
-use rustc_data_structures::fnv::FnvHashSet;
 use rustc_mir::repr as mir;
 use rustc_mir::tcx::LvalueTy;
 use trans::base;
@@ -79,7 +78,7 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>) {
 
     // Analyze the temps to determine which must be lvalues
     // FIXME
-    let lvalue_temps: FnvHashSet<usize> = (0..mir.temp_decls.len()).collect();
+    let lvalue_temps = analyze::lvalue_temps(bcx, mir);
 
     // Allocate variable and temp allocas
     let vars = mir.var_decls.iter()
@@ -183,6 +182,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>,
        .collect()
 }
 
+mod analyze;
 mod block;
 mod constant;
 mod lvalue;

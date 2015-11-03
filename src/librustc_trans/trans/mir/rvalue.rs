@@ -80,7 +80,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             _ => {
-                assert!(self.rvalue_creates_operand(rvalue));
+                assert!(rvalue_creates_operand(rvalue));
                 let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
                 build::Store(bcx, temp.llval, lldest);
                 bcx
@@ -88,32 +88,12 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
     }
 
-    pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
-        match *rvalue {
-            mir::Rvalue::Use(..) | // (*)
-            mir::Rvalue::Ref(..) |
-            mir::Rvalue::Len(..) |
-            mir::Rvalue::Cast(..) | // (*)
-            mir::Rvalue::BinaryOp(..) |
-            mir::Rvalue::UnaryOp(..) |
-            mir::Rvalue::Box(..) =>
-                true,
-            mir::Rvalue::Repeat(..) |
-            mir::Rvalue::Aggregate(..) |
-            mir::Rvalue::Slice { .. } |
-            mir::Rvalue::InlineAsm(..) =>
-                false,
-        }
-
-        // (*) this is only true if the type is suitable
-    }
-
     pub fn trans_rvalue_operand(&mut self,
                                 bcx: Block<'bcx, 'tcx>,
                                 rvalue: &mir::Rvalue<'tcx>)
                                 -> (Block<'bcx, 'tcx>, OperandRef<'tcx>)
     {
-        assert!(self.rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
+        assert!(rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
 
         match *rvalue {
             mir::Rvalue::Use(ref operand) => {
@@ -299,4 +279,24 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
         }
     }
+}
+
+pub fn rvalue_creates_operand<'tcx>(rvalue: &mir::Rvalue<'tcx>) -> bool {
+    match *rvalue {
+        mir::Rvalue::Use(..) | // (*)
+        mir::Rvalue::Ref(..) |
+        mir::Rvalue::Len(..) |
+        mir::Rvalue::Cast(..) | // (*)
+        mir::Rvalue::BinaryOp(..) |
+        mir::Rvalue::UnaryOp(..) |
+        mir::Rvalue::Box(..) =>
+            true,
+        mir::Rvalue::Repeat(..) |
+        mir::Rvalue::Aggregate(..) |
+        mir::Rvalue::Slice { .. } |
+        mir::Rvalue::InlineAsm(..) =>
+            false,
+    }
+
+    // (*) this is only true if the type is suitable
 }
