@@ -233,6 +233,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// ```
     /// #![feature(binary_heap_extras)]
+    /// # #![allow(deprecated)]
     ///
     /// use std::collections::BinaryHeap;
     /// let heap = BinaryHeap::from_vec(vec![9, 1, 2, 7, 3, 2]);
