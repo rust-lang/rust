@@ -16,8 +16,9 @@ use trans::build;
 use trans::common::Block;
 use trans::datum;
 
-use super::MirContext;
+use super::{MirContext, TempRef};
 
+#[derive(Copy, Clone)]
 pub struct OperandRef<'tcx> {
     // This will be "indirect" if `appropriate_rvalue_mode` returns
     // ByRef, and otherwise ByValue.
@@ -37,6 +38,25 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         match *operand {
             mir::Operand::Consume(ref lvalue) => {
+                // watch out for temporaries that do not have an
+                // alloca; they are handled somewhat differently
+                if let &mir::Lvalue::Temp(index) = lvalue {
+                    match self.temps[index as usize] {
+                        TempRef::Operand(Some(o)) => {
+                            return o;
+                        }
+                        TempRef::Operand(None) => {
+                            bcx.tcx().sess.bug(
+                                &format!("use of {:?} before def", lvalue));
+                        }
+                        TempRef::Lvalue(..) => {
+                            // use path below
+                        }
+                    }
+                }
+
+                // for most lvalues, to consume them we just load them
+                // out from their home
                 let tr_lvalue = self.trans_lvalue(bcx, lvalue);
                 let ty = tr_lvalue.ty.to_ty(bcx.tcx());
                 debug!("trans_operand: tr_lvalue={} @ {:?}",
