@@ -148,9 +148,9 @@ impl<T> VecDeque<T> {
     /// Copies a contiguous block of memory len long from src to dst
     #[inline]
     unsafe fn copy(&self, dst: usize, src: usize, len: usize) {
-        debug_assert!(dst + len <= self.cap(), "dst={} src={} len={} cap={}", dst, src, len,
+        debug_assert!(dst + len <= self.cap(), "cpy dst={} src={} len={} cap={}", dst, src, len,
                       self.cap());
-        debug_assert!(src + len <= self.cap(), "dst={} src={} len={} cap={}", dst, src, len,
+        debug_assert!(src + len <= self.cap(), "cpy dst={} src={} len={} cap={}", dst, src, len,
                       self.cap());
         ptr::copy(
             self.ptr().offset(src as isize),
@@ -161,9 +161,9 @@ impl<T> VecDeque<T> {
     /// Copies a contiguous block of memory len long from src to dst
     #[inline]
     unsafe fn copy_nonoverlapping(&self, dst: usize, src: usize, len: usize) {
-        debug_assert!(dst + len <= self.cap(), "dst={} src={} len={} cap={}", dst, src, len,
+        debug_assert!(dst + len <= self.cap(), "cno dst={} src={} len={} cap={}", dst, src, len,
                       self.cap());
-        debug_assert!(src + len <= self.cap(), "dst={} src={} len={} cap={}", dst, src, len,
+        debug_assert!(src + len <= self.cap(), "cno dst={} src={} len={} cap={}", dst, src, len,
                       self.cap());
         ptr::copy_nonoverlapping(
             self.ptr().offset(src as isize),
@@ -175,9 +175,11 @@ impl<T> VecDeque<T> {
     /// (abs(dst - src) + len) must be no larger than cap() (There must be at
     /// most one continuous overlapping region between src and dest).
     unsafe fn wrap_copy(&self, dst: usize, src: usize, len: usize) {
-        debug_assert!(
-            (if src <= dst { dst - src } else { src - dst }) + len <= self.cap(),
-            "dst={} src={} len={} cap={}", dst, src, len, self.cap());
+        #[allow(dead_code)]
+        fn diff(a: usize, b: usize) -> usize {if a <= b {b - a} else {a - b}}
+        debug_assert!(cmp::min(diff(dst, src),
+                               self.cap() - diff(dst, src)) + len <= self.cap(),
+                      "wrc dst={} src={} len={} cap={}", dst, src, len, self.cap());
 
         if src == dst || len == 0 { return }
 
