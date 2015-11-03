@@ -31,6 +31,13 @@ library](std/index.html). There's a list of crates on the left with more
 specific sections, or you can use the search bar at the top to search for
 something if you know its name.
 
+# The Rustonomicon
+
+[The Rustonomicon] is an entire book dedicated dedicated to explaining
+how to write `unsafe` Rust code. It is for advanced Rust programmers.
+
+[The Rustonomicon]: nomicon/index.html
+
 # Tools
 
 [Cargo](https://crates.io) is the Rust's package manager providing access to libraries
