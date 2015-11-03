@@ -1565,6 +1565,8 @@ pub trait Iterator {
     /// as soon as it finds a `false`, given that no matter what else happens,
     /// the result will also be `false`.
     ///
+    /// An empty iterator returns `true`.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1612,6 +1614,8 @@ pub trait Iterator {
     /// `any()` is short-circuting; in other words, it will stop processing
     /// as soon as it finds a `true`, given that no matter what else happens,
     /// the result will also be `true`.
+    ///
+    /// An empty iterator returns `false`.
     ///
     /// # Examples
     ///
@@ -2071,6 +2075,8 @@ pub trait Iterator {
     ///
     /// Takes each element, adds them together, and returns the result.
     ///
+    /// An empty iterator returns the zero value of the type.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -2093,6 +2099,8 @@ pub trait Iterator {
     }
 
     /// Iterates over the entire iterator, multiplying all the elements
+    ///
+    /// An empty iterator returns the one value of the type.
     ///
     /// # Examples
     ///
