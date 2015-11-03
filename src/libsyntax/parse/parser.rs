@@ -3965,7 +3965,7 @@ impl<'a> Parser<'a> {
 
     /// Parses an optional `where` clause and places it in `generics`.
     ///
-    /// ```
+    /// ```ignore
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
     pub fn parse_where_clause(&mut self) -> PResult<ast::WhereClause> {
