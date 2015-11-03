@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 70 lints included in this crate:
+There are 71 lints included in this crate:
 
 name                                                                                                   | default | meaning
 -------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -53,6 +53,7 @@ name                                                                            
 [precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                               | warn    | catches operations where precedence may be unclear. See the wiki for a list of cases caught
 [ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                     | warn    | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
 [range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)               | warn    | using Range::step_by(0), which produces an infinite iterator
+[range_zip_with_len](https://github.com/Manishearth/rust-clippy/wiki#range_zip_with_len)               | warn    | zipping iterator with a range when enumerate() would do
 [redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)                 | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
 [redundant_pattern](https://github.com/Manishearth/rust-clippy/wiki#redundant_pattern)                 | warn    | using `name @ _` in a pattern
 [result_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#result_unwrap_used)               | allow   | using `Result.unwrap()`, which might be better handled

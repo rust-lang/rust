@@ -166,6 +166,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         precedence::PRECEDENCE,
         ptr_arg::PTR_ARG,
         ranges::RANGE_STEP_BY_ZERO,
+        ranges::RANGE_ZIP_WITH_LEN,
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
         types::BOX_VEC,
