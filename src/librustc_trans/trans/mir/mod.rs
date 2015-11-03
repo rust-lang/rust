@@ -55,6 +55,9 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
     ///     - nor should it appear in an lvalue path like `tmp.a`
     /// - the operand must be defined by an rvalue that can generate immediate
     ///   values
+    ///
+    /// Avoiding allocs can also be important for certain intrinsics,
+    /// notably `expect`.
     temps: Vec<TempRef<'tcx>>,
 
     /// The arguments to the function; as args are lvalues, these are

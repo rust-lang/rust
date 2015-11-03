@@ -20,6 +20,7 @@ use trans::build;
 use trans::common::{self, Block, Result};
 use trans::debuginfo::DebugLoc;
 use trans::declare;
+use trans::expr;
 use trans::machine;
 use trans::type_::Type;
 use trans::type_of;
@@ -55,6 +56,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::Rvalue::Aggregate(_, ref operands) => {
                 for (i, operand) in operands.iter().enumerate() {
+                    // Note: perhaps this should be StructGep, but
+                    // note that in some cases the values here will
+                    // not be structs but arrays.
                     let lldest_i = build::GEPi(bcx, lldest, &[0, i]);
                     self.trans_operand_into(bcx, lldest_i, operand);
                 }
@@ -70,8 +74,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let llbase1 = build::GEPi(bcx, llbase, &[from_start]);
                 let adj = common::C_uint(ccx, from_start + from_end);
                 let lllen1 = build::Sub(bcx, lllen, adj, DebugLoc::None);
-                build::Store(bcx, llbase1, build::GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]));
-                build::Store(bcx, lllen1, build::GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]));
+                let lladdrdest = expr::get_dataptr(bcx, lldest);
+                build::Store(bcx, llbase1, lladdrdest);
+                let llmetadest = expr::get_meta(bcx, lldest);
+                build::Store(bcx, lllen1, llmetadest);
                 bcx
             }
 
