@@ -30,7 +30,7 @@ pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
         if
             ty.is_scalar() ||
             ty.is_unique() ||
-            ty.is_region_ptr() ||
+            (ty.is_region_ptr() && !common::type_is_fat_ptr(bcx.tcx(), ty)) ||
             ty.is_simd()
         {
             // These sorts of types are immediates that we can store
@@ -42,7 +42,7 @@ pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
             // for newtypes, but we currently force some types
             // (e.g. structs) into an alloca unconditionally, just so
             // that we don't have to deal with having two pathways
-            // (gep vs getvalue etc).
+            // (gep vs extractvalue etc).
             analyzer.mark_as_lvalue(index);
         }
     }
