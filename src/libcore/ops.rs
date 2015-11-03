@@ -949,6 +949,7 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///     }
 /// }
 ///
+/// # #[allow(unused_assignments)]
 /// fn main() {
 ///     let mut foo = Foo;
 ///     foo += Foo;
@@ -998,6 +999,7 @@ add_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///     }
 /// }
 ///
+/// # #[allow(unused_assignments)]
 /// fn main() {
 ///     let mut foo = Foo;
 ///     foo -= Foo;
@@ -1047,6 +1049,7 @@ sub_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///     }
 /// }
 ///
+/// # #[allow(unused_assignments)]
 /// fn main() {
 ///     let mut foo = Foo;
 ///     foo *= Foo;
@@ -1096,6 +1099,7 @@ mul_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///     }
 /// }
 ///
+/// # #[allow(unused_assignments)]
 /// fn main() {
 ///     let mut foo = Foo;
 ///     foo /= Foo;
@@ -1145,6 +1149,7 @@ div_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///     }
 /// }
 ///
+/// # #[allow(unused_assignments)]
 /// fn main() {
 ///     let mut foo = Foo;
 ///     foo %= Foo;
@@ -1194,6 +1199,7 @@ rem_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///     }
 /// }
 ///
+/// # #[allow(unused_assignments)]
 /// fn main() {
 ///     let mut foo = Foo;
 ///     foo &= Foo;
@@ -1243,6 +1249,7 @@ bitand_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///     }
 /// }
 ///
+/// # #[allow(unused_assignments)]
 /// fn main() {
 ///     let mut foo = Foo;
 ///     foo |= Foo;
@@ -1292,6 +1299,7 @@ bitor_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///     }
 /// }
 ///
+/// # #[allow(unused_assignments)]
 /// fn main() {
 ///     let mut foo = Foo;
 ///     foo ^= Foo;
@@ -1341,6 +1349,7 @@ bitxor_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///     }
 /// }
 ///
+/// # #[allow(unused_assignments)]
 /// fn main() {
 ///     let mut foo = Foo;
 ///     foo <<= Foo;
@@ -1409,6 +1418,7 @@ shl_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///     }
 /// }
 ///
+/// # #[allow(unused_assignments)]
 /// fn main() {
 ///     let mut foo = Foo;
 ///     foo >>= Foo;

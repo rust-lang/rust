@@ -16,6 +16,7 @@
 //! and containing an error value.
 //!
 //! ```
+//! # #[allow(dead_code)]
 //! enum Result<T, E> {
 //!    Ok(T),
 //!    Err(E)
@@ -104,6 +105,7 @@
 //! something like this:
 //!
 //! ```no_run
+//! # #![allow(unused_must_use)] // \o/
 //! use std::fs::File;
 //! use std::io::prelude::*;
 //!
@@ -143,6 +145,7 @@
 //! # use std::fs::File;
 //! # use std::io::prelude::*;
 //! # use std::io;
+//! # #[allow(dead_code)]
 //! fn write_message() -> io::Result<()> {
 //!     let mut file = try!(File::create("valuable_data.txt"));
 //!     try!(file.write_all(b"important message"));
@@ -160,6 +163,7 @@
 //! It replaces this:
 //!
 //! ```
+//! # #![allow(dead_code)]
 //! use std::fs::File;
 //! use std::io::prelude::*;
 //! use std::io;
@@ -189,6 +193,7 @@
 //! With this:
 //!
 //! ```
+//! # #![allow(dead_code)]
 //! use std::fs::File;
 //! use std::io::prelude::*;
 //! use std::io;
@@ -423,6 +428,7 @@ impl<T, E> Result<T, E> {
     ///
     /// ```
     /// #![feature(as_slice)]
+    /// # #![allow(deprecated)]
     ///
     /// let mut x: Result<&str, u32> = Ok("Gold");
     /// {

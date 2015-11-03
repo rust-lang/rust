@@ -42,6 +42,7 @@ impl<T> !Send for *mut T { }
 /// `?Sized` can be used to remove this bound if it is not appropriate.
 ///
 /// ```
+/// # #![allow(dead_code)]
 /// struct Foo<T>(T);
 /// struct Bar<T: ?Sized>(T);
 ///
@@ -106,6 +107,7 @@ pub trait Unsize<T: ?Sized> {
 /// `struct` can be `Copy`:
 ///
 /// ```
+/// # #[allow(dead_code)]
 /// struct Point {
 ///    x: i32,
 ///    y: i32,
@@ -115,6 +117,7 @@ pub trait Unsize<T: ?Sized> {
 /// A `struct` can be `Copy`, and `i32` is `Copy`, so therefore, `Point` is eligible to be `Copy`.
 ///
 /// ```
+/// # #![allow(dead_code)]
 /// # struct Point;
 /// struct PointList {
 ///     points: Vec<Point>,
@@ -303,6 +306,7 @@ macro_rules! impls{
 /// ```
 /// use std::marker::PhantomData;
 ///
+/// # #[allow(dead_code)]
 /// struct Slice<'a, T:'a> {
 ///     start: *const T,
 ///     end: *const T,
@@ -323,6 +327,7 @@ macro_rules! impls{
 /// mismatches by enforcing types in the method implementations:
 ///
 /// ```
+/// # #![allow(dead_code)]
 /// # trait ResType { fn foo(&self); }
 /// # struct ParamType;
 /// # mod foreign_lib {
@@ -392,6 +397,8 @@ mod impls {
 /// #![feature(reflect_marker)]
 /// use std::marker::Reflect;
 /// use std::any::Any;
+///
+/// # #[allow(dead_code)]
 /// fn foo<T:Reflect+'static>(x: &T) {
 ///     let any: &Any = x;
 ///     if any.is::<u32>() { println!("u32"); }

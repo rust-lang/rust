@@ -142,8 +142,6 @@ impl Utf8Error {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(utf8_error)]
-    ///
     /// use std::str;
     ///
     /// // some invalid bytes, in a vector

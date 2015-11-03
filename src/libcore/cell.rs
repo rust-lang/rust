@@ -76,6 +76,7 @@
 //! a trait method that was originally defined to take `&self`.
 //!
 //! ```
+//! # #![allow(dead_code)]
 //! use std::cell::RefCell;
 //!
 //! struct Graph {
@@ -125,6 +126,7 @@
 //! }
 //!
 //! struct RcBox<T> {
+//! # #[allow(dead_code)]
 //!     value: T,
 //!     refcount: Cell<usize>
 //! }
@@ -778,6 +780,7 @@ impl<'b, T: ?Sized> DerefMut for RefMut<'b, T> {
 /// use std::cell::UnsafeCell;
 /// use std::marker::Sync;
 ///
+/// # #[allow(dead_code)]
 /// struct NotThreadSafe<T> {
 ///     value: UnsafeCell<T>,
 /// }

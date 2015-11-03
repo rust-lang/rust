@@ -15,6 +15,7 @@
 //! that define a set of options:
 //!
 //! ```
+//! # #[allow(dead_code)]
 //! struct SomeOptions {
 //!     foo: i32,
 //!     bar: f32,
@@ -24,6 +25,7 @@
 //! How can we define some default values? You can use `Default`:
 //!
 //! ```
+//! # #[allow(dead_code)]
 //! #[derive(Default)]
 //! struct SomeOptions {
 //!     foo: i32,
@@ -40,6 +42,7 @@
 //! If you have your own type, you need to implement `Default` yourself:
 //!
 //! ```
+//! # #![allow(dead_code)]
 //! enum Kind {
 //!     A,
 //!     B,
@@ -66,6 +69,7 @@
 //! If you want to override a particular option, but still retain the other defaults:
 //!
 //! ```
+//! # #[allow(dead_code)]
 //! # #[derive(Default)]
 //! # struct SomeOptions {
 //! #     foo: i32,
@@ -88,6 +92,7 @@ use marker::Sized;
 /// # Examples
 ///
 /// ```
+/// # #[allow(dead_code)]
 /// #[derive(Default)]
 /// struct SomeOptions {
 ///     foo: i32,
@@ -114,6 +119,7 @@ pub trait Default: Sized {
     /// Making your own:
     ///
     /// ```
+    /// # #[allow(dead_code)]
     /// enum Kind {
     ///     A,
     ///     B,
