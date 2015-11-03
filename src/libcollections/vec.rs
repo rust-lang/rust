@@ -242,6 +242,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![allow(unused_mut)]
     /// let mut vec: Vec<i32> = Vec::new();
     /// ```
     #[inline]

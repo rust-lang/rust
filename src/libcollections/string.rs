@@ -55,6 +55,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![allow(unused_mut)]
     /// let mut s = String::new();
     /// ```
     #[inline]
@@ -73,6 +74,20 @@ impl String {
     ///
     /// ```
     /// let mut s = String::with_capacity(10);
+    ///
+    /// // The String contains no chars, even though it has capacity for more
+    /// assert_eq!(s.len(), 0);
+    ///
+    /// // These are all done without reallocating...
+    /// let cap = s.capacity();
+    /// for i in 0..10 {
+    ///     s.push('a');
+    /// }
+    ///
+    /// assert_eq!(s.capacity(), cap);
+    ///
+    /// // ...but this may make the vector reallocate
+    /// s.push('a');
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
