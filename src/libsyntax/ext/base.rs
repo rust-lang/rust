@@ -349,6 +349,7 @@ impl DummyResult {
             id: ast::DUMMY_NODE_ID,
             node: ast::ExprLit(P(codemap::respan(sp, ast::LitBool(false)))),
             span: sp,
+            attrs: None,
         })
     }
 

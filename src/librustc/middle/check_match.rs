@@ -409,7 +409,8 @@ fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
     P(hir::Expr {
         id: 0,
         node: hir::ExprLit(P(Spanned { node: node, span: DUMMY_SP })),
-        span: DUMMY_SP
+        span: DUMMY_SP,
+        attrs: None,
     })
 }
 

@@ -331,6 +331,7 @@ pub fn lower_local(lctx: &LoweringContext, l: &Local) -> P<hir::Local> {
         pat: lower_pat(lctx, &l.pat),
         init: l.init.as_ref().map(|e| lower_expr(lctx, e)),
         span: l.span,
+        attrs: l.attrs.clone(),
     })
 }
 
@@ -1215,7 +1216,14 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                 maybe_expr.as_ref().map(|x| lower_expr(lctx, x)))
             }
             ExprParen(ref ex) => {
-                return lower_expr(lctx, ex);
+                // merge attributes into the inner expression.
+                return lower_expr(lctx, ex).map(|mut ex| {
+                    ex.attrs.update(|attrs| {
+                        // FIXME: Badly named
+                        attrs.prepend_outer(e.attrs.clone())
+                    });
+                    ex
+                });
             }
 
             // Desugar ExprIfLet
@@ -1454,6 +1462,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
             ExprMac(_) => panic!("Shouldn't exist here"),
         },
         span: e.span,
+        attrs: e.attrs.clone(),
     })
 }
 
@@ -1552,52 +1561,62 @@ fn arm(pats: Vec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
     }
 }
 
-fn expr_break(lctx: &LoweringContext, span: Span) -> P<hir::Expr> {
-    expr(lctx, span, hir::ExprBreak(None))
+fn expr_break(lctx: &LoweringContext, span: Span,
+              attrs: ThinAttributes) -> P<hir::Expr> {
+    expr(lctx, span, hir::ExprBreak(None), attrs)
 }
 
 fn expr_call(lctx: &LoweringContext,
              span: Span,
              e: P<hir::Expr>,
-             args: Vec<P<hir::Expr>>)
+             args: Vec<P<hir::Expr>>,
+             attrs: ThinAttributes)
              -> P<hir::Expr> {
-    expr(lctx, span, hir::ExprCall(e, args))
+    expr(lctx, span, hir::ExprCall(e, args), attrs)
 }
 
-fn expr_ident(lctx: &LoweringContext, span: Span, id: Ident) -> P<hir::Expr> {
-    expr_path(lctx, path_ident(span, id))
+fn expr_ident(lctx: &LoweringContext, span: Span, id: Ident,
+              attrs: ThinAttributes) -> P<hir::Expr> {
+    expr_path(lctx, path_ident(span, id), attrs)
 }
 
-fn expr_mut_addr_of(lctx: &LoweringContext, span: Span, e: P<hir::Expr>) -> P<hir::Expr> {
-    expr(lctx, span, hir::ExprAddrOf(hir::MutMutable, e))
+fn expr_mut_addr_of(lctx: &LoweringContext, span: Span, e: P<hir::Expr>,
+                    attrs: ThinAttributes) -> P<hir::Expr> {
+    expr(lctx, span, hir::ExprAddrOf(hir::MutMutable, e), attrs)
 }
 
-fn expr_path(lctx: &LoweringContext, path: hir::Path) -> P<hir::Expr> {
-    expr(lctx, path.span, hir::ExprPath(None, path))
+fn expr_path(lctx: &LoweringContext, path: hir::Path,
+             attrs: ThinAttributes) -> P<hir::Expr> {
+    expr(lctx, path.span, hir::ExprPath(None, path), attrs)
 }
 
 fn expr_match(lctx: &LoweringContext,
               span: Span,
               arg: P<hir::Expr>,
               arms: Vec<hir::Arm>,
-              source: hir::MatchSource)
+              source: hir::MatchSource,
+              attrs: ThinAttributes)
               -> P<hir::Expr> {
-    expr(lctx, span, hir::ExprMatch(arg, arms, source))
+    expr(lctx, span, hir::ExprMatch(arg, arms, source), attrs)
 }
 
-fn expr_block(lctx: &LoweringContext, b: P<hir::Block>) -> P<hir::Expr> {
-    expr(lctx, b.span, hir::ExprBlock(b))
+fn expr_block(lctx: &LoweringContext, b: P<hir::Block>,
+              attrs: ThinAttributes) -> P<hir::Expr> {
+    expr(lctx, b.span, hir::ExprBlock(b), attrs)
 }
 
-fn expr_tuple(lctx: &LoweringContext, sp: Span, exprs: Vec<P<hir::Expr>>) -> P<hir::Expr> {
-    expr(lctx, sp, hir::ExprTup(exprs))
+fn expr_tuple(lctx: &LoweringContext, sp: Span, exprs: Vec<P<hir::Expr>>,
+              attrs: ThinAttributes) -> P<hir::Expr> {
+    expr(lctx, sp, hir::ExprTup(exprs), attrs)
 }
 
-fn expr(lctx: &LoweringContext, span: Span, node: hir::Expr_) -> P<hir::Expr> {
+fn expr(lctx: &LoweringContext, span: Span, node: hir::Expr_,
+        attrs: ThinAttributes) -> P<hir::Expr> {
     P(hir::Expr {
         id: lctx.next_id(),
         node: node,
         span: span,
+        attrs: attrs,
     })
 }
 
@@ -1605,7 +1624,8 @@ fn stmt_let(lctx: &LoweringContext,
             sp: Span,
             mutbl: bool,
             ident: Ident,
-            ex: P<hir::Expr>)
+            ex: P<hir::Expr>,
+            attrs: ThinAttributes)
             -> P<hir::Stmt> {
     let pat = if mutbl {
         pat_ident_binding_mode(lctx, sp, ident, hir::BindByValue(hir::MutMutable))
@@ -1618,6 +1638,7 @@ fn stmt_let(lctx: &LoweringContext,
         init: Some(ex),
         id: lctx.next_id(),
         span: sp,
+        attrs: attrs,
     });
     let decl = respan(sp, hir::DeclLocal(local));
     P(respan(sp, hir::StmtDecl(P(decl), lctx.next_id())))
@@ -1755,7 +1776,8 @@ fn signal_block_expr(lctx: &LoweringContext,
                      stmts: Vec<P<hir::Stmt>>,
                      expr: P<hir::Expr>,
                      span: Span,
-                     rule: hir::BlockCheckMode)
+                     rule: hir::BlockCheckMode,
+                     attrs: ThinAttributes)
                      -> P<hir::Expr> {
     let id = lctx.next_id();
     expr_block(lctx,
@@ -1765,7 +1787,8 @@ fn signal_block_expr(lctx: &LoweringContext,
                    id: id,
                    stmts: stmts,
                    expr: Some(expr),
-               }))
+               }),
+               attrs)
 }
 
 

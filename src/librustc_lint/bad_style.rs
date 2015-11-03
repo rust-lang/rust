@@ -138,7 +138,7 @@ impl LateLintPass for NonCamelCaseTypes {
 declare_lint! {
     pub NON_SNAKE_CASE,
     Warn,
-    "methods, functions, lifetime parameters and modules should have snake case names"
+    "variables, methods, functions, lifetime parameters and modules should have snake case names"
 }
 
 #[derive(Copy, Clone)]

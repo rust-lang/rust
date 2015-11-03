@@ -233,6 +233,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             dialect: dialect,
             expn_id: expn_id,
         }),
-        span: sp
+        span: sp,
+        attrs: None,
     }))
 }

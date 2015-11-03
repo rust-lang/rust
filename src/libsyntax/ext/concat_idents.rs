@@ -67,6 +67,7 @@ pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
             }
         ),
         span: sp,
+        attrs: None,
     });
     MacEager::expr(e)
 }

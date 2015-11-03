@@ -16,6 +16,8 @@ pub use self::IntType::*;
 
 use ast;
 use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
+use ast::{Stmt, StmtDecl, StmtExpr, StmtMac, StmtSemi, DeclItem, DeclLocal, ThinAttributes};
+use ast::{Expr, ThinAttributesExt, Item, Local, Decl};
 use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
 use diagnostic::SpanHandler;
@@ -718,5 +720,85 @@ impl IntType {
             SignedInt(ast::TyI64) | UnsignedInt(ast::TyU64) => true,
             SignedInt(ast::TyIs) | UnsignedInt(ast::TyUs) => false
         }
+    }
+}
+
+/// A cheap way to add Attributes to an AST node.
+pub trait WithAttrs {
+    // FIXME: Could be extended to anything IntoIter<Item=Attribute>
+    fn with_attrs(self, attrs: ThinAttributes) -> Self;
+}
+
+impl WithAttrs for P<Expr> {
+    fn with_attrs(self, attrs: ThinAttributes) -> Self {
+        self.map(|mut e| {
+            e.attrs.update(|a| a.append_inner(attrs));
+            e
+        })
+    }
+}
+
+impl WithAttrs for P<Item> {
+    fn with_attrs(self, attrs: ThinAttributes) -> Self {
+        self.map(|Item { ident, attrs: mut ats, id, node, vis, span }| {
+            ats.extend(attrs.into_attrs());
+            Item {
+                ident: ident,
+                attrs: ats,
+                id: id,
+                node: node,
+                vis: vis,
+                span: span,
+            }
+        })
+    }
+}
+
+impl WithAttrs for P<Local> {
+    fn with_attrs(self, attrs: ThinAttributes) -> Self {
+        self.map(|Local { pat, ty, init, id, span, attrs: mut ats }| {
+            ats.update(|a| a.append_inner(attrs));
+            Local {
+                pat: pat,
+                ty: ty,
+                init: init,
+                id: id,
+                span: span,
+                attrs: ats,
+            }
+        })
+    }
+}
+
+impl WithAttrs for P<Decl> {
+    fn with_attrs(self, attrs: ThinAttributes) -> Self {
+        self.map(|Spanned { span, node }| {
+            Spanned {
+                span: span,
+                node: match node {
+                    DeclLocal(local) => DeclLocal(local.with_attrs(attrs)),
+                    DeclItem(item) => DeclItem(item.with_attrs(attrs)),
+                }
+            }
+        })
+    }
+}
+
+impl WithAttrs for P<Stmt> {
+    fn with_attrs(self, attrs: ThinAttributes) -> Self {
+        self.map(|Spanned { span, node }| {
+            Spanned {
+                span: span,
+                node: match node {
+                    StmtDecl(decl, id) => StmtDecl(decl.with_attrs(attrs), id),
+                    StmtExpr(expr, id) => StmtExpr(expr.with_attrs(attrs), id),
+                    StmtSemi(expr, id) => StmtSemi(expr.with_attrs(attrs), id),
+                    StmtMac(mac, style, mut ats) => {
+                        ats.update(|a| a.append_inner(attrs));
+                        StmtMac(mac, style, ats)
+                    }
+                },
+            }
+        })
     }
 }

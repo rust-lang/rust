@@ -134,6 +134,14 @@ pub trait Folder : Sized {
         e.map(|e| noop_fold_expr(e, self))
     }
 
+    fn fold_opt_expr(&mut self, e: P<Expr>) -> Option<P<Expr>> {
+        noop_fold_opt_expr(e, self)
+    }
+
+    fn fold_exprs(&mut self, es: Vec<P<Expr>>) -> Vec<P<Expr>> {
+        noop_fold_exprs(es, self)
+    }
+
     fn fold_ty(&mut self, t: P<Ty>) -> P<Ty> {
         noop_fold_ty(t, self)
     }
@@ -508,12 +516,13 @@ pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesizedPara
 }
 
 pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
-    l.map(|Local {id, pat, ty, init, span}| Local {
+    l.map(|Local {id, pat, ty, init, span, attrs}| Local {
         id: fld.new_id(id),
         ty: ty.map(|t| fld.fold_ty(t)),
         pat: fld.fold_pat(pat),
         init: init.map(|e| fld.fold_expr(e)),
-        span: fld.new_span(span)
+        span: fld.new_span(span),
+        attrs: attrs.map_opt_attrs(|v| fold_attrs(v, fld)),
     })
 }
 
@@ -891,7 +900,7 @@ pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
     b.map(|Block {id, stmts, expr, rules, span}| Block {
         id: folder.new_id(id),
         stmts: stmts.into_iter().flat_map(|s| folder.fold_stmt(s).into_iter()).collect(),
-        expr: expr.map(|x| folder.fold_expr(x)),
+        expr: expr.and_then(|x| folder.fold_opt_expr(x)),
         rules: rules,
         span: folder.new_span(span),
     })
@@ -1171,7 +1180,7 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
     })
 }
 
-pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) -> Expr {
+pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mut T) -> Expr {
     Expr {
         id: folder.new_id(id),
         node: match node {
@@ -1182,21 +1191,21 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                 ExprInPlace(folder.fold_expr(p), folder.fold_expr(e))
             }
             ExprVec(exprs) => {
-                ExprVec(exprs.move_map(|x| folder.fold_expr(x)))
+                ExprVec(folder.fold_exprs(exprs))
             }
             ExprRepeat(expr, count) => {
                 ExprRepeat(folder.fold_expr(expr), folder.fold_expr(count))
             }
-            ExprTup(elts) => ExprTup(elts.move_map(|x| folder.fold_expr(x))),
+            ExprTup(exprs) => ExprTup(folder.fold_exprs(exprs)),
             ExprCall(f, args) => {
                 ExprCall(folder.fold_expr(f),
-                         args.move_map(|x| folder.fold_expr(x)))
+                         folder.fold_exprs(args))
             }
             ExprMethodCall(i, tps, args) => {
                 ExprMethodCall(
                     respan(folder.new_span(i.span), folder.fold_ident(i.node)),
                     tps.move_map(|x| folder.fold_ty(x)),
-                    args.move_map(|x| folder.fold_expr(x)))
+                    folder.fold_exprs(args))
             }
             ExprBinary(binop, lhs, rhs) => {
                 ExprBinary(binop,
@@ -1329,8 +1338,18 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
             },
             ExprParen(ex) => ExprParen(folder.fold_expr(ex))
         },
-        span: folder.new_span(span)
+        span: folder.new_span(span),
+        attrs: attrs.map_opt_attrs(|v| fold_attrs(v, folder)),
     }
+}
+
+pub fn noop_fold_opt_expr<T: Folder>(e: P<Expr>, folder: &mut T) -> Option<P<Expr>> {
+    Some(folder.fold_expr(e))
+}
+
+pub fn noop_fold_exprs<T: Folder>(es: Vec<P<Expr>>, folder: &mut T) -> Vec<P<Expr>> {
+    // FIXME: Needs a efficient in-place flat_map
+    es.into_iter().flat_map(|e| folder.fold_opt_expr(e)).collect()
 }
 
 pub fn noop_fold_stmt<T: Folder>(Spanned {node, span}: Stmt, folder: &mut T)
@@ -1346,20 +1365,30 @@ pub fn noop_fold_stmt<T: Folder>(Spanned {node, span}: Stmt, folder: &mut T)
         }
         StmtExpr(e, id) => {
             let id = folder.new_id(id);
-            SmallVector::one(P(Spanned {
-                node: StmtExpr(folder.fold_expr(e), id),
-                span: span
-            }))
+            if let Some(e) = folder.fold_opt_expr(e) {
+                SmallVector::one(P(Spanned {
+                    node: StmtExpr(e, id),
+                    span: span
+                }))
+            } else {
+                SmallVector::zero()
+            }
         }
         StmtSemi(e, id) => {
             let id = folder.new_id(id);
-            SmallVector::one(P(Spanned {
-                node: StmtSemi(folder.fold_expr(e), id),
-                span: span
-            }))
+            if let Some(e) = folder.fold_opt_expr(e) {
+                SmallVector::one(P(Spanned {
+                    node: StmtSemi(e, id),
+                    span: span
+                }))
+            } else {
+                SmallVector::zero()
+            }
         }
-        StmtMac(mac, semi) => SmallVector::one(P(Spanned {
-            node: StmtMac(mac.map(|m| folder.fold_mac(m)), semi),
+        StmtMac(mac, semi, attrs) => SmallVector::one(P(Spanned {
+            node: StmtMac(mac.map(|m| folder.fold_mac(m)),
+                          semi,
+                          attrs.map_opt_attrs(|v| fold_attrs(v, folder))),
             span: span
         }))
     }

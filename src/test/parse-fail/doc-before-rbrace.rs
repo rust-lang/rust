@@ -12,5 +12,5 @@
 
 fn main() {
     println!("Hi"); /// hi
-    //~^ ERROR expected item after doc comment
 }
+//~^ ERROR expected statement

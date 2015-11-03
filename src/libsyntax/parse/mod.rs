@@ -699,7 +699,8 @@ mod tests {
                             }
                         ),
                     }),
-                    span: sp(0, 1)
+                    span: sp(0, 1),
+                    attrs: None,
                    }))
     }
 
@@ -721,7 +722,8 @@ mod tests {
                                 }
                             )
                         }),
-                    span: sp(0, 6)
+                    span: sp(0, 6),
+                    attrs: None,
                    }))
     }
 
@@ -848,9 +850,11 @@ mod tests {
                                 }
                             ),
                         }),
-                        span:sp(7,8)
+                        span:sp(7,8),
+                        attrs: None,
                     }))),
-                    span:sp(0,8)
+                    span:sp(0,8),
+                    attrs: None,
                    }))
     }
 
@@ -869,7 +873,8 @@ mod tests {
                                 }
                                ),
                             }),
-                           span: sp(0,1)}),
+                           span: sp(0,1),
+                           attrs: None}),
                                            ast::DUMMY_NODE_ID),
                        span: sp(0,1)})))
 
@@ -963,7 +968,8 @@ mod tests {
                                                             }
                                                         ),
                                                       }),
-                                                span: sp(17,18)}),
+                                                span: sp(17,18),
+                                                attrs: None,}),
                                                 ast::DUMMY_NODE_ID),
                                             span: sp(17,19)})),
                                         expr: None,
