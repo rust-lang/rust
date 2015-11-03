@@ -140,8 +140,6 @@ impl Ordering {
     /// This method can be used to reverse a comparison:
     ///
     /// ```
-    /// use std::cmp::Ordering;
-    ///
     /// let mut data: &mut [_] = &mut [2, 10, 5, 8];
     ///
     /// // sort the array from largest to smallest.
@@ -263,8 +261,6 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// # Examples
     ///
     /// ```
-    /// use std::cmp::Ordering;
-    ///
     /// let result = 1.0 < 2.0;
     /// assert_eq!(result, true);
     ///

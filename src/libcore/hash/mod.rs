@@ -45,6 +45,7 @@
 //!
 //! struct Person {
 //!     id: u32,
+//! # #[allow(dead_code)]
 //!     name: String,
 //!     phone: u64,
 //! }
