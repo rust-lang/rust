@@ -2553,10 +2553,7 @@ pub trait Extend<A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
-    /// // You can extend a String with some chars:
     /// let mut message = String::from("The first three letters are: ");
     ///
     /// message.extend(['a', 'b', 'c'].iter());
