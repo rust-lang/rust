@@ -227,8 +227,6 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_unique)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let x = Rc::new(3);
@@ -370,7 +368,6 @@ impl<T: Clone> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_unique)]
     /// use std::rc::Rc;
     ///
     /// let mut data = Rc::new(5);
