@@ -40,7 +40,7 @@ how to write `unsafe` Rust code. It is for advanced Rust programmers.
 
 # Tools
 
-[Cargo](https://crates.io) is the Rust's package manager providing access to libraries
+[Cargo](http://doc.crates.io/index.html) is the Rust's package manager providing access to libraries
 beyond the standard one, and its website contains lots of good documentation.
 
 [`rustdoc`](book/documentation.html) is the Rust's documentation generator, a tool converting
