@@ -1879,6 +1879,20 @@ impl AsRef<Path> for PathBuf {
     fn as_ref(&self) -> &Path { self }
 }
 
+#[stable(feature = "path_into_iter", since = "1.6.0")]
+impl<'a> IntoIterator for &'a PathBuf {
+    type Item = &'a OsStr;
+    type IntoIter = Iter<'a>;
+    fn into_iter(self) -> Iter<'a> { self.iter() }
+}
+
+#[stable(feature = "path_into_iter", since = "1.6.0")]
+impl<'a> IntoIterator for &'a Path {
+    type Item = &'a OsStr;
+    type IntoIter = Iter<'a>;
+    fn into_iter(self) -> Iter<'a> { self.iter() }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
