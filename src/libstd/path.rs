@@ -1909,6 +1909,29 @@ impl<'a> IntoIterator for &'a Path {
     fn into_iter(self) -> Iter<'a> { self.iter() }
 }
 
+macro_rules! impl_eq {
+    ($lhs:ty, $rhs: ty) => {
+        #[stable(feature = "partialeq_path", since = "1.6.0")]
+        impl<'a, 'b> PartialEq<$rhs> for $lhs {
+            #[inline]
+            fn eq(&self, other: &$rhs) -> bool { <Path as PartialEq>::eq(self, other) }
+        }
+
+        #[stable(feature = "partialeq_path", since = "1.6.0")]
+        impl<'a, 'b> PartialEq<$lhs> for $rhs {
+            #[inline]
+            fn eq(&self, other: &$lhs) -> bool { <Path as PartialEq>::eq(self, other) }
+        }
+
+    }
+}
+
+impl_eq!(PathBuf, Path);
+impl_eq!(PathBuf, &'a Path);
+impl_eq!(Cow<'a, Path>, Path);
+impl_eq!(Cow<'a, Path>, &'b Path);
+impl_eq!(Cow<'a, Path>, PathBuf);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3104,6 +3127,31 @@ mod tests {
         tfe!("..", "foo", "..",  false);
         tfe!("foo/..", "bar", "foo/..", false);
         tfe!("/", "foo", "/", false);
+    }
+
+    #[test]
+    fn test_eq_recievers() {
+        use borrow::Cow;
+
+        let borrowed: &Path = Path::new("foo/bar");
+        let mut owned: PathBuf = PathBuf::new();
+        owned.push("foo");
+        owned.push("bar");
+        let borrowed_cow: Cow<Path> = borrowed.into();
+        let owned_cow: Cow<Path> = owned.clone().into();
+
+        macro_rules! t {
+            ($($current:expr),+) => {
+                $(
+                    assert_eq!($current, borrowed);
+                    assert_eq!($current, owned);
+                    assert_eq!($current, borrowed_cow);
+                    assert_eq!($current, owned_cow);
+                )+
+            }
+        }
+
+        t!(borrowed, owned, borrowed_cow, owned_cow);
     }
 
     #[test]
