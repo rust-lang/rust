@@ -1195,7 +1195,18 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
 
         (*op)(self, cmt.clone(), pat);
 
-        let opt_def = self.tcx().def_map.borrow().get(&pat.id).map(|d| d.full_def());
+        let opt_def = if let Some(path_res) = self.tcx().def_map.borrow().get(&pat.id) {
+            if path_res.depth != 0 {
+                // Since patterns can be associated constants
+                // which are resolved during typeck, we might have
+                // some unresolved patterns reaching this stage
+                // without aborting
+                return Err(());
+            }
+            Some(path_res.full_def())
+        } else {
+            None
+        };
 
         // Note: This goes up here (rather than within the PatEnum arm
         // alone) because struct patterns can refer to struct types or
