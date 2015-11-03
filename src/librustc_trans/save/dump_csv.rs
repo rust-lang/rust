@@ -107,8 +107,17 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     }
 
     pub fn dump_crate_info(&mut self, name: &str, krate: &ast::Crate) {
+        let source_file = self.tcx.sess.local_crate_source_file.as_ref();
+        let crate_root = match source_file {
+            Some(source_file) => match source_file.file_name() {
+                Some(_) => source_file.parent().unwrap().display().to_string(),
+                None => source_file.display().to_string(),
+            },
+            None => "<no source>".to_owned(),
+        };
+
         // The current crate.
-        self.fmt.crate_str(krate.span, name);
+        self.fmt.crate_str(krate.span, name, &crate_root);
 
         // Dump info about all the external crates referenced from this crate.
         for c in &self.save_ctxt.get_external_crates() {
