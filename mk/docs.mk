@@ -22,14 +22,14 @@
 # L10N_LANGS are the languages for which the docs have been
 # translated.
 ######################################################################
-DOCS := index intro tutorial \
+DOCS := index \
     complement-lang-faq complement-design-faq complement-project-faq \
     rustdoc reference grammar
 
 # Legacy guides, preserved for a while to reduce the number of 404s
 DOCS += guide-crates guide-error-handling guide-ffi guide-macros guide \
     guide-ownership guide-plugins guide-pointers guide-strings guide-tasks \
-    guide-testing
+    guide-testing tutorial intro
 
 
 RUSTDOC_DEPS_reference := doc/full-toc.inc
