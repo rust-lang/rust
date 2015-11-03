@@ -1166,6 +1166,22 @@ impl<'a> IntoCow<'a, Path> for &'a Path {
     }
 }
 
+#[stable(feature = "cow_from_path", since = "1.6.0")]
+impl<'a> From<&'a Path> for Cow<'a, Path> {
+    #[inline]
+    fn from(s: &'a Path) -> Cow<'a, Path> {
+        Cow::Borrowed(s)
+    }
+}
+
+#[stable(feature = "cow_from_path", since = "1.6.0")]
+impl<'a> From<PathBuf> for Cow<'a, Path> {
+    #[inline]
+    fn from(s: PathBuf) -> Cow<'a, Path> {
+        Cow::Owned(s)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToOwned for Path {
     type Owned = PathBuf;
@@ -1998,6 +2014,26 @@ mod tests {
         }
 
         let owned_cow_path: Cow<'static, Path> = pathbuf.into_cow();
+
+        assert_eq!(static_cow_path, owned_cow_path);
+    }
+
+    #[test]
+    fn into() {
+        use borrow::Cow;
+
+        let static_path = Path::new("/home/foo");
+        let static_cow_path: Cow<'static, Path> = static_path.into();
+        let pathbuf = PathBuf::from("/home/foo");
+
+        {
+            let path: &Path = &pathbuf;
+            let borrowed_cow_path: Cow<Path> = path.into();
+
+            assert_eq!(static_cow_path, borrowed_cow_path);
+        }
+
+        let owned_cow_path: Cow<'static, Path> = pathbuf.into();
 
         assert_eq!(static_cow_path, owned_cow_path);
     }
