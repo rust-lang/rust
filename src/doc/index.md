@@ -39,10 +39,6 @@ beyond the standard one, and its website contains lots of good documentation.
 [`rustdoc`](book/documentation.html) is the Rust's documentation generator, a tool converting
 annotated source code into HTML docs.
 
-A bunch of non-official tools are available, such as [Racer](https://github.com/phildawes/racer)
-(code completion engine), or [rustfmt](https://github.com/nrc/rustfmt) (source code formatter),
-or text editor plugins.
-
 # Community & Getting Help
 
 If you need help with something, or just want to talk about Rust with others,
