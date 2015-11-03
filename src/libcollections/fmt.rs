@@ -150,6 +150,7 @@
 //! implement a method of the signature:
 //!
 //! ```
+//! # #![allow(dead_code)]
 //! # use std::fmt;
 //! # struct Foo; // our custom type
 //! # impl fmt::Display for Foo {
@@ -174,7 +175,6 @@
 //! like:
 //!
 //! ```
-//! #![feature(fmt_flags)]
 //! use std::fmt;
 //!
 //! #[derive(Debug)]
@@ -288,6 +288,7 @@
 //! off, some example usage is:
 //!
 //! ```
+//! # #![allow(unused_must_use)]
 //! use std::fmt;
 //! use std::io::{self, Write};
 //!

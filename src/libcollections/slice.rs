@@ -852,6 +852,7 @@ pub trait SliceConcatExt<T: ?Sized> {
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// assert_eq!(["hello", "world"].connect(" "), "hello world");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
