@@ -2074,7 +2074,7 @@ tweak the case analysis in `main`:
 ```rust,ignore
 match search(&args.arg_data_path, &args.arg_city) {
     Err(CliError::NotFound) if args.flag_quiet => process::exit(1),
-    Err(err) => fatal!("{}", err),
+    Err(err) => panic!("{}", err),
     Ok(pops) => for pop in pops {
         println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
     }
