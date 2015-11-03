@@ -1555,7 +1555,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // Ignore unused self.
                 let name = path1.node;
                 if name != special_idents::self_.name {
-                    self.warn_about_unused(sp, p_id, entry_ln, var);
+                    if !self.warn_about_unused(sp, p_id, entry_ln, var) {
+                        if self.live_on_entry(entry_ln, var).is_none() {
+                            self.report_dead_assign(p_id, sp, var, true);
+                        }
+                    }
                 }
             })
         }
@@ -1609,11 +1613,19 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                               ln: LiveNode,
                               var: Variable) {
         if self.live_on_exit(ln, var).is_none() {
-            let r = self.should_warn(var);
-            if let Some(name) = r {
+            self.report_dead_assign(id, sp, var, false);
+        }
+    }
+
+    fn report_dead_assign(&self, id: NodeId, sp: Span, var: Variable, is_argument: bool) {
+        if let Some(name) = self.should_warn(var) {
+            if is_argument {
+                self.ir.tcx.sess.add_lint(lint::builtin::UNUSED_ASSIGNMENTS, id, sp,
+                    format!("value passed to `{}` is never read", name));
+            } else {
                 self.ir.tcx.sess.add_lint(lint::builtin::UNUSED_ASSIGNMENTS, id, sp,
                     format!("value assigned to `{}` is never read", name));
             }
         }
     }
- }
+}
