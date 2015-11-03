@@ -692,8 +692,21 @@ pub enum Stmt_ {
     /// Expr with trailing semi-colon (may have any type):
     StmtSemi(P<Expr>, NodeId),
 
-    StmtMac(P<Mac>, MacStmtStyle),
+    StmtMac(P<Mac>, MacStmtStyle, ThinAttributes),
 }
+
+impl Stmt_ {
+    pub fn attrs(&self) -> &[Attribute] {
+        match *self {
+            StmtDecl(ref d, _) => d.attrs(),
+            StmtExpr(ref e, _) |
+            StmtSemi(ref e, _) => e.attrs(),
+            StmtMac(_, _, Some(ref b)) => b,
+            StmtMac(_, _, None) => &[],
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum MacStmtStyle {
     /// The macro statement had a trailing semicolon, e.g. `foo! { ... };`
@@ -718,6 +731,16 @@ pub struct Local {
     pub init: Option<P<Expr>>,
     pub id: NodeId,
     pub span: Span,
+    pub attrs: ThinAttributes,
+}
+
+impl Local {
+    pub fn attrs(&self) -> &[Attribute] {
+        match self.attrs {
+            Some(ref b) => b,
+            None => &[],
+        }
+    }
 }
 
 pub type Decl = Spanned<Decl_>;
@@ -728,6 +751,15 @@ pub enum Decl_ {
     DeclLocal(P<Local>),
     /// An item binding:
     DeclItem(P<Item>),
+}
+
+impl Decl {
+    pub fn attrs(&self) -> &[Attribute] {
+        match self.node {
+            DeclLocal(ref l) => l.attrs(),
+            DeclItem(ref i) => i.attrs(),
+        }
+    }
 }
 
 /// represents one arm of a 'match'
@@ -766,6 +798,16 @@ pub struct Expr {
     pub id: NodeId,
     pub node: Expr_,
     pub span: Span,
+    pub attrs: ThinAttributes
+}
+
+impl Expr {
+    pub fn attrs(&self) -> &[Attribute] {
+        match self.attrs {
+            Some(ref b) => b,
+            None => &[],
+        }
+    }
 }
 
 impl fmt::Debug for Expr {
@@ -1792,6 +1834,12 @@ pub struct Item {
     pub span: Span,
 }
 
+impl Item {
+    pub fn attrs(&self) -> &[Attribute] {
+        &self.attrs
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Item_ {
     /// An`extern crate` item, with optional original crate name,
@@ -1902,6 +1950,98 @@ pub struct MacroDef {
     pub use_locally: bool,
     pub allow_internal_unstable: bool,
     pub body: Vec<TokenTree>,
+}
+
+/// A list of attributes, behind a optional box as
+/// a space optimization.
+pub type ThinAttributes = Option<Box<Vec<Attribute>>>;
+
+pub trait ThinAttributesExt {
+    fn map_opt_attrs<F>(self, f: F) -> Self
+        where F: FnOnce(Vec<Attribute>) -> Vec<Attribute>;
+    fn prepend_outer(mut self, attrs: Self) -> Self;
+    fn append_inner(mut self, attrs: Self) -> Self;
+    fn update<F>(&mut self, f: F)
+        where Self: Sized,
+              F: FnOnce(Self) -> Self;
+    fn as_attrs(&self) -> &[Attribute];
+    fn into_attrs(self) -> Vec<Attribute>;
+}
+
+// FIXME: Rename inner/outer
+// FIXME: Rename opt_attrs
+
+impl ThinAttributesExt for ThinAttributes {
+    fn map_opt_attrs<F>(self, f: F) -> Self
+        where F: FnOnce(Vec<Attribute>) -> Vec<Attribute> {
+
+        // This is kinda complicated... Ensure the function is
+        // always called, and that None inputs or results are
+        // correctly handled.
+        if let Some(mut b) = self {
+            use std::mem::replace;
+
+            let vec = replace(&mut *b, Vec::new());
+            let vec = f(vec);
+            if vec.len() == 0 {
+                None
+            } else {
+                replace(&mut*b, vec);
+                Some(b)
+            }
+        } else {
+            f(Vec::new()).into_opt_attrs()
+        }
+    }
+
+    fn prepend_outer(self, attrs: ThinAttributes) -> Self {
+        attrs.map_opt_attrs(|mut attrs| {
+            attrs.extend(self.into_attrs());
+            attrs
+        })
+    }
+
+    fn append_inner(self, attrs: ThinAttributes) -> Self {
+        self.map_opt_attrs(|mut self_| {
+            self_.extend(attrs.into_attrs());
+            self_
+        })
+    }
+
+    fn update<F>(&mut self, f: F)
+        where Self: Sized,
+              F: FnOnce(ThinAttributes) -> ThinAttributes
+    {
+        let self_ = f(self.take());
+        *self = self_;
+    }
+
+    fn as_attrs(&self) -> &[Attribute] {
+        match *self {
+            Some(ref b) => b,
+            None => &[],
+        }
+    }
+
+    fn into_attrs(self) -> Vec<Attribute> {
+        match self {
+            Some(b) => *b,
+            None => Vec::new(),
+        }
+    }
+}
+
+pub trait AttributesExt {
+    fn into_opt_attrs(self) -> ThinAttributes;
+}
+impl AttributesExt for Vec<Attribute> {
+    fn into_opt_attrs(self) -> ThinAttributes {
+        if self.len() == 0 {
+            None
+        } else {
+            Some(Box::new(self))
+        }
+    }
 }
 
 #[cfg(test)]

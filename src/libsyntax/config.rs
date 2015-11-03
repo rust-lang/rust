@@ -20,8 +20,9 @@ use util::small_vector::SmallVector;
 
 /// A folder that strips out items that do not belong in the current
 /// configuration.
-struct Context<F> where F: FnMut(&[ast::Attribute]) -> bool {
+struct Context<'a, F> where F: FnMut(&[ast::Attribute]) -> bool {
     in_cfg: F,
+    diagnostic: &'a SpanHandler,
 }
 
 // Support conditional compilation by transforming the AST, stripping out
@@ -32,15 +33,14 @@ pub fn strip_unconfigured_items(diagnostic: &SpanHandler, krate: ast::Crate,
 {
     let krate = process_cfg_attr(diagnostic, krate, feature_gated_cfgs);
     let config = krate.config.clone();
-    strip_items(krate, |attrs| in_cfg(diagnostic, &config, attrs, feature_gated_cfgs))
+    strip_items(diagnostic,
+                krate,
+                |attrs| in_cfg(diagnostic, &config, attrs, feature_gated_cfgs))
 }
 
-impl<F> fold::Folder for Context<F> where F: FnMut(&[ast::Attribute]) -> bool {
+impl<'a, F> fold::Folder for Context<'a, F> where F: FnMut(&[ast::Attribute]) -> bool {
     fn fold_mod(&mut self, module: ast::Mod) -> ast::Mod {
         fold_mod(self, module)
-    }
-    fn fold_block(&mut self, block: P<ast::Block>) -> P<ast::Block> {
-        fold_block(self, block)
     }
     fn fold_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
         fold_foreign_mod(self, foreign_mod)
@@ -49,7 +49,24 @@ impl<F> fold::Folder for Context<F> where F: FnMut(&[ast::Attribute]) -> bool {
         fold_item_underscore(self, item)
     }
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
+        // If an expr is valid to cfg away it will have been removed by the
+        // outer stmt or expression folder before descending in here.
+        // Anything else is always required, and thus has to error out
+        // in case of a cfg attr.
+        //
+        // NB: This intentionally not part of the fold_expr() function
+        //     in order for fold_opt_expr() to be able to avoid this check
+        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a)) {
+            self.diagnostic.span_err(attr.span,
+                "removing an expression is not supported in this position");
+        }
         fold_expr(self, expr)
+    }
+    fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
+        fold_opt_expr(self, expr)
+    }
+    fn fold_stmt(&mut self, stmt: P<ast::Stmt>) -> SmallVector<P<ast::Stmt>> {
+        fold_stmt(self, stmt)
     }
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
         fold::noop_fold_mac(mac, self)
@@ -59,11 +76,13 @@ impl<F> fold::Folder for Context<F> where F: FnMut(&[ast::Attribute]) -> bool {
     }
 }
 
-pub fn strip_items<F>(krate: ast::Crate, in_cfg: F) -> ast::Crate where
+pub fn strip_items<'a, F>(diagnostic: &'a SpanHandler,
+                          krate: ast::Crate, in_cfg: F) -> ast::Crate where
     F: FnMut(&[ast::Attribute]) -> bool,
 {
     let mut ctxt = Context {
         in_cfg: in_cfg,
+        diagnostic: diagnostic,
     };
     ctxt.fold_crate(krate)
 }
@@ -182,45 +201,20 @@ fn fold_struct<F>(cx: &mut Context<F>, vdata: ast::VariantData) -> ast::VariantD
     }
 }
 
-fn retain_stmt<F>(cx: &mut Context<F>, stmt: &ast::Stmt) -> bool where
-    F: FnMut(&[ast::Attribute]) -> bool
+fn fold_opt_expr<F>(cx: &mut Context<F>, expr: P<ast::Expr>) -> Option<P<ast::Expr>>
+    where F: FnMut(&[ast::Attribute]) -> bool
 {
-    match stmt.node {
-        ast::StmtDecl(ref decl, _) => {
-            match decl.node {
-                ast::DeclItem(ref item) => {
-                    item_in_cfg(cx, item)
-                }
-                _ => true
-            }
-        }
-        _ => true
+    if expr_in_cfg(cx, &expr) {
+        Some(fold_expr(cx, expr))
+    } else {
+        None
     }
-}
-
-fn fold_block<F>(cx: &mut Context<F>, b: P<ast::Block>) -> P<ast::Block> where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    b.map(|ast::Block {id, stmts, expr, rules, span}| {
-        let resulting_stmts: Vec<P<ast::Stmt>> =
-            stmts.into_iter().filter(|a| retain_stmt(cx, a)).collect();
-        let resulting_stmts = resulting_stmts.into_iter()
-            .flat_map(|stmt| cx.fold_stmt(stmt).into_iter())
-            .collect();
-        ast::Block {
-            id: id,
-            stmts: resulting_stmts,
-            expr: expr.map(|x| cx.fold_expr(x)),
-            rules: rules,
-            span: span,
-        }
-    })
 }
 
 fn fold_expr<F>(cx: &mut Context<F>, expr: P<ast::Expr>) -> P<ast::Expr> where
     F: FnMut(&[ast::Attribute]) -> bool
 {
-    expr.map(|ast::Expr {id, span, node}| {
+    expr.map(|ast::Expr {id, span, node, attrs}| {
         fold::noop_fold_expr(ast::Expr {
             id: id,
             node: match node {
@@ -231,9 +225,32 @@ fn fold_expr<F>(cx: &mut Context<F>, expr: P<ast::Expr>) -> P<ast::Expr> where
                 }
                 _ => node
             },
-            span: span
+            span: span,
+            attrs: attrs,
         }, cx)
     })
+}
+
+fn fold_stmt<F>(cx: &mut Context<F>, stmt: P<ast::Stmt>) -> SmallVector<P<ast::Stmt>>
+    where F: FnMut(&[ast::Attribute]) -> bool
+{
+    if stmt_in_cfg(cx, &stmt) {
+        stmt.and_then(|s| fold::noop_fold_stmt(s, cx))
+    } else {
+        SmallVector::zero()
+    }
+}
+
+fn stmt_in_cfg<F>(cx: &mut Context<F>, stmt: &ast::Stmt) -> bool where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
+    (cx.in_cfg)(stmt.node.attrs())
+}
+
+fn expr_in_cfg<F>(cx: &mut Context<F>, expr: &ast::Expr) -> bool where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
+    (cx.in_cfg)(expr.attrs())
 }
 
 fn item_in_cfg<F>(cx: &mut Context<F>, item: &ast::Item) -> bool where
@@ -248,13 +265,19 @@ fn foreign_item_in_cfg<F>(cx: &mut Context<F>, item: &ast::ForeignItem) -> bool 
     return (cx.in_cfg)(&item.attrs);
 }
 
+fn is_cfg(attr: &ast::Attribute) -> bool {
+    attr.check_name("cfg")
+}
+
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(diagnostic: &SpanHandler, cfg: &[P<ast::MetaItem>], attrs: &[ast::Attribute],
+fn in_cfg(diagnostic: &SpanHandler,
+          cfg: &[P<ast::MetaItem>],
+          attrs: &[ast::Attribute],
           feature_gated_cfgs: &mut Vec<GatedCfg>) -> bool {
     attrs.iter().all(|attr| {
         let mis = match attr.node.value.node {
-            ast::MetaList(_, ref mis) if attr.check_name("cfg") => mis,
+            ast::MetaList(_, ref mis) if is_cfg(&attr) => mis,
             _ => return true
         };
 

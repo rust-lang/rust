@@ -88,7 +88,7 @@ pub fn modify_for_testing(sess: &ParseSess,
     if should_test {
         generate_test_harness(sess, reexport_test_harness_main, krate, cfg, span_diagnostic)
     } else {
-        strip_test_functions(krate)
+        strip_test_functions(span_diagnostic, krate)
     }
 }
 
@@ -314,10 +314,11 @@ fn generate_test_harness(sess: &ParseSess,
     return res;
 }
 
-fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
+fn strip_test_functions(diagnostic: &diagnostic::SpanHandler, krate: ast::Crate)
+                        -> ast::Crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
-    config::strip_items(krate, |attrs| {
+    config::strip_items(diagnostic, krate, |attrs| {
         !attr::contains_name(&attrs[..], "test") &&
         !attr::contains_name(&attrs[..], "bench")
     })
@@ -619,8 +620,10 @@ fn mk_test_descs(cx: &TestCtxt) -> P<ast::Expr> {
                     mk_test_desc_and_fn_rec(cx, test)
                 }).collect()),
                 span: DUMMY_SP,
+                attrs: None,
             })),
         span: DUMMY_SP,
+        attrs: None,
     })
 }
 

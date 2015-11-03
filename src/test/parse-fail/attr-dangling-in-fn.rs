@@ -10,7 +10,7 @@
 
 // compile-flags: -Z parse-only
 
-// error-pattern:expected item
+// error-pattern:expected statement
 
 fn f() {
   #[foo = "bar"]
