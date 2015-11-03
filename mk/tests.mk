@@ -25,7 +25,8 @@ $(eval $(call RUST_CRATE,collectionstest))
 TEST_TARGET_CRATES = $(filter-out core rustc_unicode alloc_system \
 		     		  alloc_jemalloc,$(TARGET_CRATES)) \
 			collectionstest coretest
-TEST_DOC_CRATES = $(DOC_CRATES) arena flate fmt_macros getopts graphviz
+TEST_DOC_CRATES = $(DOC_CRATES) arena flate fmt_macros getopts graphviz \
+                log
 TEST_HOST_CRATES = $(filter-out rustc_typeck rustc_borrowck rustc_resolve \
 		   		rustc_trans rustc_lint,\
                      $(HOST_CRATES))
