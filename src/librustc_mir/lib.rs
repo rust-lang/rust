@@ -35,4 +35,5 @@ mod hair;
 pub mod repr;
 mod graphviz;
 pub mod tcx;
+pub mod visit;
 
