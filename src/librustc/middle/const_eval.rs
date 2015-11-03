@@ -1032,8 +1032,6 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           };
           let (
               decl,
-              unsafety,
-              abi,
               block,
               constness,
           ) = match try!(eval_const_expr_partial(tcx, callee, sub_ty_hint, fn_args)) {
@@ -1042,12 +1040,12 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                       Some(ast_map::NodeItem(it)) => match it.node {
                           hir::ItemFn(
                               ref decl,
-                              unsafety,
+                              hir::Unsafety::Normal,
                               constness,
-                              abi,
+                              abi::Abi::Rust,
                               _, // ducktype generics? types are funky in const_eval
                               ref block,
-                          ) => (decl, unsafety, abi, block, constness),
+                          ) => (decl, block, constness),
                           _ => signal!(e, NonConstPath),
                       },
                       _ => signal!(e, NonConstPath),
@@ -1057,18 +1055,19 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               },
               _ => signal!(e, NonConstPath),
           };
-          if let ExprTypeChecked = ty_hint {
-              // no need to check for constness... either check_const
-              // already forbids this or we const eval over whatever
-              // we want
-          } else {
-              // we don't know much about the function, so we force it to be a const fn
-              // so compilation will fail later in case the const fn's body is not const
-              assert_eq!(constness, hir::Constness::Const)
+          match (ty_hint, constness) {
+              (ExprTypeChecked, _) => {
+                  // no need to check for constness... either check_const
+                  // already forbids this or we const eval over whatever
+                  // we want
+              },
+              (_, hir::Constness::Const) => {
+                  // we don't know much about the function, so we force it to be a const fn
+                  // so compilation will fail later in case the const fn's body is not const
+              },
+              _ => signal!(e, NonConstPath),
           }
           assert_eq!(decl.inputs.len(), args.len());
-          assert_eq!(unsafety, hir::Unsafety::Normal);
-          assert_eq!(abi, abi::Abi::Rust);
 
           let mut call_args = NodeMap();
           for (arg, arg_expr) in decl.inputs.iter().zip(args.iter()) {
