@@ -632,18 +632,9 @@ putvar CFG_BUILD # Yes, this creates a duplicate entry, but the last one wins.
 CFG_HOST=$(to_llvm_triple $CFG_HOST)
 CFG_TARGET=$(to_llvm_triple $CFG_TARGET)
 
-# On windows we just store the libraries in the bin directory because
-# there's no rpath. This is where the build system itself puts libraries;
-# --libdir is used to configure the installation directory.
-# FIXME: This needs to parameterized over target triples. Do it in platform.mk
-if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ]
-then
-    CFG_LIBDIR_RELATIVE=bin
-else
-    CFG_LIBDIR_RELATIVE=lib
-fi
-
-valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries (do not set it on windows platform)"
+# On Windows this determines root of the subtree for target libraries.
+# Host runtime libs always go to 'bin'.
+valopt libdir "${CFG_PREFIX}/lib" "install libraries"
 
 case "$CFG_LIBDIR" in
     "$CFG_PREFIX"/*) CAT_INC=2;;
@@ -653,11 +644,6 @@ case "$CFG_LIBDIR" in
 esac
 
 CFG_LIBDIR_RELATIVE=`echo ${CFG_LIBDIR} | cut -c$((${#CFG_PREFIX}+${CAT_INC}))-`
-
-if ( [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ] ) \
-	&& [ "$CFG_LIBDIR_RELATIVE" != "bin" ]; then
-    err "libdir on windows should be set to 'bin'"
-fi
 
 if [ $HELP -eq 1 ]
 then
