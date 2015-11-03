@@ -102,14 +102,14 @@ pub fn write_file(text: &StringBuffer,
         }
         WriteMode::Plain => {
             let stdout = stdout();
-            let stdout_lock = stdout.lock();
-            try!(write_system_newlines(stdout_lock, text, config));
+            let stdout = stdout.lock();
+            try!(write_system_newlines(stdout, text, config));
         }
         WriteMode::Display | WriteMode::Coverage => {
             println!("{}:\n", filename);
             let stdout = stdout();
-            let stdout_lock = stdout.lock();
-            try!(write_system_newlines(stdout_lock, text, config));
+            let stdout = stdout.lock();
+            try!(write_system_newlines(stdout, text, config));
         }
         WriteMode::Diff => {
             println!("Diff of {}:\n", filename);

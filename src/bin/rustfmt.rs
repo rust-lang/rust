@@ -77,8 +77,8 @@ fn execute() -> i32 {
     opts.optflag("h", "help", "show this message");
     opts.optopt("",
                 "write-mode",
-                "mode to write in",
-                "[replace|overwrite|display|plain|diff|coverage]");
+                "mode to write in (not usable when piping from stdin)",
+                "[replace|overwrite|display|diff|coverage]");
 
     let operation = determine_operation(&opts, env::args().skip(1));
 
@@ -153,21 +153,7 @@ fn determine_operation<I>(opts: &Options, args: I) -> Operation
     }
 
     // if no file argument is supplied, read from stdin
-    if matches.free.len() != 1 {
-
-        // make sure the write mode is plain or not set
-        // (the other options would require a file)
-        match matches.opt_str("write-mode") {
-            Some(mode) => {
-                match mode.parse() {
-                    Ok(WriteMode::Plain) => (),
-                    _ => return Operation::InvalidInput("Using stdin requires write-mode to be \
-                                                         plain"
-                                                            .into()),
-                }
-            }
-            _ => (),
-        }
+    if matches.free.len() == 0 {
 
         let mut buffer = String::new();
         match io::stdin().read_to_string(&mut buffer) {
@@ -175,6 +161,7 @@ fn determine_operation<I>(opts: &Options, args: I) -> Operation
             Err(e) => return Operation::InvalidInput(e.to_string()),
         }
 
+        // WriteMode is always plain for Stdin
         return Operation::Stdin(buffer, WriteMode::Plain);
     }
 
