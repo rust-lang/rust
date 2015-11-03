@@ -14,6 +14,7 @@
 #![staged_api]
 #![no_std]
 #![cfg_attr(not(stage0), allocator)]
+#![cfg_attr(stage0, allow(improper_ctypes))]
 #![unstable(feature = "alloc_jemalloc",
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",

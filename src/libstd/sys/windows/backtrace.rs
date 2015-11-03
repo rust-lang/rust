@@ -27,12 +27,13 @@
 use io::prelude::*;
 
 use dynamic_lib::DynamicLibrary;
-use intrinsics;
 use io;
-use libc;
+use libc::c_void;
+use mem;
 use path::Path;
 use ptr;
 use sync::StaticMutex;
+use sys::c;
 
 macro_rules! sym{ ($lib:expr, $e:expr, $t:ident) => (unsafe {
     let lib = $lib;
@@ -50,264 +51,50 @@ mod printing;
 #[path = "printing/gnu.rs"]
 mod printing;
 
-#[allow(non_snake_case)]
-extern "system" {
-    fn GetCurrentProcess() -> libc::HANDLE;
-    fn GetCurrentThread() -> libc::HANDLE;
-    fn RtlCaptureContext(ctx: *mut arch::CONTEXT);
-}
-
 type SymFromAddrFn =
-    extern "system" fn(libc::HANDLE, u64, *mut u64,
-                       *mut SYMBOL_INFO) -> libc::BOOL;
+    extern "system" fn(c::HANDLE, u64, *mut u64,
+                       *mut c::SYMBOL_INFO) -> c::BOOL;
 type SymGetLineFromAddr64Fn =
-    extern "system" fn(libc::HANDLE, u64, *mut u32,
-                       *mut IMAGEHLP_LINE64) -> libc::BOOL;
+    extern "system" fn(c::HANDLE, u64, *mut u32,
+                       *mut c::IMAGEHLP_LINE64) -> c::BOOL;
 type SymInitializeFn =
-    extern "system" fn(libc::HANDLE, *mut libc::c_void,
-                       libc::BOOL) -> libc::BOOL;
+    extern "system" fn(c::HANDLE, *mut c_void,
+                       c::BOOL) -> c::BOOL;
 type SymCleanupFn =
-    extern "system" fn(libc::HANDLE) -> libc::BOOL;
+    extern "system" fn(c::HANDLE) -> c::BOOL;
 
 type StackWalk64Fn =
-    extern "system" fn(libc::DWORD, libc::HANDLE, libc::HANDLE,
-                       *mut STACKFRAME64, *mut arch::CONTEXT,
-                       *mut libc::c_void, *mut libc::c_void,
-                       *mut libc::c_void, *mut libc::c_void) -> libc::BOOL;
-
-const MAX_SYM_NAME: usize = 2000;
-const IMAGE_FILE_MACHINE_I386: libc::DWORD = 0x014c;
-const IMAGE_FILE_MACHINE_IA64: libc::DWORD = 0x0200;
-const IMAGE_FILE_MACHINE_AMD64: libc::DWORD = 0x8664;
-
-#[repr(C)]
-struct SYMBOL_INFO {
-    SizeOfStruct: libc::c_ulong,
-    TypeIndex: libc::c_ulong,
-    Reserved: [u64; 2],
-    Index: libc::c_ulong,
-    Size: libc::c_ulong,
-    ModBase: u64,
-    Flags: libc::c_ulong,
-    Value: u64,
-    Address: u64,
-    Register: libc::c_ulong,
-    Scope: libc::c_ulong,
-    Tag: libc::c_ulong,
-    NameLen: libc::c_ulong,
-    MaxNameLen: libc::c_ulong,
-    // note that windows has this as 1, but it basically just means that
-    // the name is inline at the end of the struct. For us, we just bump
-    // the struct size up to MAX_SYM_NAME.
-    Name: [libc::c_char; MAX_SYM_NAME],
-}
-
-#[repr(C)]
-struct IMAGEHLP_LINE64 {
-    SizeOfStruct: u32,
-    Key: *const libc::c_void,
-    LineNumber: u32,
-    Filename: *const libc::c_char,
-    Address: u64,
-}
-
-#[repr(C)]
-enum ADDRESS_MODE {
-    AddrMode1616,
-    AddrMode1632,
-    AddrModeReal,
-    AddrModeFlat,
-}
-
-struct ADDRESS64 {
-    Offset: u64,
-    Segment: u16,
-    Mode: ADDRESS_MODE,
-}
-
-pub struct STACKFRAME64 {
-    AddrPC: ADDRESS64,
-    AddrReturn: ADDRESS64,
-    AddrFrame: ADDRESS64,
-    AddrStack: ADDRESS64,
-    AddrBStore: ADDRESS64,
-    FuncTableEntry: *mut libc::c_void,
-    Params: [u64; 4],
-    Far: libc::BOOL,
-    Virtual: libc::BOOL,
-    Reserved: [u64; 3],
-    KdHelp: KDHELP64,
-}
-
-struct KDHELP64 {
-    Thread: u64,
-    ThCallbackStack: libc::DWORD,
-    ThCallbackBStore: libc::DWORD,
-    NextCallback: libc::DWORD,
-    FramePointer: libc::DWORD,
-    KiCallUserMode: u64,
-    KeUserCallbackDispatcher: u64,
-    SystemRangeStart: u64,
-    KiUserExceptionDispatcher: u64,
-    StackBase: u64,
-    StackLimit: u64,
-    Reserved: [u64; 5],
-}
+    extern "system" fn(c::DWORD, c::HANDLE, c::HANDLE,
+                       *mut c::STACKFRAME64, *mut c::CONTEXT,
+                       *mut c_void, *mut c_void,
+                       *mut c_void, *mut c_void) -> c::BOOL;
 
 #[cfg(target_arch = "x86")]
-mod arch {
-    use libc;
-
-    const MAXIMUM_SUPPORTED_EXTENSION: usize = 512;
-
-    #[repr(C)]
-    pub struct CONTEXT {
-        ContextFlags: libc::DWORD,
-        Dr0: libc::DWORD,
-        Dr1: libc::DWORD,
-        Dr2: libc::DWORD,
-        Dr3: libc::DWORD,
-        Dr6: libc::DWORD,
-        Dr7: libc::DWORD,
-        FloatSave: FLOATING_SAVE_AREA,
-        SegGs: libc::DWORD,
-        SegFs: libc::DWORD,
-        SegEs: libc::DWORD,
-        SegDs: libc::DWORD,
-        Edi: libc::DWORD,
-        Esi: libc::DWORD,
-        Ebx: libc::DWORD,
-        Edx: libc::DWORD,
-        Ecx: libc::DWORD,
-        Eax: libc::DWORD,
-        Ebp: libc::DWORD,
-        Eip: libc::DWORD,
-        SegCs: libc::DWORD,
-        EFlags: libc::DWORD,
-        Esp: libc::DWORD,
-        SegSs: libc::DWORD,
-        ExtendedRegisters: [u8; MAXIMUM_SUPPORTED_EXTENSION],
-    }
-
-    #[repr(C)]
-    pub struct FLOATING_SAVE_AREA {
-        ControlWord: libc::DWORD,
-        StatusWord: libc::DWORD,
-        TagWord: libc::DWORD,
-        ErrorOffset: libc::DWORD,
-        ErrorSelector: libc::DWORD,
-        DataOffset: libc::DWORD,
-        DataSelector: libc::DWORD,
-        RegisterArea: [u8; 80],
-        Cr0NpxState: libc::DWORD,
-    }
-
-    pub fn init_frame(frame: &mut super::STACKFRAME64,
-                      ctx: &CONTEXT) -> libc::DWORD {
-        frame.AddrPC.Offset = ctx.Eip as u64;
-        frame.AddrPC.Mode = super::ADDRESS_MODE::AddrModeFlat;
-        frame.AddrStack.Offset = ctx.Esp as u64;
-        frame.AddrStack.Mode = super::ADDRESS_MODE::AddrModeFlat;
-        frame.AddrFrame.Offset = ctx.Ebp as u64;
-        frame.AddrFrame.Mode = super::ADDRESS_MODE::AddrModeFlat;
-        super::IMAGE_FILE_MACHINE_I386
-    }
+pub fn init_frame(frame: &mut c::STACKFRAME64,
+                  ctx: &c::CONTEXT) -> c::DWORD {
+    frame.AddrPC.Offset = ctx.Eip as u64;
+    frame.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+    frame.AddrStack.Offset = ctx.Esp as u64;
+    frame.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+    frame.AddrFrame.Offset = ctx.Ebp as u64;
+    frame.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+    c::IMAGE_FILE_MACHINE_I386
 }
 
 #[cfg(target_arch = "x86_64")]
-mod arch {
-    #![allow(deprecated)]
-
-    use libc::{c_longlong, c_ulonglong};
-    use libc::types::os::arch::extra::{WORD, DWORD, DWORDLONG};
-    use simd;
-
-    #[repr(C)]
-    pub struct CONTEXT {
-        _align_hack: [simd::u64x2; 0], // FIXME align on 16-byte
-        P1Home: DWORDLONG,
-        P2Home: DWORDLONG,
-        P3Home: DWORDLONG,
-        P4Home: DWORDLONG,
-        P5Home: DWORDLONG,
-        P6Home: DWORDLONG,
-
-        ContextFlags: DWORD,
-        MxCsr: DWORD,
-
-        SegCs: WORD,
-        SegDs: WORD,
-        SegEs: WORD,
-        SegFs: WORD,
-        SegGs: WORD,
-        SegSs: WORD,
-        EFlags: DWORD,
-
-        Dr0: DWORDLONG,
-        Dr1: DWORDLONG,
-        Dr2: DWORDLONG,
-        Dr3: DWORDLONG,
-        Dr6: DWORDLONG,
-        Dr7: DWORDLONG,
-
-        Rax: DWORDLONG,
-        Rcx: DWORDLONG,
-        Rdx: DWORDLONG,
-        Rbx: DWORDLONG,
-        Rsp: DWORDLONG,
-        Rbp: DWORDLONG,
-        Rsi: DWORDLONG,
-        Rdi: DWORDLONG,
-        R8:  DWORDLONG,
-        R9:  DWORDLONG,
-        R10: DWORDLONG,
-        R11: DWORDLONG,
-        R12: DWORDLONG,
-        R13: DWORDLONG,
-        R14: DWORDLONG,
-        R15: DWORDLONG,
-
-        Rip: DWORDLONG,
-
-        FltSave: FLOATING_SAVE_AREA,
-
-        VectorRegister: [M128A; 26],
-        VectorControl: DWORDLONG,
-
-        DebugControl: DWORDLONG,
-        LastBranchToRip: DWORDLONG,
-        LastBranchFromRip: DWORDLONG,
-        LastExceptionToRip: DWORDLONG,
-        LastExceptionFromRip: DWORDLONG,
-    }
-
-    #[repr(C)]
-    pub struct M128A {
-        _align_hack: [simd::u64x2; 0], // FIXME align on 16-byte
-        Low:  c_ulonglong,
-        High: c_longlong
-    }
-
-    #[repr(C)]
-    pub struct FLOATING_SAVE_AREA {
-        _align_hack: [simd::u64x2; 0], // FIXME align on 16-byte
-        _Dummy: [u8; 512] // FIXME: Fill this out
-    }
-
-    pub fn init_frame(frame: &mut super::STACKFRAME64,
-                      ctx: &CONTEXT) -> DWORD {
-        frame.AddrPC.Offset = ctx.Rip as u64;
-        frame.AddrPC.Mode = super::ADDRESS_MODE::AddrModeFlat;
-        frame.AddrStack.Offset = ctx.Rsp as u64;
-        frame.AddrStack.Mode = super::ADDRESS_MODE::AddrModeFlat;
-        frame.AddrFrame.Offset = ctx.Rbp as u64;
-        frame.AddrFrame.Mode = super::ADDRESS_MODE::AddrModeFlat;
-        super::IMAGE_FILE_MACHINE_AMD64
-    }
+pub fn init_frame(frame: &mut c::STACKFRAME64,
+                  ctx: &c::CONTEXT) -> c::DWORD {
+    frame.AddrPC.Offset = ctx.Rip as u64;
+    frame.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+    frame.AddrStack.Offset = ctx.Rsp as u64;
+    frame.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+    frame.AddrFrame.Offset = ctx.Rbp as u64;
+    frame.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+    c::IMAGE_FILE_MACHINE_AMD64
 }
 
 struct Cleanup {
-    handle: libc::HANDLE,
+    handle: c::HANDLE,
     SymCleanup: SymCleanupFn,
 }
 
@@ -335,16 +122,16 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     let StackWalk64 = sym!(&dbghelp, "StackWalk64", StackWalk64Fn);
 
     // Allocate necessary structures for doing the stack walk
-    let process = unsafe { GetCurrentProcess() };
-    let thread = unsafe { GetCurrentThread() };
-    let mut context: arch::CONTEXT = unsafe { intrinsics::init() };
-    unsafe { RtlCaptureContext(&mut context); }
-    let mut frame: STACKFRAME64 = unsafe { intrinsics::init() };
-    let image = arch::init_frame(&mut frame, &context);
+    let process = unsafe { c::GetCurrentProcess() };
+    let thread = unsafe { c::GetCurrentThread() };
+    let mut context: c::CONTEXT = unsafe { mem::zeroed() };
+    unsafe { c::RtlCaptureContext(&mut context); }
+    let mut frame: c::STACKFRAME64 = unsafe { mem::zeroed() };
+    let image = init_frame(&mut frame, &context);
 
     // Initialize this process's symbols
-    let ret = SymInitialize(process, ptr::null_mut(), libc::TRUE);
-    if ret != libc::TRUE { return Ok(()) }
+    let ret = SymInitialize(process, ptr::null_mut(), c::TRUE);
+    if ret != c::TRUE { return Ok(()) }
     let _c = Cleanup { handle: process, SymCleanup: SymCleanup };
 
     // And now that we're done with all the setup, do the stack walking!
@@ -356,7 +143,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
                       ptr::null_mut(),
                       ptr::null_mut(),
                       ptr::null_mut(),
-                      ptr::null_mut()) == libc::TRUE{
+                      ptr::null_mut()) == c::TRUE {
         let addr = frame.AddrPC.Offset;
         if addr == frame.AddrReturn.Offset || addr == 0 ||
            frame.AddrReturn.Offset == 0 { break }

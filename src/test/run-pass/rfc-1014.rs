@@ -11,20 +11,24 @@
 
 extern crate libc;
 
+type DWORD = u32;
+type HANDLE = *mut u8;
+
 #[cfg(windows)]
 extern "system" {
-    pub fn GetStdHandle(which: libc::DWORD) -> libc::HANDLE;
+    fn GetStdHandle(which: DWORD) -> HANDLE;
+    fn CloseHandle(handle: HANDLE) -> i32;
 }
 
 #[cfg(windows)]
 fn close_stdout() {
-    const STD_OUTPUT_HANDLE: libc::DWORD = -11i32 as libc::DWORD;
-    unsafe { libc::CloseHandle(GetStdHandle(STD_OUTPUT_HANDLE)); }
+    const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
+    unsafe { CloseHandle(GetStdHandle(STD_OUTPUT_HANDLE)); }
 }
 
 #[cfg(not(windows))]
 fn close_stdout() {
-    unsafe { libc::close(libc::STDOUT_FILENO); }
+    unsafe { libc::close(1); }
 }
 
 fn main() {

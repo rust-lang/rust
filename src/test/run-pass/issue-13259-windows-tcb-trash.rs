@@ -14,8 +14,9 @@ extern crate libc;
 
 #[cfg(windows)]
 mod imp {
-    use libc::{c_void, LPVOID, DWORD};
-    use libc::types::os::arch::extra::LPWSTR;
+    type LPVOID = *mut u8;
+    type DWORD = u32;
+    type LPWSTR = *mut u16;
 
     extern "system" {
         fn FormatMessageW(flags: DWORD,
@@ -24,15 +25,15 @@ mod imp {
                           langId: DWORD,
                           buf: LPWSTR,
                           nsize: DWORD,
-                          args: *const c_void)
+                          args: *const u8)
                           -> DWORD;
     }
 
     pub fn test() {
         let mut buf: [u16; 50] = [0; 50];
         let ret = unsafe {
-            FormatMessageW(0x1000, 0 as *mut c_void, 1, 0x400,
-                           buf.as_mut_ptr(), buf.len() as u32, 0 as *const c_void)
+            FormatMessageW(0x1000, 0 as *mut _, 1, 0x400,
+                           buf.as_mut_ptr(), buf.len() as u32, 0 as *const _)
         };
         // On some 32-bit Windowses (Win7-8 at least) this will panic with segmented
         // stacks taking control of pvArbitrary

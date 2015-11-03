@@ -12,10 +12,10 @@ use prelude::v1::*;
 
 use sync::atomic::{AtomicUsize, Ordering};
 use sync::{mutex, MutexGuard, PoisonError};
+use sys::time::SteadyTime;
 use sys_common::condvar as sys;
 use sys_common::mutex as sys_mutex;
 use sys_common::poison::{self, LockResult};
-use sys::time::SteadyTime;
 use time::Duration;
 
 /// A type indicating whether a timed wait on a condition variable returned

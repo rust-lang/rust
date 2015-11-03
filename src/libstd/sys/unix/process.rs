@@ -23,7 +23,7 @@ use ptr;
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
 use sys::pipe::AnonPipe;
-use sys::{self, c, cvt, cvt_r};
+use sys::{self, cvt, cvt_r};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -163,7 +163,7 @@ const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
 impl Process {
     pub unsafe fn kill(&self) -> io::Result<()> {
-        try!(cvt(libc::funcs::posix88::signal::kill(self.pid, libc::SIGKILL)));
+        try!(cvt(libc::kill(self.pid, libc::SIGKILL)));
         Ok(())
     }
 
@@ -326,7 +326,7 @@ impl Process {
             // fail if we aren't root, so don't bother checking the
             // return value, this is just done as an optimistic
             // privilege dropping function.
-            let _ = c::setgroups(0, ptr::null());
+            let _ = libc::setgroups(0, ptr::null());
 
             if libc::setuid(u as libc::uid_t) != 0 {
                 fail(&mut output);
@@ -355,12 +355,12 @@ impl Process {
             // UNIX programs do not reset these things on their own, so we
             // need to clean things up now to avoid confusing the program
             // we're about to run.
-            let mut set: c::sigset_t = mem::uninitialized();
-            if c::sigemptyset(&mut set) != 0 ||
-                c::pthread_sigmask(c::SIG_SETMASK, &set, ptr::null_mut()) != 0 ||
-                libc::funcs::posix01::signal::signal(
-                    libc::SIGPIPE, mem::transmute(c::SIG_DFL)
-                        ) == mem::transmute(c::SIG_ERR)
+            let mut set: libc::sigset_t = mem::uninitialized();
+            if libc::sigemptyset(&mut set) != 0 ||
+                libc::pthread_sigmask(libc::SIG_SETMASK, &set, ptr::null_mut()) != 0 ||
+                libc::signal(
+                    libc::SIGPIPE, mem::transmute(libc::SIG_DFL)
+                        ) == mem::transmute(libc::SIG_ERR)
             {
                 fail(output);
             }
@@ -381,14 +381,14 @@ impl Process {
 
     pub fn wait(&self) -> io::Result<ExitStatus> {
         let mut status = 0 as c_int;
-        try!(cvt_r(|| unsafe { c::waitpid(self.pid, &mut status, 0) }));
+        try!(cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) }));
         Ok(ExitStatus(status))
     }
 
     pub fn try_wait(&self) -> Option<ExitStatus> {
         let mut status = 0 as c_int;
         match cvt_r(|| unsafe {
-            c::waitpid(self.pid, &mut status, c::WNOHANG)
+            libc::waitpid(self.pid, &mut status, libc::WNOHANG)
         }) {
             Ok(0) => None,
             Ok(n) if n == self.pid => Some(ExitStatus(status)),
@@ -459,7 +459,7 @@ mod tests {
     use ptr;
     use libc;
     use slice;
-    use sys::{self, c, cvt, pipe};
+    use sys::{self, cvt, pipe};
 
     macro_rules! t {
         ($e:expr) => {
@@ -473,12 +473,12 @@ mod tests {
     #[cfg(not(target_os = "android"))]
     extern {
         #[cfg_attr(target_os = "netbsd", link_name = "__sigaddset14")]
-        fn sigaddset(set: *mut c::sigset_t, signum: libc::c_int) -> libc::c_int;
+        fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int;
     }
 
     #[cfg(target_os = "android")]
-    unsafe fn sigaddset(set: *mut c::sigset_t, signum: libc::c_int) -> libc::c_int {
-        let raw = slice::from_raw_parts_mut(set as *mut u8, mem::size_of::<c::sigset_t>());
+    unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
+        let raw = slice::from_raw_parts_mut(set as *mut u8, mem::size_of::<libc::sigset_t>());
         let bit = (signum - 1) as usize;
         raw[bit / 8] |= 1 << (bit % 8);
         return 0;
@@ -497,11 +497,11 @@ mod tests {
             let (stdin_read, stdin_write) = t!(sys::pipe::anon_pipe());
             let (stdout_read, stdout_write) = t!(sys::pipe::anon_pipe());
 
-            let mut set: c::sigset_t = mem::uninitialized();
-            let mut old_set: c::sigset_t = mem::uninitialized();
-            t!(cvt(c::sigemptyset(&mut set)));
+            let mut set: libc::sigset_t = mem::uninitialized();
+            let mut old_set: libc::sigset_t = mem::uninitialized();
+            t!(cvt(libc::sigemptyset(&mut set)));
             t!(cvt(sigaddset(&mut set, libc::SIGINT)));
-            t!(cvt(c::pthread_sigmask(c::SIG_SETMASK, &set, &mut old_set)));
+            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set, &mut old_set)));
 
             let cat = t!(Process::spawn(&cmd, Stdio::Raw(stdin_read.raw()),
                                               Stdio::Raw(stdout_write.raw()),
@@ -509,11 +509,10 @@ mod tests {
             drop(stdin_read);
             drop(stdout_write);
 
-            t!(cvt(c::pthread_sigmask(c::SIG_SETMASK, &old_set,
-                                      ptr::null_mut())));
+            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &old_set,
+                                         ptr::null_mut())));
 
-            t!(cvt(libc::funcs::posix88::signal::kill(cat.id() as libc::pid_t,
-                                                      libc::SIGINT)));
+            t!(cvt(libc::kill(cat.id() as libc::pid_t, libc::SIGINT)));
             // We need to wait until SIGINT is definitely delivered. The
             // easiest way is to write something to cat, and try to read it
             // back: if SIGINT is unmasked, it'll get delivered when cat is

@@ -21,7 +21,6 @@ use std::{cmp, error, fmt};
 use std::io::prelude::*;
 use std::io;
 use term::{self, WriterWrapper};
-use libc;
 
 /// maximum number of lines we will print for each error; arbitrary.
 const MAX_LINES: usize = 6;
@@ -767,15 +766,19 @@ impl EmitterWriter {
 
 #[cfg(unix)]
 fn stderr_isatty() -> bool {
+    use libc;
     unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
 }
 #[cfg(windows)]
 fn stderr_isatty() -> bool {
-    const STD_ERROR_HANDLE: libc::DWORD = -12i32 as libc::DWORD;
+    type DWORD = u32;
+    type BOOL = i32;
+    type HANDLE = *mut u8;
+    const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
     extern "system" {
-        fn GetStdHandle(which: libc::DWORD) -> libc::HANDLE;
-        fn GetConsoleMode(hConsoleHandle: libc::HANDLE,
-                          lpMode: libc::LPDWORD) -> libc::BOOL;
+        fn GetStdHandle(which: DWORD) -> HANDLE;
+        fn GetConsoleMode(hConsoleHandle: HANDLE,
+                          lpMode: *mut DWORD) -> BOOL;
     }
     unsafe {
         let handle = GetStdHandle(STD_ERROR_HANDLE);

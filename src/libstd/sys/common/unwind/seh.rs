@@ -52,44 +52,13 @@
 use prelude::v1::*;
 
 use any::Any;
-use libc::{c_ulong, DWORD, c_void};
 use ptr;
 use sys_common::thread_local::StaticKey;
+use sys::c;
 
-//                        0x R U S T
-const RUST_PANIC: DWORD = 0x52555354;
+//                           0x R U S T
+const RUST_PANIC: c::DWORD = 0x52555354;
 static PANIC_DATA: StaticKey = StaticKey::new(None);
-
-// This function is provided by kernel32.dll
-extern "system" {
-    #[unwind]
-    fn RaiseException(dwExceptionCode: DWORD,
-                      dwExceptionFlags: DWORD,
-                      nNumberOfArguments: DWORD,
-                      lpArguments: *const c_ulong);
-}
-
-#[repr(C)]
-pub struct EXCEPTION_POINTERS {
-    ExceptionRecord: *mut EXCEPTION_RECORD,
-    ContextRecord: *mut CONTEXT,
-}
-
-enum CONTEXT {}
-
-#[repr(C)]
-struct EXCEPTION_RECORD {
-    ExceptionCode: DWORD,
-    ExceptionFlags: DWORD,
-    ExceptionRecord: *mut _EXCEPTION_RECORD,
-    ExceptionAddress: *mut c_void,
-    NumberParameters: DWORD,
-    ExceptionInformation: [*mut c_ulong; EXCEPTION_MAXIMUM_PARAMETERS],
-}
-
-enum _EXCEPTION_RECORD {}
-
-const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
 
 pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
     // See module docs above for an explanation of why `data` is stored in a
@@ -100,14 +69,14 @@ pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
     rtassert!(PANIC_DATA.get().is_null());
     PANIC_DATA.set(Box::into_raw(exception) as *mut u8);
 
-    RaiseException(RUST_PANIC, 0, 0, ptr::null());
+    c::RaiseException(RUST_PANIC, 0, 0, ptr::null());
     rtabort!("could not unwind stack");
 }
 
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send + 'static> {
     // The `ptr` here actually corresponds to the code of the exception, and our
     // real data is stored in our thread local.
-    rtassert!(ptr as DWORD == RUST_PANIC);
+    rtassert!(ptr as c::DWORD == RUST_PANIC);
 
     let data = PANIC_DATA.get() as *mut Box<Any + Send + 'static>;
     PANIC_DATA.set(ptr::null_mut());
@@ -139,7 +108,7 @@ fn rust_eh_personality() {
 #[lang = "msvc_try_filter"]
 #[linkage = "external"]
 #[allow(private_no_mangle_fns)]
-extern fn __rust_try_filter(eh_ptrs: *mut EXCEPTION_POINTERS,
+extern fn __rust_try_filter(eh_ptrs: *mut c::EXCEPTION_POINTERS,
                             _rbp: *mut u8) -> i32 {
     unsafe {
         ((*(*eh_ptrs).ExceptionRecord).ExceptionCode == RUST_PANIC) as i32

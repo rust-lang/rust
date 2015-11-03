@@ -24,15 +24,10 @@ mod inner {
         t: u64
     }
 
-    extern {
-        pub fn mach_absolute_time() -> u64;
-        pub fn mach_timebase_info(info: *mut libc::mach_timebase_info) -> libc::c_int;
-    }
-
     impl SteadyTime {
         pub fn now() -> SteadyTime {
             SteadyTime {
-                t: unsafe { mach_absolute_time() },
+                t: unsafe { libc::mach_absolute_time() },
             }
         }
     }
@@ -46,7 +41,7 @@ mod inner {
 
         unsafe {
             ONCE.call_once(|| {
-                mach_timebase_info(&mut INFO);
+                libc::mach_timebase_info(&mut INFO);
             });
             &INFO
         }
@@ -87,11 +82,6 @@ mod inner {
     #[link(name = "rt")]
     extern {}
 
-    extern {
-        #[cfg_attr(target_os = "netbsd", link_name = "__clock_gettime50")]
-        fn clock_gettime(clk_id: libc::c_int, tp: *mut libc::timespec) -> libc::c_int;
-    }
-
     impl SteadyTime {
         pub fn now() -> SteadyTime {
             let mut t = SteadyTime {
@@ -101,7 +91,8 @@ mod inner {
                 }
             };
             unsafe {
-                assert_eq!(0, clock_gettime(libc::CLOCK_MONOTONIC, &mut t.t));
+                assert_eq!(0, libc::clock_gettime(libc::CLOCK_MONOTONIC,
+                                                  &mut t.t));
             }
             t
         }

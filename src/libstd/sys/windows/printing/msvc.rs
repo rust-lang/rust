@@ -10,22 +10,23 @@
 
 #![allow(deprecated)]
 
-use sys_common::backtrace::{output, output_fileline};
-use ffi::CStr;
 use dynamic_lib::DynamicLibrary;
-use super::{SymFromAddrFn, SymGetLineFromAddr64Fn, SYMBOL_INFO, MAX_SYM_NAME, IMAGEHLP_LINE64};
-use io;
+use ffi::CStr;
 use io::prelude::*;
-use intrinsics;
-use libc;
+use io;
+use libc::{c_ulong, c_int, c_char, c_void};
+use mem;
+use super::{SymFromAddrFn, SymGetLineFromAddr64Fn};
+use sys::c;
+use sys_common::backtrace::{output, output_fileline};
 
-pub fn print(w: &mut Write, i: isize, addr: u64, dbghelp: &DynamicLibrary, process: libc::HANDLE)
-        -> io::Result<()> {
+pub fn print(w: &mut Write, i: isize, addr: u64, dbghelp: &DynamicLibrary,
+             process: c::HANDLE) -> io::Result<()> {
     let SymFromAddr = sym!(dbghelp, "SymFromAddr", SymFromAddrFn);
     let SymGetLineFromAddr64 = sym!(dbghelp, "SymGetLineFromAddr64", SymGetLineFromAddr64Fn);
 
-    let mut info: SYMBOL_INFO = unsafe { intrinsics::init() };
-    info.MaxNameLen = MAX_SYM_NAME as libc::c_ulong;
+    let mut info: c::SYMBOL_INFO = unsafe { mem::zeroed() };
+    info.MaxNameLen = c::MAX_SYM_NAME as c_ulong;
     // the struct size in C.  the value is different to
     // `size_of::<SYMBOL_INFO>() - MAX_SYM_NAME + 1` (== 81)
     // due to struct alignment.
@@ -34,25 +35,25 @@ pub fn print(w: &mut Write, i: isize, addr: u64, dbghelp: &DynamicLibrary, proce
     let mut displacement = 0u64;
     let ret = SymFromAddr(process, addr, &mut displacement, &mut info);
 
-    let name = if ret == libc::TRUE {
-        let ptr = info.Name.as_ptr() as *const libc::c_char;
+    let name = if ret == c::TRUE {
+        let ptr = info.Name.as_ptr() as *const c_char;
         Some(unsafe { CStr::from_ptr(ptr).to_bytes() })
     } else {
         None
     };
 
-    try!(output(w, i, addr as usize as *mut libc::c_void, name));
+    try!(output(w, i, addr as usize as *mut c_void, name));
 
     // Now find out the filename and line number
-    let mut line: IMAGEHLP_LINE64 = unsafe { intrinsics::init() };
-    line.SizeOfStruct = ::mem::size_of::<IMAGEHLP_LINE64>() as u32;
+    let mut line: c::IMAGEHLP_LINE64 = unsafe { mem::zeroed() };
+    line.SizeOfStruct = ::mem::size_of::<c::IMAGEHLP_LINE64>() as u32;
 
     let mut displacement = 0u32;
     let ret = SymGetLineFromAddr64(process, addr, &mut displacement, &mut line);
-    if ret == libc::TRUE {
+    if ret == c::TRUE {
         output_fileline(w,
                         unsafe { CStr::from_ptr(line.Filename).to_bytes() },
-                        line.LineNumber as libc::c_int,
+                        line.LineNumber as c_int,
                         false)
     } else {
         Ok(())

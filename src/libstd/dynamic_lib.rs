@@ -207,11 +207,11 @@ mod dl {
 
     unsafe fn open_external(filename: &OsStr) -> *mut u8 {
         let s = filename.to_cstring().unwrap();
-        dlopen(s.as_ptr(), LAZY) as *mut u8
+        libc::dlopen(s.as_ptr(), LAZY) as *mut u8
     }
 
     unsafe fn open_internal() -> *mut u8 {
-        dlopen(ptr::null(), LAZY) as *mut u8
+        libc::dlopen(ptr::null(), LAZY) as *mut u8
     }
 
     pub fn check_for_errors_in<T, F>(f: F) -> Result<T, String> where
@@ -223,11 +223,11 @@ mod dl {
             // dlerror isn't thread safe, so we need to lock around this entire
             // sequence
             let _guard = LOCK.lock();
-            let _old_error = dlerror();
+            let _old_error = libc::dlerror();
 
             let result = f();
 
-            let last_error = dlerror() as *const _;
+            let last_error = libc::dlerror() as *const _;
             let ret = if ptr::null() == last_error {
                 Ok(result)
             } else {
@@ -241,19 +241,10 @@ mod dl {
 
     pub unsafe fn symbol(handle: *mut u8,
                          symbol: *const libc::c_char) -> *mut u8 {
-        dlsym(handle as *mut libc::c_void, symbol) as *mut u8
+        libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8
     }
     pub unsafe fn close(handle: *mut u8) {
-        dlclose(handle as *mut libc::c_void); ()
-    }
-
-    extern {
-        fn dlopen(filename: *const libc::c_char,
-                  flag: libc::c_int) -> *mut libc::c_void;
-        fn dlerror() -> *mut libc::c_char;
-        fn dlsym(handle: *mut libc::c_void,
-                 symbol: *const libc::c_char) -> *mut libc::c_void;
-        fn dlclose(handle: *mut libc::c_void) -> libc::c_int;
+        libc::dlclose(handle as *mut libc::c_void); ()
     }
 }
 
@@ -263,11 +254,10 @@ mod dl {
 
     use ffi::OsStr;
     use libc;
-    use libc::consts::os::extra::ERROR_CALL_NOT_IMPLEMENTED;
-    use sys::os;
     use os::windows::prelude::*;
     use ptr;
-    use sys::c::SetThreadErrorMode;
+    use sys::c;
+    use sys::os;
 
     pub fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {
         // disable "dll load failed" error dialog.
@@ -277,24 +267,25 @@ mod dl {
             let new_error_mode = 1;
             let mut prev_error_mode = 0;
             // Windows >= 7 supports thread error mode.
-            let result = SetThreadErrorMode(new_error_mode, &mut prev_error_mode);
+            let result = c::SetThreadErrorMode(new_error_mode,
+                                               &mut prev_error_mode);
             if result == 0 {
                 let err = os::errno();
-                if err as libc::c_int == ERROR_CALL_NOT_IMPLEMENTED {
+                if err == c::ERROR_CALL_NOT_IMPLEMENTED as i32 {
                     use_thread_mode = false;
                     // SetThreadErrorMode not found. use fallback solution:
                     // SetErrorMode() Note that SetErrorMode is process-wide so
                     // this can cause race condition!  However, since even
                     // Windows APIs do not care of such problem (#20650), we
                     // just assume SetErrorMode race is not a great deal.
-                    prev_error_mode = SetErrorMode(new_error_mode);
+                    prev_error_mode = c::SetErrorMode(new_error_mode);
                 }
             }
             prev_error_mode
         };
 
         unsafe {
-            SetLastError(0);
+            c::SetLastError(0);
         }
 
         let result = match filename {
@@ -302,7 +293,7 @@ mod dl {
                 let filename_str: Vec<_> =
                     filename.encode_wide().chain(Some(0)).collect();
                 let result = unsafe {
-                    LoadLibraryW(filename_str.as_ptr() as *const libc::c_void)
+                    c::LoadLibraryW(filename_str.as_ptr())
                 };
                 // beware: Vec/String may change errno during drop!
                 // so we get error here.
@@ -316,9 +307,10 @@ mod dl {
             None => {
                 let mut handle = ptr::null_mut();
                 let succeeded = unsafe {
-                    GetModuleHandleExW(0 as libc::DWORD, ptr::null(), &mut handle)
+                    c::GetModuleHandleExW(0 as c::DWORD, ptr::null(),
+                                          &mut handle)
                 };
-                if succeeded == libc::FALSE {
+                if succeeded == c::FALSE {
                     let errno = os::errno();
                     Err(os::error_string(errno))
                 } else {
@@ -329,9 +321,9 @@ mod dl {
 
         unsafe {
             if use_thread_mode {
-                SetThreadErrorMode(prev_error_mode, ptr::null_mut());
+                c::SetThreadErrorMode(prev_error_mode, ptr::null_mut());
             } else {
-                SetErrorMode(prev_error_mode);
+                c::SetErrorMode(prev_error_mode);
             }
         }
 
@@ -342,7 +334,7 @@ mod dl {
         F: FnOnce() -> T,
     {
         unsafe {
-            SetLastError(0);
+            c::SetLastError(0);
 
             let result = f();
 
@@ -356,22 +348,10 @@ mod dl {
     }
 
     pub unsafe fn symbol(handle: *mut u8, symbol: *const libc::c_char) -> *mut u8 {
-        GetProcAddress(handle as *mut libc::c_void, symbol) as *mut u8
+        c::GetProcAddress(handle as c::HMODULE, symbol) as *mut u8
     }
     pub unsafe fn close(handle: *mut u8) {
-        FreeLibrary(handle as *mut libc::c_void); ()
-    }
-
-    #[allow(non_snake_case)]
-    extern "system" {
-        fn SetLastError(error: libc::size_t);
-        fn LoadLibraryW(name: *const libc::c_void) -> *mut libc::c_void;
-        fn GetModuleHandleExW(dwFlags: libc::DWORD, name: *const u16,
-                              handle: *mut *mut libc::c_void) -> libc::BOOL;
-        fn GetProcAddress(handle: *mut libc::c_void,
-                          name: *const libc::c_char) -> *mut libc::c_void;
-        fn FreeLibrary(handle: *mut libc::c_void);
-        fn SetErrorMode(uMode: libc::c_uint) -> libc::c_uint;
+        c::FreeLibrary(handle as c::HMODULE);
     }
 }
 

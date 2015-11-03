@@ -13,13 +13,13 @@ use prelude::v1::*;
 use ffi::{CStr, CString};
 use fmt;
 use io::{self, Error, ErrorKind};
-use libc::{self, c_int, c_char, c_void, socklen_t};
+use libc::{c_int, c_char, c_void};
 use mem;
 use net::{SocketAddr, Shutdown, IpAddr};
 use ptr;
 use str::from_utf8;
-use sys::c;
 use sys::net::{cvt, cvt_r, cvt_gai, Socket, init, wrlen_t};
+use sys::net::netc as c;
 use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
 
@@ -31,8 +31,8 @@ pub fn setsockopt<T>(sock: &Socket, opt: c_int, val: c_int,
                      payload: T) -> io::Result<()> {
     unsafe {
         let payload = &payload as *const T as *const c_void;
-        try!(cvt(libc::setsockopt(*sock.as_inner(), opt, val, payload,
-                                  mem::size_of::<T>() as socklen_t)));
+        try!(cvt(c::setsockopt(*sock.as_inner(), opt, val, payload,
+                               mem::size_of::<T>() as c::socklen_t)));
         Ok(())
     }
 }
@@ -41,7 +41,7 @@ pub fn getsockopt<T: Copy>(sock: &Socket, opt: c_int,
                        val: c_int) -> io::Result<T> {
     unsafe {
         let mut slot: T = mem::zeroed();
-        let mut len = mem::size_of::<T>() as socklen_t;
+        let mut len = mem::size_of::<T>() as c::socklen_t;
         try!(cvt(c::getsockopt(*sock.as_inner(), opt, val,
                                &mut slot as *mut _ as *mut _,
                                &mut len)));
@@ -51,29 +51,29 @@ pub fn getsockopt<T: Copy>(sock: &Socket, opt: c_int,
 }
 
 fn sockname<F>(f: F) -> io::Result<SocketAddr>
-    where F: FnOnce(*mut libc::sockaddr, *mut socklen_t) -> c_int
+    where F: FnOnce(*mut c::sockaddr, *mut c::socklen_t) -> c_int
 {
     unsafe {
-        let mut storage: libc::sockaddr_storage = mem::zeroed();
-        let mut len = mem::size_of_val(&storage) as socklen_t;
+        let mut storage: c::sockaddr_storage = mem::zeroed();
+        let mut len = mem::size_of_val(&storage) as c::socklen_t;
         try!(cvt(f(&mut storage as *mut _ as *mut _, &mut len)));
         sockaddr_to_addr(&storage, len as usize)
     }
 }
 
-fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
+fn sockaddr_to_addr(storage: &c::sockaddr_storage,
                     len: usize) -> io::Result<SocketAddr> {
-    match storage.ss_family as libc::c_int {
-        libc::AF_INET => {
-            assert!(len as usize >= mem::size_of::<libc::sockaddr_in>());
+    match storage.ss_family as c_int {
+        c::AF_INET => {
+            assert!(len as usize >= mem::size_of::<c::sockaddr_in>());
             Ok(SocketAddr::V4(FromInner::from_inner(unsafe {
-                *(storage as *const _ as *const libc::sockaddr_in)
+                *(storage as *const _ as *const c::sockaddr_in)
             })))
         }
-        libc::AF_INET6 => {
-            assert!(len as usize >= mem::size_of::<libc::sockaddr_in6>());
+        c::AF_INET6 => {
+            assert!(len as usize >= mem::size_of::<c::sockaddr_in6>());
             Ok(SocketAddr::V6(FromInner::from_inner(unsafe {
-                *(storage as *const _ as *const libc::sockaddr_in6)
+                *(storage as *const _ as *const c::sockaddr_in6)
             })))
         }
         _ => {
@@ -86,16 +86,9 @@ fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
 // get_host_addresses
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "system" {
-    fn getaddrinfo(node: *const c_char, service: *const c_char,
-                   hints: *const libc::addrinfo,
-                   res: *mut *mut libc::addrinfo) -> c_int;
-    fn freeaddrinfo(res: *mut libc::addrinfo);
-}
-
 pub struct LookupHost {
-    original: *mut libc::addrinfo,
-    cur: *mut libc::addrinfo,
+    original: *mut c::addrinfo,
+    cur: *mut c::addrinfo,
 }
 
 impl Iterator for LookupHost {
@@ -105,7 +98,7 @@ impl Iterator for LookupHost {
             if self.cur.is_null() { return None }
             let ret = sockaddr_to_addr(mem::transmute((*self.cur).ai_addr),
                                        (*self.cur).ai_addrlen as usize);
-            self.cur = (*self.cur).ai_next as *mut libc::addrinfo;
+            self.cur = (*self.cur).ai_next as *mut c::addrinfo;
             Some(ret)
         }
     }
@@ -116,7 +109,7 @@ unsafe impl Send for LookupHost {}
 
 impl Drop for LookupHost {
     fn drop(&mut self) {
-        unsafe { freeaddrinfo(self.original) }
+        unsafe { c::freeaddrinfo(self.original) }
     }
 }
 
@@ -126,8 +119,8 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
     let c_host = try!(CString::new(host));
     let mut res = ptr::null_mut();
     unsafe {
-        try!(cvt_gai(getaddrinfo(c_host.as_ptr(), ptr::null(), ptr::null(),
-                                 &mut res)));
+        try!(cvt_gai(c::getaddrinfo(c_host.as_ptr(), ptr::null(), ptr::null(),
+                                   &mut res)));
         Ok(LookupHost { original: res, cur: res })
     }
 }
@@ -136,26 +129,18 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
 // lookup_addr
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "system" {
-    fn getnameinfo(sa: *const libc::sockaddr, salen: socklen_t,
-                   host: *mut c_char, hostlen: libc::size_t,
-                   serv: *mut c_char, servlen: libc::size_t,
-                   flags: c_int) -> c_int;
-}
-
-const NI_MAXHOST: usize = 1025;
-
 pub fn lookup_addr(addr: &IpAddr) -> io::Result<String> {
     init();
 
     let saddr = SocketAddr::new(*addr, 0);
     let (inner, len) = saddr.into_inner();
-    let mut hostbuf = [0 as c_char; NI_MAXHOST];
+    let mut hostbuf = [0 as c_char; c::NI_MAXHOST as usize];
 
     let data = unsafe {
-        try!(cvt_gai(getnameinfo(inner, len,
-                                 hostbuf.as_mut_ptr(), NI_MAXHOST as libc::size_t,
-                                 ptr::null_mut(), 0, 0)));
+        try!(cvt_gai(c::getnameinfo(inner, len,
+                                    hostbuf.as_mut_ptr(),
+                                    c::NI_MAXHOST,
+                                    ptr::null_mut(), 0, 0)));
 
         CStr::from_ptr(hostbuf.as_ptr())
     };
@@ -179,10 +164,10 @@ impl TcpStream {
     pub fn connect(addr: &SocketAddr) -> io::Result<TcpStream> {
         init();
 
-        let sock = try!(Socket::new(addr, libc::SOCK_STREAM));
+        let sock = try!(Socket::new(addr, c::SOCK_STREAM));
 
         let (addrp, len) = addr.into_inner();
-        try!(cvt_r(|| unsafe { libc::connect(*sock.as_inner(), addrp, len) }));
+        try!(cvt_r(|| unsafe { c::connect(*sock.as_inner(), addrp, len) }));
         Ok(TcpStream { inner: sock })
     }
 
@@ -191,19 +176,19 @@ impl TcpStream {
     pub fn into_socket(self) -> Socket { self.inner }
 
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.inner.set_timeout(dur, libc::SO_RCVTIMEO)
+        self.inner.set_timeout(dur, c::SO_RCVTIMEO)
     }
 
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.inner.set_timeout(dur, libc::SO_SNDTIMEO)
+        self.inner.set_timeout(dur, c::SO_SNDTIMEO)
     }
 
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        self.inner.timeout(libc::SO_RCVTIMEO)
+        self.inner.timeout(c::SO_RCVTIMEO)
     }
 
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        self.inner.timeout(libc::SO_SNDTIMEO)
+        self.inner.timeout(c::SO_SNDTIMEO)
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -212,36 +197,28 @@ impl TcpStream {
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = try!(cvt(unsafe {
-            libc::send(*self.inner.as_inner(),
-                       buf.as_ptr() as *const c_void,
-                       buf.len() as wrlen_t,
-                       0)
+            c::send(*self.inner.as_inner(),
+                    buf.as_ptr() as *const c_void,
+                    buf.len() as wrlen_t,
+                    0)
         }));
         Ok(ret as usize)
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         sockname(|buf, len| unsafe {
-            libc::getpeername(*self.inner.as_inner(), buf, len)
+            c::getpeername(*self.inner.as_inner(), buf, len)
         })
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         sockname(|buf, len| unsafe {
-            libc::getsockname(*self.inner.as_inner(), buf, len)
+            c::getsockname(*self.inner.as_inner(), buf, len)
         })
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
-        use libc::consts::os::bsd44::SHUT_RDWR;
-
-        let how = match how {
-            Shutdown::Write => libc::SHUT_WR,
-            Shutdown::Read => libc::SHUT_RD,
-            Shutdown::Both => SHUT_RDWR,
-        };
-        try!(cvt(unsafe { libc::shutdown(*self.inner.as_inner(), how) }));
-        Ok(())
+        self.inner.shutdown(how)
     }
 
     pub fn duplicate(&self) -> io::Result<TcpStream> {
@@ -285,22 +262,22 @@ impl TcpListener {
     pub fn bind(addr: &SocketAddr) -> io::Result<TcpListener> {
         init();
 
-        let sock = try!(Socket::new(addr, libc::SOCK_STREAM));
+        let sock = try!(Socket::new(addr, c::SOCK_STREAM));
 
         // On platforms with Berkeley-derived sockets, this allows
         // to quickly rebind a socket, without needing to wait for
         // the OS to clean up the previous one.
         if !cfg!(windows) {
-            try!(setsockopt(&sock, libc::SOL_SOCKET, libc::SO_REUSEADDR,
+            try!(setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR,
                             1 as c_int));
         }
 
         // Bind our new socket
         let (addrp, len) = addr.into_inner();
-        try!(cvt(unsafe { libc::bind(*sock.as_inner(), addrp, len) }));
+        try!(cvt(unsafe { c::bind(*sock.as_inner(), addrp, len) }));
 
         // Start listening
-        try!(cvt(unsafe { libc::listen(*sock.as_inner(), 128) }));
+        try!(cvt(unsafe { c::listen(*sock.as_inner(), 128) }));
         Ok(TcpListener { inner: sock })
     }
 
@@ -310,13 +287,13 @@ impl TcpListener {
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         sockname(|buf, len| unsafe {
-            libc::getsockname(*self.inner.as_inner(), buf, len)
+            c::getsockname(*self.inner.as_inner(), buf, len)
         })
     }
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
-        let mut storage: libc::sockaddr_storage = unsafe { mem::zeroed() };
-        let mut len = mem::size_of_val(&storage) as socklen_t;
+        let mut storage: c::sockaddr_storage = unsafe { mem::zeroed() };
+        let mut len = mem::size_of_val(&storage) as c::socklen_t;
         let sock = try!(self.inner.accept(&mut storage as *mut _ as *mut _,
                                           &mut len));
         let addr = try!(sockaddr_to_addr(&storage, len as usize));
@@ -360,9 +337,9 @@ impl UdpSocket {
     pub fn bind(addr: &SocketAddr) -> io::Result<UdpSocket> {
         init();
 
-        let sock = try!(Socket::new(addr, libc::SOCK_DGRAM));
+        let sock = try!(Socket::new(addr, c::SOCK_DGRAM));
         let (addrp, len) = addr.into_inner();
-        try!(cvt(unsafe { libc::bind(*sock.as_inner(), addrp, len) }));
+        try!(cvt(unsafe { c::bind(*sock.as_inner(), addrp, len) }));
         Ok(UdpSocket { inner: sock })
     }
 
@@ -372,19 +349,19 @@ impl UdpSocket {
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         sockname(|buf, len| unsafe {
-            libc::getsockname(*self.inner.as_inner(), buf, len)
+            c::getsockname(*self.inner.as_inner(), buf, len)
         })
     }
 
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        let mut storage: libc::sockaddr_storage = unsafe { mem::zeroed() };
-        let mut addrlen = mem::size_of_val(&storage) as socklen_t;
+        let mut storage: c::sockaddr_storage = unsafe { mem::zeroed() };
+        let mut addrlen = mem::size_of_val(&storage) as c::socklen_t;
 
         let n = try!(cvt(unsafe {
-            libc::recvfrom(*self.inner.as_inner(),
-                           buf.as_mut_ptr() as *mut c_void,
-                           buf.len() as wrlen_t, 0,
-                           &mut storage as *mut _ as *mut _, &mut addrlen)
+            c::recvfrom(*self.inner.as_inner(),
+                        buf.as_mut_ptr() as *mut c_void,
+                        buf.len() as wrlen_t, 0,
+                        &mut storage as *mut _ as *mut _, &mut addrlen)
         }));
         Ok((n as usize, try!(sockaddr_to_addr(&storage, addrlen as usize))))
     }
@@ -392,9 +369,9 @@ impl UdpSocket {
     pub fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
         let (dstp, dstlen) = dst.into_inner();
         let ret = try!(cvt(unsafe {
-            libc::sendto(*self.inner.as_inner(),
-                         buf.as_ptr() as *const c_void, buf.len() as wrlen_t,
-                         0, dstp, dstlen)
+            c::sendto(*self.inner.as_inner(),
+                      buf.as_ptr() as *const c_void, buf.len() as wrlen_t,
+                      0, dstp, dstlen)
         }));
         Ok(ret as usize)
     }
@@ -404,19 +381,19 @@ impl UdpSocket {
     }
 
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.inner.set_timeout(dur, libc::SO_RCVTIMEO)
+        self.inner.set_timeout(dur, c::SO_RCVTIMEO)
     }
 
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.inner.set_timeout(dur, libc::SO_SNDTIMEO)
+        self.inner.set_timeout(dur, c::SO_SNDTIMEO)
     }
 
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        self.inner.timeout(libc::SO_RCVTIMEO)
+        self.inner.timeout(c::SO_RCVTIMEO)
     }
 
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        self.inner.timeout(libc::SO_SNDTIMEO)
+        self.inner.timeout(c::SO_SNDTIMEO)
     }
 }
 
