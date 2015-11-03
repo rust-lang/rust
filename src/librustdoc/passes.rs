@@ -331,18 +331,18 @@ pub fn unindent(s: &str) -> String {
             min_indent
         } else {
             saw_first_line = true;
-            let mut spaces = 0;
+            let mut whitespace = 0;
             line.chars().all(|char| {
-                // Only comparing against space because I wouldn't
-                // know what to do with mixed whitespace chars
-                if char == ' ' {
-                    spaces += 1;
+                // Compare against either space or tab, ignoring whether they
+                // are mixed or not
+                if char == ' ' || char == '\t' {
+                    whitespace += 1;
                     true
                 } else {
                     false
                 }
             });
-            cmp::min(min_indent, spaces)
+            cmp::min(min_indent, whitespace)
         }
     });
 
@@ -406,5 +406,23 @@ mod unindent_tests {
         let s = "line1\n\n    line2".to_string();
         let r = unindent(&s);
         assert_eq!(r, "line1\n\n    line2");
+    }
+
+    #[test]
+    fn should_unindent_tabs() {
+        let s = "\tline1\n\tline2".to_string();
+        let r = unindent(&s);
+        assert_eq!(r, "line1\nline2");
+    }
+
+    #[test]
+    fn should_trim_mixed_indentation() {
+        let s = "\t    line1\n\t    line2".to_string();
+        let r = unindent(&s);
+        assert_eq!(r, "line1\nline2");
+
+        let s = "    \tline1\n    \tline2".to_string();
+        let r = unindent(&s);
+        assert_eq!(r, "line1\nline2");
     }
 }
