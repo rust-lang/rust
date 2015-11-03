@@ -30,9 +30,11 @@
 //! file name following `-o`, and accepts both `-h` and `--help` as optional flags.
 //!
 //! ```{.rust}
+//! #![feature(rustc_private)]
+//!
 //! extern crate getopts;
 //! use getopts::{optopt,optflag,getopts,OptGroup,usage};
-//! use std::os;
+//! use std::env;
 //!
 //! fn do_work(inp: &str, out: Option<String>) {
 //!     println!("{}", inp);
@@ -44,11 +46,11 @@
 //!
 //! fn print_usage(program: &str, opts: &[OptGroup]) {
 //!     let brief = format!("Usage: {} [options]", program);
-//!     print!("{}", usage(brief, opts));
+//!     print!("{}", usage(&brief, opts));
 //! }
 //!
 //! fn main() {
-//!     let args: Vec<String> = os::args();
+//!     let args: Vec<String> = env::args().collect();
 //!
 //!     let program = args[0].clone();
 //!
@@ -56,22 +58,22 @@
 //!         optopt("o", "", "set output file name", "NAME"),
 //!         optflag("h", "help", "print this help menu")
 //!     ];
-//!     let matches = match getopts(args[1..], opts) {
+//!     let matches = match getopts(&args[1..], opts) {
 //!         Ok(m) => { m }
 //!         Err(f) => { panic!(f.to_string()) }
 //!     };
 //!     if matches.opt_present("h") {
-//!         print_usage(program, opts);
+//!         print_usage(&program, opts);
 //!         return;
 //!     }
 //!     let output = matches.opt_str("o");
 //!     let input = if !matches.free.is_empty() {
 //!         matches.free[0].clone()
 //!     } else {
-//!         print_usage(program, opts);
+//!         print_usage(&program, opts);
 //!         return;
 //!     };
-//!     do_work(input, output);
+//!     do_work(&input, output);
 //! }
 //! ```
 
@@ -88,7 +90,8 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
-       html_playground_url = "https://play.rust-lang.org/")]
+       html_playground_url = "https://play.rust-lang.org/",
+       test(attr(deny(warnings))))]
 
 #![deny(missing_docs)]
 #![feature(staged_api)]
