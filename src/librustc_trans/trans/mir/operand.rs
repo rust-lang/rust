@@ -92,19 +92,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                bcx.val_to_string(lldest),
                operand);
 
-        match *operand {
-            mir::Operand::Consume(ref lvalue) => {
-                let tr_lvalue = self.trans_lvalue(bcx, lvalue);
-                let lvalue_ty = tr_lvalue.ty.to_ty(bcx.tcx());
-                debug!("trans_operand_into: tr_lvalue={} @ {:?}",
-                       bcx.val_to_string(tr_lvalue.llval),
-                       lvalue_ty);
-                base::memcpy_ty(bcx, lldest, tr_lvalue.llval, lvalue_ty);
-            }
-
-            mir::Operand::Constant(..) => {
-                unimplemented!()
-            }
-        }
+        let o = self.trans_operand(bcx, operand);
+        match datum::appropriate_rvalue_mode(bcx.ccx(), o.ty) {
+            datum::ByValue => base::store_ty(bcx, o.llval, lldest, o.ty),
+            datum::ByRef => base::memcpy_ty(bcx, lldest, o.llval, o.ty),
+        };
     }
 }
