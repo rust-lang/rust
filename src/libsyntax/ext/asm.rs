@@ -139,9 +139,9 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
                     let (constraint, _str_style) = panictry!(p.parse_str());
 
-                    if constraint.starts_with("=") {
+                    if constraint.starts_with("=") && !constraint.contains("*") {
                         cx.span_err(p.last_span, "input operand constraint contains '='");
-                    } else if constraint.starts_with("+") {
+                    } else if constraint.starts_with("+") && !constraint.contains("*") {
                         cx.span_err(p.last_span, "input operand constraint contains '+'");
                     }
 
