@@ -71,7 +71,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                 // schedule a shallow free of that memory, lest we unwind:
                 let extent = this.extent_of_innermost_scope().unwrap();
-                this.schedule_drop(expr_span, extent, DropKind::Shallow, &result, value_ty);
+                this.schedule_drop(expr_span, extent, DropKind::Free, &result, value_ty);
 
                 // initialize the box contents:
                 let contents = result.clone().deref();
@@ -149,15 +149,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 block.and(Rvalue::Aggregate(AggregateKind::Closure(closure_id, substs), upvars))
             }
             ExprKind::Adt { adt_def, variant_index, substs, fields, base } => { // see (*) above
-                // first process the set of fields
+                // first process the set of fields that were provided
+                // (evaluating them in order given by user)
                 let fields_map: FnvHashMap<_, _> =
                     fields.into_iter()
                           .map(|f| (f.name, unpack!(block = this.as_operand(block, f.expr))))
                           .collect();
 
-                let field_names = this.hir.fields(adt_def, variant_index);
-
+                // if base expression is given, evaluate it now
                 let base = base.map(|base| unpack!(block = this.as_lvalue(block, base)));
+
+                // get list of all fields that we will need
+                let field_names = this.hir.all_fields(adt_def, variant_index);
 
                 // for the actual values we use, take either the
                 // expr the user specified or, if they didn't

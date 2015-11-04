@@ -121,6 +121,13 @@ pub struct Tables<'tcx> {
     /// Records the type of each closure. The def ID is the ID of the
     /// expression defining the closure.
     pub closure_kinds: DefIdMap<ty::ClosureKind>,
+
+    /// For each fn, records the "liberated" types of its arguments
+    /// and return type. Liberated means that all bound regions
+    /// (including late-bound regions) are replaced with free
+    /// equivalents. This table is not used in trans (since regions
+    /// are erased there) and hence is not serialized to metadata.
+    pub liberated_fn_sigs: NodeMap<ty::FnSig<'tcx>>,
 }
 
 impl<'tcx> Tables<'tcx> {
@@ -133,6 +140,7 @@ impl<'tcx> Tables<'tcx> {
             upvar_capture_map: FnvHashMap(),
             closure_tys: DefIdMap(),
             closure_kinds: DefIdMap(),
+            liberated_fn_sigs: NodeMap(),
         }
     }
 

@@ -23,8 +23,8 @@ extern crate rustc_front;
 use build;
 use dot;
 use repr::Mir;
+use hair::cx::{PatNode, Cx};
 use std::fs::File;
-use tcx::{PatNode, Cx};
 
 use self::rustc::middle::infer;
 use self::rustc::middle::region::CodeExtentData;
@@ -189,26 +189,42 @@ impl<'a, 'm, 'tcx> visit::Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
     }
 }
 
-fn build_mir<'a, 'tcx: 'a>(cx: Cx<'a, 'tcx>,
-                           implicit_arg_tys: Vec<Ty<'tcx>>,
-                           fn_id: ast::NodeId,
-                           span: Span,
-                           decl: &'tcx hir::FnDecl,
-                           body: &'tcx hir::Block)
-                           -> Result<Mir<'tcx>, ErrorReported> {
-    let arguments = decl.inputs
-                        .iter()
-                        .map(|arg| {
-                            let ty = cx.tcx().node_id_to_type(arg.id);
-                            (ty, PatNode::irrefutable(&arg.pat))
-                        })
-                        .collect();
+fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
+                         implicit_arg_tys: Vec<Ty<'tcx>>,
+                         fn_id: ast::NodeId,
+                         span: Span,
+                         decl: &'tcx hir::FnDecl,
+                         body: &'tcx hir::Block)
+                         -> Result<Mir<'tcx>, ErrorReported> {
+    // fetch the fully liberated fn signature (that is, all bound
+    // types/lifetimes replaced)
+    let fn_sig = match cx.tcx().tables.borrow().liberated_fn_sigs.get(&fn_id) {
+        Some(f) => f.clone(),
+        None => {
+            cx.tcx().sess.span_bug(span,
+                                   &format!("no liberated fn sig for {:?}", fn_id));
+        }
+    };
 
-    let parameter_scope = cx.tcx().region_maps.lookup_code_extent(CodeExtentData::ParameterScope {
-        fn_id: fn_id,
-        body_id: body.id,
-    });
-    Ok(build::construct(cx, span, implicit_arg_tys, arguments, parameter_scope, body))
+    let arguments =
+        decl.inputs
+            .iter()
+            .enumerate()
+            .map(|(index, arg)| {
+                (fn_sig.inputs[index], PatNode::irrefutable(&arg.pat))
+            })
+            .collect();
+
+    let parameter_scope =
+        cx.tcx().region_maps.lookup_code_extent(
+            CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body.id });
+    Ok(build::construct(cx,
+                        span,
+                        implicit_arg_tys,
+                        arguments,
+                        parameter_scope,
+                        fn_sig.output,
+                        body))
 }
 
 fn closure_self_ty<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,

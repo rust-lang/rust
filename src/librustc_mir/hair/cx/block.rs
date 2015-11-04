@@ -9,10 +9,9 @@
 // except according to those terms.
 
 use hair::*;
-
-use tcx::Cx;
-use tcx::pattern::PatNode;
-use tcx::to_ref::ToRef;
+use hair::cx::Cx;
+use hair::cx::pattern::PatNode;
+use hair::cx::to_ref::ToRef;
 use rustc::middle::region::{BlockRemainder, CodeExtentData};
 use rustc_front::hir;
 use syntax::ast;
@@ -34,22 +33,11 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
     }
 }
 
-impl<'tcx> Mirror<'tcx> for &'tcx hir::Stmt {
-    type Output = Stmt<'tcx>;
-
-    fn make_mirror<'a>(self, _cx: &mut Cx<'a, 'tcx>) -> Stmt<'tcx> {
-        // In order to get the scoping correct, we eagerly mirror
-        // statements when we translate the enclosing block, so we
-        // should in fact never get to this point.
-        panic!("statements are eagerly mirrored");
-    }
-}
-
-fn mirror_stmts<'a, 'tcx: 'a, STMTS>(cx: &mut Cx<'a, 'tcx>,
-                                     block_id: ast::NodeId,
-                                     mut stmts: STMTS)
-                                     -> Vec<StmtRef<'tcx>>
-    where STMTS: Iterator<Item = (usize, &'tcx P<hir::Stmt>)>
+fn mirror_stmts<'a,'tcx:'a,STMTS>(cx: &mut Cx<'a,'tcx>,
+                                  block_id: ast::NodeId,
+                                  mut stmts: STMTS)
+                                  -> Vec<StmtRef<'tcx>>
+    where STMTS: Iterator<Item=(usize, &'tcx P<hir::Stmt>)>
 {
     let mut result = vec![];
     while let Some((index, stmt)) = stmts.next() {

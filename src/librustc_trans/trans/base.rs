@@ -44,6 +44,7 @@ use middle::pat_util::simple_name;
 use middle::subst::Substs;
 use middle::ty::{self, Ty, HasTypeFlags};
 use rustc::front::map as hir_map;
+use rustc_mir::mir_map::MirMap;
 use session::config::{self, NoDebugInfo, FullDebugInfo};
 use session::Session;
 use trans::_match;
@@ -74,6 +75,7 @@ use trans::intrinsic;
 use trans::machine;
 use trans::machine::{llsize_of, llsize_of_real};
 use trans::meth;
+use trans::mir;
 use trans::monomorphize;
 use trans::tvec;
 use trans::type_::Type;
@@ -497,13 +499,8 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                               &format!("enum-iter-variant-{}",
                                       &variant.disr_val.to_string())
                               );
-                      match adt::trans_case(cx, &*repr, variant.disr_val) {
-                          _match::SingleResult(r) => {
-                              AddCase(llswitch, r.val, variant_cx.llbb)
-                          }
-                          _ => ccx.sess().unimpl("value from adt::trans_case \
-                                                  in iter_structural_ty")
-                      }
+                      let case_val = adt::trans_case(cx, &*repr, variant.disr_val);
+                      AddCase(llswitch, case_val, variant_cx.llbb);
                       let variant_cx =
                           iter_variant(variant_cx,
                                        &*repr,
@@ -1235,7 +1232,10 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
         false
     };
 
+    let mir = ccx.mir_map().get(&id);
+
     let mut fcx = FunctionContext {
+          mir: mir,
           llfn: llfndecl,
           llenv: None,
           llretslotptr: Cell::new(None),
@@ -1575,7 +1575,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                    llfndecl: ValueRef,
                                    param_substs: &'tcx Substs<'tcx>,
                                    fn_ast_id: ast::NodeId,
-                                   _attributes: &[ast::Attribute],
+                                   attributes: &[ast::Attribute],
                                    output_type: ty::FnOutput<'tcx>,
                                    abi: Abi,
                                    closure_env: closure::ClosureEnv<'b>) {
@@ -1603,6 +1603,12 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                       Some(body.span),
                       &arena);
     let mut bcx = init_function(&fcx, false, output_type);
+
+    if attributes.iter().any(|item| item.check_name("rustc_mir")) {
+        mir::trans_mir(bcx);
+        fcx.cleanup();
+        return;
+    }
 
     // cleanup scope for the incoming arguments
     let fn_cleanup_debug_loc =
@@ -2737,7 +2743,10 @@ pub fn filter_reachable_ids(ccx: &SharedCrateContext) -> NodeSet {
     }).collect()
 }
 
-pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslation {
+pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
+                         mir_map: &MirMap<'tcx>,
+                         analysis: ty::CrateAnalysis)
+                         -> CrateTranslation {
     let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
     let krate = tcx.map.krate();
 
@@ -2779,6 +2788,7 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
     let shared_ccx = SharedCrateContext::new(&link_meta.crate_name,
                                              codegen_units,
                                              tcx,
+                                             &mir_map,
                                              export_map,
                                              Sha256::new(),
                                              link_meta.clone(),

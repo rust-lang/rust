@@ -9,12 +9,11 @@
 // except according to those terms.
 
 use hair::*;
+use hair::cx::Cx;
+use hair::cx::to_ref::ToRef;
 use repr::*;
-
 use rustc_data_structures::fnv::FnvHashMap;
 use std::rc::Rc;
-use tcx::Cx;
-use tcx::to_ref::ToRef;
 use rustc::middle::const_eval;
 use rustc::middle::def;
 use rustc::middle::pat_util::{pat_is_resolved_const, pat_is_binding};
@@ -223,7 +222,7 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
                     subpatterns.iter()
                                .enumerate()
                                .map(|(i, subpattern)| FieldPatternRef {
-                                   field: Field::Indexed(i),
+                                   field: Field::new(i),
                                    pattern: self.pat_ref(subpattern),
                                })
                                .collect();
@@ -273,7 +272,7 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
                                    .flat_map(|v| v.iter())
                                    .enumerate()
                                    .map(|(i, field)| FieldPatternRef {
-                                       field: Field::Indexed(i),
+                                       field: Field::new(i),
                                        pattern: self.pat_ref(field),
                                    })
                                    .collect();
@@ -281,13 +280,35 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
             }
 
             hir::PatStruct(_, ref fields, _) => {
+                let pat_ty = cx.tcx.node_id_to_type(self.pat.id);
+                let adt_def = match pat_ty.sty {
+                    ty::TyStruct(adt_def, _) | ty::TyEnum(adt_def, _) => adt_def,
+                    _ => {
+                        cx.tcx.sess.span_bug(
+                            self.pat.span,
+                            "struct pattern not applied to struct or enum");
+                    }
+                };
+
+                let def = cx.tcx.def_map.borrow().get(&self.pat.id).unwrap().full_def();
+                let variant_def = adt_def.variant_of_def(def);
+
                 let subpatterns =
                     fields.iter()
-                          .map(|field| FieldPatternRef {
-                              field: Field::Named(field.node.name),
-                              pattern: self.pat_ref(&field.node.pat),
+                          .map(|field| {
+                              let index = variant_def.index_of_field_named(field.node.name);
+                              let index = index.unwrap_or_else(|| {
+                                  cx.tcx.sess.span_bug(
+                                      self.pat.span,
+                                      &format!("no field with name {:?}", field.node.name));
+                              });
+                              FieldPatternRef {
+                                  field: Field::new(index),
+                                  pattern: self.pat_ref(&field.node.pat),
+                              }
                           })
                           .collect();
+
                 self.variant_or_leaf(cx, subpatterns)
             }
 

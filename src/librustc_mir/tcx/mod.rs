@@ -9,150 +9,117 @@
 // except according to those terms.
 
 /*!
- * This module contains the code to convert from the wacky tcx data
- * structures into the hair. The `builder` is generally ignorant of
- * the tcx etc, and instead goes through the `Cx` for most of its
- * work.
+ * Methods for the various MIR types. These are intended for use after
+ * building is complete.
  */
 
-use hair::*;
 use repr::*;
+use rustc::middle::subst::Substs;
+use rustc::middle::ty::{self, AdtDef, Ty};
 
-use rustc::middle::const_eval::ConstVal;
-use rustc::middle::def_id::DefId;
-use rustc::middle::infer::InferCtxt;
-use rustc::middle::subst::{Subst, Substs};
-use rustc::middle::ty::{self, Ty};
-use syntax::codemap::Span;
-use syntax::parse::token::{self, special_idents};
+#[derive(Copy, Clone, Debug)]
+pub enum LvalueTy<'tcx> {
+    /// Normal type.
+    Ty { ty: Ty<'tcx> },
 
-#[derive(Copy, Clone)]
-pub struct Cx<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    /// Downcast to a particular variant of an enum.
+    Downcast { adt_def: AdtDef<'tcx>,
+               substs: &'tcx Substs<'tcx>,
+               variant_index: usize },
 }
 
-impl<'a,'tcx> Cx<'a,'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Cx<'a, 'tcx> {
-        Cx {
-            tcx: infcx.tcx,
-            infcx: infcx,
-        }
-    }
-}
-
-pub use self::pattern::PatNode;
-
-impl<'a,'tcx:'a> Cx<'a, 'tcx> {
-    /// Normalizes `ast` into the appropriate `mirror` type.
-    pub fn mirror<M: Mirror<'tcx>>(&mut self, ast: M) -> M::Output {
-        ast.make_mirror(self)
+impl<'tcx> LvalueTy<'tcx> {
+    pub fn from_ty(ty: Ty<'tcx>) -> LvalueTy<'tcx> {
+        LvalueTy::Ty { ty: ty }
     }
 
-    pub fn unit_ty(&mut self) -> Ty<'tcx> {
-        self.tcx.mk_nil()
-    }
-
-    pub fn usize_ty(&mut self) -> Ty<'tcx> {
-        self.tcx.types.usize
-    }
-
-    pub fn usize_literal(&mut self, value: usize) -> Literal<'tcx> {
-        Literal::Value { value: ConstVal::Uint(value as u64) }
-    }
-
-    pub fn bool_ty(&mut self) -> Ty<'tcx> {
-        self.tcx.types.bool
-    }
-
-    pub fn true_literal(&mut self) -> Literal<'tcx> {
-        Literal::Value { value: ConstVal::Bool(true) }
-    }
-
-    pub fn false_literal(&mut self) -> Literal<'tcx> {
-        Literal::Value { value: ConstVal::Bool(false) }
-    }
-
-    pub fn partial_eq(&mut self, ty: Ty<'tcx>) -> ItemRef<'tcx> {
-        let eq_def_id = self.tcx.lang_items.eq_trait().unwrap();
-        self.cmp_method_ref(eq_def_id, "eq", ty)
-    }
-
-    pub fn partial_le(&mut self, ty: Ty<'tcx>) -> ItemRef<'tcx> {
-        let ord_def_id = self.tcx.lang_items.ord_trait().unwrap();
-        self.cmp_method_ref(ord_def_id, "le", ty)
-    }
-
-    pub fn num_variants(&mut self, adt_def: ty::AdtDef<'tcx>) -> usize {
-        adt_def.variants.len()
-    }
-
-    pub fn fields(&mut self, adt_def: ty::AdtDef<'tcx>, variant_index: usize) -> Vec<Field> {
-        adt_def.variants[variant_index]
-            .fields
-            .iter()
-            .enumerate()
-            .map(|(index, field)| {
-                if field.name == special_idents::unnamed_field.name {
-                    Field::Indexed(index)
-                } else {
-                    Field::Named(field.name)
-                }
-            })
-            .collect()
-    }
-
-    pub fn needs_drop(&mut self, ty: Ty<'tcx>, span: Span) -> bool {
-        if self.infcx.type_moves_by_default(ty, span) {
-            // FIXME(#21859) we should do an add'l check here to determine if
-            // any dtor will execute, but the relevant fn
-            // (`type_needs_drop`) is currently factored into
-            // `librustc_trans`, so we can't easily do so.
-            true
-        } else {
-            // if type implements Copy, cannot require drop
-            false
+    pub fn to_ty(&self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+        match *self {
+            LvalueTy::Ty { ty } =>
+                ty,
+            LvalueTy::Downcast { adt_def, substs, variant_index: _ } =>
+                tcx.mk_enum(adt_def, substs),
         }
     }
 
-    pub fn span_bug(&mut self, span: Span, message: &str) -> ! {
-        self.tcx.sess.span_bug(span, message)
-    }
-
-    pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
-        self.tcx
-    }
-
-    fn cmp_method_ref(&mut self,
-                      trait_def_id: DefId,
-                      method_name: &str,
-                      arg_ty: Ty<'tcx>)
-                      -> ItemRef<'tcx> {
-        let method_name = token::intern(method_name);
-        let substs = Substs::new_trait(vec![arg_ty], vec![], arg_ty);
-        for trait_item in self.tcx.trait_items(trait_def_id).iter() {
-            match *trait_item {
-                ty::ImplOrTraitItem::MethodTraitItem(ref method) => {
-                    if method.name == method_name {
-                        let method_ty = self.tcx.lookup_item_type(method.def_id);
-                        let method_ty = method_ty.ty.subst(self.tcx, &substs);
-                        return ItemRef {
-                            ty: method_ty,
-                            def_id: method.def_id,
-                            substs: self.tcx.mk_substs(substs),
-                        };
+    pub fn projection_ty(self,
+                         tcx: &ty::ctxt<'tcx>,
+                         elem: &LvalueElem<'tcx>)
+                         -> LvalueTy<'tcx>
+    {
+        match *elem {
+            ProjectionElem::Deref =>
+                LvalueTy::Ty {
+                    ty: self.to_ty(tcx).builtin_deref(true, ty::LvaluePreference::NoPreference)
+                                          .unwrap()
+                                          .ty
+                },
+            ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } =>
+                LvalueTy::Ty {
+                    ty: self.to_ty(tcx).builtin_index().unwrap()
+                },
+            ProjectionElem::Downcast(adt_def1, index) =>
+                match self.to_ty(tcx).sty {
+                    ty::TyEnum(adt_def, substs) => {
+                        assert!(index < adt_def.variants.len());
+                        assert_eq!(adt_def, adt_def1);
+                        LvalueTy::Downcast { adt_def: adt_def,
+                                             substs: substs,
+                                             variant_index: index }
                     }
-                }
-                ty::ImplOrTraitItem::ConstTraitItem(..) |
-                ty::ImplOrTraitItem::TypeTraitItem(..) => {}
+                    _ => {
+                        tcx.sess.bug(&format!("cannot downcast non-enum type: `{:?}`", self))
+                    }
+                },
+            ProjectionElem::Field(field) => {
+                let field_ty = match self {
+                    LvalueTy::Ty { ty } => match ty.sty {
+                        ty::TyStruct(adt_def, substs) =>
+                            adt_def.struct_variant().fields[field.index()].ty(tcx, substs),
+                        ty::TyTuple(ref tys) =>
+                            tys[field.index()],
+                        _ =>
+                            tcx.sess.bug(&format!("cannot get field of type: `{:?}`", ty)),
+                    },
+                    LvalueTy::Downcast { adt_def, substs, variant_index } =>
+                        adt_def.variants[variant_index].fields[field.index()].ty(tcx, substs),
+                };
+                LvalueTy::Ty { ty: field_ty }
             }
         }
-
-        self.tcx.sess.bug(&format!("found no method `{}` in `{:?}`", method_name, trait_def_id));
     }
 }
 
-mod block;
-mod expr;
-mod pattern;
-mod to_ref;
+impl<'tcx> Mir<'tcx> {
+    pub fn operand_ty(&self,
+                      tcx: &ty::ctxt<'tcx>,
+                      operand: &Operand<'tcx>)
+                      -> Ty<'tcx>
+    {
+        match *operand {
+            Operand::Consume(ref l) => self.lvalue_ty(tcx, l).to_ty(tcx),
+            Operand::Constant(ref c) => c.ty,
+        }
+    }
+
+    pub fn lvalue_ty(&self,
+                     tcx: &ty::ctxt<'tcx>,
+                     lvalue: &Lvalue<'tcx>)
+                     -> LvalueTy<'tcx>
+    {
+        match *lvalue {
+            Lvalue::Var(index) =>
+                LvalueTy::Ty { ty: self.var_decls[index as usize].ty },
+            Lvalue::Temp(index) =>
+                LvalueTy::Ty { ty: self.temp_decls[index as usize].ty },
+            Lvalue::Arg(index) =>
+                LvalueTy::Ty { ty: self.arg_decls[index as usize].ty },
+            Lvalue::Static(def_id) =>
+                LvalueTy::Ty { ty: tcx.lookup_item_type(def_id).ty },
+            Lvalue::ReturnPointer =>
+                LvalueTy::Ty { ty: self.return_ty.unwrap() },
+            Lvalue::Projection(ref proj) =>
+                self.lvalue_ty(tcx, &proj.base).projection_ty(tcx, &proj.elem)
+        }
+    }
+}

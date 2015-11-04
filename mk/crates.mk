@@ -103,7 +103,7 @@ DEPS_rustc_mir := rustc rustc_front syntax
 DEPS_rustc_resolve := rustc rustc_front log syntax
 DEPS_rustc_platform_intrinsics := rustc rustc_llvm
 DEPS_rustc_privacy := rustc rustc_front log syntax
-DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
+DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back rustc_mir \
                     log syntax serialize rustc_llvm rustc_front rustc_platform_intrinsics
 DEPS_rustc_typeck := rustc syntax rustc_front rustc_platform_intrinsics
 

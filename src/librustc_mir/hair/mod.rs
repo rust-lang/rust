@@ -22,7 +22,9 @@ use rustc::middle::ty::{AdtDef, ClosureSubsts, Region, Ty};
 use rustc_front::hir;
 use syntax::ast;
 use syntax::codemap::Span;
-use tcx::{Cx, PatNode};
+use self::cx::{Cx, PatNode};
+
+pub mod cx;
 
 #[derive(Clone, Debug)]
 pub struct ItemRef<'tcx> {
@@ -41,7 +43,6 @@ pub struct Block<'tcx> {
 
 #[derive(Clone, Debug)]
 pub enum StmtRef<'tcx> {
-    Hair(&'tcx hir::Stmt),
     Mirror(Box<Stmt<'tcx>>),
 }
 
@@ -392,9 +393,8 @@ impl<'tcx> Mirror<'tcx> for Stmt<'tcx> {
 impl<'tcx> Mirror<'tcx> for StmtRef<'tcx> {
     type Output = Stmt<'tcx>;
 
-    fn make_mirror<'a>(self, hir: &mut Cx<'a, 'tcx>) -> Stmt<'tcx> {
+    fn make_mirror<'a>(self, _: &mut Cx<'a,'tcx>) -> Stmt<'tcx> {
         match self {
-            StmtRef::Hair(h) => h.make_mirror(hir),
             StmtRef::Mirror(m) => *m,
         }
     }
