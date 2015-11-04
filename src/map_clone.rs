@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::ast::Ident;
 use utils::OPTION_PATH;
-use utils::{match_trait_method, match_type, snippet, span_help_and_lint};
+use utils::{is_adjusted, match_trait_method, match_type, snippet, span_help_and_lint};
 use utils::{walk_ptrs_ty, walk_ptrs_ty_depth};
 
 declare_lint!(pub MAP_CLONE, Warn,
@@ -30,7 +30,7 @@ impl LateLintPass for MapClonePass {
                 let Some(type_name) = get_type_name(cx, expr, &args[0])
             ], {
                 // look for derefs, for .map(|x| *x)
-                if only_derefs(&*closure_expr, arg_ident) &&
+                if only_derefs(cx, &*closure_expr, arg_ident) &&
                     // .cloned() only removes one level of indirection, don't lint on more
                     walk_ptrs_ty_depth(cx.tcx.pat_ty(&*decl.inputs[0].pat)).1 == 1
                 {
@@ -85,13 +85,12 @@ fn get_arg_name(pat: &Pat) -> Option<Ident> {
     }
 }
 
-fn only_derefs(expr: &Expr, id: Ident) -> bool {
-    if expr_eq_ident(expr, id) {
-        true
-    } else if let ExprUnary(UnDeref, ref subexpr) = expr.node {
-        only_derefs(subexpr, id)
-    } else {
-        false
+fn only_derefs(cx: &LateContext, expr: &Expr, id: Ident) -> bool {
+    match expr.node {
+        ExprUnary(UnDeref, ref subexpr) if !is_adjusted(cx, subexpr) => {
+            only_derefs(cx, subexpr, id)
+        },
+        _ => expr_eq_ident(expr, id),
     }
 }
 

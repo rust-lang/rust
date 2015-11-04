@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use rustc::middle::ty;
 
-use utils::{snippet, span_lint};
+use utils::{snippet, span_lint, is_adjusted};
 
 
 #[allow(missing_copy_implementations)]
@@ -30,10 +30,6 @@ impl LateLintPass for EtaPass {
             _ => (),
         }
     }
-}
-
-fn is_adjusted(cx: &LateContext, e: &Expr) -> bool {
-    cx.tcx.tables.borrow().adjustments.get(&e.id).is_some()
 }
 
 fn check_closure(cx: &LateContext, expr: &Expr) {

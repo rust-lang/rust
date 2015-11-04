@@ -5,6 +5,8 @@
 
 #![allow(unused)]
 
+use std::ops::Deref;
+
 fn map_clone_iter() {
     let x = [1,2,3];
     x.iter().map(|y| y.clone()); //~ ERROR you seem to be using .map()
@@ -64,6 +66,27 @@ fn map_clone_other() {
     x.map(|y| y.clone());
     x.map(|&y| y);
     x.map(|y| *y);
+}
+
+#[derive(Copy, Clone)]
+struct UnusualDeref;
+static NINE: i32 = 9;
+
+impl Deref for UnusualDeref {
+    type Target = i32;
+    fn deref(&self) -> &i32 { &NINE }
+}
+
+fn map_clone_deref() {
+    let x = Some(UnusualDeref);
+    let _: Option<UnusualDeref> = x.as_ref().map(|y| *y); //~ ERROR you seem to be using .map()
+                                                          //~^ HELP try
+
+    // Not linted: using deref conversion
+    let _: Option<i32> = x.map(|y| *y);
+
+    // Not linted: using regular deref but also deref conversion
+    let _: Option<i32> = x.as_ref().map(|y| **y);
 }
 
 fn main() { }
