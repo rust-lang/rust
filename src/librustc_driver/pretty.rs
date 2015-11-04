@@ -182,7 +182,7 @@ impl PpSourceMode {
                                                     arenas,
                                                     id,
                                                     resolve::MakeGlobMap::No,
-                                                    |tcx, _| {
+                                                    |tcx, _, _| {
                     let annotation = TypedAnnotation { tcx: tcx };
                     f(&annotation, payload, &ast_map.forest.krate)
                 })
@@ -782,7 +782,7 @@ pub fn pretty_print_input(sess: Session,
                                                         &arenas,
                                                         &id,
                                                         resolve::MakeGlobMap::No,
-                                                        |tcx, _| {
+                                                        |tcx, _, _| {
                         print_flowgraph(variants, tcx, code, mode, out)
                     })
                 }

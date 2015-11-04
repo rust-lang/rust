@@ -9,14 +9,14 @@
 // except according to those terms.
 
 use hair;
+use hair::cx::{Cx, PatNode};
 use rustc::middle::region::CodeExtent;
-use rustc::middle::ty::Ty;
+use rustc::middle::ty::{FnOutput, Ty};
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_front::hir;
 use repr::*;
 use syntax::ast;
 use syntax::codemap::Span;
-use tcx::{Cx, PatNode};
 
 struct Builder<'a, 'tcx: 'a> {
     hir: Cx<'a, 'tcx>,
@@ -75,13 +75,14 @@ macro_rules! unpack {
 ///////////////////////////////////////////////////////////////////////////
 // construct() -- the main entry point for building MIR for a function
 
-pub fn construct<'a, 'tcx>(mut hir: Cx<'a, 'tcx>,
-                           _span: Span,
-                           implicit_arguments: Vec<Ty<'tcx>>,
-                           explicit_arguments: Vec<(Ty<'tcx>, PatNode<'tcx>)>,
-                           argument_extent: CodeExtent,
-                           ast_block: &'tcx hir::Block)
-                           -> Mir<'tcx> {
+pub fn construct<'a,'tcx>(mut hir: Cx<'a,'tcx>,
+                          _span: Span,
+                          implicit_arguments: Vec<Ty<'tcx>>,
+                          explicit_arguments: Vec<(Ty<'tcx>, PatNode<'tcx>)>,
+                          argument_extent: CodeExtent,
+                          return_ty: FnOutput<'tcx>,
+                          ast_block: &'tcx hir::Block)
+                          -> Mir<'tcx> {
     let cfg = CFG { basic_blocks: vec![] };
 
     // it's handy to have a temporary of type `()` sometimes, so make
@@ -121,6 +122,7 @@ pub fn construct<'a, 'tcx>(mut hir: Cx<'a, 'tcx>,
         var_decls: builder.var_decls,
         arg_decls: arg_decls,
         temp_decls: builder.temp_decls,
+        return_ty: return_ty,
     }
 }
 

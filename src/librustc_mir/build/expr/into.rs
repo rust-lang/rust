@@ -211,10 +211,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 this.cfg.start_new_block().unit()
             }
             ExprKind::Call { fun, args } => {
-                let fun = unpack!(block = this.as_lvalue(block, fun));
+                let fun = unpack!(block = this.as_operand(block, fun));
                 let args: Vec<_> =
                     args.into_iter()
-                        .map(|arg| unpack!(block = this.as_lvalue(block, arg)))
+                        .map(|arg| unpack!(block = this.as_operand(block, arg)))
                         .collect();
                 let success = this.cfg.start_new_block();
                 let panic = this.diverge_cleanup();

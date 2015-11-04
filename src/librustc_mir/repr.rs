@@ -12,7 +12,7 @@ use rustc::middle::const_eval::ConstVal;
 use rustc::middle::def_id::DefId;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::subst::Substs;
-use rustc::middle::ty::{AdtDef, ClosureSubsts, Region, Ty};
+use rustc::middle::ty::{AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use rustc_back::slice;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_front::hir::InlineAsm;
@@ -24,6 +24,8 @@ use std::u32;
 /// Lowered representation of a single function.
 pub struct Mir<'tcx> {
     pub basic_blocks: Vec<BasicBlockData<'tcx>>,
+
+    pub return_ty: FnOutput<'tcx>,
 
     // for every node id
     pub extents: FnvHashMap<CodeExtent, Vec<GraphExtent>>,
@@ -245,6 +247,7 @@ pub enum Terminator<'tcx> {
     /// lvalue evaluates to some enum; jump depending on the branch
     Switch {
         discr: Lvalue<'tcx>,
+        adt_def: AdtDef<'tcx>,
         targets: Vec<BasicBlock>,
     },
 
@@ -277,7 +280,7 @@ impl<'tcx> Terminator<'tcx> {
             Goto { target: ref b } => slice::ref_slice(b),
             Panic { target: ref b } => slice::ref_slice(b),
             If { cond: _, targets: ref b } => b,
-            Switch { discr: _, targets: ref b } => b,
+            Switch { discr: _, adt_def: _, targets: ref b } => b,
             Diverge => &[],
             Return => &[],
             Call { data: _, targets: ref b } => b,
@@ -291,10 +294,10 @@ pub struct CallData<'tcx> {
     pub destination: Lvalue<'tcx>,
 
     /// the fn being called
-    pub func: Lvalue<'tcx>,
+    pub func: Operand<'tcx>,
 
     /// the arguments
-    pub args: Vec<Lvalue<'tcx>>,
+    pub args: Vec<Operand<'tcx>>,
 }
 
 impl<'tcx> BasicBlockData<'tcx> {
@@ -316,7 +319,7 @@ impl<'tcx> Debug for Terminator<'tcx> {
                 write!(fmt, "panic -> {:?}", target),
             If { cond: ref lv, ref targets } =>
                 write!(fmt, "if({:?}) -> {:?}", lv, targets),
-            Switch { discr: ref lv, ref targets } =>
+            Switch { discr: ref lv, adt_def: _, ref targets } =>
                 write!(fmt, "switch({:?}) -> {:?}", lv, targets),
             Diverge =>
                 write!(fmt, "diverge"),
@@ -353,8 +356,8 @@ pub enum StatementKind<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DropKind {
-    Shallow,
-    Deep,
+    Free, // free a partially constructed box, should go away eventually
+    Deep
 }
 
 impl<'tcx> Debug for Statement<'tcx> {
@@ -362,7 +365,7 @@ impl<'tcx> Debug for Statement<'tcx> {
         use self::StatementKind::*;
         match self.kind {
             Assign(ref lv, ref rv) => write!(fmt, "{:?} = {:?}", lv, rv),
-            Drop(DropKind::Shallow, ref lv) => write!(fmt, "shallow_drop {:?}", lv),
+            Drop(DropKind::Free, ref lv) => write!(fmt, "free {:?}", lv),
             Drop(DropKind::Deep, ref lv) => write!(fmt, "drop {:?}", lv),
         }
     }
@@ -441,10 +444,19 @@ pub type LvalueProjection<'tcx> =
 pub type LvalueElem<'tcx> =
     ProjectionElem<'tcx,Operand<'tcx>>;
 
+/// Index into the list of fields found in a `VariantDef`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Field {
-    Named(Name),
-    Indexed(usize),
+pub struct Field(u32);
+
+impl Field {
+    pub fn new(value: usize) -> Field {
+        assert!(value < (u32::MAX) as usize);
+        Field(value as u32)
+    }
+
+    pub fn index(self) -> usize {
+        self.0 as usize
+    }
 }
 
 impl<'tcx> Lvalue<'tcx> {
@@ -489,10 +501,8 @@ impl<'tcx> Debug for Lvalue<'tcx> {
                         write!(fmt,"({:?} as {:?})", data.base, variant_index),
                     ProjectionElem::Deref =>
                         write!(fmt,"(*{:?})", data.base),
-                    ProjectionElem::Field(Field::Named(name)) =>
-                        write!(fmt,"{:?}.{:?}", data.base, name),
-                    ProjectionElem::Field(Field::Indexed(index)) =>
-                        write!(fmt,"{:?}.{:?}", data.base, index),
+                    ProjectionElem::Field(field) =>
+                        write!(fmt,"{:?}.{:?}", data.base, field.index()),
                     ProjectionElem::Index(ref index) =>
                         write!(fmt,"{:?}[{:?}]", data.base, index),
                     ProjectionElem::ConstantIndex { offset, min_length, from_end: false } =>

@@ -945,15 +945,13 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
 ///
 /// This should ideally be less tightly tied to `_match`.
 pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
-                              -> _match::OptResult<'blk, 'tcx> {
+                              -> ValueRef {
     match *r {
         CEnum(ity, _, _) => {
-            _match::SingleResult(Result::new(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
-                                                              discr as u64, true)))
+            C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true)
         }
         General(ity, _, _) => {
-            _match::SingleResult(Result::new(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
-                                                              discr as u64, true)))
+            C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true)
         }
         Univariant(..) => {
             bcx.ccx().sess().bug("no cases for univariants or structs")
@@ -961,7 +959,7 @@ pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
         RawNullablePointer { .. } |
         StructWrappedNullablePointer { .. } => {
             assert!(discr == 0 || discr == 1);
-            _match::SingleResult(Result::new(bcx, C_bool(bcx.ccx(), discr != 0)))
+            C_bool(bcx.ccx(), discr != 0)
         }
     }
 }

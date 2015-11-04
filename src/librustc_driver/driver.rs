@@ -11,6 +11,7 @@
 use rustc::front;
 use rustc::front::map as hir_map;
 use rustc_mir as mir;
+use rustc_mir::mir_map::MirMap;
 use rustc::session::Session;
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
@@ -22,6 +23,7 @@ use rustc::middle::dependency_format;
 use rustc::middle;
 use rustc::plugin::registry::Registry;
 use rustc::plugin;
+use rustc::util::nodemap::NodeMap;
 use rustc::util::common::time;
 use rustc_borrowck as borrowck;
 use rustc_resolve as resolve;
@@ -146,7 +148,7 @@ pub fn compile_input(sess: Session,
                                     &arenas,
                                     &id,
                                     control.make_glob_map,
-                                    |tcx, analysis| {
+                                    |tcx, mir_map, analysis| {
 
             {
                 let state = CompileState::state_after_analysis(input,
@@ -170,7 +172,7 @@ pub fn compile_input(sess: Session,
                 println!("Pre-trans");
                 tcx.print_debug_stats();
             }
-            let trans = phase_4_translate_to_llvm(tcx, analysis);
+            let trans = phase_4_translate_to_llvm(tcx, &mir_map, analysis);
 
             if log_enabled!(::log::INFO) {
                 println!("Post-trans");
@@ -670,6 +672,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                f: F)
                                                -> R
                                                where F: for<'a> FnOnce(&'a ty::ctxt<'tcx>,
+                                                                       MirMap<'tcx>,
                                                                        ty::CrateAnalysis) -> R
 {
     let time_passes = sess.time_passes();
@@ -751,18 +754,18 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         time(time_passes, "match checking", ||
             middle::check_match::check_crate(tcx));
 
-        match tcx.sess.opts.unstable_features {
+        let mir_map = match tcx.sess.opts.unstable_features {
             UnstableFeatures::Disallow => {
                 // use this as a shorthand for beta/stable, and skip
                 // MIR construction there until known regressions are
                 // addressed
+                NodeMap()
             }
             UnstableFeatures::Allow | UnstableFeatures::Cheat => {
-                let _mir_map =
-                    time(time_passes, "MIR dump", ||
-                            mir::mir_map::build_mir_for_crate(tcx));
+                time(time_passes, "MIR dump", ||
+                     mir::mir_map::build_mir_for_crate(tcx))
             }
-        }
+        };
 
         time(time_passes, "liveness checking", ||
             middle::liveness::check_crate(tcx));
@@ -804,7 +807,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         // The above three passes generate errors w/o aborting
         tcx.sess.abort_if_errors();
 
-        f(tcx, ty::CrateAnalysis {
+        f(tcx, mir_map, ty::CrateAnalysis {
             export_map: export_map,
             exported_items: exported_items,
             public_items: public_items,
@@ -817,8 +820,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
-pub fn phase_4_translate_to_llvm(tcx: &ty::ctxt, analysis: ty::CrateAnalysis)
-                                 -> trans::CrateTranslation {
+pub fn phase_4_translate_to_llvm<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                       mir_map: &MirMap<'tcx>,
+                                       analysis: ty::CrateAnalysis)
+                                       -> trans::CrateTranslation {
     let time_passes = tcx.sess.time_passes();
 
     time(time_passes, "resolving dependency formats", ||
@@ -826,7 +831,7 @@ pub fn phase_4_translate_to_llvm(tcx: &ty::ctxt, analysis: ty::CrateAnalysis)
 
     // Option dance to work around the lack of stack once closures.
     time(time_passes, "translation", move ||
-         trans::trans_crate(tcx, analysis))
+         trans::trans_crate(tcx, mir_map, analysis))
 }
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
