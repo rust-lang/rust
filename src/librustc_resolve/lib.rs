@@ -1150,7 +1150,7 @@ pub struct Resolver<'a, 'tcx:'a> {
     // The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
 
-    def_map: DefMap,
+    def_map: RefCell<DefMap>,
     freevars: FreevarMap,
     freevars_seen: NodeMap<NodeMap<usize>>,
     export_map: ExportMap,
@@ -4026,7 +4026,7 @@ fn module_to_string(module: &Module) -> String {
 
 
 pub struct CrateMap {
-    pub def_map: DefMap,
+    pub def_map: RefCell<DefMap>,
     pub freevars: FreevarMap,
     pub export_map: ExportMap,
     pub trait_map: TraitMap,

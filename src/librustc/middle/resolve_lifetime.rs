@@ -23,6 +23,7 @@ use middle::def::{self, DefMap};
 use middle::region;
 use middle::subst;
 use middle::ty;
+use std::cell::RefCell;
 use std::fmt;
 use std::mem::replace;
 use syntax::ast;
@@ -54,7 +55,7 @@ struct LifetimeContext<'a> {
     sess: &'a Session,
     named_region_map: &'a mut NamedRegionMap,
     scope: Scope<'a>,
-    def_map: &'a DefMap,
+    def_map: &'a RefCell<DefMap>,
     // Deep breath. Our representation for poly trait refs contains a single
     // binder and thus we only allow a single level of quantification. However,
     // the syntax of Rust permits quantification in two places, e.g., `T: for <'a> Foo<'a>`
@@ -93,7 +94,7 @@ type Scope<'a> = &'a ScopeChain<'a>;
 
 static ROOT_SCOPE: ScopeChain<'static> = RootScope;
 
-pub fn krate(sess: &Session, krate: &hir::Crate, def_map: &DefMap) -> NamedRegionMap {
+pub fn krate(sess: &Session, krate: &hir::Crate, def_map: &RefCell<DefMap>) -> NamedRegionMap {
     let mut named_region_map = NodeMap();
     visit::walk_crate(&mut LifetimeContext {
         sess: sess,
