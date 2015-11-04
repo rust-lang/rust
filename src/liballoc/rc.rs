@@ -165,6 +165,7 @@ use core::marker::{self, Unsize};
 use core::mem::{self, align_of_val, size_of_val, forget};
 use core::ops::{CoerceUnsized, Deref};
 use core::ptr::{self, Shared};
+use core::convert::From;
 
 use heap::deallocate;
 
@@ -698,6 +699,20 @@ impl<T> fmt::Pointer for Rc<T> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.6.0")]
+impl<T> From<T> for Rc<T> {
+    fn from(t: T) -> Self {
+        Rc::new(t)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.6.0")]
+impl<T> From<Box<T>> for Rc<T> {
+    fn from(t: Box<T>) -> Self {
+        Rc::new(*t)
+    }
+}
+
 /// A weak version of `Rc<T>`.
 ///
 /// Weak references do not count when determining if the inner value should be
@@ -903,6 +918,7 @@ mod tests {
     use std::result::Result::{Err, Ok};
     use std::mem::drop;
     use std::clone::Clone;
+    use std::convert::From;
 
     #[test]
     fn test_clone() {
@@ -1104,6 +1120,20 @@ mod tests {
     fn test_unsized() {
         let foo: Rc<[i32]> = Rc::new([1, 2, 3]);
         assert_eq!(foo, foo.clone());
+    }
+
+    #[test]
+    fn test_from_owned() {
+        let foo = 123;
+        let foo_rc = Rc::from(foo);
+        assert!(123 == *foo_rc);
+    }
+
+    #[test]
+    fn test_from_box() {
+        let foo_box = Box::new(123);
+        let foo_rc = Rc::from(foo_box);
+        assert!(123 == *foo_rc);
     }
 }
 

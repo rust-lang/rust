@@ -84,6 +84,7 @@ use core::ptr::{self, Shared};
 use core::marker::Unsize;
 use core::hash::{Hash, Hasher};
 use core::{usize, isize};
+use core::convert::From;
 use heap::deallocate;
 
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
@@ -894,8 +895,23 @@ impl<T: ?Sized + Hash> Hash for Arc<T> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.6.0")]
+impl<T> From<T> for Arc<T> {
+    fn from(t: T) -> Self {
+        Arc::new(t)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.6.0")]
+impl<T> From<Box<T>> for Arc<T> {
+    fn from(t: Box<T>) -> Self {
+        Arc::new(*t)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::boxed::Box;
     use std::clone::Clone;
     use std::sync::mpsc::channel;
     use std::mem::drop;
@@ -908,6 +924,7 @@ mod tests {
     use std::vec::Vec;
     use super::{Arc, Weak};
     use std::sync::Mutex;
+    use std::convert::From;
 
     struct Canary(*mut atomic::AtomicUsize);
 
@@ -1136,6 +1153,20 @@ mod tests {
         let y = Arc::downgrade(&x.clone());
         drop(x);
         assert!(y.upgrade().is_none());
+    }
+
+    #[test]
+    fn test_from_owned() {
+        let foo = 123;
+        let foo_arc = Arc::from(foo);
+        assert!(123 == *foo_arc);
+    }
+
+    #[test]
+    fn test_from_box() {
+        let foo_box = Box::new(123);
+        let foo_arc = Arc::from(foo_box);
+        assert!(123 == *foo_arc);
     }
 }
 
