@@ -1605,14 +1605,11 @@ arguments.
 
 ## Writing the logic
 
-We're all different in how we write code, but error handling is
-usually the last thing we want to think about. This isn't very good
-practice for good design, but it can be useful for rapidly
-prototyping. In our case, because Rust forces us to be explicit about
-error handling, it will also make it obvious what parts of our program
-can cause errors. Why? Because Rust will make us call `unwrap`! This
-can give us a nice bird's eye view of how we need to approach error
-handling.
+We all write code differently, but error handling is usually the last thing we
+want to think about. This isn't great for the overall design of a program, but
+it can be useful for rapid prototyping. Because Rust forces us to be explicit
+about error handling (by making us call `unwrap`), it is easy to see which
+parts of our program can cause errors.
 
 In this case study, the logic is really simple. All we need to do is parse the
 CSV data given to us and print out a field in matching rows. Let's do it. (Make
