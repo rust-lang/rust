@@ -167,7 +167,7 @@ fn walk_pattern(cx: &CrateContext,
 
             // Check if this is a binding. If so we need to put it on the
             // scope stack and maybe introduce an artificial scope
-            if pat_util::pat_is_binding(def_map, &*pat) {
+            if pat_util::pat_is_binding(&def_map.borrow(), &*pat) {
 
                 let name = path1.node.name;
 

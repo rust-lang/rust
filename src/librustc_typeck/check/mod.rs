@@ -529,7 +529,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'tcx hir::Pat) {
         if let hir::PatIdent(_, ref path1, _) = p.node {
-            if pat_util::pat_is_binding(&self.fcx.ccx.tcx.def_map, p) {
+            if pat_util::pat_is_binding(&self.fcx.ccx.tcx.def_map.borrow(), p) {
                 let var_ty = self.assign(p.span, p.id, None);
 
                 self.fcx.require_type_is_sized(var_ty, p.span,
