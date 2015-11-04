@@ -1151,8 +1151,8 @@ pub struct Resolver<'a, 'tcx:'a> {
     primitive_type_table: PrimitiveTypeTable,
 
     def_map: DefMap,
-    freevars: RefCell<FreevarMap>,
-    freevars_seen: RefCell<NodeMap<NodeMap<usize>>>,
+    freevars: FreevarMap,
+    freevars_seen: NodeMap<NodeMap<usize>>,
     export_map: ExportMap,
     trait_map: TraitMap,
     external_exports: ExternalExports,
@@ -1227,8 +1227,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             primitive_type_table: PrimitiveTypeTable::new(),
 
             def_map: RefCell::new(NodeMap()),
-            freevars: RefCell::new(NodeMap()),
-            freevars_seen: RefCell::new(NodeMap()),
+            freevars: NodeMap(),
+            freevars_seen: NodeMap(),
             export_map: NodeMap(),
             trait_map: NodeMap(),
             used_imports: HashSet::new(),
@@ -3081,7 +3081,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     // Resolve a local definition, potentially adjusting for closures.
-    fn adjust_local_def(&self, local_def: LocalDef, span: Span) -> Option<Def> {
+    fn adjust_local_def(&mut self, local_def: LocalDef, span: Span) -> Option<Def> {
         let ribs = match local_def.ribs {
             Some((TypeNS, i)) => &self.type_ribs[i+1..],
             Some((ValueNS, i)) => &self.value_ribs[i+1..],
@@ -3103,15 +3103,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             let prev_def = def;
                             let node_def_id = self.ast_map.local_def_id(node_id);
 
-                            let mut seen = self.freevars_seen.borrow_mut();
-                            let seen = seen.entry(function_id).or_insert_with(|| NodeMap());
+                            let seen = self.freevars_seen.entry(function_id)
+                                                         .or_insert_with(|| NodeMap());
                             if let Some(&index) = seen.get(&node_id) {
                                 def = DefUpvar(node_def_id, node_id, index, function_id);
                                 continue;
                             }
-                            let mut freevars = self.freevars.borrow_mut();
-                            let vec = freevars.entry(function_id)
-                                              .or_insert_with(|| vec![]);
+                            let vec = self.freevars.entry(function_id)
+                                                   .or_insert_with(|| vec![]);
                             let depth = vec.len();
                             vec.push(Freevar { def: prev_def, span: span });
 
@@ -4028,7 +4027,7 @@ fn module_to_string(module: &Module) -> String {
 
 pub struct CrateMap {
     pub def_map: DefMap,
-    pub freevars: RefCell<FreevarMap>,
+    pub freevars: FreevarMap,
     pub export_map: ExportMap,
     pub trait_map: TraitMap,
     pub external_exports: ExternalExports,
