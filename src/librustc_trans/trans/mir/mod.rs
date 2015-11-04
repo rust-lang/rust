@@ -177,7 +177,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>,
                let llarg = llvm::get_param(fcx.llfn, idx);
                idx += 1;
                let lltemp = base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index));
-               build::Store(bcx, llarg, lltemp);
+               base::store_ty(bcx, llarg, lltemp, arg_ty);
                lltemp
            };
            LvalueRef::new(llval, LvalueTy::from_ty(arg_ty))
