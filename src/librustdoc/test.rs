@@ -422,22 +422,59 @@ impl Collector {
 
 impl DocFolder for Collector {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
-        let pushed = match item.name {
-            Some(ref name) if name.is_empty() => false,
-            Some(ref name) => { self.names.push(name.to_string()); true }
-            None => false
+        let current_name = match item.name {
+            Some(ref name) if !name.is_empty() => Some(name.clone()),
+            _ => typename_if_impl(&item)
         };
-        match item.doc_value() {
-            Some(doc) => {
-                self.cnt = 0;
-                markdown::find_testable_code(doc, &mut *self);
-            }
-            None => {}
+
+        let pushed = if let Some(name) = current_name {
+            self.names.push(name);
+            true
+        } else {
+            false
+        };
+
+        if let Some(doc) = item.doc_value() {
+            self.cnt = 0;
+            markdown::find_testable_code(doc, &mut *self);
         }
+
         let ret = self.fold_item_recur(item);
         if pushed {
             self.names.pop();
         }
+
         return ret;
+
+        // FIXME: it would be better to not have the escaped version in the first place
+        fn unescape_for_testname(mut s: String) -> String {
+            // for refs `&foo`
+            if s.contains("&amp;") {
+                s = s.replace("&amp;", "&");
+
+                // `::&'a mut Foo::` looks weird, let's make it `::<&'a mut Foo>`::
+                if let Some('&') = s.chars().nth(0) {
+                    s = format!("<{}>", s);
+                }
+            }
+
+            // either `<..>` or `->`
+            if s.contains("&gt;") {
+                s.replace("&gt;", ">")
+                 .replace("&lt;", "<")
+            } else {
+                s
+            }
+        }
+
+        fn typename_if_impl(item: &clean::Item) -> Option<String> {
+            if let clean::ItemEnum::ImplItem(ref impl_) = item.inner {
+                let path = impl_.for_.to_string();
+                let unescaped_path = unescape_for_testname(path);
+                Some(unescaped_path)
+            } else {
+                None
+            }
+        }
     }
 }
