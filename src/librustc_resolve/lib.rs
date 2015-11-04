@@ -53,7 +53,7 @@ use rustc::front::map as hir_map;
 use rustc::session::Session;
 use rustc::lint;
 use rustc::metadata::csearch;
-use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
+use rustc::metadata::decoder::{DefLike, DlDef};
 use rustc::middle::def::*;
 use rustc::middle::def_id::DefId;
 use rustc::middle::pat_util::pat_bindings_hygienic;
@@ -648,6 +648,21 @@ impl Rib {
         Rib {
             bindings: HashMap::new(),
             kind: kind
+        }
+    }
+}
+
+/// A definition along with the index of the rib it was found on
+struct LocalDef {
+    ribs: Option<(Namespace, usize)>,
+    def: Def
+}
+
+impl LocalDef {
+    fn from_def(def: Def) -> Self {
+        LocalDef {
+            ribs: None,
+            def: def
         }
     }
 }
@@ -1954,116 +1969,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self.current_module = orig_module;
     }
 
-    /// Wraps the given definition in the appropriate number of `DefUpvar`
-    /// wrappers.
-    fn upvarify(&self,
-                ribs: &[Rib],
-                def_like: DefLike,
-                span: Span)
-                -> Option<DefLike> {
-        let mut def = match def_like {
-            DlDef(def) => def,
-            _ => return Some(def_like)
-        };
-        match def {
-            DefUpvar(..) => {
-                self.session.span_bug(span,
-                    &format!("unexpected {:?} in bindings", def))
-            }
-            DefLocal(_, node_id) => {
-                for rib in ribs {
-                    match rib.kind {
-                        NormalRibKind => {
-                            // Nothing to do. Continue.
-                        }
-                        ClosureRibKind(function_id) => {
-                            let prev_def = def;
-                            let node_def_id = self.ast_map.local_def_id(node_id);
-
-                            let mut seen = self.freevars_seen.borrow_mut();
-                            let seen = seen.entry(function_id).or_insert_with(|| NodeMap());
-                            if let Some(&index) = seen.get(&node_id) {
-                                def = DefUpvar(node_def_id, node_id, index, function_id);
-                                continue;
-                            }
-                            let mut freevars = self.freevars.borrow_mut();
-                            let vec = freevars.entry(function_id)
-                                              .or_insert_with(|| vec![]);
-                            let depth = vec.len();
-                            vec.push(Freevar { def: prev_def, span: span });
-
-                            def = DefUpvar(node_def_id, node_id, depth, function_id);
-                            seen.insert(node_id, depth);
-                        }
-                        ItemRibKind | MethodRibKind => {
-                            // This was an attempt to access an upvar inside a
-                            // named function item. This is not allowed, so we
-                            // report an error.
-                            resolve_error(
-                                self,
-                                span,
-                                ResolutionError::CannotCaptureDynamicEnvironmentInFnItem
-                            );
-                            return None;
-                        }
-                        ConstantItemRibKind => {
-                            // Still doesn't deal with upvars
-                            resolve_error(
-                                self,
-                                span,
-                                ResolutionError::AttemptToUseNonConstantValueInConstant
-                            );
-                            return None;
-                        }
-                    }
-                }
-            }
-            DefTyParam(..) | DefSelfTy(..) => {
-                for rib in ribs {
-                    match rib.kind {
-                        NormalRibKind | MethodRibKind | ClosureRibKind(..) => {
-                            // Nothing to do. Continue.
-                        }
-                        ItemRibKind => {
-                            // This was an attempt to use a type parameter outside
-                            // its scope.
-
-                            resolve_error(self,
-                                          span,
-                                          ResolutionError::TypeParametersFromOuterFunction);
-                            return None;
-                        }
-                        ConstantItemRibKind => {
-                            // see #9186
-                            resolve_error(self, span, ResolutionError::OuterTypeParameterContext);
-                            return None;
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-        Some(DlDef(def))
-    }
-
-    /// Searches the current set of local scopes and
-    /// applies translations for closures.
-    fn search_ribs(&self,
-                   ribs: &[Rib],
-                   name: Name,
-                   span: Span)
-                   -> Option<DefLike> {
-        // FIXME #4950: Try caching?
-
-        for (i, rib) in ribs.iter().enumerate().rev() {
-            if let Some(def_like) = rib.bindings.get(&name).cloned() {
-                return self.upvarify(&ribs[i + 1..], def_like, span);
-            }
-        }
-
-        None
-    }
-
     /// Searches the current set of local scopes for labels.
     /// Stops after meeting a closure.
     fn search_label(&self, name: Name) -> Option<DefLike> {
@@ -3123,19 +3028,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // Try to find a path to an item in a module.
-        let unqualified_def =
-                self.resolve_identifier(segments.last().unwrap().identifier,
-                                        namespace,
-                                        check_ribs,
-                                        span);
+        let unqualified_def = self.resolve_identifier(
+            segments.last().unwrap().identifier,
+            namespace, check_ribs);
 
         if segments.len() <= 1 {
-            return unqualified_def.map(mk_res);
+            return unqualified_def
+                .and_then(|def| self.adjust_local_def(def, span))
+                .map(|def| {
+                    PathResolution::new(def, LastMod(AllPublic), path_depth)
+                });
         }
 
         let def = self.resolve_module_relative_path(span, segments, namespace);
         match (def, unqualified_def) {
-            (Some((ref d, _)), Some((ref ud, _))) if *d == *ud => {
+            (Some((ref d, _)), Some(ref ud)) if *d == ud.def => {
                 self.session
                     .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
                               id, span,
@@ -3147,31 +3054,119 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         def.map(mk_res)
     }
 
-    // Resolve a single identifier.
+    // Resolve a single identifier
     fn resolve_identifier(&mut self,
                           identifier: Ident,
                           namespace: Namespace,
-                          check_ribs: bool,
-                          span: Span)
-                          -> Option<(Def, LastPrivate)> {
+                          check_ribs: bool)
+                          -> Option<LocalDef> {
         // First, check to see whether the name is a primitive type.
         if namespace == TypeNS {
             if let Some(&prim_ty) = self.primitive_type_table
                                         .primitive_types
                                         .get(&identifier.name) {
-                return Some((DefPrimTy(prim_ty), LastMod(AllPublic)));
+                return Some(LocalDef::from_def(DefPrimTy(prim_ty)));
             }
         }
 
         if check_ribs {
             if let Some(def) = self.resolve_identifier_in_local_ribs(identifier,
-                                                                     namespace,
-                                                                     span) {
-                return Some((def, LastMod(AllPublic)));
+                                                                     namespace) {
+                return Some(def);
             }
         }
 
         self.resolve_item_by_name_in_lexical_scope(identifier.name, namespace)
+            .map(LocalDef::from_def)
+    }
+
+    // Resolve a local definition, potentially adjusting for closures.
+    fn adjust_local_def(&self, local_def: LocalDef, span: Span) -> Option<Def> {
+        let ribs = match local_def.ribs {
+            Some((TypeNS, i)) => &self.type_ribs[i+1..],
+            Some((ValueNS, i)) => &self.value_ribs[i+1..],
+            _ => &[] as &[_]
+        };
+        let mut def = local_def.def;
+        match def {
+            DefUpvar(..) => {
+                self.session.span_bug(span,
+                    &format!("unexpected {:?} in bindings", def))
+            }
+            DefLocal(_, node_id) => {
+                for rib in ribs {
+                    match rib.kind {
+                        NormalRibKind => {
+                            // Nothing to do. Continue.
+                        }
+                        ClosureRibKind(function_id) => {
+                            let prev_def = def;
+                            let node_def_id = self.ast_map.local_def_id(node_id);
+
+                            let mut seen = self.freevars_seen.borrow_mut();
+                            let seen = seen.entry(function_id).or_insert_with(|| NodeMap());
+                            if let Some(&index) = seen.get(&node_id) {
+                                def = DefUpvar(node_def_id, node_id, index, function_id);
+                                continue;
+                            }
+                            let mut freevars = self.freevars.borrow_mut();
+                            let vec = freevars.entry(function_id)
+                                              .or_insert_with(|| vec![]);
+                            let depth = vec.len();
+                            vec.push(Freevar { def: prev_def, span: span });
+
+                            def = DefUpvar(node_def_id, node_id, depth, function_id);
+                            seen.insert(node_id, depth);
+                        }
+                        ItemRibKind | MethodRibKind => {
+                            // This was an attempt to access an upvar inside a
+                            // named function item. This is not allowed, so we
+                            // report an error.
+                            resolve_error(
+                                self,
+                                span,
+                                ResolutionError::CannotCaptureDynamicEnvironmentInFnItem
+                            );
+                            return None;
+                        }
+                        ConstantItemRibKind => {
+                            // Still doesn't deal with upvars
+                            resolve_error(
+                                self,
+                                span,
+                                ResolutionError::AttemptToUseNonConstantValueInConstant
+                            );
+                            return None;
+                        }
+                    }
+                }
+            }
+            DefTyParam(..) | DefSelfTy(..) => {
+                for rib in ribs {
+                    match rib.kind {
+                        NormalRibKind | MethodRibKind | ClosureRibKind(..) => {
+                            // Nothing to do. Continue.
+                        }
+                        ItemRibKind => {
+                            // This was an attempt to use a type parameter outside
+                            // its scope.
+
+                            resolve_error(self,
+                                          span,
+                                          ResolutionError::TypeParametersFromOuterFunction);
+                            return None;
+                        }
+                        ConstantItemRibKind => {
+                            // see #9186
+                            resolve_error(self, span, ResolutionError::OuterTypeParameterContext);
+                            return None;
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        return Some(def);
     }
 
     // FIXME #4952: Merge me with resolve_name_in_module?
@@ -3364,38 +3359,41 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_identifier_in_local_ribs(&mut self,
                                         ident: Ident,
-                                        namespace: Namespace,
-                                        span: Span)
-                                        -> Option<Def> {
+                                        namespace: Namespace)
+                                        -> Option<LocalDef> {
         // Check the local set of ribs.
-        let search_result = match namespace {
-            ValueNS => {
-                let renamed = mtwt::resolve(ident);
-                self.search_ribs(&self.value_ribs, renamed, span)
-            }
-            TypeNS => {
-                let name = ident.name;
-                self.search_ribs(&self.type_ribs, name, span)
-            }
+        let (name, ribs) = match namespace {
+            ValueNS => (mtwt::resolve(ident), &self.value_ribs),
+            TypeNS => (ident.name, &self.type_ribs)
         };
 
-        match search_result {
-            Some(DlDef(def)) => {
-                debug!("(resolving path in local ribs) resolved `{}` to local: {:?}",
-                       ident,
-                       def);
-                Some(def)
-            }
-            Some(DlField) | Some(DlImpl(_)) | None => {
-                None
+        for (i, rib) in ribs.iter().enumerate().rev() {
+            if let Some(def_like) = rib.bindings.get(&name).cloned() {
+                match def_like {
+                    DlDef(def) => {
+                        debug!("(resolving path in local ribs) resolved `{}` to {:?} at {}",
+                               name, def, i);
+                        return Some(LocalDef {
+                            ribs: Some((namespace, i)),
+                            def: def
+                        });
+                    }
+                    def_like => {
+                        debug!("(resolving path in local ribs) resolved `{}` to pseudo-def {:?}",
+                               name, def_like);
+                        return None;
+                    }
+                }
             }
         }
+
+        None
     }
 
     fn resolve_item_by_name_in_lexical_scope(&mut self,
                                              name: Name,
                                              namespace: Namespace)
-                                            -> Option<(Def, LastPrivate)> {
+                                            -> Option<Def> {
         // Check the items.
         let module = self.current_module.clone();
         match self.resolve_item_in_lexical_scope(module,
@@ -3409,7 +3407,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         debug!("(resolving item path by identifier in lexical \
                                  scope) failed to resolve {} after success...",
                                  name);
-                        return None;
+                        None
                     }
                     Some(def) => {
                         debug!("(resolving item path in lexical scope) \
@@ -3418,7 +3416,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // This lookup is "all public" because it only searched
                         // for one identifier in the current module (couldn't
                         // have passed through reexports or anything like that.
-                        return Some((def, LastMod(AllPublic)));
+                        Some(def)
                     }
                 }
             }
@@ -3433,7 +3431,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&*msg))
                 }
 
-                return None;
+                None
             }
         }
     }
