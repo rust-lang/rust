@@ -347,6 +347,10 @@ pub fn is_integer_literal(expr: &Expr, value: u64) -> bool
     false
 }
 
+pub fn is_adjusted(cx: &LateContext, e: &Expr) -> bool {
+    cx.tcx.tables.borrow().adjustments.get(&e.id).is_some()
+}
+
 /// Produce a nested chain of if-lets and ifs from the patterns:
 ///
 ///     if_let_chain! {

@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 71 lints included in this crate:
+There are 72 lints included in this crate:
 
 name                                                                                                   | default | meaning
 -------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -34,6 +34,7 @@ name                                                                            
 [let_and_return](https://github.com/Manishearth/rust-clippy/wiki#let_and_return)                       | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block
 [let_unit_value](https://github.com/Manishearth/rust-clippy/wiki#let_unit_value)                       | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
 [linkedlist](https://github.com/Manishearth/rust-clippy/wiki#linkedlist)                               | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a VecDeque
+[map_clone](https://github.com/Manishearth/rust-clippy/wiki#map_clone)                                 | warn    | using `.map(|x| x.clone())` to clone an iterator or option's contents (recommends `.cloned()` instead)
 [match_bool](https://github.com/Manishearth/rust-clippy/wiki#match_bool)                               | warn    | a match on boolean expression; recommends `if..else` block instead
 [match_ref_pats](https://github.com/Manishearth/rust-clippy/wiki#match_ref_pats)                       | warn    | a match has all arms prefixed with `&`; the match expression can be dereferenced instead
 [min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                     | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant

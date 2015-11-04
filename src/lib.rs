@@ -45,6 +45,7 @@ pub mod returns;
 pub mod lifetimes;
 pub mod loops;
 pub mod ranges;
+pub mod map_clone;
 pub mod matches;
 pub mod precedence;
 pub mod mutex_atomic;
@@ -100,6 +101,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box needless_features::NeedlessFeaturesPass);
     reg.register_late_lint_pass(box needless_update::NeedlessUpdatePass);
     reg.register_late_lint_pass(box no_effect::NoEffectPass);
+    reg.register_late_lint_pass(box map_clone::MapClonePass);
 
     reg.register_lint_group("clippy_pedantic", vec![
         methods::OPTION_UNWRAP_USED,
@@ -141,6 +143,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         loops::UNUSED_COLLECT,
         loops::WHILE_LET_LOOP,
         loops::WHILE_LET_ON_ITERATOR,
+        map_clone::MAP_CLONE,
         matches::MATCH_BOOL,
         matches::MATCH_REF_PATS,
         matches::SINGLE_MATCH,
