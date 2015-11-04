@@ -198,7 +198,7 @@ impl<'a, 'tcx: 'a> FmtStrs<'a, 'tcx> {
                               vec!("name", "crate", "file_name"),
                               false,
                               false),
-            Crate => ("crate", vec!("name"), true, false),
+            Crate => ("crate", vec!("name", "crate_root"), true, false),
             FnCall => ("fn_call",
                        vec!("refid", "refidcrate", "qualname", "scopeid"),
                        true,
@@ -658,8 +658,8 @@ impl<'a, 'tcx: 'a> FmtStrs<'a, 'tcx> {
         self.check_and_record(Typedef, span, sub_span, svec!(id, qualname, value));
     }
 
-    pub fn crate_str(&mut self, span: Span, name: &str) {
-        self.record_with_span(Crate, span, span, svec!(name));
+    pub fn crate_str(&mut self, span: Span, name: &str, crate_root: &str) {
+        self.record_with_span(Crate, span, span, svec!(name, crate_root));
     }
 
     pub fn external_crate_str(&mut self, span: Span, name: &str, num: ast::CrateNum) {
