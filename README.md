@@ -2,17 +2,6 @@
 
 A tool for formatting Rust code according to style guidelines.
 
-## Gotchas
-
-* For things you do not want rustfmt to mangle, use one of
-   ```rust
-   #[rustfmt_skip]
-   #[cfg_attr(rustfmt, rustfmt_skip)]
-    ```
-* When you run rustfmt, place a file named rustfmt.toml in target file
-  directory or its parents to override the default settings of rustfmt.
-* After successful compilation, a `rustfmt` executable can be found in the
-  target directory.
 
 ## Installation
 
@@ -29,9 +18,15 @@ or if you're using [`multirust`](https://github.com/brson/multirust)
 multirust run nightly cargo install --git https://github.com/nrc/rustfmt
 ```
 
+
+## Running Rustfmt from Vim
+
+See [instructions](http://johannh.me/blog/rustfmt-vim.html).
+
+
 ## How to build and test
 
-First make sure you've got Rust **1.3.0** or greater available, then:
+First make sure you've got Rust **1.4.0** or greater available, then:
 
 `cargo build` to build.
 
@@ -50,3 +45,16 @@ the command line.
 
 `cargo run -- filename --write-mode=display` prints the output of rustfmt to the
 screen, for example.
+
+
+## Gotchas
+
+* For things you do not want rustfmt to mangle, use one of
+   ```rust
+   #[rustfmt_skip]
+   #[cfg_attr(rustfmt, rustfmt_skip)]
+    ```
+* When you run rustfmt, place a file named rustfmt.toml in target file
+  directory or its parents to override the default settings of rustfmt.
+* After successful compilation, a `rustfmt` executable can be found in the
+  target directory.
