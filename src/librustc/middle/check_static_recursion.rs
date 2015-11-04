@@ -27,7 +27,7 @@ use std::cell::RefCell;
 
 struct CheckCrateVisitor<'a, 'ast: 'a> {
     sess: &'a Session,
-    def_map: &'a DefMap,
+    def_map: &'a RefCell<DefMap>,
     ast_map: &'a ast_map::Map<'ast>,
     // `discriminant_map` is a cache that associates the `NodeId`s of local
     // variant definitions with the discriminant expression that applies to
@@ -92,7 +92,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
 
 pub fn check_crate<'ast>(sess: &Session,
                          krate: &'ast hir::Crate,
-                         def_map: &DefMap,
+                         def_map: &RefCell<DefMap>,
                          ast_map: &ast_map::Map<'ast>) {
     let mut visitor = CheckCrateVisitor {
         sess: sess,
@@ -108,7 +108,7 @@ struct CheckItemRecursionVisitor<'a, 'ast: 'a> {
     root_span: &'a Span,
     sess: &'a Session,
     ast_map: &'a ast_map::Map<'ast>,
-    def_map: &'a DefMap,
+    def_map: &'a RefCell<DefMap>,
     discriminant_map: &'a RefCell<NodeMap<Option<&'ast hir::Expr>>>,
     idstack: Vec<ast::NodeId>,
 }
