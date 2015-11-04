@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use back::abi;
 use llvm::ValueRef;
 use rustc::middle::ty::Ty;
 use rustc_front::hir;
