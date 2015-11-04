@@ -250,7 +250,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_arm(&mut self, arm: &hir::Arm) {
         if arm.pats.len() == 1 {
             let pat = &*arm.pats[0];
-            let variants = pat_util::necessary_variants(&self.tcx.def_map, pat);
+            let variants = pat_util::necessary_variants(&self.tcx.def_map.borrow(), pat);
 
             // Inside the body, ignore constructions of variants
             // necessary for the pattern to match. Those construction sites
@@ -270,7 +270,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
             hir::PatStruct(_, ref fields, _) => {
                 self.handle_field_pattern_match(pat, fields);
             }
-            _ if pat_util::pat_is_const(def_map, pat) => {
+            _ if pat_util::pat_is_const(&def_map.borrow(), pat) => {
                 // it might be the only use of a const
                 self.lookup_and_handle_definition(&pat.id)
             }
