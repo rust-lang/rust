@@ -1081,11 +1081,12 @@ impl<'a> StringReader<'a> {
             if !self.curr_is('\'') {
                 let last_bpos = self.last_pos;
                 panic!(self.fatal_span_verbose(
-                                   // Byte offsetting here is okay because the
-                                   // character before position `start` is an
-                                   // ascii single quote.
-                                   start - BytePos(1), last_bpos,
-                                   "unterminated character constant".to_string()));
+                        // Byte offsetting here is okay because the
+                        // character before position `start` is an
+                        // ascii single quote.
+                        start - BytePos(1), last_bpos,
+
+                        String::from("character literal may only contain one codepoint")));
             }
             let id = if valid { self.name_from(start) } else { token::intern("0") };
             self.bump(); // advance curr past token
