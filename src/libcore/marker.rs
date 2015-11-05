@@ -382,11 +382,12 @@ mod impls {
     unsafe impl<'a, T: Send + ?Sized> Send for &'a mut T {}
 }
 
-/// A marker trait indicates a type that can be reflected over. This
-/// trait is implemented for all types. Its purpose is to ensure that
-/// when you write a generic function that will employ reflection,
-/// that must be reflected (no pun intended) in the generic bounds of
-/// that function. Here is an example:
+/// A marker trait indicates a type that can be reflected over.
+/// 
+/// This trait is implemented for all types. Its purpose is to ensure
+/// that when you write a generic function that will employ
+/// reflection, that must be reflected (no pun intended) in the
+/// generic bounds of that function. Here is an example:
 ///
 /// ```
 /// #![feature(reflect_marker)]

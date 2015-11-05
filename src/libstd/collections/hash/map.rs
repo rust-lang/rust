@@ -601,6 +601,9 @@ impl<K, V, S> HashMap<K, V, S>
 
     /// Returns the number of elements the map can hold without reallocating.
     ///
+    /// This number is a lower bound; the `HashMap<K, V>` might be able to hold
+    /// more, but is guaranteed to be able to hold at least this many.
+    ///
     /// # Examples
     ///
     /// ```
