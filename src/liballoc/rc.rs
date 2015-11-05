@@ -508,7 +508,6 @@ impl<T: Default> Default for Rc<T> {
     /// let x: Rc<i32> = Default::default();
     /// ```
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Rc<T> {
         Rc::new(Default::default())
     }

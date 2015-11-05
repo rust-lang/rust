@@ -438,7 +438,6 @@ impl AtomicBool {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 impl AtomicIsize {
     /// Creates a new `AtomicIsize`.
     ///
@@ -631,7 +630,6 @@ impl AtomicIsize {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 impl AtomicUsize {
     /// Creates a new `AtomicUsize`.
     ///

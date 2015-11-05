@@ -257,7 +257,6 @@ pub enum Result<T, E> {
 // Type implementation
 /////////////////////////////////////////////////////////////////////////////
 
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, E> Result<T, E> {
     /////////////////////////////////////////////////////////////////////////
     // Querying the contained values
@@ -708,7 +707,6 @@ impl<T, E> Result<T, E> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, E: fmt::Debug> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Ok`.
     ///
@@ -758,7 +756,6 @@ impl<T, E: fmt::Debug> Result<T, E> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug, E> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Err`.
     ///

@@ -1826,6 +1826,5 @@ fn char_range_at_raw(bytes: &[u8], i: usize) -> (u32, usize) {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Default for &'a str {
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> &'a str { "" }
 }
