@@ -1062,7 +1062,6 @@ pub type ViewPath = Spanned<ViewPath_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ViewPath_ {
-
     /// `foo::bar::baz as quux`
     ///
     /// or just
@@ -1151,7 +1150,7 @@ impl StructFieldKind {
 
     pub fn visibility(&self) -> Visibility {
         match *self {
-            NamedField(_, vis) | UnnamedField(vis) => vis
+            NamedField(_, vis) | UnnamedField(vis) => vis,
         }
     }
 }
@@ -1183,24 +1182,36 @@ impl VariantData {
     }
     pub fn id(&self) -> NodeId {
         match *self {
-            VariantData::Struct(_, id) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id
+            VariantData::Struct(_, id) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id,
         }
     }
     pub fn is_struct(&self) -> bool {
-        if let VariantData::Struct(..) = *self { true } else { false }
+        if let VariantData::Struct(..) = *self {
+            true
+        } else {
+            false
+        }
     }
     pub fn is_tuple(&self) -> bool {
-        if let VariantData::Tuple(..) = *self { true } else { false }
+        if let VariantData::Tuple(..) = *self {
+            true
+        } else {
+            false
+        }
     }
     pub fn is_unit(&self) -> bool {
-        if let VariantData::Unit(..) = *self { true } else { false }
+        if let VariantData::Unit(..) = *self {
+            true
+        } else {
+            false
+        }
     }
 }
 
-/*
-  FIXME (#3300): Should allow items to be anonymous. Right now
-  we just use dummy names for anon items.
- */
+
+
+//  FIXME (#3300): Should allow items to be anonymous. Right now
+//  we just use dummy names for anon items.
 /// An item
 ///
 /// The name might be a dummy name in case of anonymous items
@@ -1244,7 +1255,7 @@ pub enum Item_ {
 
     // Default trait implementations
     ///
-    // `impl Trait for .. {}`
+    /// `impl Trait for .. {}`
     ItemDefaultImpl(Unsafety, TraitRef),
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,
