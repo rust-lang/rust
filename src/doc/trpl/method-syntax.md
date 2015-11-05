@@ -43,8 +43,6 @@ fn main() {
 
 This will print `12.566371`.
 
-
-
 We’ve made a `struct` that represents a circle. We then write an `impl` block,
 and inside it, define a method, `area`.
 
@@ -77,6 +75,35 @@ impl Circle {
        println!("taking self by mutable reference!");
     }
 
+    fn takes_ownership(self) {
+       println!("taking ownership of self!");
+    }
+}
+```
+
+You can use as many `impl` blocks as you’d like. The previous example could
+have also been written like this:
+
+```rust
+struct Circle {
+    x: f64,
+    y: f64,
+    radius: f64,
+}
+
+impl Circle {
+    fn reference(&self) {
+       println!("taking self by reference!");
+    }
+}
+
+impl Circle {
+    fn mutable_reference(&mut self) {
+       println!("taking self by mutable reference!");
+    }
+}
+
+impl Circle {
     fn takes_ownership(self) {
        println!("taking ownership of self!");
     }
