@@ -23,7 +23,7 @@ use option::Option;
 use hash::Hash;
 use hash::Hasher;
 
-/// Types able to be transferred across thread boundaries.
+/// Types that can be transferred across thread boundaries.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "send"]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
@@ -382,7 +382,7 @@ mod impls {
     unsafe impl<'a, T: Send + ?Sized> Send for &'a mut T {}
 }
 
-/// A marker trait indicates a type that can be reflected over.
+/// Types that can be reflected over.
 ///
 /// This trait is implemented for all types. Its purpose is to ensure
 /// that when you write a generic function that will employ
