@@ -547,9 +547,20 @@ a `$` literally, including delimiters. For parsing reasons, delimiters must be
 balanced, but they are otherwise not special.
 
 In the matcher, `$` _name_ `:` _designator_ matches the nonterminal in the Rust
-syntax named by _designator_. Valid designators are `item`, `block`, `stmt`,
-`pat`, `expr`, `ty` (type), `ident`, `path`, `tt` (either side of the `=>`
-in macro rules), and `meta` (contents of an attribute). In the transcriber, the
+syntax named by _designator_. Valid designators are:
+
+* `item`: an [item](#items)
+* `block`: a [block](#block-expressions)
+* `stmt`: a [statement](#statements)
+* `pat`: a [pattern](#match-expressions)
+* `expr`: an [expression](#expressions)
+* `ty`: a [type](#types)
+* `ident`: an [identifier](#identifiers)
+* `path`: a [path](#paths)
+* `tt`: either side of the `=>` in macro rules
+* `meta`: the contents of an [attribute](#attributes)
+
+In the transcriber, the
 designator is already known, and so only the name of a matched nonterminal comes
 after the dollar sign.
 
