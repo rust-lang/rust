@@ -1384,10 +1384,6 @@ impl<T: Ord> Ord for Vec<T> {
 impl<T> Drop for Vec<T> {
     #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
-        // NOTE: this is currently abusing the fact that ZSTs can't impl Drop.
-        // Or rather, that impl'ing Drop makes them not zero-sized. This is
-        // OK because exactly when this stops being a valid assumption, we
-        // don't need unsafe_no_drop_flag shenanigans anymore.
         if self.buf.unsafe_no_drop_flag_needs_drop() {
             unsafe {
                 // The branch on needs_drop() is an -O1 performance optimization.
