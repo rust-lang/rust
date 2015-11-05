@@ -255,13 +255,21 @@ use string::String;
 use str;
 use vec::Vec;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::{BufReader, BufWriter, LineWriter};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::IntoInnerError;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::cursor::Cursor;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::error::{Result, Error, ErrorKind};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::util::{copy, sink, Sink, empty, Empty, repeat, Repeat};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{stdin, stdout, stderr, _print, Stdin, Stdout, Stderr};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
+#[unstable(feature = "libstd_io_internals", issue = "0")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
 
@@ -1534,7 +1542,6 @@ pub struct Take<T> {
     limit: u64,
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Take<T> {
     /// Returns the number of bytes that can be read before this instance will
     /// return EOF.

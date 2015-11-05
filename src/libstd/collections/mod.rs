@@ -408,14 +408,20 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::Bound;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::{BinaryHeap, BTreeMap, BTreeSet};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::{LinkedList, VecDeque};
-
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::{binary_heap, btree_map, btree_set};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::{linked_list, vec_deque};
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::hash_map::HashMap;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::hash_set::HashSet;
 
 mod hash;
@@ -423,12 +429,14 @@ mod hash;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod hash_map {
     //! A hashmap
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::hash::map::*;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod hash_set {
     //! A hashset
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::hash::set::*;
 }
 

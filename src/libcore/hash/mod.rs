@@ -74,6 +74,7 @@ use prelude::v1::*;
 
 use mem;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sip::SipHasher;
 
 mod sip;

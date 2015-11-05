@@ -102,12 +102,18 @@ use core::slice as core_slice;
 use borrow::{Borrow, BorrowMut, ToOwned};
 use vec::Vec;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{Chunks, Windows};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{Iter, IterMut};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{SplitMut, ChunksMut, Split};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
+#[unstable(feature = "ref_slice", issue = "27774")]
 #[allow(deprecated)]
 pub use core::slice::{bytes, mut_ref_slice, ref_slice};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +166,6 @@ mod hack {
 /// Allocating extension methods for slices.
 #[lang = "slice"]
 #[cfg(not(test))]
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> [T] {
     /// Returns the number of elements in the slice.
     ///

@@ -35,9 +35,11 @@ use core::iter::Iterator;
 use tables::{derived_property, property, general_category, conversions};
 
 // stable reexports
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::char::{MAX, from_u32, from_u32_unchecked, from_digit, EscapeUnicode, EscapeDefault};
 
 // unstable reexports
+#[unstable(feature = "unicode", issue = "27783")]
 pub use tables::UNICODE_VERSION;
 
 /// An iterator over the lowercase mapping of a given character, returned from
@@ -111,7 +113,6 @@ impl Iterator for CaseMappingIter {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "char"]
 impl char {
     /// Checks if a `char` is a digit in the given radix.

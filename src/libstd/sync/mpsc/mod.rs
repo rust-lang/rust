@@ -272,6 +272,7 @@ use mem;
 use cell::UnsafeCell;
 use marker::Reflect;
 
+#[unstable(feature = "mpsc_select", issue = "27800")]
 pub use self::select::{Select, Handle};
 use self::select::StartResult;
 use self::select::StartResult::*;

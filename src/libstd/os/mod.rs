@@ -13,8 +13,12 @@
 #![stable(feature = "os", since = "1.0.0")]
 #![allow(missing_docs, bad_style)]
 
-#[cfg(unix)]    pub use sys::ext as unix;
-#[cfg(windows)] pub use sys::ext as windows;
+#[cfg(unix)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use sys::ext as unix;
+#[cfg(windows)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use sys::ext as windows;
 
 #[cfg(target_os = "android")]   pub mod android;
 #[cfg(target_os = "bitrig")]    pub mod bitrig;

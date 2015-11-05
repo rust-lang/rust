@@ -189,7 +189,9 @@ pub use self::local::{LocalKey, LocalKeyState};
            issue = "27715")]
 pub use self::scoped_tls::ScopedKey;
 
+#[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[doc(hidden)] pub use self::local::__KeyInner as __LocalKeyInner;
+#[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[doc(hidden)] pub use self::scoped_tls::__KeyInner as __ScopedKeyInner;
 
 ////////////////////////////////////////////////////////////////////////////////

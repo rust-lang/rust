@@ -20,10 +20,15 @@ use intrinsics;
 use libc::c_int;
 use num::{FpCategory, ParseFloatError};
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::{MIN_EXP, MAX_EXP, MIN_10_EXP};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::{MAX_10_EXP, NAN, INFINITY, NEG_INFINITY};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::{MIN, MIN_POSITIVE, MAX};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::consts;
 
 #[allow(dead_code)]
@@ -77,7 +82,6 @@ mod cmath {
 
 #[cfg(not(test))]
 #[lang = "f64"]
-#[stable(feature = "rust1", since = "1.0.0")]
 impl f64 {
     /// Parses a float as with a given radix
     #[unstable(feature = "float_from_str_radix", reason = "recently moved API",
