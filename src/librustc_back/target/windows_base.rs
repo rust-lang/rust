@@ -75,7 +75,7 @@ pub fn opts() -> TargetOptions {
         late_link_args: vec!(
             "-lmingwex".to_string(),
             "-lmingw32".to_string(),
-            "-lgcc".to_string(), // alas, mingw* libraries above depend on libgcc
+            "-lcompiler-rt".to_string(),
             "-lmsvcrt".to_string(),
             "-luser32".to_string(),
             "-lkernel32".to_string(),
