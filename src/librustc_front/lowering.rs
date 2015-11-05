@@ -114,7 +114,7 @@ impl<'a, 'hir> LoweringContext<'a> {
     fn next_id(&self) -> NodeId {
         let cached = self.cached_id.get();
         if cached == 0 {
-            return self.id_assigner.next_node_id()
+            return self.id_assigner.next_node_id();
         }
 
         self.cached_id.set(cached + 1);
@@ -214,8 +214,7 @@ pub fn lower_ty(_lctx: &LoweringContext, t: &Ty) -> P<hir::Ty> {
             TyVec(ref ty) => hir::TyVec(lower_ty(_lctx, ty)),
             TyPtr(ref mt) => hir::TyPtr(lower_mt(_lctx, mt)),
             TyRptr(ref region, ref mt) => {
-                hir::TyRptr(lower_opt_lifetime(_lctx, region),
-                            lower_mt(_lctx, mt))
+                hir::TyRptr(lower_opt_lifetime(_lctx, region), lower_mt(_lctx, mt))
             }
             TyBareFn(ref f) => {
                 hir::TyBareFn(P(hir::BareFnTy {
@@ -502,13 +501,17 @@ pub fn lower_variant_data(_lctx: &LoweringContext, vdata: &VariantData) -> hir::
     match *vdata {
         VariantData::Struct(ref fields, id) => {
             hir::VariantData::Struct(fields.iter()
-                                           .map(|f| lower_struct_field(_lctx, f)).collect(), id)
+                                           .map(|f| lower_struct_field(_lctx, f))
+                                           .collect(),
+                                     id)
         }
         VariantData::Tuple(ref fields, id) => {
             hir::VariantData::Tuple(fields.iter()
-                                          .map(|f| lower_struct_field(_lctx, f)).collect(), id)
+                                          .map(|f| lower_struct_field(_lctx, f))
+                                          .collect(),
+                                    id)
         }
-        VariantData::Unit(id) => hir::VariantData::Unit(id)
+        VariantData::Unit(id) => hir::VariantData::Unit(id),
     }
 }
 
@@ -676,8 +679,7 @@ pub fn lower_impl_item(_lctx: &LoweringContext, i: &ImplItem) -> P<hir::ImplItem
                 hir::ConstImplItem(lower_ty(_lctx, ty), lower_expr(_lctx, expr))
             }
             MethodImplItem(ref sig, ref body) => {
-                hir::MethodImplItem(lower_method_sig(_lctx, sig),
-                                    lower_block(_lctx, body))
+                hir::MethodImplItem(lower_method_sig(_lctx, sig), lower_block(_lctx, body))
             }
             TypeImplItem(ref ty) => hir::TypeImplItem(lower_ty(_lctx, ty)),
             MacImplItem(..) => panic!("Shouldn't exist any more"),
@@ -743,8 +745,7 @@ pub fn lower_foreign_item(_lctx: &LoweringContext, i: &ForeignItem) -> P<hir::Fo
         attrs: i.attrs.clone(),
         node: match i.node {
             ForeignItemFn(ref fdec, ref generics) => {
-                hir::ForeignItemFn(lower_fn_decl(_lctx, fdec),
-                                   lower_generics(_lctx, generics))
+                hir::ForeignItemFn(lower_fn_decl(_lctx, fdec), lower_generics(_lctx, generics))
             }
             ForeignItemStatic(ref t, m) => {
                 hir::ForeignItemStatic(lower_ty(_lctx, t), m)
@@ -855,8 +856,9 @@ pub fn lower_pat(_lctx: &LoweringContext, p: &Pat) -> P<hir::Pat> {
             }
             PatTup(ref elts) => hir::PatTup(elts.iter().map(|x| lower_pat(_lctx, x)).collect()),
             PatBox(ref inner) => hir::PatBox(lower_pat(_lctx, inner)),
-            PatRegion(ref inner, mutbl) => hir::PatRegion(lower_pat(_lctx, inner),
-                                                          lower_mutability(_lctx, mutbl)),
+            PatRegion(ref inner, mutbl) => {
+                hir::PatRegion(lower_pat(_lctx, inner), lower_mutability(_lctx, mutbl))
+            }
             PatRange(ref e1, ref e2) => {
                 hir::PatRange(lower_expr(_lctx, e1), lower_expr(_lctx, e2))
             }
@@ -1021,11 +1023,12 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 //     InPlace::finalize(place)
                 // })
                 let expr = {
-                    let call_move_val_init = hir::StmtSemi(make_call(lctx,
-                                                    &move_val_init,
-                                                    vec![expr_ident(lctx, e.span, p_ptr_ident),
-                                                         pop_unsafe_expr]),
-                                                           lctx.next_id());
+                    let call_move_val_init =
+                        hir::StmtSemi(make_call(lctx,
+                                                &move_val_init,
+                                                vec![expr_ident(lctx, e.span, p_ptr_ident),
+                                                     pop_unsafe_expr]),
+                                      lctx.next_id());
                     let call_move_val_init = respan(e.span, call_move_val_init);
 
                     let call = make_call(lctx,
@@ -1100,14 +1103,10 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     }
                 });
 
-                hir::ExprIf(lower_expr(lctx, cond),
-                            lower_block(lctx, blk),
-                            else_opt)
+                hir::ExprIf(lower_expr(lctx, cond), lower_block(lctx, blk), else_opt)
             }
             ExprWhile(ref cond, ref body, opt_ident) => {
-                hir::ExprWhile(lower_expr(lctx, cond),
-                               lower_block(lctx, body),
-                               opt_ident)
+                hir::ExprWhile(lower_expr(lctx, cond), lower_block(lctx, body), opt_ident)
             }
             ExprLoop(ref body, opt_ident) => {
                 hir::ExprLoop(lower_block(lctx, body), opt_ident)
@@ -1132,8 +1131,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                   lower_expr(lctx, er))
             }
             ExprField(ref el, ident) => {
-                hir::ExprField(lower_expr(lctx, el),
-                               respan(ident.span, ident.node.name))
+                hir::ExprField(lower_expr(lctx, el), respan(ident.span, ident.node.name))
             }
             ExprTupField(ref el, ident) => {
                 hir::ExprTupField(lower_expr(lctx, el), ident)
@@ -1406,10 +1404,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                         path_global(e.span, strs)
                     };
 
-                    expr_call(lctx,
-                              e.span,
-                              expr_path(lctx, into_iter_path),
-                              vec![head])
+                    expr_call(lctx, e.span, expr_path(lctx, into_iter_path), vec![head])
                 };
 
                 let match_expr = expr_match(lctx,
@@ -1428,7 +1423,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                                           false,
                                                           result_ident,
                                                           match_expr)],
-                                            Some(expr_ident(lctx, e.span, result_ident))))
+                                            Some(expr_ident(lctx, e.span, result_ident))));
             }
 
             ExprMac(_) => panic!("Shouldn't exist here"),
@@ -1525,7 +1520,7 @@ pub fn lower_trait_bound_modifier(_lctx: &LoweringContext,
 
 fn arm(pats: Vec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
     hir::Arm {
-        attrs: vec!(),
+        attrs: vec![],
         pats: pats,
         guard: None,
         body: expr,
@@ -1562,9 +1557,7 @@ fn expr_match(lctx: &LoweringContext,
               arms: Vec<hir::Arm>,
               source: hir::MatchSource)
               -> P<hir::Expr> {
-    expr(lctx,
-         span,
-         hir::ExprMatch(arg, arms, source))
+    expr(lctx, span, hir::ExprMatch(arg, arms, source))
 }
 
 fn expr_block(lctx: &LoweringContext, b: P<hir::Block>) -> P<hir::Expr> {
@@ -1626,7 +1619,7 @@ fn block_all(lctx: &LoweringContext,
 fn pat_some(lctx: &LoweringContext, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
     let some = std_path(lctx, &["option", "Option", "Some"]);
     let path = path_global(span, some);
-    pat_enum(lctx, span, path, vec!(pat))
+    pat_enum(lctx, span, path, vec![pat])
 }
 
 fn pat_none(lctx: &LoweringContext, span: Span) -> P<hir::Pat> {
@@ -1675,7 +1668,7 @@ fn pat(lctx: &LoweringContext, span: Span, pat: hir::Pat_) -> P<hir::Pat> {
 }
 
 fn path_ident(span: Span, id: Ident) -> hir::Path {
-    path(span, vec!(id))
+    path(span, vec![id])
 }
 
 fn path(span: Span, strs: Vec<Ident>) -> hir::Path {
@@ -1723,7 +1716,7 @@ fn std_path(lctx: &LoweringContext, components: &[&str]) -> Vec<Ident> {
         v.push(str_to_ident(s));
     }
     v.extend(components.iter().map(|s| str_to_ident(s)));
-    return v
+    return v;
 }
 
 // Given suffix ["b","c","d"], returns path `::std::b::c::d` when
@@ -1765,9 +1758,7 @@ mod test {
 
     impl MockAssigner {
         fn new() -> MockAssigner {
-            MockAssigner {
-                next_id: Cell::new(0),
-            }
+            MockAssigner { next_id: Cell::new(0) }
         }
     }
 
@@ -1787,14 +1778,18 @@ mod test {
                 expn_id: codemap::NO_EXPANSION,
             }
         }
-        fn cfg(&self) -> ast::CrateConfig { Vec::new() }
+        fn cfg(&self) -> ast::CrateConfig {
+            Vec::new()
+        }
         fn ident_of(&self, st: &str) -> ast::Ident {
             parse::token::str_to_ident(st)
         }
         fn name_of(&self, st: &str) -> ast::Name {
             parse::token::intern(st)
         }
-        fn parse_sess(&self) -> &parse::ParseSess { self }
+        fn parse_sess(&self) -> &parse::ParseSess {
+            self
+        }
     }
 
     impl NodeIdAssigner for MockAssigner {
@@ -1821,11 +1816,20 @@ mod test {
         let cx = parse::ParseSess::new();
         let mut assigner = MockAssigner::new();
 
-        let ast_if_let = quote_expr!(&cx, if let Some(foo) = baz { bar(foo); });
+        let ast_if_let = quote_expr!(&cx,
+                                     if let Some(foo) = baz {
+                                         bar(foo);
+                                     });
         let ast_if_let = assigner.fold_expr(ast_if_let);
-        let ast_while_let = quote_expr!(&cx, while let Some(foo) = baz { bar(foo); });
+        let ast_while_let = quote_expr!(&cx,
+                                        while let Some(foo) = baz {
+                                            bar(foo);
+                                        });
         let ast_while_let = assigner.fold_expr(ast_while_let);
-        let ast_for = quote_expr!(&cx, for i in 0..10 { foo(i); });
+        let ast_for = quote_expr!(&cx,
+                                  for i in 0..10 {
+                                      foo(i);
+                                  });
         let ast_for = assigner.fold_expr(ast_for);
         let ast_in = quote_expr!(&cx, in HEAP { foo() });
         let ast_in = assigner.fold_expr(ast_in);
