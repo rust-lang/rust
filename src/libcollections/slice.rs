@@ -732,6 +732,8 @@ impl<T> [T] {
     ///
     /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
     ///
+    /// This is a stable sort.
+    ///
     /// # Examples
     ///
     /// ```rust
