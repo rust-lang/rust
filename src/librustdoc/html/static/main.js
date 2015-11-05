@@ -101,6 +101,10 @@
         if (document.activeElement.tagName == "INPUT")
             return;
 
+        // Don't interfere with browser shortcuts
+        if (ev.ctrlKey || ev.altKey || ev.metaKey)
+            return;
+
         switch (getVirtualKey(ev)) {
         case "Escape":
             if (!$("#help").hasClass("hidden")) {
