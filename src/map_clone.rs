@@ -1,8 +1,8 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::ast::Ident;
-use utils::OPTION_PATH;
-use utils::{is_adjusted, match_trait_method, match_type, snippet, span_help_and_lint};
+use utils::{CLONE_PATH, OPTION_PATH};
+use utils::{is_adjusted, match_path, match_trait_method, match_type, snippet, span_help_and_lint};
 use utils::{walk_ptrs_ty, walk_ptrs_ty_depth};
 
 declare_lint!(pub MAP_CLONE, Warn,
@@ -14,43 +14,58 @@ pub struct MapClonePass;
 
 impl LateLintPass for MapClonePass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if_let_chain! {
-            [
-                // call to .map()
-                let ExprMethodCall(name, _, ref args) = expr.node,
-                name.node.as_str() == "map" && args.len() == 2,
-                let ExprClosure(_, ref decl, ref blk) = args[1].node,
-                // just one expression in the closure
-                blk.stmts.is_empty(),
-                let Some(ref closure_expr) = blk.expr,
-                // nothing special in the argument, besides reference bindings
-                // (e.g. .map(|&x| x) )
-                let Some(arg_ident) = get_arg_name(&*decl.inputs[0].pat),
-                // the method is being called on a known type (option or iterator)
-                let Some(type_name) = get_type_name(cx, expr, &args[0])
-            ], {
-                // look for derefs, for .map(|x| *x)
-                if only_derefs(cx, &*closure_expr, arg_ident) &&
-                    // .cloned() only removes one level of indirection, don't lint on more
-                    walk_ptrs_ty_depth(cx.tcx.pat_ty(&*decl.inputs[0].pat)).1 == 1
-                {
-                    span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
-                        "you seem to be using .map() to clone the contents of an {}, consider \
-                        using `.cloned()`", type_name),
-                        &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
-                }
-                // explicit clone() calls ( .map(|x| x.clone()) )
-                else if let ExprMethodCall(clone_call, _, ref clone_args) = closure_expr.node {
-                    if clone_call.node.as_str() == "clone" &&
-                        clone_args.len() == 1 &&
-                        match_trait_method(cx, closure_expr, &["core", "clone", "Clone"]) &&
-                        expr_eq_ident(&clone_args[0], arg_ident)
-                    {
-                        span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
-                            "you seem to be using .map() to clone the contents of an {}, consider \
-                            using `.cloned()`", type_name),
-                            &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
+        // call to .map()
+        if let ExprMethodCall(name, _, ref args) = expr.node {
+            if name.node.as_str() == "map" && args.len() == 2 {
+                match args[1].node {
+                    ExprClosure(_, ref decl, ref blk) => {
+                        if_let_chain! {
+                            [
+                            // just one expression in the closure
+                            blk.stmts.is_empty(),
+                            let Some(ref closure_expr) = blk.expr,
+                            // nothing special in the argument, besides reference bindings
+                            // (e.g. .map(|&x| x) )
+                            let Some(arg_ident) = get_arg_name(&*decl.inputs[0].pat),
+                            // the method is being called on a known type (option or iterator)
+                            let Some(type_name) = get_type_name(cx, expr, &args[0])
+                            ], {
+                                // look for derefs, for .map(|x| *x)
+                                if only_derefs(cx, &*closure_expr, arg_ident) &&
+                                    // .cloned() only removes one level of indirection, don't lint on more
+                                    walk_ptrs_ty_depth(cx.tcx.pat_ty(&*decl.inputs[0].pat)).1 == 1
+                                {
+                                    span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
+                                        "you seem to be using .map() to clone the contents of an {}, consider \
+                                        using `.cloned()`", type_name),
+                                        &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
+                                }
+                                // explicit clone() calls ( .map(|x| x.clone()) )
+                                else if let ExprMethodCall(clone_call, _, ref clone_args) = closure_expr.node {
+                                    if clone_call.node.as_str() == "clone" &&
+                                        clone_args.len() == 1 &&
+                                        match_trait_method(cx, closure_expr, &["core", "clone", "Clone"]) &&
+                                        expr_eq_ident(&clone_args[0], arg_ident)
+                                    {
+                                        span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
+                                            "you seem to be using .map() to clone the contents of an {}, consider \
+                                            using `.cloned()`", type_name),
+                                            &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    ExprPath(_, ref path) => {
+                        if match_path(path, &CLONE_PATH) {
+                            let type_name = get_type_name(cx, expr, &args[0]).unwrap_or("_");
+                            span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
+                                "you seem to be using .map() to clone the contents of an {}, consider \
+                                using `.cloned()`", type_name),
+                                &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
+                        }
                     }
+                    _ => (),
                 }
             }
         }
