@@ -237,7 +237,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
     fn visit_expr(&mut self, e: &'ast hir::Expr) {
         match e.node {
             hir::ExprPath(..) => {
-                match self.def_map.borrow().get(&e.id).map(|d| d.base_def) {
+                match self.def_map.get(&e.id).map(|d| d.base_def) {
                     Some(DefStatic(def_id, _)) |
                     Some(DefAssociatedConst(def_id)) |
                     Some(DefConst(def_id)) => {
