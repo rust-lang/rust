@@ -1,9 +1,6 @@
 # Summary
 
 * [Getting Started](getting-started.md)
-    * [Installing Rust](installing-rust.md)
-    * [Hello, world!](hello-world.md)
-    * [Hello, Cargo!](hello-cargo.md)
 * [Learn Rust](learn-rust.md)
     * [Guessing Game](guessing-game.md)
     * [Dining Philosophers](dining-philosophers.md)
