@@ -75,8 +75,8 @@
 //! So for example there is a [page for the primitive type
 //! `i32`](primitive.i32.html) that lists all the methods that can be called on
 //! 32-bit integers (very useful), and there is a [page for the module
-//! `std::i32`](i32/index.html) that documents the constant values [`MIN`] and
-//! [`MAX`] (rarely useful).
+//! `std::i32`](i32/index.html) that documents the constant values [`MIN`](i32/constant.MIN.html) and
+//! [`MAX`](i32/constant.MAX.html) (rarely useful).
 //!
 //! Note the documentation for the primitives [`str`] and [`[T]`][slice] (also
 //! called 'slice'). Many method calls on [`String`] and [`Vec<T>`] are actually
@@ -152,8 +152,6 @@
 //! [`mpsc`], which contains the channel types for message passing.
 //!
 //! [I/O]: io/index.html
-//! [MIN]: i32/constant.MIN.html
-//! [MAX]: i32/constant.MAX.html
 //! [TCP]: net/struct.TcpStream.html
 //! [The Rust Prelude]: prelude/index.html
 //! [UDP]: net/struct.UdpSocket.html
