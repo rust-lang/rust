@@ -458,14 +458,12 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
                     match_intrinsic_type_to_type(tcx, position, span, structural_to_nominal,
                                                  inner_expected, ty)
                 }
-                _ => simple_error(&format!("`{}`", t),
-                                  &format!("raw pointer")),
+                _ => simple_error(&format!("`{}`", t), "raw pointer"),
             }
         }
         Vector(ref inner_expected, ref _llvm_type, len) => {
             if !t.is_simd() {
-                simple_error(&format!("non-simd type `{}`", t),
-                             "simd type");
+                simple_error(&format!("non-simd type `{}`", t), "simd type");
                 return;
             }
             let t_len = t.simd_size(tcx);

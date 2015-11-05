@@ -288,10 +288,9 @@ impl<'tcx> ty::ctxt<'tcx> {
                 let found_str = values.found.sort_string(self);
                 if expected_str == found_str && expected_str == "closure" {
                     self.sess.span_note(sp,
-                        &format!("no two closures, even if identical, have the same type"));
+                        "no two closures, even if identical, have the same type");
                     self.sess.span_help(sp,
-                        &format!("consider boxing your closure and/or \
-                                  using it as a trait object"));
+                        "consider boxing your closure and/or using it as a trait object");
                 }
             },
             TyParamDefaultMismatch(values) => {
@@ -307,8 +306,7 @@ impl<'tcx> ty::ctxt<'tcx> {
                             .and_then(|node_id| self.map.opt_span(node_id))
                 {
                     Some(span) => {
-                        self.sess.span_note(span,
-                                            &format!("a default was defined here..."));
+                        self.sess.span_note(span, "a default was defined here...");
                     }
                     None => {
                         self.sess.note(
@@ -319,15 +317,14 @@ impl<'tcx> ty::ctxt<'tcx> {
 
                 self.sess.span_note(
                     expected.origin_span,
-                    &format!("...that was applied to an unconstrained type variable here"));
+                    "...that was applied to an unconstrained type variable here");
 
                 match
                     self.map.as_local_node_id(found.def_id)
                             .and_then(|node_id| self.map.opt_span(node_id))
                 {
                     Some(span) => {
-                        self.sess.span_note(span,
-                                            &format!("a second default was defined here..."));
+                        self.sess.span_note(span, "a second default was defined here...");
                     }
                     None => {
                         self.sess.note(
@@ -338,7 +335,7 @@ impl<'tcx> ty::ctxt<'tcx> {
 
                 self.sess.span_note(
                     found.origin_span,
-                    &format!("...that also applies to the same type variable here"));
+                    "...that also applies to the same type variable here");
             }
             _ => {}
         }

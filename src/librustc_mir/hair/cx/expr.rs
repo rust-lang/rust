@@ -236,7 +236,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                 let (adt_def, substs) = match range_ty.sty {
                     ty::TyStruct(adt_def, substs) => (adt_def, substs),
                     _ => {
-                        cx.tcx.sess.span_bug(self.span, &format!("unexpanded ast"));
+                        cx.tcx.sess.span_bug(self.span, "unexpanded ast");
                     }
                 };
 
@@ -555,14 +555,12 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
                     match expr.node {
                         hir::ExprClosure(_, _, ref body) => body.id,
                         _ => {
-                            cx.tcx.sess.span_bug(expr.span,
-                                              &format!("closure expr is not a closure expr"));
+                            cx.tcx.sess.span_bug(expr.span, "closure expr is not a closure expr");
                         }
                     }
                 }
                 _ => {
-                    cx.tcx.sess.span_bug(expr.span,
-                                      &format!("ast-map has garbage for closure expr"));
+                    cx.tcx.sess.span_bug(expr.span, "ast-map has garbage for closure expr");
                 }
             };
 

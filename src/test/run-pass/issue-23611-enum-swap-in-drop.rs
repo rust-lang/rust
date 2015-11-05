@@ -20,7 +20,7 @@ use self::d::D;
 
 pub fn main() {
     let log = RefCell::new(vec![]);
-    d::println(&format!("created empty log"));
+    d::println("created empty log");
     test(&log);
 
     // println!("log: {:?}", &log.borrow()[..]);

@@ -1751,7 +1751,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
             infer::ParameterInScope(_, span) => {
                 self.tcx.sess.span_note(
                     span,
-                    &format!("...so that a type/lifetime parameter is in scope here"));
+                    "...so that a type/lifetime parameter is in scope here");
             }
             infer::DataBorrowed(ty, span) => {
                 self.tcx.sess.span_note(
