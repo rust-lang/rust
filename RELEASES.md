@@ -1,4 +1,4 @@
-Version 1.4.0 (October 2015)
+Version 1.4.0 (2015-10-29)
 ============================
 
 * ~1200 changes, numerous bugfixes
@@ -74,7 +74,7 @@ Libraries
   prelude][pr].
 * [`Extend<String>` and `FromIterator<String` are both implemented for
   `String`][es].
-* [`IntoIterator` is implemented for references into `Option` and
+* [`IntoIterator` is implemented for references to `Option` and
   `Result`][into2].
 * [`HashMap` and `HashSet` implement `Extend<&T>` where `T:
   Copy`][ext] as part of [RFC 839]. This will cause type inferance
