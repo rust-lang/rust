@@ -7,7 +7,7 @@ we’ll talk about Cargo, Rust’s build system and package manager.
 # Installing Rust
 
 The first step to using Rust is to install it. Generally speaking, you’ll need
-an internet connection to run the commands in this chapter, as we’ll be
+an Internet connection to run the commands in this chapter, as we’ll be
 downloading Rust from the internet.
 
 We’ll be showing off a number of commands using a terminal, and those lines all
@@ -108,7 +108,7 @@ tier 3 platforms that will ever be!
 If we're on Linux or a Mac, all we need to do is open a terminal and type this:
 
 ```bash
-$ curl -sf -L https://static.rust-lang.org/rustup.sh | sh
+$ curl -sSf https://static.rust-lang.org/rustup.sh | sh
 ```
 
 This will download a script, and stat the installation. If it all goes well,
@@ -140,8 +140,7 @@ If you're on Windows, please download the appropriate [installer][install-page].
 
 ## Uninstalling
 
-If you ever need to uninstall Rust for any reason, refer to this section to
-find out how. It's actually as easy as installing. On Linux or Mac, just run
+Uninstalling Rust is as easy as installing it. On Linux or Mac, just run
 the uninstall script:
 
 ```bash
@@ -163,11 +162,6 @@ You should see the version number, commit hash, and commit date.
 
 If you do, Rust has been installed successfully! Congrats!
 
-This installer also installs a copy of the documentation locally, so we can
-read it offline. On UNIX systems, `/usr/local/share/doc/rust` is the location.
-On Windows, it's in a `share/doc` directory, inside the directory to which Rust
-was installed.
-
 If you don't and you're on Windows, check that Rust is in your %PATH% system
 variable. If it isn't, run the installer again, select "Change" on the "Change,
 repair, or remove installation" page and ensure "Add to PATH" is installed on
@@ -183,6 +177,11 @@ include [the user’s forum][users], and [Stack Overflow][stackoverflow].
 [mibbit]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
 [users]: https://users.rust-lang.org/
 [stackoverflow]: http://stackoverflow.com/questions/tagged/rust
+
+This installer also installs a copy of the documentation locally, so we can
+read it offline. On UNIX systems, `/usr/local/share/doc/rust` is the location.
+On Windows, it's in a `share/doc` directory, inside the directory to which Rust
+was installed.
 
 # Hello, world!
 
@@ -227,7 +226,7 @@ $ cd hello_world
 
 ## Writing and Running a Rust Program
 
-Next, make a new source file next and call it *main.rs*. Rust files always end
+Next, make a new source file and call it *main.rs*. Rust files always end
 in a *.rs* extension. If you’re using more than one word in your filename, use
 an underscore to separate them; for example, you'd use *hello_world.rs* rather
 than *helloworld.rs*.
@@ -266,18 +265,18 @@ fn main() {
 ```
 
 These lines define a *function* in Rust. The `main` function is special: it's
-the beginning of every Rust program. The first line says, "I’m declaring a
-function named `main` that currently takes no arguments and returns nothing."
-If there were arguments, they would go inside the parentheses (`(` and `)`),
-and because we aren’t returning anything from this function, we can omit the
-return type entirely.
+the beginning of every Rust program. The first line says, “I’m declaring a
+function named `main` that takes no arguments and returns nothing.” If there
+were arguments, they would go inside the parentheses (`(` and `)`), and because
+we aren’t returning anything from this function, we can omit the return type
+entirely.
 
 Also note that the function body is wrapped in curly braces (`{` and `}`). Rust
 requires these around all function bodies. It's considered good style to put
 the opening curly brace on the same line as the function declaration, with one
 space in between.
 
-Inside the `main()` function, is this line:
+Inside the `main()` function:
 
 ```rust
     println!("Hello, world!");
@@ -285,9 +284,7 @@ Inside the `main()` function, is this line:
 
 This line does all of the work in this little program: it prints text to the
 screen. There are a number of details that are important here. The first is
-that it’s indented with four spaces, not tabs. If you configure your editor of
-choice to insert four spaces with the tab key, it will make your coding much
-more efficient.
+that it’s indented with four spaces, not tabs.
  
 The second important part is the `println!()` line. This is calling a Rust
 *[macro]*, which is how metaprogramming is done in Rust. If it were calling a
@@ -304,7 +301,7 @@ complicated topic in a systems programming language, and this is a *[statically
 allocated]* string. We pass this string as an argument to `println!`, which
 prints the string to the screen. Easy enough!
 
-[allocation]: the-stack-and-the-heap.html
+[statically allocated]: the-stack-and-the-heap.html
 
 The line ends with a semicolon (`;`). Rust is an *[expression oriented]*
 language, which means that most things are expressions, rather than statements.
@@ -343,7 +340,7 @@ $ dir
 main.exe  main.rs
 ```
 
-This would create two files: the source code, with a `.rs` extension, and the
+This shows we have two files: the source code, with an `.rs` extension, and the
 executable (`main.exe` on Windows, `main` everywhere else). All that's left to
 do from here is run the `main` or `main.exe` file, like this:
 
@@ -361,7 +358,7 @@ give it to someone else, and they can run it even without Rust installed. If
 you give someone a `.rb` or `.py` or `.js` file, on the other hand, they need
 to have a Ruby, Python, or JavaScript implementation installed (respectively),
 but you only need one command to both compile and run your program. Everything
-is a tradeoff in language design, and Rust has made its choice.
+is a tradeoff in language design.
 
 Just compiling with `rustc` is fine for simple programs, but as your project
 grows, you'll want to be able to manage all of the options your project has,
@@ -374,7 +371,7 @@ programs.
 Cargo is Rust’s build system and package manager, and Rustaceans use Cargo to
 manage their Rust projects. Cargo manages three things: building your code,
 downloading the libraries your code depends on, and building those libraries.
-We call libraries your code needs ‘dependencies’, since your code depends on
+We call libraries your code needs ‘dependencies’ since your code depends on
 them.
 
 The simplest Rust programs don’t have any dependencies, so right now, you'd
@@ -442,9 +439,8 @@ Make sure to capitalize the `C` in `Cargo.toml`, or Cargo won't know what to do
 with the configuration file. 
 
 This file is in the *[TOML]* (Tom's Obvious, Minimal Language) format. TOML is
-similar to INI, but has some extra goodies. According to the TOML docs, TOML
-“aims to be a minimal configuration file format that's easy to read”, and so we
-chose it as the format Cargo uses.
+similar to INI, but has some extra goodies, and is used as Cargo’s
+configuration format.
 
 [TOML]: https://github.com/toml-lang/toml
 
@@ -494,9 +490,9 @@ Hello, world!
 ```
 
 Notice that this example didn’t re-build the project. Cargo figured out that
-the hasn’t changed, and so it just ran the binary. If you'd modified your
-program, Cargo would have built the file before running it, and you would have
-seen something like this:
+the file hasn’t changed, and so it just ran the binary. If you'd modified your
+source code, Cargo would have rebuilt the project before running it, and you
+would have seen something like this:
 
 ```bash
 $ cargo run
@@ -509,9 +505,9 @@ Cargo checks to see if any of your project’s files have been modified, and onl
 rebuilds your project if they’ve changed since the last time you built it.
 
 With simple projects, Cargo doesn't bring a whole lot over just using `rustc`,
-but it will become useful in future. When your projects get more complex,
-you'll need to do more things to get all of the parts to properly compile. With
-Cargo, you can just run `cargo build`, and it should work the right way.
+but it will become useful in future. With complex projects composed of multiple
+crates, it’s much easier to let Cargo coordinate the build. With Cargo, you can
+just run `cargo build`, and it should work the right way.
 
 ## Building for Release
 
