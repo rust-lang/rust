@@ -351,6 +351,11 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                                    self.tcx().types.isize)
     }
 
+    pub fn t_rptr_empty(&self) -> Ty<'tcx> {
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(ty::ReEmpty),
+                                   self.tcx().types.isize)
+    }
+
     pub fn dummy_type_trace(&self) -> infer::TypeTrace<'tcx> {
         infer::TypeTrace::dummy(self.tcx())
     }
@@ -593,16 +598,15 @@ fn lub_free_free() {
 
 #[test]
 fn lub_returning_scope() {
-    test_env(EMPTY_SOURCE_STR,
-             errors(&["cannot infer an appropriate lifetime"]), |env| {
-                 env.create_simple_region_hierarchy();
-                 let t_rptr_scope10 = env.t_rptr_scope(10);
-                 let t_rptr_scope11 = env.t_rptr_scope(11);
-
-                 // this should generate an error when regions are resolved
-                 env.make_lub_ty(env.t_fn(&[], t_rptr_scope10),
-                                 env.t_fn(&[], t_rptr_scope11));
-             })
+    test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
+        env.create_simple_region_hierarchy();
+        let t_rptr_scope10 = env.t_rptr_scope(10);
+        let t_rptr_scope11 = env.t_rptr_scope(11);
+        let t_rptr_empty = env.t_rptr_empty();
+        env.check_lub(env.t_fn(&[t_rptr_scope10], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_scope11], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_empty], env.tcx().types.isize));
+    });
 }
 
 #[test]
