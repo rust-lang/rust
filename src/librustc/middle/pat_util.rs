@@ -18,11 +18,13 @@ use rustc_front::hir;
 use rustc_front::util::walk_pat;
 use syntax::codemap::{respan, Span, Spanned, DUMMY_SP};
 
+use std::cell::RefCell;
+
 pub type PatIdMap = FnvHashMap<ast::Name, ast::NodeId>;
 
 // This is used because same-named variables in alternative patterns need to
 // use the NodeId of their namesake in the first pattern.
-pub fn pat_id_map(dm: &DefMap, pat: &hir::Pat) -> PatIdMap {
+pub fn pat_id_map(dm: &RefCell<DefMap>, pat: &hir::Pat) -> PatIdMap {
     let mut map = FnvHashMap();
     pat_bindings(dm, pat, |_bm, p_id, _s, path1| {
         map.insert(path1.node, p_id);
@@ -36,7 +38,7 @@ pub fn pat_is_refutable(dm: &DefMap, pat: &hir::Pat) -> bool {
         hir::PatEnum(_, _) |
         hir::PatIdent(_, _, None) |
         hir::PatStruct(..) => {
-            match dm.borrow().get(&pat.id).map(|d| d.full_def()) {
+            match dm.get(&pat.id).map(|d| d.full_def()) {
                 Some(DefVariant(..)) => true,
                 _ => false
             }
@@ -51,7 +53,7 @@ pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &hir::Pat) -> bool {
         hir::PatEnum(_, _) |
         hir::PatIdent(_, _, None) |
         hir::PatStruct(..) => {
-            match dm.borrow().get(&pat.id).map(|d| d.full_def()) {
+            match dm.get(&pat.id).map(|d| d.full_def()) {
                 Some(DefVariant(..)) | Some(DefStruct(..)) => true,
                 _ => false
             }
@@ -63,7 +65,7 @@ pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &hir::Pat) -> bool {
 pub fn pat_is_const(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
         hir::PatIdent(_, _, None) | hir::PatEnum(..) | hir::PatQPath(..) => {
-            match dm.borrow().get(&pat.id).map(|d| d.full_def()) {
+            match dm.get(&pat.id).map(|d| d.full_def()) {
                 Some(DefConst(..)) | Some(DefAssociatedConst(..)) => true,
                 _ => false
             }
@@ -77,7 +79,7 @@ pub fn pat_is_const(dm: &DefMap, pat: &hir::Pat) -> bool {
 pub fn pat_is_resolved_const(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
         hir::PatIdent(_, _, None) | hir::PatEnum(..) | hir::PatQPath(..) => {
-            match dm.borrow().get(&pat.id)
+            match dm.get(&pat.id)
                     .and_then(|d| if d.depth == 0 { Some(d.base_def) }
                                   else { None } ) {
                 Some(DefConst(..)) | Some(DefAssociatedConst(..)) => true,
@@ -108,12 +110,12 @@ pub fn pat_is_binding_or_wild(dm: &DefMap, pat: &hir::Pat) -> bool {
 
 /// Call `it` on every "binding" in a pattern, e.g., on `a` in
 /// `match foo() { Some(a) => (), None => () }`
-pub fn pat_bindings<I>(dm: &DefMap, pat: &hir::Pat, mut it: I) where
+pub fn pat_bindings<I>(dm: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) where
     I: FnMut(hir::BindingMode, ast::NodeId, Span, &Spanned<ast::Name>),
 {
     walk_pat(pat, |p| {
         match p.node {
-          hir::PatIdent(binding_mode, ref pth, _) if pat_is_binding(dm, p) => {
+          hir::PatIdent(binding_mode, ref pth, _) if pat_is_binding(&dm.borrow(), p) => {
             it(binding_mode, p.id, p.span, &respan(pth.span, pth.node.name));
           }
           _ => {}
@@ -122,12 +124,12 @@ pub fn pat_bindings<I>(dm: &DefMap, pat: &hir::Pat, mut it: I) where
     });
 }
 
-pub fn pat_bindings_hygienic<I>(dm: &DefMap, pat: &hir::Pat, mut it: I) where
+pub fn pat_bindings_hygienic<I>(dm: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) where
     I: FnMut(hir::BindingMode, ast::NodeId, Span, &Spanned<ast::Ident>),
 {
     walk_pat(pat, |p| {
         match p.node {
-          hir::PatIdent(binding_mode, ref pth, _) if pat_is_binding(dm, p) => {
+          hir::PatIdent(binding_mode, ref pth, _) if pat_is_binding(&dm.borrow(), p) => {
             it(binding_mode, p.id, p.span, &respan(pth.span, pth.node));
           }
           _ => {}
@@ -153,7 +155,7 @@ pub fn pat_contains_bindings(dm: &DefMap, pat: &hir::Pat) -> bool {
 
 /// Checks if the pattern contains any `ref` or `ref mut` bindings,
 /// and if yes wether its containing mutable ones or just immutables ones.
-pub fn pat_contains_ref_binding(dm: &DefMap, pat: &hir::Pat) -> Option<hir::Mutability> {
+pub fn pat_contains_ref_binding(dm: &RefCell<DefMap>, pat: &hir::Pat) -> Option<hir::Mutability> {
     let mut result = None;
     pat_bindings(dm, pat, |mode, _, _, _| {
         match mode {
@@ -172,7 +174,7 @@ pub fn pat_contains_ref_binding(dm: &DefMap, pat: &hir::Pat) -> Option<hir::Muta
 
 /// Checks if the patterns for this arm contain any `ref` or `ref mut`
 /// bindings, and if yes wether its containing mutable ones or just immutables ones.
-pub fn arm_contains_ref_binding(dm: &DefMap, arm: &hir::Arm) -> Option<hir::Mutability> {
+pub fn arm_contains_ref_binding(dm: &RefCell<DefMap>, arm: &hir::Arm) -> Option<hir::Mutability> {
     arm.pats.iter()
             .filter_map(|pat| pat_contains_ref_binding(dm, pat))
             .max_by(|m| match *m {
@@ -226,7 +228,7 @@ pub fn necessary_variants(dm: &DefMap, pat: &hir::Pat) -> Vec<DefId> {
             hir::PatEnum(_, _) |
             hir::PatIdent(_, _, None) |
             hir::PatStruct(..) => {
-                match dm.borrow().get(&p.id) {
+                match dm.get(&p.id) {
                     Some(&PathResolution { base_def: DefVariant(_, id, _), .. }) => {
                         variants.push(id);
                     }

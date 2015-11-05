@@ -155,7 +155,7 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
             },
 
             hir::PatEnum(..) | hir::PatIdent(..) | hir::PatQPath(..)
-                if pat_is_resolved_const(&cx.tcx.def_map, self.pat) =>
+                if pat_is_resolved_const(&cx.tcx.def_map.borrow(), self.pat) =>
             {
                 let def = cx.tcx.def_map.borrow().get(&self.pat.id).unwrap().full_def();
                 match def {
@@ -231,7 +231,7 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
             }
 
             hir::PatIdent(bm, ref ident, ref sub)
-                if pat_is_binding(&cx.tcx.def_map, self.pat) =>
+                if pat_is_binding(&cx.tcx.def_map.borrow(), self.pat) =>
             {
                 let id = match self.binding_map {
                     None => self.pat.id,

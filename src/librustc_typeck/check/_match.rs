@@ -133,7 +133,8 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             // subtyping doesn't matter here, as the value is some kind of scalar
             demand::eqtype(fcx, pat.span, expected, lhs_ty);
         }
-        hir::PatEnum(..) | hir::PatIdent(..) if pat_is_resolved_const(&tcx.def_map, pat) => {
+        hir::PatEnum(..) | hir::PatIdent(..)
+                if pat_is_resolved_const(&tcx.def_map.borrow(), pat) => {
             let const_did = tcx.def_map.borrow().get(&pat.id).unwrap().def_id();
             let const_scheme = tcx.lookup_item_type(const_did);
             assert!(const_scheme.generics.is_empty());
@@ -149,7 +150,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             // is good enough.
             demand::suptype(fcx, pat.span, expected, const_ty);
         }
-        hir::PatIdent(bm, ref path, ref sub) if pat_is_binding(&tcx.def_map, pat) => {
+        hir::PatIdent(bm, ref path, ref sub) if pat_is_binding(&tcx.def_map.borrow(), pat) => {
             let typ = fcx.local_ty(pat.span, pat.id);
             match bm {
                 hir::BindByRef(mutbl) => {
@@ -410,7 +411,7 @@ pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                                       inner: &hir::Pat) -> bool {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
-    if pat_is_binding(&tcx.def_map, inner) {
+    if pat_is_binding(&tcx.def_map.borrow(), inner) {
         let expected = fcx.infcx().shallow_resolve(expected);
         expected.builtin_deref(true, ty::NoPreference).map_or(true, |mt| match mt.ty.sty {
             ty::TyTrait(_) => {

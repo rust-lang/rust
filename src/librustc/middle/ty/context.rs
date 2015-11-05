@@ -228,7 +228,7 @@ pub struct ctxt<'tcx> {
     pub types: CommonTypes<'tcx>,
 
     pub sess: &'tcx Session,
-    pub def_map: DefMap,
+    pub def_map: RefCell<DefMap>,
 
     pub named_region_map: resolve_lifetime::NamedRegionMap,
 
@@ -453,7 +453,7 @@ impl<'tcx> ctxt<'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_and_enter<F, R>(s: &'tcx Session,
                                  arenas: &'tcx CtxtArenas<'tcx>,
-                                 def_map: DefMap,
+                                 def_map: RefCell<DefMap>,
                                  named_region_map: resolve_lifetime::NamedRegionMap,
                                  map: ast_map::Map<'tcx>,
                                  freevars: FreevarMap,
