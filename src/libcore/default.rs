@@ -133,7 +133,6 @@ macro_rules! default_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Default for $t {
             #[inline]
-            #[stable(feature = "rust1", since = "1.0.0")]
             fn default() -> $t { $v }
         }
     }

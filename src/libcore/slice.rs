@@ -651,7 +651,6 @@ impl<T> ops::IndexMut<RangeFull> for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Default for &'a [T] {
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> &'a [T] { &[] }
 }
 

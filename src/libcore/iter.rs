@@ -3378,7 +3378,6 @@ impl<I: Iterator> Iterator for Peekable<I> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: ExactSizeIterator> ExactSizeIterator for Peekable<I> {}
 
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator> Peekable<I> {
     /// Returns a reference to the next() value without advancing the iterator.
     ///

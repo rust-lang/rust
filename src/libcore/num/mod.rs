@@ -1636,7 +1636,6 @@ macro_rules! impl_from {
     ($Small: ty, $Large: ty) => {
         #[stable(feature = "lossless_prim_conv", since = "1.5.0")]
         impl From<$Small> for $Large {
-            #[stable(feature = "lossless_prim_conv", since = "1.5.0")]
             #[inline]
             fn from(small: $Small) -> $Large {
                 small as $Large
