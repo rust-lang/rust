@@ -83,7 +83,6 @@ fn main() {
     let mut guess = String::new();
 
     io::stdin().read_line(&mut guess)
-        .ok()
         .expect("Failed to read line");
 
     println!("You guessed: {}", guess);
@@ -189,7 +188,6 @@ Let’s move forward:
 
 ```rust,ignore
     io::stdin().read_line(&mut guess)
-        .ok()
         .expect("Failed to read line");
 ```
 
@@ -245,7 +243,6 @@ a single line of text, it’s only the first part of the single logical line of
 code:
 
 ```rust,ignore
-        .ok()
         .expect("Failed to read line");
 ```
 
@@ -254,33 +251,27 @@ and other whitespace. This helps you split up long lines. We _could_ have
 done:
 
 ```rust,ignore
-    io::stdin().read_line(&mut guess).ok().expect("failed to read line");
+    io::stdin().read_line(&mut guess).expect("failed to read line");
 ```
 
-But that gets hard to read. So we’ve split it up, three lines for three
-method calls. We already talked about `read_line()`, but what about `ok()`
-and `expect()`? Well, we already mentioned that `read_line()` puts what
-the user types into the `&mut String` we pass it. But it also returns
-a value: in this case, an [`io::Result`][ioresult]. Rust has a number of
-types named `Result` in its standard library: a generic [`Result`][result],
-and then specific versions for sub-libraries, like `io::Result`.
+But that gets hard to read. So we’ve split it up, three lines for three method
+calls. We already talked about `read_line()`, but what about `expect()`? Well,
+we already mentioned that `read_line()` puts what the user types into the `&mut
+String` we pass it. But it also returns a value: in this case, an
+[`io::Result`][ioresult]. Rust has a number of types named `Result` in its
+standard library: a generic [`Result`][result], and then specific versions for
+sub-libraries, like `io::Result`.
 
 [ioresult]: ../std/io/type.Result.html
 [result]: ../std/result/enum.Result.html
 
 The purpose of these `Result` types is to encode error handling information.
 Values of the `Result` type, like any type, have methods defined on them. In
-this case, `io::Result` has an `ok()` method, which says ‘we want to assume
-this value is a successful one. If not, just throw away the error
-information’. Why throw it away? Well, for a basic program, we just want to
-print a generic error, as basically any issue means we can’t continue. The
-[`ok()` method][ok] returns a value which has another method defined on it:
-`expect()`. The [`expect()` method][expect] takes a value it’s called on, and
-if it isn’t a successful one, [`panic!`][panic]s with a message you
-passed it. A `panic!` like this will cause our program to crash, displaying
-the message.
+this case, `io::Result` has an [`expect()` method][expect] that takes a value
+it’s called on, and if it isn’t a successful one, [`panic!`][panic]s with a
+message you passed it. A `panic!` like this will cause our program to crash,
+displaying the message.
 
-[ok]: ../std/result/enum.Result.html#method.ok
 [expect]: ../std/option/enum.Option.html#method.expect
 [panic]: error-handling.html
 
@@ -468,7 +459,6 @@ fn main() {
     let mut guess = String::new();
 
     io::stdin().read_line(&mut guess)
-        .ok()
         .expect("failed to read line");
 
     println!("You guessed: {}", guess);
@@ -557,7 +547,6 @@ fn main() {
     let mut guess = String::new();
 
     io::stdin().read_line(&mut guess)
-        .ok()
         .expect("failed to read line");
 
     println!("You guessed: {}", guess);
@@ -668,11 +657,9 @@ fn main() {
     let mut guess = String::new();
 
     io::stdin().read_line(&mut guess)
-        .ok()
         .expect("failed to read line");
 
     let guess: u32 = guess.trim().parse()
-        .ok()
         .expect("Please type a number!");
 
     println!("You guessed: {}", guess);
@@ -689,7 +676,6 @@ The new three lines:
 
 ```rust,ignore
     let guess: u32 = guess.trim().parse()
-        .ok()
         .expect("Please type a number!");
 ```
 
@@ -706,27 +692,26 @@ We bind `guess` to an expression that looks like something we wrote earlier:
 guess.trim().parse()
 ```
 
-Followed by an `ok().expect()` invocation. Here, `guess` refers to the old
-`guess`, the one that was a `String` with our input in it. The `trim()`
-method on `String`s will eliminate any white space at the beginning and end of
-our string. This is important, as we had to press the ‘return’ key to satisfy
-`read_line()`. This means that if we type `5` and hit return, `guess` looks
-like this: `5\n`. The `\n` represents ‘newline’, the enter key. `trim()` gets
-rid of this, leaving our string with just the `5`. The [`parse()` method on
-strings][parse] parses a string into some kind of number. Since it can parse a
-variety of numbers, we need to give Rust a hint as to the exact type of number
-we want. Hence, `let guess: u32`. The colon (`:`) after `guess` tells Rust
-we’re going to annotate its type. `u32` is an unsigned, thirty-two bit
-integer. Rust has [a number of built-in number types][number], but we’ve
-chosen `u32`. It’s a good default choice for a small positive number.
+Here, `guess` refers to the old `guess`, the one that was a `String` with our
+input in it. The `trim()` method on `String`s will eliminate any white space at
+the beginning and end of our string. This is important, as we had to press the
+‘return’ key to satisfy `read_line()`. This means that if we type `5` and hit
+return, `guess` looks like this: `5\n`. The `\n` represents ‘newline’, the
+enter key. `trim()` gets rid of this, leaving our string with just the `5`. The
+[`parse()` method on strings][parse] parses a string into some kind of number.
+Since it can parse a variety of numbers, we need to give Rust a hint as to the
+exact type of number we want. Hence, `let guess: u32`. The colon (`:`) after
+`guess` tells Rust we’re going to annotate its type. `u32` is an unsigned,
+thirty-two bit integer. Rust has [a number of built-in number types][number],
+but we’ve chosen `u32`. It’s a good default choice for a small positive number.
 
 [parse]: ../std/primitive.str.html#method.parse
 [number]: primitive-types.html#numeric-types
 
 Just like `read_line()`, our call to `parse()` could cause an error. What if
 our string contained `A👍%`? There’d be no way to convert that to a number. As
-such, we’ll do the same thing we did with `read_line()`: use the `ok()` and
-`expect()` methods to crash if there’s an error.
+such, we’ll do the same thing we did with `read_line()`: use the `expect()`
+method to crash if there’s an error.
 
 Let’s try our program out!
 
@@ -773,11 +758,9 @@ fn main() {
         let mut guess = String::new();
 
         io::stdin().read_line(&mut guess)
-            .ok()
             .expect("failed to read line");
 
         let guess: u32 = guess.trim().parse()
-            .ok()
             .expect("Please type a number!");
 
         println!("You guessed: {}", guess);
@@ -841,11 +824,9 @@ fn main() {
         let mut guess = String::new();
 
         io::stdin().read_line(&mut guess)
-            .ok()
             .expect("failed to read line");
 
         let guess: u32 = guess.trim().parse()
-            .ok()
             .expect("Please type a number!");
 
         println!("You guessed: {}", guess);
@@ -888,7 +869,6 @@ fn main() {
         let mut guess = String::new();
 
         io::stdin().read_line(&mut guess)
-            .ok()
             .expect("failed to read line");
 
         let guess: u32 = match guess.trim().parse() {
@@ -920,7 +900,6 @@ let guess: u32 = match guess.trim().parse() {
 ```
 
 This is how you generally move from ‘crash on error’ to ‘actually handle the
-error’, by switching from `ok().expect()` to a `match` statement. The `Result`
 returned by `parse()` is an `enum` just like `Ordering`, but in this case, each
 variant has some data associated with it: `Ok` is a success, and `Err` is a
 failure. Each contains more information: the successfully parsed integer, or an
@@ -977,7 +956,6 @@ fn main() {
         let mut guess = String::new();
 
         io::stdin().read_line(&mut guess)
-            .ok()
             .expect("failed to read line");
 
         let guess: u32 = match guess.trim().parse() {
