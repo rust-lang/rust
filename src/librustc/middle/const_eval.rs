@@ -1213,7 +1213,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
         _ => {
             tcx.sess.span_bug(
                 ti.span,
-                &format!("resolve_trait_associated_const: unexpected vtable type"))
+                "resolve_trait_associated_const: unexpected vtable type")
         }
     }
 }

@@ -1843,7 +1843,7 @@ impl<'a> Parser<'a> {
                 });
             }
             _ => {
-                return Err(self.fatal(&format!("expected a lifetime name")));
+                return Err(self.fatal("expected a lifetime name"));
             }
         }
     }

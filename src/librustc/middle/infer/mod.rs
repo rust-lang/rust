@@ -1130,7 +1130,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match self.tables.borrow().node_types.get(&ex.id) {
             Some(&t) => t,
             None => {
-                self.tcx.sess.bug(&format!("no type for expr in fcx"));
+                self.tcx.sess.bug("no type for expr in fcx");
             }
         }
     }
