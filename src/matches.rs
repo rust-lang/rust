@@ -38,7 +38,7 @@ impl LateLintPass for MatchPass {
                 // since the exhaustiveness check will ensure the last one is a catch-all,
                 // but in some cases, an explicit match is preferred to catch situations
                 // when an enum is extended, so we don't consider these cases
-                arms[1].pats[0].node == PatWild(PatWildSingle) &&
+                arms[1].pats[0].node == PatWild &&
                 // we don't want any content in the second arm (unit or empty block)
                 is_unit_expr(&arms[1].body) &&
                 // finally, MATCH_BOOL doesn't apply here

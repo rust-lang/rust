@@ -252,7 +252,7 @@ impl LintPass for PatternPass {
 impl LateLintPass for PatternPass {
     fn check_pat(&mut self, cx: &LateContext, pat: &Pat) {
         if let PatIdent(_, ref ident, Some(ref right)) = pat.node {
-            if right.node == PatWild(PatWildSingle) {
+            if right.node == PatWild {
                 cx.span_lint(REDUNDANT_PATTERN, pat.span, &format!(
                     "the `{} @ _` pattern can be written as just `{}`",
                     ident.node.name, ident.node.name));
