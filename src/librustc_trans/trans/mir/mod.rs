@@ -169,7 +169,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>,
                idx += 2;
                let lltemp = base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index));
                build::Store(bcx, lldata, expr::get_dataptr(bcx, lltemp));
-               build::Store(bcx, llextra, expr::get_dataptr(bcx, lltemp));
+               build::Store(bcx, llextra, expr::get_meta(bcx, lltemp));
                lltemp
            } else {
                // otherwise, arg is passed by value, so make a
@@ -177,7 +177,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>,
                let llarg = llvm::get_param(fcx.llfn, idx);
                idx += 1;
                let lltemp = base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index));
-               build::Store(bcx, llarg, lltemp);
+               base::store_ty(bcx, llarg, lltemp, arg_ty);
                lltemp
            };
            LvalueRef::new(llval, LvalueTy::from_ty(arg_ty))
