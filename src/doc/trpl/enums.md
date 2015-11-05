@@ -73,7 +73,7 @@ An enum’s constructors can also be used like functions. For example:
 # enum Message {
 # Write(String),
 # }
-let m = Message::Write("Hello, world".to_string());
+let m = Message::Write(String::from("Hello, world"));
 ```
 
 Is the same as
@@ -86,7 +86,7 @@ fn foo(x: String) -> Message {
     Message::Write(x)
 }
 
-let x = foo("Hello, world".to_string());
+let x = foo(String::from("Hello, world"));
 ```
 
 This is not immediately useful to us, but when we get to
@@ -99,7 +99,7 @@ to convert a vector of `String`s into a vector of `Message::Write`s:
 # Write(String),
 # }
 
-let v = vec!["Hello".to_string(), "World".to_string()];
+let v = vec![String::from("Hello"), String::from("World")];
 
 let v1: Vec<Message> = v.into_iter().map(Message::Write).collect();
 ```

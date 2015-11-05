@@ -196,7 +196,7 @@ impl<'a> StringReader<'a> {
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
     /// escaped character to the error message
     fn fatal_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) -> FatalError {
-        let mut m = m.to_string();
+        let mut m = String::from(m);
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
         self.fatal_span_(from_pos, to_pos, &m[..])
@@ -205,7 +205,7 @@ impl<'a> StringReader<'a> {
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
     /// escaped character to the error message
     fn err_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) {
-        let mut m = m.to_string();
+        let mut m = String::from(m)
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
         self.err_span_(from_pos, to_pos, &m[..]);
@@ -1279,7 +1279,7 @@ impl<'a> StringReader<'a> {
             let last_pos = self.last_pos;
             panic!(self.fatal_span_verbose(
                 start - BytePos(2), last_pos,
-                "unterminated byte constant".to_string()));
+                String::from("unterminated byte constant")));
         }
 
         let id = if valid { self.name_from(start) } else { token::intern("?") };
@@ -1436,15 +1436,15 @@ mod tests {
     // open a string reader for the given string
     fn setup<'a>(span_handler: &'a diagnostic::SpanHandler,
                  teststr: String) -> StringReader<'a> {
-        let fm = span_handler.cm.new_filemap("zebra.rs".to_string(), teststr);
+        let fm = span_handler.cm.new_filemap(String::from("zebra.rs"), teststr);
         StringReader::new(span_handler, fm)
     }
 
     #[test] fn t1 () {
         let span_handler = mk_sh();
         let mut string_reader = setup(&span_handler,
-            "/* my source file */ \
-             fn main() { println!(\"zebra\"); }\n".to_string());
+            String::from("/* my source file */ \
+                          fn main() { println!(\"zebra\"); }\n"));
         let id = str_to_ident("fn");
         assert_eq!(string_reader.next_token().tok, token::Comment);
         assert_eq!(string_reader.next_token().tok, token::Whitespace);
@@ -1480,21 +1480,21 @@ mod tests {
     }
 
     #[test] fn doublecolonparsing () {
-        check_tokenization(setup(&mk_sh(), "a b".to_string()),
+        check_tokenization(setup(&mk_sh(), String::from("a b")),
                            vec![mk_ident("a", token::Plain),
                                 token::Whitespace,
                                 mk_ident("b", token::Plain)]);
     }
 
     #[test] fn dcparsing_2 () {
-        check_tokenization(setup(&mk_sh(), "a::b".to_string()),
+        check_tokenization(setup(&mk_sh(), String::from("a::b")),
                            vec![mk_ident("a",token::ModName),
                                 token::ModSep,
                                 mk_ident("b", token::Plain)]);
     }
 
     #[test] fn dcparsing_3 () {
-        check_tokenization(setup(&mk_sh(), "a ::b".to_string()),
+        check_tokenization(setup(&mk_sh(), String::from("a ::b")),
                            vec![mk_ident("a", token::Plain),
                                 token::Whitespace,
                                 token::ModSep,
@@ -1502,7 +1502,7 @@ mod tests {
     }
 
     #[test] fn dcparsing_4 () {
-        check_tokenization(setup(&mk_sh(), "a:: b".to_string()),
+        check_tokenization(setup(&mk_sh(), String::from("a:: b")),
                            vec![mk_ident("a",token::ModName),
                                 token::ModSep,
                                 token::Whitespace,
@@ -1510,28 +1510,28 @@ mod tests {
     }
 
     #[test] fn character_a() {
-        assert_eq!(setup(&mk_sh(), "'a'".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), String::from("'a'")).next_token().tok,
                    token::Literal(token::Char(token::intern("a")), None));
     }
 
     #[test] fn character_space() {
-        assert_eq!(setup(&mk_sh(), "' '".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), String::from("' '")).next_token().tok,
                    token::Literal(token::Char(token::intern(" ")), None));
     }
 
     #[test] fn character_escaped() {
-        assert_eq!(setup(&mk_sh(), "'\\n'".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), String::from("'\\n'")).next_token().tok,
                    token::Literal(token::Char(token::intern("\\n")), None));
     }
 
     #[test] fn lifetime_name() {
-        assert_eq!(setup(&mk_sh(), "'abc".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), String::from("'abc")).next_token().tok,
                    token::Lifetime(token::str_to_ident("'abc")));
     }
 
     #[test] fn raw_string() {
         assert_eq!(setup(&mk_sh(),
-                         "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token()
+                         String::from("r###\"\"#a\\b\x00c\"\"###")).next_token()
                                                                  .tok,
                    token::Literal(token::StrRaw(token::intern("\"#a\\b\x00c\""), 3), None));
     }
@@ -1559,13 +1559,13 @@ mod tests {
         test!("1.0", Float, "1.0");
         test!("1.0e10", Float, "1.0e10");
 
-        assert_eq!(setup(&mk_sh(), "2us".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), String::from("2us")).next_token().tok,
                    token::Literal(token::Integer(token::intern("2")),
                                   Some(token::intern("us"))));
-        assert_eq!(setup(&mk_sh(), "r###\"raw\"###suffix".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), String::from("r###\"raw\"###suffix")).next_token().tok,
                    token::Literal(token::StrRaw(token::intern("raw"), 3),
                                   Some(token::intern("suffix"))));
-        assert_eq!(setup(&mk_sh(), "br###\"raw\"###suffix".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), String::from("br###\"raw\"###suffix")).next_token().tok,
                    token::Literal(token::ByteStrRaw(token::intern("raw"), 3),
                                   Some(token::intern("suffix"))));
     }
@@ -1578,7 +1578,7 @@ mod tests {
 
     #[test] fn nested_block_comments() {
         let sh = mk_sh();
-        let mut lexer = setup(&sh, "/* /* */ */'a'".to_string());
+        let mut lexer = setup(&sh, String::from("/* /* */ */'a'"));
         match lexer.next_token().tok {
             token::Comment => { },
             _ => panic!("expected a comment!")
@@ -1588,7 +1588,7 @@ mod tests {
 
     #[test] fn crlf_comments() {
         let sh = mk_sh();
-        let mut lexer = setup(&sh, "// test\r\n/// test\r\n".to_string());
+        let mut lexer = setup(&sh, String::from("// test\r\n/// test\r\n"));
         let comment = lexer.next_token();
         assert_eq!(comment.tok, token::Comment);
         assert_eq!(comment.sp, ::codemap::mk_sp(BytePos(0), BytePos(7)));

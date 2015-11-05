@@ -37,7 +37,7 @@ fn foo(s: &str) {
 }
 
 // String implements Deref<Target=str>
-let owned = "Hello".to_string();
+let owned = String::from("Hello");
 
 // therefore, this works:
 foo(&owned);
@@ -59,7 +59,7 @@ fn foo(s: &str) {
 }
 
 // String implements Deref<Target=str>
-let owned = "Hello".to_string();
+let owned = String::from("Hello");
 let counted = Rc::new(owned);
 
 // therefore, this works:

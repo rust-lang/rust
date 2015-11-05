@@ -618,7 +618,7 @@ mod tests {
             assert!(res.is_err(),
                     "Op {} succeeded incorrectly with 0 stack entries", cap);
             let p = if cap == "%s" || cap == "%l" {
-                Words("foo".to_string())
+                Words(String::from("foo"))
             } else {
                 Number(97)
             };
@@ -687,10 +687,10 @@ mod tests {
         let mut varstruct = Variables::new();
         let vars = &mut varstruct;
         assert_eq!(expand(b"%p1%s%p2%2s%p3%2s%p4%.2s",
-                          &[Words("foo".to_string()),
-                            Words("foo".to_string()),
-                            Words("f".to_string()),
-                            Words("foo".to_string())], vars),
+                          &[Words(String::from("foo")),
+                            Words(String::from("foo")),
+                            Words(String::from("f")),
+                            Words(String::from("foo"))], vars),
                    Ok("foofoo ffo".bytes().collect::<Vec<_>>()));
         assert_eq!(expand(b"%p1%:-4.2s", &[Words("foo".to_owned())], vars),
                    Ok("fo  ".bytes().collect::<Vec<_>>()));

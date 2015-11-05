@@ -56,7 +56,7 @@ struct Philosopher {
 impl Philosopher {
     fn new(name: &str) -> Philosopher {
         Philosopher {
-            name: name.to_string(),
+            name: String::from(name),
         }
     }
 }
@@ -87,7 +87,7 @@ Let’s continue:
 impl Philosopher {
     fn new(name: &str) -> Philosopher {
         Philosopher {
-            name: name.to_string(),
+            name: String::from(name),
         }
     }
 }
@@ -103,7 +103,7 @@ we define an ‘associated function’ called `new`. The first line looks like t
 # impl Philosopher {
 fn new(name: &str) -> Philosopher {
 #         Philosopher {
-#             name: name.to_string(),
+#             name: String::from(name),
 #         }
 #     }
 # }
@@ -119,14 +119,14 @@ string. It returns an instance of our `Philosopher` struct.
 # impl Philosopher {
 #    fn new(name: &str) -> Philosopher {
 Philosopher {
-    name: name.to_string(),
+    name: String::from(name),
 }
 #     }
 # }
 ```
 
 This creates a new `Philosopher`, and sets its `name` to our `name` argument.
-Not just the argument itself, though, as we call `.to_string()` on it. This
+Not just the argument itself, though, as we pass it to `String::from()`. This
 will create a copy of the string that our `&str` points to, and give us a new
 `String`, which is the type of the `name` field of `Philosopher`.
 
@@ -155,7 +155,7 @@ look at `main()` again:
 # impl Philosopher {
 #     fn new(name: &str) -> Philosopher {
 #         Philosopher {
-#             name: name.to_string(),
+#             name: String::from(name),
 #         }
 #     }
 # }
@@ -178,11 +178,11 @@ that `new()` function, it would look like this:
 #     name: String,
 # }
 fn main() {
-    let p1 = Philosopher { name: "Judith Butler".to_string() };
-    let p2 = Philosopher { name: "Gilles Deleuze".to_string() };
-    let p3 = Philosopher { name: "Karl Marx".to_string() };
-    let p4 = Philosopher { name: "Emma Goldman".to_string() };
-    let p5 = Philosopher { name: "Michel Foucault".to_string() };
+    let p1 = Philosopher { name: String::from("Judith Butler") };
+    let p2 = Philosopher { name: String::from("Gilles Deleuze") };
+    let p3 = Philosopher { name: String::from("Karl Marx") };
+    let p4 = Philosopher { name: String::from("Emma Goldman") };
+    let p5 = Philosopher { name: String::from("Michel Foucault") };
 }
 ```
 
@@ -202,7 +202,7 @@ struct Philosopher {
 impl Philosopher {
     fn new(name: &str) -> Philosopher {
         Philosopher {
-            name: name.to_string(),
+            name: String::from(name),
         }
     }
 
@@ -272,7 +272,7 @@ struct Philosopher {
 impl Philosopher {
     fn new(name: &str) -> Philosopher {
         Philosopher {
-            name: name.to_string(),
+            name: String::from(name),
         }
     }
 
@@ -353,7 +353,7 @@ struct Philosopher {
 impl Philosopher {
     fn new(name: &str) -> Philosopher {
         Philosopher {
-            name: name.to_string(),
+            name: String::from(name),
         }
     }
 
@@ -504,7 +504,7 @@ struct Philosopher {
 impl Philosopher {
     fn new(name: &str, left: usize, right: usize) -> Philosopher {
         Philosopher {
-            name: name.to_string(),
+            name: String::from(name),
             left: left,
             right: right,
         }
@@ -585,7 +585,7 @@ has.
 ```rust,ignore
 fn new(name: &str, left: usize, right: usize) -> Philosopher {
     Philosopher {
-        name: name.to_string(),
+        name: String::from(name),
         left: left,
         right: right,
     }

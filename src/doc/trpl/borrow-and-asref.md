@@ -38,7 +38,7 @@ but use `&str`s when we’re searching:
 use std::collections::HashMap;
 
 let mut map = HashMap::new();
-map.insert("Foo".to_string(), 42);
+map.insert(String::from("Foo"), 42);
 
 assert_eq!(map.get("Foo"), Some(&42));
 ```
@@ -73,7 +73,7 @@ The `AsRef` trait is a conversion trait. It’s used for converting some value t
 a reference in generic code. Like this:
 
 ```rust
-let s = "Hello".to_string();
+let s = String::from("Hello");
 
 fn foo<T: AsRef<str>>(s: T) {
     let slice = s.as_ref();

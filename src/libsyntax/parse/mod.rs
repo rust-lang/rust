@@ -686,7 +686,7 @@ mod tests {
     }
 
     #[test] fn path_exprs_1() {
-        assert!(string_to_expr("a".to_string()) ==
+        assert!(string_to_expr(String::from("a")) ==
                    P(ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(None, ast::Path {
@@ -704,7 +704,7 @@ mod tests {
     }
 
     #[test] fn path_exprs_2 () {
-        assert!(string_to_expr("::a::b".to_string()) ==
+        assert!(string_to_expr(String::from("::a::b")) ==
                    P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(None, ast::Path {
@@ -727,13 +727,13 @@ mod tests {
 
     #[should_panic]
     #[test] fn bad_path_expr_1() {
-        string_to_expr("::abc::def::return".to_string());
+        string_to_expr(String::from("::abc::def::return"));
     }
 
     // check the token-tree-ization of macros
     #[test]
     fn string_to_tts_macro () {
-        let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
+        let tts = string_to_tts(String::from("macro_rules! zip (($a)=>($a))"));
         let tts: &[ast::TokenTree] = &tts[..];
 
         match (tts.len(), tts.get(0), tts.get(1), tts.get(2), tts.get(3)) {
@@ -787,7 +787,7 @@ mod tests {
 
     #[test]
     fn string_to_tts_1() {
-        let tts = string_to_tts("fn a (b : i32) { b; }".to_string());
+        let tts = string_to_tts(String::from("fn a (b : i32) { b; }"));
 
         let expected = vec![
             ast::TtToken(sp(0, 2),
@@ -833,7 +833,7 @@ mod tests {
     }
 
     #[test] fn ret_expr() {
-        assert!(string_to_expr("return d".to_string()) ==
+        assert!(string_to_expr(String::from("return d")) ==
                    P(ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node:ast::ExprRet(Some(P(ast::Expr{
@@ -855,7 +855,7 @@ mod tests {
     }
 
     #[test] fn parse_stmt_1 () {
-        assert!(string_to_stmt("b;".to_string()) ==
+        assert!(string_to_stmt(String::from("b;")) ==
                    Some(P(Spanned{
                        node: ast::StmtExpr(P(ast::Expr {
                            id: ast::DUMMY_NODE_ID,
@@ -881,7 +881,7 @@ mod tests {
 
     #[test] fn parse_ident_pat () {
         let sess = ParseSess::new();
-        let mut parser = string_to_parser(&sess, "b".to_string());
+        let mut parser = string_to_parser(&sess, String::from("b"));
         assert!(panictry!(parser.parse_pat_nopanic())
                 == P(ast::Pat{
                 id: ast::DUMMY_NODE_ID,
@@ -897,7 +897,7 @@ mod tests {
     // check the contents of the tt manually:
     #[test] fn parse_fundecl () {
         // this test depends on the intern order of "fn" and "i32"
-        assert_eq!(string_to_item("fn a (b : i32) { b; }".to_string()),
+        assert_eq!(string_to_item(String::from("fn a (b : i32) { b; }")),
                   Some(
                       P(ast::Item{ident:str_to_ident("a"),
                             attrs:Vec::new(),
@@ -977,30 +977,30 @@ mod tests {
 
     #[test] fn parse_use() {
         let use_s = "use foo::bar::baz;";
-        let vitem = string_to_item(use_s.to_string()).unwrap();
+        let vitem = string_to_item(String::from(use_s)).unwrap();
         let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[..], use_s);
 
         let use_s = "use foo::bar as baz;";
-        let vitem = string_to_item(use_s.to_string()).unwrap();
+        let vitem = string_to_item(String::from(use_s)).unwrap();
         let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[..], use_s);
     }
 
     #[test] fn parse_extern_crate() {
         let ex_s = "extern crate foo;";
-        let vitem = string_to_item(ex_s.to_string()).unwrap();
+        let vitem = string_to_item(String::from(ex_s)).unwrap();
         let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[..], ex_s);
 
         let ex_s = "extern crate foo as bar;";
-        let vitem = string_to_item(ex_s.to_string()).unwrap();
+        let vitem = string_to_item(String::from(ex_s)).unwrap();
         let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[..], ex_s);
     }
 
     fn get_spans_of_pat_idents(src: &str) -> Vec<Span> {
-        let item = string_to_item(src.to_string()).unwrap();
+        let item = string_to_item(String::from(src)).unwrap();
 
         struct PatIdentVisitor {
             spans: Vec<Span>
@@ -1042,12 +1042,12 @@ mod tests {
 
     #[test] fn parse_exprs () {
         // just make sure that they parse....
-        string_to_expr("3 + 4".to_string());
-        string_to_expr("a::z.froob(b,&(987+3))".to_string());
+        string_to_expr(String::from("3 + 4"));
+        string_to_expr(String::from("a::z.froob(b,&(987+3))"));
     }
 
     #[test] fn attrs_fix_bug () {
-        string_to_item("pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
+        string_to_item(String::from("pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
                    -> Result<Box<Writer>, String> {
     #[cfg(windows)]
     fn wb() -> c_int {
@@ -1058,26 +1058,26 @@ mod tests {
     fn wb() -> c_int { O_WRONLY as c_int }
 
     let mut fflags: c_int = wb();
-}".to_string());
+}"));
     }
 
     #[test] fn crlf_doc_comments() {
         let sess = ParseSess::new();
 
-        let name = "<source>".to_string();
-        let source = "/// doc comment\r\nfn foo() {}".to_string();
+        let name = String::from("<source>");
+        let source = String::from("/// doc comment\r\nfn foo() {}");
         let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
         let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
         assert_eq!(&doc[..], "/// doc comment");
 
-        let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
+        let source = String::from("/// doc comment\r\n/// line 2\r\nfn foo() {}");
         let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
         let docs = item.attrs.iter().filter(|a| &*a.name() == "doc")
-                    .map(|a| a.value_str().unwrap().to_string()).collect::<Vec<_>>();
-        let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
+                    .map(|a| String::from(a.value_str().unwrap())).collect::<Vec<_>>();
+        let b: &[_] = &[String::from("/// doc comment"), String::from("/// line 2")];
         assert_eq!(&docs[..], b);
 
-        let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
+        let source = String::from("/** doc comment\r\n *  with CRLF */\r\nfn foo() {}");
         let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap();
         let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
         assert_eq!(&doc[..], "/** doc comment\n *  with CRLF */");
@@ -1086,8 +1086,8 @@ mod tests {
     #[test]
     fn ttdelim_span() {
         let sess = ParseSess::new();
-        let expr = parse::parse_expr_from_source_str("foo".to_string(),
-            "foo!( fn main() { body } )".to_string(), vec![], &sess);
+        let expr = parse::parse_expr_from_source_str(String::from("foo"),
+            String::from("foo!( fn main() { body } )"), vec![], &sess);
 
         let tts = match expr.node {
             ast::ExprMac(ref mac) => mac.node.tts.clone(),

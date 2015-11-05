@@ -19,14 +19,14 @@ use str::char_at;
 /// Map a string to tts, using a made-up filename:
 pub fn string_to_tts(source_str: String) -> Vec<ast::TokenTree> {
     let ps = ParseSess::new();
-    filemap_to_tts(&ps, ps.codemap().new_filemap("bogofile".to_string(), source_str))
+    filemap_to_tts(&ps, ps.codemap().new_filemap(String::from("bogofile"), source_str))
 }
 
 /// Map string to parser (via tts)
 pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a> {
     new_parser_from_source_str(ps,
                                Vec::new(),
-                               "bogofile".to_string(),
+                               String::from("bogofile"),
                                source_str)
 }
 

@@ -49,12 +49,12 @@ impl<'a> Iterator for BookItems<'a> {
             } else {
                 let cur = self.cur_items.get(self.cur_idx).unwrap();
 
-                let mut section = "".to_string();
+                let mut section = String::from("");
                 for &(_, idx) in &self.stack {
-                    section.push_str(&(idx + 1).to_string()[..]);
+                    section.push_str(&format!("{}", idx + 1));
                     section.push('.');
                 }
-                section.push_str(&(self.cur_idx + 1).to_string()[..]);
+                section.push_str(&format!("{}", self.cur_idx + 1));
                 section.push('.');
 
                 self.stack.push((self.cur_items, self.cur_idx));
@@ -100,7 +100,7 @@ pub fn parse_summary(input: &mut Read, src: &Path) -> Result<Book, Vec<String>> 
 
     // always include the introduction
     top_items.push(BookItem {
-        title: "Introduction".to_string(),
+        title: String::from("Introduction"),
         path: PathBuf::from("README.md"),
         path_to_root: PathBuf::from(""),
         children: vec!(),
@@ -110,7 +110,7 @@ pub fn parse_summary(input: &mut Read, src: &Path) -> Result<Book, Vec<String>> 
         let line = match line_result {
             Ok(line) => line,
             Err(err) => {
-                errors.push(err.to_string());
+                errors.push(String::from(err));
                 return Err(errors);
             }
         };
@@ -123,7 +123,7 @@ pub fn parse_summary(input: &mut Read, src: &Path) -> Result<Book, Vec<String>> 
         let end_paren = start_paren + line[start_paren..].find(")").unwrap();
 
         let given_path = &line[start_paren + 1 .. end_paren];
-        let title = line[start_bracket + 1..end_bracket].to_string();
+        let title = String::from(line[start_bracket + 1..end_bracket]);
         let indent = &line[..star_idx];
 
         let path_from_root = match src.join(given_path).relative_from(src) {

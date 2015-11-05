@@ -1411,26 +1411,26 @@ mod tests {
     #[test] fn ident_transformation () {
         let mut zz_fold = ToZzIdentFolder;
         let ast = string_to_crate(
-            "#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}".to_string());
+            String::from("#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}"));
         let folded_crate = zz_fold.fold_crate(ast);
         assert_pred!(
             matches_codepattern,
             "matches_codepattern",
             pprust::to_string(|s| fake_print_crate(s, &folded_crate)),
-            "#[a]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}".to_string());
+            String::from("#[a]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}"));
     }
 
     // even inside macro defs....
     #[test] fn ident_transformation_in_defs () {
         let mut zz_fold = ToZzIdentFolder;
         let ast = string_to_crate(
-            "macro_rules! a {(b $c:expr $(d $e:token)f+ => \
-             (g $(d $d $e)+))} ".to_string());
+            String::from("macro_rules! a {(b $c:expr $(d $e:token)f+ => \
+                          (g $(d $d $e)+))} "));
         let folded_crate = zz_fold.fold_crate(ast);
         assert_pred!(
             matches_codepattern,
             "matches_codepattern",
             pprust::to_string(|s| fake_print_crate(s, &folded_crate)),
-            "zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)));".to_string());
+            String::from("zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)));"));
     }
 }

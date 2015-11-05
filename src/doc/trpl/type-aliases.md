@@ -11,7 +11,7 @@ You can then use this type as if it were a real type:
 ```rust
 type Name = String;
 
-let x: Name = "Hello".to_string();
+let x: Name = String::from("Hello");
 ```
 
 Note, however, that this is an _alias_, not a new type entirely. In other

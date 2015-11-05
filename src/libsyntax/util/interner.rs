@@ -100,7 +100,7 @@ pub struct RcStr {
 impl RcStr {
     pub fn new(string: &str) -> RcStr {
         RcStr {
-            string: Rc::new(string.to_string()),
+            string: Rc::new(String::from(string)),
         }
     }
 }
