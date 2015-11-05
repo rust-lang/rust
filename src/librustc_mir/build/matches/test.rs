@@ -378,7 +378,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     // Did not do an integer equality test (which is always a SwitchInt).
                     // So we learned nothing relevant to this match-pair.
                     //
-                    // TODO we could use TestKind::Range to rule
+                    // FIXME(#29623) we could use TestKind::Range to rule
                     // things out here, in some cases.
                     _ => false,
                 }
@@ -391,7 +391,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 if pattern_test.kind == *test_kind {
                     true
                 } else {
-                    // TODO in all 3 cases, we could sometimes do
+                    // FIXME(#29623) in all 3 cases, we could sometimes do
                     // better here. For example, if we are checking
                     // whether the value is equal to X, and we find
                     // that it is, that (may) imply value is not equal
