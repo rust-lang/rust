@@ -669,7 +669,7 @@ mod tests {
     use std::rc::Rc;
     use codemap::{Span, BytePos, Pos, Spanned, NO_EXPANSION};
     use owned_slice::OwnedSlice;
-    use ast;
+    use ast::{self, TokenTree};
     use abi;
     use attr::{first_attr_value_str_by_name, AttrMetaMethods};
     use parse;
@@ -739,10 +739,10 @@ mod tests {
         match (tts.len(), tts.get(0), tts.get(1), tts.get(2), tts.get(3)) {
             (
                 4,
-                Some(&ast::TtToken(_, token::Ident(name_macro_rules, token::Plain))),
-                Some(&ast::TtToken(_, token::Not)),
-                Some(&ast::TtToken(_, token::Ident(name_zip, token::Plain))),
-                Some(&ast::TtDelimited(_, ref macro_delimed)),
+                Some(&TokenTree::Token(_, token::Ident(name_macro_rules, token::Plain))),
+                Some(&TokenTree::Token(_, token::Not)),
+                Some(&TokenTree::Token(_, token::Ident(name_zip, token::Plain))),
+                Some(&TokenTree::Delimited(_, ref macro_delimed)),
             )
             if name_macro_rules.name.as_str() == "macro_rules"
             && name_zip.name.as_str() == "zip" => {
@@ -750,17 +750,17 @@ mod tests {
                 match (tts.len(), tts.get(0), tts.get(1), tts.get(2)) {
                     (
                         3,
-                        Some(&ast::TtDelimited(_, ref first_delimed)),
-                        Some(&ast::TtToken(_, token::FatArrow)),
-                        Some(&ast::TtDelimited(_, ref second_delimed)),
+                        Some(&TokenTree::Delimited(_, ref first_delimed)),
+                        Some(&TokenTree::Token(_, token::FatArrow)),
+                        Some(&TokenTree::Delimited(_, ref second_delimed)),
                     )
                     if macro_delimed.delim == token::Paren => {
                         let tts = &first_delimed.tts[..];
                         match (tts.len(), tts.get(0), tts.get(1)) {
                             (
                                 2,
-                                Some(&ast::TtToken(_, token::Dollar)),
-                                Some(&ast::TtToken(_, token::Ident(ident, token::Plain))),
+                                Some(&TokenTree::Token(_, token::Dollar)),
+                                Some(&TokenTree::Token(_, token::Ident(ident, token::Plain))),
                             )
                             if first_delimed.delim == token::Paren
                             && ident.name.as_str() == "a" => {},
@@ -770,8 +770,8 @@ mod tests {
                         match (tts.len(), tts.get(0), tts.get(1)) {
                             (
                                 2,
-                                Some(&ast::TtToken(_, token::Dollar)),
-                                Some(&ast::TtToken(_, token::Ident(ident, token::Plain))),
+                                Some(&TokenTree::Token(_, token::Dollar)),
+                                Some(&TokenTree::Token(_, token::Ident(ident, token::Plain))),
                             )
                             if second_delimed.delim == token::Paren
                             && ident.name.as_str() == "a" => {},
@@ -790,39 +790,39 @@ mod tests {
         let tts = string_to_tts("fn a (b : i32) { b; }".to_string());
 
         let expected = vec![
-            ast::TtToken(sp(0, 2),
+            TokenTree::Token(sp(0, 2),
                          token::Ident(str_to_ident("fn"),
                          token::IdentStyle::Plain)),
-            ast::TtToken(sp(3, 4),
+            TokenTree::Token(sp(3, 4),
                          token::Ident(str_to_ident("a"),
                          token::IdentStyle::Plain)),
-            ast::TtDelimited(
+            TokenTree::Delimited(
                 sp(5, 14),
                 Rc::new(ast::Delimited {
                     delim: token::DelimToken::Paren,
                     open_span: sp(5, 6),
                     tts: vec![
-                        ast::TtToken(sp(6, 7),
+                        TokenTree::Token(sp(6, 7),
                                      token::Ident(str_to_ident("b"),
                                      token::IdentStyle::Plain)),
-                        ast::TtToken(sp(8, 9),
+                        TokenTree::Token(sp(8, 9),
                                      token::Colon),
-                        ast::TtToken(sp(10, 13),
+                        TokenTree::Token(sp(10, 13),
                                      token::Ident(str_to_ident("i32"),
                                      token::IdentStyle::Plain)),
                     ],
                     close_span: sp(13, 14),
                 })),
-            ast::TtDelimited(
+            TokenTree::Delimited(
                 sp(15, 21),
                 Rc::new(ast::Delimited {
                     delim: token::DelimToken::Brace,
                     open_span: sp(15, 16),
                     tts: vec![
-                        ast::TtToken(sp(17, 18),
+                        TokenTree::Token(sp(17, 18),
                                      token::Ident(str_to_ident("b"),
                                      token::IdentStyle::Plain)),
-                        ast::TtToken(sp(18, 19),
+                        TokenTree::Token(sp(18, 19),
                                      token::Semi)
                     ],
                     close_span: sp(20, 21),
