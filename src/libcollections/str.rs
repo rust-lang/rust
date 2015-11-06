@@ -153,7 +153,6 @@ impl ToOwned for str {
 /// Any string that can be represented as a slice.
 #[lang = "str"]
 #[cfg(not(test))]
-#[stable(feature = "rust1", since = "1.0.0")]
 impl str {
     /// Returns the length of `self` in bytes.
     ///

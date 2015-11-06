@@ -199,7 +199,6 @@ impl Eq for Ordering {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ordering {
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn cmp(&self, other: &Ordering) -> Ordering {
         (*self as i32).cmp(&(*other as i32))
     }
@@ -208,7 +207,6 @@ impl Ord for Ordering {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for Ordering {
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn partial_cmp(&self, other: &Ordering) -> Option<Ordering> {
         (*self as i32).partial_cmp(&(*other as i32))
     }

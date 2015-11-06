@@ -111,7 +111,6 @@ impl Iterator for CaseMappingIter {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "char"]
 impl char {
     /// Checks if a `char` is a digit in the given radix.

@@ -542,11 +542,9 @@ macro_rules! neg_impl_core {
     ($id:ident => $body:expr, $($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Neg for $t {
-            #[stable(feature = "rust1", since = "1.0.0")]
             type Output = $t;
 
             #[inline]
-            #[stable(feature = "rust1", since = "1.0.0")]
             fn neg(self) -> $t { let $id = self; $body }
         }
 

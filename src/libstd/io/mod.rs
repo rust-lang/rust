@@ -1534,7 +1534,6 @@ pub struct Take<T> {
     limit: u64,
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Take<T> {
     /// Returns the number of bytes that can be read before this instance will
     /// return EOF.

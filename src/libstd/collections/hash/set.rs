@@ -675,7 +675,6 @@ impl<T, S> Default for HashSet<T, S>
     where T: Eq + Hash,
           S: HashState + Default,
 {
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> HashSet<T, S> {
         HashSet::with_hash_state(Default::default())
     }
