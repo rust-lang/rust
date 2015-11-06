@@ -26,11 +26,14 @@ use path::{self, PathBuf};
 use ptr;
 use slice;
 use str;
+use sync::StaticMutex;
 use sys::c;
 use sys::fd;
+use sys::cvt;
 use vec;
 
 const TMPBUF_SZ: usize = 128;
+static ENV_LOCK: StaticMutex = StaticMutex::new();
 
 /// Returns the platform-specific value of errno
 pub fn errno() -> i32 {
@@ -378,6 +381,7 @@ pub unsafe fn environ() -> *mut *const *const c_char {
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
 pub fn env() -> Env {
+    let _g = ENV_LOCK.lock();
     return unsafe {
         let mut environ = *environ();
         if environ as usize == 0 {
@@ -401,35 +405,36 @@ pub fn env() -> Env {
     }
 }
 
-pub fn getenv(k: &OsStr) -> Option<OsString> {
-    unsafe {
-        let s = k.to_cstring().unwrap();
-        let s = libc::getenv(s.as_ptr()) as *const _;
+pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
+    // environment variables with a nul byte can't be set, so their value is
+    // always None as well
+    let k = try!(CString::new(k.as_bytes()));
+    let _g = ENV_LOCK.lock();
+    Ok(unsafe {
+        let s = libc::getenv(k.as_ptr()) as *const _;
         if s.is_null() {
             None
         } else {
             Some(OsStringExt::from_vec(CStr::from_ptr(s).to_bytes().to_vec()))
         }
-    }
+    })
 }
 
-pub fn setenv(k: &OsStr, v: &OsStr) {
-    unsafe {
-        let k = k.to_cstring().unwrap();
-        let v = v.to_cstring().unwrap();
-        if libc::funcs::posix01::unistd::setenv(k.as_ptr(), v.as_ptr(), 1) != 0 {
-            panic!("failed setenv: {}", io::Error::last_os_error());
-        }
-    }
+pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+    let k = try!(CString::new(k.as_bytes()));
+    let v = try!(CString::new(v.as_bytes()));
+    let _g = ENV_LOCK.lock();
+    cvt(unsafe {
+        libc::funcs::posix01::unistd::setenv(k.as_ptr(), v.as_ptr(), 1)
+    }).map(|_| ())
 }
 
-pub fn unsetenv(n: &OsStr) {
-    unsafe {
-        let nbuf = n.to_cstring().unwrap();
-        if libc::funcs::posix01::unistd::unsetenv(nbuf.as_ptr()) != 0 {
-            panic!("failed unsetenv: {}", io::Error::last_os_error());
-        }
-    }
+pub fn unsetenv(n: &OsStr) -> io::Result<()> {
+    let nbuf = try!(CString::new(n.as_bytes()));
+    let _g = ENV_LOCK.lock();
+    cvt(unsafe {
+        libc::funcs::posix01::unistd::unsetenv(nbuf.as_ptr())
+    }).map(|_| ())
 }
 
 pub fn page_size() -> usize {
@@ -439,7 +444,7 @@ pub fn page_size() -> usize {
 }
 
 pub fn temp_dir() -> PathBuf {
-    getenv("TMPDIR".as_ref()).map(PathBuf::from).unwrap_or_else(|| {
+    ::env::var_os("TMPDIR").map(PathBuf::from).unwrap_or_else(|| {
         if cfg!(target_os = "android") {
             PathBuf::from("/data/local/tmp")
         } else {
@@ -449,7 +454,7 @@ pub fn temp_dir() -> PathBuf {
 }
 
 pub fn home_dir() -> Option<PathBuf> {
-    return getenv("HOME".as_ref()).or_else(|| unsafe {
+    return ::env::var_os("HOME").or_else(|| unsafe {
         fallback()
     }).map(PathBuf::from);
 

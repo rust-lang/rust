@@ -32,6 +32,7 @@ pub const WSASYS_STATUS_LEN: usize = 128;
 pub const FIONBIO: libc::c_long = 0x8004667e;
 pub const FD_SETSIZE: usize = 64;
 pub const MSG_DONTWAIT: libc::c_int = 0;
+pub const ERROR_ENVVAR_NOT_FOUND: libc::c_int = 203;
 pub const ERROR_ILLEGAL_CHARACTER: libc::c_int = 582;
 pub const ENABLE_ECHO_INPUT: libc::DWORD = 0x4;
 pub const ENABLE_EXTENDED_FLAGS: libc::DWORD = 0x80;
