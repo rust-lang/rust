@@ -109,6 +109,13 @@ pub trait Visitor<'tcx> {
                 }
             }
 
+            Terminator::SwitchInt { ref discr, switch_ty: _, values: _, ref targets } => {
+                self.visit_lvalue(discr, LvalueContext::Inspect);
+                for &target in targets {
+                    self.visit_branch(block, target);
+                }
+            }
+
             Terminator::Diverge |
             Terminator::Return => {
             }

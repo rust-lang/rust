@@ -50,6 +50,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 unimplemented!()
             }
 
+            mir::Terminator::SwitchInt { .. } => {
+                unimplemented!()
+            }
+
             mir::Terminator::Diverge => {
                 if let Some(llpersonalityslot) = self.llpersonalityslot {
                     let lp = build::Load(bcx, llpersonalityslot);
