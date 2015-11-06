@@ -26,7 +26,7 @@ use os::windows::ffi::EncodeWide;
 use path::{self, PathBuf};
 use ptr;
 use slice;
-use sys::c;
+use sys::{c, cvt};
 use sys::handle::Handle;
 
 use libc::funcs::extra::kernel32::{
@@ -248,41 +248,41 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     let mut p = p.encode_wide().collect::<Vec<_>>();
     p.push(0);
 
-    unsafe {
-        match libc::SetCurrentDirectoryW(p.as_ptr()) != (0 as libc::BOOL) {
-            true => Ok(()),
-            false => Err(io::Error::last_os_error()),
-        }
-    }
+    cvt(unsafe {
+        libc::SetCurrentDirectoryW(p.as_ptr())
+    }).map(|_| ())
 }
 
-pub fn getenv(k: &OsStr) -> Option<OsString> {
+pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
     let k = super::to_utf16_os(k);
-    super::fill_utf16_buf(|buf, sz| unsafe {
+    let res = super::fill_utf16_buf(|buf, sz| unsafe {
         libc::GetEnvironmentVariableW(k.as_ptr(), buf, sz)
     }, |buf| {
         OsStringExt::from_wide(buf)
-    }).ok()
+    });
+    match res {
+        Ok(value) => Ok(Some(value)),
+        Err(ref e) if e.raw_os_error() == Some(c::ERROR_ENVVAR_NOT_FOUND) => {
+            Ok(None)
+        }
+        Err(e) => Err(e)
+    }
 }
 
-pub fn setenv(k: &OsStr, v: &OsStr) {
+pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let k = super::to_utf16_os(k);
     let v = super::to_utf16_os(v);
 
-    unsafe {
-        if libc::SetEnvironmentVariableW(k.as_ptr(), v.as_ptr()) == 0 {
-            panic!("failed to set env: {}", io::Error::last_os_error());
-        }
-    }
+    cvt(unsafe {
+        libc::SetEnvironmentVariableW(k.as_ptr(), v.as_ptr())
+    }).map(|_| ())
 }
 
-pub fn unsetenv(n: &OsStr) {
+pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     let v = super::to_utf16_os(n);
-    unsafe {
-        if libc::SetEnvironmentVariableW(v.as_ptr(), ptr::null()) == 0 {
-            panic!("failed to unset env: {}", io::Error::last_os_error());
-        }
-    }
+    cvt(unsafe {
+        libc::SetEnvironmentVariableW(v.as_ptr(), ptr::null())
+    }).map(|_| ())
 }
 
 pub struct Args {
@@ -339,8 +339,8 @@ pub fn temp_dir() -> PathBuf {
 }
 
 pub fn home_dir() -> Option<PathBuf> {
-    getenv("HOME".as_ref()).or_else(|| {
-        getenv("USERPROFILE".as_ref())
+    ::env::var_os("HOME").or_else(|| {
+        ::env::var_os("USERPROFILE")
     }).map(PathBuf::from).or_else(|| unsafe {
         let me = c::GetCurrentProcess();
         let mut token = ptr::null_mut();
