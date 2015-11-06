@@ -1166,12 +1166,18 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprInlineAsm(ref ia) => {
 
-            let succ = ia.outputs.iter().rev().fold(succ, |succ, &(_, ref expr, _)| {
-                // see comment on lvalues
-                // in propagate_through_lvalue_components()
-                let succ = self.write_lvalue(&**expr, succ, ACC_WRITE);
-                self.propagate_through_lvalue_components(&**expr, succ)
-            });
+            let succ = ia.outputs.iter().rev().fold(succ,
+                |succ, &(_, ref expr, _, is_indirect)| {
+                    // see comment on lvalues
+                    // in propagate_through_lvalue_components()
+                    if is_indirect {
+                        self.propagate_through_expr(&**expr, succ)
+                    } else {
+                        let succ = self.write_lvalue(&**expr, succ, ACC_WRITE);
+                        self.propagate_through_lvalue_components(&**expr, succ)
+                    }
+                }
+            );
             // Inputs are executed first. Propagate last because of rev order
             ia.inputs.iter().rev().fold(succ, |succ, &(_, ref expr)| {
                 self.propagate_through_expr(&**expr, succ)
@@ -1416,8 +1422,10 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
         }
 
         // Output operands must be lvalues
-        for &(_, ref out, _) in &ia.outputs {
-          this.check_lvalue(&**out);
+        for &(_, ref out, _, is_indirect) in &ia.outputs {
+          if !is_indirect {
+            this.check_lvalue(&**out);
+          }
           this.visit_expr(&**out);
         }
 

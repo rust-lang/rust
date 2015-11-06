@@ -3393,7 +3393,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           for &(_, ref input) in &ia.inputs {
               check_expr(fcx, &**input);
           }
-          for &(_, ref out, _) in &ia.outputs {
+          for &(_, ref out, _, _) in &ia.outputs {
               check_expr(fcx, &**out);
           }
           fcx.write_nil(id);

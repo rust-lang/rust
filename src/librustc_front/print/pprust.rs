@@ -1502,7 +1502,7 @@ impl<'a> State<'a> {
                 try!(self.print_string(&a.asm, a.asm_str_style));
                 try!(self.word_space(":"));
 
-                try!(self.commasep(Inconsistent, &a.outputs, |s, &(ref co, ref o, is_rw)| {
+                try!(self.commasep(Inconsistent, &a.outputs, |s, &(ref co, ref o, is_rw, _)| {
                     match co.slice_shift_char() {
                         Some(('=', operand)) if is_rw => {
                             try!(s.print_string(&format!("+{}", operand), ast::CookedStr))

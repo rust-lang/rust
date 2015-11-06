@@ -39,27 +39,39 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     let mut ext_constraints = Vec::new();
 
     // Prepare the output operands
-    let outputs = ia.outputs.iter().enumerate().map(|(i, &(ref c, ref out, is_rw))| {
+    let mut outputs = Vec::new();
+    let mut inputs = Vec::new();
+    for (i, &(ref c, ref out, is_rw, is_indirect)) in ia.outputs.iter().enumerate() {
         constraints.push((*c).clone());
 
         let out_datum = unpack_datum!(bcx, expr::trans(bcx, &**out));
-        output_types.push(type_of::type_of(bcx.ccx(), out_datum.ty));
-        let val = out_datum.val;
-        if is_rw {
+        if is_indirect {
             bcx = callee::trans_arg_datum(bcx,
                                           expr_ty(bcx, &**out),
                                           out_datum,
                                           cleanup::CustomScope(temp_scope),
                                           callee::DontAutorefArg,
-                                          &mut ext_inputs);
-            ext_constraints.push(i.to_string());
+                                          &mut inputs);
+            if is_rw {
+                ext_inputs.push(*inputs.last().unwrap());
+                ext_constraints.push(i.to_string());
+            }
+        } else {
+            output_types.push(type_of::type_of(bcx.ccx(), out_datum.ty));
+            outputs.push(out_datum.val);
+            if is_rw {
+                bcx = callee::trans_arg_datum(bcx,
+                                              expr_ty(bcx, &**out),
+                                              out_datum,
+                                              cleanup::CustomScope(temp_scope),
+                                              callee::DontAutorefArg,
+                                              &mut ext_inputs);
+                ext_constraints.push(i.to_string());
+            }
         }
-        val
-
-    }).collect::<Vec<_>>();
+    }
 
     // Now the input operands
-    let mut inputs = Vec::new();
     for &(ref c, ref input) in &ia.inputs {
         constraints.push((*c).clone());
 
