@@ -48,7 +48,6 @@ use ast::{StmtExpr, StmtSemi, StmtMac, VariantData, StructField};
 use ast::{BiSub, StrStyle};
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
-use ast::{TtDelimited, TtSequence, TtToken};
 use ast::{Ty, Ty_, TypeBinding, TyMac};
 use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr};
@@ -2428,7 +2427,7 @@ impl<'a> Parser<'a> {
                     ));
                     let (sep, repeat) = try!(self.parse_sep_and_kleene_op());
                     let name_num = macro_parser::count_names(&seq);
-                    return Ok(TtSequence(mk_sp(sp.lo, seq_span.hi),
+                    return Ok(TokenTree::Sequence(mk_sp(sp.lo, seq_span.hi),
                                       Rc::new(SequenceRepetition {
                                           tts: seq,
                                           separator: sep,
@@ -2437,7 +2436,7 @@ impl<'a> Parser<'a> {
                                       })));
                 } else if self.token.is_keyword_allow_following_colon(keywords::Crate) {
                     try!(self.bump());
-                    return Ok(TtToken(sp, SpecialVarNt(SpecialMacroVar::CrateMacroVar)));
+                    return Ok(TokenTree::Token(sp, SpecialVarNt(SpecialMacroVar::CrateMacroVar)));
                 } else {
                     sp = mk_sp(sp.lo, self.span.hi);
                     let namep = match self.token { token::Ident(_, p) => p, _ => token::Plain };
@@ -2459,9 +2458,9 @@ impl<'a> Parser<'a> {
             sp = mk_sp(sp.lo, self.span.hi);
             let kindp = match self.token { token::Ident(_, p) => p, _ => token::Plain };
             let nt_kind = try!(self.parse_ident());
-            Ok(TtToken(sp, MatchNt(name, nt_kind, namep, kindp)))
+            Ok(TokenTree::Token(sp, MatchNt(name, nt_kind, namep, kindp)))
         } else {
-            Ok(TtToken(sp, SubstNt(name, namep)))
+            Ok(TokenTree::Token(sp, SubstNt(name, namep)))
         }
     }
 
@@ -2509,7 +2508,7 @@ impl<'a> Parser<'a> {
     /// parse a single token tree from the input.
     pub fn parse_token_tree(&mut self) -> PResult<TokenTree> {
         // FIXME #6994: currently, this is too eager. It
-        // parses token trees but also identifies TtSequence's
+        // parses token trees but also identifies TokenType::Sequence's
         // and token::SubstNt's; it's too early to know yet
         // whether something will be a nonterminal or a seq
         // yet.
@@ -2540,7 +2539,7 @@ impl<'a> Parser<'a> {
                     p.parse_unquoted()
                 }
                 _ => {
-                    Ok(TtToken(p.span, try!(p.bump_and_get())))
+                    Ok(TokenTree::Token(p.span, try!(p.bump_and_get())))
                 }
             }
         }
@@ -2579,7 +2578,7 @@ impl<'a> Parser<'a> {
                 // Expand to cover the entire delimited token tree
                 let span = Span { hi: close_span.hi, ..pre_span };
 
-                Ok(TtDelimited(span, Rc::new(Delimited {
+                Ok(TokenTree::Delimited(span, Rc::new(Delimited {
                     delim: delim,
                     open_span: open_span,
                     tts: tts,
