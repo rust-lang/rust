@@ -1732,7 +1732,7 @@ mod tests {
         let tmpdir = tmpdir();
 
         let mut dirpath = tmpdir.path().to_path_buf();
-        dirpath.push(&format!("test-가一ー你好"));
+        dirpath.push("test-가一ー你好");
         check!(fs::create_dir(&dirpath));
         assert!(dirpath.is_dir());
 

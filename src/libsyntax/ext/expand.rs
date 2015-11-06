@@ -400,9 +400,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                 }
                 MacroRulesTT => {
                     if ident.name == parse::token::special_idents::invalid.name {
-                        fld.cx.span_err(path_span,
-                                        &format!("macro_rules! expects an ident argument")
-                                        );
+                        fld.cx.span_err(path_span, "macro_rules! expects an ident argument");
                         return SmallVector::zero();
                     }
 
