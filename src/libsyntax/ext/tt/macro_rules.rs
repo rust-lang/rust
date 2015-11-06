@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{self, TokenTree, TtDelimited, TtSequence, TtToken};
+use ast::{self, TokenTree};
 use codemap::{Span, DUMMY_SP};
 use ext::base::{ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
@@ -26,6 +26,7 @@ use util::small_vector::SmallVector;
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::iter::once;
 
 struct ParserAnyMacro<'a> {
     parser: RefCell<Parser<'a>>,
@@ -171,7 +172,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
         match **lhs {
           MatchedNonterminal(NtTT(ref lhs_tt)) => {
             let lhs_tt = match **lhs_tt {
-                TtDelimited(_, ref delim) => &delim.tts[..],
+                TokenTree::Delimited(_, ref delim) => &delim.tts[..],
                 _ => panic!(cx.span_fatal(sp, "malformed macro lhs"))
             };
 
@@ -182,7 +183,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                     MatchedNonterminal(NtTT(ref tt)) => {
                         match **tt {
                             // ignore delimiters
-                            TtDelimited(_, ref delimed) => delimed.tts.clone(),
+                            TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
                             _ => panic!(cx.span_fatal(sp, "macro rhs must be delimited")),
                         }
                     },
@@ -243,21 +244,21 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     let match_lhs_tok = MatchNt(lhs_nm, special_idents::tt, token::Plain, token::Plain);
     let match_rhs_tok = MatchNt(rhs_nm, special_idents::tt, token::Plain, token::Plain);
     let argument_gram = vec!(
-        TtSequence(DUMMY_SP,
+        TokenTree::Sequence(DUMMY_SP,
                    Rc::new(ast::SequenceRepetition {
                        tts: vec![
-                           TtToken(DUMMY_SP, match_lhs_tok),
-                           TtToken(DUMMY_SP, token::FatArrow),
-                           TtToken(DUMMY_SP, match_rhs_tok)],
+                           TokenTree::Token(DUMMY_SP, match_lhs_tok),
+                           TokenTree::Token(DUMMY_SP, token::FatArrow),
+                           TokenTree::Token(DUMMY_SP, match_rhs_tok)],
                        separator: Some(token::Semi),
                        op: ast::OneOrMore,
                        num_captures: 2
                    })),
         //to phase into semicolon-termination instead of
         //semicolon-separation
-        TtSequence(DUMMY_SP,
+        TokenTree::Sequence(DUMMY_SP,
                    Rc::new(ast::SequenceRepetition {
-                       tts: vec![TtToken(DUMMY_SP, token::Semi)],
+                       tts: vec![TokenTree::Token(DUMMY_SP, token::Semi)],
                        separator: None,
                        op: ast::ZeroOrMore,
                        num_captures: 0
@@ -307,14 +308,14 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
 }
 
 fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &NamedMatch, sp: Span) {
-    // lhs is going to be like MatchedNonterminal(NtTT(TtDelimited(...))), where the entire lhs is
-    // those tts. Or, it can be a "bare sequence", not wrapped in parens.
+    // lhs is going to be like MatchedNonterminal(NtTT(TokenTree::Delimited(...))), where the
+    // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
     match lhs {
         &MatchedNonterminal(NtTT(ref inner)) => match &**inner {
-            &TtDelimited(_, ref tts) => {
+            &TokenTree::Delimited(_, ref tts) => {
                 check_matcher(cx, tts.tts.iter(), &Eof);
             },
-            tt @ &TtSequence(..) => {
+            tt @ &TokenTree::Sequence(..) => {
                 check_matcher(cx, Some(tt).into_iter(), &Eof);
             },
             _ => cx.span_err(sp, "Invalid macro matcher; matchers must be contained \
@@ -327,7 +328,7 @@ fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &NamedMatch, sp: Span) {
     // after parsing/expansion. we can report every error in every macro this way.
 }
 
-// returns the last token that was checked, for TtSequence. this gets used later on.
+// returns the last token that was checked, for TokenTree::Sequence. this gets used later on.
 fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
 -> Option<(Span, Token)> where I: Iterator<Item=&'a TokenTree> {
     use print::pprust::token_to_string;
@@ -338,7 +339,7 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
     let mut tokens = matcher.peekable();
     while let Some(token) = tokens.next() {
         last = match *token {
-            TtToken(sp, MatchNt(ref name, ref frag_spec, _, _)) => {
+            TokenTree::Token(sp, MatchNt(ref name, ref frag_spec, _, _)) => {
                 // ii. If T is a simple NT, look ahead to the next token T' in
                 // M. If T' is in the set FOLLOW(NT), continue. Else; reject.
                 if can_be_followed_by_any(&frag_spec.name.as_str()) {
@@ -346,9 +347,9 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
                 } else {
                     let next_token = match tokens.peek() {
                         // If T' closes a complex NT, replace T' with F
-                        Some(&&TtToken(_, CloseDelim(_))) => follow.clone(),
-                        Some(&&TtToken(_, ref tok)) => tok.clone(),
-                        Some(&&TtSequence(sp, _)) => {
+                        Some(&&TokenTree::Token(_, CloseDelim(_))) => follow.clone(),
+                        Some(&&TokenTree::Token(_, ref tok)) => tok.clone(),
+                        Some(&&TokenTree::Sequence(sp, _)) => {
                             // Be conservative around sequences: to be
                             // more specific, we would need to
                             // consider FIRST sets, but also the
@@ -366,12 +367,16 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
                             Eof
                         },
                         // die next iteration
-                        Some(&&TtDelimited(_, ref delim)) => delim.close_token(),
+                        Some(&&TokenTree::Delimited(_, ref delim)) => delim.close_token(),
                         // else, we're at the end of the macro or sequence
                         None => follow.clone()
                     };
 
-                    let tok = if let TtToken(_, ref tok) = *token { tok } else { unreachable!() };
+                    let tok = if let TokenTree::Token(_, ref tok) = *token {
+                        tok
+                    } else {
+                        unreachable!()
+                    };
 
                     // If T' is in the set FOLLOW(NT), continue. Else, reject.
                     match (&next_token, is_in_follow(cx, &next_token, &frag_spec.name.as_str())) {
@@ -391,7 +396,7 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
                     }
                 }
             },
-            TtSequence(sp, ref seq) => {
+            TokenTree::Sequence(sp, ref seq) => {
                 // iii. Else, T is a complex NT.
                 match seq.separator {
                     // If T has the form $(...)U+ or $(...)U* for some token U,
@@ -408,8 +413,9 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
                             // but conservatively correct.
                             Some((span, tok)) => {
                                 let fol = match tokens.peek() {
-                                    Some(&&TtToken(_, ref tok)) => tok.clone(),
-                                    Some(&&TtDelimited(_, ref delim)) => delim.close_token(),
+                                    Some(&&TokenTree::Token(_, ref tok)) => tok.clone(),
+                                    Some(&&TokenTree::Delimited(_, ref delim)) =>
+                                        delim.close_token(),
                                     Some(_) => {
                                         cx.span_err(sp, "sequence repetition followed by \
                                                 another sequence repetition, which is not allowed");
@@ -417,7 +423,7 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
                                     },
                                     None => Eof
                                 };
-                                check_matcher(cx, Some(&TtToken(span, tok.clone())).into_iter(),
+                                check_matcher(cx, once(&TokenTree::Token(span, tok.clone())),
                                               &fol)
                             },
                             None => last,
@@ -428,8 +434,8 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
                     // sequence. If it accepts, continue, else, reject.
                     None => {
                         let fol = match tokens.peek() {
-                            Some(&&TtToken(_, ref tok)) => tok.clone(),
-                            Some(&&TtDelimited(_, ref delim)) => delim.close_token(),
+                            Some(&&TokenTree::Token(_, ref tok)) => tok.clone(),
+                            Some(&&TokenTree::Delimited(_, ref delim)) => delim.close_token(),
                             Some(_) => {
                                 cx.span_err(sp, "sequence repetition followed by another \
                                              sequence repetition, which is not allowed");
@@ -441,11 +447,11 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
                     }
                 }
             },
-            TtToken(..) => {
+            TokenTree::Token(..) => {
                 // i. If T is not an NT, continue.
                 continue
             },
-            TtDelimited(_, ref tts) => {
+            TokenTree::Delimited(_, ref tts) => {
                 // if we don't pass in that close delimiter, we'll incorrectly consider the matcher
                 // `{ $foo:ty }` as having a follow that isn't `RBrace`
                 check_matcher(cx, tts.tts.iter(), &tts.close_token())

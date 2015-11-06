@@ -11,7 +11,7 @@
 pub use self::AnnNode::*;
 
 use abi;
-use ast;
+use ast::{self, TokenTree};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast_util;
 use util::parser::AssocOp;
@@ -1452,7 +1452,7 @@ impl<'a> State<'a> {
     /// expression arguments as expressions). It can be done! I think.
     pub fn print_tt(&mut self, tt: &ast::TokenTree) -> io::Result<()> {
         match *tt {
-            ast::TtToken(_, ref tk) => {
+            TokenTree::Token(_, ref tk) => {
                 try!(word(&mut self.s, &token_to_string(tk)));
                 match *tk {
                     parse::token::DocComment(..) => {
@@ -1461,14 +1461,14 @@ impl<'a> State<'a> {
                     _ => Ok(())
                 }
             }
-            ast::TtDelimited(_, ref delimed) => {
+            TokenTree::Delimited(_, ref delimed) => {
                 try!(word(&mut self.s, &token_to_string(&delimed.open_token())));
                 try!(space(&mut self.s));
                 try!(self.print_tts(&delimed.tts));
                 try!(space(&mut self.s));
                 word(&mut self.s, &token_to_string(&delimed.close_token()))
             },
-            ast::TtSequence(_, ref seq) => {
+            TokenTree::Sequence(_, ref seq) => {
                 try!(word(&mut self.s, "$("));
                 for tt_elt in &seq.tts {
                     try!(self.print_tt(tt_elt));
@@ -1499,9 +1499,9 @@ impl<'a> State<'a> {
             // There should be no space between the module name and the following `::` in paths,
             // otherwise imported macros get re-parsed from crate metadata incorrectly (#20701)
             suppress_space = match tt {
-                &ast::TtToken(_, token::Ident(_, token::ModName)) |
-                &ast::TtToken(_, token::MatchNt(_, _, _, token::ModName)) |
-                &ast::TtToken(_, token::SubstNt(_, token::ModName)) => true,
+                &TokenTree::Token(_, token::Ident(_, token::ModName)) |
+                &TokenTree::Token(_, token::MatchNt(_, _, _, token::ModName)) |
+                &TokenTree::Token(_, token::SubstNt(_, token::ModName)) => true,
                 _ => false
             }
         }

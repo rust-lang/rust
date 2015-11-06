@@ -36,7 +36,6 @@ pub use self::Sign::*;
 pub use self::Stmt_::*;
 pub use self::StrStyle::*;
 pub use self::StructFieldKind::*;
-pub use self::TokenTree::*;
 pub use self::TraitItem_::*;
 pub use self::Ty_::*;
 pub use self::TyParamBound::*;
@@ -954,12 +953,12 @@ impl Delimited {
 
     /// Returns the opening delimiter as a token tree.
     pub fn open_tt(&self) -> TokenTree {
-        TtToken(self.open_span, self.open_token())
+        TokenTree::Token(self.open_span, self.open_token())
     }
 
     /// Returns the closing delimiter as a token tree.
     pub fn close_tt(&self) -> TokenTree {
-        TtToken(self.close_span, self.close_token())
+        TokenTree::Token(self.close_span, self.close_token())
     }
 }
 
@@ -999,61 +998,61 @@ pub enum KleeneOp {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum TokenTree {
     /// A single token
-    TtToken(Span, token::Token),
+    Token(Span, token::Token),
     /// A delimited sequence of token trees
-    TtDelimited(Span, Rc<Delimited>),
+    Delimited(Span, Rc<Delimited>),
 
     // This only makes sense in MBE macros.
 
     /// A kleene-style repetition sequence with a span
     // FIXME(eddyb) #12938 Use DST.
-    TtSequence(Span, Rc<SequenceRepetition>),
+    Sequence(Span, Rc<SequenceRepetition>),
 }
 
 impl TokenTree {
     pub fn len(&self) -> usize {
         match *self {
-            TtToken(_, token::DocComment(name)) => {
+            TokenTree::Token(_, token::DocComment(name)) => {
                 match doc_comment_style(&name.as_str()) {
                     AttrStyle::Outer => 2,
                     AttrStyle::Inner => 3
                 }
             }
-            TtToken(_, token::SpecialVarNt(..)) => 2,
-            TtToken(_, token::MatchNt(..)) => 3,
-            TtDelimited(_, ref delimed) => {
+            TokenTree::Token(_, token::SpecialVarNt(..)) => 2,
+            TokenTree::Token(_, token::MatchNt(..)) => 3,
+            TokenTree::Delimited(_, ref delimed) => {
                 delimed.tts.len() + 2
             }
-            TtSequence(_, ref seq) => {
+            TokenTree::Sequence(_, ref seq) => {
                 seq.tts.len()
             }
-            TtToken(..) => 0
+            TokenTree::Token(..) => 0
         }
     }
 
     pub fn get_tt(&self, index: usize) -> TokenTree {
         match (self, index) {
-            (&TtToken(sp, token::DocComment(_)), 0) => {
-                TtToken(sp, token::Pound)
+            (&TokenTree::Token(sp, token::DocComment(_)), 0) => {
+                TokenTree::Token(sp, token::Pound)
             }
-            (&TtToken(sp, token::DocComment(name)), 1)
+            (&TokenTree::Token(sp, token::DocComment(name)), 1)
             if doc_comment_style(&name.as_str()) == AttrStyle::Inner => {
-                TtToken(sp, token::Not)
+                TokenTree::Token(sp, token::Not)
             }
-            (&TtToken(sp, token::DocComment(name)), _) => {
+            (&TokenTree::Token(sp, token::DocComment(name)), _) => {
                 let stripped = strip_doc_comment_decoration(&name.as_str());
-                TtDelimited(sp, Rc::new(Delimited {
+                TokenTree::Delimited(sp, Rc::new(Delimited {
                     delim: token::Bracket,
                     open_span: sp,
-                    tts: vec![TtToken(sp, token::Ident(token::str_to_ident("doc"),
-                                                       token::Plain)),
-                              TtToken(sp, token::Eq),
-                              TtToken(sp, token::Literal(
+                    tts: vec![TokenTree::Token(sp, token::Ident(token::str_to_ident("doc"),
+                                                                token::Plain)),
+                              TokenTree::Token(sp, token::Eq),
+                              TokenTree::Token(sp, token::Literal(
                                   token::StrRaw(token::intern(&stripped), 0), None))],
                     close_span: sp,
                 }))
             }
-            (&TtDelimited(_, ref delimed), _) => {
+            (&TokenTree::Delimited(_, ref delimed), _) => {
                 if index == 0 {
                     return delimed.open_tt();
                 }
@@ -1062,19 +1061,19 @@ impl TokenTree {
                 }
                 delimed.tts[index - 1].clone()
             }
-            (&TtToken(sp, token::SpecialVarNt(var)), _) => {
-                let v = [TtToken(sp, token::Dollar),
-                         TtToken(sp, token::Ident(token::str_to_ident(var.as_str()),
+            (&TokenTree::Token(sp, token::SpecialVarNt(var)), _) => {
+                let v = [TokenTree::Token(sp, token::Dollar),
+                         TokenTree::Token(sp, token::Ident(token::str_to_ident(var.as_str()),
                                                   token::Plain))];
                 v[index].clone()
             }
-            (&TtToken(sp, token::MatchNt(name, kind, name_st, kind_st)), _) => {
-                let v = [TtToken(sp, token::SubstNt(name, name_st)),
-                         TtToken(sp, token::Colon),
-                         TtToken(sp, token::Ident(kind, kind_st))];
+            (&TokenTree::Token(sp, token::MatchNt(name, kind, name_st, kind_st)), _) => {
+                let v = [TokenTree::Token(sp, token::SubstNt(name, name_st)),
+                         TokenTree::Token(sp, token::Colon),
+                         TokenTree::Token(sp, token::Ident(kind, kind_st))];
                 v[index].clone()
             }
-            (&TtSequence(_, ref seq), _) => {
+            (&TokenTree::Sequence(_, ref seq), _) => {
                 seq.tts[index].clone()
             }
             _ => panic!("Cannot expand a token tree")
@@ -1084,9 +1083,9 @@ impl TokenTree {
     /// Returns the `Span` corresponding to this token tree.
     pub fn get_span(&self) -> Span {
         match *self {
-            TtToken(span, _)     => span,
-            TtDelimited(span, _) => span,
-            TtSequence(span, _)  => span,
+            TokenTree::Token(span, _)     => span,
+            TokenTree::Delimited(span, _) => span,
+            TokenTree::Sequence(span, _)  => span,
         }
     }
 

@@ -586,10 +586,10 @@ pub fn noop_fold_arg<T: Folder>(Arg {id, pat, ty}: Arg, fld: &mut T) -> Arg {
 
 pub fn noop_fold_tt<T: Folder>(tt: &TokenTree, fld: &mut T) -> TokenTree {
     match *tt {
-        TtToken(span, ref tok) =>
-            TtToken(span, fld.fold_token(tok.clone())),
-        TtDelimited(span, ref delimed) => {
-            TtDelimited(span, Rc::new(
+        TokenTree::Token(span, ref tok) =>
+            TokenTree::Token(span, fld.fold_token(tok.clone())),
+        TokenTree::Delimited(span, ref delimed) => {
+            TokenTree::Delimited(span, Rc::new(
                             Delimited {
                                 delim: delimed.delim,
                                 open_span: delimed.open_span,
@@ -598,8 +598,8 @@ pub fn noop_fold_tt<T: Folder>(tt: &TokenTree, fld: &mut T) -> TokenTree {
                             }
                         ))
         },
-        TtSequence(span, ref seq) =>
-            TtSequence(span,
+        TokenTree::Sequence(span, ref seq) =>
+            TokenTree::Sequence(span,
                        Rc::new(SequenceRepetition {
                            tts: fld.fold_tts(&seq.tts),
                            separator: seq.separator.clone().map(|tok| fld.fold_token(tok)),
