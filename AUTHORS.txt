@@ -314,7 +314,6 @@ David Szotten <davidszotten@gmail.com>
 David Vazgenovich Shakaryan <dvshakaryan@gmail.com>
 David Voit <david.voit@gmail.com>
 Davis Silverman <sinistersnare@gmail.com>
-defuz <defuz.net@gmail.com>
 Denis Defreyne <denis.defreyne@stoneship.org>
 DenisKolodin <DenisKolodin@gmail.com>
 Derecho <derecho@sector5d.org>
@@ -502,6 +501,7 @@ Isaac Aggrey <isaac.aggrey@gmail.com>
 Isaac Dupree <antispam@idupree.com>
 Isaac Ge <acgtyrant@gmail.com>
 Ivan Enderlin <ivan.enderlin@hoa-project.net>
+Ivan Ivaschenko <defuz.net@gmail.com>
 Ivan Jager <aij+git@mrph.org>
 Ivan Petkov <ivanppetkov@gmail.com>
 Ivan Radanov Ivanov <ivanradanov@yahoo.co.uk>
