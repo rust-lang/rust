@@ -90,6 +90,8 @@ PREPARE_TOOLS = $(filter-out compiletest rustbook error-index-generator, $(TOOLS
 # $(3) is host
 # $(4) tag
 define DEF_PREPARE_HOST_TOOL
+prepare-host-tool-$(1)-$(2)-$(3)-$(4): \
+	PREPARE_SOURCE_BIN_DIR=$$(HBIN$(2)_H_$(3))
 prepare-host-tool-$(1)-$(2)-$(3)-$(4): prepare-maybe-clean-$(4) \
                                   $$(foreach dep,$$(TOOL_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)-$(4)) \
                                   $$(HBIN$(2)_H_$(3))/$(1)$$(X_$(3)) \
@@ -110,8 +112,10 @@ endef
 # $(3) is host
 # $(4) tag
 define DEF_PREPARE_HOST_LIB
-prepare-host-lib-$(1)-$(2)-$(3)-$(4): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)
-prepare-host-lib-$(1)-$(2)-$(3)-$(4): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)
+prepare-host-lib-$(1)-$(2)-$(3)-$(4): \
+	PREPARE_WORKING_SOURCE_LIB_DIR=$$(HLIB$(2)_H_$(3))
+prepare-host-lib-$(1)-$(2)-$(3)-$(4): \
+	PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_DIR)/$$(notdir $$(HLIB$(2)_H_$(3)))
 prepare-host-lib-$(1)-$(2)-$(3)-$(4): prepare-maybe-clean-$(4) \
                                  $$(foreach dep,$$(RUST_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)-$(4)) \
                                  $$(HLIB$(2)_H_$(3))/stamp.$(1) \
@@ -129,10 +133,14 @@ endef
 # $(4) tag
 define DEF_PREPARE_TARGET_N
 # Rebind PREPARE_*_LIB_DIR to point to rustlib, then install the libs for the targets
-prepare-target-$(2)-host-$(3)-$(1)-$(4): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)/rustlib/$(2)/lib
-prepare-target-$(2)-host-$(3)-$(1)-$(4): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)/rustlib/$(2)/lib
-prepare-target-$(2)-host-$(3)-$(1)-$(4): PREPARE_SOURCE_BIN_DIR=$$(PREPARE_SOURCE_LIB_DIR)/rustlib/$(3)/bin
-prepare-target-$(2)-host-$(3)-$(1)-$(4): PREPARE_DEST_BIN_DIR=$$(PREPARE_DEST_LIB_DIR)/rustlib/$(3)/bin
+prepare-target-$(2)-host-$(3)-$(1)-$(4): \
+	PREPARE_WORKING_SOURCE_LIB_DIR=$$(TLIB$(1)_T_$(2)_H_$(3))
+prepare-target-$(2)-host-$(3)-$(1)-$(4): \
+	PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)/rustlib/$(2)/lib
+prepare-target-$(2)-host-$(3)-$(1)-$(4): \
+	PREPARE_SOURCE_BIN_DIR=$$(TBIN$(1)_T_$(2)_H_$(3))
+prepare-target-$(2)-host-$(3)-$(1)-$(4): \
+	PREPARE_DEST_BIN_DIR=$$(PREPARE_DEST_LIB_DIR)/rustlib/$(3)/bin
 prepare-target-$(2)-host-$(3)-$(1)-$(4): prepare-maybe-clean-$(4) \
         $$(foreach crate,$$(TARGET_CRATES), \
           $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)) \
@@ -185,9 +193,6 @@ INSTALL_DEBUGGER_SCRIPT_COMMANDS=$(if $(findstring windows,$(1)),\
 
 define DEF_PREPARE
 
-prepare-base-$(1)-%: PREPARE_SOURCE_DIR=$$(PREPARE_HOST)/stage$$(PREPARE_STAGE)
-prepare-base-$(1)-%: PREPARE_SOURCE_BIN_DIR=$$(PREPARE_SOURCE_DIR)/bin
-prepare-base-$(1)-%: PREPARE_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_DIR)/$$(CFG_LIBDIR_RELATIVE)
 prepare-base-$(1)-%: PREPARE_SOURCE_MAN_DIR=$$(S)/man
 prepare-base-$(1)-%: PREPARE_DEST_BIN_DIR=$$(PREPARE_DEST_DIR)/bin
 prepare-base-$(1)-%: PREPARE_DEST_LIB_DIR=$$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)
