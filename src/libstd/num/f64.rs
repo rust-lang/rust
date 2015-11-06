@@ -77,7 +77,6 @@ mod cmath {
 
 #[cfg(not(test))]
 #[lang = "f64"]
-#[stable(feature = "rust1", since = "1.0.0")]
 impl f64 {
     /// Parses a float as with a given radix
     #[unstable(feature = "float_from_str_radix", reason = "recently moved API",

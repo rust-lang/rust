@@ -161,7 +161,6 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
     intrinsics::move_val_init(&mut *dst, src)
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "const_ptr"]
 impl<T: ?Sized> *const T {
     /// Returns true if the pointer is null.
@@ -210,7 +209,6 @@ impl<T: ?Sized> *const T {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "mut_ptr"]
 impl<T: ?Sized> *mut T {
     /// Returns true if the pointer is null.

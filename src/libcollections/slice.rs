@@ -160,7 +160,6 @@ mod hack {
 /// Allocating extension methods for slices.
 #[lang = "slice"]
 #[cfg(not(test))]
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> [T] {
     /// Returns the number of elements in the slice.
     ///

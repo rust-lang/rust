@@ -677,7 +677,6 @@ impl Iterator for ReadDir {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 impl DirEntry {
     /// Returns the full path to the file that this entry represents.
     ///
