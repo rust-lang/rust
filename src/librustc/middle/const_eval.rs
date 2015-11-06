@@ -39,6 +39,7 @@ use std::borrow::{Cow, IntoCow};
 use std::num::wrapping::OverflowingOps;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry::Vacant;
+use std::hash;
 use std::mem::transmute;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64};
 use std::rc::Rc;
@@ -257,6 +258,22 @@ pub enum ConstVal {
     Function(DefId),
 }
 
+impl hash::Hash for ConstVal {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        match *self {
+            Float(a) => unsafe { transmute::<_,u64>(a) }.hash(state),
+            Int(a) => a.hash(state),
+            Uint(a) => a.hash(state),
+            Str(ref a) => a.hash(state),
+            ByteStr(ref a) => a.hash(state),
+            Bool(a) => a.hash(state),
+            Struct(a) => a.hash(state),
+            Tuple(a) => a.hash(state),
+            Function(a) => a.hash(state),
+        }
+    }
+}
+
 /// Note that equality for `ConstVal` means that the it is the same
 /// constant, not that the rust values are equal. In particular, `NaN
 /// == NaN` (at least if it's the same NaN; distinct encodings for NaN
@@ -277,6 +294,8 @@ impl PartialEq for ConstVal {
         }
     }
 }
+
+impl Eq for ConstVal { }
 
 impl ConstVal {
     pub fn description(&self) -> &'static str {
