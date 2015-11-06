@@ -80,7 +80,6 @@ use self::TokenTreeOrTokenTreeVec::*;
 
 use ast;
 use ast::{TokenTree, Name};
-use ast::{TtDelimited, TtSequence, TtToken};
 use codemap::{BytePos, mk_sp, Span};
 use codemap;
 use parse::lexer::*; //resolve bug?
@@ -146,16 +145,16 @@ pub struct MatcherPos {
 pub fn count_names(ms: &[TokenTree]) -> usize {
     ms.iter().fold(0, |count, elt| {
         count + match elt {
-            &TtSequence(_, ref seq) => {
+            &TokenTree::Sequence(_, ref seq) => {
                 seq.num_captures
             }
-            &TtDelimited(_, ref delim) => {
+            &TokenTree::Delimited(_, ref delim) => {
                 count_names(&delim.tts)
             }
-            &TtToken(_, MatchNt(..)) => {
+            &TokenTree::Token(_, MatchNt(..)) => {
                 1
             }
-            &TtToken(_, _) => 0,
+            &TokenTree::Token(_, _) => 0,
         }
     })
 }
@@ -205,17 +204,17 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
     fn n_rec(p_s: &ParseSess, m: &TokenTree, res: &[Rc<NamedMatch>],
              ret_val: &mut HashMap<Name, Rc<NamedMatch>>, idx: &mut usize) {
         match m {
-            &TtSequence(_, ref seq) => {
+            &TokenTree::Sequence(_, ref seq) => {
                 for next_m in &seq.tts {
                     n_rec(p_s, next_m, res, ret_val, idx)
                 }
             }
-            &TtDelimited(_, ref delim) => {
+            &TokenTree::Delimited(_, ref delim) => {
                 for next_m in &delim.tts {
                     n_rec(p_s, next_m, res, ret_val, idx)
                 }
             }
-            &TtToken(sp, MatchNt(bind_name, _, _, _)) => {
+            &TokenTree::Token(sp, MatchNt(bind_name, _, _, _)) => {
                 match ret_val.entry(bind_name.name) {
                     Vacant(spot) => {
                         spot.insert(res[*idx].clone());
@@ -229,8 +228,8 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
                     }
                 }
             }
-            &TtToken(_, SubstNt(..)) => panic!("Cannot fill in a NT"),
-            &TtToken(_, _) => (),
+            &TokenTree::Token(_, SubstNt(..)) => panic!("Cannot fill in a NT"),
+            &TokenTree::Token(_, _) => (),
         }
     }
     let mut ret_val = HashMap::new();
@@ -362,7 +361,7 @@ pub fn parse(sess: &ParseSess,
             } else {
                 match ei.top_elts.get_tt(idx) {
                     /* need to descend into sequence */
-                    TtSequence(sp, seq) => {
+                    TokenTree::Sequence(sp, seq) => {
                         if seq.op == ast::ZeroOrMore {
                             let mut new_ei = ei.clone();
                             new_ei.match_cur += seq.num_captures;
@@ -388,10 +387,10 @@ pub fn parse(sess: &ParseSess,
                             match_hi: ei_t.match_cur + seq.num_captures,
                             up: Some(ei_t),
                             sp_lo: sp.lo,
-                            top_elts: Tt(TtSequence(sp, seq)),
+                            top_elts: Tt(TokenTree::Sequence(sp, seq)),
                         }));
                     }
-                    TtToken(_, MatchNt(..)) => {
+                    TokenTree::Token(_, MatchNt(..)) => {
                         // Built-in nonterminals never start with these tokens,
                         // so we can eliminate them from consideration.
                         match tok {
@@ -399,10 +398,10 @@ pub fn parse(sess: &ParseSess,
                             _ => bb_eis.push(ei),
                         }
                     }
-                    TtToken(sp, SubstNt(..)) => {
+                    TokenTree::Token(sp, SubstNt(..)) => {
                         return Error(sp, "missing fragment specifier".to_string())
                     }
-                    seq @ TtDelimited(..) | seq @ TtToken(_, DocComment(..)) => {
+                    seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..)) => {
                         let lower_elts = mem::replace(&mut ei.top_elts, Tt(seq));
                         let idx = ei.idx;
                         ei.stack.push(MatcherTtFrame {
@@ -412,7 +411,7 @@ pub fn parse(sess: &ParseSess,
                         ei.idx = 0;
                         cur_eis.push(ei);
                     }
-                    TtToken(_, ref t) => {
+                    TokenTree::Token(_, ref t) => {
                         let mut ei_t = ei.clone();
                         if token_name_eq(t,&tok) {
                             ei_t.idx += 1;
@@ -440,7 +439,7 @@ pub fn parse(sess: &ParseSess,
             if (!bb_eis.is_empty() && !next_eis.is_empty())
                 || bb_eis.len() > 1 {
                 let nts = bb_eis.iter().map(|ei| match ei.top_elts.get_tt(ei.idx) {
-                    TtToken(_, MatchNt(bind, name, _, _)) => {
+                    TokenTree::Token(_, MatchNt(bind, name, _, _)) => {
                         format!("{} ('{}')", name, bind)
                     }
                     _ => panic!()
@@ -468,7 +467,7 @@ pub fn parse(sess: &ParseSess,
 
                 let mut ei = bb_eis.pop().unwrap();
                 match ei.top_elts.get_tt(ei.idx) {
-                    TtToken(span, MatchNt(_, ident, _, _)) => {
+                    TokenTree::Token(span, MatchNt(_, ident, _, _)) => {
                         let match_cur = ei.match_cur;
                         (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
                             parse_nt(&mut rust_parser, span, &ident.name.as_str()))));

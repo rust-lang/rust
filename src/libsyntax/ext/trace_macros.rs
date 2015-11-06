@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast;
+use ast::TokenTree;
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::base;
@@ -18,7 +18,7 @@ use parse::token::keywords;
 
 pub fn expand_trace_macros(cx: &mut ExtCtxt,
                            sp: Span,
-                           tt: &[ast::TokenTree])
+                           tt: &[TokenTree])
                            -> Box<base::MacResult+'static> {
     if !cx.ecfg.enable_trace_macros() {
         feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
@@ -30,10 +30,10 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
     }
 
     match (tt.len(), tt.first()) {
-        (1, Some(&ast::TtToken(_, ref tok))) if tok.is_keyword(keywords::True) => {
+        (1, Some(&TokenTree::Token(_, ref tok))) if tok.is_keyword(keywords::True) => {
             cx.set_trace_macros(true);
         }
-        (1, Some(&ast::TtToken(_, ref tok))) if tok.is_keyword(keywords::False) => {
+        (1, Some(&TokenTree::Token(_, ref tok))) if tok.is_keyword(keywords::False) => {
             cx.set_trace_macros(false);
         }
         _ => cx.span_err(sp, "trace_macros! accepts only `true` or `false`"),
