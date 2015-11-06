@@ -1137,7 +1137,7 @@ impl error::Error for CliError {
         // implementations.
         match *self {
             CliError::Io(ref err) => err.description(),
-            CliError::Parse(ref err) => err.description(err),
+            CliError::Parse(ref err) => err.description(),
         }
     }
 
