@@ -891,7 +891,7 @@ pub enum Ty_ {
 pub struct InlineAsm {
     pub asm: InternedString,
     pub asm_str_style: StrStyle,
-    pub outputs: Vec<(InternedString, P<Expr>, bool)>,
+    pub outputs: Vec<(InternedString, P<Expr>, bool, bool)>,
     pub inputs: Vec<(InternedString, P<Expr>)>,
     pub clobbers: Vec<InternedString>,
     pub volatile: bool,

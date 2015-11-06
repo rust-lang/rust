@@ -1202,8 +1202,8 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                               .map(|&(ref c, ref input)| (c.clone(), lower_expr(lctx, input)))
                               .collect(),
                 outputs: outputs.iter()
-                                .map(|&(ref c, ref out, ref is_rw)| {
-                                    (c.clone(), lower_expr(lctx, out), *is_rw)
+                                .map(|&(ref c, ref out, is_rw, is_indirect)| {
+                                    (c.clone(), lower_expr(lctx, out), is_rw, is_indirect)
                                 })
                                 .collect(),
                 asm: asm.clone(),
