@@ -135,8 +135,8 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     continue
                 }
             }
-            order.push(name.to_string());
-            names.insert(name.to_string(), e);
+            order.push(String::from(name));
+            names.insert(String::from(name), e);
         } else {
             args.push(panictry!(p.parse_expr_nopanic()));
         }
@@ -168,10 +168,10 @@ impl<'a, 'b> Context<'a, 'b> {
                         Exact(i)
                     }
                     parse::ArgumentIs(i) => Exact(i),
-                    parse::ArgumentNamed(s) => Named(s.to_string()),
+                    parse::ArgumentNamed(s) => Named(String::from(s)),
                 };
 
-                let ty = Known(arg.format.ty.to_string());
+                let ty = Known(String::from(arg.format.ty));
                 self.verify_arg_type(pos, ty);
             }
         }
@@ -184,7 +184,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 self.verify_arg_type(Exact(i), Unsigned);
             }
             parse::CountIsName(s) => {
-                self.verify_arg_type(Named(s.to_string()), Unsigned);
+                self.verify_arg_type(Named(String::from(s)), Unsigned);
             }
             parse::CountIsNextParam => {
                 if self.check_positional_ok() {
@@ -208,8 +208,8 @@ impl<'a, 'b> Context<'a, 'b> {
 
     fn describe_num_args(&self) -> String {
         match self.args.len() {
-            0 => "no arguments given".to_string(),
-            1 => "there is 1 argument".to_string(),
+            0 => String::from("no arguments given"),
+            1 => String::from("there is 1 argument"),
             x => format!("there are {} arguments", x),
         }
     }

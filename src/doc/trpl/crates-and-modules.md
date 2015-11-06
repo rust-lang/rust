@@ -202,7 +202,7 @@ Put this in `src/english/greetings.rs`:
 
 ```rust
 fn hello() -> String {
-    "Hello!".to_string()
+    String::from("Hello!")
 }
 ```
 
@@ -210,7 +210,7 @@ Put this in `src/english/farewells.rs`:
 
 ```rust
 fn goodbye() -> String {
-    "Goodbye.".to_string()
+    String::from("Goodbye.")
 }
 ```
 
@@ -218,7 +218,7 @@ Put this in `src/japanese/greetings.rs`:
 
 ```rust
 fn hello() -> String {
-    "こんにちは".to_string()
+    String::from("こんにちは")
 }
 ```
 
@@ -230,7 +230,7 @@ Put this in `src/japanese/farewells.rs`:
 
 ```rust
 fn goodbye() -> String {
-    "さようなら".to_string()
+    String::from("さようなら")
 }
 ```
 
@@ -328,7 +328,7 @@ In our `src/english/greetings.rs`, let’s add `pub` to our `fn` declaration:
 
 ```rust,ignore
 pub fn hello() -> String {
-    "Hello!".to_string()
+    String::from("Hello!")
 }
 ```
 
@@ -336,7 +336,7 @@ And also in `src/english/farewells.rs`:
 
 ```rust,ignore
 pub fn goodbye() -> String {
-    "Goodbye.".to_string()
+    Strong::from("Goodbye.")
 }
 ```
 
@@ -348,11 +348,11 @@ $ cargo run
    Compiling phrases v0.0.1 (file:///home/you/projects/phrases)
 src/japanese/greetings.rs:1:1: 3:2 warning: function is never used: `hello`, #[warn(dead_code)] on by default
 src/japanese/greetings.rs:1 fn hello() -> String {
-src/japanese/greetings.rs:2     "こんにちは".to_string()
+src/japanese/greetings.rs:2     String::from("こんにちは")
 src/japanese/greetings.rs:3 }
 src/japanese/farewells.rs:1:1: 3:2 warning: function is never used: `goodbye`, #[warn(dead_code)] on by default
 src/japanese/farewells.rs:1 fn goodbye() -> String {
-src/japanese/farewells.rs:2     "さようなら".to_string()
+src/japanese/farewells.rs:2     String::from("さようなら")
 src/japanese/farewells.rs:3 }
      Running `target/debug/phrases`
 Hello in English: Hello!
@@ -479,7 +479,7 @@ Next, make the two functions public, first in `src/japanese/greetings.rs`:
 
 ```rust,ignore
 pub fn hello() -> String {
-    "こんにちは".to_string()
+    String::from("こんにちは")
 }
 ```
 
@@ -487,7 +487,7 @@ And then in `src/japanese/farewells.rs`:
 
 ```rust,ignore
 pub fn goodbye() -> String {
-    "さようなら".to_string()
+    String::from("さようなら")
 }
 ```
 

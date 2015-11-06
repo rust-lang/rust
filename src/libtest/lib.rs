@@ -361,7 +361,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let matches =
         match getopts::getopts(args_, &optgroups()) {
           Ok(m) => m,
-          Err(f) => return Some(Err(f.to_string()))
+          Err(f) => return Some(Err(String::from(f)))
         };
 
     if matches.opt_present("h") { usage(&args[0]); return None; }
@@ -580,7 +580,7 @@ impl<T: Write> ConsoleTestState<T> {
         let mut failures = Vec::new();
         let mut fail_out = String::new();
         for &(ref f, ref stdout) in &self.failures {
-            failures.push(f.name.to_string());
+            failures.push(String::from(f.name));
             if !stdout.is_empty() {
                 fail_out.push_str(&format!("---- {} stdout ----\n\t", f.name));
                 let output = String::from_utf8_lossy(stdout);
@@ -1343,9 +1343,9 @@ mod tests {
 
     #[test]
     fn parse_ignored_flag() {
-        let args = vec!("progname".to_string(),
-                        "filter".to_string(),
-                        "--ignored".to_string());
+        let args = vec!(String::from("progname"),
+                        String::from("filter"),
+                        String::from("--ignored"));
         let opts = match parse_opts(&args) {
             Some(Ok(o)) => o,
             _ => panic!("Malformed arg in parse_ignored_flag")
@@ -1382,7 +1382,7 @@ mod tests {
         let filtered = filter_tests(&opts, tests);
 
         assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered[0].desc.name.to_string(),
+        assert_eq!(String::from(filtered[0].desc.name),
                    "1");
         assert!(filtered[0].desc.ignore == false);
     }
@@ -1393,15 +1393,15 @@ mod tests {
         opts.run_tests = true;
 
         let names =
-            vec!("sha1::test".to_string(),
-                 "isize::test_to_str".to_string(),
-                 "isize::test_pow".to_string(),
-                 "test::do_not_run_ignored_tests".to_string(),
-                 "test::ignored_tests_result_in_ignored".to_string(),
-                 "test::first_free_arg_should_be_a_filter".to_string(),
-                 "test::parse_ignored_flag".to_string(),
-                 "test::filter_for_ignored_option".to_string(),
-                 "test::sort_tests".to_string());
+            vec!(String::from("sha1::test"),
+                 String::from("isize::test_to_str"),
+                 String::from("isize::test_pow"),
+                 String::from("test::do_not_run_ignored_tests"),
+                 String::from("test::ignored_tests_result_in_ignored"),
+                 String::from("test::first_free_arg_should_be_a_filter"),
+                 String::from("test::parse_ignored_flag"),
+                 String::from("test::filter_for_ignored_option"),
+                 String::from("test::sort_tests"));
         let tests =
         {
             fn testfn() { }
@@ -1422,18 +1422,18 @@ mod tests {
         let filtered = filter_tests(&opts, tests);
 
         let expected =
-            vec!("isize::test_pow".to_string(),
-                 "isize::test_to_str".to_string(),
-                 "sha1::test".to_string(),
-                 "test::do_not_run_ignored_tests".to_string(),
-                 "test::filter_for_ignored_option".to_string(),
-                 "test::first_free_arg_should_be_a_filter".to_string(),
-                 "test::ignored_tests_result_in_ignored".to_string(),
-                 "test::parse_ignored_flag".to_string(),
-                 "test::sort_tests".to_string());
+            vec!(String::from("isize::test_pow"),
+                 String::from("isize::test_to_str"),
+                 String::from("sha1::test"),
+                 String::from("test::do_not_run_ignored_tests"),
+                 String::from("test::filter_for_ignored_option"),
+                 String::from("test::first_free_arg_should_be_a_filter"),
+                 String::from("test::ignored_tests_result_in_ignored"),
+                 String::from("test::parse_ignored_flag"),
+                 String::from("test::sort_tests"));
 
         for (a, b) in expected.iter().zip(filtered) {
-            assert!(*a == b.desc.name.to_string());
+            assert!(*a == String::from(b.desc.name));
         }
     }
 

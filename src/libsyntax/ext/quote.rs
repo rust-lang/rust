@@ -285,28 +285,28 @@ pub mod rt {
 
         fn parse_item(&self, s: String) -> P<ast::Item> {
             parse::parse_item_from_source_str(
-                "<quote expansion>".to_string(),
+                String::from("<quote expansion>"),
                 s,
                 self.cfg(),
                 self.parse_sess()).expect("parse error")
         }
 
         fn parse_stmt(&self, s: String) -> P<ast::Stmt> {
-            parse::parse_stmt_from_source_str("<quote expansion>".to_string(),
+            parse::parse_stmt_from_source_str(String::from("<quote expansion>"),
                                               s,
                                               self.cfg(),
                                               self.parse_sess()).expect("parse error")
         }
 
         fn parse_expr(&self, s: String) -> P<ast::Expr> {
-            parse::parse_expr_from_source_str("<quote expansion>".to_string(),
+            parse::parse_expr_from_source_str(String::from("<quote expansion>"),
                                               s,
                                               self.cfg(),
                                               self.parse_sess())
         }
 
         fn parse_tts(&self, s: String) -> Vec<ast::TokenTree> {
-            parse::parse_tts_from_source_str("<quote expansion>".to_string(),
+            parse::parse_tts_from_source_str(String::from("<quote expansion>"),
                                              s,
                                              self.cfg(),
                                              self.parse_sess())
@@ -779,7 +779,7 @@ fn expand_wrapper(cx: &ExtCtxt,
 
     let stmts = imports.iter().map(|path| {
         // make item: `use ...;`
-        let path = path.iter().map(|s| s.to_string()).collect();
+        let path = path.iter().map(String::from).collect();
         cx.stmt_item(sp, cx.item_use_glob(sp, ast::Inherited, ids_ext(path)))
     }).chain(Some(stmt_let_ext_cx)).collect();
 

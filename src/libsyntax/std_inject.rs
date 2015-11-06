@@ -45,7 +45,7 @@ pub fn maybe_inject_crates_ref(krate: ast::Crate, alt_std_name: Option<String>)
         let name = if no_std(&krate) {"core"} else {"std"};
         let mut fold = CrateInjector {
             item_name: token::str_to_ident(name),
-            crate_name: token::intern(&alt_std_name.unwrap_or(name.to_string())),
+            crate_name: token::intern(&alt_std_name.unwrap_or(String::from(name))),
         };
         fold.fold_crate(krate)
     }

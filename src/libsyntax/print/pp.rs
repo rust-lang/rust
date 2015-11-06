@@ -113,10 +113,10 @@ impl Token {
 pub fn tok_str(token: &Token) -> String {
     match *token {
         Token::String(ref s, len) => format!("STR({},{})", s, len),
-        Token::Break(_) => "BREAK".to_string(),
-        Token::Begin(_) => "BEGIN".to_string(),
-        Token::End => "END".to_string(),
-        Token::Eof => "EOF".to_string()
+        Token::Break(_) => String::from("BREAK"),
+        Token::Begin(_) => String::from("BEGIN"),
+        Token::End => String::from("END"),
+        Token::Eof => String::from("EOF")
     }
 }
 
@@ -650,15 +650,15 @@ pub fn eof(p: &mut Printer) -> io::Result<()> {
 }
 
 pub fn word(p: &mut Printer, wrd: &str) -> io::Result<()> {
-    p.pretty_print(Token::String(/* bad */ wrd.to_string(), wrd.len() as isize))
+    p.pretty_print(Token::String(/* bad */ String::from(wrd), wrd.len() as isize))
 }
 
 pub fn huge_word(p: &mut Printer, wrd: &str) -> io::Result<()> {
-    p.pretty_print(Token::String(/* bad */ wrd.to_string(), SIZE_INFINITY))
+    p.pretty_print(Token::String(/* bad */ String::from(wrd), SIZE_INFINITY))
 }
 
 pub fn zero_word(p: &mut Printer, wrd: &str) -> io::Result<()> {
-    p.pretty_print(Token::String(/* bad */ wrd.to_string(), 0))
+    p.pretty_print(Token::String(/* bad */ String::from(wrd), 0))
 }
 
 pub fn spaces(p: &mut Printer, n: usize) -> io::Result<()> {

@@ -26,10 +26,10 @@ have a fixed size, and cannot be mutated.
 
 A `String`, on the other hand, is a heap-allocated string. This string is
 growable, and is also guaranteed to be UTF-8. `String`s are commonly created by
-converting from a string slice using the `to_string` method.
+converting from a string slice using the `String::from` method.
 
 ```rust
-let mut s = "Hello".to_string(); // mut s: String
+let mut s = String::from("Hello"); // mut s: String
 println!("{}", s);
 
 s.push_str(", world.");
@@ -44,7 +44,7 @@ fn takes_slice(slice: &str) {
 }
 
 fn main() {
-    let s = "Hello".to_string();
+    let s = String::from("Hello");
     takes_slice(&s);
 }
 ```
@@ -59,7 +59,7 @@ use std::net::TcpStream;
 
 TcpStream::connect("192.168.0.1:3000"); // &str parameter
 
-let addr_string = "192.168.0.1:3000".to_string();
+let addr_string = String::from("192.168.0.1:3000");
 TcpStream::connect(&*addr_string); // convert addr_string to &str
 ```
 
@@ -146,7 +146,7 @@ character boundary'
 If you have a `String`, you can concatenate a `&str` to the end of it:
 
 ```rust
-let hello = "Hello ".to_string();
+let hello = String::from("Hello ");
 let world = "world!";
 
 let hello_world = hello + world;
@@ -155,8 +155,8 @@ let hello_world = hello + world;
 But if you have two `String`s, you need an `&`:
 
 ```rust
-let hello = "Hello ".to_string();
-let world = "world!".to_string();
+let hello = String::from("Hello ");
+let world = String::from("world!");
 
 let hello_world = hello + &world;
 ```

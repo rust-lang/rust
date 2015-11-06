@@ -115,7 +115,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
 
         if can_trim {
             lines.iter().map(|line| {
-                (&line[i + 1..line.len()]).to_string()
+                String::from((&line[i + 1..line.len()]))
             }).collect()
         } else {
             lines
@@ -126,14 +126,14 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
     const ONELINERS: &'static [&'static str] = &["///!", "///", "//!", "//"];
     for prefix in ONELINERS {
         if comment.starts_with(*prefix) {
-            return (&comment[prefix.len()..]).to_string();
+            return String::from(&comment[prefix.len()..]);
         }
     }
 
     if comment.starts_with("/*") {
         let lines = comment[3..comment.len() - 2]
             .lines()
-            .map(|s| s.to_string())
+            .map(String::from)
             .collect::<Vec<String> >();
 
         let lines = vertical_trim(lines);
@@ -226,9 +226,9 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut Vec<String> ,
     let s1 = match all_whitespace(&s[..], col) {
         Some(col) => {
             if col < len {
-                (&s[col..len]).to_string()
+                String::from(&s[col..len])
             } else {
-                "".to_string()
+                String::from("")
             }
         }
         None => s,
@@ -371,7 +371,7 @@ pub fn gather_comments_and_literals(span_diagnostic: &diagnostic::SpanHandler,
         if tok.is_lit() {
             rdr.with_str_from(bstart, |s| {
                 debug!("tok lit: {}", s);
-                literals.push(Literal {lit: s.to_string(), pos: sp.lo});
+                literals.push(Literal {lit: String::from(s), pos: sp.lo});
             })
         } else {
             debug!("tok: {}", pprust::token_to_string(&tok));

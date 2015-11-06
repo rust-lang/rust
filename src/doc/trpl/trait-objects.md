@@ -46,7 +46,7 @@ fn do_something<T: Foo>(x: T) {
 
 fn main() {
     let x = 5u8;
-    let y = "Hello".to_string();
+    let y = String::from("Hello");
 
     do_something(x);
     do_something(y);
@@ -72,7 +72,7 @@ fn do_something_string(x: String) {
 
 fn main() {
     let x = 5u8;
-    let y = "Hello".to_string();
+    let y = String::from("Hello");
 
     do_something_u8(x);
     do_something_string(y);
@@ -146,7 +146,7 @@ fn do_something(x: &Foo) {
 }
 
 fn main() {
-    let x = "Hello".to_string();
+    let x = String::from("Hello");
     do_something(&x);
 }
 ```
@@ -275,7 +275,7 @@ construction and use of `Foo` trait objects might look a bit like (ignoring the
 type mismatches: they’re all just pointers anyway):
 
 ```rust,ignore
-let a: String = "foo".to_string();
+let a: String = String::from("foo");
 let x: u8 = 1;
 
 // let b: &Foo = &a;

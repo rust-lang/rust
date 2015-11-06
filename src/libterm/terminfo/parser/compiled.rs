@@ -295,7 +295,7 @@ pub fn parse(file: &mut Read, longnames: bool)
                 .iter().position(|&b| b == 0);
             match nulpos {
                 Some(len) => {
-                    string_map.insert(name.to_string(),
+                    string_map.insert(String::from(name),
                                       string_table[offset as usize ..
                                                    (offset as usize + len)].to_vec())
                 },

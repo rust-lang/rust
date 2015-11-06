@@ -61,7 +61,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<PathBuf>> {
     // Look for the terminal in all of the search directories
     for p in &dirs_to_search {
         if p.exists() {
-            let f = first_char.to_string();
+            let f = String::from(first_char);
             let newp = p.join(&f).join(term);
             if newp.exists() {
                 return Some(box newp);
@@ -101,7 +101,7 @@ fn test_get_dbpath_for_term() {
     // FIXME (#9639): This needs to handle non-utf8 paths
     fn x(t: &str) -> String {
         let p = get_dbpath_for_term(t).expect("no terminfo entry found");
-        p.to_str().unwrap().to_string()
+        String::from(p.to_str().unwrap())
     }
     assert!(x("screen") == "/usr/share/terminfo/s/screen");
     assert!(get_dbpath_for_term("") == None);
