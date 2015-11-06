@@ -1137,11 +1137,7 @@ impl error::Error for CliError {
         // implementations.
         match *self {
             CliError::Io(ref err) => err.description(),
-            // Normally we can just write `err.description()`, but the error
-            // type has a concrete method called `description`, which conflicts
-            // with the trait method. For now, we must explicitly call
-            // `description` through the `Error` trait.
-            CliError::Parse(ref err) => error::Error::description(err),
+            CliError::Parse(ref err) => err.description(err),
         }
     }
 
