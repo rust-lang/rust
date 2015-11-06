@@ -11,6 +11,7 @@
 use io;
 use io::prelude::*;
 use libc;
+use libc::{c_void};
 use mem;
 use sync::StaticMutex;
 
@@ -38,7 +39,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     let mut cx = Context { writer: w, last_error: None, idx: 0 };
     return match unsafe {
         uw::_Unwind_Backtrace(trace_fn,
-                              &mut cx as *mut Context as *mut libc::c_void)
+                              &mut cx as *mut Context as *mut c_void)
     } {
         uw::_URC_NO_REASON => {
             match cx.last_error {
@@ -50,11 +51,11 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     };
 
     extern fn trace_fn(ctx: *mut uw::_Unwind_Context,
-                       arg: *mut libc::c_void) -> uw::_Unwind_Reason_Code {
+                       arg: *mut c_void) -> uw::_Unwind_Reason_Code {
         let cx: &mut Context = unsafe { mem::transmute(arg) };
         let mut ip_before_insn = 0;
         let mut ip = unsafe {
-            uw::_Unwind_GetIPInfo(ctx, &mut ip_before_insn) as *mut libc::c_void
+            uw::_Unwind_GetIPInfo(ctx, &mut ip_before_insn) as *mut c_void
         };
         if !ip.is_null() && ip_before_insn == 0 {
             // this is a non-signaling frame, so `ip` refers to the address
@@ -114,6 +115,7 @@ mod uw {
     pub use self::_Unwind_Reason_Code::*;
 
     use libc;
+    use libc::{c_int, c_uint, c_void, uintptr_t};
 
     #[repr(C)]
     pub enum _Unwind_Reason_Code {
@@ -133,26 +135,26 @@ mod uw {
 
     pub type _Unwind_Trace_Fn =
             extern fn(ctx: *mut _Unwind_Context,
-                      arg: *mut libc::c_void) -> _Unwind_Reason_Code;
+                      arg: *mut c_void) -> _Unwind_Reason_Code;
 
     extern {
         // No native _Unwind_Backtrace on iOS
         #[cfg(not(all(target_os = "ios", target_arch = "arm")))]
         pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
-                                 trace_argument: *mut libc::c_void)
+                                 trace_argument: *mut c_void)
                     -> _Unwind_Reason_Code;
 
         // available since GCC 4.2.0, should be fine for our purpose
         #[cfg(all(not(all(target_os = "android", target_arch = "arm")),
                   not(all(target_os = "linux", target_arch = "arm"))))]
         pub fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context,
-                                 ip_before_insn: *mut libc::c_int)
-                    -> libc::uintptr_t;
+                                 ip_before_insn: *mut c_int)
+                    -> uintptr_t;
 
         #[cfg(all(not(target_os = "android"),
                   not(all(target_os = "linux", target_arch = "arm"))))]
-        pub fn _Unwind_FindEnclosingFunction(pc: *mut libc::c_void)
-            -> *mut libc::c_void;
+        pub fn _Unwind_FindEnclosingFunction(pc: *mut c_void)
+            -> *mut c_void;
     }
 
     // On android, the function _Unwind_GetIP is a macro, and this is the
@@ -160,7 +162,7 @@ mod uw {
     // header file with the definition of _Unwind_GetIP.
     #[cfg(any(all(target_os = "android", target_arch = "arm"),
               all(target_os = "linux", target_arch = "arm")))]
-    pub unsafe fn _Unwind_GetIP(ctx: *mut _Unwind_Context) -> libc::uintptr_t {
+    pub unsafe fn _Unwind_GetIP(ctx: *mut _Unwind_Context) -> uintptr_t {
         #[repr(C)]
         enum _Unwind_VRS_Result {
             _UVRSR_OK = 0,
@@ -185,13 +187,13 @@ mod uw {
             _UVRSD_DOUBLE = 5,
         }
 
-        type _Unwind_Word = libc::c_uint;
+        type _Unwind_Word = c_uint;
         extern {
             fn _Unwind_VRS_Get(ctx: *mut _Unwind_Context,
                                klass: _Unwind_VRS_RegClass,
                                word: _Unwind_Word,
                                repr: _Unwind_VRS_DataRepresentation,
-                               data: *mut libc::c_void)
+                               data: *mut c_void)
                 -> _Unwind_VRS_Result;
         }
 
@@ -199,8 +201,8 @@ mod uw {
         let ptr = &mut val as *mut _Unwind_Word;
         let _ = _Unwind_VRS_Get(ctx, _Unwind_VRS_RegClass::_UVRSC_CORE, 15,
                                 _Unwind_VRS_DataRepresentation::_UVRSD_UINT32,
-                                ptr as *mut libc::c_void);
-        (val & !1) as libc::uintptr_t
+                                ptr as *mut c_void);
+        (val & !1) as uintptr_t
     }
 
     // This function doesn't exist on Android or ARM/Linux, so make it same
@@ -208,8 +210,8 @@ mod uw {
     #[cfg(any(all(target_os = "android", target_arch = "arm"),
               all(target_os = "linux", target_arch = "arm")))]
     pub unsafe fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context,
-                                    ip_before_insn: *mut libc::c_int)
-        -> libc::uintptr_t
+                                    ip_before_insn: *mut c_int)
+        -> uintptr_t
     {
         *ip_before_insn = 0;
         _Unwind_GetIP(ctx)
@@ -219,8 +221,8 @@ mod uw {
     // a no-op
     #[cfg(any(target_os = "android",
               all(target_os = "linux", target_arch = "arm")))]
-    pub unsafe fn _Unwind_FindEnclosingFunction(pc: *mut libc::c_void)
-        -> *mut libc::c_void
+    pub unsafe fn _Unwind_FindEnclosingFunction(pc: *mut c_void)
+        -> *mut c_void
     {
         pc
     }
