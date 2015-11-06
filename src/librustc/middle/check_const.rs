@@ -225,7 +225,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
             {
                 self.tcx.sess.span_err(
                     expr.span,
-                    &format!("const fns are an unstable feature"));
+                    "const fns are an unstable feature");
                 fileline_help!(
                     self.tcx.sess,
                     expr.span,

@@ -498,7 +498,7 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
         ObligationCauseCode::SliceOrArrayElem => {
             tcx.sess.fileline_note(
                 cause_span,
-                &format!("slice and array elements must have `Sized` type"));
+                "slice and array elements must have `Sized` type");
         }
         ObligationCauseCode::ProjectionWf(data) => {
             tcx.sess.fileline_note(

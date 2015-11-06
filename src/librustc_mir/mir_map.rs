@@ -173,7 +173,7 @@ impl<'a, 'm, 'tcx> visit::Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
                             None => {
                                 self.tcx.sess.span_err(
                                     item.span,
-                                    &format!("graphviz attribute requires a path"));
+                                    "graphviz attribute requires a path");
                             }
                         }
                     }
