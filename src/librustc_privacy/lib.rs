@@ -165,13 +165,6 @@ struct EmbargoVisitor<'a, 'tcx: 'a> {
     // may jump across private boundaries through reexport statements or type aliases.
     exported_items: ExportedItems,
 
-    // This sets contains all the destination nodes which are publicly
-    // re-exported. This is *not* a set of all reexported nodes, only a set of
-    // all nodes which are reexported *and* reachable from external crates. This
-    // means that the destination of the reexport is exported, and hence the
-    // destination must also be exported.
-    reexports: NodeSet,
-
     // Items that are directly public without help of reexports or type aliases.
     // These two fields are closely related to one another in that they are only
     // used for generation of the `public_items` set, not for privacy checking at
@@ -185,7 +178,9 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     fn is_public_exported_ty(&self, ty: &hir::Ty) -> (bool, bool) {
         if let hir::TyPath(..) = ty.node {
             match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
-                def::DefPrimTy(..) | def::DefSelfTy(..) => (true, true),
+                def::DefPrimTy(..) | def::DefSelfTy(..) | def::DefTyParam(..) => {
+                    (true, true)
+                }
                 def => {
                     if let Some(node_id) = self.tcx.map.as_local_node_id(def.def_id()) {
                         (self.public_items.contains(&node_id),
@@ -235,7 +230,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             _ => {
                 self.prev_public = self.prev_public && item.vis == hir::Public;
                 self.prev_exported = (self.prev_exported && item.vis == hir::Public) ||
-                                     self.reexports.contains(&item.id);
+                                     self.exported_items.contains(&item.id);
 
                 self.maybe_insert_id(item.id);
             }
@@ -272,25 +267,26 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
 
-            // It's not known until monomorphization if a trait impl item should be reachable
-            // from external crates or not. So, we conservatively mark all of them exported and
-            // the reachability pass (middle::reachable) marks all exported items as reachable.
-            // For example of private trait impl for private type that should be reachable see
-            // src/test/auxiliary/issue-11225-3.rs
+            // Trait impl and its items are public/exported if both the self type and the trait
+            // of this impl are public/exported
             hir::ItemImpl(_, _, _, Some(ref trait_ref), ref ty, ref impl_items) => {
-                let (public_ty, _exported_ty) = self.is_public_exported_ty(&ty);
-                let (public_trait, _exported_trait) = self.is_public_exported_trait(trait_ref);
+                let (public_ty, exported_ty) = self.is_public_exported_ty(&ty);
+                let (public_trait, exported_trait) = self.is_public_exported_trait(trait_ref);
 
                 if public_ty && public_trait {
                     self.public_items.insert(item.id);
                 }
-                self.exported_items.insert(item.id);
+                if exported_ty && exported_trait {
+                    self.exported_items.insert(item.id);
+                }
 
                 for impl_item in impl_items {
                     if public_ty && public_trait {
                         self.public_items.insert(impl_item.id);
                     }
-                    self.exported_items.insert(impl_item.id);
+                    if exported_ty && exported_trait {
+                        self.exported_items.insert(impl_item.id);
+                    }
                 }
             }
 
@@ -332,8 +328,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                     match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
                         def::DefPrimTy(..) | def::DefSelfTy(..) | def::DefTyParam(..) => {},
                         def => {
-                            let did = def.def_id();
-                            if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
+                            if let Some(node_id) = self.tcx.map.as_local_node_id(def.def_id()) {
                                 self.exported_items.insert(node_id);
                             }
                         }
@@ -345,7 +340,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 for foreign_item in &foreign_mod.items {
                     let public = self.prev_public && foreign_item.vis == hir::Public;
                     let exported = (self.prev_exported && foreign_item.vis == hir::Public) ||
-                                   self.reexports.contains(&foreign_item.id);
+                                   self.exported_items.contains(&foreign_item.id);
 
                     if public {
                         self.public_items.insert(foreign_item.id);
@@ -385,7 +380,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             assert!(self.export_map.contains_key(&id), "wut {}", id);
             for export in self.export_map.get(&id).unwrap() {
                 if let Some(node_id) = self.tcx.map.as_local_node_id(export.def_id) {
-                    self.reexports.insert(node_id);
+                    self.exported_items.insert(node_id);
                 }
             }
         }
@@ -1530,17 +1525,14 @@ pub fn check_crate(tcx: &ty::ctxt,
         tcx: tcx,
         exported_items: NodeSet(),
         public_items: NodeSet(),
-        reexports: NodeSet(),
         export_map: export_map,
         prev_exported: true,
         prev_public: true,
     };
     loop {
-        let before = (visitor.exported_items.len(), visitor.public_items.len(),
-                      visitor.reexports.len());
+        let before = (visitor.exported_items.len(), visitor.public_items.len());
         visit::walk_crate(&mut visitor, krate);
-        let after = (visitor.exported_items.len(), visitor.public_items.len(),
-                     visitor.reexports.len());
+        let after = (visitor.exported_items.len(), visitor.public_items.len());
         if after == before {
             break
         }
