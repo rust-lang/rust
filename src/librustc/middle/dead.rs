@@ -539,19 +539,18 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
                 item.node.descriptive_variant()
             );
         } else {
-            match item.node {
-                hir::ItemEnum(ref enum_def, _) => {
-                    for variant in &enum_def.variants {
-                        if self.should_warn_about_variant(&variant.node) {
-                            self.warn_dead_code(variant.node.data.id(), variant.span,
-                                                variant.node.name, "variant");
-                        }
-                    }
-                },
-                _ => ()
-            }
+            // Only continue if we didn't warn
+            visit::walk_item(self, item);
         }
-        visit::walk_item(self, item);
+    }
+
+    fn visit_variant(&mut self, variant: &hir::Variant, g: &hir::Generics, id: ast::NodeId) {
+        if self.should_warn_about_variant(&variant.node) {
+            self.warn_dead_code(variant.node.data.id(), variant.span,
+                                variant.node.name, "variant");
+        } else {
+            visit::walk_variant(self, variant, g, id);
+        }
     }
 
     fn visit_foreign_item(&mut self, fi: &hir::ForeignItem) {
