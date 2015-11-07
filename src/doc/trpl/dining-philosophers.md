@@ -264,6 +264,7 @@ eat. Here’s the next version:
 
 ```rust
 use std::thread;
+use std::time::Duration;
 
 struct Philosopher {
     name: String,
@@ -279,7 +280,7 @@ impl Philosopher {
     fn eat(&self) {
         println!("{} is eating.", self.name);
 
-        thread::sleep_ms(1000);
+        thread::sleep(Duration::from_millis(1000));
 
         println!("{} is done eating.", self.name);
     }
@@ -313,13 +314,13 @@ from the standard library, and so we need to `use` it.
     fn eat(&self) {
         println!("{} is eating.", self.name);
 
-        thread::sleep_ms(1000);
+        thread::sleep(Duration::from_millis(1000));
 
         println!("{} is done eating.", self.name);
     }
 ```
 
-We now print out two messages, with a `sleep_ms()` in the middle. This will
+We now print out two messages, with a `sleep` in the middle. This will
 simulate the time it takes a philosopher to eat.
 
 If you run this program, you should see each philosopher eat in turn:
@@ -345,6 +346,7 @@ Here’s the next iteration:
 
 ```rust
 use std::thread;
+use std::time::Duration;
 
 struct Philosopher {
     name: String,
@@ -360,7 +362,7 @@ impl Philosopher {
     fn eat(&self) {
         println!("{} is eating.", self.name);
 
-        thread::sleep_ms(1000);
+        thread::sleep(Duration::from_millis(1000));
 
         println!("{} is done eating.", self.name);
     }
@@ -493,6 +495,7 @@ Let’s modify the program to use the `Table`:
 
 ```rust
 use std::thread;
+use std::time::Duration;
 use std::sync::{Mutex, Arc};
 
 struct Philosopher {
@@ -512,12 +515,12 @@ impl Philosopher {
 
     fn eat(&self, table: &Table) {
         let _left = table.forks[self.left].lock().unwrap();
-        thread::sleep_ms(150);
+        thread::sleep(Duration::from_millis(150));
         let _right = table.forks[self.right].lock().unwrap();
 
         println!("{} is eating.", self.name);
 
-        thread::sleep_ms(1000);
+        thread::sleep(Duration::from_millis(1000));
 
         println!("{} is done eating.", self.name);
     }
@@ -598,12 +601,12 @@ We now need to construct those `left` and `right` values, so we add them to
 ```rust,ignore
 fn eat(&self, table: &Table) {
     let _left = table.forks[self.left].lock().unwrap();
-    thread::sleep_ms(150);
+    thread::sleep(Duration::from_millis(150));
     let _right = table.forks[self.right].lock().unwrap();
 
     println!("{} is eating.", self.name);
 
-    thread::sleep_ms(1000);
+    thread::sleep(Duration::from_millis(1000));
 
     println!("{} is done eating.", self.name);
 }
@@ -614,8 +617,8 @@ We have three new lines. We’ve added an argument, `table`. We access the
 the fork at that particular index. That gives us access to the `Mutex` at that
 index, and we call `lock()` on it. If the mutex is currently being accessed by
 someone else, we’ll block until it becomes available. We have also a call to
-`thread::sleep_ms` between the moment first fork is picked and the moment the
-second forked is picked, as the process  of picking up the fork is not
+`thread::sleep` between the moment the first fork is picked and the moment the
+second forked is picked, as the process of picking up the fork is not
 immediate.
 
 The call to `lock()` might fail, and if it does, we want to crash. In this

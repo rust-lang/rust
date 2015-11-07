@@ -121,6 +121,7 @@ languages. It will not compile:
 
 ```ignore
 use std::thread;
+use std::time::Duration;
 
 fn main() {
     let mut data = vec![1, 2, 3];
@@ -131,7 +132,7 @@ fn main() {
         });
     }
 
-    thread::sleep_ms(50);
+    thread::sleep(Duration::from_millis(50));
 }
 ```
 
@@ -165,6 +166,7 @@ indivisible operations which can't have data races.
 ```ignore
 use std::thread;
 use std::sync::Arc;
+use std::time::Duration;
 
 fn main() {
     let mut data = Arc::new(vec![1, 2, 3]);
@@ -176,7 +178,7 @@ fn main() {
         });
     }
 
-    thread::sleep_ms(50);
+    thread::sleep(Duration::from_millis(50));
 }
 ```
 
@@ -207,6 +209,7 @@ Here's the working version:
 ```rust
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 
 fn main() {
     let data = Arc::new(Mutex::new(vec![1, 2, 3]));
@@ -219,7 +222,7 @@ fn main() {
         });
     }
 
-    thread::sleep_ms(50);
+    thread::sleep(Duration::from_millis(50));
 }
 ```
 
@@ -241,6 +244,7 @@ Let's examine the body of the thread more closely:
 ```rust
 # use std::sync::{Arc, Mutex};
 # use std::thread;
+# use std::time::Duration;
 # fn main() {
 #     let data = Arc::new(Mutex::new(vec![1, 2, 3]));
 #     for i in 0..3 {
@@ -250,7 +254,7 @@ thread::spawn(move || {
     data[i] += 1;
 });
 #     }
-#     thread::sleep_ms(50);
+#     thread::sleep(Duration::from_millis(50));
 # }
 ```
 
