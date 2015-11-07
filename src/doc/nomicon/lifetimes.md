@@ -193,7 +193,7 @@ println!("{}", x);
 }
 ```
 
-The problem here is is bit more subtle and interesting. We want Rust to
+The problem here is a bit more subtle and interesting. We want Rust to
 reject this program for the following reason: We have a live shared reference `x`
 to a descendant of `data` when we try to take a mutable reference to `data`
 to `push`. This would create an aliased mutable reference, which would
