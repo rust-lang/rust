@@ -344,6 +344,11 @@ pub fn is_const_fn(cstore: &cstore::CStore, did: DefId) -> bool {
     decoder::is_const_fn(&*cdata, did.index)
 }
 
+pub fn is_static(cstore: &cstore::CStore, did: DefId) -> bool {
+    let cdata = cstore.get_crate_data(did.krate);
+    decoder::is_static(&*cdata, did.index)
+}
+
 pub fn is_impl(cstore: &cstore::CStore, did: DefId) -> bool {
     let cdata = cstore.get_crate_data(did.krate);
     decoder::is_impl(&*cdata, did.index)

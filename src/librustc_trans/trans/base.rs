@@ -2875,7 +2875,8 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
         sess.cstore.iter_crate_data(|cnum, _| {
             let syms = csearch::get_reachable_ids(&sess.cstore, cnum);
             reachable_symbols.extend(syms.into_iter().filter(|did| {
-                csearch::is_extern_fn(&sess.cstore, *did, shared_ccx.tcx())
+                csearch::is_extern_fn(&sess.cstore, *did, shared_ccx.tcx()) ||
+                csearch::is_static(&sess.cstore, *did)
             }).map(|did| {
                 csearch::get_symbol(&sess.cstore, did)
             }));
