@@ -851,7 +851,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         format!("cannot assign to {}", descr)
                     }
                     BorrowViolation(euv::ClosureCapture(_)) => {
-                        format!("closure cannot assign to {}", descr)
+                        format!("closure cannot borrow {}", descr)
                     }
                     BorrowViolation(euv::OverloadedOperator) |
                     BorrowViolation(euv::AddrOf) |
