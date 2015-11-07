@@ -34,6 +34,9 @@ While bugs are unfortunate, they're a reality in software. We can't fix what we
 don't know about, so please report liberally. If you're not sure if something
 is a bug or not, feel free to file a bug anyway.
 
+**If you believe reporting your bug publicly represents a security risk to Rust users,
+please follow our [instructions for reporting security vulnerabilities](https://www.rust-lang.org/security.html)**.
+
 If you have the chance, before reporting a bug, please [search existing
 issues](https://github.com/rust-lang/rust/search?q=&type=Issues&utf8=%E2%9C%93),
 as it's possible that someone else has already reported your error. This doesn't
