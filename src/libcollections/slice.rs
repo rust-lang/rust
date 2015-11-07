@@ -1066,10 +1066,12 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
                 let mut out = buf_tmp.offset(start as isize);
                 let out_end = buf_tmp.offset(right_end_idx as isize);
 
-                // if left[last] <= right[0], they are already in order:
+                // If left[last] <= right[0], they are already in order:
                 // fast-forward the left side (the right side is handled
                 // in the loop).
-                if compare(&*right.offset(-1), &*right) != Greater {
+                // If `right` is not empty then left is not empty, and
+                // the offsets are in bounds.
+                if right != right_end && compare(&*right.offset(-1), &*right) != Greater {
                     let elems = (right_start as usize - left as usize) / mem::size_of::<T>();
                     ptr::copy_nonoverlapping(&*left, out, elems);
                     out = out.offset(elems as isize);
