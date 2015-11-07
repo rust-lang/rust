@@ -9,8 +9,9 @@
 // except according to those terms.
 
 extern void foo();
+extern char FOO_STATIC;
 
 int main() {
     foo();
-    return 0;
+    return (int)FOO_STATIC;
 }
