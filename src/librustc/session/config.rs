@@ -610,22 +610,28 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let env = &sess.target.target.target_env;
     let vendor = &sess.target.target.target_vendor;
 
-    let fam = match sess.target.target.options.is_like_windows {
-        true  => InternedString::new("windows"),
-        false => InternedString::new("unix")
+    let fam = if let Some(ref fam) = sess.target.target.options.target_family {
+        intern(fam)
+    } else if sess.target.target.options.is_like_windows {
+        InternedString::new("windows")
+    } else {
+        InternedString::new("unix")
     };
 
     let mk = attr::mk_name_value_item_str;
     let mut ret = vec![ // Target bindings.
-         attr::mk_word_item(fam.clone()),
-         mk(InternedString::new("target_os"), intern(os)),
-         mk(InternedString::new("target_family"), fam),
-         mk(InternedString::new("target_arch"), intern(arch)),
-         mk(InternedString::new("target_endian"), intern(end)),
-         mk(InternedString::new("target_pointer_width"), intern(wordsz)),
-         mk(InternedString::new("target_env"), intern(env)),
-         mk(InternedString::new("target_vendor"), intern(vendor)),
+        mk(InternedString::new("target_os"), intern(os)),
+        mk(InternedString::new("target_family"), fam.clone()),
+        mk(InternedString::new("target_arch"), intern(arch)),
+        mk(InternedString::new("target_endian"), intern(end)),
+        mk(InternedString::new("target_pointer_width"), intern(wordsz)),
+        mk(InternedString::new("target_env"), intern(env)),
+        mk(InternedString::new("target_vendor"), intern(vendor)),
     ];
+    match &fam[..] {
+        "windows" | "unix" => ret.push(attr::mk_word_item(fam)),
+        _ => (),
+    }
     if sess.opts.debug_assertions {
         ret.push(attr::mk_word_item(InternedString::new("debug_assertions")));
     }

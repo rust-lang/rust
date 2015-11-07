@@ -150,6 +150,8 @@ pub struct TargetOptions {
     pub staticlib_prefix: String,
     /// String to append to the name of every static library. Defaults to ".a".
     pub staticlib_suffix: String,
+    /// OS family to use for conditional compilation. Valid options: "unix", "windows".
+    pub target_family: Option<String>,
     /// Whether the target toolchain is like OSX's. Only useful for compiling against iOS/OS X, in
     /// particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
     pub is_like_osx: bool,
@@ -219,6 +221,7 @@ impl Default for TargetOptions {
             exe_suffix: "".to_string(),
             staticlib_prefix: "lib".to_string(),
             staticlib_suffix: ".a".to_string(),
+            target_family: None,
             is_like_osx: false,
             is_like_windows: false,
             is_like_android: false,
@@ -339,6 +342,7 @@ impl Target {
         key!(disable_redzone, bool);
         key!(eliminate_frame_pointer, bool);
         key!(function_sections, bool);
+        key!(target_family, optional);
         key!(is_like_osx, bool);
         key!(is_like_windows, bool);
         key!(linker_is_gnu, bool);
