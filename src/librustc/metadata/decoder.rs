@@ -1425,10 +1425,13 @@ pub fn is_const_fn(cdata: Cmd, id: DefIndex) -> bool {
     }
 }
 
-pub fn is_static(cdata: Cmd, id: DefIndex) -> bool {
+pub fn is_extern_static(cdata: Cmd, id: DefIndex) -> bool {
     let item_doc = cdata.lookup_item(id);
     match item_family(item_doc) {
-        ImmStatic | MutStatic => true,
+        ImmStatic | MutStatic => {
+            let attrs = get_attributes(item_doc);
+            attr::contains_name(&attrs, "no_mangle")
+        },
         _ => false,
     }
 }
