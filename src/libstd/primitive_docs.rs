@@ -165,12 +165,14 @@ mod prim_pointer { }
 /// Arrays of sizes from 0 to 32 (inclusive) implement the following traits
 /// if the element type allows it:
 ///
-/// - `Clone`
+/// - `Clone` (only if `T: Copy`)
 /// - `Debug`
 /// - `IntoIterator` (implemented for `&[T; N]` and `&mut [T; N]`)
 /// - `PartialEq`, `PartialOrd`, `Ord`, `Eq`
 /// - `Hash`
 /// - `AsRef`, `AsMut`
+/// - `Borrow`, `BorrowMut`
+/// - `Default`
 ///
 /// Arrays dereference to [slices (`[T]`)][slice], so their methods can be called
 /// on arrays.
