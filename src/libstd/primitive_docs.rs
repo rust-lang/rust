@@ -167,6 +167,7 @@ mod prim_pointer { }
 ///
 /// - `Clone` (only if `T: Copy`)
 /// - `Debug`
+/// - `FromIterator`
 /// - `IntoIterator` (implemented for `&[T; N]` and `&mut [T; N]`)
 /// - `PartialEq`, `PartialOrd`, `Ord`, `Eq`
 /// - `Hash`

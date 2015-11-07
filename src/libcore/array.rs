@@ -26,7 +26,7 @@ use convert::{AsRef, AsMut};
 use default::Default;
 use fmt;
 use hash::{Hash, self};
-use iter::IntoIterator;
+use iter::{FromIterator, IntoIterator, Iterator};
 use marker::{Copy, Sized, Unsize};
 use option::Option;
 use slice::{Iter, IterMut, SliceExt};
@@ -62,7 +62,7 @@ unsafe impl<T, A: Unsize<[T]>> FixedSizeArray<T> for A {
     }
 }
 
-// macro for implementing n-ary tuple functions and operations
+// macro for implementing n-ary array functions and operations
 macro_rules! array_impls {
     ($($N:expr)+) => {
         $(
@@ -188,8 +188,8 @@ array_impls! {
     30 31 32
 }
 
-// The Default impls cannot be generated using the array_impls! macro because
-// they require array literals.
+// The following impls cannot be generated using the array_impls! macro because
+// they require array expressions.
 
 macro_rules! array_impl_default {
     {$n:expr, $t:ident $($ts:ident)*} => {
@@ -210,3 +210,30 @@ macro_rules! array_impl_default {
 }
 
 array_impl_default!{32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+
+macro_rules! array_impl_from_iterator {
+    {$n:expr, $i:ident $($is:ident)*} => {
+        impl<T> FromIterator<T> for [T; $n] {
+            fn from_iter<I: IntoIterator<Item=T>>(iterator: I) -> Self {
+                let mut $i = iterator.into_iter();
+                let a = [
+                    $i.next().expect("iterator too short"),
+                    $($is.next().expect("iterator too short")),*
+                ];
+                assert!($i.next().is_none(), "iterator too long");
+                a
+            }
+        }
+        array_impl_from_iterator!{($n - 1), $($is)*}
+    };
+    {$n:expr,} => {
+        impl<T> FromIterator<T> for [T; $n] {
+            fn from_iter<I: IntoIterator<Item=T>>(iterator: I) -> Self {
+                assert!(iterator.into_iter().next().is_none(), "iterator too long");
+                []
+            }
+        }
+    };
+}
+
+array_impl_from_iterator!{32, i i i i i i i i i i i i i i i i i i i i i i i i i i i i i i i i}
