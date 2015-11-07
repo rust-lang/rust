@@ -657,24 +657,30 @@ Available lint options:
 
 fn describe_debug_flags() {
     println!("\nAvailable debug options:\n");
-    for &(name, _, opt_type_desc, desc) in config::DB_OPTIONS {
-        let (width, extra) = match opt_type_desc {
-            Some(..) => (21, "=val"),
-            None => (25, "")
-        };
-        println!("    -Z {:>width$}{} -- {}", name.replace("_", "-"),
-                 extra, desc, width=width);
-    }
+    print_flag_list("-Z", config::DB_OPTIONS);
 }
 
 fn describe_codegen_flags() {
     println!("\nAvailable codegen options:\n");
-    for &(name, _, opt_type_desc, desc) in config::CG_OPTIONS {
-        let (width, extra) = match opt_type_desc {
-            Some(..) => (21, "=val"),
-            None => (25, "")
+    print_flag_list("-C", config::CG_OPTIONS);
+}
+
+fn print_flag_list<T>(cmdline_opt: &str,
+                      flag_list: &[(&'static str, T, Option<&'static str>, &'static str)]) {
+    let max_len = flag_list.iter().map(|&(name, _, opt_type_desc, _)| {
+        let extra_len = match opt_type_desc {
+            Some(..) => 4,
+            None => 0
         };
-        println!("    -C {:>width$}{} -- {}", name.replace("_", "-"),
+        name.chars().count() + extra_len
+    }).max().unwrap_or(0);
+
+    for &(name, _, opt_type_desc, desc) in flag_list {
+        let (width, extra) = match opt_type_desc {
+            Some(..) => (max_len - 4, "=val"),
+            None => (max_len, "")
+        };
+        println!("    {} {:>width$}{} -- {}", cmdline_opt, name.replace("_", "-"),
                  extra, desc, width=width);
     }
 }
