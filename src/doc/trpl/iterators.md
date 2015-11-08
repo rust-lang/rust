@@ -42,12 +42,12 @@ loop is just a handy way to write this `loop`/`match`/`break` construct.
 `for` loops aren't the only thing that uses iterators, however. Writing your
 own iterator involves implementing the `Iterator` trait. While doing that is
 outside of the scope of this guide, Rust provides a number of useful iterators
-to accomplish various tasks. Before we talk about those, we should talk about a
-Rust anti-pattern. And that's using ranges like this.
+to accomplish various tasks. But first, a few notes about limitations of ranges.
 
-Yes, we just talked about how ranges are cool. But ranges are also very
-primitive. For example, if you needed to iterate over the contents of a vector,
-you may be tempted to write this:
+Ranges are very primitive, and we often can use better alternatives. Consider the
+following Rust anti-pattern: using ranges to emulate a C-style `for` loop. Let’s
+suppose you needed to iterate over the contents of a vector. You may be tempted
+to write this:
 
 ```rust
 let nums = vec![1, 2, 3];
@@ -101,10 +101,10 @@ So, now that we've established that ranges are often not what you want, let's
 talk about what you do want instead.
 
 There are three broad classes of things that are relevant here: iterators,
-*iterator adapters*, and *consumers*. Here's some definitions:
+*iterator adaptors*, and *consumers*. Here's some definitions:
 
 * *iterators* give you a sequence of values.
-* *iterator adapters* operate on an iterator, producing a new iterator with a
+* *iterator adaptors* operate on an iterator, producing a new iterator with a
   different output sequence.
 * *consumers* operate on an iterator, producing some final set of values.
 
@@ -150,15 +150,16 @@ let greater_than_forty_two = (0..100)
                              .find(|x| *x > 42);
 
 match greater_than_forty_two {
-    Some(_) => println!("We got some numbers!"),
-    None => println!("No numbers found :("),
+    Some(_) => println!("Found a match!"),
+    None => println!("No match found :("),
 }
 ```
 
 `find` takes a closure, and works on a reference to each element of an
 iterator. This closure returns `true` if the element is the element we're
-looking for, and `false` otherwise. Because we might not find a matching
-element, `find` returns an `Option` rather than the element itself.
+looking for, and `false` otherwise. `find` returns the first element satisfying
+the specified predicate. Because we might not find a matching element, `find`
+returns an `Option` rather than the element itself.
 
 Another important consumer is `fold`. Here's what it looks like:
 
@@ -245,12 +246,12 @@ for num in nums.iter() {
 These two basic iterators should serve you well. There are some more
 advanced iterators, including ones that are infinite.
 
-That's enough about iterators. Iterator adapters are the last concept
+That's enough about iterators. Iterator adaptors are the last concept
 we need to talk about with regards to iterators. Let's get to it!
 
-## Iterator adapters
+## Iterator adaptors
 
-*Iterator adapters* take an iterator and modify it somehow, producing
+*Iterator adaptors* take an iterator and modify it somehow, producing
 a new iterator. The simplest one is called `map`:
 
 ```rust,ignore
@@ -279,10 +280,9 @@ doesn't print any numbers:
 If you are trying to execute a closure on an iterator for its side effects,
 just use `for` instead.
 
-There are tons of interesting iterator adapters. `take(n)` will return an
-iterator over the next `n` elements of the original iterator. Note that this
-has no side effect on the original iterator. Let's try it out with our infinite
-iterator from before:
+There are tons of interesting iterator adaptors. `take(n)` will return an
+iterator over the next `n` elements of the original iterator. Let's try it out
+with an infinite iterator:
 
 ```rust
 for i in (1..).take(5) {
@@ -302,7 +302,7 @@ This will print
 
 `filter()` is an adapter that takes a closure as an argument. This closure
 returns `true` or `false`. The new iterator `filter()` produces
-only the elements that that closure returns `true` for:
+only the elements that the closure returns `true` for:
 
 ```rust
 for i in (1..100).filter(|&x| x % 2 == 0) {
@@ -329,7 +329,7 @@ a few times, and then consume the result. Check it out:
 
 This will give you a vector containing `6`, `12`, `18`, `24`, and `30`.
 
-This is just a small taste of what iterators, iterator adapters, and consumers
+This is just a small taste of what iterators, iterator adaptors, and consumers
 can help you with. There are a number of really useful iterators, and you can
 write your own as well. Iterators provide a safe, efficient way to manipulate
 all kinds of lists. They're a little unusual at first, but if you play with

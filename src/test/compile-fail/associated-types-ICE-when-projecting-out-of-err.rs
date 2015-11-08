@@ -32,5 +32,4 @@ fn ice<A>(a: A) {
     let r = loop {};
     r = r + a;
     //~^ ERROR not implemented
-    //~| ERROR not implemented
 }

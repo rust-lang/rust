@@ -450,8 +450,18 @@ mod tests {
     use slice;
     use sys::{self, c, cvt, pipe};
 
+    macro_rules! t {
+        ($e:expr) => {
+            match $e {
+                Ok(t) => t,
+                Err(e) => panic!("received error for `{}`: {}", stringify!($e), e),
+            }
+        }
+    }
+
     #[cfg(not(target_os = "android"))]
     extern {
+        #[cfg_attr(target_os = "netbsd", link_name = "__sigaddset14")]
         fn sigaddset(set: *mut c::sigset_t, signum: libc::c_int) -> libc::c_int;
     }
 
@@ -472,24 +482,26 @@ mod tests {
         unsafe {
             // Test to make sure that a signal mask does not get inherited.
             let cmd = Command::new(OsStr::new("cat"));
-            let (stdin_read, stdin_write) = sys::pipe::anon_pipe().unwrap();
-            let (stdout_read, stdout_write) = sys::pipe::anon_pipe().unwrap();
+            let (stdin_read, stdin_write) = t!(sys::pipe::anon_pipe());
+            let (stdout_read, stdout_write) = t!(sys::pipe::anon_pipe());
 
             let mut set: c::sigset_t = mem::uninitialized();
             let mut old_set: c::sigset_t = mem::uninitialized();
-            cvt(c::sigemptyset(&mut set)).unwrap();
-            cvt(sigaddset(&mut set, libc::SIGINT)).unwrap();
-            cvt(c::pthread_sigmask(c::SIG_SETMASK, &set, &mut old_set)).unwrap();
+            t!(cvt(c::sigemptyset(&mut set)));
+            t!(cvt(sigaddset(&mut set, libc::SIGINT)));
+            t!(cvt(c::pthread_sigmask(c::SIG_SETMASK, &set, &mut old_set)));
 
-            let cat = Process::spawn(&cmd, Stdio::Raw(stdin_read.raw()),
-                                           Stdio::Raw(stdout_write.raw()),
-                                           Stdio::None).unwrap();
+            let cat = t!(Process::spawn(&cmd, Stdio::Raw(stdin_read.raw()),
+                                              Stdio::Raw(stdout_write.raw()),
+                                              Stdio::None));
             drop(stdin_read);
             drop(stdout_write);
 
-            cvt(c::pthread_sigmask(c::SIG_SETMASK, &old_set, ptr::null_mut())).unwrap();
+            t!(cvt(c::pthread_sigmask(c::SIG_SETMASK, &old_set,
+                                      ptr::null_mut())));
 
-            cvt(libc::funcs::posix88::signal::kill(cat.id() as libc::pid_t, libc::SIGINT)).unwrap();
+            t!(cvt(libc::funcs::posix88::signal::kill(cat.id() as libc::pid_t,
+                                                      libc::SIGINT)));
             // We need to wait until SIGINT is definitely delivered. The
             // easiest way is to write something to cat, and try to read it
             // back: if SIGINT is unmasked, it'll get delivered when cat is
@@ -503,7 +515,7 @@ mod tests {
                 assert!(ret == 0);
             }
 
-            cat.wait().unwrap();
+            t!(cat.wait());
         }
     }
 }

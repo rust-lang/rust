@@ -27,7 +27,6 @@ use ptr::P;
 
 use std::cell::{RefCell, Cell};
 use std::collections::HashSet;
-use std::fmt;
 
 thread_local! {
     static USED_ATTRS: RefCell<Vec<u64>> = RefCell::new(Vec::new())
@@ -156,7 +155,7 @@ impl AttributeMethods for Attribute {
                 InternedString::new("doc"),
                 token::intern_and_get_ident(&strip_doc_comment_decoration(
                         &comment)));
-            if self.node.style == ast::AttrOuter {
+            if self.node.style == ast::AttrStyle::Outer {
                 f(&mk_attr_outer(self.node.id, meta))
             } else {
                 f(&mk_attr_inner(self.node.id, meta))
@@ -203,7 +202,7 @@ pub fn mk_attr_id() -> AttrId {
 pub fn mk_attr_inner(id: AttrId, item: P<MetaItem>) -> Attribute {
     dummy_spanned(Attribute_ {
         id: id,
-        style: ast::AttrInner,
+        style: ast::AttrStyle::Inner,
         value: item,
         is_sugared_doc: false,
     })
@@ -213,7 +212,7 @@ pub fn mk_attr_inner(id: AttrId, item: P<MetaItem>) -> Attribute {
 pub fn mk_attr_outer(id: AttrId, item: P<MetaItem>) -> Attribute {
     dummy_spanned(Attribute_ {
         id: id,
-        style: ast::AttrOuter,
+        style: ast::AttrStyle::Outer,
         value: item,
         is_sugared_doc: false,
     })
@@ -323,7 +322,6 @@ pub enum InlineAttr {
 
 /// Determine what `#[inline]` attribute is present in `attrs`, if any.
 pub fn find_inline_attr(diagnostic: Option<&SpanHandler>, attrs: &[Attribute]) -> InlineAttr {
-    // FIXME (#2809)---validate the usage of #[inline] and #[inline]
     attrs.iter().fold(InlineAttr::None, |ia,attr| {
         match attr.node.value.node {
             MetaWord(ref n) if *n == "inline" => {
@@ -383,174 +381,223 @@ pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::Me
     }
 }
 
-/// Represents the #[deprecated] and friends attributes.
+/// Represents the #[stable], #[unstable] and #[deprecated] attributes.
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: InternedString,
-    pub since: Option<InternedString>,
-    pub deprecated_since: Option<InternedString>,
-    // The reason for the current stability level. If deprecated, the
-    // reason for deprecation.
-    pub reason: Option<InternedString>,
-    // The relevant rust-lang issue
-    pub issue: Option<u32>
+    pub depr: Option<Deprecation>,
 }
 
 /// The available stability levels.
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Copy, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
 pub enum StabilityLevel {
-    Unstable,
-    Stable,
+    // Reason for the current stability level and the relevant rust-lang issue
+    Unstable { reason: Option<InternedString>, issue: u32 },
+    Stable { since: InternedString },
 }
 
-impl fmt::Display for StabilityLevel {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
-    }
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
+pub struct Deprecation {
+    pub since: InternedString,
+    pub reason: InternedString,
 }
 
-fn find_stability_generic<'a,
-                              AM: AttrMetaMethods,
-                              I: Iterator<Item=&'a AM>>
-                             (diagnostic: &SpanHandler, attrs: I, item_sp: Span)
-                             -> (Option<Stability>, Vec<&'a AM>) {
+impl StabilityLevel {
+    pub fn is_unstable(&self) -> bool { if let Unstable {..} = *self { true } else { false }}
+    pub fn is_stable(&self) -> bool { if let Stable {..} = *self { true } else { false }}
+}
 
+fn find_stability_generic<'a, I>(diagnostic: &SpanHandler,
+                                 attrs_iter: I,
+                                 item_sp: Span)
+                                 -> Option<Stability>
+    where I: Iterator<Item = &'a Attribute>
+{
     let mut stab: Option<Stability> = None;
-    let mut deprecated: Option<(Option<InternedString>, Option<InternedString>)> = None;
-    let mut used_attrs: Vec<&'a AM> = vec![];
+    let mut depr: Option<Deprecation> = None;
 
-    'outer: for attr in attrs {
+    'outer: for attr in attrs_iter {
         let tag = attr.name();
-        let tag = &tag[..];
+        let tag = &*tag;
         if tag != "deprecated" && tag != "unstable" && tag != "stable" {
             continue // not a stability level
         }
 
-        used_attrs.push(attr);
+        mark_used(attr);
 
-        let (feature, since, reason, issue) = match attr.meta_item_list() {
-            Some(metas) => {
-                let mut feature = None;
-                let mut since = None;
-                let mut reason = None;
-                let mut issue = None;
-                for meta in metas {
-                    match &*meta.name() {
-                        "feature" => {
-                            match meta.value_str() {
-                                Some(v) => feature = Some(v),
-                                None => {
-                                    diagnostic.span_err(meta.span, "incorrect meta item");
-                                    continue 'outer;
-                                }
-                            }
-                        }
-                        "since" => {
-                            match meta.value_str() {
-                                Some(v) => since = Some(v),
-                                None => {
-                                    diagnostic.span_err(meta.span, "incorrect meta item");
-                                    continue 'outer;
-                                }
-                            }
-                        }
-                        "reason" => {
-                            match meta.value_str() {
-                                Some(v) => reason = Some(v),
-                                None => {
-                                    diagnostic.span_err(meta.span, "incorrect meta item");
-                                    continue 'outer;
-                                }
-                            }
-                        }
-                        "issue" => {
-                            match meta.value_str().and_then(|s| s.parse().ok()) {
-                                Some(v) => issue = Some(v),
-                                None => {
-                                    diagnostic.span_err(meta.span, "incorrect meta item");
-                                    continue 'outer;
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
+        if let Some(metas) = attr.meta_item_list() {
+            let get = |meta: &MetaItem, item: &mut Option<InternedString>| {
+                if item.is_some() {
+                    diagnostic.span_err(meta.span, &format!("multiple '{}' items",
+                                                             meta.name()));
+                    return false
                 }
-                (feature, since, reason, issue)
-            }
-            None => {
-                diagnostic.span_err(attr.span(), "incorrect stability attribute type");
-                continue
-            }
-        };
-
-        // Deprecated tags don't require feature names
-        if feature == None && tag != "deprecated" {
-            diagnostic.span_err(attr.span(), "missing 'feature'");
-        }
-
-        // Unstable tags don't require a version
-        if since == None && tag != "unstable" {
-            diagnostic.span_err(attr.span(), "missing 'since'");
-        }
-
-        if tag == "unstable" || tag == "stable" {
-            if stab.is_some() {
-                diagnostic.span_err(item_sp, "multiple stability levels");
-            }
-
-            let level = match tag {
-                "unstable" => Unstable,
-                "stable" => Stable,
-                _ => unreachable!()
+                if let Some(v) = meta.value_str() {
+                    *item = Some(v);
+                    true
+                } else {
+                    diagnostic.span_err(meta.span, "incorrect meta item");
+                    false
+                }
             };
 
-            stab = Some(Stability {
-                level: level,
-                feature: feature.unwrap_or(intern_and_get_ident("bogus")),
-                since: since,
-                deprecated_since: None,
-                reason: reason,
-                issue: issue,
-            });
-        } else { // "deprecated"
-            if deprecated.is_some() {
-                diagnostic.span_err(item_sp, "multiple deprecated attributes");
-            }
+            match tag {
+                "deprecated" => {
+                    if depr.is_some() {
+                        diagnostic.span_err(item_sp, "multiple deprecated attributes");
+                        break
+                    }
 
-            deprecated = Some((since, reason));
+                    let mut since = None;
+                    let mut reason = None;
+                    for meta in metas {
+                        match &*meta.name() {
+                            "since" => if !get(meta, &mut since) { continue 'outer },
+                            "reason" => if !get(meta, &mut reason) { continue 'outer },
+                            _ => {
+                                diagnostic.span_err(meta.span, &format!("unknown meta item '{}'",
+                                                                        meta.name()));
+                                continue 'outer
+                            }
+                        }
+                    }
+
+                    match (since, reason) {
+                        (Some(since), Some(reason)) => {
+                            depr = Some(Deprecation {
+                                since: since,
+                                reason: reason,
+                            })
+                        }
+                        (None, _) => {
+                            diagnostic.span_err(attr.span(), "missing 'since'");
+                            continue
+                        }
+                        _ => {
+                            diagnostic.span_err(attr.span(), "missing 'reason'");
+                            continue
+                        }
+                    }
+                }
+                "unstable" => {
+                    if stab.is_some() {
+                        diagnostic.span_err(item_sp, "multiple stability levels");
+                        break
+                    }
+
+                    let mut feature = None;
+                    let mut reason = None;
+                    let mut issue = None;
+                    for meta in metas {
+                        match &*meta.name() {
+                            "feature" => if !get(meta, &mut feature) { continue 'outer },
+                            "reason" => if !get(meta, &mut reason) { continue 'outer },
+                            "issue" => if !get(meta, &mut issue) { continue 'outer },
+                            _ => {
+                                diagnostic.span_err(meta.span, &format!("unknown meta item '{}'",
+                                                                        meta.name()));
+                                continue 'outer
+                            }
+                        }
+                    }
+
+                    match (feature, reason, issue) {
+                        (Some(feature), reason, Some(issue)) => {
+                            stab = Some(Stability {
+                                level: Unstable {
+                                    reason: reason,
+                                    issue: {
+                                        if let Ok(issue) = issue.parse() {
+                                            issue
+                                        } else {
+                                            diagnostic.span_err(attr.span(), "incorrect 'issue'");
+                                            continue
+                                        }
+                                    }
+                                },
+                                feature: feature,
+                                depr: None,
+                            })
+                        }
+                        (None, _, _) => {
+                            diagnostic.span_err(attr.span(), "missing 'feature'");
+                            continue
+                        }
+                        _ => {
+                            diagnostic.span_err(attr.span(), "missing 'issue'");
+                            continue
+                        }
+                    }
+                }
+                "stable" => {
+                    if stab.is_some() {
+                        diagnostic.span_err(item_sp, "multiple stability levels");
+                        break
+                    }
+
+                    let mut feature = None;
+                    let mut since = None;
+                    for meta in metas {
+                        match &*meta.name() {
+                            "feature" => if !get(meta, &mut feature) { continue 'outer },
+                            "since" => if !get(meta, &mut since) { continue 'outer },
+                            _ => {
+                                diagnostic.span_err(meta.span, &format!("unknown meta item '{}'",
+                                                                        meta.name()));
+                                continue 'outer
+                            }
+                        }
+                    }
+
+                    match (feature, since) {
+                        (Some(feature), Some(since)) => {
+                            stab = Some(Stability {
+                                level: Stable {
+                                    since: since,
+                                },
+                                feature: feature,
+                                depr: None,
+                            })
+                        }
+                        (None, _) => {
+                            diagnostic.span_err(attr.span(), "missing 'feature'");
+                            continue
+                        }
+                        _ => {
+                            diagnostic.span_err(attr.span(), "missing 'since'");
+                            continue
+                        }
+                    }
+                }
+                _ => unreachable!()
+            }
+        } else {
+            diagnostic.span_err(attr.span(), "incorrect stability attribute type");
+            continue
         }
     }
 
     // Merge the deprecation info into the stability info
-    if deprecated.is_some() {
-        match stab {
-            Some(ref mut s) => {
-                let (since, reason) = deprecated.unwrap();
-                s.deprecated_since = since;
-                s.reason = reason;
+    if let Some(depr) = depr {
+        if let Some(ref mut stab) = stab {
+            if let Unstable {reason: ref mut reason @ None, ..} = stab.level {
+                *reason = Some(depr.reason.clone())
             }
-            None => {
-                diagnostic.span_err(item_sp, "deprecated attribute must be paired with \
-                                              either stable or unstable attribute");
-            }
+            stab.depr = Some(depr);
+        } else {
+            diagnostic.span_err(item_sp, "deprecated attribute must be paired with \
+                                          either stable or unstable attribute");
         }
-    } else if stab.as_ref().map_or(false, |s| s.level == Unstable && s.issue.is_none()) {
-        // non-deprecated unstable items need to point to issues.
-        diagnostic.span_err(item_sp,
-                            "non-deprecated unstable items need to point \
-                             to an issue with `issue = \"NNN\"`");
     }
 
-    (stab, used_attrs)
+    stab
 }
 
 /// Find the first stability attribute. `None` if none exists.
 pub fn find_stability(diagnostic: &SpanHandler, attrs: &[Attribute],
                       item_sp: Span) -> Option<Stability> {
-    let (s, used) = find_stability_generic(diagnostic, attrs.iter(), item_sp);
-    for used in used { mark_used(used) }
-    return s;
+    find_stability_generic(diagnostic, attrs.iter(), item_sp)
 }
 
 pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[P<MetaItem>]) {

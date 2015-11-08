@@ -1,9 +1,10 @@
 % Closures
 
-Rust not only has named functions, but anonymous functions as well. Anonymous
-functions that have an associated environment are called ‘closures’, because they
-close over an environment. Rust has a really great implementation of them, as
-we’ll see.
+Sometimes it is useful to wrap up a function and _free variables_ for better
+clarity and reuse. The free variables that can be used come from the
+enclosing scope and are ‘closed over’ when used in the function. From this, we
+get the name ‘closures’ and Rust provides a really great implementation of
+them, as we’ll see.
 
 # Syntax
 
@@ -34,7 +35,7 @@ assert_eq!(4, plus_two(2));
 ```
 
 You’ll notice a few things about closures that are a bit different from regular
-functions defined with `fn`. The first is that we did not need to
+named functions defined with `fn`. The first is that we did not need to
 annotate the types of arguments the closure takes or the values it returns. We
 can:
 
@@ -44,14 +45,15 @@ let plus_one = |x: i32| -> i32 { x + 1 };
 assert_eq!(2, plus_one(1));
 ```
 
-But we don’t have to. Why is this? Basically, it was chosen for ergonomic reasons.
-While specifying the full type for named functions is helpful with things like
-documentation and type inference, the types of closures are rarely documented
-since they’re anonymous, and they don’t cause the kinds of error-at-a-distance
-problems that inferring named function types can.
+But we don’t have to. Why is this? Basically, it was chosen for ergonomic
+reasons. While specifying the full type for named functions is helpful with
+things like documentation and type inference, the full type signatures of
+closures are rarely documented since they’re anonymous, and they don’t cause
+the kinds of error-at-a-distance problems that inferring named function types
+can.
 
-The second is that the syntax is similar, but a bit different. I’ve added spaces
-here for easier comparison:
+The second is that the syntax is similar, but a bit different. I’ve added
+spaces here for easier comparison:
 
 ```rust
 fn  plus_one_v1   (x: i32) -> i32 { x + 1 }
@@ -63,8 +65,8 @@ Small differences, but they’re similar.
 
 # Closures and their environment
 
-Closures are called such because they ‘close over their environment’. It
-looks like this:
+The environment for a closure can include bindings from its enclosing scope in
+addition to parameters and local bindings. It looks like this:
 
 ```rust
 let num = 5;
@@ -197,9 +199,10 @@ frame.  Without `move`, a closure may be tied to the stack frame that created
 it, while a `move` closure is self-contained. This means that you cannot
 generally return a non-`move` closure from a function, for example.
 
-But before we talk about taking and returning closures, we should talk some more
-about the way that closures are implemented. As a systems language, Rust gives
-you tons of control over what your code does, and closures are no different.
+But before we talk about taking and returning closures, we should talk some
+more about the way that closures are implemented. As a systems language, Rust
+gives you tons of control over what your code does, and closures are no
+different.
 
 # Closure implementation
 
@@ -288,9 +291,9 @@ isn’t interesting. The next part is:
 #   some_closure(1) }
 ```
 
-Because `Fn` is a trait, we can bound our generic with it. In this case, our closure
-takes a `i32` as an argument and returns an `i32`, and so the generic bound we use
-is `Fn(i32) -> i32`.
+Because `Fn` is a trait, we can bound our generic with it. In this case, our
+closure takes a `i32` as an argument and returns an `i32`, and so the generic
+bound we use is `Fn(i32) -> i32`.
 
 There’s one other key point here: because we’re bounding a generic with a
 trait, this will get monomorphized, and therefore, we’ll be doing static
@@ -411,8 +414,9 @@ fn factory() -> &(Fn(i32) -> i32) {
 ```
 
 Right. Because we have a reference, we need to give it a lifetime. But
-our `factory()` function takes no arguments, so elision doesn’t kick in
-here. What lifetime can we choose? `'static`:
+our `factory()` function takes no arguments, so
+[elision](lifetimes.html#lifetime-elision) doesn’t kick in here. Then what
+choices do we have? Try `'static`:
 
 ```rust,ignore
 fn factory() -> &'static (Fn(i32) -> i32) {
@@ -432,7 +436,7 @@ But we get another error:
 ```text
 error: mismatched types:
  expected `&'static core::ops::Fn(i32) -> i32`,
-    found `[closure <anon>:7:9: 7:20]`
+    found `[closure@<anon>:7:9: 7:20]`
 (expected &-ptr,
     found closure) [E0308]
          |x| x + num
@@ -441,21 +445,17 @@ error: mismatched types:
 ```
 
 This error is letting us know that we don’t have a `&'static Fn(i32) -> i32`,
-we have a `[closure <anon>:7:9: 7:20]`. Wait, what?
+we have a `[closure@<anon>:7:9: 7:20]`. Wait, what?
 
 Because each closure generates its own environment `struct` and implementation
 of `Fn` and friends, these types are anonymous. They exist just solely for
-this closure. So Rust shows them as `closure <anon>`, rather than some
+this closure. So Rust shows them as `closure@<anon>`, rather than some
 autogenerated name.
 
-But why doesn’t our closure implement `&'static Fn`? Well, as we discussed before,
-closures borrow their environment. And in this case, our environment is based
-on a stack-allocated `5`, the `num` variable binding. So the borrow has a lifetime
-of the stack frame. So if we returned this closure, the function call would be
-over, the stack frame would go away, and our closure is capturing an environment
-of garbage memory!
-
-So what to do? This _almost_ works:
+The error also points out that the return type is expected to be a reference,
+but what we are trying to return is not. Further, we cannot directly assign a
+`'static` lifetime to an object. So we'll take a different approach and return
+a ‘trait object’ by `Box`ing up the `Fn`. This _almost_ works:
 
 ```rust,ignore
 fn factory() -> Box<Fn(i32) -> i32> {
@@ -471,7 +471,7 @@ assert_eq!(6, answer);
 # }
 ```
 
-We use a trait object, by `Box`ing up the `Fn`. There’s just one last problem:
+There’s just one last problem:
 
 ```text
 error: closure may outlive the current function, but it borrows `num`,
@@ -480,8 +480,12 @@ Box::new(|x| x + num)
          ^~~~~~~~~~~
 ```
 
-We still have a reference to the parent stack frame. With one last fix, we can
-make this work:
+Well, as we discussed before, closures borrow their environment. And in this
+case, our environment is based on a stack-allocated `5`, the `num` variable
+binding. So the borrow has a lifetime of the stack frame. So if we returned
+this closure, the function call would be over, the stack frame would go away,
+and our closure is capturing an environment of garbage memory! With one last
+fix, we can make this work:
 
 ```rust
 fn factory() -> Box<Fn(i32) -> i32> {

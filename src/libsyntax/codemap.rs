@@ -29,7 +29,6 @@ use std::io::{self, Read};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
-use parse::token::intern;
 use ast::Name;
 
 // _____________________________________________________________________________
@@ -141,6 +140,10 @@ impl Span {
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
     pub fn substitute_dummy(self, other: Span) -> Span {
         if self == DUMMY_SP { other } else { self }
+    }
+
+    pub fn contains(self, other: Span) -> bool {
+        self.lo <= other.lo && other.hi <= self.hi
     }
 }
 
@@ -265,28 +268,8 @@ pub enum ExpnFormat {
     MacroAttribute(Name),
     /// e.g. `format!()`
     MacroBang(Name),
-    /// Syntax sugar expansion performed by the compiler (libsyntax::expand).
-    CompilerExpansion(CompilerExpansionFormat),
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
-pub enum CompilerExpansionFormat {
-    IfLet,
-    PlacementIn,
-    WhileLet,
-    ForLoop,
-}
-
-impl CompilerExpansionFormat {
-    pub fn name(self) -> &'static str {
-        match self {
-            CompilerExpansionFormat::IfLet => "if let expansion",
-            CompilerExpansionFormat::PlacementIn => "placement-in expansion",
-            CompilerExpansionFormat::WhileLet => "while let expansion",
-            CompilerExpansionFormat::ForLoop => "for loop expansion",
-        }
-    }
-}
 #[derive(Clone, Hash, Debug)]
 pub struct NameAndSpan {
     /// The format with which the macro was invoked.
@@ -306,7 +289,6 @@ impl NameAndSpan {
         match self.format {
             ExpnFormat::MacroAttribute(s) => s,
             ExpnFormat::MacroBang(s) => s,
-            ExpnFormat::CompilerExpansion(ce) => intern(ce.name()),
         }
     }
 }
@@ -1011,7 +993,7 @@ impl CodeMap {
 
                     let span_comes_from_this_expansion =
                         info.callee.span.map_or(span == info.call_site, |mac_span| {
-                            mac_span.lo <= span.lo && span.hi <= mac_span.hi
+                            mac_span.contains(span)
                         });
 
                     debug!("span_allows_unstable: span: {:?} call_site: {:?} callee: {:?}",
@@ -1083,7 +1065,6 @@ pub struct MalformedCodemapPositions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::rc::Rc;
 
     #[test]
     fn t1 () {

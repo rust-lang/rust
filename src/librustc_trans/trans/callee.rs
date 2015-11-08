@@ -22,11 +22,12 @@ use arena::TypedArena;
 use back::link;
 use session;
 use llvm::{self, ValueRef, get_params};
+use metadata::cstore::LOCAL_CRATE;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::infer::normalize_associated_type;
 use middle::subst;
-use middle::subst::{Subst, Substs};
+use middle::subst::{Substs};
 use rustc::front::map as hir_map;
 use trans::adt;
 use trans::base;
@@ -139,8 +140,10 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
         match def {
             def::DefFn(did, _) if {
                 let maybe_def_id = inline::get_local_instance(bcx.ccx(), did);
-                let maybe_ast_node = maybe_def_id.and_then(|def_id| bcx.tcx().map
-                                                                             .find(def_id.node));
+                let maybe_ast_node = maybe_def_id.and_then(|def_id| {
+                    let node_id = bcx.tcx().map.as_local_node_id(def_id).unwrap();
+                    bcx.tcx().map.find(node_id)
+                });
                 match maybe_ast_node {
                     Some(hir_map::NodeStructCtor(_)) => true,
                     _ => false
@@ -161,7 +164,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                                                     ExprId(ref_expr.id),
                                                     bcx.fcx.param_substs);
                 let def_id = inline::maybe_instantiate_inline(bcx.ccx(), did);
-                Callee { bcx: bcx, data: Intrinsic(def_id.node, substs), ty: expr_ty }
+                let node_id = bcx.tcx().map.as_local_node_id(def_id).unwrap();
+                Callee { bcx: bcx, data: Intrinsic(node_id, substs), ty: expr_ty }
             }
             def::DefFn(did, _) => {
                 fn_callee(bcx, trans_fn_ref(bcx.ccx(), did, ExprId(ref_expr.id),
@@ -211,8 +215,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
             }
             def::DefMod(..) | def::DefForeignMod(..) | def::DefTrait(..) |
             def::DefTy(..) | def::DefPrimTy(..) | def::DefAssociatedTy(..) |
-            def::DefUse(..) | def::DefRegion(..) | def::DefLabel(..) |
-            def::DefTyParam(..) | def::DefSelfTy(..) => {
+            def::DefUse(..) | def::DefLabel(..) | def::DefTyParam(..) |
+            def::DefSelfTy(..) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     &format!("cannot translate def {:?} \
@@ -335,7 +339,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let llargs = get_params(fcx.llfn);
 
     let self_idx = fcx.arg_offset();
-    // the first argument (`self`) will be ptr to the the fn pointer
+    // the first argument (`self`) will be ptr to the fn pointer
     let llfnpointer = if is_by_ref {
         Load(bcx, llargs[self_idx])
     } else {
@@ -398,91 +402,30 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     assert!(!substs.types.has_escaping_regions());
     let substs = substs.erase_regions();
 
-    // Load the info for the appropriate trait if necessary.
-    match tcx.trait_of_item(def_id) {
-        None => {}
-        Some(trait_id) => {
-            tcx.populate_implementations_for_trait_if_necessary(trait_id)
-        }
-    }
-
-    // We need to do a bunch of special handling for default methods.
-    // We need to modify the def_id and our substs in order to monomorphize
-    // the function.
-    let (is_default, def_id, substs) = match tcx.provided_source(def_id) {
-        None => {
-            (false, def_id, tcx.mk_substs(substs))
-        }
-        Some(source_id) => {
-            // There are two relevant substitutions when compiling
-            // default methods. First, there is the substitution for
-            // the type parameters of the impl we are using and the
-            // method we are calling. This substitution is the substs
-            // argument we already have.
-            // In order to compile a default method, though, we need
-            // to consider another substitution: the substitution for
-            // the type parameters on trait; the impl we are using
-            // implements the trait at some particular type
-            // parameters, and we need to substitute for those first.
-            // So, what we need to do is find this substitution and
-            // compose it with the one we already have.
-
-            let impl_id = tcx.impl_or_trait_item(def_id).container()
-                                                             .id();
-            let impl_or_trait_item = tcx.impl_or_trait_item(source_id);
-            match impl_or_trait_item {
-                ty::MethodTraitItem(method) => {
-                    let trait_ref = tcx.impl_trait_ref(impl_id).unwrap();
-
-                    // Compute the first substitution
-                    let first_subst =
-                        tcx.make_substs_for_receiver_types(&trait_ref, &*method)
-                        .erase_regions();
-
-                    // And compose them
-                    let new_substs = tcx.mk_substs(first_subst.subst(tcx, &substs));
-
-                    debug!("trans_fn_with_vtables - default method: \
-                            substs = {:?}, trait_subst = {:?}, \
-                            first_subst = {:?}, new_subst = {:?}",
-                           substs, trait_ref.substs,
-                           first_subst, new_substs);
-
-                    (true, source_id, new_substs)
-                }
-                _ => {
-                    tcx.sess.bug("trans_fn_ref_with_vtables() tried \
-                                  to translate a non-method?!")
-                }
-            }
-        }
-    };
-
     // Check whether this fn has an inlined copy and, if so, redirect
     // def_id to the local id of the inlined copy.
     let def_id = inline::maybe_instantiate_inline(ccx, def_id);
 
-    // We must monomorphise if the fn has type parameters, is a default method,
-    // or is a named tuple constructor.
-    let must_monomorphise = if !substs.types.is_empty() || is_default {
-        true
-    } else if def_id.is_local() {
+    fn is_named_tuple_constructor(tcx: &ty::ctxt, def_id: DefId) -> bool {
+        let node_id = match tcx.map.as_local_node_id(def_id) {
+            Some(n) => n,
+            None => { return false; }
+        };
         let map_node = session::expect(
-            ccx.sess(),
-            tcx.map.find(def_id.node),
+            &tcx.sess,
+            tcx.map.find(node_id),
             || "local item should be in ast map".to_string());
 
         match map_node {
-            hir_map::NodeVariant(v) => match v.node.kind {
-                hir::TupleVariantKind(ref args) => !args.is_empty(),
-                _ => false
-            },
+            hir_map::NodeVariant(v) => {
+                v.node.data.is_tuple()
+            }
             hir_map::NodeStructCtor(_) => true,
             _ => false
         }
-    } else {
-        false
-    };
+    }
+    let must_monomorphise =
+        !substs.types.is_empty() || is_named_tuple_constructor(tcx, def_id);
 
     debug!("trans_fn_ref_with_substs({:?}) must_monomorphise: {}",
            def_id, must_monomorphise);
@@ -497,6 +440,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
             MethodCallKey(_) => None,
         };
 
+        let substs = tcx.mk_substs(substs);
         let (val, fn_ty, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, substs, opt_ref_id);
         if must_cast && node != ExprId(0) {
@@ -526,9 +470,9 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 
     // Find the actual function pointer.
     let mut val = {
-        if def_id.is_local() {
+        if let Some(node_id) = ccx.tcx().map.as_local_node_id(def_id) {
             // Internal reference.
-            get_item_val(ccx, def_id.node)
+            get_item_val(ccx, node_id)
         } else {
             // External reference.
             trans_external_path(ccx, def_id, fn_type)
@@ -561,10 +505,10 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     let llty = type_of::type_of_fn_from_ty(ccx, fn_type);
     let llptrty = llty.ptr_to();
     if common::val_ty(val) != llptrty {
-        debug!("trans_fn_ref_with_vtables(): casting pointer!");
+        debug!("trans_fn_ref_with_substs(): casting pointer!");
         val = consts::ptrcast(val, llptrty);
     } else {
-        debug!("trans_fn_ref_with_vtables(): not casting pointer!");
+        debug!("trans_fn_ref_with_substs(): not casting pointer!");
     }
 
     Datum::new(val, fn_type, Rvalue::new(ByValue))

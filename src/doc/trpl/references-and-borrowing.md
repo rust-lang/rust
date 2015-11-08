@@ -1,6 +1,6 @@
 % References and Borrowing
 
-This guide is one of three presenting Rust’s ownership system. This is one of
+This guide is two of three presenting Rust’s ownership system. This is one of
 Rust’s most unique and compelling features, with which Rust developers should
 become quite acquainted. Ownership is how Rust achieves its largest goal,
 memory safety. There are a few distinct concepts, each with its own
@@ -363,7 +363,7 @@ note: reference must be valid for the block suffix following statement 0 at
     let y: &i32;
     let x = 5;
     y = &x;
-    
+
     println!("{}", y);
 }
 
@@ -371,7 +371,7 @@ note: ...but borrowed value is only valid for the block suffix following
 statement 1 at 3:14
     let x = 5;
     y = &x;
-    
+
     println!("{}", y);
 }
 ```

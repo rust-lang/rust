@@ -26,7 +26,7 @@ shells out to the system linker (`gcc` on most systems, `link.exe` on MSVC),
 so it makes sense to provide extra command line
 arguments, but this will not always be the case. In the future `rustc` may use
 LLVM directly to link native libraries, in which case `link_args` will have no
-meaning. You can achieve the same effect as the `link-args` attribute with the
+meaning. You can achieve the same effect as the `link_args` attribute with the
 `-C link-args` argument to `rustc`.
 
 It is highly recommended to *not* use this attribute, and rather use the more
@@ -71,7 +71,7 @@ Dynamic linking on Linux can be undesirable if you wish to use new library
 features on old systems or target systems which do not have the required
 dependencies for your program to run.
 
-Static linking is supported via an alternative `libc`, `musl`. You can compile
+Static linking is supported via an alternative `libc`, [`musl`](http://www.musl-libc.org). You can compile
 your own version of Rust with `musl` enabled and install it into a custom
 directory with the instructions below:
 
@@ -94,8 +94,6 @@ $ # Build libunwind.a
 $ curl -O http://llvm.org/releases/3.7.0/llvm-3.7.0.src.tar.xz
 $ tar xf llvm-3.7.0.src.tar.xz
 $ cd llvm-3.7.0.src/projects/
-llvm-3.7.0.src/projects $ curl http://llvm.org/releases/3.7.0/libcxxabi-3.7.0.src.tar.xz | tar xJf -
-llvm-3.7.0.src/projects $ mv libcxxabi-3.7.0.src libcxxabi
 llvm-3.7.0.src/projects $ curl http://llvm.org/releases/3.7.0/libunwind-3.7.0.src.tar.xz | tar xJf -
 llvm-3.7.0.src/projects $ mv libunwind-3.7.0.src libunwind
 llvm-3.7.0.src/projects $ mkdir libunwind/build

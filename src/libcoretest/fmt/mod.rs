@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod num;
 mod builders;
+mod float;
+mod num;
 
 #[test]
 fn test_format_flags() {

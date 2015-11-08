@@ -22,7 +22,7 @@ use ast::{Decl, DeclItem, DeclLocal, DefaultBlock, DefaultReturn};
 use ast::{UnDeref, BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
-use ast::{ExprBreak, ExprCall, ExprCast};
+use ast::{ExprBreak, ExprCall, ExprCast, ExprInPlace};
 use ast::{ExprField, ExprTupField, ExprClosure, ExprIf, ExprIfLet, ExprIndex};
 use ast::{ExprLit, ExprLoop, ExprMac, ExprRange};
 use ast::{ExprMethodCall, ExprParen, ExprPath};
@@ -37,7 +37,7 @@ use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitByteStr};
 use ast::{LitStr, LitInt, Local};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
-use ast::{MutImmutable, MutMutable, Mac_, MatchSource};
+use ast::{MutImmutable, MutMutable, Mac_};
 use ast::{MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
 use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatQPath, PatMac, PatRange};
@@ -45,16 +45,16 @@ use ast::{PatRegion, PatStruct, PatTup, PatVec, PatWild, PatWildMulti};
 use ast::PatWildSingle;
 use ast::{PolyTraitRef, QSelf};
 use ast::{Return, BiShl, BiShr, Stmt, StmtDecl};
-use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
-use ast::{StructVariantKind, BiSub, StrStyle};
+use ast::{StmtExpr, StmtSemi, StmtMac, VariantData, StructField};
+use ast::{BiSub, StrStyle};
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{TtDelimited, TtSequence, TtToken};
-use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
+use ast::{Ty, Ty_, TypeBinding};
 use ast::{TyMac};
 use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr};
-use ast::{TyRptr, TyTup, TyU32, TyVec, UnUniq};
+use ast::{TyRptr, TyTup, TyU32, TyVec};
 use ast::{TypeImplItem, TypeTraitItem};
 use ast::{UnnamedField, UnsafeBlock};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
@@ -2617,76 +2617,19 @@ impl<'a> Parser<'a> {
             hi = e.span.hi;
             ex = ExprAddrOf(m, e);
           }
-          token::Ident(_, _) => {
-            if !self.check_keyword(keywords::Box) && !self.check_keyword(keywords::In) {
-                return self.parse_dot_or_call_expr();
-            }
-
-            let lo = self.span.lo;
-            let keyword_hi = self.span.hi;
-
-            let is_in = self.token.is_keyword(keywords::In);
-            try!(self.bump());
-
-            if is_in {
+          token::Ident(..) if self.token.is_keyword(keywords::In) => {
+              try!(self.bump());
               let place = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
               let blk = try!(self.parse_block());
               hi = blk.span.hi;
               let blk_expr = self.mk_expr(blk.span.lo, blk.span.hi, ExprBlock(blk));
-              ex = ExprBox(Some(place), blk_expr);
-              return Ok(self.mk_expr(lo, hi, ex));
-            }
-
-            // FIXME (#22181) Remove `box (PLACE) EXPR` support
-            // entirely after next release (enabling `(box (EXPR))`),
-            // since it will be replaced by `in PLACE { EXPR }`, ...
-            //
-            // ... but for now: check for a place: `box(PLACE) EXPR`.
-
-            if try!(self.eat(&token::OpenDelim(token::Paren))) {
-                let box_span = mk_sp(lo, self.last_span.hi);
-                self.span_warn(box_span,
-                    "deprecated syntax; use the `in` keyword now \
-                           (e.g. change `box (<expr>) <expr>` to \
-                                        `in <expr> { <expr> }`)");
-
-                // Continue supporting `box () EXPR` (temporarily)
-                if !try!(self.eat(&token::CloseDelim(token::Paren))) {
-                    let place = try!(self.parse_expr_nopanic());
-                    try!(self.expect(&token::CloseDelim(token::Paren)));
-                    // Give a suggestion to use `box()` when a parenthesised expression is used
-                    if !self.token.can_begin_expr() {
-                        let span = self.span;
-                        let this_token_to_string = self.this_token_to_string();
-                        self.span_err(span,
-                                      &format!("expected expression, found `{}`",
-                                              this_token_to_string));
-
-                        // Spanning just keyword avoids constructing
-                        // printout of arg expression (which starts
-                        // with parenthesis, as established above).
-
-                        let box_span = mk_sp(lo, keyword_hi);
-                        self.span_suggestion(box_span,
-                                             "try using `box ()` instead:",
-                                             format!("box ()"));
-                        self.abort_if_errors();
-                    }
-                    let subexpression = try!(self.parse_prefix_expr());
-                    hi = subexpression.span.hi;
-                    ex = ExprBox(Some(place), subexpression);
-                    return Ok(self.mk_expr(lo, hi, ex));
-                }
-            }
-
-            // Otherwise, we use the unique pointer default.
-            let subexpression = try!(self.parse_prefix_expr());
-            hi = subexpression.span.hi;
-
-            // FIXME (pnkfelix): After working out kinks with box
-            // desugaring, should be `ExprBox(None, subexpression)`
-            // instead.
-            ex = self.mk_unary(UnUniq, subexpression);
+              ex = ExprInPlace(place, blk_expr);
+          }
+          token::Ident(..) if self.token.is_keyword(keywords::Box) => {
+              try!(self.bump());
+              let subexpression = try!(self.parse_prefix_expr());
+              hi = subexpression.span.hi;
+              ex = ExprBox(subexpression);
           }
           _ => return self.parse_dot_or_call_expr()
         }
@@ -2984,7 +2927,7 @@ impl<'a> Parser<'a> {
         }
         let hi = self.span.hi;
         try!(self.bump());
-        return Ok(self.mk_expr(lo, hi, ExprMatch(discriminant, arms, MatchSource::Normal)));
+        return Ok(self.mk_expr(lo, hi, ExprMatch(discriminant, arms)));
     }
 
     pub fn parse_arm_nopanic(&mut self) -> PResult<Arm> {
@@ -4437,11 +4380,11 @@ impl<'a> Parser<'a> {
     /// - `extern fn`
     /// - etc
     pub fn parse_fn_front_matter(&mut self) -> PResult<(ast::Constness, ast::Unsafety, abi::Abi)> {
+        let unsafety = try!(self.parse_unsafety());
         let is_const_fn = try!(self.eat_keyword(keywords::Const));
         let (constness, unsafety, abi) = if is_const_fn {
-            (Constness::Const, Unsafety::Normal, abi::Rust)
+            (Constness::Const, unsafety, abi::Rust)
         } else {
-            let unsafety = try!(self.parse_unsafety());
             let abi = if try!(self.eat_keyword(keywords::Extern)) {
                 try!(self.parse_opt_abi()).unwrap_or(abi::C)
             } else {
@@ -4697,26 +4640,25 @@ impl<'a> Parser<'a> {
         // Otherwise if we look ahead and see a paren we parse a tuple-style
         // struct.
 
-        let (fields, ctor_id) = if self.token.is_keyword(keywords::Where) {
+        let vdata = if self.token.is_keyword(keywords::Where) {
             generics.where_clause = try!(self.parse_where_clause());
             if try!(self.eat(&token::Semi)) {
                 // If we see a: `struct Foo<T> where T: Copy;` style decl.
-                (Vec::new(), Some(ast::DUMMY_NODE_ID))
+                VariantData::Unit(ast::DUMMY_NODE_ID)
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
-                (try!(self.parse_record_struct_body()), None)
+                VariantData::Struct(try!(self.parse_record_struct_body()), ast::DUMMY_NODE_ID)
             }
         // No `where` so: `struct Foo<T>;`
         } else if try!(self.eat(&token::Semi) ){
-            (Vec::new(), Some(ast::DUMMY_NODE_ID))
+            VariantData::Unit(ast::DUMMY_NODE_ID)
         // Record-style struct definition
         } else if self.token == token::OpenDelim(token::Brace) {
-            let fields = try!(self.parse_record_struct_body());
-            (fields, None)
+            VariantData::Struct(try!(self.parse_record_struct_body()), ast::DUMMY_NODE_ID)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
-            let fields = try!(self.parse_tuple_struct_body(&class_name, &mut generics));
-            (fields, Some(ast::DUMMY_NODE_ID))
+            VariantData::Tuple(try!(self.parse_tuple_struct_body(&mut generics)),
+                               ast::DUMMY_NODE_ID)
         } else {
             let token_str = self.this_token_to_string();
             return Err(self.fatal(&format!("expected `where`, `{{`, `(`, or `;` after struct \
@@ -4724,11 +4666,8 @@ impl<'a> Parser<'a> {
         };
 
         Ok((class_name,
-         ItemStruct(P(ast::StructDef {
-             fields: fields,
-             ctor_id: ctor_id,
-         }), generics),
-         None))
+            ItemStruct(P(vdata), generics),
+            None))
     }
 
     pub fn parse_record_struct_body(&mut self) -> PResult<Vec<StructField>> {
@@ -4750,7 +4689,6 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_tuple_struct_body(&mut self,
-                                   class_name: &ast::Ident,
                                    generics: &mut ast::Generics)
                                    -> PResult<Vec<StructField>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
@@ -4770,12 +4708,6 @@ impl<'a> Parser<'a> {
                 };
                 Ok(spanned(lo, p.span.hi, struct_field_))
             }));
-
-        if fields.is_empty() {
-            return Err(self.fatal(&format!("unit-like struct definition should be \
-                                            written as `struct {};`",
-                                           class_name)));
-        }
 
         generics.where_clause = try!(self.parse_where_clause());
         try!(self.expect(&token::Semi));
@@ -5166,17 +5098,14 @@ impl<'a> Parser<'a> {
 
     /// Parse a structure-like enum variant definition
     /// this should probably be renamed or refactored...
-    fn parse_struct_def(&mut self) -> PResult<P<StructDef>> {
+    fn parse_struct_def(&mut self) -> PResult<P<VariantData>> {
         let mut fields: Vec<StructField> = Vec::new();
         while self.token != token::CloseDelim(token::Brace) {
             fields.push(try!(self.parse_struct_decl_field(false)));
         }
         try!(self.bump());
 
-        Ok(P(StructDef {
-            fields: fields,
-            ctor_id: None,
-        }))
+        Ok(P(VariantData::Struct(fields, ast::DUMMY_NODE_ID)))
     }
 
     /// Parse the part of an "enum" decl following the '{'
@@ -5188,22 +5117,13 @@ impl<'a> Parser<'a> {
             let variant_attrs = self.parse_outer_attributes();
             let vlo = self.span.lo;
 
-            let kind;
-            let mut args = Vec::new();
+            let struct_def;
             let mut disr_expr = None;
             let ident = try!(self.parse_ident());
             if try!(self.eat(&token::OpenDelim(token::Brace)) ){
                 // Parse a struct variant.
                 all_nullary = false;
-                let start_span = self.span;
-                let struct_def = try!(self.parse_struct_def());
-                if struct_def.fields.is_empty() {
-                    self.span_err(start_span,
-                        &format!("unit-like struct variant should be written \
-                                 without braces, as `{},`",
-                                ident));
-                }
-                kind = StructVariantKind(struct_def);
+                struct_def = try!(self.parse_struct_def());
             } else if self.check(&token::OpenDelim(token::Paren)) {
                 all_nullary = false;
                 let arg_tys = try!(self.parse_enum_variant_seq(
@@ -5212,26 +5132,28 @@ impl<'a> Parser<'a> {
                     seq_sep_trailing_allowed(token::Comma),
                     |p| p.parse_ty_sum()
                 ));
+                let mut fields = Vec::new();
                 for ty in arg_tys {
-                    args.push(ast::VariantArg {
+                    fields.push(Spanned { span: ty.span, node: ast::StructField_ {
                         ty: ty,
+                        kind: ast::UnnamedField(ast::Inherited),
+                        attrs: Vec::new(),
                         id: ast::DUMMY_NODE_ID,
-                    });
+                    }});
                 }
-                kind = TupleVariantKind(args);
+                struct_def = P(ast::VariantData::Tuple(fields, ast::DUMMY_NODE_ID));
             } else if try!(self.eat(&token::Eq) ){
                 disr_expr = Some(try!(self.parse_expr_nopanic()));
                 any_disr = disr_expr.as_ref().map(|expr| expr.span);
-                kind = TupleVariantKind(args);
+                struct_def = P(ast::VariantData::Unit(ast::DUMMY_NODE_ID));
             } else {
-                kind = TupleVariantKind(Vec::new());
+                struct_def = P(ast::VariantData::Unit(ast::DUMMY_NODE_ID));
             }
 
             let vr = ast::Variant_ {
                 name: ident,
                 attrs: variant_attrs,
-                kind: kind,
-                id: ast::DUMMY_NODE_ID,
+                data: struct_def,
                 disr_expr: disr_expr,
             };
             variants.push(P(spanned(vlo, self.last_span.hi, vr)));
@@ -5456,9 +5378,14 @@ impl<'a> Parser<'a> {
             } else {
                 abi::Rust
             };
+            let constness = if abi == abi::Rust && try!(self.eat_keyword(keywords::Const) ){
+                Constness::Const
+            } else {
+                Constness::NotConst
+            };
             try!(self.expect_keyword(keywords::Fn));
             let (ident, item_, extra_attrs) =
-                try!(self.parse_item_fn(Unsafety::Unsafe, Constness::NotConst, abi));
+                try!(self.parse_item_fn(Unsafety::Unsafe, constness, abi));
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,
@@ -5780,10 +5707,10 @@ impl<'a> Parser<'a> {
                                                  Option<ast::Name>)>> {
         let ret = match self.token {
             token::Literal(token::Str_(s), suf) => {
-                (self.id_to_interned_str(s.ident()), ast::CookedStr, suf)
+                (self.id_to_interned_str(ast::Ident::with_empty_ctxt(s)), ast::CookedStr, suf)
             }
             token::Literal(token::StrRaw(s, n), suf) => {
-                (self.id_to_interned_str(s.ident()), ast::RawStr(n), suf)
+                (self.id_to_interned_str(ast::Ident::with_empty_ctxt(s)), ast::RawStr(n), suf)
             }
             _ => return Ok(None)
         };

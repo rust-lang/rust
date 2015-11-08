@@ -10,6 +10,8 @@
 
 // compile-flags: -C no-prepopulate-passes
 
+#![crate_type = "lib"]
+
 // Hack to get the correct size for the length part in slices
 // CHECK: @helper([[USIZE:i[0-9]+]])
 #[no_mangle]

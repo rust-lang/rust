@@ -433,7 +433,7 @@ fn main() {
     managed_box(&(34, 35));
     borrowed_pointer(&(36, 37));
     contained_borrowed_pointer((&38, 39));
-    unique_pointer(box() (40, 41, 42));
+    unique_pointer(box (40, 41, 42));
     ref_binding((43, 44, 45));
     ref_binding_in_tuple((46, (47, 48)));
     ref_binding_in_struct(Struct { a: 49, b: 50 });

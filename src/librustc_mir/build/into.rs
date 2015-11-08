@@ -18,53 +18,56 @@ use build::{BlockAnd, Builder};
 use hair::*;
 use repr::*;
 
-pub trait EvalInto<H:Hair> {
-    fn eval_into(self, builder: &mut Builder<H>, destination: &Lvalue<H>,
-                 block: BasicBlock) -> BlockAnd<()>;
+pub trait EvalInto<'tcx> {
+    fn eval_into<'a>(self,
+                     builder: &mut Builder<'a, 'tcx>,
+                     destination: &Lvalue<'tcx>,
+                     block: BasicBlock)
+                     -> BlockAnd<()>;
 }
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn into<E>(&mut self,
-                   destination: &Lvalue<H>,
+                   destination: &Lvalue<'tcx>,
                    block: BasicBlock,
                    expr: E)
                    -> BlockAnd<()>
-        where E: EvalInto<H>
+        where E: EvalInto<'tcx>
     {
         expr.eval_into(self, destination, block)
     }
 }
 
-impl<H:Hair> EvalInto<H> for ExprRef<H> {
-    fn eval_into(self,
-                 builder: &mut Builder<H>,
-                 destination: &Lvalue<H>,
-                 block: BasicBlock)
-                 -> BlockAnd<()> {
+impl<'tcx> EvalInto<'tcx> for ExprRef<'tcx> {
+    fn eval_into<'a>(self,
+                     builder: &mut Builder<'a, 'tcx>,
+                     destination: &Lvalue<'tcx>,
+                     block: BasicBlock)
+                     -> BlockAnd<()> {
         let expr = builder.hir.mirror(self);
         builder.into_expr(destination, block, expr)
     }
 }
 
-impl<H:Hair> EvalInto<H> for Expr<H> {
-    fn eval_into(self,
-                 builder: &mut Builder<H>,
-                 destination: &Lvalue<H>,
-                 block: BasicBlock)
-                 -> BlockAnd<()> {
+impl<'tcx> EvalInto<'tcx> for Expr<'tcx> {
+    fn eval_into<'a>(self,
+                     builder: &mut Builder<'a, 'tcx>,
+                     destination: &Lvalue<'tcx>,
+                     block: BasicBlock)
+                     -> BlockAnd<()> {
         builder.into_expr(destination, block, self)
     }
 }
 
-impl<H:Hair> EvalInto<H> for Option<ExprRef<H>> {
-    fn eval_into(self,
-                 builder: &mut Builder<H>,
-                 destination: &Lvalue<H>,
-                 block: BasicBlock)
-                 -> BlockAnd<()> {
+impl<'tcx> EvalInto<'tcx> for Option<ExprRef<'tcx>> {
+    fn eval_into<'a>(self,
+                     builder: &mut Builder<'a, 'tcx>,
+                     destination: &Lvalue<'tcx>,
+                     block: BasicBlock)
+                     -> BlockAnd<()> {
         match self {
             Some(expr) => builder.into(destination, block, expr),
-            None => block.unit()
+            None => block.unit(),
         }
     }
 }

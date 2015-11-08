@@ -63,7 +63,7 @@ use rustc_resolve as resolve;
 use rustc_trans::back::link;
 use rustc_trans::save;
 use rustc::session::{config, Session, build_session};
-use rustc::session::config::{Input, PrintRequest};
+use rustc::session::config::{Input, PrintRequest, OutputType};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::metadata;
@@ -285,7 +285,12 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                       -> Compilation {
         match matches.opt_str("explain") {
             Some(ref code) => {
-                match descriptions.find_description(&code[..]) {
+                let normalised = if !code.starts_with("E") {
+                    format!("E{0:0>4}", code)
+                } else {
+                    code.to_string()
+                };
+                match descriptions.find_description(&normalised) {
                     Some(ref description) => {
                         // Slice off the leading newline and print.
                         print!("{}", &description[1..]);
@@ -382,7 +387,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             control.after_analysis.stop = Compilation::Stop;
         }
 
-        if !sess.opts.output_types.iter().any(|&i| i == config::OutputTypeExe) {
+        if !sess.opts.output_types.keys().any(|&i| i == OutputType::Exe) {
             control.after_llvm.stop = Compilation::Stop;
         }
 
@@ -391,6 +396,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 time(state.session.time_passes(),
                      "save analysis",
                      || save::process_crate(state.tcx.unwrap(),
+                                            state.lcx.unwrap(),
                                             state.krate.unwrap(),
                                             state.analysis.unwrap(),
                                             state.out_dir));

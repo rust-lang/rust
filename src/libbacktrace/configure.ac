@@ -12,7 +12,7 @@
 #     notice, this list of conditions and the following disclaimer in
 #     the documentation and/or other materials provided with the
 #     distribution.  
-    
+
 #     (3) The name of the author may not be used to
 #     endorse or promote products derived from this software without
 #     specific prior written permission.

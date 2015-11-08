@@ -737,7 +737,6 @@ impl EmitterWriter {
                         let (pre, post) = match ei.callee.format {
                             codemap::MacroAttribute(..) => ("#[", "]"),
                             codemap::MacroBang(..) => ("", "!"),
-                            codemap::CompilerExpansion(..) => ("", ""),
                         };
                         // Don't print recursive invocations
                         if ei.call_site != last_span {
@@ -842,7 +841,7 @@ pub fn expect<T, M>(diag: &SpanHandler, opt: Option<T>, msg: M) -> T where
 #[cfg(test)]
 mod test {
     use super::{EmitterWriter, Level};
-    use codemap::{mk_sp, CodeMap, BytePos};
+    use codemap::{mk_sp, CodeMap};
     use std::sync::{Arc, Mutex};
     use std::io::{self, Write};
     use std::str::from_utf8;

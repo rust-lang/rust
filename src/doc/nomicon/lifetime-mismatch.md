@@ -78,4 +78,4 @@ TODO: other common problems? SEME regions stuff, mostly?
 
 
 
-[ex2]: lifetimes.html#example-2:-aliasing-a-mutable-reference
+[ex2]: lifetimes.html#example-aliasing-a-mutable-reference

@@ -1628,7 +1628,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
 /// impl<T> Deref for DerefExample<T> {
 ///     type Target = T;
 ///
-///     fn deref<'a>(&'a self) -> &'a T {
+///     fn deref(&self) -> &T {
 ///         &self.value
 ///     }
 /// }

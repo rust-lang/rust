@@ -22,6 +22,7 @@ pub fn target() -> Target {
         arch: "x86".to_string(),
         target_os: "macos".to_string(),
         target_env: "".to_string(),
+        target_vendor: "apple".to_string(),
         options: base,
     }
 }

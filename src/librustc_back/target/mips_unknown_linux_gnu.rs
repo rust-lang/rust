@@ -18,6 +18,7 @@ pub fn target() -> Target {
         arch: "mips".to_string(),
         target_os: "linux".to_string(),
         target_env: "gnu".to_string(),
+        target_vendor: "unknown".to_string(),
         options: super::linux_base::opts()
     }
 }

@@ -64,9 +64,8 @@ use prelude::v1::*;
 
 use any::Any;
 use boxed;
-use cell::Cell;
 use cmp;
-use panicking;
+use panicking::{self,PANIC_COUNT};
 use fmt;
 use intrinsics;
 use mem;
@@ -82,8 +81,18 @@ use sys_common::mutex::Mutex;
 #[path = "seh.rs"] #[doc(hidden)]
 pub mod imp;
 
+// SNAP: i686-pc-windows-gnu
+#[cfg(all(stage0, windows, target_arch = "x86_64", target_env = "gnu"))]
+#[path = "seh64_gnu.rs"] #[doc(hidden)]
+pub mod imp;
+
+// SNAP: x86_64-pc-windows-msvc
+#[cfg(all(stage0, windows, target_arch = "x86_64", target_env = "msvc"))]
+#[path = "seh.rs"] #[doc(hidden)]
+pub mod imp;
+
 // x86_64-pc-windows-*
-#[cfg(all(windows, target_arch = "x86_64"))]
+#[cfg(all(not(stage0), windows, target_arch = "x86_64"))]
 #[path = "seh64_gnu.rs"] #[doc(hidden)]
 pub mod imp;
 
@@ -91,25 +100,6 @@ pub mod imp;
 #[cfg(any(unix, all(windows, target_arch = "x86", target_env = "gnu")))]
 #[path = "gcc.rs"] #[doc(hidden)]
 pub mod imp;
-
-pub type Callback = fn(msg: &(Any + Send), file: &'static str, line: u32);
-
-// Variables used for invoking callbacks when a thread starts to unwind.
-//
-// For more information, see below.
-const MAX_CALLBACKS: usize = 16;
-static CALLBACKS: [atomic::AtomicUsize; MAX_CALLBACKS] =
-        [atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
-         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
-         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
-         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
-         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
-         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
-         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
-         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0)];
-static CALLBACK_CNT: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
-
-thread_local! { static PANICKING: Cell<bool> = Cell::new(false) }
 
 /// Invoke a closure, capturing the cause of panic if one occurs.
 ///
@@ -148,15 +138,17 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
     // care of exposing correctly.
     unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
                         -> Result<(), Box<Any + Send>> {
-        let prev = PANICKING.with(|s| s.get());
-        PANICKING.with(|s| s.set(false));
-        let ep = intrinsics::try(f, data);
-        PANICKING.with(|s| s.set(prev));
-        if ep.is_null() {
-            Ok(())
-        } else {
-            Err(imp::cleanup(ep))
-        }
+        PANIC_COUNT.with(|s| {
+            let prev = s.get();
+            s.set(0);
+            let ep = intrinsics::try(f, data);
+            s.set(prev);
+            if ep.is_null() {
+                Ok(())
+            } else {
+                Err(imp::cleanup(ep))
+            }
+        })
     }
 
     fn try_fn<F: FnOnce()>(opt_closure: *mut u8) {
@@ -176,7 +168,7 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
 
 /// Determines whether the current thread is unwinding because of panic.
 pub fn panicking() -> bool {
-    PANICKING.with(|s| s.get())
+    PANIC_COUNT.with(|s| s.get() != 0)
 }
 
 // An uninlined, unmangled function upon which to slap yer breakpoints
@@ -244,83 +236,11 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, u32)) -> !
 #[inline(never)] #[cold] // this is the slow path, please never inline this
 fn begin_unwind_inner(msg: Box<Any + Send>,
                       file_line: &(&'static str, u32)) -> ! {
-    // Make sure the default failure handler is registered before we look at the
-    // callbacks. We also use a raw sys-based mutex here instead of a
-    // `std::sync` one as accessing TLS can cause weird recursive problems (and
-    // we don't need poison checking).
-    unsafe {
-        static LOCK: Mutex = Mutex::new();
-        static mut INIT: bool = false;
-        LOCK.lock();
-        if !INIT {
-            register(panicking::on_panic);
-            INIT = true;
-        }
-        LOCK.unlock();
-    }
+    let (file, line) = *file_line;
 
-    // First, invoke call the user-defined callbacks triggered on thread panic.
-    //
-    // By the time that we see a callback has been registered (by reading
-    // MAX_CALLBACKS), the actual callback itself may have not been stored yet,
-    // so we just chalk it up to a race condition and move on to the next
-    // callback. Additionally, CALLBACK_CNT may briefly be higher than
-    // MAX_CALLBACKS, so we're sure to clamp it as necessary.
-    let callbacks = {
-        let amt = CALLBACK_CNT.load(Ordering::SeqCst);
-        &CALLBACKS[..cmp::min(amt, MAX_CALLBACKS)]
-    };
-    for cb in callbacks {
-        match cb.load(Ordering::SeqCst) {
-            0 => {}
-            n => {
-                let f: Callback = unsafe { mem::transmute(n) };
-                let (file, line) = *file_line;
-                f(&*msg, file, line);
-            }
-        }
-    };
+    // First, invoke the default panic handler.
+    panicking::on_panic(&*msg, file, line);
 
-    // Now that we've run all the necessary unwind callbacks, we actually
-    // perform the unwinding.
-    if panicking() {
-        // If a thread panics while it's already unwinding then we
-        // have limited options. Currently our preference is to
-        // just abort. In the future we may consider resuming
-        // unwinding or otherwise exiting the thread cleanly.
-        super::util::dumb_print(format_args!("thread panicked while panicking. \
-                                              aborting."));
-        unsafe { intrinsics::abort() }
-    }
-    PANICKING.with(|s| s.set(true));
+    // Finally, perform the unwinding.
     rust_panic(msg);
-}
-
-/// Register a callback to be invoked when a thread unwinds.
-///
-/// This is an unsafe and experimental API which allows for an arbitrary
-/// callback to be invoked when a thread panics. This callback is invoked on both
-/// the initial unwinding and a double unwinding if one occurs. Additionally,
-/// the local `Thread` will be in place for the duration of the callback, and
-/// the callback must ensure that it remains in place once the callback returns.
-///
-/// Only a limited number of callbacks can be registered, and this function
-/// returns whether the callback was successfully registered or not. It is not
-/// currently possible to unregister a callback once it has been registered.
-pub unsafe fn register(f: Callback) -> bool {
-    match CALLBACK_CNT.fetch_add(1, Ordering::SeqCst) {
-        // The invocation code has knowledge of this window where the count has
-        // been incremented, but the callback has not been stored. We're
-        // guaranteed that the slot we're storing into is 0.
-        n if n < MAX_CALLBACKS => {
-            let prev = CALLBACKS[n].swap(mem::transmute(f), Ordering::SeqCst);
-            rtassert!(prev == 0);
-            true
-        }
-        // If we accidentally bumped the count too high, pull it back.
-        _ => {
-            CALLBACK_CNT.store(MAX_CALLBACKS, Ordering::SeqCst);
-            false
-        }
-    }
 }

@@ -13,6 +13,7 @@ use back::abi;
 use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
+use metadata::cstore::LOCAL_CRATE;
 use middle::{check_const, def};
 use middle::const_eval::{self, ConstVal};
 use middle::const_eval::{const_int_checked_neg, const_uint_checked_neg};
@@ -25,7 +26,7 @@ use middle::const_eval::{const_int_checked_shl, const_uint_checked_shl};
 use middle::const_eval::{const_int_checked_shr, const_uint_checked_shr};
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::const_eval::eval_const_expr_partial;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
 use trans::common::*;
@@ -97,7 +98,7 @@ pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &ast::Lit)
         ast::LitBool(b) => C_bool(cx, b),
         ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
         ast::LitByteStr(ref data) => {
-            addr_of(cx, C_bytes(cx, &data[..]), "byte_str")
+            addr_of(cx, C_bytes(cx, &data[..]), 1, "byte_str")
         }
     }
 }
@@ -110,17 +111,19 @@ pub fn ptrcast(val: ValueRef, ty: Type) -> ValueRef {
 
 fn addr_of_mut(ccx: &CrateContext,
                cv: ValueRef,
+               align: machine::llalign,
                kind: &str)
                -> ValueRef {
     unsafe {
         // FIXME: this totally needs a better name generation scheme, perhaps a simple global
         // counter? Also most other uses of gensym in trans.
         let gsym = token::gensym("_");
-        let name = format!("{}{}", kind, gsym.usize());
+        let name = format!("{}{}", kind, gsym.0);
         let gv = declare::define_global(ccx, &name[..], val_ty(cv)).unwrap_or_else(||{
             ccx.sess().bug(&format!("symbol `{}` is already defined", name));
         });
         llvm::LLVMSetInitializer(gv, cv);
+        llvm::LLVMSetAlignment(gv, align);
         SetLinkage(gv, InternalLinkage);
         SetUnnamedAddr(gv, true);
         gv
@@ -129,13 +132,23 @@ fn addr_of_mut(ccx: &CrateContext,
 
 pub fn addr_of(ccx: &CrateContext,
                cv: ValueRef,
+               align: machine::llalign,
                kind: &str)
                -> ValueRef {
     match ccx.const_globals().borrow().get(&cv) {
-        Some(&gv) => return gv,
+        Some(&gv) => {
+            unsafe {
+                // Upgrade the alignment in cases where the same constant is used with different
+                // alignment requirements
+                if align > llvm::LLVMGetAlignment(gv) {
+                    llvm::LLVMSetAlignment(gv, align);
+                }
+            }
+            return gv;
+        }
         None => {}
     }
-    let gv = addr_of_mut(ccx, cv, kind);
+    let gv = addr_of_mut(ccx, cv, align, kind);
     unsafe {
         llvm::LLVMSetGlobalConstant(gv, True);
     }
@@ -253,11 +266,11 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         Some(&val) => return val,
         None => {}
     }
+    let ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs,
+                                              &ccx.tcx().expr_ty(expr));
     let val = if qualif.intersects(check_const::ConstQualif::NON_STATIC_BORROWS) {
         // Avoid autorefs as they would create global instead of stack
         // references, even when only the latter are correct.
-        let ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs,
-                                                  &ccx.tcx().expr_ty(expr));
         const_expr_unadjusted(ccx, expr, ty, param_substs, None)
     } else {
         const_expr(ccx, expr, param_substs, None).0
@@ -273,7 +286,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
     };
 
-    let lvalue = addr_of(ccx, val, "const");
+    let lvalue = addr_of(ccx, val, type_of::align_of(ccx, ty), "const");
     ccx.const_values().borrow_mut().insert(key, lvalue);
     lvalue
 }
@@ -313,7 +326,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 if adj.autoderefs == 0 {
                     // Don't copy data to do a deref+ref
                     // (i.e., skip the last auto-deref).
-                    llconst = addr_of(cx, llconst, "autoref");
+                    llconst = addr_of(cx, llconst, type_of::align_of(cx, ty), "autoref");
                     ty = cx.tcx().mk_imm_ref(cx.tcx().mk_region(ty::ReStatic), ty);
                 }
             } else {
@@ -564,17 +577,17 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             let is_float = ty.is_fp();
             unsafe { match u {
-                hir::UnUniq | hir::UnDeref => const_deref(cx, te, ty).0,
-                hir::UnNot                 => llvm::LLVMConstNot(te),
-                hir::UnNeg if is_float     => llvm::LLVMConstFNeg(te),
-                hir::UnNeg                 => llvm::LLVMConstNeg(te),
+                hir::UnDeref           => const_deref(cx, te, ty).0,
+                hir::UnNot             => llvm::LLVMConstNot(te),
+                hir::UnNeg if is_float => llvm::LLVMConstFNeg(te),
+                hir::UnNeg             => llvm::LLVMConstNeg(te),
             } }
         },
         hir::ExprField(ref base, field) => {
             let (bv, bt) = const_expr(cx, &**base, param_substs, fn_args);
             let brepr = adt::represent_type(cx, bt);
             let vinfo = VariantInfo::from_ty(cx.tcx(), bt, None);
-            let ix = vinfo.field_index(field.node.name);
+            let ix = vinfo.field_index(field.node);
             adt::const_get_field(cx, &*brepr, bv, vinfo.discr, ix)
         },
         hir::ExprTupField(ref base, idx) => {
@@ -627,9 +640,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             if iv >= len {
                 // FIXME #3170: report this earlier on in the const-eval
                 // pass. Reporting here is a bit late.
-                cx.sess().span_err(e.span,
-                                   "const index-expr is out of bounds");
-                C_undef(type_of::type_of(cx, bt).element_type())
+                span_err!(cx.sess(), e.span, E0515,
+                          "const index-expr is out of bounds");
+                C_undef(val_ty(arr).element_type())
             } else {
                 const_get_elt(cx, arr, &[iv as c_uint])
             }
@@ -719,13 +732,13 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             } else {
                 // If this isn't the address of a static, then keep going through
                 // normal constant evaluation.
-                let (v, _) = const_expr(cx, &**sub, param_substs, fn_args);
-                addr_of(cx, v, "ref")
+                let (v, ty) = const_expr(cx, &**sub, param_substs, fn_args);
+                addr_of(cx, v, type_of::align_of(cx, ty), "ref")
             }
         },
         hir::ExprAddrOf(hir::MutMutable, ref sub) => {
-            let (v, _) = const_expr(cx, &**sub, param_substs, fn_args);
-            addr_of_mut(cx, v, "ref_mut_slice")
+            let (v, ty) = const_expr(cx, &**sub, param_substs, fn_args);
+            addr_of_mut(cx, v, type_of::align_of(cx, ty), "ref_mut_slice")
         },
         hir::ExprTup(ref es) => {
             let repr = adt::represent_type(cx, ety);
@@ -742,7 +755,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             let VariantInfo { discr, fields } = VariantInfo::of_node(cx.tcx(), ety, e.id);
             let cs = fields.iter().enumerate().map(|(ix, &Field(f_name, _))| {
-                match (fs.iter().find(|f| f_name == f.ident.node.name), base_val) {
+                match (fs.iter().find(|f| f_name == f.name.node), base_val) {
                     (Some(ref f), _) => const_expr(cx, &*f.expr, param_substs, fn_args).0,
                     (_, Some((bv, _))) => adt::const_get_field(cx, &*repr, bv, discr, ix),
                     (_, None) => cx.sess().span_bug(e.span, "missing struct field"),
@@ -782,7 +795,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprPath(..) => {
             let def = cx.tcx().def_map.borrow().get(&e.id).unwrap().full_def();
             match def {
-                def::DefLocal(id) => {
+                def::DefLocal(_, id) => {
                     if let Some(val) = fn_args.and_then(|args| args.get(&id).cloned()) {
                         val
                     } else {
@@ -805,7 +818,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         ty::VariantKind::Tuple => {
                             expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                         }
-                        ty::VariantKind::Dict => {
+                        ty::VariantKind::Struct => {
                             cx.sess().span_bug(e.span, "path-expr refers to a dict variant!")
                         }
                     }
@@ -876,9 +889,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         },
         hir::ExprClosure(_, ref decl, ref body) => {
             match ety.sty {
-                ty::TyClosure(_, ref substs) => {
+                ty::TyClosure(def_id, ref substs) => {
                     closure::trans_closure_expr(closure::Dest::Ignore(cx), decl,
-                                                body, e.id, substs);
+                                                body, e.id, def_id, substs);
                 }
                 _ =>
                     cx.sess().span_bug(
@@ -933,6 +946,7 @@ pub fn trans_static(ccx: &CrateContext,
             ccx.statics_to_rauw().borrow_mut().push((g, new_g));
             new_g
         };
+        llvm::LLVMSetAlignment(g, type_of::align_of(ccx, ty));
         llvm::LLVMSetInitializer(g, v);
 
         // As an optimization, all shared statics which do not have interior
@@ -959,6 +973,9 @@ fn get_static_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                             did: DefId,
                             ty: Ty<'tcx>)
                             -> ValueRef {
-    if did.is_local() { return base::get_item_val(ccx, did.node) }
-    base::trans_external_path(ccx, did, ty)
+    if let Some(node_id) = ccx.tcx().map.as_local_node_id(did) {
+        base::get_item_val(ccx, node_id)
+    } else {
+        base::trans_external_path(ccx, did, ty)
+    }
 }

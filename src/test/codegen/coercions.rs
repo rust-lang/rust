@@ -10,6 +10,8 @@
 
 // compile-flags: -C no-prepopulate-passes
 
+#![crate_type = "lib"]
+
 static X: i32 = 5;
 
 // CHECK-LABEL: @raw_ptr_to_raw_ptr_noop

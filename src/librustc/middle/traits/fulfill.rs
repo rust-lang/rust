@@ -49,6 +49,12 @@ pub struct FulfillmentContext<'tcx> {
     // than the `SelectionCache`: it avoids duplicate errors and
     // permits recursive obligations, which are often generated from
     // traits like `Send` et al.
+    //
+    // Note that because of type inference, a predicate can still
+    // occur twice in the predicates list, for example when 2
+    // initially-distinct type variables are unified after being
+    // inserted. Deduplicating the predicate set on selection had a
+    // significant performance cost the last time I checked.
     duplicate_set: FulfilledPredicates<'tcx>,
 
     // A list of all obligations that have been registered with this

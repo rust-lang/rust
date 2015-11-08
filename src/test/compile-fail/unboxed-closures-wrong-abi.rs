@@ -35,7 +35,6 @@ fn b() {
 fn c() {
     let z = call_it_once(square, 22);
     //~^ ERROR not implemented
-    //~| ERROR not implemented
 }
 
 fn main() { }

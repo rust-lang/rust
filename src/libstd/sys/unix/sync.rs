@@ -40,6 +40,7 @@ extern {
     pub fn pthread_cond_signal(cond: *mut pthread_cond_t) -> libc::c_int;
     pub fn pthread_cond_broadcast(cond: *mut pthread_cond_t) -> libc::c_int;
     pub fn pthread_cond_destroy(cond: *mut pthread_cond_t) -> libc::c_int;
+    #[cfg_attr(target_os = "netbsd", link_name = "__gettimeofday50")]
     pub fn gettimeofday(tp: *mut libc::timeval,
                         tz: *mut libc::c_void) -> libc::c_int;
 
@@ -55,7 +56,6 @@ extern {
 #[cfg(any(target_os = "freebsd",
           target_os = "dragonfly",
           target_os = "bitrig",
-          target_os = "netbsd",
           target_os = "openbsd"))]
 mod os {
     use libc;
@@ -248,4 +248,68 @@ mod os {
         reserved: [ptr::null_mut(); 4],
     };
     pub const PTHREAD_MUTEX_RECURSIVE: libc::c_int = 1;
+}
+
+#[cfg(target_os = "netbsd")]
+mod os {
+    use libc;
+
+    // size of the type minus width of the magic and alignment field
+    #[cfg(target_arch = "x86_64")]
+    const __PTHREAD_MUTEX_SIZE__: usize = 48 - 4 - 8;
+
+    #[cfg(target_arch = "x86_64")]
+    const __PTHREAD_MUTEXATTR_SIZE__: usize = 16 - 8; // no magic field
+
+    #[cfg(target_arch = "x86_64")]
+    const __PTHREAD_COND_SIZE__: usize = 40 - 4 - 8;
+
+    #[cfg(target_arch = "x86_64")]
+    const __PTHREAD_RWLOCK_SIZE__: usize = 64 - 4 - 8;
+
+    const _PTHREAD_MUTEX_MAGIC_INIT: libc::c_uint = 0x33330003;
+    const _PTHREAD_COND_MAGIC_INIT: libc::c_uint = 0x55550005;
+    const _PTHREAD_RWLOCK_MAGIC_INIT: libc::c_uint = 0x99990009;
+
+    #[repr(C)]
+    pub struct pthread_mutex_t {
+        __magic: libc::c_uint,
+        __opaque: [u8; __PTHREAD_MUTEX_SIZE__],
+        __align: libc::c_longlong,
+    }
+    #[repr(C)]
+    pub struct pthread_mutexattr_t {
+        __opaque: [u8; __PTHREAD_MUTEXATTR_SIZE__],
+        __align: libc::c_longlong,
+    }
+    #[repr(C)]
+    pub struct pthread_cond_t {
+        __magic: libc::c_uint,
+        __opaque: [u8; __PTHREAD_COND_SIZE__],
+        __align: libc::c_longlong,
+    }
+    #[repr(C)]
+    pub struct pthread_rwlock_t {
+        __magic: libc::c_uint,
+        __opaque: [u8; __PTHREAD_RWLOCK_SIZE__],
+        __align: libc::c_longlong,
+    }
+
+    pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = pthread_mutex_t {
+        __magic: _PTHREAD_MUTEX_MAGIC_INIT,
+        __opaque: [0; __PTHREAD_MUTEX_SIZE__],
+        __align: 0,
+    };
+    pub const PTHREAD_COND_INITIALIZER: pthread_cond_t = pthread_cond_t {
+        __magic: _PTHREAD_COND_MAGIC_INIT,
+        __opaque: [0; __PTHREAD_COND_SIZE__],
+        __align: 0,
+    };
+    pub const PTHREAD_RWLOCK_INITIALIZER: pthread_rwlock_t = pthread_rwlock_t {
+        __magic: _PTHREAD_RWLOCK_MAGIC_INIT,
+        __opaque: [0; __PTHREAD_RWLOCK_SIZE__],
+        __align: 0,
+    };
+
+    pub const PTHREAD_MUTEX_RECURSIVE: libc::c_int = 2;
 }

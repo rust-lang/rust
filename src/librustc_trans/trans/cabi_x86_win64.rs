@@ -46,7 +46,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
                     2 => ArgType::direct(t, Some(Type::i16(ccx)), None, None),
                     4 => ArgType::direct(t, Some(Type::i32(ccx)), None, None),
                     8 => ArgType::direct(t, Some(Type::i64(ccx)), None, None),
-                    _ => ArgType::indirect(t, Some(Attribute::ByVal))
+                    _ => ArgType::indirect(t, None)
                 }
             }
             _ => {

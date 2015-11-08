@@ -39,7 +39,6 @@ use trans::type_of;
 use middle::traits;
 use middle::ty::{self, HasTypeFlags, Ty};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
-use rustc::front::map::{PathElem, PathName};
 use rustc_front::hir;
 use util::nodemap::{FnvHashMap, NodeMap};
 
@@ -167,11 +166,11 @@ pub fn return_type_is_void(ccx: &CrateContext, ty: Ty) -> bool {
 
 /// Generates a unique symbol based off the name given. This is used to create
 /// unique symbols for things like closures.
-pub fn gensym_name(name: &str) -> PathElem {
-    let num = token::gensym(name).usize();
+pub fn gensym_name(name: &str) -> ast::Name {
+    let num = token::gensym(name).0;
     // use one colon which will get translated to a period by the mangler, and
     // we're guaranteed that `num` is globally unique for this crate.
-    PathName(token::gensym(&format!("{}:{}", name, num)))
+    token::gensym(&format!("{}:{}", name, num))
 }
 
 /*
@@ -829,7 +828,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
                                                 !null_terminated as Bool);
 
         let gsym = token::gensym("str");
-        let sym = format!("str{}", gsym.usize());
+        let sym = format!("str{}", gsym.0);
         let g = declare::define_global(cx, &sym[..], val_ty(sc)).unwrap_or_else(||{
             cx.sess().bug(&format!("symbol `{}` is already defined", sym));
         });
@@ -1020,7 +1019,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                    trait_ref);
             ccx.sess().span_fatal(
                 span,
-                "reached the recursion limit during monomorphization");
+                "reached the recursion limit during monomorphization (selection ambiguity)");
         }
         Err(e) => {
             tcx.sess.span_bug(
@@ -1145,8 +1144,9 @@ pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }), ..}) => ty,
         _ => ctor_ty
     }.ty_adt_def().unwrap();
+    let inlined_vid_def_id = ccx.tcx().map.local_def_id(inlined_vid);
     adt_def.variants.iter().find(|v| {
-        DefId::local(inlined_vid) == v.did ||
+        inlined_vid_def_id == v.did ||
             ccx.external().borrow().get(&v.did) == Some(&Some(inlined_vid))
     }).unwrap_or_else(|| {
         ccx.sess().bug(&format!("no variant for {:?}::{}", adt_def, inlined_vid))

@@ -33,7 +33,7 @@ fn expand_mbe_matches(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
 
     let mac_expr = match TokenTree::parse(cx, &mbe_matcher[..], args) {
         Success(map) => {
-            match (&*map[&str_to_ident("matched")], &*map[&str_to_ident("pat")]) {
+            match (&*map[&str_to_ident("matched").name], &*map[&str_to_ident("pat").name]) {
                 (&MatchedNonterminal(NtExpr(ref matched_expr)),
                  &MatchedSeq(ref pats, seq_sp)) => {
                     let pats: Vec<P<Pat>> = pats.iter().map(|pat_nt|

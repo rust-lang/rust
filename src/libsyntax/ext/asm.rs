@@ -22,6 +22,7 @@ use feature_gate;
 use parse::token::{intern, InternedString};
 use parse::token;
 use ptr::P;
+use syntax::ast::AsmDialect;
 
 enum State {
     Asm,
@@ -65,7 +66,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let mut clobs = Vec::new();
     let mut volatile = false;
     let mut alignstack = false;
-    let mut dialect = ast::AsmAtt;
+    let mut dialect = AsmDialect::Att;
 
     let mut state = Asm;
 
@@ -178,7 +179,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 } else if option == "alignstack" {
                     alignstack = true;
                 } else if option == "intel" {
-                    dialect = ast::AsmIntel;
+                    dialect = AsmDialect::Intel;
                 } else {
                     cx.span_warn(p.last_span, "unrecognized option");
                 }

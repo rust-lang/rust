@@ -38,6 +38,7 @@ use slice::SliceConcatExt;
 use boxed::Box;
 
 pub use core::str::{FromStr, Utf8Error};
+#[allow(deprecated)]
 pub use core::str::{Lines, LinesAny, CharRange};
 pub use core::str::{Split, RSplit};
 pub use core::str::{SplitN, RSplitN};
@@ -505,8 +506,6 @@ impl str {
     ///
     /// # Examples
     /// ```
-    /// #![feature(str_split_at)]
-    ///
     /// let s = "Löwe 老虎 Léopard";
     /// let first_space = s.find(' ').unwrap_or(s.len());
     /// let (a, b) = s.split_at(first_space);
@@ -714,8 +713,7 @@ impl str {
     /// Returns `None` if it doesn't exist.
     ///
     /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines the
-    /// split.
+    /// determines if a character matches.
     ///
     /// # Examples
     ///
@@ -759,7 +757,7 @@ impl str {
     /// Returns `None` if it doesn't exist.
     ///
     /// The pattern can be a simple `&str`, `char`,
-    /// or a closure that determines the split.
+    /// or a closure that determines if a character matches.
     ///
     /// # Examples
     ///
@@ -869,6 +867,10 @@ impl str {
     /// ```rust,ignore
     /// assert_eq!(d, &["a", "b", "c"]);
     /// ```
+    ///
+    /// Use [`.split_whitespace()`][split_whitespace] for this behavior.
+    ///
+    /// [split_whitespace]: #method.split_whitespace
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
         core_str::StrExt::split(self, pat)
@@ -1095,7 +1097,7 @@ impl str {
     /// An iterator over the matches of a pattern within `self`.
     ///
     /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines the split.
+    /// determines if a character matches.
     /// Additional libraries might provide more complex patterns like
     /// regular expressions.
     ///
@@ -1128,7 +1130,7 @@ impl str {
     /// reverse order.
     ///
     /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines the split.
+    /// determines if a character matches.
     /// Additional libraries might provide more complex patterns like
     /// regular expressions.
     ///
@@ -1157,26 +1159,21 @@ impl str {
         core_str::StrExt::rmatches(self, pat)
     }
 
-    /// An iterator over the start and end indices of the disjoint matches
-    /// of a pattern within `self`.
+    /// An iterator over the disjoint matches of a pattern within `self` as well
+    /// as the index that the match starts at.
     ///
     /// For matches of `pat` within `self` that overlap, only the indices
-    /// corresponding to the first
-    /// match are returned.
+    /// corresponding to the first match are returned.
     ///
-    /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines
-    /// the split.
-    /// Additional libraries might provide more complex patterns like
-    /// regular expressions.
+    /// The pattern can be a simple `&str`, `char`, or a closure that determines
+    /// if a character matches. Additional libraries might provide more complex
+    /// patterns like regular expressions.
     ///
     /// # Iterator behavior
     ///
     /// The returned iterator will be double ended if the pattern allows a
-    /// reverse search
-    /// and forward/reverse search yields the same elements. This is true for,
-    /// eg, `char` but not
-    /// for `&str`.
+    /// reverse search and forward/reverse search yields the same elements. This
+    /// is true for, eg, `char` but not for `&str`.
     ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, `rmatch_indices()` can be used.
@@ -1186,43 +1183,36 @@ impl str {
     /// ```
     /// #![feature(str_match_indices)]
     ///
-    /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".match_indices("abc").collect();
-    /// assert_eq!(v, [(0, 3), (6, 9), (12, 15)]);
+    /// let v: Vec<_> = "abcXXXabcYYYabc".match_indices("abc").collect();
+    /// assert_eq!(v, [(0, "abc"), (6, "abc"), (12, "abc")]);
     ///
-    /// let v: Vec<(usize, usize)> = "1abcabc2".match_indices("abc").collect();
-    /// assert_eq!(v, [(1, 4), (4, 7)]);
+    /// let v: Vec<_> = "1abcabc2".match_indices("abc").collect();
+    /// assert_eq!(v, [(1, "abc"), (4, "abc")]);
     ///
-    /// let v: Vec<(usize, usize)> = "ababa".match_indices("aba").collect();
-    /// assert_eq!(v, [(0, 3)]); // only the first `aba`
+    /// let v: Vec<_> = "ababa".match_indices("aba").collect();
+    /// assert_eq!(v, [(0, "aba")]); // only the first `aba`
     /// ```
     #[unstable(feature = "str_match_indices",
                reason = "might have its iterator type changed",
                issue = "27743")]
-    // NB: Right now MatchIndices yields `(usize, usize)`, but it would
-    // be more consistent with `matches` and `char_indices` to return `(usize, &str)`
     pub fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
         core_str::StrExt::match_indices(self, pat)
     }
 
-    /// An iterator over the start and end indices of the disjoint matches of
-    /// a pattern within
-    /// `self`, yielded in reverse order.
+    /// An iterator over the disjoint matches of a pattern within `self`,
+    /// yielded in reverse order along with the index of the match.
     ///
     /// For matches of `pat` within `self` that overlap, only the indices
-    /// corresponding to the last
-    /// match are returned.
+    /// corresponding to the last match are returned.
     ///
-    /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines
-    /// the split.
-    /// Additional libraries might provide more complex patterns like
-    /// regular expressions.
+    /// The pattern can be a simple `&str`, `char`, or a closure that determines
+    /// if a character matches. Additional libraries might provide more complex
+    /// patterns like regular expressions.
     ///
     /// # Iterator behavior
     ///
-    /// The returned iterator requires that the pattern supports a
-    /// reverse search,
-    /// and it will be double ended if a forward/reverse search yields
+    /// The returned iterator requires that the pattern supports a reverse
+    /// search, and it will be double ended if a forward/reverse search yields
     /// the same elements.
     ///
     /// For iterating from the front, `match_indices()` can be used.
@@ -1232,20 +1222,18 @@ impl str {
     /// ```
     /// #![feature(str_match_indices)]
     ///
-    /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".rmatch_indices("abc").collect();
-    /// assert_eq!(v, [(12, 15), (6, 9), (0, 3)]);
+    /// let v: Vec<_> = "abcXXXabcYYYabc".rmatch_indices("abc").collect();
+    /// assert_eq!(v, [(12, "abc"), (6, "abc"), (0, "abc")]);
     ///
-    /// let v: Vec<(usize, usize)> = "1abcabc2".rmatch_indices("abc").collect();
-    /// assert_eq!(v, [(4, 7), (1, 4)]);
+    /// let v: Vec<_> = "1abcabc2".rmatch_indices("abc").collect();
+    /// assert_eq!(v, [(4, "abc"), (1, "abc")]);
     ///
-    /// let v: Vec<(usize, usize)> = "ababa".rmatch_indices("aba").collect();
-    /// assert_eq!(v, [(2, 5)]); // only the last `aba`
+    /// let v: Vec<_> = "ababa".rmatch_indices("aba").collect();
+    /// assert_eq!(v, [(2, "aba")]); // only the last `aba`
     /// ```
     #[unstable(feature = "str_match_indices",
                reason = "might have its iterator type changed",
                issue = "27743")]
-    // NB: Right now RMatchIndices yields `(usize, usize)`, but it would
-    // be more consistent with `rmatches` and `char_indices` to return `(usize, &str)`
     pub fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1295,7 +1283,7 @@ impl str {
     /// repeatedly removed.
     ///
     /// The pattern can be a simple `char`, or a closure that determines
-    /// the split.
+    /// if a character matches.
     ///
     /// # Examples
     ///
@@ -1325,7 +1313,7 @@ impl str {
     /// repeatedly removed.
     ///
     /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines the split.
+    /// determines if a character matches.
     ///
     /// # Examples
     ///
@@ -1345,7 +1333,7 @@ impl str {
     /// repeatedly removed.
     ///
     /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines the split.
+    /// determines if a character matches.
     ///
     /// # Examples
     ///
@@ -1418,10 +1406,10 @@ impl str {
     pub fn replace(&self, from: &str, to: &str) -> String {
         let mut result = String::new();
         let mut last_end = 0;
-        for (start, end) in self.match_indices(from) {
+        for (start, part) in self.match_indices(from) {
             result.push_str(unsafe { self.slice_unchecked(last_end, start) });
             result.push_str(to);
-            last_end = end;
+            last_end = start + part.len();
         }
         result.push_str(unsafe { self.slice_unchecked(last_end, self.len()) });
         result

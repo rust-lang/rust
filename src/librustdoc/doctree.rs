@@ -17,13 +17,13 @@ use syntax;
 use syntax::codemap::Span;
 use syntax::abi;
 use syntax::ast;
-use syntax::ast::{Ident, NodeId};
+use syntax::ast::{Name, NodeId};
 use syntax::attr;
 use syntax::ptr::P;
 use rustc_front::hir;
 
 pub struct Module {
-    pub name: Option<Ident>,
+    pub name: Option<Name>,
     pub attrs: Vec<ast::Attribute>,
     pub where_outer: Span,
     pub where_inner: Span,
@@ -48,7 +48,7 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn new(name: Option<Ident>) -> Module {
+    pub fn new(name: Option<Name>) -> Module {
         Module {
             name       : name,
             id: 0,
@@ -98,7 +98,7 @@ pub struct Struct {
     pub stab: Option<attr::Stability>,
     pub id: NodeId,
     pub struct_type: StructType,
-    pub name: Ident,
+    pub name: Name,
     pub generics: hir::Generics,
     pub attrs: Vec<ast::Attribute>,
     pub fields: Vec<hir::StructField>,
@@ -113,14 +113,13 @@ pub struct Enum {
     pub attrs: Vec<ast::Attribute>,
     pub id: NodeId,
     pub whence: Span,
-    pub name: Ident,
+    pub name: Name,
 }
 
 pub struct Variant {
-    pub name: Ident,
+    pub name: Name,
     pub attrs: Vec<ast::Attribute>,
-    pub kind: hir::VariantKind,
-    pub id: ast::NodeId,
+    pub def: P<hir::VariantData>,
     pub stab: Option<attr::Stability>,
     pub whence: Span,
 }
@@ -129,7 +128,7 @@ pub struct Function {
     pub decl: hir::FnDecl,
     pub attrs: Vec<ast::Attribute>,
     pub id: NodeId,
-    pub name: Ident,
+    pub name: Name,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
     pub unsafety: hir::Unsafety,
@@ -142,7 +141,7 @@ pub struct Function {
 pub struct Typedef {
     pub ty: P<hir::Ty>,
     pub gen: hir::Generics,
-    pub name: Ident,
+    pub name: Name,
     pub id: ast::NodeId,
     pub attrs: Vec<ast::Attribute>,
     pub whence: Span,
@@ -155,7 +154,7 @@ pub struct Static {
     pub type_: P<hir::Ty>,
     pub mutability: hir::Mutability,
     pub expr: P<hir::Expr>,
-    pub name: Ident,
+    pub name: Name,
     pub attrs: Vec<ast::Attribute>,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
@@ -166,7 +165,7 @@ pub struct Static {
 pub struct Constant {
     pub type_: P<hir::Ty>,
     pub expr: P<hir::Expr>,
-    pub name: Ident,
+    pub name: Name,
     pub attrs: Vec<ast::Attribute>,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
@@ -176,7 +175,7 @@ pub struct Constant {
 
 pub struct Trait {
     pub unsafety: hir::Unsafety,
-    pub name: Ident,
+    pub name: Name,
     pub items: Vec<P<hir::TraitItem>>, //should be TraitItem
     pub generics: hir::Generics,
     pub bounds: Vec<hir::TyParamBound>,
@@ -210,16 +209,16 @@ pub struct DefaultImpl {
 }
 
 pub struct Macro {
-    pub name: Ident,
+    pub name: Name,
     pub id: ast::NodeId,
     pub attrs: Vec<ast::Attribute>,
     pub whence: Span,
     pub stab: Option<attr::Stability>,
-    pub imported_from: Option<Ident>,
+    pub imported_from: Option<Name>,
 }
 
 pub struct ExternCrate {
-    pub name: Ident,
+    pub name: Name,
     pub path: Option<String>,
     pub vis: hir::Visibility,
     pub attrs: Vec<ast::Attribute>,
@@ -234,10 +233,10 @@ pub struct Import {
     pub whence: Span,
 }
 
-pub fn struct_type_from_def(sd: &hir::StructDef) -> StructType {
-    if sd.ctor_id.is_some() {
+pub fn struct_type_from_def(sd: &hir::VariantData) -> StructType {
+    if !sd.is_struct() {
         // We are in a tuple-struct
-        match sd.fields.len() {
+        match sd.fields().count() {
             0 => Unit,
             1 => Newtype,
             _ => Tuple

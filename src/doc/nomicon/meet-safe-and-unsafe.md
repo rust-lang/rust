@@ -26,7 +26,7 @@ do some really crazy unsafe things.
 
 Safe Rust is the *true* Rust programming language. If all you do is write Safe
 Rust, you will never have to worry about type-safety or memory-safety. You will
-never endure a null or dangling pointer, or any of that Undefined Behaviour
+never endure a null or dangling pointer, or any of that Undefined Behavior
 nonsense.
 
 *That's totally awesome.*
@@ -52,11 +52,11 @@ The only things that are different in Unsafe Rust are that you can:
 * Mutate statics
 
 That's it. The reason these operations are relegated to Unsafe is that misusing
-any of these things will cause the ever dreaded Undefined Behaviour. Invoking
-Undefined Behaviour gives the compiler full rights to do arbitrarily bad things
-to your program. You definitely *should not* invoke Undefined Behaviour.
+any of these things will cause the ever dreaded Undefined Behavior. Invoking
+Undefined Behavior gives the compiler full rights to do arbitrarily bad things
+to your program. You definitely *should not* invoke Undefined Behavior.
 
-Unlike C, Undefined Behaviour is pretty limited in scope in Rust. All the core
+Unlike C, Undefined Behavior is pretty limited in scope in Rust. All the core
 language cares about is preventing the following things:
 
 * Dereferencing null or dangling pointers
@@ -71,9 +71,9 @@ language cares about is preventing the following things:
 * Unwinding into another language
 * Causing a [data race][race]
 
-That's it. That's all the causes of Undefined Behaviour baked into Rust. Of
+That's it. That's all the causes of Undefined Behavior baked into Rust. Of
 course, unsafe functions and traits are free to declare arbitrary other
-constraints that a program must maintain to avoid Undefined Behaviour. However,
+constraints that a program must maintain to avoid Undefined Behavior. However,
 generally violations of these constraints will just transitively lead to one of
 the above problems. Some additional constraints may also derive from compiler
 intrinsics that make special assumptions about how code can be optimized.

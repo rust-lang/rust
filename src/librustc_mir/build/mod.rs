@@ -8,24 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hair::{self, Hair};
+use hair;
+use rustc::middle::region::CodeExtent;
+use rustc::middle::ty::Ty;
 use rustc_data_structures::fnv::FnvHashMap;
+use rustc_front::hir;
 use repr::*;
+use syntax::ast;
+use syntax::codemap::Span;
+use tcx::{Cx, PatNode};
 
-struct Builder<H:Hair> {
-    hir: H,
-    extents: FnvHashMap<H::CodeExtent, Vec<GraphExtent>>,
-    cfg: CFG<H>,
-    scopes: Vec<scope::Scope<H>>,
-    loop_scopes: Vec<scope::LoopScope<H>>,
-    unit_temp: Lvalue<H>,
-    var_decls: Vec<VarDecl<H>>,
-    var_indices: FnvHashMap<H::VarId, u32>,
-    temp_decls: Vec<TempDecl<H>>,
+struct Builder<'a, 'tcx: 'a> {
+    hir: Cx<'a, 'tcx>,
+    extents: FnvHashMap<CodeExtent, Vec<GraphExtent>>,
+    cfg: CFG<'tcx>,
+    scopes: Vec<scope::Scope<'tcx>>,
+    loop_scopes: Vec<scope::LoopScope>,
+    unit_temp: Lvalue<'tcx>,
+    var_decls: Vec<VarDecl<'tcx>>,
+    var_indices: FnvHashMap<ast::NodeId, u32>,
+    temp_decls: Vec<TempDecl<'tcx>>,
 }
 
-struct CFG<H:Hair> {
-    basic_blocks: Vec<BasicBlockData<H>>
+struct CFG<'tcx> {
+    basic_blocks: Vec<BasicBlockData<'tcx>>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -69,18 +75,18 @@ macro_rules! unpack {
 ///////////////////////////////////////////////////////////////////////////
 // construct() -- the main entry point for building MIR for a function
 
-pub fn construct<H:Hair>(mut hir: H,
-                        _span: H::Span,
-                        implicit_arguments: Vec<H::Ty>,
-                        explicit_arguments: Vec<(H::Ty, H::Pattern)>,
-                        argument_extent: H::CodeExtent,
-                        ast_block: H::Block)
-                        -> Mir<H> {
+pub fn construct<'a, 'tcx>(mut hir: Cx<'a, 'tcx>,
+                           _span: Span,
+                           implicit_arguments: Vec<Ty<'tcx>>,
+                           explicit_arguments: Vec<(Ty<'tcx>, PatNode<'tcx>)>,
+                           argument_extent: CodeExtent,
+                           ast_block: &'tcx hir::Block)
+                           -> Mir<'tcx> {
     let cfg = CFG { basic_blocks: vec![] };
 
     // it's handy to have a temporary of type `()` sometimes, so make
     // one from the start and keep it available
-    let temp_decls = vec![TempDecl::<H> { ty: hir.unit_ty() }];
+    let temp_decls = vec![TempDecl::<'tcx> { ty: hir.unit_ty() }];
     let unit_temp = Lvalue::Temp(0);
 
     let mut builder = Builder {
@@ -109,7 +115,7 @@ pub fn construct<H:Hair>(mut hir: H,
     builder.cfg.terminate(block, Terminator::Goto { target: END_BLOCK });
     builder.cfg.terminate(END_BLOCK, Terminator::Return);
 
-    Mir  {
+    Mir {
         basic_blocks: builder.cfg.basic_blocks,
         extents: builder.extents,
         var_decls: builder.var_decls,
@@ -118,14 +124,14 @@ pub fn construct<H:Hair>(mut hir: H,
     }
 }
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     fn args_and_body(&mut self,
                      mut block: BasicBlock,
-                     implicit_arguments: Vec<H::Ty>,
-                     explicit_arguments: Vec<(H::Ty, H::Pattern)>,
-                     argument_extent: H::CodeExtent,
-                     ast_block: H::Block)
-                     -> BlockAnd<Vec<ArgDecl<H>>>
+                     implicit_arguments: Vec<Ty<'tcx>>,
+                     explicit_arguments: Vec<(Ty<'tcx>, PatNode<'tcx>)>,
+                     argument_extent: CodeExtent,
+                     ast_block: &'tcx hir::Block)
+                     -> BlockAnd<Vec<ArgDecl<'tcx>>>
     {
         self.in_scope(argument_extent, block, |this| {
             let arg_decls = {
@@ -171,4 +177,3 @@ mod matches;
 mod misc;
 mod scope;
 mod stmt;
-

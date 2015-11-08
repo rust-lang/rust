@@ -170,19 +170,10 @@ RUST_LIB_FLAGS_ST3 += -C prefer-dynamic
 
 # Landing pads require a lot of codegen. We can get through bootstrapping faster
 # by not emitting them.
-RUSTFLAGS_STAGE0 += -Z no-landing-pads
 
-# Enable MIR to "always build" for crates where this works. This is
-# just temporary while MIR is being actively built up -- it's just a
-# poor man's unit testing infrastructure. Anyway we only want this for
-# stage1/stage2.
-define ADD_MIR_FLAG
-RUSTFLAGS1_$(1) += -Z always-build-mir
-RUSTFLAGS2_$(1) += -Z always-build-mir
-endef
-$(foreach crate,$(TARGET_CRATES),$(eval $(call ADD_MIR_FLAG,$(crate))))
-$(foreach crate,$(RUSTC_CRATES),$(eval $(call ADD_MIR_FLAG,$(crate))))
-$(foreach crate,$(HOST_CRATES),$(eval $(call ADD_MIR_FLAG,$(crate))))
+ifdef CFG_DISABLE_STAGE0_LANDING_PADS
+  RUSTFLAGS_STAGE0 += -Z no-landing-pads
+endif
 
 # platform-specific auto-configuration
 include $(CFG_SRC_DIR)mk/platform.mk

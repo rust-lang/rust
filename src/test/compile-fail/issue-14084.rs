@@ -12,8 +12,6 @@
 #![feature(placement_in_syntax)]
 
 fn main() {
-    box ( () ) 0;
+    in () { 0 };
     //~^ ERROR: the trait `core::ops::Placer<_>` is not implemented
-    //~| ERROR: the trait `core::ops::Placer<_>` is not implemented
-    //~| WARN deprecated syntax
 }

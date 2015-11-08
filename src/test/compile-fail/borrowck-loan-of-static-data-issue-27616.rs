@@ -23,7 +23,7 @@ fn evil(mut s: &'static mut String)
     let alias: &'static mut String = s;
     let inner: &str = &alias;
     // free value
-    *s = String::new(); //~ ERROR use of moved value
+    *s = String::new(); //~ ERROR cannot assign
     let _spray = "0wned".to_owned();
     // ... and then use it
     println!("{}", inner);

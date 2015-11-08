@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,8 +11,8 @@
 #[test]
 fn test_borrowed_clone() {
     let x = 5;
-    let y: &int = &x;
-    let z: &int = (&y).clone();
+    let y: &i32 = &x;
+    let z: &i32 = (&y).clone();
     assert_eq!(*z, 5);
 }
 
@@ -22,18 +22,4 @@ fn test_clone_from() {
     let mut b = box 10;
     b.clone_from(&a);
     assert_eq!(*b, 5);
-}
-
-#[test]
-fn test_extern_fn_clone() {
-    trait Empty {}
-    impl Empty for int {}
-
-    fn test_fn_a() -> f64 { 1.0 }
-    fn test_fn_b<T: Empty>(x: T) -> T { x }
-    fn test_fn_c(_: int, _: f64, _: int, _: int, _: int) {}
-
-    let _ = test_fn_a.clone();
-    let _ = test_fn_b::<int>.clone();
-    let _ = test_fn_c.clone();
 }

@@ -455,6 +455,8 @@ impl<T> [T] {
     /// the index `mid` itself) and the second will contain all
     /// indices from `[mid, len)` (excluding the index `len` itself).
     ///
+    /// # Panics
+    ///
     /// Panics if `mid > len`.
     ///
     /// # Examples

@@ -17,4 +17,6 @@ extern crate rustdoc as this;
 #[cfg(rustc)]
 extern crate rustc_driver as this;
 
-fn main() { this::main() }
+fn main() {
+    this::main()
+}

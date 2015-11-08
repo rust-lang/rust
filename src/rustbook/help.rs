@@ -36,7 +36,7 @@ impl Subcommand for Help {
 }
 
 pub fn usage() {
-    println!("Usage: rust-book <command> [<args>]");
+    println!("Usage: rustbook <command> [<args>]");
     println!("");
     println!("The <command> must be one of:");
     println!("  help    Print this message.");

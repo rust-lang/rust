@@ -60,10 +60,12 @@ use lint::LintId;
 
 mod bad_style;
 mod builtin;
+mod types;
 mod unused;
 
 use bad_style::*;
 use builtin::*;
+use types::*;
 use unused::*;
 
 /// Tell the `LintStore` about all the built-in lints (the ones
@@ -144,7 +146,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     add_lint_group!(sess, "unused",
                     UNUSED_IMPORTS, UNUSED_VARIABLES, UNUSED_ASSIGNMENTS, DEAD_CODE,
                     UNUSED_MUT, UNREACHABLE_CODE, UNUSED_MUST_USE,
-                    UNUSED_UNSAFE, PATH_STATEMENTS);
+                    UNUSED_UNSAFE, PATH_STATEMENTS, UNUSED_ATTRIBUTES);
 
     // We have one lint pass defined specially
     store.register_late_pass(sess, false, box lint::GatherNodeLevels);

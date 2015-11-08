@@ -339,7 +339,26 @@ fn main() { // foo
     if let SomeEnum::Strings(..) = s7 {
         println!("hello!");
     }
+
+    for i in 0..5 {
+        foo_foo(i);
+    }
+
+    if let Some(x) = None {
+        foo_foo(x);
+    }
+
+    if false {
+    } else if let Some(y) = None {
+        foo_foo(y);
+    }
+
+    while let Some(z) = None {
+        foo_foo(z);
+    }
 }
+
+fn foo_foo(_: i32) {}
 
 impl Iterator for nofields {
     type Item = (usize, usize);

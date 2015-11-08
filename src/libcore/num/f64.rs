@@ -71,7 +71,7 @@ pub const INFINITY: f64 = 1.0_f64/0.0_f64;
 #[allow(missing_docs)]
 pub const NEG_INFINITY: f64 = -1.0_f64/0.0_f64;
 
-/// Basic mathematial constants.
+/// Basic mathematical constants.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.

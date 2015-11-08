@@ -2,9 +2,10 @@
 
 ## Building
 
-To generate all the docs, just run `make docs` from the root of the repository.
-This will convert the distributed Markdown docs to HTML and generate HTML doc
-for the 'std' and 'extra' libraries.
+To generate all the docs, follow the "Building Documentation" instructions in
+the README in the root of the repository. This will convert the distributed
+Markdown docs to HTML and generate HTML doc for the books, 'std' and 'extra'
+libraries.
 
 To generate HTML documentation from one source file/crate, do something like:
 

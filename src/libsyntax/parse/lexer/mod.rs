@@ -1385,8 +1385,9 @@ pub fn is_doc_comment(s: &str) -> bool {
 }
 
 pub fn is_block_doc_comment(s: &str) -> bool {
-    let res = (s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*')
-              || s.starts_with("/*!");
+    let res = ((s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*')
+               || s.starts_with("/*!"))
+              && s.len() >= 5; // Prevent `/**/` from being parsed as a doc comment
     debug!("is {:?} a doc comment? {}", s, res);
     res
 }

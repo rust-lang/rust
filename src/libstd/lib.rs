@@ -137,7 +137,7 @@
 //! not.
 //!
 //! Slices can only be handled through some kind of *pointer*, and as
-//! such come in many flavours such as:
+//! such come in many flavors such as:
 //!
 //! * `&[T]` - *shared slice*
 //! * `&mut [T]` - *mutable slice*
@@ -199,11 +199,17 @@
        test(no_crate_inject, attr(deny(warnings))),
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
+// SNAP 1af31d4
+#![allow(unused_features)]
+// SNAP 1af31d4
+#![allow(unused_attributes)]
+
 #![feature(alloc)]
 #![feature(allow_internal_unstable)]
 #![feature(associated_consts)]
 #![feature(borrow_state)]
 #![feature(box_syntax)]
+#![feature(cfg_target_vendor)]
 #![feature(char_from_unchecked)]
 #![feature(char_internals)]
 #![feature(clone_from_slice)]
@@ -240,6 +246,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
+#![feature(dropck_parametricity)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(decode_utf16)]
 #![feature(unwind_attributes)]
@@ -248,8 +255,8 @@
 #![feature(wrapping)]
 #![feature(zero_one)]
 #![cfg_attr(windows, feature(str_utf16))]
-#![cfg_attr(test, feature(float_from_str_radix, range_inclusive, float_extras, hash_default))]
-#![cfg_attr(test, feature(test, rustc_private, float_consts))]
+#![cfg_attr(test, feature(float_from_str_radix, range_inclusive, float_extras))]
+#![cfg_attr(test, feature(test, rustc_private))]
 #![cfg_attr(target_env = "msvc", feature(link_args))]
 
 // Don't link to std. We are std.

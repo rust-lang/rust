@@ -50,7 +50,7 @@ use syntax::codemap::Span;
 use std::cmp::Ordering;
 
 pub fn get_simple_intrinsic(ccx: &CrateContext, item: &hir::ForeignItem) -> Option<ValueRef> {
-    let name = match &*item.ident.name.as_str() {
+    let name = match &*item.name.as_str() {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
         "powif32" => "llvm.powi.f32",
@@ -135,7 +135,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 
             if transmute_restriction.original_from != transmute_restriction.substituted_from {
                 span_transmute_size_error(ccx.sess(), transmute_restriction.span,
-                    &format!("transmute called on types with potentially different sizes: \
+                    &format!("transmute called with differently sized types: \
                               {} (could be {} bit{}) to {} (could be {} bit{})",
                              transmute_restriction.original_from,
                              from_type_size as usize,
@@ -145,7 +145,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
                              if to_type_size == 1 {""} else {"s"}));
             } else {
                 span_transmute_size_error(ccx.sess(), transmute_restriction.span,
-                    &format!("transmute called on types with different sizes: \
+                    &format!("transmute called with differently sized types: \
                               {} ({} bit{}) to {} ({} bit{})",
                              transmute_restriction.original_from,
                              from_type_size as usize,
@@ -185,7 +185,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         _ => panic!("expected bare_fn in trans_intrinsic_call")
     };
     let foreign_item = tcx.map.expect_foreign_item(node);
-    let name = foreign_item.ident.name.as_str();
+    let name = foreign_item.name.as_str();
 
     // For `transmute` we can just trans the input expr directly into dest
     if name == "transmute" {
@@ -931,7 +931,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, _) => {
             let intr = match Intrinsic::find(tcx, &name) {
                 Some(intr) => intr,
-                None => ccx.sess().span_bug(foreign_item.span, "unknown intrinsic"),
+                None => ccx.sess().span_bug(foreign_item.span,
+                                            &format!("unknown intrinsic '{}'", name)),
             };
             fn one<T>(x: Vec<T>) -> T {
                 assert_eq!(x.len(), 1);
@@ -1220,8 +1221,8 @@ fn try_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 // MSVC's definition of the `rust_try` function. The exact implementation here
 // is a little different than the GNU (standard) version below, not only because
 // of the personality function but also because of the other fiddly bits about
-// SEH. LLVM also currently requires us to structure this a very particular way
-// as explained below.
+// SEH. LLVM also currently requires us to structure this in a very particular
+// way as explained below.
 //
 // Like with the GNU version we generate a shim wrapper
 fn trans_msvc_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,

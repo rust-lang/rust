@@ -14,7 +14,8 @@
 #![feature(foo)] //~ ERROR unused or unknown feature
 
 extern crate lint_output_format; //~ ERROR use of unstable library feature
-use lint_output_format::{foo, bar};
+use lint_output_format::{foo, bar}; //~ ERROR use of unstable library feature
+//~^ WARNING use of deprecated item: text,
 
 fn main() {
     let _x = foo(); //~ WARNING #[warn(deprecated)] on by default

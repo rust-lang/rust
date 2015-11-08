@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Common API for all rust-book subcommands.
+//! Common API for all rustbook subcommands.
 
 use error::CliResult;
 use error::CommandResult;

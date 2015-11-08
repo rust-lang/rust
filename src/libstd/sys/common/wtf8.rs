@@ -146,13 +146,13 @@ impl fmt::Debug for Wtf8Buf {
 }
 
 impl Wtf8Buf {
-    /// Creates an new, empty WTF-8 string.
+    /// Creates a new, empty WTF-8 string.
     #[inline]
     pub fn new() -> Wtf8Buf {
         Wtf8Buf { bytes: Vec::new() }
     }
 
-    /// Creates an new, empty WTF-8 string with pre-allocated capacity for `n` bytes.
+    /// Creates a new, empty WTF-8 string with pre-allocated capacity for `n` bytes.
     #[inline]
     pub fn with_capacity(n: usize) -> Wtf8Buf {
         Wtf8Buf { bytes: Vec::with_capacity(n) }

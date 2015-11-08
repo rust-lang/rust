@@ -102,7 +102,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
     fn visit_block(&mut self, block: &hir::Block) {
         let old_unsafe_context = self.unsafe_context;
         match block.rules {
-            hir::DefaultBlock => {}
             hir::UnsafeBlock(source) => {
                 // By default only the outermost `unsafe` block is
                 // "used" and so nested unsafe blocks are pointless
@@ -131,6 +130,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 self.unsafe_context.push_unsafe_count =
                     self.unsafe_context.push_unsafe_count.checked_sub(1).unwrap();
             }
+            hir::DefaultBlock | hir::PushUnstableBlock | hir:: PopUnstableBlock => {}
         }
 
         visit::walk_block(self, block);
@@ -151,7 +151,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 }
             }
             hir::ExprCall(ref base, _) => {
-                let base_type = self.tcx.node_id_to_type(base.id);
+                let base_type = self.tcx.expr_ty_adjusted(base);
                 debug!("effect: call case, base type is {:?}",
                         base_type);
                 if type_is_unsafe_function(base_type) {
@@ -159,7 +159,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 }
             }
             hir::ExprUnary(hir::UnDeref, ref base) => {
-                let base_type = self.tcx.node_id_to_type(base.id);
+                let base_type = self.tcx.expr_ty_adjusted(base);
                 debug!("effect: unary case, base type is {:?}",
                         base_type);
                 if let ty::TyRawPtr(_) = base_type.sty {

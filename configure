@@ -578,6 +578,7 @@ opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
 opt llvm-static-stdcpp 0 "statically link to libstdc++ for LLVM"
 opt rpath 0 "build rpaths into rustc itself"
+opt stage0-landing-pads 1 "enable landing pads during bootstrap with stage0"
 # This is used by the automation to produce single-target nightlies
 opt dist-host-only 0 "only install bins for the host architecture"
 opt inject-std-version 1 "inject the current compiler version of libstd into programs"
@@ -766,8 +767,6 @@ probe CFG_ANTLR4           antlr4
 probe CFG_GRUN             grun
 probe CFG_FLEX             flex
 probe CFG_BISON            bison
-probe CFG_PANDOC           pandoc
-probe CFG_XELATEX          xelatex
 probe CFG_GDB              gdb
 probe CFG_LLDB             lldb
 
@@ -825,26 +824,6 @@ fi
 step_msg "looking for target specific programs"
 
 probe CFG_ADB        adb
-
-if [ -n "$CFG_PANDOC" ]
-then
-    # Extract "MAJOR MINOR" from Pandoc's version number
-    PV_MAJOR_MINOR=$(pandoc --version | grep '^pandoc' |
-        sed -E 's/pandoc(.exe)? ([0-9]+)\.([0-9]+).*/\2 \3/')
-
-    MIN_PV_MAJOR="1"
-    MIN_PV_MINOR="9"
-
-    # these patterns are shell globs, *not* regexps
-    PV_MAJOR=${PV_MAJOR_MINOR% *}
-    PV_MINOR=${PV_MAJOR_MINOR#* }
-
-    if [ "$PV_MAJOR" -lt "$MIN_PV_MAJOR" ] || [ "$PV_MINOR" -lt "$MIN_PV_MINOR" ]
-    then
-        step_msg "pandoc $PV_MAJOR.$PV_MINOR is too old. Need at least $MIN_PV_MAJOR.$MIN_PV_MINOR. Disabling"
-        BAD_PANDOC=1
-    fi
-fi
 
 BIN_SUF=
 if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ]
@@ -1293,6 +1272,12 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
             putvar CFG_MSVC_LINK_${bits}
             putvar CFG_MSVC_INCLUDE_PATH_${bits}
             putvar CFG_MSVC_LIB_PATH_${bits}
+            ;;
+
+        *-rumprun-netbsd)
+            step_msg "targeting rumprun-netbsd, disabling jemalloc"
+            CFG_DISABLE_JEMALLOC=1
+            putvar CFG_DISABLE_JEMALLOC
             ;;
 
         *)
@@ -1768,12 +1753,6 @@ then
     putvar CFG_CCACHE_BASEDIR
 fi
 
-
-if [ -n $BAD_PANDOC ]
-then
-    CFG_PANDOC=
-    putvar CFG_PANDOC
-fi
 
 putvar CFG_LLVM_SRC_DIR
 

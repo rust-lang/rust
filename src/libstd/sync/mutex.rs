@@ -13,7 +13,9 @@ use prelude::v1::*;
 use cell::UnsafeCell;
 use fmt;
 use marker;
+use mem;
 use ops::{Deref, DerefMut};
+use ptr;
 use sys_common::mutex as sys;
 use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 
@@ -243,14 +245,61 @@ impl<T: ?Sized> Mutex<T> {
     pub fn is_poisoned(&self) -> bool {
         self.inner.poison.get()
     }
+
+    /// Consumes this mutex, returning the underlying data.
+    ///
+    /// # Failure
+    ///
+    /// If another user of this mutex panicked while holding the mutex, then
+    /// this call will return an error instead.
+    #[unstable(feature = "mutex_into_inner", reason = "recently added", issue = "28968")]
+    pub fn into_inner(self) -> LockResult<T> where T: Sized {
+        // We know statically that there are no outstanding references to
+        // `self` so there's no need to lock the inner StaticMutex.
+        //
+        // To get the inner value, we'd like to call `data.into_inner()`,
+        // but because `Mutex` impl-s `Drop`, we can't move out of it, so
+        // we'll have to destructure it manually instead.
+        unsafe {
+            // Like `let Mutex { inner, data } = self`.
+            let (inner, data) = {
+                let Mutex { ref inner, ref data } = self;
+                (ptr::read(inner), ptr::read(data))
+            };
+            mem::forget(self);
+            inner.lock.destroy();  // Keep in sync with the `Drop` impl.
+
+            poison::map_result(inner.poison.borrow(), |_| data.into_inner())
+        }
+    }
+
+    /// Returns a mutable reference to the underlying data.
+    ///
+    /// Since this call borrows the `Mutex` mutably, no actual locking needs to
+    /// take place---the mutable borrow statically guarantees no locks exist.
+    ///
+    /// # Failure
+    ///
+    /// If another user of this mutex panicked while holding the mutex, then
+    /// this call will return an error instead.
+    #[unstable(feature = "mutex_get_mut", reason = "recently added", issue = "28968")]
+    pub fn get_mut(&mut self) -> LockResult<&mut T> {
+        // We know statically that there are no other references to `self`, so
+        // there's no need to lock the inner StaticMutex.
+        let data = unsafe { &mut *self.data.get() };
+        poison::map_result(self.inner.poison.borrow(), |_| data )
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Drop for Mutex<T> {
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         // This is actually safe b/c we know that there is no further usage of
         // this mutex (it's up to the user to arrange for a mutex to get
         // dropped, that's not our job)
+        //
+        // IMPORTANT: This code must be kept in sync with `Mutex::into_inner`.
         unsafe { self.inner.lock.destroy() }
     }
 }
@@ -371,9 +420,13 @@ mod tests {
 
     use sync::mpsc::channel;
     use sync::{Arc, Mutex, StaticMutex, Condvar};
+    use sync::atomic::{AtomicUsize, Ordering};
     use thread;
 
     struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
+
+    #[derive(Eq, PartialEq, Debug)]
+    struct NonCopy(i32);
 
     unsafe impl<T: Send> Send for Packet<T> {}
     unsafe impl<T> Sync for Packet<T> {}
@@ -433,6 +486,69 @@ mod tests {
     fn try_lock() {
         let m = Mutex::new(());
         *m.try_lock().unwrap() = ();
+    }
+
+    #[test]
+    fn test_into_inner() {
+        let m = Mutex::new(NonCopy(10));
+        assert_eq!(m.into_inner().unwrap(), NonCopy(10));
+    }
+
+    #[test]
+    fn test_into_inner_drop() {
+        struct Foo(Arc<AtomicUsize>);
+        impl Drop for Foo {
+            fn drop(&mut self) {
+                self.0.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+        let num_drops = Arc::new(AtomicUsize::new(0));
+        let m = Mutex::new(Foo(num_drops.clone()));
+        assert_eq!(num_drops.load(Ordering::SeqCst), 0);
+        {
+            let _inner = m.into_inner().unwrap();
+            assert_eq!(num_drops.load(Ordering::SeqCst), 0);
+        }
+        assert_eq!(num_drops.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn test_into_inner_poison() {
+        let m = Arc::new(Mutex::new(NonCopy(10)));
+        let m2 = m.clone();
+        let _ = thread::spawn(move || {
+            let _lock = m2.lock().unwrap();
+            panic!("test panic in inner thread to poison mutex");
+        }).join();
+
+        assert!(m.is_poisoned());
+        match Arc::try_unwrap(m).unwrap().into_inner() {
+            Err(e) => assert_eq!(e.into_inner(), NonCopy(10)),
+            Ok(x) => panic!("into_inner of poisoned Mutex is Ok: {:?}", x),
+        }
+    }
+
+    #[test]
+    fn test_get_mut() {
+        let mut m = Mutex::new(NonCopy(10));
+        *m.get_mut().unwrap() = NonCopy(20);
+        assert_eq!(m.into_inner().unwrap(), NonCopy(20));
+    }
+
+    #[test]
+    fn test_get_mut_poison() {
+        let m = Arc::new(Mutex::new(NonCopy(10)));
+        let m2 = m.clone();
+        let _ = thread::spawn(move || {
+            let _lock = m2.lock().unwrap();
+            panic!("test panic in inner thread to poison mutex");
+        }).join();
+
+        assert!(m.is_poisoned());
+        match Arc::try_unwrap(m).unwrap().get_mut() {
+            Err(e) => assert_eq!(*e.into_inner(), NonCopy(10)),
+            Ok(x) => panic!("get_mut of poisoned Mutex is Ok: {:?}", x),
+        }
     }
 
     #[test]

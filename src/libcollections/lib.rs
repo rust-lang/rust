@@ -32,12 +32,19 @@
 #![allow(trivial_casts)]
 #![cfg_attr(test, allow(deprecated))] // rand
 
+// SNAP 1af31d4
+#![allow(unused_features)]
+// SNAP 1af31d4
+#![allow(unused_attributes)]
+
 #![feature(alloc)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
 #![feature(core_slice_ext)]
 #![feature(core_str_ext)]
+#![feature(fmt_internals)]
+#![feature(fmt_radix)]
 #![feature(heap_api)]
 #![feature(iter_order)]
 #![feature(iter_arith)]
@@ -47,6 +54,8 @@
 #![feature(oom)]
 #![feature(pattern)]
 #![feature(ptr_as_ref)]
+#![feature(ref_slice)]
+#![feature(slice_bytes)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(step_by)]
@@ -55,10 +64,11 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
+#![feature(dropck_parametricity)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(decode_utf16)]
 #![feature(utf8_error)]
-#![cfg_attr(test, feature(rand, test))]
+#![cfg_attr(test, feature(clone_from_slice, rand, test))]
 
 #![feature(no_std)]
 #![no_std]

@@ -41,8 +41,8 @@ Some examples of unsafe functions:
 
 * `slice::get_unchecked` will perform unchecked indexing, allowing memory
   safety to be freely violated.
-* `ptr::offset` is an intrinsic that invokes Undefined Behaviour if it is
-  not "in bounds" as defined by LLVM.
+* every raw pointer to sized type has intrinsic `offset` method that invokes
+  Undefined Behaviour if it is not "in bounds" as defined by LLVM.
 * `mem::transmute` reinterprets some value as having the given type,
   bypassing type safety in arbitrary ways. (see [conversions] for details)
 * All FFI functions are `unsafe` because they can do arbitrary things.
@@ -59,9 +59,9 @@ As of Rust 1.0 there are exactly two unsafe traits:
 The need for unsafe traits boils down to the fundamental property of safe code:
 
 **No matter how completely awful Safe code is, it can't cause Undefined
-Behaviour.**
+Behavior.**
 
-This means that Unsafe Rust, **the royal vanguard of Undefined Behaviour**, has to be
+This means that Unsafe Rust, **the royal vanguard of Undefined Behavior**, has to be
 *super paranoid* about generic safe code. To be clear, Unsafe Rust is totally free to trust
 specific safe code. Anything else would degenerate into infinite spirals of
 paranoid despair. In particular it's generally regarded as ok to trust the standard library

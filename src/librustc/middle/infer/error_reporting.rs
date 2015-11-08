@@ -284,7 +284,7 @@ trait ErrorReportingHelpers<'tcx> {
                                 decl: &hir::FnDecl,
                                 unsafety: hir::Unsafety,
                                 constness: hir::Constness,
-                                ident: ast::Ident,
+                                name: ast::Name,
                                 opt_explicit_self: Option<&hir::ExplicitSelf_>,
                                 generics: &hir::Generics,
                                 span: Span);
@@ -978,7 +978,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     match item.node {
                         hir::ItemFn(ref fn_decl, unsafety, constness, _, ref gen, _) => {
                             Some((fn_decl, gen, unsafety, constness,
-                                  item.ident, None, item.span))
+                                  item.name, None, item.span))
                         },
                         _ => None
                     }
@@ -990,7 +990,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                   &sig.generics,
                                   sig.unsafety,
                                   sig.constness,
-                                  item.ident,
+                                  item.name,
                                   Some(&sig.explicit_self.node),
                                   item.span))
                         }
@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                   &sig.generics,
                                   sig.unsafety,
                                   sig.constness,
-                                  item.ident,
+                                  item.name,
                                   Some(&sig.explicit_self.node),
                                   item.span))
                         }
@@ -1015,12 +1015,12 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             },
             None => None
         };
-        let (fn_decl, generics, unsafety, constness, ident, expl_self, span)
+        let (fn_decl, generics, unsafety, constness, name, expl_self, span)
                                     = node_inner.expect("expect item fn");
         let rebuilder = Rebuilder::new(self.tcx, fn_decl, expl_self,
                                        generics, same_regions, &life_giver);
         let (fn_decl, expl_self, generics) = rebuilder.rebuild();
-        self.give_expl_lifetime_param(&fn_decl, unsafety, constness, ident,
+        self.give_expl_lifetime_param(&fn_decl, unsafety, constness, name,
                                       expl_self.as_ref(), &generics, span);
     }
 }
@@ -1127,7 +1127,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                 names.push(lt_name);
             }
             names.sort();
-            let name = token::str_to_ident(&names[0]).name;
+            let name = token::intern(&names[0]);
             return (name_to_dummy_lifetime(name), Kept);
         }
         return (self.life_giver.give_lifetime(), Fresh);
@@ -1198,7 +1198,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                                                       lifetime,
                                                       region_names);
             hir::TyParam {
-                ident: ty_param.ident,
+                name: ty_param.name,
                 id: ty_param.id,
                 bounds: bounds,
                 default: ty_param.default.clone(),
@@ -1541,7 +1541,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                 let new_bindings = data.bindings.map(|b| {
                     P(hir::TypeBinding {
                         id: b.id,
-                        ident: b.ident,
+                        name: b.name,
                         ty: self.rebuild_arg_ty_or_output(&*b.ty,
                                                           lifetime,
                                                           anon_nums,
@@ -1576,11 +1576,11 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                                 decl: &hir::FnDecl,
                                 unsafety: hir::Unsafety,
                                 constness: hir::Constness,
-                                ident: ast::Ident,
+                                name: ast::Name,
                                 opt_explicit_self: Option<&hir::ExplicitSelf_>,
                                 generics: &hir::Generics,
                                 span: Span) {
-        let suggested_fn = pprust::fun_to_string(decl, unsafety, constness, ident,
+        let suggested_fn = pprust::fun_to_string(decl, unsafety, constness, name,
                                                  opt_explicit_self, generics);
         let msg = format!("consider using an explicit lifetime \
                            parameter as shown: {}", suggested_fn);
@@ -1938,8 +1938,7 @@ impl LifeGiver {
             let mut s = String::from("'");
             s.push_str(&num_to_string(self.counter.get()));
             if !self.taken.contains(&s) {
-                lifetime = name_to_dummy_lifetime(
-                                    token::str_to_ident(&s[..]).name);
+                lifetime = name_to_dummy_lifetime(token::intern(&s[..]));
                 self.generated.borrow_mut().push(lifetime);
                 break;
             }

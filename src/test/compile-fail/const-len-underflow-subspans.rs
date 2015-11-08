@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that an constant-evaluation underflow highlights the correct
+// Check that a constant-evaluation underflow highlights the correct
 // spot (where the underflow occurred).
 
 const ONE: usize = 1;

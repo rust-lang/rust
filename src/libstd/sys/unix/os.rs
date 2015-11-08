@@ -187,10 +187,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         use libc::funcs::bsd44::*;
         use libc::consts::os::extra::*;
-        let mut mib = vec![CTL_KERN as c_int,
-                           KERN_PROC as c_int,
-                           KERN_PROC_PATHNAME as c_int,
-                           -1 as c_int];
+        let mut mib = [CTL_KERN as c_int,
+                       KERN_PROC as c_int,
+                       KERN_PROC_PATHNAME as c_int,
+                       -1 as c_int];
         let mut sz: libc::size_t = 0;
         let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
                          ptr::null_mut(), &mut sz, ptr::null_mut(),
@@ -213,7 +213,12 @@ pub fn current_exe() -> io::Result<PathBuf> {
     ::fs::read_link("/proc/curproc/file")
 }
 
-#[cfg(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"))]
+#[cfg(target_os = "netbsd")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    ::fs::read_link("/proc/curproc/exe")
+}
+
+#[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     use sync::StaticMutex;
     static LOCK: StaticMutex = StaticMutex::new();
@@ -338,7 +343,7 @@ pub fn args() -> Args {
         let args = objc_msgSend(info, arguments_sel);
 
         let cnt: usize = mem::transmute(objc_msgSend(args, count_sel));
-        for i in (0..cnt) {
+        for i in 0..cnt {
             let tmp = objc_msgSend(args, object_at_sel, i);
             let utf_c_str: *const libc::c_char =
                 mem::transmute(objc_msgSend(tmp, utf8_sel));

@@ -245,7 +245,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                 let pat_ty = cx.tcx.pat_ty(p);
                 if let ty::TyEnum(edef, _) = pat_ty.sty {
                     let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
-                    if let Some(DefLocal(_)) = def {
+                    if let Some(DefLocal(..)) = def {
                         if edef.variants.iter().any(|variant|
                             variant.name == ident.node.name
                                 && variant.kind() == VariantKind::Unit
@@ -281,11 +281,10 @@ fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
                 Ok(_) => {}
 
                 Err(err) => {
-                    let subspan = p.span.lo <= err.span.lo && err.span.hi <= p.span.hi;
                     span_err!(cx.tcx.sess, err.span, E0471,
                               "constant evaluation error: {}",
                               err.description());
-                    if !subspan {
+                    if !p.span.contains(err.span) {
                         cx.tcx.sess.span_note(p.span,
                                               "in pattern here")
                     }
@@ -519,14 +518,14 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
 
         ty::TyEnum(adt, _) | ty::TyStruct(adt, _)  => {
             let v = adt.variant_of_ctor(ctor);
-            if let VariantKind::Dict = v.kind() {
+            if let VariantKind::Struct = v.kind() {
                 let field_pats: Vec<_> = v.fields.iter()
                     .zip(pats)
                     .filter(|&(_, ref pat)| pat.node != hir::PatWild(hir::PatWildSingle))
                     .map(|(field, pat)| Spanned {
                         span: DUMMY_SP,
                         node: hir::FieldPat {
-                            ident: ast::Ident::new(field.name),
+                            name: field.name,
                             pat: pat,
                             is_shorthand: false,
                         }
@@ -910,7 +909,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             let def_variant = adt.variant_of_def(def);
             if variant.did == def_variant.did {
                 Some(variant.fields.iter().map(|sf| {
-                    match pattern_fields.iter().find(|f| f.node.ident.name == sf.name) {
+                    match pattern_fields.iter().find(|f| f.node.name == sf.name) {
                         Some(ref f) => &*f.node.pat,
                         _ => DUMMY_WILD_PAT
                     }

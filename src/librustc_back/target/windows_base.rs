@@ -23,6 +23,10 @@ pub fn opts() -> TargetOptions {
         exe_suffix: ".exe".to_string(),
         staticlib_prefix: "".to_string(),
         staticlib_suffix: ".lib".to_string(),
+        // Unfortunately right now passing -nodefaultlibs to gcc on windows
+        // doesn't work so hot (in terms of native dependencies). This flag
+        // should hopefully be removed one day though!
+        no_default_libraries: false,
         is_like_windows: true,
         archive_format: "gnu".to_string(),
         pre_link_args: vec!(
@@ -60,7 +64,7 @@ pub fn opts() -> TargetOptions {
             // Always enable DEP (NX bit) when it is available
             "-Wl,--nxcompat".to_string(),
         ),
-        exe_allocation_crate: super::best_allocator(),
+        exe_allocation_crate: super::maybe_jemalloc(),
 
         .. Default::default()
     }

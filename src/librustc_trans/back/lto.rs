@@ -15,6 +15,7 @@ use llvm;
 use llvm::archive_ro::ArchiveRO;
 use llvm::{ModuleRef, TargetMachineRef, True, False};
 use rustc::util::common::time;
+use rustc::util::common::path2cstr;
 use back::write::{ModuleConfig, with_llvm_pmb};
 
 use libc;
@@ -24,7 +25,9 @@ use std::ffi::CString;
 
 pub fn run(sess: &session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[String],
-           config: &ModuleConfig) {
+           config: &ModuleConfig,
+           name_extra: &str,
+           output_names: &config::OutputFilenames) {
     if sess.opts.cg.prefer_dynamic {
         sess.err("cannot prefer dynamic linking when performing LTO");
         sess.note("only 'staticlib' and 'bin' outputs are supported with LTO");
@@ -121,6 +124,14 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     if sess.no_landing_pads() {
         unsafe {
             llvm::LLVMRustMarkAllFunctionsNounwind(llmod);
+        }
+    }
+
+    if sess.opts.cg.save_temps {
+        let path = output_names.with_extension(&format!("{}.no-opt.lto.bc", name_extra));
+        let cstr = path2cstr(&path);
+        unsafe {
+            llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
         }
     }
 

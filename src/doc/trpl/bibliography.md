@@ -61,8 +61,9 @@ Language](http://www.cs.indiana.edu/~eholk/papers/hips2013.pdf). Early GPU work 
   Rust](http://scialex.github.io/reenix.pdf). Undergrad paper by Alex
   Light.
 * [Evaluation of performance and productivity metrics of potential
-  programming languages in the HPC environment](). Bachelor's thesis by
-  Florian Wilkens. Compares C, Go and Rust.
+  programming languages in the HPC environment]
+  (http://octarineparrot.com/assets/mrfloya-thesis-ba.pdf).
+  Bachelor's thesis by Florian Wilkens. Compares C, Go and Rust.
 * [Nom, a byte oriented, streaming, zero copy, parser combinators library
   in Rust](http://spw15.langsec.org/papers/couprie-nom.pdf). By
   Geoffroy Couprie, research for VLC.
@@ -78,3 +79,4 @@ Language](http://www.cs.indiana.edu/~eholk/papers/hips2013.pdf). Early GPU work 
 * [Session Types for
   Rust](http://munksgaard.me/papers/laumann-munksgaard-larsen.pdf). Philip
   Munksgaard's master's thesis. Research for Servo.
+* [Ownership is Theft: Experiences Building an Embedded OS in Rust - Amit Levy, et. al.](http://amitlevy.com/papers/tock-plos2015.pdf)

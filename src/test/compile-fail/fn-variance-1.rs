@@ -20,10 +20,8 @@ fn main() {
     apply(&3, takes_imm);
     apply(&3, takes_mut);
     //~^ ERROR (values differ in mutability)
-    //~| ERROR (values differ in mutability)
 
     apply(&mut 3, takes_mut);
     apply(&mut 3, takes_imm);
     //~^ ERROR (values differ in mutability)
-    //~| ERROR (values differ in mutability)
 }

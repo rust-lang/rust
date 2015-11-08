@@ -71,7 +71,7 @@ The output on stdout is treated as (f64, f32, decimal) record, encoded thusly:
 
 Incomplete records are an error. Not-a-Number bit patterns are invalid too.
 
-The tests run serially but the validaition for a a single test is parallelized
+The tests run serially but the validation for a single test is parallelized
 with ``multiprocessing``. Each test is launched as a subprocess.
 One thread supervises it: Accepts and enqueues records to validate, observe
 stderr, and waits for the process to exit. A set of worker processes perform

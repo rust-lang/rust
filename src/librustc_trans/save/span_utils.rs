@@ -29,10 +29,14 @@ pub struct SpanUtils<'a> {
 
 impl<'a> SpanUtils<'a> {
     pub fn new(sess: &'a Session) -> SpanUtils<'a> {
-        SpanUtils { sess: sess, err_count: Cell::new(0) }
+        SpanUtils {
+            sess: sess,
+            err_count: Cell::new(0),
+        }
     }
 
     // Standard string for extents/location.
+    #[rustfmt_skip]
     pub fn extent_str(&self, span: Span) -> String {
         let lo_loc = self.sess.codemap().lookup_char_pos(span.lo);
         let hi_loc = self.sess.codemap().lookup_char_pos(span.hi);
@@ -54,7 +58,9 @@ impl<'a> SpanUtils<'a> {
         let loc = self.sess.codemap().lookup_char_pos(span.lo);
         assert!(!generated_code(span),
                 "generated code; we should not be processing this `{}` in {}, line {}",
-                 self.snippet(span), loc.file.name, loc.line);
+                self.snippet(span),
+                loc.file.name,
+                loc.line);
 
         match sub_span {
             None => None,
@@ -86,8 +92,9 @@ impl<'a> SpanUtils<'a> {
         // the codemap as a new filemap. This is mostly OK, but means we should
         // not iterate over the codemap. Also, any spans over the new filemap
         // are incompatible with spans over other filemaps.
-        let filemap = self.sess.codemap().new_filemap(String::from("<anon-dxr>"),
-                                                      self.snippet(span));
+        let filemap = self.sess
+                          .codemap()
+                          .new_filemap(String::from("<anon-dxr>"), self.snippet(span));
         let s = self.sess;
         lexer::StringReader::new(s.diagnostic(), filemap)
     }
@@ -213,8 +220,11 @@ impl<'a> SpanUtils<'a> {
         if bracket_count != 0 {
             let loc = self.sess.codemap().lookup_char_pos(span.lo);
             self.sess.span_bug(span,
-                &format!("Mis-counted brackets when breaking path? Parsing '{}' in {}, line {}",
-                        self.snippet(span), loc.file.name, loc.line));
+                               &format!("Mis-counted brackets when breaking path? Parsing '{}' \
+                                         in {}, line {}",
+                                        self.snippet(span),
+                                        loc.file.name,
+                                        loc.line));
         }
         if result.is_none() && prev.tok.is_ident() && bracket_count == 0 {
             return self.make_sub_span(span, Some(prev.sp));
@@ -239,9 +249,12 @@ impl<'a> SpanUtils<'a> {
             if ts.tok == token::Eof {
                 if bracket_count != 0 {
                     let loc = self.sess.codemap().lookup_char_pos(span.lo);
-                    self.sess.span_bug(span, &format!(
-                        "Mis-counted brackets when breaking path? Parsing '{}' in {}, line {}",
-                         self.snippet(span), loc.file.name, loc.line));
+                    self.sess.span_bug(span,
+                                       &format!("Mis-counted brackets when breaking path? \
+                                                 Parsing '{}' in {}, line {}",
+                                                self.snippet(span),
+                                                loc.file.name,
+                                                loc.line));
                 }
                 return result
             }
@@ -355,8 +368,11 @@ impl<'a> SpanUtils<'a> {
     pub fn report_span_err(&self, kind: &str, span: Span) {
         let loc = self.sess.codemap().lookup_char_pos(span.lo);
         info!("({}) Could not find sub_span in `{}` in {}, line {}",
-              kind, self.snippet(span), loc.file.name, loc.line);
-        self.err_count.set(self.err_count.get()+1);
+              kind,
+              self.snippet(span),
+              loc.file.name,
+              loc.line);
+        self.err_count.set(self.err_count.get() + 1);
         if self.err_count.get() > 1000 {
             self.sess.bug("span errors reached 1000, giving up");
         }

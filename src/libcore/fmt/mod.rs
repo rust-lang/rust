@@ -94,7 +94,7 @@ pub trait Write {
         self.write_str(unsafe { str::from_utf8_unchecked(&utf_8[..bytes_written]) })
     }
 
-    /// Glue for usage of the `write!` macro with implementers of this trait.
+    /// Glue for usage of the `write!` macro with implementors of this trait.
     ///
     /// This method should generally not be invoked manually, but rather through
     /// the `write!` macro itself.
@@ -298,7 +298,7 @@ impl<'a> Display for Arguments<'a> {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -393,7 +393,7 @@ pub trait Debug {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -435,7 +435,7 @@ pub trait Display {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -482,7 +482,7 @@ pub trait Octal {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -523,14 +523,14 @@ pub trait Binary {
 
 /// Format trait for the `x` character.
 ///
-/// The `LowerHex` trait should format its output as a number in hexidecimal, with `a` through `f`
+/// The `LowerHex` trait should format its output as a number in hexadecimal, with `a` through `f`
 /// in lower case.
 ///
 /// The alternate flag, `#`, adds a `0x` in front of the output.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -571,14 +571,14 @@ pub trait LowerHex {
 
 /// Format trait for the `X` character.
 ///
-/// The `UpperHex` trait should format its output as a number in hexidecimal, with `A` through `F`
+/// The `UpperHex` trait should format its output as a number in hexadecimal, with `A` through `F`
 /// in upper case.
 ///
 /// The alternate flag, `#`, adds a `0x` in front of the output.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -620,11 +620,11 @@ pub trait UpperHex {
 /// Format trait for the `p` character.
 ///
 /// The `Pointer` trait should format its output as a memory location. This is commonly presented
-/// as hexidecimal.
+/// as hexadecimal.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -668,7 +668,7 @@ pub trait Pointer {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -711,7 +711,7 @@ pub trait LowerExp {
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../index.html
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -865,12 +865,12 @@ impl<'a> Formatter<'a> {
         let mut sign = None;
         if !is_positive {
             sign = Some('-'); width += 1;
-        } else if self.flags & (1 << (FlagV1::SignPlus as u32)) != 0 {
+        } else if self.sign_plus() {
             sign = Some('+'); width += 1;
         }
 
         let mut prefixed = false;
-        if self.flags & (1 << (FlagV1::Alternate as u32)) != 0 {
+        if self.alternate() {
             prefixed = true; width += prefix.char_len();
         }
 
@@ -900,7 +900,7 @@ impl<'a> Formatter<'a> {
             }
             // The sign and prefix goes before the padding if the fill character
             // is zero
-            Some(min) if self.flags & (1 << (FlagV1::SignAwareZeroPad as u32)) != 0 => {
+            Some(min) if self.sign_aware_zero_pad() => {
                 self.fill = '0';
                 try!(write_prefix(self));
                 self.with_padding(min - width, Alignment::Right, |f| {
@@ -1013,7 +1013,7 @@ impl<'a> Formatter<'a> {
             let mut formatted = formatted.clone();
             let mut align = self.align;
             let old_fill = self.fill;
-            if self.flags & (1 << (FlagV1::SignAwareZeroPad as u32)) != 0 {
+            if self.sign_aware_zero_pad() {
                 // a sign always goes first
                 let sign = unsafe { str::from_utf8_unchecked(formatted.sign) };
                 try!(self.buf.write_str(sign));
@@ -1116,6 +1116,28 @@ impl<'a> Formatter<'a> {
     #[unstable(feature = "fmt_flags", reason = "method was just created",
                issue = "27726")]
     pub fn precision(&self) -> Option<usize> { self.precision }
+
+    /// Determines if the `+` flag was specified.
+    #[unstable(feature = "fmt_flags", reason = "method was just created",
+               issue = "27726")]
+    pub fn sign_plus(&self) -> bool { self.flags & (1 << FlagV1::SignPlus as u32) != 0 }
+
+    /// Determines if the `-` flag was specified.
+    #[unstable(feature = "fmt_flags", reason = "method was just created",
+               issue = "27726")]
+    pub fn sign_minus(&self) -> bool { self.flags & (1 << FlagV1::SignMinus as u32) != 0 }
+
+    /// Determines if the `#` flag was specified.
+    #[unstable(feature = "fmt_flags", reason = "method was just created",
+               issue = "27726")]
+    pub fn alternate(&self) -> bool { self.flags & (1 << FlagV1::Alternate as u32) != 0 }
+
+    /// Determines if the `0` flag was specified.
+    #[unstable(feature = "fmt_flags", reason = "method was just created",
+               issue = "27726")]
+    pub fn sign_aware_zero_pad(&self) -> bool {
+        self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
+    }
 
     /// Creates a `DebugStruct` builder designed to assist with creation of
     /// `fmt::Debug` implementations for structs.
@@ -1310,11 +1332,21 @@ impl Display for bool {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for str {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        try!(write!(f, "\""));
-        for c in self.chars().flat_map(|c| c.escape_default()) {
-            try!(f.write_char(c))
+        try!(f.write_char('"'));
+        let mut from = 0;
+        for (i, c) in self.char_indices() {
+            let esc = c.escape_default();
+            // If char needs escaping, flush backlog so far and write, else skip
+            if esc.size_hint() != (1, Some(1)) {
+                try!(f.write_str(&self[from..i]));
+                for c in esc {
+                    try!(f.write_char(c));
+                }
+                from = i + c.len_utf8();
+            }
         }
-        write!(f, "\"")
+        try!(f.write_str(&self[from..]));
+        f.write_char('"')
     }
 }
 
@@ -1328,12 +1360,11 @@ impl Display for str {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        use char::CharExt;
-        try!(write!(f, "'"));
+        try!(f.write_char('\''));
         for c in self.escape_default() {
             try!(f.write_char(c))
         }
-        write!(f, "'")
+        f.write_char('\'')
     }
 }
 
@@ -1361,7 +1392,7 @@ impl<T> Pointer for *const T {
         // it denotes whether to prefix with 0x. We use it to work out whether
         // or not to zero extend, and then unconditionally set it to get the
         // prefix.
-        if f.flags & 1 << (FlagV1::Alternate as u32) > 0 {
+        if f.alternate() {
             f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
 
             if let None = f.width {
@@ -1410,7 +1441,7 @@ impl<'a, T> Pointer for &'a mut T {
 fn float_to_decimal_common<T>(fmt: &mut Formatter, num: &T, negative_zero: bool) -> Result
     where T: flt2dec::DecodableFloat
 {
-    let force_sign = fmt.flags & (1 << (FlagV1::SignPlus as u32)) != 0;
+    let force_sign = fmt.sign_plus();
     let sign = match (force_sign, negative_zero) {
         (false, false) => flt2dec::Sign::Minus,
         (false, true)  => flt2dec::Sign::MinusRaw,
@@ -1434,7 +1465,7 @@ fn float_to_decimal_common<T>(fmt: &mut Formatter, num: &T, negative_zero: bool)
 fn float_to_exponential_common<T>(fmt: &mut Formatter, num: &T, upper: bool) -> Result
     where T: flt2dec::DecodableFloat
 {
-    let force_sign = fmt.flags & (1 << (FlagV1::SignPlus as u32)) != 0;
+    let force_sign = fmt.sign_plus();
     let sign = match force_sign {
         false => flt2dec::Sign::Minus,
         true  => flt2dec::Sign::MinusPlus,

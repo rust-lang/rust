@@ -15,6 +15,7 @@
 use back::svh::Svh;
 use session::{config, Session};
 use session::search_paths::PathKind;
+use metadata::common::rustc_version;
 use metadata::cstore;
 use metadata::cstore::{CStore, CrateSource, MetadataBlob};
 use metadata::decoder;
@@ -201,17 +202,17 @@ impl<'a> CrateReader<'a> {
         match i.node {
             hir::ItemExternCrate(ref path_opt) => {
                 debug!("resolving extern crate stmt. ident: {} path_opt: {:?}",
-                       i.ident, path_opt);
+                       i.name, path_opt);
                 let name = match *path_opt {
                     Some(name) => {
                         validate_crate_name(Some(self.sess), &name.as_str(),
                                             Some(i.span));
                         name.to_string()
                     }
-                    None => i.ident.to_string(),
+                    None => i.name.to_string(),
                 };
                 Some(CrateInfo {
-                    ident: i.ident.to_string(),
+                    ident: i.name.to_string(),
                     name: name,
                     id: i.id,
                     should_link: should_link_hir(i),
@@ -270,6 +271,24 @@ impl<'a> CrateReader<'a> {
         return ret;
     }
 
+    fn verify_rustc_version(&self,
+                            name: &str,
+                            span: Span,
+                            metadata: &MetadataBlob) {
+        let crate_rustc_version = decoder::crate_rustc_version(metadata.as_slice());
+        if crate_rustc_version != Some(rustc_version()) {
+            span_err!(self.sess, span, E0514,
+                      "the crate `{}` has been compiled with {}, which is \
+                       incompatible with this version of rustc",
+                      name,
+                      crate_rustc_version
+                          .as_ref().map(|s|&**s)
+                          .unwrap_or("an old version of rustc")
+            );
+            self.sess.abort_if_errors();
+        }
+    }
+
     fn register_crate(&mut self,
                       root: &Option<CratePaths>,
                       ident: &str,
@@ -279,6 +298,8 @@ impl<'a> CrateReader<'a> {
                       explicitly_linked: bool)
                       -> (ast::CrateNum, Rc<cstore::crate_metadata>,
                           cstore::CrateSource) {
+        self.verify_rustc_version(name, span, &lib.metadata);
+
         // Claim this crate number and cache it
         let cnum = self.next_crate_num;
         self.next_crate_num += 1;
@@ -304,7 +325,9 @@ impl<'a> CrateReader<'a> {
         let cmeta = Rc::new(cstore::crate_metadata {
             name: name.to_string(),
             local_path: RefCell::new(SmallVector::zero()),
+            local_def_path: RefCell::new(vec![]),
             index: decoder::load_index(metadata.as_slice()),
+            xref_index: decoder::load_xrefs(metadata.as_slice()),
             data: metadata,
             cnum_map: RefCell::new(cnum_map),
             cnum: cnum,
@@ -481,8 +504,14 @@ impl<'a> CrateReader<'a> {
                 };
                 let span = mk_sp(lo, p.last_span.hi);
                 p.abort_if_errors();
+
+                // Mark the attrs as used
+                for attr in &attrs {
+                    attr::mark_used(attr);
+                }
+
                 macros.push(ast::MacroDef {
-                    ident: name.ident(),
+                    ident: ast::Ident::with_empty_ctxt(name),
                     attrs: attrs,
                     id: ast::DUMMY_NODE_ID,
                     span: span,
@@ -521,7 +550,8 @@ impl<'a> CrateReader<'a> {
             self.sess.abort_if_errors();
         }
 
-        let registrar = decoder::get_plugin_registrar_fn(ekrate.metadata.as_slice())
+        let registrar =
+            decoder::get_plugin_registrar_fn(ekrate.metadata.as_slice())
             .map(|id| decoder::get_symbol_from_buf(ekrate.metadata.as_slice(), id));
 
         match (ekrate.dylib.as_ref(), registrar) {
@@ -724,6 +754,9 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
                                                               i.span,
                                                               PathKind::Crate,
                                                               true);
+                        let def_id = self.ast_map.local_def_id(i.id);
+                        let def_path = self.ast_map.def_path(def_id);
+                        cmeta.update_local_def_path(def_path);
                         self.ast_map.with_path(i.id, |path| {
                             cmeta.update_local_path(path)
                         });

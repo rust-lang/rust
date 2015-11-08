@@ -131,7 +131,7 @@ mod svh_visitor {
     pub use self::SawExprComponent::*;
     pub use self::SawStmtComponent::*;
     use self::SawAbiComponent::*;
-    use syntax::ast::{self, NodeId, Ident};
+    use syntax::ast::{self, Name, NodeId};
     use syntax::codemap::Span;
     use syntax::parse::token;
     use rustc_front::visit;
@@ -177,7 +177,7 @@ mod svh_visitor {
         SawIdent(token::InternedString),
         SawStructDef(token::InternedString),
 
-        SawLifetimeRef(token::InternedString),
+        SawLifetime(token::InternedString),
         SawLifetimeDef(token::InternedString),
 
         SawMod,
@@ -193,7 +193,6 @@ mod svh_visitor {
         SawVariant,
         SawExplicitSelf,
         SawPath,
-        SawOptLifetimeRef,
         SawBlock,
         SawPat,
         SawLocal,
@@ -270,7 +269,7 @@ mod svh_visitor {
             ExprBlock(..)            => SawExprBlock,
             ExprAssign(..)           => SawExprAssign,
             ExprAssignOp(op, _, _)   => SawExprAssignOp(op.node),
-            ExprField(_, id)         => SawExprField(id.node.name.as_str()),
+            ExprField(_, name)       => SawExprField(name.node.as_str()),
             ExprTupField(_, id)      => SawExprTupField(id.node),
             ExprIndex(..)            => SawExprIndex,
             ExprRange(..)            => SawExprRange,
@@ -302,29 +301,18 @@ mod svh_visitor {
     }
 
     impl<'a, 'v> Visitor<'v> for StrictVersionHashVisitor<'a> {
-        fn visit_struct_def(&mut self, s: &StructDef, ident: Ident,
-                            g: &Generics, _: NodeId) {
-            SawStructDef(ident.name.as_str()).hash(self.st);
+        fn visit_variant_data(&mut self, s: &VariantData, name: Name,
+                            g: &Generics, _: NodeId, _: Span) {
+            SawStructDef(name.as_str()).hash(self.st);
             visit::walk_generics(self, g);
             visit::walk_struct_def(self, s)
         }
 
-        fn visit_variant(&mut self, v: &Variant, g: &Generics) {
+        fn visit_variant(&mut self, v: &Variant, g: &Generics, item_id: NodeId) {
             SawVariant.hash(self.st);
             // walk_variant does not call walk_generics, so do it here.
             visit::walk_generics(self, g);
-            visit::walk_variant(self, v, g)
-        }
-
-        fn visit_opt_lifetime_ref(&mut self, _: Span, l: &Option<Lifetime>) {
-            SawOptLifetimeRef.hash(self.st);
-            // (This is a strange method in the visitor trait, in that
-            // it does not expose a walk function to do the subroutine
-            // calls.)
-            match *l {
-                Some(ref l) => self.visit_lifetime_ref(l),
-                None => ()
-            }
+            visit::walk_variant(self, v, g, item_id)
         }
 
         // All of the remaining methods just record (in the hash
@@ -341,12 +329,12 @@ mod svh_visitor {
         // (If you edit a method such that it deviates from the
         // pattern, please move that method up above this comment.)
 
-        fn visit_ident(&mut self, _: Span, ident: Ident) {
-            SawIdent(ident.name.as_str()).hash(self.st);
+        fn visit_name(&mut self, _: Span, name: Name) {
+            SawIdent(name.as_str()).hash(self.st);
         }
 
-        fn visit_lifetime_ref(&mut self, l: &Lifetime) {
-            SawLifetimeRef(l.name.as_str()).hash(self.st);
+        fn visit_lifetime(&mut self, l: &Lifetime) {
+            SawLifetime(l.name.as_str()).hash(self.st);
         }
 
         fn visit_lifetime_def(&mut self, l: &LifetimeDef) {
@@ -421,6 +409,10 @@ mod svh_visitor {
 
         fn visit_path(&mut self, path: &Path, _: ast::NodeId) {
             SawPath.hash(self.st); visit::walk_path(self, path)
+        }
+
+        fn visit_path_list_item(&mut self, prefix: &Path, item: &'v PathListItem) {
+            SawPath.hash(self.st); visit::walk_path_list_item(self, prefix, item)
         }
 
         fn visit_block(&mut self, b: &Block) {

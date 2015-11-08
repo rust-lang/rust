@@ -109,7 +109,7 @@ fn main(){
 "##,
 
 E0026: r##"
-This error indicates that a struct pattern attempted to extract a non-existant
+This error indicates that a struct pattern attempted to extract a non-existent
 field from a struct. Struct fields are identified by the name used before the
 colon `:` so struct patterns should resemble the declaration of the struct type
 being matched.
@@ -1308,8 +1308,8 @@ extern "rust-intrinsic" {
 "##,
 
 E0101: r##"
-You hit this error because the compiler the compiler lacks information
-to determine a type for this expression. Erroneous code example:
+You hit this error because the compiler lacks the information to
+determine a type for this expression. Erroneous code example:
 
 ```
 fn main() {
@@ -1779,6 +1779,58 @@ fn(isize, *const *const u8) -> isize;
 ```
 "##,
 
+E0163: r##"
+This error means that an attempt was made to match an enum variant as a
+struct type when the variant isn't a struct type:
+
+```
+enum Foo { B(u32) }
+
+fn bar(foo: Foo) -> u32 {
+    match foo {
+        Foo::B{i} => i // error 0163
+    }
+}
+```
+
+Try using `()` instead:
+
+```
+fn bar(foo: Foo) -> u32 {
+    match foo {
+        Foo::B(i) => i
+    }
+}
+```
+"##,
+
+E0164: r##"
+
+This error means that an attempt was made to match a struct type enum
+variant as a non-struct type:
+
+```
+enum Foo { B{ i: u32 } }
+
+fn bar(foo: Foo) -> u32 {
+    match foo {
+        Foo::B(i) => i // error 0164
+    }
+}
+```
+
+Try using `{}` instead:
+
+```
+fn bar(foo: Foo) -> u32 {
+    match foo {
+        Foo::B{i} => i
+    }
+}
+```
+"##,
+
+
 E0166: r##"
 This error means that the compiler found a return expression in a function
 marked as diverging. A function diverges if it has `!` in the place of the
@@ -1958,8 +2010,8 @@ wrapped type `T` implements `Clone`. The `where` clause is important because
 some types will not implement `Clone`, and thus will not get this method.
 
 In our erroneous example, however, we're referencing a single concrete type.
-Since we know for certain that Wrapper<u32> implements Clone, there's no reason
-to also specify it in a `where` clause.
+Since we know for certain that `Wrapper<u32>` implements `Clone`, there's no
+reason to also specify it in a `where` clause.
 "##,
 
 E0194: r##"
@@ -2529,7 +2581,7 @@ In this example, we're attempting to take a type of `Foo::Bar` in the
 do_something function. This is not legal: `Foo::Bar` is a value of type `Foo`,
 not a distinct static type. Likewise, it's not legal to attempt to
 `impl Foo::Bar`: instead, you must `impl Foo` and then pattern match to specify
-behaviour for specific enum variants.
+behavior for specific enum variants.
 "##,
 
 E0249: r##"
@@ -3293,8 +3345,6 @@ register_diagnostics! {
 //  E0129,
 //  E0141,
 //  E0159, // use of trait `{}` as struct constructor
-    E0163,
-    E0164,
     E0167,
 //  E0168,
 //  E0173, // manual implementations of unboxed closure traits are experimental
@@ -3302,7 +3352,7 @@ register_diagnostics! {
     E0182,
     E0183,
 //  E0187, // can't infer the kind of the closure
-//  E0188, // can not cast a immutable reference to a mutable pointer
+//  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
     E0196, // cannot determine a type for this closure
@@ -3355,5 +3405,5 @@ register_diagnostics! {
     E0399, // trait items need to be implemented because the associated
            // type `{}` was overridden
     E0436, // functional record update requires a struct
-    E0513, // no type for local variable ..
+    E0513  // no type for local variable ..
 }

@@ -19,7 +19,6 @@ use back::archive;
 use metadata::csearch;
 use middle::dependency_format::Linkage;
 use session::Session;
-use session::config::DebugInfoLevel::{NoDebugInfo, LimitedDebugInfo, FullDebugInfo};
 use session::config::CrateTypeDylib;
 use session::config;
 use syntax::ast;
@@ -159,12 +158,7 @@ impl<'a> Linker for GnuLinker<'a> {
     }
 
     fn no_default_libraries(&mut self) {
-        // Unfortunately right now passing -nodefaultlibs to gcc on windows
-        // doesn't work so hot (in terms of native dependencies). This if
-        // statement should hopefully be removed one day though!
-        if !self.sess.target.target.options.is_like_windows {
-            self.cmd.arg("-nodefaultlibs");
-        }
+        self.cmd.arg("-nodefaultlibs");
     }
 
     fn build_dylib(&mut self, out_filename: &Path) {
@@ -286,17 +280,9 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn debuginfo(&mut self) {
-        match self.sess.opts.debuginfo {
-            NoDebugInfo => {
-                // Do nothing if debuginfo is disabled
-            },
-            LimitedDebugInfo |
-            FullDebugInfo    => {
-                // This will cause the Microsoft linker to generate a PDB file
-                // from the CodeView line tables in the object files.
-                self.cmd.arg("/DEBUG");
-            }
-        }
+        // This will cause the Microsoft linker to generate a PDB file
+        // from the CodeView line tables in the object files.
+        self.cmd.arg("/DEBUG");
     }
 
     fn whole_archives(&mut self) {

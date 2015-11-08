@@ -14,22 +14,22 @@
 //! Routines for manipulating the control-flow graph.
 
 use build::CFG;
-use hair::*;
 use repr::*;
+use syntax::codemap::Span;
 
-impl<H:Hair> CFG<H> {
-    pub fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<H> {
+impl<'tcx> CFG<'tcx> {
+    pub fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {
         &self.basic_blocks[blk.index()]
     }
 
-    pub fn block_data_mut(&mut self, blk: BasicBlock) -> &mut BasicBlockData<H> {
+    pub fn block_data_mut(&mut self, blk: BasicBlock) -> &mut BasicBlockData<'tcx> {
         &mut self.basic_blocks[blk.index()]
     }
 
     pub fn end_point(&self, block: BasicBlock) -> ExecutionPoint {
         ExecutionPoint {
             block: block,
-            statement: self.block_data(block).statements.len() as u32
+            statement: self.block_data(block).statements.len() as u32,
         }
     }
 
@@ -39,21 +39,21 @@ impl<H:Hair> CFG<H> {
         BasicBlock::new(node_index)
     }
 
-    pub fn push(&mut self, block: BasicBlock, statement: Statement<H>) {
+    pub fn push(&mut self, block: BasicBlock, statement: Statement<'tcx>) {
         debug!("push({:?}, {:?})", block, statement);
         self.block_data_mut(block).statements.push(statement);
     }
 
     pub fn push_assign_constant(&mut self,
                                 block: BasicBlock,
-                                span: H::Span,
-                                temp: &Lvalue<H>,
-                                constant: Constant<H>) {
+                                span: Span,
+                                temp: &Lvalue<'tcx>,
+                                constant: Constant<'tcx>) {
         self.push_assign(block, span, temp, Rvalue::Use(Operand::Constant(constant)));
     }
 
-    pub fn push_drop(&mut self, block: BasicBlock, span: H::Span,
-                     kind: DropKind, lvalue: &Lvalue<H>) {
+    pub fn push_drop(&mut self, block: BasicBlock, span: Span,
+                     kind: DropKind, lvalue: &Lvalue<'tcx>) {
         self.push(block, Statement {
             span: span,
             kind: StatementKind::Drop(kind, lvalue.clone())
@@ -62,9 +62,9 @@ impl<H:Hair> CFG<H> {
 
     pub fn push_assign(&mut self,
                        block: BasicBlock,
-                       span: H::Span,
-                       lvalue: &Lvalue<H>,
-                       rvalue: Rvalue<H>) {
+                       span: Span,
+                       lvalue: &Lvalue<'tcx>,
+                       rvalue: Rvalue<'tcx>) {
         self.push(block, Statement {
             span: span,
             kind: StatementKind::Assign(lvalue.clone(), rvalue)
@@ -73,7 +73,7 @@ impl<H:Hair> CFG<H> {
 
     pub fn terminate(&mut self,
                      block: BasicBlock,
-                     terminator: Terminator<H>) {
+                     terminator: Terminator<'tcx>) {
         // Check whether this block has already been terminated. For
         // this, we rely on the fact that the initial state is to have
         // a Diverge terminator and an empty list of targets (which

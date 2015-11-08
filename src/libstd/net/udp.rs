@@ -185,14 +185,13 @@ mod tests {
         }
     }
 
-    // FIXME #11530 this fails on android because tests are run as root
-    #[cfg_attr(any(windows, target_os = "android"), ignore)]
     #[test]
     fn bind_error() {
-        let addr = SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 1);
-        match UdpSocket::bind(&addr) {
+        match UdpSocket::bind("1.1.1.1:9999") {
             Ok(..) => panic!(),
-            Err(e) => assert_eq!(e.kind(), ErrorKind::PermissionDenied),
+            Err(e) => {
+                assert_eq!(e.kind(), ErrorKind::AddrNotAvailable)
+            }
         }
     }
 

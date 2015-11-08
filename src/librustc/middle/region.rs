@@ -377,7 +377,7 @@ impl RegionMaps {
         self.code_extents.borrow()[e.0 as usize]
     }
     pub fn each_encl_scope<E>(&self, mut e:E) where E: FnMut(&CodeExtent, &CodeExtent) {
-        for child_id in (1..self.code_extents.borrow().len()) {
+        for child_id in 1..self.code_extents.borrow().len() {
             let child = CodeExtent(child_id as u32);
             if let Some(parent) = self.opt_encl_scope(child) {
                 e(&child, &parent)
@@ -705,7 +705,7 @@ fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &hir::Block) {
             }
             visitor.visit_stmt(&**statement)
         }
-        visit::walk_expr_opt(visitor, &blk.expr)
+        walk_list!(visitor, visit_expr, &blk.expr);
     }
 
     visitor.cx = prev_cx;
@@ -993,9 +993,6 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
                     record_rvalue_scope_if_borrow_expr(
                         visitor, &**subexpr, blk_id);
                 }
-            }
-            hir::ExprUnary(hir::UnUniq, ref subexpr) => {
-                record_rvalue_scope_if_borrow_expr(visitor, &**subexpr, blk_id);
             }
             hir::ExprCast(ref subexpr, _) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &**subexpr, blk_id)

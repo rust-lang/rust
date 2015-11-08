@@ -24,10 +24,13 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 
 #[macro_use] extern crate log;
 extern crate graphviz as dot;
+extern crate rustc;
 extern crate rustc_data_structures;
+extern crate rustc_front;
+extern crate syntax;
 
 pub mod build;
-pub mod dump;
+pub mod mir_map;
 pub mod hair;
 pub mod repr;
 mod graphviz;

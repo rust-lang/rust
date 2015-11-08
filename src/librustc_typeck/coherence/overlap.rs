@@ -11,7 +11,8 @@
 //! Overlap: No two impls for the same trait are implemented for the
 //! same type.
 
-use middle::def_id::{DefId, LOCAL_CRATE};
+use metadata::cstore::LOCAL_CRATE;
+use middle::def_id::DefId;
 use middle::traits;
 use middle::ty;
 use middle::infer::{self, new_infer_ctxt};
@@ -111,7 +112,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
             }
         } else if impl2_def_id.krate != LOCAL_CRATE {
             Some((impl1_def_id, impl2_def_id))
-        } else if impl1_def_id.node < impl2_def_id.node {
+        } else if impl1_def_id < impl2_def_id {
             Some((impl1_def_id, impl2_def_id))
         } else {
             Some((impl2_def_id, impl1_def_id))
@@ -164,8 +165,8 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
     }
 
     fn span_of_impl(&self, impl_did: DefId) -> Span {
-        assert_eq!(impl_did.krate, LOCAL_CRATE);
-        self.tcx.map.span(impl_did.node)
+        let node_id = self.tcx.map.as_local_node_id(impl_did).unwrap();
+        self.tcx.map.span(node_id)
     }
 }
 
@@ -177,20 +178,20 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                 // look for another default impl; note that due to the
                 // general orphan/coherence rules, it must always be
                 // in this crate.
-                let impl_def_id = DefId::local(item.id);
+                let impl_def_id = self.tcx.map.local_def_id(item.id);
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let prev_default_impl = self.default_impls.insert(trait_ref.def_id, item.id);
                 match prev_default_impl {
                     Some(prev_id) => {
                         self.report_overlap_error(trait_ref.def_id,
                                                   impl_def_id,
-                                                  DefId::local(prev_id));
+                                                  self.tcx.map.local_def_id(prev_id));
                     }
                     None => { }
                 }
             }
             hir::ItemImpl(_, _, _, Some(_), ref self_ty, _) => {
-                let impl_def_id = DefId::local(item.id);
+                let impl_def_id = self.tcx.map.local_def_id(item.id);
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
                 match trait_ref.self_ty().sty {

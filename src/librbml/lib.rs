@@ -467,37 +467,44 @@ pub mod reader {
         f(&d.data[d.start..d.end])
     }
 
-
     pub fn doc_as_u8(d: Doc) -> u8 {
         assert_eq!(d.end, d.start + 1);
         d.data[d.start]
     }
 
-    pub fn doc_as_u16(d: Doc) -> u16 {
-        assert_eq!(d.end, d.start + 2);
-        let mut b = [0; 2];
-        bytes::copy_memory(&d.data[d.start..d.end], &mut b);
-        unsafe { (*(b.as_ptr() as *const u16)).to_be() }
-    }
-
-    pub fn doc_as_u32(d: Doc) -> u32 {
-        assert_eq!(d.end, d.start + 4);
-        let mut b = [0; 4];
-        bytes::copy_memory(&d.data[d.start..d.end], &mut b);
-        unsafe { (*(b.as_ptr() as *const u32)).to_be() }
-    }
-
     pub fn doc_as_u64(d: Doc) -> u64 {
-        assert_eq!(d.end, d.start + 8);
-        let mut b = [0; 8];
-        bytes::copy_memory(&d.data[d.start..d.end], &mut b);
-        unsafe { (*(b.as_ptr() as *const u64)).to_be() }
+        if d.end >= 8 {
+            // For performance, we read 8 big-endian bytes,
+            // and mask off the junk if there is any. This
+            // obviously won't work on the first 8 bytes
+            // of a file - we will fall of the start
+            // of the page and segfault.
+
+            let mut b = [0; 8];
+            bytes::copy_memory(&d.data[d.end-8..d.end], &mut b);
+            let data = unsafe { (*(b.as_ptr() as *const u64)).to_be() };
+            let len = d.end - d.start;
+            if len < 8 {
+                data & ((1<<(len*8))-1)
+            } else {
+                data
+            }
+        } else {
+            let mut result = 0;
+            for b in &d.data[d.start..d.end] {
+                result = (result<<8) + (*b as u64);
+            }
+            result
+        }
     }
 
-    pub fn doc_as_i8(d: Doc) -> i8 { doc_as_u8(d) as i8 }
-    pub fn doc_as_i16(d: Doc) -> i16 { doc_as_u16(d) as i16 }
-    pub fn doc_as_i32(d: Doc) -> i32 { doc_as_u32(d) as i32 }
-    pub fn doc_as_i64(d: Doc) -> i64 { doc_as_u64(d) as i64 }
+    #[inline] pub fn doc_as_u16(d: Doc) -> u16 { doc_as_u64(d) as u16 }
+    #[inline] pub fn doc_as_u32(d: Doc) -> u32 { doc_as_u64(d) as u32 }
+
+    #[inline] pub fn doc_as_i8(d: Doc) -> i8 { doc_as_u8(d) as i8 }
+    #[inline] pub fn doc_as_i16(d: Doc) -> i16 { doc_as_u16(d) as i16 }
+    #[inline] pub fn doc_as_i32(d: Doc) -> i32 { doc_as_u32(d) as i32 }
+    #[inline] pub fn doc_as_i64(d: Doc) -> i64 { doc_as_u64(d) as i64 }
 
     pub struct Decoder<'a> {
         parent: Doc<'a>,
@@ -907,7 +914,7 @@ pub mod writer {
         }
     }
 
-    fn write_vuint<W: Write>(w: &mut W, n: usize) -> EncodeResult {
+    pub fn write_vuint<W: Write>(w: &mut W, n: usize) -> EncodeResult {
         if n < 0x7f { return write_sized_vuint(w, n, 1); }
         if n < 0x4000 { return write_sized_vuint(w, n, 2); }
         if n < 0x200000 { return write_sized_vuint(w, n, 3); }
@@ -996,35 +1003,43 @@ pub mod writer {
 
         pub fn wr_tagged_u64(&mut self, tag_id: usize, v: u64) -> EncodeResult {
             let bytes: [u8; 8] = unsafe { mem::transmute(v.to_be()) };
-            self.wr_tagged_bytes(tag_id, &bytes)
+            // tagged integers are emitted in big-endian, with no
+            // leading zeros.
+            let leading_zero_bytes = v.leading_zeros()/8;
+            self.wr_tagged_bytes(tag_id, &bytes[leading_zero_bytes as usize..])
         }
 
-        pub fn wr_tagged_u32(&mut self, tag_id: usize, v: u32)  -> EncodeResult{
-            let bytes: [u8; 4] = unsafe { mem::transmute(v.to_be()) };
-            self.wr_tagged_bytes(tag_id, &bytes)
+        #[inline]
+        pub fn wr_tagged_u32(&mut self, tag_id: usize, v: u32)  -> EncodeResult {
+            self.wr_tagged_u64(tag_id, v as u64)
         }
 
+        #[inline]
         pub fn wr_tagged_u16(&mut self, tag_id: usize, v: u16) -> EncodeResult {
-            let bytes: [u8; 2] = unsafe { mem::transmute(v.to_be()) };
-            self.wr_tagged_bytes(tag_id, &bytes)
+            self.wr_tagged_u64(tag_id, v as u64)
         }
 
+        #[inline]
         pub fn wr_tagged_u8(&mut self, tag_id: usize, v: u8) -> EncodeResult {
             self.wr_tagged_bytes(tag_id, &[v])
         }
 
+        #[inline]
         pub fn wr_tagged_i64(&mut self, tag_id: usize, v: i64) -> EncodeResult {
             self.wr_tagged_u64(tag_id, v as u64)
         }
 
+        #[inline]
         pub fn wr_tagged_i32(&mut self, tag_id: usize, v: i32) -> EncodeResult {
             self.wr_tagged_u32(tag_id, v as u32)
         }
 
+        #[inline]
         pub fn wr_tagged_i16(&mut self, tag_id: usize, v: i16) -> EncodeResult {
             self.wr_tagged_u16(tag_id, v as u16)
         }
 
+        #[inline]
         pub fn wr_tagged_i8(&mut self, tag_id: usize, v: i8) -> EncodeResult {
             self.wr_tagged_bytes(tag_id, &[v as u8])
         }

@@ -546,7 +546,7 @@ impl<W> IntoInnerError<W> {
     /// let stream = match stream.into_inner() {
     ///     Ok(s) => s,
     ///     Err(e) => {
-    ///         // Here, e is a IntoInnerError, let's re-examine the buffer:
+    ///         // Here, e is an IntoInnerError, let's re-examine the buffer:
     ///         let buffer = e.into_inner();
     ///
     ///         // do stuff to try to recover

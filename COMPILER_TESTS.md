@@ -1,6 +1,6 @@
 # Compiler Test Documentation
 
-In the Rust project, we use a special set of comands embedded in
+In the Rust project, we use a special set of commands embedded in
 comments to test the Rust compiler. There are two groups of commands:
 
 1. Header commands
@@ -24,6 +24,7 @@ are expecting.
   `~^^^^^^^` is seven lines up.
 
 The error levels that you can have are:
+
 1. `ERROR`
 2. `WARNING`
 3. `NOTE`

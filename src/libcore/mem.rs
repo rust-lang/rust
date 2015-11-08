@@ -37,7 +37,7 @@ pub use intrinsics::transmute;
 /// * You have two copies of a value (like when writing something like
 ///   [`mem::swap`][swap]), but need the destructor to only run once to
 ///   prevent a double `free`.
-/// * Transferring resources across [FFI][ffi] boundries.
+/// * Transferring resources across [FFI][ffi] boundaries.
 ///
 /// [swap]: fn.swap.html
 /// [ffi]: ../../book/ffi.html
@@ -264,9 +264,9 @@ pub unsafe fn dropped<T>() -> T {
 /// This is useful for FFI functions and initializing arrays sometimes,
 /// but should generally be avoided.
 ///
-/// # Undefined Behaviour
+/// # Undefined Behavior
 ///
-/// It is Undefined Behaviour to read uninitialized memory. Even just an
+/// It is Undefined Behavior to read uninitialized memory. Even just an
 /// uninitialized boolean. For instance, if you branch on the value of such
 /// a boolean your program may take one, both, or neither of the branches.
 ///
@@ -303,7 +303,7 @@ pub unsafe fn dropped<T>() -> T {
 ///
 ///     // DANGER ZONE: if anything panics or otherwise
 ///     // incorrectly reads the array here, we will have
-///     // Undefined Behaviour.
+///     // Undefined Behavior.
 ///
 ///     // It's ok to mutably iterate the data, since this
 ///     // doesn't involve reading it at all.
@@ -340,7 +340,7 @@ pub unsafe fn uninitialized<T>() -> T {
     intrinsics::uninit()
 }
 
-/// Swap the values at two mutable locations of the same type, without deinitialising or copying
+/// Swap the values at two mutable locations of the same type, without deinitializing or copying
 /// either one.
 ///
 /// # Examples
@@ -376,7 +376,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 }
 
 /// Replaces the value at a mutable location with a new one, returning the old value, without
-/// deinitialising or copying either one.
+/// deinitializing or copying either one.
 ///
 /// This is primarily used for transferring and swapping ownership of a value in a mutable
 /// location.
@@ -434,6 +434,11 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// While this does call the argument's implementation of `Drop`, it will not
 /// release any borrows, as borrows are based on lexical scope.
 ///
+/// This effectively does nothing for
+/// [types which implement `Copy`](../../book/ownership.html#copy-types),
+/// e.g. integers. Such values are copied and _then_ moved into the function,
+/// so the value persists after this function call.
+///
 /// # Examples
 ///
 /// Basic usage:
@@ -486,6 +491,21 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// let borrow = x.borrow();
 /// println!("{}", *borrow);
 /// ```
+///
+/// Integers and other types implementing `Copy` are unaffected by `drop()`
+///
+/// ```
+/// #[derive(Copy, Clone)]
+/// struct Foo(u8);
+///
+/// let x = 1;
+/// let y = Foo(2);
+/// drop(x); // a copy of `x` is moved and dropped
+/// drop(y); // a copy of `y` is moved and dropped
+///
+/// println!("x: {}, y: {}", x, y.0); // still available
+/// ```
+///
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn drop<T>(_x: T) { }

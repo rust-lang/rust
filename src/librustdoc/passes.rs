@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashSet;
-use rustc::util::nodemap::NodeSet;
+use rustc::util::nodemap::DefIdSet;
 use std::cmp;
 use std::string::String;
 use std::usize;
-use syntax::ast;
 use rustc_front::hir;
 
 use clean;
@@ -24,18 +22,18 @@ use fold::DocFolder;
 
 /// Strip items marked `#[doc(hidden)]`
 pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
-    let mut stripped = HashSet::new();
+    let mut stripped = DefIdSet();
 
     // strip all #[doc(hidden)] items
     let krate = {
         struct Stripper<'a> {
-            stripped: &'a mut HashSet<ast::NodeId>
+            stripped: &'a mut DefIdSet
         };
         impl<'a> fold::DocFolder for Stripper<'a> {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
                 if i.is_hidden_from_doc() {
                     debug!("found one in strip_hidden; removing");
-                    self.stripped.insert(i.def_id.node);
+                    self.stripped.insert(i.def_id);
 
                     // use a dedicated hidden item for given item type if any
                     match i.inner {
@@ -61,7 +59,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
     // strip any traits implemented on stripped items
     let krate = {
         struct ImplStripper<'a> {
-            stripped: &'a mut HashSet<ast::NodeId>
+            stripped: &'a mut DefIdSet
         };
         impl<'a> fold::DocFolder for ImplStripper<'a> {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
@@ -70,12 +68,12 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
                            ref trait_, ..
                 }) = i.inner {
                     // Impls for stripped types don't need to exist
-                    if self.stripped.contains(&did.node) {
+                    if self.stripped.contains(&did) {
                         return None;
                     }
                     // Impls of stripped traits also don't need to exist
                     if let Some(clean::ResolvedPath { did, .. }) = *trait_ {
-                        if self.stripped.contains(&did.node) {
+                        if self.stripped.contains(&did) {
                             return None;
                         }
                     }
@@ -94,7 +92,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
 /// crate, specified by the `xcrate` flag.
 pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
     // This stripper collects all *retained* nodes.
-    let mut retained = HashSet::new();
+    let mut retained = DefIdSet();
     let analysis = super::ANALYSISKEY.with(|a| a.clone());
     let analysis = analysis.borrow();
     let analysis = analysis.as_ref().unwrap();
@@ -118,8 +116,8 @@ pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
 }
 
 struct Stripper<'a> {
-    retained: &'a mut HashSet<ast::NodeId>,
-    exported_items: &'a NodeSet,
+    retained: &'a mut DefIdSet,
+    exported_items: &'a DefIdSet,
 }
 
 impl<'a> fold::DocFolder for Stripper<'a> {
@@ -132,7 +130,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::VariantItem(..) | clean::MethodItem(..) |
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) => {
                 if i.def_id.is_local() {
-                    if !self.exported_items.contains(&i.def_id.node) {
+                    if !self.exported_items.contains(&i.def_id) {
                         return None;
                     }
                     // Traits are in exported_items even when they're totally private.
@@ -143,8 +141,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             }
 
             clean::ConstantItem(..) => {
-                if i.def_id.is_local() &&
-                   !self.exported_items.contains(&i.def_id.node) {
+                if i.def_id.is_local() && !self.exported_items.contains(&i.def_id) {
                     return None;
                 }
             }
@@ -171,8 +168,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::ImplItem(clean::Impl{
                 for_: clean::ResolvedPath{ did, .. }, ..
             }) => {
-                if did.is_local() &&
-                   !self.exported_items.contains(&did.node) {
+                if did.is_local() && !self.exported_items.contains(&did) {
                     return None;
                 }
             }
@@ -205,7 +201,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
         };
 
         let i = if fastreturn {
-            self.retained.insert(i.def_id.node);
+            self.retained.insert(i.def_id);
             return Some(i);
         } else {
             self.fold_item_recur(i)
@@ -220,7 +216,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                            i.doc_value().is_none() => None,
                     clean::ImplItem(ref i) if i.items.is_empty() => None,
                     _ => {
-                        self.retained.insert(i.def_id.node);
+                        self.retained.insert(i.def_id);
                         Some(i)
                     }
                 }
@@ -231,14 +227,13 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 }
 
 // This stripper discards all private impls of traits
-struct ImplStripper<'a>(&'a HashSet<ast::NodeId>);
+struct ImplStripper<'a>(&'a DefIdSet);
 impl<'a> fold::DocFolder for ImplStripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if let clean::ImplItem(ref imp) = i.inner {
             match imp.trait_ {
                 Some(clean::ResolvedPath{ did, .. }) => {
-                    let ImplStripper(s) = *self;
-                    if did.is_local() && !s.contains(&did.node) {
+                    if did.is_local() && !self.0.contains(&did) {
                         return None;
                     }
                 }

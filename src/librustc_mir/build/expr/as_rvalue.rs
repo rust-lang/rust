@@ -17,13 +17,10 @@ use build::expr::category::{Category, RvalueFunc};
 use hair::*;
 use repr::*;
 
-impl<H:Hair> Builder<H> {
+impl<'a,'tcx> Builder<'a,'tcx> {
     /// Compile `expr`, yielding an rvalue.
-    pub fn as_rvalue<M>(&mut self,
-                        block: BasicBlock,
-                        expr: M)
-                        -> BlockAnd<Rvalue<H>>
-        where M: Mirror<H, Output=Expr<H>>
+    pub fn as_rvalue<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Rvalue<'tcx>>
+        where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
         self.expr_as_rvalue(block, expr)
@@ -31,20 +28,16 @@ impl<H:Hair> Builder<H> {
 
     fn expr_as_rvalue(&mut self,
                       mut block: BasicBlock,
-                      expr: Expr<H>)
-                      -> BlockAnd<Rvalue<H>>
-    {
-        debug!("expr_as_rvalue(block={:?}, expr={:?})",
-               block, expr);
+                      expr: Expr<'tcx>)
+                      -> BlockAnd<Rvalue<'tcx>> {
+        debug!("expr_as_rvalue(block={:?}, expr={:?})", block, expr);
 
         let this = self;
         let expr_span = expr.span;
 
         match expr.kind {
             ExprKind::Scope { extent, value } => {
-                this.in_scope(extent, block, |this| {
-                    this.as_rvalue(block, value)
-                })
+                this.in_scope(extent, block, |this| this.as_rvalue(block, value))
             }
             ExprKind::InlineAsm { asm } => {
                 block.and(Rvalue::InlineAsm(asm))
@@ -67,7 +60,7 @@ impl<H:Hair> Builder<H> {
                 let arg = unpack!(block = this.as_operand(block, arg));
                 block.and(Rvalue::UnaryOp(op, arg))
             }
-            ExprKind::Box { place: _, value } => {
+            ExprKind::Box { value } => {
                 let value = this.hir.mirror(value);
                 let value_ty = value.ty.clone();
                 let result = this.temp(value_ty.clone());
@@ -162,11 +155,9 @@ impl<H:Hair> Builder<H> {
                           .map(|f| (f.name, unpack!(block = this.as_operand(block, f.expr))))
                           .collect();
 
-                let field_names =
-                    this.hir.fields(adt_def, variant_index);
+                let field_names = this.hir.fields(adt_def, variant_index);
 
-                let base =
-                    base.map(|base| unpack!(block = this.as_lvalue(block, base)));
+                let base = base.map(|base| unpack!(block = this.as_lvalue(block, base)));
 
                 // for the actual values we use, take either the
                 // expr the user specified or, if they didn't

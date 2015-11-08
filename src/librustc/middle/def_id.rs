@@ -8,21 +8,55 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use metadata::cstore::LOCAL_CRATE;
 use middle::ty;
-use syntax::ast::{CrateNum, NodeId};
+use syntax::ast::CrateNum;
 use std::fmt;
+use std::u32;
 
+/// A DefIndex is an index into the hir-map for a crate, identifying a
+/// particular definition. It should really be considered an interned
+/// shorthand for a particular DefPath.
+#[derive(Clone, Debug, Eq, Ord, PartialOrd, PartialEq, RustcEncodable,
+           RustcDecodable, Hash, Copy)]
+pub struct DefIndex(u32);
+
+impl DefIndex {
+    pub fn new(x: usize) -> DefIndex {
+        assert!(x < (u32::MAX as usize));
+        DefIndex(x as u32)
+    }
+
+    pub fn from_u32(x: u32) -> DefIndex {
+        DefIndex(x)
+    }
+
+    pub fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    pub fn as_u32(&self) -> u32 {
+        self.0
+    }
+}
+
+/// The crate root is always assigned index 0 by the AST Map code,
+/// thanks to `NodeCollector::new`.
+pub const CRATE_DEF_INDEX: DefIndex = DefIndex(0);
+
+/// A DefId identifies a particular *definition*, by combining a crate
+/// index and a def index.
 #[derive(Clone, Eq, Ord, PartialOrd, PartialEq, RustcEncodable,
            RustcDecodable, Hash, Copy)]
 pub struct DefId {
     pub krate: CrateNum,
-    pub node: NodeId,
+    pub index: DefIndex,
 }
 
 impl fmt::Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "DefId {{ krate: {}, node: {}",
-                    self.krate, self.node));
+        try!(write!(f, "DefId {{ krate: {:?}, node: {:?}",
+                    self.krate, self.index));
 
         // Unfortunately, there seems to be no way to attempt to print
         // a path for a def-id, so I'll just make a best effort for now
@@ -40,23 +74,11 @@ impl fmt::Debug for DefId {
 
 
 impl DefId {
-    pub fn local(id: NodeId) -> DefId {
-        DefId { krate: LOCAL_CRATE, node: id }
-    }
-
-    /// Read the node id, asserting that this def-id is krate-local.
-    pub fn local_id(&self) -> NodeId {
-        assert_eq!(self.krate, LOCAL_CRATE);
-        self.node
+    pub fn local(index: DefIndex) -> DefId {
+        DefId { krate: LOCAL_CRATE, index: index }
     }
 
     pub fn is_local(&self) -> bool {
         self.krate == LOCAL_CRATE
     }
 }
-
-
-/// Item definitions in the currently-compiled crate would have the CrateNum
-/// LOCAL_CRATE in their DefId.
-pub const LOCAL_CRATE: CrateNum = 0;
-

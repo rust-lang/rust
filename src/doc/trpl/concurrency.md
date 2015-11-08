@@ -35,9 +35,11 @@ channel connecting two threads, we would want to be able to send some data
 down the channel and to the other thread. Therefore, we'd ensure that `Send` was
 implemented for that type.
 
-In the opposite way, if we were wrapping a library with FFI that isn't
+In the opposite way, if we were wrapping a library with [FFI][ffi] that isn't
 threadsafe, we wouldn't want to implement `Send`, and so the compiler will help
 us enforce that it can't leave the current thread.
+
+[ffi]: ffi.html
 
 ### `Sync`
 
@@ -53,7 +55,7 @@ For sharing references across threads, Rust provides a wrapper type called
 `Arc<T>`. `Arc<T>` implements `Send` and `Sync` if and only if `T` implements
 both `Send` and `Sync`. For example, an object of type `Arc<RefCell<U>>` cannot
 be transferred across threads because
-[`RefCell`](choosing-your-guarantees.html#refcell%3Ct%3E) does not implement
+[`RefCell`](choosing-your-guarantees.html#refcellt) does not implement
 `Sync`, consequently `Arc<RefCell<U>>` would not implement `Send`.
 
 These two traits allow you to use the type system to make strong guarantees
@@ -195,7 +197,7 @@ our value if it's immutable, but we want to be able to mutate it, so we need
 something else to persuade the borrow checker we know what we're doing.
 
 It looks like we need some type that allows us to safely mutate a shared value,
-for example a type that that can ensure only one thread at a time is able to
+for example a type that can ensure only one thread at a time is able to
 mutate the value inside it at any one time.
 
 For that, we can use the `Mutex<T>` type!

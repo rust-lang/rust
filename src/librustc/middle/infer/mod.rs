@@ -43,7 +43,7 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::{Span, DUMMY_SP};
-use util::nodemap::{FnvHashMap, NodeMap};
+use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 
 use self::combine::CombineFields;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
@@ -91,6 +91,10 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
     pub parameter_environment: ty::ParameterEnvironment<'a, 'tcx>,
 
     pub fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
+
+    // the set of predicates on which errors have been reported, to
+    // avoid reporting the same error twice.
+    pub reported_trait_errors: RefCell<FnvHashSet<traits::TraitErrorKey<'tcx>>>,
 
     // This is a temporary field used for toggling on normalization in the inference context,
     // as we move towards the approach described here:
@@ -374,6 +378,7 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
         region_vars: RegionVarBindings::new(tcx),
         parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
         fulfillment_cx: RefCell::new(traits::FulfillmentContext::new(errors_will_be_reported)),
+        reported_trait_errors: RefCell::new(FnvHashSet()),
         normalize: false,
         err_count_on_creation: tcx.sess.err_count()
     }
@@ -1389,9 +1394,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.resolve_type_vars_or_error(&ty)
     }
 
+    pub fn tables_are_tcx_tables(&self) -> bool {
+        let tables: &RefCell<ty::Tables> = &self.tables;
+        let tcx_tables: &RefCell<ty::Tables> = &self.tcx.tables;
+        tables as *const _ == tcx_tables as *const _
+    }
+
     pub fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let ty = self.resolve_type_vars_if_possible(&ty);
-        if ty.needs_infer() {
+        if ty.needs_infer() ||
+            (ty.has_closure_types() && !self.tables_are_tcx_tables()) {
             // this can get called from typeck (by euv), and moves_by_default
             // rightly refuses to work with inference variables, but
             // moves_by_default has a cache, which we want to use in other
@@ -1450,7 +1462,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         def_id: DefId)
                         -> Option<ty::ClosureKind>
     {
-        self.tables.borrow().closure_kinds.get(&def_id).cloned()
+        if def_id.is_local() {
+            self.tables.borrow().closure_kinds.get(&def_id).cloned()
+        } else {
+            // During typeck, ALL closures are local. But afterwards,
+            // during trans, we see closure ids from other traits.
+            // That may require loading the closure data out of the
+            // cstore.
+            Some(ty::Tables::closure_kind(&self.tables, self.tcx, def_id))
+        }
     }
 
     pub fn closure_type(&self,
@@ -1458,12 +1478,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         substs: &ty::ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {
-        let closure_ty = self.tables
-                             .borrow()
-                             .closure_tys
-                             .get(&def_id)
-                             .unwrap()
-                             .subst(self.tcx, &substs.func_substs);
+        let closure_ty =
+            ty::Tables::closure_type(self.tables,
+                                     self.tcx,
+                                     def_id,
+                                     substs);
 
         if self.normalize {
             normalize_associated_type(&self.tcx, &closure_ty)

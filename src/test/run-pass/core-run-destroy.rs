@@ -30,26 +30,25 @@ macro_rules! t {
     ($e:expr) => (match $e { Ok(e) => e, Err(e) => panic!("error: {}", e) })
 }
 
+#[test]
 fn test_destroy_once() {
     let mut p = sleeper();
-    match p.kill() {
-        Ok(()) => {}
-        Err(e) => panic!("error: {}", e),
-    }
+    t!(p.kill());
 }
 
 #[cfg(unix)]
 pub fn sleeper() -> Child {
-    Command::new("sleep").arg("1000").spawn().unwrap()
+    t!(Command::new("sleep").arg("1000").spawn())
 }
 #[cfg(windows)]
 pub fn sleeper() -> Child {
     // There's a `timeout` command on windows, but it doesn't like having
     // its output piped, so instead just ping ourselves a few times with
     // gaps in between so we're sure this process is alive for awhile
-    Command::new("ping").arg("127.0.0.1").arg("-n").arg("1000").spawn().unwrap()
+    t!(Command::new("ping").arg("127.0.0.1").arg("-n").arg("1000").spawn())
 }
 
+#[test]
 fn test_destroy_twice() {
     let mut p = sleeper();
     t!(p.kill()); // this shouldn't crash...
@@ -58,21 +57,20 @@ fn test_destroy_twice() {
 
 #[test]
 fn test_destroy_actually_kills() {
-    #[cfg(all(unix,not(target_os="android")))]
-    static BLOCK_COMMAND: &'static str = "cat";
-
-    #[cfg(all(unix,target_os="android"))]
-    static BLOCK_COMMAND: &'static str = "/system/bin/cat";
-
-    #[cfg(windows)]
-    static BLOCK_COMMAND: &'static str = "cmd";
+    let cmd = if cfg!(windows) {
+        "cmd"
+    } else if cfg!(target_os = "android") {
+        "/system/bin/cat"
+    } else {
+        "cat"
+    };
 
     // this process will stay alive indefinitely trying to read from stdin
-    let mut p = Command::new(BLOCK_COMMAND)
-                        .stdin(Stdio::piped())
-                        .spawn().unwrap();
+    let mut p = t!(Command::new(cmd)
+                           .stdin(Stdio::piped())
+                           .spawn());
 
-    p.kill().unwrap();
+    t!(p.kill());
 
     // Don't let this test time out, this should be quick
     let (tx, rx) = channel();
@@ -82,7 +80,7 @@ fn test_destroy_actually_kills() {
             process::exit(1);
         }
     });
-    let code = p.wait().unwrap().code();
+    let code = t!(p.wait()).code();
     if cfg!(windows) {
         assert!(code.is_some());
     } else {

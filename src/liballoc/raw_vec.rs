@@ -58,10 +58,17 @@ impl<T> RawVec<T> {
     pub fn new() -> Self {
         unsafe {
             // !0 is usize::MAX. This branch should be stripped at compile time.
-            let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
+            let cap = if mem::size_of::<T>() == 0 {
+                !0
+            } else {
+                0
+            };
 
             // heap::EMPTY doubles as "unallocated" and "zero-sized allocation"
-            RawVec { ptr: Unique::new(heap::EMPTY as *mut T), cap: cap }
+            RawVec {
+                ptr: Unique::new(heap::EMPTY as *mut T),
+                cap: cap,
+            }
         }
     }
 
@@ -92,23 +99,31 @@ impl<T> RawVec<T> {
             } else {
                 let align = mem::align_of::<T>();
                 let ptr = heap::allocate(alloc_size, align);
-                if ptr.is_null() { oom() }
+                if ptr.is_null() {
+                    oom()
+                }
                 ptr
             };
 
-            RawVec { ptr: Unique::new(ptr as *mut _), cap: cap }
+            RawVec {
+                ptr: Unique::new(ptr as *mut _),
+                cap: cap,
+            }
         }
     }
 
     /// Reconstitutes a RawVec from a pointer and capacity.
     ///
-    /// # Undefined Behaviour
+    /// # Undefined Behavior
     ///
     /// The ptr must be allocated, and with the given capacity. The
     /// capacity cannot exceed `isize::MAX` (only a concern on 32-bit systems).
     /// If the ptr and capacity come from a RawVec, then this is guaranteed.
     pub unsafe fn from_raw_parts(ptr: *mut T, cap: usize) -> Self {
-        RawVec { ptr: Unique::new(ptr), cap: cap }
+        RawVec {
+            ptr: Unique::new(ptr),
+            cap: cap,
+        }
     }
 
     /// Converts a `Box<[T]>` into a `RawVec<T>`.
@@ -133,7 +148,11 @@ impl<T> RawVec<T> {
     ///
     /// This will always be `usize::MAX` if `T` is zero-sized.
     pub fn cap(&self) -> usize {
-        if mem::size_of::<T>() == 0 { !0 } else { self.cap }
+        if mem::size_of::<T>() == 0 {
+            !0
+        } else {
+            self.cap
+        }
     }
 
     /// Doubles the size of the type's backing allocation. This is common enough
@@ -190,7 +209,11 @@ impl<T> RawVec<T> {
 
             let (new_cap, ptr) = if self.cap == 0 {
                 // skip to 4 because tiny Vec's are dumb; but not if that would cause overflow
-                let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
+                let new_cap = if elem_size > (!0) / 8 {
+                    1
+                } else {
+                    4
+                };
                 let ptr = heap::allocate(new_cap * elem_size, align);
                 (new_cap, ptr)
             } else {
@@ -207,7 +230,9 @@ impl<T> RawVec<T> {
             };
 
             // If allocate or reallocate fail, we'll get `null` back
-            if ptr.is_null() { oom() }
+            if ptr.is_null() {
+                oom()
+            }
 
             self.ptr = Unique::new(ptr as *mut _);
             self.cap = new_cap;
@@ -223,7 +248,7 @@ impl<T> RawVec<T> {
     ///
     /// If `used_cap` exceeds `self.cap()`, this may fail to actually allocate
     /// the requested space. This is not really unsafe, but the unsafe
-    /// code *you* write that relies on the behaviour of this function may break.
+    /// code *you* write that relies on the behavior of this function may break.
     ///
     /// # Panics
     ///
@@ -246,7 +271,9 @@ impl<T> RawVec<T> {
 
             // Don't actually need any more capacity.
             // Wrapping in case they gave a bad `used_cap`.
-            if self.cap().wrapping_sub(used_cap) >= needed_extra_cap { return; }
+            if self.cap().wrapping_sub(used_cap) >= needed_extra_cap {
+                return;
+            }
 
             // Nothing we can really do about these checks :(
             let new_cap = used_cap.checked_add(needed_extra_cap).expect("capacity overflow");
@@ -263,7 +290,9 @@ impl<T> RawVec<T> {
             };
 
             // If allocate or reallocate fail, we'll get `null` back
-            if ptr.is_null() { oom() }
+            if ptr.is_null() {
+                oom()
+            }
 
             self.ptr = Unique::new(ptr as *mut _);
             self.cap = new_cap;
@@ -273,12 +302,12 @@ impl<T> RawVec<T> {
     /// Ensures that the buffer contains at least enough space to hold
     /// `used_cap + needed_extra_cap` elements. If it doesn't already have
     /// enough capacity, will reallocate enough space plus comfortable slack
-    /// space to get amortized `O(1)` behaviour. Will limit this behaviour
+    /// space to get amortized `O(1)` behavior. Will limit this behavior
     /// if it would needlessly cause itself to panic.
     ///
     /// If `used_cap` exceeds `self.cap()`, this may fail to actually allocate
     /// the requested space. This is not really unsafe, but the unsafe
-    /// code *you* write that relies on the behaviour of this function may break.
+    /// code *you* write that relies on the behavior of this function may break.
     ///
     /// This is ideal for implementing a bulk-push operation like `extend`.
     ///
@@ -326,7 +355,9 @@ impl<T> RawVec<T> {
 
             // Don't actually need any more capacity.
             // Wrapping in case they give a bas `used_cap`
-            if self.cap().wrapping_sub(used_cap) >= needed_extra_cap { return; }
+            if self.cap().wrapping_sub(used_cap) >= needed_extra_cap {
+                return;
+            }
 
             // Nothing we can really do about these checks :(
             let new_cap = used_cap.checked_add(needed_extra_cap)
@@ -346,7 +377,9 @@ impl<T> RawVec<T> {
             };
 
             // If allocate or reallocate fail, we'll get `null` back
-            if ptr.is_null() { oom() }
+            if ptr.is_null() {
+                oom()
+            }
 
             self.ptr = Unique::new(ptr as *mut _);
             self.cap = new_cap;
@@ -386,7 +419,9 @@ impl<T> RawVec<T> {
                                            self.cap * elem_size,
                                            amount * elem_size,
                                            align);
-                if ptr.is_null() { oom() }
+                if ptr.is_null() {
+                    oom()
+                }
                 self.ptr = Unique::new(ptr as *mut _);
             }
             self.cap = amount;
@@ -395,7 +430,7 @@ impl<T> RawVec<T> {
 
     /// Converts the entire buffer into `Box<[T]>`.
     ///
-    /// While it is not *strictly* Undefined Behaviour to call
+    /// While it is not *strictly* Undefined Behavior to call
     /// this procedure while some of the RawVec is unintialized,
     /// it cetainly makes it trivial to trigger it.
     ///
@@ -418,6 +453,7 @@ impl<T> RawVec<T> {
 }
 
 impl<T> Drop for RawVec<T> {
+    #[unsafe_destructor_blind_to_params]
     /// Frees the memory owned by the RawVec *without* trying to Drop its contents.
     fn drop(&mut self) {
         let elem_size = mem::size_of::<T>();
@@ -446,6 +482,7 @@ impl<T> Drop for RawVec<T> {
 #[inline]
 fn alloc_guard(alloc_size: usize) {
     if core::usize::BITS < 64 {
-        assert!(alloc_size <= ::core::isize::MAX as usize, "capacity overflow");
+        assert!(alloc_size <= ::core::isize::MAX as usize,
+                "capacity overflow");
     }
 }

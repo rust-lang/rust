@@ -284,7 +284,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprBreak(label) => {
-                let loop_scope = self.find_scope(expr, label.map(|l| l.node));
+                let loop_scope = self.find_scope(expr, label.map(|l| l.node.name));
                 let b = self.add_ast_node(expr.id, &[pred]);
                 self.add_exiting_edge(expr, b,
                                       loop_scope, loop_scope.break_index);
@@ -292,7 +292,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprAgain(label) => {
-                let loop_scope = self.find_scope(expr, label.map(|l| l.node));
+                let loop_scope = self.find_scope(expr, label.map(|l| l.node.name));
                 let a = self.add_ast_node(expr.id, &[pred]);
                 self.add_exiting_edge(expr, a,
                                       loop_scope, loop_scope.continue_index);
@@ -344,13 +344,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.straightline(expr, pred, [r, l].iter().map(|&e| &**e))
             }
 
-            hir::ExprBox(Some(ref l), ref r) |
             hir::ExprIndex(ref l, ref r) |
             hir::ExprBinary(_, ref l, ref r) => { // NB: && and || handled earlier
                 self.straightline(expr, pred, [l, r].iter().map(|&e| &**e))
             }
 
-            hir::ExprBox(None, ref e) |
+            hir::ExprBox(ref e) |
             hir::ExprAddrOf(_, ref e) |
             hir::ExprCast(ref e, _) |
             hir::ExprUnary(_, ref e) |
@@ -586,7 +585,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
     fn find_scope(&self,
                   expr: &hir::Expr,
-                  label: Option<ast::Ident>) -> LoopScope {
+                  label: Option<ast::Name>) -> LoopScope {
         if label.is_none() {
             return *self.loop_scopes.last().unwrap();
         }

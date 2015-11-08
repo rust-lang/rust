@@ -23,8 +23,7 @@ fn for_func<F>(_f: F) where F: FnOnce() -> bool { panic!() }
 fn produce<T>() -> T { panic!(); }
 
 fn inc(v: &mut Box<isize>) {
-    *v = box() (**v + 1);
-    //~^ WARN deprecated syntax
+    *v = box (**v + 1);
 }
 
 fn pre_freeze_cond() {

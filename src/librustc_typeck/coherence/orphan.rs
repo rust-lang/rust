@@ -11,7 +11,8 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use middle::def_id::{DefId, LOCAL_CRATE};
+use metadata::cstore::LOCAL_CRATE;
+use middle::def_id::DefId;
 use middle::traits;
 use middle::ty;
 use syntax::ast;
@@ -63,7 +64,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
     /// to prevent inundating the user with a bunch of similar error
     /// reports.
     fn check_item(&self, item: &hir::Item) {
-        let def_id = DefId::local(item.id);
+        let def_id = self.tcx.map.local_def_id(item.id);
         match item.node {
             hir::ItemImpl(_, _, _, None, _, _) => {
                 // For inherent impls, self type must be a nominal type

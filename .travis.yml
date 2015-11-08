@@ -1,37 +1,22 @@
-# ccache support is disabled unless your language is a C-derivative. However
-# `language: C` unconditionally sets `CC=compiler`. If we just set it in our
-# `env` it will be overwritten by the default (gcc 4.6).
 language: c
-compiler: /usr/bin/gcc-4.7
-cache: ccache
-sudo: false
+sudo: required
+services:
+  - docker
 
-# The test suite is in general way too stressful for travis, especially in
-# terms of time limit and reliability. In the past we've tried to scale things
-# back to only build the stage1 compiler and run a subset of tests, but this
-# didn't end up panning out very well.
-#
-# As a result, we're just using travis to run `make tidy` and *only* build
-# stage1 but *not* test it for now (a strict subset of the bootstrap). This will
-# catch "obvious" errors like style or not even compiling.
-#
-# We need gcc4.7 or higher to build LLVM, and travis (well, Ubuntu 12.04)
-# currently ships with 4.6. Gotta download our own.
-before_script:
-  - ./configure --enable-ccache
+# LLVM takes awhile to check out and otherwise we'll manage the submodules in
+# our configure script, so disable auto submodule management.
+git:
+  submodules: false
+
+before_install:
+  - docker build -t rust -f src/etc/Dockerfile src/etc
 script:
-  - make tidy && make check -j4
-
-env:
-  - CXX=/usr/bin/g++-4.7
-
-addons:
-  apt:
-    sources:
-    - ubuntu-toolchain-r-test
-    packages:
-    - gcc-4.7
-    - g++-4.7
+  - docker run --privileged -tv `pwd`:/build rust
+    sh -c "
+      ./configure --llvm-root=/usr/lib/llvm-3.7 &&
+      make tidy &&
+      make check -j4
+    "
 
 # Real testing happens on http://buildbot.rust-lang.org/
 #

@@ -264,7 +264,7 @@ fn test_str_add() {
 
 #[test]
 fn remove() {
-    let mut s = "ศไทย中华Việt Nam; foobar".to_string();;
+    let mut s = "ศไทย中华Việt Nam; foobar".to_string();
     assert_eq!(s.remove(0), 'ศ');
     assert_eq!(s.len(), 33);
     assert_eq!(s, "ไทย中华Việt Nam; foobar");

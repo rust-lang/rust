@@ -14,6 +14,7 @@
 #![allow(non_camel_case_types)]
 
 use std::cell::RefCell;
+use std::io::Cursor;
 use std::io::prelude::*;
 
 use middle::def_id::DefId;
@@ -30,7 +31,7 @@ use syntax::abi::Abi;
 use syntax::ast;
 use syntax::diagnostic::SpanHandler;
 
-use rbml::writer::Encoder;
+use rbml::writer::{self, Encoder};
 
 macro_rules! mywrite { ($w:expr, $($arg:tt)*) => ({ write!($w.writer, $($arg)*); }) }
 
@@ -47,14 +48,14 @@ pub struct ctxt<'a, 'tcx: 'a> {
 // Extra parameters are for converting to/from def_ids in the string rep.
 // Whatever format you choose should not contain pipe characters.
 pub struct ty_abbrev {
-    s: String
+    s: Vec<u8>
 }
 
 pub type abbrev_map<'tcx> = RefCell<FnvHashMap<Ty<'tcx>, ty_abbrev>>;
 
 pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
     match cx.abbrevs.borrow_mut().get(&t) {
-        Some(a) => { w.writer.write_all(a.s.as_bytes()); return; }
+        Some(a) => { w.writer.write_all(&a.s); return; }
         None => {}
     }
 
@@ -166,19 +167,22 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
 
     let end = w.mark_stable_position();
     let len = end - pos;
-    fn estimate_sz(u: u64) -> u64 {
-        let mut n = u;
-        let mut len = 0;
-        while n != 0 { len += 1; n = n >> 4; }
-        return len;
-    }
-    let abbrev_len = 3 + estimate_sz(pos) + estimate_sz(len);
-    if abbrev_len < len {
-        // I.e. it's actually an abbreviation.
-        cx.abbrevs.borrow_mut().insert(t, ty_abbrev {
-            s: format!("#{:x}:{:x}#", pos, len)
-        });
-    }
+
+    let buf: &mut [u8] = &mut [0; 16]; // vuint < 15 bytes
+    let mut abbrev = Cursor::new(buf);
+    abbrev.write_all(b"#");
+    writer::write_vuint(&mut abbrev, pos as usize);
+
+    cx.abbrevs.borrow_mut().insert(t, ty_abbrev {
+        s: if abbrev.position() < len {
+            abbrev.get_ref()[..abbrev.position() as usize].to_owned()
+        } else {
+            // if the abbreviation is longer than the real type,
+            // don't use #-notation. However, insert it here so
+            // other won't have to `mark_stable_position`
+            w.writer.get_ref()[pos as usize..end as usize].to_owned()
+        }
+    });
 }
 
 fn enc_mutability(w: &mut Encoder, mt: hir::Mutability) {
@@ -250,7 +254,7 @@ pub fn enc_region(w: &mut Encoder, cx: &ctxt, r: ty::Region) {
         }
         ty::ReEarlyBound(ref data) => {
             mywrite!(w, "B[{}|{}|{}|{}]",
-                     data.param_id,
+                     (cx.ds)(data.def_id),
                      data.space.to_uint(),
                      data.index,
                      data.name);

@@ -18,7 +18,7 @@ pub fn opts() -> TargetOptions {
         executables: true,
         has_rpath: true,
         archive_format: "gnu".to_string(),
-        exe_allocation_crate: super::best_allocator(),
+        exe_allocation_crate: super::maybe_jemalloc(),
 
         .. Default::default()
     }

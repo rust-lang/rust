@@ -19,8 +19,8 @@ kept in mind. Due to its dual purpose as "for FFI" and "for layout control",
 `repr(C)` can be applied to types that will be nonsensical or problematic if
 passed through the FFI boundary.
 
-* ZSTs are still zero-sized, even though this is not a standard behaviour in
-C, and is explicitly contrary to the behaviour of an empty type in C++, which
+* ZSTs are still zero-sized, even though this is not a standard behavior in
+C, and is explicitly contrary to the behavior of an empty type in C++, which
 still consumes a byte of space.
 
 * DSTs, tuples, and tagged unions are not a concept in C and as such are never
@@ -65,7 +65,7 @@ compiler might be able to paper over alignment issues with shifts and masks.
 However if you take a reference to a packed field, it's unlikely that the
 compiler will be able to emit code to avoid an unaligned load.
 
-**[As of Rust 1.0 this can cause undefined behaviour.][ub loads]**
+**[As of Rust 1.0 this can cause undefined behavior.][ub loads]**
 
 `repr(packed)` is not to be used lightly. Unless you have extreme requirements,
 this should not be used.

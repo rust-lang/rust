@@ -20,12 +20,13 @@ trait Expr: Debug + PartialEq {
 #[derive(Debug)]
 struct SExpr<'x> {
     elements: Vec<Box<Expr+ 'x>>,
+    //~^ ERROR E0038
 }
 
 impl<'x> PartialEq for SExpr<'x> {
     fn eq(&self, other:&SExpr<'x>) -> bool {
         println!("L1: {} L2: {}", self.elements.len(), other.elements.len());
-        //~^ ERROR E0038
+
         let result = self.elements.len() == other.elements.len();
 
         println!("Got compare {}", result);
@@ -44,8 +45,8 @@ impl <'x> Expr for SExpr<'x> {
 }
 
 fn main() {
-    let a: Box<Expr> = Box::new(SExpr::new()); //~ ERROR E0038
-    let b: Box<Expr> = Box::new(SExpr::new()); //~ ERROR E0038
+    let a: Box<Expr> = Box::new(SExpr::new());
+    let b: Box<Expr> = Box::new(SExpr::new());
 
     // assert_eq!(a , b);
 }

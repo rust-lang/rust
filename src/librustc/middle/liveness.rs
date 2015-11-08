@@ -383,7 +383,7 @@ fn visit_fn(ir: &mut IrMaps,
                                &*arg.pat,
                                |_bm, arg_id, _x, path1| {
             debug!("adding argument {}", arg_id);
-            let name = path1.node.name;
+            let name = path1.node;
             fn_maps.add_variable(Arg(arg_id, name));
         })
     };
@@ -416,7 +416,7 @@ fn visit_fn(ir: &mut IrMaps,
 fn visit_local(ir: &mut IrMaps, local: &hir::Local) {
     pat_util::pat_bindings(&ir.tcx.def_map, &*local.pat, |_, p_id, sp, path1| {
         debug!("adding local variable {}", p_id);
-        let name = path1.node.name;
+        let name = path1.node;
         ir.add_live_node_for_node(p_id, VarDefNode(sp));
         ir.add_variable(Local(LocalInfo {
           id: p_id,
@@ -431,7 +431,7 @@ fn visit_arm(ir: &mut IrMaps, arm: &hir::Arm) {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
             debug!("adding local variable {} from match with bm {:?}",
                    p_id, bm);
-            let name = path1.node.name;
+            let name = path1.node;
             ir.add_live_node_for_node(p_id, VarDefNode(sp));
             ir.add_variable(Local(LocalInfo {
                 id: p_id,
@@ -465,7 +465,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         let mut call_caps = Vec::new();
         ir.tcx.with_freevars(expr.id, |freevars| {
             for fv in freevars {
-                if let DefLocal(rv) = fv.def {
+                if let DefLocal(_, rv) = fv.def {
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
                     call_caps.push(CaptureInfo {ln: fv_ln,
                                                 var_nid: rv});
@@ -688,7 +688,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn find_loop_scope(&self,
-                       opt_label: Option<ast::Ident>,
+                       opt_label: Option<ast::Name>,
                        id: NodeId,
                        sp: Span)
                        -> NodeId {
@@ -1049,7 +1049,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprBreak(opt_label) => {
               // Find which label this break jumps to
-              let sc = self.find_loop_scope(opt_label.map(|l| l.node), expr.id, expr.span);
+              let sc = self.find_loop_scope(opt_label.map(|l| l.node.name), expr.id, expr.span);
 
               // Now that we know the label we're going to,
               // look it up in the break loop nodes table
@@ -1063,7 +1063,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprAgain(opt_label) => {
               // Find which label this expr continues to
-              let sc = self.find_loop_scope(opt_label.map(|l| l.node), expr.id, expr.span);
+              let sc = self.find_loop_scope(opt_label.map(|l| l.node.name), expr.id, expr.span);
 
               // Now that we know the label we're going to,
               // look it up in the continue loop nodes table
@@ -1147,8 +1147,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           hir::ExprIndex(ref l, ref r) |
-          hir::ExprBinary(_, ref l, ref r) |
-          hir::ExprBox(Some(ref l), ref r) => {
+          hir::ExprBinary(_, ref l, ref r) => {
             let r_succ = self.propagate_through_expr(&**r, succ);
             self.propagate_through_expr(&**l, r_succ)
           }
@@ -1158,7 +1157,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             e1.as_ref().map_or(succ, |e| self.propagate_through_expr(&**e, succ))
           }
 
-          hir::ExprBox(None, ref e) |
+          hir::ExprBox(ref e) |
           hir::ExprAddrOf(_, ref e) |
           hir::ExprCast(ref e, _) |
           hir::ExprUnary(_, ref e) => {
@@ -1269,7 +1268,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn access_path(&mut self, expr: &Expr, succ: LiveNode, acc: u32)
                    -> LiveNode {
         match self.ir.tcx.def_map.borrow().get(&expr.id).unwrap().full_def() {
-          DefLocal(nid) => {
+          DefLocal(_, nid) => {
             let ln = self.live_node(expr.id, expr.span);
             if acc != 0 {
                 self.init_from_succ(ln, succ);
@@ -1399,9 +1398,8 @@ fn check_arm(this: &mut Liveness, arm: &hir::Arm) {
 
 fn check_expr(this: &mut Liveness, expr: &Expr) {
     match expr.node {
-      hir::ExprAssign(ref l, ref r) => {
+      hir::ExprAssign(ref l, _) => {
         this.check_lvalue(&**l);
-        this.visit_expr(&**r);
 
         visit::walk_expr(this, expr);
       }
@@ -1519,9 +1517,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_lvalue(&mut self, expr: &Expr) {
         match expr.node {
             hir::ExprPath(..) => {
-                if let DefLocal(nid) = self.ir.tcx.def_map.borrow().get(&expr.id)
-                                                                   .unwrap()
-                                                                   .full_def() {
+                if let DefLocal(_, nid) = self.ir.tcx.def_map.borrow().get(&expr.id)
+                                                                      .unwrap()
+                                                                      .full_def() {
                     // Assignment to an immutable variable or argument: only legal
                     // if there is no later assignment. If this local is actually
                     // mutable, then check for a reassignment to flag the mutability
@@ -1555,8 +1553,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                                    |_bm, p_id, sp, path1| {
                 let var = self.variable(p_id, sp);
                 // Ignore unused self.
-                let ident = path1.node;
-                if ident.name != special_idents::self_.name {
+                let name = path1.node;
+                if name != special_idents::self_.name {
                     self.warn_about_unused(sp, p_id, entry_ln, var);
                 }
             })

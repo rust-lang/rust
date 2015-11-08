@@ -177,6 +177,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
             for arg in &fd.inputs {
                 match arg.pat.node {
                     hir::PatIdent(hir::BindByValue(hir::MutImmutable), _, None) => {}
+                    hir::PatWild(_) => {}
                     _ => {
                         span_err!(self.tcx.sess, arg.pat.span, E0022,
                                   "arguments of constant functions can only \
@@ -568,8 +569,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                             "user-defined operators are not allowed in {}s", v.msg());
             }
         }
-        hir::ExprBox(..) |
-        hir::ExprUnary(hir::UnUniq, _) => {
+        hir::ExprBox(_) => {
             v.add_qualif(ConstQualif::NOT_CONST);
             if v.mode != Mode::Var {
                 span_err!(v.tcx.sess, e.span, E0010,
@@ -660,7 +660,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                                              doesn't point to a constant");
                     }
                 }
-                Some(def::DefLocal(_)) if v.mode == Mode::ConstFn => {
+                Some(def::DefLocal(..)) if v.mode == Mode::ConstFn => {
                     // Sadly, we can't determine whether the types are zero-sized.
                     v.add_qualif(ConstQualif::NOT_CONST | ConstQualif::NON_ZERO_SIZED);
                 }
@@ -710,20 +710,26 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             if !is_const {
                 v.add_qualif(ConstQualif::NOT_CONST);
                 if v.mode != Mode::Var {
+                    fn span_limited_call_error(tcx: &ty::ctxt, span: Span, s: &str) {
+                        span_err!(tcx.sess, span, E0015, "{}", s);
+                    }
+
                     // FIXME(#24111) Remove this check when const fn stabilizes
                     if let UnstableFeatures::Disallow = v.tcx.sess.opts.unstable_features {
-                        span_err!(v.tcx.sess, e.span, E0015,
-                                  "function calls in {}s are limited to \
-                                   struct and enum constructors", v.msg());
+                        span_limited_call_error(&v.tcx, e.span,
+                                                &format!("function calls in {}s are limited to \
+                                                          struct and enum constructors",
+                                                         v.msg()));
                         v.tcx.sess.span_note(e.span,
                                              "a limited form of compile-time function \
                                               evaluation is available on a nightly \
                                               compiler via `const fn`");
                     } else {
-                        span_err!(v.tcx.sess, e.span, E0015,
-                                  "function calls in {}s are limited to \
-                                   constant functions, \
-                                   struct and enum constructors", v.msg());
+                        span_limited_call_error(&v.tcx, e.span,
+                                                &format!("function calls in {}s are limited \
+                                                          to constant functions, \
+                                                          struct and enum constructors",
+                                                         v.msg()));
                     }
                 }
             }

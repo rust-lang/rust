@@ -37,7 +37,7 @@ use super::{VtableImplData, VtableObjectData, VtableBuiltinData,
 use super::object_safety;
 use super::util;
 
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
 use middle::subst::{Subst, Substs, TypeSpace};
@@ -1719,7 +1719,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
             ty::TyTuple(ref tys) => ok_if(tys.clone()),
 
-            ty::TyClosure(def_id, ref substs) => {
+            ty::TyClosure(_, ref substs) => {
                 // FIXME -- This case is tricky. In the case of by-ref
                 // closures particularly, we need the results of
                 // inference to decide how to reflect the type of each
@@ -1729,7 +1729,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // captures are by value. Really what we ought to do
                 // is reserve judgement and then intertwine this
                 // analysis with closure inference.
-                assert_eq!(def_id.krate, LOCAL_CRATE);
 
                 // Unboxed closures shouldn't be
                 // implicitly copyable
@@ -1863,7 +1862,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 tys.clone()
             }
 
-            ty::TyClosure(def_id, ref substs) => {
+            ty::TyClosure(_, ref substs) => {
                 // FIXME(#27086). We are invariant w/r/t our
                 // substs.func_substs, but we don't see them as
                 // constituent types; this seems RIGHT but also like
@@ -1872,7 +1871,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // OIBIT interact? That is, there is no way to say
                 // "make me invariant with respect to this TYPE, but
                 // do not act as though I can reach it"
-                assert_eq!(def_id.krate, LOCAL_CRATE);
                 substs.upvar_tys.clone()
             }
 
@@ -2396,7 +2394,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// errors as if there is no applicable impl, but rather report
     /// errors are about mismatched argument types.
     ///
-    /// Here is an example. Imagine we have an closure expression
+    /// Here is an example. Imagine we have a closure expression
     /// and we desugared it so that the type of the expression is
     /// `Closure`, and `Closure` expects an int as argument. Then it
     /// is "as if" the compiler generated this impl:

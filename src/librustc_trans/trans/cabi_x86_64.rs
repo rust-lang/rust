@@ -410,17 +410,52 @@ pub fn compute_abi_info(ccx: &CrateContext,
         }
     }
 
-    let mut arg_tys = Vec::new();
-    for t in atys {
-        let ty = x86_64_ty(ccx, *t, |cls| cls.is_pass_byval(), Attribute::ByVal);
-        arg_tys.push(ty);
-    }
+    let mut int_regs = 6; // RDI, RSI, RDX, RCX, R8, R9
+    let mut sse_regs = 8; // XMM0-7
 
     let ret_ty = if ret_def {
-        x86_64_ty(ccx, rty, |cls| cls.is_ret_bysret(), Attribute::StructRet)
+        x86_64_ty(ccx, rty, |cls| {
+            if cls.is_ret_bysret() {
+                // `sret` parameter thus one less register available
+                int_regs -= 1;
+                true
+            } else {
+                false
+            }
+        }, Attribute::StructRet)
     } else {
         ArgType::direct(Type::void(ccx), None, None, None)
     };
+
+    let mut arg_tys = Vec::new();
+    for t in atys {
+        let ty = x86_64_ty(ccx, *t, |cls| {
+            let needed_int = cls.iter().filter(|&&c| c == Int).count() as isize;
+            let needed_sse = cls.iter().filter(|c| c.is_sse()).count() as isize;
+            let in_mem = cls.is_pass_byval() ||
+                         int_regs < needed_int ||
+                         sse_regs < needed_sse;
+            if in_mem {
+                // `byval` parameter thus one less integer register available
+                int_regs -= 1;
+            } else {
+                // split into sized chunks passed individually
+                int_regs -= needed_int;
+                sse_regs -= needed_sse;
+            }
+            in_mem
+        }, Attribute::ByVal);
+        arg_tys.push(ty);
+
+        // An integer, pointer, double or float parameter
+        // thus the above closure passed to `x86_64_ty` won't
+        // get called.
+        if t.kind() == Integer || t.kind() == Pointer {
+            int_regs -= 1;
+        } else if t.kind() == Double || t.kind() == Float {
+            sse_regs -= 1;
+        }
+    }
 
     return FnType {
         arg_tys: arg_tys,

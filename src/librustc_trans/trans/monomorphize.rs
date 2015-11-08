@@ -38,7 +38,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 fn_id: DefId,
                                 psubsts: &'tcx subst::Substs<'tcx>,
                                 ref_id: Option<ast::NodeId>)
-    -> (ValueRef, Ty<'tcx>, bool) {
+                                -> (ValueRef, Ty<'tcx>, bool) {
     debug!("monomorphic_fn(\
             fn_id={:?}, \
             real_substs={:?}, \
@@ -48,6 +48,9 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            ref_id);
 
     assert!(!psubsts.types.needs_infer() && !psubsts.types.has_param_types());
+
+    // we can only monomorphize things in this crate (or inlined into it)
+    let fn_node_id = ccx.tcx().map.as_local_node_id(fn_id).unwrap();
 
     let _icx = push_ctxt("monomorphic_fn");
 
@@ -82,7 +85,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let map_node = session::expect(
         ccx.sess(),
-        ccx.tcx().map.find(fn_id.node),
+        ccx.tcx().map.find(fn_node_id),
         || {
             format!("while monomorphizing {:?}, couldn't find it in \
                      the item map (may have attempted to monomorphize \
@@ -91,10 +94,10 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         });
 
     if let hir_map::NodeForeignItem(_) = map_node {
-        let abi = ccx.tcx().map.get_foreign_abi(fn_id.node);
+        let abi = ccx.tcx().map.get_foreign_abi(fn_node_id);
         if abi != abi::RustIntrinsic && abi != abi::PlatformIntrinsic {
             // Foreign externs don't have to be monomorphized.
-            return (get_item_val(ccx, fn_id.node), mono_ty, true);
+            return (get_item_val(ccx, fn_node_id), mono_ty, true);
         }
     }
 
@@ -107,11 +110,13 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             Some(&d) => d, None => 0
         };
 
+        debug!("monomorphic_fn: depth for fn_id={:?} is {:?}", fn_id, depth+1);
+
         // Random cut-off -- code that needs to instantiate the same function
         // recursively more than thirty times can probably safely be assumed
         // to be causing an infinite expansion.
         if depth > ccx.sess().recursion_limit.get() {
-            ccx.sess().span_fatal(ccx.tcx().map.span(fn_id.node),
+            ccx.sess().span_fatal(ccx.tcx().map.span(fn_node_id),
                 "reached the recursion limit during monomorphization");
         }
 
@@ -125,9 +130,8 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         mono_ty.hash(&mut state);
 
         hash = format!("h{}", state.finish());
-        ccx.tcx().map.with_path(fn_id.node, |path| {
-            exported_name(path, &hash[..])
-        })
+        let path = ccx.tcx().map.def_path_from_id(fn_node_id);
+        exported_name(path, &hash[..])
     };
 
     debug!("monomorphize_fn mangled to {}", s);
@@ -136,7 +140,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let mut hash_id = Some(hash_id);
     let mut mk_lldecl = |abi: abi::Abi| {
         let lldecl = if abi != abi::Rust {
-            foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, &s[..])
+            foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, &s)
         } else {
             // FIXME(nagisa): perhaps needs a more fine grained selection? See
             // setup_lldecl below.
@@ -178,10 +182,10 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                   if needs_body {
                       if abi != abi::Rust {
                           foreign::trans_rust_fn_with_foreign_abi(
-                              ccx, &**decl, &**body, &[], d, psubsts, fn_id.node,
+                              ccx, &**decl, &**body, &[], d, psubsts, fn_node_id,
                               Some(&hash[..]));
                       } else {
-                          trans_fn(ccx, &**decl, &**body, d, psubsts, fn_id.node, &[]);
+                          trans_fn(ccx, &**decl, &**body, d, psubsts, fn_node_id, &[]);
                       }
                   }
 
@@ -193,11 +197,11 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
         }
         hir_map::NodeVariant(v) => {
-            let variant = inlined_variant_def(ccx, fn_id.node);
-            assert_eq!(v.node.name.name, variant.name);
+            let variant = inlined_variant_def(ccx, fn_node_id);
+            assert_eq!(v.node.name, variant.name);
             let d = mk_lldecl(abi::Rust);
             attributes::inline(d, attributes::InlineAttr::Hint);
-            trans_enum_variant(ccx, fn_id.node, variant.disr_val, psubsts, d);
+            trans_enum_variant(ccx, fn_node_id, variant.disr_val, psubsts, d);
             d
         }
         hir_map::NodeImplItem(impl_item) => {
@@ -242,9 +246,11 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         hir_map::NodeStructCtor(struct_def) => {
             let d = mk_lldecl(abi::Rust);
             attributes::inline(d, attributes::InlineAttr::Hint);
+            if struct_def.is_struct() {
+                panic!("ast-mapped struct didn't have a ctor id")
+            }
             base::trans_tuple_struct(ccx,
-                                     struct_def.ctor_id.expect("ast-mapped tuple struct \
-                                                                didn't have a ctor id"),
+                                     struct_def.id(),
                                      psubsts,
                                      d);
             d

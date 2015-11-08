@@ -60,6 +60,8 @@ pub fn prim_ty_to_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 }
 
+/// If a type in the AST is a primitive type, return the ty::Ty corresponding
+/// to it.
 pub fn ast_ty_to_prim_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ast_ty: &ast::Ty)
                                -> Option<Ty<'tcx>> {
     if let ast::TyPath(None, ref path) = ast_ty.node {

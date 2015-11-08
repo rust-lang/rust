@@ -13,7 +13,7 @@ Hoare in 1985.
 > dining room, furnished with a circular table, surrounded by five chairs, each
 > labelled by the name of the philosopher who was to sit in it. They sat
 > anticlockwise around the table. To the left of each philosopher there was
-> laid a golden fork, and in the centre stood a large bowl of spaghetti, which
+> laid a golden fork, and in the center stood a large bowl of spaghetti, which
 > was constantly replenished. A philosopher was expected to spend most of
 > their time thinking; but when they felt hungry, they went to the dining
 > room, sat down in their own chair, picked up their own fork on their left,
@@ -45,7 +45,7 @@ Now, let’s imagine this sequence of events:
 6. ... ? All the forks are taken, but nobody can eat!
 
 There are different ways to solve this problem. We’ll get to our solution in
-the tutorial itself. For now, let’s get started modelling the problem itself.
+the tutorial itself. For now, let’s get started modeling the problem itself.
 We’ll start with the philosophers:
 
 ```rust
@@ -434,7 +434,7 @@ ownership of the values it’s capturing. Primarily, the `p` variable of the
 
 Inside the thread, all we do is call `eat()` on `p`. Also note that the call to `thread::spawn` lacks a trailing semicolon, making this an expression. This distinction is important, yielding the correct return value. For more details, read [Expressions vs. Statements][es].
 
-[es]: functions.html#expressions-vs.-statements
+[es]: functions.html#expressions-vs-statements
 
 ```rust,ignore
 }).collect();

@@ -2,7 +2,7 @@
 
 Unsafe code can often end up producing references or lifetimes out of thin air.
 Such lifetimes come into the world as *unbounded*. The most common source of this
-is derefencing a raw pointer, which produces a reference with an unbounded lifetime.
+is dereferencing a raw pointer, which produces a reference with an unbounded lifetime.
 Such a lifetime becomes as big as context demands. This is in fact more powerful
 than simply becoming `'static`, because for instance `&'static &'a T`
 will fail to typecheck, but the unbound lifetime will perfectly mold into
@@ -10,7 +10,7 @@ will fail to typecheck, but the unbound lifetime will perfectly mold into
 lifetime can be regarded as `'static`.
 
 Almost no reference is `'static`, so this is probably wrong. `transmute` and
-`transmute_copy` are the two other primary offenders. One should endeavour to
+`transmute_copy` are the two other primary offenders. One should endeavor to
 bound an unbounded lifetime as quick as possible, especially across function
 boundaries.
 
