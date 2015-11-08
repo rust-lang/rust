@@ -70,8 +70,8 @@ that all instances are valid utf-8:
 Providing library-level guarantees sometimes entails inconvenience (for static
 checks) or overhead (for dynamic checks). So it is sometimes desirable to allow
 clients to sidestep this checking, while promising to use the API in a way that
-still provides the guarantee. Such escape hatches should only be be introduced
-when there is a demonstrated need for them.
+still provides the guarantee. Such escape hatches should only be introduced when
+there is a demonstrated need for them.
 
 It should be trivial for clients to audit their use of the library for
 escape hatches.
