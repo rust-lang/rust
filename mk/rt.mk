@@ -352,6 +352,10 @@ endif # endif for darwin
 ifeq ($$(findstring musl,$(1)),musl)
 $$(RT_OUTPUT_DIR_$(1))/%: $$(CFG_MUSL_ROOT)/lib/%
 	cp $$^ $$@
+else
+# Ask gcc where it is
+$$(RT_OUTPUT_DIR_$(1))/%:
+	cp $$(shell $$(CC_$(1)) -print-file-name=$$(@F)) $$@
 endif
 
 endef
