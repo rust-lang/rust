@@ -47,6 +47,8 @@ A **Class Diagram** describes the structure of a system by showing the system´s
 [Communication Diagram]:https://en.wikipedia.org/wiki/Communication_diagram
 [Class Diagram]:https://en.wikipedia.org/wiki/Class_diagram
 
+![alt tag](https://github.com/martapips/rust/blob/master/ESOF-docs/res/packageDiagram.jpg?raw=true)
+
 ## Implementation View
 
 This view shows the program from a different prespective than the previous one. From the prespective of the programmer. It is used the [Component Diagram] to show the programmer the program's different components.
