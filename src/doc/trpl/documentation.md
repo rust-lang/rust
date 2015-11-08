@@ -385,17 +385,17 @@ error handling. Lets say you want the following,
 The problem is that `try!` returns a `Result<T, E>` and test functions
 don't return anything so this will give a mismatched types error.
 
-```rust
+```rust,ignore
 /// A doc test using try!
 ///
 /// ```
 /// use std::io;
-/// # fn f() -> io::Result<()> {
+/// # fn foo() -> io::Result<()> {
 /// let mut input = String::new(); 
 /// try!(io::stdin().read_line(&mut input));
 /// # Ok(())
 /// # }
-/// # f();
+/// # foo();
 /// ```
 ```
 
