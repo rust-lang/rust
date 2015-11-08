@@ -395,8 +395,8 @@ don't return anything so this will give a mismatched types error.
 /// try!(io::stdin().read_line(&mut input));
 /// # Ok(())
 /// # }
-/// # foo();
 /// ```
+# fn foo() {}
 ```
 
 You can get around this by wrapping the code in a function. This catches
