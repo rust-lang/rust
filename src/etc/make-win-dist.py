@@ -58,10 +58,6 @@ def make_win_dist(rust_root, plat_root, target_triple):
         rustc_dlls.append("libgcc_s_seh-1.dll")
 
     target_libs = [ # MinGW libs
-                    "crtbegin.o",
-                    "crtend.o",
-                    "crt2.o",
-                    "dllcrt2.o",
                     "libgcc.a",
                     "libgcc_eh.a",
                     "libgcc_s.a",

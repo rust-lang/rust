@@ -21,8 +21,8 @@ CFG_LDPATH_x86_64-unknown-linux-musl :=
 CFG_RUN_x86_64-unknown-linux-musl=$(2)
 CFG_RUN_TARG_x86_64-unknown-linux-musl=$(call CFG_RUN_x86_64-unknown-linux-musl,,$(2))
 CFG_GNU_TRIPLE_x86_64-unknown-linux-musl := x86_64-unknown-linux-musl
+CFG_THIRD_PARTY_OBJECTS_x86_64-unknown-linux-musl := crt1.o crti.o crtn.o
+CFG_INSTALLED_OBJECTS_x86_64-unknown-linux-musl := crt1.o crti.o crtn.o
 
 NATIVE_DEPS_libc_T_x86_64-unknown-linux-musl += libc.a
-NATIVE_DEPS_std_T_x86_64-unknown-linux-musl += libunwind.a \
-	crt1.o crti.o crtn.o
-INSTALLED_OBJECTS_x86_64-unknown-linux-musl += crt1.o crti.o crtn.o
+NATIVE_DEPS_std_T_x86_64-unknown-linux-musl += libunwind.a crt1.o crti.o crtn.o

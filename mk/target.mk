@@ -132,26 +132,6 @@ $$(TBIN$(1)_T_$(2)_H_$(3))/$(4)$$(X_$(2)): \
 
 endef
 
-# Macro for building runtime startup objects
-# Of those we have two kinds:
-# - Rust runtime-specific: these are Rust's equivalents of GCC's crti.o/crtn.o,
-# - LibC-specific: these we don't build ourselves, but copy them from the system lib directory.
-#
-# $(1) - stage
-# $(2) - target triple
-# $(3) - host triple
-define TARGET_RT_STARTUP
-
-# Expand build rules for rsbegin.o and rsend.o
-$$(foreach obj,rsbegin rsend, \
-	$$(eval $$(call TARGET_RUSTRT_STARTUP_OBJ,$(1),$(2),$(3),$$(obj))) )
-
-# Expand build rules for libc startup objects
-$$(foreach obj,$$(CFG_LIBC_STARTUP_OBJECTS_$(2)), \
-	$$(eval $$(call TARGET_LIBC_STARTUP_OBJ,$(1),$(2),$(3),$$(obj))) )
-
-endef
-
 # Macro for building runtime startup/shutdown object files;
 # these are Rust's equivalent of crti.o, crtn.o
 #
@@ -177,27 +157,6 @@ $$(foreach crate, $$(TARGET_CRATES), \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate))) : $$(TLIB$(1)_T_$(2)_H_$(3))/$(4).o
 
 endef
-
-# Macro for copying libc startup objects into the target's lib directory.
-#
-# $(1) - stage
-# $(2) - target triple
-# $(3) - host triple
-# $(4) - object name
-define TARGET_LIBC_STARTUP_OBJ
-
-# Ask gcc where the startup object is located
-$$(TLIB$(1)_T_$(2)_H_$(3))/$(4) : $$(shell $$(CC_$(2)) -print-file-name=$(4))
-	@$$(call E, cp: $$@)
-	@cp $$^ $$@
-
-# Make sure this is done before libcore has finished building
-# (libcore itself does not depend on these objects, but other crates do,
-#  so might as well do it here)
-$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.core : $$(TLIB$(1)_T_$(2)_H_$(3))/$(4)
-
-endef
-
 
 # Every recipe in RUST_TARGET_STAGE_N outputs to $$(TLIB$(1)_T_$(2)_H_$(3),
 # a directory that can be cleaned out during the middle of a run of
@@ -245,4 +204,5 @@ $(foreach host,$(CFG_HOST), \
 $(foreach host,$(CFG_HOST), \
  $(foreach target,$(CFG_TARGET), \
   $(foreach stage,$(STAGES), \
-   	$(eval $(call TARGET_RT_STARTUP,$(stage),$(target),$(host))))))
+  	$(foreach obj,rsbegin rsend, \
+   	  $(eval $(call TARGET_RUSTRT_STARTUP_OBJ,$(stage),$(target),$(host),$(obj)))))))

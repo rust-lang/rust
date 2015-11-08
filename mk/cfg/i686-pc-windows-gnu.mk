@@ -22,4 +22,5 @@ CFG_LDPATH_i686-pc-windows-gnu :=
 CFG_RUN_i686-pc-windows-gnu=$(2)
 CFG_RUN_TARG_i686-pc-windows-gnu=$(call CFG_RUN_i686-pc-windows-gnu,,$(2))
 CFG_GNU_TRIPLE_i686-pc-windows-gnu := i686-w64-mingw32
-CFG_LIBC_STARTUP_OBJECTS_i686-pc-windows-gnu := crt2.o dllcrt2.o
+CFG_THIRD_PARTY_OBJECTS_i686-pc-windows-gnu := crt2.o dllcrt2.o
+CFG_INSTALLED_OBJECTS_i686-pc-windows-gnu := crt2.o dllcrt2.o rsbegin.o rsend.o
