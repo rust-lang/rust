@@ -95,3 +95,15 @@ A **Deployment Diagram** models the physical deployment of artifacts on nodes.
 [Deployment Diagrams]:https://en.wikipedia.org/wiki/Deployment_diagram
 
 ## Critical Analysis
+
+Its important to say that all diagrams presented in this report were all built by all the authors of this report which were based only in the compreension and understanding of how the project worked to the eyes of the authors.
+
+The **Implementation View** is expressed by a **Component Diagram**  that clearly shows how a file that contains rust code is ready to run is treated along all the processes.
+
+The **Process View** is expressed by a **Activity Diagram** that shows how **rust** code is analysed in the compiler and all the transformations it suffers doing that analysis.
+
+The **Deployment View** is expressed by a **Deployment Diagram** that shows the interaction of the user of the project(that can be a programmer that uses rust linguage) with the device that in this case is a the computer that processes the **rust** code written by the programmer.
+
+The **Logical View** is expressed by a **Sequence Diagram**  that shows how all the processes that are executed in parallel interact with each other to make the main process work and to make it show the final results to the user of the program.
+
+In the end,we can say that the Rust Project is well organized and has a good interaction user-project but it lacks in some aspect like where to find all the information needed to construct some of this diagrams.We think that this point is a matter were the developers could work a bit more because it colud make even easier for someone else to anlise this project.
