@@ -1838,6 +1838,22 @@ impl<'a, 'b> From<&'b str> for Box<Error + Send + Sync + 'a>
 impl From<String> for Box<Error + Send + Sync>
 ```
 
+Since `search` now returns a `Result<T, E>`, `main` should use case analysis
+when calling `search`:
+
+```rust,ignore
+...
+match search(&data_file, &city) {
+    Ok(pops) => {
+        for pop in pops {
+            println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
+        }
+    }
+    Err(err) => println!("{}", err)
+}
+...
+```
+
 Now that we've seen how to do proper error handling with `Box<Error>`, let's
 try a different approach with our own custom error type. But first, let's take
 a quick break from error handling and add support for reading from `stdin`.
