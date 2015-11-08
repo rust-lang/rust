@@ -1709,7 +1709,7 @@ pub trait Iterator {
     /// Searches for an element in an iterator, returning its index.
     ///
     /// `position()` takes a closure that returns `true` or `false`. It applies
-    /// this closure to each element of the iterator, and if if one of them
+    /// this closure to each element of the iterator, and if one of them
     /// returns `true`, then `position()` returns `Some(index)`. If all of
     /// them return `false`, it returns `None`.
     ///
@@ -1772,7 +1772,7 @@ pub trait Iterator {
     ///
     /// `rposition()` takes a closure that returns `true` or `false`. It applies
     /// this closure to each element of the iterator, starting from the end,
-    /// and if if one of them returns `true`, then `rposition()` returns
+    /// and if one of them returns `true`, then `rposition()` returns
     /// `Some(index)`. If all of them return `false`, it returns `None`.
     ///
     /// `rposition()` is short-circuting; in other words, it will stop
