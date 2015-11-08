@@ -65,6 +65,8 @@ The purpose of the component diagram can be summarized as :
 
 [Component Diagram]:http://www.tutorialspoint.com/uml/uml_component_diagram.htm
 
+![alt tag](https://github.com/martapips/rust/blob/master/ESOF-docs/res/componentDiagram.jpg?raw=true)
+
 ## Process View
 
 This view is foccused on the runtime behaviour of the program. It is in this view that the programs processes are explained as well as the way they use to communicate between them. [Activity Diagrams] are the ones used to describe this view.
