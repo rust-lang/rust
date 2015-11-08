@@ -50,8 +50,15 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 unimplemented!()
             }
 
-            mir::Terminator::SwitchInt { .. } => {
-                unimplemented!()
+            mir::Terminator::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
+                let (otherwise, targets) = targets.split_last().unwrap();
+                let discr = build::Load(bcx, self.trans_lvalue(bcx, discr).llval);
+                let switch = build::Switch(bcx, discr, self.llblock(*otherwise), values.len());
+                for (value, target) in values.iter().zip(targets) {
+                    let llval = self.trans_constval(bcx, value, switch_ty);
+                    let llbb = self.llblock(*target);
+                    build::AddCase(switch, llval, llbb)
+                }
             }
 
             mir::Terminator::Diverge => {
