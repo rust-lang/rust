@@ -33,6 +33,8 @@ enum Operation {
     Format(PathBuf, WriteMode),
     /// Print the help message.
     Help,
+    /// Print detailed configuration help.
+    ConfigHelp,
     /// Invalid program input, including reason.
     InvalidInput(String),
     /// No file specified, read from stdin
@@ -80,6 +82,10 @@ fn execute() -> i32 {
                 "mode to write in (not usable when piping from stdin)",
                 "[replace|overwrite|display|diff|coverage]");
 
+    opts.optflag("",
+                 "config-help",
+                 "show details of rustfmt configuration options");
+
     let operation = determine_operation(&opts, env::args().skip(1));
 
     match operation {
@@ -89,6 +95,10 @@ fn execute() -> i32 {
         }
         Operation::Help => {
             print_usage(&opts, "");
+            0
+        }
+        Operation::ConfigHelp => {
+            Config::print_docs();
             0
         }
         Operation::Stdin(input, write_mode) => {
@@ -137,7 +147,6 @@ fn print_usage(opts: &Options, reason: &str) {
                          reason,
                          env::current_exe().unwrap().display());
     println!("{}", opts.usage(&reason));
-    Config::print_docs();
 }
 
 fn determine_operation<I>(opts: &Options, args: I) -> Operation
@@ -150,6 +159,10 @@ fn determine_operation<I>(opts: &Options, args: I) -> Operation
 
     if matches.opt_present("h") {
         return Operation::Help;
+    }
+
+    if matches.opt_present("config-help") {
+        return Operation::ConfigHelp;
     }
 
     // if no file argument is supplied, read from stdin
