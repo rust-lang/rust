@@ -421,7 +421,9 @@ impl Error for JoinPathsError {
 /// # Unix
 ///
 /// Returns the value of the 'HOME' environment variable if it is set
-/// and not equal to the empty string.
+/// and not equal to the empty string. Otherwise, it tries to determine the
+/// home directory by invoking the `getpwuid_r` function on the UID of the
+/// current user.
 ///
 /// # Windows
 ///
