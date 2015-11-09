@@ -2327,13 +2327,6 @@ The currently implemented features of the reference compiler are:
             into a Rust program. This capability, especially the signature for the
             annotated function, is subject to change.
 
-* `struct_variant` - Structural enum variants (those with named fields). It is
-                     currently unknown whether this style of enum variant is as
-                     fully supported as the tuple-forms, and it's not certain
-                     that this style of variant should remain in the language.
-                     For now this style of variant is hidden behind a feature
-                     flag.
-
 * `thread_local` - The usage of the `#[thread_local]` attribute is experimental
                    and should be seen as unstable. This attribute is used to
                    declare a `static` as being unique per-thread leveraging
