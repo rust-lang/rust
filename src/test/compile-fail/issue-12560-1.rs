@@ -14,7 +14,9 @@
 
 enum Foo {
     Bar(), //~ ERROR empty tuple structs and enum variants are not allowed
+    //~^ HELP remove trailing () to make a unit struct or unit enum varian
     Baz(), //~ ERROR empty tuple structs and enum variants are not allowed
+    //~^ HELP remove trailing () to make a unit struct or unit enum varian
     Bazar
 }
 
