@@ -20,11 +20,6 @@ static BLOCK_USE: usize = {
     100
 };
 
-static BLOCK_PUB_USE: usize = {
-    pub use foo::Value;
-    200
-};
-
 static BLOCK_STRUCT_DEF: usize = {
     struct Foo {
         a: usize
@@ -48,7 +43,6 @@ static BLOCK_MACRO_RULES: usize = {
 
 pub fn main() {
     assert_eq!(BLOCK_USE, 100);
-    assert_eq!(BLOCK_PUB_USE, 200);
     assert_eq!(BLOCK_STRUCT_DEF, 300);
     assert_eq!(BLOCK_FN_DEF(390), 400);
     assert_eq!(BLOCK_MACRO_RULES, 412);
