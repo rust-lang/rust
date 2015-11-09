@@ -113,6 +113,13 @@ pub enum BoundParsingMode {
     Modified,
 }
 
+/// `pub` should be parsed in struct fields and not parsed in variant fields
+#[derive(Clone, Copy, PartialEq)]
+pub enum ParsePub {
+    Yes,
+    No,
+}
+
 /// Possibly accept an `token::Interpolated` expression (a pre-parsed expression
 /// dropped into the token stream, which happens while parsing the result of
 /// macro expansion). Placement of these is not as complex as I feared it would
@@ -4686,17 +4693,19 @@ impl<'a> Parser<'a> {
                 VariantData::Unit(ast::DUMMY_NODE_ID)
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
-                VariantData::Struct(try!(self.parse_record_struct_body(true)), ast::DUMMY_NODE_ID)
+                VariantData::Struct(try!(self.parse_record_struct_body(ParsePub::Yes)),
+                                    ast::DUMMY_NODE_ID)
             }
         // No `where` so: `struct Foo<T>;`
         } else if try!(self.eat(&token::Semi) ){
             VariantData::Unit(ast::DUMMY_NODE_ID)
         // Record-style struct definition
         } else if self.token == token::OpenDelim(token::Brace) {
-            VariantData::Struct(try!(self.parse_record_struct_body(true)), ast::DUMMY_NODE_ID)
+            VariantData::Struct(try!(self.parse_record_struct_body(ParsePub::Yes)),
+                                ast::DUMMY_NODE_ID)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
-            let body = VariantData::Tuple(try!(self.parse_tuple_struct_body(true)),
+            let body = VariantData::Tuple(try!(self.parse_tuple_struct_body(ParsePub::Yes)),
                                           ast::DUMMY_NODE_ID);
             generics.where_clause = try!(self.parse_where_clause());
             try!(self.expect(&token::Semi));
@@ -4710,11 +4719,11 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemStruct(vdata, generics), None))
     }
 
-    pub fn parse_record_struct_body(&mut self, allow_pub: bool) -> PResult<Vec<StructField>> {
+    pub fn parse_record_struct_body(&mut self, parse_pub: ParsePub) -> PResult<Vec<StructField>> {
         let mut fields = Vec::new();
         if try!(self.eat(&token::OpenDelim(token::Brace)) ){
             while self.token != token::CloseDelim(token::Brace) {
-                fields.push(try!(self.parse_struct_decl_field(allow_pub)));
+                fields.push(try!(self.parse_struct_decl_field(parse_pub)));
             }
 
             try!(self.bump());
@@ -4728,7 +4737,7 @@ impl<'a> Parser<'a> {
         Ok(fields)
     }
 
-    pub fn parse_tuple_struct_body(&mut self, allow_pub: bool) -> PResult<Vec<StructField>> {
+    pub fn parse_tuple_struct_body(&mut self, parse_pub: ParsePub) -> PResult<Vec<StructField>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
         // Unit like structs are handled in parse_item_struct function
         let fields = try!(self.parse_unspanned_seq(
@@ -4740,7 +4749,11 @@ impl<'a> Parser<'a> {
                 let lo = p.span.lo;
                 let struct_field_ = ast::StructField_ {
                     kind: UnnamedField (
-                        if allow_pub { try!(p.parse_visibility()) } else { Inherited }
+                        if parse_pub == ParsePub::Yes {
+                            try!(p.parse_visibility())
+                        } else {
+                            Inherited
+                        }
                     ),
                     id: ast::DUMMY_NODE_ID,
                     ty: try!(p.parse_ty_sum()),
@@ -4776,12 +4789,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an element of a struct definition
-    fn parse_struct_decl_field(&mut self, allow_pub: bool) -> PResult<StructField> {
+    fn parse_struct_decl_field(&mut self, parse_pub: ParsePub) -> PResult<StructField> {
 
         let attrs = try!(self.parse_outer_attributes());
 
         if try!(self.eat_keyword(keywords::Pub) ){
-            if !allow_pub {
+            if parse_pub == ParsePub::No {
                 let span = self.last_span;
                 self.span_err(span, "`pub` is not allowed here");
             }
@@ -5149,11 +5162,11 @@ impl<'a> Parser<'a> {
             if self.check(&token::OpenDelim(token::Brace)) {
                 // Parse a struct variant.
                 all_nullary = false;
-                struct_def = VariantData::Struct(try!(self.parse_record_struct_body(false)),
+                struct_def = VariantData::Struct(try!(self.parse_record_struct_body(ParsePub::No)),
                                                  ast::DUMMY_NODE_ID);
             } else if self.check(&token::OpenDelim(token::Paren)) {
                 all_nullary = false;
-                struct_def = VariantData::Tuple(try!(self.parse_tuple_struct_body(false)),
+                struct_def = VariantData::Tuple(try!(self.parse_tuple_struct_body(ParsePub::No)),
                                                 ast::DUMMY_NODE_ID);
             } else if try!(self.eat(&token::Eq) ){
                 disr_expr = Some(try!(self.parse_expr_nopanic()));

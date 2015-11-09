@@ -867,8 +867,8 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 self.context.span_handler.span_err(span, "empty tuple structs and enum variants \
                                                           are not allowed, use unit structs and \
                                                           enum variants instead");
-                self.context.span_handler.span_help(span, "remove trailing () to make a unit \
-                                                           struct or unit enum varian");
+                self.context.span_handler.span_help(span, "remove trailing `()` to make a unit \
+                                                           struct or unit enum variant");
             }
         }
         visit::walk_struct_def(self, s)
