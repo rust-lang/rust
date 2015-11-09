@@ -2,6 +2,9 @@
 
 A tool for formatting Rust code according to style guidelines.
 
+If you'd like to help out (and you should, it's a fun project!), see
+[Contributing.md].
+
 
 ## Installation
 
@@ -47,12 +50,31 @@ the command line.
 screen, for example.
 
 
+## What style does Rustfmt use?
+
+Rustfmt is designed to be very configurable. You can create a TOML file called
+rustfmt.toml, place it in the project directory and it will apply the options
+in that file. See `cargo run --help-config` for the options which are available,
+or if you prefer to see source code, [src/config.rs].
+
+By default, Rustfmt uses a style which (mostly) confirms to the
+[Rust style guidelines](https://github.com/rust-lang/rust/tree/master/src/doc/style).
+There are many details which the style guidelines do not cover, and in these
+cases we try to adhere to a style similar to that used in the
+[Rust repo](https://github.com/rust-lang/rust). Once Rustfmt is more complete, and
+able to re-format large repositories like Rust, we intend to go through the Rust
+RFC process to nail down the default style in detail.
+
+If there are styling choices you don't agree with, we are usually happy to add
+options covering different styles. File an issue, or even better, submit a PR.
+
+
 ## Gotchas
 
 * For things you do not want rustfmt to mangle, use one of
-   ```rust
-   #[rustfmt_skip]
-   #[cfg_attr(rustfmt, rustfmt_skip)]
+    ```rust
+    #[rustfmt_skip]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     ```
 * When you run rustfmt, place a file named rustfmt.toml in target file
   directory or its parents to override the default settings of rustfmt.
