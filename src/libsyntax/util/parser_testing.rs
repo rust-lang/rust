@@ -140,9 +140,8 @@ fn scan_for_non_ws_or_end(a : &str, idx: usize) -> usize {
     i
 }
 
-/// Copied from lexer.
 pub fn is_whitespace(c: char) -> bool {
-    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+    c.is_whitespace()
 }
 
 #[cfg(test)]

@@ -1592,10 +1592,7 @@ impl<'a> StringReader<'a> {
 }
 
 pub fn is_whitespace(c: Option<char>) -> bool {
-    match c.unwrap_or('\x00') { // None can be null for now... it's not whitespace
-        ' ' | '\n' | '\t' | '\r' => true,
-        _ => false,
-    }
+    c.map_or(false, char::is_whitespace)
 }
 
 fn in_range(c: Option<char>, lo: char, hi: char) -> bool {
