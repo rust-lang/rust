@@ -118,3 +118,26 @@ struct Deep {
                                                                          Type,
                                                                          NodeType>,
 }
+
+struct Foo<T>(T);
+struct Foo<T>(T)
+    where T: Copy,
+          T: Eq;
+struct Foo<T>(TTTTTTTTTTTTTTTTT,
+              UUUUUUUUUUUUUUUUUUUUUUUU,
+              TTTTTTTTTTTTTTTTTTT,
+              UUUUUUUUUUUUUUUUUUU);
+struct Foo<T>(TTTTTTTTTTTTTTTTTT, UUUUUUUUUUUUUUUUUUUUUUUU, TTTTTTTTTTTTTTTTTTT) where T: PartialEq;
+struct Foo<T>(TTTTTTTTTTTTTTTTT, UUUUUUUUUUUUUUUUUUUUUUUU, TTTTTTTTTTTTTTTTTTTTT)
+    where T: PartialEq;
+struct Foo<T>(TTTTTTTTTTTTTTTTT,
+              UUUUUUUUUUUUUUUUUUUUUUUU,
+              TTTTTTTTTTTTTTTTTTT,
+              UUUUUUUUUUUUUUUUUUU)
+    where T: PartialEq;
+struct Foo<T>(TTTTTTTTTTTTTTTTT, // Foo
+              UUUUUUUUUUUUUUUUUUUUUUUU, // Bar
+              // Baz
+              TTTTTTTTTTTTTTTTTTT,
+              // Qux (FIXME #572 - doc comment)
+              UUUUUUUUUUUUUUUUUUU);
