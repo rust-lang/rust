@@ -336,6 +336,46 @@ pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ty::TyRawPtr(mt) if common::type_is_sized(bcx.tcx(), mt.ty) => {
             ICmp(bcx, bin_op_to_icmp_predicate(bcx.ccx(), op, false), lhs, rhs, debug_loc)
         }
+        ty::TyRawPtr(_) => {
+            let lhs_addr = Load(bcx, GEPi(bcx, lhs, &[0, abi::FAT_PTR_ADDR]));
+            let lhs_extra = Load(bcx, GEPi(bcx, lhs, &[0, abi::FAT_PTR_EXTRA]));
+
+            let rhs_addr = Load(bcx, GEPi(bcx, rhs, &[0, abi::FAT_PTR_ADDR]));
+            let rhs_extra = Load(bcx, GEPi(bcx, rhs, &[0, abi::FAT_PTR_EXTRA]));
+
+            match op {
+                hir::BiEq => {
+                    let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
+                    let extra_eq = ICmp(bcx, llvm::IntEQ, lhs_extra, rhs_extra, debug_loc);
+                    And(bcx, addr_eq, extra_eq, debug_loc)
+                }
+                hir::BiNe => {
+                    let addr_eq = ICmp(bcx, llvm::IntNE, lhs_addr, rhs_addr, debug_loc);
+                    let extra_eq = ICmp(bcx, llvm::IntNE, lhs_extra, rhs_extra, debug_loc);
+                    Or(bcx, addr_eq, extra_eq, debug_loc)
+                }
+                hir::BiLe | hir::BiLt | hir::BiGe | hir::BiGt => {
+                    // a OP b ~ a.0 STRICT(OP) b.0 | (a.0 == b.0 && a.1 OP a.1)
+                    let (op, strict_op) = match op {
+                        hir::BiLt => (llvm::IntULT, llvm::IntULT),
+                        hir::BiLe => (llvm::IntULE, llvm::IntULT),
+                        hir::BiGt => (llvm::IntUGT, llvm::IntUGT),
+                        hir::BiGe => (llvm::IntUGE, llvm::IntUGT),
+                        _ => unreachable!()
+                    };
+
+                    let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
+                    let extra_op = ICmp(bcx, op, lhs_extra, rhs_extra, debug_loc);
+                    let addr_eq_extra_op = And(bcx, addr_eq, extra_op, debug_loc);
+
+                    let addr_strict = ICmp(bcx, strict_op, lhs_addr, rhs_addr, debug_loc);
+                    Or(bcx, addr_strict, addr_eq_extra_op, debug_loc)
+                }
+                _ => {
+                    bcx.tcx().sess.bug("unexpected fat ptr binop");
+                }
+            }
+        }
         ty::TyInt(_) => {
             ICmp(bcx, bin_op_to_icmp_predicate(bcx.ccx(), op, true), lhs, rhs, debug_loc)
         }
@@ -827,6 +867,10 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
     if cx.unreachable.get() {
         return;
     }
+
+    debug!("store_ty: {} : {:?} <- {}",
+           cx.val_to_string(dst), t,
+           cx.val_to_string(v));
 
     if common::type_is_fat_ptr(cx.tcx(), t) {
         Store(cx, ExtractValue(cx, v, abi::FAT_PTR_ADDR), expr::get_dataptr(cx, dst));
