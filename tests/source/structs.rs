@@ -1,3 +1,4 @@
+// rustfmt-wrap_comments: true
 
                                                                        /// A Doc comment
 #[AnAttribute]

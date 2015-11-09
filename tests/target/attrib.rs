@@ -1,3 +1,4 @@
+// rustfmt-wrap_comments: true
 // Test attributes and doc comments are preserved.
 
 /// Blah blah blah.

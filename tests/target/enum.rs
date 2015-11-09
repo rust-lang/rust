@@ -1,3 +1,4 @@
+// rustfmt-wrap_comments: true
 // Enums test
 
 #[atrr]

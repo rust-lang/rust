@@ -1,3 +1,4 @@
+// rustfmt-wrap_comments: true
 // rustfmt-struct_lit_multiline_style: ForceMulti
 
 // Struct literal expressions.

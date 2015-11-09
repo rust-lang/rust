@@ -1,3 +1,4 @@
+// rustfmt-wrap_comments: true
 // Struct literal expressions.
 
 fn main() {

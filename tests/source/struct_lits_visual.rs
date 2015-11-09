@@ -1,3 +1,4 @@
+// rustfmt-wrap_comments: true
 // rustfmt-struct_lit_style: Visual
 
 // Struct literal expressions.
