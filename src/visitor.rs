@@ -507,12 +507,8 @@ fn semicolon_for_stmt(stmt: &ast::Stmt) -> bool {
             match expr.node {
                 ast::Expr_::ExprWhile(..) |
                 ast::Expr_::ExprWhileLet(..) |
-                ast::Expr_::ExprIf(..) |
-                ast::Expr_::ExprIfLet(..) |
-                ast::Expr_::ExprBlock(..) |
                 ast::Expr_::ExprLoop(..) |
-                ast::Expr_::ExprForLoop(..) |
-                ast::Expr_::ExprMatch(..) => false,
+                ast::Expr_::ExprForLoop(..) => false,
                 _ => true,
             }
         }
