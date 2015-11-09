@@ -30,7 +30,7 @@ impl Foo {
 }
 
 fn bar() { //~ ERROR: function is never used
-    fn baz() {} //~ ERROR: function is never used
+    fn baz() {}
 
     Foo.foo();
     baz();
