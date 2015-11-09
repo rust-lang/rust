@@ -1167,13 +1167,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           hir::ExprInlineAsm(ref ia) => {
 
             let succ = ia.outputs.iter().rev().fold(succ,
-                |succ, &(_, ref expr, _, is_indirect)| {
+                |succ, &(_, ref expr, is_rw, is_indirect)| {
                     // see comment on lvalues
                     // in propagate_through_lvalue_components()
                     if is_indirect {
                         self.propagate_through_expr(&**expr, succ)
                     } else {
-                        let succ = self.write_lvalue(&**expr, succ, ACC_WRITE);
+                        let acc = if is_rw { ACC_WRITE|ACC_READ } else { ACC_WRITE };
+                        let succ = self.write_lvalue(&**expr, succ, acc);
                         self.propagate_through_lvalue_components(&**expr, succ)
                     }
                 }
