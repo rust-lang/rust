@@ -81,7 +81,7 @@ pub fn rewrite_comment(orig: &str,
             result.push_str(line_start);
         }
 
-        if line.len() > max_chars {
+        if config.wrap_comments && line.len() > max_chars {
             let rewrite = try_opt!(rewrite_string(line, &fmt));
             result.push_str(&rewrite);
         } else {
@@ -439,7 +439,8 @@ mod test {
     #[test]
     #[cfg_attr(rustfmt, rustfmt_skip)]
     fn format_comments() {
-        let config = Default::default();
+        let mut config: ::config::Config = Default::default();
+        config.wrap_comments = true;
         assert_eq!("/* test */", rewrite_comment(" //test", true, 100, Indent::new(0, 100),
                                                  &config).unwrap());
         assert_eq!("// comment\n// on a", rewrite_comment("// comment on a", false, 10,

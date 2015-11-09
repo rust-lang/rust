@@ -1,3 +1,4 @@
+// rustfmt-wrap_comments: true
 // Test expressions
 
 fn foo() -> bool {

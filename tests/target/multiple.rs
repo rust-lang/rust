@@ -1,3 +1,4 @@
+// rustfmt-wrap_comments: true
 // Test of lots of random stuff.
 // FIXME split this into multiple, self-contained tests.
 

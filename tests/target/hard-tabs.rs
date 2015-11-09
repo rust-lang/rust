@@ -1,3 +1,4 @@
+// rustfmt-wrap_comments: true
 // rustfmt-hard_tabs: true
 
 fn main() {

@@ -1,3 +1,5 @@
+// rustfmt-wrap_comments: true
+
 //! Doc comment
 fn test() {
 // comment
