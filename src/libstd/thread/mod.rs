@@ -252,17 +252,18 @@ impl Builder {
 
         let stack_size = stack_size.unwrap_or(util::min_stack());
 
-        let my_thread = Thread::new(name);
-        let their_thread = my_thread.clone();
+        let mut my_thread = Thread::new(name);
+        let mut their_thread = my_thread.clone();
 
         let my_packet : Arc<UnsafeCell<Option<Result<T>>>>
             = Arc::new(UnsafeCell::new(None));
         let their_packet = my_packet.clone();
 
-        let main = move || {
+        let main = move |id: u32| {
             if let Some(name) = their_thread.name() {
                 imp::Thread::set_name(name);
             }
+            their_thread.id = id;
             unsafe {
                 thread_info::set(imp::guard::current(), their_thread);
                 let mut output = None;
@@ -276,10 +277,12 @@ impl Builder {
             }
         };
 
+        let native = unsafe {
+            try!(imp::Thread::new(stack_size, Box::new(main)))
+        };
+        my_thread.id = native.id();
         Ok(JoinHandle(JoinInner {
-            native: unsafe {
-                Some(try!(imp::Thread::new(stack_size, Box::new(main))))
-            },
+            native: Some(native),
             thread: my_thread,
             packet: Packet(my_packet),
         }))
@@ -504,6 +507,7 @@ struct Inner {
 /// A handle to a thread.
 pub struct Thread {
     inner: Arc<Inner>,
+    id: u32,
 }
 
 impl Thread {
@@ -514,7 +518,8 @@ impl Thread {
                 name: name,
                 lock: Mutex::new(false),
                 cvar: Condvar::new(),
-            })
+            }),
+            id: 0,
         }
     }
 
@@ -535,12 +540,20 @@ impl Thread {
     pub fn name(&self) -> Option<&str> {
         self.inner.name.as_ref().map(|s| &**s)
     }
+
+    /// Gets the thread's unique ID.
+    ///
+    /// This ID is unique across running threads, and a thread that has stopped
+    /// might see its ID reused.
+    pub fn id(&self) -> u32 {
+        self.id
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Thread {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.name(), f)
+        fmt::Debug::fmt(&self.name(), f)  // print ID?
     }
 }
 

@@ -36,7 +36,7 @@ unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
 impl Thread {
-    pub unsafe fn new<'a>(stack: usize, p: Box<FnBox() + 'a>)
+    pub unsafe fn new<'a>(stack: usize, p: Box<FnBox(u32) + 'a>)
                           -> io::Result<Thread> {
         let p = box p;
         let mut native: libc::pthread_t = mem::zeroed();
@@ -72,7 +72,7 @@ impl Thread {
         };
 
         extern fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
-            unsafe { start_thread(main); }
+            unsafe { start_thread(main, pthread_self() as u32); }
             ptr::null_mut()
         }
     }
@@ -166,6 +166,10 @@ impl Thread {
             mem::forget(self);
             debug_assert_eq!(ret, 0);
         }
+    }
+
+    pub fn id(&self) -> u32 {
+        self.id as u32
     }
 }
 
