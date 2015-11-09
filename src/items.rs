@@ -440,7 +440,8 @@ impl<'a> FmtVisitor<'a> {
                                                                   self.config,
                                                                   indent,
                                                                   where_density,
-                                                                  span.hi));
+                                                                  "{",
+                                                                  Some(span.hi)));
         result.push_str(&where_clause_str);
 
         Some((result, force_new_line_for_brace))
@@ -636,7 +637,8 @@ impl<'a> FmtVisitor<'a> {
         let enum_snippet = self.snippet(span);
         let body_start = span.lo + BytePos(enum_snippet.find_uncommented("{").unwrap() as u32 + 1);
         let generics_str = self.format_generics(generics,
-                                                " {",
+                                                "{",
+                                                "{",
                                                 self.block_indent,
                                                 self.block_indent.block_indent(self.config),
                                                 mk_sp(span.lo, body_start))
@@ -768,33 +770,58 @@ impl<'a> FmtVisitor<'a> {
                          span: Span,
                          offset: Indent)
                          -> Option<String> {
+        match *struct_def {
+            ast::VariantData::Unit(..) => {
+                self.format_unit_struct(item_name, ident, vis)
+            }
+            ast::VariantData::Tuple(ref fields, _) => {
+                self.format_tuple_struct(item_name, ident, vis, fields, generics, span, offset)
+            }
+            ast::VariantData::Struct(ref fields, _) => {
+                self.format_struct_struct(item_name, ident, vis, fields, generics, span, offset)
+            }
+        }
+    }
+
+    fn format_unit_struct(&self,
+                          item_name: &str,
+                          ident: ast::Ident,
+                          vis: ast::Visibility)
+                          -> Option<String> {
+        let mut result = String::with_capacity(1024);
+
+        let header_str = self.format_header(item_name, ident, vis);
+        result.push_str(&header_str);
+        result.push(';');
+        return Some(result);
+    }
+
+    fn format_struct_struct(&self,
+                            item_name: &str,
+                            ident: ast::Ident,
+                            vis: ast::Visibility,
+                            fields: &[ast::StructField],
+                            generics: Option<&ast::Generics>,
+                            span: Span,
+                            offset: Indent)
+                            -> Option<String> {
         let mut result = String::with_capacity(1024);
 
         let header_str = self.format_header(item_name, ident, vis);
         result.push_str(&header_str);
 
-        let (fields, body_lo, opener, terminator) = match *struct_def {
-            ast::VariantData::Unit(..) => {
-                result.push(';');
-                return Some(result);
-            }
-            ast::VariantData::Tuple(ref vec, _) => {
-                (vec, vec[0].span.lo, "(", ")")
-            }
-            ast::VariantData::Struct(ref vec, _) => {
-                (vec, span_after(span, "{", self.codemap), " {", "}")
-            }
-        };
+        let body_lo = span_after(span, "{", self.codemap);
 
         let generics_str = match generics {
             Some(g) => {
                 try_opt!(self.format_generics(g,
-                                              opener,
+                                              "{",
+                                              "{",
                                               offset,
                                               offset + header_str.len(),
                                               mk_sp(span.lo, body_lo)))
             }
-            None => opener.to_owned(),
+            None => " {".to_owned(),
         };
         result.push_str(&generics_str);
 
@@ -804,18 +831,14 @@ impl<'a> FmtVisitor<'a> {
             return Some(result);
         }
 
-        let item_indent = if let ast::VariantData::Tuple(..) = *struct_def {
-            self.block_indent + result.len()
-        } else {
-            offset.block_indent(self.config)
-        };
-        // 2 = ");" or ","
-        let item_budget = try_opt!(self.config.max_width.checked_sub(item_indent.width() + 2));
+        let item_indent = offset.block_indent(self.config);
+        // 2 = ","
+        let item_budget = try_opt!(self.config.max_width.checked_sub(item_indent.width() + 1));
 
         let context = self.get_context();
         let items = itemize_list(self.codemap,
                                  fields.iter(),
-                                 terminator,
+                                 "}",
                                  |field| {
                                      // Include attributes and doc comments, if present
                                      if !field.node.attrs.is_empty() {
@@ -826,37 +849,101 @@ impl<'a> FmtVisitor<'a> {
                                  },
                                  |field| field.node.ty.span.hi,
                                  |field| field.rewrite(&context, item_budget, item_indent),
-                                 span_after(span, opener.trim(), self.codemap),
+                                 span_after(span, "{", self.codemap),
                                  span.hi);
-        match *struct_def {
-            ast::VariantData::Tuple(..) => {
-                // 2 = );
-                let budget = try_opt!(self.config.max_width.checked_sub(item_indent.width() + 2));
-                let rewrite = try_opt!(format_item_list(items, budget, item_indent, self.config));
-                result.push_str(&rewrite);
-                result.push(')');
-                Some(result)
+        // 1 = ,
+        let budget = self.config.max_width - offset.width() + self.config.tab_spaces - 1;
+        let fmt = ListFormatting {
+            tactic: DefinitiveListTactic::Vertical,
+            separator: ",",
+            trailing_separator: self.config.struct_trailing_comma,
+            indent: item_indent,
+            width: budget,
+            ends_with_newline: true,
+            config: self.config,
+        };
+        Some(format!("{}\n{}{}\n{}}}",
+                     result,
+                     offset.block_indent(self.config).to_string(self.config),
+                     try_opt!(write_list(items, &fmt)),
+                     offset.to_string(self.config)))
+    }
+
+    fn format_tuple_struct(&self,
+                           item_name: &str,
+                           ident: ast::Ident,
+                           vis: ast::Visibility,
+                           fields: &[ast::StructField],
+                           generics: Option<&ast::Generics>,
+                           span: Span,
+                           offset: Indent)
+                           -> Option<String> {
+        assert!(!fields.is_empty(), "Tuple struct with no fields?");
+        let mut result = String::with_capacity(1024);
+
+        let header_str = self.format_header(item_name, ident, vis);
+        result.push_str(&header_str);
+
+        let body_lo = fields[0].span.lo;
+
+        let (generics_str, where_clause_str) = match generics {
+            Some(ref generics) => {
+                let generics_str = try_opt!(self.rewrite_generics(generics,
+                                                                  offset,
+                                                                  offset + header_str.len(),
+                                                                  mk_sp(span.lo, body_lo)));
+
+                let where_clause_str = try_opt!(self.rewrite_where_clause(&generics.where_clause,
+                                                                          self.config,
+                                                                          self.block_indent,
+                                                                          Density::Compressed,
+                                                                          ";",
+                                                                          None));
+
+                (generics_str, where_clause_str)
             }
-            ast::VariantData::Struct(..) => {
-                // 1 = ,
-                let budget = self.config.max_width - offset.width() + self.config.tab_spaces - 1;
-                let fmt = ListFormatting {
-                    tactic: DefinitiveListTactic::Vertical,
-                    separator: ",",
-                    trailing_separator: self.config.struct_trailing_comma,
-                    indent: item_indent,
-                    width: budget,
-                    ends_with_newline: true,
-                    config: self.config,
-                };
-                Some(format!("{}\n{}{}\n{}}}",
-                             result,
-                             offset.block_indent(self.config).to_string(self.config),
-                             try_opt!(write_list(items, &fmt)),
-                             offset.to_string(self.config)))
-            }
-            _ => unreachable!(),
+            None => ("".to_owned(), "".to_owned()),
+        };
+        result.push_str(&generics_str);
+        result.push('(');
+
+        let item_indent = self.block_indent + result.len();
+        // 2 = ");"
+        let item_budget = try_opt!(self.config.max_width.checked_sub(item_indent.width() + 2));
+
+        let context = self.get_context();
+        let items = itemize_list(self.codemap,
+                                 fields.iter(),
+                                 ")",
+                                 |field| {
+                                     // Include attributes and doc comments, if present
+                                     if !field.node.attrs.is_empty() {
+                                         field.node.attrs[0].span.lo
+                                     } else {
+                                         field.span.lo
+                                     }
+                                 },
+                                 |field| field.node.ty.span.hi,
+                                 |field| field.rewrite(&context, item_budget, item_indent),
+                                 span_after(span, "(", self.codemap),
+                                 span.hi);
+        let body = try_opt!(format_item_list(items, item_budget, item_indent, self.config));
+        result.push_str(&body);
+        result.push(')');
+
+        if where_clause_str.len() > 0 && !where_clause_str.contains('\n') &&
+           (result.contains('\n') ||
+            self.block_indent.width() + result.len() + where_clause_str.len() + 1 >
+            self.config.max_width) {
+            // We need to put the where clause on a new line, but we didn'to_string
+            // know that earlier, so the where clause will not be indented properly.
+            result.push('\n');
+            result.push_str(&(self.block_indent + (self.config.tab_spaces - 1))
+                                 .to_string(self.config));
         }
+        result.push_str(&where_clause_str);
+
+        Some(result)
     }
 
     fn format_header(&self, item_name: &str, ident: ast::Ident, vis: ast::Visibility) -> String {
@@ -866,6 +953,7 @@ impl<'a> FmtVisitor<'a> {
     fn format_generics(&self,
                        generics: &ast::Generics,
                        opener: &str,
+                       terminator: &str,
                        offset: Indent,
                        generics_offset: Indent,
                        span: Span)
@@ -877,12 +965,14 @@ impl<'a> FmtVisitor<'a> {
                                                                       self.config,
                                                                       self.block_indent,
                                                                       Density::Tall,
-                                                                      span.hi));
+                                                                      terminator,
+                                                                      Some(span.hi)));
             result.push_str(&where_clause_str);
             result.push_str(&self.block_indent.to_string(self.config));
             result.push('\n');
-            result.push_str(opener.trim());
+            result.push_str(opener);
         } else {
+            result.push(' ');
             result.push_str(opener);
         }
 
@@ -938,7 +1028,7 @@ impl<'a> FmtVisitor<'a> {
                                  |&(_, ref str)| str.clone(),
                                  span_after(span, "<", self.codemap),
                                  span.hi);
-        let list_str = try_opt!(::lists::format_item_list(items, h_budget, offset, self.config));
+        let list_str = try_opt!(format_item_list(items, h_budget, offset, self.config));
 
         Some(format!("<{}>", list_str))
     }
@@ -948,7 +1038,8 @@ impl<'a> FmtVisitor<'a> {
                             config: &Config,
                             indent: Indent,
                             density: Density,
-                            span_end: BytePos)
+                            terminator: &str,
+                            span_end: Option<BytePos>)
                             -> Option<String> {
         if where_clause.predicates.is_empty() {
             return Some(String::new());
@@ -973,16 +1064,21 @@ impl<'a> FmtVisitor<'a> {
 
         let budget = self.config.max_width - offset.width();
         let span_start = span_for_where_pred(&where_clause.predicates[0]).lo;
+        // If we don't have the start of the next span, then use the end of the
+        // predicates, but that means we miss comments.
+        let len = where_clause.predicates.len();
+        let end_of_preds = span_for_where_pred(&where_clause.predicates[len - 1]).hi;
+        let span_end = span_end.unwrap_or(end_of_preds);
         let items = itemize_list(self.codemap,
                                  where_clause.predicates.iter(),
-                                 "{",
+                                 terminator,
                                  |pred| span_for_where_pred(pred).lo,
                                  |pred| span_for_where_pred(pred).hi,
                                  |pred| pred.rewrite(&context, budget, offset),
                                  span_start,
                                  span_end);
         let item_vec = items.collect::<Vec<_>>();
-        // FIXME: we don't need to collect here if the where_layout isnt
+        // FIXME: we don't need to collect here if the where_layout isn't
         // HorizontalVertical.
         let tactic = definitive_tactic(&item_vec, self.config.where_layout, budget);
 
