@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
-
 // For style and consistency reasons, non-parametrized enum variants must
 // be used simply as `ident` instead of `ident ()`.
 // This test-case covers enum declaration.
 
 enum Foo {
-    Bar(), //~ ERROR nullary enum variants are written with no trailing `( )`
-    Baz(), //~ ERROR nullary enum variants are written with no trailing `( )`
+    Bar(), //~ ERROR empty tuple structs and enum variants are not allowed
+    Baz(), //~ ERROR empty tuple structs and enum variants are not allowed
     Bazar
 }
 
