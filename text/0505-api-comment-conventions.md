@@ -65,7 +65,7 @@ The first line in any doc comment should be a single-line short sentence
 providing a summary of the code. This line is used as a summary description
 throughout Rustdoc's output, so it's a good idea to keep it short.
 
-All doc comments, including the summary line, should be property punctuated.
+All doc comments, including the summary line, should be properly punctuated.
 Prefer full sentences to fragments.
 
 The summary line should be written in third person singular present indicative
