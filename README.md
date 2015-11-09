@@ -126,7 +126,8 @@ if let Some(y) = x { println!("{:?}", y) }
 ```
 
 You can add options  to `allow`/`warn`/`deny`:
-- the whole set using the `clippy` lint group (`#![deny(clippy)]`, etc)
+- the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy)]`)
+- all lints using both the `clippy` and `clippy_pedantic` lint groups (`#![deny(clippy)]`, `#![deny(clippy_pedantic)]`). Note that `clippy_pedantic` contains some very aggressive lints prone to false positives.
 - only some lints (`#![deny(single_match, box_vec)]`, etc)
 - `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc
 
