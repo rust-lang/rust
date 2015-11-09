@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::middle::ty::Ty;
+use rustc::middle::ty::{self, Ty};
 use rustc_front::hir;
 use rustc_mir::repr as mir;
 
@@ -43,6 +43,19 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Rvalue::Use(ref operand) => {
                 self.trans_operand_into(bcx, lldest, operand);
                 bcx
+            }
+
+            mir::Rvalue::Cast(mir::CastKind::Unsize, ref operand, cast_ty) => {
+                let expr_ty =
+                    bcx.monomorphize(&self.mir.operand_ty(bcx.tcx(), operand));
+                let cast_ty =
+                    bcx.monomorphize(&cast_ty);
+                if expr_ty == cast_ty {
+                    debug!("trans_rvalue: trivial unsize at {:?}", expr_ty);
+                    self.trans_operand_into(bcx, lldest, operand);
+                    return bcx;
+                }
+                unimplemented!()
             }
 
             mir::Rvalue::Cast(..) => {
@@ -93,7 +106,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             _ => {
                 assert!(rvalue_creates_operand(rvalue));
                 let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
-                build::Store(bcx, temp.llval, lldest);
+                base::store_ty(bcx, temp.llval, lldest, temp.ty);
                 bcx
             }
         }
@@ -110,6 +123,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Rvalue::Use(ref operand) => {
                 let operand = self.trans_operand(bcx, operand);
                 (bcx, operand)
+            }
+
+            mir::Rvalue::Cast(mir::CastKind::Unsize, _, _) => {
+                unimplemented!()
             }
 
             mir::Rvalue::Cast(..) => {
@@ -240,7 +257,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 };
                 (bcx, OperandRef {
                     llval: llval,
-                    ty: lhs.ty,
+                    ty: type_of_binop(bcx.tcx(), op, lhs.ty, rhs.ty),
                 })
             }
 
@@ -310,4 +327,32 @@ pub fn rvalue_creates_operand<'tcx>(rvalue: &mir::Rvalue<'tcx>) -> bool {
     }
 
     // (*) this is only true if the type is suitable
+}
+
+/// FIXME(nikomatsakis): I don't think this function should go here
+fn type_of_binop<'tcx>(
+    tcx: &ty::ctxt<'tcx>,
+    op: mir::BinOp,
+    lhs_ty: Ty<'tcx>,
+    rhs_ty: Ty<'tcx>)
+    -> Ty<'tcx>
+{
+    match op {
+        mir::BinOp::Add | mir::BinOp::Sub |
+        mir::BinOp::Mul | mir::BinOp::Div | mir::BinOp::Rem |
+        mir::BinOp::BitXor | mir::BinOp::BitAnd | mir::BinOp::BitOr => {
+            // these should be integers or floats of the same size. We
+            // probably want to dump all ops in some intrinsics framework
+            // someday.
+            assert_eq!(lhs_ty, rhs_ty);
+            lhs_ty
+        }
+        mir::BinOp::Shl | mir::BinOp::Shr => {
+            lhs_ty // lhs_ty can be != rhs_ty
+        }
+        mir::BinOp::Eq | mir::BinOp::Lt | mir::BinOp::Le |
+        mir::BinOp::Ne | mir::BinOp::Ge | mir::BinOp::Gt => {
+            tcx.types.bool
+        }
+    }
 }

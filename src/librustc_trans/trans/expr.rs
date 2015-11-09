@@ -1725,58 +1725,6 @@ fn trans_addr_of<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-fn trans_fat_ptr_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                   binop_expr: &hir::Expr,
-                                   binop_ty: Ty<'tcx>,
-                                   op: hir::BinOp,
-                                   lhs: Datum<'tcx, Rvalue>,
-                                   rhs: Datum<'tcx, Rvalue>)
-                                   -> DatumBlock<'blk, 'tcx, Expr>
-{
-    let debug_loc = binop_expr.debug_loc();
-
-    let lhs_addr = Load(bcx, GEPi(bcx, lhs.val, &[0, abi::FAT_PTR_ADDR]));
-    let lhs_extra = Load(bcx, GEPi(bcx, lhs.val, &[0, abi::FAT_PTR_EXTRA]));
-
-    let rhs_addr = Load(bcx, GEPi(bcx, rhs.val, &[0, abi::FAT_PTR_ADDR]));
-    let rhs_extra = Load(bcx, GEPi(bcx, rhs.val, &[0, abi::FAT_PTR_EXTRA]));
-
-    let val = match op.node {
-        hir::BiEq => {
-            let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
-            let extra_eq = ICmp(bcx, llvm::IntEQ, lhs_extra, rhs_extra, debug_loc);
-            And(bcx, addr_eq, extra_eq, debug_loc)
-        }
-        hir::BiNe => {
-            let addr_eq = ICmp(bcx, llvm::IntNE, lhs_addr, rhs_addr, debug_loc);
-            let extra_eq = ICmp(bcx, llvm::IntNE, lhs_extra, rhs_extra, debug_loc);
-            Or(bcx, addr_eq, extra_eq, debug_loc)
-        }
-        hir::BiLe | hir::BiLt | hir::BiGe | hir::BiGt => {
-            // a OP b ~ a.0 STRICT(OP) b.0 | (a.0 == b.0 && a.1 OP a.1)
-            let (op, strict_op) = match op.node {
-                hir::BiLt => (llvm::IntULT, llvm::IntULT),
-                hir::BiLe => (llvm::IntULE, llvm::IntULT),
-                hir::BiGt => (llvm::IntUGT, llvm::IntUGT),
-                hir::BiGe => (llvm::IntUGE, llvm::IntUGT),
-                _ => unreachable!()
-            };
-
-            let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
-            let extra_op = ICmp(bcx, op, lhs_extra, rhs_extra, debug_loc);
-            let addr_eq_extra_op = And(bcx, addr_eq, extra_op, debug_loc);
-
-            let addr_strict = ICmp(bcx, strict_op, lhs_addr, rhs_addr, debug_loc);
-            Or(bcx, addr_strict, addr_eq_extra_op, debug_loc)
-        }
-        _ => {
-            bcx.tcx().sess.span_bug(binop_expr.span, "unexpected binop");
-        }
-    };
-
-    immediate_rvalue_bcx(bcx, val, binop_ty).to_expr_datumblock()
-}
-
 fn trans_scalar_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   binop_expr: &hir::Expr,
                                   binop_ty: Ty<'tcx>,
@@ -2005,7 +1953,15 @@ fn trans_binary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             if type_is_fat_ptr(ccx.tcx(), lhs.ty) {
                 assert!(type_is_fat_ptr(ccx.tcx(), rhs.ty),
                         "built-in binary operators on fat pointers are homogeneous");
-                trans_fat_ptr_binop(bcx, expr, binop_ty, op, lhs, rhs)
+                assert_eq!(binop_ty, bcx.tcx().types.bool);
+                let val = base::compare_scalar_types(
+                    bcx,
+                    lhs.val,
+                    rhs.val,
+                    lhs.ty,
+                    op.node,
+                    expr.debug_loc());
+                immediate_rvalue_bcx(bcx, val, binop_ty).to_expr_datumblock()
             } else {
                 assert!(!type_is_fat_ptr(ccx.tcx(), rhs.ty),
                         "built-in binary operators on fat pointers are homogeneous");

@@ -28,10 +28,11 @@ pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
         let ty = bcx.monomorphize(&temp_decl.ty);
         debug!("temp {:?} has type {:?}", index, ty);
         if
-            ty.is_scalar() ||
-            ty.is_unique() ||
-            (ty.is_region_ptr() && !common::type_is_fat_ptr(bcx.tcx(), ty)) ||
-            ty.is_simd()
+            (ty.is_scalar() ||
+             ty.is_unique() ||
+             ty.is_region_ptr() ||
+             ty.is_simd())
+            && !common::type_is_fat_ptr(bcx.tcx(), ty)
         {
             // These sorts of types are immediates that we can store
             // in an ValueRef without an alloca.
