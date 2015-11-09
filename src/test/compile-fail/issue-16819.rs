@@ -10,9 +10,17 @@
 
 struct TS ( //~ ERROR empty tuple structs and enum variants are not allowed
     #[cfg(untrue)]
-    int,
+    i32,
 );
 
+enum E {
+    TV ( //~ ERROR empty tuple structs and enum variants are not allowed
+        #[cfg(untrue)]
+        i32,
+    )
+}
+
 fn main() {
-    let s = S;
+    let s = TS;
+    let tv = E::TV;
 }
