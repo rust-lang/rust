@@ -1220,8 +1220,7 @@ impl<T> FromIterator<T> for Vec<T> {
         // expanded on this iteration in every case when the iterable is not
         // empty, but the loop in extend_desugared() is not going to see the
         // vector being full in the few subsequent loop iterations.
-        // So we get better branch prediction and the possibility to
-        // construct the vector with initial estimated capacity.
+        // So we get better branch prediction.
         let mut iterator = iterable.into_iter();
         let mut vector = match iterator.next() {
             None => return Vec::new(),
