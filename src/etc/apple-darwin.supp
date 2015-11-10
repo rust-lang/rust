@@ -1,9 +1,105 @@
 {
-   issue_1333_setenv_leak
+   osx-frameworks.rs-fails-otherwise-1
    Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   ...
+   fun:__CFInitialize
+   fun:_ZN16ImageLoaderMachO11doImageInitERKN11ImageLoader11LinkContextE
+   fun:_ZN16ImageLoaderMachO16doInitializationERKN11ImageLoader11LinkContextE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+   fun:_ZN11ImageLoader19processInitializersERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+   fun:_ZN11ImageLoader15runInitializersERKNS_11LinkContextERNS_21InitializerTimingListE
+   fun:_ZN4dyld24initializeMainExecutableEv
+}
+
+{
+   osx-frameworks.rs-fails-otherwise-2
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc_zone_calloc
+   ...
+   fun:__CFInitialize
+   fun:_ZN16ImageLoaderMachO11doImageInitERKN11ImageLoader11LinkContextE
+   fun:_ZN16ImageLoaderMachO16doInitializationERKN11ImageLoader11LinkContextE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+   fun:_ZN11ImageLoader19processInitializersERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+}
+
+{
+   osx-frameworks.rs-fails-otherwise-3
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:realloc
+   fun:_ZL12realizeClassP10objc_class
+   fun:_ZL12realizeClassP10objc_class
+   fun:_ZN13list_array_ttIm15protocol_list_tE11attachListsEPKPS0_j
+   fun:_read_images
+   fun:map_images_nolock
+   fun:map_2_images
+   fun:_ZN4dyldL18notifyBatchPartialE17dyld_image_statesbPFPKcS0_jPK15dyld_image_infoE
+   fun:_ZN4dyld36registerImageStateBatchChangeHandlerE17dyld_image_statesPFPKcS0_jPK15dyld_image_infoE
+   fun:dyld_register_image_state_change_handler
+   fun:_objc_init
+   fun:_os_object_init
+}
+
+{
+   osx-frameworks.rs-fails-otherwise-4
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   ...
+   fun:__CFInitialize
+   fun:_ZN16ImageLoaderMachO11doImageInitERKN11ImageLoader11LinkContextE
+   fun:_ZN16ImageLoaderMachO16doInitializationERKN11ImageLoader11LinkContextE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+}
+
+{
+   osx-frameworks.rs-fails-otherwise-5
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   ...
+   fun:__CFInitialize
+   fun:_ZN16ImageLoaderMachO11doImageInitERKN11ImageLoader11LinkContextE
+   fun:_ZN16ImageLoaderMachO16doInitializationERKN11ImageLoader11LinkContextE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+}
+
+{
+   osx-frameworks.rs-fails-otherwise-6
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:strdup
+   fun:_CFProcessPath
+   fun:__CFInitialize
+   fun:_ZN16ImageLoaderMachO11doImageInitERKN11ImageLoader11LinkContextE
+   fun:_ZN16ImageLoaderMachO16doInitializationERKN11ImageLoader11LinkContextE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+   fun:_ZN11ImageLoader19processInitializersERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+   fun:_ZN11ImageLoader15runInitializersERKNS_11LinkContextERNS_21InitializerTimingListE
+   fun:_ZN4dyld24initializeMainExecutableEv
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_Pm
+}
+
+{
+   osx-frameworks.rs-fails-otherwise-7
+   Memcheck:Leak
+   match-leak-kinds: definite
    fun:malloc_zone_malloc
    ...
-   fun:setenv
-   fun:setenv__c_stack_shim
-   ...
+   fun:__CFInitialize
+   fun:_ZN16ImageLoaderMachO11doImageInitERKN11ImageLoader11LinkContextE
+   fun:_ZN16ImageLoaderMachO16doInitializationERKN11ImageLoader11LinkContextE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+   fun:_ZN11ImageLoader19processInitializersERKNS_11LinkContextEjRNS_21InitializerTimingListERNS_15UninitedUpwardsE
+   fun:_ZN11ImageLoader15runInitializersERKNS_11LinkContextERNS_21InitializerTimingListE
+   fun:_ZN4dyld24initializeMainExecutableEv
 }

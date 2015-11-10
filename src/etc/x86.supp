@@ -1,496 +1,65 @@
 {
-   our-failure-to-setup-freeres-structure
-   Memcheck:Free
-   fun:free
-   fun:__libc_freeres
-   fun:_vgnU_freeres
-}
-
-{
-   our-failure-to-setup-freeres-structure2
-   Memcheck:Free
-   fun:free
-   fun:free_mem
-   fun:__libc_freeres
-   fun:_vgnU_freeres
-}
-
-{
- leaked-TLS-chunk-x86-exit-path-fails-to-clean-up
- Memcheck:Leak
- fun:calloc
- fun:_dl_allocate_tls
-}
-
-{
-   linux-dl-prob
-   Memcheck:Param
-   read(buf)
-   ...
-   fun:_dl_map_object
-}
-
-{
-   mac-dyld-oddity
-   Memcheck:Cond
-   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
-   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
-   fun:_dyld_start
-   obj:*
-}
-
-{
-   mac-dlopen-weirdness
-   Memcheck:Cond
-   fun:_ZNK16ImageLoaderMachO9getRPathsERKN11ImageLoader11LinkContextERSt6vectorIPKcSaIS6_EE
-   fun:_ZN11ImageLoader22recursiveLoadLibrariesERKNS_11LinkContextEbRKNS_10RPathChainE
-   fun:_ZN11ImageLoader4linkERKNS_11LinkContextEbbRKNS_10RPathChainE
-   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
-   fun:dlopen
-   fun:dlopen
-   fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
-   fun:_ZN16rust_crate_cache7get_libEmPKc
-   fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
-}
-
-{
-   mac-dlopen-weirdness-2
-   Memcheck:Value4
-   fun:_ZNK16ImageLoaderMachO9getRPathsERKN11ImageLoader11LinkContextERSt6vectorIPKcSaIS6_EE
-   fun:_ZN11ImageLoader22recursiveLoadLibrariesERKNS_11LinkContextEbRKNS_10RPathChainE
-   fun:_ZN11ImageLoader4linkERKNS_11LinkContextEbbRKNS_10RPathChainE
-   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
-   fun:dlopen
-   fun:dlopen
-   fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
-   fun:_ZN16rust_crate_cache7get_libEmPKc
-   fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
-}
-
-{
-   mac-dlopen-weirdness-3
-   Memcheck:Value4
-   fun:strcpy
-   fun:_ZN11ImageLoader22recursiveLoadLibrariesERKNS_11LinkContextEbRKNS_10RPathChainE
-   fun:_ZN11ImageLoader4linkERKNS_11LinkContextEbbRKNS_10RPathChainE
-   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
-   fun:dlopen
-   fun:dlopen
-   fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
-   fun:_ZN16rust_crate_cache7get_libEmPKc
-   fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
-}
-
-{
-   mac-dlopen-weirdness-4
-   Memcheck:Value4
-   obj:*
-   fun:_ZNK16ImageLoaderMachO9getRPathsERKN11ImageLoader11LinkContextERSt6vectorIPKcSaIS6_EE
-   fun:_ZN11ImageLoader22recursiveLoadLibrariesERKNS_11LinkContextEbRKNS_10RPathChainE
-   fun:_ZN11ImageLoader4linkERKNS_11LinkContextEbbRKNS_10RPathChainE
-   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
-   fun:dlopen
-   fun:dlopen
-   fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
-   fun:_ZN16rust_crate_cache7get_libEmPKc
-   fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
-}
-
-{
-   mac-dlopen-weirdness-5
-   Memcheck:Cond
-   fun:memcpy
-   fun:strdup
-   fun:_ZNK16ImageLoaderMachO9getRPathsERKN11ImageLoader11LinkContextERSt6vectorIPKcSaIS6_EE
-   fun:_ZN11ImageLoader22recursiveLoadLibrariesERKNS_11LinkContextEbRKNS_10RPathChainE
-   fun:_ZN11ImageLoader4linkERKNS_11LinkContextEbbRKNS_10RPathChainE
-   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
-   fun:dlopen
-   fun:dlopen
-   fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
-   fun:_ZN16rust_crate_cache7get_libEmPKc
-   fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
-}
-
-{
-   mac-dlopen-weirdness-6
-   Memcheck:Value4
-   fun:memcpy
-   fun:strdup
-   fun:_ZNK16ImageLoaderMachO9getRPathsERKN11ImageLoader11LinkContextERSt6vectorIPKcSaIS6_EE
-   fun:_ZN11ImageLoader22recursiveLoadLibrariesERKNS_11LinkContextEbRKNS_10RPathChainE
-   fun:_ZN11ImageLoader4linkERKNS_11LinkContextEbbRKNS_10RPathChainE
-   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
-   fun:dlopen
-   fun:dlopen
-   fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
-   fun:_ZN16rust_crate_cache7get_libEmPKc
-   fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
-}
-
-{
-   mac-dyld
-   Memcheck:Cond
-   ...
-   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
-   fun:_dyld_start
-   obj:*
-}
-
-{
-   mac-dyld-2
-   Memcheck:Value4
-   ...
-   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
-   fun:_dyld_start
-   obj:*
-}
-
-{
-   mac-dyld-3
-   Memcheck:Param
-   stat(path)
-   ...
-   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
-   fun:_dyld_start
-   obj:*
-}
-
-{
-   mac-dyld-4
-   Memcheck:Param
-   open(filename)
-   ...
-   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
-   fun:_dyld_start
-   obj:*
-}
-
-{
-   mac-dyld-5
-   Memcheck:Cond
-   ...
-   fun:_ZN4dyld4loadEPKcRKNS_11LoadContextE
-   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
-}
-
-{
-   mac-dyld-6
-   Memcheck:Value4
-   ...
-   fun:_ZN4dyld4loadEPKcRKNS_11LoadContextE
-   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
-}
-
-{
-   mac-dyld-7
-   Memcheck:Value4
-   ...
-   fun:_ZN4dyld4loadEPKcRKNS_11LoadContextE
-}
-
-{
-   mac-dyld-8
-   Memcheck:Cond
-   ...
-   fun:_ZN4dyld4loadEPKcRKNS_11LoadContextE
-}
-
-{
-   mac-dyld-9
-   Memcheck:Value4
-   ...
-   fun:_ZN4dyldL10loadPhase0EPKcRKNS_11LoadContextEPSt6vectorIS1_SaIS1_EE
-}
-
-{
-   mac-dyld-10
-   Memcheck:Cond
-   ...
-   fun:_ZN4dyldL10loadPhase0EPKcRKNS_11LoadContextEPSt6vectorIS1_SaIS1_EE
-}
-
-{
-   mac-dyld-11
-   Memcheck:Param
-   stat(path)
-   ...
-   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
-   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
-}
-
-{
-   mac-dyld-12
-   Memcheck:Param
-   open(filename)
-   ...
-   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
-   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
-}
-
-{
-   mac-dyld-13
-   Memcheck:Cond
-   ...
-   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
-   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
-   fun:_dyld_start
-}
-
-{
-   mac-dyld-14
-   Memcheck:Value4
-   ...
-   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
-   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
-   fun:_dyld_start
-}
-
-{
-   mac-dyld-15
-   Memcheck:Value4
-   ...
-   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
-   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
-}
-
-{
-   mac-dyld-16
-   Memcheck:Value4
-   ...
-   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
-   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
-}
-
-{
-   mac-dyld-17
-   Memcheck:Value4
-   ...
-   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
-}
-
-{
-   mac-dyld-18
-   Memcheck:Cond
-   ...
-   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
-   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
-}
-
-{
-   mac-dyld-19
-   Memcheck:Value4
-   ...
-   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
-}
-
-{
-   mac-dyld-20
-   Memcheck:Value4
-   ...
-   fun:_ZN4dyld24initializeMainExecutableEv
-}
-
-{
-   mac-dyld-21
-   Memcheck:Cond
-   ...
-   fun:_ZN4dyld24initializeMainExecutableEv
-   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
-}
-
-{
-   mac-dyld-22
-   Memcheck:Cond
-   ...
-   fun:_ZN4dyld24initializeMainExecutableEv
-}
-
-{
-   mac-dyld-23
-   Memcheck:Value4
-   ...
-   fun:_ZN11ImageLoader15runInitializersERKNS_11LinkContextE
-}
-
-{
-   mac-dyld-24
-   Memcheck:Cond
-   ...
-   fun:dyld_stub_binder_
-   fun:main
-}
-
-{
-   mac-dyld-25
-   Memcheck:Value4
-   ...
-   fun:dyld_stub_binder_
-   fun:main
-}
-
-{
-   mac-dyld-26
-   Memcheck:Cond
-   ...
-   fun:dyld_stub_binder_
-   ...
-}
-
-{
-   mac-dyld-27
-   Memcheck:Value4
-   ...
-   fun:dyld_stub_binder_
-   ...
-}
-
-{
-   mac-dyld-28
-   Memcheck:Cond
-   fun:_ZN4dyld14runTerminatorsEPv
-   ...
-}
-
-{
-   mac-dyld-29
-   Memcheck:Cond
-   fun:_ZN4dyldL18notifyBatchPartialE17dyld_image_statesbPFPKcS0_jPK15dyld_image_infoE
-   ...
-}
-
-{
-   mac-dyld-30
-   Memcheck:Value4
-   fun:_ZN4dyldL18notifyBatchPartialE17dyld_image_statesbPFPKcS0_jPK15dyld_image_infoE
-   ...
-}
-
-{
-   llvm-user-new-leak
-   Memcheck:Leak
-   fun:_Znwj
-   fun:_ZN4llvm4UsernwEjj
-}
-
-{
-   race-or-something-ask-pcwalton-0
-   Memcheck:Value4
-   fun:*task_start_wrapper*
-   ...
-}
-
-{
-   race-or-something-ask-pcwalton-1
-   Memcheck:Value4
-   ...
-   fun:*build_start_wrapper*
-   ...
-}
-
-{
-   lock_and_signal-probably-threadsafe-access-outside-of-lock
-   Helgrind:Race
-   fun:_ZN15lock_and_signal27lock_held_by_current_threadEv
-   ...
-}
-
-{
-   lock_and_signal-probably-threadsafe-access-outside-of-lock2
-   Helgrind:Race
-   fun:_ZN15lock_and_signal6unlockEv
-   ...
-}
-
-{
-   lock_and_signal-probably-threadsafe-access-outside-of-lock3
-   Helgrind:Race
-   fun:_ZN15lock_and_signal4lockEv
-   ...
-}
-
-{
-   lock_and_signal-probably-threadsafe-access-outside-of-lock4
-   Helgrind:Race
-   fun:_ZN15lock_and_signal4waitEv
-   ...
-}
-
-{
-   uv-async-send-does-racy-things
-   Helgrind:Race
-   fun:pipecb
-   fun:ev_invoke_pending
-   fun:ev_run
-   fun:uv_run
-   ...
-}
-
-{
-   uv-loop-init-does-some-checks-that-are-not-lock-protected
-   Helgrind:Race
-   fun:loop_init
-   fun:ev_loop_new
-   fun:uv_loop_new
-   ...
-}
-
-{
-   random-locking-order-but-it-only-happens-in-a-single-thread-at-a-time-I-polled-2-other-people-and-they-thought-it-was-prabably-ok
-   Helgrind:LockOrder
-   fun:pthread_mutex_lock
-   fun:_ZN15lock_and_signal4lockEv
-   fun:_ZN18rust_port_selector6selectEP9rust_taskPP9rust_portS4_mPm
-   ...
-}
-
-{
-   random-locking-order-but-it-only-happens-in-a-single-thread-at-a-time-I-polled-2-other-people-and-they-thought-it-was-prabably-ok
-   Helgrind:LockOrder
-   fun:pthread_mutex_lock
-   fun:pthread_mutex_lock
-   fun:_ZN15lock_and_signal4lockEv
-   fun:_ZN18rust_port_selector6selectEP9rust_taskPP9rust_portS4_mPm
-   ...
-}
-
-{
-   random-locking-order-but-it-only-happens-in-a-single-thread-at-a-time-I-polled-2-other-people-and-they-thought-it-was-prabably-ok-i686
-   Helgrind:LockOrder
-   fun:pthread_mutex_lock
-   fun:pthread_mutex_lock
-   fun:_ZN15lock_and_signal4lockEv
-   fun:_ZN18rust_port_selector6selectEP9rust_taskPP9rust_portS4_jPj
-}
-
-{
-   libunwind-surely-this-is-ok
-   Helgrind:Race
-   ...
-   fun:_Unwind_RaiseException
-   fun:__cxa_throw
-   ...
-}
-
-{
-   libunwind-surely-this-is-ok2
-   Helgrind:Race
-   ...
-   fun:_Unwind_Resume
-   ...
-}
-
-{
-   libunwind-surely-this-is-ok3
-   Helgrind:Race
-   fun:_Unwind_SetGR
-   fun:__gxx_personality_v0
-   ...
-}
-
-{
    goddammit-llvm-why-u-no-valgrind
    Memcheck:Cond
    fun:*
    ...
+}
+
+{
+   down-with-thread-dtors.rs-fails-otherwise-1
+   Memcheck:Addr1
+   ...
+   fun:tlv_finalize
+   fun:_pthread_tsd_cleanup
+   fun:_pthread_exit
+   fun:_pthread_body
+   fun:_pthread_start
+   fun:thread_start
+}
+
+{
+   down-with-thread-dtors.rs-fails-otherwise-2
+   Memcheck:Addr2
+   ...
+   fun:tlv_finalize
+   fun:_pthread_tsd_cleanup
+   fun:_pthread_exit
+   fun:_pthread_body
+   fun:_pthread_start
+   fun:thread_start
+}
+
+{
+   down-with-thread-dtors.rs-fails-otherwise-3
+   Memcheck:Addr4
+   ...
+   fun:tlv_finalize
+   fun:_pthread_tsd_cleanup
+   fun:_pthread_exit
+   fun:_pthread_body
+   fun:_pthread_start
+   fun:thread_start
+}
+
+{
+   down-with-thread-dtors.rs-fails-otherwise-4
+   Memcheck:Addr8
+   ...
+   fun:tlv_finalize
+   fun:_pthread_tsd_cleanup
+   fun:_pthread_exit
+   fun:_pthread_body
+   fun:_pthread_start
+   fun:thread_start
+}
+
+{
+   down-with-thread-dtors.rs-fails-otherwise-5
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:tlv_allocate_and_initialize_for_key
+   fun:tlv_get_addr
+   ...
+   fun:start
 }
