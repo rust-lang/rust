@@ -232,9 +232,18 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     mir::BinOp::Gt => base::compare_scalar_types(bcx, lhs.llval, rhs.llval, lhs.ty,
                                                                  hir::BiGt, binop_debug_loc),
                 };
+
+                // If this is a comparison the result type will be bool
+                let result_ty = match op {
+                    mir::BinOp::Eq | mir::BinOp::Ne |
+                    mir::BinOp::Lt | mir::BinOp::Le |
+                    mir::BinOp::Gt | mir::BinOp::Ge => bcx.tcx().mk_bool(),
+                    _ => lhs.ty
+                };
+
                 (bcx, OperandRef {
                     llval: llval,
-                    ty: lhs.ty,
+                    ty: result_ty,
                 })
             }
 
