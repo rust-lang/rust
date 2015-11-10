@@ -345,17 +345,20 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         debug!("match_candidates: test={:?} match_pair={:?}", test, match_pair);
         let target_blocks = self.perform_test(block, &match_pair.lvalue, &test);
 
-        for (outcome, target_block) in target_blocks.into_iter().enumerate() {
-            let applicable_candidates: Vec<_> =
-                candidates.iter()
-                          .filter_map(|candidate| {
-                              self.candidate_under_assumption(&match_pair.lvalue,
-                                                              &test.kind,
-                                                              outcome,
-                                                              candidate)
-                          })
-                          .collect();
-            self.match_candidates(span, arm_blocks, applicable_candidates, target_block);
+        let mut target_candidates: Vec<_> = (0..target_blocks.len()).map(|_| vec![]).collect();
+
+        for candidate in &candidates {
+            self.sort_candidate(&match_pair.lvalue,
+                                &test,
+                                candidate,
+                                &mut target_candidates);
+        }
+
+        for (target_block, target_candidates) in
+            target_blocks.into_iter()
+                         .zip(target_candidates.into_iter())
+        {
+            self.match_candidates(span, arm_blocks, target_candidates, target_block);
         }
     }
 
