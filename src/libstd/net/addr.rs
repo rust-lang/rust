@@ -13,10 +13,10 @@ use prelude::v1::*;
 use fmt;
 use hash;
 use io;
-use libc::{self, socklen_t, sa_family_t};
 use mem;
 use net::{lookup_host, ntoh, hton, IpAddr, Ipv4Addr, Ipv6Addr};
 use option;
+use sys::net::netc as c;
 use sys_common::{FromInner, AsInner, IntoInner};
 use vec;
 
@@ -39,12 +39,12 @@ pub enum SocketAddr {
 /// An IPv4 socket address which is a (ip, port) combination.
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct SocketAddrV4 { inner: libc::sockaddr_in }
+pub struct SocketAddrV4 { inner: c::sockaddr_in }
 
 /// An IPv6 socket address.
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct SocketAddrV6 { inner: libc::sockaddr_in6 }
+pub struct SocketAddrV6 { inner: c::sockaddr_in6 }
 
 impl SocketAddr {
     /// Creates a new socket address from the (ip, port) pair.
@@ -80,8 +80,8 @@ impl SocketAddrV4 {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(ip: Ipv4Addr, port: u16) -> SocketAddrV4 {
         SocketAddrV4 {
-            inner: libc::sockaddr_in {
-                sin_family: libc::AF_INET as sa_family_t,
+            inner: c::sockaddr_in {
+                sin_family: c::AF_INET as c::sa_family_t,
                 sin_port: hton(port),
                 sin_addr: *ip.as_inner(),
                 .. unsafe { mem::zeroed() }
@@ -93,7 +93,7 @@ impl SocketAddrV4 {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ip(&self) -> &Ipv4Addr {
         unsafe {
-            &*(&self.inner.sin_addr as *const libc::in_addr as *const Ipv4Addr)
+            &*(&self.inner.sin_addr as *const c::in_addr as *const Ipv4Addr)
         }
     }
 
@@ -109,8 +109,8 @@ impl SocketAddrV6 {
     pub fn new(ip: Ipv6Addr, port: u16, flowinfo: u32, scope_id: u32)
                -> SocketAddrV6 {
         SocketAddrV6 {
-            inner: libc::sockaddr_in6 {
-                sin6_family: libc::AF_INET6 as sa_family_t,
+            inner: c::sockaddr_in6 {
+                sin6_family: c::AF_INET6 as c::sa_family_t,
                 sin6_port: hton(port),
                 sin6_addr: *ip.as_inner(),
                 sin6_flowinfo: hton(flowinfo),
@@ -124,7 +124,7 @@ impl SocketAddrV6 {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ip(&self) -> &Ipv6Addr {
         unsafe {
-            &*(&self.inner.sin6_addr as *const libc::in6_addr as *const Ipv6Addr)
+            &*(&self.inner.sin6_addr as *const c::in6_addr as *const Ipv6Addr)
         }
     }
 
@@ -143,26 +143,26 @@ impl SocketAddrV6 {
     pub fn scope_id(&self) -> u32 { ntoh(self.inner.sin6_scope_id) }
 }
 
-impl FromInner<libc::sockaddr_in> for SocketAddrV4 {
-    fn from_inner(addr: libc::sockaddr_in) -> SocketAddrV4 {
+impl FromInner<c::sockaddr_in> for SocketAddrV4 {
+    fn from_inner(addr: c::sockaddr_in) -> SocketAddrV4 {
         SocketAddrV4 { inner: addr }
     }
 }
 
-impl FromInner<libc::sockaddr_in6> for SocketAddrV6 {
-    fn from_inner(addr: libc::sockaddr_in6) -> SocketAddrV6 {
+impl FromInner<c::sockaddr_in6> for SocketAddrV6 {
+    fn from_inner(addr: c::sockaddr_in6) -> SocketAddrV6 {
         SocketAddrV6 { inner: addr }
     }
 }
 
-impl<'a> IntoInner<(*const libc::sockaddr, socklen_t)> for &'a SocketAddr {
-    fn into_inner(self) -> (*const libc::sockaddr, socklen_t) {
+impl<'a> IntoInner<(*const c::sockaddr, c::socklen_t)> for &'a SocketAddr {
+    fn into_inner(self) -> (*const c::sockaddr, c::socklen_t) {
         match *self {
             SocketAddr::V4(ref a) => {
-                (a as *const _ as *const _, mem::size_of_val(a) as socklen_t)
+                (a as *const _ as *const _, mem::size_of_val(a) as c::socklen_t)
             }
             SocketAddr::V6(ref a) => {
-                (a as *const _ as *const _, mem::size_of_val(a) as socklen_t)
+                (a as *const _ as *const _, mem::size_of_val(a) as c::socklen_t)
             }
         }
     }

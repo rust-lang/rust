@@ -21,7 +21,7 @@ use ptr;
 use sync::Arc;
 use sys::fd::FileDesc;
 use sys::platform::raw;
-use sys::{c, cvt, cvt_r};
+use sys::{cvt, cvt_r};
 use sys_common::{AsInner, FromInner};
 use vec::Vec;
 
@@ -43,7 +43,7 @@ unsafe impl Send for Dir {}
 unsafe impl Sync for Dir {}
 
 pub struct DirEntry {
-    buf: Vec<u8>, // actually *mut libc::dirent_t
+    buf: Vec<u8>, // actually *mut libc::dirent
     root: Arc<PathBuf>,
 }
 
@@ -133,7 +133,7 @@ impl Iterator for ReadDir {
         let mut buf: Vec<u8> = Vec::with_capacity(unsafe {
             rust_dirent_t_size() as usize
         });
-        let ptr = buf.as_mut_ptr() as *mut libc::dirent_t;
+        let ptr = buf.as_mut_ptr() as *mut libc::dirent;
 
         let mut entry_ptr = ptr::null_mut();
         loop {
@@ -179,7 +179,7 @@ impl DirEntry {
 
     pub fn file_type(&self) -> io::Result<FileType> {
         extern {
-            fn rust_dir_get_mode(ptr: *mut libc::dirent_t) -> c_int;
+            fn rust_dir_get_mode(ptr: *mut libc::dirent) -> c_int;
         }
         unsafe {
             match rust_dir_get_mode(self.dirent()) {
@@ -191,21 +191,21 @@ impl DirEntry {
 
     pub fn ino(&self) -> raw::ino_t {
         extern {
-            fn rust_dir_get_ino(ptr: *mut libc::dirent_t) -> raw::ino_t;
+            fn rust_dir_get_ino(ptr: *mut libc::dirent) -> raw::ino_t;
         }
         unsafe { rust_dir_get_ino(self.dirent()) }
     }
 
     fn name_bytes(&self) -> &[u8] {
         extern {
-            fn rust_list_dir_val(ptr: *mut libc::dirent_t) -> *const c_char;
+            fn rust_list_dir_val(ptr: *mut libc::dirent) -> *const c_char;
         }
         unsafe {
             CStr::from_ptr(rust_list_dir_val(self.dirent())).to_bytes()
         }
     }
 
-    fn dirent(&self) -> *mut libc::dirent_t {
+    fn dirent(&self) -> *mut libc::dirent {
         self.buf.as_ptr() as *mut _
     }
 }
@@ -267,7 +267,7 @@ impl File {
             (false, false) => libc::O_RDONLY,
         };
         let fd = try!(cvt_r(|| unsafe {
-            libc::open(path.as_ptr(), flags, opts.mode)
+            libc::open(path.as_ptr(), flags, opts.mode as c_int)
         }));
         let fd = FileDesc::new(fd);
         // Even though we open with the O_CLOEXEC flag, still set CLOEXEC here,
@@ -532,7 +532,7 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     let path = try!(CString::new(p.as_os_str().as_bytes()));
     let buf;
     unsafe {
-        let r = c::realpath(path.as_ptr(), ptr::null_mut());
+        let r = libc::realpath(path.as_ptr(), ptr::null_mut());
         if r.is_null() {
             return Err(io::Error::last_os_error())
         }

@@ -22,7 +22,7 @@ $(eval $(call RUST_CRATE,coretest))
 DEPS_collectionstest :=
 $(eval $(call RUST_CRATE,collectionstest))
 
-TEST_TARGET_CRATES = $(filter-out core rustc_unicode alloc_system \
+TEST_TARGET_CRATES = $(filter-out core rustc_unicode alloc_system libc \
 		     		  alloc_jemalloc,$(TARGET_CRATES)) \
 			collectionstest coretest
 TEST_DOC_CRATES = $(DOC_CRATES)
@@ -283,6 +283,7 @@ tidy-binaries:
 		| grep '^$(S)src/compiler-rt' -v \
 		| grep '^$(S)src/libbacktrace' -v \
 		| grep '^$(S)src/rust-installer' -v \
+		| grep '^$(S)src/liblibc' -v \
 		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
 
 .PHONY: tidy-errors

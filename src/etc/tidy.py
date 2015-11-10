@@ -108,7 +108,8 @@ try:
             'src/rustllvm',
             'src/rt/valgrind',
             'src/rt/msvc',
-            'src/rust-installer'
+            'src/rust-installer',
+            'src/liblibc',
         }
 
         if any(d in dirpath for d in skippable_dirs):

@@ -174,3 +174,6 @@ $(foreach crate,$(TOOLS),$(eval $(call RUST_TOOL,$(crate))))
 ifdef CFG_DISABLE_ELF_TLS
 RUSTFLAGS_std := --cfg no_elf_tls
 endif
+
+CRATEFILE_libc := $(SREL)src/liblibc/src/lib.rs
+RUSTFLAGS_libc := --cfg stdbuild

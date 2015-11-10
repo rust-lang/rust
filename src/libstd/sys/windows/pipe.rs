@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use io;
-use libc;
 use ptr;
 use sys::cvt;
 use sys::c;
@@ -24,8 +23,8 @@ pub struct AnonPipe {
 }
 
 pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
-    let mut reader = libc::INVALID_HANDLE_VALUE;
-    let mut writer = libc::INVALID_HANDLE_VALUE;
+    let mut reader = c::INVALID_HANDLE_VALUE;
+    let mut writer = c::INVALID_HANDLE_VALUE;
     try!(cvt(unsafe {
         c::CreatePipe(&mut reader, &mut writer, ptr::null_mut(), 0)
     }));
@@ -38,7 +37,7 @@ impl AnonPipe {
     pub fn handle(&self) -> &Handle { &self.inner }
     pub fn into_handle(self) -> Handle { self.inner }
 
-    pub fn raw(&self) -> libc::HANDLE { self.inner.raw() }
+    pub fn raw(&self) -> c::HANDLE { self.inner.raw() }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)

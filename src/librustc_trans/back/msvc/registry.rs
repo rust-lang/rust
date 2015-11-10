@@ -13,8 +13,14 @@ use std::ffi::{OsString, OsStr};
 use std::os::windows::prelude::*;
 use std::ops::RangeFrom;
 use std::ptr;
-use libc::{DWORD, LPCWSTR, LONG, LPDWORD, LPBYTE, ERROR_SUCCESS};
-use libc::c_void;
+use libc::{c_void, c_long};
+
+type DWORD = u32;
+type LPCWSTR = *const u16;
+type LONG = c_long;
+type LPDWORD = *mut DWORD;
+type LPBYTE = *mut u8;
+
 
 const HKEY_LOCAL_MACHINE: HKEY = 0x80000002 as HKEY;
 const KEY_WOW64_32KEY: REGSAM = 0x0200;
@@ -27,6 +33,7 @@ const KEY_ENUMERATE_SUB_KEYS: REGSAM = 0x0008;
 const KEY_NOTIFY: REGSAM = 0x0010;
 const SYNCHRONIZE: REGSAM = 0x00100000;
 const REG_SZ: DWORD = 1;
+const ERROR_SUCCESS: i32 = 0;
 const ERROR_NO_MORE_ITEMS: DWORD = 259;
 
 enum __HKEY__ {}
