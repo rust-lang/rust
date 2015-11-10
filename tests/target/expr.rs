@@ -41,7 +41,7 @@ fn foo() -> bool {
         result
     } else {
         4
-    }
+    };
 
     if let Some(x) = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa {
         // Nothing
@@ -254,5 +254,5 @@ fn repeats() {
 fn blocks() {
     if 1 + 1 == 2 {
         println!("yay arithmetix!");
-    }
+    };
 }
