@@ -1094,7 +1094,10 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                 check_inherited(item.span, item.vis,
                                 "place qualifiers on individual functions instead");
             }
-            _ => {}
+            hir::ItemStruct(..) | hir::ItemEnum(..) | hir::ItemTrait(..) |
+            hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
+            hir::ItemMod(..) | hir::ItemExternCrate(..) |
+            hir::ItemUse(..) | hir::ItemTy(..) => {}
         }
     }
 
@@ -1125,7 +1128,10 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                     check_inherited(f.span, f.node.kind.visibility());
                 }
             }
-            _ => {}
+            hir::ItemDefaultImpl(..) | hir::ItemEnum(..) | hir::ItemTrait(..) |
+            hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
+            hir::ItemMod(..) | hir::ItemExternCrate(..) |
+            hir::ItemUse(..) | hir::ItemTy(..) => {}
         }
     }
 }
