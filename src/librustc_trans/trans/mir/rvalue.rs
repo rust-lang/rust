@@ -51,9 +51,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::Rvalue::Repeat(ref elem, ref count) => {
                 let elem = self.trans_operand(bcx, elem);
-                let size = self.trans_operand(bcx, count);
+                let size = self.trans_constant(bcx, count);
                 let base = expr::get_dataptr(bcx, lldest);
-                tvec::iter_vec_raw(bcx, base, elem.ty, size.llval, |b, vref, _| {
+                tvec::iter_vec_raw(bcx, base, elem.ty, size, |b, vref, _| {
                     build::Store(b, elem.llval, vref);
                     b
                 })

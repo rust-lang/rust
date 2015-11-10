@@ -134,7 +134,7 @@ pub trait Visitor<'tcx> {
 
             Rvalue::Repeat(ref value, ref len) => {
                 self.visit_operand(value);
-                self.visit_operand(len);
+                self.visit_constant(len);
             }
 
             Rvalue::Ref(r, bk, ref path) => {
