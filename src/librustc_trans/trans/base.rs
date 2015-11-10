@@ -312,6 +312,49 @@ pub fn bin_op_to_fcmp_predicate(ccx: &CrateContext, op: hir::BinOp_)
     }
 }
 
+pub fn compare_fat_ptrs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                    lhs_addr: ValueRef,
+                                    lhs_extra: ValueRef,
+                                    rhs_addr: ValueRef,
+                                    rhs_extra: ValueRef,
+                                    _t: Ty<'tcx>,
+                                    op: hir::BinOp_,
+                                    debug_loc: DebugLoc)
+                                    -> ValueRef {
+    match op {
+        hir::BiEq => {
+            let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
+            let extra_eq = ICmp(bcx, llvm::IntEQ, lhs_extra, rhs_extra, debug_loc);
+            And(bcx, addr_eq, extra_eq, debug_loc)
+        }
+        hir::BiNe => {
+            let addr_eq = ICmp(bcx, llvm::IntNE, lhs_addr, rhs_addr, debug_loc);
+            let extra_eq = ICmp(bcx, llvm::IntNE, lhs_extra, rhs_extra, debug_loc);
+            Or(bcx, addr_eq, extra_eq, debug_loc)
+        }
+        hir::BiLe | hir::BiLt | hir::BiGe | hir::BiGt => {
+            // a OP b ~ a.0 STRICT(OP) b.0 | (a.0 == b.0 && a.1 OP a.1)
+            let (op, strict_op) = match op {
+                hir::BiLt => (llvm::IntULT, llvm::IntULT),
+                hir::BiLe => (llvm::IntULE, llvm::IntULT),
+                hir::BiGt => (llvm::IntUGT, llvm::IntUGT),
+                hir::BiGe => (llvm::IntUGE, llvm::IntUGT),
+                _ => unreachable!()
+            };
+
+            let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
+            let extra_op = ICmp(bcx, op, lhs_extra, rhs_extra, debug_loc);
+            let addr_eq_extra_op = And(bcx, addr_eq, extra_op, debug_loc);
+
+            let addr_strict = ICmp(bcx, strict_op, lhs_addr, rhs_addr, debug_loc);
+            Or(bcx, addr_strict, addr_eq_extra_op, debug_loc)
+        }
+        _ => {
+            bcx.tcx().sess.bug("unexpected fat ptr binop");
+        }
+    }
+}
+
 pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         lhs: ValueRef,
                                         rhs: ValueRef,
@@ -342,39 +385,10 @@ pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             let rhs_addr = Load(bcx, GEPi(bcx, rhs, &[0, abi::FAT_PTR_ADDR]));
             let rhs_extra = Load(bcx, GEPi(bcx, rhs, &[0, abi::FAT_PTR_EXTRA]));
-
-            match op {
-                hir::BiEq => {
-                    let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
-                    let extra_eq = ICmp(bcx, llvm::IntEQ, lhs_extra, rhs_extra, debug_loc);
-                    And(bcx, addr_eq, extra_eq, debug_loc)
-                }
-                hir::BiNe => {
-                    let addr_eq = ICmp(bcx, llvm::IntNE, lhs_addr, rhs_addr, debug_loc);
-                    let extra_eq = ICmp(bcx, llvm::IntNE, lhs_extra, rhs_extra, debug_loc);
-                    Or(bcx, addr_eq, extra_eq, debug_loc)
-                }
-                hir::BiLe | hir::BiLt | hir::BiGe | hir::BiGt => {
-                    // a OP b ~ a.0 STRICT(OP) b.0 | (a.0 == b.0 && a.1 OP a.1)
-                    let (op, strict_op) = match op {
-                        hir::BiLt => (llvm::IntULT, llvm::IntULT),
-                        hir::BiLe => (llvm::IntULE, llvm::IntULT),
-                        hir::BiGt => (llvm::IntUGT, llvm::IntUGT),
-                        hir::BiGe => (llvm::IntUGE, llvm::IntUGT),
-                        _ => unreachable!()
-                    };
-
-                    let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
-                    let extra_op = ICmp(bcx, op, lhs_extra, rhs_extra, debug_loc);
-                    let addr_eq_extra_op = And(bcx, addr_eq, extra_op, debug_loc);
-
-                    let addr_strict = ICmp(bcx, strict_op, lhs_addr, rhs_addr, debug_loc);
-                    Or(bcx, addr_strict, addr_eq_extra_op, debug_loc)
-                }
-                _ => {
-                    bcx.tcx().sess.bug("unexpected fat ptr binop");
-                }
-            }
+            compare_fat_ptrs(bcx,
+                             lhs_addr, lhs_extra,
+                             rhs_addr, rhs_extra,
+                             t, op, debug_loc)
         }
         ty::TyInt(_) => {
             ICmp(bcx, bin_op_to_icmp_predicate(bcx.ccx(), op, true), lhs, rhs, debug_loc)
@@ -881,6 +895,25 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
             llvm::LLVMSetAlignment(store, type_of::align_of(cx.ccx(), t));
         }
     }
+}
+
+pub fn store_fat_ptr<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+                                 data: ValueRef,
+                                 extra: ValueRef,
+                                 dst: ValueRef,
+                                 _ty: Ty<'tcx>) {
+    // FIXME: emit metadata
+    Store(cx, data, expr::get_dataptr(cx, dst));
+    Store(cx, extra, expr::get_meta(cx, dst));
+}
+
+pub fn load_fat_ptr<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+                                src: ValueRef,
+                                _ty: Ty<'tcx>) -> (ValueRef, ValueRef)
+{
+    // FIXME: emit metadata
+    (Load(cx, expr::get_dataptr(cx, src)),
+     Load(cx, expr::get_meta(cx, src)))
 }
 
 pub fn from_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {

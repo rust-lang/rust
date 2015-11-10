@@ -43,7 +43,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let cond = self.trans_operand(bcx, cond);
                 let lltrue = self.llblock(true_bb);
                 let llfalse = self.llblock(false_bb);
-                build::CondBr(bcx, cond.llval, lltrue, llfalse, DebugLoc::None);
+                build::CondBr(bcx, cond.immediate(), lltrue, llfalse, DebugLoc::None);
             }
 
             mir::Terminator::Switch { .. } => {
@@ -55,7 +55,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let discr = build::Load(bcx, self.trans_lvalue(bcx, discr).llval);
                 let switch = build::Switch(bcx, discr, self.llblock(*otherwise), values.len());
                 for (value, target) in values.iter().zip(targets) {
-                    let llval = self.trans_constval(bcx, value, switch_ty);
+                    let llval = self.trans_constval(bcx, value, switch_ty).immediate();
                     let llbb = self.llblock(*target);
                     build::AddCase(switch, llval, llbb)
                 }

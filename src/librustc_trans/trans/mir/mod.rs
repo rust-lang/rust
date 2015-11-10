@@ -180,7 +180,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>,
                base::store_ty(bcx, llarg, lltemp, arg_ty);
                lltemp
            };
-           LvalueRef::new(llval, LvalueTy::from_ty(arg_ty))
+           LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty))
        })
        .collect()
 }
