@@ -1221,6 +1221,6 @@ pub fn get_static_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     if let Some(node_id) = ccx.tcx().map.as_local_node_id(did) {
         base::get_item_val(ccx, node_id)
     } else {
-        base::trans_external_path(ccx, did, ty)
+        base::get_extern_const(ccx, did, ty)
     }
 }

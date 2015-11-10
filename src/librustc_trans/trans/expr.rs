@@ -941,29 +941,8 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             DatumBlock::new(bcx, datum.to_expr_datum())
         }
         def::DefStatic(did, _) => {
-            // There are two things that may happen here:
-            //  1) If the static item is defined in this crate, it will be
-            //     translated using `get_item_val`, and we return a pointer to
-            //     the result.
-            //  2) If the static item is defined in another crate then we add
-            //     (or reuse) a declaration of an external global, and return a
-            //     pointer to that.
             let const_ty = expr_ty(bcx, ref_expr);
-
-            // For external constants, we don't inline.
-            let val = if let Some(node_id) = bcx.tcx().map.as_local_node_id(did) {
-                // Case 1.
-
-                // The LLVM global has the type of its initializer,
-                // which may not be equal to the enum's type for
-                // non-C-like enums.
-                let val = base::get_item_val(bcx.ccx(), node_id);
-                let pty = type_of::type_of(bcx.ccx(), const_ty).ptr_to();
-                PointerCast(bcx, val, pty)
-            } else {
-                // Case 2.
-                base::get_extern_const(bcx.ccx(), did, const_ty)
-            };
+            let val = get_static_val(bcx.ccx(), did, const_ty);
             let lval = Lvalue::new("expr::trans_def");
             DatumBlock::new(bcx, Datum::new(val, const_ty, LvalueExpr(lval)))
         }
