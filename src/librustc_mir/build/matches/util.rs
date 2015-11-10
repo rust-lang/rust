@@ -15,24 +15,16 @@ use repr::*;
 use std::u32;
 
 impl<'a,'tcx> Builder<'a,'tcx> {
-    pub fn field_match_pairs(&mut self,
-                             lvalue: Lvalue<'tcx>,
-                             subpatterns: Vec<FieldPatternRef<'tcx>>)
-                             -> Vec<MatchPair<'tcx>> {
-        subpatterns.into_iter()
+    pub fn field_match_pairs<'pat>(&mut self,
+                                   lvalue: Lvalue<'tcx>,
+                                   subpatterns: &'pat [FieldPattern<'tcx>])
+                                   -> Vec<MatchPair<'pat, 'tcx>> {
+        subpatterns.iter()
                    .map(|fieldpat| {
                        let lvalue = lvalue.clone().field(fieldpat.field);
-                       self.match_pair(lvalue, fieldpat.pattern)
+                       MatchPair::new(lvalue, &fieldpat.pattern)
                    })
                    .collect()
-    }
-
-    pub fn match_pair(&mut self,
-                      lvalue: Lvalue<'tcx>,
-                      pattern: PatternRef<'tcx>)
-                      -> MatchPair<'tcx> {
-        let pattern = self.hir.mirror(pattern);
-        MatchPair::new(lvalue, pattern)
     }
 
     /// When processing an array/slice pattern like `lv @ [x, y, ..s, z]`,
@@ -49,18 +41,17 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     ///     tmp0 = lv[2..-1] // using the special Rvalue::Slice
     ///
     /// and creates a match pair `tmp0 @ s`
-    pub fn prefix_suffix_slice(&mut self,
-                               match_pairs: &mut Vec<MatchPair<'tcx>>,
-                               block: BasicBlock,
-                               lvalue: Lvalue<'tcx>,
-                               prefix: Vec<PatternRef<'tcx>>,
-                               opt_slice: Option<PatternRef<'tcx>>,
-                               suffix: Vec<PatternRef<'tcx>>)
-                               -> BlockAnd<()> {
+    pub fn prefix_suffix_slice<'pat>(&mut self,
+                                     match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
+                                     block: BasicBlock,
+                                     lvalue: Lvalue<'tcx>,
+                                     prefix: &'pat [Pattern<'tcx>],
+                                     opt_slice: Option<&'pat Pattern<'tcx>>,
+                                     suffix: &'pat [Pattern<'tcx>])
+                                     -> BlockAnd<()> {
         // If there is a `..P` pattern, create a temporary `t0` for
         // the slice and then a match pair `t0 @ P`:
         if let Some(slice) = opt_slice {
-            let slice = self.hir.mirror(slice);
             let prefix_len = prefix.len();
             let suffix_len = suffix.len();
             let rvalue = Rvalue::Slice {
@@ -79,17 +70,17 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     }
 
     /// Helper for `prefix_suffix_slice` which just processes the prefix and suffix.
-    fn prefix_suffix(&mut self,
-                     match_pairs: &mut Vec<MatchPair<'tcx>>,
-                     lvalue: Lvalue<'tcx>,
-                     prefix: Vec<PatternRef<'tcx>>,
-                     suffix: Vec<PatternRef<'tcx>>) {
+    fn prefix_suffix<'pat>(&mut self,
+                           match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
+                           lvalue: Lvalue<'tcx>,
+                           prefix: &'pat [Pattern<'tcx>],
+                           suffix: &'pat [Pattern<'tcx>]) {
         let min_length = prefix.len() + suffix.len();
         assert!(min_length < u32::MAX as usize);
         let min_length = min_length as u32;
 
         let prefix_pairs: Vec<_> =
-            prefix.into_iter()
+            prefix.iter()
                   .enumerate()
                   .map(|(idx, subpattern)| {
                       let elem = ProjectionElem::ConstantIndex {
@@ -98,12 +89,12 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                           from_end: false,
                       };
                       let lvalue = lvalue.clone().elem(elem);
-                      self.match_pair(lvalue, subpattern)
+                      MatchPair::new(lvalue, subpattern)
                   })
                   .collect();
 
         let suffix_pairs: Vec<_> =
-            suffix.into_iter()
+            suffix.iter()
                   .rev()
                   .enumerate()
                   .map(|(idx, subpattern)| {
@@ -113,7 +104,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                           from_end: true,
                       };
                       let lvalue = lvalue.clone().elem(elem);
-                      self.match_pair(lvalue, subpattern)
+                      MatchPair::new(lvalue, subpattern)
                   })
                   .collect();
 
@@ -121,8 +112,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     }
 }
 
-impl<'tcx> MatchPair<'tcx> {
-    pub fn new(lvalue: Lvalue<'tcx>, pattern: Pattern<'tcx>) -> MatchPair<'tcx> {
+impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
+    pub fn new(lvalue: Lvalue<'tcx>, pattern: &'pat Pattern<'tcx>) -> MatchPair<'pat, 'tcx> {
         MatchPair {
             lvalue: lvalue,
             pattern: pattern,

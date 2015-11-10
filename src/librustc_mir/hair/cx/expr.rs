@@ -11,10 +11,8 @@
 use hair::*;
 use repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
-use std::rc::Rc;
 use hair::cx::Cx;
 use hair::cx::block;
-use hair::cx::pattern::PatNode;
 use hair::cx::to_ref::ToRef;
 use rustc::front::map;
 use rustc::middle::const_eval;
@@ -486,19 +484,20 @@ fn to_borrow_kind(m: hir::Mutability) -> BorrowKind {
     }
 }
 
-fn convert_arm<'a, 'tcx: 'a>(cx: &Cx<'a, 'tcx>, arm: &'tcx hir::Arm) -> Arm<'tcx> {
-    let map = if arm.pats.len() == 1 {
+fn convert_arm<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, arm: &'tcx hir::Arm) -> Arm<'tcx> {
+    let mut map;
+    let opt_map = if arm.pats.len() == 1 {
         None
     } else {
-        let mut map = FnvHashMap();
+        map = FnvHashMap();
         pat_util::pat_bindings(&cx.tcx.def_map, &arm.pats[0], |_, p_id, _, path| {
             map.insert(path.node, p_id);
         });
-        Some(Rc::new(map))
+        Some(&map)
     };
 
     Arm {
-        patterns: arm.pats.iter().map(|p| PatNode::new(p, map.clone()).to_ref()).collect(),
+        patterns: arm.pats.iter().map(|p| cx.refutable_pat(opt_map, p)).collect(),
         guard: arm.guard.to_ref(),
         body: arm.body.to_ref(),
     }

@@ -28,8 +28,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a simplifyable pattern.
-    pub fn test(&mut self, match_pair: &MatchPair<'tcx>) -> Test<'tcx> {
-        match match_pair.pattern.kind {
+    pub fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
+        match *match_pair.pattern.kind {
             PatternKind::Variant { ref adt_def, variant_index: _, subpatterns: _ } => {
                 Test {
                     span: match_pair.pattern.span,
@@ -99,19 +99,19 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         }
     }
 
-    pub fn add_cases_to_switch(&mut self,
-                               test_lvalue: &Lvalue<'tcx>,
-                               candidate: &Candidate<'tcx>,
-                               switch_ty: Ty<'tcx>,
-                               options: &mut Vec<ConstVal>,
-                               indices: &mut FnvHashMap<ConstVal, usize>)
+    pub fn add_cases_to_switch<'pat>(&mut self,
+                                     test_lvalue: &Lvalue<'tcx>,
+                                     candidate: &Candidate<'pat, 'tcx>,
+                                     switch_ty: Ty<'tcx>,
+                                     options: &mut Vec<ConstVal>,
+                                     indices: &mut FnvHashMap<ConstVal, usize>)
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.lvalue == *test_lvalue) {
             Some(match_pair) => match_pair,
             _ => { return; }
         };
 
-        match match_pair.pattern.kind {
+        match *match_pair.pattern.kind {
             PatternKind::Constant { value: Literal::Value { ref value } } => {
                 // if the lvalues match, the type should match
                 assert_eq!(match_pair.pattern.ty, switch_ty);
@@ -282,12 +282,12 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// parameter), we would return `None`. But if the test_outcome
     /// were `Ok`, we would return `Some([x.0.downcast<Ok>.0 @ P1, x.1
     /// @ 22])`.
-    pub fn candidate_under_assumption(&mut self,
-                                      test_lvalue: &Lvalue<'tcx>,
-                                      test_kind: &TestKind<'tcx>,
-                                      test_outcome: usize,
-                                      candidate: &Candidate<'tcx>)
-                                      -> Option<Candidate<'tcx>> {
+    pub fn candidate_under_assumption<'pat>(&mut self,
+                                            test_lvalue: &Lvalue<'tcx>,
+                                            test_kind: &TestKind<'tcx>,
+                                            test_outcome: usize,
+                                            candidate: &Candidate<'pat, 'tcx>)
+                                            -> Option<Candidate<'pat, 'tcx>> {
         let candidate = candidate.clone();
         let match_pairs = candidate.match_pairs;
         let result = self.match_pairs_under_assumption(test_lvalue,
@@ -302,12 +302,12 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
     /// Helper for candidate_under_assumption that does the actual
     /// work of transforming the list of match pairs.
-    fn match_pairs_under_assumption(&mut self,
-                                    test_lvalue: &Lvalue<'tcx>,
-                                    test_kind: &TestKind<'tcx>,
-                                    test_outcome: usize,
-                                    match_pairs: Vec<MatchPair<'tcx>>)
-                                    -> Option<Vec<MatchPair<'tcx>>> {
+    fn match_pairs_under_assumption<'pat>(&mut self,
+                                          test_lvalue: &Lvalue<'tcx>,
+                                          test_kind: &TestKind<'tcx>,
+                                          test_outcome: usize,
+                                          match_pairs: Vec<MatchPair<'pat, 'tcx>>)
+                                          -> Option<Vec<MatchPair<'pat, 'tcx>>> {
         let mut result = vec![];
 
         for match_pair in match_pairs {
@@ -357,12 +357,12 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// the discriminant equals 4, and we find that it does not,
     /// but the `match_pair` is testing if the discriminant equals 5,
     /// that does not help us.
-    fn test_informs_match_pair(&mut self,
-                               match_pair: &MatchPair<'tcx>,
-                               test_kind: &TestKind<'tcx>,
-                               _test_outcome: usize)
-                               -> bool {
-        match match_pair.pattern.kind {
+    fn test_informs_match_pair<'pat>(&mut self,
+                                     match_pair: &MatchPair<'pat, 'tcx>,
+                                     test_kind: &TestKind<'tcx>,
+                                     _test_outcome: usize)
+                                     -> bool {
+        match *match_pair.pattern.kind {
             PatternKind::Variant { .. } => {
                 match *test_kind {
                     TestKind::Switch { .. } => true,
@@ -444,13 +444,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// On the second arm, a `None` will be returned, because if we
     /// observed that `option` has the discriminant `Ok`, then the
     /// second arm cannot apply.
-    pub fn consequent_match_pairs_under_assumption(&mut self,
-                                                   match_pair: MatchPair<'tcx>,
-                                                   test_kind: &TestKind<'tcx>,
-                                                   test_outcome: usize)
-                                                   -> Option<Vec<MatchPair<'tcx>>> {
-        match match_pair.pattern.kind {
-            PatternKind::Variant { adt_def, variant_index, subpatterns } => {
+    pub fn consequent_match_pairs_under_assumption<'pat>(&mut self,
+                                                         match_pair: MatchPair<'pat, 'tcx>,
+                                                         test_kind: &TestKind<'tcx>,
+                                                         test_outcome: usize)
+                                                         -> Option<Vec<MatchPair<'pat, 'tcx>>> {
+        match *match_pair.pattern.kind {
+            PatternKind::Variant { adt_def, variant_index, ref subpatterns } => {
                 assert!(match *test_kind { TestKind::Switch { .. } => true,
                                            _ => false });
 
@@ -464,12 +464,12 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let elem = ProjectionElem::Downcast(adt_def, variant_index);
                 let downcast_lvalue = match_pair.lvalue.clone().elem(elem);
                 let consequent_match_pairs =
-                    subpatterns.into_iter()
+                    subpatterns.iter()
                                .map(|subpattern| {
                                    let lvalue =
                                        downcast_lvalue.clone().field(
                                            subpattern.field);
-                                   self.match_pair(lvalue, subpattern.pattern)
+                                   MatchPair::new(lvalue, &subpattern.pattern)
                                })
                                .collect();
                 Some(consequent_match_pairs)
@@ -516,7 +516,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         }
     }
 
-    fn error_simplifyable(&mut self, match_pair: &MatchPair<'tcx>) -> ! {
+    fn error_simplifyable<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {
         self.hir.span_bug(match_pair.pattern.span,
                           &format!("simplifyable pattern found: {:?}", match_pair.pattern))
     }

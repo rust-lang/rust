@@ -22,7 +22,7 @@ use rustc::middle::ty::{AdtDef, ClosureSubsts, Region, Ty};
 use rustc_front::hir;
 use syntax::ast;
 use syntax::codemap::Span;
-use self::cx::{Cx, PatNode};
+use self::cx::Cx;
 
 pub mod cx;
 
@@ -72,7 +72,7 @@ pub enum StmtKind<'tcx> {
         init_scope: CodeExtent,
 
         /// let <PAT> = ...
-        pattern: PatternRef<'tcx>,
+        pattern: Pattern<'tcx>,
 
         /// let pat = <INIT> ...
         initializer: Option<ExprRef<'tcx>>,
@@ -252,7 +252,7 @@ pub struct FieldExprRef<'tcx> {
 
 #[derive(Clone, Debug)]
 pub struct Arm<'tcx> {
-    pub patterns: Vec<PatternRef<'tcx>>,
+    pub patterns: Vec<Pattern<'tcx>>,
     pub guard: Option<ExprRef<'tcx>>,
     pub body: ExprRef<'tcx>,
 }
@@ -261,7 +261,7 @@ pub struct Arm<'tcx> {
 pub struct Pattern<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
-    pub kind: PatternKind<'tcx>,
+    pub kind: Box<PatternKind<'tcx>>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -281,23 +281,23 @@ pub enum PatternKind<'tcx> {
         mode: BindingMode,
         var: ast::NodeId,
         ty: Ty<'tcx>,
-        subpattern: Option<PatternRef<'tcx>>,
+        subpattern: Option<Pattern<'tcx>>,
     },
 
     // Foo(...) or Foo{...} or Foo, where `Foo` is a variant name from an adt with >1 variants
     Variant {
         adt_def: AdtDef<'tcx>,
         variant_index: usize,
-        subpatterns: Vec<FieldPatternRef<'tcx>>,
+        subpatterns: Vec<FieldPattern<'tcx>>,
     },
 
     // (...), Foo(...), Foo{...}, or Foo, where `Foo` is a variant name from an adt with 1 variant
     Leaf {
-        subpatterns: Vec<FieldPatternRef<'tcx>>,
+        subpatterns: Vec<FieldPattern<'tcx>>,
     },
 
     Deref {
-        subpattern: PatternRef<'tcx>,
+        subpattern: Pattern<'tcx>,
     }, // box P, &P, &mut P, etc
 
     Constant {
@@ -311,16 +311,16 @@ pub enum PatternKind<'tcx> {
 
     // matches against a slice, checking the length and extracting elements
     Slice {
-        prefix: Vec<PatternRef<'tcx>>,
-        slice: Option<PatternRef<'tcx>>,
-        suffix: Vec<PatternRef<'tcx>>,
+        prefix: Vec<Pattern<'tcx>>,
+        slice: Option<Pattern<'tcx>>,
+        suffix: Vec<Pattern<'tcx>>,
     },
 
     // fixed match against an array, irrefutable
     Array {
-        prefix: Vec<PatternRef<'tcx>>,
-        slice: Option<PatternRef<'tcx>>,
-        suffix: Vec<PatternRef<'tcx>>,
+        prefix: Vec<Pattern<'tcx>>,
+        slice: Option<Pattern<'tcx>>,
+        suffix: Vec<Pattern<'tcx>>,
     },
 }
 
@@ -331,15 +331,9 @@ pub enum BindingMode {
 }
 
 #[derive(Clone, Debug)]
-pub enum PatternRef<'tcx> {
-    Hair(PatNode<'tcx>),
-    Mirror(Box<Pattern<'tcx>>),
-}
-
-#[derive(Clone, Debug)]
-pub struct FieldPatternRef<'tcx> {
+pub struct FieldPattern<'tcx> {
     pub field: Field,
-    pub pattern: PatternRef<'tcx>,
+    pub pattern: Pattern<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -396,25 +390,6 @@ impl<'tcx> Mirror<'tcx> for StmtRef<'tcx> {
     fn make_mirror<'a>(self, _: &mut Cx<'a,'tcx>) -> Stmt<'tcx> {
         match self {
             StmtRef::Mirror(m) => *m,
-        }
-    }
-}
-
-impl<'tcx> Mirror<'tcx> for Pattern<'tcx> {
-    type Output = Pattern<'tcx>;
-
-    fn make_mirror<'a>(self, _: &mut Cx<'a, 'tcx>) -> Pattern<'tcx> {
-        self
-    }
-}
-
-impl<'tcx> Mirror<'tcx> for PatternRef<'tcx> {
-    type Output = Pattern<'tcx>;
-
-    fn make_mirror<'a>(self, hir: &mut Cx<'a, 'tcx>) -> Pattern<'tcx> {
-        match self {
-            PatternRef::Hair(h) => h.make_mirror(hir),
-            PatternRef::Mirror(m) => *m,
         }
     }
 }
