@@ -27,9 +27,8 @@ use ptr;
 use slice;
 use str;
 use sync::StaticMutex;
-use sys::c;
-use sys::fd;
 use sys::cvt;
+use sys::fd;
 use vec;
 
 const TMPBUF_SZ: usize = 128;
@@ -230,8 +229,11 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub fn current_exe() -> io::Result<PathBuf> {
+    extern {
+        fn _NSGetExecutablePath(buf: *mut libc::c_char,
+                                bufsize: *mut u32) -> libc::c_int;
+    }
     unsafe {
-        use libc::funcs::extra::_NSGetExecutablePath;
         let mut sz: u32 = 0;
         _NSGetExecutablePath(ptr::null_mut(), &mut sz);
         if sz == 0 { return Err(io::Error::last_os_error()); }
@@ -425,7 +427,7 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let v = try!(CString::new(v.as_bytes()));
     let _g = ENV_LOCK.lock();
     cvt(unsafe {
-        libc::funcs::posix01::unistd::setenv(k.as_ptr(), v.as_ptr(), 1)
+        libc::setenv(k.as_ptr(), v.as_ptr(), 1)
     }).map(|_| ())
 }
 
@@ -433,7 +435,7 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     let nbuf = try!(CString::new(n.as_bytes()));
     let _g = ENV_LOCK.lock();
     cvt(unsafe {
-        libc::funcs::posix01::unistd::unsetenv(nbuf.as_ptr())
+        libc::unsetenv(nbuf.as_ptr())
     }).map(|_| ())
 }
 
@@ -466,18 +468,18 @@ pub fn home_dir() -> Option<PathBuf> {
                   target_os = "ios",
                   target_os = "nacl")))]
     unsafe fn fallback() -> Option<OsString> {
-        let amt = match libc::sysconf(c::_SC_GETPW_R_SIZE_MAX) {
+        let amt = match libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) {
             n if n < 0 => 512 as usize,
             n => n as usize,
         };
         let me = libc::getuid();
         loop {
             let mut buf = Vec::with_capacity(amt);
-            let mut passwd: c::passwd = mem::zeroed();
+            let mut passwd: libc::passwd = mem::zeroed();
             let mut result = ptr::null_mut();
-            match c::getpwuid_r(me, &mut passwd, buf.as_mut_ptr(),
-                                buf.capacity() as libc::size_t,
-                                &mut result) {
+            match libc::getpwuid_r(me, &mut passwd, buf.as_mut_ptr(),
+                                   buf.capacity() as libc::size_t,
+                                   &mut result) {
                 0 if !result.is_null() => {}
                 _ => return None
             }

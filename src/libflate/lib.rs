@@ -29,6 +29,7 @@
 #![feature(staged_api)]
 #![feature(unique)]
 #![cfg_attr(test, feature(rustc_private, rand, vec_push_all))]
+#![cfg_attr(stage0, allow(improper_ctypes))]
 
 #[cfg(test)]
 #[macro_use]

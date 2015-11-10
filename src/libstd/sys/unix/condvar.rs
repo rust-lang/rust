@@ -13,10 +13,9 @@ use libc;
 use ptr;
 use sys::mutex::{self, Mutex};
 use sys::time;
-use sys::sync as ffi;
 use time::Duration;
 
-pub struct Condvar { inner: UnsafeCell<ffi::pthread_cond_t> }
+pub struct Condvar { inner: UnsafeCell<libc::pthread_cond_t> }
 
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
@@ -25,24 +24,24 @@ impl Condvar {
     pub const fn new() -> Condvar {
         // Might be moved and address is changing it is better to avoid
         // initialization of potentially opaque OS data before it landed
-        Condvar { inner: UnsafeCell::new(ffi::PTHREAD_COND_INITIALIZER) }
+        Condvar { inner: UnsafeCell::new(libc::PTHREAD_COND_INITIALIZER) }
     }
 
     #[inline]
     pub unsafe fn notify_one(&self) {
-        let r = ffi::pthread_cond_signal(self.inner.get());
+        let r = libc::pthread_cond_signal(self.inner.get());
         debug_assert_eq!(r, 0);
     }
 
     #[inline]
     pub unsafe fn notify_all(&self) {
-        let r = ffi::pthread_cond_broadcast(self.inner.get());
+        let r = libc::pthread_cond_broadcast(self.inner.get());
         debug_assert_eq!(r, 0);
     }
 
     #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
-        let r = ffi::pthread_cond_wait(self.inner.get(), mutex::raw(mutex));
+        let r = libc::pthread_cond_wait(self.inner.get(), mutex::raw(mutex));
         debug_assert_eq!(r, 0);
     }
 
@@ -55,7 +54,7 @@ impl Condvar {
         // report timeout based on stable time.
         let mut sys_now = libc::timeval { tv_sec: 0, tv_usec: 0 };
         let stable_now = time::SteadyTime::now();
-        let r = ffi::gettimeofday(&mut sys_now, ptr::null_mut());
+        let r = libc::gettimeofday(&mut sys_now, ptr::null_mut());
         debug_assert_eq!(r, 0);
 
         let nsec = dur.subsec_nanos() as libc::c_long +
@@ -76,7 +75,7 @@ impl Condvar {
         });
 
         // And wait!
-        let r = ffi::pthread_cond_timedwait(self.inner.get(), mutex::raw(mutex),
+        let r = libc::pthread_cond_timedwait(self.inner.get(), mutex::raw(mutex),
                                             &timeout);
         debug_assert!(r == libc::ETIMEDOUT || r == 0);
 
@@ -88,17 +87,17 @@ impl Condvar {
     #[inline]
     #[cfg(not(target_os = "dragonfly"))]
     pub unsafe fn destroy(&self) {
-        let r = ffi::pthread_cond_destroy(self.inner.get());
+        let r = libc::pthread_cond_destroy(self.inner.get());
         debug_assert_eq!(r, 0);
     }
 
     #[inline]
     #[cfg(target_os = "dragonfly")]
     pub unsafe fn destroy(&self) {
-        let r = ffi::pthread_cond_destroy(self.inner.get());
+        let r = libc::pthread_cond_destroy(self.inner.get());
         // On DragonFly pthread_cond_destroy() returns EINVAL if called on
         // a condvar that was just initialized with
-        // ffi::PTHREAD_COND_INITIALIZER. Once it is used or
+        // libc::PTHREAD_COND_INITIALIZER. Once it is used or
         // pthread_cond_init() is called, this behaviour no longer occurs.
         debug_assert!(r == 0 || r == libc::EINVAL);
     }

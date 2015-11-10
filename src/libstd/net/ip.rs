@@ -16,11 +16,12 @@
 use prelude::v1::*;
 
 use cmp::Ordering;
-use hash;
 use fmt;
-use libc;
-use sys_common::{AsInner, FromInner};
+use hash;
+use mem;
 use net::{hton, ntoh};
+use sys::net::netc as c;
+use sys_common::{AsInner, FromInner};
 
 /// An IP address, either an IPv4 or IPv6 address.
 #[unstable(feature = "ip_addr", reason = "recent addition", issue = "27801")]
@@ -36,14 +37,14 @@ pub enum IpAddr {
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv4Addr {
-    inner: libc::in_addr,
+    inner: c::in_addr,
 }
 
 /// Representation of an IPv6 address.
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
-    inner: libc::in6_addr,
+    inner: c::in6_addr,
 }
 
 #[allow(missing_docs)]
@@ -65,7 +66,7 @@ impl Ipv4Addr {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
         Ipv4Addr {
-            inner: libc::in_addr {
+            inner: c::in_addr {
                 s_addr: hton(((a as u32) << 24) |
                              ((b as u32) << 16) |
                              ((c as u32) <<  8) |
@@ -239,11 +240,11 @@ impl Ord for Ipv4Addr {
     }
 }
 
-impl AsInner<libc::in_addr> for Ipv4Addr {
-    fn as_inner(&self) -> &libc::in_addr { &self.inner }
+impl AsInner<c::in_addr> for Ipv4Addr {
+    fn as_inner(&self) -> &c::in_addr { &self.inner }
 }
-impl FromInner<libc::in_addr> for Ipv4Addr {
-    fn from_inner(addr: libc::in_addr) -> Ipv4Addr {
+impl FromInner<c::in_addr> for Ipv4Addr {
+    fn from_inner(addr: c::in_addr) -> Ipv4Addr {
         Ipv4Addr { inner: addr }
     }
 }
@@ -270,25 +271,32 @@ impl Ipv6Addr {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16,
                h: u16) -> Ipv6Addr {
-        Ipv6Addr {
-            inner: libc::in6_addr {
-                s6_addr: [hton(a), hton(b), hton(c), hton(d),
-                          hton(e), hton(f), hton(g), hton(h)]
-            }
-        }
+        let mut addr: c::in6_addr = unsafe { mem::zeroed() };
+        addr.s6_addr = [(a >> 8) as u8, a as u8,
+                        (b >> 8) as u8, b as u8,
+                        (c >> 8) as u8, c as u8,
+                        (d >> 8) as u8, d as u8,
+                        (e >> 8) as u8, e as u8,
+                        (f >> 8) as u8, f as u8,
+                        (g >> 8) as u8, g as u8,
+                        (h >> 8) as u8, h as u8];
+        Ipv6Addr { inner: addr }
     }
 
     /// Returns the eight 16-bit segments that make up this address.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn segments(&self) -> [u16; 8] {
-        [ntoh(self.inner.s6_addr[0]),
-         ntoh(self.inner.s6_addr[1]),
-         ntoh(self.inner.s6_addr[2]),
-         ntoh(self.inner.s6_addr[3]),
-         ntoh(self.inner.s6_addr[4]),
-         ntoh(self.inner.s6_addr[5]),
-         ntoh(self.inner.s6_addr[6]),
-         ntoh(self.inner.s6_addr[7])]
+        let arr = &self.inner.s6_addr;
+        [
+            (arr[0] as u16) << 8 | (arr[1] as u16),
+            (arr[2] as u16) << 8 | (arr[3] as u16),
+            (arr[4] as u16) << 8 | (arr[5] as u16),
+            (arr[6] as u16) << 8 | (arr[7] as u16),
+            (arr[8] as u16) << 8 | (arr[9] as u16),
+            (arr[10] as u16) << 8 | (arr[11] as u16),
+            (arr[12] as u16) << 8 | (arr[13] as u16),
+            (arr[14] as u16) << 8 | (arr[15] as u16),
+        ]
     }
 
     /// Returns true for the special 'unspecified' address ::.
@@ -502,11 +510,11 @@ impl Ord for Ipv6Addr {
     }
 }
 
-impl AsInner<libc::in6_addr> for Ipv6Addr {
-    fn as_inner(&self) -> &libc::in6_addr { &self.inner }
+impl AsInner<c::in6_addr> for Ipv6Addr {
+    fn as_inner(&self) -> &c::in6_addr { &self.inner }
 }
-impl FromInner<libc::in6_addr> for Ipv6Addr {
-    fn from_inner(addr: libc::in6_addr) -> Ipv6Addr {
+impl FromInner<c::in6_addr> for Ipv6Addr {
+    fn from_inner(addr: c::in6_addr) -> Ipv6Addr {
         Ipv6Addr { inner: addr }
     }
 }

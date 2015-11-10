@@ -24,21 +24,16 @@
 use prelude::v1::*;
 
 use ffi::CString;
-use libc::{LPVOID, LPCWSTR, HMODULE, LPCSTR};
 use sync::atomic::{AtomicUsize, Ordering};
-
-extern "system" {
-    fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
-    fn GetProcAddress(hModule: HMODULE, lpProcName: LPCSTR) -> LPVOID;
-}
+use sys::c;
 
 pub fn lookup(module: &str, symbol: &str) -> Option<usize> {
     let mut module: Vec<u16> = module.utf16_units().collect();
     module.push(0);
     let symbol = CString::new(symbol).unwrap();
     unsafe {
-        let handle = GetModuleHandleW(module.as_ptr());
-        match GetProcAddress(handle, symbol.as_ptr()) as usize {
+        let handle = c::GetModuleHandleW(module.as_ptr());
+        match c::GetProcAddress(handle, symbol.as_ptr()) as usize {
             0 => None,
             n => Some(n),
         }

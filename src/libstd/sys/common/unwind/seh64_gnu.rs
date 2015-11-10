@@ -17,12 +17,10 @@
 use prelude::v1::*;
 
 use any::Any;
-use self::EXCEPTION_DISPOSITION::*;
 use sys_common::dwarf::eh;
 use core::mem;
 use core::ptr;
-use libc::{c_void, c_ulonglong, DWORD, LPVOID};
-type ULONG_PTR = c_ulonglong;
+use sys::c;
 
 // Define our exception codes:
 // according to http://msdn.microsoft.com/en-us/library/het71c37(v=VS.80).aspx,
@@ -32,80 +30,10 @@ type ULONG_PTR = c_ulonglong;
 // we define bits:
 //    [24:27] = type
 //    [0:23]  = magic
-const ETYPE: DWORD = 0b1110_u32 << 28;
-const MAGIC: DWORD = 0x525354; // "RST"
+const ETYPE: c::DWORD = 0b1110_u32 << 28;
+const MAGIC: c::DWORD = 0x525354; // "RST"
 
-const RUST_PANIC: DWORD  = ETYPE | (1 << 24) | MAGIC;
-
-const EXCEPTION_NONCONTINUABLE: DWORD = 0x1;   // Noncontinuable exception
-const EXCEPTION_UNWINDING: DWORD = 0x2;        // Unwind is in progress
-const EXCEPTION_EXIT_UNWIND: DWORD = 0x4;      // Exit unwind is in progress
-const EXCEPTION_STACK_INVALID: DWORD = 0x8;    // Stack out of limits or unaligned
-const EXCEPTION_NESTED_CALL: DWORD = 0x10;     // Nested exception handler call
-const EXCEPTION_TARGET_UNWIND: DWORD = 0x20;   // Target unwind in progress
-const EXCEPTION_COLLIDED_UNWIND: DWORD = 0x40; // Collided exception handler call
-const EXCEPTION_UNWIND: DWORD = EXCEPTION_UNWINDING |
-                                EXCEPTION_EXIT_UNWIND |
-                                EXCEPTION_TARGET_UNWIND |
-                                EXCEPTION_COLLIDED_UNWIND;
-
-#[repr(C)]
-pub struct EXCEPTION_RECORD {
-    ExceptionCode: DWORD,
-    ExceptionFlags: DWORD,
-    ExceptionRecord: *const EXCEPTION_RECORD,
-    ExceptionAddress: LPVOID,
-    NumberParameters: DWORD,
-    ExceptionInformation: [ULONG_PTR; 15],
-}
-
-pub enum CONTEXT {}
-pub enum UNWIND_HISTORY_TABLE {}
-
-#[repr(C)]
-pub struct RUNTIME_FUNCTION {
-    BeginAddress: DWORD,
-    EndAddress: DWORD,
-    UnwindData: DWORD,
-}
-
-#[repr(C)]
-pub struct DISPATCHER_CONTEXT {
-    ControlPc: LPVOID,
-    ImageBase: LPVOID,
-    FunctionEntry: *const RUNTIME_FUNCTION,
-    EstablisherFrame: LPVOID,
-    TargetIp: LPVOID,
-    ContextRecord: *const CONTEXT,
-    LanguageHandler: LPVOID,
-    HandlerData: *const u8,
-    HistoryTable: *const UNWIND_HISTORY_TABLE,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub enum EXCEPTION_DISPOSITION {
-    ExceptionContinueExecution,
-    ExceptionContinueSearch,
-    ExceptionNestedException,
-    ExceptionCollidedUnwind
-}
-
-// From kernel32.dll
-extern "system" {
-    #[unwind]
-    fn RaiseException(dwExceptionCode: DWORD,
-                      dwExceptionFlags: DWORD,
-                      nNumberOfArguments: DWORD,
-                      lpArguments: *const ULONG_PTR);
-
-    fn RtlUnwindEx(TargetFrame: LPVOID,
-                   TargetIp: LPVOID,
-                   ExceptionRecord: *const EXCEPTION_RECORD,
-                   ReturnValue: LPVOID,
-                   OriginalContext: *const CONTEXT,
-                   HistoryTable: *const UNWIND_HISTORY_TABLE);
-}
+const RUST_PANIC: c::DWORD  = ETYPE | (1 << 24) | MAGIC;
 
 #[repr(C)]
 struct PanicData {
@@ -114,11 +42,11 @@ struct PanicData {
 
 pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
     let panic_ctx = Box::new(PanicData { data: data });
-    let params = [Box::into_raw(panic_ctx) as ULONG_PTR];
-    RaiseException(RUST_PANIC,
-                   EXCEPTION_NONCONTINUABLE,
-                   params.len() as DWORD,
-                   &params as *const ULONG_PTR);
+    let params = [Box::into_raw(panic_ctx) as c::ULONG_PTR];
+    c::RaiseException(RUST_PANIC,
+                      c::EXCEPTION_NONCONTINUABLE,
+                      params.len() as c::DWORD,
+                      &params as *const c::ULONG_PTR);
     rtabort!("could not unwind stack");
 }
 
@@ -152,11 +80,11 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send + 'static> {
 #[lang = "eh_personality_catch"]
 #[cfg(not(test))]
 unsafe extern fn rust_eh_personality_catch(
-    exceptionRecord: *mut EXCEPTION_RECORD,
-    establisherFrame: LPVOID,
-    contextRecord: *mut CONTEXT,
-    dispatcherContext: *mut DISPATCHER_CONTEXT
-) -> EXCEPTION_DISPOSITION
+    exceptionRecord: *mut c::EXCEPTION_RECORD,
+    establisherFrame: c::LPVOID,
+    contextRecord: *mut c::CONTEXT,
+    dispatcherContext: *mut c::DISPATCHER_CONTEXT
+) -> c::EXCEPTION_DISPOSITION
 {
     rust_eh_personality(exceptionRecord, establisherFrame,
                         contextRecord, dispatcherContext)
@@ -165,44 +93,44 @@ unsafe extern fn rust_eh_personality_catch(
 #[lang = "eh_personality"]
 #[cfg(not(test))]
 unsafe extern fn rust_eh_personality(
-    exceptionRecord: *mut EXCEPTION_RECORD,
-    establisherFrame: LPVOID,
-    contextRecord: *mut CONTEXT,
-    dispatcherContext: *mut DISPATCHER_CONTEXT
-) -> EXCEPTION_DISPOSITION
+    exceptionRecord: *mut c::EXCEPTION_RECORD,
+    establisherFrame: c::LPVOID,
+    contextRecord: *mut c::CONTEXT,
+    dispatcherContext: *mut c::DISPATCHER_CONTEXT
+) -> c::EXCEPTION_DISPOSITION
 {
     let er = &*exceptionRecord;
     let dc = &*dispatcherContext;
 
-    if er.ExceptionFlags & EXCEPTION_UNWIND == 0 { // we are in the dispatch phase
+    if er.ExceptionFlags & c::EXCEPTION_UNWIND == 0 { // we are in the dispatch phase
         if er.ExceptionCode == RUST_PANIC {
             if let Some(lpad) = find_landing_pad(dc) {
-                RtlUnwindEx(establisherFrame,
-                            lpad as LPVOID,
-                            exceptionRecord,
-                            er.ExceptionInformation[0] as LPVOID, // pointer to PanicData
-                            contextRecord,
-                            dc.HistoryTable);
+                c::RtlUnwindEx(establisherFrame,
+                               lpad as c::LPVOID,
+                               exceptionRecord,
+                               er.ExceptionInformation[0] as c::LPVOID, // pointer to PanicData
+                               contextRecord,
+                               dc.HistoryTable);
                 rtabort!("could not unwind");
             }
         }
     }
-    ExceptionContinueSearch
+    c::ExceptionContinueSearch
 }
 
 #[cfg(not(test))]
 #[lang = "eh_unwind_resume"]
 #[unwind]
-unsafe extern fn rust_eh_unwind_resume(panic_ctx: LPVOID) -> ! {
-    let params = [panic_ctx as ULONG_PTR];
-    RaiseException(RUST_PANIC,
-                   EXCEPTION_NONCONTINUABLE,
-                   params.len() as DWORD,
-                   &params as *const ULONG_PTR);
+unsafe extern fn rust_eh_unwind_resume(panic_ctx: c::LPVOID) -> ! {
+    let params = [panic_ctx as c::ULONG_PTR];
+    c::RaiseException(RUST_PANIC,
+                      c::EXCEPTION_NONCONTINUABLE,
+                      params.len() as c::DWORD,
+                      &params as *const c::ULONG_PTR);
     rtabort!("could not resume unwind");
 }
 
-unsafe fn find_landing_pad(dc: &DISPATCHER_CONTEXT) -> Option<usize> {
+unsafe fn find_landing_pad(dc: &c::DISPATCHER_CONTEXT) -> Option<usize> {
     let eh_ctx = eh::EHContext {
         ip: dc.ControlPc as usize,
         func_start: dc.ImageBase as usize + (*dc.FunctionEntry).BeginAddress as usize,

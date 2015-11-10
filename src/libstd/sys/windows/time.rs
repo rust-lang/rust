@@ -7,32 +7,33 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use libc;
+
 use ops::Sub;
-use time::Duration;
 use sync::Once;
+use sys::c;
+use time::Duration;
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 
 pub struct SteadyTime {
-    t: libc::LARGE_INTEGER,
+    t: c::LARGE_INTEGER,
 }
 
 impl SteadyTime {
     pub fn now() -> SteadyTime {
         let mut t = SteadyTime { t: 0 };
-        unsafe { libc::QueryPerformanceCounter(&mut t.t); }
+        unsafe { c::QueryPerformanceCounter(&mut t.t); }
         t
     }
 }
 
-fn frequency() -> libc::LARGE_INTEGER {
-    static mut FREQUENCY: libc::LARGE_INTEGER = 0;
+fn frequency() -> c::LARGE_INTEGER {
+    static mut FREQUENCY: c::LARGE_INTEGER = 0;
     static ONCE: Once = Once::new();
 
     unsafe {
         ONCE.call_once(|| {
-            libc::QueryPerformanceFrequency(&mut FREQUENCY);
+            c::QueryPerformanceFrequency(&mut FREQUENCY);
         });
         FREQUENCY
     }

@@ -30,12 +30,17 @@ pub struct WinConsole<T> {
     background: color::Color,
 }
 
+type WORD = u16;
+type DWORD = u32;
+type BOOL = i32;
+type HANDLE = *mut u8;
+
 #[allow(non_snake_case)]
 #[repr(C)]
 struct CONSOLE_SCREEN_BUFFER_INFO {
     dwSize: [libc::c_short; 2],
     dwCursorPosition: [libc::c_short; 2],
-    wAttributes: libc::WORD,
+    wAttributes: WORD,
     srWindow: [libc::c_short; 4],
     dwMaximumWindowSize: [libc::c_short; 2],
 }
@@ -43,10 +48,10 @@ struct CONSOLE_SCREEN_BUFFER_INFO {
 #[allow(non_snake_case)]
 #[link(name = "kernel32")]
 extern "system" {
-    fn SetConsoleTextAttribute(handle: libc::HANDLE, attr: libc::WORD) -> libc::BOOL;
-    fn GetStdHandle(which: libc::DWORD) -> libc::HANDLE;
-    fn GetConsoleScreenBufferInfo(handle: libc::HANDLE,
-                                  info: *mut CONSOLE_SCREEN_BUFFER_INFO) -> libc::BOOL;
+    fn SetConsoleTextAttribute(handle: HANDLE, attr: WORD) -> BOOL;
+    fn GetStdHandle(which: DWORD) -> HANDLE;
+    fn GetConsoleScreenBufferInfo(handle: HANDLE,
+                                  info: *mut CONSOLE_SCREEN_BUFFER_INFO) -> BOOL;
 }
 
 fn color_to_bits(color: color::Color) -> u16 {
@@ -90,7 +95,7 @@ fn bits_to_color(bits: u16) -> color::Color {
 impl<T: Write+Send+'static> WinConsole<T> {
     fn apply(&mut self) {
         let _unused = self.buf.flush();
-        let mut accum: libc::WORD = 0;
+        let mut accum: WORD = 0;
         accum |= color_to_bits(self.foreground);
         accum |= color_to_bits(self.background) << 4;
 
@@ -104,7 +109,7 @@ impl<T: Write+Send+'static> WinConsole<T> {
             // terminal! Admittedly, this is fragile, since stderr could be
             // redirected to a different console. This is good enough for
             // rustc though. See #13400.
-            let out = GetStdHandle(-11i32 as libc::DWORD);
+            let out = GetStdHandle(-11i32 as DWORD);
             SetConsoleTextAttribute(out, accum);
         }
     }
@@ -116,7 +121,7 @@ impl<T: Write+Send+'static> WinConsole<T> {
         let bg;
         unsafe {
             let mut buffer_info = ::std::mem::uninitialized();
-            if GetConsoleScreenBufferInfo(GetStdHandle(-11i32 as libc::DWORD),
+            if GetConsoleScreenBufferInfo(GetStdHandle(-11i32 as DWORD),
                                           &mut buffer_info) != 0 {
                 fg = bits_to_color(buffer_info.wAttributes);
                 bg = bits_to_color(buffer_info.wAttributes >> 4);

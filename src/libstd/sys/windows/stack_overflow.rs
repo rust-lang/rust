@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::{self, LONG};
 use sys_common::util::report_overflow;
 use sys::c;
 
@@ -19,7 +18,7 @@ impl Handler {
         // This API isn't available on XP, so don't panic in that case and just
         // pray it works out ok.
         if c::SetThreadStackGuarantee(&mut 0x5000) == 0 {
-            if libc::GetLastError() as u32 != libc::ERROR_CALL_NOT_IMPLEMENTED as u32 {
+            if c::GetLastError() as u32 != c::ERROR_CALL_NOT_IMPLEMENTED as u32 {
                 panic!("failed to reserve stack space for exception handling");
             }
         }
@@ -28,7 +27,7 @@ impl Handler {
 }
 
 extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POINTERS)
-                                    -> LONG {
+                                    -> c::LONG {
     unsafe {
         let rec = &(*(*ExceptionInfo).ExceptionRecord);
         let code = rec.ExceptionCode;

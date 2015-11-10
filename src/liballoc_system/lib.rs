@@ -14,6 +14,7 @@
 #![staged_api]
 #![no_std]
 #![cfg_attr(not(stage0), allocator)]
+#![cfg_attr(stage0, allow(improper_ctypes))]
 #![unstable(feature = "alloc_system",
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
@@ -141,9 +142,15 @@ mod imp {
 }
 
 #[cfg(windows)]
+#[allow(bad_style)]
 mod imp {
-    use libc::{BOOL, DWORD, HANDLE, LPVOID, SIZE_T};
     use MIN_ALIGN;
+
+    type LPVOID = *mut u8;
+    type HANDLE = LPVOID;
+    type SIZE_T = usize;
+    type DWORD = u32;
+    type BOOL = i32;
 
     extern "system" {
         fn GetProcessHeap() -> HANDLE;

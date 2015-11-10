@@ -96,25 +96,30 @@ fn get_resident() -> Option<usize> {
 }
 
 #[cfg(windows)]
+#[cfg_attr(stage0, allow(improper_ctypes))]
 fn get_resident() -> Option<usize> {
-    use libc::{BOOL, DWORD, HANDLE, SIZE_T, GetCurrentProcess};
+    type BOOL = i32;
+    type DWORD = u32;
+    type HANDLE = *mut u8;
+    use libc::size_t;
     use std::mem;
     #[repr(C)] #[allow(non_snake_case)]
     struct PROCESS_MEMORY_COUNTERS {
         cb: DWORD,
         PageFaultCount: DWORD,
-        PeakWorkingSetSize: SIZE_T,
-        WorkingSetSize: SIZE_T,
-        QuotaPeakPagedPoolUsage: SIZE_T,
-        QuotaPagedPoolUsage: SIZE_T,
-        QuotaPeakNonPagedPoolUsage: SIZE_T,
-        QuotaNonPagedPoolUsage: SIZE_T,
-        PagefileUsage: SIZE_T,
-        PeakPagefileUsage: SIZE_T,
+        PeakWorkingSetSize: size_t,
+        WorkingSetSize: size_t,
+        QuotaPeakPagedPoolUsage: size_t,
+        QuotaPagedPoolUsage: size_t,
+        QuotaPeakNonPagedPoolUsage: size_t,
+        QuotaNonPagedPoolUsage: size_t,
+        PagefileUsage: size_t,
+        PeakPagefileUsage: size_t,
     }
     type PPROCESS_MEMORY_COUNTERS = *mut PROCESS_MEMORY_COUNTERS;
     #[link(name = "psapi")]
     extern "system" {
+        fn GetCurrentProcess() -> HANDLE;
         fn GetProcessMemoryInfo(Process: HANDLE,
                                 ppsmemCounters: PPROCESS_MEMORY_COUNTERS,
                                 cb: DWORD) -> BOOL;

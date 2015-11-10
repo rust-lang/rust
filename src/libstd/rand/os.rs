@@ -252,10 +252,7 @@ mod imp {
     use io;
     use mem;
     use rand::Rng;
-    use libc::types::os::arch::extra::{LONG_PTR};
-    use libc::{DWORD, BYTE, LPCSTR, BOOL};
-
-    type HCRYPTPROV = LONG_PTR;
+    use sys::c;
 
     /// A random number generator that retrieves randomness straight from
     /// the operating system. Platform sources:
@@ -268,25 +265,7 @@ mod imp {
     ///
     /// This does not block.
     pub struct OsRng {
-        hcryptprov: HCRYPTPROV
-    }
-
-    const PROV_RSA_FULL: DWORD = 1;
-    const CRYPT_SILENT: DWORD = 64;
-    const CRYPT_VERIFYCONTEXT: DWORD = 0xF0000000;
-
-    #[allow(non_snake_case)]
-    #[link(name = "advapi32")]
-    extern "system" {
-        fn CryptAcquireContextA(phProv: *mut HCRYPTPROV,
-                                pszContainer: LPCSTR,
-                                pszProvider: LPCSTR,
-                                dwProvType: DWORD,
-                                dwFlags: DWORD) -> BOOL;
-        fn CryptGenRandom(hProv: HCRYPTPROV,
-                          dwLen: DWORD,
-                          pbBuffer: *mut BYTE) -> BOOL;
-        fn CryptReleaseContext(hProv: HCRYPTPROV, dwFlags: DWORD) -> BOOL;
+        hcryptprov: c::HCRYPTPROV
     }
 
     impl OsRng {
@@ -294,9 +273,9 @@ mod imp {
         pub fn new() -> io::Result<OsRng> {
             let mut hcp = 0;
             let ret = unsafe {
-                CryptAcquireContextA(&mut hcp, 0 as LPCSTR, 0 as LPCSTR,
-                                     PROV_RSA_FULL,
-                                     CRYPT_VERIFYCONTEXT | CRYPT_SILENT)
+                c::CryptAcquireContextA(&mut hcp, 0 as c::LPCSTR, 0 as c::LPCSTR,
+                                        c::PROV_RSA_FULL,
+                                        c::CRYPT_VERIFYCONTEXT | c::CRYPT_SILENT)
             };
 
             if ret == 0 {
@@ -320,8 +299,8 @@ mod imp {
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
             let ret = unsafe {
-                CryptGenRandom(self.hcryptprov, v.len() as DWORD,
-                               v.as_mut_ptr())
+                c::CryptGenRandom(self.hcryptprov, v.len() as c::DWORD,
+                                  v.as_mut_ptr())
             };
             if ret == 0 {
                 panic!("couldn't generate random bytes: {}",
@@ -333,7 +312,7 @@ mod imp {
     impl Drop for OsRng {
         fn drop(&mut self) {
             let ret = unsafe {
-                CryptReleaseContext(self.hcryptprov, 0)
+                c::CryptReleaseContext(self.hcryptprov, 0)
             };
             if ret == 0 {
                 panic!("couldn't release context: {}",

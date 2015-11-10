@@ -12,8 +12,8 @@ use prelude::v1::*;
 
 use alloc::boxed::FnBox;
 use io;
-use libc::{self, c_void, DWORD};
 use mem;
+use libc::c_void;
 use ptr;
 use sys::c;
 use sys::handle::Handle;
@@ -37,7 +37,7 @@ impl Thread {
         // Round up to the next 64 kB because that's what the NT kernel does,
         // might as well make it explicit.
         let stack_size = (stack + 0xfffe) & (!0xfffe);
-        let ret = c::CreateThread(ptr::null_mut(), stack_size as libc::size_t,
+        let ret = c::CreateThread(ptr::null_mut(), stack_size,
                                   thread_start, &*p as *const _ as *mut _,
                                   0, ptr::null_mut());
 
@@ -48,7 +48,7 @@ impl Thread {
             Ok(Thread { handle: Handle::new(ret) })
         };
 
-        extern "system" fn thread_start(main: *mut libc::c_void) -> DWORD {
+        extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {
             unsafe { start_thread(main); }
             0
         }
@@ -62,8 +62,7 @@ impl Thread {
     }
 
     pub fn join(self) {
-        use libc::consts::os::extra::INFINITE;
-        unsafe { c::WaitForSingleObject(self.handle.raw(), INFINITE); }
+        unsafe { c::WaitForSingleObject(self.handle.raw(), c::INFINITE); }
     }
 
     pub fn yield_now() {

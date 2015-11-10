@@ -10,20 +10,19 @@
 
 use libc;
 use cell::UnsafeCell;
-use sys::sync as ffi;
 
-pub struct RWLock { inner: UnsafeCell<ffi::pthread_rwlock_t> }
+pub struct RWLock { inner: UnsafeCell<libc::pthread_rwlock_t> }
 
 unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {}
 
 impl RWLock {
     pub const fn new() -> RWLock {
-        RWLock { inner: UnsafeCell::new(ffi::PTHREAD_RWLOCK_INITIALIZER) }
+        RWLock { inner: UnsafeCell::new(libc::PTHREAD_RWLOCK_INITIALIZER) }
     }
     #[inline]
     pub unsafe fn read(&self) {
-        let r = ffi::pthread_rwlock_rdlock(self.inner.get());
+        let r = libc::pthread_rwlock_rdlock(self.inner.get());
 
         // According to the pthread_rwlock_rdlock spec, this function **may**
         // fail with EDEADLK if a deadlock is detected. On the other hand
@@ -44,11 +43,11 @@ impl RWLock {
     }
     #[inline]
     pub unsafe fn try_read(&self) -> bool {
-        ffi::pthread_rwlock_tryrdlock(self.inner.get()) == 0
+        libc::pthread_rwlock_tryrdlock(self.inner.get()) == 0
     }
     #[inline]
     pub unsafe fn write(&self) {
-        let r = ffi::pthread_rwlock_wrlock(self.inner.get());
+        let r = libc::pthread_rwlock_wrlock(self.inner.get());
         // see comments above for why we check for EDEADLK
         if r == libc::EDEADLK {
             panic!("rwlock write lock would result in deadlock");
@@ -58,21 +57,21 @@ impl RWLock {
     }
     #[inline]
     pub unsafe fn try_write(&self) -> bool {
-        ffi::pthread_rwlock_trywrlock(self.inner.get()) == 0
+        libc::pthread_rwlock_trywrlock(self.inner.get()) == 0
     }
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        let r = ffi::pthread_rwlock_unlock(self.inner.get());
+        let r = libc::pthread_rwlock_unlock(self.inner.get());
         debug_assert_eq!(r, 0);
     }
     #[inline]
     pub unsafe fn write_unlock(&self) { self.read_unlock() }
     #[inline]
     pub unsafe fn destroy(&self) {
-        let r = ffi::pthread_rwlock_destroy(self.inner.get());
+        let r = libc::pthread_rwlock_destroy(self.inner.get());
         // On DragonFly pthread_rwlock_destroy() returns EINVAL if called on a
         // rwlock that was just initialized with
-        // ffi::PTHREAD_RWLOCK_INITIALIZER. Once it is used (locked/unlocked)
+        // libc::PTHREAD_RWLOCK_INITIALIZER. Once it is used (locked/unlocked)
         // or pthread_rwlock_init() is called, this behaviour no longer occurs.
         if cfg!(target_os = "dragonfly") {
             debug_assert!(r == 0 || r == libc::EINVAL);

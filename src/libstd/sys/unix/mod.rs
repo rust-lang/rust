@@ -28,7 +28,6 @@ use ops::Neg;
 #[cfg(target_os = "openbsd")]   pub use os::openbsd as platform;
 
 pub mod backtrace;
-pub mod c;
 pub mod condvar;
 pub mod ext;
 pub mod fd;
@@ -41,7 +40,6 @@ pub mod pipe;
 pub mod process;
 pub mod rwlock;
 pub mod stack_overflow;
-pub mod sync;
 pub mod thread;
 pub mod thread_local;
 pub mod time;
@@ -49,7 +47,7 @@ pub mod stdio;
 
 #[cfg(not(target_os = "nacl"))]
 pub fn init() {
-    use libc::funcs::posix01::signal::signal;
+    use libc::signal;
     // By default, some platforms will send a *signal* when an EPIPE error
     // would otherwise be delivered. This runtime doesn't install a SIGPIPE
     // handler, causing it to kill the program, which isn't exactly what we
@@ -78,7 +76,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::EINTR => ErrorKind::Interrupted,
         libc::EINVAL => ErrorKind::InvalidInput,
         libc::ETIMEDOUT => ErrorKind::TimedOut,
-        libc::consts::os::posix88::EEXIST => ErrorKind::AlreadyExists,
+        libc::EEXIST => ErrorKind::AlreadyExists,
 
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match
