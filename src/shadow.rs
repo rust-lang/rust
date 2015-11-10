@@ -2,7 +2,7 @@ use std::ops::Deref;
 use rustc_front::hir::*;
 use reexport::*;
 use syntax::codemap::Span;
-use rustc_front::visit::FnKind;
+use rustc_front::visit::{Visitor, FnKind};
 
 use rustc::lint::*;
 use rustc::middle::def::Def::{DefVariant, DefStruct};
@@ -269,97 +269,21 @@ fn path_eq_name(name: Name, path: &Path) -> bool {
         path.segments[0].identifier.name == name
 }
 
-fn contains_self(name: Name, expr: &Expr) -> bool {
-    match expr.node {
-        // the "self" name itself (maybe)
-        ExprPath(_, ref path) => path_eq_name(name, path),
-        // no subexprs
-        ExprLit(_) => false,
-        // one subexpr
-        ExprUnary(_, ref e) | ExprField(ref e, _) |
-        ExprTupField(ref e, _) | ExprAddrOf(_, ref e) | ExprBox(ref e) |
-        ExprCast(ref e, _) =>
-            contains_self(name, e),
-        // two subexprs
-        ExprBinary(_, ref l, ref r) | ExprIndex(ref l, ref r) |
-        ExprAssign(ref l, ref r) | ExprAssignOp(_, ref l, ref r) |
-        ExprRepeat(ref l, ref r) =>
-            contains_self(name, l) || contains_self(name, r),
-        // one optional subexpr
-        ExprRet(ref oe) =>
-            oe.as_ref().map_or(false, |ref e| contains_self(name, e)),
-        // two optional subexprs
-        ExprRange(ref ol, ref or) =>
-            ol.as_ref().map_or(false, |ref e| contains_self(name, e)) ||
-            or.as_ref().map_or(false, |ref e| contains_self(name, e)),
-        // one subblock
-        ExprBlock(ref block) | ExprLoop(ref block, _) |
-        ExprClosure(_, _, ref block) =>
-            contains_block_self(name, block),
-        // one vec
-        ExprMethodCall(_, _, ref v) | ExprVec(ref v) | ExprTup(ref v) =>
-            v.iter().any(|ref a| contains_self(name, a)),
-        // one expr, one vec
-        ExprCall(ref fun, ref args) =>
-            contains_self(name, fun) ||
-            args.iter().any(|ref a| contains_self(name, a)),
-        // special ones
-        ExprIf(ref cond, ref then, ref otherwise) =>
-            contains_self(name, cond) || contains_block_self(name, then) ||
-            otherwise.as_ref().map_or(false, |ref e| contains_self(name, e)),
-        ExprWhile(ref e, ref block, _)  =>
-            contains_self(name, e) || contains_block_self(name, block),
-        ExprMatch(ref e, ref arms, _) =>
-            contains_self(name, e) ||
-            arms.iter().any(
-                |ref arm|
-                arm.pats.iter().any(|ref pat| contains_pat_self(name, pat)) ||
-                arm.guard.as_ref().map_or(false, |ref g| contains_self(name, g)) ||
-                contains_self(name, &arm.body)),
-        ExprStruct(_, ref fields, ref other) =>
-            fields.iter().any(|ref f| contains_self(name, &f.expr)) ||
-            other.as_ref().map_or(false, |ref e| contains_self(name, e)),
-        _ => false,
-    }
+struct ContainsSelf {
+    name: Name,
+    result: bool
 }
 
-fn contains_block_self(name: Name, block: &Block) -> bool {
-    for stmt in &block.stmts {
-        match stmt.node {
-            StmtDecl(ref decl, _) =>
-            if let DeclLocal(ref local) = decl.node {
-                //TODO: We don't currently handle the case where the name
-                //is shadowed wiithin the block; this means code including this
-                //degenerate pattern will get the wrong warning.
-                if let Some(ref init) = local.init {
-                    if contains_self(name, init) { return true; }
-                }
-            },
-            StmtExpr(ref e, _) | StmtSemi(ref e, _) =>
-                if contains_self(name, e) { return true }
+impl<'v> Visitor<'v> for ContainsSelf {
+    fn visit_name(&mut self, _: Span, name: Name) {
+        if self.name == name {
+            self.result = true;
         }
     }
-    if let Some(ref e) = block.expr { contains_self(name, e) } else { false }
 }
 
-fn contains_pat_self(name: Name, pat: &Pat) -> bool {
-    match pat.node {
-        PatIdent(_, ref ident, ref inner) => name == ident.node.name ||
-            inner.as_ref().map_or(false, |ref p| contains_pat_self(name, p)),
-        PatEnum(_, ref opats) => opats.as_ref().map_or(false,
-            |pats| pats.iter().any(|p| contains_pat_self(name, p))),
-        PatQPath(_, ref path) => path_eq_name(name, path),
-        PatStruct(_, ref fieldpats, _) => fieldpats.iter().any(
-            |ref fp| contains_pat_self(name, &fp.node.pat)),
-        PatTup(ref ps) => ps.iter().any(|ref p| contains_pat_self(name, p)),
-        PatBox(ref p) |
-        PatRegion(ref p, _) => contains_pat_self(name, p),
-        PatRange(ref from, ref until) =>
-            contains_self(name, from) || contains_self(name, until),
-        PatVec(ref pre, ref opt, ref post) =>
-            pre.iter().any(|ref p| contains_pat_self(name, p)) ||
-                opt.as_ref().map_or(false, |ref p| contains_pat_self(name, p)) ||
-                post.iter().any(|ref p| contains_pat_self(name, p)),
-        _ => false,
-    }
+fn contains_self(name: Name, expr: &Expr) -> bool {
+    let mut cs = ContainsSelf { name: name, result: false };
+    cs.visit_expr(expr);
+    cs.result
 }
