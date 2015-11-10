@@ -546,7 +546,7 @@ pub enum Rvalue<'tcx> {
     Use(Operand<'tcx>),
 
     // [x; 32]
-    Repeat(Operand<'tcx>, Operand<'tcx>),
+    Repeat(Operand<'tcx>, Constant<'tcx>),
 
     // &x or &mut x
     Ref(Region, BorrowKind, Lvalue<'tcx>),
