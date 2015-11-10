@@ -241,6 +241,7 @@
 //! method calls a closure on each element it iterates over:
 //!
 //! ```
+//! # #![allow(unused_must_use)]
 //! let v = vec![1, 2, 3, 4, 5];
 //! v.iter().map(|x| println!("{}", x));
 //! ```
@@ -420,7 +421,7 @@ pub trait Iterator {
     ///
     /// ```
     /// // an infinite iterator has no upper bound
-    /// let iter = (0..);
+    /// let iter = 0..;
     ///
     /// assert_eq!((0, None), iter.size_hint());
     /// ```
@@ -710,6 +711,7 @@ pub trait Iterator {
     /// If you're doing some sort of side effect, prefer [`for`] to `map()`:
     ///
     /// ```
+    /// # #![allow(unused_must_use)]
     /// // don't do this:
     /// (0..5).map(|x| println!("{}", x));
     ///
@@ -2696,7 +2698,7 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 ///
 /// ```
 /// // a finite range knows exactly how many times it will iterate
-/// let five = (0..5);
+/// let five = 0..5;
 ///
 /// assert_eq!(5, five.len());
 /// ```
@@ -2762,7 +2764,7 @@ pub trait ExactSizeIterator: Iterator {
     ///
     /// ```
     /// // a finite range knows exactly how many times it will iterate
-    /// let five = (0..5);
+    /// let five = 0..5;
     ///
     /// assert_eq!(5, five.len());
     /// ```

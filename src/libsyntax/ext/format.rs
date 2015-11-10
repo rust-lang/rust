@@ -77,9 +77,10 @@ struct Context<'a, 'b:'a> {
 /// expressions.
 ///
 /// If parsing succeeds, the return value is:
-///
-///     Some((fmtstr, unnamed arguments, ordering of named arguments,
-///           named arguments))
+/// ```ignore
+/// Some((fmtstr, unnamed arguments, ordering of named arguments,
+///       named arguments))
+/// ```
 fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
               -> Option<(P<ast::Expr>, Vec<P<ast::Expr>>, Vec<String>,
                          HashMap<String, P<ast::Expr>>)> {

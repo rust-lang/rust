@@ -620,6 +620,18 @@ You can control a few aspects of the HTML that `rustdoc` generates through the
 
 This sets a few different options, with a logo, favicon, and a root URL.
 
+### Configuring documentation tests
+
+You can also configure the way that `rustdoc` tests your documentation examples
+through the `#![doc(test(..))]` attribute.
+
+```rust
+#![doc(test(attr(allow(unused_variables), deny(warnings))))]
+```
+
+This allows unused variables within the examples, but will fail the test for any
+other lint warning thrown.
+
 ## Generation options
 
 `rustdoc` also contains a few other options on the command line, for further customization:

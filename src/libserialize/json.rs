@@ -77,8 +77,9 @@
 //! serialization API, using the derived serialization code.
 //!
 //! ```rust
-//! extern crate serialize;
-//! use serialize::json;
+//! # #![feature(rustc_private)]
+//! extern crate serialize as rustc_serialize; // for the deriving below
+//! use rustc_serialize::json;
 //!
 //! // Automatically generate `Decodable` and `Encodable` trait implementations
 //! #[derive(RustcDecodable, RustcEncodable)]
@@ -111,6 +112,7 @@
 //! ### Simple example of `ToJson` usage
 //!
 //! ```rust
+//! # #![feature(rustc_private)]
 //! extern crate serialize;
 //! use serialize::json::{self, ToJson, Json};
 //!
@@ -150,6 +152,7 @@
 //! ### Verbose example of `ToJson` usage
 //!
 //! ```rust
+//! # #![feature(rustc_private)]
 //! extern crate serialize;
 //! use std::collections::BTreeMap;
 //! use serialize::json::{self, Json, ToJson};
@@ -185,7 +188,7 @@
 //!     let json_str: String = json_obj.to_string();
 //!
 //!     // Deserialize like before
-//!     let decoded: TestStruct = json::decode(json_str)).unwrap();
+//!     let decoded: TestStruct = json::decode(&json_str).unwrap();
 //! }
 //! ```
 
