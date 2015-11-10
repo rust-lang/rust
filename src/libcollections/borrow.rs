@@ -72,6 +72,7 @@ impl<T> ToOwned for T where T: Clone {
 /// ```
 /// use std::borrow::Cow;
 ///
+/// # #[allow(dead_code)]
 /// fn abs_all(input: &mut Cow<[i32]>) {
 ///     for i in 0..input.len() {
 ///         let v = input[i];

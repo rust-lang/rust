@@ -241,6 +241,7 @@
 //! method calls a closure on each element it iterates over:
 //!
 //! ```
+//! # #![allow(unused_must_use)]
 //! let v = vec![1, 2, 3, 4, 5];
 //! v.iter().map(|x| println!("{}", x));
 //! ```
@@ -371,22 +372,21 @@ pub trait Iterator {
     ///
     /// # Implementation notes
     ///
-    /// It is not enforced that an iterator implementation yields the
-    /// declared number of elements. A buggy iterator may yield less
-    /// than the lower bound or more than the upper bound of elements.
+    /// It is not enforced that an iterator implementation yields the declared
+    /// number of elements. A buggy iterator may yield less than the lower bound
+    /// or more than the upper bound of elements.
     ///
-    /// `size_hint()` is primarily intended to be used for optimizations
-    /// such as reserving space for the elements of the iterator, but
-    /// must not be trusted to e.g. omit bounds checks in unsafe code.
-    /// An incorrect implementation of `size_hint()` should not lead to
-    /// memory safety violations.
+    /// `size_hint()` is primarily intended to be used for optimizations such as
+    /// reserving space for the elements of the iterator, but must not be
+    /// trusted to e.g. omit bounds checks in unsafe code. An incorrect
+    /// implementation of `size_hint()` should not lead to memory safety
+    /// violations.
     ///
-    /// That said, the implementation should provide a correct
-    /// estimation, because otherwise it would be a violation of the
-    /// trait's protocol.
+    /// That said, the implementation should provide a correct estimation,
+    /// because otherwise it would be a violation of the trait's protocol.
     ///
-    /// The default implementation returns `(0, None)` which is correct
-    /// for any iterator.
+    /// The default implementation returns `(0, None)` which is correct for any
+    /// iterator.
     ///
     /// # Examples
     ///
@@ -420,7 +420,7 @@ pub trait Iterator {
     ///
     /// ```
     /// // an infinite iterator has no upper bound
-    /// let iter = (0..);
+    /// let iter = 0..;
     ///
     /// assert_eq!((0, None), iter.size_hint());
     /// ```
@@ -710,6 +710,7 @@ pub trait Iterator {
     /// If you're doing some sort of side effect, prefer [`for`] to `map()`:
     ///
     /// ```
+    /// # #![allow(unused_must_use)]
     /// // don't do this:
     /// (0..5).map(|x| println!("{}", x));
     ///
@@ -2696,7 +2697,7 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 ///
 /// ```
 /// // a finite range knows exactly how many times it will iterate
-/// let five = (0..5);
+/// let five = 0..5;
 ///
 /// assert_eq!(5, five.len());
 /// ```
@@ -2750,7 +2751,7 @@ pub trait ExactSizeIterator: Iterator {
     /// implementation, you can do so. See the [trait-level] docs for an
     /// example.
     ///
-    /// This function has the same safety guarantees as [`size_hint()`]
+    /// This function has the same safety guarantees as the [`size_hint()`]
     /// function.
     ///
     /// [trait-level]: trait.ExactSizeIterator.html
@@ -2762,7 +2763,7 @@ pub trait ExactSizeIterator: Iterator {
     ///
     /// ```
     /// // a finite range knows exactly how many times it will iterate
-    /// let five = (0..5);
+    /// let five = 0..5;
     ///
     /// assert_eq!(5, five.len());
     /// ```

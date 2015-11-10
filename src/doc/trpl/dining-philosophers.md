@@ -232,7 +232,7 @@ also called a ‘vector’, and it’s a growable array type. We then use a
 [`for`][for] loop to iterate through the vector, getting a reference to each
 philosopher in turn.
 
-[for]: for-loops.html
+[for]: loops.html#for
 
 In the body of the loop, we call `p.eat()`, which is defined above:
 
