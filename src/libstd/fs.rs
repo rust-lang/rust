@@ -1212,7 +1212,8 @@ pub trait PathExt {
     fn read_dir(&self) -> io::Result<ReadDir>;
 
     /// Boolean value indicator whether the underlying file exists on the local
-    /// filesystem. Returns false in exactly the cases where `fs::stat` fails.
+    /// filesystem. Returns false in exactly the cases where `fs::metadata`
+    /// fails.
     fn exists(&self) -> bool;
 
     /// Whether the underlying implementation (be it a file path, or something
