@@ -44,7 +44,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // be unreachable or reachable multiple times.
         let var_extent = self.extent_of_innermost_scope().unwrap();
         for arm in &arms {
-            self.declare_bindings(var_extent, arm.patterns[0].clone());
+            self.declare_bindings(var_extent, &arm.patterns[0]);
         }
 
         let mut arm_blocks = ArmBlocks {
@@ -64,18 +64,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // highest priority candidate comes last in the list. This the
         // reverse of the order in which candidates are written in the
         // source.
-        let candidates: Vec<Candidate<'tcx>> =
+        let candidates: Vec<_> =
             arms.iter()
                 .enumerate()
                 .rev() // highest priority comes last
                 .flat_map(|(arm_index, arm)| {
                     arm.patterns.iter()
                                 .rev()
-                                .map(move |pat| (arm_index, pat.clone(), arm.guard.clone()))
+                                .map(move |pat| (arm_index, pat, arm.guard.clone()))
                 })
                 .map(|(arm_index, pattern, guard)| {
                     Candidate {
-                        match_pairs: vec![self.match_pair(discriminant_lvalue.clone(), pattern)],
+                        match_pairs: vec![MatchPair::new(discriminant_lvalue.clone(), pattern)],
                         bindings: vec![],
                         guard: guard,
                         arm_index: arm_index,
@@ -102,12 +102,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn expr_into_pattern(&mut self,
                              mut block: BasicBlock,
                              var_extent: CodeExtent, // lifetime of vars
-                             irrefutable_pat: PatternRef<'tcx>,
+                             irrefutable_pat: Pattern<'tcx>,
                              initializer: ExprRef<'tcx>)
                              -> BlockAnd<()> {
         // optimize the case of `let x = ...`
-        let irrefutable_pat = self.hir.mirror(irrefutable_pat);
-        match irrefutable_pat.kind {
+        match *irrefutable_pat.kind {
             PatternKind::Binding { mutability,
                                    name,
                                    mode: BindingMode::ByValue,
@@ -128,22 +127,22 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let lvalue = unpack!(block = self.as_lvalue(block, initializer));
         self.lvalue_into_pattern(block,
                                  var_extent,
-                                 PatternRef::Mirror(Box::new(irrefutable_pat)),
+                                 irrefutable_pat,
                                  &lvalue)
     }
 
     pub fn lvalue_into_pattern(&mut self,
                                mut block: BasicBlock,
                                var_extent: CodeExtent,
-                               irrefutable_pat: PatternRef<'tcx>,
+                               irrefutable_pat: Pattern<'tcx>,
                                initializer: &Lvalue<'tcx>)
                                -> BlockAnd<()> {
         // first, creating the bindings
-        self.declare_bindings(var_extent, irrefutable_pat.clone());
+        self.declare_bindings(var_extent, &irrefutable_pat);
 
         // create a dummy candidate
-        let mut candidate = Candidate::<'tcx> {
-            match_pairs: vec![self.match_pair(initializer.clone(), irrefutable_pat.clone())],
+        let mut candidate = Candidate {
+            match_pairs: vec![MatchPair::new(initializer.clone(), &irrefutable_pat)],
             bindings: vec![],
             guard: None,
             arm_index: 0, // since we don't call `match_candidates`, this field is unused
@@ -166,29 +165,29 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         block.unit()
     }
 
-    pub fn declare_bindings(&mut self, var_extent: CodeExtent, pattern: PatternRef<'tcx>) {
-        let pattern = self.hir.mirror(pattern);
-        match pattern.kind {
-            PatternKind::Binding { mutability, name, mode: _, var, ty, subpattern } => {
+    pub fn declare_bindings(&mut self, var_extent: CodeExtent, pattern: &Pattern<'tcx>) {
+        match *pattern.kind {
+            PatternKind::Binding { mutability, name, mode: _, var, ty, ref subpattern } => {
                 self.declare_binding(var_extent, mutability, name, var, ty, pattern.span);
-                if let Some(subpattern) = subpattern {
+                if let Some(subpattern) = subpattern.as_ref() {
                     self.declare_bindings(var_extent, subpattern);
                 }
             }
-            PatternKind::Array { prefix, slice, suffix } |
-            PatternKind::Slice { prefix, slice, suffix } => {
-                for subpattern in prefix.into_iter().chain(slice).chain(suffix) {
+            PatternKind::Array { ref prefix, ref slice, ref suffix } |
+            PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
+                for subpattern in prefix.iter().chain(slice).chain(suffix) {
                     self.declare_bindings(var_extent, subpattern);
                 }
             }
-            PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {}
-            PatternKind::Deref { subpattern } => {
+            PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {
+            }
+            PatternKind::Deref { ref subpattern } => {
                 self.declare_bindings(var_extent, subpattern);
             }
-            PatternKind::Leaf { subpatterns } |
-            PatternKind::Variant { subpatterns, .. } => {
+            PatternKind::Leaf { ref subpatterns } |
+            PatternKind::Variant { ref subpatterns, .. } => {
                 for subpattern in subpatterns {
-                    self.declare_bindings(var_extent, subpattern.pattern);
+                    self.declare_bindings(var_extent, &subpattern.pattern);
                 }
             }
         }
@@ -202,9 +201,9 @@ struct ArmBlocks {
 }
 
 #[derive(Clone, Debug)]
-struct Candidate<'tcx> {
+struct Candidate<'pat, 'tcx:'pat> {
     // all of these must be satisfied...
-    match_pairs: Vec<MatchPair<'tcx>>,
+    match_pairs: Vec<MatchPair<'pat, 'tcx>>,
 
     // ...these bindings established...
     bindings: Vec<Binding<'tcx>>,
@@ -228,12 +227,12 @@ struct Binding<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-struct MatchPair<'tcx> {
+struct MatchPair<'pat, 'tcx:'pat> {
     // this lvalue...
     lvalue: Lvalue<'tcx>,
 
     // ... must match this pattern.
-    pattern: Pattern<'tcx>,
+    pattern: &'pat Pattern<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -280,11 +279,11 @@ struct Test<'tcx> {
 // Main matching algorithm
 
 impl<'a,'tcx> Builder<'a,'tcx> {
-    fn match_candidates(&mut self,
-                        span: Span,
-                        arm_blocks: &mut ArmBlocks,
-                        mut candidates: Vec<Candidate<'tcx>>,
-                        mut block: BasicBlock)
+    fn match_candidates<'pat>(&mut self,
+                              span: Span,
+                              arm_blocks: &mut ArmBlocks,
+                              mut candidates: Vec<Candidate<'pat, 'tcx>>,
+                              mut block: BasicBlock)
     {
         debug!("matched_candidate(span={:?}, block={:?}, candidates={:?})",
                span, block, candidates);
@@ -347,7 +346,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let target_blocks = self.perform_test(block, &match_pair.lvalue, &test);
 
         for (outcome, target_block) in target_blocks.into_iter().enumerate() {
-            let applicable_candidates: Vec<Candidate<'tcx>> =
+            let applicable_candidates: Vec<_> =
                 candidates.iter()
                           .filter_map(|candidate| {
                               self.candidate_under_assumption(&match_pair.lvalue,
@@ -372,11 +371,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// bindings, further tests would be a use-after-move (which would
     /// in turn be detected by the borrowck code that runs on the
     /// MIR).
-    fn bind_and_guard_matched_candidate(&mut self,
-                                        mut block: BasicBlock,
-                                        arm_blocks: &mut ArmBlocks,
-                                        candidate: Candidate<'tcx>)
-                                        -> Option<BasicBlock> {
+    fn bind_and_guard_matched_candidate<'pat>(&mut self,
+                                              mut block: BasicBlock,
+                                              arm_blocks: &mut ArmBlocks,
+                                              candidate: Candidate<'pat, 'tcx>)
+                                              -> Option<BasicBlock> {
         debug!("bind_and_guard_matched_candidate(block={:?}, candidate={:?})",
                block, candidate);
 

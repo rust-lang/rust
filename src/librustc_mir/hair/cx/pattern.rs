@@ -10,10 +10,8 @@
 
 use hair::*;
 use hair::cx::Cx;
-use hair::cx::to_ref::ToRef;
 use repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
-use std::rc::Rc;
 use rustc::middle::const_eval;
 use rustc::middle::def;
 use rustc::middle::pat_util::{pat_is_resolved_const, pat_is_binding};
@@ -36,183 +34,111 @@ use syntax::ptr::P;
 ///    _ => { ... }
 /// }
 /// ```
-#[derive(Clone, Debug)]
-pub struct PatNode<'tcx> {
-    pat: &'tcx hir::Pat,
-    binding_map: Option<Rc<FnvHashMap<ast::Name, ast::NodeId>>>,
+struct PatCx<'patcx, 'cx: 'patcx, 'tcx: 'cx> {
+    cx: &'patcx mut Cx<'cx, 'tcx>,
+    binding_map: Option<&'patcx FnvHashMap<ast::Name, ast::NodeId>>,
 }
 
-impl<'tcx> PatNode<'tcx> {
-    pub fn new(pat: &'tcx hir::Pat,
-               binding_map: Option<Rc<FnvHashMap<ast::Name, ast::NodeId>>>)
-               -> PatNode<'tcx> {
-        PatNode {
-            pat: pat,
+impl<'cx, 'tcx> Cx<'cx, 'tcx> {
+    pub fn irrefutable_pat(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
+        PatCx::new(self, None).to_pat(pat)
+    }
+
+    pub fn refutable_pat(&mut self,
+                         binding_map: Option<&FnvHashMap<ast::Name, ast::NodeId>>,
+                         pat: &'tcx hir::Pat)
+                         -> Pattern<'tcx> {
+        PatCx::new(self, binding_map).to_pat(pat)
+    }
+}
+
+impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
+    fn new(cx: &'patcx mut Cx<'cx, 'tcx>,
+               binding_map: Option<&'patcx FnvHashMap<ast::Name, ast::NodeId>>)
+               -> PatCx<'patcx, 'cx, 'tcx> {
+        PatCx {
+            cx: cx,
             binding_map: binding_map,
         }
     }
 
-    pub fn irrefutable(pat: &'tcx hir::Pat) -> PatNode<'tcx> {
-        PatNode::new(pat, None)
-    }
-
-    fn pat_ref<'a>(&self, pat: &'tcx hir::Pat) -> PatternRef<'tcx> {
-        PatNode::new(pat, self.binding_map.clone()).to_ref()
-    }
-
-    fn pat_refs<'a>(&self, pats: &'tcx Vec<P<hir::Pat>>) -> Vec<PatternRef<'tcx>> {
-        pats.iter().map(|p| self.pat_ref(p)).collect()
-    }
-
-    fn opt_pat_ref<'a>(&self, pat: &'tcx Option<P<hir::Pat>>) -> Option<PatternRef<'tcx>> {
-        pat.as_ref().map(|p| self.pat_ref(p))
-    }
-
-    fn slice_or_array_pattern<'a>(&self,
-                                  cx: &mut Cx<'a, 'tcx>,
-                                  ty: Ty<'tcx>,
-                                  prefix: &'tcx Vec<P<hir::Pat>>,
-                                  slice: &'tcx Option<P<hir::Pat>>,
-                                  suffix: &'tcx Vec<P<hir::Pat>>)
-                                  -> PatternKind<'tcx> {
-        match ty.sty {
-            ty::TySlice(..) =>
-                // matching a slice or fixed-length array
-                PatternKind::Slice {
-                    prefix: self.pat_refs(prefix),
-                    slice: self.opt_pat_ref(slice),
-                    suffix: self.pat_refs(suffix),
-                },
-
-            ty::TyArray(_, len) => {
-                // fixed-length array
-                assert!(len >= prefix.len() + suffix.len());
-                PatternKind::Array {
-                    prefix: self.pat_refs(prefix),
-                    slice: self.opt_pat_ref(slice),
-                    suffix: self.pat_refs(suffix),
-                }
-            }
-
-            _ => {
-                cx.tcx.sess.span_bug(self.pat.span, "unexpanded macro or bad constant etc");
-            }
-        }
-    }
-
-    fn variant_or_leaf<'a>(&self,
-                           cx: &mut Cx<'a, 'tcx>,
-                           subpatterns: Vec<FieldPatternRef<'tcx>>)
-                           -> PatternKind<'tcx> {
-        let def = cx.tcx.def_map.borrow().get(&self.pat.id).unwrap().full_def();
-        match def {
-            def::DefVariant(enum_id, variant_id, _) => {
-                let adt_def = cx.tcx.lookup_adt_def(enum_id);
-                if adt_def.variants.len() > 1 {
-                    PatternKind::Variant {
-                        adt_def: adt_def,
-                        variant_index: adt_def.variant_index_with_id(variant_id),
-                        subpatterns: subpatterns,
-                    }
-                } else {
-                    PatternKind::Leaf { subpatterns: subpatterns }
-                }
-            }
-
-            // NB: resolving to DefStruct means the struct *constructor*,
-            // not the struct as a type.
-            def::DefStruct(..) | def::DefTy(..) => {
-                PatternKind::Leaf { subpatterns: subpatterns }
-            }
-
-            _ => {
-                cx.tcx.sess.span_bug(self.pat.span,
-                                     &format!("inappropriate def for pattern: {:?}", def));
-            }
-        }
-    }
-}
-
-impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
-    type Output = Pattern<'tcx>;
-
-    fn make_mirror<'a>(self, cx: &mut Cx<'a, 'tcx>) -> Pattern<'tcx> {
-        let kind = match self.pat.node {
+    fn to_pat(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
+        let kind = match pat.node {
             hir::PatWild => PatternKind::Wild,
 
             hir::PatLit(ref value) => {
-                let value = const_eval::eval_const_expr(cx.tcx, value);
+                let value = const_eval::eval_const_expr(self.cx.tcx, value);
                 let value = Literal::Value { value: value };
                 PatternKind::Constant { value: value }
             }
 
             hir::PatRange(ref lo, ref hi) => {
-                let lo = const_eval::eval_const_expr(cx.tcx, lo);
+                let lo = const_eval::eval_const_expr(self.cx.tcx, lo);
                 let lo = Literal::Value { value: lo };
-                let hi = const_eval::eval_const_expr(cx.tcx, hi);
+                let hi = const_eval::eval_const_expr(self.cx.tcx, hi);
                 let hi = Literal::Value { value: hi };
                 PatternKind::Range { lo: lo, hi: hi }
             },
 
             hir::PatEnum(..) | hir::PatIdent(..) | hir::PatQPath(..)
-                if pat_is_resolved_const(&cx.tcx.def_map.borrow(), self.pat) =>
+                if pat_is_resolved_const(&self.cx.tcx.def_map.borrow(), pat) =>
             {
-                let def = cx.tcx.def_map.borrow().get(&self.pat.id).unwrap().full_def();
+                let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
                 match def {
                     def::DefConst(def_id) | def::DefAssociatedConst(def_id) =>
-                        match const_eval::lookup_const_by_id(cx.tcx, def_id, Some(self.pat.id)) {
+                        match const_eval::lookup_const_by_id(self.cx.tcx, def_id, Some(pat.id)) {
                             Some(const_expr) => {
                                 let opt_value =
                                     const_eval::eval_const_expr_partial(
-                                        cx.tcx, const_expr,
+                                        self.cx.tcx, const_expr,
                                         const_eval::EvalHint::ExprTypeChecked,
                                         None);
                                 let literal = if let Ok(value) = opt_value {
                                     Literal::Value { value: value }
                                 } else {
-                                    let substs = cx.tcx.mk_substs(Substs::empty());
+                                    let substs = self.cx.tcx.mk_substs(Substs::empty());
                                     Literal::Item { def_id: def_id, substs: substs }
                                 };
                                 PatternKind::Constant { value: literal }
                             }
                             None => {
-                                cx.tcx.sess.span_bug(
-                                    self.pat.span,
+                                self.cx.tcx.sess.span_bug(
+                                    pat.span,
                                     &format!("cannot eval constant: {:?}", def_id))
                             }
                         },
                     _ =>
-                        cx.tcx.sess.span_bug(
-                            self.pat.span,
+                        self.cx.tcx.sess.span_bug(
+                            pat.span,
                             &format!("def not a constant: {:?}", def)),
                 }
             }
 
             hir::PatRegion(ref subpattern, _) |
             hir::PatBox(ref subpattern) => {
-                PatternKind::Deref { subpattern: self.pat_ref(subpattern) }
+                PatternKind::Deref { subpattern: self.to_pat(subpattern) }
             }
 
             hir::PatVec(ref prefix, ref slice, ref suffix) => {
-                let ty = cx.tcx.node_id_to_type(self.pat.id);
+                let ty = self.cx.tcx.node_id_to_type(pat.id);
                 match ty.sty {
                     ty::TyRef(_, mt) =>
                         PatternKind::Deref {
                             subpattern: Pattern {
                                 ty: mt.ty,
-                                span: self.pat.span,
-                                kind: self.slice_or_array_pattern(cx, mt.ty, prefix,
-                                                                  slice, suffix),
-                            }.to_ref()
+                                span: pat.span,
+                                kind: Box::new(self.slice_or_array_pattern(pat, mt.ty, prefix,
+                                                                           slice, suffix)),
+                            },
                         },
 
                     ty::TySlice(..) |
                     ty::TyArray(..) =>
-                        self.slice_or_array_pattern(cx, ty, prefix, slice, suffix),
+                        self.slice_or_array_pattern(pat, ty, prefix, slice, suffix),
 
                     ref sty =>
-                        cx.tcx.sess.span_bug(
-                            self.pat.span,
+                        self.cx.tcx.sess.span_bug(
+                            pat.span,
                             &format!("unexpanded type for vector pattern: {:?}", sty)),
                 }
             }
@@ -221,9 +147,9 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
                 let subpatterns =
                     subpatterns.iter()
                                .enumerate()
-                               .map(|(i, subpattern)| FieldPatternRef {
+                               .map(|(i, subpattern)| FieldPattern {
                                    field: Field::new(i),
-                                   pattern: self.pat_ref(subpattern),
+                                   pattern: self.to_pat(subpattern),
                                })
                                .collect();
 
@@ -231,13 +157,13 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
             }
 
             hir::PatIdent(bm, ref ident, ref sub)
-                if pat_is_binding(&cx.tcx.def_map.borrow(), self.pat) =>
+                if pat_is_binding(&self.cx.tcx.def_map.borrow(), pat) =>
             {
                 let id = match self.binding_map {
-                    None => self.pat.id,
+                    None => pat.id,
                     Some(ref map) => map[&ident.node.name],
                 };
-                let var_ty = cx.tcx.node_id_to_type(self.pat.id);
+                let var_ty = self.cx.tcx.node_id_to_type(pat.id);
                 let region = match var_ty.sty {
                     ty::TyRef(&r, _) => Some(r),
                     _ => None,
@@ -258,12 +184,12 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
                     name: ident.node.name,
                     var: id,
                     ty: var_ty,
-                    subpattern: self.opt_pat_ref(sub),
+                    subpattern: self.to_opt_pat(sub),
                 }
             }
 
             hir::PatIdent(..) => {
-                self.variant_or_leaf(cx, vec![])
+                self.variant_or_leaf(pat, vec![])
             }
 
             hir::PatEnum(_, ref opt_subpatterns) => {
@@ -271,26 +197,26 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
                     opt_subpatterns.iter()
                                    .flat_map(|v| v.iter())
                                    .enumerate()
-                                   .map(|(i, field)| FieldPatternRef {
+                                   .map(|(i, field)| FieldPattern {
                                        field: Field::new(i),
-                                       pattern: self.pat_ref(field),
+                                       pattern: self.to_pat(field),
                                    })
                                    .collect();
-                self.variant_or_leaf(cx, subpatterns)
+                self.variant_or_leaf(pat, subpatterns)
             }
 
             hir::PatStruct(_, ref fields, _) => {
-                let pat_ty = cx.tcx.node_id_to_type(self.pat.id);
+                let pat_ty = self.cx.tcx.node_id_to_type(pat.id);
                 let adt_def = match pat_ty.sty {
                     ty::TyStruct(adt_def, _) | ty::TyEnum(adt_def, _) => adt_def,
                     _ => {
-                        cx.tcx.sess.span_bug(
-                            self.pat.span,
+                        self.cx.tcx.sess.span_bug(
+                            pat.span,
                             "struct pattern not applied to struct or enum");
                     }
                 };
 
-                let def = cx.tcx.def_map.borrow().get(&self.pat.id).unwrap().full_def();
+                let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
                 let variant_def = adt_def.variant_of_def(def);
 
                 let subpatterns =
@@ -298,31 +224,104 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
                           .map(|field| {
                               let index = variant_def.index_of_field_named(field.node.name);
                               let index = index.unwrap_or_else(|| {
-                                  cx.tcx.sess.span_bug(
-                                      self.pat.span,
+                                  self.cx.tcx.sess.span_bug(
+                                      pat.span,
                                       &format!("no field with name {:?}", field.node.name));
                               });
-                              FieldPatternRef {
+                              FieldPattern {
                                   field: Field::new(index),
-                                  pattern: self.pat_ref(&field.node.pat),
+                                  pattern: self.to_pat(&field.node.pat),
                               }
                           })
                           .collect();
 
-                self.variant_or_leaf(cx, subpatterns)
+                self.variant_or_leaf(pat, subpatterns)
             }
 
             hir::PatQPath(..) => {
-                cx.tcx.sess.span_bug(self.pat.span, "unexpanded macro or bad constant etc");
+                self.cx.tcx.sess.span_bug(pat.span, "unexpanded macro or bad constant etc");
             }
         };
 
-        let ty = cx.tcx.node_id_to_type(self.pat.id);
+        let ty = self.cx.tcx.node_id_to_type(pat.id);
 
         Pattern {
-            span: self.pat.span,
+            span: pat.span,
             ty: ty,
-            kind: kind,
+            kind: Box::new(kind),
+        }
+    }
+
+    fn to_pats(&mut self, pats: &'tcx Vec<P<hir::Pat>>) -> Vec<Pattern<'tcx>> {
+        pats.iter().map(|p| self.to_pat(p)).collect()
+    }
+
+    fn to_opt_pat(&mut self, pat: &'tcx Option<P<hir::Pat>>) -> Option<Pattern<'tcx>> {
+        pat.as_ref().map(|p| self.to_pat(p))
+    }
+
+    fn slice_or_array_pattern(&mut self,
+                              pat: &'tcx hir::Pat,
+                              ty: Ty<'tcx>,
+                              prefix: &'tcx Vec<P<hir::Pat>>,
+                              slice: &'tcx Option<P<hir::Pat>>,
+                              suffix: &'tcx Vec<P<hir::Pat>>)
+                              -> PatternKind<'tcx> {
+        match ty.sty {
+            ty::TySlice(..) => {
+                // matching a slice or fixed-length array
+                PatternKind::Slice {
+                    prefix: self.to_pats(prefix),
+                    slice: self.to_opt_pat(slice),
+                    suffix: self.to_pats(suffix),
+                }
+            }
+
+            ty::TyArray(_, len) => {
+                // fixed-length array
+                assert!(len >= prefix.len() + suffix.len());
+                PatternKind::Array {
+                    prefix: self.to_pats(prefix),
+                    slice: self.to_opt_pat(slice),
+                    suffix: self.to_pats(suffix),
+                }
+            }
+
+            _ => {
+                self.cx.tcx.sess.span_bug(pat.span, "unexpanded macro or bad constant etc");
+            }
+        }
+    }
+
+    fn variant_or_leaf(&mut self,
+                       pat: &'tcx hir::Pat,
+                       subpatterns: Vec<FieldPattern<'tcx>>)
+                       -> PatternKind<'tcx> {
+        let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
+        match def {
+            def::DefVariant(enum_id, variant_id, _) => {
+                let adt_def = self.cx.tcx.lookup_adt_def(enum_id);
+                if adt_def.variants.len() > 1 {
+                    PatternKind::Variant {
+                        adt_def: adt_def,
+                        variant_index: adt_def.variant_index_with_id(variant_id),
+                        subpatterns: subpatterns,
+                    }
+                } else {
+                    PatternKind::Leaf { subpatterns: subpatterns }
+                }
+            }
+
+            // NB: resolving to DefStruct means the struct *constructor*,
+            // not the struct as a type.
+            def::DefStruct(..) | def::DefTy(..) => {
+                PatternKind::Leaf { subpatterns: subpatterns }
+            }
+
+            _ => {
+                self.cx.tcx.sess.span_bug(pat.span,
+                                          &format!("inappropriate def for pattern: {:?}", def));
+            }
         }
     }
 }

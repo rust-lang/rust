@@ -40,7 +40,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             StmtKind::Let { remainder_scope, init_scope, pattern, initializer: None, stmts } => {
                 this.in_scope(remainder_scope, block, |this| {
                     unpack!(block = this.in_scope(init_scope, block, |this| {
-                        this.declare_bindings(remainder_scope, pattern);
+                        this.declare_bindings(remainder_scope, &pattern);
                         block.unit()
                     }));
                     this.stmts(block, stmts)
