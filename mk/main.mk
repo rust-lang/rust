@@ -111,8 +111,7 @@ CFG_RUSTC_FLAGS := $(RUSTFLAGS)
 CFG_GCCISH_CFLAGS :=
 CFG_GCCISH_LINK_FLAGS :=
 
-# Turn off broken quarantine (see jemalloc/jemalloc#161)
-CFG_JEMALLOC_FLAGS := --disable-fill
+CFG_JEMALLOC_FLAGS :=
 
 ifdef CFG_DISABLE_OPTIMIZE
   $(info cfg: disabling rustc optimization (CFG_DISABLE_OPTIMIZE))
@@ -184,7 +183,7 @@ include $(CFG_SRC_DIR)mk/platform.mk
 
 # Run the stage1/2 compilers under valgrind
 ifdef VALGRIND_COMPILE
-  CFG_VALGRIND_COMPILE :=$(CFG_VALGRIND)
+  CFG_VALGRIND_COMPILE := $(CFG_VALGRIND)
 else
   CFG_VALGRIND_COMPILE :=
 endif
@@ -202,6 +201,7 @@ endif
 
 ifdef CFG_ENABLE_VALGRIND
   $(info cfg: enabling valgrind (CFG_ENABLE_VALGRIND))
+  CFG_JEMALLOC_FLAGS += --enable-valgrind
 else
   CFG_VALGRIND :=
 endif
