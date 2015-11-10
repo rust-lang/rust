@@ -51,8 +51,10 @@ extern crate rustc_trans;
 extern crate rustc_typeck;
 extern crate serialize;
 extern crate rustc_llvm as llvm;
-#[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate syntax;
 
 pub use syntax::diagnostic;
 
@@ -94,8 +96,8 @@ pub mod pretty;
 pub mod target_features;
 
 
-const BUG_REPORT_URL: &'static str =
-    "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports";
+const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
+                                      md#bug-reports";
 
 
 pub fn run(args: Vec<String>) -> isize {
@@ -105,8 +107,7 @@ pub fn run(args: Vec<String>) -> isize {
 
 // Parse args and run the compiler. This is the primary entry point for rustc.
 // See comments on CompilerCalls below for details about the callbacks argument.
-pub fn run_compiler<'a>(args: &[String],
-                        callbacks: &mut CompilerCalls<'a>) {
+pub fn run_compiler<'a>(args: &[String], callbacks: &mut CompilerCalls<'a>) {
     macro_rules! do_or_return {($expr: expr) => {
         match $expr {
             Compilation::Stop => return,
@@ -116,7 +117,7 @@ pub fn run_compiler<'a>(args: &[String],
 
     let matches = match handle_options(args.to_vec()) {
         Some(matches) => matches,
-        None => return
+        None => return,
     };
 
     let sopts = config::build_session_options(&matches);
@@ -130,8 +131,8 @@ pub fn run_compiler<'a>(args: &[String],
         Some((input, input_file_path)) => callbacks.some_input(input, input_file_path),
         None => match callbacks.no_input(&matches, &sopts, &odir, &ofile, &descriptions) {
             Some((input, input_file_path)) => (input, input_file_path),
-            None => return
-        }
+            None => return,
+        },
     };
 
     let mut sess = build_session(sopts, input_file_path, descriptions);
@@ -152,7 +153,9 @@ pub fn run_compiler<'a>(args: &[String],
             pretty::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile);
             return;
         }
-        None => {/* continue */ }
+        None => {
+            // continue
+        }
     }
 
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
@@ -176,7 +179,8 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>)> {
             io::stdin().read_to_string(&mut src).unwrap();
             Some((Input::Str(src), None))
         } else {
-            Some((Input::File(PathBuf::from(ifile)), Some(PathBuf::from(ifile))))
+            Some((Input::File(PathBuf::from(ifile)),
+                  Some(PathBuf::from(ifile))))
         }
     } else {
         None
@@ -194,7 +198,7 @@ impl Compilation {
     pub fn and_then<F: FnOnce() -> Compilation>(self, next: F) -> Compilation {
         match self {
             Compilation::Stop => Compilation::Stop,
-            Compilation::Continue => next()
+            Compilation::Continue => next(),
         }
     }
 }
@@ -229,7 +233,9 @@ pub trait CompilerCalls<'a> {
     // Called after we extract the input from the arguments. Gives the implementer
     // an opportunity to change the inputs or to add some custom input handling.
     // The default behaviour is to simply pass through the inputs.
-    fn some_input(&mut self, input: Input, input_path: Option<PathBuf>)
+    fn some_input(&mut self,
+                  input: Input,
+                  input_path: Option<PathBuf>)
                   -> (Input, Option<PathBuf>) {
         (input, input_path)
     }
@@ -269,7 +275,8 @@ pub trait CompilerCalls<'a> {
         None
     }
 
-    // Create a CompilController struct for controlling the behaviour of compilation.
+    // Create a CompilController struct for controlling the behaviour of
+    // compilation.
     fn build_controller(&mut self, &Session) -> CompileController<'a>;
 }
 
@@ -300,8 +307,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     }
                 }
                 return Compilation::Stop;
-            },
-            None => ()
+            }
+            None => (),
         }
 
         return Compilation::Continue;
@@ -331,7 +338,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 early_error(sopts.color, "no input filename given");
             }
             1 => panic!("make_input should have provided valid inputs"),
-            _ => early_error(sopts.color, "multiple input filenames provided")
+            _ => early_error(sopts.color, "multiple input filenames provided"),
         }
 
         None
@@ -366,15 +373,14 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                      odir: &Option<PathBuf>,
                      ofile: &Option<PathBuf>)
                      -> Compilation {
-        RustcDefaultCalls::print_crate_info(sess, Some(input), odir, ofile).and_then(
-            || RustcDefaultCalls::list_metadata(sess, matches, input))
+        RustcDefaultCalls::print_crate_info(sess, Some(input), odir, ofile)
+            .and_then(|| RustcDefaultCalls::list_metadata(sess, matches, input))
     }
 
     fn build_controller(&mut self, sess: &Session) -> CompileController<'a> {
         let mut control = CompileController::basic();
 
-        if sess.opts.parse_only ||
-           sess.opts.show_span.is_some() ||
+        if sess.opts.parse_only || sess.opts.show_span.is_some() ||
            sess.opts.debugging_opts.ast_json_noexpand {
             control.after_parse.stop = Compilation::Stop;
         }
@@ -393,14 +399,14 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 
         if sess.opts.debugging_opts.save_analysis {
             control.after_analysis.callback = box |state| {
-                time(state.session.time_passes(),
-                     "save analysis",
-                     || save::process_crate(state.tcx.unwrap(),
-                                            state.lcx.unwrap(),
-                                            state.krate.unwrap(),
-                                            state.analysis.unwrap(),
-                                            state.crate_name.unwrap(),
-                                            state.out_dir));
+                time(state.session.time_passes(), "save analysis", || {
+                    save::process_crate(state.tcx.unwrap(),
+                                        state.lcx.unwrap(),
+                                        state.krate.unwrap(),
+                                        state.analysis.unwrap(),
+                                        state.crate_name.unwrap(),
+                                        state.out_dir)
+                });
             };
             control.make_glob_map = resolve::MakeGlobMap::Yes;
         }
@@ -410,19 +416,15 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 }
 
 impl RustcDefaultCalls {
-    pub fn list_metadata(sess: &Session,
-                         matches: &getopts::Matches,
-                         input: &Input)
-                         -> Compilation {
+    pub fn list_metadata(sess: &Session, matches: &getopts::Matches, input: &Input) -> Compilation {
         let r = matches.opt_strs("Z");
         if r.contains(&("ls".to_string())) {
             match input {
                 &Input::File(ref ifile) => {
                     let path = &(*ifile);
                     let mut v = Vec::new();
-                    metadata::loader::list_file_metadata(&sess.target.target,
-                                                         path,
-                                                         &mut v).unwrap();
+                    metadata::loader::list_file_metadata(&sess.target.target, path, &mut v)
+                        .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
                 }
                 &Input::Str(_) => {
@@ -456,26 +458,21 @@ impl RustcDefaultCalls {
                         None => early_error(sess.opts.color, "no input file provided"),
                     };
                     let attrs = attrs.as_ref().unwrap();
-                    let t_outputs = driver::build_output_filenames(input,
-                                                                   odir,
-                                                                   ofile,
-                                                                   attrs,
-                                                                   sess);
-                    let id = link::find_crate_name(Some(sess),
-                                                   attrs,
-                                                   input);
+                    let t_outputs = driver::build_output_filenames(input, odir, ofile, attrs, sess);
+                    let id = link::find_crate_name(Some(sess), attrs, input);
                     if *req == PrintRequest::CrateName {
                         println!("{}", id);
-                        continue
+                        continue;
                     }
                     let crate_types = driver::collect_crate_types(sess, attrs);
                     let metadata = driver::collect_crate_metadata(sess, attrs);
                     *sess.crate_metadata.borrow_mut() = metadata;
                     for &style in &crate_types {
-                        let fname = link::filename_for_input(sess, style, &id,
-                                                             &t_outputs);
-                        println!("{}", fname.file_name().unwrap()
-                                            .to_string_lossy());
+                        let fname = link::filename_for_input(sess, style, &id, &t_outputs);
+                        println!("{}",
+                                 fname.file_name()
+                                      .unwrap()
+                                      .to_string_lossy());
                     }
                 }
             }
@@ -503,9 +500,13 @@ pub fn commit_date_str() -> Option<&'static str> {
 pub fn version(binary: &str, matches: &getopts::Matches) {
     let verbose = matches.opt_present("verbose");
 
-    println!("{} {}", binary, option_env!("CFG_VERSION").unwrap_or("unknown version"));
+    println!("{} {}",
+             binary,
+             option_env!("CFG_VERSION").unwrap_or("unknown version"));
     if verbose {
-        fn unw(x: Option<&str>) -> &str { x.unwrap_or("unknown") }
+        fn unw(x: Option<&str>) -> &str {
+            x.unwrap_or("unknown")
+        }
         println!("binary: {}", binary);
         println!("commit-hash: {}", unw(commit_hash_str()));
         println!("commit-date: {}", unw(commit_date_str()));
@@ -520,32 +521,35 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     } else {
         config::rustc_short_optgroups()
     };
-    let groups : Vec<_> = groups.into_iter()
-        .filter(|x| include_unstable_options || x.is_stable())
-        .map(|x|x.opt_group)
-        .collect();
+    let groups: Vec<_> = groups.into_iter()
+                               .filter(|x| include_unstable_options || x.is_stable())
+                               .map(|x| x.opt_group)
+                               .collect();
     let message = format!("Usage: rustc [OPTIONS] INPUT");
     let extra_help = if verbose {
         ""
     } else {
         "\n    --help -v           Print the full set of options rustc accepts"
     };
-    println!("{}\n\
-Additional help:
+    println!("{}\nAdditional help:
     -C help             Print codegen options
-    -W help             Print 'lint' options and default settings
-    -Z help             Print internal options for debugging rustc{}\n",
-              getopts::usage(&message, &groups),
-              extra_help);
+    -W help             \
+              Print 'lint' options and default settings
+    -Z help             Print internal \
+              options for debugging rustc{}\n",
+             getopts::usage(&message, &groups),
+             extra_help);
 }
 
 fn describe_lints(lint_store: &lint::LintStore, loaded_plugins: bool) {
     println!("
 Available lint options:
     -W <foo>           Warn about <foo>
-    -A <foo>           Allow <foo>
+    -A <foo>           \
+              Allow <foo>
     -D <foo>           Deny <foo>
-    -F <foo>           Forbid <foo> (deny, and deny all overrides)
+    -F <foo>           Forbid <foo> \
+              (deny, and deny all overrides)
 
 ");
 
@@ -562,7 +566,7 @@ Available lint options:
     }
 
     fn sort_lint_groups(lints: Vec<(&'static str, Vec<lint::LintId>, bool)>)
-                     -> Vec<(&'static str, Vec<lint::LintId>)> {
+                        -> Vec<(&'static str, Vec<lint::LintId>)> {
         let mut lints: Vec<_> = lints.into_iter().map(|(x, y, _)| (x, y)).collect();
         lints.sort_by(|&(x, _): &(&'static str, Vec<lint::LintId>),
                        &(y, _): &(&'static str, Vec<lint::LintId>)| {
@@ -572,21 +576,28 @@ Available lint options:
     }
 
     let (plugin, builtin): (Vec<_>, _) = lint_store.get_lints()
-        .iter().cloned().partition(|&(_, p)| p);
+                                                   .iter()
+                                                   .cloned()
+                                                   .partition(|&(_, p)| p);
     let plugin = sort_lints(plugin);
     let builtin = sort_lints(builtin);
 
     let (plugin_groups, builtin_groups): (Vec<_>, _) = lint_store.get_lint_groups()
-        .iter().cloned().partition(|&(_, _, p)| p);
+                                                                 .iter()
+                                                                 .cloned()
+                                                                 .partition(|&(_, _, p)| p);
     let plugin_groups = sort_lint_groups(plugin_groups);
     let builtin_groups = sort_lint_groups(builtin_groups);
 
-    let max_name_len = plugin.iter().chain(&builtin)
-        .map(|&s| s.name.chars().count())
-        .max().unwrap_or(0);
+    let max_name_len = plugin.iter()
+                             .chain(&builtin)
+                             .map(|&s| s.name.chars().count())
+                             .max()
+                             .unwrap_or(0);
     let padded = |x: &str| {
-        let mut s = repeat(" ").take(max_name_len - x.chars().count())
-                               .collect::<String>();
+        let mut s = repeat(" ")
+                        .take(max_name_len - x.chars().count())
+                        .collect::<String>();
         s.push_str(x);
         s
     };
@@ -599,7 +610,9 @@ Available lint options:
         for lint in lints {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7}  {}",
-                     padded(&name[..]), lint.default_level.as_str(), lint.desc);
+                     padded(&name[..]),
+                     lint.default_level.as_str(),
+                     lint.desc);
         }
         println!("\n");
     };
@@ -608,12 +621,15 @@ Available lint options:
 
 
 
-    let max_name_len = plugin_groups.iter().chain(&builtin_groups)
-        .map(|&(s, _)| s.chars().count())
-        .max().unwrap_or(0);
+    let max_name_len = plugin_groups.iter()
+                                    .chain(&builtin_groups)
+                                    .map(|&(s, _)| s.chars().count())
+                                    .max()
+                                    .unwrap_or(0);
     let padded = |x: &str| {
-        let mut s = repeat(" ").take(max_name_len - x.chars().count())
-                               .collect::<String>();
+        let mut s = repeat(" ")
+                        .take(max_name_len - x.chars().count())
+                        .collect::<String>();
         s.push_str(x);
         s
     };
@@ -625,10 +641,11 @@ Available lint options:
     let print_lint_groups = |lints: Vec<(&'static str, Vec<lint::LintId>)>| {
         for (name, to) in lints {
             let name = name.to_lowercase().replace("_", "-");
-            let desc = to.into_iter().map(|x| x.as_str().replace("_", "-"))
-                         .collect::<Vec<String>>().join(", ");
-            println!("    {}  {}",
-                     padded(&name[..]), desc);
+            let desc = to.into_iter()
+                         .map(|x| x.as_str().replace("_", "-"))
+                         .collect::<Vec<String>>()
+                         .join(", ");
+            println!("    {}  {}", padded(&name[..]), desc);
         }
         println!("\n");
     };
@@ -667,21 +684,28 @@ fn describe_codegen_flags() {
 
 fn print_flag_list<T>(cmdline_opt: &str,
                       flag_list: &[(&'static str, T, Option<&'static str>, &'static str)]) {
-    let max_len = flag_list.iter().map(|&(name, _, opt_type_desc, _)| {
-        let extra_len = match opt_type_desc {
-            Some(..) => 4,
-            None => 0
-        };
-        name.chars().count() + extra_len
-    }).max().unwrap_or(0);
+    let max_len = flag_list.iter()
+                           .map(|&(name, _, opt_type_desc, _)| {
+                               let extra_len = match opt_type_desc {
+                                   Some(..) => 4,
+                                   None => 0,
+                               };
+                               name.chars().count() + extra_len
+                           })
+                           .max()
+                           .unwrap_or(0);
 
     for &(name, _, opt_type_desc, desc) in flag_list {
         let (width, extra) = match opt_type_desc {
             Some(..) => (max_len - 4, "=val"),
-            None => (max_len, "")
+            None => (max_len, ""),
         };
-        println!("    {} {:>width$}{} -- {}", cmdline_opt, name.replace("_", "-"),
-                 extra, desc, width=width);
+        println!("    {} {:>width$}{} -- {}",
+                 cmdline_opt,
+                 name.replace("_", "-"),
+                 extra,
+                 desc,
+                 width = width);
     }
 }
 
@@ -705,8 +729,10 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     }
 
     fn parse_all_options(args: &Vec<String>) -> getopts::Matches {
-        let all_groups : Vec<getopts::OptGroup>
-            = config::rustc_optgroups().into_iter().map(|x|x.opt_group).collect();
+        let all_groups: Vec<getopts::OptGroup> = config::rustc_optgroups()
+                                                     .into_iter()
+                                                     .map(|x| x.opt_group)
+                                                     .collect();
         match getopts::getopts(&args[..], &all_groups) {
             Ok(m) => {
                 if !allows_unstable_options(&m) {
@@ -719,15 +745,16 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
                             &opt.opt_group.short_name
                         };
                         if m.opt_present(opt_name) {
-                            early_error(diagnostic::Auto, &format!("use of unstable option '{}' \
-                                                                    requires -Z unstable-options",
-                                                                   opt_name));
+                            early_error(diagnostic::Auto,
+                                        &format!("use of unstable option '{}' requires -Z \
+                                                  unstable-options",
+                                                 opt_name));
                         }
                     }
                 }
                 m
             }
-            Err(f) => early_error(diagnostic::Auto, &f.to_string())
+            Err(f) => early_error(diagnostic::Auto, &f.to_string()),
         }
     }
 
@@ -750,7 +777,8 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     };
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        usage(matches.opt_present("verbose"), allows_unstable_options(&matches));
+        usage(matches.opt_present("verbose"),
+              allows_unstable_options(&matches));
         return None;
     }
 
@@ -769,7 +797,9 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     }
 
     if cg_flags.contains(&"passes=list".to_string()) {
-        unsafe { ::llvm::LLVMRustPrintPasses(); }
+        unsafe {
+            ::llvm::LLVMRustPrintPasses();
+        }
         return None;
     }
 
@@ -781,20 +811,16 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     Some(matches)
 }
 
-fn parse_crate_attrs(sess: &Session, input: &Input) ->
-                     Vec<ast::Attribute> {
+fn parse_crate_attrs(sess: &Session, input: &Input) -> Vec<ast::Attribute> {
     let result = match *input {
         Input::File(ref ifile) => {
-            parse::parse_crate_attrs_from_file(ifile,
-                                               Vec::new(),
-                                               &sess.parse_sess)
+            parse::parse_crate_attrs_from_file(ifile, Vec::new(), &sess.parse_sess)
         }
         Input::Str(ref src) => {
-            parse::parse_crate_attrs_from_source_str(
-                driver::anon_src().to_string(),
-                src.to_string(),
-                Vec::new(),
-                &sess.parse_sess)
+            parse::parse_crate_attrs_from_source_str(driver::anon_src().to_string(),
+                                                     src.to_string(),
+                                                     Vec::new(),
+                                                     &sess.parse_sess)
         }
     };
     result.into_iter().collect()
@@ -805,7 +831,7 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
-pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
+pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
     const STACK_SIZE: usize = 8 * 1024 * 1024; // 8MB
 
     struct Sink(Arc<Mutex<Vec<u8>>>);
@@ -813,7 +839,9 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
         fn write(&mut self, data: &[u8]) -> io::Result<usize> {
             Write::write(&mut *self.0.lock().unwrap(), data)
         }
-        fn flush(&mut self) -> io::Result<()> { Ok(()) }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
     }
 
     let data = Arc::new(Mutex::new(Vec::new()));
@@ -827,8 +855,15 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match cfg.spawn(move || { io::set_panic(box err); f() }).unwrap().join() {
-        Ok(()) => { /* fallthrough */ }
+    match cfg.spawn(move || {
+                 io::set_panic(box err);
+                 f()
+             })
+             .unwrap()
+             .join() {
+        Ok(()) => {
+            // fallthrough
+        }
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic
             if !value.is::<diagnostic::FatalError>() {
@@ -837,24 +872,19 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
                 // a .span_bug or .bug call has already printed what
                 // it wants to print.
                 if !value.is::<diagnostic::ExplicitBug>() {
-                    emitter.emit(
-                        None,
-                        "unexpected panic",
-                        None,
-                        diagnostic::Bug);
+                    emitter.emit(None, "unexpected panic", None, diagnostic::Bug);
                 }
 
-                let xs = [
-                    "the compiler unexpectedly panicked. this is a bug.".to_string(),
-                    format!("we would appreciate a bug report: {}",
-                            BUG_REPORT_URL),
-                ];
+                let xs = ["the compiler unexpectedly panicked. this is a bug.".to_string(),
+                          format!("we would appreciate a bug report: {}", BUG_REPORT_URL)];
                 for note in &xs {
                     emitter.emit(None, &note[..], None, diagnostic::Note)
                 }
                 if let None = env::var_os("RUST_BACKTRACE") {
-                    emitter.emit(None, "run with `RUST_BACKTRACE=1` for a backtrace",
-                                 None, diagnostic::Note);
+                    emitter.emit(None,
+                                 "run with `RUST_BACKTRACE=1` for a backtrace",
+                                 None,
+                                 diagnostic::Note);
                 }
 
                 println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());

@@ -30,7 +30,7 @@ use rustc_typeck::middle::infer::lub::Lub;
 use rustc_typeck::middle::infer::glb::Glb;
 use rustc_typeck::middle::infer::sub::Sub;
 use rustc::front::map as hir_map;
-use rustc::session::{self,config};
+use rustc::session::{self, config};
 use syntax::{abi, ast};
 use syntax::codemap;
 use syntax::codemap::{Span, CodeMap, DUMMY_SP};
@@ -47,19 +47,21 @@ struct Env<'a, 'tcx: 'a> {
 
 struct RH<'a> {
     id: ast::NodeId,
-    sub: &'a [RH<'a>]
+    sub: &'a [RH<'a>],
 }
 
 const EMPTY_SOURCE_STR: &'static str = "#![feature(no_core)] #![no_core]";
 
 struct ExpectErrorEmitter {
-    messages: Vec<String>
+    messages: Vec<String>,
 }
 
 fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
     match lvl {
-        Bug | Fatal | Error => { }
-        Warning | Note | Help => { return; }
+        Bug | Fatal | Error => {}
+        Warning | Note | Help => {
+            return;
+        }
     }
 
     debug!("Error: {}", msg);
@@ -68,8 +70,7 @@ fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
             e.messages.remove(i);
         }
         None => {
-            panic!("Unexpected error: {} Expected: {:?}",
-                  msg, e.messages);
+            panic!("Unexpected error: {} Expected: {:?}", msg, e.messages);
         }
     }
 }
@@ -79,41 +80,32 @@ impl Emitter for ExpectErrorEmitter {
             _cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
             _: Option<&str>,
-            lvl: Level)
-    {
+            lvl: Level) {
         remove_message(self, msg, lvl);
     }
 
-    fn custom_emit(&mut self,
-                   _cm: &codemap::CodeMap,
-                   _sp: RenderSpan,
-                   msg: &str,
-                   lvl: Level)
-    {
+    fn custom_emit(&mut self, _cm: &codemap::CodeMap, _sp: RenderSpan, msg: &str, lvl: Level) {
         remove_message(self, msg, lvl);
     }
 }
 
-fn errors(msgs: &[&str]) -> (Box<Emitter+Send>, usize) {
+fn errors(msgs: &[&str]) -> (Box<Emitter + Send>, usize) {
     let v = msgs.iter().map(|m| m.to_string()).collect();
-    (box ExpectErrorEmitter { messages: v } as Box<Emitter+Send>, msgs.len())
+    (box ExpectErrorEmitter { messages: v } as Box<Emitter + Send>,
+     msgs.len())
 }
 
 fn test_env<F>(source_string: &str,
-               (emitter, expected_err_count): (Box<Emitter+Send>, usize),
-               body: F) where
-    F: FnOnce(Env),
+               (emitter, expected_err_count): (Box<Emitter + Send>, usize),
+               body: F)
+    where F: FnOnce(Env)
 {
-    let mut options =
-        config::basic_options();
+    let mut options = config::basic_options();
     options.debugging_opts.verbose = true;
     options.unstable_features = UnstableFeatures::Allow;
-    let codemap =
-        CodeMap::new();
-    let diagnostic_handler =
-        diagnostic::Handler::with_emitter(true, emitter);
-    let span_diagnostic_handler =
-        diagnostic::SpanHandler::new(diagnostic_handler, codemap);
+    let codemap = CodeMap::new();
+    let diagnostic_handler = diagnostic::Handler::with_emitter(true, emitter);
+    let span_diagnostic_handler = diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 
     let sess = session::build_session_(options, None, span_diagnostic_handler);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
@@ -146,12 +138,13 @@ fn test_env<F>(source_string: &str,
                                lang_items,
                                stability::Index::new(krate),
                                |tcx| {
-        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
-        body(Env { infcx: &infcx });
-        let free_regions = FreeRegionMap::new();
-        infcx.resolve_regions_and_report_errors(&free_regions, ast::CRATE_NODE_ID);
-        assert_eq!(tcx.sess.err_count(), expected_err_count);
-    });
+                                   let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
+                                   body(Env { infcx: &infcx });
+                                   let free_regions = FreeRegionMap::new();
+                                   infcx.resolve_regions_and_report_errors(&free_regions,
+                                                                           ast::CRATE_NODE_ID);
+                                   assert_eq!(tcx.sess.err_count(), expected_err_count);
+                               });
 }
 
 impl<'a, 'tcx> Env<'a, 'tcx> {
@@ -169,15 +162,16 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn create_simple_region_hierarchy(&self) {
         // creates a region hierarchy where 1 is root, 10 and 11 are
         // children of 1, etc
-        let dscope = self.infcx.tcx.region_maps.intern_code_extent(
-            CodeExtentData::DestructionScope(1), region::ROOT_CODE_EXTENT);
-        self.create_region_hierarchy(
-            &RH {id: 1,
-                 sub: &[RH {id: 10,
-                            sub: &[]},
-                        RH {id: 11,
-                            sub: &[]}]},
-            dscope);
+        let dscope = self.infcx
+                         .tcx
+                         .region_maps
+                         .intern_code_extent(CodeExtentData::DestructionScope(1),
+                                             region::ROOT_CODE_EXTENT);
+        self.create_region_hierarchy(&RH {
+                                         id: 1,
+                                         sub: &[RH { id: 10, sub: &[] }, RH { id: 11, sub: &[] }],
+                                     },
+                                     dscope);
     }
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
@@ -197,30 +191,32 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
             assert!(idx < names.len());
             for item in &m.items {
                 if item.name.to_string() == names[idx] {
-                    return search(this, &**item, idx+1, names);
+                    return search(this, &**item, idx + 1, names);
                 }
             }
             return None;
         }
 
-        fn search(this: &Env,
-                  it: &hir::Item,
-                  idx: usize,
-                  names: &[String])
-                  -> Option<ast::NodeId> {
+        fn search(this: &Env, it: &hir::Item, idx: usize, names: &[String]) -> Option<ast::NodeId> {
             if idx == names.len() {
                 return Some(it.id);
             }
 
             return match it.node {
-                hir::ItemUse(..) | hir::ItemExternCrate(..) |
-                hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
-                hir::ItemForeignMod(..) | hir::ItemTy(..) => {
+                hir::ItemUse(..) |
+                hir::ItemExternCrate(..) |
+                hir::ItemConst(..) |
+                hir::ItemStatic(..) |
+                hir::ItemFn(..) |
+                hir::ItemForeignMod(..) |
+                hir::ItemTy(..) => {
                     None
                 }
 
-                hir::ItemEnum(..) | hir::ItemStruct(..) |
-                hir::ItemTrait(..) | hir::ItemImpl(..) |
+                hir::ItemEnum(..) |
+                hir::ItemStruct(..) |
+                hir::ItemTrait(..) |
+                hir::ItemImpl(..) |
                 hir::ItemDefaultImpl(..) => {
                     None
                 }
@@ -235,14 +231,14 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn make_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         match infer::mk_subty(self.infcx, true, infer::Misc(DUMMY_SP), a, b) {
             Ok(_) => true,
-            Err(ref e) => panic!("Encountered error: {}", e)
+            Err(ref e) => panic!("Encountered error: {}", e),
         }
     }
 
     pub fn is_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         match infer::can_mk_subty(self.infcx, a, b) {
             Ok(_) => true,
-            Err(_) => false
+            Err(_) => false,
         }
     }
 
@@ -257,22 +253,18 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         self.assert_subtype(b, a);
     }
 
-    pub fn t_fn(&self,
-                input_tys: &[Ty<'tcx>],
-                output_ty: Ty<'tcx>)
-                -> Ty<'tcx>
-    {
+    pub fn t_fn(&self, input_tys: &[Ty<'tcx>], output_ty: Ty<'tcx>) -> Ty<'tcx> {
         let input_args = input_tys.iter().cloned().collect();
         self.infcx.tcx.mk_fn(None,
-            self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
-                unsafety: hir::Unsafety::Normal,
-                abi: abi::Rust,
-                sig: ty::Binder(ty::FnSig {
-                    inputs: input_args,
-                    output: ty::FnConverging(output_ty),
-                    variadic: false
-                })
-            }))
+                             self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
+                                 unsafety: hir::Unsafety::Normal,
+                                 abi: abi::Rust,
+                                 sig: ty::Binder(ty::FnSig {
+                                     inputs: input_args,
+                                     output: ty::FnConverging(output_ty),
+                                     variadic: false,
+                                 }),
+                             }))
     }
 
     pub fn t_nil(&self) -> Ty<'tcx> {
@@ -292,14 +284,13 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                           space: subst::ParamSpace,
                           index: u32,
                           name: &'static str)
-                          -> ty::Region
-    {
+                          -> ty::Region {
         let name = token::intern(name);
         ty::ReEarlyBound(ty::EarlyBoundRegion {
             def_id: self.infcx.tcx.map.local_def_id(ast::DUMMY_NODE_ID),
             space: space,
             index: index,
-            name: name
+            name: name,
         })
     }
 
@@ -308,14 +299,12 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     pub fn t_rptr(&self, r: ty::Region) -> Ty<'tcx> {
-        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r),
-                                   self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 
     pub fn t_rptr_late_bound(&self, id: u32) -> Ty<'tcx> {
         let r = self.re_late_bound_with_debruijn(id, ty::DebruijnIndex::new(1));
-        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r),
-                                   self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 
     pub fn t_rptr_late_bound_with_debruijn(&self,
@@ -323,37 +312,34 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                                            debruijn: ty::DebruijnIndex)
                                            -> Ty<'tcx> {
         let r = self.re_late_bound_with_debruijn(id, debruijn);
-        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r),
-                                   self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 
     pub fn t_rptr_scope(&self, id: ast::NodeId) -> Ty<'tcx> {
         let r = ty::ReScope(self.tcx().region_maps.node_extent(id));
-        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r),
-                                   self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 
     pub fn re_free(&self, nid: ast::NodeId, id: u32) -> ty::Region {
         ty::ReFree(ty::FreeRegion {
             scope: self.tcx().region_maps.item_extent(nid),
-            bound_region: ty::BrAnon(id)
+            bound_region: ty::BrAnon(id),
         })
     }
 
     pub fn t_rptr_free(&self, nid: ast::NodeId, id: u32) -> Ty<'tcx> {
         let r = self.re_free(nid, id);
-        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r),
-                                   self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 
     pub fn t_rptr_static(&self) -> Ty<'tcx> {
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(ty::ReStatic),
-                                   self.tcx().types.isize)
+                                  self.tcx().types.isize)
     }
 
     pub fn t_rptr_empty(&self) -> Ty<'tcx> {
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(ty::ReEmpty),
-                                   self.tcx().types.isize)
+                                  self.tcx().types.isize)
     }
 
     pub fn dummy_type_trace(&self) -> infer::TypeTrace<'tcx> {
@@ -378,7 +364,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn make_lub_ty(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> Ty<'tcx> {
         match self.lub().relate(&t1, &t2) {
             Ok(t) => t,
-            Err(ref e) => panic!("unexpected error computing LUB: {}", e)
+            Err(ref e) => panic!("unexpected error computing LUB: {}", e),
         }
     }
 
@@ -386,12 +372,9 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// region checks).
     pub fn check_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
         match self.sub().relate(&t1, &t2) {
-            Ok(_) => { }
+            Ok(_) => {}
             Err(ref e) => {
-                panic!("unexpected error computing sub({:?},{:?}): {}",
-                       t1,
-                       t2,
-                       e);
+                panic!("unexpected error computing sub({:?},{:?}): {}", t1, t2, e);
             }
         }
     }
@@ -400,11 +383,9 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// region checks).
     pub fn check_not_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
         match self.sub().relate(&t1, &t2) {
-            Err(_) => { }
+            Err(_) => {}
             Ok(_) => {
-                panic!("unexpected success computing sub({:?},{:?})",
-                       t1,
-                       t2);
+                panic!("unexpected success computing sub({:?},{:?})", t1, t2);
             }
         }
     }
@@ -453,18 +434,16 @@ fn contravariant_region_ptr_ok() {
 
 #[test]
 fn contravariant_region_ptr_err() {
-    test_env(EMPTY_SOURCE_STR,
-             errors(&["lifetime mismatch"]),
-             |env| {
-                 env.create_simple_region_hierarchy();
-                 let t_rptr1 = env.t_rptr_scope(1);
-                 let t_rptr10 = env.t_rptr_scope(10);
-                 env.assert_eq(t_rptr1, t_rptr1);
-                 env.assert_eq(t_rptr10, t_rptr10);
+    test_env(EMPTY_SOURCE_STR, errors(&["lifetime mismatch"]), |env| {
+        env.create_simple_region_hierarchy();
+        let t_rptr1 = env.t_rptr_scope(1);
+        let t_rptr10 = env.t_rptr_scope(10);
+        env.assert_eq(t_rptr1, t_rptr1);
+        env.assert_eq(t_rptr10, t_rptr10);
 
-                 // will cause an error when regions are resolved
-                 env.make_subtype(t_rptr10, t_rptr1);
-             })
+        // will cause an error when regions are resolved
+        env.make_subtype(t_rptr10, t_rptr1);
+    })
 }
 
 #[test]
@@ -661,8 +640,10 @@ fn glb_bound_free_infer() {
         // `&'_ isize`
         let t_resolve1 = env.infcx.shallow_resolve(t_infer1);
         match t_resolve1.sty {
-            ty::TyRef(..) => { }
-            _ => { panic!("t_resolve1={:?}", t_resolve1); }
+            ty::TyRef(..) => {}
+            _ => {
+                panic!("t_resolve1={:?}", t_resolve1);
+            }
         }
     })
 }
@@ -819,15 +800,13 @@ fn walk_ty() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.mk_tup(vec!(int_ty, uint_ty, int_ty, uint_ty));
-        let tup2_ty = tcx.mk_tup(vec!(tup1_ty, tup1_ty, uint_ty));
+        let tup1_ty = tcx.mk_tup(vec![int_ty, uint_ty, int_ty, uint_ty]);
+        let tup2_ty = tcx.mk_tup(vec![tup1_ty, tup1_ty, uint_ty]);
         let uniq_ty = tcx.mk_box(tup2_ty);
         let walked: Vec<_> = uniq_ty.walk().collect();
-        assert_eq!(walked, [uniq_ty,
-                            tup2_ty,
-                            tup1_ty, int_ty, uint_ty, int_ty, uint_ty,
-                            tup1_ty, int_ty, uint_ty, int_ty, uint_ty,
-                            uint_ty]);
+        assert_eq!(walked,
+                   [uniq_ty, tup2_ty, tup1_ty, int_ty, uint_ty, int_ty, uint_ty, tup1_ty, int_ty,
+                    uint_ty, int_ty, uint_ty, uint_ty]);
     })
 }
 
@@ -837,13 +816,13 @@ fn walk_ty_skip_subtree() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.mk_tup(vec!(int_ty, uint_ty, int_ty, uint_ty));
-        let tup2_ty = tcx.mk_tup(vec!(tup1_ty, tup1_ty, uint_ty));
+        let tup1_ty = tcx.mk_tup(vec![int_ty, uint_ty, int_ty, uint_ty]);
+        let tup2_ty = tcx.mk_tup(vec![tup1_ty, tup1_ty, uint_ty]);
         let uniq_ty = tcx.mk_box(tup2_ty);
 
         // types we expect to see (in order), plus a boolean saying
         // whether to skip the subtree.
-        let mut expected = vec!((uniq_ty, false),
+        let mut expected = vec![(uniq_ty, false),
                                 (tup2_ty, false),
                                 (tup1_ty, false),
                                 (int_ty, false),
@@ -851,7 +830,7 @@ fn walk_ty_skip_subtree() {
                                 (int_ty, false),
                                 (uint_ty, false),
                                 (tup1_ty, true), // skip the isize/usize/isize/usize
-                                (uint_ty, false));
+                                (uint_ty, false)];
         expected.reverse();
 
         let mut walker = uniq_ty.walk();
@@ -859,7 +838,9 @@ fn walk_ty_skip_subtree() {
             debug!("walked to {:?}", t);
             let (expected_ty, skip) = expected.pop().unwrap();
             assert_eq!(t, expected_ty);
-            if skip { walker.skip_current_subtree(); }
+            if skip {
+                walker.skip_current_subtree();
+            }
         }
 
         assert!(expected.is_empty());
