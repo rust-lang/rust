@@ -6,10 +6,12 @@ use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::codemap::{Span, Spanned};
 use rustc_front::visit::FnKind;
 use rustc::middle::ty;
+use rustc::middle::const_eval::ConstVal::Float;
+use rustc::middle::const_eval::eval_const_expr_partial;
+use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 
 use utils::{get_item_name, match_path, snippet, span_lint, walk_ptrs_ty, is_integer_literal};
 use utils::span_help_and_lint;
-use consts::constant;
 
 declare_lint!(pub TOPLEVEL_REF_ARG, Warn,
               "An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), \
@@ -119,10 +121,7 @@ impl LateLintPass for FloatCmp {
         if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
             let op = cmp.node;
             if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
-                if constant(cx, left).or_else(|| constant(cx, right)).map_or(
-                        false, |c| c.0.as_float().map_or(false, |f| f == 0.0)) {
-                    return;
-                }
+                if is_allowed(cx, left) || is_allowed(cx, right) { return; }
                 if let Some(name) = get_item_name(cx, expr) {
                     let name = name.as_str();
                     if name == "eq" || name == "ne" || name == "is_nan" ||
@@ -139,6 +138,13 @@ impl LateLintPass for FloatCmp {
             }
         }
     }
+}
+
+fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
+    let res = eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None);
+    if let Ok(Float(val)) = res {
+        val == 0.0 || val == ::std::f64::INFINITY || val == ::std::f64::NEG_INFINITY
+    } else { false }
 }
 
 fn is_float(cx: &LateContext, expr: &Expr) -> bool {
