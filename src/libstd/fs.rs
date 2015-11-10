@@ -761,16 +761,17 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// # Platform behavior
 ///
 /// This function currently corresponds to the `unlink` function on Unix
-/// and the `DeleteFile` function on Windows. Note that, this
-/// [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// and the `DeleteFile` function on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * `path` points to a directory
-/// * The user lacks permissions to remove the file
+/// * `path` points to a directory.
+/// * The user lacks permissions to remove the file.
 ///
 /// # Examples
 ///
@@ -796,16 +797,17 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # Platform behavior
 ///
 /// This function currently corresponds to the `stat` function on Unix
-/// and the `GetFileAttributesEx` function on Windows. Note that, this
-/// [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// and the `GetFileAttributesEx` function on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * The user lacks permissions to perform `metadata` call on `path`
-/// * `path` does not exist
+/// * The user lacks permissions to perform `metadata` call on `path`.
+/// * `path` does not exist.
 ///
 /// # Examples
 ///
@@ -828,16 +830,17 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// # Platform behavior
 ///
 /// This function currently corresponds to the `lstat` function on Unix
-/// and the `GetFileAttributesEx` function on Windows. Note that, this
-/// [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// and the `GetFileAttributesEx` function on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * The user lacks permissions to perform `metadata` call on `path`
-/// * `path` does not exist
+/// * The user lacks permissions to perform `metadata` call on `path`.
+/// * `path` does not exist.
 ///
 /// # Examples
 ///
@@ -863,16 +866,17 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// This function currently corresponds to the `rename` function on Unix
 /// and the `MoveFileEx` function with the `MOVEFILE_REPLACE_EXISTING` flag on Windows.
-/// Note that, this [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * `from` does not exist
-/// * The user lacks permissions to view contents
-/// * `from` and `to` are on separate filesystems
+/// * `from` does not exist.
+/// * The user lacks permissions to view contents.
+/// * `from` and `to` are on separate filesystems.
 ///
 /// # Examples
 ///
@@ -905,17 +909,18 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// with `O_RDONLY` for `from` and `O_WRONLY`, `O_CREAT`, and `O_TRUNC` for `to`.
 /// `O_CLOEXEC` is set for returned file descriptors.
 /// On Windows, this function currently corresponds to `CopyFileEx`.
-/// Note that, this [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * The `from` path is not a file
-/// * The `from` file does not exist
+/// * The `from` path is not a file.
+/// * The `from` file does not exist.
 /// * The current process does not have the permission rights to access
-///   `from` or write `to`
+///   `from` or write `to`.
 ///
 /// # Examples
 ///
@@ -940,14 +945,15 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 ///
 /// This function currently corresponds to the `link` function on Unix
 /// and the `CreateHardLink` function on Windows.
-/// Note that, this [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * The `src` path is not a file or doesn't exist
+/// * The `src` path is not a file or doesn't exist.
 ///
 /// # Examples
 ///
@@ -997,15 +1003,16 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 /// This function currently corresponds to the `readlink` function on Unix
 /// and the `CreateFile` function with `FILE_FLAG_OPEN_REPARSE_POINT` and
 /// `FILE_FLAG_BACKUP_SEMANTICS` flags on Windows.
-/// Note that, this [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * `path` is not a symbolic link
-/// * `path` does not exist
+/// * `path` is not a symbolic link.
+/// * `path` does not exist.
 ///
 /// # Examples
 ///
@@ -1029,15 +1036,16 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///
 /// This function currently corresponds to the `realpath` function on Unix
 /// and the `CreateFile` and `GetFinalPathNameByHandle` functions on Windows.
-/// Note that, this [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * `path` does not exist
-/// * A component in path is not a directory
+/// * `path` does not exist.
+/// * A component in path is not a directory.
 ///
 /// # Examples
 ///
@@ -1060,15 +1068,16 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///
 /// This function currently corresponds to the `mkdir` function on Unix
 /// and the `CreateDirectory` function on Windows.
-/// Note that, this [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * User lacks permissions to create directory at `path`
-/// * `path` already exists
+/// * User lacks permissions to create directory at `path`.
+/// * `path` already exists.
 ///
 /// # Examples
 ///
@@ -1092,7 +1101,8 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// This function currently corresponds to the `mkdir` function on Unix
 /// and the `CreateDirectory` function on Windows.
-/// Note that, this [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
@@ -1125,15 +1135,16 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// This function currently corresponds to the `rmdir` function on Unix
 /// and the `RemoveDirectory` function on Windows.
-/// Note that, this [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * The user lacks permissions to remove the directory at the provided `path`
-/// * The directory isn't empty
+/// * The user lacks permissions to remove the directory at the provided `path`.
+/// * The directory isn't empty.
 ///
 /// # Examples
 ///
@@ -1161,7 +1172,8 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function currently corresponds to `opendir`, `lstat`, `rm` and `rmdir` functions on Unix
 /// and the `FindFirstFile`, `GetFileAttributesEx`, `DeleteFile`, and `RemoveDirectory` functions
 /// on Windows.
-/// Note that, this [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
@@ -1204,16 +1216,17 @@ fn _remove_dir_all(path: &Path) -> io::Result<()> {
 ///
 /// This function currently corresponds to the `opendir` function on Unix
 /// and the `FindFirstFile` function on Windows.
-/// Note that, this [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * The provided `path` doesn't exist
-/// * The process lacks permissions to view the contents
-/// * The `path` points at a non-directory file
+/// * The provided `path` doesn't exist.
+/// * The process lacks permissions to view the contents.
+/// * The `path` points at a non-directory file.
 ///
 /// # Examples
 ///
@@ -1306,15 +1319,16 @@ impl Iterator for WalkDir {
 ///
 /// This function currently corresponds to the `chmod` function on Unix
 /// and the `SetFileAttributes` function on Windows.
-/// Note that, this [may change in the future.][https://github.com/rust-lang/rust/pull/28613]
+/// Note that, this [may change in the future][changes].
+/// [changes]: https://github.com/rust-lang/rust/pull/28613
 ///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * `path` does not exist
-/// * The user lacks the permission to change attributes of the file
+/// * `path` does not exist.
+/// * The user lacks the permission to change attributes of the file.
 ///
 /// # Examples
 ///
