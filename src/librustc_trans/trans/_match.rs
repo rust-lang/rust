@@ -228,6 +228,7 @@ use std::fmt;
 use std::rc::Rc;
 use rustc_front::hir;
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
+use syntax::ext::mtwt;
 use syntax::codemap::Span;
 use rustc_front::fold::Folder;
 use syntax::ptr::P;
@@ -477,7 +478,7 @@ fn expand_nested_bindings<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         loop {
             pat = match pat.node {
                 hir::PatIdent(_, ref path, Some(ref inner)) => {
-                    bound_ptrs.push((path.node.name, val.val));
+                    bound_ptrs.push((mtwt::resolve(path.node), val.val));
                     &**inner
                 },
                 _ => break
@@ -518,7 +519,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             match this.node {
                 hir::PatIdent(_, ref path, None) => {
                     if pat_is_binding(&dm.borrow(), &*this) {
-                        bound_ptrs.push((path.node.name, val.val));
+                        bound_ptrs.push((mtwt::resolve(path.node), val.val));
                     }
                 }
                 hir::PatVec(ref before, Some(ref slice), ref after) => {
@@ -526,7 +527,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                         let subslice_val = bind_subslice_pat(
                             bcx, this.id, val,
                             before.len(), after.len());
-                        bound_ptrs.push((path.node.name, subslice_val));
+                        bound_ptrs.push((mtwt::resolve(path.node), subslice_val));
                     }
                 }
                 _ => {}
@@ -1127,8 +1128,8 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         None => {
             let data = &m[0].data;
-            for &(ref ident, ref value_ptr) in &m[0].bound_ptrs {
-                let binfo = *data.bindings_map.get(ident).unwrap();
+            for &(ref name, ref value_ptr) in &m[0].bound_ptrs {
+                let binfo = *data.bindings_map.get(name).unwrap();
                 call_lifetime_start(bcx, binfo.llmatch);
                 if binfo.trmode == TrByRef && type_is_fat_ptr(bcx.tcx(), binfo.ty) {
                     expr::copy_fat_ptr(bcx, *value_ptr, binfo.llmatch);
@@ -1526,8 +1527,8 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &hir::Pat,
     let tcx = bcx.tcx();
     let reassigned = is_discr_reassigned(bcx, discr, body);
     let mut bindings_map = FnvHashMap();
-    pat_bindings(&tcx.def_map, &*pat, |bm, p_id, span, path1| {
-        let name = path1.node;
+    pat_bindings_hygienic(&tcx.def_map, &*pat, |bm, p_id, span, path1| {
+        let name = mtwt::resolve(path1.node);
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
         let tcx = bcx.tcx();
