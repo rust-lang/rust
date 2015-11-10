@@ -236,7 +236,7 @@ impl PartialOrd for Ipv4Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ipv4Addr {
     fn cmp(&self, other: &Ipv4Addr) -> Ordering {
-        self.inner.s_addr.cmp(&other.inner.s_addr)
+        self.octets().cmp(&other.octets())
     }
 }
 
@@ -506,7 +506,7 @@ impl PartialOrd for Ipv6Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ipv6Addr {
     fn cmp(&self, other: &Ipv6Addr) -> Ordering {
-        self.inner.s6_addr.cmp(&other.inner.s6_addr)
+        self.segments().cmp(&other.segments())
     }
 }
 
@@ -793,5 +793,12 @@ mod tests {
     fn test_int_to_ipv4() {
         let a = Ipv4Addr::new(127, 0, 0, 1);
         assert_eq!(Ipv4Addr::from(2130706433), a);
+    }
+
+    #[test]
+    fn ord() {
+        assert!(Ipv4Addr::new(100, 64, 3, 3) < Ipv4Addr::new(192, 0, 2, 2));
+        assert!("2001:db8:f00::1002".parse::<Ipv6Addr>().unwrap() <
+                "2001:db8:f00::2001".parse::<Ipv6Addr>().unwrap());
     }
 }
