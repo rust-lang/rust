@@ -288,14 +288,15 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                             test_outcome: usize,
                                             candidate: &Candidate<'pat, 'tcx>)
                                             -> Option<Candidate<'pat, 'tcx>> {
-        let candidate = candidate.clone();
-        let match_pairs = candidate.match_pairs;
         let result = self.match_pairs_under_assumption(test_lvalue,
                                                        test_kind,
                                                        test_outcome,
-                                                       match_pairs);
+                                                       &candidate.match_pairs);
         match result {
-            Some(match_pairs) => Some(Candidate { match_pairs: match_pairs, ..candidate }),
+            Some(match_pairs) => Some(Candidate { match_pairs: match_pairs,
+                                                  bindings: candidate.bindings.clone(),
+                                                  guard: candidate.guard.clone(),
+                                                  arm_index: candidate.arm_index }),
             None => None,
         }
     }
@@ -306,21 +307,20 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                           test_lvalue: &Lvalue<'tcx>,
                                           test_kind: &TestKind<'tcx>,
                                           test_outcome: usize,
-                                          match_pairs: Vec<MatchPair<'pat, 'tcx>>)
+                                          match_pairs: &[MatchPair<'pat, 'tcx>])
                                           -> Option<Vec<MatchPair<'pat, 'tcx>>> {
         let mut result = vec![];
 
         for match_pair in match_pairs {
-            // if the match pair is testing a different lvalue, it
-            // is unaffected by this test.
-            if match_pair.lvalue != *test_lvalue {
-                result.push(match_pair);
-                continue;
-            }
-
-            // if this test doesn't tell us anything about this match-pair, then hang onto it.
-            if !self.test_informs_match_pair(&match_pair, test_kind, test_outcome) {
-                result.push(match_pair);
+            // If the match pair is either:
+            // (1) testing a different lvalue; or,
+            // (2) the test doesn't tell us anything about this match-pair,
+            // then we have to retain it as for after the test is complete.
+            if
+                match_pair.lvalue != *test_lvalue || // (1)
+                !self.test_informs_match_pair(match_pair, test_kind, test_outcome) // (2)
+            {
+                result.push(match_pair.clone());
                 continue;
             }
 
@@ -445,7 +445,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// observed that `option` has the discriminant `Ok`, then the
     /// second arm cannot apply.
     pub fn consequent_match_pairs_under_assumption<'pat>(&mut self,
-                                                         match_pair: MatchPair<'pat, 'tcx>,
+                                                         match_pair: &MatchPair<'pat, 'tcx>,
                                                          test_kind: &TestKind<'tcx>,
                                                          test_outcome: usize)
                                                          -> Option<Vec<MatchPair<'pat, 'tcx>>> {
@@ -511,7 +511,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             PatternKind::Binding { .. } |
             PatternKind::Leaf { .. } |
             PatternKind::Deref { .. } => {
-                self.error_simplifyable(&match_pair)
+                self.error_simplifyable(match_pair)
             }
         }
     }
