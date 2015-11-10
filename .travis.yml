@@ -1,11 +1,30 @@
+sudo: false
 language: rust
 rust:
  - stable
  - beta
  - nightly
-
-sudo: false
+os:
+ - linux
+ - osx
 
 script:
  - cargo build
  - cargo test
+
+before_deploy:
+  # TODO: cross build
+ - cargo build --release --target=x86_64-unknown-linux-gnu
+ - tar czf rustfmt-x86_64-unknown-linux-gnu.tar.gz Contributing.md Design.md README.md -C target/x86_64-unknown-linux-gnu/release/rustfmt rustfmt
+
+deploy:
+  provider: releases
+  api_key:
+    secure: "your own encrypted key"
+  file:
+  - rustfmt-x86_64-unknown-linux-gnu.tar.gz
+  on:
+    repo: nrc/rustfmt
+    tags: true
+    condition: "$TRAVIS_OS_NAME = linux"
+  skip_cleanup: true
