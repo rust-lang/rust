@@ -167,6 +167,14 @@ impl Thread {
             debug_assert_eq!(ret, 0);
         }
     }
+
+    pub fn id(&self) -> libc::pthread_t { self.id }
+
+    pub fn into_id(self) -> libc::pthread_t {
+        let id = self.id;
+        mem::forget(self);
+        id
+    }
 }
 
 impl Drop for Thread {

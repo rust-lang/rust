@@ -15,6 +15,8 @@
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type uid_t = u32;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type gid_t = u32;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type pid_t = i32;
+#[unstable(feature = "pthread_t", issue = "0")]
+pub type pthread_t = usize;
 
 #[doc(inline)]
 pub use sys::platform::raw::{dev_t, ino_t, mode_t, nlink_t, off_t, blksize_t};
