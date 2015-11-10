@@ -65,7 +65,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     tcx.sess.bug(&format!("using operand temp {:?} as lvalue", lvalue)),
             },
             mir::Lvalue::Arg(index) => self.args[index as usize],
-            mir::Lvalue::Static(_def_id) => unimplemented!(),
+            mir::Lvalue::Static(def_id) => {
+                let const_ty = self.mir.lvalue_ty(tcx, lvalue);
+                LvalueRef::new(common::get_static_val(ccx, def_id, const_ty.to_ty(tcx)), const_ty)
+            },
             mir::Lvalue::ReturnPointer => {
                 let return_ty = bcx.monomorphize(&self.mir.return_ty);
                 let llval = fcx.get_ret_slot(bcx, return_ty, "return");
