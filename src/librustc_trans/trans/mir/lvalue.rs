@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::middle::ty::Ty;
+use rustc::middle::ty::{self, Ty};
 use rustc_mir::repr as mir;
 use rustc_mir::tcx::LvalueTy;
 use trans::adt;
@@ -52,10 +52,17 @@ impl<'tcx> LvalueRef<'tcx> {
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn lvalue_len(&mut self,
-                      _bcx: Block<'bcx, 'tcx>,
-                      _lvalue: LvalueRef<'tcx>)
+                      bcx: Block<'bcx, 'tcx>,
+                      lvalue: LvalueRef<'tcx>)
                       -> ValueRef {
-        unimplemented!()
+        match lvalue.ty.to_ty(bcx.tcx()).sty {
+            ty::TyArray(_, n) => common::C_uint(bcx.ccx(), n),
+            ty::TySlice(_) | ty::TyStr => {
+                assert!(lvalue.llextra != ptr::null_mut());
+                lvalue.llextra
+            }
+            _ => bcx.sess().bug("unexpected type in get_base_and_len"),
+        }
     }
 
     pub fn trans_lvalue(&mut self,
