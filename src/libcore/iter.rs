@@ -372,22 +372,21 @@ pub trait Iterator {
     ///
     /// # Implementation notes
     ///
-    /// It is not enforced that an iterator implementation yields the
-    /// declared number of elements. A buggy iterator may yield less
-    /// than the lower bound or more than the upper bound of elements.
+    /// It is not enforced that an iterator implementation yields the declared
+    /// number of elements. A buggy iterator may yield less than the lower bound
+    /// or more than the upper bound of elements.
     ///
-    /// `size_hint()` is primarily intended to be used for optimizations
-    /// such as reserving space for the elements of the iterator, but
-    /// must not be trusted to e.g. omit bounds checks in unsafe code.
-    /// An incorrect implementation of `size_hint()` should not lead to
-    /// memory safety violations.
+    /// `size_hint()` is primarily intended to be used for optimizations such as
+    /// reserving space for the elements of the iterator, but must not be
+    /// trusted to e.g. omit bounds checks in unsafe code. An incorrect
+    /// implementation of `size_hint()` should not lead to memory safety
+    /// violations.
     ///
-    /// That said, the implementation should provide a correct
-    /// estimation, because otherwise it would be a violation of the
-    /// trait's protocol.
+    /// That said, the implementation should provide a correct estimation,
+    /// because otherwise it would be a violation of the trait's protocol.
     ///
-    /// The default implementation returns `(0, None)` which is correct
-    /// for any iterator.
+    /// The default implementation returns `(0, None)` which is correct for any
+    /// iterator.
     ///
     /// # Examples
     ///
@@ -2752,7 +2751,7 @@ pub trait ExactSizeIterator: Iterator {
     /// implementation, you can do so. See the [trait-level] docs for an
     /// example.
     ///
-    /// This function has the same safety guarantees as [`size_hint()`]
+    /// This function has the same safety guarantees as the [`size_hint()`]
     /// function.
     ///
     /// [trait-level]: trait.ExactSizeIterator.html
