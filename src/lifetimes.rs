@@ -3,6 +3,7 @@ use reexport::*;
 use rustc::lint::*;
 use syntax::codemap::Span;
 use rustc_front::visit::{Visitor, walk_ty, walk_ty_param_bound};
+use rustc::middle::def::Def::{DefTy, DefTrait};
 use std::collections::HashSet;
 
 use utils::{in_external_macro, span_lint};
@@ -53,16 +54,16 @@ use self::RefLt::*;
 
 fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>,
                   generics: &Generics, span: Span) {
-    if in_external_macro(cx, span) || has_where_lifetimes(&generics.where_clause) {
+    if in_external_macro(cx, span) || has_where_lifetimes(cx, &generics.where_clause) {
         return;
     }
-    if could_use_elision(decl, slf, &generics.lifetimes) {
+    if could_use_elision(cx, decl, slf, &generics.lifetimes) {
         span_lint(cx, NEEDLESS_LIFETIMES, span,
                   "explicit lifetimes given in parameter types where they could be elided");
     }
 }
 
-fn could_use_elision(func: &FnDecl, slf: Option<&ExplicitSelf>,
+fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>,
                      named_lts: &[LifetimeDef]) -> bool {
     // There are two scenarios where elision works:
     // * no output references, all input references have different LT
@@ -74,8 +75,8 @@ fn could_use_elision(func: &FnDecl, slf: Option<&ExplicitSelf>,
     let allowed_lts = allowed_lts_from(named_lts);
 
     // these will collect all the lifetimes for references in arg/return types
-    let mut input_visitor = RefVisitor(Vec::new());
-    let mut output_visitor = RefVisitor(Vec::new());
+    let mut input_visitor = RefVisitor::new(cx);
+    let mut output_visitor = RefVisitor::new(cx);
 
     // extract lifetime in "self" argument for methods (there is a "self" argument
     // in func.inputs, but its type is TyInfer)
@@ -88,14 +89,11 @@ fn could_use_elision(func: &FnDecl, slf: Option<&ExplicitSelf>,
     }
     // extract lifetimes in input argument types
     for arg in &func.inputs {
-        walk_ty(&mut input_visitor, &arg.ty);
-        if let TyRptr(None, _) = arg.ty.node {
-            input_visitor.record(&None);
-        }
+        input_visitor.visit_ty(&arg.ty);
     }
     // extract lifetimes in output type
     if let Return(ref ty) = func.output {
-        walk_ty(&mut output_visitor, ty);
+        output_visitor.visit_ty(ty);
     }
 
     let input_lts = input_visitor.into_vec();
@@ -159,35 +157,75 @@ fn unique_lifetimes(lts: &[RefLt]) -> usize {
 }
 
 /// A visitor usable for rustc_front::visit::walk_ty().
-struct RefVisitor(Vec<RefLt>);
+struct RefVisitor<'v, 't: 'v> {
+    cx: &'v LateContext<'v, 't>, // context reference
+    lts: Vec<RefLt>
+}
 
-impl RefVisitor {
+impl <'v, 't> RefVisitor<'v, 't>  {
+    fn new(cx: &'v LateContext<'v, 't>) -> RefVisitor<'v, 't> {
+        RefVisitor { cx: cx, lts: Vec::new() }
+    }
+
     fn record(&mut self, lifetime: &Option<Lifetime>) {
         if let &Some(ref lt) = lifetime {
             if lt.name.as_str() == "'static" {
-                self.0.push(Static);
+                self.lts.push(Static);
             } else {
-                self.0.push(Named(lt.name));
+                self.lts.push(Named(lt.name));
             }
         } else {
-            self.0.push(Unnamed);
+            self.lts.push(Unnamed);
         }
     }
 
     fn into_vec(self) -> Vec<RefLt> {
-        self.0
+        self.lts
+    }
+
+    fn collect_anonymous_lifetimes(&mut self, path: &Path, ty: &Ty) {
+        let last_path_segment = path.segments.last().map(|s| &s.parameters);
+        if let Some(&AngleBracketedParameters(ref params)) = last_path_segment {
+            if params.lifetimes.is_empty() {
+                let def = self.cx.tcx.def_map.borrow().get(&ty.id).map(|r| r.full_def());
+                match def {
+                    Some(DefTy(def_id, _)) => {
+                        if let Some(ty_def) = self.cx.tcx.adt_defs.borrow().get(&def_id) {
+                            let scheme = ty_def.type_scheme(self.cx.tcx);
+                            for _ in scheme.generics.regions.as_slice() {
+                                self.record(&None);
+                            }
+                        }
+                    },
+                    Some(DefTrait(def_id)) => {
+                        let trait_def = self.cx.tcx.trait_defs.borrow()[&def_id];
+                        for _ in &trait_def.generics.regions {
+                            self.record(&None);
+                        }
+                    },
+                    _ => {}
+                }
+            }
+        }
     }
 }
 
-impl<'v> Visitor<'v> for RefVisitor {
+impl<'v, 't> Visitor<'v> for RefVisitor<'v, 't> {
+
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         self.record(&Some(*lifetime));
     }
 
     fn visit_ty(&mut self, ty: &'v Ty) {
-        if let TyRptr(None, _) = ty.node {
-            self.record(&None);
+        match ty.node {
+            TyRptr(None, _) => {
+                self.record(&None);
+            },
+            TyPath(_, ref path) => {
+                self.collect_anonymous_lifetimes(path, ty);
+            },
+            _ => {}
         }
         walk_ty(self, ty);
     }
@@ -195,16 +233,16 @@ impl<'v> Visitor<'v> for RefVisitor {
 
 /// Are any lifetimes mentioned in the `where` clause? If yes, we don't try to
 /// reason about elision.
-fn has_where_lifetimes(where_clause: &WhereClause) -> bool {
+fn has_where_lifetimes(cx: &LateContext, where_clause: &WhereClause) -> bool {
     for predicate in &where_clause.predicates {
         match *predicate {
             WherePredicate::RegionPredicate(..) => return true,
             WherePredicate::BoundPredicate(ref pred) => {
                 // a predicate like F: Trait or F: for<'a> Trait<'a>
-                let mut visitor = RefVisitor(Vec::new());
+                let mut visitor = RefVisitor::new(cx);
                 // walk the type F, it may not contain LT refs
                 walk_ty(&mut visitor, &pred.bounded_ty);
-                if !visitor.0.is_empty() { return true; }
+                if !visitor.lts.is_empty() { return true; }
                 // if the bounds define new lifetimes, they are fine to occur
                 let allowed_lts = allowed_lts_from(&pred.bound_lifetimes);
                 // now walk the bounds
@@ -219,9 +257,9 @@ fn has_where_lifetimes(where_clause: &WhereClause) -> bool {
                 }
             }
             WherePredicate::EqPredicate(ref pred) => {
-                let mut visitor = RefVisitor(Vec::new());
+                let mut visitor = RefVisitor::new(cx);
                 walk_ty(&mut visitor, &pred.ty);
-                if !visitor.0.is_empty() { return true; }
+                if !visitor.lts.is_empty() { return true; }
             }
         }
     }
