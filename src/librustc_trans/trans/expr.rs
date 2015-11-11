@@ -326,42 +326,6 @@ pub fn copy_fat_ptr(bcx: Block, src_ptr: ValueRef, dst_ptr: ValueRef) {
     Store(bcx, Load(bcx, get_meta(bcx, src_ptr)), get_meta(bcx, dst_ptr));
 }
 
-/// Retrieve the information we are losing (making dynamic) in an unsizing
-/// adjustment.
-///
-/// The `old_info` argument is a bit funny. It is intended for use
-/// in an upcast, where the new vtable for an object will be drived
-/// from the old one.
-pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
-                                source: Ty<'tcx>,
-                                target: Ty<'tcx>,
-                                old_info: Option<ValueRef>,
-                                param_substs: &'tcx Substs<'tcx>)
-                                -> ValueRef {
-    let (source, target) = ccx.tcx().struct_lockstep_tails(source, target);
-    match (&source.sty, &target.sty) {
-        (&ty::TyArray(_, len), &ty::TySlice(_)) => C_uint(ccx, len),
-        (&ty::TyTrait(_), &ty::TyTrait(_)) => {
-            // For now, upcasts are limited to changes in marker
-            // traits, and hence never actually require an actual
-            // change to the vtable.
-            old_info.expect("unsized_info: missing old info for trait upcast")
-        }
-        (_, &ty::TyTrait(box ty::TraitTy { ref principal, .. })) => {
-            // Note that we preserve binding levels here:
-            let substs = principal.0.substs.with_self_ty(source).erase_regions();
-            let substs = ccx.tcx().mk_substs(substs);
-            let trait_ref = ty::Binder(ty::TraitRef { def_id: principal.def_id(),
-                                                      substs: substs });
-            consts::ptrcast(meth::get_vtable(ccx, trait_ref, param_substs),
-                            Type::vtable_ptr(ccx))
-        }
-        _ => ccx.sess().bug(&format!("unsized_info: invalid unsizing {:?} -> {:?}",
-                                     source,
-                                     target))
-    }
-}
-
 fn adjustment_required<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    expr: &hir::Expr) -> bool {
     let adjustment = match bcx.tcx().tables.borrow().adjustments.get(&expr.id).cloned() {

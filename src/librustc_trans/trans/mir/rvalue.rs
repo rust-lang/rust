@@ -46,20 +46,35 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::Rvalue::Cast(mir::CastKind::Unsize, ref operand, cast_ty) => {
-                let expr_ty =
-                    bcx.monomorphize(&self.mir.operand_ty(bcx.tcx(), operand));
-                let cast_ty =
-                    bcx.monomorphize(&cast_ty);
-                if expr_ty == cast_ty {
-                    debug!("trans_rvalue: trivial unsize at {:?}", expr_ty);
-                    self.trans_operand_into(bcx, lldest, operand);
+                if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
+                    let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
+                    self.store_operand(bcx, lldest, temp);
                     return bcx;
                 }
-                unimplemented!()
-            }
 
-            mir::Rvalue::Cast(..) => {
-                unimplemented!()
+                // Unsize of a nontrivial struct. I would prefer for
+                // this to be eliminated by MIR translation, but
+                // `CoerceUnsized` can be passed by a where-clause,
+                // so the (generic) MIR may not be able to expand it.
+                let operand = self.trans_operand(bcx, operand);
+                match operand.val {
+                    OperandValue::FatPtr(..) => unreachable!(),
+                    OperandValue::Imm(llval) => {
+                        // ugly alloca.
+                        debug!("trans_rvalue: creating ugly alloca");
+                        let lltemp = base::alloc_ty(bcx, operand.ty, "__unsize_temp");
+                        base::store_ty(bcx, llval, lltemp, operand.ty);
+                        base::coerce_unsized_into(bcx,
+                                                  lltemp, operand.ty,
+                                                  lldest, cast_ty);
+                    }
+                    OperandValue::Ref(llref) => {
+                        base::coerce_unsized_into(bcx,
+                                                  llref, operand.ty,
+                                                  lldest, cast_ty);
+                    }
+                }
+                bcx
             }
 
             mir::Rvalue::Repeat(ref elem, ref count) => {
@@ -125,30 +140,74 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 (bcx, operand)
             }
 
-            mir::Rvalue::Cast(mir::CastKind::Unsize, _, _) => {
-                unimplemented!()
+            mir::Rvalue::Cast(ref kind, ref operand, cast_ty) => {
+                let operand = self.trans_operand(bcx, operand);
+                debug!("cast operand is {}", operand.repr(bcx));
+                let cast_ty = bcx.monomorphize(&cast_ty);
+
+                let val = match *kind {
+                    mir::CastKind::ReifyFnPointer |
+                    mir::CastKind::UnsafeFnPointer => {
+                        // these are no-ops at the LLVM level
+                        operand.val
+                    }
+                    mir::CastKind::Unsize => {
+                        // unsize targets other than to a fat pointer currently
+                        // can't be operands.
+                        assert!(common::type_is_fat_ptr(bcx.tcx(), cast_ty));
+
+                        match operand.val {
+                            OperandValue::FatPtr(..) => {
+                                // unsize from a fat pointer - this is a
+                                // "trait-object-to-supertrait" coercion, for
+                                // example,
+                                //   &'a fmt::Debug+Send => &'a fmt::Debug,
+                                // and is a no-op at the LLVM level
+                                operand.val
+                            }
+                            OperandValue::Imm(lldata) => {
+                                // "standard" unsize
+                                let (lldata, llextra) =
+                                    base::unsize_thin_ptr(bcx, lldata,
+                                                          operand.ty, cast_ty);
+                                OperandValue::FatPtr(lldata, llextra)
+                            }
+                            OperandValue::Ref(_) => {
+                                bcx.sess().bug(
+                                    &format!("by-ref operand {} in trans_rvalue_operand",
+                                             operand.repr(bcx)));
+                            }
+                        }
+                    }
+                    mir::CastKind::Misc => unimplemented!()
+                };
+                (bcx, OperandRef {
+                    val: val,
+                    ty: cast_ty
+                })
             }
 
-            mir::Rvalue::Cast(..) => {
-                unimplemented!()
-            }
-
-            mir::Rvalue::Ref(_, _, ref lvalue) => {
+            mir::Rvalue::Ref(_, bk, ref lvalue) => {
                 let tr_lvalue = self.trans_lvalue(bcx, lvalue);
 
                 let ty = tr_lvalue.ty.to_ty(bcx.tcx());
+                let ref_ty = bcx.tcx().mk_ref(
+                    bcx.tcx().mk_region(ty::ReStatic),
+                    ty::TypeAndMut { ty: ty, mutbl: bk.to_mutbl_lossy() }
+                );
+
                 // Note: lvalues are indirect, so storing the `llval` into the
                 // destination effectively creates a reference.
                 if common::type_is_sized(bcx.tcx(), ty) {
                     (bcx, OperandRef {
                         val: OperandValue::Imm(tr_lvalue.llval),
-                        ty: ty,
+                        ty: ref_ty,
                     })
                 } else {
                     (bcx, OperandRef {
                         val: OperandValue::FatPtr(tr_lvalue.llval,
                                                   tr_lvalue.llextra),
-                        ty: ty,
+                        ty: ref_ty,
                     })
                 }
             }

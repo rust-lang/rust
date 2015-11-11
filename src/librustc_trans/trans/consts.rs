@@ -410,7 +410,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     .expect("consts: unsizing got non-pointer target type").ty;
                 let ptr_ty = type_of::in_memory_type_of(cx, unsized_ty).ptr_to();
                 let base = ptrcast(base, ptr_ty);
-                let info = expr::unsized_info(cx, pointee_ty, unsized_ty,
+                let info = base::unsized_info(cx, pointee_ty, unsized_ty,
                                               old_info, param_substs);
 
                 if old_info.is_none() {
