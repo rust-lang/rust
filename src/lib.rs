@@ -55,6 +55,7 @@ pub mod needless_features;
 pub mod needless_update;
 pub mod no_effect;
 pub mod temporary_assignment;
+pub mod transmute;
 
 mod reexport {
     pub use syntax::ast::{Name, Ident, NodeId};
@@ -104,6 +105,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box no_effect::NoEffectPass);
     reg.register_late_lint_pass(box map_clone::MapClonePass);
     reg.register_late_lint_pass(box temporary_assignment::TemporaryAssignmentPass);
+    reg.register_late_lint_pass(box transmute::UselessTransmute);
 
     reg.register_lint_group("clippy_pedantic", vec![
         methods::OPTION_UNWRAP_USED,
@@ -175,6 +177,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
+        transmute::USELESS_TRANSMUTE,
         types::BOX_VEC,
         types::LET_UNIT_VALUE,
         types::LINKEDLIST,
