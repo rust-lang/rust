@@ -5,7 +5,7 @@ use std::cmp::PartialOrd;
 use std::cmp::Ordering::*;
 
 use consts::{Constant, constant_simple};
-use utils::{match_path, span_lint};
+use utils::{match_def_path, span_lint};
 use self::MinMax::{Min, Max};
 
 declare_lint!(pub MIN_MAX, Warn,
@@ -23,8 +23,8 @@ impl LintPass for MinMaxPass {
 
 impl LateLintPass for MinMaxPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if let Some((outer_max, outer_c, oe)) = min_max(expr) {
-            if let Some((inner_max, inner_c, _)) = min_max(oe) {
+        if let Some((outer_max, outer_c, oe)) = min_max(cx, expr) {
+            if let Some((inner_max, inner_c, _)) = min_max(cx, oe) {
                 if outer_max == inner_max { return; }
                 match (outer_max, outer_c.partial_cmp(&inner_c)) {
                     (_, None) | (Max, Some(Less)) | (Min, Some(Greater)) => (),
@@ -44,13 +44,15 @@ enum MinMax {
     Max,
 }
 
-fn min_max(expr: &Expr) -> Option<(MinMax, Constant, &Expr)> {
+fn min_max<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(MinMax, Constant, &'a Expr)> {
     if let ExprCall(ref path, ref args) = expr.node {
-        if let ExprPath(None, ref path) = path.node {
-            if match_path(path, &["std", "cmp", "min"]) {
+        if let ExprPath(None, _) = path.node {
+            let def_id = cx.tcx.def_map.borrow()[&path.id].def_id();
+
+            if match_def_path(cx, def_id, &["core", "cmp", "min"]) {
                 fetch_const(args, Min)
             } else {
-                if match_path(path, &["std", "cmp", "max"]) {
+                if match_def_path(cx, def_id, &["core", "cmp", "max"]) {
                     fetch_const(args, Max)
                 } else {
                     None
