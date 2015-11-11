@@ -161,9 +161,13 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hasher, Hash};
 use core::intrinsics::{assume, abort};
-use core::marker::{self, Unsize};
+use core::marker;
+#[cfg(not(stage0))]
+use core::marker::Unsize;
 use core::mem::{self, align_of_val, size_of_val, forget};
-use core::ops::{CoerceUnsized, Deref};
+use core::ops::Deref;
+#[cfg(not(stage0))]
+use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
 
 use heap::deallocate;
