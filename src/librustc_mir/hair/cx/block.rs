@@ -10,7 +10,6 @@
 
 use hair::*;
 use hair::cx::Cx;
-use hair::cx::pattern::PatNode;
 use hair::cx::to_ref::ToRef;
 use rustc::middle::region::{BlockRemainder, CodeExtentData};
 use rustc_front::hir;
@@ -65,12 +64,13 @@ fn mirror_stmts<'a,'tcx:'a,STMTS>(cx: &mut Cx<'a,'tcx>,
                         // they are within the scope of this let:
                         let following_stmts = mirror_stmts(cx, block_id, stmts);
 
+                        let pattern = cx.irrefutable_pat(&local.pat);
                         result.push(StmtRef::Mirror(Box::new(Stmt {
                             span: stmt.span,
                             kind: StmtKind::Let {
                                 remainder_scope: remainder_extent,
                                 init_scope: cx.tcx.region_maps.node_extent(id),
-                                pattern: PatNode::irrefutable(&local.pat).to_ref(),
+                                pattern: pattern,
                                 initializer: local.init.to_ref(),
                                 stmts: following_stmts,
                             },

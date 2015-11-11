@@ -23,7 +23,7 @@ extern crate rustc_front;
 use build;
 use dot;
 use repr::Mir;
-use hair::cx::{PatNode, Cx};
+use hair::cx::Cx;
 use std::fs::File;
 
 use self::rustc::middle::infer;
@@ -211,7 +211,7 @@ fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
             .iter()
             .enumerate()
             .map(|(index, arg)| {
-                (fn_sig.inputs[index], PatNode::irrefutable(&arg.pat))
+                (fn_sig.inputs[index], &*arg.pat)
             })
             .collect();
 

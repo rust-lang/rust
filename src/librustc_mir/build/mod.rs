@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hair;
-use hair::cx::{Cx, PatNode};
+use hair::cx::Cx;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::ty::{FnOutput, Ty};
 use rustc_data_structures::fnv::FnvHashMap;
@@ -78,7 +77,7 @@ macro_rules! unpack {
 pub fn construct<'a,'tcx>(mut hir: Cx<'a,'tcx>,
                           _span: Span,
                           implicit_arguments: Vec<Ty<'tcx>>,
-                          explicit_arguments: Vec<(Ty<'tcx>, PatNode<'tcx>)>,
+                          explicit_arguments: Vec<(Ty<'tcx>, &'tcx hir::Pat)>,
                           argument_extent: CodeExtent,
                           return_ty: FnOutput<'tcx>,
                           ast_block: &'tcx hir::Block)
@@ -130,7 +129,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     fn args_and_body(&mut self,
                      mut block: BasicBlock,
                      implicit_arguments: Vec<Ty<'tcx>>,
-                     explicit_arguments: Vec<(Ty<'tcx>, PatNode<'tcx>)>,
+                     explicit_arguments: Vec<(Ty<'tcx>, &'tcx hir::Pat)>,
                      argument_extent: CodeExtent,
                      ast_block: &'tcx hir::Block)
                      -> BlockAnd<Vec<ArgDecl<'tcx>>>
@@ -148,9 +147,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     .enumerate()
                     .map(|(index, (ty, pattern))| {
                         let lvalue = Lvalue::Arg(index as u32);
+                        let pattern = this.hir.irrefutable_pat(pattern);
                         unpack!(block = this.lvalue_into_pattern(block,
                                                                  argument_extent,
-                                                                 hair::PatternRef::Hair(pattern),
+                                                                 pattern,
                                                                  &lvalue));
                         ArgDecl { ty: ty }
                     });
