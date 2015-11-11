@@ -285,11 +285,14 @@ fn resolve_error<'b, 'a:'b, 'tcx:'a>(resolver: &'b Resolver<'a, 'tcx>, span: syn
         },
         ResolutionError::OnlyIrrefutablePatternsAllowedHere(did, name) => {
             span_err!(resolver.session, span, E0414, "only irrefutable patterns allowed here");
-            resolver.session.span_note(span, "there already is a constant in scope sharing the same name as this pattern");
+            resolver.session.span_note(span, "there already is a constant in scope \
+                                               sharing the same name as this pattern");
             if let Some(sp) = resolver.ast_map.span_if_local(did) {
                 resolver.session.span_note(sp, "constant defined here");
             }
-            if let Some(directive) = resolver.current_module.import_resolutions.borrow().get(&name) {
+            if let Some(directive) = resolver.current_module
+                                             .import_resolutions
+                                             .borrow().get(&name) {
                 let item = resolver.ast_map.expect_item(directive.value_id);
                 resolver.session.span_note(item.span, "constant imported here");
             }
@@ -2712,7 +2715,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             resolve_error(
                                 self,
                                 pattern.span,
-                                ResolutionError::OnlyIrrefutablePatternsAllowedHere(def.def_id(), name)
+                                ResolutionError::OnlyIrrefutablePatternsAllowedHere(def.def_id(),
+                                                                                    name)
                             );
                         }
                         BareIdentifierPatternUnresolved => {
