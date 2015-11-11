@@ -85,7 +85,7 @@ Rustfmt is basically a pretty printer - that is, it's mode of operation is to
 take an AST (abstract syntax tree) and print it in a nice way (including staying
 under the maximum permitted width for a line). In order to get that AST, we
 first have to parse the source text, we use the Rust compiler's parser to do
-that (see [src/lib.rs]). We shy away from doing anything too fancy, such as
+that (see [src/lib.rs](src/lib.rs)). We shy away from doing anything too fancy, such as
 algebraic approaches to pretty printing, instead relying on an heuristic
 approach, 'manually' crafting a string for each AST node. This results in quite
 a lot of code, but it is relatively simple.
@@ -125,19 +125,19 @@ At a higher level, Rustfmt has machinery so that we account for text between
 'top level' items. Then we can reproduce that text pretty much verbatim. We only
 count spans we actually reformat, so if we can't format a span it is not missed
 completely, but is reproduced in the output without being formatted. This is
-mostly handled in [src/missed_spans.rs]. See also `FmtVisitor::last_pos` in
-[src/visitor.rs].
+mostly handled in [src/missed_spans.rs](src/missed_spans.rs). See also `FmtVisitor::last_pos` in
+[src/visitor.rs](src/visitor.rs).
 
 
 #### Some important elements
 
 At the highest level, Rustfmt uses a `Visitor` implementation called `FmtVisitor`
-to walk the AST. This is in [src/visitor.rs]. This is really just used to walk
+to walk the AST. This is in [src/visitor.rs](src/visitor.rs). This is really just used to walk
 items, rather than the bodies of functions. We also cover macros and attributes
 here. Most methods of the visitor call out to `Rewrite` implementations that
 then walk their own children.
 
-The `Rewrite` trait is defined in [src/rewrite.rs]. It is implemented for many
+The `Rewrite` trait is defined in [src/rewrite.rs](src/rewrite.rs). It is implemented for many
 things that can be rewritten, mostly AST nodes. It has a single function,
 `rewrite`, which is called to rewrite `self` into an `Option<String>`. The
 arguments are `width` which is the horizontal space we write into, and `offset`
@@ -191,13 +191,13 @@ Much syntax in Rust is lists: lists of arguments, lists of fields, lists of
 array elements, etc. We have some generic code to handle lists, including how to
 space them in horizontal and vertical space, indentation, comments between
 items, trailing separators, etc. However, since there are so many options, the
-code is a bit complex. Look in [src/lists.rs]. `write_list` is the key function,
+code is a bit complex. Look in [src/lists.rs](src/lists.rs). `write_list` is the key function,
 and `ListFormatting` the key structure for configuration. You'll need to make a
 `ListItems` for input, this is usually done using `itemize_list`.
 
 Rustfmt strives to be highly configurable. Often the first part of a patch is
 creating a configuration option for the feature you are implementing. All
-handling of configuration options is done in [src/config.rs]. Look for the
+handling of configuration options is done in [src/config.rs](src/config.rs). Look for the
 `create_config!` macro at the end of the file for all the options. The rest of
 the file defines a bunch of enums used for options, and the machinery to produce
 the config struct and parse a config file, etc. Checking an option is done by
