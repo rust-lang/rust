@@ -12,9 +12,13 @@
 
 #![stable(feature = "raw_os", since = "1.1.0")]
 
-#[cfg(any(target_arch = "aarch64", target_os = "android"))]
+#[cfg(all(not(target_os = "ios"), not(target_os = "macos"),
+          any(target_arch = "aarch64", target_arch = "arm",
+              target_os = "android")))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_char = u8;
-#[cfg(not(any(target_arch = "aarch64", target_os = "android")))]
+#[cfg(any(target_os = "ios", target_os = "macos",
+          not(any(target_arch = "aarch64", target_arch = "arm",
+                  target_os = "android"))))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_char = i8;
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_schar = i8;
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_uchar = u8;
