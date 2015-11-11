@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use ast;
-use ast::{MetaItem, Expr,};
-use codemap::Span;
+use ast::{MetaItem, Expr};
+use codemap::{Span, respan};
 use ext::base::{ExtCtxt, Annotatable};
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
@@ -97,7 +97,10 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                                                    builder_expr.clone(),
                                                    token::str_to_ident("field"),
                                                    vec![field]);
-                    stmts.push(cx.stmt_expr(expr));
+
+                    // Use `let _ = expr;` to avoid triggering the
+                    // unused_results lint.
+                    stmts.push(stmt_let_undescore(cx, span, expr));
                 }
             } else {
                 // normal struct/struct variant
@@ -119,7 +122,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                                                    builder_expr.clone(),
                                                    token::str_to_ident("field"),
                                                    vec![name, field]);
-                    stmts.push(cx.stmt_expr(expr));
+                    stmts.push(stmt_let_undescore(cx, span, expr));
                 }
             }
             stmts
@@ -134,4 +137,18 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
 
     let block = cx.block(span, stmts, Some(expr));
     cx.expr_block(block)
+}
+
+fn stmt_let_undescore(cx: &mut ExtCtxt,
+                      sp: Span,
+                      expr: P<ast::Expr>) -> P<ast::Stmt> {
+    let local = P(ast::Local {
+        pat: cx.pat_wild(sp),
+        ty: None,
+        init: Some(expr),
+        id: ast::DUMMY_NODE_ID,
+        span: sp,
+    });
+    let decl = respan(sp, ast::DeclLocal(local));
+    P(respan(sp, ast::StmtDecl(P(decl), ast::DUMMY_NODE_ID)))
 }
