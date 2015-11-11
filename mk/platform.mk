@@ -214,9 +214,11 @@ define CFG_MAKE_TOOLCHAIN
   # On OpenBSD, we need to pass the path of libstdc++.so to the linker
   # (use path of libstdc++.a which is a known name for the same path)
   ifeq ($(OSTYPE_$(1)),unknown-openbsd)
-    RUSTC_FLAGS_$(1)=-L "$$(dir $$(shell $$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
-        -print-file-name=lib$(CFG_STDCPP_NAME).a))" \
-        $(RUSTC_FLAGS_$(1))
+    STDCPP_LIBDIR_RUSTFLAGS_$(1)= \
+        -L "$$(dir $$(shell $$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
+        -print-file-name=lib$(CFG_STDCPP_NAME).a))"
+  else
+    STDCPP_LIBDIR_RUSTFLAGS_$(1)=
   endif
 
   # On Bitrig, we need the relocation model to be PIC for everything
