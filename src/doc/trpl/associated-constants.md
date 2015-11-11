@@ -74,6 +74,6 @@ for a `struct` or an `enum` works fine too:
 struct Foo;
 
 impl Foo {
-    pub const FOO: u32 = 3;
+    const FOO: u32 = 3;
 }
 ```
