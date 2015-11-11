@@ -553,8 +553,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 //               where the method was defined?
                 Some(ast_map::NodeImplItem(ii)) => {
                     match ii.node {
-                        hir::ConstImplItem(..) |
-                        hir::MethodImplItem(..) => {
+                        hir::ImplItem_::Const(..) |
+                        hir::ImplItem_::Method(..) => {
                             let imp = self.tcx.map
                                           .get_parent_did(closest_private_id);
                             match self.tcx.impl_trait_ref(imp) {
@@ -565,7 +565,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                                 _ => ii.vis
                             }
                         }
-                        hir::TypeImplItem(_) => return Allowable,
+                        hir::ImplItem_::Type(_) => return Allowable,
                     }
                 }
                 Some(ast_map::NodeTraitItem(_)) => {
@@ -1293,11 +1293,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     impl_items.iter()
                               .any(|impl_item| {
                                   match impl_item.node {
-                                      hir::ConstImplItem(..) |
-                                      hir::MethodImplItem(..) => {
+                                      hir::ImplItem_::Const(..) |
+                                      hir::ImplItem_::Method(..) => {
                                           self.exported_items.contains(&impl_item.id)
                                       }
-                                      hir::TypeImplItem(_) => false,
+                                      hir::ImplItem_::Type(_) => false,
                                   }
                               });
 
@@ -1316,13 +1316,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                                 // don't erroneously report errors for private
                                 // types in private items.
                                 match impl_item.node {
-                                    hir::ConstImplItem(..) |
-                                    hir::MethodImplItem(..)
+                                    hir::ImplItem_::Const(..) |
+                                    hir::ImplItem_::Method(..)
                                         if self.item_is_public(&impl_item.id, impl_item.vis) =>
                                     {
                                         visit::walk_impl_item(self, impl_item)
                                     }
-                                    hir::TypeImplItem(..) => {
+                                    hir::ImplItem_::Type(..) => {
                                         visit::walk_impl_item(self, impl_item)
                                     }
                                     _ => {}
@@ -1347,7 +1347,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 
                             // Those in 3. are warned with this call.
                             for impl_item in impl_items {
-                                if let hir::TypeImplItem(ref ty) = impl_item.node {
+                                if let hir::ImplItem_::Type(ref ty) = impl_item.node {
                                     self.visit_ty(ty);
                                 }
                             }
@@ -1359,13 +1359,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     let mut found_pub_static = false;
                     for impl_item in impl_items {
                         match impl_item.node {
-                            hir::ConstImplItem(..) => {
+                            hir::ImplItem_::Const(..) => {
                                 if self.item_is_public(&impl_item.id, impl_item.vis) {
                                     found_pub_static = true;
                                     visit::walk_impl_item(self, impl_item);
                                 }
                             }
-                            hir::MethodImplItem(ref sig, _) => {
+                            hir::ImplItem_::Method(ref sig, _) => {
                                 if sig.explicit_self.node == hir::SelfStatic &&
                                       self.item_is_public(&impl_item.id, impl_item.vis) {
                                     found_pub_static = true;

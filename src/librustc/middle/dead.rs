@@ -358,14 +358,14 @@ impl<'v> Visitor<'v> for LifeSeeder {
             hir::ItemImpl(_, _, _, ref opt_trait, _, ref impl_items) => {
                 for impl_item in impl_items {
                     match impl_item.node {
-                        hir::ConstImplItem(..) |
-                        hir::MethodImplItem(..) => {
+                        hir::ImplItem_::Const(..) |
+                        hir::ImplItem_::Method(..) => {
                             if opt_trait.is_some() ||
                                     has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
                                 self.worklist.push(impl_item.id);
                             }
                         }
-                        hir::TypeImplItem(_) => {}
+                        hir::ImplItem_::Type(_) => {}
                     }
                 }
             }
@@ -571,21 +571,21 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
         match impl_item.node {
-            hir::ConstImplItem(_, ref expr) => {
+            hir::ImplItem_::Const(_, ref expr) => {
                 if !self.symbol_is_live(impl_item.id, None) {
                     self.warn_dead_code(impl_item.id, impl_item.span,
                                         impl_item.name, "associated const");
                 }
                 visit::walk_expr(self, expr)
             }
-            hir::MethodImplItem(_, ref body) => {
+            hir::ImplItem_::Method(_, ref body) => {
                 if !self.symbol_is_live(impl_item.id, None) {
                     self.warn_dead_code(impl_item.id, impl_item.span,
                                         impl_item.name, "method");
                 }
                 visit::walk_block(self, body)
             }
-            hir::TypeImplItem(..) => {}
+            hir::ImplItem_::Type(..) => {}
         }
     }
 

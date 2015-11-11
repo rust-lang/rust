@@ -196,13 +196,13 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 impl_items.iter().map(|impl_item| {
                     let impl_def_id = self.crate_context.tcx.map.local_def_id(impl_item.id);
                     match impl_item.node {
-                        hir::ConstImplItem(..) => {
+                        hir::ImplItem_::Const(..) => {
                             ConstTraitItemId(impl_def_id)
                         }
-                        hir::MethodImplItem(..) => {
+                        hir::ImplItem_::Method(..) => {
                             MethodTraitItemId(impl_def_id)
                         }
-                        hir::TypeImplItem(_) => {
+                        hir::ImplItem_::Type(_) => {
                             TypeTraitItemId(impl_def_id)
                         }
                     }

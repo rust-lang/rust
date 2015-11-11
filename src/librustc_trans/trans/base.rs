@@ -1326,7 +1326,7 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
         }
         Some(hir_map::NodeImplItem(impl_item)) => {
             match impl_item.node {
-                hir::MethodImplItem(_, ref body) => body,
+                hir::ImplItem_::Method(_, ref body) => body,
                 _ => {
                     tcx.sess.bug("unexpected variant: non-method impl item in \
                                   has_nested_returns")
@@ -2614,7 +2614,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
         hir_map::NodeImplItem(impl_item) => {
             match impl_item.node {
-                hir::MethodImplItem(..) => {
+                hir::ImplItem_::Method(..) => {
                     register_method(ccx, id, &impl_item.attrs, impl_item.span)
                 }
                 _ => {

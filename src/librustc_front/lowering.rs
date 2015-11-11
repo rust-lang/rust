@@ -676,12 +676,12 @@ pub fn lower_impl_item(_lctx: &LoweringContext, i: &ImplItem) -> P<hir::ImplItem
         vis: lower_visibility(_lctx, i.vis),
         node: match i.node {
             ConstImplItem(ref ty, ref expr) => {
-                hir::ConstImplItem(lower_ty(_lctx, ty), lower_expr(_lctx, expr))
+                hir::ImplItem_::Const(lower_ty(_lctx, ty), lower_expr(_lctx, expr))
             }
             MethodImplItem(ref sig, ref body) => {
-                hir::MethodImplItem(lower_method_sig(_lctx, sig), lower_block(_lctx, body))
+                hir::ImplItem_::Method(lower_method_sig(_lctx, sig), lower_block(_lctx, body))
             }
-            TypeImplItem(ref ty) => hir::TypeImplItem(lower_ty(_lctx, ty)),
+            TypeImplItem(ref ty) => hir::ImplItem_::Type(lower_ty(_lctx, ty)),
             MacImplItem(..) => panic!("Shouldn't exist any more"),
         },
         span: i.span,

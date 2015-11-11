@@ -19,7 +19,6 @@ pub use self::ExplicitSelf_::*;
 pub use self::Expr_::*;
 pub use self::FunctionRetTy::*;
 pub use self::ForeignItem_::*;
-pub use self::ImplItem_::*;
 pub use self::Item_::*;
 pub use self::Mutability::*;
 pub use self::Pat_::*;
@@ -777,9 +776,9 @@ pub struct ImplItem {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ImplItem_ {
-    ConstImplItem(P<Ty>, P<Expr>),
-    MethodImplItem(MethodSig, P<Block>),
-    TypeImplItem(P<Ty>),
+    Const(P<Ty>, P<Expr>),
+    Method(MethodSig, P<Block>),
+    Type(P<Ty>),
 }
 
 // Bind a type to an associated type: `A=Foo`.

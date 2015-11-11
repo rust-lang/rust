@@ -79,7 +79,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
 
     fn visit_impl_item(&mut self, ii: &'ast hir::ImplItem) {
         match ii.node {
-            hir::ConstImplItem(..) => {
+            hir::ImplItem_::Const(..) => {
                 let mut recursion_visitor =
                     CheckItemRecursionVisitor::new(self, &ii.span);
                 recursion_visitor.visit_impl_item(ii);

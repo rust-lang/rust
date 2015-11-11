@@ -99,10 +99,10 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for OuterDump<'a, 'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         match impl_item.node {
-            hir::MethodImplItem(..) => {
+            hir::ImplItem_::Method(..) => {
                 self.visit_mir(&impl_item.attrs, |c| visit::walk_impl_item(c, impl_item));
             }
-            hir::ConstImplItem(..) | hir::TypeImplItem(..) => {}
+            hir::ImplItem_::Const(..) | hir::ImplItem_::Type(..) => {}
         }
         visit::walk_impl_item(self, impl_item);
     }
