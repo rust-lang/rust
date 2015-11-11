@@ -1,0 +1,690 @@
+/**
+ * Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+ * file at the top-level directory of this distribution and at
+ * http://rust-lang.org/COPYRIGHT.
+ *
+ * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+ * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+ * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+ * option. This file may not be copied, modified, or distributed
+ * except according to those terms.
+ */
+
+/* See FiraSans-LICENSE.txt for the Fira Sans license. */
+@font-face {
+    font-family: 'Fira Sans';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Fira Sans'), url("FiraSans-Regular.woff") format('woff');
+}
+@font-face {
+    font-family: 'Fira Sans';
+    font-style: normal;
+    font-weight: 500;
+    src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
+}
+
+/* See SourceSerifPro-LICENSE.txt for the Source Serif Pro license and
+ * Heuristica-LICENSE.txt for the Heuristica license. */
+@font-face {
+    font-family: 'Source Serif Pro';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Source Serif Pro'), url("SourceSerifPro-Regular.woff") format('woff');
+}
+@font-face {
+    font-family: 'Source Serif Pro';
+    font-style: italic;
+    font-weight: 400;
+    src: url("Heuristica-Italic.woff") format('woff');
+}
+@font-face {
+    font-family: 'Source Serif Pro';
+    font-style: normal;
+    font-weight: 700;
+    src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.woff") format('woff');
+}
+
+/* See SourceCodePro-LICENSE.txt for the Source Code Pro license. */
+@font-face {
+    font-family: 'Source Code Pro';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Source Code Pro'), url("SourceCodePro-Regular.woff") format('woff');
+}
+@font-face {
+    font-family: 'Source Code Pro';
+    font-style: normal;
+    font-weight: 600;
+    src: local('Source Code Pro Semibold'), url("SourceCodePro-Semibold.woff") format('woff');
+}
+
+@import "normalize.css";
+
+* {
+  -webkit-box-sizing: border-box;
+     -moz-box-sizing: border-box;
+          box-sizing: border-box;
+}
+
+/* General structure and fonts */
+
+body {
+    font: 16px/1.4 "Source Serif Pro", Georgia, Times, "Times New Roman", serif;
+    margin: 0;
+    position: relative;
+    padding: 10px 15px 20px 15px;
+
+    -webkit-font-feature-settings: "kern", "liga";
+    -moz-font-feature-settings: "kern", "liga";
+    font-feature-settings: "kern", "liga";
+}
+
+h1 {
+    font-size: 1.5em;
+}
+h2 {
+    font-size: 1.4em;
+}
+h3 {
+    font-size: 1.3em;
+}
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+    font-weight: 500;
+    margin: 20px 0 15px 0;
+    padding-bottom: 6px;
+}
+h1.fqn {
+    border-bottom: 1px dashed;
+    margin-top: 0;
+}
+h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+    border-bottom: 1px solid;
+}
+h3.impl, h3.method, h4.method, h3.type, h4.type {
+    font-weight: 600;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+h3.impl, h3.method, h3.type {
+    margin-top: 15px;
+}
+h1, h2, h3, h4, .sidebar, a.source, .search-input, .content table :not(code)>a, .collapse-toggle {
+    font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+ol, ul {
+    padding-left: 25px;
+}
+ul ul, ol ul, ul ol, ol ol {
+    margin-bottom: 0;
+}
+
+p {
+    margin: 0 0 .6em 0;
+}
+
+code, pre {
+    font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", Inconsolata, monospace;
+    white-space: pre-wrap;
+}
+.docblock code {
+    border-radius: 3px;
+    padding: 0 0.2em;
+}
+.docblock pre code {
+    padding: 0;
+}
+pre {
+    padding: 14px;
+}
+
+.source pre {
+    padding: 20px;
+}
+
+.content.source {
+    margin-top: 50px;
+    max-width: none;
+    overflow: visible;
+    margin-left: 0px;
+    min-width: 70em;
+}
+
+nav.sub {
+    font-size: 16px;
+    text-transform: uppercase;
+}
+
+.sidebar {
+    width: 200px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    min-height: 100%;
+}
+
+.content, nav { max-width: 960px; }
+
+/* Everything else */
+
+.js-only, .hidden { display: none !important; }
+
+.sidebar {
+    padding: 10px;
+}
+.sidebar img {
+    margin: 20px auto;
+    display: block;
+}
+
+.sidebar .location {
+    font-size: 17px;
+    margin: 30px 0 20px 0;
+    text-align: center;
+}
+
+.location a:first-child { font-weight: 500; }
+
+.block {
+    padding: 0 10px;
+    margin-bottom: 14px;
+}
+.block h2, .block h3 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    text-align: center;
+}
+.block ul, .block li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.block a {
+    display: block;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    line-height: 15px;
+    padding: 7px 5px;
+    font-size: 14px;
+    font-weight: 300;
+    transition: border 500ms ease-out;
+}
+
+.content {
+    padding: 15px 0;
+}
+
+.content.source pre.rust {
+    white-space: pre;
+    overflow: auto;
+    padding-left: 0;
+}
+.content pre.line-numbers {
+    float: left;
+    border: none;
+    position: relative;
+
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+.line-numbers span { cursor: pointer; }
+
+.docblock.short p {
+    display: inline;
+}
+
+.docblock.short.nowrap {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.docblock.short p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+}
+.docblock.short code { white-space: nowrap; }
+
+.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
+    border-bottom: 1px solid;
+}
+
+.docblock h1 { font-size: 1.3em; }
+.docblock h2 { font-size: 1.15em; }
+.docblock h3, .docblock h4, .docblock h5 { font-size: 1em; }
+
+.content .out-of-band {
+    font-size: 23px;
+    width: 40%;
+    margin: 0px;
+    padding: 0px;
+    text-align: right;
+    display: inline-block;
+}
+
+.content .in-band {
+    width: 60%;
+    margin: 0px;
+    padding: 0px;
+    display: inline-block;
+}
+
+.content table {
+    border-spacing: 0 5px;
+    border-collapse: separate;
+}
+.content td { vertical-align: top; }
+.content td:first-child { padding-right: 20px; }
+.content td p:first-child { margin-top: 0; }
+.content td h1, .content td h2 { margin-left: 0; font-size: 1.1em; }
+
+.docblock table {
+    border: 1px solid;
+    margin: .5em 0;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.docblock table td {
+    padding: .5em;
+    border-top: 1px dashed;
+    border-bottom: 1px dashed;
+}
+
+.docblock table th {
+    padding: .5em;
+    text-align: left;
+    border-top: 1px solid;
+    border-bottom: 1px solid;
+}
+
+.content .item-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.content .item-list li { margin-bottom: 3px; }
+
+.content .multi-column {
+    -moz-column-count: 5;
+    -moz-column-gap: 2.5em;
+    -webkit-column-count: 5;
+    -webkit-column-gap: 2.5em;
+    column-count: 5;
+    column-gap: 2.5em;
+}
+.content .multi-column li { width: 100%; display: inline-block; }
+
+.content .method {
+    font-size: 1em;
+    position: relative;
+}
+/* Shift "where ..." part of method or fn definition down a line */
+.content .method .where, .content .fn .where { display: block; }
+/* Bit of whitespace to indent it */
+.content .method .where::before, .content .fn .where::before { content: '  '; }
+
+.content .methods > div { margin-left: 40px; }
+
+.content .impl-items .docblock, .content .impl-items .stability {
+    margin-left: 40px;
+}
+.content .impl-items .method, .content .impl-items > .type {
+    margin-left: 20px;
+}
+
+.content .stability code {
+    font-size: 90%;
+}
+
+nav {
+    border-bottom: 1px solid;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+nav.main {
+    padding: 20px 0;
+    text-align: center;
+}
+nav.main .current {
+    border-top: 1px solid;
+    border-bottom: 1px solid;
+}
+nav.main .separator {
+    border: 1px solid;
+    display: inline-block;
+    height: 23px;
+    margin: 0 20px;
+}
+nav.sum { text-align: right; }
+nav.sub form { display: inline; }
+
+nav.sub, .content {
+    margin-left: 230px;
+}
+
+a {
+    text-decoration: none;
+    background: transparent;
+}
+
+.docblock a:hover, .stability a {
+    text-decoration: underline;
+}
+
+.content span.enum, .content a.enum, .block a.current.enum { color: #5e9766; }
+.content span.struct, .content a.struct, .block a.current.struct { color: #e53700; }
+.content a.type { color: #e57300; }
+.content a.macro { color: #068000; }
+.content span.fn, .content a.fn, .block a.current.fn,
+.content span.method, .content a.method, .block a.current.method,
+.content span.tymethod, .content a.tymethod, .block a.current.tymethod,
+.content .fnname { color: #8c6067; }
+.block a.current.crate { font-weight: 500; }
+
+.search-input {
+    width: 100%;
+    /* Override Normalize.css: we have margins and do
+     not want to overflow - the `moz` attribute is necessary
+     until Firefox 29, too early to drop at this point */
+    -moz-box-sizing: border-box !important;
+    box-sizing: border-box !important;
+    outline: none;
+    border: none;
+    border-radius: 1px;
+    margin-top: 5px;
+    padding: 10px 16px;
+    font-size: 17px;
+    transition: border-color 300ms ease;
+    transition: border-radius 300ms ease-in-out;
+    transition: box-shadow 300ms ease-in-out;
+}
+
+.search-input:focus {
+    border-color: #66afe9;
+    border-radius: 2px;
+    border: 0;
+    outline: 0;
+    box-shadow: 0 0 8px #078dd8;
+}
+
+.search-results .desc {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    display: block;
+}
+
+.search-results a {
+    display: block;
+}
+
+.content .search-results td:first-child { padding-right: 0; }
+.content .search-results td:first-child a { padding-right: 10px; }
+
+tr.result span.primitive::after { content: ' (primitive type)'; font-style: italic; }
+
+body.blur > :not(#help) {
+    filter: blur(8px);
+    -webkit-filter: blur(8px);
+    opacity: .7;
+}
+
+#help {
+    width: 100%;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+#help > div {
+    flex: 0 0 auto;
+    background: #e9e9e9;
+    box-shadow: 0 0 6px rgba(0,0,0,.2);
+    width: 550px;
+    height: 300px;
+    border: 1px solid #bfbfbf;
+}
+#help dt {
+    float: left;
+    border-radius: 4px;
+    border: 1px solid #bfbfbf;
+    background: #fff;
+    width: 23px;
+    text-align: center;
+    clear: left;
+    display: block;
+    margin-top: -1px;
+}
+#help dd { margin: 5px 33px; }
+#help .infos { padding-left: 0; }
+#help h1, #help h2 { margin-top: 0; }
+#help > div div {
+    width: 50%;
+    float: left;
+    padding: 20px;
+}
+
+em.stab.unstable { background: #FFF5D6; border-color: #FFC600; }
+em.stab.deprecated { background: #F3DFFF; border-color: #7F0087; }
+em.stab {
+    display: inline-block;
+    border-width: 1px;
+    border-style: solid;
+    padding: 3px;
+    margin-bottom: 5px;
+    font-size: 90%;
+    font-style: normal;
+}
+em.stab p {
+    display: inline;
+}
+
+.module-item .stab {
+    border-width: 0;
+    padding: 0;
+    margin: 0;
+    background: inherit !important;
+}
+
+.module-item.unstable {
+    opacity: 0.65;
+}
+
+td.summary-column {
+    width: 100%;
+}
+
+.summary {
+    padding-right: 0px;
+}
+
+.line-numbers :target { background-color: transparent; }
+
+/* Code highlighting */
+pre.rust .kw { color: #8959A8; }
+pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
+pre.rust .number, pre.rust .string { color: #718C00; }
+pre.rust .self, pre.rust .boolval, pre.rust .prelude-val,
+pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
+pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
+pre.rust .lifetime { color: #B76514; }
+
+.rusttest { display: none; }
+pre.rust { position: relative; }
+a.test-arrow {
+    display: inline-block;
+    position: absolute;
+    background-color: #4e8bca;
+    padding: 5px 10px 5px 10px;
+    border-radius: 5px;
+    font-size: 130%;
+    top: 5px;
+    right: 5px;
+}
+
+.methods .section-header {
+    /* Override parent class attributes. */
+    border-bottom: none !important;
+    font-size: 1.1em !important;
+    margin: 0 0 -5px;
+    padding: 0;
+}
+
+.section-header:hover a:after {
+    content: '\2002\00a7\2002';
+}
+
+.section-header:hover a {
+    text-decoration: none;
+}
+
+.section-header a {
+    color: inherit;
+}
+
+.collapse-toggle {
+    font-weight: 300;
+    position: absolute;
+    left: -23px;
+    color: #999;
+    top: 0;
+}
+
+.toggle-wrapper > .collapse-toggle {
+    left: -24px;
+    margin-top: 0px;
+}
+
+.toggle-wrapper {
+    position: relative;
+}
+
+.toggle-wrapper.collapsed {
+    height: 1em;
+    transition: height .2s;
+}
+
+.collapse-toggle > .inner {
+    display: inline-block;
+    width: 1.2ch;
+    text-align: center;
+}
+
+.toggle-label {
+    color: #999;
+}
+
+
+
+/* Media Queries */
+
+@media (max-width: 700px) {
+    body {
+        padding-top: 0px;
+    }
+
+    .sidebar {
+        height: 40px;
+        min-height: 40px;
+        width: 100%;
+        margin: 0px;
+        padding: 0px;
+        position: static;
+    }
+
+    .sidebar .location {
+        float: left;
+        margin: 0px;
+        padding: 5px;
+        width: 60%;
+        background: inherit;
+        text-align: left;
+        font-size: 24px;
+    }
+
+    .sidebar img {
+        width: 35px;
+        margin-top: 5px;
+        margin-bottom: 0px;
+        float: left;
+    }
+
+    nav.sub {
+        margin: 0 auto;
+    }
+
+    .sidebar .block {
+        display: none;
+    }
+
+    .content {
+        margin-left: 0px;
+    }
+
+    .content .in-band {
+        width: 100%;
+    }
+
+    .content .out-of-band {
+        display: none;
+    }
+
+    .toggle-wrapper > .collapse-toggle {
+        left: 0px;
+    }
+
+    .toggle-wrapper {
+        height: 1.5em;
+    }
+}
+
+@media print {
+    nav.sub, .content .out-of-band, .collapse-toggle {
+        display: none;
+    }
+}
+
+#style-changer {
+    height: 14px;
+    min-width: 14px;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    display: block;
+    z-index: 1000;
+}
+
+#style-changer > div {
+    cursor: pointer;
+    float: right;
+    border-radius: 4px;
+    border: 1px solid #C0ACAC;
+    margin-left: 4px;
+    height: 100%;
+    width: 14px;
+    transition-property: border;
+    transition-duration: .3s;
+    transition-timing-function: linear;
+}
+
+#style-changer > div:hover {
+    border: 1px solid #FFF;
+}
+
+.main {
+    background-color: #FDFDFD;
+}
+
+.dark {
+    background-color: #535151;
+}

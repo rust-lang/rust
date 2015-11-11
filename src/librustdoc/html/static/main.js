@@ -1028,19 +1028,8 @@ function change_style(elem) {
         var elems = links[i].href.split("/");
 
         links[i].disabled = (elems[elems.length - 1].replace(".css", "") !== elem.className &&
-            elems[elems.length - 1] !== "rustbook.css");
+            elems[elems.length - 1] !== "rustbook.css" &&
+            elems[elems.length - 1] !== "rustdoc.css");
     }
     elem.style.display = "none";
 }
-
-document.addEventListener("DOMContentLoaded", function(event) {
-    var light = document.getElementsByClassName("main");
-
-    light[0].style.display = "none";
-    var links = document.getElementsByTagName("link");
-    for (var i = 0; i < links.length; ++i) {
-        var elems = links[i].href.split("/");
-
-        links[i].disabled = (elems[elems.length - 1] !== "main.css");
-    }
-});

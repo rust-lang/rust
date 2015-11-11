@@ -48,7 +48,7 @@ for entry in entries:
     file_data += "    out.push_str(\n        &format!(\"<link rel=\\\"stylesheet\\\" "
     file_data += "type=\\\"text/css\\\" href=\\\"{}%s\\\" \\\n                 " % entry
     if entry != "main.css":
-        file_data += " style=\\\"display:none;\\\" disabled>\", root_path));\n"
+        file_data += " disabled>\", root_path));\n"
     else:
         file_data += ">\", root_path));\n"
 file_data += "    out\n}\n\npub fn get_divs() -> String {\n"
@@ -58,6 +58,8 @@ for entry in entries:
     file_data += "    out.push_str(\"<div class=\\\""
     file_data += "{entry}\\\" onclick=\\\"change_style(this);\\\"".format(
         entry=entry.rsplit('.', 1)[0])
+    if entry.rsplit('.', 1)[0] == "main":
+        file_data += "\\\n                 style=\\\"display:none;\\\""
     file_data += "></div>\");\n"
 file_data += "    out\n}\n"
 f.write(file_data)

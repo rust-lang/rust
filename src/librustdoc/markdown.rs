@@ -21,6 +21,7 @@ use rustc::session::search_paths::SearchPaths;
 
 use externalfiles::ExternalHtml;
 
+use html::styles;
 use html::escape::Escape;
 use html::markdown;
 use html::markdown::{Markdown, MarkdownWithToc, find_testable_code, reset_headers};
@@ -101,12 +102,13 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
     <title>{title}</title>
 
     {css}
+    <link rel="stylesheet" type="text/css" href="../rustdoc.css">
+    {styles}
     {in_header}
 </head>
 <body class="rustdoc">
     <div id="style-changer">
-        <div class="light" onclick="change_style(this);"></div>
-        <div class="dark" onclick="change_style(this);"></div>
+        {divs}
     </div>
     <!--[if lte IE 8]>
     <div class="warning">
@@ -131,6 +133,8 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
         text = rendered,
         after_content = external_html.after_content,
         playground = playground,
+        divs = styles::get_divs(),
+        styles = styles::css_file_links("../"),
         );
 
     match err {
