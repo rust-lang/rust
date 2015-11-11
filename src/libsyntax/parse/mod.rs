@@ -446,10 +446,10 @@ fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
         Some(suf) => {
             if suf.len() >= 2 && looks_like_width_suffix(&['f'], suf) {
                 // if it looks like a width, lets try to be helpful.
-                sd.span_err(sp, &*format!("invalid width `{}` for float literal", &suf[1..]));
+                sd.span_err(sp, &format!("invalid width `{}` for float literal", &suf[1..]));
                 sd.fileline_help(sp, "valid widths are 32 and 64");
             } else {
-                sd.span_err(sp, &*format!("invalid suffix `{}` for float literal", suf));
+                sd.span_err(sp, &format!("invalid suffix `{}` for float literal", suf));
                 sd.fileline_help(sp, "valid suffixes are `f32` and `f64`");
             }
 
@@ -619,11 +619,11 @@ pub fn integer_lit(s: &str,
                 // i<digits> and u<digits> look like widths, so lets
                 // give an error message along those lines
                 if looks_like_width_suffix(&['i', 'u'], suf) {
-                    sd.span_err(sp, &*format!("invalid width `{}` for integer literal",
-                                              &suf[1..]));
+                    sd.span_err(sp, &format!("invalid width `{}` for integer literal",
+                                             &suf[1..]));
                     sd.fileline_help(sp, "valid widths are 8, 16, 32 and 64");
                 } else {
-                    sd.span_err(sp, &*format!("invalid suffix `{}` for numeric literal", suf));
+                    sd.span_err(sp, &format!("invalid suffix `{}` for numeric literal", suf));
                     sd.fileline_help(sp, "the suffix must be one of the integral types \
                                       (`u32`, `isize`, etc)");
                 }

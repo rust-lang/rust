@@ -67,7 +67,7 @@ pub trait AttrMetaMethods {
     /// containing a string, otherwise None.
     fn value_str(&self) -> Option<InternedString>;
     /// Gets a list of inner meta items from a list MetaItem type.
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [P<MetaItem>]>;
+    fn meta_item_list(&self) -> Option<&[P<MetaItem>]>;
 
     fn span(&self) -> Span;
 }
@@ -84,7 +84,7 @@ impl AttrMetaMethods for Attribute {
     fn value_str(&self) -> Option<InternedString> {
         self.meta().value_str()
     }
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [P<MetaItem>]> {
+    fn meta_item_list(&self) -> Option<&[P<MetaItem>]> {
         self.node.value.meta_item_list()
     }
     fn span(&self) -> Span { self.meta().span }
@@ -111,7 +111,7 @@ impl AttrMetaMethods for MetaItem {
         }
     }
 
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [P<MetaItem>]> {
+    fn meta_item_list(&self) -> Option<&[P<MetaItem>]> {
         match self.node {
             MetaList(_, ref l) => Some(&l[..]),
             _ => None
@@ -124,7 +124,7 @@ impl AttrMetaMethods for MetaItem {
 impl AttrMetaMethods for P<MetaItem> {
     fn name(&self) -> InternedString { (**self).name() }
     fn value_str(&self) -> Option<InternedString> { (**self).value_str() }
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [P<MetaItem>]> {
+    fn meta_item_list(&self) -> Option<&[P<MetaItem>]> {
         (**self).meta_item_list()
     }
     fn span(&self) -> Span { (**self).span() }
@@ -132,14 +132,14 @@ impl AttrMetaMethods for P<MetaItem> {
 
 
 pub trait AttributeMethods {
-    fn meta<'a>(&'a self) -> &'a MetaItem;
+    fn meta(&self) -> &MetaItem;
     fn with_desugared_doc<T, F>(&self, f: F) -> T where
         F: FnOnce(&Attribute) -> T;
 }
 
 impl AttributeMethods for Attribute {
     /// Extract the MetaItem from inside this Attribute.
-    fn meta<'a>(&'a self) -> &'a MetaItem {
+    fn meta(&self) -> &MetaItem {
         &*self.node.value
     }
 

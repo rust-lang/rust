@@ -58,7 +58,7 @@ impl<T> SmallVector<T> {
         SmallVector { repr: Many(vs) }
     }
 
-    pub fn as_slice<'a>(&'a self) -> &'a [T] {
+    pub fn as_slice(&self) -> &[T] {
         match self.repr {
             Zero => {
                 let result: &[T] = &[];
@@ -105,7 +105,7 @@ impl<T> SmallVector<T> {
         }
     }
 
-    pub fn get<'a>(&'a self, idx: usize) -> &'a T {
+    pub fn get(&self, idx: usize) -> &T {
         match self.repr {
             One(ref v) if idx == 0 => v,
             Many(ref vs) => &vs[idx],
