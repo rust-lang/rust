@@ -1,4 +1,4 @@
-# rustfmt [![Build Status](https://travis-ci.org/nrc/rustfmt.svg)](https://travis-ci.org/nrc/rustfmt)
+# rustfmt [![Build Status](https://travis-ci.org/rust-lang-nursery/rustfmt.svg)](https://travis-ci.org/rust-lang-nursery/rustfmt)
 
 A tool for formatting Rust code according to style guidelines.
 
@@ -12,13 +12,13 @@ If you'd like to help out (and you should, it's a fun project!), see
 > newer.
 
 ```
-cargo install --git https://github.com/nrc/rustfmt
+cargo install --git https://github.com/rust-lang-nursery/rustfmt
 ```
 
 or if you're using [`multirust`](https://github.com/brson/multirust)
 
 ```
-multirust run nightly cargo install --git https://github.com/nrc/rustfmt
+multirust run nightly cargo install --git https://github.com/rust-lang-nursery/rustfmt
 ```
 
 
