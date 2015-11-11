@@ -8,8 +8,8 @@ If you'd like to help out (and you should, it's a fun project!), see
 
 ## Installation
 
-> **Note:** this method currently requires you to be running a nightly install
-> of Rust as `cargo install` has not yet made its way onto the stable channel.
+> **Note:** this method currently requires you to be running cargo 0.6.0 or
+> newer.
 
 ```
 cargo install --git https://github.com/nrc/rustfmt
