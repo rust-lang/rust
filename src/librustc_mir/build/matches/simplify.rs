@@ -30,10 +30,10 @@ use repr::*;
 use std::mem;
 
 impl<'a,'tcx> Builder<'a,'tcx> {
-    pub fn simplify_candidate(&mut self,
-                              mut block: BasicBlock,
-                              candidate: &mut Candidate<'tcx>)
-                              -> BlockAnd<()> {
+    pub fn simplify_candidate<'pat>(&mut self,
+                                    mut block: BasicBlock,
+                                    candidate: &mut Candidate<'pat, 'tcx>)
+                                    -> BlockAnd<()> {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
             let match_pairs = mem::replace(&mut candidate.match_pairs, vec![]);
@@ -60,18 +60,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// have been pushed into the candidate. If no simplification is
     /// possible, Err is returned and no changes are made to
     /// candidate.
-    fn simplify_match_pair(&mut self,
-                           mut block: BasicBlock,
-                           match_pair: MatchPair<'tcx>,
-                           candidate: &mut Candidate<'tcx>)
-                           -> Result<BasicBlock, MatchPair<'tcx>> {
-        match match_pair.pattern.kind {
+    fn simplify_match_pair<'pat>(&mut self,
+                                 mut block: BasicBlock,
+                                 match_pair: MatchPair<'pat, 'tcx>,
+                                 candidate: &mut Candidate<'pat, 'tcx>)
+                                 -> Result<BasicBlock, MatchPair<'pat, 'tcx>> {
+        match *match_pair.pattern.kind {
             PatternKind::Wild(..) => {
                 // nothing left to do
                 Ok(block)
             }
 
-            PatternKind::Binding { name, mutability, mode, var, ty, subpattern } => {
+            PatternKind::Binding { name, mutability, mode, var, ty, ref subpattern } => {
                 candidate.bindings.push(Binding {
                     name: name,
                     mutability: mutability,
@@ -82,9 +82,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     binding_mode: mode,
                 });
 
-                if let Some(subpattern) = subpattern {
+                if let Some(subpattern) = subpattern.as_ref() {
                     // this is the `x @ P` case; have to keep matching against `P` now
-                    let subpattern = self.hir.mirror(subpattern);
                     candidate.match_pairs.push(MatchPair::new(match_pair.lvalue, subpattern));
                 }
 
@@ -96,12 +95,12 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 Err(match_pair)
             }
 
-            PatternKind::Array { prefix, slice, suffix } => {
+            PatternKind::Array { ref prefix, ref slice, ref suffix } => {
                 unpack!(block = self.prefix_suffix_slice(&mut candidate.match_pairs,
                                                          block,
                                                          match_pair.lvalue.clone(),
                                                          prefix,
-                                                         slice,
+                                                         slice.as_ref(),
                                                          suffix));
                 Ok(block)
             }
@@ -113,16 +112,15 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 Err(match_pair)
             }
 
-            PatternKind::Leaf { subpatterns } => {
+            PatternKind::Leaf { ref subpatterns } => {
                 // tuple struct, match subpats (if any)
                 candidate.match_pairs
                          .extend(self.field_match_pairs(match_pair.lvalue, subpatterns));
                 Ok(block)
             }
 
-            PatternKind::Deref { subpattern } => {
+            PatternKind::Deref { ref subpattern } => {
                 let lvalue = match_pair.lvalue.deref();
-                let subpattern = self.hir.mirror(subpattern);
                 candidate.match_pairs.push(MatchPair::new(lvalue, subpattern));
                 Ok(block)
             }

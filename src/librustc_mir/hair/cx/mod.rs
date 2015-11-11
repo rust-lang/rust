@@ -41,8 +41,6 @@ impl<'a,'tcx> Cx<'a,'tcx> {
     }
 }
 
-pub use self::pattern::PatNode;
-
 impl<'a,'tcx:'a> Cx<'a, 'tcx> {
     /// Normalizes `ast` into the appropriate `mirror` type.
     pub fn mirror<M: Mirror<'tcx>>(&mut self, ast: M) -> M::Output {

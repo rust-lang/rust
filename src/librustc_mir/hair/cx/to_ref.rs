@@ -10,7 +10,6 @@
 
 use hair::*;
 
-use hair::cx::pattern::PatNode;
 use rustc_front::hir;
 use syntax::ptr::P;
 
@@ -40,22 +39,6 @@ impl<'a,'tcx:'a> ToRef for Expr<'tcx> {
 
     fn to_ref(self) -> ExprRef<'tcx> {
         ExprRef::Mirror(Box::new(self))
-    }
-}
-
-impl<'a,'tcx:'a> ToRef for PatNode<'tcx> {
-    type Output = PatternRef<'tcx>;
-
-    fn to_ref(self) -> PatternRef<'tcx> {
-        PatternRef::Hair(self)
-    }
-}
-
-impl<'a,'tcx:'a> ToRef for Pattern<'tcx> {
-    type Output = PatternRef<'tcx>;
-
-    fn to_ref(self) -> PatternRef<'tcx> {
-        PatternRef::Mirror(Box::new(self))
     }
 }
 
