@@ -678,8 +678,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || resolve::resolve_crate(sess, &ast_map, make_glob_map));
 
     // Discard MTWT tables that aren't required past resolution.
+    // FIXME: get rid of uses of MTWT tables in typeck, mir and trans and clear them
     if !sess.opts.debugging_opts.keep_mtwt_tables {
-        syntax::ext::mtwt::clear_tables();
+        // syntax::ext::mtwt::clear_tables();
     }
 
     let named_region_map = time(time_passes,
