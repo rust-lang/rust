@@ -105,10 +105,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                      switch_ty: Ty<'tcx>,
                                      options: &mut Vec<ConstVal>,
                                      indices: &mut FnvHashMap<ConstVal, usize>)
+                                     -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.lvalue == *test_lvalue) {
             Some(match_pair) => match_pair,
-            _ => { return; }
+            _ => { return false; }
         };
 
         match *match_pair.pattern.kind {
@@ -121,11 +122,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                            options.push(value.clone());
                            options.len() - 1
                        });
+                true
             }
 
-            PatternKind::Range { .. } => {
-            }
-
+            PatternKind::Range { .. } |
             PatternKind::Constant { .. } |
             PatternKind::Variant { .. } |
             PatternKind::Slice { .. } |
@@ -134,6 +134,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             PatternKind::Binding { .. } |
             PatternKind::Leaf { .. } |
             PatternKind::Deref { .. } => {
+                // don't know how to add these patterns to a switch
+                false
             }
         }
     }
@@ -284,18 +286,29 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// P0` to the `resulting_candidates` entry corresponding to the
     /// variant `Some`.
     ///
-    /// In many cases we will add the `candidate` to more than one
-    /// outcome. For example, say that the test is `x == 22`, but the
-    /// candidate is `x @ 13..55`. In that case, if the test is true,
-    /// then we know that the candidate applies (without this match
-    /// pair, potentially, though we don't optimize this due to
-    /// #29623). If the test is false, the candidate may also apply
-    /// (with the match pair, still).
+    /// However, in some cases, the test may just not be relevant to
+    /// candidate. For example, suppose we are testing whether `foo.x == 22`,
+    /// but in one match arm we have `Foo { x: _, ... }`... in that case,
+    /// the test for what value `x` has has no particular relevance
+    /// to this candidate. In such cases, this function just returns false
+    /// without doing anything. This is used by the overall `match_candidates`
+    /// algorithm to structure the match as a whole. See `match_candidates` for
+    /// more details.
+    ///
+    /// FIXME(#29623). In some cases, we have some tricky choices to
+    /// make.  for example, if we are testing that `x == 22`, but the
+    /// candidate is `x @ 13..55`, what should we do? In the event
+    /// that the test is true, we know that the candidate applies, but
+    /// in the event of false, we don't know that it *doesn't*
+    /// apply. For now, we return false, indicate that the test does
+    /// not apply to this candidate, but it might be we can get
+    /// tighter match code if we do something a bit different.
     pub fn sort_candidate<'pat>(&mut self,
                                 test_lvalue: &Lvalue<'tcx>,
                                 test: &Test<'tcx>,
                                 candidate: &Candidate<'pat, 'tcx>,
-                                resulting_candidates: &mut [Vec<Candidate<'pat, 'tcx>>]) {
+                                resulting_candidates: &mut [Vec<Candidate<'pat, 'tcx>>])
+                                -> bool {
         // Find the match_pair for this lvalue (if any). At present,
         // afaik, there can be at most one. (In the future, if we
         // adopted a more general `@` operator, there might be more
@@ -311,7 +324,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             None => {
                 // We are not testing this lvalue. Therefore, this
                 // candidate applies to ALL outcomes.
-                return self.add_to_all_candidate_sets(candidate, resulting_candidates);
+                return false;
             }
         };
 
@@ -329,9 +342,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                                                 subpatterns,
                                                                 candidate);
                         resulting_candidates[variant_index].push(new_candidate);
+                        true
                     }
                     _ => {
-                        self.add_to_all_candidate_sets(candidate, resulting_candidates);
+                        false
                     }
                 }
             }
@@ -349,9 +363,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         let new_candidate = self.candidate_without_match_pair(match_pair_index,
                                                                               candidate);
                         resulting_candidates[index].push(new_candidate);
+                        true
                     }
                     _ => {
-                        self.add_to_all_candidate_sets(candidate, resulting_candidates);
+                        false
                     }
                 }
             }
@@ -367,8 +382,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     let new_candidate = self.candidate_without_match_pair(match_pair_index,
                                                                           candidate);
                     resulting_candidates[0].push(new_candidate);
+                    true
                 } else {
-                    self.add_to_all_candidate_sets(candidate, resulting_candidates);
+                    false
                 }
             }
         }
@@ -389,14 +405,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             bindings: candidate.bindings.clone(),
             guard: candidate.guard.clone(),
             arm_index: candidate.arm_index,
-        }
-    }
-
-    fn add_to_all_candidate_sets<'pat>(&mut self,
-                                       candidate: &Candidate<'pat, 'tcx>,
-                                       resulting_candidates: &mut [Vec<Candidate<'pat, 'tcx>>]) {
-        for resulting_candidate in resulting_candidates {
-            resulting_candidate.push(candidate.clone());
         }
     }
 
@@ -447,5 +455,5 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 }
 
 fn is_switch_ty<'tcx>(ty: Ty<'tcx>) -> bool {
-    ty.is_integral() || ty.is_char()
+    ty.is_integral() || ty.is_char() || ty.is_bool()
 }
