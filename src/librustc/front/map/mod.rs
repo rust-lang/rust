@@ -937,18 +937,18 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeImplItem(ii)) => {
             match ii.node {
-                ConstImplItem(..) => {
+                ImplItem_::Const(..) => {
                     format!("assoc const {} in {}{}",
                             ii.name,
                             map.path_to_string(id),
                             id_str)
                 }
-                MethodImplItem(..) => {
+                ImplItem_::Method(..) => {
                     format!("method {} in {}{}",
                             ii.name,
                             map.path_to_string(id), id_str)
                 }
-                TypeImplItem(_) => {
+                ImplItem_::Type(_) => {
                     format!("assoc type {} in {}{}",
                             ii.name,
                             map.path_to_string(id),

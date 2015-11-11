@@ -160,7 +160,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
             ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
 
             // Translate monomorphic impl methods immediately.
-            if let hir::MethodImplItem(ref sig, ref body) = impl_item.node {
+            if let hir::ImplItem_::Method(ref sig, ref body) = impl_item.node {
                 let impl_tpt = ccx.tcx().lookup_item_type(impl_did);
                 if impl_tpt.generics.types.is_empty() &&
                         sig.generics.ty_params.is_empty() {

@@ -129,7 +129,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                 _ => None
             },
             Some(ast_map::NodeImplItem(ii)) => match ii.node {
-                hir::ConstImplItem(_, ref expr) => {
+                hir::ImplItem_::Const(_, ref expr) => {
                     Some(&*expr)
                 }
                 _ => None
@@ -171,7 +171,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                 _ => None
             },
             csearch::FoundAst::Found(&InlinedItem::ImplItem(_, ref ii)) => match ii.node {
-                hir::ConstImplItem(_, ref expr) => Some(expr.id),
+                hir::ImplItem_::Const(_, ref expr) => Some(expr.id),
                 _ => None
             },
             _ => None
@@ -996,7 +996,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                           },
                           ty::ImplContainer(_) => match tcx.map.find(node_id) {
                               Some(ast_map::NodeImplItem(ii)) => match ii.node {
-                                  hir::ConstImplItem(ref ty, ref expr) => {
+                                  hir::ImplItem_::Const(ref ty, ref expr) => {
                                       (Some(&**expr), Some(&**ty))
                                   }
                                   _ => (None, None)

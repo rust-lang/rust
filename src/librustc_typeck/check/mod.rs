@@ -764,14 +764,14 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
 
         for impl_item in impl_items {
             match impl_item.node {
-                hir::ConstImplItem(_, ref expr) => {
+                hir::ImplItem_::Const(_, ref expr) => {
                     check_const(ccx, impl_item.span, &*expr, impl_item.id)
                 }
-                hir::MethodImplItem(ref sig, ref body) => {
+                hir::ImplItem_::Method(ref sig, ref body) => {
                     check_method_body(ccx, &impl_pty.generics, sig, body,
                                       impl_item.id, impl_item.span);
                 }
-                hir::TypeImplItem(_) => {
+                hir::ImplItem_::Type(_) => {
                     // Nothing to do here.
                 }
             }
@@ -908,7 +908,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                            impl_trait_ref));
             });
         match impl_item.node {
-            hir::ConstImplItem(..) => {
+            hir::ImplItem_::Const(..) => {
                 let impl_const = match ty_impl_item {
                     ty::ConstTraitItem(ref cti) => cti,
                     _ => tcx.sess.span_bug(impl_item.span, "non-const impl-item for const")
@@ -929,7 +929,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                               impl_trait_ref)
                 }
             }
-            hir::MethodImplItem(ref sig, ref body) => {
+            hir::ImplItem_::Method(ref sig, ref body) => {
                 check_trait_fn_not_const(ccx, impl_item.span, sig.constness);
 
                 let impl_method = match ty_impl_item {
@@ -952,7 +952,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                               impl_trait_ref)
                 }
             }
-            hir::TypeImplItem(_) => {
+            hir::ImplItem_::Type(_) => {
                 let impl_type = match ty_impl_item {
                     ty::TypeTraitItem(ref tti) => tti,
                     _ => tcx.sess.span_bug(impl_item.span, "non-type impl-item for type")
@@ -983,7 +983,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ty::ConstTraitItem(ref associated_const) => {
                 let is_implemented = impl_items.iter().any(|ii| {
                     match ii.node {
-                        hir::ConstImplItem(..) => {
+                        hir::ImplItem_::Const(..) => {
                             ii.name == associated_const.name
                         }
                         _ => false,
@@ -1003,7 +1003,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 let is_implemented =
                     impl_items.iter().any(|ii| {
                         match ii.node {
-                            hir::MethodImplItem(..) => {
+                            hir::ImplItem_::Method(..) => {
                                 ii.name == trait_method.name
                             }
                             _ => false,
@@ -1022,7 +1022,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ty::TypeTraitItem(ref associated_type) => {
                 let is_implemented = impl_items.iter().any(|ii| {
                     match ii.node {
-                        hir::TypeImplItem(_) => {
+                        hir::ImplItem_::Type(_) => {
                             ii.name == associated_type.name
                         }
                         _ => false,
