@@ -5,8 +5,19 @@
 This guide will use the [snappy](https://github.com/google/snappy)
 compression/decompression library as an introduction to writing bindings for
 foreign code. Rust is currently unable to call directly into a C++ library, but
-snappy includes a C interface (documented in
-[`snappy-c.h`](https://github.com/google/snappy/blob/master/snappy-c.h)).
+snappy includes a C interface (documented in [`snappy-c.h`][snappy-header]).
+
+[snappy-header]: https://github.com/google/snappy/blob/master/snappy-c.h
+
+Often when writing these bindings, types and functions from the C standard
+library will be necessary. These can be found in the
+[libc crate on crates.io][libc], which can be accessed in a Cargo project
+by [adding it as a dependency][cargo-add]. (Note that if you click the examples
+here to load them in the [playground](https://play.rust-lang.org), which doesn't
+support Cargo, you'll see extra lines of code to keep them compiling while
+remaining self-contained... but in your own projects you should use Cargo.)
+
+[cargo-add]: http://doc.crates.io/guide.html#adding-a-dependency
 
 The following is a minimal example of calling a foreign function which will
 compile if snappy is installed:
@@ -23,7 +34,7 @@ extern {
 }
 
 # #[cfg(not(nope))] unsafe fn snappy_max_compressed_length(_: size_t) -> size_t { 0 }
-
+# 
 fn main() {
     let x = unsafe { snappy_max_compressed_length(100) };
     println!("max compressed length of a 100 byte buffer: {}", x);
