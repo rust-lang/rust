@@ -50,21 +50,21 @@ pub fn string_to_crate (source_str : String) -> ast::Crate {
 /// Parse a string, return an expr
 pub fn string_to_expr (source_str : String) -> P<ast::Expr> {
     with_error_checking_parse(source_str, |p| {
-        p.parse_expr_nopanic()
+        p.parse_expr()
     })
 }
 
 /// Parse a string, return an item
 pub fn string_to_item (source_str : String) -> Option<P<ast::Item>> {
     with_error_checking_parse(source_str, |p| {
-        p.parse_item_nopanic()
+        p.parse_item()
     })
 }
 
 /// Parse a string, return a stmt
 pub fn string_to_stmt(source_str : String) -> Option<P<ast::Stmt>> {
     with_error_checking_parse(source_str, |p| {
-        p.parse_stmt_nopanic()
+        p.parse_stmt()
     })
 }
 
@@ -72,7 +72,7 @@ pub fn string_to_stmt(source_str : String) -> Option<P<ast::Stmt>> {
 /// (currently) affect parsing.
 pub fn string_to_pat(source_str: String) -> P<ast::Pat> {
     with_error_checking_parse(source_str, |p| {
-        p.parse_pat_nopanic()
+        p.parse_pat()
     })
 }
 

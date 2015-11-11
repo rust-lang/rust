@@ -501,18 +501,18 @@ pub fn parse_nt(p: &mut Parser, sp: Span, name: &str) -> Nonterminal {
     // check at the beginning and the parser checks after each bump
     panictry!(p.check_unknown_macro_variable());
     match name {
-        "item" => match panictry!(p.parse_item_nopanic()) {
+        "item" => match panictry!(p.parse_item()) {
             Some(i) => token::NtItem(i),
             None => panic!(p.fatal("expected an item keyword"))
         },
         "block" => token::NtBlock(panictry!(p.parse_block())),
-        "stmt" => match panictry!(p.parse_stmt_nopanic()) {
+        "stmt" => match panictry!(p.parse_stmt()) {
             Some(s) => token::NtStmt(s),
             None => panic!(p.fatal("expected a statement"))
         },
-        "pat" => token::NtPat(panictry!(p.parse_pat_nopanic())),
-        "expr" => token::NtExpr(panictry!(p.parse_expr_nopanic())),
-        "ty" => token::NtTy(panictry!(p.parse_ty_nopanic())),
+        "pat" => token::NtPat(panictry!(p.parse_pat())),
+        "expr" => token::NtExpr(panictry!(p.parse_expr())),
+        "ty" => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
         "ident" => match p.token {
             token::Ident(sn,b) => { panictry!(p.bump()); token::NtIdent(Box::new(sn),b) }

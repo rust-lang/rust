@@ -67,18 +67,18 @@ impl<'a> ParserAnyMacro<'a> {
 
 impl<'a> MacResult for ParserAnyMacro<'a> {
     fn make_expr(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Expr>> {
-        let ret = panictry!(self.parser.borrow_mut().parse_expr_nopanic());
+        let ret = panictry!(self.parser.borrow_mut().parse_expr());
         self.ensure_complete_parse(true);
         Some(ret)
     }
     fn make_pat(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Pat>> {
-        let ret = panictry!(self.parser.borrow_mut().parse_pat_nopanic());
+        let ret = panictry!(self.parser.borrow_mut().parse_pat());
         self.ensure_complete_parse(false);
         Some(ret)
     }
     fn make_items(self: Box<ParserAnyMacro<'a>>) -> Option<SmallVector<P<ast::Item>>> {
         let mut ret = SmallVector::zero();
-        while let Some(item) = panictry!(self.parser.borrow_mut().parse_item_nopanic()) {
+        while let Some(item) = panictry!(self.parser.borrow_mut().parse_item()) {
             ret.push(item);
         }
         self.ensure_complete_parse(false);
@@ -106,7 +106,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
             let mut parser = self.parser.borrow_mut();
             match parser.token {
                 token::Eof => break,
-                _ => match parser.parse_stmt_nopanic() {
+                _ => match parser.parse_stmt() {
                     Ok(maybe_stmt) => match maybe_stmt {
                         Some(stmt) => ret.push(stmt),
                         None => (),
@@ -120,7 +120,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
     }
 
     fn make_ty(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Ty>> {
-        let ret = panictry!(self.parser.borrow_mut().parse_ty_nopanic());
+        let ret = panictry!(self.parser.borrow_mut().parse_ty());
         self.ensure_complete_parse(true);
         Some(ret)
     }

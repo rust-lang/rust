@@ -109,13 +109,13 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree
     }
     impl<'a> base::MacResult for ExpandResult<'a> {
         fn make_expr(mut self: Box<ExpandResult<'a>>) -> Option<P<ast::Expr>> {
-            Some(panictry!(self.p.parse_expr_nopanic()))
+            Some(panictry!(self.p.parse_expr()))
         }
         fn make_items(mut self: Box<ExpandResult<'a>>)
                       -> Option<SmallVector<P<ast::Item>>> {
             let mut ret = SmallVector::zero();
             while self.p.token != token::Eof {
-                match panictry!(self.p.parse_item_nopanic()) {
+                match panictry!(self.p.parse_item()) {
                     Some(item) => ret.push(item),
                     None => panic!(self.p.span_fatal(
                         self.p.span,
