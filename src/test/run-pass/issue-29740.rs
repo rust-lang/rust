@@ -11,6 +11,8 @@
 // Regression test for #29740. Inefficient MIR matching algorithms
 // generated way too much code for this sort of case, leading to OOM.
 
+// ignore-pretty
+
 pub mod KeyboardEventConstants {
     pub const DOM_KEY_LOCATION_STANDARD: u32 = 0;
     pub const DOM_KEY_LOCATION_LEFT: u32 = 1;
