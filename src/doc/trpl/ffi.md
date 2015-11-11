@@ -16,10 +16,13 @@ compile if snappy is installed:
 extern crate libc;
 use libc::size_t;
 
+#[cfg(nope)]
 #[link(name = "snappy")]
 extern {
     fn snappy_max_compressed_length(source_length: size_t) -> size_t;
 }
+
+# #[cfg(not(nope))] unsafe fn snappy_max_compressed_length(_: size_t) -> size_t { 0 }
 
 fn main() {
     let x = unsafe { snappy_max_compressed_length(100) };
@@ -50,6 +53,7 @@ The `extern` block can be extended to cover the entire snappy API:
 extern crate libc;
 use libc::{c_int, size_t};
 
+# #[cfg(nope)]
 #[link(name = "snappy")]
 extern {
     fn snappy_compress(input: *const u8,
@@ -67,6 +71,7 @@ extern {
     fn snappy_validate_compressed_buffer(compressed: *const u8,
                                          compressed_length: size_t) -> c_int;
 }
+
 # fn main() {}
 ```
 
@@ -85,8 +90,11 @@ the allocated memory. The length is less than or equal to the capacity.
 # #![feature(libc)]
 # extern crate libc;
 # use libc::{c_int, size_t};
+# 
 # unsafe fn snappy_validate_compressed_buffer(_: *const u8, _: size_t) -> c_int { 0 }
+# 
 # fn main() {}
+# 
 pub fn validate_compressed_buffer(src: &[u8]) -> bool {
     unsafe {
         snappy_validate_compressed_buffer(src.as_ptr(), src.len() as size_t) == 0
@@ -110,10 +118,13 @@ the true length after compression for setting the length.
 # #![feature(libc)]
 # extern crate libc;
 # use libc::{size_t, c_int};
+# 
 # unsafe fn snappy_compress(a: *const u8, b: size_t, c: *mut u8,
 #                           d: *mut size_t) -> c_int { 0 }
 # unsafe fn snappy_max_compressed_length(a: size_t) -> size_t { a }
+# 
 # fn main() {}
+# 
 pub fn compress(src: &[u8]) -> Vec<u8> {
     unsafe {
         let srclen = src.len() as size_t;
@@ -137,6 +148,7 @@ format and `snappy_uncompressed_length` will retrieve the exact buffer size requ
 # #![feature(libc)]
 # extern crate libc;
 # use libc::{size_t, c_int};
+# 
 # unsafe fn snappy_uncompress(compressed: *const u8,
 #                             compressed_length: size_t,
 #                             uncompressed: *mut u8,
@@ -145,6 +157,7 @@ format and `snappy_uncompressed_length` will retrieve the exact buffer size requ
 #                                      compressed_length: size_t,
 #                                      result: *mut size_t) -> c_int { 0 }
 # fn main() {}
+# 
 pub fn uncompress(src: &[u8]) -> Option<Vec<u8>> {
     unsafe {
         let srclen = src.len() as size_t;
@@ -197,11 +210,16 @@ extern fn callback(a: i32) {
     println!("I'm called from C with value {0}", a);
 }
 
+# #[cfg(nope)]
 #[link(name = "extlib")]
 extern {
    fn register_callback(cb: extern fn(i32)) -> i32;
    fn trigger_callback();
 }
+# 
+# #[cfg(not(nope))] static mut CALLBACK: Option<extern fn(i32)> = None;
+# #[cfg(not(nope))] unsafe fn register_callback(cb: extern fn(i32)) -> i32 { CALLBACK = Some(cb); 1 }
+# #[cfg(not(nope))] unsafe fn trigger_callback() { CALLBACK.unwrap()(7); }
 
 fn main() {
     unsafe {
@@ -260,12 +278,17 @@ extern "C" fn callback(target: *mut RustObject, a: i32) {
     }
 }
 
+# #[cfg(nope)]
 #[link(name = "extlib")]
 extern {
    fn register_callback(target: *mut RustObject,
                         cb: extern fn(*mut RustObject, i32)) -> i32;
    fn trigger_callback();
 }
+# 
+# #[cfg(not(nope))] static mut CALLBACK: Option<(*mut RustObject, extern fn(*mut RustObject, i32))> = None;
+# #[cfg(not(nope))] unsafe fn register_callback(target: *mut RustObject, cb: extern fn(*mut RustObject, i32)) -> i32 { CALLBACK = Some((target, cb)); 1 }
+# #[cfg(not(nope))] unsafe fn trigger_callback() { let (target, cb) = CALLBACK.unwrap(); cb(target, 7); }
 
 fn main() {
     // Create the object that will be referenced in the callback
@@ -379,6 +402,8 @@ this:
 
 ```rust
 unsafe fn kaboom(ptr: *const i32) -> i32 { *ptr }
+
+# fn main() {}
 ```
 
 This function can only be called from an `unsafe` block or another `unsafe` function.
@@ -451,6 +476,7 @@ extern crate libc;
 extern "stdcall" {
     fn SetEnvironmentVariableA(n: *const u8, v: *const u8) -> libc::c_int;
 }
+
 # fn main() { }
 ```
 
@@ -525,6 +551,7 @@ fairly easy, but requires a few things:
 pub extern fn hello_rust() -> *const u8 {
     "Hello, world!\0".as_ptr()
 }
+
 # fn main() {}
 ```
 
@@ -554,6 +581,7 @@ pub extern fn oh_no() -> i32 {
         Err(_) => 0,
     }
 }
+
 # fn main() {}
 ```
 
@@ -578,6 +606,7 @@ extern "C" {
     pub fn foo(arg: *mut libc::c_void);
     pub fn bar(arg: *mut libc::c_void);
 }
+
 # fn main() {}
 ```
 
@@ -603,6 +632,7 @@ extern "C" {
     pub fn foo(arg: *mut Foo);
     pub fn bar(arg: *mut Bar);
 }
+
 # fn main() {}
 ```
 
