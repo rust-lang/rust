@@ -3,7 +3,7 @@
 A tool for formatting Rust code according to style guidelines.
 
 If you'd like to help out (and you should, it's a fun project!), see
-[Contributing.md].
+[Contributing.md](Contributing.md).
 
 
 ## Installation
