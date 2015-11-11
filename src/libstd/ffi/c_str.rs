@@ -37,11 +37,10 @@ use vec::Vec;
 ///
 /// A `CString` is created from either a byte slice or a byte vector. After
 /// being created, a `CString` predominately inherits all of its methods from
-/// the `Deref` implementation to `[os::raw::c_char]`. Note that the underlying
-/// array is represented as an array of `os::raw::c_char` as opposed to `u8`. A
-/// `u8` slice can be obtained with the `as_bytes` method.  Slices produced from
-/// a `CString` do *not* contain the trailing nul terminator unless otherwise
-/// specified.
+/// the `Deref` implementation to `[c_char]`. Note that the underlying array
+/// is represented as an array of `c_char` as opposed to `u8`. A `u8` slice
+/// can be obtained with the `as_bytes` method.  Slices produced from a `CString`
+/// do *not* contain the trailing nul terminator unless otherwise specified.
 ///
 /// # Examples
 ///
