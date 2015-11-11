@@ -295,7 +295,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                 test_lvalue: &Lvalue<'tcx>,
                                 test: &Test<'tcx>,
                                 candidate: &Candidate<'pat, 'tcx>,
-                                resulting_candidates: &mut Vec<Vec<Candidate<'pat, 'tcx>>>) {
+                                resulting_candidates: &mut [Vec<Candidate<'pat, 'tcx>>]) {
         // Find the match_pair for this lvalue (if any). At present,
         // afaik, there can be at most one. (In the future, if we
         // adopted a more general `@` operator, there might be more
@@ -394,7 +394,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
     fn add_to_all_candidate_sets<'pat>(&mut self,
                                        candidate: &Candidate<'pat, 'tcx>,
-                                       resulting_candidates: &mut Vec<Vec<Candidate<'pat, 'tcx>>>) {
+                                       resulting_candidates: &mut [Vec<Candidate<'pat, 'tcx>>]) {
         for resulting_candidate in resulting_candidates {
             resulting_candidate.push(candidate.clone());
         }
