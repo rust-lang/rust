@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 // Regression test for #29227. The problem here was that MIR
 // construction for these gigantic match expressions was very
 // inefficient.
