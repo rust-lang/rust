@@ -1,21 +1,25 @@
-% The Rust Programming Language
+% The Rust Programming Language Book
 
 Welcome! This book will teach you about the [Rust Programming Language][rust].
-Rust is a systems programming language focused on three goals: safety, speed,
+Rust is a systems programming language that's focused on three goals: safety, speed,
 and concurrency. It maintains these goals without having a garbage collector,
-making it a useful language for a number of use cases other languages aren’t
-good at: embedding in other languages, programs with specific space and time
-requirements, and writing low-level code, like device drivers and operating
-systems. It improves on current languages targeting this space by having a
-number of compile-time safety checks that produce no runtime overhead, while
-eliminating all data races. Rust also aims to achieve ‘zero-cost abstractions’
-even though some of these abstractions feel like those of a high-level language.
-Even then, Rust still allows precise control like a low-level language would.
+which makes it ideal for a number of use cases that other languages aren’t
+suited for: embedding in other languages, programs with specific space and time
+requirements, and low-level code like device drivers and operating systems. A 
+major advantage that Rust has over other programming languages are the built in
+safety features that don't impact performance.  The language, and the compiler 
+are designed to work together providing comprehensive compile-time safety checks
+that produce no runtime overhead, and eliminates common bugs like data races.  Rust
+also provides many ‘zero-cost abstractions’ giving it the look and feel of a 
+high-level language, while maintaining the precise control of a low-level language.  
+Rust is versatile enough to build everything from game engines to RESTful web services.  
+By reading this book, and learning Rust, you will be able to develop higher quality software 
+that you can count on. 
 
 [rust]: https://www.rust-lang.org
 
-“The Rust Programming Language” is split into eight sections. This introduction
-is the first. After this:
+“The Rust Programming Language Book” is split into eight sections including this introduction.
+Table of contents:
 
 * [Getting started][gs] - Set up your computer for Rust development.
 * [Learn Rust][lr] - Learn Rust programming through small projects.
