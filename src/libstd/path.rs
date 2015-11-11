@@ -1832,7 +1832,8 @@ impl Path {
     }
 
     /// Boolean value indicator whether the underlying file exists on the local
-    /// filesystem. Returns false in exactly the cases where `fs::stat` fails.
+    /// filesystem. Returns false in exactly the cases where `fs::metadata`
+    /// fails.
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn exists(&self) -> bool {
         fs::metadata(self).is_ok()
