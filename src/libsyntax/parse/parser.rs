@@ -393,6 +393,22 @@ impl<'a> Parser<'a> {
         panictry!(self.parse_attribute(permit_inner))
     }
 
+    pub fn parse_arg_panic(&mut self) -> Arg {
+        panictry!(self.parse_arg())
+    }
+
+    pub fn parse_block_panic(&mut self) -> P<Block> {
+        panictry!(self.parse_block())
+    }
+
+    pub fn parse_meta_item_panic(&mut self) -> P<ast::MetaItem> {
+        panictry!(self.parse_meta_item())
+    }
+
+    pub fn parse_path_panic(&mut self, mode: PathParsingMode) -> ast::Path {
+        panictry!(self.parse_path(mode))
+    }
+
     /// Convert a token to a string using self's reader
     pub fn token_to_string(token: &token::Token) -> String {
         pprust::token_to_string(token)
@@ -1455,6 +1471,8 @@ impl<'a> Parser<'a> {
     /// This version of parse arg doesn't necessarily require
     /// identifier names.
     pub fn parse_arg_general(&mut self, require_name: bool) -> PResult<Arg> {
+        maybe_whole!(no_clone self, NtArg);
+
         let pat = if require_name || self.is_named_argument() {
             debug!("parse_arg_general parse_pat (require_name:{})",
                    require_name);
