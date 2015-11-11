@@ -559,6 +559,10 @@ impl FileMap {
     pub fn is_imported(&self) -> bool {
         self.src.is_none()
     }
+
+    fn count_lines(&self) -> usize {
+        self.lines.borrow().len()
+    }
 }
 
 /// An abstraction over the fs operations used by the Parser.
@@ -1020,6 +1024,10 @@ impl CodeMap {
         }
         debug!("span_allows_unstable? {}", allows_unstable);
         allows_unstable
+    }
+
+    pub fn count_lines(&self) -> usize {
+        self.files.borrow().iter().fold(0, |a, f| a + f.count_lines())
     }
 }
 

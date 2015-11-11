@@ -52,6 +52,8 @@ use syntax::feature_gate::UnstableFeatures;
 use syntax::fold::Folder;
 use syntax::parse;
 use syntax::parse::token;
+use syntax::util::node_count::NodeCounter;
+use syntax::visit;
 use syntax;
 
 pub fn compile_input(sess: Session,
@@ -398,11 +400,22 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
         println!("{}", json::as_json(&krate));
     }
 
+    if sess.opts.debugging_opts.input_stats {
+        println!("Lines of code:             {}", sess.codemap().count_lines());
+        println!("Pre-expansion node count:  {}", count_nodes(&krate));
+    }
+
     if let Some(ref s) = sess.opts.show_span {
         syntax::show_span::run(sess.diagnostic(), s, &krate);
     }
 
     krate
+}
+
+fn count_nodes(krate: &ast::Crate) -> usize {
+    let mut counter = NodeCounter::new();
+    visit::walk_crate(&mut counter, krate);
+    counter.count
 }
 
 // For continuing compilation after a parsed crate has been
@@ -605,6 +618,10 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         *sess.features.borrow_mut() = features;
         sess.abort_if_errors();
     });
+
+    if sess.opts.debugging_opts.input_stats {
+        println!("Post-expansion node count: {}", count_nodes(&krate));
+    }
 
     Some(krate)
 }
