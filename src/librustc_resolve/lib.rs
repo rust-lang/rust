@@ -153,7 +153,7 @@ pub enum ResolutionError<'a> {
     /// error E0413: declaration shadows an enum variant or unit-like struct in scope
     DeclarationShadowsEnumVariantOrUnitLikeStruct(Name),
     /// error E0414: only irrefutable patterns allowed here
-    OnlyIrrefutablePatternsAllowedHere,
+    OnlyIrrefutablePatternsAllowedHere(DefId, Name),
     /// error E0415: identifier is bound more than once in this parameter list
     IdentifierBoundMoreThanOnceInParameterList(&'a str),
     /// error E0416: identifier is bound more than once in the same pattern
@@ -283,8 +283,16 @@ fn resolve_error<'b, 'a:'b, 'tcx:'a>(resolver: &'b Resolver<'a, 'tcx>, span: syn
                           scope",
                          name);
         },
-        ResolutionError::OnlyIrrefutablePatternsAllowedHere => {
+        ResolutionError::OnlyIrrefutablePatternsAllowedHere(did, name) => {
             span_err!(resolver.session, span, E0414, "only irrefutable patterns allowed here");
+            resolver.session.span_note(span, "there already is a constant in scope sharing the same name as this pattern");
+            if let Some(sp) = resolver.ast_map.span_if_local(did) {
+                resolver.session.span_note(sp, "constant defined here");
+            }
+            if let Some(directive) = resolver.current_module.import_resolutions.borrow().get(&name) {
+                let item = resolver.ast_map.expect_item(directive.value_id);
+                resolver.session.span_note(item.span, "constant imported here");
+            }
         },
         ResolutionError::IdentifierBoundMoreThanOnceInParameterList(identifier) => {
             span_err!(resolver.session, span, E0415,
@@ -632,7 +640,7 @@ enum NameSearchType {
 #[derive(Copy, Clone)]
 enum BareIdentifierPatternResolution {
     FoundStructOrEnumVariant(Def, LastPrivate),
-    FoundConst(Def, LastPrivate),
+    FoundConst(Def, LastPrivate, Name),
     BareIdentifierPatternUnresolved
 }
 
@@ -2685,7 +2693,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     renamed)
                             );
                         }
-                        FoundConst(def, lp) if const_ok => {
+                        FoundConst(def, lp, _) if const_ok => {
                             debug!("(resolving pattern) resolving `{}` to \
                                     constant",
                                    renamed);
@@ -2700,11 +2708,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 depth: 0
                             });
                         }
-                        FoundConst(..) => {
+                        FoundConst(def, _, name) => {
                             resolve_error(
                                 self,
                                 pattern.span,
-                                ResolutionError::OnlyIrrefutablePatternsAllowedHere
+                                ResolutionError::OnlyIrrefutablePatternsAllowedHere(def.def_id(), name)
                             );
                         }
                         BareIdentifierPatternUnresolved => {
@@ -2929,7 +2937,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 return FoundStructOrEnumVariant(def, LastMod(AllPublic));
                             }
                             def @ DefConst(..) | def @ DefAssociatedConst(..) => {
-                                return FoundConst(def, LastMod(AllPublic));
+                                return FoundConst(def, LastMod(AllPublic), name);
                             }
                             DefStatic(..) => {
                                 resolve_error(self,
