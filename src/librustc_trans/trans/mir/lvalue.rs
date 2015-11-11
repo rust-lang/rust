@@ -85,7 +85,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Lvalue::Arg(index) => self.args[index as usize],
             mir::Lvalue::Static(def_id) => {
                 let const_ty = self.mir.lvalue_ty(tcx, lvalue);
-                LvalueRef::new(common::get_static_val(ccx, def_id, const_ty.to_ty(tcx)), const_ty)
+                LvalueRef::new_sized(
+                    common::get_static_val(ccx, def_id, const_ty.to_ty(tcx)),
+                    const_ty)
             },
             mir::Lvalue::ReturnPointer => {
                 let return_ty = bcx.monomorphize(&self.mir.return_ty);

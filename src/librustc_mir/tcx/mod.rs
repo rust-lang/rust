@@ -16,6 +16,7 @@
 use repr::*;
 use rustc::middle::subst::Substs;
 use rustc::middle::ty::{self, AdtDef, Ty};
+use rustc_front::hir;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LvalueTy<'tcx> {
@@ -120,6 +121,20 @@ impl<'tcx> Mir<'tcx> {
                 LvalueTy::Ty { ty: self.return_ty.unwrap() },
             Lvalue::Projection(ref proj) =>
                 self.lvalue_ty(tcx, &proj.base).projection_ty(tcx, &proj.elem)
+        }
+    }
+}
+
+impl BorrowKind {
+    pub fn to_mutbl_lossy(self) -> hir::Mutability {
+        match self {
+            BorrowKind::Mut => hir::MutMutable,
+            BorrowKind::Shared => hir::MutImmutable,
+
+            // We have no type corresponding to a unique imm borrow, so
+            // use `&mut`. It gives all the capabilities of an `&uniq`
+            // and hence is a safe "over approximation".
+            BorrowKind::Unique => hir::MutMutable,
         }
     }
 }
