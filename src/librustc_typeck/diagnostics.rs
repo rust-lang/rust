@@ -2677,6 +2677,28 @@ defined. For more information see the [opt-in builtin traits RFC](https://github
 .com/rust-lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
 "##,
 
+E0321: r##"
+A cross-crate opt-out trait was implemented on something which wasn't a struct
+or enum type. Erroneous code example:
+
+```
+#![feature(optin_builtin_traits)]
+
+struct Foo;
+
+impl !Sync for Foo {}
+
+unsafe impl Send for &'static Foo {
+// error: cross-crate traits with a default impl, like `core::marker::Send`,
+//        can only be implemented for a struct/enum type, not
+//        `&'static Foo`
+```
+
+Only structs and enums are permitted to impl Send, Sync, and other opt-out
+trait, and the struct or enum must be local to the current crate. So, for
+example, `unsafe impl Send for Rc<Foo>` is not allowed.
+"##,
+
 E0322: r##"
 The `Sized` trait is a special trait built-in to the compiler for types with a
 constant size known at compile-time. This trait is automatically implemented
@@ -3463,7 +3485,6 @@ register_diagnostics! {
 //  E0246, // invalid recursive type
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
-    E0321, // extended coherence rules for defaulted traits violated
     E0328, // cannot implement Unsize explicitly
     E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with one field being coerced, none found
