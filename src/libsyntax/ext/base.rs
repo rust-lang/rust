@@ -881,7 +881,7 @@ impl SyntaxEnv {
         self.chain.pop();
     }
 
-    fn find_escape_frame<'a>(&'a mut self) -> &'a mut MapChainFrame {
+    fn find_escape_frame(&mut self) -> &mut MapChainFrame {
         for (i, frame) in self.chain.iter_mut().enumerate().rev() {
             if !frame.info.macros_escape || i == 0 {
                 return frame
@@ -904,7 +904,7 @@ impl SyntaxEnv {
         self.find_escape_frame().map.insert(k, Rc::new(v));
     }
 
-    pub fn info<'a>(&'a mut self) -> &'a mut BlockInfo {
+    pub fn info(&mut self) -> &mut BlockInfo {
         let last_chain_index = self.chain.len() - 1;
         &mut self.chain[last_chain_index].info
     }

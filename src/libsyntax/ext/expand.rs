@@ -547,7 +547,7 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
                     // names, as well... but that should be okay, as long as
                     // the new names are gensyms for the old ones.
                     // generate fresh names, push them to a new pending list
-                    let idents = pattern_bindings(&*expanded_pat);
+                    let idents = pattern_bindings(&expanded_pat);
                     let mut new_pending_renames =
                         idents.iter().map(|ident| (*ident, fresh_name(*ident))).collect();
                     // rewrite the pattern using the new names (the old
@@ -634,7 +634,7 @@ fn rename_in_scope<X, F>(pats: Vec<P<ast::Pat>>,
 {
     // all of the pats must have the same set of bindings, so use the
     // first one to extract them and generate new names:
-    let idents = pattern_bindings(&*pats[0]);
+    let idents = pattern_bindings(&pats[0]);
     let new_renames = idents.into_iter().map(|id| (id, fresh_name(id))).collect();
     // apply the renaming, but only to the PatIdents:
     let mut rename_pats_fld = PatIdentRenamer{renames:&new_renames};
@@ -659,7 +659,7 @@ impl<'v> Visitor<'v> for PatIdentFinder {
                 self.ident_accumulator.push(path1.node);
                 // visit optional subpattern of PatIdent:
                 if let Some(ref subpat) = *inner {
-                    self.visit_pat(&**subpat)
+                    self.visit_pat(subpat)
                 }
             }
             // use the default traversal for non-PatIdents
@@ -679,7 +679,7 @@ fn pattern_bindings(pat: &ast::Pat) -> Vec<ast::Ident> {
 fn fn_decl_arg_bindings(fn_decl: &ast::FnDecl) -> Vec<ast::Ident> {
     let mut pat_idents = PatIdentFinder{ident_accumulator:Vec::new()};
     for arg in &fn_decl.inputs {
-        pat_idents.visit_pat(&*arg.pat);
+        pat_idents.visit_pat(&arg.pat);
     }
     pat_idents.ident_accumulator
 }
@@ -1078,7 +1078,7 @@ fn expand_and_rename_fn_decl_and_block(fn_decl: P<ast::FnDecl>, block: P<ast::Bl
                                        fld: &mut MacroExpander)
                                        -> (P<ast::FnDecl>, P<ast::Block>) {
     let expanded_decl = fld.fold_fn_decl(fn_decl);
-    let idents = fn_decl_arg_bindings(&*expanded_decl);
+    let idents = fn_decl_arg_bindings(&expanded_decl);
     let renames =
         idents.iter().map(|id| (*id,fresh_name(*id))).collect();
     // first, a renamer for the PatIdents, for the fn_decl:
@@ -1807,7 +1807,7 @@ foo_module!();
     fn pat_idents(){
         let pat = string_to_pat(
             "(a,Foo{x:c @ (b,9),y:Bar(4,d)})".to_string());
-        let idents = pattern_bindings(&*pat);
+        let idents = pattern_bindings(&pat);
         assert_eq!(idents, strs_to_idents(vec!("a","c","b","d")));
     }
 

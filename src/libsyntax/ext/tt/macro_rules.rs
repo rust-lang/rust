@@ -289,7 +289,7 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     };
 
     for lhs in &lhses {
-        check_lhs_nt_follows(cx, &**lhs, def.span);
+        check_lhs_nt_follows(cx, lhs, def.span);
     }
 
     let rhses = match **argument_map.get(&rhs_nm.name).unwrap() {

@@ -86,7 +86,7 @@ fn filter_foreign_item<F>(cx: &mut Context<F>,
                           -> Option<P<ast::ForeignItem>> where
     F: FnMut(&[ast::Attribute]) -> bool
 {
-    if foreign_item_in_cfg(cx, &*item) {
+    if foreign_item_in_cfg(cx, &item) {
         Some(item)
     } else {
         None
@@ -109,7 +109,7 @@ fn fold_foreign_mod<F>(cx: &mut Context<F>,
 fn fold_item<F>(cx: &mut Context<F>, item: P<ast::Item>) -> SmallVector<P<ast::Item>> where
     F: FnMut(&[ast::Attribute]) -> bool
 {
-    if item_in_cfg(cx, &*item) {
+    if item_in_cfg(cx, &item) {
         SmallVector::one(item.map(|i| cx.fold_item_simple(i)))
     } else {
         SmallVector::zero()
@@ -189,7 +189,7 @@ fn retain_stmt<F>(cx: &mut Context<F>, stmt: &ast::Stmt) -> bool where
         ast::StmtDecl(ref decl, _) => {
             match decl.node {
                 ast::DeclItem(ref item) => {
-                    item_in_cfg(cx, &**item)
+                    item_in_cfg(cx, item)
                 }
                 _ => true
             }
@@ -203,7 +203,7 @@ fn fold_block<F>(cx: &mut Context<F>, b: P<ast::Block>) -> P<ast::Block> where
 {
     b.map(|ast::Block {id, stmts, expr, rules, span}| {
         let resulting_stmts: Vec<P<ast::Stmt>> =
-            stmts.into_iter().filter(|a| retain_stmt(cx, &**a)).collect();
+            stmts.into_iter().filter(|a| retain_stmt(cx, a)).collect();
         let resulting_stmts = resulting_stmts.into_iter()
             .flat_map(|stmt| cx.fold_stmt(stmt).into_iter())
             .collect();
@@ -263,7 +263,7 @@ fn in_cfg(diagnostic: &SpanHandler, cfg: &[P<ast::MetaItem>], attrs: &[ast::Attr
             return true;
         }
 
-        attr::cfg_matches(diagnostic, cfg, &*mis[0],
+        attr::cfg_matches(diagnostic, cfg, &mis[0],
                           feature_gated_cfgs)
     })
 }

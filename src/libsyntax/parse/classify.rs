@@ -53,7 +53,7 @@ pub fn stmt_ends_with_semi(stmt: &ast::Stmt_) -> bool {
                 ast::DeclItem(_) => false
             }
         }
-        ast::StmtExpr(ref e, _) => { expr_requires_semi_to_be_stmt(&**e) }
+        ast::StmtExpr(ref e, _) => { expr_requires_semi_to_be_stmt(e) }
         ast::StmtSemi(..) => { false }
         ast::StmtMac(..) => { false }
     }
