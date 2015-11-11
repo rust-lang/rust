@@ -512,6 +512,18 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
         syntax_expanders.insert(intern("quote_attr"),
                            builtin_normal_expander(
                                 ext::quote::expand_quote_attr));
+        syntax_expanders.insert(intern("quote_arg"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_arg));
+        syntax_expanders.insert(intern("quote_block"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_block));
+        syntax_expanders.insert(intern("quote_meta_item"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_meta_item));
+        syntax_expanders.insert(intern("quote_path"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_path));
     }
 
     syntax_expanders.insert(intern("line"),
