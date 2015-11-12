@@ -10,7 +10,7 @@
 
 use ast;
 use parse::{ParseSess,PResult,filemap_to_tts};
-use parse::new_parser_from_source_str;
+use parse::{lexer, new_parser_from_source_str};
 use parse::parser::Parser;
 use parse::token;
 use ptr::P;
@@ -97,8 +97,8 @@ pub fn matches_codepattern(a : &str, b : &str) -> bool {
         let (a, b) = match (a_iter.peek(), b_iter.peek()) {
             (None, None) => return true,
             (None, _) => return false,
-            (Some(a), None) => {
-                if a.is_whitespace() {
+            (Some(&a), None) => {
+                if is_pattern_whitespace(a) {
                     break // trailing whitespace check is out of loop for borrowck
                 } else {
                     return false
@@ -107,11 +107,11 @@ pub fn matches_codepattern(a : &str, b : &str) -> bool {
             (Some(&a), Some(&b)) => (a, b)
         };
 
-        if a.is_whitespace() && b.is_whitespace() {
+        if is_pattern_whitespace(a) && is_pattern_whitespace(b) {
             // skip whitespace for a and b
             scan_for_non_ws_or_end(&mut a_iter);
             scan_for_non_ws_or_end(&mut b_iter);
-        } else if a.is_whitespace() {
+        } else if is_pattern_whitespace(a) {
             // skip whitespace for a
             scan_for_non_ws_or_end(&mut a_iter);
         } else if a == b {
@@ -123,23 +123,18 @@ pub fn matches_codepattern(a : &str, b : &str) -> bool {
     }
 
     // check if a has *only* trailing whitespace
-    a_iter.all(|c| c.is_whitespace())
+    a_iter.all(is_pattern_whitespace)
 }
 
 /// Advances the given peekable `Iterator` until it reaches a non-whitespace character
 fn scan_for_non_ws_or_end<I: Iterator<Item= char>>(iter: &mut Peekable<I>) {
-    loop {
-        match iter.peek() {
-            Some(c) if c.is_whitespace() => {} // fall through; borrowck
-            _ => return
-        }
-
+    while lexer::is_pattern_whitespace(iter.peek().cloned()) {
         iter.next();
     }
 }
 
-pub fn is_whitespace(c: char) -> bool {
-    c.is_whitespace()
+pub fn is_pattern_whitespace(c: char) -> bool {
+    lexer::is_pattern_whitespace(Some(c))
 }
 
 #[cfg(test)]
@@ -162,14 +157,18 @@ mod tests {
     }
 
     #[test]
-    fn more_whitespace() {
+    fn pattern_whitespace() {
         assert_eq!(matches_codepattern("","\x0C"), false);
-        assert_eq!(matches_codepattern("a b","a\u{2002}b"),true);
         assert_eq!(matches_codepattern("a b ","a   \u{0085}\n\t\r  b"),true);
         assert_eq!(matches_codepattern("a b","a   \u{0085}\n\t\r  b "),false);
-        assert_eq!(matches_codepattern("a   b","a\u{2002}b"),true);
-        assert_eq!(matches_codepattern("ab","a\u{2003}b"),false);
-        assert_eq!(matches_codepattern("a  \u{3000}b","ab"),true);
-        assert_eq!(matches_codepattern("\u{205F}a   b","ab"),true);
+    }
+
+    #[test]
+    fn non_pattern_whitespace() {
+        // These have the property 'White_Space' but not 'Pattern_White_Space'
+        assert_eq!(matches_codepattern("a b","a\u{2002}b"), false);
+        assert_eq!(matches_codepattern("a   b","a\u{2002}b"), false);
+        assert_eq!(matches_codepattern("\u{205F}a   b","ab"), false);
+        assert_eq!(matches_codepattern("a  \u{3000}b","ab"), false);
     }
 }
