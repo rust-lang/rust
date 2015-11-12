@@ -210,6 +210,9 @@ pub enum ExprKind<'tcx> {
     },
     Repeat {
         value: ExprRef<'tcx>,
+        // FIXME(#29789): Add a separate hair::Constant<'tcx> so this could be more explicit about
+        // its contained data. Currently this should only contain expression of ExprKind::Literal
+        // kind.
         count: ExprRef<'tcx>,
     },
     Vec {
