@@ -8,7 +8,7 @@ use syntax::attr::AttrMetaMethods;
 enum Value {
     Uninit,
     Bool(bool),
-    Int(i64),
+    Int(i64), // FIXME: Should be bit-width aware.
 }
 
 struct Interpreter<'tcx> {
@@ -58,32 +58,45 @@ impl<'tcx> Interpreter<'tcx> {
     fn eval_rvalue(&mut self, rvalue: &mir::Rvalue) -> Value {
         use rustc_mir::repr::Rvalue::*;
         use rustc_mir::repr::BinOp::*;
+        use rustc_mir::repr::UnOp::*;
 
         match *rvalue {
             Use(ref operand) => self.eval_operand(operand),
+
             BinaryOp(bin_op, ref left, ref right) => {
                 match (self.eval_operand(left), self.eval_operand(right)) {
-                    (Value::Int(l), Value::Int(r)) => match bin_op {
-                        Add => Value::Int(l + r),
-                        Sub => Value::Int(l - r),
-                        Mul => Value::Int(l * r),
-                        Div => Value::Int(l / r),
-                        Rem => Value::Int(l % r),
-                        BitXor => Value::Int(l ^ r),
-                        BitAnd => Value::Int(l & r),
-                        BitOr => Value::Int(l | r),
-                        Shl => Value::Int(l << r),
-                        Shr => Value::Int(l >> r),
-                        Eq => Value::Bool(l == r),
-                        Lt => Value::Bool(l < r),
-                        Le => Value::Bool(l <= r),
-                        Ne => Value::Bool(l != r),
-                        Ge => Value::Bool(l >= r),
-                        Gt => Value::Bool(l > r),
-                    },
+                    (Value::Int(l), Value::Int(r)) => {
+                        match bin_op {
+                            Add => Value::Int(l + r),
+                            Sub => Value::Int(l - r),
+                            Mul => Value::Int(l * r),
+                            Div => Value::Int(l / r),
+                            Rem => Value::Int(l % r),
+                            BitXor => Value::Int(l ^ r),
+                            BitAnd => Value::Int(l & r),
+                            BitOr => Value::Int(l | r),
+                            Shl => Value::Int(l << r),
+                            Shr => Value::Int(l >> r),
+                            Eq => Value::Bool(l == r),
+                            Lt => Value::Bool(l < r),
+                            Le => Value::Bool(l <= r),
+                            Ne => Value::Bool(l != r),
+                            Ge => Value::Bool(l >= r),
+                            Gt => Value::Bool(l > r),
+                        }
+                    }
                     _ => unimplemented!(),
                 }
             }
+
+            UnaryOp(un_op, ref operand) => {
+                match (un_op, self.eval_operand(operand)) {
+                    (Not, Value::Int(n)) => Value::Int(!n),
+                    (Neg, Value::Int(n)) => Value::Int(-n),
+                    _ => unimplemented!(),
+                }
+            }
+
             _ => unimplemented!(),
         }
     }

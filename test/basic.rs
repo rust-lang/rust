@@ -6,6 +6,11 @@ fn ret() -> i32 {
     1
 }
 
+#[miri_run(expected = "Int(-1)")]
+fn neg() -> i32 {
+    -1
+}
+
 #[miri_run(expected = "Int(3)")]
 fn add() -> i32 {
     1 + 2
