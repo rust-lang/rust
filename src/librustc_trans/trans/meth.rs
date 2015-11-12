@@ -70,7 +70,7 @@ pub fn trans_impl(ccx: &CrateContext,
     if !generics.ty_params.is_empty() {
         for impl_item in impl_items {
             match impl_item.node {
-                hir::ImplItem_::Method(..) => {
+                hir::ImplItemKind::Method(..) => {
                     visit::walk_impl_item(&mut v, impl_item);
                 }
                 _ => {}
@@ -80,7 +80,7 @@ pub fn trans_impl(ccx: &CrateContext,
     }
     for impl_item in impl_items {
         match impl_item.node {
-            hir::ImplItem_::Method(ref sig, ref body) => {
+            hir::ImplItemKind::Method(ref sig, ref body) => {
                 if sig.generics.ty_params.is_empty() {
                     let trans_everywhere = attr::requests_inline(&impl_item.attrs);
                     for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {

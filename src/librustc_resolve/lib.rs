@@ -2420,7 +2420,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     this.with_current_self_type(self_type, |this| {
                         for impl_item in impl_items {
                             match impl_item.node {
-                                hir::ImplItem_::Const(..) => {
+                                hir::ImplItemKind::Const(..) => {
                                     // If this is a trait impl, ensure the const
                                     // exists in trait
                                     this.check_trait_item(impl_item.name,
@@ -2430,7 +2430,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         visit::walk_impl_item(this, impl_item);
                                     });
                                 }
-                                hir::ImplItem_::Method(ref sig, _) => {
+                                hir::ImplItemKind::Method(ref sig, _) => {
                                     // If this is a trait impl, ensure the method
                                     // exists in trait
                                     this.check_trait_item(impl_item.name,
@@ -2447,7 +2447,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         visit::walk_impl_item(this, impl_item);
                                     });
                                 }
-                                hir::ImplItem_::Type(ref ty) => {
+                                hir::ImplItemKind::Type(ref ty) => {
                                     // If this is a trait impl, ensure the type
                                     // exists in trait
                                     this.check_trait_item(impl_item.name,
@@ -3544,7 +3544,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         _ => return false,
                     },
                     hir_map::NodeImplItem(impl_item) => match impl_item.node {
-                        hir::ImplItem_::Method(ref sig, _) => sig,
+                        hir::ImplItemKind::Method(ref sig, _) => sig,
                         _ => return false,
                     },
                     _ => return false,

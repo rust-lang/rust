@@ -948,7 +948,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 }
                 ast_map::NodeImplItem(item) => {
                     match item.node {
-                        hir::ImplItem_::Method(ref sig, _) => {
+                        hir::ImplItemKind::Method(ref sig, _) => {
                             Some((&sig.decl,
                                   &sig.generics,
                                   sig.unsafety,
@@ -1839,7 +1839,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
             },
             ast_map::NodeImplItem(ii) => {
                 match ii.node {
-                    hir::ImplItem_::Method(ref sig, _) => {
+                    hir::ImplItemKind::Method(ref sig, _) => {
                         taken.push_all(&sig.generics.lifetimes);
                         Some(ii.id)
                     }

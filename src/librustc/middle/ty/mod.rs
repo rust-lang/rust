@@ -1124,7 +1124,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         match cx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
-                    hir::ImplItem_::Type(_) => {
+                    hir::ImplItemKind::Type(_) => {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the impl
                         let impl_id = cx.map.get_parent(id);
@@ -1136,7 +1136,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                                            &predicates,
                                                            id)
                     }
-                    hir::ImplItem_::Const(_, _) => {
+                    hir::ImplItemKind::Const(_, _) => {
                         let def_id = cx.map.local_def_id(id);
                         let scheme = cx.lookup_item_type(def_id);
                         let predicates = cx.lookup_predicates(def_id);
@@ -1145,7 +1145,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                                            &predicates,
                                                            id)
                     }
-                    hir::ImplItem_::Method(_, ref body) => {
+                    hir::ImplItemKind::Method(_, ref body) => {
                         let method_def_id = cx.map.local_def_id(id);
                         match cx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
@@ -2158,7 +2158,7 @@ impl<'tcx> ctxt<'tcx> {
                 }
                 ItemImpl(_, _, _, _, _, ref iis) => {
                     iis.iter().filter_map(|ii| {
-                        if let hir::ImplItem_::Const(_, _) = ii.node {
+                        if let hir::ImplItemKind::Const(_, _) = ii.node {
                             match self.impl_or_trait_item(self.map.local_def_id(ii.id)) {
                                 ConstTraitItem(ac) => Some(ac),
                                 _ => {

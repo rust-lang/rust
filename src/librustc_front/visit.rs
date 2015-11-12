@@ -614,18 +614,18 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
     visitor.visit_name(impl_item.span, impl_item.name);
     walk_list!(visitor, visit_attribute, &impl_item.attrs);
     match impl_item.node {
-        ImplItem_::Const(ref ty, ref expr) => {
+        ImplItemKind::Const(ref ty, ref expr) => {
             visitor.visit_ty(ty);
             visitor.visit_expr(expr);
         }
-        ImplItem_::Method(ref sig, ref body) => {
+        ImplItemKind::Method(ref sig, ref body) => {
             visitor.visit_fn(FnKind::Method(impl_item.name, sig, Some(impl_item.vis)),
                              &sig.decl,
                              body,
                              impl_item.span,
                              impl_item.id);
         }
-        ImplItem_::Type(ref ty) => {
+        ImplItemKind::Type(ref ty) => {
             visitor.visit_ty(ty);
         }
     }

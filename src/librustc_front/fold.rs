@@ -867,13 +867,13 @@ pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T) -> P<ImplI
             attrs: fold_attrs(attrs, folder),
             vis: vis,
             node: match node {
-                ImplItem_::Const(ty, expr) => {
-                    ImplItem_::Const(folder.fold_ty(ty), folder.fold_expr(expr))
+                ImplItemKind::Const(ty, expr) => {
+                    ImplItemKind::Const(folder.fold_ty(ty), folder.fold_expr(expr))
                 }
-                ImplItem_::Method(sig, body) => {
-                    ImplItem_::Method(noop_fold_method_sig(sig, folder), folder.fold_block(body))
+                ImplItemKind::Method(sig, body) => {
+                    ImplItemKind::Method(noop_fold_method_sig(sig, folder), folder.fold_block(body))
                 }
-                ImplItem_::Type(ty) => ImplItem_::Type(folder.fold_ty(ty)),
+                ImplItemKind::Type(ty) => ImplItemKind::Type(folder.fold_ty(ty)),
             },
             span: folder.new_span(span),
         }

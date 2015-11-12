@@ -224,8 +224,8 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_impl_item(&mut self, ii: &'ast ImplItem) {
         let def_data = match ii.node {
-            ImplItem_::Method(..) | ImplItem_::Const(..) => DefPathData::Value(ii.name),
-            ImplItem_::Type(..) => DefPathData::Type(ii.name),
+            ImplItemKind::Method(..) | ImplItemKind::Const(..) => DefPathData::Value(ii.name),
+            ImplItemKind::Type(..) => DefPathData::Type(ii.name),
         };
 
         self.insert_def(ii.id, NodeImplItem(ii), def_data);
@@ -234,7 +234,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         self.parent_node = ii.id;
 
         match ii.node {
-            ImplItem_::Const(_, ref expr) => {
+            ImplItemKind::Const(_, ref expr) => {
                 self.create_def(expr.id, DefPathData::Initializer);
             }
             _ => { }
