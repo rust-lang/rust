@@ -902,16 +902,8 @@ impl<T> From<T> for Arc<T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.6.0")]
-impl<T> From<Box<T>> for Arc<T> {
-    fn from(t: Box<T>) -> Self {
-        Arc::new(*t)
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use std::boxed::Box;
     use std::clone::Clone;
     use std::sync::mpsc::channel;
     use std::mem::drop;
@@ -1159,13 +1151,6 @@ mod tests {
     fn test_from_owned() {
         let foo = 123;
         let foo_arc = Arc::from(foo);
-        assert!(123 == *foo_arc);
-    }
-
-    #[test]
-    fn test_from_box() {
-        let foo_box = Box::new(123);
-        let foo_arc = Arc::from(foo_box);
         assert!(123 == *foo_arc);
     }
 }
