@@ -26,7 +26,7 @@
 //! extern crate std;
 //! ```
 //!
-//! into the crate root of every crate, and 
+//! into the crate root of every crate, and
 //!
 //! ```ignore
 //! use std::prelude::v1::*;
