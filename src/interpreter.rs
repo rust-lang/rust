@@ -7,6 +7,7 @@ use syntax::attr::AttrMetaMethods;
 #[derive(Clone, Debug)]
 enum Value {
     Uninit,
+    Bool(bool),
     Int(i64),
 }
 
@@ -56,16 +57,32 @@ impl<'tcx> Interpreter<'tcx> {
         println!("=> {:?}", self.result);
     }
 
-    fn eval_rvalue(&mut self, rv: &mir::Rvalue) -> Value {
+    fn eval_rvalue(&mut self, rvalue: &mir::Rvalue) -> Value {
         use rustc_mir::repr::Rvalue::*;
+        use rustc_mir::repr::BinOp::*;
 
-        match *rv {
-            Use(ref op) => self.eval_operand(op),
-            BinaryOp(mir::BinOp::Add, ref left, ref right) => {
-                let left_val = self.eval_operand(left);
-                let right_val = self.eval_operand(right);
-                match (left_val, right_val) {
-                    (Value::Int(l), Value::Int(r)) => Value::Int(l + r),
+        match *rvalue {
+            Use(ref operand) => self.eval_operand(operand),
+            BinaryOp(bin_op, ref left, ref right) => {
+                match (self.eval_operand(left), self.eval_operand(right)) {
+                    (Value::Int(l), Value::Int(r)) => match bin_op {
+                        Add => Value::Int(l + r),
+                        Sub => Value::Int(l - r),
+                        Mul => Value::Int(l * r),
+                        Div => Value::Int(l / r),
+                        Rem => Value::Int(l % r),
+                        BitXor => Value::Int(l ^ r),
+                        BitAnd => Value::Int(l & r),
+                        BitOr => Value::Int(l | r),
+                        Shl => Value::Int(l << r),
+                        Shr => Value::Int(l >> r),
+                        Eq => Value::Bool(l == r),
+                        Lt => Value::Bool(l < r),
+                        Le => Value::Bool(l <= r),
+                        Ne => Value::Bool(l != r),
+                        Ge => Value::Bool(l >= r),
+                        Gt => Value::Bool(l > r),
+                    },
                     _ => unimplemented!(),
                 }
             }
