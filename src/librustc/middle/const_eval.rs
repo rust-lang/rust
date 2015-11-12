@@ -390,6 +390,8 @@ pub struct ConstEvalErr {
 pub enum ErrKind {
     CannotCast,
     CannotCastTo(&'static str),
+    InvalidOpForInts(hir::BinOp_),
+    InvalidOpForUInts(hir::BinOp_),
     InvalidOpForBools(hir::BinOp_),
     InvalidOpForFloats(hir::BinOp_),
     InvalidOpForIntUint(hir::BinOp_),
@@ -428,6 +430,8 @@ impl ConstEvalErr {
         match self.kind {
             CannotCast => "can't cast this type".into_cow(),
             CannotCastTo(s) => format!("can't cast this type to {}", s).into_cow(),
+            InvalidOpForInts(_) =>  "can't do this op on signed integrals".into_cow(),
+            InvalidOpForUInts(_) =>  "can't do this op on unsigned integrals".into_cow(),
             InvalidOpForBools(_) =>  "can't do this op on bools".into_cow(),
             InvalidOpForFloats(_) => "can't do this op on floats".into_cow(),
             InvalidOpForIntUint(..) => "can't do this op on an isize and usize".into_cow(),
@@ -764,8 +768,6 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      e: &Expr,
                                      ty_hint: EvalHint<'tcx>,
                                      fn_args: FnArgMap) -> EvalResult {
-    fn fromb(b: bool) -> ConstVal { Int(b as i64) }
-
     // Try to compute the type of the expression based on the EvalHint.
     // (See also the definition of EvalHint, and the FIXME above EvalHint.)
     let ety = match ty_hint {
@@ -837,13 +839,13 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               hir::BiMul => Float(a * b),
               hir::BiDiv => Float(a / b),
               hir::BiRem => Float(a % b),
-              hir::BiEq => fromb(a == b),
-              hir::BiLt => fromb(a < b),
-              hir::BiLe => fromb(a <= b),
-              hir::BiNe => fromb(a != b),
-              hir::BiGe => fromb(a >= b),
-              hir::BiGt => fromb(a > b),
-              _ => signal!(e, InvalidOpForFloats(op.node))
+              hir::BiEq => Bool(a == b),
+              hir::BiLt => Bool(a < b),
+              hir::BiLe => Bool(a <= b),
+              hir::BiNe => Bool(a != b),
+              hir::BiGe => Bool(a >= b),
+              hir::BiGt => Bool(a > b),
+              _ => signal!(e, InvalidOpForFloats(op.node)),
             }
           }
           (Int(a), Int(b)) => {
@@ -853,17 +855,18 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               hir::BiMul => try!(const_int_checked_mul(a,b,e,expr_int_type)),
               hir::BiDiv => try!(const_int_checked_div(a,b,e,expr_int_type)),
               hir::BiRem => try!(const_int_checked_rem(a,b,e,expr_int_type)),
-              hir::BiAnd | hir::BiBitAnd => Int(a & b),
-              hir::BiOr | hir::BiBitOr => Int(a | b),
+              hir::BiBitAnd => Int(a & b),
+              hir::BiBitOr => Int(a | b),
               hir::BiBitXor => Int(a ^ b),
               hir::BiShl => try!(const_int_checked_shl(a,b,e,expr_int_type)),
               hir::BiShr => try!(const_int_checked_shr(a,b,e,expr_int_type)),
-              hir::BiEq => fromb(a == b),
-              hir::BiLt => fromb(a < b),
-              hir::BiLe => fromb(a <= b),
-              hir::BiNe => fromb(a != b),
-              hir::BiGe => fromb(a >= b),
-              hir::BiGt => fromb(a > b)
+              hir::BiEq => Bool(a == b),
+              hir::BiLt => Bool(a < b),
+              hir::BiLe => Bool(a <= b),
+              hir::BiNe => Bool(a != b),
+              hir::BiGe => Bool(a >= b),
+              hir::BiGt => Bool(a > b),
+              _ => signal!(e, InvalidOpForInts(op.node)),
             }
           }
           (Uint(a), Uint(b)) => {
@@ -873,17 +876,18 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               hir::BiMul => try!(const_uint_checked_mul(a,b,e,expr_uint_type)),
               hir::BiDiv => try!(const_uint_checked_div(a,b,e,expr_uint_type)),
               hir::BiRem => try!(const_uint_checked_rem(a,b,e,expr_uint_type)),
-              hir::BiAnd | hir::BiBitAnd => Uint(a & b),
-              hir::BiOr | hir::BiBitOr => Uint(a | b),
+              hir::BiBitAnd => Uint(a & b),
+              hir::BiBitOr => Uint(a | b),
               hir::BiBitXor => Uint(a ^ b),
               hir::BiShl => try!(const_uint_checked_shl(a,b,e,expr_uint_type)),
               hir::BiShr => try!(const_uint_checked_shr(a,b,e,expr_uint_type)),
-              hir::BiEq => fromb(a == b),
-              hir::BiLt => fromb(a < b),
-              hir::BiLe => fromb(a <= b),
-              hir::BiNe => fromb(a != b),
-              hir::BiGe => fromb(a >= b),
-              hir::BiGt => fromb(a > b),
+              hir::BiEq => Bool(a == b),
+              hir::BiLt => Bool(a < b),
+              hir::BiLe => Bool(a <= b),
+              hir::BiNe => Bool(a != b),
+              hir::BiGe => Bool(a >= b),
+              hir::BiGt => Bool(a > b),
+              _ => signal!(e, InvalidOpForUInts(op.node)),
             }
           }
           // shifts can have any integral type as their rhs
