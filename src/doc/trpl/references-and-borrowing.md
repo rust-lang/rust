@@ -171,9 +171,9 @@ to the definition of a data race:
 > operations are not synchronized.
 
 With references, you may have as many as you’d like, since none of them are
-writing. If you are writing, you need two or more pointers to the same memory,
-and you can only have one `&mut` at a time. This is how Rust prevents data
-races at compile time: we’ll get errors if we break the rules.
+writing. However, as we can only have one `&mut` at a time, it is impossible to
+have a data race. This is how Rust prevents data races at compile time: we’ll
+get errors if we break the rules.
 
 With this in mind, let’s consider our example again.
 
@@ -378,3 +378,4 @@ statement 1 at 3:14
 
 In the above example, `y` is declared before `x`, meaning that `y` lives longer
 than `x`, which is not allowed.
+
