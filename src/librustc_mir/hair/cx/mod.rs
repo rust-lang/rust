@@ -18,13 +18,14 @@
 use hair::*;
 use repr::*;
 
-use rustc::middle::const_eval::ConstVal;
+use rustc::middle::const_eval::{self, ConstVal};
 use rustc::middle::def_id::DefId;
 use rustc::middle::infer::InferCtxt;
 use rustc::middle::subst::{Subst, Substs};
 use rustc::middle::ty::{self, Ty};
 use syntax::codemap::Span;
 use syntax::parse::token;
+use rustc_front::hir;
 
 #[derive(Copy, Clone)]
 pub struct Cx<'a, 'tcx: 'a> {
@@ -69,6 +70,10 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
 
     pub fn false_literal(&mut self) -> Literal<'tcx> {
         Literal::Value { value: ConstVal::Bool(false) }
+    }
+
+    pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
+        Literal::Value { value: const_eval::eval_const_expr(self.tcx, e) }
     }
 
     pub fn partial_eq(&mut self, ty: Ty<'tcx>) -> ItemRef<'tcx> {

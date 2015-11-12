@@ -49,8 +49,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 unimplemented!()
             }
 
-            mir::Rvalue::Repeat(..) => {
-                unimplemented!()
+            mir::Rvalue::Repeat(ref elem, ref count) => {
+                let elem = self.trans_operand(bcx, elem);
+                let size = self.trans_constant(bcx, count);
+                let base = expr::get_dataptr(bcx, lldest);
+                tvec::iter_vec_raw(bcx, base, elem.ty, size, |b, vref, _| {
+                    build::Store(b, elem.llval, vref);
+                    b
+                })
             }
 
             mir::Rvalue::Aggregate(_, ref operands) => {
