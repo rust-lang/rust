@@ -79,8 +79,11 @@ use core::cmp::Ordering;
 use core::mem::{align_of_val, size_of_val};
 use core::intrinsics::abort;
 use core::mem;
-use core::ops::{Deref, CoerceUnsized};
+use core::ops::Deref;
+#[cfg(not(stage0))]
+use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
+#[cfg(not(stage0))]
 use core::marker::Unsize;
 use core::hash::{Hash, Hasher};
 use core::{usize, isize};
