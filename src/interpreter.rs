@@ -1,4 +1,4 @@
-use rustc::middle::ty;
+use rustc::middle::{const_eval, ty};
 use rustc_mir::mir_map::MirMap;
 use rustc_mir::repr::{self as mir, Mir};
 use syntax::ast::Attribute;
@@ -101,8 +101,7 @@ impl<'tcx> Interpreter<'tcx> {
         }
     }
 
-    fn eval_operand(&mut self, op: &mir::Operand) -> Value {
-        use rustc::middle::const_eval::ConstVal::*;
+    fn eval_operand(&self, op: &mir::Operand) -> Value {
         use rustc_mir::repr::Lvalue::*;
         use rustc_mir::repr::Operand::*;
 
@@ -111,11 +110,27 @@ impl<'tcx> Interpreter<'tcx> {
             Consume(Temp(i)) => self.temp_vals[i as usize].clone(),
             Constant(ref constant) => {
                 match constant.literal {
-                    mir::Literal::Value { value: Int(n) } => Value::Int(n),
-                    _ => unimplemented!(),
+                    mir::Literal::Value { value: ref const_val } => self.eval_constant(const_val),
+                    mir::Literal::Item { .. } => unimplemented!(),
                 }
             }
             _ => unimplemented!(),
+        }
+    }
+
+    fn eval_constant(&self, const_val: &const_eval::ConstVal) -> Value {
+        use rustc::middle::const_eval::ConstVal::*;
+
+        match *const_val {
+            Float(_f) => unimplemented!(),
+            Int(i) => Value::Int(i),
+            Uint(_u) => unimplemented!(),
+            Str(ref _s) => unimplemented!(),
+            ByteStr(ref _bs) => unimplemented!(),
+            Bool(_b) => unimplemented!(),
+            Struct(_node_id) => unimplemented!(),
+            Tuple(_node_id) => unimplemented!(),
+            Function(_def_id) => unimplemented!(),
         }
     }
 }
