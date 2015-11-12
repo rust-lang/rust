@@ -334,6 +334,7 @@ extern "rust-intrinsic" {
     /// use std::mem;
     /// use std::ptr;
     ///
+    /// # #[allow(dead_code)]
     /// fn swap<T>(x: &mut T, y: &mut T) {
     ///     unsafe {
     ///         // Give ourselves some scratch space to work with
@@ -372,6 +373,7 @@ extern "rust-intrinsic" {
     /// ```
     /// use std::ptr;
     ///
+    /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
     ///     dst.set_len(elts);

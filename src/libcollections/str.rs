@@ -298,7 +298,7 @@ impl str {
     /// done by `.chars()` or `.char_indices()`.
     ///
     /// ```
-    /// #![feature(str_char, core)]
+    /// #![feature(str_char)]
     ///
     /// use std::str::CharRange;
     ///
@@ -358,7 +358,7 @@ impl str {
     /// done by `.chars().rev()` or `.char_indices()`.
     ///
     /// ```
-    /// #![feature(str_char, core)]
+    /// #![feature(str_char)]
     ///
     /// use std::str::CharRange;
     ///
@@ -634,6 +634,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let four_lines = "foo\r\nbar\n\r\nbaz";
     /// let v: Vec<&str> = four_lines.lines_any().collect();
     ///
@@ -643,6 +644,7 @@ impl str {
     /// Leaving off the trailing character:
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let four_lines = "foo\r\nbar\n\r\nbaz\n";
     /// let v: Vec<&str> = four_lines.lines_any().collect();
     ///
@@ -1179,8 +1181,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_match_indices)]
-    ///
     /// let v: Vec<_> = "abcXXXabcYYYabc".match_indices("abc").collect();
     /// assert_eq!(v, [(0, "abc"), (6, "abc"), (12, "abc")]);
     ///
@@ -1216,8 +1216,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_match_indices)]
-    ///
     /// let v: Vec<_> = "abcXXXabcYYYabc".rmatch_indices("abc").collect();
     /// assert_eq!(v, [(12, "abc"), (6, "abc"), (0, "abc")]);
     ///
