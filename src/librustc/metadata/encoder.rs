@@ -739,7 +739,7 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     let elem = ast_map::PathName(m.name);
     encode_path(rbml_w, impl_path.chain(Some(elem)));
     if let Some(impl_item) = impl_item_opt {
-        if let hir::ImplItem_::Method(ref sig, _) = impl_item.node {
+        if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
             encode_attributes(rbml_w, &impl_item.attrs);
             let scheme = ecx.tcx.lookup_item_type(m.def_id);
             let any_types = !scheme.generics.types.is_empty();

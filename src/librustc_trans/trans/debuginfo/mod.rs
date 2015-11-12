@@ -253,7 +253,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         hir_map::NodeImplItem(impl_item) => {
             match impl_item.node {
-                hir::ImplItem_::Method(ref sig, ref body) => {
+                hir::ImplItemKind::Method(ref sig, ref body) => {
                     if contains_nodebug_attribute(&impl_item.attrs) {
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
