@@ -706,13 +706,6 @@ impl<T> From<T> for Rc<T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.6.0")]
-impl<T> From<Box<T>> for Rc<T> {
-    fn from(t: Box<T>) -> Self {
-        Rc::new(*t)
-    }
-}
-
 /// A weak version of `Rc<T>`.
 ///
 /// Weak references do not count when determining if the inner value should be
@@ -1126,13 +1119,6 @@ mod tests {
     fn test_from_owned() {
         let foo = 123;
         let foo_rc = Rc::from(foo);
-        assert!(123 == *foo_rc);
-    }
-
-    #[test]
-    fn test_from_box() {
-        let foo_box = Box::new(123);
-        let foo_rc = Rc::from(foo_box);
         assert!(123 == *foo_rc);
     }
 }
