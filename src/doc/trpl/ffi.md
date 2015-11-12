@@ -22,15 +22,18 @@ remaining self-contained... but in your own projects you should use Cargo.)
 The following is a minimal example of calling a foreign function which will
 compile if snappy is installed:
 
-```no_run
+```rust
 # #![feature(libc)]
 extern crate libc;
 use libc::size_t;
 
+# /*
 #[link(name = "snappy")]
 extern {
     fn snappy_max_compressed_length(source_length: size_t) -> size_t;
 }
+# */
+# unsafe fn snappy_max_compressed_length(_: size_t) -> size_t { 0 }
 
 fn main() {
     let x = unsafe { snappy_max_compressed_length(100) };
@@ -56,12 +59,14 @@ keeping the binding correct at runtime.
 
 The `extern` block can be extended to cover the entire snappy API:
 
-```no_run
+```rust
 # #![feature(libc)]
 extern crate libc;
 use libc::{c_int, size_t};
 
+# /*
 #[link(name = "snappy")]
+# */
 extern {
     fn snappy_compress(input: *const u8,
                        input_length: size_t,
@@ -203,16 +208,21 @@ A basic example is:
 
 Rust code:
 
-```no_run
+```rust
 extern fn callback(a: i32) {
     println!("I'm called from C with value {0}", a);
 }
 
+# /*
 #[link(name = "extlib")]
 extern {
    fn register_callback(cb: extern fn(i32)) -> i32;
    fn trigger_callback();
 }
+# */
+# static mut CALLBACK: Option<extern fn(i32)> = None;
+# unsafe fn register_callback(cb: extern fn(i32)) -> i32 { CALLBACK = Some(cb); 0 }
+# unsafe fn trigger_callback() { CALLBACK.unwrap()(7); }
 
 fn main() {
     unsafe {
@@ -256,7 +266,7 @@ referenced Rust object.
 
 Rust code:
 
-```no_run
+```rust
 #[repr(C)]
 struct RustObject {
     a: i32,
@@ -271,12 +281,17 @@ extern "C" fn callback(target: *mut RustObject, a: i32) {
     }
 }
 
+# /*
 #[link(name = "extlib")]
 extern {
    fn register_callback(target: *mut RustObject,
                         cb: extern fn(*mut RustObject, i32)) -> i32;
    fn trigger_callback();
 }
+# */
+# static mut CALLBACK: Option<(*mut RustObject, extern fn(*mut RustObject, i32))> = None;
+# unsafe fn register_callback(target: *mut RustObject, cb: extern fn(*mut RustObject, i32)) -> i32 { CALLBACK = Some((target, cb)); 0 }
+# unsafe fn trigger_callback() { let (target, cb) = CALLBACK.unwrap(); cb(target, 7); }
 
 fn main() {
     // Create the object that will be referenced in the callback
@@ -390,6 +405,7 @@ this:
 
 ```rust
 unsafe fn kaboom(ptr: *const i32) -> i32 { *ptr }
+# fn main() {}
 ```
 
 This function can only be called from an `unsafe` block or another `unsafe` function.
@@ -400,7 +416,7 @@ Foreign APIs often export a global variable which could do something like track
 global state. In order to access these variables, you declare them in `extern`
 blocks with the `static` keyword:
 
-```no_run
+```rust
 # #![feature(libc)]
 extern crate libc;
 
@@ -419,7 +435,7 @@ Alternatively, you may need to alter global state provided by a foreign
 interface. To do this, statics can be declared with `mut` so we can mutate
 them.
 
-```no_run
+```rust
 # #![feature(libc)]
 extern crate libc;
 
