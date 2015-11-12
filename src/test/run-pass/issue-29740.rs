@@ -242,7 +242,8 @@ fn key_from_string(key_string: &str, location: u32) -> Option<Key> {
         "}" => Some(Key::RightBracket),
         "]" => Some(Key::RightBracket),
         "Escape" => Some(Key::Escape),
-        "Enter" if location == KeyboardEventConstants::DOM_KEY_LOCATION_STANDARD => Some(Key::Enter),
+        "Enter" if location == KeyboardEventConstants::DOM_KEY_LOCATION_STANDARD
+                => Some(Key::Enter),
         "Tab" => Some(Key::Tab),
         "Backspace" => Some(Key::Backspace),
         "Insert" => Some(Key::Insert),
@@ -300,16 +301,23 @@ fn key_from_string(key_string: &str, location: u32) -> Option<Key> {
         "*" if location == KeyboardEventConstants::DOM_KEY_LOCATION_NUMPAD => Some(Key::KpMultiply),
         "-" if location == KeyboardEventConstants::DOM_KEY_LOCATION_NUMPAD => Some(Key::KpSubtract),
         "+" if location == KeyboardEventConstants::DOM_KEY_LOCATION_NUMPAD => Some(Key::KpAdd),
-        "Enter" if location == KeyboardEventConstants::DOM_KEY_LOCATION_NUMPAD => Some(Key::KpEnter),
+        "Enter" if location == KeyboardEventConstants::DOM_KEY_LOCATION_NUMPAD
+                => Some(Key::KpEnter),
         "=" if location == KeyboardEventConstants::DOM_KEY_LOCATION_NUMPAD => Some(Key::KpEqual),
-        "Shift" if location == KeyboardEventConstants::DOM_KEY_LOCATION_LEFT => Some(Key::LeftShift),
-        "Control" if location == KeyboardEventConstants::DOM_KEY_LOCATION_LEFT => Some(Key::LeftControl),
+        "Shift" if location == KeyboardEventConstants::DOM_KEY_LOCATION_LEFT
+                => Some(Key::LeftShift),
+        "Control" if location == KeyboardEventConstants::DOM_KEY_LOCATION_LEFT
+                => Some(Key::LeftControl),
         "Alt" if location == KeyboardEventConstants::DOM_KEY_LOCATION_LEFT => Some(Key::LeftAlt),
-        "Super" if location == KeyboardEventConstants::DOM_KEY_LOCATION_LEFT => Some(Key::LeftSuper),
-        "Shift" if location == KeyboardEventConstants::DOM_KEY_LOCATION_RIGHT => Some(Key::RightShift),
-        "Control" if location == KeyboardEventConstants::DOM_KEY_LOCATION_RIGHT => Some(Key::RightControl),
+        "Super" if location == KeyboardEventConstants::DOM_KEY_LOCATION_LEFT
+                => Some(Key::LeftSuper),
+        "Shift" if location == KeyboardEventConstants::DOM_KEY_LOCATION_RIGHT
+                => Some(Key::RightShift),
+        "Control" if location == KeyboardEventConstants::DOM_KEY_LOCATION_RIGHT
+                => Some(Key::RightControl),
         "Alt" if location == KeyboardEventConstants::DOM_KEY_LOCATION_RIGHT => Some(Key::RightAlt),
-        "Super" if location == KeyboardEventConstants::DOM_KEY_LOCATION_RIGHT => Some(Key::RightSuper),
+        "Super" if location == KeyboardEventConstants::DOM_KEY_LOCATION_RIGHT
+                => Some(Key::RightSuper),
         "ContextMenu" => Some(Key::Menu),
         _ => None
     }
