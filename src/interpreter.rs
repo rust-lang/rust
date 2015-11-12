@@ -1,7 +1,7 @@
-use rustc::front;
 use rustc::middle::ty;
 use rustc_mir::mir_map::MirMap;
 use rustc_mir::repr::{self as mir, Mir};
+use syntax::ast::Attribute;
 use syntax::attr::AttrMetaMethods;
 
 #[derive(Clone, Debug)]
@@ -28,14 +28,13 @@ impl<'tcx> Interpreter<'tcx> {
         }
     }
 
-    fn run(&mut self) {
+    fn run(&mut self) -> Value {
         let start_block = self.mir.basic_block_data(mir::START_BLOCK);
 
         for stmt in &start_block.statements {
             use rustc_mir::repr::Lvalue::*;
             use rustc_mir::repr::StatementKind::*;
 
-            println!("  {:?}", stmt);
             match stmt.kind {
                 Assign(ref lv, ref rv) => {
                     let val = self.eval_rvalue(rv);
@@ -53,8 +52,7 @@ impl<'tcx> Interpreter<'tcx> {
             }
         }
 
-        println!("  {:?}", start_block.terminator);
-        println!("=> {:?}", self.result);
+        self.result.clone()
     }
 
     fn eval_rvalue(&mut self, rvalue: &mir::Rvalue) -> Value {
@@ -113,14 +111,37 @@ pub fn interpret_start_points<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &MirMap<'tcx>
     for (&id, mir) in mir_map {
         for attr in tcx.map.attrs(id) {
             if attr.check_name("miri_run") {
-                let item = match tcx.map.get(id) {
-                    front::map::NodeItem(item) => item,
-                    _ => panic!(),
-                };
+                let item = tcx.map.expect_item(id);
+
                 println!("Interpreting: {}", item.name);
                 let mut interpreter = Interpreter::new(mir);
-                interpreter.run();
+                let val = interpreter.run();
+                let val_str = format!("{:?}", val);
+
+                if !check_expected(&val_str, attr) {
+                    println!("=> {}\n", val_str);
+                }
             }
         }
     }
+}
+
+fn check_expected(actual: &str, attr: &Attribute) -> bool {
+    if let Some(meta_items) = attr.meta_item_list() {
+        for meta_item in meta_items {
+            if meta_item.check_name("expected") {
+                let expected = meta_item.value_str().unwrap();
+
+                if actual == &expected[..] {
+                    println!("Test passed!\n");
+                } else {
+                    println!("Actual value:\t{}\nExpected value:\t{}\n", actual, expected);
+                }
+
+                return true;
+            }
+        }
+    }
+
+    false
 }
