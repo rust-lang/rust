@@ -10,7 +10,6 @@
 
 use llvm::ValueRef;
 use rustc::middle::ty::{self, Ty};
-use rustc_front::hir;
 use rustc_mir::repr as mir;
 
 use trans::asm;
@@ -47,6 +46,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::Rvalue::Cast(mir::CastKind::Unsize, ref operand, cast_ty) => {
                 if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
+                    // into-coerce of a thin pointer to a fat pointer - just
+                    // use the operand path.
                     let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
                     self.store_operand(bcx, lldest, temp);
                     return bcx;
@@ -59,8 +60,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let operand = self.trans_operand(bcx, operand);
                 match operand.val {
                     OperandValue::FatPtr(..) => unreachable!(),
-                    OperandValue::Imm(llval) => {
-                        // ugly alloca.
+                    OperandValue::Immediate(llval) => {
+                        // unsize from an immediate structure. We don't
+                        // really need a temporary alloca here, but
+                        // avoiding it would require us to have
+                        // `coerce_unsized_into` use extractvalue to
+                        // index into the struct, and this case isn't
+                        // important enough for it.
                         debug!("trans_rvalue: creating ugly alloca");
                         let lltemp = base::alloc_ty(bcx, operand.ty, "__unsize_temp");
                         base::store_ty(bcx, llval, lltemp, operand.ty);
@@ -165,7 +171,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 // and is a no-op at the LLVM level
                                 operand.val
                             }
-                            OperandValue::Imm(lldata) => {
+                            OperandValue::Immediate(lldata) => {
                                 // "standard" unsize
                                 let (lldata, llextra) =
                                     base::unsize_thin_ptr(bcx, lldata,
@@ -200,7 +206,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // destination effectively creates a reference.
                 if common::type_is_sized(bcx.tcx(), ty) {
                     (bcx, OperandRef {
-                        val: OperandValue::Imm(tr_lvalue.llval),
+                        val: OperandValue::Immediate(tr_lvalue.llval),
                         ty: ref_ty,
                     })
                 } else {
@@ -215,7 +221,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Rvalue::Len(ref lvalue) => {
                 let tr_lvalue = self.trans_lvalue(bcx, lvalue);
                 (bcx, OperandRef {
-                    val: OperandValue::Imm(self.lvalue_len(bcx, tr_lvalue)),
+                    val: OperandValue::Immediate(self.lvalue_len(bcx, tr_lvalue)),
                     ty: bcx.tcx().types.usize,
                 })
             }
@@ -230,7 +236,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             base::compare_fat_ptrs(bcx,
                                                    lhs_addr, lhs_extra,
                                                    rhs_addr, rhs_extra,
-                                                   lhs.ty, cmp_to_hir_cmp(op),
+                                                   lhs.ty, op.to_hir_binop(),
                                                    DebugLoc::None)
                         }
                         _ => unreachable!()
@@ -242,8 +248,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                             lhs.ty, DebugLoc::None)
                 };
                 (bcx, OperandRef {
-                    val: OperandValue::Imm(llresult),
-                    ty: type_of_binop(bcx.tcx(), op, lhs.ty, rhs.ty),
+                    val: OperandValue::Immediate(llresult),
+                    ty: self.mir.binop_ty(bcx.tcx(), op, lhs.ty, rhs.ty),
                 })
             }
 
@@ -261,7 +267,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                 };
                 (bcx, OperandRef {
-                    val: OperandValue::Imm(llval),
+                    val: OperandValue::Immediate(llval),
                     ty: operand.ty,
                 })
             }
@@ -281,7 +287,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                                       llalign,
                                                                       DebugLoc::None);
                 (bcx, OperandRef {
-                    val: OperandValue::Imm(llval),
+                    val: OperandValue::Immediate(llval),
                     ty: box_ty,
                 })
             }
@@ -388,7 +394,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::BinOp::Eq | mir::BinOp::Lt | mir::BinOp::Gt |
             mir::BinOp::Ne | mir::BinOp::Le | mir::BinOp::Ge => {
                 base::compare_scalar_types(bcx, lhs, rhs, input_ty,
-                                           cmp_to_hir_cmp(op), debug_loc)
+                                           op.to_hir_binop(), debug_loc)
             }
         }
     }
@@ -412,44 +418,4 @@ pub fn rvalue_creates_operand<'tcx>(rvalue: &mir::Rvalue<'tcx>) -> bool {
     }
 
     // (*) this is only true if the type is suitable
-}
-
-fn cmp_to_hir_cmp(op: mir::BinOp) -> hir::BinOp_ {
-    match op {
-        mir::BinOp::Eq => hir::BiEq,
-        mir::BinOp::Ne => hir::BiNe,
-        mir::BinOp::Lt => hir::BiLt,
-        mir::BinOp::Le => hir::BiLe,
-        mir::BinOp::Gt => hir::BiGt,
-        mir::BinOp::Ge => hir::BiGe,
-        _ => unreachable!()
-    }
-}
-
-/// FIXME(nikomatsakis): I don't think this function should go here
-fn type_of_binop<'tcx>(
-    tcx: &ty::ctxt<'tcx>,
-    op: mir::BinOp,
-    lhs_ty: Ty<'tcx>,
-    rhs_ty: Ty<'tcx>)
-    -> Ty<'tcx>
-{
-    match op {
-        mir::BinOp::Add | mir::BinOp::Sub |
-        mir::BinOp::Mul | mir::BinOp::Div | mir::BinOp::Rem |
-        mir::BinOp::BitXor | mir::BinOp::BitAnd | mir::BinOp::BitOr => {
-            // these should be integers or floats of the same size. We
-            // probably want to dump all ops in some intrinsics framework
-            // someday.
-            assert_eq!(lhs_ty, rhs_ty);
-            lhs_ty
-        }
-        mir::BinOp::Shl | mir::BinOp::Shr => {
-            lhs_ty // lhs_ty can be != rhs_ty
-        }
-        mir::BinOp::Eq | mir::BinOp::Lt | mir::BinOp::Le |
-        mir::BinOp::Ne | mir::BinOp::Ge | mir::BinOp::Gt => {
-            tcx.types.bool
-        }
-    }
 }

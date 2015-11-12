@@ -103,6 +103,31 @@ impl<'tcx> Mir<'tcx> {
         }
     }
 
+    pub fn binop_ty(&self,
+                    tcx: &ty::ctxt<'tcx>,
+                    op: BinOp,
+                    lhs_ty: Ty<'tcx>,
+                    rhs_ty: Ty<'tcx>)
+                    -> Ty<'tcx>
+    {
+        // FIXME: handle SIMD correctly
+        match op {
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem |
+            BinOp::BitXor | BinOp::BitAnd | BinOp::BitOr => {
+                // these should be integers or floats of the same size.
+                assert_eq!(lhs_ty, rhs_ty);
+                lhs_ty
+            }
+            BinOp::Shl | BinOp::Shr => {
+                lhs_ty // lhs_ty can be != rhs_ty
+            }
+            BinOp::Eq | BinOp::Lt | BinOp::Le |
+            BinOp::Ne | BinOp::Ge | BinOp::Gt => {
+                tcx.types.bool
+            }
+        }
+    }
+
     pub fn lvalue_ty(&self,
                      tcx: &ty::ctxt<'tcx>,
                      lvalue: &Lvalue<'tcx>)
@@ -135,6 +160,29 @@ impl BorrowKind {
             // use `&mut`. It gives all the capabilities of an `&uniq`
             // and hence is a safe "over approximation".
             BorrowKind::Unique => hir::MutMutable,
+        }
+    }
+}
+
+impl BinOp {
+    pub fn to_hir_binop(self) -> hir::BinOp_ {
+        match self {
+            BinOp::Add => hir::BinOp_::BiAdd,
+            BinOp::Sub => hir::BinOp_::BiSub,
+            BinOp::Mul => hir::BinOp_::BiMul,
+            BinOp::Div => hir::BinOp_::BiDiv,
+            BinOp::Rem => hir::BinOp_::BiRem,
+            BinOp::BitXor => hir::BinOp_::BiBitXor,
+            BinOp::BitAnd => hir::BinOp_::BiBitAnd,
+            BinOp::BitOr => hir::BinOp_::BiBitOr,
+            BinOp::Shl => hir::BinOp_::BiShl,
+            BinOp::Shr => hir::BinOp_::BiShr,
+            BinOp::Eq => hir::BinOp_::BiEq,
+            BinOp::Ne => hir::BinOp_::BiNe,
+            BinOp::Lt => hir::BinOp_::BiLt,
+            BinOp::Gt => hir::BinOp_::BiGt,
+            BinOp::Le => hir::BinOp_::BiLe,
+            BinOp::Ge => hir::BinOp_::BiGe
         }
     }
 }

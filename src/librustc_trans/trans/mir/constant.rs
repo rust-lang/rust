@@ -16,7 +16,7 @@ use trans::common::{self, Block};
 use trans::common::{C_bool, C_bytes, C_floating_f64, C_integral, C_str_slice};
 use trans::type_of;
 
-use super::operand::{OperandRef, OperandValue};
+use super::operand::OperandRef;
 use super::MirContext;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
@@ -26,19 +26,21 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                           ty: Ty<'tcx>)
                           -> OperandRef<'tcx>
     {
+        use super::operand::OperandValue::{Ref, Immediate};
+
         let ccx = bcx.ccx();
         let llty = type_of::type_of(ccx, ty);
         let val = match *cv {
-            ConstVal::Float(v) => OperandValue::Imm(C_floating_f64(v, llty)),
-            ConstVal::Bool(v) => OperandValue::Imm(C_bool(ccx, v)),
-            ConstVal::Int(v) => OperandValue::Imm(C_integral(llty, v as u64, true)),
-            ConstVal::Uint(v) => OperandValue::Imm(C_integral(llty, v, false)),
-            ConstVal::Str(ref v) => OperandValue::Imm(C_str_slice(ccx, v.clone())),
+            ConstVal::Float(v) => Immediate(C_floating_f64(v, llty)),
+            ConstVal::Bool(v) => Immediate(C_bool(ccx, v)),
+            ConstVal::Int(v) => Immediate(C_integral(llty, v as u64, true)),
+            ConstVal::Uint(v) => Immediate(C_integral(llty, v, false)),
+            ConstVal::Str(ref v) => Immediate(C_str_slice(ccx, v.clone())),
             ConstVal::ByteStr(ref v) => {
-                OperandValue::Imm(consts::addr_of(ccx,
-                                                  C_bytes(ccx, v),
-                                                  1,
-                                                  "byte_str"))
+                Immediate(consts::addr_of(ccx,
+                                          C_bytes(ccx, v),
+                                          1,
+                                          "byte_str"))
             }
 
             ConstVal::Struct(id) | ConstVal::Tuple(id) => {
@@ -52,9 +54,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     Err(_) => panic!("constant eval failure"),
                 };
                 if common::type_is_immediate(bcx.ccx(), ty) {
-                    OperandValue::Imm(llval)
+                    Immediate(llval)
                 } else {
-                    OperandValue::Ref(llval)
+                    Ref(llval)
                 }
             }
             ConstVal::Function(_) => {
