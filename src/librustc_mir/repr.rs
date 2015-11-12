@@ -307,6 +307,20 @@ impl<'tcx> Terminator<'tcx> {
             Call { data: _, targets: ref b } => b,
         }
     }
+
+    pub fn successors_mut(&mut self) -> &mut [BasicBlock] {
+        use self::Terminator::*;
+        match *self {
+            Goto { target: ref mut b } => slice::mut_ref_slice(b),
+            Panic { target: ref mut b } => slice::mut_ref_slice(b),
+            If { cond: _, targets: ref mut b } => b,
+            Switch { targets: ref mut b, .. } => b,
+            SwitchInt { targets: ref mut b, .. } => b,
+            Diverge => &mut [],
+            Return => &mut [],
+            Call { data: _, targets: ref mut b } => b,
+        }
+    }
 }
 
 #[derive(Debug)]

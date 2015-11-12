@@ -22,6 +22,7 @@ extern crate rustc_front;
 
 use build;
 use dot;
+use transform::*;
 use repr::Mir;
 use hair::cx::Cx;
 use std::fs::File;
@@ -147,7 +148,9 @@ impl<'a, 'm, 'tcx> visit::Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
         let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, Some(param_env), true);
 
         match build_mir(Cx::new(&infcx), implicit_arg_tys, id, span, decl, body) {
-            Ok(mir) => {
+            Ok(mut mir) => {
+                simplify_cfg::SimplifyCfg::new().run_on_mir(&mut mir);
+
                 let meta_item_list = self.attr
                                          .iter()
                                          .flat_map(|a| a.meta_item_list())
