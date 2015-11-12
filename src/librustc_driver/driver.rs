@@ -150,6 +150,7 @@ pub fn compile_input(sess: Session,
                                                                                    &expanded_crate,
                                                                                    tcx.map.krate(),
                                                                                    &analysis,
+                                                                                   &mir_map,
                                                                                    tcx,
                                                                                    &lcx,
                                                                                    &id);
@@ -275,6 +276,7 @@ pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
     pub expanded_crate: Option<&'a ast::Crate>,
     pub hir_crate: Option<&'a hir::Crate>,
     pub ast_map: Option<&'a hir_map::Map<'ast>>,
+    pub mir_map: Option<&'a MirMap<'tcx>>,
     pub analysis: Option<&'a ty::CrateAnalysis<'a>>,
     pub tcx: Option<&'a ty::ctxt<'tcx>>,
     pub lcx: Option<&'a LoweringContext<'a>>,
@@ -298,6 +300,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
             hir_crate: None,
             ast_map: None,
             analysis: None,
+            mir_map: None,
             tcx: None,
             lcx: None,
             trans: None,
@@ -350,12 +353,14 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                             krate: &'a ast::Crate,
                             hir_crate: &'a hir::Crate,
                             analysis: &'a ty::CrateAnalysis,
+                            mir_map: &'a MirMap<'tcx>,
                             tcx: &'a ty::ctxt<'tcx>,
                             lcx: &'a LoweringContext<'a>,
                             crate_name: &'a str)
                             -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             analysis: Some(analysis),
+            mir_map: Some(mir_map),
             tcx: Some(tcx),
             krate: Some(krate),
             hir_crate: Some(hir_crate),
