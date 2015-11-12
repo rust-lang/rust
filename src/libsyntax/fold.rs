@@ -684,6 +684,7 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
         token::NtGenerics(generics) => token::NtGenerics(fld.fold_generics(generics)),
         token::NtWhereClause(where_clause) =>
             token::NtWhereClause(fld.fold_where_clause(where_clause)),
+        token::NtArg(arg) => token::NtArg(fld.fold_arg(arg)),
     }
 }
 
