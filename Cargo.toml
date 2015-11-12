@@ -1,0 +1,7 @@
+[package]
+name = "miri"
+version = "0.1.0"
+authors = ["Scott Olson <scott@solson.me>"]
+description = "An experimental interpreter for Rust MIR."
+repository = "https://github.com/tsion/miri"
+license = "ISC"
