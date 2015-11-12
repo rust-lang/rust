@@ -1,7 +1,7 @@
 use rustc::front;
 use rustc::middle::ty;
-use rustc_mir::repr::{self as mir, Mir};
 use rustc_mir::mir_map::MirMap;
+use rustc_mir::repr::{self as mir, Mir};
 use syntax::attr::AttrMetaMethods;
 
 #[derive(Clone, Debug)]
