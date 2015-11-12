@@ -19,6 +19,7 @@
 /// # Examples
 ///
 /// ```
+/// # #![feature(rustc_private)]
 /// #[macro_use] extern crate log;
 ///
 /// fn main() {
@@ -67,6 +68,7 @@ macro_rules! log {
 /// # Examples
 ///
 /// ```
+/// # #![feature(rustc_private)]
 /// #[macro_use] extern crate log;
 ///
 /// fn main() {
@@ -92,6 +94,7 @@ macro_rules! error {
 /// # Examples
 ///
 /// ```
+/// # #![feature(rustc_private)]
 /// #[macro_use] extern crate log;
 ///
 /// fn main() {
@@ -116,6 +119,7 @@ macro_rules! warn {
 /// # Examples
 ///
 /// ```
+/// # #![feature(rustc_private)]
 /// #[macro_use] extern crate log;
 ///
 /// fn main() {
@@ -142,6 +146,7 @@ macro_rules! info {
 /// # Examples
 ///
 /// ```
+/// # #![feature(rustc_private)]
 /// #[macro_use] extern crate log;
 ///
 /// fn main() {
@@ -165,9 +170,10 @@ macro_rules! debug {
 /// # Examples
 ///
 /// ```
+/// # #![feature(rustc_private)]
 /// #[macro_use] extern crate log;
 ///
-/// struct Point { x: int, y: int }
+/// struct Point { x: i32, y: i32 }
 /// fn some_expensive_computation() -> Point { Point { x: 1, y: 2 } }
 ///
 /// fn main() {

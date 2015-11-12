@@ -11,8 +11,10 @@
 //! This pretty-printer is a direct reimplementation of Philip Karlton's
 //! Mesa pretty-printer, as described in appendix A of
 //!
-//!     STAN-CS-79-770: "Pretty Printing", by Derek C. Oppen.
-//!     Stanford Department of Computer Science, 1979.
+//! ````ignore
+//! STAN-CS-79-770: "Pretty Printing", by Derek C. Oppen.
+//! Stanford Department of Computer Science, 1979.
+//! ````
 //!
 //! The algorithm's aim is to break a stream into as few lines as possible
 //! while respecting the indentation-consistency requirements of the enclosing

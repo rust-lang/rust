@@ -47,7 +47,7 @@
 //! which is cyclic.
 //!
 //! ```rust
-//! #![feature(rustc_private, core, into_cow)]
+//! #![feature(rustc_private, into_cow)]
 //!
 //! use std::borrow::IntoCow;
 //! use std::io::Write;
@@ -150,9 +150,8 @@
 //! entity `&sube`).
 //!
 //! ```rust
-//! #![feature(rustc_private, core, into_cow)]
+//! #![feature(rustc_private)]
 //!
-//! use std::borrow::IntoCow;
 //! use std::io::Write;
 //! use graphviz as dot;
 //!
@@ -174,10 +173,10 @@
 //!         dot::Id::new(format!("N{}", n)).unwrap()
 //!     }
 //!     fn node_label<'b>(&'b self, n: &Nd) -> dot::LabelText<'b> {
-//!         dot::LabelText::LabelStr(self.nodes[*n].as_slice().into_cow())
+//!         dot::LabelText::LabelStr(self.nodes[*n].into())
 //!     }
 //!     fn edge_label<'b>(&'b self, _: &Ed) -> dot::LabelText<'b> {
-//!         dot::LabelText::LabelStr("&sube;".into_cow())
+//!         dot::LabelText::LabelStr("&sube;".into())
 //!     }
 //! }
 //!
@@ -209,9 +208,8 @@
 //! Hasse-diagram for the subsets of the set `{x, y}`.
 //!
 //! ```rust
-//! #![feature(rustc_private, core, into_cow)]
+//! #![feature(rustc_private)]
 //!
-//! use std::borrow::IntoCow;
 //! use std::io::Write;
 //! use graphviz as dot;
 //!
@@ -234,10 +232,10 @@
 //!     }
 //!     fn node_label<'b>(&'b self, n: &Nd<'b>) -> dot::LabelText<'b> {
 //!         let &(i, _) = n;
-//!         dot::LabelText::LabelStr(self.nodes[i].into_cow())
+//!         dot::LabelText::LabelStr(self.nodes[i].into())
 //!     }
 //!     fn edge_label<'b>(&'b self, _: &Ed<'b>) -> dot::LabelText<'b> {
-//!         dot::LabelText::LabelStr("&sube;".into_cow())
+//!         dot::LabelText::LabelStr("&sube;".into())
 //!     }
 //! }
 //!
@@ -283,7 +281,8 @@
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/")]
+       html_root_url = "https://doc.rust-lang.org/nightly/",
+       test(attr(allow(unused_variables), deny(warnings))))]
 
 #![feature(into_cow)]
 #![feature(str_escape)]
