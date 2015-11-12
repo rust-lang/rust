@@ -2681,9 +2681,9 @@ impl<'a> Parser<'a> {
             // Semi-statement forms are odd. See https://github.com/rust-lang/rust/issues/29071
             return Ok(lhs);
         }
-        let cur_op_span = self.span;
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = AssocOp::from_token(&self.token) {
+            let cur_op_span = self.span;
             let restrictions = if op.is_assign_like() {
                 self.restrictions & Restrictions::RESTRICTION_NO_STRUCT_LITERAL
             } else {
