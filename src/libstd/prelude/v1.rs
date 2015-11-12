@@ -9,6 +9,8 @@
 // except according to those terms.
 
 //! The first version of the prelude of The Rust Standard Library.
+//!
+//! See the [module-level documentation](../index.html) for more.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
