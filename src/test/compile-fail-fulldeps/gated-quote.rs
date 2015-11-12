@@ -37,14 +37,18 @@ impl ParseSess {
 
 pub fn main() {
     let ecx = &ParseSess;
-    let x = quote_tokens!(ecx, 3);   //~ ERROR macro undefined: 'quote_tokens!'
-    let x = quote_expr!(ecx, 3);     //~ ERROR macro undefined: 'quote_expr!'
-    let x = quote_ty!(ecx, 3);       //~ ERROR macro undefined: 'quote_ty!'
-    let x = quote_method!(ecx, 3);   //~ ERROR macro undefined: 'quote_method!'
-    let x = quote_item!(ecx, 3);     //~ ERROR macro undefined: 'quote_item!'
-    let x = quote_pat!(ecx, 3);      //~ ERROR macro undefined: 'quote_pat!'
-    let x = quote_arm!(ecx, 3);      //~ ERROR macro undefined: 'quote_arm!'
-    let x = quote_stmt!(ecx, 3);     //~ ERROR macro undefined: 'quote_stmt!'
-    let x = quote_matcher!(ecx, 3);  //~ ERROR macro undefined: 'quote_matcher!'
-    let x = quote_attr!(ecx, 3);     //~ ERROR macro undefined: 'quote_attr!'
+    let x = quote_tokens!(ecx, 3);    //~ ERROR macro undefined: 'quote_tokens!'
+    let x = quote_expr!(ecx, 3);      //~ ERROR macro undefined: 'quote_expr!'
+    let x = quote_ty!(ecx, 3);        //~ ERROR macro undefined: 'quote_ty!'
+    let x = quote_method!(ecx, 3);    //~ ERROR macro undefined: 'quote_method!'
+    let x = quote_item!(ecx, 3);      //~ ERROR macro undefined: 'quote_item!'
+    let x = quote_pat!(ecx, 3);       //~ ERROR macro undefined: 'quote_pat!'
+    let x = quote_arm!(ecx, 3);       //~ ERROR macro undefined: 'quote_arm!'
+    let x = quote_stmt!(ecx, 3);      //~ ERROR macro undefined: 'quote_stmt!'
+    let x = quote_matcher!(ecx, 3);   //~ ERROR macro undefined: 'quote_matcher!'
+    let x = quote_attr!(ecx, 3);      //~ ERROR macro undefined: 'quote_attr!'
+    let x = quote_arg!(ecx, 3);       //~ ERROR macro undefined: 'quote_arg!'
+    let x = quote_block!(ecx, 3);     //~ ERROR macro undefined: 'quote_block!'
+    let x = quote_meta_item!(ecx, 3); //~ ERROR macro undefined: 'quote_meta_item!'
+    let x = quote_path!(ecx, 3);      //~ ERROR macro undefined: 'quote_path!'
 }

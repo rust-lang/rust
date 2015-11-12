@@ -305,6 +305,7 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtTraitItem(ref e)   => trait_item_to_string(&**e),
             token::NtGenerics(ref e)    => generics_to_string(&*e),
             token::NtWhereClause(ref e) => where_clause_to_string(&*e),
+            token::NtArg(ref e)         => arg_to_string(&*e),
         }
     }
 }
