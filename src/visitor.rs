@@ -224,7 +224,7 @@ impl<'a> FmtVisitor<'a> {
                                                  item.span,
                                                  indent)
                                   .map(|s| {
-                                      match **def {
+                                      match *def {
                                           ast::VariantData::Tuple(..) => s + ";",
                                           _ => s,
                                       }

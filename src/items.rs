@@ -727,14 +727,14 @@ impl<'a> FmtVisitor<'a> {
             result.push_str(&indent.to_string(self.config));
         }
 
-        let variant_body = match *field.node.data {
+        let variant_body = match field.node.data {
             ast::VariantData::Tuple(..) |
             ast::VariantData::Struct(..) => {
                 // FIXME: Should limit the width, as we have a trailing comma
                 self.format_struct("",
                                    field.node.name,
                                    ast::Visibility::Inherited,
-                                   &*field.node.data,
+                                   &field.node.data,
                                    None,
                                    field.span,
                                    indent)
