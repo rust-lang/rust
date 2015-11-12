@@ -17,8 +17,8 @@ use trans::datum;
 
 use super::{MirContext, TempRef};
 
-/// The Rust representation of an operand's value. This is uniquely
-/// determined by the operand type, but is kept as an enum as a
+/// The representation of a Rust value. The enum variant is in fact
+/// uniquely determined by the value's type, but is kept as a
 /// safety check.
 #[derive(Copy, Clone)]
 pub enum OperandValue {
@@ -26,16 +26,22 @@ pub enum OperandValue {
     /// to be valid for the operand's lifetime.
     Ref(ValueRef),
     /// A single LLVM value.
-    Imm(ValueRef),
+    Immediate(ValueRef),
     /// A fat pointer. The first ValueRef is the data and the second
     /// is the extra.
     FatPtr(ValueRef, ValueRef)
 }
 
+/// An `OperandRef` is an "SSA" reference to a Rust value, along with
+/// its type.
+///
+/// NOTE: unless you know a value's type exactly, you should not
+/// generate LLVM opcodes acting on it and instead act via methods,
+/// to avoid nasty edge cases. In particular, using `build::Store`
+/// directly is sure to cause problems - use `store_operand` instead.
 #[derive(Copy, Clone)]
 pub struct OperandRef<'tcx> {
-    // This will be "indirect" if `appropriate_rvalue_mode` returns
-    // ByRef, and otherwise ByValue.
+    // The value.
     pub val: OperandValue,
 
     // The type of value being returned.
@@ -43,9 +49,11 @@ pub struct OperandRef<'tcx> {
 }
 
 impl<'tcx> OperandRef<'tcx> {
+    /// Asserts that this operand refers to a scalar and returns
+    /// a reference to its value.
     pub fn immediate(self) -> ValueRef {
         match self.val {
-            OperandValue::Imm(s) => s,
+            OperandValue::Immediate(s) => s,
             _ => unreachable!()
         }
     }
@@ -56,8 +64,8 @@ impl<'tcx> OperandRef<'tcx> {
                 format!("OperandRef(Ref({}) @ {:?})",
                         bcx.val_to_string(r), self.ty)
             }
-            OperandValue::Imm(i) => {
-                format!("OperandRef(Imm({}) @ {:?})",
+            OperandValue::Immediate(i) => {
+                format!("OperandRef(Immediate({}) @ {:?})",
                         bcx.val_to_string(i), self.ty)
             }
             OperandValue::FatPtr(a, d) => {
@@ -106,7 +114,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                        ty);
                 let val = match datum::appropriate_rvalue_mode(bcx.ccx(), ty) {
                     datum::ByValue => {
-                        OperandValue::Imm(base::load_ty(bcx, tr_lvalue.llval, ty))
+                        OperandValue::Immediate(base::load_ty(bcx, tr_lvalue.llval, ty))
                     }
                     datum::ByRef if common::type_is_fat_ptr(bcx.tcx(), ty) => {
                         let (lldata, llextra) = base::load_fat_ptr(bcx, tr_lvalue.llval, ty);
@@ -150,7 +158,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         debug!("store_operand: operand={}", operand.repr(bcx));
         match operand.val {
             OperandValue::Ref(r) => base::memcpy_ty(bcx, lldest, r, operand.ty),
-            OperandValue::Imm(s) => base::store_ty(bcx, s, lldest, operand.ty),
+            OperandValue::Immediate(s) => base::store_ty(bcx, s, lldest, operand.ty),
             OperandValue::FatPtr(data, extra) => {
                 base::store_fat_ptr(bcx, data, extra, lldest, operand.ty);
             }
