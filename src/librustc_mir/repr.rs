@@ -23,15 +23,24 @@ use std::u32;
 
 /// Lowered representation of a single function.
 pub struct Mir<'tcx> {
+    /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
+    /// that indexes into this vector.
     pub basic_blocks: Vec<BasicBlockData<'tcx>>,
 
+    /// Return type of the function.
     pub return_ty: FnOutput<'tcx>,
 
-    // for every node id
-    pub extents: FnvHashMap<CodeExtent, Vec<GraphExtent>>,
-
+    /// Variables: these are stack slots corresponding to user variables. They may be
+    /// assigned many times.
     pub var_decls: Vec<VarDecl<'tcx>>,
+
+    /// Args: these are stack slots corresponding to the input arguments.
     pub arg_decls: Vec<ArgDecl<'tcx>>,
+
+    /// Temp declarations: stack slots that for temporaries created by
+    /// the compiler. These are assigned once, but they are not SSA
+    /// values in that it is possible to borrow them and mutate them
+    /// through the resulting reference.
     pub temp_decls: Vec<TempDecl<'tcx>>,
 }
 
