@@ -45,4 +45,7 @@ fn main() {
     let _ = foo::<isize>();
     let _ = foo::<MustUse>();
     let _ = foo::<MustUseMsg>();
+
+    foo::<(MustUse, ())>(); //~ ERROR: unused result which must be used
+    foo::<(MustUseMsg, ())>(); //~ ERROR: unused result which must be used: some message
 }

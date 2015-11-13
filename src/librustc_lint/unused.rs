@@ -162,6 +162,14 @@ impl LateLintPass for UnusedResults {
                         }
                     }
                 }
+                ty::TyTuple(ref tys) => {
+                    for &ty in tys {
+                        let result = check_must_use(cx, ty);
+                        if result.is_some() {
+                            return result;
+                        }
+                    }
+                }
                 _ => ()
             }
             None
