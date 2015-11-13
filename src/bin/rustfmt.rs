@@ -29,7 +29,7 @@ use getopts::Options;
 
 /// Rustfmt operations.
 enum Operation {
-    /// Format files and its child modules.
+    /// Format files and their child modules.
     Format(Vec<PathBuf>, WriteMode),
     /// Print the help message.
     Help,
@@ -193,11 +193,7 @@ fn determine_operation<I>(opts: &Options, args: I) -> Operation
         None => WriteMode::Replace,
     };
 
-    let mut files = Vec::with_capacity(matches.free.len());
-
-    for arg in matches.free {
-        files.push(PathBuf::from(arg));
-    }
+    let files: Vec<_> = matches.free.iter().map(|a| PathBuf::from(a)).collect();
 
     Operation::Format(files, write_mode)
 }
