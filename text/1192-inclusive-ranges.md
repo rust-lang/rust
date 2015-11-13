@@ -27,7 +27,9 @@ more dots means more elements.
 
 ```rust
 pub enum RangeInclusive<T> {
-  Empty,
+  Empty {
+    at: T,
+  },
   NonEmpty {
     start: T,
     end: T,
@@ -85,7 +87,7 @@ The `Empty` variant could be omitted, leaving two options:
 - `RangeInclusive` could be a struct including a `finished` field.
 - `a...b` only implements `IntoIterator`, not `Iterator`, by
   converting to a different type that does have the field. However,
-  this means that `a...b` behaves differently to `a..b`, so
+  this means that `a.. .b` behaves differently to `a..b`, so
   `(a...b).map(|x| ...)` doesn't work (the `..` version of that is
   used reasonably often, in the author's experience)
 - `a...b` can implement `Iterator` for types that can be stepped
