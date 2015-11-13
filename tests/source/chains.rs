@@ -106,3 +106,9 @@ fn is_replaced_content() -> bool {
     constellat.send(ConstellationMsg::ViewportConstrained(
             self.id, constraints)).unwrap();
 }
+
+fn issue587() {
+    a.b::<()>(c);
+
+    std::mem::transmute(dl.symbol::<()>("init").unwrap())
+}
