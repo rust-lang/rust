@@ -22,9 +22,10 @@ multirust run nightly cargo install --git https://github.com/rust-lang-nursery/r
 ```
 
 
-## Running Rustfmt from Vim
+## Running Rustfmt from your editor
 
-See [instructions](http://johannh.me/blog/rustfmt-vim.html).
+* [Vim](http://johannh.me/blog/rustfmt-vim.html)
+* [Emacs](https://github.com/fbergroth/emacs-rustfmt)
 
 
 ## How to build and test
