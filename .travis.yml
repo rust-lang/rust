@@ -11,9 +11,25 @@ cache:
  directories:
   - $HOME/.cargo
 
+addons:
+  apt:
+    packages:
+    - libcurl4-openssl-dev
+    - libelf-dev
+    - libdw-dev
+
+before_script:
+- |
+  pip install 'travis-cargo<0.2' --user &&
+  export PATH=$HOME/.local/bin:/usr/local/bin:$PATH
+
 script:
- - cargo build
- - cargo test
+- |
+  cargo build &&
+  cargo test
+
+after_success:
+- travis-cargo coveralls --no-sudo
 
 before_deploy:
   # TODO: cross build
