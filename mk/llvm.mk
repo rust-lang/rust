@@ -64,10 +64,10 @@ $$(LLVM_AR_$(1)): $$(LLVM_CONFIG_$(1))
 # when we changed something not otherwise captured by builtin
 # dependencies. In these cases, commit a change that touches
 # the stamp in the source dir.
-$$(LLVM_STAMP_$(1)): $(S)src/rustllvm/llvm-auto-clean-trigger
+$$(LLVM_STAMP_$(1)): $$(S)src/rustllvm/llvm-auto-clean-trigger
 	@$$(call E, make: cleaning llvm)
-	$(Q)touch $$@.start_time
-	$(Q)$(MAKE) clean-llvm$(1)
+	$$(Q)touch $$@.start_time
+	$$(Q)$$(MAKE) clean-llvm$(1)
 	@$$(call E, make: done cleaning llvm)
 	touch -r $$@.start_time $$@ && rm $$@.start_time
 
