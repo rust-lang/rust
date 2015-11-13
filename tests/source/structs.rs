@@ -135,3 +135,9 @@ struct Foo<T>(TTTTTTTTTTTTTTTTT, // Foo
               TTTTTTTTTTTTTTTTTTT,
               // Qux (FIXME #572 - doc comment)
               UUUUUUUUUUUUUUUUUUU);
+
+mod m {
+    struct X<T> where T: Sized {
+        a: T,
+    }
+}
