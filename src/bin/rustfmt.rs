@@ -29,8 +29,8 @@ use getopts::Options;
 
 /// Rustfmt operations.
 enum Operation {
-    /// Format a file and its child modules.
-    Format(PathBuf, WriteMode),
+    /// Format files and its child modules.
+    Format(Vec<PathBuf>, WriteMode),
     /// Print the help message.
     Help,
     /// Print detailed configuration help.
@@ -114,16 +114,20 @@ fn execute() -> i32 {
             run_from_stdin(input, write_mode, &config);
             0
         }
-        Operation::Format(file, write_mode) => {
-            let config = match lookup_and_read_project_file(&file) {
-                Ok((path, toml)) => {
-                    println!("Using rustfmt config file: {}", path.display());
-                    Config::from_toml(&toml)
-                }
-                Err(_) => Default::default(),
-            };
+        Operation::Format(files, write_mode) => {
+            for file in files {
+                let config = match lookup_and_read_project_file(&file) {
+                    Ok((path, toml)) => {
+                        println!("Using rustfmt config file {} for {}",
+                                 path.display(),
+                                 file.display());
+                        Config::from_toml(&toml)
+                    }
+                    Err(_) => Default::default(),
+                };
 
-            run(&file, write_mode, &config);
+                run(&file, write_mode, &config);
+            }
             0
         }
     }
@@ -144,7 +148,7 @@ fn main() {
 }
 
 fn print_usage(opts: &Options, reason: &str) {
-    let reason = format!("{}\nusage: {} [options] <file>",
+    let reason = format!("{}\nusage: {} [options] <file>...",
                          reason,
                          env::current_exe().unwrap().display());
     println!("{}", opts.usage(&reason));
@@ -189,5 +193,11 @@ fn determine_operation<I>(opts: &Options, args: I) -> Operation
         None => WriteMode::Replace,
     };
 
-    Operation::Format(PathBuf::from(&matches.free[0]), write_mode)
+    let mut files = Vec::with_capacity(matches.free.len());
+
+    for arg in matches.free {
+        files.push(PathBuf::from(arg));
+    }
+
+    Operation::Format(files, write_mode)
 }
