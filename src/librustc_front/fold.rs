@@ -20,8 +20,6 @@ use syntax::owned_slice::OwnedSlice;
 use syntax::ptr::P;
 use syntax::parse::token;
 use std::ptr;
-use syntax::util::small_vector::SmallVector;
-
 
 // This could have a better place to live.
 pub trait MoveMap<T> {
@@ -79,12 +77,8 @@ pub trait Folder : Sized {
         noop_fold_foreign_item(ni, self)
     }
 
-    fn fold_item(&mut self, i: P<Item>) -> SmallVector<P<Item>> {
+    fn fold_item(&mut self, i: P<Item>) -> P<Item> {
         noop_fold_item(i, self)
-    }
-
-    fn fold_item_simple(&mut self, i: Item) -> Item {
-        noop_fold_item_simple(i, self)
     }
 
     fn fold_struct_field(&mut self, sf: StructField) -> StructField {
@@ -95,11 +89,11 @@ pub trait Folder : Sized {
         noop_fold_item_underscore(i, self)
     }
 
-    fn fold_trait_item(&mut self, i: P<TraitItem>) -> SmallVector<P<TraitItem>> {
+    fn fold_trait_item(&mut self, i: P<TraitItem>) -> P<TraitItem> {
         noop_fold_trait_item(i, self)
     }
 
-    fn fold_impl_item(&mut self, i: P<ImplItem>) -> SmallVector<P<ImplItem>> {
+    fn fold_impl_item(&mut self, i: P<ImplItem>) -> P<ImplItem> {
         noop_fold_impl_item(i, self)
     }
 
@@ -111,8 +105,8 @@ pub trait Folder : Sized {
         noop_fold_block(b, self)
     }
 
-    fn fold_stmt(&mut self, s: P<Stmt>) -> SmallVector<P<Stmt>> {
-        s.and_then(|s| noop_fold_stmt(s, self))
+    fn fold_stmt(&mut self, s: P<Stmt>) -> P<Stmt> {
+        noop_fold_stmt(s, self)
     }
 
     fn fold_arm(&mut self, a: Arm) -> Arm {
@@ -123,7 +117,7 @@ pub trait Folder : Sized {
         noop_fold_pat(p, self)
     }
 
-    fn fold_decl(&mut self, d: P<Decl>) -> SmallVector<P<Decl>> {
+    fn fold_decl(&mut self, d: P<Decl>) -> P<Decl> {
         noop_fold_decl(d, self)
     }
 
@@ -340,22 +334,17 @@ pub fn noop_fold_arm<T: Folder>(Arm { attrs, pats, guard, body }: Arm, fld: &mut
     }
 }
 
-pub fn noop_fold_decl<T: Folder>(d: P<Decl>, fld: &mut T) -> SmallVector<P<Decl>> {
-    d.and_then(|Spanned { node, span }| {
+pub fn noop_fold_decl<T: Folder>(d: P<Decl>, fld: &mut T) -> P<Decl> {
+    d.map(|Spanned { node, span }| {
         match node {
-            DeclLocal(l) => SmallVector::one(P(Spanned {
+            DeclLocal(l) => Spanned {
                 node: DeclLocal(fld.fold_local(l)),
                 span: fld.new_span(span),
-            })),
-            DeclItem(it) => fld.fold_item(it)
-                               .into_iter()
-                               .map(|i| {
-                                   P(Spanned {
-                                       node: DeclItem(i),
-                                       span: fld.new_span(span),
-                                   })
-                               })
-                               .collect(),
+            },
+            DeclItem(it) => Spanned {
+                node: DeclItem(fld.fold_item(it)),
+                span: fld.new_span(span),
+            },
         }
     })
 }
@@ -771,7 +760,7 @@ pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
     b.map(|Block { id, stmts, expr, rules, span }| {
         Block {
             id: folder.new_id(id),
-            stmts: stmts.into_iter().flat_map(|s| folder.fold_stmt(s).into_iter()).collect(),
+            stmts: stmts.into_iter().map(|s| folder.fold_stmt(s)).collect(),
             expr: expr.map(|x| folder.fold_expr(x)),
             rules: rules,
             span: folder.new_span(span),
@@ -819,9 +808,7 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
         }
         ItemImpl(unsafety, polarity, generics, ifce, ty, impl_items) => {
             let new_impl_items = impl_items.into_iter()
-                                           .flat_map(|item| {
-                                               folder.fold_impl_item(item).into_iter()
-                                           })
+                                           .map(|item| folder.fold_impl_item(item))
                                            .collect();
             let ifce = match ifce {
                 None => None,
@@ -839,7 +826,7 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
         ItemTrait(unsafety, generics, bounds, items) => {
             let bounds = folder.fold_bounds(bounds);
             let items = items.into_iter()
-                             .flat_map(|item| folder.fold_trait_item(item).into_iter())
+                             .map(|item| folder.fold_trait_item(item))
                              .collect();
             ItemTrait(unsafety, folder.fold_generics(generics), bounds, items)
         }
@@ -848,8 +835,8 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
 
 pub fn noop_fold_trait_item<T: Folder>(i: P<TraitItem>,
                                        folder: &mut T)
-                                       -> SmallVector<P<TraitItem>> {
-    SmallVector::one(i.map(|TraitItem { id, name, attrs, node, span }| {
+                                       -> P<TraitItem> {
+    i.map(|TraitItem { id, name, attrs, node, span }| {
         TraitItem {
             id: folder.new_id(id),
             name: folder.fold_name(name),
@@ -869,11 +856,11 @@ pub fn noop_fold_trait_item<T: Folder>(i: P<TraitItem>,
             },
             span: folder.new_span(span),
         }
-    }))
+    })
 }
 
-pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T) -> SmallVector<P<ImplItem>> {
-    SmallVector::one(i.map(|ImplItem { id, name, attrs, node, vis, span }| {
+pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T) -> P<ImplItem> {
+    i.map(|ImplItem { id, name, attrs, node, vis, span }| {
         ImplItem {
             id: folder.new_id(id),
             name: folder.fold_name(name),
@@ -890,13 +877,13 @@ pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T) -> SmallVe
             },
             span: folder.new_span(span),
         }
-    }))
+    })
 }
 
 pub fn noop_fold_mod<T: Folder>(Mod { inner, items }: Mod, folder: &mut T) -> Mod {
     Mod {
         inner: folder.new_span(inner),
-        items: items.into_iter().flat_map(|x| folder.fold_item(x).into_iter()).collect(),
+        items: items.into_iter().map(|x| folder.fold_item(x)).collect(),
     }
 }
 
@@ -905,34 +892,22 @@ pub fn noop_fold_crate<T: Folder>(Crate { module, attrs, config, span, exported_
                                   -> Crate {
     let config = folder.fold_meta_items(config);
 
-    let mut items = folder.fold_item(P(hir::Item {
-                              name: token::special_idents::invalid.name,
-                              attrs: attrs,
-                              id: DUMMY_NODE_ID,
-                              vis: hir::Public,
-                              span: span,
-                              node: hir::ItemMod(module),
-                          }))
-                          .into_iter();
+    let crate_mod = folder.fold_item(P(hir::Item {
+        name: token::special_idents::invalid.name,
+        attrs: attrs,
+        id: DUMMY_NODE_ID,
+        vis: hir::Public,
+        span: span,
+        node: hir::ItemMod(module),
+    }));
 
-    let (module, attrs, span) = match items.next() {
-        Some(item) => {
-            assert!(items.next().is_none(),
-                    "a crate cannot expand to more than one item");
-            item.and_then(|hir::Item { attrs, span, node, .. }| {
-                match node {
-                    hir::ItemMod(m) => (m, attrs, span),
-                    _ => panic!("fold converted a module to not a module"),
-                }
-            })
-        }
-        None => (hir::Mod {
-            inner: span,
-            items: vec![],
-        },
-                 vec![],
-                 span),
-    };
+    let (module, attrs, span) =
+        crate_mod.and_then(|hir::Item { attrs, span, node, .. }| {
+            match node {
+                hir::ItemMod(m) => (m, attrs, span),
+                _ => panic!("fold converted a module to not a module"),
+            }
+        });
 
     Crate {
         module: module,
@@ -943,34 +918,28 @@ pub fn noop_fold_crate<T: Folder>(Crate { module, attrs, config, span, exported_
     }
 }
 
-// fold one item into possibly many items
-pub fn noop_fold_item<T: Folder>(i: P<Item>, folder: &mut T) -> SmallVector<P<Item>> {
-    SmallVector::one(i.map(|i| folder.fold_item_simple(i)))
-}
+pub fn noop_fold_item<T: Folder>(item: P<Item>, folder: &mut T) -> P<Item> {
+    item.map(|Item { id, name, attrs, node, vis, span }| {
+        let id = folder.new_id(id);
+        let node = folder.fold_item_underscore(node);
+        // FIXME: we should update the impl_pretty_name, but it uses pretty printing.
+        // let ident = match node {
+        //     // The node may have changed, recompute the "pretty" impl name.
+        //     ItemImpl(_, _, _, ref maybe_trait, ref ty, _) => {
+        //         impl_pretty_name(maybe_trait, Some(&**ty))
+        //     }
+        //     _ => ident
+        // };
 
-// fold one item into exactly one item
-pub fn noop_fold_item_simple<T: Folder>(Item { id, name, attrs, node, vis, span }: Item,
-                                        folder: &mut T)
-                                        -> Item {
-    let id = folder.new_id(id);
-    let node = folder.fold_item_underscore(node);
-    // FIXME: we should update the impl_pretty_name, but it uses pretty printing.
-    // let ident = match node {
-    //     // The node may have changed, recompute the "pretty" impl name.
-    //     ItemImpl(_, _, _, ref maybe_trait, ref ty, _) => {
-    //         impl_pretty_name(maybe_trait, Some(&**ty))
-    //     }
-    //     _ => ident
-    // };
-
-    Item {
-        id: id,
-        name: folder.fold_name(name),
-        attrs: fold_attrs(attrs, folder),
-        node: node,
-        vis: vis,
-        span: folder.new_span(span),
-    }
+        Item {
+            id: id,
+            name: folder.fold_name(name),
+            attrs: fold_attrs(attrs, folder),
+            node: node,
+            vis: vis,
+            span: folder.new_span(span),
+        }
+    })
 }
 
 pub fn noop_fold_foreign_item<T: Folder>(ni: P<ForeignItem>, folder: &mut T) -> P<ForeignItem> {
@@ -1184,36 +1153,32 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span }: Expr, folder: &mut T) 
     }
 }
 
-pub fn noop_fold_stmt<T: Folder>(Spanned { node, span }: Stmt,
-                                 folder: &mut T)
-                                 -> SmallVector<P<Stmt>> {
-    let span = folder.new_span(span);
-    match node {
-        StmtDecl(d, id) => {
-            let id = folder.new_id(id);
-            folder.fold_decl(d)
-                  .into_iter()
-                  .map(|d| {
-                      P(Spanned {
-                          node: StmtDecl(d, id),
-                          span: span,
-                      })
-                  })
-                  .collect()
+pub fn noop_fold_stmt<T: Folder>(stmt: P<Stmt>, folder: &mut T)
+                                 -> P<Stmt> {
+    stmt.map(|Spanned { node, span }| {
+        let span = folder.new_span(span);
+        match node {
+            StmtDecl(d, id) => {
+                let id = folder.new_id(id);
+                Spanned {
+                    node: StmtDecl(folder.fold_decl(d), id),
+                    span: span
+                }
+            }
+            StmtExpr(e, id) => {
+                let id = folder.new_id(id);
+                Spanned {
+                    node: StmtExpr(folder.fold_expr(e), id),
+                    span: span,
+                }
+            }
+            StmtSemi(e, id) => {
+                let id = folder.new_id(id);
+                Spanned {
+                    node: StmtSemi(folder.fold_expr(e), id),
+                    span: span,
+                }
+            }
         }
-        StmtExpr(e, id) => {
-            let id = folder.new_id(id);
-            SmallVector::one(P(Spanned {
-                node: StmtExpr(folder.fold_expr(e), id),
-                span: span,
-            }))
-        }
-        StmtSemi(e, id) => {
-            let id = folder.new_id(id);
-            SmallVector::one(P(Spanned {
-                node: StmtSemi(folder.fold_expr(e), id),
-                span: span,
-            }))
-        }
-    }
+    })
 }

@@ -389,20 +389,13 @@ fn simplify_ast(ii: InlinedItemRef) -> InlinedItem {
     match ii {
         // HACK we're not dropping items.
         InlinedItemRef::Item(i) => {
-            InlinedItem::Item(fold::noop_fold_item(P(i.clone()), &mut fld)
-                            .expect_one("expected one item"))
+            InlinedItem::Item(fold::noop_fold_item(P(i.clone()), &mut fld))
         }
         InlinedItemRef::TraitItem(d, ti) => {
-            InlinedItem::TraitItem(d,
-                fold::noop_fold_trait_item(P(ti.clone()), &mut fld)
-                    .expect_one("noop_fold_trait_item must produce \
-                                 exactly one trait item"))
+            InlinedItem::TraitItem(d, fold::noop_fold_trait_item(P(ti.clone()), &mut fld))
         }
         InlinedItemRef::ImplItem(d, ii) => {
-            InlinedItem::ImplItem(d,
-                fold::noop_fold_impl_item(P(ii.clone()), &mut fld)
-                    .expect_one("noop_fold_impl_item must produce \
-                                 exactly one impl item"))
+            InlinedItem::ImplItem(d, fold::noop_fold_impl_item(P(ii.clone()), &mut fld))
         }
         InlinedItemRef::Foreign(i) => {
             InlinedItem::Foreign(fold::noop_fold_foreign_item(P(i.clone()), &mut fld))
