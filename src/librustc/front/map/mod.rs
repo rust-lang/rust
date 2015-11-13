@@ -847,14 +847,14 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
                                           -> &'ast InlinedItem {
     let mut fld = IdAndSpanUpdater { fold_ops: fold_ops };
     let ii = match ii {
-        II::Item(i) => II::Item(fld.fold_item(i).expect_one("expected one item")),
+        II::Item(i) => II::Item(fld.fold_item(i)),
         II::TraitItem(d, ti) => {
             II::TraitItem(fld.fold_ops.new_def_id(d),
-                        fld.fold_trait_item(ti).expect_one("expected one trait item"))
+                          fld.fold_trait_item(ti))
         }
         II::ImplItem(d, ii) => {
             II::ImplItem(fld.fold_ops.new_def_id(d),
-                       fld.fold_impl_item(ii).expect_one("expected one impl item"))
+                         fld.fold_impl_item(ii))
         }
         II::Foreign(i) => II::Foreign(fld.fold_foreign_item(i))
     };
