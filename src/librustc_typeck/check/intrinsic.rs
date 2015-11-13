@@ -192,7 +192,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                ),
                tcx.mk_nil())
             }
-            "sqrt" | "sin" | "cos" | "exp" | "exp2" | "log" | "log10" | "log2" | "fabs" | 
+            "sqrt" | "sin" | "cos" | "exp" | "exp2" | "log" | "log10" | "log2" | "fabs" |
                 "floor" | "ceil" | "trunc" | "rint" | "nearbyint" | "round" =>
                 (1, vec!(param(ccx, 0)), param(ccx, 0)),
 

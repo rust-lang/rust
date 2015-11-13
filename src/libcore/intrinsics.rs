@@ -581,7 +581,7 @@ extern "rust-intrinsic" {
     /// if the argument is not an integer.
     #[cfg(stage0)]
     pub fn rintf64(x: f64) -> f64;
-    /// Returns the nearest integer to a floating point of type `T`. May raise an inexact 
+    /// Returns the nearest integer to a floating point of type `T`. May raise an inexact
     /// floating-point exception if the argument is not an integer.
     #[cfg(not(stage0))]
     pub fn rint<T>(x: T) -> T;
@@ -602,7 +602,7 @@ extern "rust-intrinsic" {
     /// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
     #[cfg(stage0)]
     pub fn roundf64(x: f64) -> f64;
-    /// Returns the nearest integer to a a floating point of type `T`. 
+    /// Returns the nearest integer to a a floating point of type `T`.
     /// Rounds half-way cases away from zero.
     #[cfg(not(stage0))]
     pub fn round<T>(x: T) -> T;
