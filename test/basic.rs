@@ -23,4 +23,9 @@ fn indirect_add() -> i32 {
     x + y
 }
 
+#[miri_run(expected = "Int(25)")]
+fn arith() -> i32 {
+    3*3 + 4*4
+}
+
 fn main() {}
