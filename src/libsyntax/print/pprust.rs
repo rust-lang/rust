@@ -1576,19 +1576,19 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ii.span.lo));
         try!(self.print_outer_attributes(&ii.attrs));
         match ii.node {
-            ast::ConstImplItem(ref ty, ref expr) => {
+            ast::ImplItemKind::Const(ref ty, ref expr) => {
                 try!(self.print_associated_const(ii.ident, &ty, Some(&expr), ii.vis));
             }
-            ast::MethodImplItem(ref sig, ref body) => {
+            ast::ImplItemKind::Method(ref sig, ref body) => {
                 try!(self.head(""));
                 try!(self.print_method_sig(ii.ident, sig, ii.vis));
                 try!(self.nbsp());
                 try!(self.print_block_with_attrs(body, &ii.attrs));
             }
-            ast::TypeImplItem(ref ty) => {
+            ast::ImplItemKind::Type(ref ty) => {
                 try!(self.print_associated_type(ii.ident, None, Some(ty)));
             }
-            ast::MacImplItem(codemap::Spanned { ref node, .. }) => {
+            ast::ImplItemKind::Macro(codemap::Spanned { ref node, .. }) => {
                 // code copied from ItemMac:
                 try!(self.print_path(&node.path, false, 0));
                 try!(word(&mut self.s, "! "));

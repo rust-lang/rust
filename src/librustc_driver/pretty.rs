@@ -623,7 +623,7 @@ impl fold::Folder for ReplaceBodyWithLoop {
 
     fn fold_impl_item(&mut self, i: P<ast::ImplItem>) -> SmallVector<P<ast::ImplItem>> {
         match i.node {
-            ast::ConstImplItem(..) => {
+            ast::ImplItemKind::Const(..) => {
                 self.within_static_or_const = true;
                 let ret = fold::noop_fold_impl_item(i, self);
                 self.within_static_or_const = false;

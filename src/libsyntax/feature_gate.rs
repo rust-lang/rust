@@ -998,12 +998,12 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
     fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
         match ii.node {
-            ast::ConstImplItem(..) => {
+            ast::ImplItemKind::Const(..) => {
                 self.gate_feature("associated_consts",
                                   ii.span,
                                   "associated constants are experimental")
             }
-            ast::MethodImplItem(ref sig, _) => {
+            ast::ImplItemKind::Method(ref sig, _) => {
                 if sig.constness == ast::Constness::Const {
                     self.gate_feature("const_fn", ii.span, "const fn is unstable");
                 }
