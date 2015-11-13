@@ -116,7 +116,7 @@ pub fn parse_expr_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> P<ast::Expr> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(panictry!(p.parse_expr_nopanic()), p)
+    maybe_aborted(panictry!(p.parse_expr()), p)
 }
 
 pub fn parse_item_from_source_str(name: String,
@@ -125,7 +125,7 @@ pub fn parse_item_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> Option<P<ast::Item>> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(panictry!(p.parse_item_nopanic()), p)
+    maybe_aborted(panictry!(p.parse_item()), p)
 }
 
 pub fn parse_meta_from_source_str(name: String,
@@ -148,7 +148,7 @@ pub fn parse_stmt_from_source_str(name: String,
         name,
         source
     );
-    maybe_aborted(panictry!(p.parse_stmt_nopanic()), p)
+    maybe_aborted(panictry!(p.parse_stmt()), p)
 }
 
 // Warning: This parses with quote_depth > 0, which is not the default.
@@ -882,7 +882,7 @@ mod tests {
     #[test] fn parse_ident_pat () {
         let sess = ParseSess::new();
         let mut parser = string_to_parser(&sess, "b".to_string());
-        assert!(panictry!(parser.parse_pat_nopanic())
+        assert!(panictry!(parser.parse_pat())
                 == P(ast::Pat{
                 id: ast::DUMMY_NODE_ID,
                 node: ast::PatIdent(ast::BindByValue(ast::MutImmutable),

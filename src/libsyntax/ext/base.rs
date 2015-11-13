@@ -821,7 +821,7 @@ pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
         cx.span_err(sp, &format!("{} takes 1 argument", name));
         return None
     }
-    let ret = cx.expander().fold_expr(panictry!(p.parse_expr_nopanic()));
+    let ret = cx.expander().fold_expr(panictry!(p.parse_expr()));
     if p.token != token::Eof {
         cx.span_err(sp, &format!("{} takes 1 argument", name));
     }
@@ -838,7 +838,7 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {
-        es.push(cx.expander().fold_expr(panictry!(p.parse_expr_nopanic())));
+        es.push(cx.expander().fold_expr(panictry!(p.parse_expr())));
         if panictry!(p.eat(&token::Comma)){
             continue;
         }
