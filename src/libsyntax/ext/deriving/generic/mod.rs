@@ -480,7 +480,7 @@ impl<'a> TraitDef<'a> {
                 ident: ident,
                 vis: ast::Inherited,
                 attrs: Vec::new(),
-                node: ast::TypeImplItem(type_def.to_ty(cx,
+                node: ast::ImplItemKind::Type(type_def.to_ty(cx,
                     self.span,
                     type_ident,
                     generics
@@ -895,7 +895,7 @@ impl<'a> MethodDef<'a> {
             span: trait_.span,
             vis: ast::Inherited,
             ident: method_ident,
-            node: ast::MethodImplItem(ast::MethodSig {
+            node: ast::ImplItemKind::Method(ast::MethodSig {
                 generics: fn_generics,
                 abi: abi,
                 explicit_self: explicit_self,
