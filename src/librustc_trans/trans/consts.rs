@@ -29,8 +29,8 @@ use middle::const_eval::eval_const_expr_partial;
 use middle::def_id::DefId;
 use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
+use trans::common::{self, type_is_sized, ExprOrMethodCall, node_id_substs, C_nil, const_get_elt};
 use trans::common::{CrateContext, C_integral, C_floating, C_bool, C_str_slice, C_bytes, val_ty};
-use trans::common::{type_is_sized, ExprOrMethodCall, node_id_substs, C_nil, const_get_elt};
 use trans::common::{C_struct, C_undef, const_to_opt_int, const_to_opt_uint, VariantInfo, C_uint};
 use trans::common::{type_is_fat_ptr, Field, C_vector, C_array, C_null, ExprId, MethodCallKey};
 use trans::declare;
@@ -795,7 +795,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
             let opt_def = cx.tcx().def_map.borrow().get(&cur.id).map(|d| d.full_def());
             if let Some(def::DefStatic(def_id, _)) = opt_def {
-                get_static_val(cx, def_id, ety)
+                common::get_static_val(cx, def_id, ety)
             } else {
                 // If this isn't the address of a static, then keep going through
                 // normal constant evaluation.
@@ -1073,17 +1073,5 @@ pub fn trans_static(ccx: &CrateContext,
             llvm::set_thread_local(g, true);
         }
         Ok(g)
-    }
-}
-
-
-fn get_static_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                            did: DefId,
-                            ty: Ty<'tcx>)
-                            -> ValueRef {
-    if let Some(node_id) = ccx.tcx().map.as_local_node_id(did) {
-        base::get_item_val(ccx, node_id)
-    } else {
-        base::trans_external_path(ccx, did, ty)
     }
 }
