@@ -217,15 +217,17 @@ fn rewrite_method_call(method_name: ast::Ident,
                        width: usize,
                        offset: Indent)
                        -> Option<String> {
-    let type_str = if types.is_empty() {
-        String::new()
+    let (lo, type_str) = if types.is_empty() {
+        (args[0].span.hi, String::new())
     } else {
         let type_list = types.iter().map(|ty| pprust::ty_to_string(ty)).collect::<Vec<_>>();
-        format!("::<{}>", type_list.join(", "))
+
+        (types.last().unwrap().span.hi,
+         format!("::<{}>", type_list.join(", ")))
     };
 
     let callee_str = format!(".{}{}", method_name, type_str);
-    let span = mk_sp(args[0].span.hi, span.hi);
+    let span = mk_sp(lo, span.hi);
 
     rewrite_call(context, &callee_str, &args[1..], span, width, offset)
 }
