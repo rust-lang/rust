@@ -120,8 +120,8 @@ impl LintPass for UnusedResults {
 }
 
 impl LateLintPass for UnusedResults {
-    fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
-        let expr = match s.node {
+    fn check_stmt(&mut self, cx: &LateContext, stmt: &hir::Stmt) {
+        let expr = match stmt.node {
             hir::StmtSemi(ref expr, _) => &**expr,
             _ => return
         };
@@ -131,37 +131,40 @@ impl LateLintPass for UnusedResults {
         }
 
         let t = cx.tcx.expr_ty(&expr);
-        let warned = match t.sty {
+        match t.sty {
             ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyBool => return,
-            ty::TyStruct(def, _) |
-            ty::TyEnum(def, _) => {
-                let attrs = cx.tcx.get_attrs(def.did);
-                check_must_use(cx, &attrs[..], s.span)
+            _ => ()
+        }
+        let must_use = check_must_use(cx, t);
+        if let Some(s) = must_use {
+            let mut msg = "unused result which must be used".to_string();
+            if !s.is_empty() {
+                msg.push_str(": ");
+                msg.push_str(&s);
             }
-            _ => false,
-        };
-        if !warned {
-            cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
+            cx.span_lint(UNUSED_MUST_USE, stmt.span, &msg);
+        } else {
+            cx.span_lint(UNUSED_RESULTS, stmt.span, "unused result");
         }
 
-        fn check_must_use(cx: &LateContext, attrs: &[ast::Attribute], sp: Span) -> bool {
-            for attr in attrs {
-                if attr.check_name("must_use") {
-                    let mut msg = "unused result which must be used".to_string();
-                    // check for #[must_use="..."]
-                    match attr.value_str() {
-                        None => {}
-                        Some(s) => {
-                            msg.push_str(": ");
-                            msg.push_str(&s);
+        fn check_must_use(cx: &LateContext, ty: ty::Ty) -> Option<String> {
+            match ty.sty {
+                ty::TyStruct(def, _) |
+                ty::TyEnum(def, _) => {
+                    for attr in cx.tcx.get_attrs(def.did).iter() {
+                        if attr.check_name("must_use") {
+                            let s = match attr.value_str() {
+                                None => "".to_string(),
+                                Some(s) => s.to_string()
+                            };
+                            return Some(s);
                         }
                     }
-                    cx.span_lint(UNUSED_MUST_USE, sp, &msg);
-                    return true;
                 }
+                _ => ()
             }
-            false
+            None
         }
     }
 }
