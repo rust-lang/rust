@@ -793,7 +793,8 @@ impl<'a> FmtVisitor<'a> {
         let header_str = self.format_header(item_name, ident, vis);
         result.push_str(&header_str);
         result.push(';');
-        return Some(result);
+
+        Some(result)
     }
 
     fn format_struct_struct(&self,
@@ -968,8 +969,8 @@ impl<'a> FmtVisitor<'a> {
                                                                       terminator,
                                                                       Some(span.hi)));
             result.push_str(&where_clause_str);
-            result.push_str(&self.block_indent.to_string(self.config));
             result.push('\n');
+            result.push_str(&self.block_indent.to_string(self.config));
             result.push_str(opener);
         } else {
             result.push(' ');
