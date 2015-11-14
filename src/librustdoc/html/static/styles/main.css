@@ -83,6 +83,10 @@ pre {
 
 .content a.primitive { color: #39a7bf; }
 .content span.mod, .content a.mod, block a.current.mod { color: #4d76ae; }
+.content span.fn, .content a.fn, .block a.current.fn,
+.content span.method, .content a.method, .block a.current.method,
+.content span.tymethod, .content a.tymethod, .block a.current.tymethod,
+.content .fnname { color: #8c6067; }
 
 pre.rust .comment { color: #8E908C; }
 pre.rust .doccomment { color: #4D4D4C; }
@@ -116,3 +120,6 @@ a.test-arrow {
     box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
     background-color: white;
 }
+
+em.stab.unstable { background: #FFF5D6; border-color: #FFC600; }
+em.stab.deprecated { background: #F3DFFF; border-color: #7F0087; }

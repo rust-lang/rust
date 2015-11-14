@@ -1032,4 +1032,35 @@ function change_style(elem) {
             elems[elems.length - 1] !== "rustdoc.css");
     }
     elem.style.display = "none";
+    update_local_storage(elem.className);
 }
+
+function update_local_storage(theme) {
+    if (typeof(Storage) !== "undefined") {
+        localStorage.theme = theme;
+    } else {
+        // No Web Storage support so we do nothing
+    }
+}
+
+function get_current_theme() {
+    if(typeof(Storage) !== "undefined" && localStorage.theme !== undefined) {
+        return localStorage.theme;
+    }
+    return "main";
+}
+
+document.addEventListener("DOMContentLoaded", function(event) {
+    theme = get_current_theme();
+    if (theme === "main") {
+        return;
+    }
+    var objs = document.getElementById("style-changer").getElementsByTagName("div");
+
+    for (var i = 0; i < objs.length; ++i) {
+        if (objs[i].className === theme) {
+            change_style(objs[i]);
+            return;
+        }
+    }
+});

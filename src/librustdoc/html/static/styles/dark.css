@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+ * Copyright 2015 The Rust Project Developers. See the COPYRIGHT
  * file at the top-level directory of this distribution and at
  * http://rust-lang.org/COPYRIGHT.
  *
@@ -83,6 +83,10 @@ pre {
 
 .content a.primitive { color: #D8AA0B; }
 .content span.mod, .content a.mod, block a.current.mod { color: #967F00; }
+.content span.fn, .content a.fn, .block a.current.fn,
+.content span.method, .content a.method, .block a.current.method,
+.content span.tymethod, .content a.tymethod, .block a.current.tymethod,
+.content .fnname { color: #2BAB63; }
 
 pre.rust .comment { color: #4D4D4C; }
 pre.rust .doccomment { color: #8E908C; }
@@ -117,3 +121,6 @@ a.test-arrow {
     box-shadow: 0 0 0 1px #000, 0 0 0 2px transparent;
     background-color: #d4d4d4;
 }
+
+em.stab.unstable { background: #503D05; border-color: #AB8500; }
+em.stab.deprecated { background: #352850; border-color: #645074; }

@@ -382,10 +382,6 @@ a {
 .content span.struct, .content a.struct, .block a.current.struct { color: #e53700; }
 .content a.type { color: #e57300; }
 .content a.macro { color: #068000; }
-.content span.fn, .content a.fn, .block a.current.fn,
-.content span.method, .content a.method, .block a.current.method,
-.content span.tymethod, .content a.tymethod, .block a.current.tymethod,
-.content .fnname { color: #8c6067; }
 .block a.current.crate { font-weight: 500; }
 
 .search-input {
@@ -474,8 +470,6 @@ body.blur > :not(#help) {
     padding: 20px;
 }
 
-em.stab.unstable { background: #FFF5D6; border-color: #FFC600; }
-em.stab.deprecated { background: #F3DFFF; border-color: #7F0087; }
 em.stab {
     display: inline-block;
     border-width: 1px;
