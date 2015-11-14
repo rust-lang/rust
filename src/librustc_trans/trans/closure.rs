@@ -210,6 +210,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
         tcx.with_freevars(id, |fv| fv.iter().cloned().collect());
 
     let sig = tcx.erase_late_bound_regions(&function_type.sig);
+    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
 
     trans_closure(ccx,
                   decl,
@@ -371,6 +372,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let lloncefn = declare::define_internal_rust_fn(ccx, &function_name,
                                                     llonce_fn_ty);
     let sig = tcx.erase_late_bound_regions(&llonce_bare_fn_ty.sig);
+    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
     fcx = new_fn_ctxt(ccx,
