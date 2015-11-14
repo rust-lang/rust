@@ -92,31 +92,39 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
                     // Determine if the field can be used as a function in some way
                     let field_ty = field.ty(cx, substs);
-                    if let Ok(fn_once_trait_did) = cx.lang_items.require(FnOnceTraitLangItem) {
-                        let infcx = fcx.infcx();
-                        infcx.probe(|_| {
-                            let fn_once_substs = Substs::new_trait(vec![infcx.next_ty_var()],
-                                                                   Vec::new(),
-                                                                   field_ty);
-                            let trait_ref = ty::TraitRef::new(fn_once_trait_did,
-                                                              cx.mk_substs(fn_once_substs));
-                            let poly_trait_ref = trait_ref.to_poly_trait_ref();
-                            let obligation = Obligation::misc(span,
-                                                              fcx.body_id,
-                                                              poly_trait_ref.to_predicate());
-                            let mut selcx = SelectionContext::new(infcx);
 
-                            if selcx.evaluate_obligation(&obligation) {
-                                span_stored_function();
+                    match field_ty.sty {
+                        // Not all of these (e.g. unsafe fns) implement FnOnce
+                        // so we look for these beforehand
+                        ty::TyClosure(..) | ty::TyBareFn(..) => span_stored_function(),
+                        // If it's not a simple function, look for things which implement FnOnce
+                        _ => {
+                            if let Ok(fn_once_trait_did) =
+                                    cx.lang_items.require(FnOnceTraitLangItem) {
+                                let infcx = fcx.infcx();
+                                infcx.probe(|_| {
+                                    let fn_once_substs = Substs::new_trait(vec![
+                                                                            infcx.next_ty_var()],
+                                                                           Vec::new(),
+                                                                           field_ty);
+                                    let trait_ref = ty::TraitRef::new(fn_once_trait_did,
+                                                                      cx.mk_substs(fn_once_substs));
+                                    let poly_trait_ref = trait_ref.to_poly_trait_ref();
+                                    let obligation = Obligation::misc(span,
+                                                                      fcx.body_id,
+                                                                      poly_trait_ref
+                                                                         .to_predicate());
+                                    let mut selcx = SelectionContext::new(infcx);
+
+                                    if selcx.evaluate_obligation(&obligation) {
+                                        span_stored_function();
+                                    } else {
+                                        span_did_you_mean();
+                                    }
+                                });
                             } else {
-                                span_did_you_mean();
+                                span_did_you_mean()
                             }
-                        });
-                    } else {
-                        match field_ty.sty {
-                            // fallback to matching a closure or function pointer
-                            ty::TyClosure(..) | ty::TyBareFn(..) => span_stored_function(),
-                            _ => span_did_you_mean(),
                         }
                     }
                 }

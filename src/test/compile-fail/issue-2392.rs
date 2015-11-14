@@ -11,6 +11,16 @@
 #![feature(core)]
 use std::boxed::FnBox;
 
+struct FuncContainer {
+    f1: fn(data: u8),
+    f2: extern "C" fn(data: u8),
+    f3: unsafe fn(data: u8),
+}
+
+struct FuncContainerOuter {
+    container: Box<FuncContainer>
+}
+
 struct Obj<F> where F: FnOnce() -> u32 {
     closure: F,
     not_closure: usize,
@@ -65,4 +75,17 @@ fn main() {
 
     check_expression().closure();//~ ERROR no method named `closure` found
     //~^ NOTE use `(check_expression().closure)(...)` if you meant to call the function stored
+}
+
+impl FuncContainerOuter {
+    fn run(&self) {
+        unsafe {
+            (*self.container).f1(1); //~ ERROR no method named `f1` found
+            //~^ NOTE use `(*self.container.f1)(...)`
+            (*self.container).f2(1); //~ ERROR no method named `f2` found
+            //~^ NOTE use `(*self.container.f2)(...)`
+            (*self.container).f3(1); //~ ERROR no method named `f3` found
+            //~^ NOTE use `(*self.container.f3)(...)`
+        }
+    }
 }
