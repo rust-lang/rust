@@ -171,13 +171,9 @@ fn is_block_expr(expr: &ast::Expr, repr: &str) -> bool {
 
 fn pop_expr_chain<'a>(expr: &'a ast::Expr) -> Option<&'a ast::Expr> {
     match expr.node {
-        ast::Expr_::ExprMethodCall(_, _, ref expressions) => {
-            Some(&expressions[0])
-        }
+        ast::Expr_::ExprMethodCall(_, _, ref expressions) => Some(&expressions[0]),
         ast::Expr_::ExprTupField(ref subexpr, _) |
-        ast::Expr_::ExprField(ref subexpr, _) => {
-            Some(subexpr)
-        }
+        ast::Expr_::ExprField(ref subexpr, _) => Some(subexpr),
         _ => None,
     }
 }
@@ -199,12 +195,8 @@ fn rewrite_chain_expr(expr: &ast::Expr,
                                 width,
                                 offset)
         }
-        ast::Expr_::ExprField(_, ref field) => {
-            Some(format!(".{}", field.node))
-        }
-        ast::Expr_::ExprTupField(_, ref field) => {
-            Some(format!(".{}", field.node))
-        }
+        ast::Expr_::ExprField(_, ref field) => Some(format!(".{}", field.node)),
+        ast::Expr_::ExprTupField(_, ref field) => Some(format!(".{}", field.node)),
         _ => unreachable!(),
     }
 }

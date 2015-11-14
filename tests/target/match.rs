@@ -18,9 +18,7 @@ fn foo() {
         }
         Pattern1 | Pattern2 | Pattern3 => false,
         Paternnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn |
-        Paternnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn => {
-            blah
-        }
+        Paternnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn => blah,
         Patternnnnnnnnnnnnnnnnnnn |
         Patternnnnnnnnnnnnnnnnnnn |
         Patternnnnnnnnnnnnnnnnnnn |
@@ -164,15 +162,9 @@ fn issue355() {
         a => println!("a", b),
         b => vec![1, 2],
         c => vec!(3; 4),
-        d => {
-            println!("a", b)
-        }
-        e => {
-            vec![1, 2]
-        }
-        f => {
-            vec!(3; 4)
-        }
+        d => println!("a", b),
+        e => vec![1, 2],
+        f => vec!(3; 4),
         h => println!("a", b), // h comment
         i => vec![1, 2], // i comment
         j => vec!(3; 4), // j comment
@@ -272,9 +264,7 @@ fn issue496() {
                 match def {
                     def::DefConst(def_id) | def::DefAssociatedConst(def_id) => {
                         match const_eval::lookup_const_by_id(cx.tcx, def_id, Some(self.pat.id)) {
-                            Some(const_expr) => {
-                                x
-                            }
+                            Some(const_expr) => x,
                         }
                     }
                 }

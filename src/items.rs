@@ -824,9 +824,7 @@ impl<'a> FmtVisitor<'a> {
                          offset: Indent)
                          -> Option<String> {
         match *struct_def {
-            ast::VariantData::Unit(..) => {
-                self.format_unit_struct(item_name, ident, vis)
-            }
+            ast::VariantData::Unit(..) => self.format_unit_struct(item_name, ident, vis),
             ast::VariantData::Tuple(ref fields, _) => {
                 self.format_tuple_struct(item_name, ident, vis, fields, generics, span, offset)
             }

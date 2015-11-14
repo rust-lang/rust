@@ -21,9 +21,7 @@ use syntax::ast::{BindingMode, Pat, Pat_};
 impl Rewrite for Pat {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match self.node {
-            Pat_::PatBox(ref pat) => {
-                rewrite_unary_prefix(context, "box ", &**pat, width, offset)
-            }
+            Pat_::PatBox(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, width, offset),
             Pat_::PatIdent(binding_mode, ident, None) => {
                 let (prefix, mutability) = match binding_mode {
                     BindingMode::BindByRef(mutability) => ("ref ", mutability),
@@ -50,9 +48,7 @@ impl Rewrite for Pat {
                 let prefix = format!("&{}", format_mutability(mutability));
                 rewrite_unary_prefix(context, &prefix, &**pat, width, offset)
             }
-            Pat_::PatTup(ref items) => {
-                rewrite_tuple(context, items, self.span, width, offset)
-            }
+            Pat_::PatTup(ref items) => rewrite_tuple(context, items, self.span, width, offset),
             Pat_::PatEnum(ref path, Some(ref pat_vec)) => {
                 let path_str = try_opt!(::types::rewrite_path(context,
                                                               true,
