@@ -4,6 +4,8 @@ use rustc_mir::repr::{self as mir, Mir};
 use syntax::ast::Attribute;
 use syntax::attr::AttrMetaMethods;
 
+use std::iter;
+
 #[derive(Clone, Debug)]
 enum Value {
     Uninit,
@@ -11,48 +13,58 @@ enum Value {
     Int(i64), // FIXME: Should be bit-width aware.
 }
 
-struct Interpreter<'tcx> {
-    mir: &'tcx Mir<'tcx>,
-    var_vals: Vec<Value>,
-    temp_vals: Vec<Value>,
-    result: Value,
+struct Interpreter {
+    stack: Vec<Value>,
+    num_vars: usize,
+    num_temps: usize,
 }
 
-impl<'tcx> Interpreter<'tcx> {
-    fn new(mir: &'tcx Mir<'tcx>) -> Self {
+impl Interpreter {
+    fn new() -> Self {
         Interpreter {
-            mir: mir,
-            var_vals: vec![Value::Uninit; mir.var_decls.len()],
-            temp_vals: vec![Value::Uninit; mir.temp_decls.len()],
-            result: Value::Uninit,
+            stack: Vec::new(),
+            num_vars: 0,
+            num_temps: 0,
         }
     }
 
-    fn run(&mut self) -> Value {
-        let start_block = self.mir.basic_block_data(mir::START_BLOCK);
+    fn run(&mut self, mir: &Mir) -> Value {
+        let start_block = mir.basic_block_data(mir::START_BLOCK);
+
+        self.num_vars = mir.var_decls.len();
+        self.num_temps = mir.temp_decls.len();
+
+        self.stack.extend(
+            iter::repeat(Value::Uninit).take(1 + self.num_vars + self.num_temps));
 
         for stmt in &start_block.statements {
-            use rustc_mir::repr::Lvalue::*;
             use rustc_mir::repr::StatementKind::*;
 
             match stmt.kind {
-                Assign(ref lv, ref rv) => {
-                    let val = self.eval_rvalue(rv);
-
-                    let spot = match *lv {
-                        Var(i) => &mut self.var_vals[i as usize],
-                        Temp(i) => &mut self.temp_vals[i as usize],
-                        ReturnPointer => &mut self.result,
-                        _ => unimplemented!(),
-                    };
-
-                    *spot = val;
+                Assign(ref lvalue, ref rvalue) => {
+                    let index = self.eval_lvalue(lvalue);
+                    let value = self.eval_rvalue(rvalue);
+                    self.stack[index] = value;
                 }
-                Drop(_kind, ref _lv) => { /* TODO */ },
+
+                Drop(_kind, ref _lv) => {
+                    // TODO
+                },
             }
         }
 
-        self.result.clone()
+        self.stack[self.eval_lvalue(&mir::Lvalue::ReturnPointer)].clone()
+    }
+
+    fn eval_lvalue(&self, lvalue: &mir::Lvalue) -> usize {
+        use rustc_mir::repr::Lvalue::*;
+
+        match *lvalue {
+            Var(i) => 1 + i as usize,
+            Temp(i) => 1 + self.num_vars + i as usize,
+            ReturnPointer => 0,
+            _ => unimplemented!(),
+        }
     }
 
     fn eval_rvalue(&mut self, rvalue: &mir::Rvalue) -> Value {
@@ -102,19 +114,17 @@ impl<'tcx> Interpreter<'tcx> {
     }
 
     fn eval_operand(&self, op: &mir::Operand) -> Value {
-        use rustc_mir::repr::Lvalue::*;
         use rustc_mir::repr::Operand::*;
 
         match *op {
-            Consume(Var(i)) => self.var_vals[i as usize].clone(),
-            Consume(Temp(i)) => self.temp_vals[i as usize].clone(),
+            Consume(ref lvalue) => self.stack[self.eval_lvalue(lvalue)].clone(),
+
             Constant(ref constant) => {
                 match constant.literal {
                     mir::Literal::Value { value: ref const_val } => self.eval_constant(const_val),
                     mir::Literal::Item { .. } => unimplemented!(),
                 }
             }
-            _ => unimplemented!(),
         }
     }
 
@@ -142,8 +152,8 @@ pub fn interpret_start_points<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &MirMap<'tcx>
                 let item = tcx.map.expect_item(id);
 
                 println!("Interpreting: {}", item.name);
-                let mut interpreter = Interpreter::new(mir);
-                let val = interpreter.run();
+                let mut interpreter = Interpreter::new();
+                let val = interpreter.run(mir);
                 let val_str = format!("{:?}", val);
 
                 if !check_expected(&val_str, attr) {
