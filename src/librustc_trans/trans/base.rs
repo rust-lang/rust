@@ -55,7 +55,7 @@ use trans::builder::{Builder, noname};
 use trans::callee;
 use trans::cleanup::{self, CleanupMethods, DropHint};
 use trans::closure;
-use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_integral};
+use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_uint, C_integral};
 use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
 use trans::common::{CrateContext, DropFlagHintsMap, Field, FunctionContext};
 use trans::common::{Result, NodeIdAndSpan, VariantInfo};
@@ -312,6 +312,49 @@ pub fn bin_op_to_fcmp_predicate(ccx: &CrateContext, op: hir::BinOp_)
     }
 }
 
+pub fn compare_fat_ptrs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                    lhs_addr: ValueRef,
+                                    lhs_extra: ValueRef,
+                                    rhs_addr: ValueRef,
+                                    rhs_extra: ValueRef,
+                                    _t: Ty<'tcx>,
+                                    op: hir::BinOp_,
+                                    debug_loc: DebugLoc)
+                                    -> ValueRef {
+    match op {
+        hir::BiEq => {
+            let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
+            let extra_eq = ICmp(bcx, llvm::IntEQ, lhs_extra, rhs_extra, debug_loc);
+            And(bcx, addr_eq, extra_eq, debug_loc)
+        }
+        hir::BiNe => {
+            let addr_eq = ICmp(bcx, llvm::IntNE, lhs_addr, rhs_addr, debug_loc);
+            let extra_eq = ICmp(bcx, llvm::IntNE, lhs_extra, rhs_extra, debug_loc);
+            Or(bcx, addr_eq, extra_eq, debug_loc)
+        }
+        hir::BiLe | hir::BiLt | hir::BiGe | hir::BiGt => {
+            // a OP b ~ a.0 STRICT(OP) b.0 | (a.0 == b.0 && a.1 OP a.1)
+            let (op, strict_op) = match op {
+                hir::BiLt => (llvm::IntULT, llvm::IntULT),
+                hir::BiLe => (llvm::IntULE, llvm::IntULT),
+                hir::BiGt => (llvm::IntUGT, llvm::IntUGT),
+                hir::BiGe => (llvm::IntUGE, llvm::IntUGT),
+                _ => unreachable!()
+            };
+
+            let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
+            let extra_op = ICmp(bcx, op, lhs_extra, rhs_extra, debug_loc);
+            let addr_eq_extra_op = And(bcx, addr_eq, extra_op, debug_loc);
+
+            let addr_strict = ICmp(bcx, strict_op, lhs_addr, rhs_addr, debug_loc);
+            Or(bcx, addr_strict, addr_eq_extra_op, debug_loc)
+        }
+        _ => {
+            bcx.tcx().sess.bug("unexpected fat ptr binop");
+        }
+    }
+}
+
 pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         lhs: ValueRef,
                                         rhs: ValueRef,
@@ -335,6 +378,17 @@ pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         ty::TyRawPtr(mt) if common::type_is_sized(bcx.tcx(), mt.ty) => {
             ICmp(bcx, bin_op_to_icmp_predicate(bcx.ccx(), op, false), lhs, rhs, debug_loc)
+        }
+        ty::TyRawPtr(_) => {
+            let lhs_addr = Load(bcx, GEPi(bcx, lhs, &[0, abi::FAT_PTR_ADDR]));
+            let lhs_extra = Load(bcx, GEPi(bcx, lhs, &[0, abi::FAT_PTR_EXTRA]));
+
+            let rhs_addr = Load(bcx, GEPi(bcx, rhs, &[0, abi::FAT_PTR_ADDR]));
+            let rhs_extra = Load(bcx, GEPi(bcx, rhs, &[0, abi::FAT_PTR_EXTRA]));
+            compare_fat_ptrs(bcx,
+                             lhs_addr, lhs_extra,
+                             rhs_addr, rhs_extra,
+                             t, op, debug_loc)
         }
         ty::TyInt(_) => {
             ICmp(bcx, bin_op_to_icmp_predicate(bcx.ccx(), op, true), lhs, rhs, debug_loc)
@@ -521,6 +575,129 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
       }
     }
     return cx;
+}
+
+
+/// Retrieve the information we are losing (making dynamic) in an unsizing
+/// adjustment.
+///
+/// The `old_info` argument is a bit funny. It is intended for use
+/// in an upcast, where the new vtable for an object will be drived
+/// from the old one.
+pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
+                                source: Ty<'tcx>,
+                                target: Ty<'tcx>,
+                                old_info: Option<ValueRef>,
+                                param_substs: &'tcx Substs<'tcx>)
+                                -> ValueRef {
+    let (source, target) = ccx.tcx().struct_lockstep_tails(source, target);
+    match (&source.sty, &target.sty) {
+        (&ty::TyArray(_, len), &ty::TySlice(_)) => C_uint(ccx, len),
+        (&ty::TyTrait(_), &ty::TyTrait(_)) => {
+            // For now, upcasts are limited to changes in marker
+            // traits, and hence never actually require an actual
+            // change to the vtable.
+            old_info.expect("unsized_info: missing old info for trait upcast")
+        }
+        (_, &ty::TyTrait(box ty::TraitTy { ref principal, .. })) => {
+            // Note that we preserve binding levels here:
+            let substs = principal.0.substs.with_self_ty(source).erase_regions();
+            let substs = ccx.tcx().mk_substs(substs);
+            let trait_ref = ty::Binder(ty::TraitRef { def_id: principal.def_id(),
+                                                      substs: substs });
+            consts::ptrcast(meth::get_vtable(ccx, trait_ref, param_substs),
+                            Type::vtable_ptr(ccx))
+        }
+        _ => ccx.sess().bug(&format!("unsized_info: invalid unsizing {:?} -> {:?}",
+                                     source,
+                                     target))
+    }
+}
+
+/// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
+pub fn unsize_thin_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                   src: ValueRef,
+                                   src_ty: Ty<'tcx>,
+                                   dst_ty: Ty<'tcx>)
+                                   -> (ValueRef, ValueRef) {
+    debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
+    match (&src_ty.sty, &dst_ty.sty) {
+        (&ty::TyBox(a), &ty::TyBox(b)) |
+        (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
+         &ty::TyRef(_, ty::TypeAndMut { ty: b, .. })) |
+        (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
+         &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
+        (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
+         &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
+            assert!(common::type_is_sized(bcx.tcx(), a));
+            let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), b).ptr_to();
+            (PointerCast(bcx, src, ptr_ty),
+             unsized_info(bcx.ccx(), a, b, None, bcx.fcx.param_substs))
+        }
+        _ => bcx.sess().bug(
+            &format!("unsize_thin_ptr: called on bad types"))
+    }
+}
+
+/// Coerce `src`, which is a reference to a value of type `src_ty`,
+/// to a value of type `dst_ty` and store the result in `dst`
+pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                       src: ValueRef,
+                                       src_ty: Ty<'tcx>,
+                                       dst: ValueRef,
+                                       dst_ty: Ty<'tcx>) {
+    match (&src_ty.sty, &dst_ty.sty) {
+        (&ty::TyBox(..), &ty::TyBox(..)) |
+        (&ty::TyRef(..), &ty::TyRef(..)) |
+        (&ty::TyRef(..), &ty::TyRawPtr(..)) |
+        (&ty::TyRawPtr(..), &ty::TyRawPtr(..)) => {
+            let (base, info) = if common::type_is_fat_ptr(bcx.tcx(), src_ty) {
+                // fat-ptr to fat-ptr unsize preserves the vtable
+                load_fat_ptr(bcx, src, src_ty)
+            } else {
+                let base = load_ty(bcx, src, src_ty);
+                unsize_thin_ptr(bcx, base, src_ty, dst_ty)
+            };
+            store_fat_ptr(bcx, base, info, dst, dst_ty);
+        }
+
+        // This can be extended to enums and tuples in the future.
+        // (&ty::TyEnum(def_id_a, _), &ty::TyEnum(def_id_b, _)) |
+        (&ty::TyStruct(def_a, _), &ty::TyStruct(def_b, _)) => {
+            assert_eq!(def_a, def_b);
+
+            let src_repr = adt::represent_type(bcx.ccx(), src_ty);
+            let src_fields = match &*src_repr {
+                &adt::Repr::Univariant(ref s, _) => &s.fields,
+                _ => bcx.sess().bug("struct has non-univariant repr")
+            };
+            let dst_repr = adt::represent_type(bcx.ccx(), dst_ty);
+            let dst_fields = match &*dst_repr {
+                &adt::Repr::Univariant(ref s, _) => &s.fields,
+                _ => bcx.sess().bug("struct has non-univariant repr")
+            };
+
+            let iter = src_fields.iter().zip(dst_fields).enumerate();
+            for (i, (src_fty, dst_fty)) in iter {
+                if type_is_zero_size(bcx.ccx(), dst_fty) { continue; }
+
+                let src_f = adt::trans_field_ptr(bcx, &src_repr, src, 0, i);
+                let dst_f = adt::trans_field_ptr(bcx, &dst_repr, dst, 0, i);
+                if src_fty == dst_fty {
+                    memcpy_ty(bcx, dst_f, src_f, src_fty);
+                } else {
+                    coerce_unsized_into(
+                        bcx,
+                        src_f, src_fty,
+                        dst_f, dst_fty
+                    );
+                }
+            }
+        }
+        _ => bcx.sess().bug(&format!("coerce_unsized_into: invalid coercion {:?} -> {:?}",
+                                     src_ty,
+                                     dst_ty))
+    }
 }
 
 pub fn cast_shift_expr_rhs(cx: Block,
@@ -828,6 +1005,10 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
         return;
     }
 
+    debug!("store_ty: {} : {:?} <- {}",
+           cx.val_to_string(dst), t,
+           cx.val_to_string(v));
+
     if common::type_is_fat_ptr(cx.tcx(), t) {
         Store(cx, ExtractValue(cx, v, abi::FAT_PTR_ADDR), expr::get_dataptr(cx, dst));
         Store(cx, ExtractValue(cx, v, abi::FAT_PTR_EXTRA), expr::get_meta(cx, dst));
@@ -837,6 +1018,25 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
             llvm::LLVMSetAlignment(store, type_of::align_of(cx.ccx(), t));
         }
     }
+}
+
+pub fn store_fat_ptr<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+                                 data: ValueRef,
+                                 extra: ValueRef,
+                                 dst: ValueRef,
+                                 _ty: Ty<'tcx>) {
+    // FIXME: emit metadata
+    Store(cx, data, expr::get_dataptr(cx, dst));
+    Store(cx, extra, expr::get_meta(cx, dst));
+}
+
+pub fn load_fat_ptr<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+                                src: ValueRef,
+                                _ty: Ty<'tcx>) -> (ValueRef, ValueRef)
+{
+    // FIXME: emit metadata
+    (Load(cx, expr::get_dataptr(cx, src)),
+     Load(cx, expr::get_meta(cx, src)))
 }
 
 pub fn from_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {

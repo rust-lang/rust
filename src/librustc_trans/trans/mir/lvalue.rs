@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::middle::ty::Ty;
+use rustc::middle::ty::{self, Ty};
 use rustc_mir::repr as mir;
 use rustc_mir::tcx::LvalueTy;
 use trans::adt;
@@ -18,7 +18,8 @@ use trans::build;
 use trans::common::{self, Block};
 use trans::debuginfo::DebugLoc;
 use trans::machine;
-use trans::tvec;
+
+use std::ptr;
 
 use super::{MirContext, TempRef};
 
@@ -27,13 +28,16 @@ pub struct LvalueRef<'tcx> {
     /// Pointer to the contents of the lvalue
     pub llval: ValueRef,
 
+    /// This lvalue's extra data if it is unsized, or null
+    pub llextra: ValueRef,
+
     /// Monomorphized type of this lvalue, including variant information
     pub ty: LvalueTy<'tcx>,
 }
 
 impl<'tcx> LvalueRef<'tcx> {
-    pub fn new(llval: ValueRef, lvalue_ty: LvalueTy<'tcx>) -> LvalueRef<'tcx> {
-        LvalueRef { llval: llval, ty: lvalue_ty }
+    pub fn new_sized(llval: ValueRef, lvalue_ty: LvalueTy<'tcx>) -> LvalueRef<'tcx> {
+        LvalueRef { llval: llval, llextra: ptr::null_mut(), ty: lvalue_ty }
     }
 
     pub fn alloca<'bcx>(bcx: Block<'bcx, 'tcx>,
@@ -42,11 +46,25 @@ impl<'tcx> LvalueRef<'tcx> {
                         -> LvalueRef<'tcx>
     {
         let lltemp = base::alloc_ty(bcx, ty, name);
-        LvalueRef::new(lltemp, LvalueTy::from_ty(ty))
+        LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty))
     }
 }
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
+    pub fn lvalue_len(&mut self,
+                      bcx: Block<'bcx, 'tcx>,
+                      lvalue: LvalueRef<'tcx>)
+                      -> ValueRef {
+        match lvalue.ty.to_ty(bcx.tcx()).sty {
+            ty::TyArray(_, n) => common::C_uint(bcx.ccx(), n),
+            ty::TySlice(_) | ty::TyStr => {
+                assert!(lvalue.llextra != ptr::null_mut());
+                lvalue.llextra
+            }
+            _ => bcx.sess().bug("unexpected type in get_base_and_len"),
+        }
+    }
+
     pub fn trans_lvalue(&mut self,
                         bcx: Block<'bcx, 'tcx>,
                         lvalue: &mir::Lvalue<'tcx>)
@@ -67,20 +85,27 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Lvalue::Arg(index) => self.args[index as usize],
             mir::Lvalue::Static(def_id) => {
                 let const_ty = self.mir.lvalue_ty(tcx, lvalue);
-                LvalueRef::new(common::get_static_val(ccx, def_id, const_ty.to_ty(tcx)), const_ty)
+                LvalueRef::new_sized(
+                    common::get_static_val(ccx, def_id, const_ty.to_ty(tcx)),
+                    const_ty)
             },
             mir::Lvalue::ReturnPointer => {
                 let return_ty = bcx.monomorphize(&self.mir.return_ty);
                 let llval = fcx.get_ret_slot(bcx, return_ty, "return");
-                LvalueRef::new(llval, LvalueTy::from_ty(return_ty.unwrap()))
+                LvalueRef::new_sized(llval, LvalueTy::from_ty(return_ty.unwrap()))
             }
             mir::Lvalue::Projection(ref projection) => {
                 let tr_base = self.trans_lvalue(bcx, &projection.base);
                 let projected_ty = tr_base.ty.projection_ty(tcx, &projection.elem);
-                let llprojected = match projection.elem {
+                let (llprojected, llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => {
                         let base_ty = tr_base.ty.to_ty(tcx);
-                        base::load_ty(bcx, tr_base.llval, base_ty)
+                        if common::type_is_sized(tcx, projected_ty.to_ty(tcx)) {
+                            (base::load_ty(bcx, tr_base.llval, base_ty),
+                             ptr::null_mut())
+                        } else {
+                            base::load_fat_ptr(bcx, tr_base.llval, base_ty)
+                        }
                     }
                     mir::ProjectionElem::Field(ref field) => {
                         let base_ty = tr_base.ty.to_ty(tcx);
@@ -90,44 +115,44 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             LvalueTy::Downcast { adt_def: _, substs: _, variant_index: v } => v,
                         };
                         let discr = discr as u64;
-                        adt::trans_field_ptr(bcx, &base_repr, tr_base.llval, discr, field.index())
+                        (adt::trans_field_ptr(bcx, &base_repr, tr_base.llval, discr, field.index()),
+                         if common::type_is_sized(tcx, projected_ty.to_ty(tcx)) {
+                             ptr::null_mut()
+                         } else {
+                             tr_base.llextra
+                         })
                     }
                     mir::ProjectionElem::Index(ref index) => {
-                        let base_ty = tr_base.ty.to_ty(tcx);
                         let index = self.trans_operand(bcx, index);
-                        let llindex = self.prepare_index(bcx, index.llval);
-                        let (llbase, _) = tvec::get_base_and_len(bcx, tr_base.llval, base_ty);
-                        build::InBoundsGEP(bcx, llbase, &[llindex])
+                        let llindex = self.prepare_index(bcx, index.immediate());
+                        (build::InBoundsGEP(bcx, tr_base.llval, &[llindex]),
+                         ptr::null_mut())
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: false,
                                                          min_length: _ } => {
-                        let base_ty = tr_base.ty.to_ty(tcx);
                         let lloffset = common::C_u32(bcx.ccx(), offset);
                         let llindex = self.prepare_index(bcx, lloffset);
-                        let (llbase, _) = tvec::get_base_and_len(bcx,
-                                                                 tr_base.llval,
-                                                                 base_ty);
-                        build::InBoundsGEP(bcx, llbase, &[llindex])
+                        (build::InBoundsGEP(bcx, tr_base.llval, &[llindex]),
+                         ptr::null_mut())
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: true,
                                                          min_length: _ } => {
                         let lloffset = common::C_u32(bcx.ccx(), offset);
-                        let base_ty = tr_base.ty.to_ty(tcx);
-                        let (llbase, lllen) = tvec::get_base_and_len(bcx,
-                                                                     tr_base.llval,
-                                                                     base_ty);
+                        let lllen = self.lvalue_len(bcx, tr_base);
                         let llindex = build::Sub(bcx, lllen, lloffset, DebugLoc::None);
                         let llindex = self.prepare_index(bcx, llindex);
-                        build::InBoundsGEP(bcx, llbase, &[llindex])
+                        (build::InBoundsGEP(bcx, tr_base.llval, &[llindex]),
+                         ptr::null_mut())
                     }
                     mir::ProjectionElem::Downcast(..) => {
-                        tr_base.llval
+                        (tr_base.llval, tr_base.llextra)
                     }
                 };
                 LvalueRef {
                     llval: llprojected,
+                    llextra: llextra,
                     ty: projected_ty,
                 }
             }

@@ -386,14 +386,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     };
                 }
 
-                if let Some(target) = adj.unsize {
-                    expr = Expr {
-                        temp_lifetime: temp_lifetime,
-                        ty: target,
-                        span: self.span,
-                        kind: ExprKind::Unsize { source: expr.to_ref() },
-                    };
-                } else if let Some(autoref) = adj.autoref {
+                if let Some(autoref) = adj.autoref {
                     let adjusted_ty = expr.ty.adjust_for_autoref(cx.tcx, Some(autoref));
                     match autoref {
                         ty::adjustment::AutoPtr(r, m) => {
@@ -432,6 +425,15 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                             };
                         }
                     }
+                }
+
+                if let Some(target) = adj.unsize {
+                    expr = Expr {
+                        temp_lifetime: temp_lifetime,
+                        ty: target,
+                        span: self.span,
+                        kind: ExprKind::Unsize { source: expr.to_ref() },
+                    };
                 }
             }
         }
