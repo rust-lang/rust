@@ -27,15 +27,15 @@ pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
     for (index, temp_decl) in mir.temp_decls.iter().enumerate() {
         let ty = bcx.monomorphize(&temp_decl.ty);
         debug!("temp {:?} has type {:?}", index, ty);
-        if
-            ty.is_scalar() ||
+        if ty.is_scalar() ||
             ty.is_unique() ||
-            (ty.is_region_ptr() && !common::type_is_fat_ptr(bcx.tcx(), ty)) ||
+            ty.is_region_ptr() ||
             ty.is_simd()
         {
             // These sorts of types are immediates that we can store
             // in an ValueRef without an alloca.
-            assert!(common::type_is_immediate(bcx.ccx(), ty));
+            assert!(common::type_is_immediate(bcx.ccx(), ty) ||
+                    common::type_is_fat_ptr(bcx.tcx(), ty));
         } else {
             // These sorts of types require an alloca. Note that
             // type_is_immediate() may *still* be true, particularly
