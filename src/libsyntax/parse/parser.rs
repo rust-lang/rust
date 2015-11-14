@@ -362,53 +362,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Panicing fns (for now!)
-    // These functions are used by the quote_*!() syntax extensions, but shouldn't
-    // be used otherwise.
-    pub fn parse_expr_panic(&mut self) -> P<Expr> {
-        panictry!(self.parse_expr())
-    }
-
-    pub fn parse_item_panic(&mut self) -> Option<P<Item>> {
-        panictry!(self.parse_item())
-    }
-
-    pub fn parse_pat_panic(&mut self) -> P<Pat> {
-        panictry!(self.parse_pat())
-    }
-
-    pub fn parse_arm_panic(&mut self) -> Arm {
-        panictry!(self.parse_arm())
-    }
-
-    pub fn parse_ty_panic(&mut self) -> P<Ty> {
-        panictry!(self.parse_ty())
-    }
-
-    pub fn parse_stmt_panic(&mut self) -> Option<P<Stmt>> {
-        panictry!(self.parse_stmt())
-    }
-
-    pub fn parse_attribute_panic(&mut self, permit_inner: bool) -> ast::Attribute {
-        panictry!(self.parse_attribute(permit_inner))
-    }
-
-    pub fn parse_arg_panic(&mut self) -> Arg {
-        panictry!(self.parse_arg())
-    }
-
-    pub fn parse_block_panic(&mut self) -> P<Block> {
-        panictry!(self.parse_block())
-    }
-
-    pub fn parse_meta_item_panic(&mut self) -> P<ast::MetaItem> {
-        panictry!(self.parse_meta_item())
-    }
-
-    pub fn parse_path_panic(&mut self, mode: PathParsingMode) -> ast::Path {
-        panictry!(self.parse_path(mode))
-    }
-
     /// Convert a token to a string using self's reader
     pub fn token_to_string(token: &token::Token) -> String {
         pprust::token_to_string(token)
