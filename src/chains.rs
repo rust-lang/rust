@@ -21,7 +21,7 @@
 
 use Indent;
 use rewrite::{Rewrite, RewriteContext};
-use utils::first_line_width;
+use utils::{wrap_str, first_line_width};
 use expr::rewrite_call;
 use config::BlockIndentStyle;
 
@@ -58,12 +58,8 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
     } else {
         match context.config.chain_indent {
             BlockIndentStyle::Inherit => (context.block_indent, false),
-            BlockIndentStyle::Tabbed => {
-                (context.block_indent.block_indent(context.config), false)
-            }
-            BlockIndentStyle::Visual => {
-                (offset + Indent::new(context.config.tab_spaces, 0), false)
-            }
+            BlockIndentStyle::Tabbed => (context.block_indent.block_indent(context.config), false),
+            BlockIndentStyle::Visual => (offset + Indent::new(context.config.tab_spaces, 0), false),
         }
     };
 
@@ -142,10 +138,13 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
         &connector[..]
     };
 
-    Some(format!("{}{}{}",
-                 parent_rewrite,
-                 first_connector,
-                 rewrites.join(&connector)))
+    wrap_str(format!("{}{}{}",
+                     parent_rewrite,
+                     first_connector,
+                     rewrites.join(&connector)),
+             context.config.max_width,
+             width,
+             offset)
 }
 
 // States whether an expression's last line exclusively consists of closing

@@ -12,7 +12,6 @@ fn foo() {
             an_expression;
             foo()
         }
-        // Perhaps this should introduce braces?
         Foo(ref bar) => {
             aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         }
@@ -92,6 +91,15 @@ fn main() {
              vec!["id", "name", "qualname", "type", "value", "scopeid"],
              true,
              true)
+        }
+    };
+
+    match x {
+        y => {
+            // Block with comment. Preserve me.
+        }
+        z => {
+            stmt();
         }
     }
 }

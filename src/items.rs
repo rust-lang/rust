@@ -875,12 +875,14 @@ impl<'a> FmtVisitor<'a> {
                                               offset + header_str.len(),
                                               mk_sp(span.lo, body_lo)))
             }
-            None => if self.config.item_brace_style == BraceStyle::AlwaysNextLine &&
-                       !fields.is_empty() {
-                format!("\n{}{{", self.block_indent.to_string(self.config))
-            } else {
-                " {".to_owned()
-            },
+            None => {
+                if self.config.item_brace_style == BraceStyle::AlwaysNextLine &&
+                   !fields.is_empty() {
+                    format!("\n{}{{", self.block_indent.to_string(self.config))
+                } else {
+                    " {".to_owned()
+                }
+            }
         };
         result.push_str(&generics_str);
 
