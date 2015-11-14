@@ -56,7 +56,15 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
     } else if is_block_expr(parent, &parent_rewrite) {
         (parent_block_indent, false)
     } else {
-        (offset + Indent::new(context.config.tab_spaces, 0), false)
+        match context.config.chain_indent {
+            BlockIndentStyle::Inherit => (context.block_indent, false),
+            BlockIndentStyle::Tabbed => {
+                (context.block_indent.block_indent(context.config), false)
+            }
+            BlockIndentStyle::Visual => {
+                (offset + Indent::new(context.config.tab_spaces, 0), false)
+            }
+        }
     };
 
     let max_width = try_opt!((width + offset.width()).checked_sub(indent.width()));
