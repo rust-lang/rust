@@ -294,6 +294,7 @@ create_config! {
     report_fixme: ReportTactic, ReportTactic::Never,
         "Report all, none or unnumbered occurrences of FIXME in source file comments";
     chain_base_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indent on chain base";
+    chain_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indentation of chain";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
     single_line_if_else: bool, false, "Put else on same line as closing brace for if statements";
     format_strings: bool, true, "Format string literals, or leave as is";
