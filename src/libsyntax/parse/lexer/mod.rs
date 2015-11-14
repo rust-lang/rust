@@ -26,6 +26,7 @@ use std::rc::Rc;
 pub use ext::tt::transcribe::{TtReader, new_tt_reader, new_tt_reader_with_doc_flag};
 
 pub mod comments;
+mod unicode_chars;
 
 pub trait Reader {
     fn is_eof(&self) -> bool;
@@ -1224,7 +1225,8 @@ impl<'a> StringReader<'a> {
           c => {
               let last_bpos = self.last_pos;
               let bpos = self.pos;
-              panic!(self.fatal_span_char(last_bpos, bpos, "unknown start of token", c));
+              unicode_chars::check_for_substitution(&self, c);
+              panic!(self.fatal_span_char(last_bpos, bpos, "unknown start of token", c))
           }
         }
     }
