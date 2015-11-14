@@ -763,7 +763,11 @@ impl String {
         self.vec.reserve_exact(additional)
     }
 
-    /// Shrinks the capacity of this string buffer to match its length.
+    /// Shrinks the capacity of this string buffer to match its length as much
+    /// as possible.
+    ///
+    /// It will drop down as close as possible to the length but the allocator
+    /// may still inform the string that there is space for a few more bytes.
     ///
     /// # Examples
     ///
@@ -772,7 +776,7 @@ impl String {
     /// s.reserve(100);
     /// assert!(s.capacity() >= 100);
     /// s.shrink_to_fit();
-    /// assert_eq!(s.capacity(), 3);
+    /// assert!(s.capacity() >= 3);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
