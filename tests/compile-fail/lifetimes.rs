@@ -85,5 +85,26 @@ fn already_elided<'a>(_: &u8, _: &'a u8) -> &'a u8 {
     unimplemented!()
 }
 
+fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str { unimplemented!() } //~ERROR explicit lifetimes given
+
+// no warning, two input lifetimes (named on the reference, anonymous on Foo)
+fn struct_with_lt2<'a>(_foo: &'a Foo) -> &'a str { unimplemented!() }
+
+// no warning, two input lifetimes (anonymous on the reference, named on Foo)
+fn struct_with_lt3<'a>(_foo: &Foo<'a> ) -> &'a str { unimplemented!() }
+
+// no warning, two input lifetimes
+fn struct_with_lt4<'a, 'b>(_foo: &'a Foo<'b> ) -> &'a str { unimplemented!() }
+
+trait WithLifetime<'a> {}
+type WithLifetimeAlias<'a> = WithLifetime<'a>;
+
+// should not warn because it won't build without the lifetime
+fn trait_obj_elided<'a>(_arg: &'a WithLifetime) -> &'a str { unimplemented!() }
+
+// this should warn because there is no lifetime on Drop, so this would be
+// unambiguous if we elided the lifetime
+fn trait_obj_elided2<'a>(_arg: &'a Drop) -> &'a str { unimplemented!() } //~ERROR explicit lifetimes given
+
 fn main() {
 }
