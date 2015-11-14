@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{self, TokenTree};
+use ast::{self, Arg, Arm, Block, Expr, Item, Pat, Path, Stmt, TokenTree, Ty};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::base;
 use ext::build::AstBuilder;
+use parse::parser::{Parser, PathParsingMode};
 use parse::token::*;
 use parse::token;
 use ptr::P;
@@ -327,6 +328,52 @@ pub mod rt {
                                              self.parse_sess())
         }
     }
+}
+
+// These panicking parsing functions are used by the quote_*!() syntax extensions,
+// but shouldn't be used otherwise.
+pub fn parse_expr_panic(parser: &mut Parser) -> P<Expr> {
+    panictry!(parser.parse_expr())
+}
+
+pub fn parse_item_panic(parser: &mut Parser) -> Option<P<Item>> {
+    panictry!(parser.parse_item())
+}
+
+pub fn parse_pat_panic(parser: &mut Parser) -> P<Pat> {
+    panictry!(parser.parse_pat())
+}
+
+pub fn parse_arm_panic(parser: &mut Parser) -> Arm {
+    panictry!(parser.parse_arm())
+}
+
+pub fn parse_ty_panic(parser: &mut Parser) -> P<Ty> {
+    panictry!(parser.parse_ty())
+}
+
+pub fn parse_stmt_panic(parser: &mut Parser) -> Option<P<Stmt>> {
+    panictry!(parser.parse_stmt())
+}
+
+pub fn parse_attribute_panic(parser: &mut Parser, permit_inner: bool) -> ast::Attribute {
+    panictry!(parser.parse_attribute(permit_inner))
+}
+
+pub fn parse_arg_panic(parser: &mut Parser) -> Arg {
+    panictry!(parser.parse_arg())
+}
+
+pub fn parse_block_panic(parser: &mut Parser) -> P<Block> {
+    panictry!(parser.parse_block())
+}
+
+pub fn parse_meta_item_panic(parser: &mut Parser) -> P<ast::MetaItem> {
+    panictry!(parser.parse_meta_item())
+}
+
+pub fn parse_path_panic(parser: &mut Parser, mode: PathParsingMode) -> ast::Path {
+    panictry!(parser.parse_path(mode))
 }
 
 pub fn expand_quote_tokens<'cx>(cx: &'cx mut ExtCtxt,
@@ -864,8 +911,10 @@ fn expand_parse_call(cx: &ExtCtxt,
                      cx.expr_ident(sp, id_ext("new_parser_from_tts")),
                      vec!(parse_sess_call(), cfg_call(), tts_expr));
 
-    let expr = cx.expr_method_call(sp, new_parser_call, id_ext(parse_method),
-                                   arg_exprs);
+    let path = vec![id_ext("syntax"), id_ext("ext"), id_ext("quote"), id_ext(parse_method)];
+    let mut args = vec![cx.expr_mut_addr_of(sp, new_parser_call)];
+    args.extend(arg_exprs);
+    let expr = cx.expr_call_global(sp, path, args);
 
     if parse_method == "parse_attribute" {
         expand_wrapper(cx, sp, cx_expr, expr, &[&["syntax", "ext", "quote", "rt"],
