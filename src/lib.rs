@@ -440,7 +440,7 @@ pub fn format(file: &Path, config: &Config, mode: WriteMode) -> FileMap {
 pub fn run(file: &Path, write_mode: WriteMode, config: &Config) {
     let mut result = format(file, config, write_mode);
 
-    println!("{}", fmt_lines(&mut result, config));
+    print!("{}", fmt_lines(&mut result, config));
 
     let write_result = filemap::write_all_files(&result, write_mode, config);
 
