@@ -10,6 +10,7 @@
 
 use Indent;
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, definitive_tactic};
+use types::rewrite_path;
 use utils::span_after;
 use rewrite::{Rewrite, RewriteContext};
 
@@ -37,7 +38,7 @@ impl Rewrite for ast::ViewPath {
                 let ident_str = ident.to_string();
                 // 4 = " as ".len()
                 let budget = try_opt!(width.checked_sub(ident_str.len() + 4));
-                let path_str = try_opt!(path.rewrite(context, budget, offset));
+                let path_str = try_opt!(rewrite_path(context, false, None, path, budget, offset));
 
                 Some(if path.segments.last().unwrap().identifier == ident {
                     path_str
@@ -105,7 +106,7 @@ pub fn rewrite_use_list(width: usize,
                         -> Option<String> {
     // 1 = {}
     let budget = try_opt!(width.checked_sub(1));
-    let path_str = try_opt!(path.rewrite(context, budget, offset));
+    let path_str = try_opt!(rewrite_path(context, false, None, path, budget, offset));
 
     match path_list.len() {
         0 => unreachable!(),

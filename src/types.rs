@@ -10,7 +10,7 @@
 
 use syntax::ast::{self, Mutability};
 use syntax::print::pprust;
-use syntax::codemap::{self, Span, BytePos, CodeMap};
+use syntax::codemap::{self, Span, BytePos};
 
 use Indent;
 use lists::{format_item_list, itemize_list, format_fn_args};
@@ -18,14 +18,9 @@ use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, span_after, format_mutability, wrap_str};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
 
-impl Rewrite for ast::Path {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
-        rewrite_path(context, None, self, width, offset)
-    }
-}
-
 // Does not wrap on simple segments.
 pub fn rewrite_path(context: &RewriteContext,
+                    expr_context: bool,
                     qself: Option<&ast::QSelf>,
                     path: &ast::Path,
                     width: usize,
@@ -53,7 +48,8 @@ pub fn rewrite_path(context: &RewriteContext,
             // 3 = ">::".len()
             let budget = try_opt!(width.checked_sub(extra_offset + 3));
 
-            result = try_opt!(rewrite_path_segments(result,
+            result = try_opt!(rewrite_path_segments(expr_context,
+                                                    result,
                                                     path.segments.iter().take(skip_count),
                                                     span_lo,
                                                     path.span.hi,
@@ -68,7 +64,8 @@ pub fn rewrite_path(context: &RewriteContext,
 
     let extra_offset = extra_offset(&result, offset);
     let budget = try_opt!(width.checked_sub(extra_offset));
-    rewrite_path_segments(result,
+    rewrite_path_segments(expr_context,
+                          result,
                           path.segments.iter().skip(skip_count),
                           span_lo,
                           path.span.hi,
@@ -77,7 +74,8 @@ pub fn rewrite_path(context: &RewriteContext,
                           offset + extra_offset)
 }
 
-fn rewrite_path_segments<'a, I>(mut buffer: String,
+fn rewrite_path_segments<'a, I>(expr_context: bool,
+                                mut buffer: String,
                                 iter: I,
                                 mut span_lo: BytePos,
                                 span_hi: BytePos,
@@ -99,7 +97,8 @@ fn rewrite_path_segments<'a, I>(mut buffer: String,
         let extra_offset = extra_offset(&buffer, offset);
         let remaining_width = try_opt!(width.checked_sub(extra_offset));
         let new_offset = offset + extra_offset;
-        let segment_string = try_opt!(rewrite_segment(segment,
+        let segment_string = try_opt!(rewrite_segment(expr_context,
+                                                      segment,
                                                       &mut span_lo,
                                                       span_hi,
                                                       context,
@@ -152,30 +151,6 @@ impl<'a> Rewrite for SegmentParam<'a> {
     }
 }
 
-// This is a dirty hack to determine if we're in an expression or not. Generic
-// parameters are passed differently in expressions and items. We'd declare
-// a struct with Foo<A, B>, but call its functions with Foo::<A, B>::f().
-// We'd really rather not do this, but there doesn't seem to be an alternative
-// at this point.
-// FIXME: fails with spans containing comments with the characters < or :
-fn get_path_separator(codemap: &CodeMap,
-                      path_start: BytePos,
-                      segment_start: BytePos)
-                      -> &'static str {
-    let span = codemap::mk_sp(path_start, segment_start);
-    let snippet = codemap.span_to_snippet(span).unwrap();
-
-    for c in snippet.chars().rev() {
-        if c == ':' {
-            return "::";
-        } else if !c.is_whitespace() && c != '<' {
-            return "";
-        }
-    }
-
-    unreachable!();
-}
-
 // Formats a path segment. There are some hacks involved to correctly determine
 // the segment's associated span since it's not part of the AST.
 //
@@ -186,7 +161,8 @@ fn get_path_separator(codemap: &CodeMap,
 //
 // When the segment contains a positive number of parameters, we update span_lo
 // so that invariants described above will hold for the next segment.
-fn rewrite_segment(segment: &ast::PathSegment,
+fn rewrite_segment(expr_context: bool,
+                   segment: &ast::PathSegment,
                    span_lo: &mut BytePos,
                    span_hi: BytePos,
                    context: &RewriteContext,
@@ -210,7 +186,11 @@ fn rewrite_segment(segment: &ast::PathSegment,
 
             let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
             let list_lo = span_after(codemap::mk_sp(*span_lo, span_hi), "<", context.codemap);
-            let separator = get_path_separator(context.codemap, *span_lo, list_lo);
+            let separator = if expr_context {
+                "::"
+            } else {
+                ""
+            };
 
             // 1 for <
             let extra_offset = 1 + separator.len();
@@ -334,7 +314,12 @@ impl Rewrite for ast::WherePredicate {
                 // 3 = " = ".len()
                 let used_width = 3 + ty_str.len();
                 let budget = try_opt!(width.checked_sub(used_width));
-                let path_str = try_opt!(path.rewrite(context, budget, offset + used_width));
+                let path_str = try_opt!(rewrite_path(context,
+                                                     false,
+                                                     None,
+                                                     path,
+                                                     budget,
+                                                     offset + used_width));
                 format!("{} = {}", path_str, ty_str)
             }
         };
@@ -427,13 +412,16 @@ impl Rewrite for ast::PolyTraitRef {
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
             let max_path_width = try_opt!(width.checked_sub(extra_offset));
-            let path_str = try_opt!(self.trait_ref
-                                        .path
-                                        .rewrite(context, max_path_width, offset + extra_offset));
+            let path_str = try_opt!(rewrite_path(context,
+                                                 false,
+                                                 None,
+                                                 &self.trait_ref.path,
+                                                 max_path_width,
+                                                 offset + extra_offset));
 
             Some(format!("for<{}> {}", lifetime_str, path_str))
         } else {
-            self.trait_ref.path.rewrite(context, width, offset)
+            rewrite_path(context, false, None, &self.trait_ref.path, width, offset)
         }
     }
 }
@@ -496,7 +484,7 @@ impl Rewrite for ast::Ty {
             }
             ast::TyPolyTraitRef(ref trait_ref) => trait_ref.rewrite(context, width, offset),
             ast::TyPath(ref q_self, ref path) => {
-                rewrite_path(context, q_self.as_ref(), path, width, offset)
+                rewrite_path(context, false, q_self.as_ref(), path, width, offset)
             }
             ast::TyFixedLengthVec(ref ty, ref repeats) => {
                 rewrite_pair(&**ty, &**repeats, "[", "; ", "]", context, width, offset)

@@ -16,6 +16,8 @@ fn main() {
                     >::some_func();
 
     < *mut JSObject >:: relocate(entry);
+
+    let x: Foo/*::*/<A   >;
 }
 
 fn op(foo: Bar, key : &[u8], upd : Fn(Option<&memcache::Item> , Baz  ) -> Result) -> MapResult {}
