@@ -142,6 +142,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
     };
 
     let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
+    let fn_sig = infer::normalize_associated_type(ccx.tcx(), &fn_sig);
 
     let mut attrs = llvm::AttrBuilder::new();
     let ret_ty = fn_sig.output;

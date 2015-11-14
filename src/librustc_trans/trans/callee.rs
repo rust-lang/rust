@@ -25,7 +25,7 @@ use llvm::{self, ValueRef, get_params};
 use metadata::cstore::LOCAL_CRATE;
 use middle::def;
 use middle::def_id::DefId;
-use middle::infer::normalize_associated_type;
+use middle::infer;
 use middle::subst;
 use middle::subst::{Substs};
 use rustc::front::map as hir_map;
@@ -304,6 +304,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
             }
         };
     let sig = tcx.erase_late_bound_regions(sig);
+    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
     let tuple_input_ty = tcx.mk_tup(sig.inputs.to_vec());
     let tuple_fn_ty = tcx.mk_fn(opt_def_id,
         tcx.mk_bare_fn(ty::BareFnTy {
@@ -466,7 +467,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 
     // Type scheme of the function item (may have type params)
     let fn_type_scheme = tcx.lookup_item_type(def_id);
-    let fn_type = normalize_associated_type(tcx, &fn_type_scheme.ty);
+    let fn_type = infer::normalize_associated_type(tcx, &fn_type_scheme.ty);
 
     // Find the actual function pointer.
     let mut val = {
@@ -605,8 +606,9 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
     let (abi, ret_ty) = match callee.ty.sty {
         ty::TyBareFn(_, ref f) => {
-            let output = bcx.tcx().erase_late_bound_regions(&f.sig.output());
-            (f.abi, output)
+            let sig = bcx.tcx().erase_late_bound_regions(&f.sig);
+            let sig = infer::normalize_associated_type(bcx.tcx(), &sig);
+            (f.abi, sig.output)
         }
         _ => panic!("expected bare rust fn or closure in trans_call_inner")
     };
@@ -826,7 +828,9 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
                              ignore_self: bool)
                              -> Block<'blk, 'tcx>
 {
-    let args = bcx.tcx().erase_late_bound_regions(&fn_ty.fn_args());
+    let sig = bcx.tcx().erase_late_bound_regions(&fn_ty.fn_sig());
+    let sig = infer::normalize_associated_type(bcx.tcx(), &sig);
+    let args = sig.inputs;
 
     // Translate the `self` argument first.
     if !ignore_self {
@@ -887,7 +891,10 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
                               ignore_self: bool)
                               -> Block<'blk, 'tcx> {
     // Translate the `self` argument first.
-    let arg_tys = bcx.tcx().erase_late_bound_regions( &fn_ty.fn_args());
+    let sig = bcx.tcx().erase_late_bound_regions(&fn_ty.fn_sig());
+    let sig = infer::normalize_associated_type(bcx.tcx(), &sig);
+    let arg_tys = sig.inputs;
+
     if !ignore_self {
         let arg_datum = unpack_datum!(bcx, expr::trans(bcx, arg_exprs[0]));
         bcx = trans_arg_datum(bcx,
@@ -933,8 +940,10 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     debug!("trans_args(abi={})", abi);
 
     let _icx = push_ctxt("trans_args");
-    let arg_tys = cx.tcx().erase_late_bound_regions(&fn_ty.fn_args());
-    let variadic = fn_ty.fn_sig().0.variadic;
+    let sig = cx.tcx().erase_late_bound_regions(&fn_ty.fn_sig());
+    let sig = infer::normalize_associated_type(cx.tcx(), &sig);
+    let arg_tys = sig.inputs;
+    let variadic = sig.variadic;
 
     let mut bcx = cx;
 

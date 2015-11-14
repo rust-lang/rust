@@ -103,9 +103,6 @@ pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
                                  fn_type: ty::Ty<'tcx>) -> ValueRef {
     debug!("declare_rust_fn(name={:?}, fn_type={:?})", name,
            fn_type);
-    let fn_type = infer::normalize_associated_type(ccx.tcx(), &fn_type);
-    debug!("declare_rust_fn (after normalised associated types) fn_type={:?}",
-           fn_type);
 
     let function_type; // placeholder so that the memory ownership works out ok
     let (sig, abi, env) = match fn_type.sty {
@@ -124,14 +121,15 @@ pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
         _ => ccx.sess().bug("expected closure or fn")
     };
 
-    let sig = ty::Binder(ccx.tcx().erase_late_bound_regions(sig));
+    let sig = ccx.tcx().erase_late_bound_regions(sig);
+    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
     let llfty = type_of::type_of_rust_fn(ccx, env, &sig, abi);
     debug!("declare_rust_fn llfty={}", ccx.tn().type_to_string(llfty));
 
     // it is ok to directly access sig.0.output because we erased all
     // late-bound-regions above
-    let llfn = declare_fn(ccx, name, llvm::CCallConv, llfty, sig.0.output);
+    let llfn = declare_fn(ccx, name, llvm::CCallConv, llfty, sig.output);
     attributes::from_fn_type(ccx, fn_type).apply_llfn(llfn);
     llfn
 }
