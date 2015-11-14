@@ -45,7 +45,7 @@ impl Rewrite for Pat {
                 }
             }
             Pat_::PatQPath(ref q_self, ref path) => {
-                rewrite_path(context, Some(q_self), path, width, offset)
+                rewrite_path(context, true, Some(q_self), path, width, offset)
             }
             Pat_::PatRange(ref lhs, ref rhs) => {
                 rewrite_pair(&**lhs, &**rhs, "", "...", "", context, width, offset)
@@ -58,7 +58,12 @@ impl Rewrite for Pat {
                 rewrite_tuple(context, items, self.span, width, offset)
             }
             Pat_::PatEnum(ref path, Some(ref pat_vec)) => {
-                let path_str = try_opt!(::types::rewrite_path(context, None, path, width, offset));
+                let path_str = try_opt!(::types::rewrite_path(context,
+                                                              true,
+                                                              None,
+                                                              path,
+                                                              width,
+                                                              offset));
 
                 if pat_vec.is_empty() {
                     Some(path_str)

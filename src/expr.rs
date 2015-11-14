@@ -117,7 +117,7 @@ impl Rewrite for ast::Expr {
                 rewrite_match(context, cond, arms, width, offset, self.span)
             }
             ast::Expr_::ExprPath(ref qself, ref path) => {
-                rewrite_path(context, qself.as_ref(), path, width, offset)
+                rewrite_path(context, true, qself.as_ref(), path, width, offset)
             }
             ast::Expr_::ExprAssign(ref lhs, ref rhs) => {
                 rewrite_assignment(context, lhs, rhs, None, width, offset)
@@ -1242,7 +1242,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
 
     // 2 = " {".len()
     let path_budget = try_opt!(width.checked_sub(2));
-    let path_str = try_opt!(path.rewrite(context, path_budget, offset));
+    let path_str = try_opt!(rewrite_path(context, true, None, path, path_budget, offset));
 
     // Foo { a: Foo } - indent is +3, width is -5.
     let h_budget = width.checked_sub(path_str.len() + 5).unwrap_or(0);
