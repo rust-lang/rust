@@ -18,8 +18,8 @@ snap-stage$(1)-H-$(2): $$(HSREQ$(1)_H_$(2))
 endef
 
 $(foreach host,$(CFG_HOST), \
- $(eval $(foreach stage,1 2 3, \
-  $(eval $(call DEF_SNAP_FOR_STAGE_H,$(stage),$(host))))))
+ $(foreach stage,1 2 3, \
+  $(eval $(call DEF_SNAP_FOR_STAGE_H,$(stage),$(host)))))
 
 snap-stage1: snap-stage1-H-$(CFG_BUILD)
 

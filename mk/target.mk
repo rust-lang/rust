@@ -204,5 +204,5 @@ $(foreach host,$(CFG_HOST), \
 $(foreach host,$(CFG_HOST), \
  $(foreach target,$(CFG_TARGET), \
   $(foreach stage,$(STAGES), \
-  	$(foreach obj,rsbegin rsend, \
-   	  $(eval $(call TARGET_RUSTRT_STARTUP_OBJ,$(stage),$(target),$(host),$(obj)))))))
+   $(foreach obj,rsbegin rsend, \
+    $(eval $(call TARGET_RUSTRT_STARTUP_OBJ,$(stage),$(target),$(host),$(obj)))))))
