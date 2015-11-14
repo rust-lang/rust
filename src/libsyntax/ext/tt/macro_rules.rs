@@ -10,7 +10,7 @@
 
 use ast::{self, TokenTree};
 use codemap::{Span, DUMMY_SP};
-use ext::base::{ExtCtxt, MacResult, SyntaxExtension};
+use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
@@ -131,6 +131,7 @@ struct MacroRulesMacroExpander {
     imported_from: Option<ast::Ident>,
     lhses: Vec<TokenTree>,
     rhses: Vec<TokenTree>,
+    valid: bool,
 }
 
 impl TTMacroExpander for MacroRulesMacroExpander {
@@ -139,6 +140,9 @@ impl TTMacroExpander for MacroRulesMacroExpander {
                    sp: Span,
                    arg: &[TokenTree])
                    -> Box<MacResult+'cx> {
+        if !self.valid {
+            return DummyResult::any(sp);
+        }
         generic_extension(cx,
                           sp,
                           self.name,
@@ -171,7 +175,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         let lhs_tt = match *lhs {
             TokenTree::Delimited(_, ref delim) => &delim.tts[..],
-            _ => panic!(cx.span_fatal(sp, "malformed macro lhs"))
+            _ => cx.span_bug(sp, "malformed macro lhs")
         };
 
         match TokenTree::parse(cx, lhs_tt, arg) {
@@ -179,7 +183,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 let rhs = match rhses[i] {
                     // ignore delimiters
                     TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
-                    _ => panic!(cx.span_fatal(sp, "macro rhs must be delimited")),
+                    _ => cx.span_bug(sp, "malformed macro rhs"),
                 };
                 // rhs has holes ( `$id` and `$(...)` that need filled)
                 let trncbr = new_tt_reader(&cx.parse_sess().span_diagnostic,
@@ -271,6 +275,8 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
         }
     };
 
+    let mut valid = true;
+
     // Extract the arguments:
     let lhses = match **argument_map.get(&lhs_nm.name).unwrap() {
         MatchedSeq(ref s, _) => {
@@ -296,11 +302,16 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
         _ => cx.span_bug(def.span, "wrong-structured rhs")
     };
 
+    for rhs in &rhses {
+        valid &= check_rhs(cx, rhs);
+    }
+
     let exp: Box<_> = Box::new(MacroRulesMacroExpander {
         name: def.ident,
         imported_from: def.imported_from,
         lhses: lhses,
         rhses: rhses,
+        valid: valid,
     });
 
     NormalTT(exp, Some(def.span), def.allow_internal_unstable)
@@ -321,6 +332,14 @@ fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &TokenTree, sp: Span) {
     };
     // we don't abort on errors on rejection, the driver will do that for us
     // after parsing/expansion. we can report every error in every macro this way.
+}
+
+fn check_rhs(cx: &mut ExtCtxt, rhs: &TokenTree) -> bool {
+    match *rhs {
+        TokenTree::Delimited(..) => return true,
+        _ => cx.span_err(rhs.get_span(), "macro rhs must be delimited")
+    }
+    false
 }
 
 // returns the last token that was checked, for TokenTree::Sequence. this gets used later on.
