@@ -86,7 +86,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
         match mode {
             euv::Move(move_reason) => {
                 gather_moves::gather_move_from_expr(
-                    self.bccx, &self.move_data, &self.move_error_collector,
+                    self.bccx, &self.move_data, &mut self.move_error_collector,
                     consume_id, cmt, move_reason);
             }
             euv::Copy => { }
@@ -104,7 +104,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
 
         if let Categorization::Downcast(..) = cmt.cat {
             gather_moves::gather_match_variant(
-                self.bccx, &self.move_data, &self.move_error_collector,
+                self.bccx, &self.move_data, &mut self.move_error_collector,
                 matched_pat, cmt, mode);
         }
     }
@@ -124,7 +124,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
         }
 
         gather_moves::gather_move_from_pat(
-            self.bccx, &self.move_data, &self.move_error_collector,
+            self.bccx, &self.move_data, &mut self.move_error_collector,
             consume_pat, cmt);
     }
 
