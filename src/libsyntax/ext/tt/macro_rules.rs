@@ -169,17 +169,17 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
     let mut best_fail_msg = "internal error: ran no matchers".to_string();
 
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
-            let lhs_tt = match *lhs {
-                TokenTree::Delimited(_, ref delim) => &delim.tts[..],
-                _ => panic!(cx.span_fatal(sp, "malformed macro lhs"))
-            };
+        let lhs_tt = match *lhs {
+            TokenTree::Delimited(_, ref delim) => &delim.tts[..],
+            _ => panic!(cx.span_fatal(sp, "malformed macro lhs"))
+        };
 
-            match TokenTree::parse(cx, lhs_tt, arg) {
-              Success(named_matches) => {
+        match TokenTree::parse(cx, lhs_tt, arg) {
+            Success(named_matches) => {
                 let rhs = match rhses[i] {
-                            // ignore delimiters
-                            TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
-                            _ => panic!(cx.span_fatal(sp, "macro rhs must be delimited")),
+                    // ignore delimiters
+                    TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
+                    _ => panic!(cx.span_fatal(sp, "macro rhs must be delimited")),
                 };
                 // rhs has holes ( `$id` and `$(...)` that need filled)
                 let trncbr = new_tt_reader(&cx.parse_sess().span_diagnostic,
@@ -199,15 +199,15 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                     site_span: sp,
                     macro_ident: name
                 })
-              }
-              Failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
+            }
+            Failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
                 best_fail_spot = sp;
                 best_fail_msg = (*msg).clone();
-              },
-              Error(err_sp, ref msg) => {
+            },
+            Error(err_sp, ref msg) => {
                 panic!(cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..]))
-              }
             }
+        }
     }
 
     panic!(cx.span_fatal(best_fail_spot.substitute_dummy(sp), &best_fail_msg[..]));
@@ -310,14 +310,14 @@ fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &TokenTree, sp: Span) {
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
     match lhs {
-            &TokenTree::Delimited(_, ref tts) => {
-                check_matcher(cx, tts.tts.iter(), &Eof);
-            },
-            tt @ &TokenTree::Sequence(..) => {
-                check_matcher(cx, Some(tt).into_iter(), &Eof);
-            },
-            _ => cx.span_err(sp, "Invalid macro matcher; matchers must be contained \
-               in balanced delimiters or a repetition indicator")
+        &TokenTree::Delimited(_, ref tts) => {
+            check_matcher(cx, tts.tts.iter(), &Eof);
+        },
+        tt @ &TokenTree::Sequence(..) => {
+            check_matcher(cx, Some(tt).into_iter(), &Eof);
+        },
+        _ => cx.span_err(sp, "Invalid macro matcher; matchers must be contained \
+                              in balanced delimiters or a repetition indicator")
     };
     // we don't abort on errors on rejection, the driver will do that for us
     // after parsing/expansion. we can report every error in every macro this way.
