@@ -13,28 +13,27 @@ use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::InteriorOffsetKind as Kind;
 use rustc::middle::ty;
-use std::cell::RefCell;
 use syntax::ast;
 use syntax::codemap;
 use rustc_front::hir;
 
 pub struct MoveErrorCollector<'tcx> {
-    errors: RefCell<Vec<MoveError<'tcx>>>
+    errors: Vec<MoveError<'tcx>>
 }
 
 impl<'tcx> MoveErrorCollector<'tcx> {
     pub fn new() -> MoveErrorCollector<'tcx> {
         MoveErrorCollector {
-            errors: RefCell::new(Vec::new())
+            errors: Vec::new()
         }
     }
 
-    pub fn add_error(&self, error: MoveError<'tcx>) {
-        self.errors.borrow_mut().push(error);
+    pub fn add_error(&mut self, error: MoveError<'tcx>) {
+        self.errors.push(error);
     }
 
     pub fn report_potential_errors<'a>(&self, bccx: &BorrowckCtxt<'a, 'tcx>) {
-        report_move_errors(bccx, &*self.errors.borrow())
+        report_move_errors(bccx, &self.errors)
     }
 }
 
