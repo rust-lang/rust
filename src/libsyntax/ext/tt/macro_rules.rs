@@ -13,7 +13,7 @@ use codemap::{Span, DUMMY_SP};
 use ext::base::{ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::tt::macro_parser::{Success, Error, Failure};
-use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
+use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::parse;
 use parse::lexer::new_tt_reader;
 use parse::parser::Parser;
@@ -129,15 +129,15 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
 struct MacroRulesMacroExpander {
     name: ast::Ident,
     imported_from: Option<ast::Ident>,
-    lhses: Vec<Rc<NamedMatch>>,
-    rhses: Vec<Rc<NamedMatch>>,
+    lhses: Vec<TokenTree>,
+    rhses: Vec<TokenTree>,
 }
 
 impl TTMacroExpander for MacroRulesMacroExpander {
     fn expand<'cx>(&self,
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
-                   arg: &[ast::TokenTree])
+                   arg: &[TokenTree])
                    -> Box<MacResult+'cx> {
         generic_extension(cx,
                           sp,
@@ -154,9 +154,9 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                           sp: Span,
                           name: ast::Ident,
                           imported_from: Option<ast::Ident>,
-                          arg: &[ast::TokenTree],
-                          lhses: &[Rc<NamedMatch>],
-                          rhses: &[Rc<NamedMatch>])
+                          arg: &[TokenTree],
+                          lhses: &[TokenTree],
+                          rhses: &[TokenTree])
                           -> Box<MacResult+'cx> {
     if cx.trace_macros() {
         println!("{}! {{ {} }}",
@@ -169,25 +169,17 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
     let mut best_fail_msg = "internal error: ran no matchers".to_string();
 
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
-        match **lhs {
-          MatchedNonterminal(NtTT(ref lhs_tt)) => {
-            let lhs_tt = match **lhs_tt {
+            let lhs_tt = match *lhs {
                 TokenTree::Delimited(_, ref delim) => &delim.tts[..],
                 _ => panic!(cx.span_fatal(sp, "malformed macro lhs"))
             };
 
             match TokenTree::parse(cx, lhs_tt, arg) {
               Success(named_matches) => {
-                let rhs = match *rhses[i] {
-                    // okay, what's your transcriber?
-                    MatchedNonterminal(NtTT(ref tt)) => {
-                        match **tt {
+                let rhs = match rhses[i] {
                             // ignore delimiters
                             TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
                             _ => panic!(cx.span_fatal(sp, "macro rhs must be delimited")),
-                        }
-                    },
-                    _ => cx.span_bug(sp, "bad thing in rhs")
                 };
                 // rhs has holes ( `$id` and `$(...)` that need filled)
                 let trncbr = new_tt_reader(&cx.parse_sess().span_diagnostic,
@@ -216,9 +208,6 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 panic!(cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..]))
               }
             }
-          }
-          _ => cx.bug("non-matcher found in parsed lhses")
-        }
     }
 
     panic!(cx.span_fatal(best_fail_spot.substitute_dummy(sp), &best_fail_msg[..]));
@@ -284,7 +273,12 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
 
     // Extract the arguments:
     let lhses = match **argument_map.get(&lhs_nm.name).unwrap() {
-        MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
+        MatchedSeq(ref s, _) => {
+            s.iter().map(|m| match **m {
+                MatchedNonterminal(NtTT(ref tt)) => (**tt).clone(),
+                _ => cx.span_bug(def.span, "wrong-structured lhs")
+            }).collect()
+        }
         _ => cx.span_bug(def.span, "wrong-structured lhs")
     };
 
@@ -293,7 +287,12 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     }
 
     let rhses = match **argument_map.get(&rhs_nm.name).unwrap() {
-        MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
+        MatchedSeq(ref s, _) => {
+            s.iter().map(|m| match **m {
+                MatchedNonterminal(NtTT(ref tt)) => (**tt).clone(),
+                _ => cx.span_bug(def.span, "wrong-structured rhs")
+            }).collect()
+        }
         _ => cx.span_bug(def.span, "wrong-structured rhs")
     };
 
@@ -307,11 +306,10 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     NormalTT(exp, Some(def.span), def.allow_internal_unstable)
 }
 
-fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &NamedMatch, sp: Span) {
-    // lhs is going to be like MatchedNonterminal(NtTT(TokenTree::Delimited(...))), where the
+fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &TokenTree, sp: Span) {
+    // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
     match lhs {
-        &MatchedNonterminal(NtTT(ref inner)) => match &**inner {
             &TokenTree::Delimited(_, ref tts) => {
                 check_matcher(cx, tts.tts.iter(), &Eof);
             },
@@ -320,9 +318,6 @@ fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &NamedMatch, sp: Span) {
             },
             _ => cx.span_err(sp, "Invalid macro matcher; matchers must be contained \
                in balanced delimiters or a repetition indicator")
-        },
-        _ => cx.span_bug(sp, "wrong-structured lhs for follow check (didn't find a \
-           MatchedNonterminal)")
     };
     // we don't abort on errors on rejection, the driver will do that for us
     // after parsing/expansion. we can report every error in every macro this way.
