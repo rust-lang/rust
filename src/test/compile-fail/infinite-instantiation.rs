@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//~^^^^^^^^^^ ERROR overflow
 //
 // We get an error message at the top of file (dummy span).
 // This is not helpful, but also kind of annoying to prevent,
@@ -32,6 +31,7 @@ impl<T:Clone> ToOpt for Option<T> {
 }
 
 fn function<T:ToOpt + Clone>(counter: usize, t: T) {
+//~^ ERROR reached the recursion limit during monomorphization
     if counter > 0 {
         function(counter - 1, t.to_option());
         // FIXME(#4287) Error message should be here. It should be

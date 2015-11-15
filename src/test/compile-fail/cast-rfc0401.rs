@@ -37,6 +37,7 @@ fn main()
     let f: f32 = 1.2;
     let v = 0 as *const u8;
     let fat_v : *const [u8] = unsafe { &*(0 as *const [u8; 1])};
+    let fat_sv : *const [i8] = unsafe { &*(0 as *const [i8; 1])};
     let foo: &Foo = &f;
 
     let _ = v as &u8; //~ ERROR non-scalar
@@ -94,7 +95,7 @@ fn main()
     let _ = main as *mut str; //~ ERROR casting
     let _ = &f as *mut f32; //~ ERROR casting
     let _ = &f as *const f64; //~ ERROR casting
-    let _ = fat_v as usize;
+    let _ = fat_sv as usize;
     //~^ ERROR casting
     //~^^ HELP through a thin pointer first
 
@@ -106,7 +107,7 @@ fn main()
     let _ = main.f as *const u32; //~ ERROR attempted access of field
 
     let cf: *const Foo = &0;
-    let _ = cf as *const [u8];
+    let _ = cf as *const [u16];
     //~^ ERROR casting
     //~^^ NOTE vtable kinds
     let _ = cf as *const Bar;

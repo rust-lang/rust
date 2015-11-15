@@ -775,30 +775,32 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                       ref impl_items) => {
             // Create generics from the generics specified in the impl head.
             debug!("convert: ast_generics={:?}", generics);
+            let def_id = ccx.tcx.map.local_def_id(it.id);
             let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
-            let ty_predicates = ty_generic_predicates_for_type_or_impl(ccx, generics);
+            let mut ty_predicates = ty_generic_predicates_for_type_or_impl(ccx, generics);
 
             debug!("convert: impl_bounds={:?}", ty_predicates);
 
             let selfty = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, &**selfty);
             write_ty_to_tcx(tcx, it.id, selfty);
 
-            tcx.register_item_type(ccx.tcx.map.local_def_id(it.id),
+            tcx.register_item_type(def_id,
                                    TypeScheme { generics: ty_generics.clone(),
                                                 ty: selfty });
-            tcx.predicates.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id),
-                                               ty_predicates.clone());
             if let &Some(ref ast_trait_ref) = opt_trait_ref {
                 tcx.impl_trait_refs.borrow_mut().insert(
-                    ccx.tcx.map.local_def_id(it.id),
+                    def_id,
                     Some(astconv::instantiate_mono_trait_ref(&ccx.icx(&ty_predicates),
                                                              &ExplicitRscope,
                                                              ast_trait_ref,
                                                              Some(selfty)))
                         );
             } else {
-                tcx.impl_trait_refs.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id), None);
+                tcx.impl_trait_refs.borrow_mut().insert(def_id, None);
             }
+
+            enforce_impl_params_are_constrained(tcx, generics, &mut ty_predicates, def_id);
+            tcx.predicates.borrow_mut().insert(def_id, ty_predicates.clone());
 
 
             // If there is a trait reference, treat the methods as always public.
@@ -844,7 +846,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                                generics: ty_generics.clone(),
                                                ty: ty,
                                            });
-                    convert_associated_const(ccx, ImplContainer(ccx.tcx.map.local_def_id(it.id)),
+                    convert_associated_const(ccx, ImplContainer(def_id),
                                              impl_item.name, impl_item.id,
                                              impl_item.vis.inherit_from(parent_visibility),
                                              ty, true /* has_value */);
@@ -861,7 +863,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
                     let typ = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, ty);
 
-                    convert_associated_type(ccx, ImplContainer(ccx.tcx.map.local_def_id(it.id)),
+                    convert_associated_type(ccx, ImplContainer(def_id),
                                             impl_item.name, impl_item.id, impl_item.vis,
                                             Some(typ));
                 }
@@ -880,7 +882,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                 }
             });
             convert_methods(ccx,
-                            ImplContainer(ccx.tcx.map.local_def_id(it.id)),
+                            ImplContainer(def_id),
                             methods,
                             selfty,
                             &ty_generics,
@@ -898,10 +900,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                 }
             }
 
-            enforce_impl_params_are_constrained(tcx,
-                                                generics,
-                                                ccx.tcx.map.local_def_id(it.id),
-                                                impl_items);
+            enforce_impl_lifetimes_are_constrained(tcx, generics, def_id, impl_items);
         },
         hir::ItemTrait(_, _, _, ref trait_items) => {
             let trait_def = trait_def_of_item(ccx, it);
@@ -2377,12 +2376,14 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
 /// Checks that all the type parameters on an impl
 fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
                                              ast_generics: &hir::Generics,
-                                             impl_def_id: DefId,
-                                             impl_items: &[P<hir::ImplItem>])
+                                             impl_predicates: &mut ty::GenericPredicates<'tcx>,
+                                             impl_def_id: DefId)
 {
     let impl_scheme = tcx.lookup_item_type(impl_def_id);
-    let impl_predicates = tcx.lookup_predicates(impl_def_id);
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
+
+    assert!(impl_predicates.predicates.is_empty_in(FnSpace));
+    assert!(impl_predicates.predicates.is_empty_in(SelfSpace));
 
     // The trait reference is an input, so find all type parameters
     // reachable from there, to start (if this is an inherent impl,
@@ -2393,10 +2394,10 @@ fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
         input_parameters.extend(ctp::parameters_for_trait_ref(trait_ref));
     }
 
-    ctp::identify_constrained_type_params(tcx,
-                                          impl_predicates.predicates.as_slice(),
-                                          impl_trait_ref,
-                                          &mut input_parameters);
+    ctp::setup_constraining_predicates(tcx,
+                                       impl_predicates.predicates.get_mut_slice(TypeSpace),
+                                       impl_trait_ref,
+                                       &mut input_parameters);
 
     for (index, ty_param) in ast_generics.ty_params.iter().enumerate() {
         let param_ty = ty::ParamTy { space: TypeSpace,
@@ -2406,8 +2407,25 @@ fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
             report_unused_parameter(tcx, ty_param.span, "type", &param_ty.to_string());
         }
     }
+}
 
+fn enforce_impl_lifetimes_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                                ast_generics: &hir::Generics,
+                                                impl_def_id: DefId,
+                                                impl_items: &[P<hir::ImplItem>])
+{
     // Every lifetime used in an associated type must be constrained.
+    let impl_scheme = tcx.lookup_item_type(impl_def_id);
+    let impl_predicates = tcx.lookup_predicates(impl_def_id);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
+
+    let mut input_parameters: HashSet<_> =
+        ctp::parameters_for_type(impl_scheme.ty).into_iter().collect();
+    if let Some(ref trait_ref) = impl_trait_ref {
+        input_parameters.extend(ctp::parameters_for_trait_ref(trait_ref));
+    }
+    ctp::identify_constrained_type_params(tcx,
+        &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
 
     let lifetimes_in_associated_types: HashSet<_> =
         impl_items.iter()
