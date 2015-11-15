@@ -300,6 +300,9 @@ fn fmt_ast(krate: &ast::Crate,
     let mut file_map = FileMap::new();
     for (path, module) in modules::list_files(krate, parse_session.codemap()) {
         let path = path.to_str().unwrap();
+        if config.verbose {
+            println!("Formatting {}", path);
+        }
         let mut visitor = FmtVisitor::from_codemap(parse_session, config, Some(mode));
         visitor.format_separate_mod(module, path);
         file_map.insert(path.to_owned(), visitor.buffer);
