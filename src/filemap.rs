@@ -59,7 +59,17 @@ pub fn write_file(text: &StringBuffer,
                                 -> Result<(), io::Error>
         where T: Write
     {
-        match config.newline_style {
+        let style = if config.newline_style == NewlineStyle::Native {
+            if cfg!(windows) {
+                NewlineStyle::Windows
+            } else {
+                NewlineStyle::Unix
+            }
+        } else {
+            config.newline_style
+        };
+
+        match style {
             NewlineStyle::Unix => write!(writer, "{}", text),
             NewlineStyle::Windows => {
                 for (c, _) in text.chars() {
@@ -71,6 +81,7 @@ pub fn write_file(text: &StringBuffer,
                 }
                 Ok(())
             }
+            NewlineStyle::Native => unreachable!(),
         }
     }
 
