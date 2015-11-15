@@ -11,6 +11,7 @@
 #![allow(non_camel_case_types)]
 
 use middle::def_id::DefId;
+use middle::infer;
 use middle::subst;
 use trans::adt;
 use trans::common::*;
@@ -89,7 +90,7 @@ pub fn untuple_arguments<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                  llenvironment_type: Option<Type>,
-                                 sig: &ty::Binder<ty::FnSig<'tcx>>,
+                                 sig: &ty::FnSig<'tcx>,
                                  abi: abi::Abi)
                                  -> Type
 {
@@ -97,16 +98,17 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
            sig,
            abi);
 
-    let sig = cx.tcx().erase_late_bound_regions(sig);
     assert!(!sig.variadic); // rust fns are never variadic
 
     let mut atys: Vec<Type> = Vec::new();
 
     // First, munge the inputs, if this has the `rust-call` ABI.
-    let inputs = &if abi == abi::RustCall {
-        untuple_arguments(cx, &sig.inputs)
+    let inputs_temp;
+    let inputs = if abi == abi::RustCall {
+        inputs_temp = untuple_arguments(cx, &sig.inputs);
+        &inputs_temp
     } else {
-        sig.inputs
+        &sig.inputs
     };
 
     // Arg 0: Output pointer.
@@ -155,7 +157,9 @@ pub fn type_of_fn_from_ty<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fty: Ty<'tcx>) 
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
             if f.abi == abi::Rust || f.abi == abi::RustCall {
-                type_of_rust_fn(cx, None, &f.sig, f.abi)
+                let sig = cx.tcx().erase_late_bound_regions(&f.sig);
+                let sig = infer::normalize_associated_type(cx.tcx(), &sig);
+                type_of_rust_fn(cx, None, &sig, f.abi)
             } else {
                 foreign::lltype_for_foreign_fn(cx, fty)
             }

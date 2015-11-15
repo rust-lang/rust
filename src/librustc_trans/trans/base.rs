@@ -38,6 +38,7 @@ use metadata::{csearch, encoder, loader};
 use middle::astencode;
 use middle::cfg;
 use middle::def_id::DefId;
+use middle::infer;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::pat_util::simple_name;
@@ -1905,7 +1906,11 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("trans_fn(param_substs={:?})", param_substs);
     let _icx = push_ctxt("trans_fn");
     let fn_ty = ccx.tcx().node_id_to_type(id);
-    let output_type = ccx.tcx().erase_late_bound_regions(&fn_ty.fn_ret());
+    let fn_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &fn_ty);
+    let sig = fn_ty.fn_sig();
+    let sig = ccx.tcx().erase_late_bound_regions(&sig);
+    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let output_type = sig.output;
     let abi = fn_ty.fn_abi();
     trans_closure(ccx, decl, body, llfndecl, param_substs, id, attrs, output_type, abi,
                   closure::ClosureEnv::NotClosure);
@@ -1936,15 +1941,9 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let ccx = bcx.fcx.ccx;
 
-    let result_ty = match ctor_ty.sty {
-        ty::TyBareFn(_, ref bft) => {
-            bcx.tcx().erase_late_bound_regions(&bft.sig.output()).unwrap()
-        }
-        _ => ccx.sess().bug(
-            &format!("trans_enum_variant_constructor: \
-                     unexpected ctor return type {}",
-                     ctor_ty))
-    };
+    let sig = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_sig());
+    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let result_ty = sig.output.unwrap();
 
     // Get location to store the result. If the user does not care about
     // the result, just make a stack slot
@@ -2026,15 +2025,10 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
     let ctor_ty = ccx.tcx().node_id_to_type(ctor_id);
     let ctor_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &ctor_ty);
 
-    let result_ty = match ctor_ty.sty {
-        ty::TyBareFn(_, ref bft) => {
-            ccx.tcx().erase_late_bound_regions(&bft.sig.output())
-        }
-        _ => ccx.sess().bug(
-            &format!("trans_enum_variant_or_tuple_like_struct: \
-                     unexpected ctor return type {}",
-                    ctor_ty))
-    };
+    let sig = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_sig());
+    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let arg_tys = sig.inputs;
+    let result_ty = sig.output;
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
@@ -2043,8 +2037,6 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
     let bcx = init_function(&fcx, false, result_ty);
 
     assert!(!fcx.needs_ret_allocas);
-
-    let arg_tys = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_args());
 
     if !type_is_zero_size(fcx.ccx, result_ty.unwrap()) {
         let dest = fcx.get_ret_slot(bcx, result_ty, "eret_slot");
