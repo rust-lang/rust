@@ -16,7 +16,7 @@ use std::mem;
 use std::slice;
 use std::vec;
 
-use fold::MoveMap;
+use util::move_map::MoveMap;
 
 /// A vector type optimized for cases where the size is almost always 0 or 1
 pub struct SmallVector<T> {
@@ -134,15 +134,6 @@ impl<T> SmallVector<T> {
         self.into_iter()
     }
 
-    pub fn into_iter(self) -> IntoIter<T> {
-        let repr = match self.repr {
-            Zero => ZeroIterator,
-            One(v) => OneIterator(v),
-            Many(vs) => ManyIterator(vs.into_iter())
-        };
-        IntoIter { repr: repr }
-    }
-
     pub fn len(&self) -> usize {
         match self.repr {
             Zero => 0,
@@ -152,6 +143,19 @@ impl<T> SmallVector<T> {
     }
 
     pub fn is_empty(&self) -> bool { self.len() == 0 }
+}
+
+impl<T> IntoIterator for SmallVector<T> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+    fn into_iter(self) -> Self::IntoIter {
+        let repr = match self.repr {
+            Zero => ZeroIterator,
+            One(v) => OneIterator(v),
+            Many(vs) => ManyIterator(vs.into_iter())
+        };
+        IntoIter { repr: repr }
+    }
 }
 
 pub struct IntoIter<T> {
@@ -192,13 +196,15 @@ impl<T> Iterator for IntoIter<T> {
 }
 
 impl<T> MoveMap<T> for SmallVector<T> {
-    fn move_map<F>(self, mut f: F) -> SmallVector<T> where F: FnMut(T) -> T {
-        let repr = match self.repr {
-            Zero => Zero,
-            One(v) => One(f(v)),
-            Many(vs) => Many(vs.move_map(f))
-        };
-        SmallVector { repr: repr }
+    fn move_flat_map<F, I>(self, mut f: F) -> Self
+        where F: FnMut(T) -> I,
+              I: IntoIterator<Item=T>
+    {
+        match self.repr {
+            Zero => Self::zero(),
+            One(v) => f(v).into_iter().collect(),
+            Many(vs) => SmallVector { repr: Many(vs.move_flat_map(f)) },
+        }
     }
 }
 

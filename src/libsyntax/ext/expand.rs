@@ -24,6 +24,7 @@ use ext::base::*;
 use feature_gate::{self, Features, GatedCfg};
 use fold;
 use fold::*;
+use util::move_map::MoveMap;
 use parse;
 use parse::token::{fresh_mark, fresh_name, intern};
 use ptr::P;

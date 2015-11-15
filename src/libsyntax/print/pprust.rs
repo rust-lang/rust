@@ -1653,8 +1653,6 @@ impl<'a> State<'a> {
         }
         if parse::classify::stmt_ends_with_semi(&st.node) {
             try!(word(&mut self.s, ";"));
-        } else {
-            //try!(word(&mut self.s, ""));
         }
         self.maybe_print_trailing_comment(st.span, None)
     }

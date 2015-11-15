@@ -26,33 +26,10 @@ use codemap::{respan, Span, Spanned};
 use owned_slice::OwnedSlice;
 use parse::token;
 use ptr::P;
-use std::ptr;
 use util::small_vector::SmallVector;
+use util::move_map::MoveMap;
 
 use std::rc::Rc;
-
-// This could have a better place to live.
-pub trait MoveMap<T> {
-    fn move_map<F>(self, f: F) -> Self where F: FnMut(T) -> T;
-}
-
-impl<T> MoveMap<T> for Vec<T> {
-    fn move_map<F>(mut self, mut f: F) -> Vec<T> where F: FnMut(T) -> T {
-        for p in &mut self {
-            unsafe {
-                // FIXME(#5016) this shouldn't need to zero to be safe.
-                ptr::write(p, f(ptr::read_and_drop(p)));
-            }
-        }
-        self
-    }
-}
-
-impl<T> MoveMap<T> for OwnedSlice<T> {
-    fn move_map<F>(self, f: F) -> OwnedSlice<T> where F: FnMut(T) -> T {
-        OwnedSlice::from_vec(self.into_vec().move_map(f))
-    }
-}
 
 pub trait Folder : Sized {
     // Any additions to this trait should happen in form
@@ -362,7 +339,7 @@ pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<
 }
 
 pub fn fold_attrs<T: Folder>(attrs: Vec<Attribute>, fld: &mut T) -> Vec<Attribute> {
-    attrs.into_iter().flat_map(|x| fld.fold_attribute(x)).collect()
+    attrs.move_flat_map(|x| fld.fold_attribute(x))
 }
 
 pub fn fold_thin_attrs<T: Folder>(attrs: ThinAttributes, fld: &mut T) -> ThinAttributes {
@@ -623,6 +600,8 @@ pub fn noop_fold_tt<T: Folder>(tt: &TokenTree, fld: &mut T) -> TokenTree {
 }
 
 pub fn noop_fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree> {
+    // FIXME: Does this have to take a tts slice?
+    // Could use move_map otherwise...
     tts.iter().map(|tt| fld.fold_tt(tt)).collect()
 }
 
@@ -904,7 +883,7 @@ fn noop_fold_bounds<T: Folder>(bounds: TyParamBounds, folder: &mut T)
 pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
     b.map(|Block {id, stmts, expr, rules, span}| Block {
         id: folder.new_id(id),
-        stmts: stmts.into_iter().flat_map(|s| folder.fold_stmt(s).into_iter()).collect(),
+        stmts: stmts.move_flat_map(|s| folder.fold_stmt(s).into_iter()),
         expr: expr.and_then(|x| folder.fold_opt_expr(x)),
         rules: rules,
         span: folder.new_span(span),
@@ -953,9 +932,9 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
             ItemDefaultImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
         }
         ItemImpl(unsafety, polarity, generics, ifce, ty, impl_items) => {
-            let new_impl_items = impl_items.into_iter().flat_map(|item| {
-                folder.fold_impl_item(item).into_iter()
-            }).collect();
+            let new_impl_items = impl_items.move_flat_map(|item| {
+                folder.fold_impl_item(item)
+            });
             let ifce = match ifce {
                 None => None,
                 Some(ref trait_ref) => {
@@ -971,9 +950,9 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
         }
         ItemTrait(unsafety, generics, bounds, items) => {
             let bounds = folder.fold_bounds(bounds);
-            let items = items.into_iter().flat_map(|item| {
-                folder.fold_trait_item(item).into_iter()
-            }).collect();
+            let items = items.move_flat_map(|item| {
+                folder.fold_trait_item(item)
+            });
             ItemTrait(unsafety,
                       folder.fold_generics(generics),
                       bounds,
@@ -1032,7 +1011,7 @@ pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T)
 pub fn noop_fold_mod<T: Folder>(Mod {inner, items}: Mod, folder: &mut T) -> Mod {
     Mod {
         inner: folder.new_span(inner),
-        items: items.into_iter().flat_map(|x| folder.fold_item(x).into_iter()).collect(),
+        items: items.move_flat_map(|x| folder.fold_item(x)),
     }
 }
 
@@ -1353,8 +1332,7 @@ pub fn noop_fold_opt_expr<T: Folder>(e: P<Expr>, folder: &mut T) -> Option<P<Exp
 }
 
 pub fn noop_fold_exprs<T: Folder>(es: Vec<P<Expr>>, folder: &mut T) -> Vec<P<Expr>> {
-    // FIXME: Needs a efficient in-place flat_map
-    es.into_iter().flat_map(|e| folder.fold_opt_expr(e)).collect()
+    es.move_flat_map(|e| folder.fold_opt_expr(e))
 }
 
 pub fn noop_fold_stmt<T: Folder>(Spanned {node, span}: Stmt, folder: &mut T)
