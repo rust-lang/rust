@@ -22,7 +22,8 @@ let greeting = "Hello there."; // greeting: &'static str
 `"Hello there."` is a string literal and its type is `&'static str`. String
 literal is a string slice that is statically allocated, meaning that it’s saved
 inside our compiled program, and exists for the entire duration it runs. The
-`greeting` binding is a reference to this statically allocated string.
+`greeting` binding is a reference to this statically allocated string. Any
+function expecting a string slice will also accept a string literal.
 
 String literals can span multiple lines. There are two forms. The first will
 include the newline and the leading spaces:
@@ -34,7 +35,7 @@ let s = "foo
 assert_eq!("foo\n        bar", s);
 ```
 
-The second, with a `\`, does not trim the spaces:
+The second, with a `\`, trims the spaces and the newline:
 
 ```rust
 let s = "foo\
