@@ -13,6 +13,7 @@
 extern crate syntax;
 
 use syntax::ast::*;
+use syntax::attr::*;
 use syntax::ast;
 use syntax::parse;
 use syntax::parse::{ParseSess,filemap_to_tts, PResult};
@@ -24,7 +25,6 @@ use syntax::str::char_at;
 use syntax::parse::attr::*;
 use syntax::print::pprust;
 use std::fmt;
-
 
 // Copied out of syntax::util::parser_testing
 
@@ -51,13 +51,13 @@ fn with_error_checking_parse<T, F>(s: String, f: F) -> PResult<T> where
 
 fn expr(s: &str) -> PResult<P<ast::Expr>> {
     with_error_checking_parse(s.to_string(), |p| {
-        p.parse_expr_nopanic()
+        p.parse_expr()
     })
 }
 
 fn stmt(s: &str) -> PResult<P<ast::Stmt>> {
     with_error_checking_parse(s.to_string(), |p| {
-        p.parse_stmt_nopanic().map(|s| s.unwrap())
+        p.parse_stmt().map(|s| s.unwrap())
     })
 }
 
@@ -81,7 +81,7 @@ fn check_expr_attrs(es: &str, expected: &[&str]) {
     let actual = &e.attrs;
     str_compare(es,
                 &expected.iter().map(|r| attr(r).unwrap()).collect::<Vec<_>>(),
-                actual.as_attrs(),
+                actual.as_attr_slice(),
                 pprust::attribute_to_string);
 }
 

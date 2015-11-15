@@ -70,6 +70,7 @@ pub mod util {
     #[cfg(test)]
     pub mod parser_testing;
     pub mod small_vector;
+    pub mod move_map;
 }
 
 pub mod diagnostics {

@@ -35,7 +35,6 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(str_char)]
-#![feature(filling_drop)]
 
 extern crate serialize;
 #[macro_use]
