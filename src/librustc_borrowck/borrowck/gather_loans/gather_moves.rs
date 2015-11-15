@@ -44,7 +44,7 @@ pub fn gather_decl<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
 pub fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                        move_data: &MoveData<'tcx>,
-                                       move_error_collector: &MoveErrorCollector<'tcx>,
+                                       move_error_collector: &mut MoveErrorCollector<'tcx>,
                                        move_expr_id: ast::NodeId,
                                        cmt: mc::cmt<'tcx>,
                                        move_reason: euv::MoveReason) {
@@ -63,7 +63,7 @@ pub fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
 pub fn gather_match_variant<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                       move_data: &MoveData<'tcx>,
-                                      _move_error_collector: &MoveErrorCollector<'tcx>,
+                                      _move_error_collector: &mut MoveErrorCollector<'tcx>,
                                       move_pat: &hir::Pat,
                                       cmt: mc::cmt<'tcx>,
                                       mode: euv::MatchMode) {
@@ -94,7 +94,7 @@ pub fn gather_match_variant<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
 pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                       move_data: &MoveData<'tcx>,
-                                      move_error_collector: &MoveErrorCollector<'tcx>,
+                                      move_error_collector: &mut MoveErrorCollector<'tcx>,
                                       move_pat: &hir::Pat,
                                       cmt: mc::cmt<'tcx>) {
     let pat_span_path_opt = match move_pat.node {
@@ -115,7 +115,7 @@ pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
 fn gather_move<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                          move_data: &MoveData<'tcx>,
-                         move_error_collector: &MoveErrorCollector<'tcx>,
+                         move_error_collector: &mut MoveErrorCollector<'tcx>,
                          move_info: GatherMoveInfo<'tcx>) {
     debug!("gather_move(move_id={}, cmt={:?})",
            move_info.id, move_info.cmt);
