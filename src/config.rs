@@ -26,6 +26,7 @@ macro_rules! configuration_option_enum{
 configuration_option_enum! { NewlineStyle:
     Windows, // \r\n
     Unix, // \n
+    Native, // \r\n in Windows, \n on other platforms
 }
 
 configuration_option_enum! { BraceStyle:
