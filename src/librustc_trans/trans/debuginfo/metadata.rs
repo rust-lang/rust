@@ -24,6 +24,7 @@ use llvm::{self, ValueRef};
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 
 use middle::def_id::DefId;
+use middle::infer;
 use middle::pat_util;
 use middle::subst::{self, Substs};
 use rustc::front::map as hir_map;
@@ -262,6 +263,7 @@ impl<'tcx> TypeMap<'tcx> {
                 unique_type_id.push_str(" fn(");
 
                 let sig = cx.tcx().erase_late_bound_regions(sig);
+                let sig = infer::normalize_associated_type(cx.tcx(), &sig);
 
                 for &parameter_type in &sig.inputs {
                     let parameter_type_id =

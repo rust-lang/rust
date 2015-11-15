@@ -12,6 +12,7 @@ use arena::TypedArena;
 use back::link;
 use llvm::{ValueRef, get_params};
 use middle::def_id::DefId;
+use middle::infer;
 use middle::subst::{Subst, Substs};
 use middle::subst::VecPerParamSpace;
 use middle::subst;
@@ -522,6 +523,7 @@ fn trans_object_shim<'a, 'tcx>(
     let llfn = declare::define_internal_rust_fn(ccx, &function_name, shim_fn_ty);
 
     let sig = ccx.tcx().erase_late_bound_regions(&fty.sig);
+    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
 
     let empty_substs = tcx.mk_substs(Substs::trans_empty());
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);

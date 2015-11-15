@@ -35,6 +35,7 @@ use rustc_front::hir;
 use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
 use trans;
 use trans::{monomorphize, type_of};
+use middle::infer;
 use middle::ty::{self, Ty};
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
@@ -418,19 +419,23 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         // Return type -- llvm::DIBuilder wants this at index 0
         assert_type_for_node_id(cx, fn_ast_id, error_reporting_span);
         let fn_type = cx.tcx().node_id_to_type(fn_ast_id);
+        let fn_type = monomorphize::apply_param_substs(cx.tcx(), param_substs, &fn_type);
 
         let (sig, abi) = match fn_type.sty {
             ty::TyBareFn(_, ref barefnty) => {
-                (cx.tcx().erase_late_bound_regions(&barefnty.sig), barefnty.abi)
+                let sig = cx.tcx().erase_late_bound_regions(&barefnty.sig);
+                let sig = infer::normalize_associated_type(cx.tcx(), &sig);
+                (sig, barefnty.abi)
             }
             ty::TyClosure(def_id, ref substs) => {
                 let closure_type = cx.tcx().closure_type(def_id, substs);
-                (cx.tcx().erase_late_bound_regions(&closure_type.sig), closure_type.abi)
+                let sig = cx.tcx().erase_late_bound_regions(&closure_type.sig);
+                let sig = infer::normalize_associated_type(cx.tcx(), &sig);
+                (sig, closure_type.abi)
             }
 
             _ => cx.sess().bug("get_function_metdata: Expected a function type!")
         };
-        let sig = monomorphize::apply_param_substs(cx.tcx(), param_substs, &sig);
 
         let mut signature = Vec::with_capacity(sig.inputs.len() + 1);
 

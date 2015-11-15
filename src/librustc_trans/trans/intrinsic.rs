@@ -15,6 +15,7 @@ use intrinsics::{self, Intrinsic};
 use libc;
 use llvm;
 use llvm::{SequentiallyConsistent, Acquire, Release, AtomicXchg, ValueRef, TypeKind};
+use middle::infer;
 use middle::subst;
 use middle::subst::FnSpace;
 use trans::adt;
@@ -170,13 +171,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let _icx = push_ctxt("trans_intrinsic_call");
 
-    let (arg_tys, ret_ty) = match callee_ty.sty {
-        ty::TyBareFn(_, ref f) => {
-            (bcx.tcx().erase_late_bound_regions(&f.sig.inputs()),
-             bcx.tcx().erase_late_bound_regions(&f.sig.output()))
-        }
-        _ => panic!("expected bare_fn in trans_intrinsic_call")
-    };
+    let sig = ccx.tcx().erase_late_bound_regions(callee_ty.fn_sig());
+    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let arg_tys = sig.inputs;
+    let ret_ty = sig.output;
     let foreign_item = tcx.map.expect_foreign_item(node);
     let name = foreign_item.name.as_str();
 
@@ -1330,12 +1328,9 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
 
     let tcx = bcx.tcx();
-    let arg_tys = match callee_ty.sty {
-        ty::TyBareFn(_, ref f) => {
-            bcx.tcx().erase_late_bound_regions(&f.sig.inputs())
-        }
-        _ => unreachable!()
-    };
+    let sig = tcx.erase_late_bound_regions(callee_ty.fn_sig());
+    let sig = infer::normalize_associated_type(tcx, &sig);
+    let arg_tys = sig.inputs;
 
     // every intrinsic takes a SIMD vector as its first argument
     require_simd!(arg_tys[0], "input");
