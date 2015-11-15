@@ -1500,7 +1500,7 @@ fn encode_info_for_items<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                         &[],
                         CRATE_NODE_ID,
                         [].iter().cloned().chain(LinkedPath::empty()),
-                        syntax::parse::token::special_idents::invalid.name,
+                        syntax::parse::token::intern(&ecx.link_meta.crate_name),
                         hir::Public);
 
     visit::walk_crate(&mut EncodeVisitor {
