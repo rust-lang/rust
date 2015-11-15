@@ -257,6 +257,7 @@ macro_rules! create_config {
 }
 
 create_config! {
+    verbose: bool, false, "Use verbose output";
     max_width: usize, 100, "Maximum width of each line";
     ideal_width: usize, 80, "Ideal width of each line";
     tab_spaces: usize, 4, "Number of spaces per tab";
