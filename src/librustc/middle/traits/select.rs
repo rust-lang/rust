@@ -423,7 +423,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
-
+    /// Evaluates the predicates in `predicates` recursively. Note that
+    /// this applies projections in the predicates, and therefore
+    /// is run within an inference probe.
     fn evaluate_predicates_recursively<'a,'o,I>(&mut self,
                                                 stack: TraitObligationStackList<'o, 'tcx>,
                                                 predicates: I)
