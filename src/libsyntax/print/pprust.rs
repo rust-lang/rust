@@ -13,7 +13,8 @@ pub use self::AnnNode::*;
 use abi;
 use ast::{self, TokenTree};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
-use ast::{ThinAttributesExt, Attribute};
+use ast::Attribute;
+use attr::ThinAttributesExt;
 use ast_util;
 use util::parser::AssocOp;
 use attr;
@@ -1638,7 +1639,7 @@ impl<'a> State<'a> {
             }
             ast::StmtMac(ref mac, style, ref attrs) => {
                 try!(self.space_if_not_bol());
-                try!(self.print_outer_attributes(attrs.as_attrs()));
+                try!(self.print_outer_attributes(attrs.as_attr_slice()));
                 let delim = match style {
                     ast::MacStmtWithBraces => token::Brace,
                     _ => token::Paren
@@ -1983,7 +1984,7 @@ impl<'a> State<'a> {
                                   is_inline: bool) -> io::Result<()> {
         try!(self.maybe_print_comment(expr.span.lo));
 
-        let attrs = expr.attrs.as_attrs();
+        let attrs = expr.attrs.as_attr_slice();
         if is_inline {
             try!(self.print_outer_attributes_inline(attrs));
         } else {
@@ -2124,7 +2125,7 @@ impl<'a> State<'a> {
                         ast::ExprBlock(ref blk) => {
                             try!(self.print_block_unclosed_with_attrs(
                                 &**blk,
-                                i_expr.attrs.as_attrs()));
+                                i_expr.attrs.as_attr_slice()));
                         }
                         _ => {
                             // this is a bare expression
@@ -2303,7 +2304,7 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(decl.span.lo));
         match decl.node {
             ast::DeclLocal(ref loc) => {
-                try!(self.print_outer_attributes(loc.attrs.as_attrs()));
+                try!(self.print_outer_attributes(loc.attrs.as_attr_slice()));
                 try!(self.space_if_not_bol());
                 try!(self.ibox(INDENT_UNIT));
                 try!(self.word_nbsp("let"));

@@ -20,6 +20,7 @@
 
 use ast::*;
 use ast;
+use attr::ThinAttributesExt;
 use ast_util;
 use codemap::{respan, Span, Spanned};
 use owned_slice::OwnedSlice;
@@ -522,7 +523,7 @@ pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
         pat: fld.fold_pat(pat),
         init: init.map(|e| fld.fold_expr(e)),
         span: fld.new_span(span),
-        attrs: attrs.map_opt_attrs(|v| fold_attrs(v, fld)),
+        attrs: attrs.map_thin_attrs(|v| fold_attrs(v, fld)),
     })
 }
 
@@ -1339,7 +1340,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprParen(ex) => ExprParen(folder.fold_expr(ex))
         },
         span: folder.new_span(span),
-        attrs: attrs.map_opt_attrs(|v| fold_attrs(v, folder)),
+        attrs: attrs.map_thin_attrs(|v| fold_attrs(v, folder)),
     }
 }
 
@@ -1388,7 +1389,7 @@ pub fn noop_fold_stmt<T: Folder>(Spanned {node, span}: Stmt, folder: &mut T)
         StmtMac(mac, semi, attrs) => SmallVector::one(P(Spanned {
             node: StmtMac(mac.map(|m| folder.fold_mac(m)),
                           semi,
-                          attrs.map_opt_attrs(|v| fold_attrs(v, folder))),
+                          attrs.map_thin_attrs(|v| fold_attrs(v, folder))),
             span: span
         }))
     }
