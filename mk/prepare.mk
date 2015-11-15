@@ -115,7 +115,7 @@ define DEF_PREPARE_HOST_LIB
 prepare-host-lib-$(1)-$(2)-$(3)-$(4): \
 	PREPARE_WORKING_SOURCE_LIB_DIR=$$(HLIB$(2)_H_$(3))
 prepare-host-lib-$(1)-$(2)-$(3)-$(4): \
-	PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_DIR)/$$(notdir $$(HLIB$(2)_H_$(3)))
+	PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_DIR)/$$(HLIB_RELATIVE$(2)_H_$(3))
 prepare-host-lib-$(1)-$(2)-$(3)-$(4): prepare-maybe-clean-$(4) \
                                  $$(foreach dep,$$(RUST_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)-$(4)) \
                                  $$(HLIB$(2)_H_$(3))/stamp.$(1) \
