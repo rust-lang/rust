@@ -19,7 +19,7 @@ size, and cannot be mutated. It is a reference to a sequence of UTF-8 bytes.
 let greeting = "Hello there."; // greeting: &'static str
 ```
 
-`"Hello there."` is a string literal and its type is `&'static str`. String
+`"Hello there."` is a string literal and its type is `&'static str`. A string
 literal is a string slice that is statically allocated, meaning that it’s saved
 inside our compiled program, and exists for the entire duration it runs. The
 `greeting` binding is a reference to this statically allocated string. Any
