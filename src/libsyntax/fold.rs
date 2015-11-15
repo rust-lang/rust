@@ -20,7 +20,7 @@
 
 use ast::*;
 use ast;
-use attr::ThinAttributesExt;
+use attr::{ThinAttributes, ThinAttributesExt};
 use ast_util;
 use codemap::{respan, Span, Spanned};
 use owned_slice::OwnedSlice;
@@ -363,6 +363,10 @@ pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<
 
 pub fn fold_attrs<T: Folder>(attrs: Vec<Attribute>, fld: &mut T) -> Vec<Attribute> {
     attrs.into_iter().flat_map(|x| fld.fold_attribute(x)).collect()
+}
+
+pub fn fold_thin_attrs<T: Folder>(attrs: ThinAttributes, fld: &mut T) -> ThinAttributes {
+    attrs.map_thin_attrs(|v| fold_attrs(v, fld))
 }
 
 pub fn noop_fold_arm<T: Folder>(Arm {attrs, pats, guard, body}: Arm, fld: &mut T) -> Arm {

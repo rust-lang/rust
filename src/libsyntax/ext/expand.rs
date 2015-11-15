@@ -37,15 +37,14 @@ use std::collections::HashSet;
 
 pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
     let expr_span = e.span;
-    // FIXME: Drop attrs on the floor for now.
     return e.and_then(|ast::Expr {id, node, span, attrs}| match node {
 
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
         ast::ExprMac(mac) => {
 
-            // drop attributes on the macro itself
-            let _ = attrs;
+            // FIXME: for now, drop attributes on the macro itself
+            drop(attrs);
 
             let expanded_expr = match expand_mac_invoc(mac, span,
                                                        |r| r.make_expr(),
@@ -79,14 +78,14 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             let placer = fld.fold_expr(placer);
             let value_expr = fld.fold_expr(value_expr);
             fld.cx.expr(span, ast::ExprInPlace(placer, value_expr))
-                .with_attrs(attrs)
+                .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
         ast::ExprWhile(cond, body, opt_ident) => {
             let cond = fld.fold_expr(cond);
             let (body, opt_ident) = expand_loop_block(body, opt_ident, fld);
             fld.cx.expr(span, ast::ExprWhile(cond, body, opt_ident))
-                .with_attrs(attrs)
+                .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
         ast::ExprWhileLet(pat, expr, body, opt_ident) => {
@@ -104,13 +103,13 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             assert!(rewritten_pats.len() == 1);
 
             fld.cx.expr(span, ast::ExprWhileLet(rewritten_pats.remove(0), expr, body, opt_ident))
-                .with_attrs(attrs)
+                .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
         ast::ExprLoop(loop_block, opt_ident) => {
             let (loop_block, opt_ident) = expand_loop_block(loop_block, opt_ident, fld);
             fld.cx.expr(span, ast::ExprLoop(loop_block, opt_ident))
-                .with_attrs(attrs)
+                .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
         ast::ExprForLoop(pat, head, body, opt_ident) => {
@@ -128,7 +127,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             let head = fld.fold_expr(head);
             fld.cx.expr(span, ast::ExprForLoop(rewritten_pats.remove(0), head, body, opt_ident))
-                .with_attrs(attrs)
+                .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
         ast::ExprIfLet(pat, sub_expr, body, else_opt) => {
@@ -147,7 +146,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             let else_opt = else_opt.map(|else_opt| fld.fold_expr(else_opt));
             let sub_expr = fld.fold_expr(sub_expr);
             fld.cx.expr(span, ast::ExprIfLet(rewritten_pats.remove(0), sub_expr, body, else_opt))
-                .with_attrs(attrs)
+                .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
         ast::ExprClosure(capture_clause, fn_decl, block) => {
@@ -157,8 +156,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                                             rewritten_fn_decl,
                                             rewritten_block);
             P(ast::Expr{id:id, node: new_node, span: fld.new_span(span),
-                        attrs: None})
-                .with_attrs(attrs)
+                        attrs: fold_thin_attrs(attrs, fld)})
         }
 
         _ => {
@@ -166,8 +164,8 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 id: id,
                 node: node,
                 span: span,
-                attrs: None
-            }, fld)).with_attrs(attrs)
+                attrs: attrs
+            }, fld))
         }
     });
 }
@@ -506,8 +504,8 @@ fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
         _ => return expand_non_macro_stmt(stmt, fld)
     };
 
-    // FIXME: drop attrs for macros.
-    let _ = attrs;
+    // FIXME: for now, drop attrs on macros.
+    drop(attrs);
 
     let maybe_new_items =
         expand_mac_invoc(mac.and_then(|m| m), stmt.span,
