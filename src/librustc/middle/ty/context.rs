@@ -332,6 +332,11 @@ pub struct ctxt<'tcx> {
     /// for things that do not have to do with the parameters in scope.
     pub selection_cache: traits::SelectionCache<'tcx>,
 
+    /// Caches the results of trait evaluation. This cache is used
+    /// for things that do not have to do with the parameters in scope.
+    /// Merge this with `selection_cache`?
+    pub evaluation_cache: traits::EvaluationCache<'tcx>,
+
     /// A set of predicates that have been fulfilled *somewhere*.
     /// This is used to avoid duplicate work. Predicates are only
     /// added to this set when they mention only "global" names
@@ -512,6 +517,7 @@ impl<'tcx> ctxt<'tcx> {
             transmute_restrictions: RefCell::new(Vec::new()),
             stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
+            evaluation_cache: traits::EvaluationCache::new(),
             repr_hint_cache: RefCell::new(DefIdMap()),
             const_qualif_map: RefCell::new(NodeMap()),
             custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),

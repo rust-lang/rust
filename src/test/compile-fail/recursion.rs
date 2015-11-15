@@ -8,12 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//~^^^^^^^^^^ ERROR overflow
-//
-// We get an error message at the top of file (dummy span).
-// This is not helpful, but also kind of annoying to prevent,
-// so for now just live with it.
-
 enum Nil {NilValue}
 struct Cons<T> {head:isize, tail:T}
 trait Dot {fn dot(&self, other:Self) -> isize;}
@@ -26,7 +20,7 @@ impl<T:Dot> Dot for Cons<T> {
   }
 }
 fn test<T:Dot> (n:isize, i:isize, first:T, second:T) ->isize {
-  match n {    0 => {first.dot(second)}
+  match n {    0 => {first.dot(second)} //~ ERROR overflow
       // FIXME(#4287) Error message should be here. It should be
       // a type error to instantiate `test` at a type other than T.
     _ => {test (n-1, i+1, Cons {head:2*i+1, tail:first}, Cons{head:i*i, tail:second})}

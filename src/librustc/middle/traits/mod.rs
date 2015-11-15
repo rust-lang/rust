@@ -44,6 +44,7 @@ pub use self::object_safety::object_safety_violations;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::object_safety::MethodViolationCode;
 pub use self::object_safety::is_vtable_safe_method;
+pub use self::select::EvaluationCache;
 pub use self::select::SelectionContext;
 pub use self::select::SelectionCache;
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
@@ -339,32 +340,53 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
            ty,
            bound);
 
-    let mut fulfill_cx = FulfillmentContext::new(false);
-
-    // We can use a dummy node-id here because we won't pay any mind
-    // to region obligations that arise (there shouldn't really be any
-    // anyhow).
     let cause = ObligationCause::misc(span, ast::DUMMY_NODE_ID);
+    let obligation =
+        util::predicate_for_builtin_bound(infcx.tcx, cause, bound, 0, ty);
+    let obligation = match obligation {
+        Ok(o) => o,
+        Err(..) => return false
+    };
+    let result = SelectionContext::new(infcx)
+        .evaluate_obligation_conservatively(&obligation);
+    debug!("type_known_to_meet_builtin_bound: ty={:?} bound={:?} => {:?}",
+           ty, bound, result);
 
-    fulfill_cx.register_builtin_bound(infcx, ty, bound, cause);
+    if result && (ty.has_infer_types() || ty.has_closure_types()) {
+        // Because of inference "guessing", selection can sometimes claim
+        // to succeed while the success requires a guess. To ensure
+        // this function's result remains infallible, we must confirm
+        // that guess. While imperfect, I believe this is sound.
 
-    // Note: we only assume something is `Copy` if we can
-    // *definitively* show that it implements `Copy`. Otherwise,
-    // assume it is move; linear is always ok.
-    match fulfill_cx.select_all_or_error(infcx) {
-        Ok(()) => {
-            debug!("type_known_to_meet_builtin_bound: ty={:?} bound={:?} success",
-                   ty,
-                   bound);
-            true
+        let mut fulfill_cx = FulfillmentContext::new(false);
+
+        // We can use a dummy node-id here because we won't pay any mind
+        // to region obligations that arise (there shouldn't really be any
+        // anyhow).
+        let cause = ObligationCause::misc(span, ast::DUMMY_NODE_ID);
+
+        fulfill_cx.register_builtin_bound(infcx, ty, bound, cause);
+
+        // Note: we only assume something is `Copy` if we can
+        // *definitively* show that it implements `Copy`. Otherwise,
+        // assume it is move; linear is always ok.
+        match fulfill_cx.select_all_or_error(infcx) {
+            Ok(()) => {
+                debug!("type_known_to_meet_builtin_bound: ty={:?} bound={:?} success",
+                       ty,
+                       bound);
+                true
+            }
+            Err(e) => {
+                debug!("type_known_to_meet_builtin_bound: ty={:?} bound={:?} errors={:?}",
+                       ty,
+                       bound,
+                       e);
+                false
+            }
         }
-        Err(e) => {
-            debug!("type_known_to_meet_builtin_bound: ty={:?} bound={:?} errors={:?}",
-                   ty,
-                   bound,
-                   e);
-            false
-        }
+    } else {
+        result
     }
 }
 
