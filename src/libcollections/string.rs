@@ -148,7 +148,7 @@ use boxed::Box;
 /// let len = story.len();
 /// let capacity = story.capacity();
 ///
-/// // story has thirteen bytes
+/// // story has nineteen bytes
 /// assert_eq!(19, len);
 ///
 /// // Now that we have our parts, we throw the story away.
@@ -191,6 +191,9 @@ use boxed::Box;
 /// 40
 /// ```
 ///
+/// Please note that the actual output may be higher than stated as the
+/// allocator may reserve more space to avoid frequent reallocations.
+///
 /// At first, we have no memory allocated at all, but as we append to the
 /// string, it increases its capacity appropriately. If we instead use the
 /// [`with_capacity()`] method to allocate the correct capacity initially:
@@ -219,7 +222,9 @@ use boxed::Box;
 /// 25
 /// ```
 ///
-/// Here, there's no need to allocate more memory inside the loop.
+/// Here, there's no need to allocate more memory inside the loop. As above,
+/// the actual numbers may differ as the allocator may reserve more space to
+/// avoid frequent reallocations.
 #[derive(PartialOrd, Eq, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct String {

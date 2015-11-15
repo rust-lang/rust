@@ -207,9 +207,9 @@ use super::range::RangeArgument;
 /// strategy is used will of course guarantee `O(1)` amortized `push`.
 ///
 /// `vec![x; n]`, `vec![a, b, c, d]`, and `Vec::with_capacity(n)`, will all
-/// produce a Vec with exactly the requested capacity. If `len() == capacity()`,
-/// (as is the case for the `vec!` macro), then a `Vec<T>` can be converted
-/// to and from a `Box<[T]>` without reallocating or moving the elements.
+/// produce a Vec with at least the requested capacity.
+/// If `len() == capacity()`, then a `Vec<T>` can be converted to and from a
+/// `Box<[T]>` without reallocating or moving the elements.
 ///
 /// Vec will not specifically overwrite any data that is removed from it,
 /// but also won't specifically preserve it. Its uninitialized memory is
