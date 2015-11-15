@@ -54,7 +54,7 @@ impl<'a, F> fold::Folder for Context<'a, F> where F: FnMut(&[ast::Attribute]) ->
         // Anything else is always required, and thus has to error out
         // in case of a cfg attr.
         //
-        // NB: This intentionally not part of the fold_expr() function
+        // NB: This is intentionally not part of the fold_expr() function
         //     in order for fold_opt_expr() to be able to avoid this check
         if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a)) {
             self.diagnostic.span_err(attr.span,

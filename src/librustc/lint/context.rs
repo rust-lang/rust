@@ -41,7 +41,8 @@ use syntax::ast_util::{self, IdVisitingOperation};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
-use syntax::ast::{self, ThinAttributesExt};
+use syntax::ast;
+use syntax::attr::ThinAttributesExt;
 use rustc_front::hir;
 use rustc_front::util;
 use rustc_front::intravisit as hir_visit;
@@ -674,7 +675,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, e: &hir::Expr) {
-        self.with_lint_attrs(e.attrs.as_attrs(), |cx| {
+        self.with_lint_attrs(e.attrs.as_attr_slice(), |cx| {
             run_lints!(cx, check_expr, late_passes, e);
             hir_visit::walk_expr(cx, e);
         })
@@ -737,7 +738,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     }
 
     fn visit_local(&mut self, l: &hir::Local) {
-        self.with_lint_attrs(l.attrs.as_attrs(), |cx| {
+        self.with_lint_attrs(l.attrs.as_attr_slice(), |cx| {
             run_lints!(cx, check_local, late_passes, l);
             hir_visit::walk_local(cx, l);
         })

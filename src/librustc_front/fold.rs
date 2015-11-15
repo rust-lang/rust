@@ -13,7 +13,8 @@
 
 use hir::*;
 use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID, Attribute, Attribute_, MetaItem};
-use syntax::ast::{MetaWord, MetaList, MetaNameValue, ThinAttributesExt};
+use syntax::ast::{MetaWord, MetaList, MetaNameValue};
+use syntax::attr::ThinAttributesExt;
 use hir;
 use syntax::codemap::{respan, Span, Spanned};
 use syntax::owned_slice::OwnedSlice;
@@ -508,7 +509,7 @@ pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
             pat: fld.fold_pat(pat),
             init: init.map(|e| fld.fold_expr(e)),
             span: fld.new_span(span),
-            attrs: attrs.map_opt_attrs(|attrs| fold_attrs(attrs, fld)),
+            attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs, fld)),
         }
     })
 }
@@ -1172,7 +1173,7 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span, attrs }: Expr, folder: &
             }
         },
         span: folder.new_span(span),
-        attrs: attrs.map_opt_attrs(|attrs| fold_attrs(attrs, folder)),
+        attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs, folder)),
     }
 }
 

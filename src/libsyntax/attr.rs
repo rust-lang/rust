@@ -16,8 +16,8 @@ pub use self::IntType::*;
 
 use ast;
 use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
-use ast::{Stmt, StmtDecl, StmtExpr, StmtMac, StmtSemi, DeclItem, DeclLocal, ThinAttributes};
-use ast::{Expr, ThinAttributesExt, Item, Local, Decl};
+use ast::{Stmt, StmtDecl, StmtExpr, StmtMac, StmtSemi, DeclItem, DeclLocal};
+use ast::{Expr, Item, Local, Decl};
 use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
 use diagnostic::SpanHandler;
@@ -723,6 +723,96 @@ impl IntType {
     }
 }
 
+/// A list of attributes, behind a optional box as
+/// a space optimization.
+pub type ThinAttributes = Option<Box<Vec<Attribute>>>;
+
+pub trait ThinAttributesExt {
+    fn map_thin_attrs<F>(self, f: F) -> Self
+        where F: FnOnce(Vec<Attribute>) -> Vec<Attribute>;
+    fn prepend(mut self, attrs: Self) -> Self;
+    fn append(mut self, attrs: Self) -> Self;
+    fn update<F>(&mut self, f: F)
+        where Self: Sized,
+              F: FnOnce(Self) -> Self;
+    fn as_attr_slice(&self) -> &[Attribute];
+    fn into_attr_vec(self) -> Vec<Attribute>;
+}
+
+impl ThinAttributesExt for ThinAttributes {
+    fn map_thin_attrs<F>(self, f: F) -> Self
+        where F: FnOnce(Vec<Attribute>) -> Vec<Attribute> {
+
+        // This is kinda complicated... Ensure the function is
+        // always called, and that None inputs or results are
+        // correctly handled.
+        if let Some(mut b) = self {
+            use std::mem::replace;
+
+            let vec = replace(&mut *b, Vec::new());
+            let vec = f(vec);
+            if vec.len() == 0 {
+                None
+            } else {
+                replace(&mut*b, vec);
+                Some(b)
+            }
+        } else {
+            f(Vec::new()).into_thin_attrs()
+        }
+    }
+
+    fn prepend(self, attrs: ThinAttributes) -> Self {
+        attrs.map_thin_attrs(|mut attrs| {
+            attrs.extend(self.into_attr_vec());
+            attrs
+        })
+    }
+
+    fn append(self, attrs: ThinAttributes) -> Self {
+        self.map_thin_attrs(|mut self_| {
+            self_.extend(attrs.into_attr_vec());
+            self_
+        })
+    }
+
+    fn update<F>(&mut self, f: F)
+        where Self: Sized,
+              F: FnOnce(ThinAttributes) -> ThinAttributes
+    {
+        let self_ = f(self.take());
+        *self = self_;
+    }
+
+    fn as_attr_slice(&self) -> &[Attribute] {
+        match *self {
+            Some(ref b) => b,
+            None => &[],
+        }
+    }
+
+    fn into_attr_vec(self) -> Vec<Attribute> {
+        match self {
+            Some(b) => *b,
+            None => Vec::new(),
+        }
+    }
+}
+
+pub trait AttributesExt {
+    fn into_thin_attrs(self) -> ThinAttributes;
+}
+
+impl AttributesExt for Vec<Attribute> {
+    fn into_thin_attrs(self) -> ThinAttributes {
+        if self.len() == 0 {
+            None
+        } else {
+            Some(Box::new(self))
+        }
+    }
+}
+
 /// A cheap way to add Attributes to an AST node.
 pub trait WithAttrs {
     // FIXME: Could be extended to anything IntoIter<Item=Attribute>
@@ -732,7 +822,7 @@ pub trait WithAttrs {
 impl WithAttrs for P<Expr> {
     fn with_attrs(self, attrs: ThinAttributes) -> Self {
         self.map(|mut e| {
-            e.attrs.update(|a| a.append_inner(attrs));
+            e.attrs.update(|a| a.append(attrs));
             e
         })
     }
@@ -741,7 +831,7 @@ impl WithAttrs for P<Expr> {
 impl WithAttrs for P<Item> {
     fn with_attrs(self, attrs: ThinAttributes) -> Self {
         self.map(|Item { ident, attrs: mut ats, id, node, vis, span }| {
-            ats.extend(attrs.into_attrs());
+            ats.extend(attrs.into_attr_vec());
             Item {
                 ident: ident,
                 attrs: ats,
@@ -757,7 +847,7 @@ impl WithAttrs for P<Item> {
 impl WithAttrs for P<Local> {
     fn with_attrs(self, attrs: ThinAttributes) -> Self {
         self.map(|Local { pat, ty, init, id, span, attrs: mut ats }| {
-            ats.update(|a| a.append_inner(attrs));
+            ats.update(|a| a.append(attrs));
             Local {
                 pat: pat,
                 ty: ty,
@@ -794,7 +884,7 @@ impl WithAttrs for P<Stmt> {
                     StmtExpr(expr, id) => StmtExpr(expr.with_attrs(attrs), id),
                     StmtSemi(expr, id) => StmtSemi(expr.with_attrs(attrs), id),
                     StmtMac(mac, style, mut ats) => {
-                        ats.update(|a| a.append_inner(attrs));
+                        ats.update(|a| a.append(attrs));
                         StmtMac(mac, style, ats)
                     }
                 },

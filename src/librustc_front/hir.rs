@@ -41,7 +41,7 @@ use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
 use syntax::abi::Abi;
 use syntax::ast::{Name, Ident, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, CrateConfig};
-use syntax::ast::ThinAttributes;
+use syntax::attr::ThinAttributes;
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;

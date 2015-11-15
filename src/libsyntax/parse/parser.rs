@@ -56,7 +56,7 @@ use ast::TypeTraitItem;
 use ast::{UnnamedField, UnsafeBlock};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
-use ast::{ThinAttributes, ThinAttributesExt, AttributesExt};
+use attr::{ThinAttributes, ThinAttributesExt, AttributesExt};
 use ast;
 use ast_util::{self, ident_to_path};
 use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp, CodeMap};
@@ -2053,8 +2053,8 @@ impl<'a> Parser<'a> {
                 try!(self.bump());
 
                 let attrs = try!(self.parse_inner_attributes())
-                    .into_opt_attrs()
-                    .prepend_outer(attrs);
+                    .into_thin_attrs()
+                    .prepend(attrs);
 
                 // (e) is parenthesized e
                 // (e,) is a tuple with only one field, e
@@ -2102,8 +2102,8 @@ impl<'a> Parser<'a> {
                 try!(self.bump());
 
                 let inner_attrs = try!(self.parse_inner_attributes())
-                    .into_opt_attrs();
-                attrs.update(|attrs| attrs.append_inner(inner_attrs));
+                    .into_thin_attrs();
+                attrs.update(|attrs| attrs.append(inner_attrs));
 
                 if self.check(&token::CloseDelim(token::Bracket)) {
                     // Empty vector.
@@ -2257,9 +2257,9 @@ impl<'a> Parser<'a> {
                             let mut fields = Vec::new();
                             let mut base = None;
 
-                            let attrs = attrs.append_inner(
+                            let attrs = attrs.append(
                                 try!(self.parse_inner_attributes())
-                                    .into_opt_attrs());
+                                    .into_thin_attrs());
 
                             while self.token != token::CloseDelim(token::Brace) {
                                 if try!(self.eat(&token::DotDot) ){
@@ -2300,7 +2300,7 @@ impl<'a> Parser<'a> {
         if let Some(attrs) = already_parsed_attrs {
             Ok(attrs)
         } else {
-            self.parse_outer_attributes().map(|a| a.into_opt_attrs())
+            self.parse_outer_attributes().map(|a| a.into_thin_attrs())
         }
     }
 
@@ -2312,8 +2312,8 @@ impl<'a> Parser<'a> {
         let outer_attrs = attrs;
         try!(self.expect(&token::OpenDelim(token::Brace)));
 
-        let inner_attrs = try!(self.parse_inner_attributes()).into_opt_attrs();
-        let attrs = outer_attrs.append_inner(inner_attrs);
+        let inner_attrs = try!(self.parse_inner_attributes()).into_thin_attrs();
+        let attrs = outer_attrs.append(inner_attrs);
 
         let blk = try!(self.parse_block_tail(lo, blk_mode));
         return Ok(self.mk_expr(blk.span.lo, blk.span.hi, ExprBlock(blk), attrs));
@@ -2339,12 +2339,12 @@ impl<'a> Parser<'a> {
         self.parse_dot_or_call_expr_with_(e0)
         .map(|expr|
             expr.map(|mut expr| {
-                expr.attrs.update(|a| a.prepend_outer(attrs));
+                expr.attrs.update(|a| a.prepend(attrs));
                 match expr.node {
                     ExprIf(..) | ExprIfLet(..) => {
-                        if !expr.attrs.as_attrs().is_empty() {
+                        if !expr.attrs.as_attr_slice().is_empty() {
                             // Just point to the first attribute in there...
-                            let span = expr.attrs.as_attrs()[0].span;
+                            let span = expr.attrs.as_attr_slice()[0].span;
 
                             self.span_err(span,
                                 "attributes are not yet allowed on `if` \
@@ -3012,7 +3012,7 @@ impl<'a> Parser<'a> {
         try!(self.expect_keyword(keywords::In));
         let expr = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL, None));
         let (iattrs, loop_block) = try!(self.parse_inner_attrs_and_block());
-        let attrs = attrs.append_inner(iattrs.into_opt_attrs());
+        let attrs = attrs.append(iattrs.into_thin_attrs());
 
         let hi = self.last_span.hi;
 
@@ -3030,7 +3030,7 @@ impl<'a> Parser<'a> {
         }
         let cond = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL, None));
         let (iattrs, body) = try!(self.parse_inner_attrs_and_block());
-        let attrs = attrs.append_inner(iattrs.into_opt_attrs());
+        let attrs = attrs.append(iattrs.into_thin_attrs());
         let hi = body.span.hi;
         return Ok(self.mk_expr(span_lo, hi, ExprWhile(cond, body, opt_ident),
                                attrs));
@@ -3045,7 +3045,7 @@ impl<'a> Parser<'a> {
         try!(self.expect(&token::Eq));
         let expr = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL, None));
         let (iattrs, body) = try!(self.parse_inner_attrs_and_block());
-        let attrs = attrs.append_inner(iattrs.into_opt_attrs());
+        let attrs = attrs.append(iattrs.into_thin_attrs());
         let hi = body.span.hi;
         return Ok(self.mk_expr(span_lo, hi, ExprWhileLet(pat, expr, body, opt_ident), attrs));
     }
@@ -3055,7 +3055,7 @@ impl<'a> Parser<'a> {
                            span_lo: BytePos,
                            attrs: ThinAttributes) -> PResult<P<Expr>> {
         let (iattrs, body) = try!(self.parse_inner_attrs_and_block());
-        let attrs = attrs.append_inner(iattrs.into_opt_attrs());
+        let attrs = attrs.append(iattrs.into_thin_attrs());
         let hi = body.span.hi;
         Ok(self.mk_expr(span_lo, hi, ExprLoop(body, opt_ident), attrs))
     }
@@ -3072,8 +3072,8 @@ impl<'a> Parser<'a> {
             }
             return Err(e)
         }
-        let attrs = attrs.append_inner(
-            try!(self.parse_inner_attributes()).into_opt_attrs());
+        let attrs = attrs.append(
+            try!(self.parse_inner_attributes()).into_thin_attrs());
         let mut arms: Vec<Arm> = Vec::new();
         while self.token != token::CloseDelim(token::Brace) {
             arms.push(try!(self.parse_arm()));
@@ -3596,7 +3596,7 @@ impl<'a> Parser<'a> {
 
         Ok(Some(if self.check_keyword(keywords::Let) {
             try!(self.expect_keyword(keywords::Let));
-            let decl = try!(self.parse_let(attrs.into_opt_attrs()));
+            let decl = try!(self.parse_let(attrs.into_thin_attrs()));
             let hi = decl.span.hi;
             let stmt = StmtDecl(decl, ast::DUMMY_NODE_ID);
             spanned(lo, hi, stmt)
@@ -3654,7 +3654,7 @@ impl<'a> Parser<'a> {
                                              hi,
                                              Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT })),
                                    style,
-                                   attrs.into_opt_attrs());
+                                   attrs.into_thin_attrs());
                 spanned(lo, hi, stmt)
             } else {
                 // if it has a special ident, it's definitely an item
@@ -3708,7 +3708,7 @@ impl<'a> Parser<'a> {
 
                     // Remainder are line-expr stmts.
                     let e = try!(self.parse_expr_res(
-                        Restrictions::RESTRICTION_STMT_EXPR, Some(attrs.into_opt_attrs())));
+                        Restrictions::RESTRICTION_STMT_EXPR, Some(attrs.into_thin_attrs())));
                     let hi = e.span.hi;
                     let stmt = StmtExpr(e, ast::DUMMY_NODE_ID);
                     spanned(lo, hi, stmt)

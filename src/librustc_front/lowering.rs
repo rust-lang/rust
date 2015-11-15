@@ -66,6 +66,7 @@ use hir;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use syntax::ast::*;
+use syntax::attr::{ThinAttributes, ThinAttributesExt};
 use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned, Span};
 use syntax::owned_slice::OwnedSlice;
@@ -1219,8 +1220,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 // merge attributes into the inner expression.
                 return lower_expr(lctx, ex).map(|mut ex| {
                     ex.attrs.update(|attrs| {
-                        // FIXME: Badly named
-                        attrs.prepend_outer(e.attrs.clone())
+                        attrs.prepend(e.attrs.clone())
                     });
                     ex
                 });
