@@ -12,17 +12,18 @@ encoding of UTF-8 sequences. Additionally, unlike some systems languages,
 strings are not null-terminated and can contain null bytes.
 
 Rust has two main types of strings: `&str` and `String`. Let’s talk about
-`&str` first. These are called ‘string slices’. String literals are of the type
-`&'static str`:
+`&str` first. These are called ‘string slices’. A string slice has a fixed
+size, and cannot be mutated. It is a reference to a sequence of UTF-8 bytes.
 
 ```rust
 let greeting = "Hello there."; // greeting: &'static str
 ```
 
-This string is statically allocated, meaning that it’s saved inside our
-compiled program, and exists for the entire duration it runs. The `greeting`
-binding is a reference to this statically allocated string. String slices
-have a fixed size, and cannot be mutated.
+`"Hello there."` is a string literal and its type is `&'static str`. A string
+literal is a string slice that is statically allocated, meaning that it’s saved
+inside our compiled program, and exists for the entire duration it runs. The
+`greeting` binding is a reference to this statically allocated string. Any
+function expecting a string slice will also accept a string literal.
 
 String literals can span multiple lines. There are two forms. The first will
 include the newline and the leading spaces:
@@ -34,7 +35,7 @@ let s = "foo
 assert_eq!("foo\n        bar", s);
 ```
 
-The second, with a `\`, does not trim the spaces:
+The second, with a `\`, trims the spaces and the newline:
 
 ```rust
 let s = "foo\
