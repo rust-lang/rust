@@ -12,7 +12,6 @@
 //! propagating default levels lexically from parent to children ast nodes.
 
 pub use self::StabilityLevel::*;
-use self::AnnotationKind::*;
 
 use session::Session;
 use lint;
@@ -52,11 +51,11 @@ impl StabilityLevel {
 #[derive(PartialEq)]
 enum AnnotationKind {
     // Annotation is required if not inherited from unstable parents
-    AnnRequired,
+    Required,
     // Annotation is useless, reject it
-    AnnProhibited,
+    Prohibited,
     // Annotation itself is useless, but it can be propagated to children
-    AnnContainer,
+    Container,
 }
 
 /// A stability index, giving the stability level for items and methods.
@@ -91,8 +90,10 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
             if let Some(mut stab) = attr::find_stability(self.tcx.sess.diagnostic(),
                                                          attrs, item_sp) {
                 // Error if prohibited, or can't inherit anything from a container
-                if kind == AnnProhibited ||
-                   kind == AnnContainer && stab.level.is_stable() && stab.depr.is_none() {
+                if kind == AnnotationKind::Prohibited ||
+                   (kind == AnnotationKind::Container &&
+                    stab.level.is_stable() &&
+                    stab.depr.is_none()) {
                     self.tcx.sess.span_err(item_sp, "This stability annotation is useless");
                 }
 
@@ -141,7 +142,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                 self.parent = parent;
             } else {
                 debug!("annotate: not found, parent = {:?}", self.parent);
-                let mut is_error = kind == AnnRequired &&
+                let mut is_error = kind == AnnotationKind::Required &&
                                    self.export_map.contains(&id) &&
                                    !self.tcx.sess.opts.test;
                 if let Some(stab) = self.parent {
@@ -176,7 +177,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
     fn visit_item(&mut self, i: &Item) {
         let orig_in_trait_impl = self.in_trait_impl;
         let orig_in_enum = self.in_enum;
-        let mut kind = AnnRequired;
+        let mut kind = AnnotationKind::Required;
         match i.node {
             // Inherent impls and foreign modules serve only as containers for other items,
             // they don't have their own stability. They still can be annotated as unstable
@@ -184,7 +185,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
             // optional. They inherit stability from their parents when unannotated.
             hir::ItemImpl(_, _, _, None, _, _) | hir::ItemForeignMod(..) => {
                 self.in_trait_impl = false;
-                kind = AnnContainer;
+                kind = AnnotationKind::Container;
             }
             hir::ItemImpl(_, _, _, Some(_), _, _) => {
                 self.in_trait_impl = true;
@@ -192,7 +193,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
             hir::ItemStruct(ref sd, _) => {
                 self.in_enum = false;
                 if !sd.is_struct() {
-                    self.annotate(sd.id(), &i.attrs, i.span, AnnRequired, |_| {})
+                    self.annotate(sd.id(), &i.attrs, i.span, AnnotationKind::Required, |_| {})
                 }
             }
             hir::ItemEnum(..) => {
@@ -209,20 +210,24 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
-        self.annotate(ti.id, &ti.attrs, ti.span, AnnRequired, |v| {
+        self.annotate(ti.id, &ti.attrs, ti.span, AnnotationKind::Required, |v| {
             visit::walk_trait_item(v, ti);
         });
     }
 
     fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
-        let kind = if self.in_trait_impl { AnnProhibited } else { AnnRequired };
+        let kind = if self.in_trait_impl {
+            AnnotationKind::Prohibited
+        } else {
+            AnnotationKind::Required
+        };
         self.annotate(ii.id, &ii.attrs, ii.span, kind, |v| {
             visit::walk_impl_item(v, ii);
         });
     }
 
     fn visit_variant(&mut self, var: &Variant, g: &'v Generics, item_id: NodeId) {
-        self.annotate(var.node.data.id(), &var.node.attrs, var.span, AnnRequired, |v| {
+        self.annotate(var.node.data.id(), &var.node.attrs, var.span, AnnotationKind::Required, |v| {
             visit::walk_variant(v, var, g, item_id);
         })
     }
@@ -230,9 +235,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
     fn visit_struct_field(&mut self, s: &StructField) {
         // FIXME: This is temporary, can't use attributes with tuple variant fields until snapshot
         let kind = if self.in_enum && s.node.kind.is_unnamed() {
-            AnnProhibited
+            AnnotationKind::Prohibited
         } else {
-            AnnRequired
+            AnnotationKind::Required
         };
         self.annotate(s.node.id, &s.node.attrs, s.span, kind, |v| {
             visit::walk_struct_field(v, s);
@@ -240,14 +245,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
-        self.annotate(i.id, &i.attrs, i.span, AnnRequired, |v| {
+        self.annotate(i.id, &i.attrs, i.span, AnnotationKind::Required, |v| {
             visit::walk_foreign_item(v, i);
         });
     }
 
     fn visit_macro_def(&mut self, md: &'v hir::MacroDef) {
         if md.imported_from.is_none() {
-            self.annotate(md.id, &md.attrs, md.span, AnnRequired, |_| {});
+            self.annotate(md.id, &md.attrs, md.span, AnnotationKind::Required, |_| {});
         }
     }
 }
@@ -263,7 +268,7 @@ impl<'tcx> Index<'tcx> {
             in_trait_impl: false,
             in_enum: false,
         };
-        annotator.annotate(ast::CRATE_NODE_ID, &krate.attrs, krate.span, AnnRequired,
+        annotator.annotate(ast::CRATE_NODE_ID, &krate.attrs, krate.span, AnnotationKind::Required,
                            |v| visit::walk_crate(v, krate));
     }
 

@@ -475,8 +475,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[unstable(feature = "fmt_internals", issue = "0")]
+pub use core::fmt::rt;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{Formatter, Result, Write, rt};
+pub use core::fmt::{Formatter, Result, Write};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Octal, Binary};
 #[stable(feature = "rust1", since = "1.0.0")]
