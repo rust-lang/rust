@@ -67,6 +67,7 @@ use core::ops::{CoerceUnsized, Deref, DerefMut};
 use core::ops::{Placer, Boxed, Place, InPlace, BoxPlace};
 use core::ptr::{self, Unique};
 use core::raw::TraitObject;
+use core::convert::From;
 
 /// A value that represents the heap. This is the default place that the `box`
 /// keyword allocates into when no place is supplied.
@@ -370,6 +371,13 @@ impl<T: ?Sized + Eq> Eq for Box<T> {}
 impl<T: ?Sized + Hash> Hash for Box<T> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         (**self).hash(state);
+    }
+}
+
+#[stable(feature = "from_for_ptrs", since = "1.6.0")]
+impl<T> From<T> for Box<T> {
+    fn from(t: T) -> Self {
+        Box::new(t)
     }
 }
 

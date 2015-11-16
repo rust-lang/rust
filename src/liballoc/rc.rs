@@ -169,6 +169,7 @@ use core::ops::Deref;
 #[cfg(not(stage0))]
 use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
+use core::convert::From;
 
 use heap::deallocate;
 
@@ -701,6 +702,13 @@ impl<T> fmt::Pointer for Rc<T> {
     }
 }
 
+#[stable(feature = "from_for_ptrs", since = "1.6.0")]
+impl<T> From<T> for Rc<T> {
+    fn from(t: T) -> Self {
+        Rc::new(t)
+    }
+}
+
 /// A weak version of `Rc<T>`.
 ///
 /// Weak references do not count when determining if the inner value should be
@@ -906,6 +914,7 @@ mod tests {
     use std::result::Result::{Err, Ok};
     use std::mem::drop;
     use std::clone::Clone;
+    use std::convert::From;
 
     #[test]
     fn test_clone() {
@@ -1107,6 +1116,13 @@ mod tests {
     fn test_unsized() {
         let foo: Rc<[i32]> = Rc::new([1, 2, 3]);
         assert_eq!(foo, foo.clone());
+    }
+
+    #[test]
+    fn test_from_owned() {
+        let foo = 123;
+        let foo_rc = Rc::from(foo);
+        assert!(123 == *foo_rc);
     }
 }
 
