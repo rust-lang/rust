@@ -18,8 +18,8 @@
 // Then this operation can simply be performed as part of item (or import)
 // processing.
 
-use {Module, NameBindings, Resolver};
-use Namespace::{self, TypeNS, ValueNS};
+use {Module, NameBinding, Resolver};
+use Namespace::{TypeNS, ValueNS};
 
 use build_reduced_graph;
 use module_to_string;
@@ -108,12 +108,11 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
         }
     }
 
-    fn add_exports_of_namebindings(&mut self,
-                                   exports: &mut Vec<Export>,
-                                   name: ast::Name,
-                                   namebindings: &NameBindings,
-                                   ns: Namespace) {
-        match namebindings.def_for_namespace(ns) {
+    fn add_export_of_namebinding(&mut self,
+                                 exports: &mut Vec<Export>,
+                                 name: ast::Name,
+                                 namebinding: &NameBinding) {
+        match namebinding.def() {
             Some(d) => {
                 debug!("(computing exports) YES: export '{}' => {:?}",
                        name,
@@ -139,7 +138,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
                 match import_resolution.target_for_namespace(ns) {
                     Some(target) => {
                         debug!("(computing exports) maybe export '{}'", name);
-                        self.add_exports_of_namebindings(exports, *name, &*target.bindings, ns)
+                        self.add_export_of_namebinding(exports, *name, &target.binding)
                     }
                     _ => (),
                 }

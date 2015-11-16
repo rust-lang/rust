@@ -39,7 +39,6 @@ extern crate rustc;
 use self::PatternBindingMode::*;
 use self::Namespace::*;
 use self::NamespaceResult::*;
-use self::NameDefinition::*;
 use self::ResolveResult::*;
 use self::FallbackSuggestion::*;
 use self::TypeParameters::*;
@@ -513,8 +512,8 @@ enum NamespaceResult {
     /// not bound in the namespace.
     UnboundResult,
     /// Means that resolve has determined that the name is bound in the Module
-    /// argument, and specified by the NameBindings argument.
-    BoundResult(Rc<Module>, Rc<NameBindings>),
+    /// argument, and specified by the NameBinding argument.
+    BoundResult(Rc<Module>, NameBinding),
 }
 
 impl NamespaceResult {
@@ -530,15 +529,6 @@ impl NamespaceResult {
             _ => false,
         }
     }
-}
-
-enum NameDefinition {
-    // The name was unbound.
-    NoNameDefinition,
-    // The name identifies an immediate child.
-    ChildNameDefinition(Def, LastPrivate),
-    // The name identifies an import.
-    ImportNameDefinition(Def, LastPrivate),
 }
 
 impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
@@ -786,7 +776,7 @@ pub struct Module {
     kind: Cell<ModuleKind>,
     is_public: bool,
 
-    children: RefCell<HashMap<Name, Rc<NameBindings>>>,
+    children: RefCell<HashMap<Name, NameBindings>>,
     imports: RefCell<Vec<ImportDirective>>,
 
     // The external module children of this node that were declared with
@@ -911,36 +901,103 @@ bitflags! {
     }
 }
 
-// Records a possibly-private type definition.
+// Records a possibly-private definition.
 #[derive(Clone,Debug)]
-struct TypeNsDef {
+struct NsDef {
     modifiers: DefModifiers, // see note in ImportResolution about how to use this
-    module_def: Option<Rc<Module>>,
-    type_def: Option<Def>,
-    type_span: Option<Span>,
+    def: Option<Def>,
+    module: Option<Rc<Module>>,
+    span: Option<Span>,
 }
 
-// Records a possibly-private value definition.
-#[derive(Clone, Copy, Debug)]
-struct ValueNsDef {
-    modifiers: DefModifiers, // see note in ImportResolution about how to use this
-    def: Def,
-    value_span: Option<Span>,
+impl NsDef {
+    fn def(&self) -> Option<Def> {
+        match (self.def, &self.module) {
+            (def @ Some(_), _) => def,
+            (_, &Some(ref module)) => module.def_id.get().map(|def_id| DefMod(def_id)),
+            _ => panic!("NsDef has neither a Def nor a Module"),
+        }
+    }
+}
+
+// Records at most one definition that a name in a namespace is bound to
+#[derive(Clone,Debug)]
+pub struct NameBinding(Rc<RefCell<Option<NsDef>>>);
+
+impl NameBinding {
+    fn new() -> Self {
+        NameBinding(Rc::new(RefCell::new(None)))
+    }
+
+    fn create_from_module(module: Rc<Module>) -> Self {
+        NameBinding(Rc::new(RefCell::new(Some(NsDef {
+            modifiers: DefModifiers::IMPORTABLE,
+            def: None,
+            module: Some(module),
+            span: None,
+        }))))
+    }
+
+    fn set(&self, modifiers: DefModifiers, def: Option<Def>, mod_: Option<Rc<Module>>, sp: Span) {
+        *self.0.borrow_mut() =
+            Some(NsDef { modifiers: modifiers, def: def, module: mod_, span: Some(sp) });
+    }
+
+    fn and_then<T, F: Fn(&NsDef) -> Option<T>>(&self, f: F) -> Option<T> {
+        self.borrow().as_ref().and_then(f)
+    }
+
+    fn borrow(&self) -> ::std::cell::Ref<Option<NsDef>> { self.0.borrow() }
+
+    // Lifted versions of the NsDef fields and method
+    fn def(&self) -> Option<Def>           { self.and_then(NsDef::def) }
+    fn span(&self) -> Option<Span>         { self.and_then(|def| def.span) }
+    fn module(&self) -> Option<Rc<Module>> { self.and_then(|def| def.module.clone()) }
+    fn modifiers(&self) -> Option<DefModifiers> { self.and_then(|def| Some(def.modifiers)) }
+
+    fn defined(&self) -> bool { self.borrow().is_some() }
+
+    fn defined_with(&self, modifiers: DefModifiers) -> bool {
+        self.modifiers().map(|m| m.contains(modifiers)).unwrap_or(false)
+    }
+
+    fn is_public(&self) -> bool {
+        self.defined_with(DefModifiers::PUBLIC)
+    }
+
+    fn def_and_lp(&self) -> (Def, LastPrivate) {
+        let def = self.def().unwrap();
+        (def, LastMod(if self.is_public() { AllPublic } else { DependsOn(def.def_id()) }))
+    }
 }
 
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
-#[derive(Debug)]
+#[derive(Clone,Debug)]
 pub struct NameBindings {
-    type_def: RefCell<Option<TypeNsDef>>, // < Meaning in type namespace.
-    value_def: RefCell<Option<ValueNsDef>>, // < Meaning in value namespace.
+    type_ns: NameBinding, // < Meaning in type namespace.
+    value_ns: NameBinding, // < Meaning in value namespace.
+}
+
+impl ::std::ops::Index<Namespace> for NameBindings {
+    type Output = NameBinding;
+    fn index(&self, namespace: Namespace) -> &NameBinding {
+        match namespace { TypeNS => &self.type_ns, ValueNS => &self.value_ns }
+    }
 }
 
 impl NameBindings {
     fn new() -> NameBindings {
         NameBindings {
-            type_def: RefCell::new(None),
-            value_def: RefCell::new(None),
+            type_ns: NameBinding::new(),
+            value_ns: NameBinding::new(),
+        }
+    }
+
+    fn create_from_module(module: Rc<Module>) -> NameBindings {
+        NameBindings {
+            type_ns: NameBinding::create_from_module(module),
+            value_ns: NameBinding::new(),
         }
     }
 
@@ -958,26 +1015,9 @@ impl NameBindings {
         } else {
             DefModifiers::empty()
         } | DefModifiers::IMPORTABLE;
+
         let module_ = Rc::new(Module::new(parent_link, def_id, kind, external, is_public));
-        let type_def = self.type_def.borrow().clone();
-        match type_def {
-            None => {
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
-                    modifiers: modifiers,
-                    module_def: Some(module_),
-                    type_def: None,
-                    type_span: Some(sp),
-                });
-            }
-            Some(type_def) => {
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
-                    modifiers: modifiers,
-                    module_def: Some(module_),
-                    type_span: Some(sp),
-                    type_def: type_def.type_def,
-                });
-            }
-        }
+        self.type_ns.set(modifiers, self.type_ns.def(), Some(module_), sp);
     }
 
     /// Sets the kind of the module, creating a new one if necessary.
@@ -988,36 +1028,10 @@ impl NameBindings {
                        external: bool,
                        is_public: bool,
                        _sp: Span) {
-        let modifiers = if is_public {
-            DefModifiers::PUBLIC
+        if let Some(module) = self.type_ns.module() {
+            module.kind.set(kind)
         } else {
-            DefModifiers::empty()
-        } | DefModifiers::IMPORTABLE;
-        let type_def = self.type_def.borrow().clone();
-        match type_def {
-            None => {
-                let module = Module::new(parent_link, def_id, kind, external, is_public);
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
-                    modifiers: modifiers,
-                    module_def: Some(Rc::new(module)),
-                    type_def: None,
-                    type_span: None,
-                });
-            }
-            Some(type_def) => {
-                match type_def.module_def {
-                    None => {
-                        let module = Module::new(parent_link, def_id, kind, external, is_public);
-                        *self.type_def.borrow_mut() = Some(TypeNsDef {
-                            modifiers: modifiers,
-                            module_def: Some(Rc::new(module)),
-                            type_def: type_def.type_def,
-                            type_span: None,
-                        });
-                    }
-                    Some(module_def) => module_def.kind.set(kind),
-                }
-            }
+            self.define_module(parent_link, def_id, kind, external, is_public, _sp)
         }
     }
 
@@ -1027,46 +1041,17 @@ impl NameBindings {
                def,
                modifiers);
         // Merges the type with the existing type def or creates a new one.
-        let type_def = self.type_def.borrow().clone();
-        match type_def {
-            None => {
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
-                    module_def: None,
-                    type_def: Some(def),
-                    type_span: Some(sp),
-                    modifiers: modifiers,
-                });
-            }
-            Some(type_def) => {
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
-                    module_def: type_def.module_def,
-                    type_def: Some(def),
-                    type_span: Some(sp),
-                    modifiers: modifiers,
-                });
-            }
-        }
+        self.type_ns.set(modifiers, Some(def), self.type_ns.module(), sp);
     }
 
     /// Records a value definition.
     fn define_value(&self, def: Def, sp: Span, modifiers: DefModifiers) {
-        debug!("defining value for def {:?} with modifiers {:?}",
-               def,
-               modifiers);
-        *self.value_def.borrow_mut() = Some(ValueNsDef {
-            def: def,
-            value_span: Some(sp),
-            modifiers: modifiers,
-        });
+        debug!("defining value for def {:?} with modifiers {:?}", def, modifiers);
+        self.value_ns.set(modifiers, Some(def), None, sp);
     }
 
     /// Returns the module node if applicable.
-    fn get_module_if_available(&self) -> Option<Rc<Module>> {
-        match *self.type_def.borrow() {
-            Some(ref type_def) => type_def.module_def.clone(),
-            None => None,
-        }
-    }
+    fn get_module_if_available(&self) -> Option<Rc<Module>> { self.type_ns.module() }
 
     /// Returns the module node. Panics if this node does not have a module
     /// definition.
@@ -1076,96 +1061,6 @@ impl NameBindings {
                 panic!("get_module called on a node with no module definition!")
             }
             Some(module_def) => module_def,
-        }
-    }
-
-    fn defined_in_namespace(&self, namespace: Namespace) -> bool {
-        match namespace {
-            TypeNS => return self.type_def.borrow().is_some(),
-            ValueNS => return self.value_def.borrow().is_some(),
-        }
-    }
-
-    fn defined_in_public_namespace(&self, namespace: Namespace) -> bool {
-        self.defined_in_namespace_with(namespace, DefModifiers::PUBLIC)
-    }
-
-    fn defined_in_namespace_with(&self, namespace: Namespace, modifiers: DefModifiers) -> bool {
-        match namespace {
-            TypeNS => match *self.type_def.borrow() {
-                Some(ref def) => def.modifiers.contains(modifiers),
-                None => false,
-            },
-            ValueNS => match *self.value_def.borrow() {
-                Some(ref def) => def.modifiers.contains(modifiers),
-                None => false,
-            },
-        }
-    }
-
-    fn def_for_namespace(&self, namespace: Namespace) -> Option<Def> {
-        match namespace {
-            TypeNS => {
-                match *self.type_def.borrow() {
-                    None => None,
-                    Some(ref type_def) => {
-                        match type_def.type_def {
-                            Some(type_def) => Some(type_def),
-                            None => {
-                                match type_def.module_def {
-                                    Some(ref module) => {
-                                        match module.def_id.get() {
-                                            Some(did) => Some(DefMod(did)),
-                                            None => None,
-                                        }
-                                    }
-                                    None => None,
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            ValueNS => {
-                match *self.value_def.borrow() {
-                    None => None,
-                    Some(value_def) => Some(value_def.def),
-                }
-            }
-        }
-    }
-
-    fn span_for_namespace(&self, namespace: Namespace) -> Option<Span> {
-        if self.defined_in_namespace(namespace) {
-            match namespace {
-                TypeNS => {
-                    match *self.type_def.borrow() {
-                        None => None,
-                        Some(ref type_def) => type_def.type_span,
-                    }
-                }
-                ValueNS => {
-                    match *self.value_def.borrow() {
-                        None => None,
-                        Some(ref value_def) => value_def.value_span,
-                    }
-                }
-            }
-        } else {
-            None
-        }
-    }
-
-    fn is_public(&self, namespace: Namespace) -> bool {
-        match namespace {
-            TypeNS => {
-                let type_def = self.type_def.borrow();
-                type_def.as_ref().unwrap().modifiers.contains(DefModifiers::PUBLIC)
-            }
-            ValueNS => {
-                let value_def = self.value_def.borrow();
-                value_def.as_ref().unwrap().modifiers.contains(DefModifiers::PUBLIC)
-            }
         }
     }
 }
@@ -1356,18 +1251,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn create_name_bindings_from_module(module: Rc<Module>) -> NameBindings {
-        NameBindings {
-            type_def: RefCell::new(Some(TypeNsDef {
-                modifiers: DefModifiers::IMPORTABLE,
-                module_def: Some(module),
-                type_def: None,
-                type_span: None,
-            })),
-            value_def: RefCell::new(None),
-        }
-    }
-
     /// Checks that the names of external crates don't collide with other
     /// external crates.
     fn check_for_conflicts_between_external_crates(&self,
@@ -1473,38 +1356,24 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 Success((target, used_proxy)) => {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
-                    match *target.bindings.type_def.borrow() {
-                        Some(ref type_def) => {
-                            match type_def.module_def {
-                                None => {
-                                    let msg = format!("Not a module `{}`", name);
+                    if let Some(module_def) = target.binding.module() {
+                        // track extern crates for unused_extern_crate lint
+                        if let Some(did) = module_def.def_id.get() {
+                            self.used_crates.insert(did.krate);
+                        }
 
-                                    return Failed(Some((span, msg)));
-                                }
-                                Some(ref module_def) => {
-                                    search_module = module_def.clone();
+                        search_module = module_def;
 
-                                    // track extern crates for unused_extern_crate lint
-                                    if let Some(did) = module_def.def_id.get() {
-                                        self.used_crates.insert(did.krate);
-                                    }
-
-                                    // Keep track of the closest
-                                    // private module used when
-                                    // resolving this import chain.
-                                    if !used_proxy && !search_module.is_public {
-                                        if let Some(did) = search_module.def_id.get() {
-                                            closest_private = LastMod(DependsOn(did));
-                                        }
-                                    }
-                                }
+                        // Keep track of the closest private module used
+                        // when resolving this import chain.
+                        if !used_proxy && !search_module.is_public {
+                            if let Some(did) = search_module.def_id.get() {
+                                closest_private = LastMod(DependsOn(did));
                             }
                         }
-                        None => {
-                            // There are no type bindings at all.
-                            let msg = format!("Not a module `{}`", name);
-                            return Failed(Some((span, msg)));
-                        }
+                    } else {
+                        let msg = format!("Not a module `{}`", name);
+                        return Failed(Some((span, msg)));
                     }
                 }
             }
@@ -1628,10 +1497,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         build_reduced_graph::populate_module_if_necessary(self, &module_);
 
         match module_.children.borrow().get(&name) {
-            Some(name_bindings) if name_bindings.defined_in_namespace(namespace) => {
+            Some(name_bindings) if name_bindings[namespace].defined() => {
                 debug!("top name bindings succeeded");
                 return Success((Target::new(module_.clone(),
-                                            name_bindings.clone(),
+                                            name_bindings[namespace].clone(),
                                             Shadowable::Never),
                                 false));
             }
@@ -1671,9 +1540,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // FIXME (21114): In principle unclear `child` *has* to be lifted.
             let child = module_.external_module_children.borrow().get(&name).cloned();
             if let Some(module) = child {
-                let name_bindings = Rc::new(Resolver::create_name_bindings_from_module(module));
+                let name_binding = NameBinding::create_from_module(module);
                 debug!("lower name bindings succeeded");
-                return Success((Target::new(module_, name_bindings, Shadowable::Never),
+                return Success((Target::new(module_, name_binding, Shadowable::Never),
                                 false));
             }
         }
@@ -1745,26 +1614,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let resolve_result = self.resolve_item_in_lexical_scope(module_, name, TypeNS);
         match resolve_result {
             Success((target, _)) => {
-                let bindings = &*target.bindings;
-                match *bindings.type_def.borrow() {
-                    Some(ref type_def) => {
-                        match type_def.module_def {
-                            None => {
-                                debug!("!!! (resolving module in lexical scope) module wasn't \
-                                        actually a module!");
-                                return Failed(None);
-                            }
-                            Some(ref module_def) => {
-                                return Success(module_def.clone());
-                            }
-                        }
-                    }
-                    None => {
-                        debug!("!!! (resolving module in lexical scope) module
-                                \
-                                wasn't actually a module!");
-                        return Failed(None);
-                    }
+                if let Some(module_def) = target.binding.module() {
+                    return Success(module_def)
+                } else {
+                    debug!("!!! (resolving module in lexical scope) module \
+                            wasn't actually a module!");
+                    return Failed(None);
                 }
             }
             Indeterminate => {
@@ -1872,10 +1727,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         build_reduced_graph::populate_module_if_necessary(self, &module_);
 
         match module_.children.borrow().get(&name) {
-            Some(name_bindings) if name_bindings.defined_in_namespace(namespace) => {
+            Some(name_bindings) if name_bindings[namespace].defined() => {
                 debug!("(resolving name in module) found node as child");
                 return Success((Target::new(module_.clone(),
-                                            name_bindings.clone(),
+                                            name_bindings[namespace].clone(),
                                             Shadowable::Never),
                                 false));
             }
@@ -1926,8 +1781,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // FIXME (21114): In principle unclear `child` *has* to be lifted.
             let child = module_.external_module_children.borrow().get(&name).cloned();
             if let Some(module) = child {
-                let name_bindings = Rc::new(Resolver::create_name_bindings_from_module(module));
-                return Success((Target::new(module_, name_bindings, Shadowable::Never),
+                let name_binding = NameBinding::create_from_module(module);
+                return Success((Target::new(module_, name_binding, Shadowable::Never),
                                 false));
             }
         }
@@ -2958,32 +2813,26 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Success((target, _)) => {
                 debug!("(resolve bare identifier pattern) succeeded in finding {} at {:?}",
                        name,
-                       target.bindings.value_def.borrow());
-                match *target.bindings.value_def.borrow() {
+                       target.binding.borrow());
+                match target.binding.def() {
                     None => {
                         panic!("resolved name in the value namespace to a set of name bindings \
                                 with no def?!");
                     }
-                    Some(def) => {
-                        // For the two success cases, this lookup can be
-                        // considered as not having a private component because
-                        // the lookup happened only within the current module.
-                        match def.def {
-                            def @ DefVariant(..) | def @ DefStruct(..) => {
-                                return FoundStructOrEnumVariant(def, LastMod(AllPublic));
-                            }
-                            def @ DefConst(..) | def @ DefAssociatedConst(..) => {
-                                return FoundConst(def, LastMod(AllPublic), name);
-                            }
-                            DefStatic(..) => {
-                                resolve_error(self, span, ResolutionError::StaticVariableReference);
-                                return BareIdentifierPatternUnresolved;
-                            }
-                            _ => {
-                                return BareIdentifierPatternUnresolved;
-                            }
-                        }
+                    // For the two success cases, this lookup can be
+                    // considered as not having a private component because
+                    // the lookup happened only within the current module.
+                    Some(def @ DefVariant(..)) | Some(def @ DefStruct(..)) => {
+                        return FoundStructOrEnumVariant(def, LastMod(AllPublic));
                     }
+                    Some(def @ DefConst(..)) | Some(def @ DefAssociatedConst(..)) => {
+                        return FoundConst(def, LastMod(AllPublic), name);
+                    }
+                    Some(DefStatic(..)) => {
+                        resolve_error(self, span, ResolutionError::StaticVariableReference);
+                        return BareIdentifierPatternUnresolved;
+                    }
+                    _ => return BareIdentifierPatternUnresolved
                 }
             }
 
@@ -3207,85 +3056,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         return Some(def);
     }
 
-    // FIXME #4952: Merge me with resolve_name_in_module?
-    fn resolve_definition_of_name_in_module(&mut self,
-                                            containing_module: Rc<Module>,
-                                            name: Name,
-                                            namespace: Namespace)
-                                            -> NameDefinition {
-        // First, search children.
-        build_reduced_graph::populate_module_if_necessary(self, &containing_module);
-
-        match containing_module.children.borrow().get(&name) {
-            Some(child_name_bindings) => {
-                match child_name_bindings.def_for_namespace(namespace) {
-                    Some(def) => {
-                        // Found it. Stop the search here.
-                        let p = child_name_bindings.defined_in_public_namespace(namespace);
-                        let lp = if p {
-                            LastMod(AllPublic)
-                        } else {
-                            LastMod(DependsOn(def.def_id()))
-                        };
-                        return ChildNameDefinition(def, lp);
-                    }
-                    None => {}
-                }
-            }
-            None => {}
-        }
-
-        // Next, search import resolutions.
-        match containing_module.import_resolutions.borrow().get(&name) {
-            Some(import_resolution) if import_resolution.is_public => {
-                if let Some(target) = (*import_resolution).target_for_namespace(namespace) {
-                    match target.bindings.def_for_namespace(namespace) {
-                        Some(def) => {
-                            // Found it.
-                            let id = import_resolution.id(namespace);
-                            // track imports and extern crates as well
-                            self.used_imports.insert((id, namespace));
-                            self.record_import_use(id, name);
-                            match target.target_module.def_id.get() {
-                                Some(DefId{krate: kid, ..}) => {
-                                    self.used_crates.insert(kid);
-                                }
-                                _ => {}
-                            }
-                            return ImportNameDefinition(def, LastMod(AllPublic));
-                        }
-                        None => {
-                            // This can happen with external impls, due to
-                            // the imperfect way we read the metadata.
-                        }
-                    }
-                }
-            }
-            Some(..) | None => {} // Continue.
-        }
-
-        // Finally, search through external children.
-        if namespace == TypeNS {
-            if let Some(module) = containing_module.external_module_children
-                                                   .borrow()
-                                                   .get(&name)
-                                                   .cloned() {
-                if let Some(def_id) = module.def_id.get() {
-                    // track used crates
-                    self.used_crates.insert(def_id.krate);
-                    let lp = if module.is_public {
-                        LastMod(AllPublic)
-                    } else {
-                        LastMod(DependsOn(def_id))
-                    };
-                    return ChildNameDefinition(DefMod(def_id), lp);
-                }
-            }
-        }
-
-        return NoNameDefinition;
-    }
-
     // resolve a "module-relative" path, e.g. a::b::c
     fn resolve_module_relative_path(&mut self,
                                     span: Span,
@@ -3328,16 +3098,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let name = segments.last().unwrap().identifier.name;
-        let def = match self.resolve_definition_of_name_in_module(containing_module.clone(),
-                                                                  name,
-                                                                  namespace) {
-            NoNameDefinition => {
-                // We failed to resolve the name. Report an error.
-                return None;
-            }
-            ChildNameDefinition(def, lp) | ImportNameDefinition(def, lp) => {
+        let def = match self.resolve_name_in_module(containing_module.clone(),
+                                                    name,
+                                                    namespace,
+                                                    NameSearchType::PathSearch,
+                                                    false) {
+            Success((Target { binding, .. }, _)) => {
+                let (def, lp) = binding.def_and_lp();
                 (def, last_private.or(lp))
             }
+            _ => return None,
         };
         if let Some(DefId{krate: kid, ..}) = containing_module.def_id.get() {
             self.used_crates.insert(kid);
@@ -3394,14 +3164,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let name = segments.last().unwrap().identifier.name;
-        match self.resolve_definition_of_name_in_module(containing_module, name, namespace) {
-            NoNameDefinition => {
-                // We failed to resolve the name. Report an error.
-                return None;
+        match self.resolve_name_in_module(containing_module,
+                                          name,
+                                          namespace,
+                                          NameSearchType::PathSearch,
+                                          false) {
+            Success((Target { binding, .. }, _)) => {
+                let (def, lp) = binding.def_and_lp();
+                Some((def, last_private.or(lp)))
             }
-            ChildNameDefinition(def, lp) | ImportNameDefinition(def, lp) => {
-                return Some((def, last_private.or(lp)));
-            }
+            _ => None,
         }
     }
 
@@ -3449,7 +3221,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let module = self.current_module.clone();
         match self.resolve_item_in_lexical_scope(module, name, namespace) {
             Success((target, _)) => {
-                match (*target.bindings).def_for_namespace(namespace) {
+                match target.binding.def() {
                     None => {
                         // This can happen if we were looking for a type and
                         // found a module instead. Modules don't have defs.
@@ -3586,7 +3358,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Look for a method in the current self type's impl module.
         if let Some(module) = get_module(self, path.span, &name_path) {
             if let Some(binding) = module.children.borrow().get(&name) {
-                if let Some(DefMethod(did)) = binding.def_for_namespace(ValueNS) {
+                if let Some(DefMethod(did)) = binding.value_ns.def() {
                     if is_static_method(self, did) {
                         return StaticMethod(path_names_to_string(&path, 0));
                     }
@@ -3894,7 +3666,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             {
                 for (_, child_names) in search_module.children.borrow().iter() {
-                    let def = match child_names.def_for_namespace(TypeNS) {
+                    let def = match child_names.type_ns.def() {
                         Some(def) => def,
                         None => continue,
                     };
@@ -3914,7 +3686,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     None => continue,
                     Some(target) => target,
                 };
-                let did = match target.bindings.def_for_namespace(TypeNS) {
+                let did = match target.binding.def() {
                     Some(DefTrait(trait_def_id)) => trait_def_id,
                     Some(..) | None => continue,
                 };

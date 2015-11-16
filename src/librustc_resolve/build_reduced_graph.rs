@@ -25,7 +25,6 @@ use {names_to_string, module_to_string};
 use ParentLink::{self, ModuleParentLink, BlockParentLink};
 use Resolver;
 use resolve_imports::Shadowable;
-use TypeNsDef;
 use {resolve_error, ResolutionError};
 
 use self::DuplicateCheckingMode::*;
@@ -130,7 +129,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                  duplicate_checking_mode: DuplicateCheckingMode,
                  // For printing errors
                  sp: Span)
-                 -> Rc<NameBindings> {
+                 -> NameBindings {
         // If this is the immediate descendant of a module, then we add the
         // child name directly. Otherwise, we create or reuse an anonymous
         // module and add the child to that.
@@ -141,7 +140,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         let child = parent.children.borrow().get(&name).cloned();
         match child {
             None => {
-                let child = Rc::new(NameBindings::new());
+                let child = NameBindings::new();
                 parent.children.borrow_mut().insert(name, child.clone());
                 child
             }
@@ -173,27 +172,27 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         Some(TypeNS)
                     }
                     ForbidDuplicateTypesAndModules => {
-                        if child.defined_in_namespace(TypeNS) {
+                        if child.type_ns.defined() {
                             duplicate_type = TypeError;
                         }
                         Some(TypeNS)
                     }
                     ForbidDuplicateValues => {
-                        if child.defined_in_namespace(ValueNS) {
+                        if child.value_ns.defined() {
                             duplicate_type = ValueError;
                         }
                         Some(ValueNS)
                     }
                     ForbidDuplicateTypesAndValues => {
                         let mut n = None;
-                        match child.def_for_namespace(TypeNS) {
+                        match child.type_ns.def() {
                             Some(DefMod(_)) | None => {}
                             Some(_) => {
                                 n = Some(TypeNS);
                                 duplicate_type = TypeError;
                             }
                         }
-                        if child.defined_in_namespace(ValueNS) {
+                        if child.value_ns.defined() {
                             duplicate_type = ValueError;
                             n = Some(ValueNS);
                         }
@@ -213,7 +212,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                             name)
                     );
                     {
-                        let r = child.span_for_namespace(ns);
+                        let r = child[ns].span();
                         if let Some(sp) = r {
                             self.session.span_note(sp,
                                                    &format!("first definition of {} `{}` here",
@@ -415,7 +414,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let child = parent.children.borrow().get(&name).cloned();
                 if let Some(child) = child {
                     // check if there's struct of the same name already defined
-                    if child.defined_in_namespace(TypeNS) &&
+                    if child.type_ns.defined() &&
                        child.get_module_if_available().is_none() {
                         self.session.span_warn(sp,
                                                &format!("duplicate definition of {} `{}`. \
@@ -424,7 +423,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                         namespace_error_to_string(TypeError),
                                                         name));
                         {
-                            let r = child.span_for_namespace(TypeNS);
+                            let r = child.type_ns.span();
                             if let Some(sp) = r {
                                 self.session.span_note(sp,
                                                        &format!("first definition of {} `{}` here",
@@ -530,7 +529,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     let child = parent.children.borrow().get(&name).cloned();
                     if let Some(child) = child {
                         // check if theres a DefMod
-                        if let Some(DefMod(_)) = child.def_for_namespace(TypeNS) {
+                        if let Some(DefMod(_)) = child.type_ns.def() {
                             self.session.span_warn(sp,
                                                    &format!("duplicate definition of {} `{}`. \
                                                              Defining a module and a struct \
@@ -539,7 +538,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                             namespace_error_to_string(TypeError),
                                                             name));
                             {
-                                let r = child.span_for_namespace(TypeNS);
+                                let r = child.type_ns.span();
                                 if let Some(sp) = r {
                                     self.session
                                         .span_note(sp,
@@ -752,26 +751,21 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             DefForeignMod(def_id) |
             DefStruct(def_id) |
             DefTy(def_id, _) => {
-                let type_def = child_name_bindings.type_def.borrow().clone();
-                match type_def {
-                    Some(TypeNsDef { module_def: Some(module_def), .. }) => {
-                        debug!("(building reduced graph for external crate) already created \
-                                module");
-                        module_def.def_id.set(Some(def_id));
-                    }
-                    Some(_) | None => {
-                        debug!("(building reduced graph for external crate) building module {} {}",
-                               final_ident,
-                               is_public);
-                        let parent_link = self.get_parent_link(new_parent, name);
+                if let Some(module_def) = child_name_bindings.type_ns.module() {
+                    debug!("(building reduced graph for external crate) already created module");
+                    module_def.def_id.set(Some(def_id));
+                } else {
+                    debug!("(building reduced graph for external crate) building module {} {}",
+                           final_ident,
+                           is_public);
+                    let parent_link = self.get_parent_link(new_parent, name);
 
-                        child_name_bindings.define_module(parent_link,
-                                                          Some(def_id),
-                                                          kind,
-                                                          true,
-                                                          is_public,
-                                                          DUMMY_SP);
-                    }
+                    child_name_bindings.define_module(parent_link,
+                                                      Some(def_id),
+                                                      kind,
+                                                      true,
+                                                      is_public,
+                                                      DUMMY_SP);
                 }
             }
             _ => {}
@@ -807,7 +801,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                        final_ident);
                 // impl methods have already been defined with the correct importability
                 // modifier
-                let mut modifiers = match *child_name_bindings.value_def.borrow() {
+                let mut modifiers = match *child_name_bindings.value_ns.borrow() {
                     Some(ref def) => (modifiers & !DefModifiers::IMPORTABLE) |
                                      (def.modifiers & DefModifiers::IMPORTABLE),
                     None => modifiers,
@@ -922,7 +916,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                         self.handle_external_def(def,
                                                  def_visibility,
-                                                 &*child_name_bindings,
+                                                 &child_name_bindings,
                                                  &name.as_str(),
                                                  name,
                                                  root);
