@@ -145,7 +145,7 @@ represents an opaque (non-serializable!) timestamp that is guaranteed to
 be monotonic when compared to another `Instant`.
 
 > In this context, monotonic means that a timestamp created later in real-world
-> time will always be larger than a timestamp created earlier in real-world
+> time will always be not less than a timestamp created earlier in real-world
 > time.
 
 The `Duration` type can be used in conjunction with `Instant`, and these
@@ -162,7 +162,7 @@ difference between an earlier and a later `Instant` also produces a positive
 `Duration` when used correctly.
 
 This design does not assume that negative `Duration`s are never useful, but
-rather than the most common uses of `Duration` do not have a meaningful
+rather that the most common uses of `Duration` do not have a meaningful
 use for negative values. Rather than require each API that takes a `Duration`
 to produce an `Err` (or `panic!`) when receiving a negative value, this design
 optimizes for the broadly useful positive `Duration`.
@@ -227,7 +227,8 @@ impl Duration {
 benchmarks.**
 
 A `SystemTime` represents a time stored on the local machine derived from the
-system clock. For example, it is used to represent `mtime` on the file system.
+system clock (in UTC). For example, it is used to represent `mtime` on the file
+system.
 
 The most important caveat of `SystemTime` is that it is **not monotonic**. This
 means that you can save a file to the file system, then save another file to
