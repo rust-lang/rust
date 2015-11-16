@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::middle::ty::Ty;
+use rustc::middle::ty::{Ty, HasTypeFlags};
 use rustc_mir::repr as mir;
 use trans::base;
 use trans::common::{self, Block};
@@ -122,6 +122,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                     datum::ByRef => OperandValue::Ref(tr_lvalue.llval)
                 };
+
+                assert!(!ty.has_erasable_regions());
+
                 OperandRef {
                     val: val,
                     ty: ty

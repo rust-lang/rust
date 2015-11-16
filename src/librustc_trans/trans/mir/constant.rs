@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::ty::Ty;
+use middle::ty::{Ty, HasTypeFlags};
 use rustc::middle::const_eval::ConstVal;
 use rustc_mir::repr as mir;
 use trans::consts::{self, TrueConst};
@@ -63,6 +63,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 unimplemented!()
             }
         };
+
+        assert!(!ty.has_erasable_regions());
+
         OperandRef {
             ty: ty,
             val: val

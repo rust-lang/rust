@@ -120,8 +120,8 @@ impl SimplifyCfg {
     }
 }
 
-impl MirPass for SimplifyCfg {
-    fn run_on_mir(&mut self, mir: &mut Mir) {
+impl<'tcx> MirPass<'tcx> for SimplifyCfg {
+    fn run_on_mir(&mut self, mir: &mut Mir<'tcx>) {
         let mut changed = true;
         while changed {
             changed = self.simplify_branches(mir);
