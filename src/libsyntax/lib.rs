@@ -62,6 +62,7 @@ macro_rules! panictry {
 }
 
 pub mod util {
+    pub mod binding_count;
     pub mod interner;
     pub mod node_count;
     pub mod parser;
