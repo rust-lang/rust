@@ -380,7 +380,7 @@ HBIN$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/bin
 ifeq ($$(CFG_WINDOWSY_$(3)),1)
 # On Windows we always store host runtime libraries in the 'bin' directory because
 # there's no rpath. Target libraries go under $CFG_LIBDIR_RELATIVE (usually 'lib').
-HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/bin
+HLIB_RELATIVE$(1)_H_$(3) = bin
 TROOT$(1)_T_$(2)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_LIBDIR_RELATIVE)/rustlib/$(2)
 # Remove the next 3 lines after a snapshot
 ifeq ($(1),0)
@@ -390,13 +390,14 @@ endif
 else
 
 ifeq ($(1),0)
-HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/lib
+HLIB_RELATIVE$(1)_H_$(3) = lib
 else
-HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_LIBDIR_RELATIVE)
+HLIB_RELATIVE$(1)_H_$(3) = $$(CFG_LIBDIR_RELATIVE)
 endif
 TROOT$(1)_T_$(2)_H_$(3) = $$(HLIB$(1)_H_$(3))/rustlib/$(2)
 
 endif
+HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(HLIB_RELATIVE$(1)_H_$(3))
 
 # Destinations of artifacts for target architectures
 TBIN$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/bin
