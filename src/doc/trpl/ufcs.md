@@ -109,19 +109,28 @@ Here’s an example of using the longer form.
 
 ```rust
 trait Foo {
-    fn clone(&self);
+    fn foo() -> i32;
 }
 
-#[derive(Clone)]
 struct Bar;
 
-impl Foo for Bar {
-    fn clone(&self) {
-        println!("Making a clone of Bar");
-
-        <Bar as Clone>::clone(self);
+impl Bar {
+    fn foo() -> i32 {
+        20
     }
+}
+
+impl Foo for Bar {
+    fn foo() -> i32 {
+        10
+    }
+}
+
+fn main() {
+    assert_eq!(10, <Bar as Foo>::foo());
+    assert_eq!(20, Bar::foo());
 }
 ```
 
-This will call the `Clone` trait’s `clone()` method, rather than `Foo`’s.
+Using the angle bracket syntax lets you call the trait method instead of the
+inherent one.
