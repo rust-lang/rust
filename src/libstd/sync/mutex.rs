@@ -66,7 +66,7 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 /// for _ in 0..10 {
 ///     let (data, tx) = (data.clone(), tx.clone());
 ///     thread::spawn(move || {
-///         // The shared static can only be accessed once the lock is held.
+///         // The shared state can only be accessed once the lock is held.
 ///         // Our non-atomic increment is safe because we're the only thread
 ///         // which can access the shared state when the lock is held.
 ///         //
