@@ -13,29 +13,42 @@ enum Value {
     Int(i64), // FIXME: Should be bit-width aware.
 }
 
-struct Interpreter {
-    stack: Vec<Value>,
+#[derive(Debug)]
+struct Frame {
+    offset: usize,
+    num_args: usize,
     num_vars: usize,
     num_temps: usize,
+}
+
+struct Interpreter {
+    value_stack: Vec<Value>,
+    call_stack: Vec<Frame>,
 }
 
 impl Interpreter {
     fn new() -> Self {
         Interpreter {
-            stack: Vec::new(),
-            num_vars: 0,
-            num_temps: 0,
+            value_stack: Vec::new(),
+            call_stack: Vec::new(),
         }
     }
 
-    fn run(&mut self, mir: &Mir) -> Value {
+    fn call(&mut self, mir: &Mir, _args: &[Value]) -> Value {
+        self.call_stack.push(Frame {
+            offset: self.value_stack.len(),
+            num_args: mir.arg_decls.len(),
+            num_vars: mir.var_decls.len(),
+            num_temps: mir.temp_decls.len(),
+        });
+
+        {
+            let frame = self.call_stack.last().unwrap();
+            let frame_size = 1 + frame.num_args + frame.num_vars + frame.num_temps;
+            self.value_stack.extend(iter::repeat(Value::Uninit).take(frame_size));
+        }
+
         let start_block = mir.basic_block_data(mir::START_BLOCK);
-
-        self.num_vars = mir.var_decls.len();
-        self.num_temps = mir.temp_decls.len();
-
-        self.stack.extend(
-            iter::repeat(Value::Uninit).take(1 + self.num_vars + self.num_temps));
 
         for stmt in &start_block.statements {
             use rustc_mir::repr::StatementKind::*;
@@ -44,7 +57,7 @@ impl Interpreter {
                 Assign(ref lvalue, ref rvalue) => {
                     let index = self.eval_lvalue(lvalue);
                     let value = self.eval_rvalue(rvalue);
-                    self.stack[index] = value;
+                    self.value_stack[index] = value;
                 }
 
                 Drop(_kind, ref _lv) => {
@@ -53,16 +66,19 @@ impl Interpreter {
             }
         }
 
-        self.stack[self.eval_lvalue(&mir::Lvalue::ReturnPointer)].clone()
+        self.value_stack[self.eval_lvalue(&mir::Lvalue::ReturnPointer)].clone()
     }
 
     fn eval_lvalue(&self, lvalue: &mir::Lvalue) -> usize {
         use rustc_mir::repr::Lvalue::*;
 
+        let frame = self.call_stack.last().expect("missing call frame");
+
         match *lvalue {
-            Var(i) => 1 + i as usize,
-            Temp(i) => 1 + self.num_vars + i as usize,
-            ReturnPointer => 0,
+            ReturnPointer => frame.offset,
+            Arg(i)  => frame.offset + 1 + i as usize,
+            Var(i)  => frame.offset + 1 + frame.num_args + i as usize,
+            Temp(i) => frame.offset + 1 + frame.num_args + frame.num_vars + i as usize,
             _ => unimplemented!(),
         }
     }
@@ -117,7 +133,7 @@ impl Interpreter {
         use rustc_mir::repr::Operand::*;
 
         match *op {
-            Consume(ref lvalue) => self.stack[self.eval_lvalue(lvalue)].clone(),
+            Consume(ref lvalue) => self.value_stack[self.eval_lvalue(lvalue)].clone(),
 
             Constant(ref constant) => {
                 match constant.literal {
@@ -153,7 +169,7 @@ pub fn interpret_start_points<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &MirMap<'tcx>
 
                 println!("Interpreting: {}", item.name);
                 let mut interpreter = Interpreter::new();
-                let val = interpreter.run(mir);
+                let val = interpreter.call(mir, &[]);
                 let val_str = format!("{:?}", val);
 
                 if !check_expected(&val_str, attr) {
