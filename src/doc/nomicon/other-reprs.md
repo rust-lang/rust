@@ -26,6 +26,9 @@ still consumes a byte of space.
 * DSTs, tuples, and tagged unions are not a concept in C and as such are never
 FFI safe.
 
+* Tuple structs are like structs with regards to `repr(C)`, as the only
+  difference from a struct is that the fields aren’t named.
+
 * **If the type would have any [drop flags], they will still be added**
 
 * This is equivalent to one of `repr(u*)` (see the next section) for enums. The
