@@ -37,17 +37,28 @@ use vec::Vec;
 use slice::SliceConcatExt;
 use boxed::Box;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{FromStr, Utf8Error};
 #[allow(deprecated)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{Lines, LinesAny, CharRange};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{Split, RSplit};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{SplitN, RSplitN};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{SplitTerminator, RSplitTerminator};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{Matches, RMatches};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{MatchIndices, RMatchIndices};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{from_utf8_unchecked, ParseBoolError};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use rustc_unicode::str::{SplitWhitespace};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
 
 impl<S: Borrow<str>> SliceConcatExt<str> for [S] {

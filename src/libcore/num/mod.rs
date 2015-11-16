@@ -1938,6 +1938,7 @@ impl fmt::Display for ParseIntError {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use num::dec2flt::ParseFloatError;
 
 // Conversion traits for primitive integer and float types

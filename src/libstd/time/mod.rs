@@ -12,6 +12,7 @@
 
 #![stable(feature = "time", since = "1.3.0")]
 
+#[stable(feature = "time", since = "1.3.0")]
 pub use self::duration::Duration;
 
 mod duration;
