@@ -541,6 +541,16 @@ CFG_BUILD_DIR="$(pwd)/"
 CFG_SELF="$0"
 CFG_CONFIGURE_ARGS="$@"
 
+
+case "${CFG_SRC_DIR}" in  
+    *\ * )
+        err "The path to the rust source directory contains spaces, which is not supported"
+        ;;
+    *)
+        ;;
+esac
+
+
 OPTIONS=""
 HELP=0
 if [ "$1" = "--help" ]
