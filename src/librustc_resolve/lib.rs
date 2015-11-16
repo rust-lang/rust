@@ -49,7 +49,6 @@ use self::AssocItemResolveResult::*;
 use self::NameSearchType::*;
 use self::BareIdentifierPatternResolution::*;
 use self::ParentLink::*;
-use self::ModuleKind::*;
 use self::FallbackChecks::*;
 
 use rustc::front::map as hir_map;
@@ -759,21 +758,10 @@ enum ParentLink {
     BlockParentLink(Weak<Module>, NodeId),
 }
 
-/// The type of module this is.
-#[derive(Copy, Clone, PartialEq, Debug)]
-enum ModuleKind {
-    NormalModuleKind,
-    TraitModuleKind,
-    EnumModuleKind,
-    TypeModuleKind,
-    AnonymousModuleKind,
-}
-
 /// One node in the tree of modules.
 pub struct Module {
     parent_link: ParentLink,
-    def_id: Cell<Option<DefId>>,
-    kind: Cell<ModuleKind>,
+    def: Cell<Option<Def>>,
     is_public: bool,
 
     children: RefCell<HashMap<Name, NameBindings>>,
@@ -822,15 +810,13 @@ pub struct Module {
 
 impl Module {
     fn new(parent_link: ParentLink,
-           def_id: Option<DefId>,
-           kind: ModuleKind,
+           def: Option<Def>,
            external: bool,
            is_public: bool)
            -> Module {
         Module {
             parent_link: parent_link,
-            def_id: Cell::new(def_id),
-            kind: Cell::new(kind),
+            def: Cell::new(def),
             is_public: is_public,
             children: RefCell::new(HashMap::new()),
             imports: RefCell::new(Vec::new()),
@@ -842,6 +828,24 @@ impl Module {
             pub_glob_count: Cell::new(0),
             resolved_import_count: Cell::new(0),
             populated: Cell::new(!external),
+        }
+    }
+
+    fn def_id(&self) -> Option<DefId> {
+        self.def.get().as_ref().map(Def::def_id)
+    }
+
+    fn is_normal(&self) -> bool {
+        match self.def.get() {
+            Some(DefMod(_)) | Some(DefForeignMod(_)) => true,
+            _ => false,
+        }
+    }
+
+    fn is_trait(&self) -> bool {
+        match self.def.get() {
+            Some(DefTrait(_)) => true,
+            _ => false,
         }
     }
 
@@ -882,9 +886,8 @@ impl Module {
 impl fmt::Debug for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
-               "{:?}, kind: {:?}, {}",
-               self.def_id,
-               self.kind,
+               "{:?}, {}",
+               self.def,
                if self.is_public {
                    "public"
                } else {
@@ -902,7 +905,9 @@ bitflags! {
 }
 
 // Records a possibly-private definition.
-#[derive(Clone,Debug)]
+// FIXME once #21546 is resolved, the def and module fields will never both be Some,
+// so they can be refactored into something like Result<Def, Rc<Module>>.
+#[derive(Debug)]
 struct NsDef {
     modifiers: DefModifiers, // see note in ImportResolution about how to use this
     def: Option<Def>,
@@ -911,10 +916,20 @@ struct NsDef {
 }
 
 impl NsDef {
+    fn create_from_module(module: Rc<Module>, span: Option<Span>) -> Self {
+        let modifiers = if module.is_public {
+            DefModifiers::PUBLIC
+        } else {
+            DefModifiers::empty()
+        } | DefModifiers::IMPORTABLE;
+
+        NsDef { modifiers: modifiers, def: None, module: Some(module), span: span }
+    }
+
     fn def(&self) -> Option<Def> {
         match (self.def, &self.module) {
             (def @ Some(_), _) => def,
-            (_, &Some(ref module)) => module.def_id.get().map(|def_id| DefMod(def_id)),
+            (_, &Some(ref module)) => module.def.get(),
             _ => panic!("NsDef has neither a Def nor a Module"),
         }
     }
@@ -930,17 +945,17 @@ impl NameBinding {
     }
 
     fn create_from_module(module: Rc<Module>) -> Self {
-        NameBinding(Rc::new(RefCell::new(Some(NsDef {
-            modifiers: DefModifiers::IMPORTABLE,
-            def: None,
-            module: Some(module),
-            span: None,
-        }))))
+        NameBinding(Rc::new(RefCell::new(Some(NsDef::create_from_module(module, None)))))
     }
 
-    fn set(&self, modifiers: DefModifiers, def: Option<Def>, mod_: Option<Rc<Module>>, sp: Span) {
-        *self.0.borrow_mut() =
-            Some(NsDef { modifiers: modifiers, def: def, module: mod_, span: Some(sp) });
+    fn set(&self, ns_def: NsDef) {
+        *self.0.borrow_mut() = Some(ns_def);
+    }
+
+    fn set_modifiers(&self, modifiers: DefModifiers) {
+        if let Some(ref mut ns_def) = *self.0.borrow_mut() {
+            ns_def.modifiers = modifiers
+        }
     }
 
     fn and_then<T, F: Fn(&NsDef) -> Option<T>>(&self, f: F) -> Option<T> {
@@ -1004,35 +1019,12 @@ impl NameBindings {
     /// Creates a new module in this set of name bindings.
     fn define_module(&self,
                      parent_link: ParentLink,
-                     def_id: Option<DefId>,
-                     kind: ModuleKind,
+                     def: Option<Def>,
                      external: bool,
                      is_public: bool,
                      sp: Span) {
-        // Merges the module with the existing type def or creates a new one.
-        let modifiers = if is_public {
-            DefModifiers::PUBLIC
-        } else {
-            DefModifiers::empty()
-        } | DefModifiers::IMPORTABLE;
-
-        let module_ = Rc::new(Module::new(parent_link, def_id, kind, external, is_public));
-        self.type_ns.set(modifiers, self.type_ns.def(), Some(module_), sp);
-    }
-
-    /// Sets the kind of the module, creating a new one if necessary.
-    fn set_module_kind(&self,
-                       parent_link: ParentLink,
-                       def_id: Option<DefId>,
-                       kind: ModuleKind,
-                       external: bool,
-                       is_public: bool,
-                       _sp: Span) {
-        if let Some(module) = self.type_ns.module() {
-            module.kind.set(kind)
-        } else {
-            self.define_module(parent_link, def_id, kind, external, is_public, _sp)
-        }
+        let module = Module::new(parent_link, def, external, is_public);
+        self.type_ns.set(NsDef::create_from_module(Rc::new(module), Some(sp)));
     }
 
     /// Records a type definition.
@@ -1041,13 +1033,19 @@ impl NameBindings {
                def,
                modifiers);
         // Merges the type with the existing type def or creates a new one.
-        self.type_ns.set(modifiers, Some(def), self.type_ns.module(), sp);
+        self.type_ns.set(NsDef {
+            modifiers: modifiers, def: Some(def), module: self.type_ns.module(), span: Some(sp)
+        });
     }
 
     /// Records a value definition.
     fn define_value(&self, def: Def, sp: Span, modifiers: DefModifiers) {
-        debug!("defining value for def {:?} with modifiers {:?}", def, modifiers);
-        self.value_ns.set(modifiers, Some(def), None, sp);
+        debug!("defining value for def {:?} with modifiers {:?}",
+               def,
+               modifiers);
+        self.value_ns.set(NsDef {
+            modifiers: modifiers, def: Some(def), module: None, span: Some(sp)
+        });
     }
 
     /// Returns the module node if applicable.
@@ -1178,8 +1176,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let root_def_id = ast_map.local_def_id(CRATE_NODE_ID);
         graph_root.define_module(NoParentLink,
-                                 Some(root_def_id),
-                                 NormalModuleKind,
+                                 Some(DefMod(root_def_id)),
                                  false,
                                  true,
                                  crate_span);
@@ -1358,7 +1355,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // so, whether there is a module within.
                     if let Some(module_def) = target.binding.module() {
                         // track extern crates for unused_extern_crate lint
-                        if let Some(did) = module_def.def_id.get() {
+                        if let Some(did) = module_def.def_id() {
                             self.used_crates.insert(did.krate);
                         }
 
@@ -1367,7 +1364,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // Keep track of the closest private module used
                         // when resolving this import chain.
                         if !used_proxy && !search_module.is_public {
-                            if let Some(did) = search_module.def_id.get() {
+                            if let Some(did) = search_module.def_id() {
                                 closest_private = LastMod(DependsOn(did));
                             }
                         }
@@ -1466,8 +1463,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Success(PrefixFound(ref containing_module, index)) => {
                 search_module = containing_module.clone();
                 start_index = index;
-                last_private = LastMod(DependsOn(containing_module.def_id
-                                                                  .get()
+                last_private = LastMod(DependsOn(containing_module.def_id()
                                                                   .unwrap()));
             }
         }
@@ -1527,8 +1523,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let id = import_resolution.id(namespace);
                     self.used_imports.insert((id, namespace));
                     self.record_import_use(id, name);
-                    if let Some(DefId{krate: kid, ..}) = target.target_module.def_id.get() {
-                        self.used_crates.insert(kid);
+                    if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
+                         self.used_crates.insert(kid);
                     }
                     return Success((target, false));
                 }
@@ -1558,19 +1554,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     return Failed(None);
                 }
                 ModuleParentLink(parent_module_node, _) => {
-                    match search_module.kind.get() {
-                        NormalModuleKind => {
-                            // We stop the search here.
-                            debug!("(resolving item in lexical scope) unresolved module: not \
-                                    searching through module parents");
+                    if search_module.is_normal() {
+                        // We stop the search here.
+                        debug!("(resolving item in lexical scope) unresolved module: not \
+                                searching through module parents");
                             return Failed(None);
-                        }
-                        TraitModuleKind |
-                        EnumModuleKind |
-                        TypeModuleKind |
-                        AnonymousModuleKind => {
-                            search_module = parent_module_node.upgrade().unwrap();
-                        }
+                    } else {
+                        search_module = parent_module_node.upgrade().unwrap();
                     }
                 }
                 BlockParentLink(ref parent_module_node, _) => {
@@ -1642,13 +1632,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 ModuleParentLink(new_module, _) |
                 BlockParentLink(new_module, _) => {
                     let new_module = new_module.upgrade().unwrap();
-                    match new_module.kind.get() {
-                        NormalModuleKind => return Some(new_module),
-                        TraitModuleKind |
-                        EnumModuleKind |
-                        TypeModuleKind |
-                        AnonymousModuleKind => module_ = new_module,
+                    if new_module.is_normal() {
+                        return Some(new_module);
                     }
+                    module_ = new_module;
                 }
             }
         }
@@ -1657,17 +1644,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Returns the nearest normal module parent of the given module, or the
     /// module itself if it is a normal module.
     fn get_nearest_normal_module_parent_or_self(&mut self, module_: Rc<Module>) -> Rc<Module> {
-        match module_.kind.get() {
-            NormalModuleKind => return module_,
-            TraitModuleKind |
-            EnumModuleKind |
-            TypeModuleKind |
-            AnonymousModuleKind => {
-                match self.get_nearest_normal_module_parent(module_.clone()) {
-                    None => module_,
-                    Some(new_module) => new_module,
-                }
-            }
+        if module_.is_normal() {
+            return module_;
+        }
+        match self.get_nearest_normal_module_parent(module_.clone()) {
+            None => module_,
+            Some(new_module) => new_module,
         }
     }
 
@@ -1766,7 +1748,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let id = import_resolution.id(namespace);
                         self.used_imports.insert((id, namespace));
                         self.record_import_use(id, name);
-                        if let Some(DefId{krate: kid, ..}) = target.target_module.def_id.get() {
+                        if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
                             self.used_crates.insert(kid);
                         }
                         return Success((target, true));
@@ -3109,7 +3091,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             _ => return None,
         };
-        if let Some(DefId{krate: kid, ..}) = containing_module.def_id.get() {
+        if let Some(DefId{krate: kid, ..}) = containing_module.def_id() {
             self.used_crates.insert(kid);
         }
         return Some(def);
@@ -3696,7 +3678,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.used_imports.insert((id, TypeNS));
                     let trait_name = self.get_trait_name(did);
                     self.record_import_use(id, trait_name);
-                    if let Some(DefId{krate: kid, ..}) = target.target_module.def_id.get() {
+                    if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
                         self.used_crates.insert(kid);
                     }
                 }

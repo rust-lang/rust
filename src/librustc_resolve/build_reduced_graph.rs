@@ -18,7 +18,6 @@ use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
 use resolve_imports::ImportResolution;
 use Module;
-use ModuleKind::*;
 use Namespace::{TypeNS, ValueNS};
 use NameBindings;
 use {names_to_string, module_to_string};
@@ -395,8 +394,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     self.external_exports.insert(def_id);
                     let parent_link = ModuleParentLink(Rc::downgrade(parent), name);
                     let external_module = Rc::new(Module::new(parent_link,
-                                                              Some(def_id),
-                                                              NormalModuleKind,
+                                                              Some(DefMod(def_id)),
                                                               false,
                                                               true));
                     debug!("(build reduced graph for item) found extern `{}`",
@@ -436,13 +434,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let name_bindings = self.add_child(name, parent, ForbidDuplicateModules, sp);
 
                 let parent_link = self.get_parent_link(parent, name);
-                let def_id = self.ast_map.local_def_id(item.id);
-                name_bindings.define_module(parent_link,
-                                            Some(def_id),
-                                            NormalModuleKind,
-                                            false,
-                                            is_public,
-                                            sp);
+                let def = DefMod(self.ast_map.local_def_id(item.id));
+                name_bindings.define_module(parent_link, Some(def), false, is_public, sp);
 
                 name_bindings.get_module()
             }
@@ -479,17 +472,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                    ForbidDuplicateTypesAndModules,
                                                    sp);
 
-                name_bindings.define_type(DefTy(self.ast_map.local_def_id(item.id), false),
-                                          sp,
-                                          modifiers);
-
                 let parent_link = self.get_parent_link(parent, name);
-                name_bindings.set_module_kind(parent_link,
-                                              Some(self.ast_map.local_def_id(item.id)),
-                                              TypeModuleKind,
-                                              false,
-                                              is_public,
-                                              sp);
+                let def = DefTy(self.ast_map.local_def_id(item.id), false);
+                name_bindings.define_module(parent_link, Some(def), false, is_public, sp);
                 parent.clone()
             }
 
@@ -499,17 +484,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                    ForbidDuplicateTypesAndModules,
                                                    sp);
 
-                name_bindings.define_type(DefTy(self.ast_map.local_def_id(item.id), true),
-                                          sp,
-                                          modifiers);
-
                 let parent_link = self.get_parent_link(parent, name);
-                name_bindings.set_module_kind(parent_link,
-                                              Some(self.ast_map.local_def_id(item.id)),
-                                              EnumModuleKind,
-                                              false,
-                                              is_public,
-                                              sp);
+                let def = DefTy(self.ast_map.local_def_id(item.id), true);
+                name_bindings.define_module(parent_link, Some(def), false, is_public, sp);
 
                 let module = name_bindings.get_module();
 
@@ -592,17 +569,13 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                    ForbidDuplicateTypesAndModules,
                                                    sp);
 
+                let def_id = self.ast_map.local_def_id(item.id);
+
                 // Add all the items within to a new module.
                 let parent_link = self.get_parent_link(parent, name);
-                name_bindings.define_module(parent_link,
-                                            Some(self.ast_map.local_def_id(item.id)),
-                                            TraitModuleKind,
-                                            false,
-                                            is_public,
-                                            sp);
+                let def = DefTrait(def_id);
+                name_bindings.define_module(parent_link, Some(def), false, is_public, sp);
                 let module_parent = name_bindings.get_module();
-
-                let def_id = self.ast_map.local_def_id(item.id);
 
                 // Add the names of all the items to the trait info.
                 for trait_item in items {
@@ -634,7 +607,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     self.trait_item_map.insert((trait_item.name, def_id), trait_item_def_id);
                 }
 
-                name_bindings.define_type(DefTrait(def_id), sp, modifiers);
                 parent.clone()
             }
         }
@@ -705,7 +677,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
             let new_module = Rc::new(Module::new(BlockParentLink(Rc::downgrade(parent), block_id),
                                                  None,
-                                                 AnonymousModuleKind,
                                                  false,
                                                  false));
             parent.anonymous_children.borrow_mut().insert(block_id, new_module.clone());
@@ -732,7 +703,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             DefModifiers::empty()
         } | DefModifiers::IMPORTABLE;
         let is_exported = is_public &&
-                          match new_parent.def_id.get() {
+                          match new_parent.def_id() {
             None => true,
             Some(did) => self.external_exports.contains(&did),
         };
@@ -740,20 +711,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             self.external_exports.insert(def.def_id());
         }
 
-        let kind = match def {
-            DefTy(_, true) => EnumModuleKind,
-            DefTy(_, false) | DefStruct(..) => TypeModuleKind,
-            _ => NormalModuleKind,
-        };
-
         match def {
-            DefMod(def_id) |
-            DefForeignMod(def_id) |
-            DefStruct(def_id) |
-            DefTy(def_id, _) => {
+            DefMod(_) |
+            DefForeignMod(_) |
+            DefStruct(_) |
+            DefTy(..) => {
                 if let Some(module_def) = child_name_bindings.type_ns.module() {
                     debug!("(building reduced graph for external crate) already created module");
-                    module_def.def_id.set(Some(def_id));
+                    module_def.def.set(Some(def));
                 } else {
                     debug!("(building reduced graph for external crate) building module {} {}",
                            final_ident,
@@ -761,8 +726,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     let parent_link = self.get_parent_link(new_parent, name);
 
                     child_name_bindings.define_module(parent_link,
-                                                      Some(def_id),
-                                                      kind,
+                                                      Some(def),
                                                       true,
                                                       is_public,
                                                       DUMMY_SP);
@@ -806,7 +770,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                      (def.modifiers & DefModifiers::IMPORTABLE),
                     None => modifiers,
                 };
-                if new_parent.kind.get() != NormalModuleKind {
+                if !new_parent.is_normal() {
                     modifiers = modifiers & !DefModifiers::IMPORTABLE;
                 }
                 child_name_bindings.define_value(def, DUMMY_SP, modifiers);
@@ -835,33 +799,33 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     }
                 }
 
-                child_name_bindings.define_type(def, DUMMY_SP, modifiers);
-
                 // Define a module if necessary.
                 let parent_link = self.get_parent_link(new_parent, name);
-                child_name_bindings.set_module_kind(parent_link,
-                                                    Some(def_id),
-                                                    TraitModuleKind,
-                                                    true,
-                                                    is_public,
-                                                    DUMMY_SP)
+                child_name_bindings.define_module(parent_link,
+                                                  Some(def),
+                                                  true,
+                                                  is_public,
+                                                  DUMMY_SP)
             }
             DefTy(..) | DefAssociatedTy(..) => {
                 debug!("(building reduced graph for external crate) building type {}",
                        final_ident);
 
-                let modifiers = match new_parent.kind.get() {
-                    NormalModuleKind => modifiers,
+                let modifiers = match new_parent.is_normal() {
+                    true => modifiers,
                     _ => modifiers & !DefModifiers::IMPORTABLE,
                 };
 
-                child_name_bindings.define_type(def, DUMMY_SP, modifiers);
+                if let DefTy(..) = def {
+                    child_name_bindings.type_ns.set_modifiers(modifiers);
+                } else {
+                    child_name_bindings.define_type(def, DUMMY_SP, modifiers);
+                }
             }
             DefStruct(def_id) => {
                 debug!("(building reduced graph for external crate) building type and value for \
                         {}",
                        final_ident);
-                child_name_bindings.define_type(def, DUMMY_SP, modifiers);
                 let fields = csearch::get_struct_field_names(&self.session.cstore, def_id);
 
                 if fields.is_empty() {
@@ -937,7 +901,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         debug!("(populating external module) attempting to populate {}",
                module_to_string(&**module));
 
-        let def_id = match module.def_id.get() {
+        let def_id = match module.def_id() {
             None => {
                 debug!("(populating external module) ... no def ID!");
                 return;
@@ -971,8 +935,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     /// crate.
     fn build_reduced_graph_for_external_crate(&mut self, root: &Rc<Module>) {
         csearch::each_top_level_item_of_crate(&self.session.cstore,
-                                              root.def_id
-                                                  .get()
+                                              root.def_id()
                                                   .unwrap()
                                                   .krate,
                                               |def_like, name, visibility| {
