@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! Id {
-    ($T:tt) => ($T);
-}
+// Check that we report errors at macro definition, not expansion.
 
-struct Foo<T> {
-    x: Id!(T)
-    //~^ ERROR: type macros are experimental (see issue #27336)
+macro_rules! foo {
+    ($a:expr) => $a; //~ ERROR macro rhs must be delimited
 }
 
 fn main() {
-    let foo = Foo { x: i32 };
+    foo!(0);
 }
