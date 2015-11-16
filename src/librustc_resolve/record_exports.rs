@@ -54,7 +54,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
         // If this isn't a local krate, then bail out. We don't need to record
         // exports for nonlocal crates.
 
-        match module_.def_id.get() {
+        match module_.def_id() {
             Some(def_id) if def_id.is_local() => {
                 // OK. Continue.
                 debug!("(recording exports for module subtree) recording exports for local \
@@ -98,7 +98,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
         let mut exports = Vec::new();
 
         self.add_exports_for_module(&mut exports, module_);
-        match module_.def_id.get() {
+        match module_.def_id() {
             Some(def_id) => {
                 let node_id = self.ast_map.as_local_node_id(def_id).unwrap();
                 self.export_map.insert(node_id, exports);

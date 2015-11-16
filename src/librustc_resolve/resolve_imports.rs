@@ -12,7 +12,6 @@ use self::ImportDirectiveSubclass::*;
 
 use DefModifiers;
 use Module;
-use ModuleKind;
 use Namespace::{self, TypeNS, ValueNS};
 use {NameBindings, NameBinding};
 use NamespaceResult::{BoundResult, UnboundResult, UnknownResult};
@@ -550,7 +549,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                     // track used imports and extern crates as well
                                     this.used_imports.insert((id, namespace));
                                     this.record_import_use(id, source);
-                                    match target_module.def_id.get() {
+                                    match target_module.def_id() {
                                         Some(DefId{krate: kid, ..}) => {
                                             this.used_crates.insert(kid);
                                         }
@@ -592,7 +591,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         // In this case we continue as if we resolved the import and let the
                         // check_for_conflicts_between_imports_and_items call below handle
                         // the conflict
-                        match (module_.def_id.get(), target_module.def_id.get()) {
+                        match (module_.def_id(), target_module.def_id()) {
                             (Some(id1), Some(id2)) if id1 == id2 => {
                                 if value_result.is_unknown() {
                                     value_result = UnboundResult;
@@ -625,7 +624,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     Some(module) => {
                         debug!("(resolving single import) found external module");
                         // track the module as used.
-                        match module.def_id.get() {
+                        match module.def_id() {
                             Some(DefId{krate: kid, ..}) => {
                                 self.resolver.used_crates.insert(kid);
                             }
@@ -864,7 +863,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
 
         // Record the destination of this import
-        if let Some(did) = target_module.def_id.get() {
+        if let Some(did) = target_module.def_id() {
             self.resolver.def_map.borrow_mut().insert(id,
                                                       PathResolution {
                                                           base_def: DefMod(did),
@@ -954,10 +953,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 let ns_word = match namespace {
                     TypeNS => {
                         match target.binding.module() {
-                            Some(ref module) if module.kind.get() ==
-                                                ModuleKind::NormalModuleKind => "module",
-                            Some(ref module) if module.kind.get() ==
-                                                ModuleKind::TraitModuleKind => "trait",
+                            Some(ref module) if module.is_normal() => "module",
+                            Some(ref module) if module.is_trait() => "trait",
                             _ => "type",
                         }
                     }
@@ -1043,9 +1040,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             Some(ref target) if target.shadowable != Shadowable::Always => {
                 if let Some(ref ty) = *name_bindings.type_ns.borrow() {
                     let (what, note) = match ty.module.clone() {
-                        Some(ref module) if module.kind.get() == ModuleKind::NormalModuleKind =>
+                        Some(ref module) if module.is_normal() =>
                             ("existing submodule", "note conflicting module here"),
-                        Some(ref module) if module.kind.get() == ModuleKind::TraitModuleKind =>
+                        Some(ref module) if module.is_trait() =>
                             ("trait in this module", "note conflicting trait here"),
                         _ => ("type in this module", "note conflicting type here"),
                     };
