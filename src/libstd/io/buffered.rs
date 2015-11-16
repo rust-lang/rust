@@ -485,6 +485,7 @@ impl<W: Write + Seek> Seek for BufWriter<W> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write> Drop for BufWriter<W> {
     fn drop(&mut self) {
         if self.inner.is_some() {

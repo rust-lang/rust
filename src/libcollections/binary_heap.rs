@@ -731,6 +731,7 @@ impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
     fn from(vec: Vec<T>) -> BinaryHeap<T> {
         let mut heap = BinaryHeap { data: vec };
@@ -743,6 +744,7 @@ impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> From<BinaryHeap<T>> for Vec<T> {
     fn from(heap: BinaryHeap<T>) -> Vec<T> {
         heap.data

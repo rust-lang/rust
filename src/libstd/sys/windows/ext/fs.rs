@@ -49,6 +49,9 @@ pub trait OpenOptionsExt {
     fn share_mode(&mut self, val: u32) -> &mut Self;
 }
 
+#[unstable(feature = "open_options_ext",
+           reason = "may require more thought/methods",
+           issue = "27720")]
 impl OpenOptionsExt for OpenOptions {
     fn desired_access(&mut self, access: u32) -> &mut OpenOptions {
         self.as_inner_mut().desired_access(access); self

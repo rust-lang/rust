@@ -1471,12 +1471,14 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> IntoCow<'a, [T]> for Vec<T> where T: Clone {
     fn into_cow(self) -> Cow<'a, [T]> {
         Cow::Owned(self)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoCow<'a, [T]> for &'a [T] where T: Clone {
     fn into_cow(self) -> Cow<'a, [T]> {
         Cow::Borrowed(self)
@@ -1495,7 +1497,9 @@ pub struct IntoIter<T> {
     end: *const T
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for IntoIter<T> { }
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Sync> Sync for IntoIter<T> { }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1590,7 +1594,9 @@ pub struct Drain<'a, T: 'a> {
     vec: *mut Vec<T>,
 }
 
+#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
 unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
+#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
 unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -31,9 +31,12 @@ pub unsafe trait Send {
     // empty.
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl Send for .. { }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> !Send for *const T { }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> !Send for *mut T { }
 
 /// Types with a constant size known at compile-time.
@@ -223,48 +226,59 @@ pub unsafe trait Sync {
     // Empty
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl Sync for .. { }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> !Sync for *const T { }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> !Sync for *mut T { }
 
 macro_rules! impls{
     ($t: ident) => (
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<T:?Sized> Hash for $t<T> {
             #[inline]
             fn hash<H: Hasher>(&self, _: &mut H) {
             }
         }
 
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<T:?Sized> cmp::PartialEq for $t<T> {
             fn eq(&self, _other: &$t<T>) -> bool {
                 true
             }
         }
 
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<T:?Sized> cmp::Eq for $t<T> {
         }
 
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<T:?Sized> cmp::PartialOrd for $t<T> {
             fn partial_cmp(&self, _other: &$t<T>) -> Option<cmp::Ordering> {
                 Option::Some(cmp::Ordering::Equal)
             }
         }
 
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<T:?Sized> cmp::Ord for $t<T> {
             fn cmp(&self, _other: &$t<T>) -> cmp::Ordering {
                 cmp::Ordering::Equal
             }
         }
 
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<T:?Sized> Copy for $t<T> { }
 
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<T:?Sized> Clone for $t<T> {
             fn clone(&self) -> $t<T> {
                 $t
             }
         }
 
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<T:?Sized> Default for $t<T> {
             fn default() -> $t<T> {
                 $t
@@ -387,7 +401,9 @@ impls! { PhantomData }
 mod impls {
     use super::{Send, Sync, Sized};
 
+    #[stable(feature = "rust1", since = "1.0.0")]
     unsafe impl<'a, T: Sync + ?Sized> Send for &'a T {}
+    #[stable(feature = "rust1", since = "1.0.0")]
     unsafe impl<'a, T: Send + ?Sized> Send for &'a mut T {}
 }
 
@@ -433,4 +449,7 @@ mod impls {
                             ensure all type parameters are bounded by `Any`"]
 pub trait Reflect {}
 
+#[unstable(feature = "reflect_marker",
+           reason = "requires RFC and more experience",
+           issue = "27749")]
 impl Reflect for .. { }

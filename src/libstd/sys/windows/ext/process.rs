@@ -32,6 +32,7 @@ impl AsRawHandle for process::Child {
     }
 }
 
+#[stable(feature = "process_extensions", since = "1.2.0")]
 impl IntoRawHandle for process::Child {
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_handle().into_raw() as *mut _
@@ -59,18 +60,21 @@ impl AsRawHandle for process::ChildStderr {
     }
 }
 
+#[stable(feature = "process_extensions", since = "1.2.0")]
 impl IntoRawHandle for process::ChildStdin {
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_handle().into_raw() as *mut _
     }
 }
 
+#[stable(feature = "process_extensions", since = "1.2.0")]
 impl IntoRawHandle for process::ChildStdout {
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_handle().into_raw() as *mut _
     }
 }
 
+#[stable(feature = "process_extensions", since = "1.2.0")]
 impl IntoRawHandle for process::ChildStderr {
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_handle().into_raw() as *mut _

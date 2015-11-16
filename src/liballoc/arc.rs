@@ -130,10 +130,13 @@ pub struct Arc<T: ?Sized> {
     _ptr: Shared<ArcInner<T>>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Sync + Send> Send for Arc<T> { }
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Sync + Send> Sync for Arc<T> { }
 
 #[cfg(not(stage0))] // remove cfg after new snapshot
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 
 /// A weak pointer to an `Arc`.
@@ -148,10 +151,13 @@ pub struct Weak<T: ?Sized> {
     _ptr: Shared<ArcInner<T>>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Sync + Send> Send for Weak<T> { }
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Sync + Send> Sync for Weak<T> { }
 
 #[cfg(not(stage0))] // remove cfg after new snapshot
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1157,6 +1163,7 @@ mod tests {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> borrow::Borrow<T> for Arc<T> {
     fn borrow(&self) -> &T {
         &**self

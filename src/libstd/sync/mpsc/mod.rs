@@ -272,6 +272,7 @@ use mem;
 use cell::UnsafeCell;
 use marker::Reflect;
 
+#[unstable(feature = "mpsc_select", issue = "27800")]
 pub use self::select::{Select, Handle};
 use self::select::StartResult;
 use self::select::StartResult::*;
@@ -295,6 +296,7 @@ pub struct Receiver<T> {
 
 // The receiver port can be sent from place to place, so long as it
 // is not used to receive non-sendable things.
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for Receiver<T> { }
 
 /// An iterator over messages on a receiver, this iterator will block
@@ -322,6 +324,7 @@ pub struct Sender<T> {
 
 // The send port can be sent from place to place, so long as it
 // is not used to send non-sendable things.
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for Sender<T> { }
 
 /// The sending-half of Rust's synchronous channel type. This half can only be
@@ -331,8 +334,10 @@ pub struct SyncSender<T> {
     inner: Arc<UnsafeCell<sync::Packet<T>>>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for SyncSender<T> {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> !Sync for SyncSender<T> {}
 
 /// An error returned from the `send` function on channels.
@@ -954,6 +959,7 @@ impl<'a, T> IntoIterator for &'a Receiver<T> {
     fn into_iter(self) -> Iter<'a, T> { self.iter() }
 }
 
+#[stable(feature = "receiver_into_iter", since = "1.1.0")]
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
     fn next(&mut self) -> Option<T> { self.rx.recv().ok() }

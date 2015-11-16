@@ -27,8 +27,6 @@
 //! * `Ord`
 //! * `Default`
 
-#![stable(feature = "rust1", since = "1.0.0")]
-
 use clone::Clone;
 use cmp::*;
 use cmp::Ordering::*;

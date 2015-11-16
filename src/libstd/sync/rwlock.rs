@@ -71,7 +71,9 @@ pub struct RwLock<T: ?Sized> {
     data: UnsafeCell<T>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send + Sync> Send for RwLock<T> {}
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 
 /// Structure representing a statically allocated RwLock.
@@ -122,6 +124,7 @@ pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
     __data: &'a UnsafeCell<T>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> !marker::Send for RwLockReadGuard<'a, T> {}
 
 /// RAII structure used to release the exclusive write access of a lock when
@@ -134,6 +137,7 @@ pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
     __poison: poison::Guard,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> !marker::Send for RwLockWriteGuard<'a, T> {}
 
 impl<T> RwLock<T> {

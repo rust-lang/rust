@@ -24,10 +24,13 @@ use slice;
 use str;
 use self::rt::v1::Alignment;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::num::radix;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::num::Radix;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::num::RadixFmt;
-
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::builders::{DebugStruct, DebugTuple, DebugSet, DebugList, DebugMap};
 
 mod num;
@@ -170,6 +173,8 @@ pub struct ArgumentV1<'a> {
     formatter: fn(&Void, &mut Formatter) -> Result,
 }
 
+#[unstable(feature = "fmt_internals", reason = "internal to format_args!",
+           issue = "0")]
 impl<'a> Clone for ArgumentV1<'a> {
     fn clone(&self) -> ArgumentV1<'a> {
         *self
@@ -1568,6 +1573,7 @@ impl Debug for () {
         f.pad("()")
     }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Debug for PhantomData<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("PhantomData")
