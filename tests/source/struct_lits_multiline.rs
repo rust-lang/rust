@@ -71,3 +71,10 @@ fn issue201() {
 fn issue201_2() {
     let s = S{a: S2{    .. c}, ..  b};
 }
+
+fn issue491() {
+    Foo {
+        guard: None,
+        arm: 0, // Comment
+    };
+}

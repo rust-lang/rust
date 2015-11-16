@@ -25,7 +25,7 @@ fn main() {
         // Comment
         a: foo(), // Comment
         // Comment
-        b: bar(), /* Comment */
+        b: bar(), // Comment
     };
 
     Foo { a: Bar, b: f() };
