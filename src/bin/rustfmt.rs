@@ -85,7 +85,7 @@ fn update_config(config: &mut Config, matches: &Matches) {
 fn execute() -> i32 {
     let mut opts = Options::new();
     opts.optflag("h", "help", "show this message");
-    opts.optflag("", "version", "show version information");
+    opts.optflag("V", "version", "show version information");
     opts.optflag("v", "verbose", "show progress");
     opts.optopt("",
                 "write-mode",
