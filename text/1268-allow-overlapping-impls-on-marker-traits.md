@@ -18,6 +18,14 @@ While specialization will certainly make all cases not covered today possible,
 removing the restriction entirely will improve the ergonomics in several edge
 cases.
 
+Some examples include:
+
+- the coercible trait design presents at [RFC #91][91];
+- the `ExnSafe` trait proposed in [RFC #1236][1236].
+
+[91]: https://github.com/rust-lang/rfcs/pull/91
+[1236]: https://github.com/rust-lang/rfcs/pull/1236
+
 # Detailed design
 
 For the purpose of this RFC, the definition of a marker trait is a trait with no
@@ -110,4 +118,23 @@ specify the empty impl for any overlap that might occur.
 
 # Unresolved questions
 
-None at this time.
+How can we implement this design? Simply lifting the coherence
+restrictions is easy enough, but we will encounter some challenges
+when we come to test whether a given trait impl holds. For example, if
+we have something like:
+
+```rust
+impl<T:Send> MarkerTrait for T { }
+impl<T:Sync> MarkerTrait for T { }
+```
+
+means that a type `Foo: MarkerTrait` can hold *either* by `Foo: Send`
+*or* by `Foo: Sync`. Today, we prefer to break down an obligation like
+`Foo: MarkerTrait` into component obligations (e.g., `Foo: Send`). Due
+to coherence, there is always one best way to do this (sort of ---
+where clauses complicate matters). That is, except for complications
+due to type inference, there is a best impl to choose. But under this
+proposal, there would not be. Experimentation is needed (similar
+concerns arise with the proposals around specialization, so it may be
+that progress on that front will answer the questions raised here).
+
