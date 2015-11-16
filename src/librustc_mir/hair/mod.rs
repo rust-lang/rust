@@ -14,7 +14,7 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use rustc::mir::repr::{BinOp, BorrowKind, Field, Literal, Mutability, UnOp};
+use rustc::mir::repr::{BinOp, BorrowKind, Field, Literal, Mutability, UnOp, ItemKind};
 use rustc::middle::def_id::DefId;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::subst::Substs;
@@ -29,6 +29,7 @@ pub mod cx;
 #[derive(Clone, Debug)]
 pub struct ItemRef<'tcx> {
     pub ty: Ty<'tcx>,
+    pub kind: ItemKind,
     pub def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
 }
