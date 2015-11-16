@@ -34,6 +34,6 @@ fn main() {
     //     E::Empty2() => () // ERROR `E::Empty2` does not name a tuple variant or a tuple struct
     // }
     match e2 {
-        E::Empty2(..) => () //~ ERROR `E::Empty2` does not name a tuple variant or a tuple struct
+        E::Empty2(..) => () //~ WARN `E::Empty2` does not name a tuple variant or a tuple struct
     }
 }

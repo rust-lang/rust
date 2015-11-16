@@ -139,7 +139,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 if pat_is_resolved_const(&tcx.def_map.borrow(), pat) => {
             if let hir::PatEnum(ref path, ref subpats) = pat.node {
                 if !(subpats.is_some() && subpats.as_ref().unwrap().is_empty()) {
-                    bad_struct_kind_err(tcx.sess, pat.span, path);
+                    bad_struct_kind_err(tcx.sess, pat.span, path, false);
                     return;
                 }
             }
@@ -581,9 +581,9 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx hir::Pat,
 }
 
 // This function exists due to the warning "diagnostic code E0164 already used"
-fn bad_struct_kind_err(sess: &Session, span: Span, path: &hir::Path) {
+fn bad_struct_kind_err(sess: &Session, span: Span, path: &hir::Path, is_warning: bool) {
     let name = pprust::path_to_string(path);
-    span_err!(sess, span, E0164,
+    span_err_or_warn!(is_warning, sess, span, E0164,
         "`{}` does not name a tuple variant or a tuple struct", name);
 }
 
@@ -634,8 +634,8 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                      path_scheme, &ctor_predicates,
                      opt_ty, def, pat.span, pat.id);
 
-    let report_bad_struct_kind = || {
-        bad_struct_kind_err(tcx.sess, pat.span, path);
+    let report_bad_struct_kind = |is_warning| {
+        bad_struct_kind_err(tcx.sess, pat.span, path, is_warning);
         fcx.write_error(pat.id);
 
         if let Some(subpats) = subpats {
@@ -650,7 +650,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     // function uses checks specific to structs and enums.
     if path_res.depth != 0 {
         if is_tuple_struct_pat {
-            report_bad_struct_kind();
+            report_bad_struct_kind(false);
         } else {
             let pat_ty = fcx.node_ty(pat.id);
             demand::suptype(fcx, pat.span, expected, pat_ty);
@@ -668,8 +668,13 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         {
             let variant = enum_def.variant_of_def(def);
             if is_tuple_struct_pat && variant.kind() != ty::VariantKind::Tuple {
-                report_bad_struct_kind();
-                return;
+                // Matching unit variants with tuple variant patterns (`UnitVariant(..)`)
+                // is allowed for backward compatibility.
+                let is_special_case = variant.kind() == ty::VariantKind::Unit;
+                report_bad_struct_kind(is_special_case);
+                if !is_special_case {
+                    return
+                }
             }
             (variant.fields
                     .iter()
@@ -682,7 +687,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         ty::TyStruct(struct_def, expected_substs) => {
             let variant = struct_def.struct_variant();
             if is_tuple_struct_pat && variant.kind() != ty::VariantKind::Tuple {
-                report_bad_struct_kind();
+                report_bad_struct_kind(false);
                 return;
             }
             (variant.fields
@@ -694,7 +699,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
              "struct")
         }
         _ => {
-            report_bad_struct_kind();
+            report_bad_struct_kind(false);
             return;
         }
     };
