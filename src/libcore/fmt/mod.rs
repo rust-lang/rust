@@ -24,13 +24,13 @@ use slice;
 use str;
 use self::rt::v1::Alignment;
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "fmt_radix", issue = "27728")]
 pub use self::num::radix;
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "fmt_radix", issue = "27728")]
 pub use self::num::Radix;
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "fmt_radix", issue = "27728")]
 pub use self::num::RadixFmt;
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugStruct, DebugTuple, DebugSet, DebugList, DebugMap};
 
 mod num;
