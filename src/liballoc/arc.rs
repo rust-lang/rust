@@ -87,6 +87,7 @@ use core::ptr::{self, Shared};
 use core::marker::Unsize;
 use core::hash::{Hash, Hasher};
 use core::{usize, isize};
+use core::convert::From;
 use heap::deallocate;
 
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
@@ -896,6 +897,13 @@ impl<T: ?Sized + Hash> Hash for Arc<T> {
     }
 }
 
+#[stable(feature = "from_for_ptrs", since = "1.6.0")]
+impl<T> From<T> for Arc<T> {
+    fn from(t: T) -> Self {
+        Arc::new(t)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::clone::Clone;
@@ -910,6 +918,7 @@ mod tests {
     use std::vec::Vec;
     use super::{Arc, Weak};
     use std::sync::Mutex;
+    use std::convert::From;
 
     struct Canary(*mut atomic::AtomicUsize);
 
@@ -1138,6 +1147,13 @@ mod tests {
         let y = Arc::downgrade(&x.clone());
         drop(x);
         assert!(y.upgrade().is_none());
+    }
+
+    #[test]
+    fn test_from_owned() {
+        let foo = 123;
+        let foo_arc = Arc::from(foo);
+        assert!(123 == *foo_arc);
     }
 }
 
