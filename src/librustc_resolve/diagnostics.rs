@@ -806,6 +806,15 @@ mod something {
     pub struct Foo;
 }
 ```
+
+Or, if you tried to use a module from an external crate, you may have missed
+the `extern crate` declaration:
+
+```
+extern crate homura; // Required to use the `homura` crate
+
+use homura::Madoka;
+```
 "##,
 
 E0433: r##"

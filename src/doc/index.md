@@ -14,9 +14,8 @@ concepts. Upon completing the book, you'll be an intermediate Rust
 developer, and will have a good grasp of the fundamental ideas behind
 Rust.
 
-[Rust By Example][rbe] was originally a community resource, but was then
-donated to the Rust project. As the name implies, it teaches you Rust through a
-series of small examples.
+[Rust By Example][rbe] teaches you Rust through a series of small
+examples.
 
 [rbe]: http://rustbyexample.com/
 
@@ -32,48 +31,20 @@ library](std/index.html). There's a list of crates on the left with more
 specific sections, or you can use the search bar at the top to search for
 something if you know its name.
 
+# The Rustonomicon
+
+[The Rustonomicon] is an entire book dedicated to explaining
+how to write `unsafe` Rust code. It is for advanced Rust programmers.
+
+[The Rustonomicon]: nomicon/index.html
+
 # Tools
 
-[Cargo](https://crates.io) is the Rust's package manager providing access to libraries
+[Cargo](http://doc.crates.io/index.html) is the Rust package manager providing access to libraries
 beyond the standard one, and its website contains lots of good documentation.
 
 [`rustdoc`](book/documentation.html) is the Rust's documentation generator, a tool converting
 annotated source code into HTML docs.
-
-A bunch of non-official tools are available, such as [Racer](https://github.com/phildawes/racer)
-(code completion engine), or [rustfmt](https://github.com/nrc/rustfmt) (source code formatter),
-or text editor plugins.
-
-# Community & Getting Help
-
-If you need help with something, or just want to talk about Rust with others,
-there are a few places you can do that:
-
-The Rust IRC channels on [irc.mozilla.org](irc://irc.mozilla.org/) are the
-fastest way to get help.
-[`#rust`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust) is
-the general discussion channel, and you'll find people willing to help you with
-any questions you may have.
-
-There are also three specialty channels:
-[`#rust-gamedev`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-gamedev)
-and
-[`#rust-osdev`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-osdev)
-are for game development and operating system development, respectively.
-There's also
-[`#rust-internals`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals), which is for discussion of the development of Rust itself.
-
-You can also get help on [Stack
-Overflow](https://stackoverflow.com/questions/tagged/rust). Searching for your
-problem might reveal someone who has asked it before!
-
-There is an active [subreddit](https://reddit.com/r/rust) with lots of
-discussion and news about Rust.
-
-There is also a [user forum](https://users.rust-lang.org), for all
-user-oriented discussion, and a [developer
-forum](https://internals.rust-lang.org/), where the development of Rust
-itself is discussed.
 
 # FAQs
 
