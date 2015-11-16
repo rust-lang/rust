@@ -33,14 +33,14 @@ something if you know its name.
 
 # The Rustonomicon
 
-[The Rustonomicon] is an entire book dedicated dedicated to explaining
+[The Rustonomicon] is an entire book dedicated to explaining
 how to write `unsafe` Rust code. It is for advanced Rust programmers.
 
 [The Rustonomicon]: nomicon/index.html
 
 # Tools
 
-[Cargo](http://doc.crates.io/index.html) is the Rust's package manager providing access to libraries
+[Cargo](http://doc.crates.io/index.html) is the Rust package manager providing access to libraries
 beyond the standard one, and its website contains lots of good documentation.
 
 [`rustdoc`](book/documentation.html) is the Rust's documentation generator, a tool converting
