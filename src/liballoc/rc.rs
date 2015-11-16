@@ -699,7 +699,7 @@ impl<T> fmt::Pointer for Rc<T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.6.0")]
+#[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Rc<T> {
     fn from(t: T) -> Self {
         Rc::new(t)

@@ -376,7 +376,7 @@ impl<T: ?Sized + Hash> Hash for Box<T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.6.0")]
+#[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Box<T> {
     fn from(t: T) -> Self {
         Box::new(t)
