@@ -1,7 +1,7 @@
-- Feature Name: time_improvements
+- Feature Name: `time_improvements`
 - Start Date: 2015-09-20
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1288](https://github.com/rust-lang/rfcs/pull/1288)
+- Rust Issue: [rust-lang/rust#29866](https://github.com/rust-lang/rust/issues/29866)
 
 # Summary
 
