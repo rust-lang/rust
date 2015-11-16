@@ -7,6 +7,14 @@ and a heap. If you’re familiar with how C-like languages use stack allocation,
 this chapter will be a refresher. If you’re not, you’ll learn about this more
 general concept, but with a Rust-y focus.
 
+As with most things, when learning about them, we’ll use a simplified model to
+start. This lets you get a handle on the basics, without getting bogged down
+with details which are, for now, irrelevant. The examples we’ll use aren’t 100%
+accurate, but are representative for the level we’re trying to learn at right
+now. Once you have the basics down, learning more about how allocators are
+implemented, virtual memory, and other advanced topics will reveal the leaks in
+this particular abstraction.
+
 # Memory management
 
 These two terms are about memory management. The stack and the heap are
