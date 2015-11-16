@@ -514,16 +514,28 @@ fn convert_arm<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, arm: &'tcx hir::Arm) -> Arm<
 
 fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr) -> ExprKind<'tcx> {
     let substs = cx.tcx.mk_substs(cx.tcx.node_id_item_substs(expr.id).substs);
-    match cx.tcx.def_map.borrow()[&expr.id].full_def() {
+    // Otherwise there may be def_map borrow conflicts
+    let def = cx.tcx.def_map.borrow()[&expr.id].full_def();
+    match def {
         def::DefVariant(_, def_id, false) |
         def::DefStruct(def_id) |
         def::DefFn(def_id, _) |
-        def::DefConst(def_id) |
-        def::DefMethod(def_id) |
-        def::DefAssociatedConst(def_id) =>
+        def::DefMethod(def_id) =>
             ExprKind::Literal {
                 literal: Literal::Item { def_id: def_id, substs: substs }
             },
+
+        def::DefConst(def_id) |
+        def::DefAssociatedConst(def_id) => {
+            if let Some(v) = cx.try_const_eval_literal(expr) {
+                ExprKind::Literal { literal: v }
+            } else {
+                ExprKind::Literal {
+                    literal: Literal::Item { def_id: def_id, substs: substs }
+                }
+            }
+        }
+
 
         def::DefStatic(node_id, _) =>
             ExprKind::StaticRef {
