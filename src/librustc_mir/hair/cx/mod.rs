@@ -76,6 +76,13 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
         Literal::Value { value: const_eval::eval_const_expr(self.tcx, e) }
     }
 
+    pub fn try_const_eval_literal(&mut self, e: &hir::Expr) -> Option<Literal<'tcx>> {
+        let hint = const_eval::EvalHint::ExprTypeChecked;
+        const_eval::eval_const_expr_partial(self.tcx, e, hint, None)
+            .ok()
+            .map(|v| Literal::Value { value: v })
+    }
+
     pub fn partial_eq(&mut self, ty: Ty<'tcx>) -> ItemRef<'tcx> {
         let eq_def_id = self.tcx.lang_items.eq_trait().unwrap();
         self.cmp_method_ref(eq_def_id, "eq", ty)
