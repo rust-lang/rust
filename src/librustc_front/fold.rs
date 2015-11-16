@@ -382,7 +382,6 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                     }))
                 }
                 TyTup(tys) => TyTup(tys.move_map(|ty| fld.fold_ty(ty))),
-                TyParen(ty) => TyParen(fld.fold_ty(ty)),
                 TyPath(qself, path) => {
                     let qself = qself.map(|QSelf { ty, position }| {
                         QSelf {

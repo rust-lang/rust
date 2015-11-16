@@ -1624,7 +1624,6 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                              .collect();
             tcx.mk_tup(flds)
         }
-        hir::TyParen(ref typ) => ast_ty_to_ty(this, rscope, &**typ),
         hir::TyBareFn(ref bf) => {
             require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
             let bare_fn = ty_of_bare_fn(this, bf.unsafety, bf.abi, &*bf.decl);
