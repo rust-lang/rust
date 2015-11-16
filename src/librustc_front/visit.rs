@@ -349,7 +349,7 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
     match typ.node {
-        TyVec(ref ty) | TyParen(ref ty) => {
+        TyVec(ref ty) => {
             visitor.visit_ty(ty)
         }
         TyPtr(ref mutable_type) => {

@@ -848,8 +848,6 @@ pub enum Ty_ {
     TyObjectSum(P<Ty>, TyParamBounds),
     /// A type like `for<'a> Foo<&'a Bar>`
     TyPolyTraitRef(TyParamBounds),
-    /// No-op; kept solely so that we can pretty-print faithfully
-    TyParen(P<Ty>),
     /// Unused for now
     TyTypeof(P<Expr>),
     /// TyInfer means the type should be inferred instead of it having been
