@@ -77,7 +77,7 @@ pub fn rewrite_macro(mac: &ast::Mac,
     let mut expr_vec = Vec::new();
 
     loop {
-        expr_vec.push(match parser.parse_expr_nopanic() {
+        expr_vec.push(match parser.parse_expr() {
             Ok(expr) => expr,
             Err(..) => return None,
         });

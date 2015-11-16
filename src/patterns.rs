@@ -15,7 +15,7 @@ use lists::{format_item_list, itemize_list};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
 use types::rewrite_path;
 
-use syntax::ast::{PatWildKind, BindingMode, Pat, Pat_};
+use syntax::ast::{BindingMode, Pat, Pat_};
 
 // FIXME(#18): implement pattern formatting.
 impl Rewrite for Pat {
@@ -33,13 +33,9 @@ impl Rewrite for Pat {
                 let result = format!("{}{}{}", prefix, mut_infix, ident.node);
                 wrap_str(result, context.config.max_width, width, offset)
             }
-            Pat_::PatWild(kind) => {
-                let result = match kind {
-                    PatWildKind::PatWildSingle => "_",
-                    PatWildKind::PatWildMulti => "..",
-                };
-                if result.len() <= width {
-                    Some(result.to_owned())
+            Pat_::PatWild => {
+                if 1 <= width {
+                    Some("_".to_owned())
                 } else {
                     None
                 }
