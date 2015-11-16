@@ -139,6 +139,7 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
                         let method_ty = method_ty.ty.subst(self.tcx, &substs);
                         return ItemRef {
                             ty: method_ty,
+                            kind: ItemKind::Method,
                             def_id: method.def_id,
                             substs: self.tcx.mk_substs(substs),
                         };

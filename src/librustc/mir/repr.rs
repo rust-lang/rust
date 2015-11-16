@@ -698,10 +698,20 @@ pub struct Constant<'tcx> {
     pub literal: Literal<'tcx>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub enum ItemKind {
+    Constant,
+    Function,
+    Struct,
+    Variant,
+    Method,
+}
+
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {
     Item {
         def_id: DefId,
+        kind: ItemKind,
         substs: &'tcx Substs<'tcx>,
     },
     Value {

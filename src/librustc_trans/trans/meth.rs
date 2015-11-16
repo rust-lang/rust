@@ -473,7 +473,7 @@ fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 ///
 /// In fact, all virtual calls can be thought of as normal trait calls
 /// that go through this shim function.
-fn trans_object_shim<'a, 'tcx>(
+pub fn trans_object_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
     upcast_trait_ref: ty::PolyTraitRef<'tcx>,
     method_id: DefId,

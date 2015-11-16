@@ -14,7 +14,8 @@ use rustc::mir::repr as mir;
 use trans::consts;
 use trans::common::{self, Block};
 
-use super::operand::OperandRef;
+
+use super::operand::{OperandRef, OperandValue};
 use super::MirContext;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
@@ -24,8 +25,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                           ty: Ty<'tcx>)
                           -> OperandRef<'tcx>
     {
-        use super::operand::OperandValue::{Ref, Immediate};
-
         let ccx = bcx.ccx();
         let val = consts::trans_constval(ccx, cv, ty, bcx.fcx.param_substs);
         let val = if common::type_is_immediate(ccx, ty) {
@@ -47,13 +46,12 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                           constant: &mir::Constant<'tcx>)
                           -> OperandRef<'tcx>
     {
-        let constant_ty = bcx.monomorphize(&constant.ty);
+        let ty = bcx.monomorphize(&constant.ty);
         match constant.literal {
-            mir::Literal::Item { .. } => {
-                unimplemented!()
-            }
+            mir::Literal::Item { def_id, kind, substs } =>
+                self.trans_item_ref(bcx, ty, kind, substs, def_id),
             mir::Literal::Value { ref value } => {
-                self.trans_constval(bcx, value, constant_ty)
+                self.trans_constval(bcx, value, ty)
             }
         }
     }
