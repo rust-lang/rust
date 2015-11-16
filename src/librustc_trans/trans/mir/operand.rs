@@ -76,6 +76,16 @@ impl<'tcx> OperandRef<'tcx> {
             }
         }
     }
+
+    pub fn from_rvalue_datum(datum: datum::Datum<'tcx, datum::Rvalue>) -> OperandRef {
+        OperandRef {
+            ty: datum.ty,
+            val: match datum.kind.mode {
+                datum::RvalueMode::ByRef => OperandValue::Ref(datum.val),
+                datum::RvalueMode::ByValue => OperandValue::Immediate(datum.val),
+            }
+        }
+    }
 }
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
