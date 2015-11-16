@@ -828,93 +828,112 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             }
             _ => ty_hint
         };
-        match (try!(eval_const_expr_partial(tcx, &**a, ty_hint, fn_args)),
-               try!(eval_const_expr_partial(tcx, &**b, b_ty, fn_args))) {
-          (Float(a), Float(b)) => {
-            match op.node {
-              hir::BiAdd => Float(a + b),
-              hir::BiSub => Float(a - b),
-              hir::BiMul => Float(a * b),
-              hir::BiDiv => Float(a / b),
-              hir::BiRem => Float(a % b),
-              hir::BiEq => fromb(a == b),
-              hir::BiLt => fromb(a < b),
-              hir::BiLe => fromb(a <= b),
-              hir::BiNe => fromb(a != b),
-              hir::BiGe => fromb(a >= b),
-              hir::BiGt => fromb(a > b),
-              _ => signal!(e, InvalidOpForFloats(op.node))
+        match try!(eval_const_expr_partial(tcx, &**a, ty_hint, fn_args)) {
+          Bool(a) if op.node == hir::BiAnd => {
+            if !a {
+              Bool(a)
+            } else if let Bool(b) = try!(eval_const_expr_partial(tcx, &**b, b_ty, fn_args)) {
+              Bool(b)
+            } else {
+              signal!(e, MiscBinaryOp)
             }
           }
-          (Int(a), Int(b)) => {
-            match op.node {
-              hir::BiAdd => try!(const_int_checked_add(a,b,e,expr_int_type)),
-              hir::BiSub => try!(const_int_checked_sub(a,b,e,expr_int_type)),
-              hir::BiMul => try!(const_int_checked_mul(a,b,e,expr_int_type)),
-              hir::BiDiv => try!(const_int_checked_div(a,b,e,expr_int_type)),
-              hir::BiRem => try!(const_int_checked_rem(a,b,e,expr_int_type)),
-              hir::BiAnd | hir::BiBitAnd => Int(a & b),
-              hir::BiOr | hir::BiBitOr => Int(a | b),
-              hir::BiBitXor => Int(a ^ b),
-              hir::BiShl => try!(const_int_checked_shl(a,b,e,expr_int_type)),
-              hir::BiShr => try!(const_int_checked_shr(a,b,e,expr_int_type)),
-              hir::BiEq => fromb(a == b),
-              hir::BiLt => fromb(a < b),
-              hir::BiLe => fromb(a <= b),
-              hir::BiNe => fromb(a != b),
-              hir::BiGe => fromb(a >= b),
-              hir::BiGt => fromb(a > b)
+          Bool(a) if op.node == hir::BiOr => {
+            if a {
+              Bool(a)
+            } else if let Bool(b) = try!(eval_const_expr_partial(tcx, &**b, b_ty, fn_args)) {
+              Bool(b)
+            } else {
+              signal!(e, MiscBinaryOp)
             }
           }
-          (Uint(a), Uint(b)) => {
-            match op.node {
-              hir::BiAdd => try!(const_uint_checked_add(a,b,e,expr_uint_type)),
-              hir::BiSub => try!(const_uint_checked_sub(a,b,e,expr_uint_type)),
-              hir::BiMul => try!(const_uint_checked_mul(a,b,e,expr_uint_type)),
-              hir::BiDiv => try!(const_uint_checked_div(a,b,e,expr_uint_type)),
-              hir::BiRem => try!(const_uint_checked_rem(a,b,e,expr_uint_type)),
-              hir::BiAnd | hir::BiBitAnd => Uint(a & b),
-              hir::BiOr | hir::BiBitOr => Uint(a | b),
-              hir::BiBitXor => Uint(a ^ b),
-              hir::BiShl => try!(const_uint_checked_shl(a,b,e,expr_uint_type)),
-              hir::BiShr => try!(const_uint_checked_shr(a,b,e,expr_uint_type)),
-              hir::BiEq => fromb(a == b),
-              hir::BiLt => fromb(a < b),
-              hir::BiLe => fromb(a <= b),
-              hir::BiNe => fromb(a != b),
-              hir::BiGe => fromb(a >= b),
-              hir::BiGt => fromb(a > b),
-            }
-          }
-          // shifts can have any integral type as their rhs
-          (Int(a), Uint(b)) => {
-            match op.node {
-              hir::BiShl => try!(const_int_checked_shl_via_uint(a,b,e,expr_int_type)),
-              hir::BiShr => try!(const_int_checked_shr_via_uint(a,b,e,expr_int_type)),
-              _ => signal!(e, InvalidOpForIntUint(op.node)),
-            }
-          }
-          (Uint(a), Int(b)) => {
-            match op.node {
-              hir::BiShl => try!(const_uint_checked_shl_via_int(a,b,e,expr_uint_type)),
-              hir::BiShr => try!(const_uint_checked_shr_via_int(a,b,e,expr_uint_type)),
-              _ => signal!(e, InvalidOpForUintInt(op.node)),
-            }
-          }
-          (Bool(a), Bool(b)) => {
-            Bool(match op.node {
-              hir::BiAnd => a && b,
-              hir::BiOr => a || b,
-              hir::BiBitXor => a ^ b,
-              hir::BiBitAnd => a & b,
-              hir::BiBitOr => a | b,
-              hir::BiEq => a == b,
-              hir::BiNe => a != b,
-              _ => signal!(e, InvalidOpForBools(op.node)),
-             })
-          }
+          x => {
+            match (x, try!(eval_const_expr_partial(tcx, &**b, b_ty, fn_args))) {
+              (Float(a), Float(b)) => {
+                match op.node {
+                  hir::BiAdd => Float(a + b),
+                  hir::BiSub => Float(a - b),
+                  hir::BiMul => Float(a * b),
+                  hir::BiDiv => Float(a / b),
+                  hir::BiRem => Float(a % b),
+                  hir::BiEq => fromb(a == b),
+                  hir::BiLt => fromb(a < b),
+                  hir::BiLe => fromb(a <= b),
+                  hir::BiNe => fromb(a != b),
+                  hir::BiGe => fromb(a >= b),
+                  hir::BiGt => fromb(a > b),
+                  _ => signal!(e, InvalidOpForFloats(op.node))
+                }
+              }
+              (Int(a), Int(b)) => {
+                match op.node {
+                  hir::BiAdd => try!(const_int_checked_add(a,b,e,expr_int_type)),
+                  hir::BiSub => try!(const_int_checked_sub(a,b,e,expr_int_type)),
+                  hir::BiMul => try!(const_int_checked_mul(a,b,e,expr_int_type)),
+                  hir::BiDiv => try!(const_int_checked_div(a,b,e,expr_int_type)),
+                  hir::BiRem => try!(const_int_checked_rem(a,b,e,expr_int_type)),
+                  hir::BiAnd | hir::BiBitAnd => Int(a & b),
+                  hir::BiOr | hir::BiBitOr => Int(a | b),
+                  hir::BiBitXor => Int(a ^ b),
+                  hir::BiShl => try!(const_int_checked_shl(a,b,e,expr_int_type)),
+                  hir::BiShr => try!(const_int_checked_shr(a,b,e,expr_int_type)),
+                  hir::BiEq => fromb(a == b),
+                  hir::BiLt => fromb(a < b),
+                  hir::BiLe => fromb(a <= b),
+                  hir::BiNe => fromb(a != b),
+                  hir::BiGe => fromb(a >= b),
+                  hir::BiGt => fromb(a > b)
+                }
+              }
+              (Uint(a), Uint(b)) => {
+                match op.node {
+                  hir::BiAdd => try!(const_uint_checked_add(a,b,e,expr_uint_type)),
+                  hir::BiSub => try!(const_uint_checked_sub(a,b,e,expr_uint_type)),
+                  hir::BiMul => try!(const_uint_checked_mul(a,b,e,expr_uint_type)),
+                  hir::BiDiv => try!(const_uint_checked_div(a,b,e,expr_uint_type)),
+                  hir::BiRem => try!(const_uint_checked_rem(a,b,e,expr_uint_type)),
+                  hir::BiAnd | hir::BiBitAnd => Uint(a & b),
+                  hir::BiOr | hir::BiBitOr => Uint(a | b),
+                  hir::BiBitXor => Uint(a ^ b),
+                  hir::BiShl => try!(const_uint_checked_shl(a,b,e,expr_uint_type)),
+                  hir::BiShr => try!(const_uint_checked_shr(a,b,e,expr_uint_type)),
+                  hir::BiEq => fromb(a == b),
+                  hir::BiLt => fromb(a < b),
+                  hir::BiLe => fromb(a <= b),
+                  hir::BiNe => fromb(a != b),
+                  hir::BiGe => fromb(a >= b),
+                  hir::BiGt => fromb(a > b),
+                }
+              }
+              // shifts can have any integral type as their rhs
+              (Int(a), Uint(b)) => {
+                match op.node {
+                  hir::BiShl => try!(const_int_checked_shl_via_uint(a,b,e,expr_int_type)),
+                  hir::BiShr => try!(const_int_checked_shr_via_uint(a,b,e,expr_int_type)),
+                  _ => signal!(e, InvalidOpForIntUint(op.node)),
+                }
+              }
+              (Uint(a), Int(b)) => {
+                match op.node {
+                  hir::BiShl => try!(const_uint_checked_shl_via_int(a,b,e,expr_uint_type)),
+                  hir::BiShr => try!(const_uint_checked_shr_via_int(a,b,e,expr_uint_type)),
+                  _ => signal!(e, InvalidOpForUintInt(op.node)),
+                }
+              }
+              (Bool(a), Bool(b)) => {
+                Bool(match op.node {
+                  hir::BiBitXor => a ^ b,
+                  hir::BiBitAnd => a & b,
+                  hir::BiBitOr => a | b,
+                  hir::BiEq => a == b,
+                  hir::BiNe => a != b,
+                  _ => signal!(e, InvalidOpForBools(op.node)),
+                 })
+              }
 
-          _ => signal!(e, MiscBinaryOp),
+              _ => signal!(e, MiscBinaryOp),
+            }
+          }
         }
       }
       hir::ExprCast(ref base, ref target_ty) => {
