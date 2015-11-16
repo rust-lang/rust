@@ -98,7 +98,6 @@ Anton Löfgren <anton.lofgren@gmail.com>
 Antti Keränen <detegr@gmail.com>
 Aram Visser <aramvisser@gmail.com>
 arcnmx <arcnmx@users.noreply.github.com>
-Arcterus <Arcterus@mail.com>
 Areski Belaid <areski@gmail.com>
 Ariel Ben-Yehuda <arielb1@mail.tau.ac.il>
 Arjan Topolovec <arjan.top@gmail.com>
@@ -136,7 +135,6 @@ Ben Gesoff <ben.gesoff@gmail.com>
 Ben Harris <mail@bharr.is>
 Ben Kelly <ben@wanderview.com>
 Ben Noordhuis <info@bnoordhuis.nl>
-Ben S <ogham@users.noreply.github.com>
 Ben Sago <ogham@users.noreply.github.com>
 Ben Striegel <ben.striegel@gmail.com>
 benaryorg <binary@benary.org>
@@ -434,7 +432,6 @@ Gábor Horváth <xazax.hun@gmail.com>
 Gábor Lehel <glaebhoerl@gmail.com>
 Gabriel <g2p.code@gmail.com>
 gamazeps <gamaz3ps@gmail.com>
-gareth <gareth@gareth-N56VM.(none)>
 Gareth Daniel Smith <garethdanielsmith@gmail.com>
 Garming Sam <garming_sam@outlook.com>
 Garrett Heel <garrettheel@gmail.com>
@@ -495,7 +492,6 @@ Igor Strebezhev <xamgore@ya.ru>
 Ilya Dmitrichenko <ilya@xively.com>
 Ilyong Cho <ilyoan@gmail.com>
 Ingo Blechschmidt <iblech@web.de>
-inrustwetrust <inrustwetrust@users.noreply.github.com>
 Irving A.J. Rivas Z. <axel.rivas@gmail.com>
 Isaac Aggrey <isaac.aggrey@gmail.com>
 Isaac Dupree <antispam@idupree.com>
@@ -733,7 +729,6 @@ Liam Monahan <liam@monahan.io>
 Liigo Zhuang <com.liigo@gmail.com>
 Lindsey Kuper <lindsey@composition.al>
 Lionel Flandrin <lionel.flandrin@parrot.com>
-llogiq <bogusandre@gmail.com>
 Logan Chien <tzuhsiang.chien@gmail.com>
 Loïc Damien <loic.damien@dzamlo.ch>
 Lorenz <lorenzb@student.ethz.ch>
@@ -760,7 +755,7 @@ Manuel Hoffmann <manuel@polythematik.de>
 Marc-Antoine Perennou <Marc-Antoine@Perennou.com>
 Marcel Müller <neikos@neikos.email>
 Marcel Rodrigues <marcelgmr@gmail.com>
-marcell <marcell.pardavi@gmail.com>
+Marcell Pardavi <marcell.pardavi@gmail.com>
 Marcello Seri <marcello.seri@gmail.com>
 Marcus Klaas <mail@marcusklaas.nl>
 Margaret Meyerhofer <mmeyerho@andrew.cmu.edu>
@@ -924,9 +919,7 @@ Oak <White-Oak@users.noreply.github.com>
 OGINO Masanori <masanori.ogino@gmail.com>
 OlegTsyba <idethrone1@gmail.com>
 Oliver Schneider <git1984941651981@oli-obk.de>
-Oliver Schneider <github6541940@oli-obk.de>
-Oliver Schneider <git-spam9815368754983@oli-obk.de>
-Oliver Schneider <git-spam-no-reply9815368754983@oli-obk.de>
+Oliver Schneider <oliver.schneider@kit.edu>
 Olivier Saut <osaut@airpost.net>
 olivren <o.renaud@gmx.fr>
 Olle Jonsson <olle.jonsson@gmail.com>
@@ -937,7 +930,6 @@ Oren Hazi <oren.hazi@gmail.com>
 Orphée Lafond-Lummis <o@orftz.com>
 Orpheus Lummis <o@orpheuslummis.com>
 osa1 <omeragacan@gmail.com>
-Overmind JIANG <p90eri@gmail.com>
 Ožbolt Menegatti <ozbolt.menegatti@gmail.com>
 P1start <rewi-github@whanau.org>
 Pablo Brasero <pablo@pablobm.com>
@@ -978,7 +970,6 @@ Peter Schuller <peter.schuller@infidyne.com>
 Peter Williams <peter@newton.cx>
 Peter Zotov <whitequark@whitequark.org>
 Petter Remen <petter.remen@gmail.com>
-pez <james.austin.perry@gmail.com>
 Phil Dawes <phil@phildawes.net>
 Phil Ruffwind <rf@rufflewind.com>
 Philip Munksgaard <pmunksgaard@gmail.com>
@@ -1065,7 +1056,6 @@ Ryan Pendleton <me@ryanp.me>
 Ryan Prichard <ryan.prichard@gmail.com>
 Ryan Riginding <marc.riginding@gmail.com>
 Ryan Scheel <ryan.havvy@gmail.com>
-Ryman <haqkrs@gmail.com>
 Ryo Munakata <afpacket@gmail.com>
 S Pradeep Kumar <gohanpra@gmail.com>
 Sae-bom Kim <sae-bom.kim@samsung.com>
@@ -1153,7 +1143,6 @@ Swaroop C H <swaroop@swaroopch.com>
 Sylvestre Ledru <sylvestre@debian.org>
 Taliesin Beynon <taliesinb@wolfram.com>
 Tamir Duberstein <tamird@gmail.com>
-Tamir Duberstein <tamird@squareup.com>
 Taras Shpot <mrshpot@gmail.com>
 tav <tav@espians.com>
 Taylor Hutchison <seanthutchison@gmail.com>
@@ -1169,7 +1158,6 @@ Thiago Pontes <email@thiago.me>
 Thomas Backman <serenity@exscape.org>
 Thomas Bracht Laumann Jespersen <laumann.thomas@gmail.com>
 Thomas Daede <daede003@umn.edu>
-Thomas Jespersen <laumann.thomas@gmail.com>
 Thomas Karpiniec <tk@1.21jiggawatts.net>
 Tiago Nobrega <tigarmo@gmail.com>
 Tibor Benke <ihrwein@gmail.com>
@@ -1255,7 +1243,6 @@ Wei-Ming Yang <rick68@users.noreply.github.com>
 Wendell Smith <wendell.smith@yale.edu>
 Wesley Wiser <wwiser@gmail.com>
 whataloadofwhat <unusualmoniker@gmail.com>
-whitequark <whitequark@whitequark.org>
 wickerwaka <martin.donlon@gmail.com>
 Wilfred Hughes <me@wilfred.me.uk>
 Will <will@glozer.net>
@@ -1275,8 +1262,6 @@ Xavier Shay <xavier@rhnh.net>
 Xiao Chuan Yu <xcyu.se@gmail.com>
 Xue Fuqiao <xfq.free@gmail.com>
 Xuefeng Wu <benewu@gmail.com>
-Xuefeng Wu <xfwu@thoughtworks.com>
-XuefengWu <benewu@gmail.com>
 Yasuhiro Fujii <y-fujii@mimosa-pudica.net>
 YawarRaza7349 <YawarRaza7349@gmail.com>
 Yazhong Liu <yorkiefixer@gmail.com>
