@@ -152,6 +152,9 @@ pub trait CharExt {
     fn encode_utf16(self, dst: &mut [u16]) -> Option<usize>;
 }
 
+#[unstable(feature = "core_char_ext",
+           reason = "the stable interface is `impl char` in later crate",
+           issue = "27701")]
 impl CharExt for char {
     #[inline]
     fn is_digit(self, radix: u32) -> bool {

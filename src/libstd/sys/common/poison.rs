@@ -110,6 +110,7 @@ impl<T> fmt::Display for PoisonError<T> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Send + Reflect> Error for PoisonError<T> {
     fn description(&self) -> &str {
         "poisoned lock: another task failed inside"
@@ -139,6 +140,7 @@ impl<T> PoisonError<T> {
     pub fn get_mut(&mut self) -> &mut T { &mut self.guard }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> From<PoisonError<T>> for TryLockError<T> {
     fn from(err: PoisonError<T>) -> TryLockError<T> {
         TryLockError::Poisoned(err)
@@ -162,6 +164,7 @@ impl<T: Send + Reflect> fmt::Display for TryLockError<T> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Send + Reflect> Error for TryLockError<T> {
     fn description(&self) -> &str {
         match *self {

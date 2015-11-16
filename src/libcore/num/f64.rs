@@ -141,6 +141,9 @@ pub mod consts {
     pub const LN_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
+#[unstable(feature = "core_float",
+           reason = "stable interface is via `impl f{32,64}` in later crates",
+           issue = "27702")]
 impl Float for f64 {
     #[inline]
     fn nan() -> f64 { NAN }

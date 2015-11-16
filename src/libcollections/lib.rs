@@ -107,11 +107,13 @@ pub mod vec_deque;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod btree_map {
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub use btree::map::*;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod btree_set {
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub use btree::set::*;
 }
 

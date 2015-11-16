@@ -715,6 +715,7 @@ impl<'a> Iterator for Wtf8CodePoints<'a> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct EncodeWide<'a> {
     code_points: Wtf8CodePoints<'a>,
@@ -722,6 +723,7 @@ pub struct EncodeWide<'a> {
 }
 
 // Copied from libunicode/u_str.rs
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for EncodeWide<'a> {
     type Item = u16;
 

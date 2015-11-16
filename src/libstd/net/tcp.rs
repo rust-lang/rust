@@ -219,6 +219,7 @@ impl IntoInner<net_imp::TcpStream> for TcpStream {
     fn into_inner(self) -> net_imp::TcpStream { self.0 }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for TcpStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
@@ -301,6 +302,7 @@ impl IntoInner<net_imp::TcpListener> for TcpListener {
     fn into_inner(self) -> net_imp::TcpListener { self.0 }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for TcpListener {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)

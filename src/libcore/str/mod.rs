@@ -1440,6 +1440,9 @@ fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
           begin, end, s);
 }
 
+#[unstable(feature = "core_str_ext",
+           reason = "stable interface provided by `impl str` in later crates",
+           issue = "27701")]
 impl StrExt for str {
     #[inline]
     fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {

@@ -259,6 +259,7 @@ pub mod builtin {
     /// assert_eq!(s, format!("hello {}", "world"));
     ///
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! format_args { ($fmt:expr, $($args:tt)*) => ({
         /* compiler built-in */
@@ -279,6 +280,7 @@ pub mod builtin {
     /// let path: &'static str = env!("PATH");
     /// println!("the $PATH variable at the time of compiling was: {}", path);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! env { ($name:expr) => ({ /* compiler built-in */ }) }
 
@@ -298,6 +300,7 @@ pub mod builtin {
     /// let key: Option<&'static str> = option_env!("SECRET_KEY");
     /// println!("the secret key might be: {:?}", key);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! option_env { ($name:expr) => ({ /* compiler built-in */ }) }
 
@@ -322,6 +325,7 @@ pub mod builtin {
     /// println!("{}", f());
     /// # }
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! concat_idents {
         ($($e:ident),*) => ({ /* compiler built-in */ })
@@ -342,6 +346,7 @@ pub mod builtin {
     /// let s = concat!("test", 10, 'b', true);
     /// assert_eq!(s, "test10btrue");
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! concat { ($($e:expr),*) => ({ /* compiler built-in */ }) }
 
@@ -357,6 +362,7 @@ pub mod builtin {
     /// let current_line = line!();
     /// println!("defined on line: {}", current_line);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! line { () => ({ /* compiler built-in */ }) }
 
@@ -372,6 +378,7 @@ pub mod builtin {
     /// let current_col = column!();
     /// println!("defined on column: {}", current_col);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! column { () => ({ /* compiler built-in */ }) }
 
@@ -388,6 +395,7 @@ pub mod builtin {
     /// let this_file = file!();
     /// println!("defined in file: {}", this_file);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! file { () => ({ /* compiler built-in */ }) }
 
@@ -403,6 +411,7 @@ pub mod builtin {
     /// let one_plus_one = stringify!(1 + 1);
     /// assert_eq!(one_plus_one, "1 + 1");
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! stringify { ($t:tt) => ({ /* compiler built-in */ }) }
 
@@ -417,6 +426,7 @@ pub mod builtin {
     /// ```rust,ignore
     /// let secret_key = include_str!("secret-key.ascii");
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! include_str { ($file:expr) => ({ /* compiler built-in */ }) }
 
@@ -431,6 +441,7 @@ pub mod builtin {
     /// ```rust,ignore
     /// let secret_key = include_bytes!("secret-key.bin");
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! include_bytes { ($file:expr) => ({ /* compiler built-in */ }) }
 
@@ -451,6 +462,7 @@ pub mod builtin {
     ///
     /// test::foo();
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! module_path { () => ({ /* compiler built-in */ }) }
 
@@ -472,6 +484,7 @@ pub mod builtin {
     ///     "unix-directory"
     /// };
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! cfg { ($cfg:tt) => ({ /* compiler built-in */ }) }
 
@@ -486,6 +499,7 @@ pub mod builtin {
     ///     include!("/path/to/a/file")
     /// }
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! include { ($cfg:tt) => ({ /* compiler built-in */ }) }
 }

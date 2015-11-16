@@ -93,6 +93,7 @@ pub trait Trait {
     fn trait_stable_text(&self) {}
 }
 
+#[stable(feature = "test_feature", since = "1.0.0")]
 impl Trait for MethodTester {}
 
 #[unstable(feature = "test_feature", issue = "0")]
@@ -154,16 +155,19 @@ pub struct UnstableTupleStruct(#[stable(feature = "rust1", since = "1.0.0")] pub
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StableTupleStruct(#[stable(feature = "rust1", since = "1.0.0")] pub isize);
 
+#[stable(feature = "test_feature", since = "1.0.0")]
 #[macro_export]
 macro_rules! macro_test {
     () => (deprecated());
 }
 
+#[stable(feature = "test_feature", since = "1.0.0")]
 #[macro_export]
 macro_rules! macro_test_arg {
     ($func:expr) => ($func);
 }
 
+#[stable(feature = "test_feature", since = "1.0.0")]
 #[macro_export]
 macro_rules! macro_test_arg_nested {
     ($func:ident) => (macro_test_arg!($func()));

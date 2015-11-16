@@ -16,6 +16,7 @@
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type mode_t = u32;
 
 #[doc(inline)]
+#[stable(feature = "raw_ext", since = "1.1.0")]
 pub use self::arch::{off_t, ino_t, nlink_t, blksize_t, blkcnt_t, stat, time_t};
 
 #[cfg(any(target_arch = "x86",

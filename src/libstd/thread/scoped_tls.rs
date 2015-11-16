@@ -65,6 +65,9 @@ pub struct ScopedKey<T:'static> { inner: fn() -> &'static imp::KeyInner<T> }
 ///
 /// See [ScopedKey documentation](thread/struct.ScopedKey.html) for more
 /// information.
+#[unstable(feature = "thread_local_internals",
+           reason = "should not be necessary",
+           issue = "0")]
 #[macro_export]
 #[allow_internal_unstable]
 macro_rules! scoped_thread_local {
@@ -80,7 +83,8 @@ macro_rules! scoped_thread_local {
 
 #[doc(hidden)]
 #[unstable(feature = "thread_local_internals",
-           reason = "should not be necessary")]
+           reason = "should not be necessary",
+           issue = "0")]
 #[macro_export]
 #[allow_internal_unstable]
 #[cfg(no_elf_tls)]
@@ -95,7 +99,8 @@ macro_rules! __scoped_thread_local_inner {
 
 #[doc(hidden)]
 #[unstable(feature = "thread_local_internals",
-           reason = "should not be necessary")]
+           reason = "should not be necessary",
+           issue = "0")]
 #[macro_export]
 #[allow_internal_unstable]
 #[cfg(not(no_elf_tls))]

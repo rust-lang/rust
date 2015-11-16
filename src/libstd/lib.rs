@@ -303,36 +303,63 @@ extern crate libc;
 
 // NB: These reexports are in the order they should be listed in rustdoc
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::cell;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::clone;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::cmp;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::convert;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::default;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::hash;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::intrinsics;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::iter;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::marker;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::mem;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ops;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ptr;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::raw;
+#[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
 pub use core::simd;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::option;
+
 pub mod error;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc::boxed;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc::rc;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::borrow;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::fmt;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::slice;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::str;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::string;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::vec;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use rustc_unicode::char;
 
 /* Exported macros */
@@ -353,16 +380,26 @@ pub mod prelude;
 // doc pages are inlined from the public re-exports of core_collections::{slice,
 // str} above.
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::isize;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i8;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i16;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i32;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i64;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::usize;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u8;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u16;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u32;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u64;
 
 #[path = "num/f32.rs"]   pub mod f32;

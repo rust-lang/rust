@@ -39,6 +39,7 @@ fn frequency() -> c::LARGE_INTEGER {
     }
 }
 
+#[unstable(feature = "libstd_sys_internals", issue = "0")]
 impl<'a> Sub for &'a SteadyTime {
     type Output = Duration;
 

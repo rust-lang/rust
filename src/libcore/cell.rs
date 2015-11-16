@@ -791,6 +791,7 @@ pub struct UnsafeCell<T: ?Sized> {
     value: T,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !Sync for UnsafeCell<T> {}
 
 impl<T> UnsafeCell<T> {
