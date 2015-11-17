@@ -591,6 +591,21 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let is_float = ty.is_fp();
             let signed = ty.is_signed();
 
+            if ty.is_bool() && (b.node == hir::BiOr || b.node == hir::BiAnd) {
+              match eval_const_expr_partial(cx.tcx(),
+                                            &e1,
+                                            ExprTypeChecked,
+                                            None) {
+                Ok(ConstVal::Bool(false)) if b.node == hir::BiAnd => {
+                  return Ok(te1)
+                }
+                Ok(ConstVal::Bool(true)) if b.node == hir::BiOr => {
+                  return Ok(te1)
+                }
+                _ => ()
+              }
+            }
+
             let (te2, _) = try!(const_expr(cx, &**e2, param_substs, fn_args, trueconst));
 
             try!(check_binary_expr_validity(cx, e, ty, te1, te2, trueconst));
