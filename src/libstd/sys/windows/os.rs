@@ -78,22 +78,31 @@ impl Iterator for Env {
     type Item = (OsString, OsString);
 
     fn next(&mut self) -> Option<(OsString, OsString)> {
-        unsafe {
-            if *self.cur == 0 { return None }
-            let p = &*self.cur;
-            let mut len = 0;
-            while *(p as *const u16).offset(len) != 0 {
-                len += 1;
-            }
-            let p = p as *const u16;
-            let s = slice::from_raw_parts(p, len as usize);
-            self.cur = self.cur.offset(len + 1);
+        loop {
+            unsafe {
+                if *self.cur == 0 { return None }
+                let p = &*self.cur as *const u16;
+                let mut len = 0;
+                while *p.offset(len) != 0 {
+                    len += 1;
+                }
+                let s = slice::from_raw_parts(p, len as usize);
+                self.cur = self.cur.offset(len + 1);
 
-            let (k, v) = match s.iter().position(|&b| b == '=' as u16) {
-                Some(n) => (&s[..n], &s[n+1..]),
-                None => (s, &[][..]),
-            };
-            Some((OsStringExt::from_wide(k), OsStringExt::from_wide(v)))
+                // Windows allows environment variables to start with an equals
+                // symbol (in any other position, this is the separator between
+                // variable name and value). Since`s` has at least length 1 at
+                // this point (because the empty string terminates the array of
+                // environment variables), we can safely slice.
+                let pos = match s[1..].iter().position(|&u| u == b'=' as u16).map(|p| p + 1) {
+                    Some(p) => p,
+                    None => continue,
+                }
+                return Some((
+                    OsStringExt::from_wide(&s[..pos]),
+                    OsStringExt::from_wide(&s[pos+1..]),
+                ))
+            }
         }
     }
 }
