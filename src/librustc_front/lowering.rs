@@ -71,6 +71,8 @@ use syntax::codemap::{respan, Spanned, Span};
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::{self, str_to_ident};
 use syntax::std_inject;
+use syntax::visit::{self, Visitor};
+use rustc_data_structures::fnv::FnvHashMap;
 
 use std::cell::{Cell, RefCell};
 
@@ -191,7 +193,7 @@ pub fn lower_decl(lctx: &LoweringContext, d: &Decl) -> P<hir::Decl> {
             span: d.span,
         }),
         DeclItem(ref it) => P(Spanned {
-            node: hir::DeclItem(lower_item(lctx, it)),
+            node: hir::DeclItem(lower_item_id(lctx, it)),
             span: d.span,
         }),
     }
@@ -693,17 +695,36 @@ pub fn lower_impl_item(lctx: &LoweringContext, i: &ImplItem) -> P<hir::ImplItem>
 pub fn lower_mod(lctx: &LoweringContext, m: &Mod) -> hir::Mod {
     hir::Mod {
         inner: m.inner,
-        items: m.items.iter().map(|x| lower_item(lctx, x)).collect(),
+        item_ids: m.items.iter().map(|x| lower_item_id(lctx, x)).collect(),
+    }
+}
+
+struct ItemLowerer<'lcx, 'interner: 'lcx> {
+    items: FnvHashMap<NodeId, hir::Item>,
+    lctx: &'lcx LoweringContext<'interner>,
+}
+
+impl<'lcx, 'interner> Visitor<'lcx> for ItemLowerer<'lcx, 'interner> {
+    fn visit_item(&mut self, item: &'lcx Item) {
+        self.items.insert(item.id, lower_item(self.lctx, item));
+        visit::walk_item(self, item);
     }
 }
 
 pub fn lower_crate(lctx: &LoweringContext, c: &Crate) -> hir::Crate {
+    let items = {
+        let mut item_lowerer = ItemLowerer { items: FnvHashMap(), lctx: lctx };
+        visit::walk_crate(&mut item_lowerer, c);
+        item_lowerer.items
+    };
+
     hir::Crate {
         module: lower_mod(lctx, &c.module),
         attrs: c.attrs.clone(),
         config: c.config.clone(),
         span: c.span,
         exported_macros: c.exported_macros.iter().map(|m| lower_macro_def(lctx, m)).collect(),
+        items: items,
     }
 }
 
@@ -721,13 +742,11 @@ pub fn lower_macro_def(_lctx: &LoweringContext, m: &MacroDef) -> hir::MacroDef {
     }
 }
 
-// fold one item into possibly many items
-pub fn lower_item(lctx: &LoweringContext, i: &Item) -> P<hir::Item> {
-    P(lower_item_simple(lctx, i))
+pub fn lower_item_id(_lctx: &LoweringContext, i: &Item) -> hir::ItemId {
+    hir::ItemId { id: i.id }
 }
 
-// fold one item into exactly one item
-pub fn lower_item_simple(lctx: &LoweringContext, i: &Item) -> hir::Item {
+pub fn lower_item(lctx: &LoweringContext, i: &Item) -> hir::Item {
     let node = lower_item_underscore(lctx, &i.node);
 
     hir::Item {

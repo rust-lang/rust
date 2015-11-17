@@ -45,11 +45,37 @@ pub enum FnKind<'a> {
 /// the substructure of the input via the corresponding `walk` method;
 /// e.g. the `visit_mod` method by default calls `visit::walk_mod`.
 ///
+/// Note that this visitor does NOT visit nested items by default. If
+/// you simply want to visit all items in the crate in some order, you
+/// should call `Crate::visit_all_items`. Otherwise, see the comment
+/// on `visit_nested_item` for details on how to visit nested items.
+///
 /// If you want to ensure that your code handles every variant
 /// explicitly, you need to override each method.  (And you also need
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'v> : Sized {
+    ///////////////////////////////////////////////////////////////////////////
+    // Nested items.
+
+    /// Invoked when a nested item is encountered. By default, does
+    /// nothing. If you want a deep walk, you need to override to
+    /// fetch the item contents. But most of the time, it is easier
+    /// (and better) to invoke `Crate::visit_all_items`, which visits
+    /// all items in the crate in some order (but doesn't respect
+    /// nesting).
+    #[allow(unused_variables)]
+    fn visit_nested_item(&mut self, id: ItemId) {
+    }
+
+    /// Visit the top-level item and (optionally) nested items. See
+    /// `visit_nested_item` for details.
+    fn visit_item(&mut self, i: &'v Item) {
+        walk_item(self, i)
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+
     fn visit_name(&mut self, _span: Span, _name: Name) {
         // Nothing to do.
     }
@@ -61,9 +87,6 @@ pub trait Visitor<'v> : Sized {
     }
     fn visit_foreign_item(&mut self, i: &'v ForeignItem) {
         walk_foreign_item(self, i)
-    }
-    fn visit_item(&mut self, i: &'v Item) {
-        walk_item(self, i)
     }
     fn visit_local(&mut self, l: &'v Local) {
         walk_local(self, l)
@@ -180,6 +203,7 @@ pub fn walk_ident<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, ident: Ident)
     visitor.visit_name(span, ident.name);
 }
 
+/// Walks the contents of a crate. See also `Crate::visit_all_items`.
 pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate) {
     visitor.visit_mod(&krate.module, krate.span, CRATE_NODE_ID);
     walk_list!(visitor, visit_attribute, &krate.attrs);
@@ -193,7 +217,9 @@ pub fn walk_macro_def<'v, V: Visitor<'v>>(visitor: &mut V, macro_def: &'v MacroD
 }
 
 pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod) {
-    walk_list!(visitor, visit_item, &module.items);
+    for &item_id in &module.item_ids {
+        visitor.visit_nested_item(item_id);
+    }
 }
 
 pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
@@ -658,7 +684,7 @@ pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
 pub fn walk_decl<'v, V: Visitor<'v>>(visitor: &mut V, declaration: &'v Decl) {
     match declaration.node {
         DeclLocal(ref local) => visitor.visit_local(local),
-        DeclItem(ref item) => visitor.visit_item(item),
+        DeclItem(item) => visitor.visit_nested_item(item),
     }
 }
 

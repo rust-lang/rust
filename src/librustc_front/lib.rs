@@ -45,13 +45,14 @@ extern crate syntax;
 #[macro_use]
 #[no_link]
 extern crate rustc_bitflags;
+extern crate rustc_data_structures;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
 pub mod hir;
 pub mod lowering;
 pub mod fold;
-pub mod visit;
+pub mod intravisit;
 pub mod util;
 
 pub mod print {

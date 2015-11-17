@@ -96,7 +96,7 @@ DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_bo
                      rustc_typeck rustc_mir rustc_resolve log syntax serialize rustc_llvm \
 		             rustc_trans rustc_privacy rustc_lint rustc_front
 
-DEPS_rustc_front := std syntax log serialize
+DEPS_rustc_front := std syntax log serialize rustc_data_structures
 DEPS_rustc_lint := rustc log syntax
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
 DEPS_rustc_mir := rustc rustc_front syntax
