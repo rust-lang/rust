@@ -225,7 +225,9 @@ pub fn lower_ty(_lctx: &LoweringContext, t: &Ty) -> P<hir::Ty> {
                 }))
             }
             TyTup(ref tys) => hir::TyTup(tys.iter().map(|ty| lower_ty(_lctx, ty)).collect()),
-            TyParen(ref ty) => hir::TyParen(lower_ty(_lctx, ty)),
+            TyParen(ref ty) => {
+                return lower_ty(_lctx, ty);
+            }
             TyPath(ref qself, ref path) => {
                 let qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
                     hir::QSelf {
