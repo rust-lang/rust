@@ -674,6 +674,10 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 report_bad_struct_kind(is_special_case);
                 if !is_special_case {
                     return
+                } else {
+                    span_note!(tcx.sess, pat.span,
+                        "this warning will become a HARD ERROR in a future release. \
+                        See RFC 218 for details.");
                 }
             }
             (variant.fields
