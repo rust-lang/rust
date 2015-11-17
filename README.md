@@ -26,6 +26,7 @@ multirust run nightly cargo install --git https://github.com/rust-lang-nursery/r
 
 * [Vim](http://johannh.me/blog/rustfmt-vim.html)
 * [Emacs](https://github.com/fbergroth/emacs-rustfmt)
+* [Atom](atom.md).
 
 
 ## How to build and test
