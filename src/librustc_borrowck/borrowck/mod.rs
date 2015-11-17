@@ -89,7 +89,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
     }
 
     fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
-        if let hir::ConstImplItem(_, ref expr) = ii.node {
+        if let hir::ImplItemKind::Const(_, ref expr) = ii.node {
             gather_loans::gather_loans_in_static_initializer(self, &*expr);
         }
         visit::walk_impl_item(self, ii);

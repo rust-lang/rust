@@ -992,22 +992,22 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &ast::ImplItem) {
         match impl_item.node {
-            ast::ConstImplItem(ref ty, ref expr) => {
+            ast::ImplItemKind::Const(ref ty, ref expr) => {
                 self.process_const(impl_item.id,
                                    impl_item.ident.name,
                                    impl_item.span,
                                    &ty,
                                    &expr);
             }
-            ast::MethodImplItem(ref sig, ref body) => {
+            ast::ImplItemKind::Method(ref sig, ref body) => {
                 self.process_method(sig,
                                     Some(body),
                                     impl_item.id,
                                     impl_item.ident.name,
                                     impl_item.span);
             }
-            ast::TypeImplItem(_) |
-            ast::MacImplItem(_) => {}
+            ast::ImplItemKind::Type(_) |
+            ast::ImplItemKind::Macro(_) => {}
         }
     }
 

@@ -1271,16 +1271,16 @@ impl Clean<Item> for hir::TraitItem {
 impl Clean<Item> for hir::ImplItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
-            hir::ConstImplItem(ref ty, ref expr) => {
+            hir::ImplItemKind::Const(ref ty, ref expr) => {
                 ConstantItem(Constant{
                     type_: ty.clean(cx),
                     expr: expr.span.to_src(cx),
                 })
             }
-            hir::MethodImplItem(ref sig, _) => {
+            hir::ImplItemKind::Method(ref sig, _) => {
                 MethodItem(sig.clean(cx))
             }
-            hir::TypeImplItem(ref ty) => TypedefItem(Typedef {
+            hir::ImplItemKind::Type(ref ty) => TypedefItem(Typedef {
                 type_: ty.clean(cx),
                 generics: Generics {
                     lifetimes: Vec::new(),

@@ -236,7 +236,7 @@ impl<'a> FnLikeNode<'a> {
             },
             map::NodeImplItem(ii) => {
                 match ii.node {
-                    ast::MethodImplItem(ref sig, ref body) => {
+                    ast::ImplItemKind::Method(ref sig, ref body) => {
                         method(ii.id, ii.name, sig, Some(ii.vis), body, ii.span)
                     }
                     _ => {

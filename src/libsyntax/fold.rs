@@ -1001,15 +1001,15 @@ pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T)
         attrs: fold_attrs(attrs, folder),
         vis: vis,
         node: match node  {
-            ConstImplItem(ty, expr) => {
-                ConstImplItem(folder.fold_ty(ty), folder.fold_expr(expr))
+            ast::ImplItemKind::Const(ty, expr) => {
+                ast::ImplItemKind::Const(folder.fold_ty(ty), folder.fold_expr(expr))
             }
-            MethodImplItem(sig, body) => {
-                MethodImplItem(noop_fold_method_sig(sig, folder),
+            ast::ImplItemKind::Method(sig, body) => {
+                ast::ImplItemKind::Method(noop_fold_method_sig(sig, folder),
                                folder.fold_block(body))
             }
-            TypeImplItem(ty) => TypeImplItem(folder.fold_ty(ty)),
-            MacImplItem(mac) => MacImplItem(folder.fold_mac(mac))
+            ast::ImplItemKind::Type(ty) => ast::ImplItemKind::Type(folder.fold_ty(ty)),
+            ast::ImplItemKind::Macro(mac) => ast::ImplItemKind::Macro(folder.fold_mac(mac))
         },
         span: folder.new_span(span)
     }))

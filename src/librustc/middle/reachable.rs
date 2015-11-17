@@ -185,8 +185,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             }
             Some(ast_map::NodeImplItem(impl_item)) => {
                 match impl_item.node {
-                    hir::ConstImplItem(..) => true,
-                    hir::MethodImplItem(ref sig, _) => {
+                    hir::ImplItemKind::Const(..) => true,
+                    hir::ImplItemKind::Method(ref sig, _) => {
                         if generics_require_inlining(&sig.generics) ||
                                 attr::requests_inline(&impl_item.attrs) {
                             true
@@ -206,7 +206,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             }
                         }
                     }
-                    hir::TypeImplItem(_) => false,
+                    hir::ImplItemKind::Type(_) => false,
                 }
             }
             Some(_) => false,
@@ -299,16 +299,16 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             }
             ast_map::NodeImplItem(impl_item) => {
                 match impl_item.node {
-                    hir::ConstImplItem(_, ref expr) => {
+                    hir::ImplItemKind::Const(_, ref expr) => {
                         self.visit_expr(&*expr);
                     }
-                    hir::MethodImplItem(ref sig, ref body) => {
+                    hir::ImplItemKind::Method(ref sig, ref body) => {
                         let did = self.tcx.map.get_parent_did(search_item);
                         if method_might_be_inlined(self.tcx, sig, impl_item, did) {
                             visit::walk_block(self, body)
                         }
                     }
-                    hir::TypeImplItem(_) => {}
+                    hir::ImplItemKind::Type(_) => {}
                 }
             }
             // Nothing to recurse on for these

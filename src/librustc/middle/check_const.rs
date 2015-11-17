@@ -348,7 +348,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
 
     fn visit_impl_item(&mut self, i: &'v hir::ImplItem) {
         match i.node {
-            hir::ConstImplItem(_, ref expr) => {
+            hir::ImplItemKind::Const(_, ref expr) => {
                 self.global_expr(Mode::Const, &*expr);
             }
             _ => self.with_mode(Mode::Var, |v| visit::walk_impl_item(v, i)),
