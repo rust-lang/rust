@@ -242,8 +242,8 @@ impl<'a> LifetimeBounds<'a> {
             cx.lifetime_def(span, cx.ident_of(*lt).name, bounds)
         }).collect();
         let ty_params = self.bounds.iter().map(|t| {
-            match t {
-                &(ref name, ref bounds) => {
+            match *t {
+                (ref name, ref bounds) => {
                     mk_ty_param(cx,
                                 span,
                                 *name,

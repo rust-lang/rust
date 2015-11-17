@@ -496,25 +496,25 @@ pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics
     }
     walk_list!(visitor, visit_lifetime_def, &generics.lifetimes);
     for predicate in &generics.where_clause.predicates {
-        match predicate {
-            &WherePredicate::BoundPredicate(WhereBoundPredicate{ref bounded_ty,
-                                                                          ref bounds,
-                                                                          ref bound_lifetimes,
-                                                                          ..}) => {
+        match *predicate {
+            WherePredicate::BoundPredicate(WhereBoundPredicate{ref bounded_ty,
+                                                               ref bounds,
+                                                               ref bound_lifetimes,
+                                                               ..}) => {
                 visitor.visit_ty(bounded_ty);
                 walk_list!(visitor, visit_ty_param_bound, bounds);
                 walk_list!(visitor, visit_lifetime_def, bound_lifetimes);
             }
-            &WherePredicate::RegionPredicate(WhereRegionPredicate{ref lifetime,
-                                                                            ref bounds,
-                                                                            ..}) => {
+            WherePredicate::RegionPredicate(WhereRegionPredicate{ref lifetime,
+                                                                 ref bounds,
+                                                                 ..}) => {
                 visitor.visit_lifetime(lifetime);
                 walk_list!(visitor, visit_lifetime, bounds);
             }
-            &WherePredicate::EqPredicate(WhereEqPredicate{id,
-                                                                    ref path,
-                                                                    ref ty,
-                                                                    ..}) => {
+            WherePredicate::EqPredicate(WhereEqPredicate{id,
+                                                         ref path,
+                                                         ref ty,
+                                                         ..}) => {
                 visitor.visit_path(path, id);
                 visitor.visit_ty(ty);
             }
