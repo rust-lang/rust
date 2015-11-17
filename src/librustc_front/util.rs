@@ -10,7 +10,7 @@
 
 use hir;
 use hir::*;
-use visit::{self, Visitor, FnKind};
+use intravisit::{self, Visitor, FnKind};
 use syntax::ast_util;
 use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID};
 use syntax::codemap::Span;
@@ -145,12 +145,26 @@ pub fn unop_to_string(op: UnOp) -> &'static str {
 }
 
 pub struct IdVisitor<'a, O: 'a> {
-    pub operation: &'a mut O,
-    pub pass_through_items: bool,
-    pub visited_outermost: bool,
+    operation: &'a mut O,
+
+    // In general, the id visitor visits the contents of an item, but
+    // not including nested trait/impl items, nor other nested items.
+    // The base visitor itself always skips nested items, but not
+    // trait/impl items. This means in particular that if you start by
+    // visiting a trait or an impl, you should not visit the
+    // trait/impl items respectively.  This is handled by setting
+    // `skip_members` to true when `visit_item` is on the stack. This
+    // way, if the user begins by calling `visit_trait_item`, we will
+    // visit the trait item, but if they begin with `visit_item`, we
+    // won't visit the (nested) trait items.
+    skip_members: bool,
 }
 
 impl<'a, O: ast_util::IdVisitingOperation> IdVisitor<'a, O> {
+    pub fn new(operation: &'a mut O) -> IdVisitor<'a, O> {
+        IdVisitor { operation: operation, skip_members: false }
+    }
+
     fn visit_generics_helper(&mut self, generics: &Generics) {
         for type_parameter in generics.ty_params.iter() {
             self.operation.visit_id(type_parameter.id)
@@ -164,22 +178,17 @@ impl<'a, O: ast_util::IdVisitingOperation> IdVisitor<'a, O> {
 impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
     fn visit_mod(&mut self, module: &Mod, _: Span, node_id: NodeId) {
         self.operation.visit_id(node_id);
-        visit::walk_mod(self, module)
+        intravisit::walk_mod(self, module)
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
         self.operation.visit_id(foreign_item.id);
-        visit::walk_foreign_item(self, foreign_item)
+        intravisit::walk_foreign_item(self, foreign_item)
     }
 
     fn visit_item(&mut self, item: &Item) {
-        if !self.pass_through_items {
-            if self.visited_outermost {
-                return;
-            } else {
-                self.visited_outermost = true
-            }
-        }
+        assert!(!self.skip_members);
+        self.skip_members = true;
 
         self.operation.visit_id(item.id);
         match item.node {
@@ -196,45 +205,44 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
             }
             _ => {}
         }
+        intravisit::walk_item(self, item);
 
-        visit::walk_item(self, item);
-
-        self.visited_outermost = false
+        self.skip_members = false;
     }
 
     fn visit_local(&mut self, local: &Local) {
         self.operation.visit_id(local.id);
-        visit::walk_local(self, local)
+        intravisit::walk_local(self, local)
     }
 
     fn visit_block(&mut self, block: &Block) {
         self.operation.visit_id(block.id);
-        visit::walk_block(self, block)
+        intravisit::walk_block(self, block)
     }
 
     fn visit_stmt(&mut self, statement: &Stmt) {
         self.operation.visit_id(stmt_id(statement));
-        visit::walk_stmt(self, statement)
+        intravisit::walk_stmt(self, statement)
     }
 
     fn visit_pat(&mut self, pattern: &Pat) {
         self.operation.visit_id(pattern.id);
-        visit::walk_pat(self, pattern)
+        intravisit::walk_pat(self, pattern)
     }
 
     fn visit_expr(&mut self, expression: &Expr) {
         self.operation.visit_id(expression.id);
-        visit::walk_expr(self, expression)
+        intravisit::walk_expr(self, expression)
     }
 
     fn visit_ty(&mut self, typ: &Ty) {
         self.operation.visit_id(typ.id);
-        visit::walk_ty(self, typ)
+        intravisit::walk_ty(self, typ)
     }
 
     fn visit_generics(&mut self, generics: &Generics) {
         self.visit_generics_helper(generics);
-        visit::walk_generics(self, generics)
+        intravisit::walk_generics(self, generics)
     }
 
     fn visit_fn(&mut self,
@@ -243,14 +251,6 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
                 block: &'v Block,
                 span: Span,
                 node_id: NodeId) {
-        if !self.pass_through_items {
-            match function_kind {
-                FnKind::Method(..) if self.visited_outermost => return,
-                FnKind::Method(..) => self.visited_outermost = true,
-                _ => {}
-            }
-        }
-
         self.operation.visit_id(node_id);
 
         match function_kind {
@@ -267,18 +267,12 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
             self.operation.visit_id(argument.id)
         }
 
-        visit::walk_fn(self, function_kind, function_declaration, block, span);
-
-        if !self.pass_through_items {
-            if let FnKind::Method(..) = function_kind {
-                self.visited_outermost = false;
-            }
-        }
+        intravisit::walk_fn(self, function_kind, function_declaration, block, span);
     }
 
     fn visit_struct_field(&mut self, struct_field: &StructField) {
         self.operation.visit_id(struct_field.node.id);
-        visit::walk_struct_field(self, struct_field)
+        intravisit::walk_struct_field(self, struct_field)
     }
 
     fn visit_variant_data(&mut self,
@@ -288,17 +282,21 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
                           _: NodeId,
                           _: Span) {
         self.operation.visit_id(struct_def.id());
-        visit::walk_struct_def(self, struct_def);
+        intravisit::walk_struct_def(self, struct_def);
     }
 
     fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
-        self.operation.visit_id(ti.id);
-        visit::walk_trait_item(self, ti);
+        if !self.skip_members {
+            self.operation.visit_id(ti.id);
+            intravisit::walk_trait_item(self, ti);
+        }
     }
 
     fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
-        self.operation.visit_id(ii.id);
-        visit::walk_impl_item(self, ii);
+        if !self.skip_members {
+            self.operation.visit_id(ii.id);
+            intravisit::walk_impl_item(self, ii);
+        }
     }
 
     fn visit_lifetime(&mut self, lifetime: &Lifetime) {
@@ -311,7 +309,7 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
 
     fn visit_trait_ref(&mut self, trait_ref: &TraitRef) {
         self.operation.visit_id(trait_ref.ref_id);
-        visit::walk_trait_ref(self, trait_ref);
+        intravisit::walk_trait_ref(self, trait_ref);
     }
 }
 
@@ -323,11 +321,7 @@ pub fn compute_id_range_for_fn_body(fk: FnKind,
                                     id: NodeId)
                                     -> ast_util::IdRange {
     let mut visitor = ast_util::IdRangeComputingVisitor { result: ast_util::IdRange::max() };
-    let mut id_visitor = IdVisitor {
-        operation: &mut visitor,
-        pass_through_items: false,
-        visited_outermost: false,
-    };
+    let mut id_visitor = IdVisitor::new(&mut visitor);
     id_visitor.visit_fn(fk, decl, body, sp, id);
     id_visitor.operation.result
 }
