@@ -187,7 +187,7 @@ fn change_truth(x: bool) -> bool {
 }
 ```
 
-If we would have used types that do not implement the `Copy` trait,
+If we had used types that do not implement the `Copy` trait,
 we would have gotten a compile error because we tried to use a moved value.
 
 ```text
