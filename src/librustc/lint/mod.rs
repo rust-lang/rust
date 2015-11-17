@@ -34,7 +34,7 @@ pub use self::LintSource::*;
 use std::hash;
 use std::ascii::AsciiExt;
 use syntax::codemap::Span;
-use rustc_front::visit::FnKind;
+use rustc_front::intravisit::FnKind;
 use syntax::visit as ast_visit;
 use syntax::ast;
 use rustc_front::hir;
@@ -218,7 +218,7 @@ pub type EarlyLintPassObject = Box<EarlyLintPass + 'static>;
 pub type LateLintPassObject = Box<LateLintPass + 'static>;
 
 /// Identifies a lint known to the compiler.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct LintId {
     // Identity is based on pointer equality of this field.
     lint: &'static Lint,

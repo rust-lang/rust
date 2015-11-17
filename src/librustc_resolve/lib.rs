@@ -76,7 +76,7 @@ use syntax::parse::token::{self, special_names, special_idents};
 use syntax::ptr::P;
 use syntax::codemap::{self, Span, Pos};
 
-use rustc_front::visit::{self, FnKind, Visitor};
+use rustc_front::intravisit::{self, FnKind, Visitor};
 use rustc_front::hir;
 use rustc_front::hir::{Arm, BindByRef, BindByValue, BindingMode, Block};
 use rustc_front::hir::Crate;
@@ -541,6 +541,9 @@ enum NameDefinition {
 }
 
 impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
+    fn visit_nested_item(&mut self, item: hir::ItemId) {
+        self.visit_item(self.ast_map.expect_item(item.id))
+    }
     fn visit_item(&mut self, item: &Item) {
         execute_callback!(hir_map::Node::NodeItem(item), self);
         self.resolve_item(item);
@@ -573,7 +576,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                 // error already reported
             }
         }
-        visit::walk_poly_trait_ref(self, tref, m);
+        intravisit::walk_poly_trait_ref(self, tref, m);
     }
     fn visit_variant(&mut self,
                      variant: &hir::Variant,
@@ -583,11 +586,11 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         if let Some(ref dis_expr) = variant.node.disr_expr {
             // resolve the discriminator expr as a constant
             self.with_constant_rib(|this| {
-                this.visit_expr(&**dis_expr);
+                this.visit_expr(dis_expr);
             });
         }
 
-        // `visit::walk_variant` without the discriminant expression.
+        // `intravisit::walk_variant` without the discriminant expression.
         self.visit_variant_data(&variant.node.data,
                                 variant.node.name,
                                 generics,
@@ -603,7 +606,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
             ForeignItemStatic(..) => NoTypeParameters,
         };
         self.with_type_parameter_rib(type_parameters, |this| {
-            visit::walk_foreign_item(this, foreign_item);
+            intravisit::walk_foreign_item(this, foreign_item);
         });
     }
     fn visit_fn(&mut self,
@@ -2047,7 +2050,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn resolve_crate(&mut self, krate: &hir::Crate) {
         debug!("(resolving crate) starting");
 
-        visit::walk_crate(self, krate);
+        intravisit::walk_crate(self, krate);
     }
 
     fn check_if_primitive_type_name(&self, name: Name, span: Span) {
@@ -2071,11 +2074,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.check_if_primitive_type_name(name, item.span);
 
                 self.with_type_parameter_rib(HasTypeParameters(generics, TypeSpace, ItemRibKind),
-                                             |this| visit::walk_item(this, item));
+                                             |this| intravisit::walk_item(this, item));
             }
             ItemFn(_, _, _, _, ref generics, _) => {
                 self.with_type_parameter_rib(HasTypeParameters(generics, FnSpace, ItemRibKind),
-                                             |this| visit::walk_item(this, item));
+                                             |this| intravisit::walk_item(this, item));
             }
 
             ItemDefaultImpl(_, ref trait_ref) => {
@@ -2110,10 +2113,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     // expression in a provided default.
                                     if default.is_some() {
                                         this.with_constant_rib(|this| {
-                                            visit::walk_trait_item(this, trait_item)
+                                            intravisit::walk_trait_item(this, trait_item)
                                         });
                                     } else {
-                                        visit::walk_trait_item(this, trait_item)
+                                        intravisit::walk_trait_item(this, trait_item)
                                     }
                                 }
                                 hir::MethodTraitItem(ref sig, _) => {
@@ -2122,14 +2125,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                           FnSpace,
                                                           MethodRibKind);
                                     this.with_type_parameter_rib(type_parameters, |this| {
-                                        visit::walk_trait_item(this, trait_item)
+                                        intravisit::walk_trait_item(this, trait_item)
                                     });
                                 }
                                 hir::TypeTraitItem(..) => {
                                     this.check_if_primitive_type_name(trait_item.name,
                                                                       trait_item.span);
                                     this.with_type_parameter_rib(NoTypeParameters, |this| {
-                                        visit::walk_trait_item(this, trait_item)
+                                        intravisit::walk_trait_item(this, trait_item)
                                     });
                                 }
                             };
@@ -2140,13 +2143,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ItemMod(_) | ItemForeignMod(_) => {
                 self.with_scope(Some(name), |this| {
-                    visit::walk_item(this, item);
+                    intravisit::walk_item(this, item);
                 });
             }
 
             ItemConst(..) | ItemStatic(..) => {
                 self.with_constant_rib(|this| {
-                    visit::walk_item(this, item);
+                    intravisit::walk_item(this, item);
                 });
             }
 
@@ -2283,10 +2286,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             debug!("(resolving function) recorded argument");
         }
-        visit::walk_fn_ret_ty(self, &declaration.output);
+        intravisit::walk_fn_ret_ty(self, &declaration.output);
 
         // Resolve the function body.
-        self.visit_block(&*block);
+        self.visit_block(block);
 
         debug!("(resolving function) leaving function");
 
@@ -2347,7 +2350,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             }
         }
-        visit::walk_generics(self, generics);
+        intravisit::walk_generics(self, generics);
     }
 
     fn with_current_self_type<T, F>(&mut self, self_type: &Ty, f: F) -> T
@@ -2374,7 +2377,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 new_val = Some((path_res.base_def.def_id(), trait_ref.clone()));
                 new_id = Some(path_res.base_def.def_id());
             }
-            visit::walk_trait_ref(self, trait_ref);
+            intravisit::walk_trait_ref(self, trait_ref);
         }
         let original_trait_ref = replace(&mut self.current_trait_ref, new_val);
         let result = f(self, new_id);
@@ -2427,7 +2430,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                           impl_item.span,
                                         |n, s| ResolutionError::ConstNotMemberOfTrait(n, s));
                                     this.with_constant_rib(|this| {
-                                        visit::walk_impl_item(this, impl_item);
+                                        intravisit::walk_impl_item(this, impl_item);
                                     });
                                 }
                                 hir::ImplItemKind::Method(ref sig, _) => {
@@ -2444,7 +2447,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                           FnSpace,
                                                           MethodRibKind);
                                     this.with_type_parameter_rib(type_parameters, |this| {
-                                        visit::walk_impl_item(this, impl_item);
+                                        intravisit::walk_impl_item(this, impl_item);
                                     });
                                 }
                                 hir::ImplItemKind::Type(ref ty) => {
@@ -2583,7 +2586,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut found_non_item = false;
         for statement in &block.stmts {
             if let hir::StmtDecl(ref declaration, _) = statement.node {
-                if let hir::DeclItem(ref i) = declaration.node {
+                if let hir::DeclItem(i) = declaration.node {
+                    let i = self.ast_map.expect_item(i.id);
                     match i.node {
                         ItemExternCrate(_) | ItemUse(_) if found_non_item => {
                             span_err!(self.session,
@@ -2602,7 +2606,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // Descend into the block.
-        visit::walk_block(self, block);
+        intravisit::walk_block(self, block);
 
         // Move back up.
         if !self.resolved {
@@ -2623,7 +2627,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // `<T>::a::b::c` is resolved by typeck alone.
                     TypecheckRequired => {
                         // Resolve embedded types.
-                        visit::walk_ty(self, ty);
+                        intravisit::walk_ty(self, ty);
                         return;
                     }
                     ResolveAttempt(resolution) => resolution,
@@ -2674,7 +2678,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             _ => {}
         }
         // Resolve embedded types.
-        visit::walk_ty(self, ty);
+        intravisit::walk_ty(self, ty);
     }
 
     fn resolve_pattern(&mut self,
@@ -2862,7 +2866,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 &path.segments.last().unwrap().identifier.name.as_str())
                         );
                     }
-                    visit::walk_path(self, path);
+                    intravisit::walk_path(self, path);
                 }
 
                 PatQPath(ref qself, ref path) => {
@@ -2883,7 +2887,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                  .name;
                             let traits = self.get_traits_containing_item(const_name);
                             self.trait_map.insert(pattern.id, traits);
-                            visit::walk_pat(self, pattern);
+                            intravisit::walk_pat(self, pattern);
                             return true;
                         }
                         ResolveAttempt(resolution) => resolution,
@@ -2915,7 +2919,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                                       .name
                                                                                       .as_str()));
                     }
-                    visit::walk_pat(self, pattern);
+                    intravisit::walk_pat(self, pattern);
                 }
 
                 PatStruct(ref path, _, _) => {
@@ -2933,11 +2937,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             );
                         }
                     }
-                    visit::walk_path(self, path);
+                    intravisit::walk_path(self, path);
                 }
 
                 PatLit(_) | PatRange(..) => {
-                    visit::walk_pat(self, pattern);
+                    intravisit::walk_pat(self, pattern);
                 }
 
                 _ => {
@@ -3665,7 +3669,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let method_name = path.segments.last().unwrap().identifier.name;
                         let traits = self.get_traits_containing_item(method_name);
                         self.trait_map.insert(expr.id, traits);
-                        visit::walk_expr(self, expr);
+                        intravisit::walk_expr(self, expr);
                         return;
                     }
                     ResolveAttempt(resolution) => resolution,
@@ -3777,7 +3781,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
 
-                visit::walk_expr(self, expr);
+                intravisit::walk_expr(self, expr);
             }
 
             ExprStruct(ref path, _, _) => {
@@ -3797,7 +3801,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
 
-                visit::walk_expr(self, expr);
+                intravisit::walk_expr(self, expr);
             }
 
             ExprLoop(_, Some(label)) | ExprWhile(_, _, Some(label)) => {
@@ -3810,7 +3814,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         rib.bindings.insert(renamed, def_like);
                     }
 
-                    visit::walk_expr(this, expr);
+                    intravisit::walk_expr(this, expr);
                 })
             }
 
@@ -3838,7 +3842,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             _ => {
-                visit::walk_expr(self, expr);
+                intravisit::walk_expr(self, expr);
             }
         }
     }

@@ -14,7 +14,7 @@
 
 use front::map as ast_map;
 use rustc_front::hir;
-use rustc_front::visit::{self, Visitor};
+use rustc_front::intravisit::{self, Visitor};
 
 use middle::{def, pat_util, privacy, ty};
 use middle::def_id::{DefId};
@@ -182,29 +182,29 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                                 .contains(&attr::ReprExtern)
                         });
 
-                        visit::walk_item(self, &*item);
+                        intravisit::walk_item(self, &*item);
                     }
                     hir::ItemEnum(..) => {
                         self.inherited_pub_visibility = item.vis == hir::Public;
-                        visit::walk_item(self, &*item);
+                        intravisit::walk_item(self, &*item);
                     }
                     hir::ItemFn(..)
                     | hir::ItemTy(..)
                     | hir::ItemStatic(..)
                     | hir::ItemConst(..) => {
-                        visit::walk_item(self, &*item);
+                        intravisit::walk_item(self, &*item);
                     }
                     _ => ()
                 }
             }
             ast_map::NodeTraitItem(trait_item) => {
-                visit::walk_trait_item(self, trait_item);
+                intravisit::walk_trait_item(self, trait_item);
             }
             ast_map::NodeImplItem(impl_item) => {
-                visit::walk_impl_item(self, impl_item);
+                intravisit::walk_impl_item(self, impl_item);
             }
             ast_map::NodeForeignItem(foreign_item) => {
-                visit::walk_foreign_item(self, &*foreign_item);
+                intravisit::walk_foreign_item(self, &*foreign_item);
             }
             _ => ()
         }
@@ -227,7 +227,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
         });
         self.live_symbols.extend(live_fields.map(|f| f.node.id));
 
-        visit::walk_struct_def(self, def);
+        intravisit::walk_struct_def(self, def);
     }
 
     fn visit_expr(&mut self, expr: &hir::Expr) {
@@ -244,7 +244,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
             _ => ()
         }
 
-        visit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr);
     }
 
     fn visit_arm(&mut self, arm: &hir::Arm) {
@@ -257,10 +257,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
             // can't be reached unless the variant is constructed elsewhere.
             let len = self.ignore_variant_stack.len();
             self.ignore_variant_stack.push_all(&*variants);
-            visit::walk_arm(self, arm);
+            intravisit::walk_arm(self, arm);
             self.ignore_variant_stack.truncate(len);
         } else {
-            visit::walk_arm(self, arm);
+            intravisit::walk_arm(self, arm);
         }
     }
 
@@ -278,23 +278,18 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
         }
 
         self.ignore_non_const_paths = true;
-        visit::walk_pat(self, pat);
+        intravisit::walk_pat(self, pat);
         self.ignore_non_const_paths = false;
     }
 
     fn visit_path(&mut self, path: &hir::Path, id: ast::NodeId) {
         self.lookup_and_handle_definition(&id);
-        visit::walk_path(self, path);
+        intravisit::walk_path(self, path);
     }
 
     fn visit_path_list_item(&mut self, path: &hir::Path, item: &hir::PathListItem) {
         self.lookup_and_handle_definition(&item.node.id());
-        visit::walk_path_list_item(self, path, item);
-    }
-
-    fn visit_item(&mut self, _: &hir::Item) {
-        // Do not recurse into items. These items will be added to the
-        // worklist and recursed into manually if necessary.
+        intravisit::walk_path_list_item(self, path, item);
     }
 }
 
@@ -371,7 +366,6 @@ impl<'v> Visitor<'v> for LifeSeeder {
             }
             _ => ()
         }
-        visit::walk_item(self, item);
     }
 }
 
@@ -408,7 +402,7 @@ fn create_and_seed_worklist(tcx: &ty::ctxt,
     let mut life_seeder = LifeSeeder {
         worklist: worklist
     };
-    visit::walk_crate(&mut life_seeder, krate);
+    krate.visit_all_items(&mut life_seeder);
 
     return life_seeder.worklist;
 }
@@ -530,6 +524,14 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
+    /// Walk nested items in place so that we don't report dead-code
+    /// on inner functions when the outer function is already getting
+    /// an error. We could do this also by checking the parents, but
+    /// this is how the code is setup and it seems harmless enough.
+    fn visit_nested_item(&mut self, item: hir::ItemId) {
+        self.visit_item(self.tcx.map.expect_item(item.id))
+    }
+
     fn visit_item(&mut self, item: &hir::Item) {
         if self.should_warn_about_item(item) {
             self.warn_dead_code(
@@ -540,7 +542,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
             );
         } else {
             // Only continue if we didn't warn
-            visit::walk_item(self, item);
+            intravisit::walk_item(self, item);
         }
     }
 
@@ -549,7 +551,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
             self.warn_dead_code(variant.node.data.id(), variant.span,
                                 variant.node.name, "variant");
         } else {
-            visit::walk_variant(self, variant, g, id);
+            intravisit::walk_variant(self, variant, g, id);
         }
     }
 
@@ -557,7 +559,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
         if !self.symbol_is_live(fi.id, None) {
             self.warn_dead_code(fi.id, fi.span, fi.name, fi.node.descriptive_variant());
         }
-        visit::walk_foreign_item(self, fi);
+        intravisit::walk_foreign_item(self, fi);
     }
 
     fn visit_struct_field(&mut self, field: &hir::StructField) {
@@ -566,7 +568,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
                                 field.node.name().unwrap(), "struct field");
         }
 
-        visit::walk_struct_field(self, field);
+        intravisit::walk_struct_field(self, field);
     }
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
@@ -576,14 +578,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
                     self.warn_dead_code(impl_item.id, impl_item.span,
                                         impl_item.name, "associated const");
                 }
-                visit::walk_expr(self, expr)
+                intravisit::walk_expr(self, expr)
             }
             hir::ImplItemKind::Method(_, ref body) => {
                 if !self.symbol_is_live(impl_item.id, None) {
                     self.warn_dead_code(impl_item.id, impl_item.span,
                                         impl_item.name, "method");
                 }
-                visit::walk_block(self, body)
+                intravisit::walk_block(self, body)
             }
             hir::ImplItemKind::Type(..) => {}
         }
@@ -593,10 +595,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
         match trait_item.node {
             hir::ConstTraitItem(_, Some(ref expr)) => {
-                visit::walk_expr(self, expr)
+                intravisit::walk_expr(self, expr)
             }
             hir::MethodTraitItem(_, Some(ref body)) => {
-                visit::walk_block(self, body)
+                intravisit::walk_block(self, body)
             }
             hir::ConstTraitItem(_, None) |
             hir::MethodTraitItem(_, None) |
@@ -612,5 +614,5 @@ pub fn check_crate(tcx: &ty::ctxt,
     let live_symbols = find_live(tcx, exported_items,
                                  reachable_symbols, krate);
     let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };
-    visit::walk_crate(&mut visitor, krate);
+    intravisit::walk_crate(&mut visitor, krate);
 }
