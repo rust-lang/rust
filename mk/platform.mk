@@ -14,7 +14,7 @@
 # would create a variable HOST_i686-darwin-macos with the value
 # i386.
 define DEF_HOST_VAR
-  HOST_$(1) = $(subst i686,i386,$(word 1,$(subst -, ,$(1))))
+  HOST_$(1) = $(patsubst i%86,i386,$(word 1,$(subst -, ,$(1))))
 endef
 $(foreach t,$(CFG_TARGET),$(eval $(call DEF_HOST_VAR,$(t))))
 $(foreach t,$(CFG_TARGET),$(info cfg: host for $(t) is $(HOST_$(t))))
