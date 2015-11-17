@@ -65,6 +65,7 @@ pub type LPWSANETWORKEVENTS = *mut WSANETWORKEVENTS;
 pub type LPWSAPROTOCOLCHAIN = *mut WSAPROTOCOLCHAIN;
 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
 pub type LPWSTR = *mut WCHAR;
+pub type LPFILETIME = *mut FILETIME;
 
 pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PLARGE_INTEGER = *mut c_longlong;
@@ -1231,6 +1232,7 @@ extern "system" {
                        ReturnValue: LPVOID,
                        OriginalContext: *const CONTEXT,
                        HistoryTable: *const UNWIND_HISTORY_TABLE);
+    pub fn GetSystemTimeAsFileTime(lpSystemTimeAsFileTime: LPFILETIME);
 }
 
 // Functions that aren't available on Windows XP, but we still use them and just
