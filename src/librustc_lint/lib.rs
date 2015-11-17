@@ -135,7 +135,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
 
     add_builtin_with_new!(sess,
                           TypeLimits,
-                          RawPointerDerive,
                           MissingDoc,
                           MissingDebugImplementations,
                           );
@@ -152,8 +151,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_late_pass(sess, false, box lint::GatherNodeLevels);
 
     // Insert temporary renamings for a one-time deprecation
-    store.register_renamed("raw_pointer_deriving", "raw_pointer_derive");
-
     store.register_renamed("unknown_features", "unused_features");
 
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
