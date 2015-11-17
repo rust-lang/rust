@@ -23,7 +23,6 @@ use rustfmt::config::Config;
 use std::env;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
-use std::process::Command;
 use std::path::{Path, PathBuf};
 
 use getopts::{Matches, Options};
@@ -177,15 +176,11 @@ fn print_usage(opts: &Options, reason: &str) {
 }
 
 fn print_version() {
-    let cmd = Command::new("git")
-                  .arg("rev-parse")
-                  .arg("--short")
-                  .arg("HEAD")
-                  .output();
-    match cmd {
-        Ok(output) => print!("{}", String::from_utf8(output.stdout).unwrap()),
-        Err(e) => panic!("Unable te get version: {}", e),
-    }
+    println!("{}.{}.{}{}",
+             option_env!("CARGO_PKG_VERSION_MAJOR").unwrap_or("X"),
+             option_env!("CARGO_PKG_VERSION_MINOR").unwrap_or("X"),
+             option_env!("CARGO_PKG_VERSION_PATCH").unwrap_or("X"),
+             option_env!("CARGO_PKG_VERSION_PRE").unwrap_or(""));
 }
 
 fn determine_operation(matches: &Matches) -> Operation {
