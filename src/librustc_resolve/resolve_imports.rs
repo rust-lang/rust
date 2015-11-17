@@ -1039,7 +1039,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         match import_resolution.type_target {
             Some(ref target) if target.shadowable != Shadowable::Always => {
                 if let Some(ref ty) = *name_bindings.type_ns.borrow() {
-                    let (what, note) = match ty.module.clone() {
+                    let (what, note) = match ty.module() {
                         Some(ref module) if module.is_normal() =>
                             ("existing submodule", "note conflicting module here"),
                         Some(ref module) if module.is_trait() =>

@@ -904,15 +904,18 @@ bitflags! {
     }
 }
 
-// Records a possibly-private definition.
-// FIXME once #21546 is resolved, the def and module fields will never both be Some,
-// so they can be refactored into something like Result<Def, Rc<Module>>.
+// Records a possibly-private value, type, or module definition.
 #[derive(Debug)]
 struct NsDef {
     modifiers: DefModifiers, // see note in ImportResolution about how to use this
-    def: Option<Def>,
-    module: Option<Rc<Module>>,
+    def_or_module: DefOrModule,
     span: Option<Span>,
+}
+
+#[derive(Debug)]
+enum DefOrModule {
+    Def(Def),
+    Module(Rc<Module>),
 }
 
 impl NsDef {
@@ -923,14 +926,24 @@ impl NsDef {
             DefModifiers::empty()
         } | DefModifiers::IMPORTABLE;
 
-        NsDef { modifiers: modifiers, def: None, module: Some(module), span: span }
+        NsDef { modifiers: modifiers, def_or_module: DefOrModule::Module(module), span: span }
+    }
+
+    fn create_from_def(def: Def, modifiers: DefModifiers, span: Option<Span>) -> Self {
+        NsDef { modifiers: modifiers, def_or_module: DefOrModule::Def(def), span: span }
+    }
+
+    fn module(&self) -> Option<Rc<Module>> {
+        match self.def_or_module {
+            DefOrModule::Module(ref module) => Some(module.clone()),
+            DefOrModule::Def(_) => None,
+        }
     }
 
     fn def(&self) -> Option<Def> {
-        match (self.def, &self.module) {
-            (def @ Some(_), _) => def,
-            (_, &Some(ref module)) => module.def.get(),
-            _ => panic!("NsDef has neither a Def nor a Module"),
+        match self.def_or_module {
+            DefOrModule::Def(def) => Some(def),
+            DefOrModule::Module(ref module) => module.def.get(),
         }
     }
 }
@@ -964,10 +977,10 @@ impl NameBinding {
 
     fn borrow(&self) -> ::std::cell::Ref<Option<NsDef>> { self.0.borrow() }
 
-    // Lifted versions of the NsDef fields and method
+    // Lifted versions of the NsDef methods and fields
     fn def(&self) -> Option<Def>           { self.and_then(NsDef::def) }
+    fn module(&self) -> Option<Rc<Module>> { self.and_then(NsDef::module) }
     fn span(&self) -> Option<Span>         { self.and_then(|def| def.span) }
-    fn module(&self) -> Option<Rc<Module>> { self.and_then(|def| def.module.clone()) }
     fn modifiers(&self) -> Option<DefModifiers> { self.and_then(|def| Some(def.modifiers)) }
 
     fn defined(&self) -> bool { self.borrow().is_some() }
@@ -1029,23 +1042,14 @@ impl NameBindings {
 
     /// Records a type definition.
     fn define_type(&self, def: Def, sp: Span, modifiers: DefModifiers) {
-        debug!("defining type for def {:?} with modifiers {:?}",
-               def,
-               modifiers);
-        // Merges the type with the existing type def or creates a new one.
-        self.type_ns.set(NsDef {
-            modifiers: modifiers, def: Some(def), module: self.type_ns.module(), span: Some(sp)
-        });
+        debug!("defining type for def {:?} with modifiers {:?}", def, modifiers);
+        self.type_ns.set(NsDef::create_from_def(def, modifiers, Some(sp)));
     }
 
     /// Records a value definition.
     fn define_value(&self, def: Def, sp: Span, modifiers: DefModifiers) {
-        debug!("defining value for def {:?} with modifiers {:?}",
-               def,
-               modifiers);
-        self.value_ns.set(NsDef {
-            modifiers: modifiers, def: Some(def), module: None, span: Some(sp)
-        });
+        debug!("defining value for def {:?} with modifiers {:?}", def, modifiers);
+        self.value_ns.set(NsDef::create_from_def(def, modifiers, Some(sp)));
     }
 
     /// Returns the module node if applicable.
@@ -1524,7 +1528,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.used_imports.insert((id, namespace));
                     self.record_import_use(id, name);
                     if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
-                         self.used_crates.insert(kid);
+                        self.used_crates.insert(kid);
                     }
                     return Success((target, false));
                 }
