@@ -55,7 +55,7 @@ impl LateLintPass for MapClonePass {
                                 }
                             }
                         }
-                    },
+                    }
                     ExprPath(_, ref path) => {
                         if match_path(path, &CLONE_PATH) {
                             let type_name = get_type_name(cx, expr, &args[0]).unwrap_or("_");
@@ -77,7 +77,7 @@ fn expr_eq_ident(expr: &Expr, id: Ident) -> bool {
         ExprPath(None, ref path) => {
             let arg_segment = [PathSegment { identifier: id, parameters: PathParameters::none() }];
             !path.global && path.segments == arg_segment
-        },
+        }
         _ => false,
     }
 }
@@ -104,7 +104,7 @@ fn only_derefs(cx: &LateContext, expr: &Expr, id: Ident) -> bool {
     match expr.node {
         ExprUnary(UnDeref, ref subexpr) if !is_adjusted(cx, subexpr) => {
             only_derefs(cx, subexpr, id)
-        },
+        }
         _ => expr_eq_ident(expr, id),
     }
 }

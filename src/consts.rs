@@ -246,7 +246,7 @@ fn constant_not(o: Constant) -> Option<Constant> {
                 SignedIntLit(ity, Plus) => {
                     if value == ::std::u64::MAX { return None; }
                     (value + 1, SignedIntLit(ity, Minus))
-                },
+                }
                 SignedIntLit(ity, Minus) => {
                     if value == 0 {
                         (1, SignedIntLit(ity, Minus))
@@ -267,7 +267,7 @@ fn constant_not(o: Constant) -> Option<Constant> {
                 UnsuffixedIntLit(_) => { return None; }  // refuse to guess
             };
             ConstantInt(nvalue, nty)
-        },
+        }
         _ => { return None; }
     })
 }
@@ -279,11 +279,11 @@ fn constant_negate(o: Constant) -> Option<Constant> {
                 SignedIntLit(ity, sign) =>
                     SignedIntLit(ity, neg_sign(sign)),
                 UnsuffixedIntLit(sign) => UnsuffixedIntLit(neg_sign(sign)),
-                _ => { return None; },
+                _ => { return None; }
             }),
         ConstantFloat(is, ty) =>
             ConstantFloat(neg_float_str(is), ty),
-        _ => { return None; },
+        _ => { return None; }
     })
 }
 
@@ -461,7 +461,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                                 add_neg_int(l64, lty, r64, rty)
                             }
                         }
-                    },
+                    }
                     // TODO: float (would need bignum library?)
                     _ => None
                 }),
@@ -513,7 +513,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                         unify_int_type(lty, rty, if is_negative(lty) ==
                                 is_negative(rty) { Plus } else { Minus })
                             .map(|ty| ConstantInt(value, ty)))
-                },
+                }
                 _ => None,
             })
     }

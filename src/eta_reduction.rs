@@ -26,7 +26,7 @@ impl LateLintPass for EtaPass {
                 for arg in args {
                     check_closure(cx, arg)
                 }
-            },
+            }
             _ => (),
         }
     }

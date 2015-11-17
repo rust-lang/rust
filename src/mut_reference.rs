@@ -32,14 +32,14 @@ impl LateLintPass for UnnecessaryMutPassed {
                             check_arguments(cx, &arguments, function_type, 
                                             &format!("{}", path));
                         }
-                    },
+                    }
                     None => unreachable!(), // A function with unknown type is called.
                                             // If this happened the compiler would have aborted the
                                             // compilation long ago.
                 };
 
 
-            },
+            }
             ExprMethodCall(ref name, _, ref arguments) => {
                 let method_call = MethodCall::expr(e.id);
                 match borrowed_table.method_map.get(&method_call) {
@@ -47,7 +47,7 @@ impl LateLintPass for UnnecessaryMutPassed {
                                                          &format!("{}", name.node.as_str())),
                     None => unreachable!(), // Just like above, this should never happen.
                 };
-            },
+            }
             _ => {}
         }
     }
@@ -66,7 +66,7 @@ fn check_arguments(cx: &LateContext, arguments: &[P<Expr>], type_definition: &Ty
                                   doesn't need a mutable reference", 
                                   name));
                     }
-                },
+                }
                 _ => {}
             }
         }

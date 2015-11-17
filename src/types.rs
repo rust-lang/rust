@@ -229,7 +229,7 @@ impl LateLintPass for CastPass {
                         if is_isize_or_usize(cast_from) || from_nbits >= to_nbits {
                             span_precision_loss_lint(cx, expr, cast_from, to_nbits == 64);
                         }
-                    },
+                    }
                     (false, true) => {
                         span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
                             &format!("casting {} to {} may truncate the value",
@@ -239,7 +239,7 @@ impl LateLintPass for CastPass {
                                 &format!("casting {} to {} may lose the sign of the value",
                                     cast_from, cast_to));
                         }
-                    },
+                    }
                     (true, true) => {
                         if cast_from.is_signed() && !cast_to.is_signed() {
                             span_lint(cx, CAST_SIGN_LOSS, expr.span,

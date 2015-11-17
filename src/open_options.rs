@@ -65,7 +65,7 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
                                 // which is not a boolean literal. This is theoretically
                                 // possible, but not very likely.
                     }
-                },
+                }
                 _ => {
                     Argument::Unknown
                 }
@@ -74,19 +74,19 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
             match &*name.node.as_str() {
                 "create" => {
                     options.push((OpenOption::Create, argument_option));
-                },
+                }
                 "append" => {
                     options.push((OpenOption::Append, argument_option));
-                },
+                }
                 "truncate" => {
                     options.push((OpenOption::Truncate, argument_option));
-                },
+                }
                 "read" => {
                     options.push((OpenOption::Read, argument_option));
-                },
+                }
                 "write" => {
                     options.push((OpenOption::Write, argument_option));
-                },
+                }
                 _ => {}
             }
             

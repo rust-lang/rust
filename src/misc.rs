@@ -187,7 +187,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other_span: Span, left: bool, o
                 } else {
                     return
                 }
-        },
+        }
         ExprCall(ref path, ref v) if v.len() == 1 => {
             if let &ExprPath(None, ref path) = &path.node {
                 if match_path(path, &["String", "from_str"]) ||
@@ -199,7 +199,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other_span: Span, left: bool, o
             } else {
                 return
             }
-        },
+        }
         _ => return
     };
     if left {

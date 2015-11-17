@@ -101,7 +101,7 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span,
                 }
             }
             if let Some(ref p) = *inner { check_pat(cx, p, init, span, bindings); }
-        },
+        }
         //PatEnum(Path, Option<Vec<P<Pat>>>),
         PatStruct(_, ref pfields, _) =>
             if let Some(ref init_struct) = *init {
@@ -149,7 +149,7 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span,
             } else {
                 check_pat(cx, inner, init, span, bindings);
             }
-        },
+        }
         PatRegion(ref inner, _) =>
             check_pat(cx, inner, init, span, bindings),
         //PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
@@ -200,9 +200,9 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
     match expr.node {
         ExprUnary(_, ref e) | ExprField(ref e, _) |
         ExprTupField(ref e, _) | ExprAddrOf(_, ref e) | ExprBox(ref e)
-            => { check_expr(cx, e, bindings) },
+            => { check_expr(cx, e, bindings) }
         ExprBlock(ref block) | ExprLoop(ref block, _) =>
-            { check_block(cx, block, bindings) },
+            { check_block(cx, block, bindings) }
         //ExprCall
         //ExprMethodCall
         ExprVec(ref v) | ExprTup(ref v) =>
@@ -211,11 +211,11 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
             check_expr(cx, cond, bindings);
             check_block(cx, then, bindings);
             if let &Some(ref o) = otherwise { check_expr(cx, o, bindings); }
-        },
+        }
         ExprWhile(ref cond, ref block, _) => {
             check_expr(cx, cond, bindings);
             check_block(cx, block, bindings);
-        },
+        }
         ExprMatch(ref init, ref arms, _) => {
             check_expr(cx, init, bindings);
             let len = bindings.len();
@@ -230,7 +230,7 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
                     bindings.truncate(len);
                 }
             }
-        },
+        }
         _ => ()
     }
 }
@@ -242,10 +242,10 @@ fn check_ty(cx: &LateContext, ty: &Ty, bindings: &mut Vec<(Name, Span)>) {
         TyFixedLengthVec(ref fty, ref expr) => {
             check_ty(cx, fty, bindings);
             check_expr(cx, expr, bindings);
-        },
+        }
         TyPtr(MutTy{ ty: ref mty, .. }) |
         TyRptr(_, MutTy{ ty: ref mty, .. }) => check_ty(cx, mty, bindings),
-        TyTup(ref tup) => { for ref t in tup { check_ty(cx, t, bindings) } },
+        TyTup(ref tup) => { for ref t in tup { check_ty(cx, t, bindings) } }
         TyTypeof(ref expr) => check_expr(cx, expr, bindings),
         _ => (),
     }

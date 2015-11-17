@@ -26,19 +26,19 @@ impl LateLintPass for IdentityOp {
                 BiAdd | BiBitOr | BiBitXor => {
                     check(cx, left, 0, e.span, right.span);
                     check(cx, right, 0, e.span, left.span);
-                },
+                }
                 BiShl | BiShr | BiSub =>
                     check(cx, right, 0, e.span, left.span),
                 BiMul => {
                     check(cx, left, 1, e.span, right.span);
                     check(cx, right, 1, e.span, left.span);
-                },
+                }
                 BiDiv =>
                     check(cx, right, 1, e.span, left.span),
                 BiBitAnd => {
                     check(cx, left, -1, e.span, right.span);
                     check(cx, right, -1, e.span, left.span);
-                },
+                }
                 _ => ()
             }
         }

@@ -54,17 +54,17 @@ fn match_bool() {
     
     match test { //~ ERROR you seem to be trying to match on a boolean expression
         true => (),
-        false => { println!("Noooo!"); },
+        false => { println!("Noooo!"); }
     };
     
     match test { //~ ERROR you seem to be trying to match on a boolean expression
-        false => { println!("Noooo!"); },
+        false => { println!("Noooo!"); }
         _ => (),
     };
     
     match test { //~ ERROR you seem to be trying to match on a boolean expression
-        false => { println!("Noooo!"); },
-        true => { println!("Yes!"); },
+        false => { println!("Noooo!"); }
+        true => { println!("Yes!"); }
     };
 
     // Not linted

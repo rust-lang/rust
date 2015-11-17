@@ -167,7 +167,7 @@ pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
         Some(NodeTraitItem(&TraitItem{ id: _, ref name, .. })) |
         Some(NodeImplItem(&ImplItem{ id: _, ref name, .. })) => {
             Some(*name)
-        },
+        }
         _ => None,
     }
 }

@@ -545,13 +545,13 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
                 match parent.node {
                     ExprAssignOp(_, ref lhs, _) if lhs.id == expr.id => {
                         self.state = VarState::DontWarn;
-                    },
+                    }
                     ExprAssign(ref lhs, ref rhs) if lhs.id == expr.id => {
                         self.state = if is_integer_literal(rhs, 0) && self.depth == 0 {
                             VarState::Warn
                         } else {
                             VarState::DontWarn
-                        }},
+                        }}
                     ExprAddrOf(mutability,_) if mutability == MutMutable => self.state = VarState::DontWarn,
                     _ => ()
                 }
