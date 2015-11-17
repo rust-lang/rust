@@ -93,6 +93,8 @@ mod sip;
 ///
 /// In other words, if two keys are equal, their hashes should also be equal.
 /// `HashMap` and `HashSet` both rely on this behavior.
+///
+/// This trait can be used with `#[derive]`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hash {
     /// Feeds this value into the state given, updating the hasher as necessary.
