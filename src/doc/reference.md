@@ -147,11 +147,11 @@ a form of constant expression, so is evaluated (primarily) at compile time.
 
 |                                              | Example         | `#` sets   | Characters  | Escapes             |
 |----------------------------------------------|-----------------|------------|-------------|---------------------|
-| [Character](#character-literals)             | `'H'`           | `N/A`      | All Unicode | `\'` & [Byte](#byte-escapes) & [Unicode](#unicode-escapes) |
-| [String](#string-literals)                   | `"hello"`       | `N/A`      | All Unicode | `\"` & [Byte](#byte-escapes) & [Unicode](#unicode-escapes) |
+| [Character](#character-literals)             | `'H'`           | `N/A`      | All Unicode | [Quote](#quote-escapes) & [Byte](#byte-escapes) & [Unicode](#unicode-escapes) |
+| [String](#string-literals)                   | `"hello"`       | `N/A`      | All Unicode | [Quote](#quote-escapes) & [Byte](#byte-escapes) & [Unicode](#unicode-escapes) |
 | [Raw](#raw-string-literals)                  | `r#"hello"#`    | `0...`     | All Unicode | `N/A`                                                      |
-| [Byte](#byte-literals)                       | `b'H'`          | `N/A`      | All ASCII   | `\'` & [Byte](#byte-escapes)                               |
-| [Byte string](#byte-string-literals)         | `b"hello"`      | `N/A`      | All ASCII   | `\"` & [Byte](#byte-escapes)                               |
+| [Byte](#byte-literals)                       | `b'H'`          | `N/A`      | All ASCII   | [Quote](#quote-escapes) & [Byte](#byte-escapes)                               |
+| [Byte string](#byte-string-literals)         | `b"hello"`      | `N/A`      | All ASCII   | [Quote](#quote-escapes) & [Byte](#byte-escapes)                               |
 | [Raw byte string](#raw-byte-string-literals) | `br#"hello"#`   | `0...`     | All ASCII   | `N/A`                                                      |
 
 ##### Byte escapes
@@ -163,11 +163,18 @@ a form of constant expression, so is evaluated (primarily) at compile time.
 | `\r` | Carriage return |
 | `\t` | Tab |
 | `\\` | Backslash |
+| `\0` | Null |
 
 ##### Unicode escapes
 |   | Name |
 |---|------|
 | `\u{7FFF}` | 24-bit Unicode character code (up to 6 digits) |
+
+##### Quote escapes
+|   | Name |
+|---|------|
+| `\'` | Single quote |
+| `\"` | Double quote |
 
 ##### Numbers
 
