@@ -997,15 +997,18 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
             },
             "pat" => {
                 match *tok {
-                    FatArrow | Comma | Eq => Ok(true),
-                    Ident(i, _) if i.name.as_str() == "if" || i.name.as_str() == "in" => Ok(true),
+                    FatArrow | Comma | Eq | BinOp(token::Or) => Ok(true),
+                    Ident(i, _) if (i.name.as_str() == "if" ||
+                                    i.name.as_str() == "in") => Ok(true),
                     _ => Ok(false)
                 }
             },
             "path" | "ty" => {
                 match *tok {
-                    Comma | FatArrow | Colon | Eq | Gt | Semi => Ok(true),
-                    Ident(i, _) if i.name.as_str() == "as" => Ok(true),
+                    OpenDelim(token::DelimToken::Brace) |
+                    Comma | FatArrow | Colon | Eq | Gt | Semi | BinOp(token::Or) => Ok(true),
+                    Ident(i, _) if (i.name.as_str() == "as" ||
+                                    i.name.as_str() == "where") => Ok(true),
                     _ => Ok(false)
                 }
             },
