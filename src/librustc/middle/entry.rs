@@ -10,20 +10,19 @@
 
 
 use front::map as ast_map;
+use middle::def_id::{CRATE_DEF_INDEX};
 use session::{config, Session};
 use syntax::ast::NodeId;
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::entry::EntryPointType;
 use rustc_front::hir::{Item, ItemFn};
-use rustc_front::visit;
-use rustc_front::visit::Visitor;
+use rustc_front::intravisit::Visitor;
 
-struct EntryContext<'a> {
+struct EntryContext<'a, 'tcx: 'a> {
     session: &'a Session,
 
-    // The current depth in the ast
-    depth: usize,
+    map: &'a ast_map::Map<'tcx>,
 
     // The top-level function called 'main'
     main_fn: Option<(NodeId, Span)>,
@@ -39,11 +38,12 @@ struct EntryContext<'a> {
     non_main_fns: Vec<(NodeId, Span)> ,
 }
 
-impl<'a, 'v> Visitor<'v> for EntryContext<'a> {
-    fn visit_item(&mut self, item: &Item) {
-        self.depth += 1;
-        find_item(item, self);
-        self.depth -= 1;
+impl<'a, 'tcx> Visitor<'tcx> for EntryContext<'a, 'tcx> {
+    fn visit_item(&mut self, item: &'tcx Item) {
+        let def_id = self.map.local_def_id(item.id);
+        let def_key = self.map.def_key(def_id);
+        let at_root = def_key.parent == Some(CRATE_DEF_INDEX);
+        find_item(item, self, at_root);
     }
 }
 
@@ -64,21 +64,21 @@ pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map) {
 
     let mut ctxt = EntryContext {
         session: session,
-        depth: 0,
+        map: ast_map,
         main_fn: None,
         attr_main_fn: None,
         start_fn: None,
         non_main_fns: Vec::new(),
     };
 
-    visit::walk_crate(&mut ctxt, ast_map.krate());
+    ast_map.krate().visit_all_items(&mut ctxt);
 
     configure_main(&mut ctxt);
 }
 
 // Beware, this is duplicated in libsyntax/entry.rs, make sure to keep
 // them in sync.
-fn entry_point_type(item: &Item, depth: usize) -> EntryPointType {
+fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
     match item.node {
         ItemFn(..) => {
             if attr::contains_name(&item.attrs, "start") {
@@ -86,7 +86,7 @@ fn entry_point_type(item: &Item, depth: usize) -> EntryPointType {
             } else if attr::contains_name(&item.attrs, "main") {
                 EntryPointType::MainAttr
             } else if item.name.as_str() == "main" {
-                if depth == 1 {
+                if at_root {
                     // This is a top-level function so can be 'main'
                     EntryPointType::MainNamed
                 } else {
@@ -101,8 +101,8 @@ fn entry_point_type(item: &Item, depth: usize) -> EntryPointType {
 }
 
 
-fn find_item(item: &Item, ctxt: &mut EntryContext) {
-    match entry_point_type(item, ctxt.depth) {
+fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
+    match entry_point_type(item, at_root) {
         EntryPointType::MainNamed => {
             if ctxt.main_fn.is_none() {
                 ctxt.main_fn = Some((item.id, item.span));
@@ -132,8 +132,6 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
         },
         EntryPointType::None => ()
     }
-
-    visit::walk_item(ctxt, item);
 }
 
 fn configure_main(this: &mut EntryContext) {
