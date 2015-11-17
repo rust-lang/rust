@@ -27,7 +27,7 @@ use syntax::ptr::P;
 
 use rustc_back::slice;
 use rustc_front::hir;
-use rustc_front::visit::FnKind;
+use rustc_front::intravisit::FnKind;
 
 declare_lint! {
     pub UNUSED_MUT,

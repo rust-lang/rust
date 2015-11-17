@@ -12,8 +12,7 @@ use self::Context::*;
 use session::Session;
 
 use syntax::codemap::Span;
-use rustc_front::visit::Visitor;
-use rustc_front::visit;
+use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -28,12 +27,12 @@ struct CheckLoopVisitor<'a> {
 }
 
 pub fn check_crate(sess: &Session, krate: &hir::Crate) {
-    visit::walk_crate(&mut CheckLoopVisitor { sess: sess, cx: Normal }, krate)
+    krate.visit_all_items(&mut CheckLoopVisitor { sess: sess, cx: Normal });
 }
 
 impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
     fn visit_item(&mut self, i: &hir::Item) {
-        self.with_context(Normal, |v| visit::walk_item(v, i));
+        self.with_context(Normal, |v| intravisit::walk_item(v, i));
     }
 
     fn visit_expr(&mut self, e: &hir::Expr) {
@@ -50,7 +49,7 @@ impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
             }
             hir::ExprBreak(_) => self.require_loop("break", e.span),
             hir::ExprAgain(_) => self.require_loop("continue", e.span),
-            _ => visit::walk_expr(self, e)
+            _ => intravisit::walk_expr(self, e)
         }
     }
 }

@@ -18,7 +18,7 @@ use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
 
 use rustc_front::hir;
-use rustc_front::visit::FnKind;
+use rustc_front::intravisit::FnKind;
 
 #[derive(PartialEq)]
 pub enum MethodLateContext {

@@ -33,8 +33,7 @@ use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
-use rustc_front::visit::Visitor;
-use rustc_front::visit;
+use rustc_front::intravisit::Visitor;
 use rustc_front::hir;
 
 use std::iter::Enumerate;
@@ -164,8 +163,6 @@ impl<'a, 'v, 'tcx> Visitor<'v> for LanguageItemCollector<'a, 'tcx> {
                 self.collect_item(item_index, self.ast_map.local_def_id(item.id), item.span)
             }
         }
-
-        visit::walk_item(self, item);
     }
 }
 
@@ -202,7 +199,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     }
 
     pub fn collect_local_language_items(&mut self, krate: &hir::Crate) {
-        visit::walk_crate(self, krate);
+        krate.visit_all_items(self);
     }
 
     pub fn collect_external_language_items(&mut self) {

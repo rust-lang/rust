@@ -827,7 +827,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
                                    time(time_passes,
                                         "lint checking",
-                                        || lint::check_crate(tcx, krate, &exported_items));
+                                        || lint::check_crate(tcx, &exported_items));
 
                                    // The above three passes generate errors w/o aborting
                                    tcx.sess.abort_if_errors();

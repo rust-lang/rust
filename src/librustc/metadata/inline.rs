@@ -13,7 +13,7 @@ use rustc_front::hir;
 use rustc_front::util::IdVisitor;
 use syntax::ast_util::{IdRange, IdRangeComputingVisitor, IdVisitingOperation};
 use syntax::ptr::P;
-use rustc_front::visit::Visitor;
+use rustc_front::intravisit::Visitor;
 use self::InlinedItem::*;
 
 /// The data we save and restore about an inlined item or method.  This is not

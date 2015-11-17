@@ -389,7 +389,7 @@ fn simplify_ast(ii: InlinedItemRef) -> InlinedItem {
     match ii {
         // HACK we're not dropping items.
         InlinedItemRef::Item(i) => {
-            InlinedItem::Item(fold::noop_fold_item(P(i.clone()), &mut fld))
+            InlinedItem::Item(P(fold::noop_fold_item(i.clone(), &mut fld)))
         }
         InlinedItemRef::TraitItem(d, ti) => {
             InlinedItem::TraitItem(d, fold::noop_fold_trait_item(P(ti.clone()), &mut fld))

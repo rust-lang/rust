@@ -777,7 +777,8 @@ pub fn pretty_print_input(sess: Session,
                                                       &mut rdr,
                                                       box out,
                                                       annotation.pp_ann(),
-                                                      true);
+                                                      true,
+                                                      Some(ast_map.krate()));
                 for node_id in uii.all_matching_node_ids(ast_map) {
                     let node = ast_map.get(node_id);
                     try!(pp_state.print_node(&node));

@@ -41,7 +41,7 @@ use rustc_front::hir;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::feature_gate::UnstableFeatures;
-use rustc_front::visit::{self, FnKind, Visitor};
+use rustc_front::intravisit::{self, FnKind, Visitor};
 
 use std::collections::hash_map::Entry;
 use std::cmp::Ordering;
@@ -81,7 +81,7 @@ bitflags! {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum Mode {
     Const,
     ConstFn,
@@ -190,7 +190,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 
         let qualif = self.with_mode(mode, |this| {
             this.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, b));
-            visit::walk_fn(this, fk, fd, b, s);
+            intravisit::walk_fn(this, fk, fd, b, s);
             this.qualif
         });
 
@@ -308,6 +308,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &hir::Item) {
         debug!("visit_item(item={})", self.tcx.map.node_to_string(i.id));
+        assert_eq!(self.mode, Mode::Var);
         match i.node {
             hir::ItemStatic(_, hir::MutImmutable, ref expr) => {
                 self.check_static_type(&**expr);
@@ -328,7 +329,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 }
             }
             _ => {
-                self.with_mode(Mode::Var, |v| visit::walk_item(v, i));
+                intravisit::walk_item(self, i);
             }
         }
     }
@@ -339,10 +340,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 if let Some(ref expr) = *default {
                     self.global_expr(Mode::Const, &*expr);
                 } else {
-                    visit::walk_trait_item(self, t);
+                    intravisit::walk_trait_item(self, t);
                 }
             }
-            _ => self.with_mode(Mode::Var, |v| visit::walk_trait_item(v, t)),
+            _ => self.with_mode(Mode::Var, |v| intravisit::walk_trait_item(v, t)),
         }
     }
 
@@ -351,7 +352,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
             hir::ImplItemKind::Const(_, ref expr) => {
                 self.global_expr(Mode::Const, &*expr);
             }
-            _ => self.with_mode(Mode::Var, |v| visit::walk_impl_item(v, i)),
+            _ => self.with_mode(Mode::Var, |v| intravisit::walk_impl_item(v, i)),
         }
     }
 
@@ -386,7 +387,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                     }
                 }
             }
-            _ => visit::walk_pat(self, p)
+            _ => intravisit::walk_pat(self, p)
         }
     }
 
@@ -412,7 +413,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                            tail expressions", self.msg());
             }
         }
-        visit::walk_block(self, block);
+        intravisit::walk_block(self, block);
     }
 
     fn visit_expr(&mut self, ex: &hir::Expr) {
@@ -464,11 +465,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 if let Some(mutbl) = borrow {
                     self.record_borrow(discr.id, mutbl);
                 }
-                visit::walk_expr(self, ex);
+                intravisit::walk_expr(self, ex);
             }
             // Division by zero and overflow checking.
             hir::ExprBinary(op, _, _) => {
-                visit::walk_expr(self, ex);
+                intravisit::walk_expr(self, ex);
                 let div_or_rem = op.node == hir::BiDiv || op.node == hir::BiRem;
                 match node_ty.sty {
                     ty::TyUint(_) | ty::TyInt(_) if div_or_rem => {
@@ -487,7 +488,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                     _ => {}
                 }
             }
-            _ => visit::walk_expr(self, ex)
+            _ => intravisit::walk_expr(self, ex)
         }
 
         // Handle borrows on (or inside the autorefs of) this expression.
@@ -837,12 +838,12 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
 }
 
 pub fn check_crate(tcx: &ty::ctxt) {
-    visit::walk_crate(&mut CheckCrateVisitor {
+    tcx.map.krate().visit_all_items(&mut CheckCrateVisitor {
         tcx: tcx,
         mode: Mode::Var,
         qualif: ConstQualif::NOT_CONST,
         rvalue_borrows: NodeMap()
-    }, tcx.map.krate());
+    });
 
     tcx.sess.abort_if_errors();
 }

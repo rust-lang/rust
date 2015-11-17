@@ -157,8 +157,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om.vis = vis;
         om.stab = self.stability(id);
         om.id = id;
-        for i in &m.items {
-            self.visit_item(&**i, None, &mut om);
+        for i in &m.item_ids {
+            let item = self.cx.map.expect_item(i.id);
+            self.visit_item(item, None, &mut om);
         }
         om
     }
@@ -224,8 +225,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     let prev = mem::replace(&mut self.inlining_from_glob, true);
                     match it.node {
                         hir::ItemMod(ref m) => {
-                            for i in &m.items {
-                                self.visit_item(&**i, None, om);
+                            for i in &m.item_ids {
+                                let i = self.cx.map.expect_item(i.id);
+                                self.visit_item(i, None, om);
                             }
                         }
                         hir::ItemEnum(..) => {}

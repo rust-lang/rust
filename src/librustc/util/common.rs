@@ -21,8 +21,8 @@ use std::path::Path;
 use std::time::Duration;
 
 use rustc_front::hir;
-use rustc_front::visit;
-use rustc_front::visit::Visitor;
+use rustc_front::intravisit;
+use rustc_front::intravisit::Visitor;
 
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &'static str = "Output";
@@ -169,7 +169,7 @@ impl<'v, P> Visitor<'v> for LoopQueryVisitor<P> where P: FnMut(&hir::Expr_) -> b
           // Skip inner loops, since a break in the inner loop isn't a
           // break inside the outer loop
           hir::ExprLoop(..) | hir::ExprWhile(..) => {}
-          _ => visit::walk_expr(self, e)
+          _ => intravisit::walk_expr(self, e)
         }
     }
 }
@@ -181,7 +181,7 @@ pub fn loop_query<P>(b: &hir::Block, p: P) -> bool where P: FnMut(&hir::Expr_) -
         p: p,
         flag: false,
     };
-    visit::walk_block(&mut v, b);
+    intravisit::walk_block(&mut v, b);
     return v.flag;
 }
 
@@ -193,7 +193,7 @@ struct BlockQueryVisitor<P> where P: FnMut(&hir::Expr) -> bool {
 impl<'v, P> Visitor<'v> for BlockQueryVisitor<P> where P: FnMut(&hir::Expr) -> bool {
     fn visit_expr(&mut self, e: &hir::Expr) {
         self.flag |= (self.p)(e);
-        visit::walk_expr(self, e)
+        intravisit::walk_expr(self, e)
     }
 }
 
@@ -204,7 +204,7 @@ pub fn block_query<P>(b: &hir::Block, p: P) -> bool where P: FnMut(&hir::Expr) -
         p: p,
         flag: false,
     };
-    visit::walk_block(&mut v, &*b);
+    intravisit::walk_block(&mut v, &*b);
     return v.flag;
 }
 

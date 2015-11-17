@@ -19,8 +19,7 @@ use util::nodemap::NodeMap;
 use syntax::{ast};
 use syntax::codemap::Span;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use rustc_front::visit::Visitor;
-use rustc_front::visit;
+use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
 
 use std::cell::RefCell;
@@ -60,7 +59,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
             }
             _ => {}
         }
-        visit::walk_item(self, it)
+        intravisit::walk_item(self, it)
     }
 
     fn visit_trait_item(&mut self, ti: &'ast hir::TraitItem) {
@@ -74,7 +73,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
             }
             _ => {}
         }
-        visit::walk_trait_item(self, ti)
+        intravisit::walk_trait_item(self, ti)
     }
 
     fn visit_impl_item(&mut self, ii: &'ast hir::ImplItem) {
@@ -86,7 +85,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
             }
             _ => {}
         }
-        visit::walk_impl_item(self, ii)
+        intravisit::walk_impl_item(self, ii)
     }
 }
 
@@ -100,7 +99,7 @@ pub fn check_crate<'ast>(sess: &Session,
         ast_map: ast_map,
         discriminant_map: RefCell::new(NodeMap()),
     };
-    visit::walk_crate(&mut visitor, krate);
+    krate.visit_all_items(&mut visitor);
     sess.abort_if_errors();
 }
 
@@ -197,13 +196,13 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
 
 impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
     fn visit_item(&mut self, it: &'ast hir::Item) {
-        self.with_item_id_pushed(it.id, |v| visit::walk_item(v, it));
+        self.with_item_id_pushed(it.id, |v| intravisit::walk_item(v, it));
     }
 
     fn visit_enum_def(&mut self, enum_definition: &'ast hir::EnumDef,
                       generics: &'ast hir::Generics, item_id: ast::NodeId, _: Span) {
         self.populate_enum_discriminants(enum_definition);
-        visit::walk_enum_def(self, enum_definition, generics, item_id);
+        intravisit::walk_enum_def(self, enum_definition, generics, item_id);
     }
 
     fn visit_variant(&mut self, variant: &'ast hir::Variant,
@@ -222,16 +221,16 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
         // If `maybe_expr` is `None`, that's because no discriminant is
         // specified that affects this variant. Thus, no risk of recursion.
         if let Some(expr) = maybe_expr {
-            self.with_item_id_pushed(expr.id, |v| visit::walk_expr(v, expr));
+            self.with_item_id_pushed(expr.id, |v| intravisit::walk_expr(v, expr));
         }
     }
 
     fn visit_trait_item(&mut self, ti: &'ast hir::TraitItem) {
-        self.with_item_id_pushed(ti.id, |v| visit::walk_trait_item(v, ti));
+        self.with_item_id_pushed(ti.id, |v| intravisit::walk_trait_item(v, ti));
     }
 
     fn visit_impl_item(&mut self, ii: &'ast hir::ImplItem) {
-        self.with_item_id_pushed(ii.id, |v| visit::walk_impl_item(v, ii));
+        self.with_item_id_pushed(ii.id, |v| intravisit::walk_impl_item(v, ii));
     }
 
     fn visit_expr(&mut self, e: &'ast hir::Expr) {
@@ -285,6 +284,6 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
             },
             _ => ()
         }
-        visit::walk_expr(self, e);
+        intravisit::walk_expr(self, e);
     }
 }

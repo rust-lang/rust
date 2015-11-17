@@ -124,7 +124,7 @@ use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::{self, InternedString};
 use syntax::ptr::P;
 
-use rustc_front::visit::{self, Visitor};
+use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
 use rustc_front::hir::Visibility;
 use rustc_front::hir::{Item, ItemImpl};
@@ -363,7 +363,7 @@ struct CheckItemBodiesVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
 impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &'tcx hir::Item) {
         check_item_type(self.ccx, i);
-        visit::walk_item(self, i);
+        intravisit::walk_item(self, i);
     }
 
     fn visit_ty(&mut self, t: &'tcx hir::Ty) {
@@ -374,14 +374,13 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
             _ => {}
         }
 
-        visit::walk_ty(self, t);
+        intravisit::walk_ty(self, t);
     }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &'tcx hir::Item) {
         check_item_body(self.ccx, i);
-        visit::walk_item(self, i);
     }
 }
 
@@ -393,7 +392,7 @@ pub fn check_wf_old(ccx: &CrateCtxt) {
     // comes, we run the new code and issue warnings.
     let krate = ccx.tcx.map.krate();
     let mut visit = wf::CheckTypeWellFormedVisitor::new(ccx);
-    visit::walk_crate(&mut visit, krate);
+    krate.visit_all_items(&mut visit);
 
     // If types are not well-formed, it leads to all manner of errors
     // downstream, so stop reporting errors at this point.
@@ -403,7 +402,7 @@ pub fn check_wf_old(ccx: &CrateCtxt) {
 pub fn check_wf_new(ccx: &CrateCtxt) {
     let krate = ccx.tcx.map.krate();
     let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(ccx);
-    visit::walk_crate(&mut visit, krate);
+    krate.visit_all_items(&mut visit);
 
     // If types are not well-formed, it leads to all manner of errors
     // downstream, so stop reporting errors at this point.
@@ -413,14 +412,14 @@ pub fn check_wf_new(ccx: &CrateCtxt) {
 pub fn check_item_types(ccx: &CrateCtxt) {
     let krate = ccx.tcx.map.krate();
     let mut visit = CheckItemTypesVisitor { ccx: ccx };
-    visit::walk_crate(&mut visit, krate);
+    krate.visit_all_items(&mut visit);
     ccx.tcx.sess.abort_if_errors();
 }
 
 pub fn check_item_bodies(ccx: &CrateCtxt) {
     let krate = ccx.tcx.map.krate();
     let mut visit = CheckItemBodiesVisitor { ccx: ccx };
-    visit::walk_crate(&mut visit, krate);
+    krate.visit_all_items(&mut visit);
 
     ccx.tcx.sess.abort_if_errors();
 }
@@ -518,7 +517,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                local.pat,
                self.fcx.infcx().ty_to_string(
                    self.fcx.inh.locals.borrow().get(&local.id).unwrap().clone()));
-        visit::walk_local(self, local);
+        intravisit::walk_local(self, local);
     }
 
     // Add pattern bindings.
@@ -537,14 +536,14 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                        var_ty);
             }
         }
-        visit::walk_pat(self, p);
+        intravisit::walk_pat(self, p);
     }
 
     fn visit_block(&mut self, b: &'tcx hir::Block) {
         // non-obvious: the `blk` variable maps to region lb, so
         // we have to keep this up-to-date.  This
         // is... unfortunate.  It'd be nice to not need this.
-        visit::walk_block(self, b);
+        intravisit::walk_block(self, b);
     }
 
     // Since an expr occurs as part of the type fixed size arrays we
@@ -556,18 +555,16 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 check_expr_with_hint(self.fcx, &**count_expr, self.fcx.tcx().types.usize);
             }
             hir::TyBareFn(ref function_declaration) => {
-                visit::walk_fn_decl_nopat(self, &function_declaration.decl);
+                intravisit::walk_fn_decl_nopat(self, &function_declaration.decl);
                 walk_list!(self, visit_lifetime_def, &function_declaration.lifetimes);
             }
-            _ => visit::walk_ty(self, t)
+            _ => intravisit::walk_ty(self, t)
         }
     }
 
-    // Don't descend into fns and items
-    fn visit_fn(&mut self, _: visit::FnKind<'tcx>, _: &'tcx hir::FnDecl,
+    // Don't descend into the bodies of nested closures
+    fn visit_fn(&mut self, _: intravisit::FnKind<'tcx>, _: &'tcx hir::FnDecl,
                 _: &'tcx hir::Block, _: Span, _: ast::NodeId) { }
-    fn visit_item(&mut self, _: &hir::Item) { }
-
 }
 
 /// Helper used by check_bare_fn and check_expr_fn. Does the grungy work of checking a function

@@ -29,7 +29,7 @@ use util::nodemap::NodeMap;
 use syntax::{ast, abi};
 use rustc_front::hir::Expr;
 use rustc_front::hir;
-use rustc_front::visit::FnKind;
+use rustc_front::intravisit::FnKind;
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
