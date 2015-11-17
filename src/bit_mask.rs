@@ -185,7 +185,7 @@ fn fetch_int_literal(cx: &LateContext, lit : &Expr) -> Option<u64> {
             if let &LitInt(value, _) = &lit_ptr.node {
                 Option::Some(value) //TODO: Handle sign
             } else { Option::None }
-        },
+        }
         ExprPath(_, _) => {
             // Important to let the borrow expire before the const lookup to avoid double
             // borrowing.

@@ -196,13 +196,13 @@ impl <'v, 't> RefVisitor<'v, 't>  {
                                 self.record(&None);
                             }
                         }
-                    },
+                    }
                     Some(DefTrait(def_id)) => {
                         let trait_def = self.cx.tcx.trait_defs.borrow()[&def_id];
                         for _ in &trait_def.generics.regions {
                             self.record(&None);
                         }
-                    },
+                    }
                     _ => {}
                 }
             }
@@ -221,10 +221,10 @@ impl<'v, 't> Visitor<'v> for RefVisitor<'v, 't> {
         match ty.node {
             TyRptr(None, _) => {
                 self.record(&None);
-            },
+            }
             TyPath(_, ref path) => {
                 self.collect_anonymous_lifetimes(path, ty);
-            },
+            }
             _ => {}
         }
         walk_ty(self, ty);
