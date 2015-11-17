@@ -1687,9 +1687,9 @@ pub enum Visibility {
 
 impl Visibility {
     pub fn inherit_from(&self, parent_visibility: Visibility) -> Visibility {
-        match self {
-            &Inherited => parent_visibility,
-            &Public => *self
+        match *self {
+            Inherited => parent_visibility,
+            Public => *self
         }
     }
 }
