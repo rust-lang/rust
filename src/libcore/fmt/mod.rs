@@ -300,6 +300,8 @@ impl<'a> Display for Arguments<'a> {
 ///
 /// [module]: ../../std/fmt/index.html
 ///
+/// This trait can be used with `#[derive]`.
+///
 /// # Examples
 ///
 /// Deriving an implementation:
