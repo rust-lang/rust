@@ -165,6 +165,10 @@ pub trait Unsize<T: ?Sized> {
 /// to consider though: if you think your type may _not_ be able to implement `Copy` in the future,
 /// then it might be prudent to not implement `Copy`. This is because removing `Copy` is a breaking
 /// change: that second example would fail to compile if we made `Foo` non-`Copy`.
+///
+/// # Derivable
+///
+/// This trait can be used with `#[derive]`.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
 pub trait Copy : Clone {

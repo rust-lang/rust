@@ -24,6 +24,8 @@
 use marker::Sized;
 
 /// A common trait for cloning an object.
+///
+/// This trait can be used with `#[derive]`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Clone : Sized {
     /// Returns a copy of the value.
