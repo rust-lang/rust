@@ -43,8 +43,8 @@ use syntax::codemap::Span;
 
 use rustc_front::hir;
 use rustc_front::hir::{FnDecl, Block};
-use rustc_front::visit;
-use rustc_front::visit::{Visitor, FnKind};
+use rustc_front::intravisit;
+use rustc_front::intravisit::{Visitor, FnKind};
 use rustc_front::util as hir_util;
 
 pub mod check_loans;
@@ -85,14 +85,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
         if let hir::ConstTraitItem(_, Some(ref expr)) = ti.node {
             gather_loans::gather_loans_in_static_initializer(self, &*expr);
         }
-        visit::walk_trait_item(self, ti);
+        intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
         if let hir::ImplItemKind::Const(_, ref expr) = ii.node {
             gather_loans::gather_loans_in_static_initializer(self, &*expr);
         }
-        visit::walk_impl_item(self, ii);
+        intravisit::walk_impl_item(self, ii);
     }
 }
 
@@ -108,7 +108,7 @@ pub fn check_crate(tcx: &ty::ctxt) {
         }
     };
 
-    visit::walk_crate(&mut bccx, tcx.map.krate());
+    tcx.map.krate().visit_all_items(&mut bccx);
 
     if tcx.sess.borrowck_stats() {
         println!("--- borrowck stats ---");
@@ -142,7 +142,7 @@ fn borrowck_item(this: &mut BorrowckCtxt, item: &hir::Item) {
         _ => { }
     }
 
-    visit::walk_item(this, item);
+    intravisit::walk_item(this, item);
 }
 
 /// Collection of conclusions determined via borrow checker analyses.
@@ -181,7 +181,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                              decl,
                              body);
 
-    visit::walk_fn(this, fk, decl, body, sp);
+    intravisit::walk_fn(this, fk, decl, body, sp);
 }
 
 fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,

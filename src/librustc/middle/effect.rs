@@ -19,8 +19,8 @@ use middle::ty::MethodCall;
 use syntax::ast;
 use syntax::codemap::Span;
 use rustc_front::hir;
-use rustc_front::visit;
-use rustc_front::visit::{FnKind, Visitor};
+use rustc_front::intravisit;
+use rustc_front::intravisit::{FnKind, Visitor};
 
 #[derive(Copy, Clone)]
 struct UnsafeContext {
@@ -94,7 +94,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
             self.unsafe_context = UnsafeContext::new(SafeContext)
         }
 
-        visit::walk_fn(self, fn_kind, fn_decl, block, span);
+        intravisit::walk_fn(self, fn_kind, fn_decl, block, span);
 
         self.unsafe_context = old_unsafe_context
     }
@@ -133,7 +133,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
             hir::DefaultBlock | hir::PushUnstableBlock | hir:: PopUnstableBlock => {}
         }
 
-        visit::walk_block(self, block);
+        intravisit::walk_block(self, block);
 
         self.unsafe_context = old_unsafe_context
     }
@@ -177,7 +177,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
             _ => {}
         }
 
-        visit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr);
     }
 }
 
@@ -187,5 +187,5 @@ pub fn check_crate(tcx: &ty::ctxt) {
         unsafe_context: UnsafeContext::new(SafeContext),
     };
 
-    visit::walk_crate(&mut visitor, tcx.map.krate());
+    tcx.map.krate().visit_all_items(&mut visitor);
 }

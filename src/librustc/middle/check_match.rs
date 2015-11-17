@@ -33,7 +33,7 @@ use std::iter::{FromIterator, IntoIterator, repeat};
 
 use rustc_front::hir;
 use rustc_front::hir::Pat;
-use rustc_front::visit::{self, Visitor, FnKind};
+use rustc_front::intravisit::{self, Visitor, FnKind};
 use rustc_front::util as front_util;
 use rustc_back::slice;
 
@@ -155,15 +155,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt) {
-    visit::walk_crate(&mut MatchCheckCtxt {
+    tcx.map.krate().visit_all_items(&mut MatchCheckCtxt {
         tcx: tcx,
         param_env: tcx.empty_parameter_environment(),
-    }, tcx.map.krate());
+    });
     tcx.sess.abort_if_errors();
 }
 
 fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
-    visit::walk_expr(cx, ex);
+    intravisit::walk_expr(cx, ex);
     match ex.node {
         hir::ExprMatch(ref scrut, ref arms, source) => {
             for arm in arms {
@@ -986,7 +986,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
 }
 
 fn check_local(cx: &mut MatchCheckCtxt, loc: &hir::Local) {
-    visit::walk_local(cx, loc);
+    intravisit::walk_local(cx, loc);
 
     let pat = StaticInliner::new(cx.tcx, None).fold_pat(loc.pat.clone());
     check_irrefutable(cx, &pat, false);
@@ -1007,7 +1007,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
         _ => cx.param_env = ParameterEnvironment::for_item(cx.tcx, fn_id),
     }
 
-    visit::walk_fn(cx, kind, decl, body, sp);
+    intravisit::walk_fn(cx, kind, decl, body, sp);
 
     for input in &decl.inputs {
         check_irrefutable(cx, &input.pat, true);
@@ -1187,10 +1187,10 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
             hir::PatIdent(_, _, Some(_)) => {
                 let bindings_were_allowed = self.bindings_allowed;
                 self.bindings_allowed = false;
-                visit::walk_pat(self, pat);
+                intravisit::walk_pat(self, pat);
                 self.bindings_allowed = bindings_were_allowed;
             }
-            _ => visit::walk_pat(self, pat),
+            _ => intravisit::walk_pat(self, pat),
         }
     }
 }

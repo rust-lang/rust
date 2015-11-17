@@ -41,7 +41,7 @@ use syntax::parse::token;
 use util::nodemap::{DefIdMap, FnvHashMap};
 use rustc::front::map as hir_map;
 use rustc::front::map::NodeItem;
-use rustc_front::visit;
+use rustc_front::intravisit;
 use rustc_front::hir::{Item, ItemImpl,Crate};
 use rustc_front::hir;
 
@@ -96,13 +96,11 @@ struct CoherenceCheckVisitor<'a, 'tcx: 'a> {
     cc: &'a CoherenceChecker<'a, 'tcx>
 }
 
-impl<'a, 'tcx, 'v> visit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         if let ItemImpl(..) = item.node {
             self.cc.check_implementation(item)
         }
-
-        visit::walk_item(self, item);
     }
 }
 
@@ -111,8 +109,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
-        let mut visitor = CoherenceCheckVisitor { cc: self };
-        visit::walk_crate(&mut visitor, krate);
+        krate.visit_all_items(&mut CoherenceCheckVisitor { cc: self });
 
         // Copy over the inherent impls we gathered up during the walk into
         // the tcx.

@@ -127,7 +127,7 @@ use syntax::ptr::P;
 use rustc_front::hir::Expr;
 use rustc_front::hir;
 use rustc_front::print::pprust::{expr_to_string, block_to_string};
-use rustc_front::visit::{self, Visitor, FnKind};
+use rustc_front::intravisit::{self, Visitor, FnKind};
 
 /// For use with `propagate_through_loop`.
 enum LoopKind<'a> {
@@ -192,7 +192,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt) {
-    visit::walk_crate(&mut IrMaps::new(tcx), tcx.map.krate());
+    tcx.map.krate().visit_all_items(&mut IrMaps::new(tcx));
     tcx.sess.abort_if_errors();
 }
 
@@ -390,7 +390,7 @@ fn visit_fn(ir: &mut IrMaps,
 
     // gather up the various local variables, significant expressions,
     // and so forth:
-    visit::walk_fn(&mut fn_maps, fk, decl, body, sp);
+    intravisit::walk_fn(&mut fn_maps, fk, decl, body, sp);
 
     // Special nodes and variables:
     // - exit_ln represents the end of the fn, either by return or panic
@@ -423,7 +423,7 @@ fn visit_local(ir: &mut IrMaps, local: &hir::Local) {
           name: name
         }));
     });
-    visit::walk_local(ir, local);
+    intravisit::walk_local(ir, local);
 }
 
 fn visit_arm(ir: &mut IrMaps, arm: &hir::Arm) {
@@ -439,7 +439,7 @@ fn visit_arm(ir: &mut IrMaps, arm: &hir::Arm) {
             }));
         })
     }
-    visit::walk_arm(ir, arm);
+    intravisit::walk_arm(ir, arm);
 }
 
 fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
@@ -451,7 +451,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         if let DefLocal(..) = def {
             ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         }
-        visit::walk_expr(ir, expr);
+        intravisit::walk_expr(ir, expr);
       }
       hir::ExprClosure(..) => {
         // Interesting control flow (for loops can contain labeled
@@ -474,17 +474,17 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         });
         ir.set_captures(expr.id, call_caps);
 
-        visit::walk_expr(ir, expr);
+        intravisit::walk_expr(ir, expr);
       }
 
       // live nodes required for interesting control flow:
       hir::ExprIf(..) | hir::ExprMatch(..) | hir::ExprWhile(..) | hir::ExprLoop(..) => {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
-        visit::walk_expr(ir, expr);
+        intravisit::walk_expr(ir, expr);
       }
       hir::ExprBinary(op, _, _) if ::rustc_front::util::lazy_binop(op.node) => {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
-        visit::walk_expr(ir, expr);
+        intravisit::walk_expr(ir, expr);
       }
 
       // otherwise, live nodes are not required:
@@ -497,7 +497,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
       hir::ExprInlineAsm(..) | hir::ExprBox(..) |
       hir::ExprRange(..) => {
-          visit::walk_expr(ir, expr);
+          intravisit::walk_expr(ir, expr);
       }
     }
 }
@@ -1383,7 +1383,7 @@ fn check_local(this: &mut Liveness, local: &hir::Local) {
         }
     }
 
-    visit::walk_local(this, local);
+    intravisit::walk_local(this, local);
 }
 
 fn check_arm(this: &mut Liveness, arm: &hir::Arm) {
@@ -1393,7 +1393,7 @@ fn check_arm(this: &mut Liveness, arm: &hir::Arm) {
     this.arm_pats_bindings(arm.pats.first().map(|p| &**p), |this, ln, var, sp, id| {
         this.warn_about_unused(sp, id, ln, var);
     });
-    visit::walk_arm(this, arm);
+    intravisit::walk_arm(this, arm);
 }
 
 fn check_expr(this: &mut Liveness, expr: &Expr) {
@@ -1401,13 +1401,13 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       hir::ExprAssign(ref l, _) => {
         this.check_lvalue(&**l);
 
-        visit::walk_expr(this, expr);
+        intravisit::walk_expr(this, expr);
       }
 
       hir::ExprAssignOp(_, ref l, _) => {
         this.check_lvalue(&**l);
 
-        visit::walk_expr(this, expr);
+        intravisit::walk_expr(this, expr);
       }
 
       hir::ExprInlineAsm(ref ia) => {
@@ -1421,7 +1421,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
           this.visit_expr(&**out);
         }
 
-        visit::walk_expr(this, expr);
+        intravisit::walk_expr(this, expr);
       }
 
       // no correctness conditions related to liveness
@@ -1435,7 +1435,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
       hir::ExprClosure(..) | hir::ExprPath(..) | hir::ExprBox(..) |
       hir::ExprRange(..) => {
-        visit::walk_expr(this, expr);
+        intravisit::walk_expr(this, expr);
       }
     }
 }
@@ -1532,7 +1532,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             _ => {
                 // For other kinds of lvalues, no checks are required,
                 // and any embedded expressions are actually rvalues
-                visit::walk_expr(self, expr);
+                intravisit::walk_expr(self, expr);
             }
         }
     }

@@ -17,13 +17,13 @@ use middle::traits;
 use middle::ty;
 use syntax::ast;
 use syntax::codemap::Span;
-use rustc_front::visit;
+use rustc_front::intravisit;
 use rustc_front::hir;
 use rustc_front::hir::{Item, ItemImpl};
 
 pub fn check(tcx: &ty::ctxt) {
     let mut orphan = OrphanChecker { tcx: tcx };
-    visit::walk_crate(&mut orphan, tcx.map.krate());
+    tcx.map.krate().visit_all_items(&mut orphan);
 }
 
 struct OrphanChecker<'cx, 'tcx:'cx> {
@@ -354,9 +354,8 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
+impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         self.check_item(item);
-        visit::walk_item(self, item);
     }
 }

@@ -25,8 +25,7 @@ use syntax::ast;
 use syntax::codemap::{Span};
 use syntax::parse::token::{special_idents};
 use syntax::ptr::P;
-use rustc_front::visit;
-use rustc_front::visit::Visitor;
+use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
 
 pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
@@ -492,19 +491,19 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     fn visit_item(&mut self, i: &hir::Item) {
         debug!("visit_item: {:?}", i);
         self.check_item_well_formed(i);
-        visit::walk_item(self, i);
+        intravisit::walk_item(self, i);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'v hir::TraitItem) {
         debug!("visit_trait_item: {:?}", trait_item);
         self.check_trait_or_impl_item(trait_item.id, trait_item.span);
-        visit::walk_trait_item(self, trait_item)
+        intravisit::walk_trait_item(self, trait_item)
     }
 
     fn visit_impl_item(&mut self, impl_item: &'v hir::ImplItem) {
         debug!("visit_impl_item: {:?}", impl_item);
         self.check_trait_or_impl_item(impl_item.id, impl_item.span);
-        visit::walk_impl_item(self, impl_item)
+        intravisit::walk_impl_item(self, impl_item)
     }
 }
 

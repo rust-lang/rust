@@ -52,7 +52,7 @@ use std::collections::HashSet;
 use syntax::ast;
 use syntax::codemap::Span;
 use rustc_front::hir;
-use rustc_front::visit::{self, Visitor};
+use rustc_front::intravisit::{self, Visitor};
 
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
@@ -105,11 +105,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for SeedBorrowKind<'a, 'tcx> {
             _ => { }
         }
 
-        visit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr);
     }
-
-    // Skip all items; they aren't in the same context.
-    fn visit_item(&mut self, _: &'v hir::Item) { }
 }
 
 impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
@@ -510,18 +507,15 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for AdjustBorrowKind<'a, 'tcx> {
     fn visit_fn(&mut self,
-                fn_kind: visit::FnKind<'v>,
+                fn_kind: intravisit::FnKind<'v>,
                 decl: &'v hir::FnDecl,
                 body: &'v hir::Block,
                 span: Span,
                 id: ast::NodeId)
     {
-        visit::walk_fn(self, fn_kind, decl, body, span);
+        intravisit::walk_fn(self, fn_kind, decl, body, span);
         self.analyze_closure(id, span, decl, body);
     }
-
-    // Skip all items; they aren't in the same context.
-    fn visit_item(&mut self, _: &'v hir::Item) { }
 }
 
 impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
