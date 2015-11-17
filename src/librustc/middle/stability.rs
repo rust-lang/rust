@@ -31,7 +31,7 @@ use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
 use rustc_front::hir;
 use rustc_front::hir::{Block, Crate, Item, Generics, StructField, Variant};
-use rustc_front::visit::{self, Visitor};
+use rustc_front::intravisit::{self, Visitor};
 
 use std::mem::replace;
 use std::cmp::Ordering;
@@ -174,6 +174,13 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
+    /// Because stability levels are scoped lexically, we want to walk
+    /// nested items in the context of the outer item, so enable
+    /// deep-walking.
+    fn visit_nested_item(&mut self, item: hir::ItemId) {
+        self.visit_item(self.tcx.map.expect_item(item.id))
+    }
+
     fn visit_item(&mut self, i: &Item) {
         let orig_in_trait_impl = self.in_trait_impl;
         let orig_in_enum = self.in_enum;
@@ -203,7 +210,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
         }
 
         self.annotate(i.id, &i.attrs, i.span, kind, |v| {
-            visit::walk_item(v, i)
+            intravisit::walk_item(v, i)
         });
         self.in_trait_impl = orig_in_trait_impl;
         self.in_enum = orig_in_enum;
@@ -211,7 +218,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
         self.annotate(ti.id, &ti.attrs, ti.span, AnnotationKind::Required, |v| {
-            visit::walk_trait_item(v, ti);
+            intravisit::walk_trait_item(v, ti);
         });
     }
 
@@ -222,13 +229,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
             AnnotationKind::Required
         };
         self.annotate(ii.id, &ii.attrs, ii.span, kind, |v| {
-            visit::walk_impl_item(v, ii);
+            intravisit::walk_impl_item(v, ii);
         });
     }
 
     fn visit_variant(&mut self, var: &Variant, g: &'v Generics, item_id: NodeId) {
         self.annotate(var.node.data.id(), &var.node.attrs, var.span, AnnotationKind::Required, |v| {
-            visit::walk_variant(v, var, g, item_id);
+            intravisit::walk_variant(v, var, g, item_id);
         })
     }
 
@@ -240,13 +247,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
             AnnotationKind::Required
         };
         self.annotate(s.node.id, &s.node.attrs, s.span, kind, |v| {
-            visit::walk_struct_field(v, s);
+            intravisit::walk_struct_field(v, s);
         });
     }
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
         self.annotate(i.id, &i.attrs, i.span, AnnotationKind::Required, |v| {
-            visit::walk_foreign_item(v, i);
+            intravisit::walk_foreign_item(v, i);
         });
     }
 
@@ -259,7 +266,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
 
 impl<'tcx> Index<'tcx> {
     /// Construct the stability index for a crate being compiled.
-    pub fn build(&mut self, tcx: &ty::ctxt<'tcx>, krate: &Crate, export_map: &PublicItems) {
+    pub fn build(&mut self, tcx: &ty::ctxt<'tcx>, krate: &'tcx Crate, export_map: &PublicItems) {
         let mut annotator = Annotator {
             tcx: tcx,
             index: self,
@@ -269,7 +276,7 @@ impl<'tcx> Index<'tcx> {
             in_enum: false,
         };
         annotator.annotate(ast::CRATE_NODE_ID, &krate.attrs, krate.span, AnnotationKind::Required,
-                           |v| visit::walk_crate(v, krate));
+                           |v| intravisit::walk_crate(v, krate));
     }
 
     pub fn new(krate: &Crate) -> Index {
@@ -308,9 +315,7 @@ pub fn check_unstable_api_usage(tcx: &ty::ctxt)
         used_features: FnvHashMap(),
         in_skip_block: 0,
     };
-
-    let krate = tcx.map.krate();
-    visit::walk_crate(&mut checker, krate);
+    intravisit::walk_crate(&mut checker, tcx.map.krate());
 
     let used_features = checker.used_features;
     return used_features;
@@ -379,6 +384,13 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 }
 
 impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
+    /// Because stability levels are scoped lexically, we want to walk
+    /// nested items in the context of the outer item, so enable
+    /// deep-walking.
+    fn visit_nested_item(&mut self, item: hir::ItemId) {
+        self.visit_item(self.tcx.map.expect_item(item.id))
+    }
+
     fn visit_item(&mut self, item: &hir::Item) {
         // When compiling with --test we don't enforce stability on the
         // compiler-generated test module, demarcated with `DUMMY_SP` plus the
@@ -387,31 +399,31 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
 
         check_item(self.tcx, item, true,
                    &mut |id, sp, stab| self.check(id, sp, stab));
-        visit::walk_item(self, item);
+        intravisit::walk_item(self, item);
     }
 
     fn visit_expr(&mut self, ex: &hir::Expr) {
         check_expr(self.tcx, ex,
                    &mut |id, sp, stab| self.check(id, sp, stab));
-        visit::walk_expr(self, ex);
+        intravisit::walk_expr(self, ex);
     }
 
     fn visit_path(&mut self, path: &hir::Path, id: ast::NodeId) {
         check_path(self.tcx, path, id,
                    &mut |id, sp, stab| self.check(id, sp, stab));
-        visit::walk_path(self, path)
+        intravisit::walk_path(self, path)
     }
 
     fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
         check_path_list_item(self.tcx, item,
                    &mut |id, sp, stab| self.check(id, sp, stab));
-        visit::walk_path_list_item(self, prefix, item)
+        intravisit::walk_path_list_item(self, prefix, item)
     }
 
     fn visit_pat(&mut self, pat: &hir::Pat) {
         check_pat(self.tcx, pat,
                   &mut |id, sp, stab| self.check(id, sp, stab));
-        visit::walk_pat(self, pat)
+        intravisit::walk_pat(self, pat)
     }
 
     fn visit_block(&mut self, b: &hir::Block) {
@@ -425,7 +437,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
             }
             _ => {}
         }
-        visit::walk_block(self, b);
+        intravisit::walk_block(self, b);
         self.in_skip_block = old_skip_count;
     }
 }
