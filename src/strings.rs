@@ -51,7 +51,7 @@ impl LateLintPass for StringAdd {
                     "you added something to a string. \
                      Consider using `String::push_str()` instead")
             }
-        } else if let &ExprAssign(ref target, ref  src) = &e.node {
+        } else if let &ExprAssign(ref target, ref src) = &e.node {
             if is_string(cx, target) && is_add(cx, src, target) {
                 span_lint(cx, STRING_ADD_ASSIGN, e.span,
                     "you assigned the result of adding something to this string. \

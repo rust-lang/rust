@@ -17,7 +17,7 @@ pub struct MinMaxPass;
 
 impl LintPass for MinMaxPass {
     fn get_lints(&self) -> LintArray {
-       lint_array!(MIN_MAX)
+        lint_array!(MIN_MAX)
     }
 }
 
