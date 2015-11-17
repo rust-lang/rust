@@ -1263,13 +1263,13 @@ impl<'a> State<'a> {
                     _ => {}
                 }
 
-                match opt_trait {
-                    &Some(ref t) => {
+                match *opt_trait {
+                    Some(ref t) => {
                         try!(self.print_trait_ref(t));
                         try!(space(&mut self.s));
                         try!(self.word_space("for"));
                     }
-                    &None => {}
+                    None => {}
                 }
 
                 try!(self.print_type(&**ty));
@@ -1499,10 +1499,10 @@ impl<'a> State<'a> {
             try!(self.print_tt(tt));
             // There should be no space between the module name and the following `::` in paths,
             // otherwise imported macros get re-parsed from crate metadata incorrectly (#20701)
-            suppress_space = match tt {
-                &TokenTree::Token(_, token::Ident(_, token::ModName)) |
-                &TokenTree::Token(_, token::MatchNt(_, _, _, token::ModName)) |
-                &TokenTree::Token(_, token::SubstNt(_, token::ModName)) => true,
+            suppress_space = match *tt {
+                TokenTree::Token(_, token::Ident(_, token::ModName)) |
+                TokenTree::Token(_, token::MatchNt(_, _, _, token::ModName)) |
+                TokenTree::Token(_, token::SubstNt(_, token::ModName)) => true,
                 _ => false
             }
         }
@@ -2618,8 +2618,8 @@ impl<'a> State<'a> {
         try!(self.rbox(0, Inconsistent));
         let mut first = true;
         if let Some(explicit_self) = opt_explicit_self {
-            let m = match explicit_self {
-                &ast::SelfStatic => ast::MutImmutable,
+            let m = match *explicit_self {
+                ast::SelfStatic => ast::MutImmutable,
                 _ => match decl.inputs[0].pat.node {
                     ast::PatIdent(ast::BindByValue(m), _, _) => m,
                     _ => ast::MutImmutable
@@ -2804,18 +2804,18 @@ impl<'a> State<'a> {
                 try!(self.word_space(","));
             }
 
-            match predicate {
-                &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ref bound_lifetimes,
-                                                                              ref bounded_ty,
-                                                                              ref bounds,
-                                                                              ..}) => {
+            match *predicate {
+                ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ref bound_lifetimes,
+                                                                             ref bounded_ty,
+                                                                             ref bounds,
+                                                                             ..}) => {
                     try!(self.print_formal_lifetime_list(bound_lifetimes));
                     try!(self.print_type(&**bounded_ty));
                     try!(self.print_bounds(":", bounds));
                 }
-                &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
-                                                                                ref bounds,
-                                                                                ..}) => {
+                ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
+                                                                               ref bounds,
+                                                                               ..}) => {
                     try!(self.print_lifetime(lifetime));
                     try!(word(&mut self.s, ":"));
 
@@ -2827,7 +2827,7 @@ impl<'a> State<'a> {
                         }
                     }
                 }
-                &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
+                ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
                     try!(self.print_path(path, false, 0));
                     try!(space(&mut self.s));
                     try!(self.word_space("="));

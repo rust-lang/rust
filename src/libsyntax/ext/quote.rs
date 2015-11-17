@@ -63,9 +63,9 @@ pub mod rt {
 
     impl<T: ToTokens> ToTokens for Option<T> {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-            match self {
-                &Some(ref t) => t.to_tokens(cx),
-                &None => Vec::new(),
+            match *self {
+                Some(ref t) => t.to_tokens(cx),
+                None => Vec::new(),
             }
         }
     }
