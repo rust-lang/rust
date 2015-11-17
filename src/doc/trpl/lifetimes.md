@@ -116,7 +116,8 @@ reference to an `i32` with the lifetime `'a`’.
 
 # In `struct`s
 
-You’ll also need explicit lifetimes when working with [`struct`][structs]s:
+You’ll also need explicit lifetimes when working with [`struct`][structs]s that
+contain references:
 
 ```rust
 struct Foo<'a> {
