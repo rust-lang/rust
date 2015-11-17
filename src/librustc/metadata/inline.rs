@@ -48,11 +48,7 @@ impl InlinedItem {
     }
 
     pub fn visit_ids<O: IdVisitingOperation>(&self, operation: &mut O) {
-        let mut id_visitor = IdVisitor {
-            operation: operation,
-            pass_through_items: true,
-            visited_outermost: false,
-        };
+        let mut id_visitor = IdVisitor::new(operation);
         self.visit(&mut id_visitor);
     }
 
