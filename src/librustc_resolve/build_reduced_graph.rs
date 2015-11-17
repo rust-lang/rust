@@ -27,7 +27,6 @@ use resolve_imports::Shadowable;
 use {resolve_error, ResolutionError};
 
 use self::DuplicateCheckingMode::*;
-use self::NamespaceError::*;
 
 use rustc::metadata::csearch;
 use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
@@ -60,27 +59,10 @@ use std::rc::Rc;
 // another item exists with the same name in some namespace.
 #[derive(Copy, Clone, PartialEq)]
 enum DuplicateCheckingMode {
-    ForbidDuplicateModules,
-    ForbidDuplicateTypesAndModules,
+    ForbidDuplicateTypes,
     ForbidDuplicateValues,
     ForbidDuplicateTypesAndValues,
     OverwriteDuplicates,
-}
-
-#[derive(Copy, Clone, PartialEq)]
-enum NamespaceError {
-    NoError,
-    ModuleError,
-    TypeError,
-    ValueError,
-}
-
-fn namespace_error_to_string(ns: NamespaceError) -> &'static str {
-    match ns {
-        NoError => "",
-        ModuleError | TypeError => "type or module",
-        ValueError => "value",
-    }
 }
 
 struct GraphBuilder<'a, 'b: 'a, 'tcx: 'b> {
@@ -112,16 +94,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         visit::walk_crate(&mut visitor, krate);
     }
 
-    /// Adds a new child item to the module definition of the parent node and
-    /// returns its corresponding name bindings as well as the current parent.
-    /// Or, if we're inside a block, creates (or reuses) an anonymous module
-    /// corresponding to the innermost block ID and returns the name bindings
-    /// as well as the newly-created parent.
-    ///
-    /// # Panics
-    ///
-    /// Panics if this node does not have a module definition and we are not inside
-    /// a block.
+    /// Adds a new child item to the module definition of the parent node,
+    /// or if there is already a child, does duplicate checking on the child.
+    /// Returns the child's corresponding name bindings.
     fn add_child(&self,
                  name: Name,
                  parent: &Rc<Module>,
@@ -129,10 +104,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                  // For printing errors
                  sp: Span)
                  -> NameBindings {
-        // If this is the immediate descendant of a module, then we add the
-        // child name directly. Otherwise, we create or reuse an anonymous
-        // module and add the child to that.
-
         self.check_for_conflicts_between_external_crates_and_items(&**parent, name, sp);
 
         // Add or reuse the child.
@@ -146,79 +117,33 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             Some(child) => {
                 // Enforce the duplicate checking mode:
                 //
-                // * If we're requesting duplicate module checking, check that
-                //   there isn't a module in the module with the same name.
-                //
                 // * If we're requesting duplicate type checking, check that
-                //   there isn't a type in the module with the same name.
+                //   the name isn't defined in the type namespace.
                 //
                 // * If we're requesting duplicate value checking, check that
-                //   there isn't a value in the module with the same name.
+                //   the name isn't defined in the value namespace.
                 //
-                // * If we're requesting duplicate type checking and duplicate
-                //   value checking, check that there isn't a duplicate type
-                //   and a duplicate value with the same name.
+                // * If we're requesting duplicate type and value checking,
+                //   check that the name isn't defined in either namespace.
                 //
                 // * If no duplicate checking was requested at all, do
                 //   nothing.
 
-                let mut duplicate_type = NoError;
                 let ns = match duplicate_checking_mode {
-                    ForbidDuplicateModules => {
-                        if child.get_module_if_available().is_some() {
-                            duplicate_type = ModuleError;
-                        }
-                        Some(TypeNS)
-                    }
-                    ForbidDuplicateTypesAndModules => {
-                        if child.type_ns.defined() {
-                            duplicate_type = TypeError;
-                        }
-                        Some(TypeNS)
-                    }
-                    ForbidDuplicateValues => {
-                        if child.value_ns.defined() {
-                            duplicate_type = ValueError;
-                        }
-                        Some(ValueNS)
-                    }
-                    ForbidDuplicateTypesAndValues => {
-                        let mut n = None;
-                        match child.type_ns.def() {
-                            Some(DefMod(_)) | None => {}
-                            Some(_) => {
-                                n = Some(TypeNS);
-                                duplicate_type = TypeError;
-                            }
-                        }
-                        if child.value_ns.defined() {
-                            duplicate_type = ValueError;
-                            n = Some(ValueNS);
-                        }
-                        n
-                    }
-                    OverwriteDuplicates => None,
+                    ForbidDuplicateTypes if child.type_ns.defined() => TypeNS,
+                    ForbidDuplicateValues if child.value_ns.defined() => ValueNS,
+                    ForbidDuplicateTypesAndValues if child.type_ns.defined() => TypeNS,
+                    ForbidDuplicateTypesAndValues if child.value_ns.defined() => ValueNS,
+                    _ => return child,
                 };
-                if duplicate_type != NoError {
-                    // Return an error here by looking up the namespace that
-                    // had the duplicate.
-                    let ns = ns.unwrap();
-                    resolve_error(
-                        self,
-                        sp,
-                        ResolutionError::DuplicateDefinition(
-                            namespace_error_to_string(duplicate_type),
-                            name)
-                    );
-                    {
-                        let r = child[ns].span();
-                        if let Some(sp) = r {
-                            self.session.span_note(sp,
-                                                   &format!("first definition of {} `{}` here",
-                                      namespace_error_to_string(duplicate_type),
-                                      name));
-                        }
-                    }
+
+                // Record an error here by looking up the namespace that had the duplicate
+                let ns_str = match ns { TypeNS => "type or module", ValueNS => "value" };
+                resolve_error(self, sp, ResolutionError::DuplicateDefinition(ns_str, name));
+
+                if let Some(sp) = child[ns].span() {
+                    let note = format!("first definition of {} `{}` here", ns_str, name);
+                    self.session.span_note(sp, &note);
                 }
                 child
             }
@@ -409,29 +334,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             }
 
             ItemMod(..) => {
-                let child = parent.children.borrow().get(&name).cloned();
-                if let Some(child) = child {
-                    // check if there's struct of the same name already defined
-                    if child.type_ns.defined() &&
-                       child.get_module_if_available().is_none() {
-                        self.session.span_warn(sp,
-                                               &format!("duplicate definition of {} `{}`. \
-                                                         Defining a module and a struct with \
-                                                         the same name will be disallowed soon.",
-                                                        namespace_error_to_string(TypeError),
-                                                        name));
-                        {
-                            let r = child.type_ns.span();
-                            if let Some(sp) = r {
-                                self.session.span_note(sp,
-                                                       &format!("first definition of {} `{}` here",
-                                          namespace_error_to_string(TypeError),
-                                          name));
-                            }
-                        }
-                    }
-                }
-                let name_bindings = self.add_child(name, parent, ForbidDuplicateModules, sp);
+                let name_bindings = self.add_child(name, parent, ForbidDuplicateTypes, sp);
 
                 let parent_link = self.get_parent_link(parent, name);
                 let def = DefMod(self.ast_map.local_def_id(item.id));
@@ -469,7 +372,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             ItemTy(..) => {
                 let name_bindings = self.add_child(name,
                                                    parent,
-                                                   ForbidDuplicateTypesAndModules,
+                                                   ForbidDuplicateTypes,
                                                    sp);
 
                 let parent_link = self.get_parent_link(parent, name);
@@ -481,7 +384,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             ItemEnum(ref enum_definition, _) => {
                 let name_bindings = self.add_child(name,
                                                    parent,
-                                                   ForbidDuplicateTypesAndModules,
+                                                   ForbidDuplicateTypes,
                                                    sp);
 
                 let parent_link = self.get_parent_link(parent, name);
@@ -501,31 +404,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             ItemStruct(ref struct_def, _) => {
                 // Adding to both Type and Value namespaces or just Type?
                 let (forbid, ctor_id) = if struct_def.is_struct() {
-                    (ForbidDuplicateTypesAndModules, None)
+                    (ForbidDuplicateTypes, None)
                 } else {
-                    let child = parent.children.borrow().get(&name).cloned();
-                    if let Some(child) = child {
-                        // check if theres a DefMod
-                        if let Some(DefMod(_)) = child.type_ns.def() {
-                            self.session.span_warn(sp,
-                                                   &format!("duplicate definition of {} `{}`. \
-                                                             Defining a module and a struct \
-                                                             with the same name will be \
-                                                             disallowed soon.",
-                                                            namespace_error_to_string(TypeError),
-                                                            name));
-                            {
-                                let r = child.type_ns.span();
-                                if let Some(sp) = r {
-                                    self.session
-                                        .span_note(sp,
-                                                   &format!("first definition of {} `{}` here",
-                                                            namespace_error_to_string(TypeError),
-                                                            name));
-                                }
-                            }
-                        }
-                    }
                     (ForbidDuplicateTypesAndValues, Some(struct_def.id()))
                 };
 
@@ -566,7 +446,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             ItemTrait(_, _, _, ref items) => {
                 let name_bindings = self.add_child(name,
                                                    parent,
-                                                   ForbidDuplicateTypesAndModules,
+                                                   ForbidDuplicateTypes,
                                                    sp);
 
                 let def_id = self.ast_map.local_def_id(item.id);
