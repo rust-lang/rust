@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 
-use utils::{span_help_and_lint};
+use utils::span_help_and_lint;
 use consts::{Constant, constant_simple, FloatWidth};
 
 /// ZeroDivZeroPass is a pass that checks for a binary expression that consists

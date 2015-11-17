@@ -31,10 +31,12 @@ impl LateLintPass for NeedlessBool {
             match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
                 (Some(true), Some(true)) => {
                     span_lint(cx, NEEDLESS_BOOL, e.span,
-                              "this if-then-else expression will always return true"); }
+                              "this if-then-else expression will always return true");
+                }
                 (Some(false), Some(false)) => {
                     span_lint(cx, NEEDLESS_BOOL, e.span,
-                              "this if-then-else expression will always return false"); }
+                              "this if-then-else expression will always return false");
+                }
                 (Some(true), Some(false)) => {
                     let pred_snip = snippet(cx, pred.span, "..");
                     let hint = if pred_snip == ".." { "its predicate".into() } else {

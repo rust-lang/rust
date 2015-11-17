@@ -5,7 +5,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 
-use utils::{span_lint};
+use utils::span_lint;
 use utils;
 
 declare_lint! {
@@ -27,7 +27,7 @@ pub struct NeedlessFeaturesPass;
 
 impl LintPass for NeedlessFeaturesPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNSTABLE_AS_SLICE,UNSTABLE_AS_MUT_SLICE)
+        lint_array!(UNSTABLE_AS_SLICE, UNSTABLE_AS_MUT_SLICE)
     }
 }
 

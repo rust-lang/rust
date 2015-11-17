@@ -53,7 +53,7 @@ impl EarlyLintPass for Precedence {
                                      method call. Consider adding parentheses \
                                      to clarify your intent: -({})",
                                      snippet(cx, rhs.span, ".."))),
-                                _ => ()
+                            _ => ()
                         }
                     }
                 }
@@ -62,21 +62,21 @@ impl EarlyLintPass for Precedence {
     }
 }
 
-fn is_arith_expr(expr : &Expr) -> bool {
+fn is_arith_expr(expr: &Expr) -> bool {
     match expr.node {
         ExprBinary(Spanned { node: op, ..}, _, _) => is_arith_op(op),
         _ => false
     }
 }
 
-fn is_bit_op(op : BinOp_) -> bool {
+fn is_bit_op(op: BinOp_) -> bool {
     match op {
         BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr => true,
         _ => false
     }
 }
 
-fn is_arith_op(op : BinOp_) -> bool {
+fn is_arith_op(op: BinOp_) -> bool {
     match op {
         BiAdd | BiSub | BiMul | BiDiv | BiRem => true,
         _ => false

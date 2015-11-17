@@ -19,7 +19,7 @@ impl LintPass for MutMut {
 
 impl LateLintPass for MutMut {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-       check_expr_mut(cx, expr)
+        check_expr_mut(cx, expr)
     }
 
     fn check_ty(&mut self, cx: &LateContext, ty: &Ty) {
@@ -31,7 +31,7 @@ impl LateLintPass for MutMut {
 fn check_expr_mut(cx: &LateContext, expr: &Expr) {
     if in_external_macro(cx, expr.span) { return; }
 
-    fn unwrap_addr(expr : &Expr) -> Option<&Expr> {
+    fn unwrap_addr(expr: &Expr) -> Option<&Expr> {
         match expr.node {
             ExprAddrOf(MutMutable, ref e) => Option::Some(e),
             _ => Option::None
@@ -53,7 +53,7 @@ fn check_expr_mut(cx: &LateContext, expr: &Expr) {
     })
 }
 
-fn unwrap_mut(ty : &Ty) -> Option<&Ty> {
+fn unwrap_mut(ty: &Ty) -> Option<&Ty> {
     match ty.node {
         TyRptr(_, MutTy{ ty: ref pty, mutbl: MutMutable }) => Option::Some(pty),
         _ => Option::None
