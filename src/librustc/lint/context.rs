@@ -555,7 +555,6 @@ impl<'a> EarlyContext<'a> {
     {
         let mut v = ast_util::IdVisitor {
             operation: self,
-            pass_through_items: false,
             visited_outermost: false,
         };
         f(&mut v);
@@ -583,11 +582,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     fn visit_ids<F>(&mut self, f: F)
         where F: FnOnce(&mut util::IdVisitor<LateContext>)
     {
-        let mut v = util::IdVisitor {
-            operation: self,
-            pass_through_items: false,
-            visited_outermost: false,
-        };
+        let mut v = util::IdVisitor::new(self);
         f(&mut v);
     }
 }
