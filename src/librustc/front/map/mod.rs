@@ -25,7 +25,7 @@ use syntax::parse::token;
 
 use rustc_front::hir::*;
 use rustc_front::fold::Folder;
-use rustc_front::visit;
+use rustc_front::intravisit;
 use rustc_front::print::pprust;
 
 use arena::TypedArena;
@@ -809,9 +809,11 @@ impl<F: FoldOps> Folder for IdAndSpanUpdater<F> {
 }
 
 pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
-    let mut collector = NodeCollector::root();
-    visit::walk_crate(&mut collector, &forest.krate);
-    let NodeCollector { map, definitions, .. } = collector;
+    let (map, definitions) = {
+        let mut collector = NodeCollector::root(&forest.krate);
+        intravisit::walk_crate(&mut collector, &forest.krate);
+        (collector.map, collector.definitions)
+    };
 
     if log_enabled!(::log::DEBUG) {
         // This only makes sense for ordered stores; note the
@@ -847,7 +849,7 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
                                           -> &'ast InlinedItem {
     let mut fld = IdAndSpanUpdater { fold_ops: fold_ops };
     let ii = match ii {
-        II::Item(i) => II::Item(fld.fold_item(i)),
+        II::Item(i) => II::Item(i.map(|i| fld.fold_item(i))),
         II::TraitItem(d, ti) => {
             II::TraitItem(fld.fold_ops.new_def_id(d),
                           fld.fold_trait_item(ti))
@@ -867,6 +869,7 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
     let ii_parent_id = fld.new_id(DUMMY_NODE_ID);
     let mut collector =
         NodeCollector::extend(
+            map.krate(),
             ii_parent,
             ii_parent_id,
             def_path,
