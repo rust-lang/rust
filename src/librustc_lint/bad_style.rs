@@ -351,7 +351,7 @@ impl LateLintPass for NonUpperCaseGlobals {
 
     fn check_impl_item(&mut self, cx: &LateContext, ii: &hir::ImplItem) {
         match ii.node {
-            hir::ConstImplItem(..) => {
+            hir::ImplItemKind::Const(..) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "associated constant",
                                                       ii.name, ii.span);
             }

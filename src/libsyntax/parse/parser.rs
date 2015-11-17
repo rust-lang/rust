@@ -17,7 +17,7 @@ use ast::{Public, Unsafety};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, BiRem, BiLt, Block};
 use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
-use ast::{Constness, ConstImplItem, ConstTraitItem, Crate, CrateConfig};
+use ast::{Constness, ConstTraitItem, Crate, CrateConfig};
 use ast::{Decl, DeclItem, DeclLocal, DefaultBlock, DefaultReturn};
 use ast::{UnDeref, BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
@@ -39,7 +39,7 @@ use ast::{LitStr, LitInt, Local};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
 use ast::{MutImmutable, MutMutable, Mac_};
 use ast::{MutTy, BiMul, Mutability};
-use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
+use ast::{NamedField, UnNeg, NoReturn, UnNot};
 use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatQPath, PatMac, PatRange};
 use ast::{PatRegion, PatStruct, PatTup, PatVec, PatWild};
 use ast::{PolyTraitRef, QSelf};
@@ -52,7 +52,7 @@ use ast::{Ty, Ty_, TypeBinding, TyMac};
 use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr};
 use ast::{TyRptr, TyTup, TyU32, TyVec};
-use ast::{TypeImplItem, TypeTraitItem};
+use ast::TypeTraitItem;
 use ast::{UnnamedField, UnsafeBlock};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
@@ -4425,7 +4425,7 @@ impl<'a> Parser<'a> {
             try!(self.expect(&token::Eq));
             let typ = try!(self.parse_ty_sum());
             try!(self.expect(&token::Semi));
-            (name, TypeImplItem(typ))
+            (name, ast::ImplItemKind::Type(typ))
         } else if self.is_const_item() {
             try!(self.expect_keyword(keywords::Const));
             let name = try!(self.parse_ident());
@@ -4434,7 +4434,7 @@ impl<'a> Parser<'a> {
             try!(self.expect(&token::Eq));
             let expr = try!(self.parse_expr());
             try!(self.commit_expr_expecting(&expr, token::Semi));
-            (name, ConstImplItem(typ, expr))
+            (name, ast::ImplItemKind::Const(typ, expr))
         } else {
             let (name, inner_attrs, node) = try!(self.parse_impl_method(vis));
             attrs.extend(inner_attrs);
@@ -4464,7 +4464,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a method or a macro invocation in a trait impl.
     fn parse_impl_method(&mut self, vis: Visibility)
-                         -> PResult<(Ident, Vec<ast::Attribute>, ast::ImplItem_)> {
+                         -> PResult<(Ident, Vec<ast::Attribute>, ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
         if !self.token.is_any_keyword()
             && self.look_ahead(1, |t| *t == token::Not)
@@ -4490,7 +4490,7 @@ impl<'a> Parser<'a> {
             if delim != token::Brace {
                 try!(self.expect(&token::Semi))
             }
-            Ok((token::special_idents::invalid, vec![], ast::MacImplItem(m)))
+            Ok((token::special_idents::invalid, vec![], ast::ImplItemKind::Macro(m)))
         } else {
             let (constness, unsafety, abi) = try!(self.parse_fn_front_matter());
             let ident = try!(self.parse_ident());
@@ -4500,7 +4500,7 @@ impl<'a> Parser<'a> {
                 }));
             generics.where_clause = try!(self.parse_where_clause());
             let (inner_attrs, body) = try!(self.parse_inner_attrs_and_block());
-            Ok((ident, inner_attrs, MethodImplItem(ast::MethodSig {
+            Ok((ident, inner_attrs, ast::ImplItemKind::Method(ast::MethodSig {
                 generics: generics,
                 abi: abi,
                 explicit_self: explicit_self,

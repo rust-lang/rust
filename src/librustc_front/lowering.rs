@@ -677,14 +677,14 @@ pub fn lower_impl_item(_lctx: &LoweringContext, i: &ImplItem) -> P<hir::ImplItem
         attrs: i.attrs.clone(),
         vis: lower_visibility(_lctx, i.vis),
         node: match i.node {
-            ConstImplItem(ref ty, ref expr) => {
-                hir::ConstImplItem(lower_ty(_lctx, ty), lower_expr(_lctx, expr))
+            ImplItemKind::Const(ref ty, ref expr) => {
+                hir::ImplItemKind::Const(lower_ty(_lctx, ty), lower_expr(_lctx, expr))
             }
-            MethodImplItem(ref sig, ref body) => {
-                hir::MethodImplItem(lower_method_sig(_lctx, sig), lower_block(_lctx, body))
+            ImplItemKind::Method(ref sig, ref body) => {
+                hir::ImplItemKind::Method(lower_method_sig(_lctx, sig), lower_block(_lctx, body))
             }
-            TypeImplItem(ref ty) => hir::TypeImplItem(lower_ty(_lctx, ty)),
-            MacImplItem(..) => panic!("Shouldn't exist any more"),
+            ImplItemKind::Type(ref ty) => hir::ImplItemKind::Type(lower_ty(_lctx, ty)),
+            ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
         },
         span: i.span,
     })

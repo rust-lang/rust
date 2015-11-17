@@ -1006,16 +1006,16 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ii.span.lo));
         try!(self.print_outer_attributes(&ii.attrs));
         match ii.node {
-            hir::ConstImplItem(ref ty, ref expr) => {
+            hir::ImplItemKind::Const(ref ty, ref expr) => {
                 try!(self.print_associated_const(ii.name, &ty, Some(&expr), ii.vis));
             }
-            hir::MethodImplItem(ref sig, ref body) => {
+            hir::ImplItemKind::Method(ref sig, ref body) => {
                 try!(self.head(""));
                 try!(self.print_method_sig(ii.name, sig, ii.vis));
                 try!(self.nbsp());
                 try!(self.print_block_with_attrs(body, &ii.attrs));
             }
-            hir::TypeImplItem(ref ty) => {
+            hir::ImplItemKind::Type(ref ty) => {
                 try!(self.print_associated_type(ii.name, None, Some(ty)));
             }
         }

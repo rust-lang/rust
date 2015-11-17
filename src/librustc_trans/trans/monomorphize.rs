@@ -206,7 +206,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         hir_map::NodeImplItem(impl_item) => {
             match impl_item.node {
-                hir::MethodImplItem(ref sig, ref body) => {
+                hir::ImplItemKind::Method(ref sig, ref body) => {
                     let d = mk_lldecl(abi::Rust);
                     let needs_body = setup_lldecl(d, &impl_item.attrs);
                     if needs_body {

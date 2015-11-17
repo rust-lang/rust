@@ -821,14 +821,14 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             for impl_item in impl_items {
                 let seen_items = match impl_item.node {
-                    hir::TypeImplItem(_) => &mut seen_type_items,
+                    hir::ImplItemKind::Type(_) => &mut seen_type_items,
                     _                    => &mut seen_value_items,
                 };
                 if !seen_items.insert(impl_item.name) {
                     let desc = match impl_item.node {
-                        hir::ConstImplItem(_, _) => "associated constant",
-                        hir::TypeImplItem(_) => "associated type",
-                        hir::MethodImplItem(ref sig, _) =>
+                        hir::ImplItemKind::Const(_, _) => "associated constant",
+                        hir::ImplItemKind::Type(_) => "associated type",
+                        hir::ImplItemKind::Method(ref sig, _) =>
                             match sig.explicit_self.node {
                                 hir::SelfStatic => "associated function",
                                 _ => "method",
@@ -838,7 +838,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                     span_err!(tcx.sess, impl_item.span, E0201, "duplicate {}", desc);
                 }
 
-                if let hir::ConstImplItem(ref ty, _) = impl_item.node {
+                if let hir::ImplItemKind::Const(ref ty, _) = impl_item.node {
                     let ty = ccx.icx(&ty_predicates)
                                 .to_ty(&ExplicitRscope, &*ty);
                     tcx.register_item_type(ccx.tcx.map.local_def_id(impl_item.id),
@@ -855,7 +855,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             // Convert all the associated types.
             for impl_item in impl_items {
-                if let hir::TypeImplItem(ref ty) = impl_item.node {
+                if let hir::ImplItemKind::Type(ref ty) = impl_item.node {
                     if opt_trait_ref.is_none() {
                         span_err!(tcx.sess, impl_item.span, E0202,
                                   "associated types are not allowed in inherent impls");
@@ -870,7 +870,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             }
 
             let methods = impl_items.iter().filter_map(|ii| {
-                if let hir::MethodImplItem(ref sig, _) = ii.node {
+                if let hir::ImplItemKind::Method(ref sig, _) = ii.node {
                     // if the method specifies a visibility, use that, otherwise
                     // inherit the visibility from the impl (so `foo` in `pub impl
                     // { fn foo(); }` is public, but private in `impl { fn
@@ -889,7 +889,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                             &ty_predicates);
 
             for impl_item in impl_items {
-                if let hir::MethodImplItem(ref sig, ref body) = impl_item.node {
+                if let hir::ImplItemKind::Method(ref sig, ref body) = impl_item.node {
                     let body_id = body.id;
                     check_method_self_type(ccx,
                                            &BindingRscope::new(),

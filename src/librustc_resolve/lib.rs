@@ -79,7 +79,7 @@ use syntax::codemap::{self, Span, Pos};
 use rustc_front::visit::{self, FnKind, Visitor};
 use rustc_front::hir;
 use rustc_front::hir::{Arm, BindByRef, BindByValue, BindingMode, Block};
-use rustc_front::hir::{ConstImplItem, Crate};
+use rustc_front::hir::Crate;
 use rustc_front::hir::{Expr, ExprAgain, ExprBreak, ExprField};
 use rustc_front::hir::{ExprLoop, ExprWhile, ExprMethodCall};
 use rustc_front::hir::{ExprPath, ExprStruct, FnDecl};
@@ -87,12 +87,11 @@ use rustc_front::hir::{ForeignItemFn, ForeignItemStatic, Generics};
 use rustc_front::hir::{ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
 use rustc_front::hir::{ItemFn, ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaultImpl};
 use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
-use rustc_front::hir::{Local, MethodImplItem};
+use rustc_front::hir::Local;
 use rustc_front::hir::{Pat, PatEnum, PatIdent, PatLit, PatQPath};
 use rustc_front::hir::{PatRange, PatStruct, Path, PrimTy};
 use rustc_front::hir::{TraitRef, Ty, TyBool, TyChar, TyFloat, TyInt};
 use rustc_front::hir::{TyRptr, TyStr, TyUint, TyPath, TyPtr};
-use rustc_front::hir::TypeImplItem;
 use rustc_front::util::walk_pat;
 
 use std::collections::{HashMap, HashSet};
@@ -2421,7 +2420,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     this.with_current_self_type(self_type, |this| {
                         for impl_item in impl_items {
                             match impl_item.node {
-                                ConstImplItem(..) => {
+                                hir::ImplItemKind::Const(..) => {
                                     // If this is a trait impl, ensure the const
                                     // exists in trait
                                     this.check_trait_item(impl_item.name,
@@ -2431,7 +2430,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         visit::walk_impl_item(this, impl_item);
                                     });
                                 }
-                                MethodImplItem(ref sig, _) => {
+                                hir::ImplItemKind::Method(ref sig, _) => {
                                     // If this is a trait impl, ensure the method
                                     // exists in trait
                                     this.check_trait_item(impl_item.name,
@@ -2448,7 +2447,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         visit::walk_impl_item(this, impl_item);
                                     });
                                 }
-                                TypeImplItem(ref ty) => {
+                                hir::ImplItemKind::Type(ref ty) => {
                                     // If this is a trait impl, ensure the type
                                     // exists in trait
                                     this.check_trait_item(impl_item.name,
@@ -3545,7 +3544,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         _ => return false,
                     },
                     hir_map::NodeImplItem(impl_item) => match impl_item.node {
-                        hir::MethodImplItem(ref sig, _) => sig,
+                        hir::ImplItemKind::Method(ref sig, _) => sig,
                         _ => return false,
                     },
                     _ => return false,
