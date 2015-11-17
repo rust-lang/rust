@@ -393,7 +393,8 @@ $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)): \
 	    $$(subst @,,$$(STAGE$(1)_T_$(2)_H_$(3))) -o $$@ $$< --test \
 		-L "$$(RT_OUTPUT_DIR_$(2))" \
 		$$(LLVM_LIBDIR_RUSTFLAGS_$(2)) \
-		$$(RUSTFLAGS_$(4))
+		$$(RUSTFLAGS_$(4)) \
+		$$(STDCPP_LIBDIR_RUSTFLAGS_$(2))
 
 endef
 
@@ -663,9 +664,9 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
         --android-cross-path=$(CFG_ANDROID_CROSS_PATH) \
         --adb-path=$(CFG_ADB) \
         --adb-test-dir=$(CFG_ADB_TEST_DIR) \
-        --host-rustcflags "$(RUSTC_FLAGS_$(3)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(3))" \
+        --host-rustcflags "$(RUSTC_FLAGS_$(3)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(3)) $$(STDCPP_LIBDIR_RUSTFLAGS_$(3))" \
         --lldb-python-dir=$(CFG_LLDB_PYTHON_DIR) \
-        --target-rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
+        --target-rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2)) $$(STDCPP_LIBDIR_RUSTFLAGS_$(2))" \
         $$(CTEST_TESTARGS)
 
 ifdef CFG_VALGRIND_RPASS
