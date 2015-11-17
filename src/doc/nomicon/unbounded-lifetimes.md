@@ -32,6 +32,5 @@ Within a function, bounding lifetimes is more error-prone. The safest and easies
 way to bound a lifetime is to return it from a function with a bound lifetime.
 However if this is unacceptable, the reference can be placed in a location with
 a specific lifetime. Unfortunately it's impossible to name all lifetimes involved
-in a function. To get around this, you can in principle use `copy_lifetime`, though
-these are unstable due to their awkward nature and questionable utility.
+in a function.
 

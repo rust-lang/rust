@@ -76,7 +76,7 @@ fn compare_au8(a: *const [u8], b: *const [u8]) -> ComparisonResults {
     }
 }
 
-#[rustc_mir(graphviz="comparefoo.gv")]
+#[rustc_mir]
 fn compare_foo<'a>(a: *const (Foo+'a), b: *const (Foo+'a)) -> ComparisonResults {
     ComparisonResults {
         lt: a < b,
@@ -88,7 +88,7 @@ fn compare_foo<'a>(a: *const (Foo+'a), b: *const (Foo+'a)) -> ComparisonResults 
     }
 }
 
-#[rustc_mir(graphviz="simpleeq.gv")]
+#[rustc_mir]
 fn simple_eq<'a>(a: *const (Foo+'a), b: *const (Foo+'a)) -> bool {
     let result = a == b;
     result
