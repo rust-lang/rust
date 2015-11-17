@@ -147,11 +147,11 @@ a form of constant expression, so is evaluated (primarily) at compile time.
 
 |                                              | Example         | `#` sets   | Characters  | Escapes             |
 |----------------------------------------------|-----------------|------------|-------------|---------------------|
-| [Character](#character-literals)             | `'H'`           | `N/A`      | All Unicode | `\'` & [Byte](#byte-escapes) & [Unicode](#unicode-escapes) |
-| [String](#string-literals)                   | `"hello"`       | `N/A`      | All Unicode | `\"` & [Byte](#byte-escapes) & [Unicode](#unicode-escapes) |
+| [Character](#character-literals)             | `'H'`           | `N/A`      | All Unicode | [Quote](#quote-escapes) & [Byte](#byte-escapes) & [Unicode](#unicode-escapes) |
+| [String](#string-literals)                   | `"hello"`       | `N/A`      | All Unicode | [Quote](#quote-escapes) & [Byte](#byte-escapes) & [Unicode](#unicode-escapes) |
 | [Raw](#raw-string-literals)                  | `r#"hello"#`    | `0...`     | All Unicode | `N/A`                                                      |
-| [Byte](#byte-literals)                       | `b'H'`          | `N/A`      | All ASCII   | `\'` & [Byte](#byte-escapes)                               |
-| [Byte string](#byte-string-literals)         | `b"hello"`      | `N/A`      | All ASCII   | `\"` & [Byte](#byte-escapes)                               |
+| [Byte](#byte-literals)                       | `b'H'`          | `N/A`      | All ASCII   | [Quote](#quote-escapes) & [Byte](#byte-escapes)                               |
+| [Byte string](#byte-string-literals)         | `b"hello"`      | `N/A`      | All ASCII   | [Quote](#quote-escapes) & [Byte](#byte-escapes)                               |
 | [Raw byte string](#raw-byte-string-literals) | `br#"hello"#`   | `0...`     | All ASCII   | `N/A`                                                      |
 
 ##### Byte escapes
@@ -163,11 +163,18 @@ a form of constant expression, so is evaluated (primarily) at compile time.
 | `\r` | Carriage return |
 | `\t` | Tab |
 | `\\` | Backslash |
+| `\0` | Null |
 
 ##### Unicode escapes
 |   | Name |
 |---|------|
 | `\u{7FFF}` | 24-bit Unicode character code (up to 6 digits) |
+
+##### Quote escapes
+|   | Name |
+|---|------|
+| `\'` | Single quote |
+| `\"` | Double quote |
 
 ##### Numbers
 
@@ -2415,9 +2422,9 @@ in meaning to declaring the item outside the statement block.
 > **Note**: there is no implicit capture of the function's dynamic environment when
 > declaring a function-local item.
 
-#### Variable declarations
+#### `let` statements
 
-A _variable declaration_ introduces a new set of variable, given by a pattern. The
+A _`let` statement_ introduces a new set of variables, given by a pattern. The
 pattern may be followed by a type annotation, and/or an initializer expression.
 When no type annotation is given, the compiler will infer the type, or signal
 an error if insufficient type information is available for definite inference.
@@ -3190,10 +3197,11 @@ let message = match maybe_digit {
 
 ### `if let` expressions
 
-An `if let` expression is semantically identical to an `if` expression but in place
-of a condition expression it expects a refutable let statement. If the value of the
-expression on the right hand side of the let statement matches the pattern, the corresponding
-block will execute, otherwise flow proceeds to the first `else` block that follows.
+An `if let` expression is semantically identical to an `if` expression but in
+place of a condition expression it expects a `let` statement with a refutable
+pattern. If the value of the expression on the right hand side of the `let`
+statement matches the pattern, the corresponding block will execute, otherwise
+flow proceeds to the first `else` block that follows.
 
 ```
 let dish = ("Ham", "Eggs");
@@ -3211,11 +3219,11 @@ if let ("Ham", b) = dish {
 
 ### `while let` loops
 
-A `while let` loop is semantically identical to a `while` loop but in place of a
-condition expression it expects a refutable let statement. If the value of the
-expression on the right hand side of the let statement matches the pattern, the
-loop body block executes and control returns to the pattern matching statement.
-Otherwise, the while expression completes.
+A `while let` loop is semantically identical to a `while` loop but in place of
+a condition expression it expects `let` statement with a refutable pattern. If
+the value of the expression on the right hand side of the `let` statement
+matches the pattern, the loop body block executes and control returns to the
+pattern matching statement. Otherwise, the while expression completes.
 
 ### `return` expressions
 
