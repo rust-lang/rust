@@ -46,7 +46,7 @@ use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 
 use rustc_front::hir;
-use rustc_front::visit::{self, FnKind, Visitor};
+use rustc_front::visit::FnKind;
 
 use bad_style::{MethodLateContext, method_context};
 
