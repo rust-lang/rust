@@ -174,6 +174,10 @@ impl SpanHandler {
         self.handler.emit(Some((&self.cm, sp)), msg, Bug);
         panic!(ExplicitBug);
     }
+    pub fn span_bug_no_panic(&self, sp: Span, msg: &str) {
+        self.handler.emit(Some((&self.cm, sp)), msg, Bug);
+        self.handler.bump_err_count();
+    }
     pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, &format!("unimplemented {}", msg));
     }
