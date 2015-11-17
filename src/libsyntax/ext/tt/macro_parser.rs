@@ -107,16 +107,16 @@ enum TokenTreeOrTokenTreeVec {
 
 impl TokenTreeOrTokenTreeVec {
     fn len(&self) -> usize {
-        match self {
-            &TtSeq(ref v) => v.len(),
-            &Tt(ref tt) => tt.len(),
+        match *self {
+            TtSeq(ref v) => v.len(),
+            Tt(ref tt) => tt.len(),
         }
     }
 
     fn get_tt(&self, index: usize) -> TokenTree {
-        match self {
-            &TtSeq(ref v) => v[index].clone(),
-            &Tt(ref tt) => tt.get_tt(index),
+        match *self {
+            TtSeq(ref v) => v[index].clone(),
+            Tt(ref tt) => tt.get_tt(index),
         }
     }
 }
@@ -144,17 +144,17 @@ pub struct MatcherPos {
 
 pub fn count_names(ms: &[TokenTree]) -> usize {
     ms.iter().fold(0, |count, elt| {
-        count + match elt {
-            &TokenTree::Sequence(_, ref seq) => {
+        count + match *elt {
+            TokenTree::Sequence(_, ref seq) => {
                 seq.num_captures
             }
-            &TokenTree::Delimited(_, ref delim) => {
+            TokenTree::Delimited(_, ref delim) => {
                 count_names(&delim.tts)
             }
-            &TokenTree::Token(_, MatchNt(..)) => {
+            TokenTree::Token(_, MatchNt(..)) => {
                 1
             }
-            &TokenTree::Token(_, _) => 0,
+            TokenTree::Token(_, _) => 0,
         }
     })
 }
@@ -203,18 +203,18 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
             -> HashMap<Name, Rc<NamedMatch>> {
     fn n_rec(p_s: &ParseSess, m: &TokenTree, res: &[Rc<NamedMatch>],
              ret_val: &mut HashMap<Name, Rc<NamedMatch>>, idx: &mut usize) {
-        match m {
-            &TokenTree::Sequence(_, ref seq) => {
+        match *m {
+            TokenTree::Sequence(_, ref seq) => {
                 for next_m in &seq.tts {
                     n_rec(p_s, next_m, res, ret_val, idx)
                 }
             }
-            &TokenTree::Delimited(_, ref delim) => {
+            TokenTree::Delimited(_, ref delim) => {
                 for next_m in &delim.tts {
                     n_rec(p_s, next_m, res, ret_val, idx)
                 }
             }
-            &TokenTree::Token(sp, MatchNt(bind_name, _, _, _)) => {
+            TokenTree::Token(sp, MatchNt(bind_name, _, _, _)) => {
                 match ret_val.entry(bind_name.name) {
                     Vacant(spot) => {
                         spot.insert(res[*idx].clone());
@@ -228,8 +228,8 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
                     }
                 }
             }
-            &TokenTree::Token(_, SubstNt(..)) => panic!("Cannot fill in a NT"),
-            &TokenTree::Token(_, _) => (),
+            TokenTree::Token(_, SubstNt(..)) => panic!("Cannot fill in a NT"),
+            TokenTree::Token(_, _) => (),
         }
     }
     let mut ret_val = HashMap::new();
