@@ -506,11 +506,6 @@ impl<'a> State<'a> {
                 }
                 try!(self.pclose());
             }
-            hir::TyParen(ref typ) => {
-                try!(self.popen());
-                try!(self.print_type(&**typ));
-                try!(self.pclose());
-            }
             hir::TyBareFn(ref f) => {
                 let generics = hir::Generics {
                     lifetimes: f.lifetimes.clone(),

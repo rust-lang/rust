@@ -1606,7 +1606,6 @@ impl Clean<Type> for hir::Ty {
                 }
             }
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
-            TyParen(ref ty) => ty.clean(cx),
             TyPolyTraitRef(ref bounds) => {
                 PolyTraitRef(bounds.clean(cx))
             },

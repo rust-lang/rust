@@ -1444,7 +1444,6 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     hir::TyTup(tys) => {
                         hir::TyTup(tys.into_iter().map(|ty| build_to(ty, to)).collect())
                     }
-                    hir::TyParen(typ) => hir::TyParen(build_to(typ, to)),
                     other => other
                 };
                 hir::Ty { id: id, node: new_node, span: span }
