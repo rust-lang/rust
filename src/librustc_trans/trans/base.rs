@@ -100,8 +100,7 @@ use syntax::parse::token::InternedString;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use rustc_front;
-use rustc_front::visit::Visitor;
-use rustc_front::visit;
+use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
 use syntax::ast;
 
@@ -1300,7 +1299,7 @@ impl<'v> Visitor<'v> for FindNestedReturn {
             hir::ExprRet(..) => {
                 self.found = true;
             }
-            _ => visit::walk_expr(self, e)
+            _ => intravisit::walk_expr(self, e)
         }
     }
 }
@@ -1369,7 +1368,7 @@ fn has_nested_returns(tcx: &ty::ctxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bo
             Some(hir_map::NodeExpr(ex)) => {
                 if let hir::ExprRet(Some(ref ret_expr)) = ex.node {
                     let mut visitor = FindNestedReturn::new();
-                    visit::walk_expr(&mut visitor, &**ret_expr);
+                    intravisit::walk_expr(&mut visitor, &**ret_expr);
                     if visitor.found {
                         return true;
                     }
@@ -2302,11 +2301,6 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                 }
             }
         }
-
-        // Be sure to travel more than just one layer deep to catch nested
-        // items in blocks and such.
-        let mut v = TransItemVisitor{ ccx: ccx };
-        v.visit_block(&**body);
       }
       hir::ItemImpl(_, _, ref generics, _, _, ref impl_items) => {
         meth::trans_impl(ccx,
@@ -2315,8 +2309,9 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                          generics,
                          item.id);
       }
-      hir::ItemMod(ref m) => {
-        trans_mod(&ccx.rotate(), m);
+      hir::ItemMod(_) => {
+          // modules have no equivalent at runtime, they just affect
+          // the mangled names of things contained within
       }
       hir::ItemEnum(ref enum_definition, ref gens) => {
         if gens.ty_params.is_empty() {
@@ -2325,16 +2320,9 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
             enum_variant_size_lint(ccx, enum_definition, item.span, item.id);
         }
       }
-      hir::ItemConst(_, ref expr) => {
-          // Recurse on the expression to catch items in blocks
-          let mut v = TransItemVisitor{ ccx: ccx };
-          v.visit_expr(&**expr);
+      hir::ItemConst(..) => {
       }
       hir::ItemStatic(_, m, ref expr) => {
-          // Recurse on the expression to catch items in blocks
-          let mut v = TransItemVisitor{ ccx: ccx };
-          v.visit_expr(&**expr);
-
           let g = match consts::trans_static(ccx, m, expr, item.id, &item.attrs) {
               Ok(g) => g,
               Err(err) => ccx.tcx().sess.span_fatal(expr.span, &err.description()),
@@ -2346,29 +2334,10 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
         foreign::trans_foreign_mod(ccx, foreign_mod);
       }
       hir::ItemTrait(..) => {
-        // Inside of this trait definition, we won't be actually translating any
-        // functions, but the trait still needs to be walked. Otherwise default
-        // methods with items will not get translated and will cause ICE's when
-        // metadata time comes around.
-        let mut v = TransItemVisitor{ ccx: ccx };
-        visit::walk_item(&mut v, item);
       }
       _ => {/* fall through */ }
     }
 }
-
-// Translate a module. Doing this amounts to translating the items in the
-// module; there ends up being no artifact (aside from linkage names) of
-// separate modules in the compiled program.  That's because modules exist
-// only as a convenience for humans working with the code, to organize names
-// and control visibility.
-pub fn trans_mod(ccx: &CrateContext, m: &hir::Mod) {
-    let _icx = push_ctxt("trans_mod");
-    for item in &m.items {
-        trans_item(ccx, &**item);
-    }
-}
-
 
 // only use this for foreign function ABIs and glue, use `register_fn` for Rust functions
 pub fn register_fn_llvmty(ccx: &CrateContext,
@@ -2994,10 +2963,10 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
         // First, verify intrinsics.
         intrinsic::check_intrinsics(&ccx);
 
-        // Next, translate the module.
+        // Next, translate all items.
         {
             let _icx = push_ctxt("text");
-            trans_mod(&ccx, &krate.module);
+            krate.visit_all_items(&mut TransItemVisitor { ccx: &ccx });
         }
     }
 
