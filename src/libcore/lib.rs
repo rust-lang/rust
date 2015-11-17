@@ -10,11 +10,14 @@
 
 //! # The Rust Core Library
 //!
-//! The Rust Core Library is the dependency-free foundation of [The
+//! The Rust Core Library is the dependency-free[^free] foundation of [The
 //! Rust Standard Library](../std/index.html). It is the portable glue
 //! between the language and its libraries, defining the intrinsic and
 //! primitive building blocks of all Rust code. It links to no
 //! upstream libraries, no system libraries, and no libc.
+//!
+//! [^free]: Strictly speaking, there are some symbols which are needed but
+//!          they aren't always neccesary.
 //!
 //! The core library is *minimal*: it isn't even aware of heap allocation,
 //! nor does it provide concurrency or I/O. These things require
