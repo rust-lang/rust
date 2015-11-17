@@ -118,7 +118,7 @@ specify the empty impl for any overlap that might occur.
 
 # Unresolved questions
 
-How can we implement this design? Simply lifting the coherence
+**How can we implement this design?** Simply lifting the coherence
 restrictions is easy enough, but we will encounter some challenges
 when we come to test whether a given trait impl holds. For example, if
 we have something like:
@@ -138,3 +138,6 @@ proposal, there would not be. Experimentation is needed (similar
 concerns arise with the proposals around specialization, so it may be
 that progress on that front will answer the questions raised here).
 
+**Should we add some explicit way to indicate that this is a marker
+trait?** This would address the drawback that adding items is a
+backwards incompatible change.
