@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const FOO: [u32; 3] = [1, 2, 3];
-const BAR: u32 = FOO[5]; // no error, because the error below occurs before regular const eval
-
-const BLUB: [u32; FOO[4]] = [5, 6];
-//~^ ERROR array length constant evaluation error: array index out of bounds [E0250]
+const A: [i32; 0] = [];
+const B: i32 = A[1]; //~ ERROR: const index-expr is out of bounds
 
 fn main() {
-    let _ = BAR;
+    let _ = B;
 }
