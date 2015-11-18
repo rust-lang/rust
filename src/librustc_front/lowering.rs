@@ -63,8 +63,8 @@
 
 use hir;
 
+use std::collections::BTreeMap;
 use std::collections::HashMap;
-
 use syntax::ast::*;
 use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned, Span};
@@ -72,7 +72,6 @@ use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::{self, str_to_ident};
 use syntax::std_inject;
 use syntax::visit::{self, Visitor};
-use rustc_data_structures::fnv::FnvHashMap;
 
 use std::cell::{Cell, RefCell};
 
@@ -700,7 +699,7 @@ pub fn lower_mod(lctx: &LoweringContext, m: &Mod) -> hir::Mod {
 }
 
 struct ItemLowerer<'lcx, 'interner: 'lcx> {
-    items: FnvHashMap<NodeId, hir::Item>,
+    items: BTreeMap<NodeId, hir::Item>,
     lctx: &'lcx LoweringContext<'interner>,
 }
 
@@ -713,7 +712,7 @@ impl<'lcx, 'interner> Visitor<'lcx> for ItemLowerer<'lcx, 'interner> {
 
 pub fn lower_crate(lctx: &LoweringContext, c: &Crate) -> hir::Crate {
     let items = {
-        let mut item_lowerer = ItemLowerer { items: FnvHashMap(), lctx: lctx };
+        let mut item_lowerer = ItemLowerer { items: BTreeMap::new(), lctx: lctx };
         visit::walk_crate(&mut item_lowerer, c);
         item_lowerer.items
     };
