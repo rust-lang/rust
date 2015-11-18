@@ -602,6 +602,8 @@ fn write_shared(cx: &Context,
                include_bytes!("static/jquery-2.1.4.min.js")));
     try!(write(cx.dst.join("main.js"),
                include_bytes!("static/main.js")));
+    try!(write(cx.dst.join("switcher.js"),
+               include_bytes!("static/switcher.js")));
     try!(write(cx.dst.join("playpen.js"),
                include_bytes!("static/playpen.js")));
     try!(styles::include_style_files(&cx.dst));

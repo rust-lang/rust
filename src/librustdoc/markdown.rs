@@ -109,6 +109,10 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 <body class="rustdoc">
     <div id="style-changer">
         {divs}
+        <script src="../switcher.js"></script>
+        <script>
+            switch_style();
+        </script>
     </div>
     <!--[if lte IE 8]>
     <div class="warning">
