@@ -1662,6 +1662,7 @@ pub struct Iter<'a, T:'a> {
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> {
         Iter {
@@ -1805,7 +1806,9 @@ pub struct Drain<'a, T: 'a> {
     deque: *mut VecDeque<T>,
 }
 
+#[unstable(feature = "drain", issue = "27711")]
 unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
+#[unstable(feature = "drain", issue = "27711")]
 unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]

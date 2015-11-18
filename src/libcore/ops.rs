@@ -894,6 +894,7 @@ pub trait Shr<RHS> {
 
 macro_rules! shr_impl {
     ($t:ty, $f:ty) => (
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Shr<$f> for $t {
             type Output = $t;
 
@@ -1731,6 +1732,7 @@ impl<'a, T: ?Sized> DerefMut for &'a mut T {
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 pub trait Fn<Args> : FnMut<Args> {
     /// This is called when the call operator is used.
+    #[unstable(feature = "core", issue = "27701")]
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
 }
 
@@ -1741,6 +1743,7 @@ pub trait Fn<Args> : FnMut<Args> {
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 pub trait FnMut<Args> : FnOnce<Args> {
     /// This is called when the call operator is used.
+    #[unstable(feature = "core", issue = "27701")]
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
@@ -1751,9 +1754,11 @@ pub trait FnMut<Args> : FnOnce<Args> {
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
+    #[unstable(feature = "core", issue = "27701")]
     type Output;
 
     /// This is called when the call operator is used.
+    #[unstable(feature = "core", issue = "27701")]
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
 }
 
@@ -1761,6 +1766,7 @@ mod impls {
     use marker::Sized;
     use super::{Fn, FnMut, FnOnce};
 
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a,A,F:?Sized> Fn<A> for &'a F
         where F : Fn<A>
     {
@@ -1769,6 +1775,7 @@ mod impls {
         }
     }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a,A,F:?Sized> FnMut<A> for &'a F
         where F : Fn<A>
     {
@@ -1777,6 +1784,7 @@ mod impls {
         }
     }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a,A,F:?Sized> FnOnce<A> for &'a F
         where F : Fn<A>
     {
@@ -1787,6 +1795,7 @@ mod impls {
         }
     }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a,A,F:?Sized> FnMut<A> for &'a mut F
         where F : FnMut<A>
     {
@@ -1795,6 +1804,7 @@ mod impls {
         }
     }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a,A,F:?Sized> FnOnce<A> for &'a mut F
         where F : FnMut<A>
     {
@@ -1814,25 +1824,34 @@ pub trait CoerceUnsized<T> {
 }
 
 // &mut T -> &mut U
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
 // &mut T -> &U
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<'a, 'b: 'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b mut T {}
 // &mut T -> *mut U
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for &'a mut T {}
 // &mut T -> *const U
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a mut T {}
 
 // &T -> &U
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<'a, 'b: 'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
 // &T -> *const U
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a T {}
 
 // *mut T -> *mut U
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
 // *mut T -> *const U
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
 
 // *const T -> *const U
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 
 /// Both `in (PLACE) EXPR` and `box EXPR` desugar into expressions

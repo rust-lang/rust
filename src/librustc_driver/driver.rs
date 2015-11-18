@@ -739,7 +739,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                lang_items,
                                stability::Index::new(krate),
                                |tcx| {
-
                                    // passes are timed inside typeck
                                    typeck::check_crate(tcx, trait_map);
 
@@ -756,7 +755,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
                                    // Do not move this check past lint
                                    time(time_passes, "stability index", || {
-                                       tcx.stability.borrow_mut().build(tcx, krate, &public_items)
+                                       tcx.stability.borrow_mut().build(tcx, krate, &exported_items)
                                    });
 
                                    time(time_passes,

@@ -154,6 +154,9 @@ macro_rules! slice_ref {
     }};
 }
 
+#[unstable(feature = "core_slice_ext",
+           reason = "stable interface provided by `impl [T]` in later crates",
+           issue = "27701")]
 impl<T> SliceExt for [T] {
     type Item = T;
 
@@ -796,7 +799,9 @@ pub struct Iter<'a, T: 'a> {
     _marker: marker::PhantomData<&'a T>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<'a, T: Sync> Sync for Iter<'a, T> {}
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<'a, T: Sync> Send for Iter<'a, T> {}
 
 impl<'a, T> Iter<'a, T> {
@@ -842,7 +847,9 @@ pub struct IterMut<'a, T: 'a> {
     _marker: marker::PhantomData<&'a mut T>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<'a, T: Sync> Sync for IterMut<'a, T> {}
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<'a, T: Send> Send for IterMut<'a, T> {}
 
 impl<'a, T> IterMut<'a, T> {

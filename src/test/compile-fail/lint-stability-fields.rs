@@ -14,6 +14,8 @@
 #![feature(staged_api)]
 #![staged_api]
 
+#![stable(feature = "rust1", since = "1.0.0")]
+
 mod cross_crate {
     extern crate lint_stability_fields;
 

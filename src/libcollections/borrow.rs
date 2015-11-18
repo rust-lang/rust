@@ -24,6 +24,7 @@ use fmt;
 
 use self::Cow::*;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::borrow::{Borrow, BorrowMut};
 
 #[stable(feature = "rust1", since = "1.0.0")]

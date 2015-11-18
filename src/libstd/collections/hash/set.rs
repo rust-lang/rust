@@ -901,6 +901,7 @@ impl<T, S> IntoIterator for HashSet<T, S>
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K> Clone for Iter<'a, K> {
     fn clone(&self) -> Iter<'a, K> { Iter { iter: self.iter.clone() } }
 }
@@ -940,6 +941,7 @@ impl<'a, K> ExactSizeIterator for Drain<'a, K> {
     fn len(&self) -> usize { self.iter.len() }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S> Clone for Intersection<'a, T, S> {
     fn clone(&self) -> Intersection<'a, T, S> {
         Intersection { iter: self.iter.clone(), ..*self }
@@ -969,6 +971,7 @@ impl<'a, T, S> Iterator for Intersection<'a, T, S>
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S> Clone for Difference<'a, T, S> {
     fn clone(&self) -> Difference<'a, T, S> {
         Difference { iter: self.iter.clone(), ..*self }
@@ -998,6 +1001,7 @@ impl<'a, T, S> Iterator for Difference<'a, T, S>
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S> Clone for SymmetricDifference<'a, T, S> {
     fn clone(&self) -> SymmetricDifference<'a, T, S> {
         SymmetricDifference { iter: self.iter.clone() }
@@ -1014,6 +1018,7 @@ impl<'a, T, S> Iterator for SymmetricDifference<'a, T, S>
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S> Clone for Union<'a, T, S> {
     fn clone(&self) -> Union<'a, T, S> { Union { iter: self.iter.clone() } }
 }

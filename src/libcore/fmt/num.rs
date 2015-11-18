@@ -264,6 +264,7 @@ const DEC_DIGITS_LUT: &'static[u8] =
 
 macro_rules! impl_Display {
     ($($t:ident),*: $conv_fn:ident) => ($(
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl fmt::Display for $t {
         #[allow(unused_comparisons)]
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

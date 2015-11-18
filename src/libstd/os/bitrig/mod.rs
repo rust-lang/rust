@@ -14,7 +14,8 @@
 
 pub mod raw;
 
+#[stable(feature = "raw_ext", since = "1.1.0")]
 pub mod fs {
-    #![stable(feature = "raw_ext", since = "1.1.0")]
+    #[stable(feature = "raw_ext", since = "1.1.0")]
     pub use sys::fs::MetadataExt;
 }

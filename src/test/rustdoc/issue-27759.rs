@@ -12,6 +12,8 @@
 #![staged_api]
 #![doc(issue_tracker_base_url = "http://issue_url/")]
 
+#![unstable(feature="test", issue="27759")]
+
 // @has issue_27759/unstable/index.html
 // @has - '<code>test</code>'
 // @has - '<a href="http://issue_url/27759">#27759</a>'

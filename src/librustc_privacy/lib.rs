@@ -221,9 +221,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
         let orig_all_exported = self.prev_exported;
         match item.node {
             // impls/extern blocks do not break the "public chain" because they
-            // cannot have visibility qualifiers on them anyway. They are also not
+            // cannot have visibility qualifiers on them anyway. Impls are also not
             // added to public/exported sets based on inherited publicity.
-            hir::ItemImpl(..) | hir::ItemDefaultImpl(..) | hir::ItemForeignMod(..) => {}
+            hir::ItemImpl(..) | hir::ItemDefaultImpl(..) => {}
+            hir::ItemForeignMod(..) => {
+                self.maybe_insert_id(item.id);
+            }
 
             // Private by default, hence we only retain the "public chain" if
             // `pub` is explicitly listed.
@@ -249,11 +252,16 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
 
-            // Public items in inherent impls for public/exported types are public/exported
-            // Inherent impls themselves are not public/exported, they are nothing more than
-            // containers for other items
+            // Inherent impls for public/exported types and their public items are public/exported
             hir::ItemImpl(_, _, _, None, ref ty, ref impl_items) => {
                 let (public_ty, exported_ty) = self.is_public_exported_ty(&ty);
+
+                if public_ty {
+                    self.public_items.insert(item.id);
+                }
+                if exported_ty {
+                    self.exported_items.insert(item.id);
+                }
 
                 for impl_item in impl_items {
                     if impl_item.vis == hir::Public {
@@ -1512,6 +1520,8 @@ pub fn check_crate(tcx: &ty::ctxt,
         prev_exported: true,
         prev_public: true,
     };
+    visitor.exported_items.insert(ast::CRATE_NODE_ID);
+    visitor.public_items.insert(ast::CRATE_NODE_ID);
     loop {
         let before = (visitor.exported_items.len(), visitor.public_items.len());
         visit::walk_crate(&mut visitor, krate);

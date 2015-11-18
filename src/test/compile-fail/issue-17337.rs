@@ -12,6 +12,8 @@
 #![staged_api]
 #![deny(deprecated)]
 
+#![unstable(feature = "test_feature", issue = "0")]
+
 struct Foo;
 
 impl Foo {

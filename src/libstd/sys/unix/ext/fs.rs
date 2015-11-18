@@ -153,6 +153,7 @@ pub trait MetadataExt {
     fn blocks(&self) -> raw::blkcnt_t;
 }
 
+#[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for fs::Metadata {
     fn dev(&self) -> raw::dev_t { self.as_raw_stat().st_dev as raw::dev_t }
     fn ino(&self) -> raw::ino_t { self.as_raw_stat().st_ino as raw::ino_t }
@@ -211,6 +212,7 @@ pub trait DirEntryExt {
     fn ino(&self) -> raw::ino_t;
 }
 
+#[stable(feature = "dir_entry_ext", since = "1.1.0")]
 impl DirEntryExt for fs::DirEntry {
     fn ino(&self) -> raw::ino_t { self.as_inner().ino() }
 }
@@ -253,6 +255,8 @@ pub trait DirBuilderExt {
     fn mode(&mut self, mode: raw::mode_t) -> &mut Self;
 }
 
+#[unstable(feature = "dir_builder", reason = "recently added API",
+           issue = "27710")]
 impl DirBuilderExt for fs::DirBuilder {
     fn mode(&mut self, mode: raw::mode_t) -> &mut fs::DirBuilder {
         self.as_inner_mut().set_mode(mode);

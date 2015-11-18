@@ -30,8 +30,8 @@ use syntax::attr::{self, Stability, AttrMetaMethods};
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
 use rustc_front::hir;
-use rustc_front::hir::{FnDecl, Block, Crate, Item, Generics, StructField, Variant};
-use rustc_front::visit::{self, FnKind, Visitor};
+use rustc_front::hir::{Block, Crate, Item, Generics, StructField, Variant};
+use rustc_front::visit::{self, Visitor};
 
 use std::mem::replace;
 use std::cmp::Ordering;
@@ -46,6 +46,16 @@ impl StabilityLevel {
     pub fn from_attr_level(level: &attr::StabilityLevel) -> Self {
         if level.is_stable() { Stable } else { Unstable }
     }
+}
+
+#[derive(PartialEq)]
+enum AnnotationKind {
+    // Annotation is required if not inherited from unstable parents
+    Required,
+    // Annotation is useless, reject it
+    Prohibited,
+    // Annotation itself is useless, but it can be propagated to children
+    Container,
 }
 
 /// A stability index, giving the stability level for items and methods.
@@ -64,174 +74,186 @@ struct Annotator<'a, 'tcx: 'a> {
     index: &'a mut Index<'tcx>,
     parent: Option<&'tcx Stability>,
     export_map: &'a PublicItems,
+    in_trait_impl: bool,
+    in_enum: bool,
 }
 
 impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
     // Determine the stability for a node based on its attributes and inherited
     // stability. The stability is recorded in the index and used as the parent.
-    fn annotate<F>(&mut self, id: NodeId, use_parent: bool,
-                   attrs: &Vec<Attribute>, item_sp: Span, f: F, required: bool) where
-        F: FnOnce(&mut Annotator),
+    fn annotate<F>(&mut self, id: NodeId, attrs: &Vec<Attribute>,
+                   item_sp: Span, kind: AnnotationKind, visit_children: F)
+        where F: FnOnce(&mut Annotator)
     {
         if self.index.staged_api[&LOCAL_CRATE] {
             debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
-            match attr::find_stability(self.tcx.sess.diagnostic(), attrs, item_sp) {
-                Some(mut stab) => {
-                    debug!("annotate: found {:?}", stab);
-                    // if parent is deprecated and we're not, inherit this by merging
-                    // deprecated_since and its reason.
-                    if let Some(parent_stab) = self.parent {
-                        if parent_stab.depr.is_some()
-                        && stab.depr.is_none() {
-                            stab.depr = parent_stab.depr.clone()
+            if let Some(mut stab) = attr::find_stability(self.tcx.sess.diagnostic(),
+                                                         attrs, item_sp) {
+                // Error if prohibited, or can't inherit anything from a container
+                if kind == AnnotationKind::Prohibited ||
+                   (kind == AnnotationKind::Container &&
+                    stab.level.is_stable() &&
+                    stab.depr.is_none()) {
+                    self.tcx.sess.span_err(item_sp, "This stability annotation is useless");
+                }
+
+                debug!("annotate: found {:?}", stab);
+                // If parent is deprecated and we're not, inherit this by merging
+                // deprecated_since and its reason.
+                if let Some(parent_stab) = self.parent {
+                    if parent_stab.depr.is_some() && stab.depr.is_none() {
+                        stab.depr = parent_stab.depr.clone()
+                    }
+                }
+
+                let stab = self.tcx.intern_stability(stab);
+
+                // Check if deprecated_since < stable_since. If it is,
+                // this is *almost surely* an accident.
+                if let (&Some(attr::Deprecation {since: ref dep_since, ..}),
+                        &attr::Stable {since: ref stab_since}) = (&stab.depr, &stab.level) {
+                    // Explicit version of iter::order::lt to handle parse errors properly
+                    for (dep_v, stab_v) in dep_since.split(".").zip(stab_since.split(".")) {
+                        if let (Ok(dep_v), Ok(stab_v)) = (dep_v.parse::<u64>(), stab_v.parse()) {
+                            match dep_v.cmp(&stab_v) {
+                                Ordering::Less => {
+                                    self.tcx.sess.span_err(item_sp, "An API can't be stabilized \
+                                                                     after it is deprecated");
+                                    break
+                                }
+                                Ordering::Equal => continue,
+                                Ordering::Greater => break,
+                            }
+                        } else {
+                            // Act like it isn't less because the question is now nonsensical,
+                            // and this makes us not do anything else interesting.
+                            self.tcx.sess.span_err(item_sp, "Invalid stability or deprecation \
+                                                             version found");
+                            break
                         }
                     }
+                }
 
-                    let stab = self.tcx.intern_stability(stab);
+                let def_id = self.tcx.map.local_def_id(id);
+                self.index.map.insert(def_id, Some(stab));
 
-                    // Check if deprecated_since < stable_since. If it is,
-                    // this is *almost surely* an accident.
-                    let deprecated_predates_stable = match (&stab.depr, &stab.level) {
-                        (&Some(attr::Deprecation {since: ref dep_since, ..}),
-                               &attr::Stable {since: ref stab_since}) => {
-                            // explicit version of iter::order::lt to handle parse errors properly
-                            let mut is_less = false;
-                            for (dep_v, stab_v) in dep_since.split(".").zip(stab_since.split(".")) {
-                                match (dep_v.parse::<u64>(), stab_v.parse::<u64>()) {
-                                    (Ok(dep_v), Ok(stab_v)) => match dep_v.cmp(&stab_v) {
-                                        Ordering::Less => {
-                                            is_less = true;
-                                            break;
-                                        }
-                                        Ordering::Equal => { continue; }
-                                        Ordering::Greater => { break; }
-                                    },
-                                    _ => {
-                                        self.tcx.sess.span_err(item_sp,
-                                            "Invalid stability or deprecation version found");
-                                        // act like it isn't less because the question is now
-                                        // nonsensical, and this makes us not do anything else
-                                        // interesting.
-                                        break;
-                                    }
-                                }
-                            }
-                            is_less
-                        },
-                        _ => false,
-                    };
-
-                    if deprecated_predates_stable {
-                        self.tcx.sess.span_err(item_sp,
-                            "An API can't be stabilized after it is deprecated");
-                    }
-
-                    let def_id = self.tcx.map.local_def_id(id);
-                    self.index.map.insert(def_id, Some(stab));
-
-                    // Don't inherit #[stable(feature = "rust1", since = "1.0.0")]
-                    if !stab.level.is_stable() {
-                        let parent = replace(&mut self.parent, Some(stab));
-                        f(self);
-                        self.parent = parent;
-                    } else {
-                        f(self);
+                let parent = replace(&mut self.parent, Some(stab));
+                visit_children(self);
+                self.parent = parent;
+            } else {
+                debug!("annotate: not found, parent = {:?}", self.parent);
+                let mut is_error = kind == AnnotationKind::Required &&
+                                   self.export_map.contains(&id) &&
+                                   !self.tcx.sess.opts.test;
+                if let Some(stab) = self.parent {
+                    if stab.level.is_unstable() {
+                        let def_id = self.tcx.map.local_def_id(id);
+                        self.index.map.insert(def_id, Some(stab));
+                        is_error = false;
                     }
                 }
-                None => {
-                    debug!("annotate: not found, use_parent = {:?}, parent = {:?}",
-                           use_parent, self.parent);
-                    if use_parent {
-                        if let Some(stab) = self.parent {
-                            let def_id = self.tcx.map.local_def_id(id);
-                            self.index.map.insert(def_id, Some(stab));
-                        } else if self.index.staged_api[&LOCAL_CRATE] && required
-                            && self.export_map.contains(&id)
-                            && !self.tcx.sess.opts.test {
-                                self.tcx.sess.span_err(item_sp,
-                                                       "This node does not \
-                                                        have a stability attribute");
-                            }
-                    }
-                    f(self);
+                if is_error {
+                    self.tcx.sess.span_err(item_sp, "This node does not have \
+                                                     a stability attribute");
                 }
+                visit_children(self);
             }
         } else {
-            // Emit warnings for non-staged-api crates. These should be errors.
+            // Emit errors for non-staged-api crates.
             for attr in attrs {
                 let tag = attr.name();
                 if tag == "unstable" || tag == "stable" || tag == "deprecated" {
                     attr::mark_used(attr);
-                    self.tcx.sess.span_err(attr.span(),
-                                       "stability attributes may not be used outside \
-                                        of the standard library");
+                    self.tcx.sess.span_err(attr.span(), "stability attributes may not be used \
+                                                         outside of the standard library");
                 }
             }
-            f(self);
+            visit_children(self);
         }
     }
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
     fn visit_item(&mut self, i: &Item) {
-        // FIXME (#18969): the following is a hack around the fact
-        // that we cannot currently annotate the stability of
-        // `deriving`.  Basically, we do *not* allow stability
-        // inheritance on trait implementations, so that derived
-        // implementations appear to be unannotated. This then allows
-        // derived implementations to be automatically tagged with the
-        // stability of the trait. This is WRONG, but expedient to get
-        // libstd stabilized for the 1.0 release.
-        let use_parent = match i.node {
-            hir::ItemImpl(_, _, _, Some(_), _, _) => false,
-            _ => true,
-        };
-
-        // In case of a `pub use <mod>;`, we should not error since the stability
-        // is inherited from the module itself
-        let required = match i.node {
-            hir::ItemUse(_) => i.vis != hir::Public,
-            _ => true
-        };
-
-        self.annotate(i.id, use_parent, &i.attrs, i.span,
-                      |v| visit::walk_item(v, i), required);
-
-        if let hir::ItemStruct(ref sd, _) = i.node {
-            if !sd.is_struct() {
-                self.annotate(sd.id(), true, &i.attrs, i.span, |_| {}, true)
+        let orig_in_trait_impl = self.in_trait_impl;
+        let orig_in_enum = self.in_enum;
+        let mut kind = AnnotationKind::Required;
+        match i.node {
+            // Inherent impls and foreign modules serve only as containers for other items,
+            // they don't have their own stability. They still can be annotated as unstable
+            // and propagate this unstability to children, but this annotation is completely
+            // optional. They inherit stability from their parents when unannotated.
+            hir::ItemImpl(_, _, _, None, _, _) | hir::ItemForeignMod(..) => {
+                self.in_trait_impl = false;
+                kind = AnnotationKind::Container;
             }
+            hir::ItemImpl(_, _, _, Some(_), _, _) => {
+                self.in_trait_impl = true;
+            }
+            hir::ItemStruct(ref sd, _) => {
+                self.in_enum = false;
+                if !sd.is_struct() {
+                    self.annotate(sd.id(), &i.attrs, i.span, AnnotationKind::Required, |_| {})
+                }
+            }
+            hir::ItemEnum(..) => {
+                self.in_enum = true;
+            }
+            _ => {}
         }
-    }
 
-    fn visit_fn(&mut self, _: FnKind<'v>, _: &'v FnDecl,
-                _: &'v Block, _: Span, _: NodeId) {
-        // Items defined in a function body have no reason to have
-        // a stability attribute, so we don't recurse.
+        self.annotate(i.id, &i.attrs, i.span, kind, |v| {
+            visit::walk_item(v, i)
+        });
+        self.in_trait_impl = orig_in_trait_impl;
+        self.in_enum = orig_in_enum;
     }
 
     fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
-        self.annotate(ti.id, true, &ti.attrs, ti.span,
-                      |v| visit::walk_trait_item(v, ti), true);
+        self.annotate(ti.id, &ti.attrs, ti.span, AnnotationKind::Required, |v| {
+            visit::walk_trait_item(v, ti);
+        });
     }
 
     fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
-        self.annotate(ii.id, true, &ii.attrs, ii.span,
-                      |v| visit::walk_impl_item(v, ii), false);
+        let kind = if self.in_trait_impl {
+            AnnotationKind::Prohibited
+        } else {
+            AnnotationKind::Required
+        };
+        self.annotate(ii.id, &ii.attrs, ii.span, kind, |v| {
+            visit::walk_impl_item(v, ii);
+        });
     }
 
     fn visit_variant(&mut self, var: &Variant, g: &'v Generics, item_id: NodeId) {
-        self.annotate(var.node.data.id(), true, &var.node.attrs, var.span,
-                      |v| visit::walk_variant(v, var, g, item_id), true)
+        self.annotate(var.node.data.id(), &var.node.attrs, var.span, AnnotationKind::Required, |v| {
+            visit::walk_variant(v, var, g, item_id);
+        })
     }
 
     fn visit_struct_field(&mut self, s: &StructField) {
-        self.annotate(s.node.id, true, &s.node.attrs, s.span,
-                      |v| visit::walk_struct_field(v, s), !s.node.kind.is_unnamed());
+        // FIXME: This is temporary, can't use attributes with tuple variant fields until snapshot
+        let kind = if self.in_enum && s.node.kind.is_unnamed() {
+            AnnotationKind::Prohibited
+        } else {
+            AnnotationKind::Required
+        };
+        self.annotate(s.node.id, &s.node.attrs, s.span, kind, |v| {
+            visit::walk_struct_field(v, s);
+        });
     }
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
-        self.annotate(i.id, true, &i.attrs, i.span, |_| {}, true);
+        self.annotate(i.id, &i.attrs, i.span, AnnotationKind::Required, |v| {
+            visit::walk_foreign_item(v, i);
+        });
+    }
+
+    fn visit_macro_def(&mut self, md: &'v hir::MacroDef) {
+        if md.imported_from.is_none() {
+            self.annotate(md.id, &md.attrs, md.span, AnnotationKind::Required, |_| {});
+        }
     }
 }
 
@@ -243,21 +265,21 @@ impl<'tcx> Index<'tcx> {
             index: self,
             parent: None,
             export_map: export_map,
+            in_trait_impl: false,
+            in_enum: false,
         };
-        annotator.annotate(ast::CRATE_NODE_ID, true, &krate.attrs, krate.span,
-                           |v| visit::walk_crate(v, krate), true);
+        annotator.annotate(ast::CRATE_NODE_ID, &krate.attrs, krate.span, AnnotationKind::Required,
+                           |v| visit::walk_crate(v, krate));
     }
 
     pub fn new(krate: &Crate) -> Index {
         let mut is_staged_api = false;
         for attr in &krate.attrs {
-            if &attr.name()[..] == "staged_api" {
-                match attr.node.value.node {
-                    ast::MetaWord(_) => {
-                        attr::mark_used(attr);
-                        is_staged_api = true;
-                    }
-                    _ => (/*pass*/)
+            if attr.name() == "staged_api" {
+                if let ast::MetaWord(_) = attr.node.value.node {
+                    attr::mark_used(attr);
+                    is_staged_api = true;
+                    break
                 }
             }
         }

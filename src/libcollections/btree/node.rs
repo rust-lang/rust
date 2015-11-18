@@ -451,7 +451,6 @@ impl<K, V> Node<K, V> {
 }
 
 // FIXME(gereeter) Write an efficient clone_from
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Clone, V: Clone> Clone for Node<K, V> {
     fn clone(&self) -> Node<K, V> {
         let mut ret = if self.is_leaf() {

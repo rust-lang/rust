@@ -125,8 +125,9 @@ pub struct Mutex<T: ?Sized> {
 
 // these are the only places where `T: Send` matters; all other
 // functionality works fine on a single thread.
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send> Send for Mutex<T> { }
-
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send> Sync for Mutex<T> { }
 
 /// The static mutex type is provided to allow for static allocation of mutexes.
@@ -175,6 +176,7 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
     __poison: poison::Guard,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> !marker::Send for MutexGuard<'a, T> {}
 
 /// Static initialization of a mutex. This constant can be used to initialize

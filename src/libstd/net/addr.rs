@@ -448,6 +448,7 @@ impl ToSocketAddrs for str {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ToSocketAddrs + ?Sized> ToSocketAddrs for &'a T {
     type Iter = T::Iter;
     fn to_socket_addrs(&self) -> io::Result<T::Iter> {

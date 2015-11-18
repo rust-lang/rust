@@ -97,6 +97,7 @@ pub trait Any: Reflect + 'static {
     fn get_type_id(&self) -> TypeId;
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Reflect + 'static> Any for T {
     fn get_type_id(&self) -> TypeId { TypeId::of::<T>() }
 }
