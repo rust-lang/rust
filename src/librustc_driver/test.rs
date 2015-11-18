@@ -189,9 +189,10 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                       names: &[String])
                       -> Option<ast::NodeId> {
             assert!(idx < names.len());
-            for item in &m.items {
+            for item in &m.item_ids {
+                let item = this.infcx.tcx.map.expect_item(item.id);
                 if item.name.to_string() == names[idx] {
-                    return search(this, &**item, idx + 1, names);
+                    return search(this, item, idx + 1, names);
                 }
             }
             return None;
