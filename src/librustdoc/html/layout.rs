@@ -57,6 +57,10 @@ r##"<!DOCTYPE html>
 <body class="rustdoc">
     <div id="style-changer">
         {divs}
+        <script src="{root_path}switcher.js"></script>
+        <script>
+            switch_style();
+        </script>
     </div>
     <!--[if lte IE 8]>
     <div class="warning">

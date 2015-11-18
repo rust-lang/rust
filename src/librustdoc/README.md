@@ -1,16 +1,20 @@
-/**
- * Copyright 2015 The Rust Project Developers. See the COPYRIGHT
- * file at the top-level directory of this distribution and at
- * http://rust-lang.org/COPYRIGHT.
- *
- * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
- * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
- * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
- * option. This file may not be copied, modified, or distributed
- * except according to those terms.
- */
+# Add librustdoc theme
 
-/* General structure and fonts */
+It is now possible to add themes in librustdoc. To do it, you have to add your
+theme file in `librustdoc/html/static/styles` and then rebuild it.
+
+You now just have to regenerate your doc and you will have the possibility to
+switch style at runtime.
+
+Normally, you shouldn't need to modify any other CSS rules than the ones in
+the `librustdoc/html/static/styles/main.css` file.
+
+Here is an example to have an alternative dark theme:
+
+1. Create a `dark.css` file in `librustdoc/html/static/styles`
+2. Copy the following code in it:
+
+```
 
 body {
     background-color: #353535;
@@ -124,3 +128,4 @@ a.test-arrow {
 
 em.stab.unstable { background: #503D05; border-color: #AB8500; }
 em.stab.deprecated { background: #352850; border-color: #645074; }
+```
