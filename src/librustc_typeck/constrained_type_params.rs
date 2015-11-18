@@ -19,15 +19,20 @@ pub enum Parameter {
     Region(ty::EarlyBoundRegion),
 }
 
-/// Returns the list of parameters that are constrained by the type `ty`
-/// - i.e. the value of each parameter in the list is uniquely determined
-/// by `ty` (see RFC 447).
-pub fn parameters_for_type<'tcx>(ty: Ty<'tcx>) -> Vec<Parameter> {
+/// If `include_projections` is false, returns the list of parameters that are
+/// constrained by the type `ty` - i.e. the value of each parameter in the list is
+/// uniquely determined by `ty` (see RFC 447). If it is true, return the list
+/// of parameters whose values are needed in order to constrain `ty` - these
+/// differ, with the latter being a superset, in the presence of projections.
+pub fn parameters_for_type<'tcx>(ty: Ty<'tcx>,
+                                 include_projections: bool) -> Vec<Parameter> {
     let mut result = vec![];
-    ty.maybe_walk(|t| {
-        if let ty::TyProjection(..) = t.sty {
+    ty.maybe_walk(|t| match t.sty {
+        ty::TyProjection(..) if !include_projections => {
+
             false // projections are not injective.
-        } else {
+        }
+        _ => {
             result.append(&mut parameters_for_type_shallow(t));
             // non-projection type constructors are injective.
             true
@@ -36,13 +41,16 @@ pub fn parameters_for_type<'tcx>(ty: Ty<'tcx>) -> Vec<Parameter> {
     result
 }
 
-pub fn parameters_for_trait_ref<'tcx>(trait_ref: &ty::TraitRef<'tcx>) -> Vec<Parameter> {
+pub fn parameters_for_trait_ref<'tcx>(trait_ref: &ty::TraitRef<'tcx>,
+                                      include_projections: bool) -> Vec<Parameter> {
     let mut region_parameters =
         parameters_for_regions_in_substs(&trait_ref.substs);
 
     let type_parameters =
-        trait_ref.substs.types.iter()
-                              .flat_map(|ty| parameters_for_type(ty));
+        trait_ref.substs
+                 .types
+                 .iter()
+                 .flat_map(|ty| parameters_for_type(ty, include_projections));
 
     region_parameters.extend(type_parameters);
 
@@ -60,8 +68,14 @@ fn parameters_for_type_shallow<'tcx>(ty: Ty<'tcx>) -> Vec<Parameter> {
             parameters_for_regions_in_substs(substs),
         ty::TyTrait(ref data) =>
             parameters_for_regions_in_substs(&data.principal.skip_binder().substs),
-        _ =>
-            vec![],
+        ty::TyProjection(ref pi) =>
+            parameters_for_regions_in_substs(&pi.trait_ref.substs),
+        ty::TyBool | ty::TyChar | ty::TyInt(..) | ty::TyUint(..) |
+        ty::TyFloat(..) | ty::TyBox(..) | ty::TyStr |
+        ty::TyArray(..) | ty::TySlice(..) | ty::TyBareFn(..) |
+        ty::TyTuple(..) | ty::TyRawPtr(..) |
+        ty::TyInfer(..) | ty::TyClosure(..) | ty::TyError =>
+            vec![]
     }
 }
 
@@ -113,6 +127,22 @@ pub fn identify_constrained_type_params<'tcx>(_tcx: &ty::ctxt<'tcx>,
 /// pass, we want the projection to come first. In fact, as projections
 /// can (acyclically) depend on one another - see RFC447 for details - we
 /// need to topologically sort them.
+///
+/// We *do* have to be somewhat careful when projection targets contain
+/// projections themselves, for example in
+///     impl<S,U,V,W> Trait for U where
+/// /* 0 */   S: Iterator<Item=U>,
+/// /* - */   U: Iterator,
+/// /* 1 */   <U as Iterator>::Item: ToOwned<Owned=(W,<V as Iterator>::Item)>
+/// /* 2 */   W: Iterator<Item=V>
+/// /* 3 */   V: Debug
+/// we have to evaluate the projections in the order I wrote them:
+/// `V: Debug` requires `V` to be evaluated. The only projection that
+/// *determines* `V` is 2 (1 contains it, but *does not determine it*,
+/// as it is only contained within a projection), but that requires `W`
+/// which is determined by 1, which requires `U`, that is determined
+/// by 0. I should probably pick a less tangled example, but I can't
+/// think of any.
 pub fn setup_constraining_predicates<'tcx>(_tcx: &ty::ctxt<'tcx>,
                                            predicates: &mut [ty::Predicate<'tcx>],
                                            impl_trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -157,12 +187,18 @@ pub fn setup_constraining_predicates<'tcx>(_tcx: &ty::ctxt<'tcx>,
                     continue;
                 }
 
-                let inputs = parameters_for_trait_ref(&projection.projection_ty.trait_ref);
+                // A projection depends on its input types and determines its output
+                // type. For example, if we have
+                //     `<<T as Bar>::Baz as Iterator>::Output = <U as Iterator>::Output`
+                // Then the projection only applies if `T` is known, but it still
+                // does not determine `U`.
+
+                let inputs = parameters_for_trait_ref(&projection.projection_ty.trait_ref, true);
                 let relies_only_on_inputs = inputs.iter().all(|p| input_parameters.contains(&p));
                 if !relies_only_on_inputs {
                     continue;
                 }
-                input_parameters.extend(parameters_for_type(projection.ty));
+                input_parameters.extend(parameters_for_type(projection.ty, false));
             } else {
                 continue;
             }
