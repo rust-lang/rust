@@ -209,7 +209,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                    i,
                    self.resolver.unresolved_imports);
 
-            let module_root = self.resolver.graph_root.get_module();
+            let module_root = self.resolver.graph_root.clone();
             let errors = self.resolve_imports_for_module_subtree(module_root.clone());
 
             if self.resolver.unresolved_imports == 0 {
@@ -254,7 +254,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         build_reduced_graph::populate_module_if_necessary(self.resolver, &module_);
         for (_, child_node) in module_.children.borrow().iter() {
-            match child_node.get_module_if_available() {
+            match child_node.type_ns.module() {
                 None => {
                     // Nothing to do.
                 }
@@ -337,7 +337,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         // First, resolve the module path for the directive, if necessary.
         let container = if module_path.is_empty() {
             // Use the crate root.
-            Some((self.resolver.graph_root.get_module(), LastMod(AllPublic)))
+            Some((self.resolver.graph_root.clone(), LastMod(AllPublic)))
         } else {
             match self.resolver.resolve_module_path(module_.clone(),
                                                     &module_path[..],

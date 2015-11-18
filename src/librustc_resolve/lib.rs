@@ -813,8 +813,8 @@ impl Module {
            def: Option<Def>,
            external: bool,
            is_public: bool)
-           -> Module {
-        Module {
+           -> Rc<Module> {
+        Rc::new(Module {
             parent_link: parent_link,
             def: Cell::new(def),
             is_public: is_public,
@@ -828,7 +828,7 @@ impl Module {
             pub_glob_count: Cell::new(0),
             resolved_import_count: Cell::new(0),
             populated: Cell::new(!external),
-        }
+        })
     }
 
     fn def_id(&self) -> Option<DefId> {
@@ -971,19 +971,27 @@ impl NameBinding {
         }
     }
 
-    fn and_then<T, F: Fn(&NsDef) -> Option<T>>(&self, f: F) -> Option<T> {
-        self.borrow().as_ref().and_then(f)
+    fn borrow(&self) -> ::std::cell::Ref<Option<NsDef>> {
+        self.0.borrow()
     }
 
-    fn borrow(&self) -> ::std::cell::Ref<Option<NsDef>> { self.0.borrow() }
-
     // Lifted versions of the NsDef methods and fields
-    fn def(&self) -> Option<Def>           { self.and_then(NsDef::def) }
-    fn module(&self) -> Option<Rc<Module>> { self.and_then(NsDef::module) }
-    fn span(&self) -> Option<Span>         { self.and_then(|def| def.span) }
-    fn modifiers(&self) -> Option<DefModifiers> { self.and_then(|def| Some(def.modifiers)) }
+    fn def(&self) -> Option<Def> {
+        self.borrow().as_ref().and_then(NsDef::def)
+    }
+    fn module(&self) -> Option<Rc<Module>> {
+        self.borrow().as_ref().and_then(NsDef::module)
+    }
+    fn span(&self) -> Option<Span> {
+        self.borrow().as_ref().and_then(|def| def.span)
+    }
+    fn modifiers(&self) -> Option<DefModifiers> {
+        self.borrow().as_ref().and_then(|def| Some(def.modifiers))
+    }
 
-    fn defined(&self) -> bool { self.borrow().is_some() }
+    fn defined(&self) -> bool {
+        self.borrow().is_some()
+    }
 
     fn defined_with(&self, modifiers: DefModifiers) -> bool {
         self.modifiers().map(|m| m.contains(modifiers)).unwrap_or(false)
@@ -1030,14 +1038,8 @@ impl NameBindings {
     }
 
     /// Creates a new module in this set of name bindings.
-    fn define_module(&self,
-                     parent_link: ParentLink,
-                     def: Option<Def>,
-                     external: bool,
-                     is_public: bool,
-                     sp: Span) {
-        let module = Module::new(parent_link, def, external, is_public);
-        self.type_ns.set(NsDef::create_from_module(Rc::new(module), Some(sp)));
+    fn define_module(&self, module: Rc<Module>, sp: Span) {
+        self.type_ns.set(NsDef::create_from_module(module, Some(sp)));
     }
 
     /// Records a type definition.
@@ -1050,20 +1052,6 @@ impl NameBindings {
     fn define_value(&self, def: Def, sp: Span, modifiers: DefModifiers) {
         debug!("defining value for def {:?} with modifiers {:?}", def, modifiers);
         self.value_ns.set(NsDef::create_from_def(def, modifiers, Some(sp)));
-    }
-
-    /// Returns the module node if applicable.
-    fn get_module_if_available(&self) -> Option<Rc<Module>> { self.type_ns.module() }
-
-    /// Returns the module node. Panics if this node does not have a module
-    /// definition.
-    fn get_module(&self) -> Rc<Module> {
-        match self.get_module_if_available() {
-            None => {
-                panic!("get_module called on a node with no module definition!")
-            }
-            Some(module_def) => module_def,
-        }
     }
 }
 
@@ -1106,7 +1094,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
 
     ast_map: &'a hir_map::Map<'tcx>,
 
-    graph_root: NameBindings,
+    graph_root: Rc<Module>,
 
     trait_item_map: FnvHashMap<(Name, DefId), DefId>,
 
@@ -1173,19 +1161,10 @@ enum FallbackChecks {
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn new(session: &'a Session,
            ast_map: &'a hir_map::Map<'tcx>,
-           crate_span: Span,
            make_glob_map: MakeGlobMap)
            -> Resolver<'a, 'tcx> {
-        let graph_root = NameBindings::new();
-
         let root_def_id = ast_map.local_def_id(CRATE_NODE_ID);
-        graph_root.define_module(NoParentLink,
-                                 Some(DefMod(root_def_id)),
-                                 false,
-                                 true,
-                                 crate_span);
-
-        let current_module = graph_root.get_module();
+        let graph_root = Module::new(NoParentLink, Some(DefMod(root_def_id)), false, true);
 
         Resolver {
             session: session,
@@ -1194,14 +1173,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
-            graph_root: graph_root,
+            graph_root: graph_root.clone(),
 
             trait_item_map: FnvHashMap(),
             structs: FnvHashMap(),
 
             unresolved_imports: 0,
 
-            current_module: current_module,
+            current_module: graph_root,
             value_ribs: Vec::new(),
             type_ribs: Vec::new(),
             label_ribs: Vec::new(),
@@ -1441,7 +1420,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     DontUseLexicalScope => {
                         // This is a crate-relative path. We will start the
                         // resolution process at index zero.
-                        search_module = self.graph_root.get_module();
+                        search_module = self.graph_root.clone();
                         start_index = 0;
                         last_private = LastMod(AllPublic);
                     }
@@ -1792,7 +1771,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         build_reduced_graph::populate_module_if_necessary(self, &module_);
 
         for (_, child_node) in module_.children.borrow().iter() {
-            match child_node.get_module_if_available() {
+            match child_node.type_ns.module() {
                 None => {
                     // Continue.
                 }
@@ -1845,7 +1824,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                module_to_string(&*orig_module));
                     }
                     Some(name_bindings) => {
-                        match (*name_bindings).get_module_if_available() {
+                        match name_bindings.type_ns.module() {
                             None => {
                                 debug!("!!! (with scope) didn't find module for `{}` in `{}`",
                                        name,
@@ -3115,7 +3094,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                   .map(|ps| ps.identifier.name)
                                   .collect::<Vec<_>>();
 
-        let root_module = self.graph_root.get_module();
+        let root_module = self.graph_root.clone();
 
         let containing_module;
         let last_private;
@@ -3278,7 +3257,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some(_) => None,
                     None => {
                         match this.current_module.children.borrow().get(last_name) {
-                            Some(child) => child.get_module_if_available(),
+                            Some(child) => child.type_ns.module(),
                             None => None,
                         }
                     }
@@ -3883,7 +3862,7 @@ pub fn create_resolver<'a, 'tcx>(session: &'a Session,
                                  make_glob_map: MakeGlobMap,
                                  callback: Option<Box<Fn(hir_map::Node, &mut bool) -> bool>>)
                                  -> Resolver<'a, 'tcx> {
-    let mut resolver = Resolver::new(session, ast_map, krate.span, make_glob_map);
+    let mut resolver = Resolver::new(session, ast_map, make_glob_map);
 
     resolver.callback = callback;
 

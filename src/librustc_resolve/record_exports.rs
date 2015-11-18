@@ -79,7 +79,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
         build_reduced_graph::populate_module_if_necessary(self.resolver, &module_);
 
         for (_, child_name_bindings) in module_.children.borrow().iter() {
-            match child_name_bindings.get_module_if_available() {
+            match child_name_bindings.type_ns.module() {
                 None => {
                     // Nothing to do.
                 }
@@ -149,6 +149,6 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
 
 pub fn record(resolver: &mut Resolver) {
     let mut recorder = ExportRecorder { resolver: resolver };
-    let root_module = recorder.graph_root.get_module();
+    let root_module = recorder.graph_root.clone();
     recorder.record_exports_for_module_subtree(root_module);
 }
