@@ -104,6 +104,11 @@ prepare-host-tool-$(1)-$(2)-$(3)-$(4): prepare-maybe-clean-$(4) \
         $$(call PREPARE_MAN,$(1).1),),)
 endef
 
+# Libraries are compiled using the --libdir provided to configure, but
+# we store them in the tarball using just "lib" so that the install
+# script can then rewrite them back to the correct path.
+PREPARE_TAR_LIB_DIR = $(patsubst $(CFG_LIBDIR_RELATIVE)%,lib%,$(1))
+
 # For host libraries only install dylibs, not rlibs since the host libs are only
 # used to support rustc and rustc uses dynamic linking
 #
@@ -115,7 +120,7 @@ define DEF_PREPARE_HOST_LIB
 prepare-host-lib-$(1)-$(2)-$(3)-$(4): \
 	PREPARE_WORKING_SOURCE_LIB_DIR=$$(HLIB$(2)_H_$(3))
 prepare-host-lib-$(1)-$(2)-$(3)-$(4): \
-	PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_DIR)/$$(HLIB_RELATIVE$(2)_H_$(3))
+	PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_DIR)/$$(call PREPARE_TAR_LIB_DIR,$$(HLIB_RELATIVE$(2)_H_$(3)))
 prepare-host-lib-$(1)-$(2)-$(3)-$(4): prepare-maybe-clean-$(4) \
                                  $$(foreach dep,$$(RUST_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)-$(4)) \
                                  $$(HLIB$(2)_H_$(3))/stamp.$(1) \
@@ -195,7 +200,7 @@ define DEF_PREPARE
 
 prepare-base-$(1)-%: PREPARE_SOURCE_MAN_DIR=$$(S)/man
 prepare-base-$(1)-%: PREPARE_DEST_BIN_DIR=$$(PREPARE_DEST_DIR)/bin
-prepare-base-$(1)-%: PREPARE_DEST_LIB_DIR=$$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)
+prepare-base-$(1)-%: PREPARE_DEST_LIB_DIR=$$(PREPARE_DEST_DIR)/$$(call PREPARE_TAR_LIB_DIR,$$(CFG_LIBDIR_RELATIVE))
 prepare-base-$(1)-%: PREPARE_DEST_MAN_DIR=$$(PREPARE_DEST_DIR)/share/man/man1
 
 prepare-base-$(1)-target: prepare-target-$(1)
