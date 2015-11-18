@@ -13,6 +13,7 @@
 #![stable(feature = "raw_ext", since = "1.1.0")]
 
 #[doc(inline)]
+#[stable(feature = "raw_ext", since = "1.1.0")]
 pub use self::arch::{dev_t, mode_t, blkcnt_t, blksize_t, ino_t, nlink_t, off_t, stat, time_t};
 
 #[cfg(any(target_arch = "arm", target_arch = "x86"))]

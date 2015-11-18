@@ -47,6 +47,7 @@ mod inner {
         }
     }
 
+    #[unstable(feature = "libstd_sys_internals", issue = "0")]
     impl<'a> Sub for &'a SteadyTime {
         type Output = Duration;
 
