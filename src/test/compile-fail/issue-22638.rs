@@ -10,6 +10,8 @@
 
 #![allow(unused)]
 
+#![recursion_limit = "32"]
+
 #[derive(Clone)]
 struct A (B);
 
