@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![deny(while_let_loop, empty_loop, while_let_on_iterator)]
-#![allow(dead_code, unused)]
+#![allow(dead_code, unused, cyclomatic_complexity)]
 
 fn main() {
     let y = Some(true);

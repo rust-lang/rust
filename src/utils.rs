@@ -9,6 +9,9 @@ use std::borrow::Cow;
 use syntax::ast::Lit_::*;
 use syntax::ast;
 
+use rustc::session::Session;
+use std::str::FromStr;
+
 // module DefPaths for certain structs/enums we check for
 pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];
 pub const RESULT_PATH: [&'static str; 3] = ["core", "result", "Result"];
@@ -65,8 +68,8 @@ macro_rules! if_let_chain {
     };
 }
 
-/// returns true this expn_info was expanded by any macro
-pub fn in_macro(cx: &LateContext, span: Span) -> bool {
+/// returns true if this expn_info was expanded by any macro
+pub fn in_macro<T: LintContext>(cx: &T, span: Span) -> bool {
     cx.sess().codemap().with_expn_info(span.expn_id,
             |info| info.is_some())
 }
@@ -396,4 +399,63 @@ macro_rules! if_let_chain {
            $block
         }
     };
+}
+
+pub struct LimitStack {
+    stack: Vec<u64>,
+}
+
+impl Drop for LimitStack {
+    fn drop(&mut self) {
+        assert_eq!(self.stack.len(), 1);
+    }
+}
+
+impl LimitStack {
+    pub fn new(limit: u64) -> LimitStack {
+        LimitStack {
+            stack: vec![limit],
+        }
+    }
+    pub fn limit(&self) -> u64 {
+        *self.stack.last().expect("there should always be a value in the stack")
+    }
+    pub fn push_attrs(&mut self, sess: &Session, attrs: &[ast::Attribute], name: &'static str) {
+        let stack = &mut self.stack;
+        parse_attrs(
+            sess,
+            attrs,
+            name,
+            |val| stack.push(val),
+        );
+    }
+    pub fn pop_attrs(&mut self, sess: &Session, attrs: &[ast::Attribute], name: &'static str) {
+        let stack = &mut self.stack;
+        parse_attrs(
+            sess,
+            attrs,
+            name,
+            |val| assert_eq!(stack.pop(), Some(val)),
+        );
+    }
+}
+
+fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'static str, mut f: F) {
+    for attr in attrs {
+        let attr = &attr.node;
+        if attr.is_sugared_doc { continue; }
+        if let ast::MetaNameValue(ref key, ref value) = attr.value.node {
+            if *key == name {
+                if let LitStr(ref s, _) = value.node {
+                    if let Ok(value) = FromStr::from_str(s) {
+                        f(value)
+                    } else {
+                        sess.span_err(value.span, "not a number");
+                    }
+                } else {
+                    unreachable!()
+                }
+            }
+        }
+    }
 }

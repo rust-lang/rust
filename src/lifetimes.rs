@@ -108,7 +108,7 @@ fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>
 
     // no input lifetimes? easy case!
     if input_lts.is_empty() {
-        return false;
+        false
     } else if output_lts.is_empty() {
         // no output lifetimes, check distinctness of input lifetimes
 
@@ -117,9 +117,7 @@ fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>
             return false;
         }
         // we have no output reference, so we only need all distinct lifetimes
-        if input_lts.len() == unique_lifetimes(&input_lts) {
-            return true;
-        }
+        input_lts.len() == unique_lifetimes(&input_lts)
     } else {
         // we have output references, so we need one input reference,
         // and all output lifetimes must be the same
@@ -128,15 +126,16 @@ fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>
         }
         if input_lts.len() == 1 {
             match (&input_lts[0], &output_lts[0]) {
-                (&Named(n1), &Named(n2)) if n1 == n2 => { return true; }
-                (&Named(_), &Unnamed) => { return true; }
-                (&Unnamed, &Named(_)) => { return true; }
-                _ => { } // already elided, different named lifetimes
-                         // or something static going on
+                (&Named(n1), &Named(n2)) if n1 == n2 => true,
+                (&Named(_), &Unnamed) => true,
+                (&Unnamed, &Named(_)) => true,
+                _ => false // already elided, different named lifetimes
+                           // or something static going on
             }
+        } else {
+            false
         }
     }
-    false
 }
 
 fn allowed_lts_from(named_lts: &[LifetimeDef]) -> HashSet<RefLt> {

@@ -56,116 +56,7 @@ impl LintPass for LoopsPass {
 impl LateLintPass for LoopsPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let Some((pat, arg, body)) = recover_for_loop(expr) {
-            // check for looping over a range and then indexing a sequence with it
-            // -> the iteratee must be a range literal
-            if let ExprRange(Some(ref l), _) = arg.node {
-                // Range should start with `0`
-                if let ExprLit(ref lit) = l.node {
-                    if let LitInt(0, _) = lit.node {
-
-                        // the var must be a single name
-                        if let PatIdent(_, ref ident, _) = pat.node {
-                            let mut visitor = VarVisitor { cx: cx, var: ident.node.name,
-                                                           indexed: HashSet::new(), nonindex: false };
-                            walk_expr(&mut visitor, body);
-                            // linting condition: we only indexed one variable
-                            if visitor.indexed.len() == 1 {
-                                let indexed = visitor.indexed.into_iter().next().expect(
-                                    "Len was nonzero, but no contents found");
-                                if visitor.nonindex {
-                                    span_lint(cx, NEEDLESS_RANGE_LOOP, expr.span, &format!(
-                                        "the loop variable `{}` is used to index `{}`. Consider using \
-                                         `for ({}, item) in {}.iter().enumerate()` or similar iterators",
-                                        ident.node.name, indexed, ident.node.name, indexed));
-                                } else {
-                                    span_lint(cx, NEEDLESS_RANGE_LOOP, expr.span, &format!(
-                                        "the loop variable `{}` is only used to index `{}`. \
-                                         Consider using `for item in &{}` or similar iterators",
-                                        ident.node.name, indexed, indexed));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // if this for loop is iterating over a two-sided range...
-            if let ExprRange(Some(ref start_expr), Some(ref stop_expr)) = arg.node {
-                // ...and both sides are compile-time constant integers...
-                if let Some(start_idx @ Constant::ConstantInt(..)) = constant_simple(start_expr) {
-                    if let Some(stop_idx @ Constant::ConstantInt(..)) = constant_simple(stop_expr) {
-                        // ...and the start index is greater than the stop index,
-                        // this loop will never run. This is often confusing for developers
-                        // who think that this will iterate from the larger value to the
-                        // smaller value.
-                        if start_idx > stop_idx {
-                            span_help_and_lint(cx, REVERSE_RANGE_LOOP, expr.span,
-                                "this range is empty so this for loop will never run",
-                                &format!("Consider using `({}..{}).rev()` if you are attempting to \
-                                iterate over this range in reverse", stop_idx, start_idx));
-                        } else if start_idx == stop_idx {
-                            // if they are equal, it's also problematic - this loop
-                            // will never run.
-                            span_lint(cx, REVERSE_RANGE_LOOP, expr.span,
-                                "this range is empty so this for loop will never run");
-                        }
-                    }
-                }
-            }
-
-            if let ExprMethodCall(ref method, _, ref args) = arg.node {
-                // just the receiver, no arguments
-                if args.len() == 1 {
-                    let method_name = method.node;
-                    // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
-                    if method_name.as_str() == "iter" || method_name.as_str() == "iter_mut" {
-                        if is_ref_iterable_type(cx, &args[0]) {
-                            let object = snippet(cx, args[0].span, "_");
-                            span_lint(cx, EXPLICIT_ITER_LOOP, expr.span, &format!(
-                                "it is more idiomatic to loop over `&{}{}` instead of `{}.{}()`",
-                                if method_name.as_str() == "iter_mut" { "mut " } else { "" },
-                                object, object, method_name));
-                        }
-                    }
-                    // check for looping over Iterator::next() which is not what you want
-                    else if method_name.as_str() == "next" &&
-                            match_trait_method(cx, arg, &["core", "iter", "Iterator"]) {
-                        span_lint(cx, ITER_NEXT_LOOP, expr.span,
-                                  "you are iterating over `Iterator::next()` which is an Option; \
-                                   this will compile but is probably not what you want");
-                    }
-                }
-            }
-
-            // Look for variables that are incremented once per loop iteration.
-            let mut visitor = IncrementVisitor { cx: cx, states: HashMap::new(), depth: 0, done: false };
-            walk_expr(&mut visitor, body);
-
-            // For each candidate, check the parent block to see if
-            // it's initialized to zero at the start of the loop.
-            let map = &cx.tcx.map;
-            let parent_scope = map.get_enclosing_scope(expr.id).and_then(|id| map.get_enclosing_scope(id) );
-            if let Some(parent_id) = parent_scope {
-                if let NodeBlock(block) = map.get(parent_id) {
-                    for (id, _) in visitor.states.iter().filter( |&(_,v)| *v == VarState::IncrOnce) {
-                        let mut visitor2 = InitializeVisitor { cx: cx, end_expr: expr, var_id: id.clone(),
-                                                               state: VarState::IncrOnce, name: None,
-                                                               depth: 0,
-                                                               past_loop: false };
-                        walk_block(&mut visitor2, block);
-
-                        if visitor2.state == VarState::Warn {
-                            if let Some(name) = visitor2.name {
-                                span_lint(cx, EXPLICIT_COUNTER_LOOP, expr.span,
-                                          &format!("the variable `{0}` is used as a loop counter. Consider \
-                                                    using `for ({0}, item) in {1}.enumerate()` \
-                                                    or similar iterators",
-                                                   name, snippet(cx, arg.span, "_")));
-                            }
-                        }
-                    }
-                }
-            }
+            check_for_loop(cx, pat, arg, body, expr);
         }
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")
@@ -265,6 +156,119 @@ impl LateLintPass for LoopsPass {
                     span_lint(cx, UNUSED_COLLECT, expr.span, &format!(
                         "you are collect()ing an iterator and throwing away the result. \
                          Consider using an explicit for loop to exhaust the iterator"));
+                }
+            }
+        }
+    }
+}
+
+fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
+    // check for looping over a range and then indexing a sequence with it
+    // -> the iteratee must be a range literal
+    if let ExprRange(Some(ref l), _) = arg.node {
+        // Range should start with `0`
+        if let ExprLit(ref lit) = l.node {
+            if let LitInt(0, _) = lit.node {
+
+                // the var must be a single name
+                if let PatIdent(_, ref ident, _) = pat.node {
+                    let mut visitor = VarVisitor { cx: cx, var: ident.node.name,
+                                                   indexed: HashSet::new(), nonindex: false };
+                    walk_expr(&mut visitor, body);
+                    // linting condition: we only indexed one variable
+                    if visitor.indexed.len() == 1 {
+                        let indexed = visitor.indexed.into_iter().next().expect(
+                            "Len was nonzero, but no contents found");
+                        if visitor.nonindex {
+                            span_lint(cx, NEEDLESS_RANGE_LOOP, expr.span, &format!(
+                                "the loop variable `{}` is used to index `{}`. Consider using \
+                                 `for ({}, item) in {}.iter().enumerate()` or similar iterators",
+                                ident.node.name, indexed, ident.node.name, indexed));
+                        } else {
+                            span_lint(cx, NEEDLESS_RANGE_LOOP, expr.span, &format!(
+                                "the loop variable `{}` is only used to index `{}`. \
+                                 Consider using `for item in &{}` or similar iterators",
+                                ident.node.name, indexed, indexed));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // if this for loop is iterating over a two-sided range...
+    if let ExprRange(Some(ref start_expr), Some(ref stop_expr)) = arg.node {
+        // ...and both sides are compile-time constant integers...
+        if let Some(start_idx @ Constant::ConstantInt(..)) = constant_simple(start_expr) {
+            if let Some(stop_idx @ Constant::ConstantInt(..)) = constant_simple(stop_expr) {
+                // ...and the start index is greater than the stop index,
+                // this loop will never run. This is often confusing for developers
+                // who think that this will iterate from the larger value to the
+                // smaller value.
+                if start_idx > stop_idx {
+                    span_help_and_lint(cx, REVERSE_RANGE_LOOP, expr.span,
+                        "this range is empty so this for loop will never run",
+                        &format!("Consider using `({}..{}).rev()` if you are attempting to \
+                        iterate over this range in reverse", stop_idx, start_idx));
+                } else if start_idx == stop_idx {
+                    // if they are equal, it's also problematic - this loop
+                    // will never run.
+                    span_lint(cx, REVERSE_RANGE_LOOP, expr.span,
+                        "this range is empty so this for loop will never run");
+                }
+            }
+        }
+    }
+
+    if let ExprMethodCall(ref method, _, ref args) = arg.node {
+        // just the receiver, no arguments
+        if args.len() == 1 {
+            let method_name = method.node;
+            // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
+            if method_name.as_str() == "iter" || method_name.as_str() == "iter_mut" {
+                if is_ref_iterable_type(cx, &args[0]) {
+                    let object = snippet(cx, args[0].span, "_");
+                    span_lint(cx, EXPLICIT_ITER_LOOP, expr.span, &format!(
+                        "it is more idiomatic to loop over `&{}{}` instead of `{}.{}()`",
+                        if method_name.as_str() == "iter_mut" { "mut " } else { "" },
+                        object, object, method_name));
+                }
+            }
+            // check for looping over Iterator::next() which is not what you want
+            else if method_name.as_str() == "next" &&
+                    match_trait_method(cx, arg, &["core", "iter", "Iterator"]) {
+                span_lint(cx, ITER_NEXT_LOOP, expr.span,
+                          "you are iterating over `Iterator::next()` which is an Option; \
+                           this will compile but is probably not what you want");
+            }
+        }
+    }
+
+    // Look for variables that are incremented once per loop iteration.
+    let mut visitor = IncrementVisitor { cx: cx, states: HashMap::new(), depth: 0, done: false };
+    walk_expr(&mut visitor, body);
+
+    // For each candidate, check the parent block to see if
+    // it's initialized to zero at the start of the loop.
+    let map = &cx.tcx.map;
+    let parent_scope = map.get_enclosing_scope(expr.id).and_then(|id| map.get_enclosing_scope(id) );
+    if let Some(parent_id) = parent_scope {
+        if let NodeBlock(block) = map.get(parent_id) {
+            for (id, _) in visitor.states.iter().filter( |&(_,v)| *v == VarState::IncrOnce) {
+                let mut visitor2 = InitializeVisitor { cx: cx, end_expr: expr, var_id: id.clone(),
+                                                       state: VarState::IncrOnce, name: None,
+                                                       depth: 0,
+                                                       past_loop: false };
+                walk_block(&mut visitor2, block);
+
+                if visitor2.state == VarState::Warn {
+                    if let Some(name) = visitor2.name {
+                        span_lint(cx, EXPLICIT_COUNTER_LOOP, expr.span,
+                                  &format!("the variable `{0}` is used as a loop counter. Consider \
+                                            using `for ({0}, item) in {1}.enumerate()` \
+                                            or similar iterators",
+                                           name, snippet(cx, arg.span, "_")));
+                    }
                 }
             }
         }
