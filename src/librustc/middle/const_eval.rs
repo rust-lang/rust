@@ -256,6 +256,8 @@ pub enum ConstVal {
     Struct(ast::NodeId),
     Tuple(ast::NodeId),
     Function(DefId),
+    Array(ast::NodeId, u64),
+    Repeat(ast::NodeId, u64),
 }
 
 impl hash::Hash for ConstVal {
@@ -270,6 +272,8 @@ impl hash::Hash for ConstVal {
             Struct(a) => a.hash(state),
             Tuple(a) => a.hash(state),
             Function(a) => a.hash(state),
+            Array(a, n) => { a.hash(state); n.hash(state) },
+            Repeat(a, n) => { a.hash(state); n.hash(state) },
         }
     }
 }
@@ -290,6 +294,8 @@ impl PartialEq for ConstVal {
             (&Struct(a), &Struct(b)) => a == b,
             (&Tuple(a), &Tuple(b)) => a == b,
             (&Function(a), &Function(b)) => a == b,
+            (&Array(a, an), &Array(b, bn)) => (a == b) && (an == bn),
+            (&Repeat(a, an), &Repeat(b, bn)) => (a == b) && (an == bn),
             _ => false,
         }
     }
@@ -310,6 +316,8 @@ impl ConstVal {
             Struct(_) => "struct",
             Tuple(_) => "tuple",
             Function(_) => "function definition",
+            Array(..) => "array",
+            Repeat(..) => "repeat",
         }
     }
 }
@@ -416,6 +424,12 @@ pub enum ErrKind {
     ExpectedConstTuple,
     ExpectedConstStruct,
     TupleIndexOutOfBounds,
+    IndexedNonVec,
+    IndexNegative,
+    IndexNotInt,
+    IndexOutOfBounds,
+    RepeatCountNotNatural,
+    RepeatCountNotInt,
 
     MiscBinaryOp,
     MiscCatchAll,
@@ -454,6 +468,12 @@ impl ConstEvalErr {
             ExpectedConstTuple => "expected constant tuple".into_cow(),
             ExpectedConstStruct => "expected constant struct".into_cow(),
             TupleIndexOutOfBounds => "tuple index out of bounds".into_cow(),
+            IndexedNonVec => "indexing is only supported for arrays".into_cow(),
+            IndexNegative => "indices must be non-negative integers".into_cow(),
+            IndexNotInt => "indices must be integers".into_cow(),
+            IndexOutOfBounds => "array index out of bounds".into_cow(),
+            RepeatCountNotNatural => "repeat count must be a natural number".into_cow(),
+            RepeatCountNotInt => "repeat count must be integers".into_cow(),
 
             MiscBinaryOp => "bad operands for binary".into_cow(),
             MiscCatchAll => "unsupported constant expr".into_cow(),
@@ -1111,11 +1131,72 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
       hir::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => try!(eval_const_expr_partial(tcx, &**expr, ty_hint, fn_args)),
-            None => Int(0)
+            None => unreachable!(),
         }
       }
       hir::ExprTup(_) => Tuple(e.id),
       hir::ExprStruct(..) => Struct(e.id),
+      hir::ExprIndex(ref arr, ref idx) => {
+        let arr_hint = if let ExprTypeChecked = ty_hint {
+            ExprTypeChecked
+        } else {
+            UncheckedExprNoHint
+        };
+        let arr = try!(eval_const_expr_partial(tcx, arr, arr_hint, fn_args));
+        let idx_hint = if let ExprTypeChecked = ty_hint {
+            ExprTypeChecked
+        } else {
+            UncheckedExprHint(tcx.types.usize)
+        };
+        let idx = match try!(eval_const_expr_partial(tcx, idx, idx_hint, fn_args)) {
+            Int(i) if i >= 0 => i as u64,
+            Int(_) => signal!(idx, IndexNegative),
+            Uint(i) => i,
+            _ => signal!(idx, IndexNotInt),
+        };
+        match arr {
+            Array(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
+            Array(v, _) => if let hir::ExprVec(ref v) = tcx.map.expect_expr(v).node {
+                try!(eval_const_expr_partial(tcx, &*v[idx as usize], ty_hint, fn_args))
+            } else {
+                unreachable!()
+            },
+
+            Repeat(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
+            Repeat(elem, _) => try!(eval_const_expr_partial(
+                tcx,
+                &*tcx.map.expect_expr(elem),
+                ty_hint,
+                fn_args,
+            )),
+
+            ByteStr(ref data) if idx as usize >= data.len()
+                => signal!(e, IndexOutOfBounds),
+            ByteStr(data) => Uint(data[idx as usize] as u64),
+
+            Str(ref s) if idx as usize >= s.len()
+                => signal!(e, IndexOutOfBounds),
+            Str(_) => unimplemented!(), // there's no const_char type
+            _ => signal!(e, IndexedNonVec),
+        }
+      }
+      hir::ExprVec(ref v) => Array(e.id, v.len() as u64),
+      hir::ExprRepeat(_, ref n) => {
+          let len_hint = if let ExprTypeChecked = ty_hint {
+              ExprTypeChecked
+          } else {
+              UncheckedExprHint(tcx.types.usize)
+          };
+          Repeat(
+              e.id,
+              match try!(eval_const_expr_partial(tcx, &**n, len_hint, fn_args)) {
+                  Int(i) if i >= 0 => i as u64,
+                  Int(_) => signal!(e, RepeatCountNotNatural),
+                  Uint(i) => i,
+                  _ => signal!(e, RepeatCountNotInt),
+              },
+          )
+      },
       hir::ExprTupField(ref base, index) => {
         let base_hint = if let ExprTypeChecked = ty_hint {
             ExprTypeChecked

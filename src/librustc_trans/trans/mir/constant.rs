@@ -62,6 +62,12 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             ConstVal::Function(_) => {
                 unimplemented!()
             }
+            ConstVal::Array(..) => {
+                unimplemented!()
+            }
+            ConstVal::Repeat(..) => {
+                unimplemented!()
+            }
         };
         OperandRef {
             ty: ty,
