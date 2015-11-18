@@ -9,10 +9,11 @@
 // except according to those terms.
 
 pub mod simplify_cfg;
+pub mod erase_regions;
 mod util;
 
 use repr::Mir;
 
-pub trait MirPass {
-    fn run_on_mir(&mut self, mir: &mut Mir);
+pub trait MirPass<'tcx> {
+    fn run_on_mir(&mut self, mir: &mut Mir<'tcx>);
 }

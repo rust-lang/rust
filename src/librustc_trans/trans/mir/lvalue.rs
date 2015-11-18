@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty::{self, Ty, HasTypeFlags};
 use rustc_mir::repr as mir;
 use rustc_mir::tcx::LvalueTy;
 use trans::adt;
@@ -45,6 +45,7 @@ impl<'tcx> LvalueRef<'tcx> {
                         name: &str)
                         -> LvalueRef<'tcx>
     {
+        assert!(!ty.has_erasable_regions());
         let lltemp = base::alloc_ty(bcx, ty, name);
         LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty))
     }
