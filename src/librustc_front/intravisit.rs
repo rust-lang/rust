@@ -13,15 +13,17 @@
 //! call `visit::walk_*` to apply the default traversal algorithm, or prevent
 //! deeper traversal by doing nothing.
 //!
-//! Note: it is an important invariant that the default visitor walks the body
-//! of a function in "execution order" (more concretely, reverse post-order
-//! with respect to the CFG implied by the AST), meaning that if AST node A may
-//! execute before AST node B, then A is visited first.  The borrow checker in
-//! particular relies on this property.
+//! When visiting the HIR, the contents of nested items are NOT visited
+//! by default. This is different from the AST visitor, which does a deep walk.
+//! Hence this module is called `intravisit`; see the method `visit_nested_item`
+//! for more details.
 //!
-//! Note: walking an AST before macro expansion is probably a bad idea. For
-//! instance, a walker looking for item names in a module will miss all of
-//! those that are created by the expansion of a macro.
+//! Note: it is an important invariant that the default visitor walks
+//! the body of a function in "execution order" (more concretely,
+//! reverse post-order with respect to the CFG implied by the AST),
+//! meaning that if AST node A may execute before AST node B, then A
+//! is visited first.  The borrow checker in particular relies on this
+//! property.
 
 use syntax::abi::Abi;
 use syntax::ast::{Ident, NodeId, CRATE_NODE_ID, Name, Attribute};
@@ -45,8 +47,10 @@ pub enum FnKind<'a> {
 /// the substructure of the input via the corresponding `walk` method;
 /// e.g. the `visit_mod` method by default calls `visit::walk_mod`.
 ///
-/// Note that this visitor does NOT visit nested items by default. If
-/// you simply want to visit all items in the crate in some order, you
+/// Note that this visitor does NOT visit nested items by default
+/// (this is why the module is called `intravisit`, to distinguish it
+/// from the AST's `visit` module, which acts differently). If you
+/// simply want to visit all items in the crate in some order, you
 /// should call `Crate::visit_all_items`. Otherwise, see the comment
 /// on `visit_nested_item` for details on how to visit nested items.
 ///
