@@ -86,10 +86,9 @@ impl<'a, 'b:'a, 'tcx:'b> DerefMut for GraphBuilder<'a, 'b, 'tcx> {
 impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     /// Constructs the reduced graph for the entire crate.
     fn build_reduced_graph(self, krate: &hir::Crate) {
-        let parent = self.graph_root.get_module();
         let mut visitor = BuildReducedGraphVisitor {
+            parent: self.graph_root.clone(),
             builder: self,
-            parent: parent,
         };
         visit::walk_crate(&mut visitor, krate);
     }
@@ -318,10 +317,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     };
                     self.external_exports.insert(def_id);
                     let parent_link = ModuleParentLink(Rc::downgrade(parent), name);
-                    let external_module = Rc::new(Module::new(parent_link,
-                                                              Some(DefMod(def_id)),
-                                                              false,
-                                                              true));
+                    let def = DefMod(def_id);
+                    let external_module = Module::new(parent_link, Some(def), false, true);
+
                     debug!("(build reduced graph for item) found extern `{}`",
                            module_to_string(&*external_module));
                     self.check_for_conflicts_between_external_crates(&**parent, name, sp);
@@ -338,9 +336,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 let parent_link = self.get_parent_link(parent, name);
                 let def = DefMod(self.ast_map.local_def_id(item.id));
-                name_bindings.define_module(parent_link, Some(def), false, is_public, sp);
-
-                name_bindings.get_module()
+                let module = Module::new(parent_link, Some(def), false, is_public);
+                name_bindings.define_module(module.clone(), sp);
+                module
             }
 
             ItemForeignMod(..) => parent.clone(),
@@ -377,7 +375,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 let parent_link = self.get_parent_link(parent, name);
                 let def = DefTy(self.ast_map.local_def_id(item.id), false);
-                name_bindings.define_module(parent_link, Some(def), false, is_public, sp);
+                let module = Module::new(parent_link, Some(def), false, is_public);
+                name_bindings.define_module(module, sp);
                 parent.clone()
             }
 
@@ -389,9 +388,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 let parent_link = self.get_parent_link(parent, name);
                 let def = DefTy(self.ast_map.local_def_id(item.id), true);
-                name_bindings.define_module(parent_link, Some(def), false, is_public, sp);
-
-                let module = name_bindings.get_module();
+                let module = Module::new(parent_link, Some(def), false, is_public);
+                name_bindings.define_module(module.clone(), sp);
 
                 for variant in &(*enum_definition).variants {
                     let item_def_id = self.ast_map.local_def_id(item.id);
@@ -454,8 +452,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 // Add all the items within to a new module.
                 let parent_link = self.get_parent_link(parent, name);
                 let def = DefTrait(def_id);
-                name_bindings.define_module(parent_link, Some(def), false, is_public, sp);
-                let module_parent = name_bindings.get_module();
+                let module_parent = Module::new(parent_link, Some(def), false, is_public);
+                name_bindings.define_module(module_parent.clone(), sp);
 
                 // Add the names of all the items to the trait info.
                 for trait_item in items {
@@ -555,10 +553,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     {}",
                    block_id);
 
-            let new_module = Rc::new(Module::new(BlockParentLink(Rc::downgrade(parent), block_id),
-                                                 None,
-                                                 false,
-                                                 false));
+            let parent_link = BlockParentLink(Rc::downgrade(parent), block_id);
+            let new_module = Module::new(parent_link, None, false, false);
             parent.anonymous_children.borrow_mut().insert(block_id, new_module.clone());
             new_module
         } else {
@@ -604,12 +600,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                            final_ident,
                            is_public);
                     let parent_link = self.get_parent_link(new_parent, name);
-
-                    child_name_bindings.define_module(parent_link,
-                                                      Some(def),
-                                                      true,
-                                                      is_public,
-                                                      DUMMY_SP);
+                    let module = Module::new(parent_link, Some(def), true, is_public);
+                    child_name_bindings.define_module(module, DUMMY_SP);
                 }
             }
             _ => {}
@@ -681,11 +673,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 // Define a module if necessary.
                 let parent_link = self.get_parent_link(new_parent, name);
-                child_name_bindings.define_module(parent_link,
-                                                  Some(def),
-                                                  true,
-                                                  is_public,
-                                                  DUMMY_SP)
+                let module = Module::new(parent_link, Some(def), true, is_public);
+                child_name_bindings.define_module(module, DUMMY_SP);
             }
             DefTy(..) | DefAssociatedTy(..) => {
                 debug!("(building reduced graph for external crate) building type {}",
