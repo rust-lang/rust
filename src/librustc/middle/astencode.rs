@@ -1393,13 +1393,13 @@ fn mk_ctxt() -> parse::ParseSess {
 }
 
 #[cfg(test)]
-fn roundtrip(in_item: P<hir::Item>) {
+fn roundtrip(in_item: hir::Item) {
     let mut wr = Cursor::new(Vec::new());
-    encode_item_ast(&mut Encoder::new(&mut wr), &*in_item);
+    encode_item_ast(&mut Encoder::new(&mut wr), &in_item);
     let rbml_doc = rbml::Doc::new(wr.get_ref());
     let out_item = decode_item_ast(rbml_doc);
 
-    assert!(*in_item == out_item);
+    assert!(in_item == out_item);
 }
 
 #[test]
@@ -1449,11 +1449,11 @@ fn test_simplification() {
     let hir_item = lower_item(&lcx, &item);
     let item_in = InlinedItemRef::Item(&hir_item);
     let item_out = simplify_ast(item_in);
-    let item_exp = InlinedItem::Item(lower_item(&lcx, &quote_item!(&cx,
+    let item_exp = InlinedItem::Item(P(lower_item(&lcx, &quote_item!(&cx,
         fn new_int_alist<B>() -> alist<isize, B> {
             return alist {eq_fn: eq_int, data: Vec::new()};
         }
-    ).unwrap()));
+    ).unwrap())));
     match (item_out, item_exp) {
       (InlinedItem::Item(item_out), InlinedItem::Item(item_exp)) => {
         assert!(pprust::item_to_string(&*item_out) ==
