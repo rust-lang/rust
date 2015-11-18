@@ -191,10 +191,13 @@ pub struct Rc<T: ?Sized> {
     _ptr: Shared<RcBox<T>>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !marker::Send for Rc<T> {}
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !marker::Sync for Rc<T> {}
 
 #[cfg(not(stage0))] // remove cfg after new snapshot
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 
 impl<T> Rc<T> {
@@ -723,10 +726,13 @@ pub struct Weak<T: ?Sized> {
     _ptr: Shared<RcBox<T>>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !marker::Send for Weak<T> {}
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !marker::Sync for Weak<T> {}
 
 #[cfg(not(stage0))] // remove cfg after new snapshot
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
 impl<T: ?Sized> Weak<T> {
@@ -1126,6 +1132,7 @@ mod tests {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> borrow::Borrow<T> for Rc<T> {
     fn borrow(&self) -> &T {
         &**self

@@ -20,6 +20,7 @@ pub fn stable() {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod stable_mod {
+    #[unstable(feature = "test_feature", issue = "0")]
     pub fn unstable() {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -37,6 +38,7 @@ pub mod unstable_mod {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Stable {
+    #[unstable(feature = "test_feature", issue = "0")]
     fn unstable(&self);
 
     #[stable(feature = "rust1", since = "1.0.0")]

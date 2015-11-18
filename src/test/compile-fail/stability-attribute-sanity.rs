@@ -13,6 +13,8 @@
 #![feature(staged_api)]
 #![staged_api]
 
+#![stable(feature = "rust1", since = "1.0.0")]
+
 mod bogus_attribute_types_1 {
     #[stable(feature = "a", since = "a", reason)] //~ ERROR unknown meta item 'reason'
     fn f1() { }

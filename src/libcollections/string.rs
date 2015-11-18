@@ -949,6 +949,9 @@ impl Extend<String> for String {
 }
 
 /// A convenience impl that delegates to the impl for `&str`
+#[unstable(feature = "pattern",
+           reason = "API not fully fleshed out and ready to be stabilized",
+           issue = "27721")]
 impl<'a, 'b> Pattern<'a> for &'b String {
     type Searcher = <&'b str as Pattern<'a>>::Searcher;
 
@@ -1143,24 +1146,28 @@ impl FromStr for String {
     }
 }
 
+#[stable(feature = "str_parse_error", since = "1.5.0")]
 impl Clone for ParseError {
     fn clone(&self) -> ParseError {
         match *self {}
     }
 }
 
+#[stable(feature = "str_parse_error", since = "1.5.0")]
 impl fmt::Debug for ParseError {
     fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
         match *self {}
     }
 }
 
+#[stable(feature = "str_parse_error", since = "1.5.0")]
 impl PartialEq for ParseError {
     fn eq(&self, _: &ParseError) -> bool {
         match *self {}
     }
 }
 
+#[stable(feature = "str_parse_error", since = "1.5.0")]
 impl Eq for ParseError {}
 
 /// A generic trait for converting a value to a string
@@ -1287,7 +1294,9 @@ pub struct Drain<'a> {
     iter: Chars<'a>,
 }
 
+#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
 unsafe impl<'a> Sync for Drain<'a> {}
+#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
 unsafe impl<'a> Send for Drain<'a> {}
 
 #[unstable(feature = "drain", reason = "recently added", issue = "27711")]

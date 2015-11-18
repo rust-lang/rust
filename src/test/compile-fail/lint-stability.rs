@@ -18,6 +18,8 @@
 #![feature(staged_api)]
 #![staged_api]
 
+#![stable(feature = "rust1", since = "1.0.0")]
+
 #[macro_use]
 extern crate lint_stability;
 
@@ -127,7 +129,9 @@ mod cross_crate {
         <Foo>::trait_stable_text(&foo);
         <Foo as Trait>::trait_stable_text(&foo);
 
-        let _ = DeprecatedStruct { i: 0 }; //~ ERROR use of deprecated item
+        let _ = DeprecatedStruct { //~ ERROR use of deprecated item
+            i: 0 //~ ERROR use of deprecated item
+        };
         let _ = DeprecatedUnstableStruct {
             //~^ ERROR use of deprecated item
             //~^^ ERROR use of unstable library feature
@@ -475,7 +479,7 @@ mod this_crate {
     #[deprecated(since = "1.0.0", reason = "text")]
     fn test_fn_body() {
         fn fn_in_body() {}
-        fn_in_body();
+        fn_in_body(); //~ ERROR use of deprecated item: text
     }
 
     impl MethodTester {
@@ -483,7 +487,7 @@ mod this_crate {
         #[deprecated(since = "1.0.0", reason = "text")]
         fn test_method_body(&self) {
             fn fn_in_body() {}
-            fn_in_body();
+            fn_in_body(); //~ ERROR use of deprecated item: text
         }
     }
 

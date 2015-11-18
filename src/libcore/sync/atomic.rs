@@ -86,6 +86,7 @@ pub struct AtomicBool {
     v: UnsafeCell<usize>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Default for AtomicBool {
     fn default() -> Self {
         Self::new(Default::default())
@@ -93,6 +94,7 @@ impl Default for AtomicBool {
 }
 
 // Send is implicitly implemented for AtomicBool.
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl Sync for AtomicBool {}
 
 /// A signed integer type which can be safely shared between threads.
@@ -101,6 +103,7 @@ pub struct AtomicIsize {
     v: UnsafeCell<isize>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Default for AtomicIsize {
     fn default() -> Self {
         Self::new(Default::default())
@@ -108,6 +111,7 @@ impl Default for AtomicIsize {
 }
 
 // Send is implicitly implemented for AtomicIsize.
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl Sync for AtomicIsize {}
 
 /// An unsigned integer type which can be safely shared between threads.
@@ -116,6 +120,7 @@ pub struct AtomicUsize {
     v: UnsafeCell<usize>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Default for AtomicUsize {
     fn default() -> Self {
         Self::new(Default::default())
@@ -123,6 +128,7 @@ impl Default for AtomicUsize {
 }
 
 // Send is implicitly implemented for AtomicUsize.
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl Sync for AtomicUsize {}
 
 /// A raw pointer type which can be safely shared between threads.
@@ -131,13 +137,16 @@ pub struct AtomicPtr<T> {
     p: UnsafeCell<*mut T>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for AtomicPtr<T> {
     fn default() -> AtomicPtr<T> {
         AtomicPtr::new(::ptr::null_mut())
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T> Send for AtomicPtr<T> {}
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T> Sync for AtomicPtr<T> {}
 
 /// Atomic memory orderings

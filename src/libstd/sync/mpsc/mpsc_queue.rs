@@ -133,7 +133,6 @@ impl<T> Queue<T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {

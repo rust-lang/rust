@@ -253,12 +253,14 @@ pub mod eh_frame_registry {
     }
     #[cfg(not(test))]
     #[no_mangle]
+    #[unstable(feature = "libstd_sys_internals", issue = "0")]
     pub unsafe extern fn rust_eh_register_frames(eh_frame_begin: *const u8,
                                                  object: *mut u8) {
         __register_frame_info(eh_frame_begin, object);
     }
     #[cfg(not(test))]
     #[no_mangle]
+    #[unstable(feature = "libstd_sys_internals", issue = "0")]
     pub  unsafe extern fn rust_eh_unregister_frames(eh_frame_begin: *const u8,
                                                    object: *mut u8) {
         __deregister_frame_info(eh_frame_begin, object);

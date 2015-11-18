@@ -3604,6 +3604,7 @@ impl<I: Iterator> Peekable<I> {
     ///
     /// assert_eq!(iter.is_empty(), true);
     /// ```
+    #[unstable(feature = "core", issue = "27701")]
     #[inline]
     pub fn is_empty(&mut self) -> bool {
         self.peek().is_none()
@@ -4107,6 +4108,9 @@ pub trait Step: PartialOrd + Sized {
 
 macro_rules! step_impl_unsigned {
     ($($t:ty)*) => ($(
+        #[unstable(feature = "step_trait",
+                   reason = "likely to be replaced by finer-grained traits",
+                   issue = "27741")]
         impl Step for $t {
             #[inline]
             fn step(&self, by: &$t) -> Option<$t> {
@@ -4134,6 +4138,9 @@ macro_rules! step_impl_unsigned {
 }
 macro_rules! step_impl_signed {
     ($($t:ty)*) => ($(
+        #[unstable(feature = "step_trait",
+                   reason = "likely to be replaced by finer-grained traits",
+                   issue = "27741")]
         impl Step for $t {
             #[inline]
             fn step(&self, by: &$t) -> Option<$t> {
@@ -4173,6 +4180,9 @@ macro_rules! step_impl_signed {
 
 macro_rules! step_impl_no_between {
     ($($t:ty)*) => ($(
+        #[unstable(feature = "step_trait",
+                   reason = "likely to be replaced by finer-grained traits",
+                   issue = "27741")]
         impl Step for $t {
             #[inline]
             fn step(&self, by: &$t) -> Option<$t> {

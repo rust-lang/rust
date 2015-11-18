@@ -324,6 +324,7 @@ impl IntoInner<fs_imp::File> for File {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.inner.fmt(f)
@@ -1230,6 +1231,7 @@ pub trait PathExt {
 }
 
 #[allow(deprecated)]
+#[unstable(feature = "path_ext_deprecated", issue = "27725")]
 impl PathExt for Path {
     fn metadata(&self) -> io::Result<Metadata> { metadata(self) }
     fn symlink_metadata(&self) -> io::Result<Metadata> { symlink_metadata(self) }

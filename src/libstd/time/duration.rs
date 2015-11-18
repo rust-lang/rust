@@ -102,6 +102,7 @@ impl Duration {
     pub fn subsec_nanos(&self) -> u32 { self.nanos }
 }
 
+#[stable(feature = "duration", since = "1.3.0")]
 impl Add for Duration {
     type Output = Duration;
 
@@ -118,6 +119,7 @@ impl Add for Duration {
     }
 }
 
+#[stable(feature = "duration", since = "1.3.0")]
 impl Sub for Duration {
     type Output = Duration;
 
@@ -136,6 +138,7 @@ impl Sub for Duration {
     }
 }
 
+#[stable(feature = "duration", since = "1.3.0")]
 impl Mul<u32> for Duration {
     type Output = Duration;
 
@@ -152,6 +155,7 @@ impl Mul<u32> for Duration {
     }
 }
 
+#[stable(feature = "duration", since = "1.3.0")]
 impl Div<u32> for Duration {
     type Output = Duration;
 

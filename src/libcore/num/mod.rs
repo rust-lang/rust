@@ -77,10 +77,16 @@ pub trait One: Sized {
 
 macro_rules! zero_one_impl {
     ($($t:ty)*) => ($(
+        #[unstable(feature = "zero_one",
+                   reason = "unsure of placement, wants to use associated constants",
+                   issue = "27739")]
         impl Zero for $t {
             #[inline]
             fn zero() -> Self { 0 }
         }
+        #[unstable(feature = "zero_one",
+                   reason = "unsure of placement, wants to use associated constants",
+                   issue = "27739")]
         impl One for $t {
             #[inline]
             fn one() -> Self { 1 }
@@ -91,10 +97,16 @@ zero_one_impl! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 
 macro_rules! zero_one_impl_float {
     ($($t:ty)*) => ($(
+        #[unstable(feature = "zero_one",
+                   reason = "unsure of placement, wants to use associated constants",
+                   issue = "27739")]
         impl Zero for $t {
             #[inline]
             fn zero() -> Self { 0.0 }
         }
+        #[unstable(feature = "zero_one",
+                   reason = "unsure of placement, wants to use associated constants",
+                   issue = "27739")]
         impl One for $t {
             #[inline]
             fn one() -> Self { 1.0 }
@@ -1938,6 +1950,7 @@ impl fmt::Display for ParseIntError {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use num::dec2flt::ParseFloatError;
 
 // Conversion traits for primitive integer and float types

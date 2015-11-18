@@ -40,6 +40,7 @@ pub use intrinsics::copy;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::write_bytes;
 
+#[unstable(feature = "drop_in_place", reason = "just exposed, needs FCP", issue = "27908")]
 pub use intrinsics::drop_in_place;
 
 /// Creates a null raw pointer.

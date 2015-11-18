@@ -17,10 +17,15 @@ use prelude::v1::*;
 use io::{self, Error, ErrorKind};
 use sys_common::net as net_imp;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::tcp::{TcpStream, TcpListener, Incoming};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::udp::UdpSocket;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::parser::AddrParseError;
 
 mod ip;
