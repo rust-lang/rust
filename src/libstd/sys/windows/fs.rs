@@ -226,7 +226,7 @@ impl File {
     }
 
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let path = to_utf16(path);
+        let path = try!(to_u16s(path));
         let handle = unsafe {
             c::CreateFileW(path.as_ptr(),
                            opts.get_desired_access(),
@@ -377,8 +377,13 @@ impl fmt::Debug for File {
     }
 }
 
-pub fn to_utf16(s: &Path) -> Vec<u16> {
-    s.as_os_str().encode_wide().chain(Some(0)).collect()
+pub fn to_u16s(s: &Path) -> io::Result<Vec<u16>> {
+    let mut maybe_result = s.as_os_str().encode_wide().collect();
+    if maybe_result.iter().any(|&u| u == 0) {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "paths cannot contain NULs"));
+    }
+    maybe_result.push(0);
+    Ok(maybe_result)
 }
 
 impl FileAttr {
@@ -449,7 +454,7 @@ impl DirBuilder {
     pub fn new() -> DirBuilder { DirBuilder }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let p = to_utf16(p);
+        let p = try!(to_u16s(p));
         try!(cvt(unsafe {
             c::CreateDirectoryW(p.as_ptr(), ptr::null_mut())
         }));
@@ -460,7 +465,7 @@ impl DirBuilder {
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let root = p.to_path_buf();
     let star = p.join("*");
-    let path = to_utf16(&star);
+    let path = try!(to_u16s(&star));
 
     unsafe {
         let mut wfd = mem::zeroed();
@@ -478,14 +483,14 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    let p_utf16 = to_utf16(p);
-    try!(cvt(unsafe { c::DeleteFileW(p_utf16.as_ptr()) }));
+    let p_u16s = try!(to_u16s(p));
+    try!(cvt(unsafe { c::DeleteFileW(p_u16s.as_ptr()) }));
     Ok(())
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let old = to_utf16(old);
-    let new = to_utf16(new);
+    let old = try!(to_u16s(old));
+    let new = try!(to_u16s(new));
     try!(cvt(unsafe {
         c::MoveFileExW(old.as_ptr(), new.as_ptr(), c::MOVEFILE_REPLACE_EXISTING)
     }));
@@ -493,7 +498,7 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    let p = to_utf16(p);
+    let p = try!(to_u16s(p));
     try!(cvt(unsafe { c::RemoveDirectoryW(p.as_ptr()) }));
     Ok(())
 }
@@ -508,8 +513,8 @@ pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
 }
 
 pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
-    let src = to_utf16(src);
-    let dst = to_utf16(dst);
+    let src = try!(to_u16s(src));
+    let dst = try!(to_u16s(dst));
     let flags = if dir { c::SYMBOLIC_LINK_FLAG_DIRECTORY } else { 0 };
     try!(cvt(unsafe {
         c::CreateSymbolicLinkW(dst.as_ptr(), src.as_ptr(), flags) as c::BOOL
@@ -518,8 +523,8 @@ pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
 }
 
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = to_utf16(src);
-    let dst = to_utf16(dst);
+    let src = try!(to_u16s(src));
+    let dst = try!(to_u16s(dst));
     try!(cvt(unsafe {
         c::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::null_mut())
     }));
@@ -545,10 +550,10 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    let utf16 = to_utf16(p);
+    let u16s = try!(to_u16s(p));
     unsafe {
         let mut attr: FileAttr = mem::zeroed();
-        try!(cvt(c::GetFileAttributesExW(utf16.as_ptr(),
+        try!(cvt(c::GetFileAttributesExW(u16s.as_ptr(),
                                          c::GetFileExInfoStandard,
                                          &mut attr.data as *mut _ as *mut _)));
         if attr.is_reparse_point() {
@@ -562,7 +567,7 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    let p = to_utf16(p);
+    let p = try!(to_u16s(p));
     unsafe {
         try!(cvt(c::SetFileAttributesW(p.as_ptr(), perm.attrs)));
         Ok(())
@@ -602,8 +607,8 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         *(lpData as *mut i64) = TotalBytesTransferred;
         c::PROGRESS_CONTINUE
     }
-    let pfrom = to_utf16(from);
-    let pto = to_utf16(to);
+    let pfrom = try!(to_u16s(from));
+    let pto = try!(to_u16s(to));
     let mut size = 0i64;
     try!(cvt(unsafe {
         c::CopyFileExW(pfrom.as_ptr(), pto.as_ptr(), Some(callback),
