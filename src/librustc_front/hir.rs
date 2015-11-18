@@ -36,7 +36,7 @@ pub use self::Visibility::*;
 pub use self::PathParameters::*;
 
 use intravisit::Visitor;
-use rustc_data_structures::fnv::FnvHashMap;
+use std::collections::BTreeMap;
 use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
 use syntax::abi::Abi;
 use syntax::ast::{Name, Ident, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
@@ -329,7 +329,14 @@ pub struct Crate {
     pub config: CrateConfig,
     pub span: Span,
     pub exported_macros: Vec<MacroDef>,
-    pub items: FnvHashMap<NodeId, Item>,
+
+    // NB: We use a BTreeMap here so that `visit_all_items` iterates
+    // over the ids in increasing order. In principle it should not
+    // matter what order we visit things in, but in *practice* it
+    // does, because it can affect the order in which errors are
+    // detected, which in turn can make compile-fail tests yield
+    // slightly different results.
+    pub items: BTreeMap<NodeId, Item>,
 }
 
 impl Crate {
@@ -346,15 +353,7 @@ impl Crate {
     /// approach. You should override `visit_nested_item` in your
     /// visitor and then call `intravisit::walk_crate` instead.
     pub fn visit_all_items<'hir, V:Visitor<'hir>>(&'hir self, visitor: &mut V) {
-        // In principle, we could just iterate over the hashmap, but
-        // in practice that makes the order of error reporting vary
-        // with small changes in the input etc etc, which makes the
-        // test base hard to maintain. So instead we sort by node-id
-        // so as to get reproducible results.
-        let mut pairs: Vec<_> = self.items.iter().collect();
-        pairs.sort_by(|&(id1, _), &(id2, _)| id1.cmp(id2));
-
-        for (_, item) in pairs {
+        for (_, item) in &self.items {
             visitor.visit_item(item);
         }
     }
