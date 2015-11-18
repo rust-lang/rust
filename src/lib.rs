@@ -3,6 +3,10 @@
 #![feature(num_bits_bytes, iter_arith)]
 #![allow(unknown_lints)]
 
+// this only exists to allow the "dogfood" integration test to work
+#[allow(dead_code)]
+fn main() { println!("What are you doing? Don't run clippy as an executable"); }
+
 #[macro_use]
 extern crate syntax;
 #[macro_use]
