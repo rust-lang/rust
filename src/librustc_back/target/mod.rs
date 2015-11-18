@@ -351,6 +351,7 @@ impl Target {
         key!(no_default_libraries, bool);
         key!(pre_link_args, list);
         key!(post_link_args, list);
+        key!(archive_format);
         key!(allow_asm, bool);
         key!(custom_unwind_resume, bool);
 
