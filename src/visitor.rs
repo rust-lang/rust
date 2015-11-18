@@ -38,28 +38,15 @@ impl<'a> FmtVisitor<'a> {
     fn visit_stmt(&mut self, stmt: &ast::Stmt) {
         match stmt.node {
             ast::Stmt_::StmtDecl(ref decl, _) => {
-                match decl.node {
-                    ast::Decl_::DeclLocal(ref local) => {
-                        let rewrite = {
-                            let context = self.get_context();
-                            local.rewrite(&context, self.config.max_width, self.block_indent)
-                        };
-                        self.push_rewrite(stmt.span, rewrite);
-                    }
-                    ast::Decl_::DeclItem(ref item) => self.visit_item(item),
+                if let ast::Decl_::DeclItem(ref item) = decl.node {
+                    self.visit_item(item);
+                } else {
+                    let rewrite = self.rewrite_stmt(stmt);
+                    self.push_rewrite(stmt.span, rewrite);
                 }
             }
-            ast::Stmt_::StmtExpr(ref ex, _) | ast::Stmt_::StmtSemi(ref ex, _) => {
-                let suffix = if semicolon_for_stmt(stmt) {
-                    ";"
-                } else {
-                    ""
-                };
-                let rewrite = ex.rewrite(&self.get_context(),
-                                         self.config.max_width - self.block_indent.width() -
-                                         suffix.len(),
-                                         self.block_indent)
-                                .map(|s| s + suffix);
+            ast::Stmt_::StmtExpr(..) | ast::Stmt_::StmtSemi(..) => {
+                let rewrite = self.rewrite_stmt(stmt);
                 self.push_rewrite(stmt.span, rewrite);
             }
             ast::Stmt_::StmtMac(ref mac, _macro_style) => {
@@ -101,7 +88,7 @@ impl<'a> FmtVisitor<'a> {
             self.buffer.push_str(&rewrite);
             self.last_pos = e.span.hi;
 
-            if semicolon_for_expr(e) {
+            if utils::semicolon_for_expr(e) {
                 self.buffer.push_str(";");
             }
         }
@@ -160,6 +147,13 @@ impl<'a> FmtVisitor<'a> {
             }
             visit::FnKind::Closure => None,
         };
+
+        if let Some(ref single_line_fn) = self.rewrite_single_line_fn(&rewrite, &b) {
+            self.format_missing_with_indent(s.lo);
+            self.buffer.push_str(single_line_fn);
+            self.last_pos = b.span.hi;
+            return;
+        }
 
         if let Some(fn_str) = rewrite {
             self.format_missing_with_indent(s.lo);
@@ -498,31 +492,6 @@ impl<'a> FmtVisitor<'a> {
             config: self.config,
             block_indent: self.block_indent,
         }
-    }
-}
-
-fn semicolon_for_stmt(stmt: &ast::Stmt) -> bool {
-    match stmt.node {
-        ast::Stmt_::StmtSemi(ref expr, _) => {
-            match expr.node {
-                ast::Expr_::ExprWhile(..) |
-                ast::Expr_::ExprWhileLet(..) |
-                ast::Expr_::ExprLoop(..) |
-                ast::Expr_::ExprForLoop(..) => false,
-                _ => true,
-            }
-        }
-        ast::Stmt_::StmtExpr(..) => false,
-        _ => true,
-    }
-}
-
-fn semicolon_for_expr(expr: &ast::Expr) -> bool {
-    match expr.node {
-        ast::Expr_::ExprRet(..) |
-        ast::Expr_::ExprAgain(..) |
-        ast::Expr_::ExprBreak(..) => true,
-        _ => false,
     }
 }
 

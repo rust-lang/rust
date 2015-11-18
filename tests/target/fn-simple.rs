@@ -28,15 +28,13 @@ fn generic<T>(arg: T) -> &SomeType
     arg(a, b, c, d, e)
 }
 
-fn foo() -> ! {
-}
+fn foo() -> ! { }
 
 pub fn http_fetch_async(listener: Box<AsyncCORSResponseListener + Send>,
                         script_chan: Box<ScriptChan + Send>) {
 }
 
-fn some_func<T: Box<Trait + Bound>>(val: T) {
-}
+fn some_func<T: Box<Trait + Bound>>(val: T) { }
 
 fn zzzzzzzzzzzzzzzzzzzz<Type, NodeType>(selff: Type,
                                         mut handle: node::Handle<IdRef<'id, Node<K, V>>,

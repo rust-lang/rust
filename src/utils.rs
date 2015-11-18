@@ -103,6 +103,33 @@ pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
 }
 
 #[inline]
+pub fn semicolon_for_expr(expr: &ast::Expr) -> bool {
+    match expr.node {
+        ast::Expr_::ExprRet(..) |
+        ast::Expr_::ExprAgain(..) |
+        ast::Expr_::ExprBreak(..) => true,
+        _ => false,
+    }
+}
+
+#[inline]
+pub fn semicolon_for_stmt(stmt: &ast::Stmt) -> bool {
+    match stmt.node {
+        ast::Stmt_::StmtSemi(ref expr, _) => {
+            match expr.node {
+                ast::Expr_::ExprWhile(..) |
+                ast::Expr_::ExprWhileLet(..) |
+                ast::Expr_::ExprLoop(..) |
+                ast::Expr_::ExprForLoop(..) => false,
+                _ => true,
+            }
+        }
+        ast::Stmt_::StmtExpr(..) => false,
+        _ => true,
+    }
+}
+
+#[inline]
 #[cfg(target_pointer_width="64")]
 // Based on the trick layed out at
 // http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2

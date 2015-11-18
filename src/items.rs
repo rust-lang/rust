@@ -12,17 +12,17 @@
 
 use Indent;
 use utils::{format_mutability, format_visibility, contains_skip, span_after, end_typaram,
-            wrap_str, last_line_width};
+            wrap_str, last_line_width, semicolon_for_expr, semicolon_for_stmt};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
             DefinitiveListTactic, definitive_tactic, format_item_list};
 use expr::rewrite_assign_rhs;
-use comment::FindUncommented;
+use comment::{FindUncommented, contains_comment};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, StructLitStyle};
 
 use syntax::{ast, abi};
-use syntax::codemap::{Span, BytePos, mk_sp};
+use syntax::codemap::{Span, BytePos, CodeMap, mk_sp};
 use syntax::print::pprust;
 use syntax::parse::token;
 
@@ -445,6 +445,81 @@ impl<'a> FmtVisitor<'a> {
         result.push_str(&where_clause_str);
 
         Some((result, force_new_line_for_brace))
+    }
+
+    pub fn rewrite_single_line_fn(&self,
+                                  fn_rewrite: &Option<String>,
+                                  block: &ast::Block)
+                                  -> Option<String> {
+
+        let fn_str = match *fn_rewrite {
+            Some(ref s) if !s.contains('\n') => s,
+            _ => return None,
+        };
+
+        let codemap = self.get_context().codemap;
+
+        if is_empty_block(block, codemap) &&
+           self.block_indent.width() + fn_str.len() + 3 <= self.config.max_width {
+            return Some(format!("{}{{ }}", fn_str));
+        }
+
+        if self.config.fn_single_line && is_simple_block_stmt(block, codemap) {
+            let rewrite = {
+                if let Some(ref e) = block.expr {
+                    let suffix = if semicolon_for_expr(e) {
+                        ";"
+                    } else {
+                        ""
+                    };
+
+                    e.rewrite(&self.get_context(),
+                              self.config.max_width - self.block_indent.width(),
+                              self.block_indent)
+                     .map(|s| s + suffix)
+                     .or_else(|| Some(self.snippet(e.span)))
+                } else if let Some(ref stmt) = block.stmts.first() {
+                    self.rewrite_stmt(stmt)
+                } else {
+                    None
+                }
+            };
+
+            if let Some(res) = rewrite {
+                let width = self.block_indent.width() + fn_str.len() + res.len() + 3;
+                if !res.contains('\n') && width <= self.config.max_width {
+                    return Some(format!("{}{{ {} }}", fn_str, res));
+                }
+            }
+        }
+
+        None
+    }
+
+    pub fn rewrite_stmt(&self, stmt: &ast::Stmt) -> Option<String> {
+        match stmt.node {
+            ast::Stmt_::StmtDecl(ref decl, _) => {
+                if let ast::Decl_::DeclLocal(ref local) = decl.node {
+                    let context = self.get_context();
+                    local.rewrite(&context, self.config.max_width, self.block_indent)
+                } else {
+                    None
+                }
+            }
+            ast::Stmt_::StmtExpr(ref ex, _) | ast::Stmt_::StmtSemi(ref ex, _) => {
+                let suffix = if semicolon_for_stmt(stmt) {
+                    ";"
+                } else {
+                    ""
+                };
+
+                ex.rewrite(&self.get_context(),
+                           self.config.max_width - self.block_indent.width() - suffix.len(),
+                           self.block_indent)
+                  .map(|s| s + suffix)
+            }
+            ast::Stmt_::StmtMac(..) => None,
+        }
     }
 
     fn rewrite_args(&self,
@@ -1316,4 +1391,24 @@ fn span_for_where_pred(pred: &ast::WherePredicate) -> Span {
         ast::WherePredicate::RegionPredicate(ref p) => p.span,
         ast::WherePredicate::EqPredicate(ref p) => p.span,
     }
+}
+
+// Checks whether a block contains at most one statement or expression, and no comments.
+fn is_simple_block_stmt(block: &ast::Block, codemap: &CodeMap) -> bool {
+    if (!block.stmts.is_empty() && block.expr.is_some()) ||
+       (block.stmts.len() != 1 && block.expr.is_none()) {
+        return false;
+    }
+
+    let snippet = codemap.span_to_snippet(block.span).unwrap();
+    !contains_comment(&snippet)
+}
+
+fn is_empty_block(block: &ast::Block, codemap: &CodeMap) -> bool {
+    if !block.stmts.is_empty() || block.expr.is_some() {
+        return false;
+    }
+
+    let snippet = codemap.span_to_snippet(block.span).unwrap();
+    !contains_comment(&snippet)
 }

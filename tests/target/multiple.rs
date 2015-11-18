@@ -26,9 +26,7 @@ mod other;
 // sfdgfffffffffffffffffffffffffffffffffffffffffffffffffffffff
 // ffffffffffffffffffffffffffffffffffffffffff
 
-fn foo(a: isize, b: u32 /* blah blah */, c: f64) {
-
-}
+fn foo(a: isize, b: u32 /* blah blah */, c: f64) { }
 
 fn foo() -> Box<Write + 'static>
     where 'a: 'b,
@@ -77,8 +75,7 @@ impl Bar {
     }
 
     #[an_attribute]
-    fn f3(self) -> Dog {
-    }
+    fn f3(self) -> Dog { }
 }
 
 /// The `nodes` and `edges` method each return instantiations of
@@ -118,8 +115,7 @@ pub struct Foo<'a, Y: Baz>
     f: SomeType, // Comment beside a field
 }
 
-fn foo(ann: &'a (PpAnn + 'a)) {
-}
+fn foo(ann: &'a (PpAnn + 'a)) { }
 
 fn main() {
     for i in 0i32..4 {

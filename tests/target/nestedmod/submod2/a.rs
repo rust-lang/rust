@@ -3,5 +3,4 @@
 
 use c::a;
 
-fn foo() {
-}
+fn foo() { }
