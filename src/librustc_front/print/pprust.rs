@@ -91,7 +91,10 @@ pub fn rust_printer<'a>(writer: Box<Write + 'a>, krate: Option<&'a Crate>) -> St
     rust_printer_annotated(writer, &NO_ANN, krate)
 }
 
-pub fn rust_printer_annotated<'a>(writer: Box<Write + 'a>, ann: &'a PpAnn, krate: Option<&'a Crate>) -> State<'a> {
+pub fn rust_printer_annotated<'a>(writer: Box<Write + 'a>,
+                                  ann: &'a PpAnn,
+                                  krate: Option<&'a Crate>)
+                                  -> State<'a> {
     State {
         krate: krate,
         s: pp::mk_printer(writer, default_columns),
@@ -126,7 +129,8 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                        ann: &'a PpAnn,
                        is_expanded: bool)
                        -> io::Result<()> {
-    let mut s = State::new_from_input(cm, span_diagnostic, filename, input, out, ann, is_expanded, Some(krate));
+    let mut s = State::new_from_input(cm, span_diagnostic, filename, input,
+                                      out, ann, is_expanded, Some(krate));
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
