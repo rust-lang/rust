@@ -299,7 +299,7 @@ pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
                                   param_substs: &Substs<'tcx>,
                                   value: &T)
                                   -> T
-    where T : TypeFoldable<'tcx> + HasTypeFlags
+    where T : TypeFoldable<'tcx>
 {
     let substituted = value.subst(tcx, param_substs);
     normalize_associated_type(tcx, &substituted)

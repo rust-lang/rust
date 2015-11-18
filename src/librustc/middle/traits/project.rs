@@ -202,7 +202,7 @@ pub fn normalize<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tcx>,
                                cause: ObligationCause<'tcx>,
                                value: &T)
                                -> Normalized<'tcx, T>
-    where T : TypeFoldable<'tcx> + HasTypeFlags
+    where T : TypeFoldable<'tcx>
 {
     normalize_with_depth(selcx, cause, 0, value)
 }
@@ -213,7 +213,7 @@ pub fn normalize_with_depth<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tc
                                           depth: usize,
                                           value: &T)
                                           -> Normalized<'tcx, T>
-    where T : TypeFoldable<'tcx> + HasTypeFlags
+    where T : TypeFoldable<'tcx>
 {
     let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, depth);
     let result = normalizer.fold(value);
@@ -245,7 +245,7 @@ impl<'a,'b,'tcx> AssociatedTypeNormalizer<'a,'b,'tcx> {
         }
     }
 
-    fn fold<T:TypeFoldable<'tcx> + HasTypeFlags>(&mut self, value: &T) -> T {
+    fn fold<T:TypeFoldable<'tcx>>(&mut self, value: &T) -> T {
         let value = self.selcx.infcx().resolve_type_vars_if_possible(value);
 
         if !value.has_projection_types() {
@@ -273,7 +273,7 @@ impl<'a,'b,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'b,'tcx> {
         // normalize it when we instantiate those bound regions (which
         // should occur eventually).
 
-        let ty = ty::fold::super_fold_ty(self, ty);
+        let ty = ty.fold_subitems_with(self);
         match ty.sty {
             ty::TyProjection(ref data) if !data.has_escaping_regions() => { // (*)
 

@@ -965,7 +965,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match *candidate {
             Ok(Some(_)) | Err(_) => true,
             Ok(None) => {
-                cache_fresh_trait_pred.0.input_types().has_infer_types()
+                cache_fresh_trait_pred.0.trait_ref.substs.types.has_infer_types()
             }
         }
     }

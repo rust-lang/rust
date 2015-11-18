@@ -404,7 +404,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
     }
 
     fn fully_normalize<T>(&self, value: &T) -> Result<T,ErrorReported>
-        where T : TypeFoldable<'tcx> + ty::HasTypeFlags
+        where T : TypeFoldable<'tcx>
     {
         let value =
             traits::fully_normalize(self.infcx,

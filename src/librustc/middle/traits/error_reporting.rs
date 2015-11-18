@@ -185,7 +185,7 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 pub fn report_overflow_error<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
                                           obligation: &Obligation<'tcx, T>)
                                           -> !
-    where T: fmt::Display + TypeFoldable<'tcx> + HasTypeFlags
+    where T: fmt::Display + TypeFoldable<'tcx>
 {
     let predicate =
         infcx.resolve_type_vars_if_possible(&obligation.predicate);
