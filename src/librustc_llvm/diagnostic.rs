@@ -37,7 +37,6 @@ impl OptimizationDiagnosticKind {
     }
 }
 
-#[allow(raw_pointer_derive)]
 #[derive(Copy, Clone)]
 pub struct OptimizationDiagnostic {
     pub kind: OptimizationDiagnosticKind,

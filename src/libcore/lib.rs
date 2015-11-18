@@ -66,7 +66,6 @@
 #![doc(test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 
 #![no_core]
-#![allow(raw_pointer_derive)]
 #![deny(missing_docs)]
 
 #![feature(allow_internal_unstable)]

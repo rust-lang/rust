@@ -46,7 +46,7 @@ use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 
 use rustc_front::hir;
-use rustc_front::visit::{self, FnKind, Visitor};
+use rustc_front::visit::FnKind;
 
 use bad_style::{MethodLateContext, method_context};
 
@@ -135,92 +135,6 @@ impl LateLintPass for BoxPointers {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         let ty = cx.tcx.node_id_to_type(e.id);
         self.check_heap_type(cx, e.span, ty);
-    }
-}
-
-declare_lint! {
-    RAW_POINTER_DERIVE,
-    Warn,
-    "uses of #[derive] with raw pointers are rarely correct"
-}
-
-struct RawPtrDeriveVisitor<'a, 'tcx: 'a> {
-    cx: &'a LateContext<'a, 'tcx>
-}
-
-impl<'a, 'tcx, 'v> Visitor<'v> for RawPtrDeriveVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, ty: &hir::Ty) {
-        const MSG: &'static str = "use of `#[derive]` with a raw pointer";
-        if let hir::TyPtr(..) = ty.node {
-            self.cx.span_lint(RAW_POINTER_DERIVE, ty.span, MSG);
-        }
-        visit::walk_ty(self, ty);
-    }
-    // explicit override to a no-op to reduce code bloat
-    fn visit_expr(&mut self, _: &hir::Expr) {}
-    fn visit_block(&mut self, _: &hir::Block) {}
-}
-
-pub struct RawPointerDerive {
-    checked_raw_pointers: NodeSet,
-}
-
-impl RawPointerDerive {
-    pub fn new() -> RawPointerDerive {
-        RawPointerDerive {
-            checked_raw_pointers: NodeSet(),
-        }
-    }
-}
-
-impl LintPass for RawPointerDerive {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(RAW_POINTER_DERIVE)
-    }
-}
-
-impl LateLintPass for RawPointerDerive {
-    fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
-        if !attr::contains_name(&item.attrs, "automatically_derived") {
-            return;
-        }
-        let did = match item.node {
-            hir::ItemImpl(_, _, _, ref t_ref_opt, _, _) => {
-                // Deriving the Copy trait does not cause a warning
-                if let &Some(ref trait_ref) = t_ref_opt {
-                    let def_id = cx.tcx.trait_ref_to_def_id(trait_ref);
-                    if Some(def_id) == cx.tcx.lang_items.copy_trait() {
-                        return;
-                    }
-                }
-
-                match cx.tcx.node_id_to_type(item.id).sty {
-                    ty::TyEnum(def, _) => def.did,
-                    ty::TyStruct(def, _) => def.did,
-                    _ => return,
-                }
-            }
-            _ => return,
-        };
-        let node_id = if let Some(node_id) = cx.tcx.map.as_local_node_id(did) {
-            node_id
-        } else {
-            return;
-        };
-        let item = match cx.tcx.map.find(node_id) {
-            Some(hir_map::NodeItem(item)) => item,
-            _ => return,
-        };
-        if !self.checked_raw_pointers.insert(item.id) {
-            return;
-        }
-        match item.node {
-            hir::ItemStruct(..) | hir::ItemEnum(..) => {
-                let mut visitor = RawPtrDeriveVisitor { cx: cx };
-                visit::walk_item(&mut visitor, &item);
-            }
-            _ => {}
-        }
     }
 }
 
