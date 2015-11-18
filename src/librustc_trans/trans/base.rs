@@ -2142,16 +2142,6 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &hir::EnumDef, sp: Span,
     }
 }
 
-pub struct TransItemVisitor<'a, 'tcx: 'a> {
-    pub ccx: &'a CrateContext<'a, 'tcx>,
-}
-
-impl<'a, 'tcx, 'v> Visitor<'v> for TransItemVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &hir::Item) {
-        trans_item(self.ccx, i);
-    }
-}
-
 pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
     // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
     // applicable to variable declarations and may not really make sense for
@@ -2963,10 +2953,12 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
         // First, verify intrinsics.
         intrinsic::check_intrinsics(&ccx);
 
-        // Next, translate all items.
+        // Next, translate all items. See `TransModVisitor` for
+        // details on why we walk in this particular way.
         {
             let _icx = push_ctxt("text");
-            krate.visit_all_items(&mut TransItemVisitor { ccx: &ccx });
+            intravisit::walk_mod(&mut TransItemsWithinModVisitor { ccx: &ccx }, &krate.module);
+            krate.visit_all_items(&mut TransModVisitor { ccx: &ccx });
         }
     }
 
@@ -3069,3 +3061,53 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
         no_builtins: no_builtins,
     }
 }
+
+/// We visit all the items in the krate and translate them.  We do
+/// this in two walks. The first walk just finds module items. It then
+/// walks the full contents of those module items and translates all
+/// the items within. Note that this entire process is O(n). The
+/// reason for this two phased walk is that each module is
+/// (potentially) placed into a distinct codegen-unit. This walk also
+/// ensures that the immediate contents of each module is processed
+/// entirely before we proceed to find more modules, helping to ensure
+/// an equitable distribution amongst codegen-units.
+pub struct TransModVisitor<'a, 'tcx: 'a> {
+    pub ccx: &'a CrateContext<'a, 'tcx>,
+}
+
+impl<'a, 'tcx, 'v> Visitor<'v> for TransModVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, i: &hir::Item) {
+        match i.node {
+            hir::ItemMod(_) => {
+                let item_ccx = self.ccx.rotate();
+                intravisit::walk_item(&mut TransItemsWithinModVisitor { ccx: &item_ccx }, i);
+            }
+            _ => { }
+        }
+    }
+}
+
+/// Translates all the items within a given module. Expects owner to
+/// invoke `walk_item` on a module item. Ignores nested modules.
+pub struct TransItemsWithinModVisitor<'a, 'tcx: 'a> {
+    pub ccx: &'a CrateContext<'a, 'tcx>,
+}
+
+impl<'a, 'tcx, 'v> Visitor<'v> for TransItemsWithinModVisitor<'a, 'tcx> {
+    fn visit_nested_item(&mut self, item_id: hir::ItemId) {
+        self.visit_item(self.ccx.tcx().map.expect_item(item_id.id));
+    }
+
+    fn visit_item(&mut self, i: &hir::Item) {
+        match i.node {
+            hir::ItemMod(..) => {
+                // skip modules, they will be uncovered by the TransModVisitor
+            }
+            _ => {
+                trans_item(self.ccx, i);
+                intravisit::walk_item(self, i);
+            }
+        }
+    }
+}
+
