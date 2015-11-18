@@ -132,3 +132,12 @@ fn issue123() {
         b: cccccccccccccccccccccccccccccccccccccc,
     };
 }
+
+fn issue491() {
+    Foo {
+        guard: None,
+        arm: 0, // Comment
+    };
+
+    Foo { arm: 0 /* Comment */ };
+}
