@@ -20,11 +20,10 @@ use ffi::OsStr;
 use fmt;
 use io::{self, Error, ErrorKind};
 use path;
-use sync::mpsc::{channel, Receiver};
 use sys::pipe::{self, AnonPipe};
 use sys::process as imp;
 use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
-use thread;
+use thread::{self, JoinHandle};
 
 /// Representation of a running or exited child process.
 ///
@@ -542,29 +541,24 @@ impl Child {
     #[stable(feature = "process", since = "1.0.0")]
     pub fn wait_with_output(mut self) -> io::Result<Output> {
         drop(self.stdin.take());
-        fn read<T: Read + Send + 'static>(stream: Option<T>) -> Receiver<io::Result<Vec<u8>>> {
-            let (tx, rx) = channel();
-            match stream {
-                Some(stream) => {
-                    thread::spawn(move || {
-                        let mut stream = stream;
-                        let mut ret = Vec::new();
-                        let res = stream.read_to_end(&mut ret);
-                        tx.send(res.map(|_| ret)).unwrap();
-                    });
-                }
-                None => tx.send(Ok(Vec::new())).unwrap()
-            }
-            rx
+        fn read<R>(mut input: R) -> JoinHandle<io::Result<Vec<u8>>>
+            where R: Read + Send + 'static
+        {
+            thread::spawn(move || {
+                let mut ret = Vec::new();
+                input.read_to_end(&mut ret).map(|_| ret)
+            })
         }
-        let stdout = read(self.stdout.take());
-        let stderr = read(self.stderr.take());
+        let stdout = self.stdout.take().map(read);
+        let stderr = self.stderr.take().map(read);
         let status = try!(self.wait());
+        let stdout = stdout.and_then(|t| t.join().unwrap().ok());
+        let stderr = stderr.and_then(|t| t.join().unwrap().ok());
 
         Ok(Output {
             status: status,
-            stdout: stdout.recv().unwrap().unwrap_or(Vec::new()),
-            stderr:  stderr.recv().unwrap().unwrap_or(Vec::new()),
+            stdout: stdout.unwrap_or(Vec::new()),
+            stderr: stderr.unwrap_or(Vec::new()),
         })
     }
 }
