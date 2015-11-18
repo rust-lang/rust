@@ -17,7 +17,7 @@
 //! upstream libraries, no system libraries, and no libc.
 //!
 //! [^free]: Strictly speaking, there are some symbols which are needed but
-//!          they aren't always neccesary.
+//!          they aren't always necessary.
 //!
 //! The core library is *minimal*: it isn't even aware of heap allocation,
 //! nor does it provide concurrency or I/O. These things require
