@@ -512,7 +512,7 @@ pub struct CombinedSnapshot {
 }
 
 pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
-    where T : TypeFoldable<'tcx> + HasTypeFlags
+    where T : TypeFoldable<'tcx>
 {
     debug!("normalize_associated_type(t={:?})", value);
 
@@ -546,7 +546,7 @@ pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
                                                 fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
                                                 result: &T)
                                                 -> T
-    where T : TypeFoldable<'tcx> + HasTypeFlags
+    where T : TypeFoldable<'tcx>
 {
     match drain_fulfillment_cx(infcx, fulfill_cx, result) {
         Ok(v) => v,
@@ -570,7 +570,7 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                        fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
                                        result: &T)
                                        -> Result<T,Vec<traits::FulfillmentError<'tcx>>>
-    where T : TypeFoldable<'tcx> + HasTypeFlags
+    where T : TypeFoldable<'tcx>
 {
     debug!("drain_fulfillment_cx(result={:?})",
            result);
@@ -929,7 +929,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                          snapshot: &CombinedSnapshot,
                          value: &T)
                          -> T
-        where T : TypeFoldable<'tcx> + HasTypeFlags
+        where T : TypeFoldable<'tcx>
     {
         /*! See `higher_ranked::plug_leaks` */
 
@@ -1201,7 +1201,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn resolve_type_vars_if_possible<T>(&self, value: &T) -> T
-        where T: TypeFoldable<'tcx> + HasTypeFlags
+        where T: TypeFoldable<'tcx>
     {
         /*!
          * Where possible, replaces type/int/float variables in

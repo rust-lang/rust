@@ -256,6 +256,10 @@ impl<'tcx> TypeFoldable<'tcx> for TraitAndProjections<'tcx> {
                                               -> TraitAndProjections<'tcx> {
         TraitAndProjections(self.0.fold_with(folder), self.1.fold_with(folder))
     }
+
+    fn visit_with<V: ty::fold::TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.0.visit_with(visitor) || self.1.visit_with(visitor)
+    }
 }
 
 impl<'tcx> fmt::Display for TraitAndProjections<'tcx> {

@@ -674,7 +674,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                 self.ty_for_param(p, t)
             }
             _ => {
-                ty::fold::super_fold_ty(self, t)
+                t.fold_subitems_with(self)
             }
         };
 
