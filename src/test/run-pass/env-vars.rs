@@ -14,7 +14,10 @@ use std::env::*;
 fn main() {
     for (k, v) in vars_os() {
         let v2 = var_os(&k);
-        assert!(v2.as_ref().map(|s| &**s) == Some(&*v),
+        // MingW seems to set some funky environment variables like
+        // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
+        // from vars() but not visible from var().
+        assert!(v2.is_none() || v2.as_ref().map(|s| &**s) == Some(&*v),
                 "bad vars->var transition: {:?} {:?} {:?}", k, v, v2);
     }
 }
