@@ -12,7 +12,7 @@
 //! which do not.
 
 use rustc_data_structures::fnv::FnvHashSet;
-use rustc_mir::repr as mir;
+use rustc::mir::repr as mir;
 use rustc_mir::visit::{Visitor, LvalueContext};
 use trans::common::{self, Block};
 use super::rvalue;

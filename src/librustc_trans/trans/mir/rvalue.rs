@@ -10,7 +10,7 @@
 
 use llvm::ValueRef;
 use rustc::middle::ty::{self, Ty};
-use rustc_mir::repr as mir;
+use rustc::mir::repr as mir;
 
 use trans::asm;
 use trans::base;

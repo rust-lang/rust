@@ -11,9 +11,10 @@
 use hair::cx::Cx;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::ty::{FnOutput, Ty};
+use rustc::mir::repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_front::hir;
-use repr::*;
+
 use syntax::ast;
 use syntax::codemap::Span;
 
@@ -41,7 +42,12 @@ struct CFG<'tcx> {
 #[must_use] // if you don't use one of these results, you're leaving a dangling edge
 struct BlockAnd<T>(BasicBlock, T);
 
-impl BasicBlock {
+trait BlockAndExtension {
+    fn and<T>(self, v: T) -> BlockAnd<T>;
+    fn unit(self) -> BlockAnd<()>;
+}
+
+impl BlockAndExtension for BasicBlock {
     fn and<T>(self, v: T) -> BlockAnd<T> {
         BlockAnd(self, v)
     }

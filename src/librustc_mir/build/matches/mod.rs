@@ -13,12 +13,12 @@
 //! includes the high-level algorithm, the submodules contain the
 //! details.
 
-use build::{BlockAnd, Builder};
-use repr::*;
+use build::{BlockAnd, BlockAndExtension, Builder};
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc::middle::const_eval::ConstVal;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::ty::{AdtDef, Ty};
+use rustc::mir::repr::*;
 use hair::*;
 use syntax::ast::{Name, NodeId};
 use syntax::codemap::Span;

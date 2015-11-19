@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::middle::ty::Region;
-use repr::*;
+use rustc::mir::repr::*;
 
 pub trait Visitor<'tcx> {
     // Override these, and call `self.super_xxx` to revert back to the

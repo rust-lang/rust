@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use build::{BlockAnd, Builder};
+use build::{BlockAnd, BlockAndExtension, Builder};
 use hair::*;
-use repr::*;
+use rustc::mir::repr::*;
 
 impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn stmts(&mut self, mut block: BasicBlock, stmts: Vec<StmtRef<'tcx>>) -> BlockAnd<()> {

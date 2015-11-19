@@ -14,7 +14,7 @@
 //! Routines for manipulating the control-flow graph.
 
 use build::CFG;
-use repr::*;
+use rustc::mir::repr::*;
 use syntax::codemap::Span;
 
 impl<'tcx> CFG<'tcx> {

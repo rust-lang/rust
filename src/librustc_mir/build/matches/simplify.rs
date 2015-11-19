@@ -22,10 +22,10 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
-use build::{BlockAnd, Builder};
+use build::{BlockAnd, BlockAndExtension, Builder};
 use build::matches::{Binding, MatchPair, Candidate};
 use hair::*;
-use repr::*;
+use rustc::mir::repr::*;
 
 use std::mem;
 

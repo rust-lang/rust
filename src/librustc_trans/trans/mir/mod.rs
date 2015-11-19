@@ -10,8 +10,8 @@
 
 use libc::c_uint;
 use llvm::{self, ValueRef};
-use rustc_mir::repr as mir;
-use rustc_mir::tcx::LvalueTy;
+use rustc::mir::repr as mir;
+use rustc::mir::tcx::LvalueTy;
 use trans::base;
 use trans::build;
 use trans::common::{self, Block};

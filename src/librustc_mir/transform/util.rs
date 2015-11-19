@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use repr::*;
+use rustc::mir::repr::*;
 
 /// Update basic block ids in all terminators using the given replacements,
 /// useful e.g. after removal of several basic blocks to update all terminators

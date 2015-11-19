@@ -136,6 +136,11 @@ pub mod middle {
     pub mod weak_lang_items;
 }
 
+pub mod mir {
+    pub mod repr;
+    pub mod tcx;
+}
+
 pub mod session;
 
 pub mod lint;
