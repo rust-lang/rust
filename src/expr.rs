@@ -1335,9 +1335,10 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         },
         indent: indent,
         width: budget,
-        ends_with_newline: match context.config.struct_lit_style {
-            StructLitStyle::Block => true,
-            StructLitStyle::Visual => false,
+        ends_with_newline: match tactic {
+            DefinitiveListTactic::Horizontal => false,
+            DefinitiveListTactic::Vertical => true,
+            DefinitiveListTactic::Mixed => unreachable!(),
         },
         config: context.config,
     };

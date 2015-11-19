@@ -110,4 +110,7 @@ fn issue491() {
     Foo {
         arm: 0, // Comment
     };
+
+    Foo { a: aaaaaaaaaa, b: bbbbbbbb, c: cccccccccc, d: dddddddddd, /* a comment */
+      e: eeeeeeeee };
 }
