@@ -17,7 +17,8 @@ use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
             DefinitiveListTactic, definitive_tactic, ListItem, format_fn_args};
 use string::{StringFormat, rewrite_string};
-use utils::{span_after, extra_offset, last_line_width, wrap_str, binary_search, first_line_width};
+use utils::{span_after, extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
+            semicolon_for_stmt};
 use visitor::FmtVisitor;
 use config::{StructLitStyle, MultilineStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment};
@@ -472,6 +473,33 @@ impl Rewrite for ast::Block {
         visitor.visit_block(self);
 
         Some(format!("{}{}", prefix, visitor.buffer))
+    }
+}
+
+impl Rewrite for ast::Stmt {
+    fn rewrite(&self, context: &RewriteContext, _width: usize, offset: Indent) -> Option<String> {
+        match self.node {
+            ast::Stmt_::StmtDecl(ref decl, _) => {
+                if let ast::Decl_::DeclLocal(ref local) = decl.node {
+                    local.rewrite(context, context.config.max_width, offset)
+                } else {
+                    None
+                }
+            }
+            ast::Stmt_::StmtExpr(ref ex, _) | ast::Stmt_::StmtSemi(ref ex, _) => {
+                let suffix = if semicolon_for_stmt(self) {
+                    ";"
+                } else {
+                    ""
+                };
+
+                ex.rewrite(context,
+                           context.config.max_width - offset.width() - suffix.len(),
+                           offset)
+                  .map(|s| s + suffix)
+            }
+            ast::Stmt_::StmtMac(..) => None,
+        }
     }
 }
 

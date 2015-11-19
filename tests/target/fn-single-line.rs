@@ -52,6 +52,8 @@ fn aaaaaaaaaaaaaaaaa_looooooooooooooooooooooong_name() {
 
 fn lots_of_space() { 1 }
 
+fn mac() -> Vec<i32> { vec![] }
+
 trait CoolTypes {
     fn dummy(&self) { }
 }

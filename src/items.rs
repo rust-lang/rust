@@ -12,7 +12,7 @@
 
 use Indent;
 use utils::{format_mutability, format_visibility, contains_skip, span_after, end_typaram,
-            wrap_str, last_line_width, semicolon_for_expr, semicolon_for_stmt};
+            wrap_str, last_line_width, semicolon_for_expr};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
             DefinitiveListTactic, definitive_tactic, format_item_list};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
@@ -479,7 +479,9 @@ impl<'a> FmtVisitor<'a> {
                      .map(|s| s + suffix)
                      .or_else(|| Some(self.snippet(e.span)))
                 } else if let Some(ref stmt) = block.stmts.first() {
-                    self.rewrite_stmt(stmt)
+                    stmt.rewrite(&self.get_context(),
+                                 self.config.max_width - self.block_indent.width(),
+                                 self.block_indent)
                 } else {
                     None
                 }
@@ -494,32 +496,6 @@ impl<'a> FmtVisitor<'a> {
         }
 
         None
-    }
-
-    pub fn rewrite_stmt(&self, stmt: &ast::Stmt) -> Option<String> {
-        match stmt.node {
-            ast::Stmt_::StmtDecl(ref decl, _) => {
-                if let ast::Decl_::DeclLocal(ref local) = decl.node {
-                    let context = self.get_context();
-                    local.rewrite(&context, self.config.max_width, self.block_indent)
-                } else {
-                    None
-                }
-            }
-            ast::Stmt_::StmtExpr(ref ex, _) | ast::Stmt_::StmtSemi(ref ex, _) => {
-                let suffix = if semicolon_for_stmt(stmt) {
-                    ";"
-                } else {
-                    ""
-                };
-
-                ex.rewrite(&self.get_context(),
-                           self.config.max_width - self.block_indent.width() - suffix.len(),
-                           self.block_indent)
-                  .map(|s| s + suffix)
-            }
-            ast::Stmt_::StmtMac(..) => None,
-        }
     }
 
     fn rewrite_args(&self,

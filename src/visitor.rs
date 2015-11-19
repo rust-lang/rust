@@ -41,12 +41,18 @@ impl<'a> FmtVisitor<'a> {
                 if let ast::Decl_::DeclItem(ref item) = decl.node {
                     self.visit_item(item);
                 } else {
-                    let rewrite = self.rewrite_stmt(stmt);
+                    let rewrite = stmt.rewrite(&self.get_context(),
+                                               self.config.max_width - self.block_indent.width(),
+                                               self.block_indent);
+
                     self.push_rewrite(stmt.span, rewrite);
                 }
             }
             ast::Stmt_::StmtExpr(..) | ast::Stmt_::StmtSemi(..) => {
-                let rewrite = self.rewrite_stmt(stmt);
+                let rewrite = stmt.rewrite(&self.get_context(),
+                                           self.config.max_width - self.block_indent.width(),
+                                           self.block_indent);
+
                 self.push_rewrite(stmt.span, rewrite);
             }
             ast::Stmt_::StmtMac(ref mac, _macro_style) => {
