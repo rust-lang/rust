@@ -28,6 +28,8 @@ use slice;
 use sys::{c, cvt};
 use sys::handle::Handle;
 
+use super::to_u16s;
+
 pub fn errno() -> i32 {
     unsafe { c::GetLastError() as i32 }
 }
@@ -228,7 +230,7 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
 }
 
 pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
-    let k = super::to_utf16_os(k);
+    let k = try!(to_u16s(k));
     let res = super::fill_utf16_buf(|buf, sz| unsafe {
         c::GetEnvironmentVariableW(k.as_ptr(), buf, sz)
     }, |buf| {
@@ -247,8 +249,8 @@ pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
 }
 
 pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
-    let k = super::to_utf16_os(k);
-    let v = super::to_utf16_os(v);
+    let k = try!(to_u16s(k));
+    let v = try!(to_u16s(v));
 
     cvt(unsafe {
         c::SetEnvironmentVariableW(k.as_ptr(), v.as_ptr())
@@ -256,7 +258,7 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
 }
 
 pub fn unsetenv(n: &OsStr) -> io::Result<()> {
-    let v = super::to_utf16_os(n);
+    let v = try!(to_u16s(n));
     cvt(unsafe {
         c::SetEnvironmentVariableW(v.as_ptr(), ptr::null())
     }).map(|_| ())
