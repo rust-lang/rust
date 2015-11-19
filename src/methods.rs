@@ -154,14 +154,14 @@ fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
 // conservative, i.e. it should not return false positives, but will return
 // false negatives.
 fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
-    let ty = walk_ptrs_ty(ty);
+    let no_ref_ty = walk_ptrs_ty(ty);
     let debug = match cx.tcx.lang_items.debug_trait() {
         Some(debug) => debug,
         None => return false
     };
     let debug_def = cx.tcx.lookup_trait_def(debug);
     let mut debug_impl_exists = false;
-    debug_def.for_each_relevant_impl(cx.tcx, ty, |d| {
+    debug_def.for_each_relevant_impl(cx.tcx, no_ref_ty, |d| {
         let self_ty = &cx.tcx.impl_trait_ref(d).and_then(|im| im.substs.self_ty());
         if let Some(self_ty) = *self_ty {
             if !self_ty.flags.get().contains(ty::TypeFlags::HAS_PARAMS) {
