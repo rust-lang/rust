@@ -47,4 +47,30 @@ fn call() -> i32 {
     increment(1)
 }
 
+#[miri_run(expected = "Int(3628800)")]
+fn factorial_loop() -> i32 {
+    let mut product = 1;
+    let mut i = 1;
+
+    while i <= 10 {
+        product *= i;
+        i += 1;
+    }
+
+    product
+}
+
+#[miri_run(expected = "Int(3628800)")]
+fn factorial_recursive() -> i32 {
+    fn fact(n: i32) -> i32 {
+        if n == 0 {
+            1
+        } else {
+            n * fact(n - 1)
+        }
+    }
+
+    fact(10)
+}
+
 fn main() {}
