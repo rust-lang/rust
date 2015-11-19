@@ -17,19 +17,53 @@ pub use self::ImportUse::*;
 pub use self::LastPrivate::*;
 
 use middle::def_id::DefId;
-use util::nodemap::{DefIdSet, NodeSet};
+use util::nodemap::{DefIdSet, FnvHashMap};
 
-/// A set of AST nodes exported by the crate.
-pub type ExportedItems = NodeSet;
+use std::hash::Hash;
+use syntax::ast::NodeId;
+
+// Accessibility levels, sorted in ascending order
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum AccessLevel {
+    // Exported items + items participating in various kinds of public interfaces,
+    // but not directly nameable. For example, if function `fn f() -> T {...}` is
+    // public, then type `T` is exported. Its values can be obtained by other crates
+    // even if the type itseld is not nameable.
+    // FIXME: Mostly unimplemented. Only `type` aliases export items currently.
+    Reachable,
+    // Public items + items accessible to other crates with help of `pub use` reexports
+    Exported,
+    // Items accessible to other crates directly, without help of reexports
+    Public,
+}
+
+// Accessibility levels for reachable HIR nodes
+#[derive(Clone)]
+pub struct AccessLevels<Id = NodeId> {
+    pub map: FnvHashMap<Id, AccessLevel>
+}
+
+impl<Id: Hash + Eq> AccessLevels<Id> {
+    pub fn is_reachable(&self, id: Id) -> bool {
+        self.map.contains_key(&id)
+    }
+    pub fn is_exported(&self, id: Id) -> bool {
+        self.map.get(&id) >= Some(&AccessLevel::Exported)
+    }
+    pub fn is_public(&self, id: Id) -> bool {
+        self.map.get(&id) >= Some(&AccessLevel::Public)
+    }
+}
+
+impl<Id: Hash + Eq> Default for AccessLevels<Id> {
+    fn default() -> Self {
+        AccessLevels { map: Default::default() }
+    }
+}
 
 /// A set containing all exported definitions from external crates.
 /// The set does not contain any entries from local crates.
 pub type ExternalExports = DefIdSet;
-
-/// A set of AST nodes that are fully public in the crate. This map is used for
-/// documentation purposes (reexporting a private struct inlines the doc,
-/// reexporting a public struct doesn't inline the doc).
-pub type PublicItems = NodeSet;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LastPrivate {

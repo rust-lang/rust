@@ -19,7 +19,7 @@ use metadata::cstore::LOCAL_CRATE;
 use middle::def;
 use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::ty;
-use middle::privacy::PublicItems;
+use middle::privacy::AccessLevels;
 use metadata::csearch;
 use syntax::parse::token::InternedString;
 use syntax::codemap::{Span, DUMMY_SP};
@@ -73,7 +73,7 @@ struct Annotator<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     index: &'a mut Index<'tcx>,
     parent: Option<&'tcx Stability>,
-    export_map: &'a PublicItems,
+    access_levels: &'a AccessLevels,
     in_trait_impl: bool,
     in_enum: bool,
 }
@@ -143,7 +143,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
             } else {
                 debug!("annotate: not found, parent = {:?}", self.parent);
                 let mut is_error = kind == AnnotationKind::Required &&
-                                   self.export_map.contains(&id) &&
+                                   self.access_levels.is_reachable(id) &&
                                    !self.tcx.sess.opts.test;
                 if let Some(stab) = self.parent {
                     if stab.level.is_unstable() {
@@ -266,12 +266,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
 
 impl<'tcx> Index<'tcx> {
     /// Construct the stability index for a crate being compiled.
-    pub fn build(&mut self, tcx: &ty::ctxt<'tcx>, krate: &'tcx Crate, export_map: &PublicItems) {
+    pub fn build(&mut self, tcx: &ty::ctxt<'tcx>, krate: &Crate, access_levels: &AccessLevels) {
         let mut annotator = Annotator {
             tcx: tcx,
             index: self,
             parent: None,
-            export_map: export_map,
+            access_levels: access_levels,
             in_trait_impl: false,
             in_enum: false,
         };
