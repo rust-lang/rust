@@ -97,7 +97,7 @@ impl Iterator for Env {
                 let pos = match s[1..].iter().position(|&u| u == b'=' as u16).map(|p| p + 1) {
                     Some(p) => p,
                     None => continue,
-                }
+                };
                 return Some((
                     OsStringExt::from_wide(&s[..pos]),
                     OsStringExt::from_wide(&s[pos+1..]),
