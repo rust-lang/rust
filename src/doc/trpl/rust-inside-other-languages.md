@@ -23,7 +23,7 @@ that extra oomph.
 
 There is a whole [chapter devoted to FFI][ffi] and its specifics elsewhere in
 the book, but in this chapter, we’ll examine this particular use-case of FFI,
-with examples in Ruby, Python, and JavaScript.
+with examples in Ruby, Python, JavaScript, and Go.
 
 [ffi]: ffi.html
 
@@ -336,6 +336,60 @@ array to signify no arguments. From there, we just call it and
 print the result.
 
 On my system, this takes a quick `0.092` seconds.
+
+# Go
+
+Go may not have a GIL, but there are cases where you may need to
+avoid its garbage collector.
+
+In order to do FFI in Go, we first need to download the library:
+
+```bash
+$ go get bitbucket.org/binet/go-ffi/pkg/ffi
+```
+
+(You may need to install Mercurial first).
+
+After it's installed, we can use `ffi`:
+
+```go
+package main
+
+import "bitbucket.org/binet/go-ffi/pkg/ffi"
+import "fmt"
+
+func main() {
+    lib, _ := ffi.NewLibrary("target/release/libembed.so")
+    process, _ := lib.Fct("process", ffi.Void, []ffi.Type{})
+    process()
+    fmt.Println("done!") 
+}
+```
+
+This also looks a great deal like the Ruby and Node examples.
+We use [the `ffi` module](https://bitbucket.org/binet/go-ffi/) to get
+`ffi.NewLibrary()`, which loads our shared object library. We have to
+state the return type and argument types of the function, which are
+`ffi.Void` for return and an empty array with element type `ffi.Type`
+to mean no arguments. However, here we have two choices: Executing
+with `go run` and compiling with `go build` and then running the
+generated binary.
+
+<!-- TODO change times to match other times in document -->
+```bash
+$ go run embed.go
+```
+
+Will compile and run our example, and takes about `0.250s` on my
+system.
+
+```bash
+$ go build embed.go
+$ ./embed
+```
+
+Will compile and run our example in separate commands. Timing just
+execution, this takes an impressive `0.002s` on my system.
 
 # Conclusion
 
