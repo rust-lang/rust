@@ -10,7 +10,7 @@
 
 use middle::ty::{Ty, HasTypeFlags};
 use rustc::middle::const_eval::ConstVal;
-use rustc_mir::repr as mir;
+use rustc::mir::repr as mir;
 use trans::consts::{self, TrueConst};
 use trans::common::{self, Block};
 use trans::common::{C_bool, C_bytes, C_floating_f64, C_integral, C_str_slice};

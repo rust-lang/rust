@@ -12,8 +12,8 @@
 //! We want to do this once just before trans, so trans does not have to take
 //! care erasing regions all over the place.
 
-use repr::*;
 use rustc::middle::ty;
+use rustc::mir::repr::*;
 use transform::MirPass;
 use mir_map::MirMap;
 

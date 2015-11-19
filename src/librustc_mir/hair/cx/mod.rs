@@ -16,7 +16,7 @@
  */
 
 use hair::*;
-use repr::*;
+use rustc::mir::repr::*;
 
 use rustc::middle::const_eval::{self, ConstVal};
 use rustc::middle::def_id::DefId;

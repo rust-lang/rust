@@ -18,10 +18,10 @@
 use build::Builder;
 use build::matches::{Candidate, MatchPair, Test, TestKind};
 use hair::*;
-use repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc::middle::const_eval::ConstVal;
 use rustc::middle::ty::{self, Ty};
+use rustc::mir::repr::*;
 use syntax::codemap::Span;
 
 impl<'a,'tcx> Builder<'a,'tcx> {

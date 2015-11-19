@@ -14,7 +14,7 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use repr::{BinOp, BorrowKind, Field, Literal, Mutability, UnOp};
+use rustc::mir::repr::{BinOp, BorrowKind, Field, Literal, Mutability, UnOp};
 use rustc::middle::def_id::DefId;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::subst::Substs;

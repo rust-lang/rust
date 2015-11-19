@@ -86,10 +86,10 @@ should go to.
 
 */
 
-use build::{BlockAnd, Builder, CFG};
-use repr::*;
+use build::{BlockAnd, BlockAndExtension, Builder, CFG};
 use rustc::middle::region::CodeExtent;
 use rustc::middle::ty::Ty;
+use rustc::mir::repr::*;
 use syntax::codemap::Span;
 
 pub struct Scope<'tcx> {

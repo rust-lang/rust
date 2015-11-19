@@ -12,7 +12,7 @@ pub mod simplify_cfg;
 pub mod erase_regions;
 mod util;
 
-use repr::Mir;
+use rustc::mir::repr::Mir;
 
 pub trait MirPass<'tcx> {
     fn run_on_mir(&mut self, mir: &mut Mir<'tcx>);

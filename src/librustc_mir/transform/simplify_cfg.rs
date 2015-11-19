@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use repr::*;
 use rustc::middle::const_eval::ConstVal;
+use rustc::mir::repr::*;
 use std::mem;
 use transform::util;
 use transform::MirPass;

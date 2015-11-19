@@ -12,10 +12,10 @@
 
 use rustc_data_structures::fnv::FnvHashMap;
 
-use build::{BlockAnd, Builder};
+use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::{Category, RvalueFunc};
 use hair::*;
-use repr::*;
+use rustc::mir::repr::*;
 
 impl<'a,'tcx> Builder<'a,'tcx> {
     /// Compile `expr`, yielding an rvalue.

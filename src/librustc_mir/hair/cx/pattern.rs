@@ -10,13 +10,13 @@
 
 use hair::*;
 use hair::cx::Cx;
-use repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc::middle::const_eval;
 use rustc::middle::def;
 use rustc::middle::pat_util::{pat_is_resolved_const, pat_is_binding};
 use rustc::middle::subst::Substs;
 use rustc::middle::ty::{self, Ty};
+use rustc::mir::repr::*;
 use rustc_front::hir;
 use syntax::ast;
 use syntax::ext::mtwt;

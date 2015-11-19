@@ -13,9 +13,9 @@
  * building is complete.
  */
 
-use repr::*;
-use rustc::middle::subst::Substs;
-use rustc::middle::ty::{self, AdtDef, Ty};
+use mir::repr::*;
+use middle::subst::Substs;
+use middle::ty::{self, AdtDef, Ty};
 use rustc_front::hir;
 
 #[derive(Copy, Clone, Debug)]

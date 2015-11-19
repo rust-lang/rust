@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use dot;
-use repr::*;
+use rustc::mir::repr::*;
 use std::borrow::IntoCow;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
