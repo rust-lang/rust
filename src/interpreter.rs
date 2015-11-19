@@ -1,4 +1,4 @@
-use rustc::middle::{const_eval, ty};
+use rustc::middle::{const_eval, def_id, ty};
 use rustc_mir::mir_map::MirMap;
 use rustc_mir::repr::{self as mir, Mir};
 use syntax::ast::Attribute;
@@ -11,6 +11,7 @@ enum Value {
     Uninit,
     Bool(bool),
     Int(i64), // FIXME: Should be bit-width aware.
+    Func(def_id::DefId),
 }
 
 #[derive(Debug)]
@@ -21,20 +22,30 @@ struct Frame {
     num_temps: usize,
 }
 
-struct Interpreter {
+impl Frame {
+    fn size(&self) -> usize {
+        1 + self.num_args + self.num_vars + self.num_temps
+    }
+}
+
+struct Interpreter<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
+    mir_map: &'a MirMap<'tcx>,
     value_stack: Vec<Value>,
     call_stack: Vec<Frame>,
 }
 
-impl Interpreter {
-    fn new() -> Self {
+impl<'a, 'tcx> Interpreter<'a, 'tcx> {
+    fn new(tcx: &'a ty::ctxt<'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
         Interpreter {
+            tcx: tcx,
+            mir_map: mir_map,
             value_stack: Vec::new(),
             call_stack: Vec::new(),
         }
     }
 
-    fn push_stack_frame(&mut self, mir: &Mir, _args: &[Value]) {
+    fn push_stack_frame(&mut self, mir: &Mir, args: &[Value]) {
         self.call_stack.push(Frame {
             offset: self.value_stack.len(),
             num_args: mir.arg_decls.len(),
@@ -43,10 +54,16 @@ impl Interpreter {
         });
 
         let frame = self.call_stack.last().unwrap();
-        let frame_size = 1 + frame.num_args + frame.num_vars + frame.num_temps;
-        self.value_stack.extend(iter::repeat(Value::Uninit).take(frame_size));
+        self.value_stack.extend(iter::repeat(Value::Uninit).take(frame.size()));
 
-        // TODO(tsion): Write args into value_stack.
+        for (i, arg) in args.iter().enumerate() {
+            self.value_stack[frame.offset + 1 + i] = arg.clone();
+        }
+    }
+
+    fn pop_stack_frame(&mut self) {
+        let frame = self.call_stack.pop().expect("tried to pop stack frame, but there were none");
+        self.value_stack.truncate(frame.offset);
     }
 
     fn call(&mut self, mir: &Mir, args: &[Value]) -> Value {
@@ -74,27 +91,46 @@ impl Interpreter {
                 }
             }
 
-            println!("{:?}", block_data.terminator);
             match block_data.terminator {
+                Return => break,
                 Goto { target } => block = target,
 
-                Panic { target: _target } => unimplemented!(),
+                Call { data: mir::CallData { ref destination, ref func, ref args }, targets } => {
+                    let index = self.eval_lvalue(destination);
+                    let func_val = self.eval_operand(func);
+
+                    if let Value::Func(def_id) = func_val {
+                        let node_id = self.tcx.map.as_local_node_id(def_id).unwrap();
+                        let mir = &self.mir_map[&node_id];
+                        let arg_vals: Vec<Value> =
+                            args.iter().map(|arg| self.eval_operand(arg)).collect();
+
+                        self.value_stack[index] = self.call(mir, &arg_vals);
+                        block = targets[0];
+                    } else {
+                        panic!("tried to call a non-function value: {:?}", func_val);
+                    }
+                }
 
                 If { ref cond, targets } => {
-                    match self.eval_operand(&cond) {
+                    match self.eval_operand(cond) {
                         Value::Bool(true) => block = targets[0],
                         Value::Bool(false) => block = targets[1],
                         cond_val => panic!("Non-boolean `if` condition value: {:?}", cond_val),
                     }
                 }
 
-                Return => break,
-
                 _ => unimplemented!(),
+                // Diverge => unimplemented!(),
+                // Panic { target } => unimplemented!(),
+                // Switch { ref discr, adt_def, ref targets } => unimplemented!(),
+                // SwitchInt { ref discr, switch_ty, ref values, ref targets } => unimplemented!(),
             }
         }
 
-        self.value_stack[self.eval_lvalue(&mir::Lvalue::ReturnPointer)].clone()
+        let ret_val = self.value_stack[self.eval_lvalue(&mir::Lvalue::ReturnPointer)].clone();
+        self.pop_stack_frame();
+        ret_val
     }
 
     fn eval_lvalue(&self, lvalue: &mir::Lvalue) -> usize {
@@ -157,7 +193,7 @@ impl Interpreter {
         }
     }
 
-    fn eval_operand(&self, op: &mir::Operand) -> Value {
+    fn eval_operand(&mut self, op: &mir::Operand) -> Value {
         use rustc_mir::repr::Operand::*;
 
         match *op {
@@ -165,8 +201,11 @@ impl Interpreter {
 
             Constant(ref constant) => {
                 match constant.literal {
-                    mir::Literal::Value { value: ref const_val } => self.eval_constant(const_val),
-                    mir::Literal::Item { .. } => unimplemented!(),
+                    mir::Literal::Value { ref value } => self.eval_constant(value),
+
+                    mir::Literal::Item { def_id, substs: _ } => {
+                        Value::Func(def_id)
+                    }
                 }
             }
         }
@@ -196,7 +235,7 @@ pub fn interpret_start_points<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &MirMap<'tcx>
                 let item = tcx.map.expect_item(id);
 
                 println!("Interpreting: {}", item.name);
-                let mut interpreter = Interpreter::new();
+                let mut interpreter = Interpreter::new(tcx, mir_map);
                 let val = interpreter.call(mir, &[]);
                 let val_str = format!("{:?}", val);
 

@@ -38,4 +38,13 @@ fn if_true() -> i32 {
     if true { 1 } else { 0 }
 }
 
+#[miri_run(expected = "Int(2)")]
+fn call() -> i32 {
+    fn increment(x: i32) -> i32 {
+        x + 1
+    }
+
+    increment(1)
+}
+
 fn main() {}
