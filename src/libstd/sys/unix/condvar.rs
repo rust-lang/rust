@@ -12,8 +12,7 @@ use cell::UnsafeCell;
 use libc;
 use ptr;
 use sys::mutex::{self, Mutex};
-use sys::time;
-use time::Duration;
+use time::{Instant, Duration};
 
 pub struct Condvar { inner: UnsafeCell<libc::pthread_cond_t> }
 
@@ -53,7 +52,7 @@ impl Condvar {
         // stable time.  pthread_cond_timedwait uses system time, but we want to
         // report timeout based on stable time.
         let mut sys_now = libc::timeval { tv_sec: 0, tv_usec: 0 };
-        let stable_now = time::SteadyTime::now();
+        let stable_now = Instant::now();
         let r = libc::gettimeofday(&mut sys_now, ptr::null_mut());
         debug_assert_eq!(r, 0);
 
@@ -81,7 +80,7 @@ impl Condvar {
 
         // ETIMEDOUT is not a totally reliable method of determining timeout due
         // to clock shifts, so do the check ourselves
-        &time::SteadyTime::now() - &stable_now < dur
+        stable_now.elapsed() < dur
     }
 
     #[inline]
