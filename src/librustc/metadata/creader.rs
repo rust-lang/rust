@@ -37,7 +37,7 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::InternedString;
 use syntax::util::small_vector::SmallVector;
-use rustc_front::visit;
+use rustc_front::intravisit::Visitor;
 use rustc_front::hir;
 use log;
 
@@ -53,10 +53,9 @@ pub struct CrateReader<'a> {
     foreign_item_map: FnvHashMap<String, Vec<ast::NodeId>>,
 }
 
-impl<'a, 'b, 'v> visit::Visitor<'v> for LocalCrateReader<'a, 'b> {
-    fn visit_item(&mut self, a: &hir::Item) {
+impl<'a, 'b, 'hir> Visitor<'hir> for LocalCrateReader<'a, 'b> {
+    fn visit_item(&mut self, a: &'hir hir::Item) {
         self.process_item(a);
-        visit::walk_item(self, a);
     }
 }
 
@@ -716,7 +715,7 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
     // etc.
     pub fn read_crates(&mut self, krate: &hir::Crate) {
         self.process_crate(krate);
-        visit::walk_crate(self, krate);
+        krate.visit_all_items(self);
         self.creader.inject_allocator_crate();
 
         if log_enabled!(log::INFO) {

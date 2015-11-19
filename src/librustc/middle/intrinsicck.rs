@@ -19,7 +19,7 @@ use std::fmt;
 use syntax::abi::RustIntrinsic;
 use syntax::ast;
 use syntax::codemap::Span;
-use rustc_front::visit::{self, Visitor, FnKind};
+use rustc_front::intravisit::{self, Visitor, FnKind};
 use rustc_front::hir;
 
 pub fn check_crate(tcx: &ctxt) {
@@ -29,7 +29,7 @@ pub fn check_crate(tcx: &ctxt) {
         dummy_sized_ty: tcx.types.isize,
         dummy_unsized_ty: tcx.mk_slice(tcx.types.isize),
     };
-    visit::walk_crate(&mut visitor, tcx.map.krate());
+    tcx.map.krate().visit_all_items(&mut visitor);
 }
 
 struct IntrinsicCheckingVisitor<'a, 'tcx: 'a> {
@@ -222,11 +222,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
             FnKind::ItemFn(..) | FnKind::Method(..) => {
                 let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
                 self.param_envs.push(param_env);
-                visit::walk_fn(self, fk, fd, b, s);
+                intravisit::walk_fn(self, fk, fd, b, s);
                 self.param_envs.pop();
             }
             FnKind::Closure(..) => {
-                visit::walk_fn(self, fk, fd, b, s);
+                intravisit::walk_fn(self, fk, fd, b, s);
             }
         }
 
@@ -255,7 +255,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
             }
         }
 
-        visit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr);
     }
 }
 

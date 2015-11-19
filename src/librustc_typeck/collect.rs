@@ -98,7 +98,7 @@ use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 use syntax::ptr::P;
 use rustc_front::hir;
-use rustc_front::visit;
+use rustc_front::intravisit;
 use rustc_front::print::pprust;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -108,10 +108,10 @@ pub fn collect_item_types(tcx: &ty::ctxt) {
     let ccx = &CrateCtxt { tcx: tcx, stack: RefCell::new(Vec::new()) };
 
     let mut visitor = CollectTraitDefVisitor{ ccx: ccx };
-    visit::walk_crate(&mut visitor, ccx.tcx.map.krate());
+    ccx.tcx.map.krate().visit_all_items(&mut visitor);
 
     let mut visitor = CollectItemTypesVisitor{ ccx: ccx };
-    visit::walk_crate(&mut visitor, ccx.tcx.map.krate());
+    ccx.tcx.map.krate().visit_all_items(&mut visitor);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -157,7 +157,7 @@ struct CollectTraitDefVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
-impl<'a, 'tcx, 'v> visit::Visitor<'v> for CollectTraitDefVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CollectTraitDefVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &hir::Item) {
         match i.node {
             hir::ItemTrait(..) => {
@@ -166,8 +166,6 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for CollectTraitDefVisitor<'a, 'tcx> {
             }
             _ => { }
         }
-
-        visit::walk_item(self, i);
     }
 }
 
@@ -178,14 +176,14 @@ struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
-impl<'a, 'tcx, 'v> visit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &hir::Item) {
         convert_item(self.ccx, i);
-        visit::walk_item(self, i);
+        intravisit::walk_item(self, i);
     }
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
         convert_foreign_item(self.ccx, i);
-        visit::walk_foreign_item(self, i);
+        intravisit::walk_foreign_item(self, i);
     }
 }
 

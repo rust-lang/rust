@@ -19,7 +19,7 @@ use middle::infer::{self, new_infer_ctxt};
 use syntax::ast;
 use syntax::codemap::Span;
 use rustc_front::hir;
-use rustc_front::visit;
+use rustc_front::intravisit;
 use util::nodemap::DefIdMap;
 
 pub fn check(tcx: &ty::ctxt) {
@@ -28,7 +28,7 @@ pub fn check(tcx: &ty::ctxt) {
 
     // this secondary walk specifically checks for some other cases,
     // like defaulted traits, for which additional overlap rules exist
-    visit::walk_crate(&mut overlap, tcx.map.krate());
+    tcx.map.krate().visit_all_items(&mut overlap);
 }
 
 struct OverlapChecker<'cx, 'tcx:'cx> {
@@ -169,7 +169,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
 }
 
 
-impl<'cx, 'tcx,'v> visit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
+impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item) {
         match item.node {
             hir::ItemDefaultImpl(_, _) => {
@@ -226,6 +226,5 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
             _ => {
             }
         }
-        visit::walk_item(self, item);
     }
 }

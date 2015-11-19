@@ -25,7 +25,7 @@ use syntax::print::pprust::{self as ast_pp, PrintState};
 use syntax::ptr::P;
 
 use hir;
-use hir::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
+use hir::{Crate, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 
 use std::io::{self, Write, Read};
 
@@ -54,6 +54,7 @@ impl PpAnn for NoAnn {}
 
 
 pub struct State<'a> {
+    krate: Option<&'a Crate>,
     pub s: pp::Printer<'a>,
     cm: Option<&'a CodeMap>,
     comments: Option<Vec<comments::Comment>>,
@@ -85,13 +86,17 @@ impl<'a> PrintState<'a> for State<'a> {
     }
 }
 
-pub fn rust_printer<'a>(writer: Box<Write + 'a>) -> State<'a> {
+pub fn rust_printer<'a>(writer: Box<Write + 'a>, krate: Option<&'a Crate>) -> State<'a> {
     static NO_ANN: NoAnn = NoAnn;
-    rust_printer_annotated(writer, &NO_ANN)
+    rust_printer_annotated(writer, &NO_ANN, krate)
 }
 
-pub fn rust_printer_annotated<'a>(writer: Box<Write + 'a>, ann: &'a PpAnn) -> State<'a> {
+pub fn rust_printer_annotated<'a>(writer: Box<Write + 'a>,
+                                  ann: &'a PpAnn,
+                                  krate: Option<&'a Crate>)
+                                  -> State<'a> {
     State {
+        krate: krate,
         s: pp::mk_printer(writer, default_columns),
         cm: None,
         comments: None,
@@ -124,7 +129,8 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                        ann: &'a PpAnn,
                        is_expanded: bool)
                        -> io::Result<()> {
-    let mut s = State::new_from_input(cm, span_diagnostic, filename, input, out, ann, is_expanded);
+    let mut s = State::new_from_input(cm, span_diagnostic, filename, input,
+                                      out, ann, is_expanded, Some(krate));
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
@@ -141,7 +147,8 @@ impl<'a> State<'a> {
                           input: &mut Read,
                           out: Box<Write + 'a>,
                           ann: &'a PpAnn,
-                          is_expanded: bool)
+                          is_expanded: bool,
+                          krate: Option<&'a Crate>)
                           -> State<'a> {
         let (cmnts, lits) = comments::gather_comments_and_literals(span_diagnostic,
                                                                    filename,
@@ -158,16 +165,19 @@ impl<'a> State<'a> {
                        None
                    } else {
                        Some(lits)
-                   })
+                   },
+                   krate)
     }
 
     pub fn new(cm: &'a CodeMap,
                out: Box<Write + 'a>,
                ann: &'a PpAnn,
                comments: Option<Vec<comments::Comment>>,
-               literals: Option<Vec<comments::Literal>>)
+               literals: Option<Vec<comments::Literal>>,
+               krate: Option<&'a Crate>)
                -> State<'a> {
         State {
+            krate: krate,
             s: pp::mk_printer(out, default_columns),
             cm: Some(cm),
             comments: comments.clone(),
@@ -187,7 +197,7 @@ pub fn to_string<F>(f: F) -> String
 {
     let mut wr = Vec::new();
     {
-        let mut printer = rust_printer(Box::new(&mut wr));
+        let mut printer = rust_printer(Box::new(&mut wr), None);
         f(&mut printer).unwrap();
         eof(&mut printer.s).unwrap();
     }
@@ -451,8 +461,8 @@ impl<'a> State<'a> {
 
     pub fn print_mod(&mut self, _mod: &hir::Mod, attrs: &[ast::Attribute]) -> io::Result<()> {
         try!(self.print_inner_attributes(attrs));
-        for item in &_mod.items {
-            try!(self.print_item(&**item));
+        for item_id in &_mod.item_ids {
+            try!(self.print_item_id(item_id));
         }
         Ok(())
     }
@@ -618,6 +628,16 @@ impl<'a> State<'a> {
             try!(self.print_type(ty));
         }
         word(&mut self.s, ";")
+    }
+
+    pub fn print_item_id(&mut self, item_id: &hir::ItemId) -> io::Result<()> {
+        if let Some(krate) = self.krate {
+            // skip nested items if krate context was not provided
+            let item = &krate.items[&item_id.id];
+            self.print_item(item)
+        } else {
+            Ok(())
+        }
     }
 
     /// Pretty-print an item
@@ -1566,7 +1586,9 @@ impl<'a> State<'a> {
                 }
                 self.end()
             }
-            hir::DeclItem(ref item) => self.print_item(&**item),
+            hir::DeclItem(ref item) => {
+                self.print_item_id(item)
+            }
         }
     }
 

@@ -24,7 +24,7 @@ use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::special_idents;
 
-use rustc_front::visit::{self, Visitor, FnKind};
+use rustc_front::intravisit::{self, Visitor, FnKind};
 use rustc_front::hir;
 
 pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
@@ -423,7 +423,7 @@ fn reject_shadowing_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>,
 impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     fn visit_item(&mut self, i: &hir::Item) {
         self.check_item_well_formed(i);
-        visit::walk_item(self, i);
+        intravisit::walk_item(self, i);
     }
 
     fn visit_fn(&mut self,
@@ -440,7 +440,7 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 }
             }
         }
-        visit::walk_fn(self, fk, fd, b, span)
+        intravisit::walk_fn(self, fk, fd, b, span)
     }
 
     fn visit_trait_item(&mut self, trait_item: &'v hir::TraitItem) {
@@ -460,7 +460,7 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             }
         }
 
-        visit::walk_trait_item(self, trait_item)
+        intravisit::walk_trait_item(self, trait_item)
     }
 }
 

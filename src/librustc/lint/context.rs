@@ -44,7 +44,7 @@ use syntax::parse::token::InternedString;
 use syntax::ast;
 use rustc_front::hir;
 use rustc_front::util;
-use rustc_front::visit as hir_visit;
+use rustc_front::intravisit as hir_visit;
 use syntax::visit as ast_visit;
 use syntax::diagnostic;
 
@@ -555,7 +555,6 @@ impl<'a> EarlyContext<'a> {
     {
         let mut v = ast_util::IdVisitor {
             operation: self,
-            pass_through_items: false,
             visited_outermost: false,
         };
         f(&mut v);
@@ -583,11 +582,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     fn visit_ids<F>(&mut self, f: F)
         where F: FnOnce(&mut util::IdVisitor<LateContext>)
     {
-        let mut v = util::IdVisitor {
-            operation: self,
-            pass_through_items: false,
-            visited_outermost: false,
-        };
+        let mut v = util::IdVisitor::new(self);
         f(&mut v);
     }
 }
@@ -611,10 +606,12 @@ impl<'a, 'tcx> LintContext for LateContext<'a, 'tcx> {
     }
 
     fn enter_attrs(&mut self, attrs: &[ast::Attribute]) {
+        debug!("late context: enter_attrs({:?})", attrs);
         run_lints!(self, enter_lint_attrs, late_passes, attrs);
     }
 
     fn exit_attrs(&mut self, attrs: &[ast::Attribute]) {
+        debug!("late context: exit_attrs({:?})", attrs);
         run_lints!(self, exit_lint_attrs, late_passes, attrs);
     }
 }
@@ -638,15 +635,24 @@ impl<'a> LintContext for EarlyContext<'a> {
     }
 
     fn enter_attrs(&mut self, attrs: &[ast::Attribute]) {
+        debug!("early context: exit_attrs({:?})", attrs);
         run_lints!(self, enter_lint_attrs, early_passes, attrs);
     }
 
     fn exit_attrs(&mut self, attrs: &[ast::Attribute]) {
+        debug!("early context: exit_attrs({:?})", attrs);
         run_lints!(self, exit_lint_attrs, early_passes, attrs);
     }
 }
 
 impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
+    /// Because lints are scoped lexically, we want to walk nested
+    /// items in the context of the outer item, so enable
+    /// deep-walking.
+    fn visit_nested_item(&mut self, item: hir::ItemId) {
+        self.visit_item(self.tcx.map.expect_item(item.id))
+    }
+
     fn visit_item(&mut self, it: &hir::Item) {
         self.with_lint_attrs(&it.attrs, |cx| {
             run_lints!(cx, check_item, late_passes, it);
@@ -952,6 +958,7 @@ impl<'a, 'tcx> IdVisitingOperation for LateContext<'a, 'tcx> {
         match self.sess().lints.borrow_mut().remove(&id) {
             None => {}
             Some(lints) => {
+                debug!("LateContext::visit_id: id={:?} lints={:?}", id, lints);
                 for (lint_id, span, msg) in lints {
                     self.span_lint(lint_id.lint, span, &msg[..])
                 }
@@ -1008,16 +1015,14 @@ impl LateLintPass for GatherNodeLevels {
 ///
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate(tcx: &ty::ctxt,
-                   krate: &hir::Crate,
                    exported_items: &ExportedItems) {
-
+    let krate = tcx.map.krate();
     let mut cx = LateContext::new(tcx, krate, exported_items);
 
     // Visit the whole crate.
     cx.with_lint_attrs(&krate.attrs, |cx| {
         cx.visit_id(ast::CRATE_NODE_ID);
         cx.visit_ids(|v| {
-            v.visited_outermost = true;
             hir_visit::walk_crate(v, krate);
         });
 

@@ -46,8 +46,8 @@ use syntax;
 use rbml::writer::Encoder;
 
 use rustc_front::hir;
-use rustc_front::visit::Visitor;
-use rustc_front::visit;
+use rustc_front::intravisit::Visitor;
+use rustc_front::intravisit;
 use front::map::{LinkedPath, PathElem, PathElems};
 use front::map as ast_map;
 
@@ -431,11 +431,12 @@ fn encode_info_for_mod(ecx: &EncodeContext,
     debug!("(encoding info for module) encoding info for module ID {}", id);
 
     // Encode info about all the module children.
-    for item in &md.items {
+    for item_id in &md.item_ids {
         rbml_w.wr_tagged_u64(tag_mod_child,
-                             def_to_u64(ecx.tcx.map.local_def_id(item.id)));
+                             def_to_u64(ecx.tcx.map.local_def_id(item_id.id)));
 
-        each_auxiliary_node_id(&**item, |auxiliary_node_id| {
+        let item = ecx.tcx.map.expect_item(item_id.id);
+        each_auxiliary_node_id(item, |auxiliary_node_id| {
             rbml_w.wr_tagged_u64(tag_mod_child,
                                  def_to_u64(ecx.tcx.map.local_def_id(auxiliary_node_id)));
             true
@@ -1468,25 +1469,26 @@ struct EncodeVisitor<'a, 'b:'a, 'c:'a, 'tcx:'c> {
     index: &'a mut CrateIndex<'tcx>,
 }
 
-impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for EncodeVisitor<'a, 'b, 'c, 'tcx> {
-    fn visit_expr(&mut self, ex: &hir::Expr) {
-        visit::walk_expr(self, ex);
+impl<'a, 'b, 'c, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'c, 'tcx> {
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
+        intravisit::walk_expr(self, ex);
         my_visit_expr(ex, self.rbml_w_for_visit_item, self.ecx, self.index);
     }
-    fn visit_item(&mut self, i: &hir::Item) {
-        visit::walk_item(self, i);
+    fn visit_item(&mut self, i: &'tcx hir::Item) {
+        intravisit::walk_item(self, i);
         my_visit_item(i, self.rbml_w_for_visit_item, self.ecx, self.index);
     }
-    fn visit_foreign_item(&mut self, ni: &hir::ForeignItem) {
-        visit::walk_foreign_item(self, ni);
+    fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem) {
+        intravisit::walk_foreign_item(self, ni);
         my_visit_foreign_item(ni, self.rbml_w_for_visit_item, self.ecx, self.index);
     }
 }
 
 fn encode_info_for_items<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
-                                   rbml_w: &mut Encoder,
-                                   krate: &hir::Crate)
+                                   rbml_w: &mut Encoder)
                                    -> CrateIndex<'tcx> {
+    let krate = ecx.tcx.map.krate();
+
     let mut index = CrateIndex {
         items: IndexData::new(ecx.tcx.map.num_local_def_ids()),
         xrefs: FnvHashMap()
@@ -1503,11 +1505,11 @@ fn encode_info_for_items<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                         syntax::parse::token::intern(&ecx.link_meta.crate_name),
                         hir::Public);
 
-    visit::walk_crate(&mut EncodeVisitor {
+    krate.visit_all_items(&mut EncodeVisitor {
         index: &mut index,
         ecx: ecx,
         rbml_w_for_visit_item: &mut *rbml_w,
-    }, krate);
+    });
 
     rbml_w.end_tag();
     index
@@ -1735,7 +1737,7 @@ fn encode_struct_field_attrs(ecx: &EncodeContext,
     }
 
     rbml_w.start_tag(tag_struct_fields);
-    visit::walk_crate(&mut StructFieldVisitor { ecx: ecx, rbml_w: rbml_w }, krate);
+    krate.visit_all_items(&mut StructFieldVisitor { ecx: ecx, rbml_w: rbml_w });
     rbml_w.end_tag();
 }
 
@@ -1756,7 +1758,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'tcx> {
                     .push(impl_id);
             }
         }
-        visit::walk_item(self, item);
     }
 }
 
@@ -1768,7 +1769,7 @@ fn encode_impls<'a>(ecx: &'a EncodeContext,
         tcx: ecx.tcx,
         impls: FnvHashMap()
     };
-    visit::walk_crate(&mut visitor, krate);
+    krate.visit_all_items(&mut visitor);
 
     rbml_w.start_tag(tag_impls);
     for (trait_, trait_impls) in visitor.impls {
@@ -1787,11 +1788,12 @@ fn encode_misc_info(ecx: &EncodeContext,
                     rbml_w: &mut Encoder) {
     rbml_w.start_tag(tag_misc_info);
     rbml_w.start_tag(tag_misc_info_crate_items);
-    for item in &krate.module.items {
+    for item_id in &krate.module.item_ids {
         rbml_w.wr_tagged_u64(tag_mod_child,
-                             def_to_u64(ecx.tcx.map.local_def_id(item.id)));
+                             def_to_u64(ecx.tcx.map.local_def_id(item_id.id)));
 
-        each_auxiliary_node_id(&**item, |auxiliary_node_id| {
+        let item = ecx.tcx.map.expect_item(item_id.id);
+        each_auxiliary_node_id(item, |auxiliary_node_id| {
             rbml_w.wr_tagged_u64(tag_mod_child,
                                  def_to_u64(ecx.tcx.map.local_def_id(auxiliary_node_id)));
             true
@@ -2022,7 +2024,7 @@ fn encode_metadata_inner(wr: &mut Cursor<Vec<u8>>,
     // Encode and index the items.
     rbml_w.start_tag(tag_items);
     i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
-    let index = encode_info_for_items(&ecx, &mut rbml_w, krate);
+    let index = encode_info_for_items(&ecx, &mut rbml_w);
     stats.item_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
     rbml_w.end_tag();
 

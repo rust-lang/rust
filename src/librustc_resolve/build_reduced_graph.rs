@@ -52,7 +52,7 @@ use rustc_front::hir::StmtDecl;
 use rustc_front::hir::UnnamedField;
 use rustc_front::hir::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use rustc_front::hir::Visibility;
-use rustc_front::visit::{self, Visitor};
+use rustc_front::intravisit::{self, Visitor};
 
 use std::mem::replace;
 use std::ops::{Deref, DerefMut};
@@ -111,7 +111,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             builder: self,
             parent: parent,
         };
-        visit::walk_crate(&mut visitor, krate);
+        intravisit::walk_crate(&mut visitor, krate);
     }
 
     /// Adds a new child item to the module definition of the parent node and
@@ -1051,10 +1051,14 @@ struct BuildReducedGraphVisitor<'a, 'b: 'a, 'tcx: 'b> {
 }
 
 impl<'a, 'b, 'v, 'tcx> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
+    fn visit_nested_item(&mut self, item: hir::ItemId) {
+        self.visit_item(self.builder.resolver.ast_map.expect_item(item.id))
+    }
+
     fn visit_item(&mut self, item: &Item) {
         let p = self.builder.build_reduced_graph_for_item(item, &self.parent);
         let old_parent = replace(&mut self.parent, p);
-        visit::walk_item(self, item);
+        intravisit::walk_item(self, item);
         self.parent = old_parent;
     }
 
@@ -1065,7 +1069,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     fn visit_block(&mut self, block: &Block) {
         let np = self.builder.build_reduced_graph_for_block(block, &self.parent);
         let old_parent = replace(&mut self.parent, np);
-        visit::walk_block(self, block);
+        intravisit::walk_block(self, block);
         self.parent = old_parent;
     }
 }
