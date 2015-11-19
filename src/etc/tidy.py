@@ -147,7 +147,7 @@ try:
                         report_err("snapshot out of date (" + date
                             + "): " + line)
                 else:
-                    if "SNAP" in line:
+                    if "SNAP " in line:
                         report_warn("unmatched SNAP line: " + line)
 
             if cr_flag in line:
