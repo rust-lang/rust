@@ -6,7 +6,7 @@ use syntax::attr::AttrMetaMethods;
 
 use std::iter;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum Value {
     Uninit,
     Bool(bool),
@@ -120,11 +120,19 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     }
                 }
 
-                _ => unimplemented!(),
+                SwitchInt { ref discr, switch_ty: _, ref values, ref targets } => {
+                    let discr_val = &self.value_stack[self.eval_lvalue(discr)];
+
+                    let index = values.iter().position(|v| *discr_val == self.eval_constant(v))
+                        .expect("discriminant matched no values");
+
+                    block = targets[index];
+                }
+
                 // Diverge => unimplemented!(),
                 // Panic { target } => unimplemented!(),
                 // Switch { ref discr, adt_def, ref targets } => unimplemented!(),
-                // SwitchInt { ref discr, switch_ty, ref values, ref targets } => unimplemented!(),
+                _ => unimplemented!(),
             }
         }
 
@@ -220,7 +228,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             Uint(_u) => unimplemented!(),
             Str(ref _s) => unimplemented!(),
             ByteStr(ref _bs) => unimplemented!(),
-            Bool(_b) => unimplemented!(),
+            Bool(b) => Value::Bool(b),
             Struct(_node_id) => unimplemented!(),
             Tuple(_node_id) => unimplemented!(),
             Function(_def_id) => unimplemented!(),
