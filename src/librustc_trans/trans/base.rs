@@ -666,7 +666,7 @@ pub fn unsize_thin_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             (PointerCast(bcx, src, ptr_ty),
              unsized_info(bcx.ccx(), a, b, None, bcx.fcx.param_substs))
         }
-        _ => bcx.sess().bug(&format!("unsize_thin_ptr: called on bad types")),
+        _ => bcx.sess().bug("unsize_thin_ptr: called on bad types"),
     }
 }
 
