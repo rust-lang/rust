@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 74 lints included in this crate:
+There are 75 lints included in this crate:
 
 name                                                                                                   | default | meaning
 -------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -50,6 +50,7 @@ name                                                                            
 [no_effect](https://github.com/Manishearth/rust-clippy/wiki#no_effect)                                 | warn    | statements with no effect
 [non_ascii_literal](https://github.com/Manishearth/rust-clippy/wiki#non_ascii_literal)                 | allow   | using any literal non-ASCII chars in a string literal; suggests using the \\u escape instead
 [nonsensical_open_options](https://github.com/Manishearth/rust-clippy/wiki#nonsensical_open_options)   | warn    | nonsensical combination of options for opening a file
+[ok_expect](https://github.com/Manishearth/rust-clippy/wiki#ok_expect)                                 | warn    | using `ok().expect()`, which gives worse error messages than calling `expect` directly on the Result
 [option_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#option_unwrap_used)               | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`
 [precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                               | warn    | catches operations where precedence may be unclear. See the wiki for a list of cases caught
 [ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                     | warn    | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
