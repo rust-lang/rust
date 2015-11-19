@@ -639,6 +639,8 @@ impl<'a> FmtVisitor<'a> {
         let generics_str = self.format_generics(generics,
                                                 "{",
                                                 "{",
+                                                self.config.item_brace_style,
+                                                enum_def.variants.is_empty(),
                                                 self.block_indent,
                                                 self.block_indent.block_indent(self.config),
                                                 mk_sp(span.lo, body_start))
@@ -818,11 +820,18 @@ impl<'a> FmtVisitor<'a> {
                 try_opt!(self.format_generics(g,
                                               "{",
                                               "{",
+                                              self.config.item_brace_style,
+                                              fields.is_empty(),
                                               offset,
                                               offset + header_str.len(),
                                               mk_sp(span.lo, body_lo)))
             }
-            None => " {".to_owned(),
+            None => if self.config.item_brace_style == BraceStyle::AlwaysNextLine &&
+                       !fields.is_empty() {
+                format!("\n{}{{", self.block_indent.to_string(self.config))
+            } else {
+                " {".to_owned()
+            },
         };
         result.push_str(&generics_str);
 
@@ -955,6 +964,8 @@ impl<'a> FmtVisitor<'a> {
                        generics: &ast::Generics,
                        opener: &str,
                        terminator: &str,
+                       brace_style: BraceStyle,
+                       force_same_line_brace: bool,
                        offset: Indent,
                        generics_offset: Indent,
                        span: Span)
@@ -969,11 +980,22 @@ impl<'a> FmtVisitor<'a> {
                                                                       terminator,
                                                                       Some(span.hi)));
             result.push_str(&where_clause_str);
-            result.push('\n');
-            result.push_str(&self.block_indent.to_string(self.config));
+            if !force_same_line_brace &&
+               (brace_style == BraceStyle::SameLineWhere ||
+                brace_style == BraceStyle::AlwaysNextLine) {
+                result.push('\n');
+                result.push_str(&self.block_indent.to_string(self.config));
+            } else {
+                result.push(' ');
+            }
             result.push_str(opener);
         } else {
-            result.push(' ');
+            if !force_same_line_brace && brace_style == BraceStyle::AlwaysNextLine {
+                result.push('\n');
+                result.push_str(&self.block_indent.to_string(self.config));
+            } else {
+                result.push(' ');
+            }
             result.push_str(opener);
         }
 

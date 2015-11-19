@@ -268,6 +268,7 @@ create_config! {
         "Maximum width in the body of a struct lit before falling back to vertical formatting";
     newline_style: NewlineStyle, NewlineStyle::Unix, "Unix or Windows line endings";
     fn_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for functions";
+    item_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for structs and enums";
     fn_return_indent: ReturnIndent, ReturnIndent::WithArgs,
         "Location of return type in function declaration";
     fn_args_paren_newline: bool, true, "If function argument parenthesis goes on a newline";
