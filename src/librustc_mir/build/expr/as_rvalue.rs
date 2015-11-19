@@ -70,7 +70,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 this.cfg.push_assign(block, expr_span, &result, rvalue);
 
                 // schedule a shallow free of that memory, lest we unwind:
-                let extent = this.extent_of_innermost_scope().unwrap();
+                let extent = this.extent_of_innermost_scope();
                 this.schedule_drop(expr_span, extent, DropKind::Free, &result, value_ty);
 
                 // initialize the box contents:

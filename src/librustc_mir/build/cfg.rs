@@ -26,13 +26,6 @@ impl<'tcx> CFG<'tcx> {
         &mut self.basic_blocks[blk.index()]
     }
 
-    pub fn end_point(&self, block: BasicBlock) -> ExecutionPoint {
-        ExecutionPoint {
-            block: block,
-            statement: self.block_data(block).statements.len() as u32,
-        }
-    }
-
     pub fn start_new_block(&mut self) -> BasicBlock {
         let node_index = self.basic_blocks.len();
         self.basic_blocks.push(BasicBlockData::new(Terminator::Diverge));
