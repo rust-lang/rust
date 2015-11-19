@@ -301,8 +301,8 @@ impl MissingDoc {
         // Only check publicly-visible items, using the result from the privacy pass.
         // It's an option so the crate root can also use this function (it doesn't
         // have a NodeId).
-        if let Some(ref id) = id {
-            if !cx.exported_items.contains(id) {
+        if let Some(id) = id {
+            if !cx.access_levels.is_exported(id) {
                 return;
             }
         }
@@ -470,7 +470,7 @@ impl LintPass for MissingCopyImplementations {
 
 impl LateLintPass for MissingCopyImplementations {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
-        if !cx.exported_items.contains(&item.id) {
+        if !cx.access_levels.is_reachable(item.id) {
             return;
         }
         let (def, ty) = match item.node {
@@ -534,7 +534,7 @@ impl LintPass for MissingDebugImplementations {
 
 impl LateLintPass for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
-        if !cx.exported_items.contains(&item.id) {
+        if !cx.access_levels.is_reachable(item.id) {
             return;
         }
 
@@ -987,7 +987,7 @@ impl LateLintPass for InvalidNoMangleItems {
         match it.node {
             hir::ItemFn(..) => {
                 if attr::contains_name(&it.attrs, "no_mangle") &&
-                       !cx.exported_items.contains(&it.id) {
+                       !cx.access_levels.is_reachable(it.id) {
                     let msg = format!("function {} is marked #[no_mangle], but not exported",
                                       it.name);
                     cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, &msg);
@@ -995,7 +995,7 @@ impl LateLintPass for InvalidNoMangleItems {
             },
             hir::ItemStatic(..) => {
                 if attr::contains_name(&it.attrs, "no_mangle") &&
-                       !cx.exported_items.contains(&it.id) {
+                       !cx.access_levels.is_reachable(it.id) {
                     let msg = format!("static {} is marked #[no_mangle], but not exported",
                                       it.name);
                     cx.span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, &msg);

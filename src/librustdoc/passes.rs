@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::middle::def_id::DefId;
+use rustc::middle::privacy::AccessLevels;
 use rustc::util::nodemap::DefIdSet;
 use std::cmp;
 use std::string::String;
@@ -96,13 +98,13 @@ pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
     let analysis = super::ANALYSISKEY.with(|a| a.clone());
     let analysis = analysis.borrow();
     let analysis = analysis.as_ref().unwrap();
-    let exported_items = analysis.exported_items.clone();
+    let access_levels = analysis.access_levels.clone();
 
     // strip all private items
     {
         let mut stripper = Stripper {
             retained: &mut retained,
-            exported_items: &exported_items,
+            access_levels: &access_levels,
         };
         krate = stripper.fold_crate(krate);
     }
@@ -117,7 +119,7 @@ pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
 
 struct Stripper<'a> {
     retained: &'a mut DefIdSet,
-    exported_items: &'a DefIdSet,
+    access_levels: &'a AccessLevels<DefId>,
 }
 
 impl<'a> fold::DocFolder for Stripper<'a> {
@@ -130,18 +132,14 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::VariantItem(..) | clean::MethodItem(..) |
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) => {
                 if i.def_id.is_local() {
-                    if !self.exported_items.contains(&i.def_id) {
-                        return None;
-                    }
-                    // Traits are in exported_items even when they're totally private.
-                    if i.is_trait() && i.visibility != Some(hir::Public) {
+                    if !self.access_levels.is_exported(i.def_id) {
                         return None;
                     }
                 }
             }
 
             clean::ConstantItem(..) => {
-                if i.def_id.is_local() && !self.exported_items.contains(&i.def_id) {
+                if i.def_id.is_local() && !self.access_levels.is_exported(i.def_id) {
                     return None;
                 }
             }
@@ -168,7 +166,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::ImplItem(clean::Impl{
                 for_: clean::ResolvedPath{ did, .. }, ..
             }) => {
-                if did.is_local() && !self.exported_items.contains(&did) {
+                if did.is_local() && !self.access_levels.is_exported(did) {
                     return None;
                 }
             }

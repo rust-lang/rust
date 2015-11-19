@@ -32,6 +32,7 @@ extern crate rustc_front;
 use self::PrivacyResult::*;
 use self::FieldName::*;
 
+use std::cmp;
 use std::mem::replace;
 
 use rustc_front::hir;
@@ -39,12 +40,13 @@ use rustc_front::intravisit::{self, Visitor};
 
 use rustc::middle::def;
 use rustc::middle::def_id::DefId;
+use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::middle::privacy::ImportUse::*;
 use rustc::middle::privacy::LastPrivate::*;
 use rustc::middle::privacy::PrivateDep::*;
-use rustc::middle::privacy::{ExternalExports, ExportedItems, PublicItems};
+use rustc::middle::privacy::ExternalExports;
 use rustc::middle::ty::{self, Ty};
-use rustc::util::nodemap::{NodeMap, NodeSet};
+use rustc::util::nodemap::NodeMap;
 use rustc::front::map as ast_map;
 
 use syntax::ast;
@@ -159,64 +161,57 @@ struct EmbargoVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     export_map: &'a def::ExportMap,
 
-    // This flag is an indicator of whether the previous item in the
-    // hierarchical chain was exported or not. This is the indicator of whether
-    // children should be exported as well. Note that this can flip from false
-    // to true if a reexported module is entered (or an action similar).
-    prev_exported: bool,
-
-    // This is a list of all exported items in the AST. An exported item is any
-    // function/method/item which is usable by external crates. This essentially
-    // means that the result is "public all the way down", but the "path down"
-    // may jump across private boundaries through reexport statements or type aliases.
-    exported_items: ExportedItems,
-
-    // Items that are directly public without help of reexports or type aliases.
-    // These two fields are closely related to one another in that they are only
-    // used for generation of the `public_items` set, not for privacy checking at
-    // all. Invariant: at any moment public items are a subset of exported items.
-    public_items: PublicItems,
-    prev_public: bool,
+    // Accessibility levels for reachable nodes
+    access_levels: AccessLevels,
+    // Previous accessibility level, None means unreachable
+    prev_level: Option<AccessLevel>,
+    // Have something changed in the level map?
+    changed: bool,
 }
 
 impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
-    // Returns tuple (is_public, is_exported) for a type
-    fn is_public_exported_ty(&self, ty: &hir::Ty) -> (bool, bool) {
+    fn ty_level(&self, ty: &hir::Ty) -> Option<AccessLevel> {
         if let hir::TyPath(..) = ty.node {
             match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
                 def::DefPrimTy(..) | def::DefSelfTy(..) | def::DefTyParam(..) => {
-                    (true, true)
+                    Some(AccessLevel::Public)
                 }
                 def => {
                     if let Some(node_id) = self.tcx.map.as_local_node_id(def.def_id()) {
-                        (self.public_items.contains(&node_id),
-                         self.exported_items.contains(&node_id))
+                        self.get(node_id)
                     } else {
-                        (true, true)
+                        Some(AccessLevel::Public)
                     }
                 }
             }
         } else {
-            (true, true)
+            Some(AccessLevel::Public)
         }
     }
 
-    // Returns tuple (is_public, is_exported) for a trait
-    fn is_public_exported_trait(&self, trait_ref: &hir::TraitRef) -> (bool, bool) {
+    fn trait_level(&self, trait_ref: &hir::TraitRef) -> Option<AccessLevel> {
         let did = self.tcx.trait_ref_to_def_id(trait_ref);
         if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
-            (self.public_items.contains(&node_id), self.exported_items.contains(&node_id))
+            self.get(node_id)
         } else {
-            (true, true)
+            Some(AccessLevel::Public)
         }
     }
 
-    fn maybe_insert_id(&mut self, id: ast::NodeId) {
-        if self.prev_public {
-            self.public_items.insert(id);
-        }
-        if self.prev_exported {
-            self.exported_items.insert(id);
+    fn get(&self, id: ast::NodeId) -> Option<AccessLevel> {
+        self.access_levels.map.get(&id).cloned()
+    }
+
+    // Updates node level and returns the updated level
+    fn update(&mut self, id: ast::NodeId, level: Option<AccessLevel>) -> Option<AccessLevel> {
+        let old_level = self.get(id);
+        // Accessibility levels can only grow
+        if level > old_level {
+            self.access_levels.map.insert(id, level.unwrap());
+            self.changed = true;
+            level
+        } else {
+            old_level
         }
     }
 }
@@ -227,187 +222,126 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
     fn visit_nested_item(&mut self, item: hir::ItemId) {
         self.visit_item(self.tcx.map.expect_item(item.id))
     }
+
     fn visit_item(&mut self, item: &hir::Item) {
-        let orig_all_public = self.prev_public;
-        let orig_all_exported = self.prev_exported;
-        match item.node {
-            // impls/extern blocks do not break the "public chain" because they
-            // cannot have visibility qualifiers on them anyway. Impls are also not
-            // added to public/exported sets based on inherited publicity.
-            hir::ItemImpl(..) | hir::ItemDefaultImpl(..) => {}
+        let inherited_item_level = match item.node {
+            // Impls inherit level from their types and traits
+            hir::ItemImpl(_, _, _, None, ref ty, _) => {
+                self.ty_level(&ty)
+            }
+            hir::ItemImpl(_, _, _, Some(ref trait_ref), ref ty, _) => {
+                cmp::min(self.ty_level(&ty), self.trait_level(trait_ref))
+            }
+            hir::ItemDefaultImpl(_, ref trait_ref) => {
+                self.trait_level(trait_ref)
+            }
+            // Foreign mods inherit level from parents
             hir::ItemForeignMod(..) => {
-                self.maybe_insert_id(item.id);
+                self.prev_level
             }
-
-            // Private by default, hence we only retain the "public chain" if
-            // `pub` is explicitly listed.
+            // Other `pub` items inherit levels from parents
             _ => {
-                self.prev_public = self.prev_public && item.vis == hir::Public;
-                self.prev_exported = (self.prev_exported && item.vis == hir::Public) ||
-                                     self.exported_items.contains(&item.id);
-
-                self.maybe_insert_id(item.id);
+                if item.vis == hir::Public { self.prev_level } else { None }
             }
-        }
+        };
 
+        // Update id of the item itself
+        let item_level = self.update(item.id, inherited_item_level);
+
+        // Update ids of nested things
         match item.node {
-            // Enum variants inherit from their parent, so if the enum is
-            // public all variants are public
             hir::ItemEnum(ref def, _) => {
                 for variant in &def.variants {
-                    self.maybe_insert_id(variant.node.data.id());
+                    let variant_level = self.update(variant.node.data.id(), item_level);
                     for field in variant.node.data.fields() {
-                        // Variant fields are always public
-                        self.maybe_insert_id(field.node.id);
+                        self.update(field.node.id, variant_level);
                     }
                 }
             }
-
-            // Inherent impls for public/exported types and their public items are public/exported
-            hir::ItemImpl(_, _, _, None, ref ty, ref impl_items) => {
-                let (public_ty, exported_ty) = self.is_public_exported_ty(&ty);
-
-                if public_ty {
-                    self.public_items.insert(item.id);
-                }
-                if exported_ty {
-                    self.exported_items.insert(item.id);
-                }
-
+            hir::ItemImpl(_, _, _, None, _, ref impl_items) => {
                 for impl_item in impl_items {
                     if impl_item.vis == hir::Public {
-                        if public_ty {
-                            self.public_items.insert(impl_item.id);
-                        }
-                        if exported_ty {
-                            self.exported_items.insert(impl_item.id);
-                        }
+                        self.update(impl_item.id, item_level);
                     }
                 }
             }
-
-            // Trait impl and its items are public/exported if both the self type and the trait
-            // of this impl are public/exported
-            hir::ItemImpl(_, _, _, Some(ref trait_ref), ref ty, ref impl_items) => {
-                let (public_ty, exported_ty) = self.is_public_exported_ty(&ty);
-                let (public_trait, exported_trait) = self.is_public_exported_trait(trait_ref);
-
-                if public_ty && public_trait {
-                    self.public_items.insert(item.id);
-                }
-                if exported_ty && exported_trait {
-                    self.exported_items.insert(item.id);
-                }
-
+            hir::ItemImpl(_, _, _, Some(_), _, ref impl_items) => {
                 for impl_item in impl_items {
-                    if public_ty && public_trait {
-                        self.public_items.insert(impl_item.id);
-                    }
-                    if exported_ty && exported_trait {
-                        self.exported_items.insert(impl_item.id);
-                    }
+                    self.update(impl_item.id, item_level);
                 }
             }
-
-            // Default trait impls are public/exported for public/exported traits
-            hir::ItemDefaultImpl(_, ref trait_ref) => {
-                let (public_trait, exported_trait) = self.is_public_exported_trait(trait_ref);
-
-                if public_trait {
-                    self.public_items.insert(item.id);
-                }
-                if exported_trait {
-                    self.exported_items.insert(item.id);
-                }
-            }
-
-            // Default methods on traits are all public/exported so long as the trait
-            // is public/exported
             hir::ItemTrait(_, _, _, ref trait_items) => {
                 for trait_item in trait_items {
-                    self.maybe_insert_id(trait_item.id);
+                    self.update(trait_item.id, item_level);
                 }
             }
-
-            // Struct constructors are public if the struct is all public.
             hir::ItemStruct(ref def, _) => {
                 if !def.is_struct() {
-                    self.maybe_insert_id(def.id());
+                    self.update(def.id(), item_level);
                 }
                 for field in def.fields() {
-                    // Struct fields can be public or private, so lets check
                     if field.node.kind.visibility() == hir::Public {
-                        self.maybe_insert_id(field.node.id);
+                        self.update(field.node.id, item_level);
                     }
                 }
             }
-
-            hir::ItemTy(ref ty, _) if self.prev_exported => {
+            hir::ItemForeignMod(ref foreign_mod) => {
+                for foreign_item in &foreign_mod.items {
+                    if foreign_item.vis == hir::Public {
+                        self.update(foreign_item.id, item_level);
+                    }
+                }
+            }
+            hir::ItemTy(ref ty, _) if item_level.is_some() => {
                 if let hir::TyPath(..) = ty.node {
                     match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
                         def::DefPrimTy(..) | def::DefSelfTy(..) | def::DefTyParam(..) => {},
                         def => {
                             if let Some(node_id) = self.tcx.map.as_local_node_id(def.def_id()) {
-                                self.exported_items.insert(node_id);
+                                self.update(node_id, Some(AccessLevel::Reachable));
                             }
                         }
                     }
                 }
             }
-
-            hir::ItemForeignMod(ref foreign_mod) => {
-                for foreign_item in &foreign_mod.items {
-                    let public = self.prev_public && foreign_item.vis == hir::Public;
-                    let exported = (self.prev_exported && foreign_item.vis == hir::Public) ||
-                                   self.exported_items.contains(&foreign_item.id);
-
-                    if public {
-                        self.public_items.insert(foreign_item.id);
-                    }
-                    if exported {
-                        self.exported_items.insert(foreign_item.id);
-                    }
-                }
-            }
-
             _ => {}
         }
 
+        let orig_level = self.prev_level;
+        self.prev_level = item_level;
+
         intravisit::walk_item(self, item);
 
-        self.prev_public = orig_all_public;
-        self.prev_exported = orig_all_exported;
+        self.prev_level = orig_level;
     }
 
     fn visit_block(&mut self, b: &'v hir::Block) {
-        let orig_all_public = replace(&mut self.prev_public, false);
-        let orig_all_exported = replace(&mut self.prev_exported, false);
+        let orig_level = replace(&mut self.prev_level, None);
 
-        // Blocks can have exported and public items, for example impls, but they always
-        // start as non-public and non-exported regardless of publicity of a function,
+        // Blocks can have public items, for example impls, but they always
+        // start as completely private regardless of publicity of a function,
         // constant, type, field, etc. in which this block resides
         intravisit::walk_block(self, b);
 
-        self.prev_public = orig_all_public;
-        self.prev_exported = orig_all_exported;
+        self.prev_level = orig_level;
     }
 
     fn visit_mod(&mut self, m: &hir::Mod, _sp: Span, id: ast::NodeId) {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
-        if self.prev_exported {
-            assert!(self.export_map.contains_key(&id), "wut {}", id);
-            for export in self.export_map.get(&id).unwrap() {
+        if self.prev_level.is_some() {
+            for export in self.export_map.get(&id).expect("module isn't found in export map") {
                 if let Some(node_id) = self.tcx.map.as_local_node_id(export.def_id) {
-                    self.exported_items.insert(node_id);
+                    self.update(node_id, Some(AccessLevel::Exported));
                 }
             }
         }
-        intravisit::walk_mod(self, m)
+
+        intravisit::walk_mod(self, m);
     }
 
     fn visit_macro_def(&mut self, md: &'v hir::MacroDef) {
-        self.maybe_insert_id(md.id);
+        self.update(md.id, Some(AccessLevel::Public));
     }
 }
 
@@ -1169,8 +1103,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
 
 struct VisiblePrivateTypesVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    exported_items: &'a ExportedItems,
-    public_items: &'a PublicItems,
+    access_levels: &'a AccessLevels,
     in_variant: bool,
 }
 
@@ -1210,7 +1143,7 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
     fn trait_is_public(&self, trait_id: ast::NodeId) -> bool {
         // FIXME: this would preferably be using `exported_items`, but all
         // traits are exported currently (see `EmbargoVisitor.exported_trait`)
-        self.public_items.contains(&trait_id)
+        self.access_levels.is_public(trait_id)
     }
 
     fn check_ty_param_bound(&self,
@@ -1226,7 +1159,7 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn item_is_public(&self, id: &ast::NodeId, vis: hir::Visibility) -> bool {
-        self.exported_items.contains(id) || vis == hir::Public
+        self.access_levels.is_reachable(*id) || vis == hir::Public
     }
 }
 
@@ -1332,7 +1265,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                                   match impl_item.node {
                                       hir::ImplItemKind::Const(..) |
                                       hir::ImplItemKind::Method(..) => {
-                                          self.exported_items.contains(&impl_item.id)
+                                          self.access_levels.is_reachable(impl_item.id)
                                       }
                                       hir::ImplItemKind::Type(_) => false,
                                   }
@@ -1461,7 +1394,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, item: &hir::ForeignItem) {
-        if self.exported_items.contains(&item.id) {
+        if self.access_levels.is_reachable(item.id) {
             intravisit::walk_foreign_item(self, item)
         }
     }
@@ -1479,7 +1412,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self, v: &hir::Variant, g: &hir::Generics, item_id: ast::NodeId) {
-        if self.exported_items.contains(&v.node.data.id()) {
+        if self.access_levels.is_reachable(v.node.data.id()) {
             self.in_variant = true;
             intravisit::walk_variant(self, v, g, item_id);
             self.in_variant = false;
@@ -1509,7 +1442,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 pub fn check_crate(tcx: &ty::ctxt,
                    export_map: &def::ExportMap,
                    external_exports: ExternalExports)
-                   -> (ExportedItems, PublicItems) {
+                   -> AccessLevels {
     let krate = tcx.map.krate();
 
     // Sanity check to make sure that all privacy usage and controls are
@@ -1544,33 +1477,31 @@ pub fn check_crate(tcx: &ty::ctxt,
     // items which are reachable from external crates based on visibility.
     let mut visitor = EmbargoVisitor {
         tcx: tcx,
-        exported_items: NodeSet(),
-        public_items: NodeSet(),
         export_map: export_map,
-        prev_exported: true,
-        prev_public: true,
+        access_levels: Default::default(),
+        prev_level: Some(AccessLevel::Public),
+        changed: false,
     };
-    visitor.exported_items.insert(ast::CRATE_NODE_ID);
-    visitor.public_items.insert(ast::CRATE_NODE_ID);
     loop {
-        let before = (visitor.exported_items.len(), visitor.public_items.len());
         intravisit::walk_crate(&mut visitor, krate);
-        let after = (visitor.exported_items.len(), visitor.public_items.len());
-        if after == before {
+        if visitor.changed {
+            visitor.changed = false;
+        } else {
             break
         }
     }
+    visitor.update(ast::CRATE_NODE_ID, Some(AccessLevel::Public));
 
-    let EmbargoVisitor { exported_items, public_items, .. } = visitor;
+    let EmbargoVisitor { access_levels, .. } = visitor;
 
     {
         let mut visitor = VisiblePrivateTypesVisitor {
             tcx: tcx,
-            exported_items: &exported_items,
-            public_items: &public_items,
+            access_levels: &access_levels,
             in_variant: false,
         };
         intravisit::walk_crate(&mut visitor, krate);
     }
-    return (exported_items, public_items);
+
+    access_levels
 }

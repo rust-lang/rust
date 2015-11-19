@@ -25,7 +25,7 @@
 //! for all lint attributes.
 use self::TargetLint::*;
 
-use middle::privacy::ExportedItems;
+use middle::privacy::AccessLevels;
 use middle::ty::{self, Ty};
 use session::{early_error, Session};
 use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass};
@@ -277,8 +277,8 @@ pub struct LateContext<'a, 'tcx: 'a> {
     /// The crate being checked.
     pub krate: &'a hir::Crate,
 
-    /// Items exported from the crate being checked.
-    pub exported_items: &'a ExportedItems,
+    /// Items accessible from the crate being checked.
+    pub access_levels: &'a AccessLevels,
 
     /// The store of registered lints.
     lints: LintStore,
@@ -564,7 +564,7 @@ impl<'a> EarlyContext<'a> {
 impl<'a, 'tcx> LateContext<'a, 'tcx> {
     fn new(tcx: &'a ty::ctxt<'tcx>,
            krate: &'a hir::Crate,
-           exported_items: &'a ExportedItems) -> LateContext<'a, 'tcx> {
+           access_levels: &'a AccessLevels) -> LateContext<'a, 'tcx> {
         // We want to own the lint store, so move it out of the session.
         let lint_store = mem::replace(&mut *tcx.sess.lint_store.borrow_mut(),
                                       LintStore::new());
@@ -572,7 +572,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
         LateContext {
             tcx: tcx,
             krate: krate,
-            exported_items: exported_items,
+            access_levels: access_levels,
             lints: lint_store,
             level_stack: vec![],
             node_levels: RefCell::new(FnvHashMap()),
@@ -1014,10 +1014,9 @@ impl LateLintPass for GatherNodeLevels {
 /// Perform lint checking on a crate.
 ///
 /// Consumes the `lint_store` field of the `Session`.
-pub fn check_crate(tcx: &ty::ctxt,
-                   exported_items: &ExportedItems) {
+pub fn check_crate(tcx: &ty::ctxt, access_levels: &AccessLevels) {
     let krate = tcx.map.krate();
-    let mut cx = LateContext::new(tcx, krate, exported_items);
+    let mut cx = LateContext::new(tcx, krate, access_levels);
 
     // Visit the whole crate.
     cx.with_lint_attrs(&krate.attrs, |cx| {
