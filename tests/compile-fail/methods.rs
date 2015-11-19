@@ -54,7 +54,7 @@ fn main() {
     // the error type implements `Debug`
     let res2: Result<i32, MyError> = Ok(0);
     res2.ok().expect("oh noes!");
-    // we're currently don't warn if the error type has a type parameter
+    // we currently don't warn if the error type has a type parameter
     // (but it would be nice if we did)
     let res3: Result<u32, MyErrorWithParam<u8>>= Ok(0);
     res3.ok().expect("whoof");
@@ -62,6 +62,8 @@ fn main() {
     res4.ok().expect("argh"); //~ERROR called `ok().expect()`
     let res5: io::Result<u32> = Ok(0);
     res5.ok().expect("oops"); //~ERROR called `ok().expect()`
+    let res6: Result<u32, &str> = Ok(0);
+    res6.ok().expect("meh"); //~ERROR called `ok().expect()`
 }
 
 struct MyError(()); // doesn't implement Debug

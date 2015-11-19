@@ -4,7 +4,6 @@ use rustc::middle::ty;
 use rustc::middle::subst::{Subst, TypeSpace};
 use std::iter;
 use std::borrow::Cow;
-use std::collections::HashSet;
 
 use utils::{snippet, span_lint, match_path, match_type, walk_ptrs_ty_depth,
     walk_ptrs_ty};
@@ -13,69 +12,8 @@ use utils::{OPTION_PATH, RESULT_PATH, STRING_PATH};
 use self::SelfKind::*;
 use self::OutType::*;
 
-use rustc::middle::def_id::DefId;
-
-use rustc::middle::ty::TypeFlags;
-
 #[derive(Clone)]
-pub struct MethodsPass { types_implementing_debug: Option<HashSet<DefId>> }
-
-impl MethodsPass {
-    pub fn new() -> MethodsPass {
-        MethodsPass { types_implementing_debug: None }
-    }
-
-    fn get_debug_impls(&mut self, cx: &LateContext) -> Option<&HashSet<DefId>> {
-        if self.types_implementing_debug.is_none() {
-            let debug = match cx.tcx.lang_items.debug_trait() {
-                Some(debug) => debug,
-                None => return None
-            };
-            let debug_def = cx.tcx.lookup_trait_def(debug);
-            let mut impls = HashSet::new();
-            debug_def.for_each_impl(cx.tcx, |d| {
-                let o_self_ty = &cx.tcx.impl_trait_ref(d)
-                                    .map(|x| x.substs)
-                                    .and_then(|x| x.self_ty());
-                let self_ty = match *o_self_ty {
-                    Some(self_type) => self_type,
-                    None => return
-                };
-                let self_ty_def_id = self_ty.ty_to_def_id();
-                if let Some(self_ty_def_id) = self_ty_def_id {
-                    let has_params = self_ty.flags.get().contains(TypeFlags::HAS_PARAMS);
-                    if !has_params {
-                        impls.insert(self_ty_def_id);
-                    }
-                }
-            });
-            self.types_implementing_debug = Some(impls);
-        }
-        self.types_implementing_debug.as_ref()
-    }
-
-    // This checks whether a given type is known to implement Debug. It's
-    // conservative, i.e. it should not return false positives, but will return
-    // false negatives.
-    fn has_debug_impl(&mut self, ty: ty::Ty, cx: &LateContext) -> bool {
-        let debug_impls = match self.get_debug_impls(cx) {
-            Some(debug_impls) => debug_impls,
-            None => return false
-        };
-        match walk_ptrs_ty(ty).sty {
-            ty::TyBool | ty::TyChar | ty::TyInt(..) | ty::TyUint(..)
-                       | ty::TyFloat(..) | ty::TyStr => true,
-            ty::TyTuple(ref v) if v.is_empty() => true,
-            ty::TyStruct(..) | ty::TyEnum(..) => {
-                match ty.ty_to_def_id() {
-                    Some(ref ty_def_id) => debug_impls.contains(ty_def_id),
-                    None => false
-                }
-            },
-            _ => false
-        }
-    }
-}
+pub struct MethodsPass;
 
 declare_lint!(pub OPTION_UNWRAP_USED, Allow,
               "using `Option.unwrap()`, which should at least get a better message using `expect()`");
@@ -144,7 +82,7 @@ impl LateLintPass for MethodsPass {
                             && match_type(cx, cx.tcx.expr_ty(&inner_args[0]), &RESULT_PATH) {
                         let result_type = cx.tcx.expr_ty(&inner_args[0]);
                         if let Some(error_type) = get_error_type(cx, result_type) {
-                            if self.has_debug_impl(error_type, cx) {
+                            if has_debug_impl(error_type, cx) {
                                 span_lint(cx, OK_EXPECT, expr.span,
                                          "called `ok().expect()` on a Result \
                                           value. You can call `expect` directly
@@ -212,6 +150,27 @@ fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
     None
 }
 
+// This checks whether a given type is known to implement Debug. It's
+// conservative, i.e. it should not return false positives, but will return
+// false negatives.
+fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
+    let ty = walk_ptrs_ty(ty);
+    let debug = match cx.tcx.lang_items.debug_trait() {
+        Some(debug) => debug,
+        None => return false
+    };
+    let debug_def = cx.tcx.lookup_trait_def(debug);
+    let mut debug_impl_exists = false;
+    debug_def.for_each_relevant_impl(cx.tcx, ty, |d| {
+        let self_ty = &cx.tcx.impl_trait_ref(d).and_then(|im| im.substs.self_ty());
+        if let Some(self_ty) = *self_ty {
+            if !self_ty.flags.get().contains(ty::TypeFlags::HAS_PARAMS) {
+                debug_impl_exists = true;
+            }
+        }
+    });
+    debug_impl_exists
+}
 
 const CONVENTIONS: [(&'static str, &'static [SelfKind]); 5] = [
     ("into_", &[ValueSelf]),
