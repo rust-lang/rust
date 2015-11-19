@@ -1,0 +1,8 @@
+[package]
+name = "build_helper"
+version = "0.1.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "build_helper"
+path = "lib.rs"
