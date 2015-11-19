@@ -22,7 +22,8 @@ use sync::Arc;
 use sys::handle::Handle;
 use sys::{c, cvt};
 use sys_common::FromInner;
-use vec::Vec;
+
+use super::to_u16s;
 
 pub struct File { handle: Handle }
 
@@ -377,15 +378,6 @@ impl fmt::Debug for File {
     }
 }
 
-pub fn to_u16s(s: &Path) -> io::Result<Vec<u16>> {
-    let mut maybe_result = s.as_os_str().encode_wide().collect();
-    if maybe_result.iter().any(|&u| u == 0) {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput, "paths cannot contain NULs"));
-    }
-    maybe_result.push(0);
-    Ok(maybe_result)
-}
-
 impl FileAttr {
     pub fn size(&self) -> u64 {
         ((self.data.nFileSizeHigh as u64) << 32) | (self.data.nFileSizeLow as u64)
@@ -622,6 +614,7 @@ fn directory_junctions_are_directories() {
     use ffi::OsStr;
     use env;
     use rand::{self, StdRng, Rng};
+    use vec::Vec;
 
     macro_rules! t {
         ($e:expr) => (match $e {
