@@ -85,7 +85,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box unicode::Unicode);
     reg.register_late_lint_pass(box strings::StringAdd);
     reg.register_early_lint_pass(box returns::ReturnPass);
-    reg.register_late_lint_pass(box methods::MethodsPass);
+    reg.register_late_lint_pass(box methods::MethodsPass::new());
     reg.register_late_lint_pass(box shadow::ShadowPass);
     reg.register_late_lint_pass(box types::LetPass);
     reg.register_late_lint_pass(box types::UnitCmp);
@@ -151,6 +151,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         matches::MATCH_BOOL,
         matches::MATCH_REF_PATS,
         matches::SINGLE_MATCH,
+        methods::OK_EXPECT,
         methods::SHOULD_IMPLEMENT_TRAIT,
         methods::STR_TO_STRING,
         methods::STRING_TO_STRING,

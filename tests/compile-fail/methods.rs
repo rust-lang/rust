@@ -35,6 +35,8 @@ impl Mul<T> for T {
 }
 
 fn main() {
+    use std::io;
+
     let opt = Some(0);
     let _ = opt.unwrap();  //~ERROR used unwrap() on an Option
 
@@ -46,4 +48,25 @@ fn main() {
     let v = &"str";
     let string = v.to_string();  //~ERROR `(*v).to_owned()` is faster
     let _again = string.to_string();  //~ERROR `String.to_string()` is a no-op
+
+    res.ok().expect("disaster!"); //~ERROR called `ok().expect()`
+    // the following should not warn, since `expect` isn't implemented unless
+    // the error type implements `Debug`
+    let res2: Result<i32, MyError> = Ok(0);
+    res2.ok().expect("oh noes!");
+    // we're currently don't warn if the error type has a type parameter
+    // (but it would be nice if we did)
+    let res3: Result<u32, MyErrorWithParam<u8>>= Ok(0);
+    res3.ok().expect("whoof");
+    let res4: Result<u32, io::Error> = Ok(0);
+    res4.ok().expect("argh"); //~ERROR called `ok().expect()`
+    let res5: io::Result<u32> = Ok(0);
+    res5.ok().expect("oops"); //~ERROR called `ok().expect()`
+}
+
+struct MyError(()); // doesn't implement Debug
+
+#[derive(Debug)]
+struct MyErrorWithParam<T> {
+    x: T
 }
