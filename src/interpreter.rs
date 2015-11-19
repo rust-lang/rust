@@ -34,7 +34,7 @@ impl Interpreter {
         }
     }
 
-    fn call(&mut self, mir: &Mir, _args: &[Value]) -> Value {
+    fn push_stack_frame(&mut self, mir: &Mir, _args: &[Value]) {
         self.call_stack.push(Frame {
             offset: self.value_stack.len(),
             num_args: mir.arg_decls.len(),
@@ -42,27 +42,55 @@ impl Interpreter {
             num_temps: mir.temp_decls.len(),
         });
 
-        {
-            let frame = self.call_stack.last().unwrap();
-            let frame_size = 1 + frame.num_args + frame.num_vars + frame.num_temps;
-            self.value_stack.extend(iter::repeat(Value::Uninit).take(frame_size));
-        }
+        let frame = self.call_stack.last().unwrap();
+        let frame_size = 1 + frame.num_args + frame.num_vars + frame.num_temps;
+        self.value_stack.extend(iter::repeat(Value::Uninit).take(frame_size));
 
-        let start_block = mir.basic_block_data(mir::START_BLOCK);
+        // TODO(tsion): Write args into value_stack.
+    }
 
-        for stmt in &start_block.statements {
-            use rustc_mir::repr::StatementKind::*;
+    fn call(&mut self, mir: &Mir, args: &[Value]) -> Value {
+        self.push_stack_frame(mir, args);
+        let mut block = mir::START_BLOCK;
 
-            match stmt.kind {
-                Assign(ref lvalue, ref rvalue) => {
-                    let index = self.eval_lvalue(lvalue);
-                    let value = self.eval_rvalue(rvalue);
-                    self.value_stack[index] = value;
+        loop {
+            use rustc_mir::repr::Terminator::*;
+
+            let block_data = mir.basic_block_data(block);
+
+            for stmt in &block_data.statements {
+                use rustc_mir::repr::StatementKind::*;
+
+                match stmt.kind {
+                    Assign(ref lvalue, ref rvalue) => {
+                        let index = self.eval_lvalue(lvalue);
+                        let value = self.eval_rvalue(rvalue);
+                        self.value_stack[index] = value;
+                    }
+
+                    Drop(_kind, ref _lv) => {
+                        // TODO
+                    },
+                }
+            }
+
+            println!("{:?}", block_data.terminator);
+            match block_data.terminator {
+                Goto { target } => block = target,
+
+                Panic { target: _target } => unimplemented!(),
+
+                If { ref cond, targets } => {
+                    match self.eval_operand(&cond) {
+                        Value::Bool(true) => block = targets[0],
+                        Value::Bool(false) => block = targets[1],
+                        cond_val => panic!("Non-boolean `if` condition value: {:?}", cond_val),
+                    }
                 }
 
-                Drop(_kind, ref _lv) => {
-                    // TODO
-                },
+                Return => break,
+
+                _ => unimplemented!(),
             }
         }
 
