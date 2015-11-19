@@ -5,8 +5,9 @@
 
 # Summary
 
-Move `std::thread::catch_panic` to `std::panic::recover` after removing the
-`Send` bound from the closure parameter.
+Move `std::thread::catch_panic` to `std::panic::recover` after replacing the
+`Send + 'static` bounds on the closure parameter with a new `PanicSafe`
+marker trait.
 
 # Motivation
 
@@ -132,10 +133,10 @@ broken `Vec` is then observed during its destructor, leading to the eventual
 memory unsafety.
 
 It's important to keep in mind that panic safety in Rust is not solely limited
-to memory safety. *Logical invariants* are often just as critical to keep correct
-during execution and no `unsafe` code in Rust is needed to break a logical
-invariant. In practice, however, these sorts of bugs are rarely observed due to
-Rust's design:
+to memory safety. *Logical invariants* are often just as critical to keep
+correct during execution and no `unsafe` code in Rust is needed to break a
+logical invariant. In practice, however, these sorts of bugs are rarely observed
+due to Rust's design:
 
 * Rust doesn't expose uninitialized memory
 * Panics cannot be caught in a thread
@@ -180,15 +181,179 @@ this RFC.
 
 At its heart, the change this RFC is proposing is to move
 `std::thread::catch_panic` to a new `std::panic` module and rename the function
-to `recover`. Additionally, the `Send` bound from the closure parameter will be
-removed (`'static` will stay), modifying the signature to be:
+to `recover`. Additionally, the `Send + 'static` bounds on the closure parameter
+will be replaced with a new trait `PanicSafe`, modifying the signature to
+be:
 
 ```rust
-fn recover<F: FnOnce() -> R + 'static, R>(f: F) -> thread::Result<R>
+fn recover<F: FnOnce() -> R + PanicSafe, R>(f: F) -> thread::Result<R>
 ```
 
-More generally, however, this RFC also claims that this stable function does
-not radically alter Rust's exception safety story (explained above).
+Before analyzing this new signature, let's take a look at this new
+`PanicSafe` trait.
+
+## A `PanicSafe` marker trait
+
+As discussed in the motivation section above, the current bounds of `Send +
+'static` on the closure parameter are too restrictive for common use cases, but
+they can serve as a "speed bump" (like poisoning on mutexes) to add to the
+repertoire of mitigation strategies that Rust has by default for dealing with
+panics.
+
+The purpose of this marker trait will be to identify patterns which do not need
+to worry about exception safety and allow them by default. In situations where
+exception safety *may* be concerned then an explicit annotation will be needed
+to allow the usage. In other words, this marker trait will act similarly to a
+"targeted `unsafe` block".
+
+For the implementation details, the following items will be added to the
+`std::panic` module.
+
+```rust
+pub trait PanicSafe {}
+impl PanicSafe for .. {}
+
+impl<'a, T> !PanicSafe for &'a mut T {}
+impl<'a, T: NoUnsafeCell> PanicSafe for &'a T {}
+impl<T> PanicSafe for Mutex<T> {}
+
+pub trait NoUnsafeCell {}
+impl NoUnsafeCell for .. {}
+impl<T> !NoUnsafeCell for UnsafeCell<T> {}
+
+pub struct AssertPanicSafe<T>(pub T);
+impl<T> PanicSafe for AssertPanicSafe<T> {}
+
+impl<T> Deref for AssertPanicSafe<T> {
+    type Target = T;
+    fn deref(&self) -> &T { &self.0 }
+}
+impl<T> DerefMut for AssertPanicSafe<T> {
+    fn deref_mut(&mut self) -> &mut T { &mut self.0 }
+}
+```
+
+Let's take a look at each of these items in detail:
+
+* `impl PanicSafe for .. {}` - this makes this trait a marker trait, implying
+  that a the trait is implemented for all types by default so long as the
+  consituent parts implement the trait.
+* `impl<T> !PanicSafe for &mut T {}` - this indicates that exception safety
+  needs to be handled when dealing with mutable references. Thinking about the
+  `recover` function, this means that the pointer could be modified inside the
+  block, but once it exits the data may or may not be in an invalid state.
+* `impl<T: NoUnsafeCell> PanicSafe for &T {}` - similarly to the above
+  implementation for `&mut T`, the purpose here is to highlight points where
+  data can be mutated across a `recover` boundary. If `&T` does not contains an
+  `UnsafeCell`, then no mutation should be possible and it is safe to allow.
+* `impl<T> PanicSafe for Mutex<T> {}` - as mutexes are poisoned by default, they
+  are considered exception safe.
+* `pub struct AssertPanicSafe<T>(pub T);` - this is the "opt out" structure of
+  exception safety. Wrapping something in this type indicates an assertion that
+  it is exception safe and shouldn't be warned about when crossing the `recover`
+  boundary. Otherwise this type simply acts like a `T`.
+
+### Example usage
+
+The only consumer of the `PanicSafe` bound is the `recover` function on the
+closure type parameter, and this ends up meaning that the *environment* needs to
+be exception safe. In terms of error messages, this causes the compiler to emit
+an error per closed-over-variable to indicate whether or not it is exception
+safe to share across the boundary.
+
+It is also a critical design aspect that usage of `PanicSafe` or
+`AssertPanicSafe` does not require `unsafe` code. As discussed above, panic
+safety does not directly lead to memory safety problems in otherwise safe code.
+
+In the normal usage of `recover`, neither `PanicSafe` nor `AssertPanicSafe`
+should be necessary to mention. For example when defining an FFI function:
+
+```rust
+#[no_mangle]
+pub extern fn called_from_c(ptr: *const c_char, num: i32) -> i32 {
+    let result = panic::recover(|| {
+        let s = unsafe { CStr::from_ptr(ptr) };
+        println!("{}: {}", s, num);
+    });
+    match result {
+        Ok(..) => 0,
+        Err(..) => 1,
+    }
+}
+```
+
+Additionally, if FFI functions instead use normal Rust types, `AssertPanicSafe`
+still need not be mentioned at all:
+
+```rust
+#[no_mangle]
+pub extern fn called_from_c(ptr: &i32) -> i32 {
+    let result = panic::recover(|| {
+        println!("{}", *ptr);
+    });
+    match result {
+        Ok(..) => 0,
+        Err(..) => 1,
+    }
+}
+```
+
+If, however, types are coming in which are flagged as not exception safe then
+the `AssertPanicSafe` wrapper can be used to leverage `recover`:
+
+```rust
+fn foo(data: &RefCell<i32>) {
+    panic::recover(|| {
+        println!("{}", data.borrow()); //~ ERROR RefCell is not panic safe
+    });
+}
+```
+
+This can be fixed with a simple assertion that the usage here is indeed
+exception safe:
+
+```rust
+fn foo(data: &RefCell<i32>) {
+    let data = AssertPanicSafe(data);
+    panic::recover(|| {
+        println!("{}", data.borrow()); // ok
+    });
+}
+```
+
+### Future extensions
+
+In the future, this RFC proposes adding the following implementation of
+`PanicSafe`:
+
+```rust
+impl<T: Send + 'static> PanicSafe for T {}
+```
+
+This implementation block encodes the "exception safe" boundary of
+`thread::spawn` but is unfortunately not allowed today due to coherence rules.
+If available, however, it would possibly reduce the number of false positives
+which require using `AssertPanicSafe`.
+
+### Global complexity
+
+Adding a new marker trait is a pretty hefty move for the standard library. The
+current marker traits, `Send` and `Sync`, are well known and are ubiquitous
+throughout the ecosystem and standard library. Due to the way that these
+properties are derived, adding a new marker trait can lead to a multiplicative
+increase in global complexity (as all types must consider the marker trait).
+
+With `PanicSafe`, however, it is expected that this is not the case. The
+`recover` function is not intented to be used commonly outside of FFI or thread
+pool-like abstractions. Within FFI the `PanicSafe` trait is typically not
+mentioned due to most types being relatively simple. Thread pools, on the other
+hand, will need to mention `AssertPanicSafe`, but will likely propagate panics
+to avoid exposing `PanicSafe` as a bound.
+
+Overall, the expected idiomatic usage of `recover` should mean that `PanicSafe`
+is rarely mentioned, if at all. It is intended that `AssertPanicSafe` is ideally
+only necessary where it actually needs to be considered (which idiomatically
+isn't too often) and even then it's lightweight to use.
 
 ## Will Rust have exceptions?
 
@@ -275,25 +440,6 @@ roughly analogous to an opaque "an unexpected error has occurred" message.
 
 Stabilizing `catch_panic` does little to change the tradeoffs around `Result`
 and `panic` that led to these conventions.
-
-## Why remove `Send`?
-
-One of the primary use cases of `recover` is in an FFI context, where lots
-of `*mut` and `*const` pointers are flying around. These two types aren't
-`Send` by default, so having their values cross the `catch_panic` boundary
-would be highly un-ergonomic (albeit still possible). As a result, this RFC
-proposes removing the `Send` bound from the function.
-
-## Why keep `'static`?
-
-This RFC proposes leaving the `'static` bound on the closure parameter for now.
-There isn't a clearly strong case (such as for `Send`) to remove this parameter
-just yet, and it helps mitigate exception safety issues related to shared
-references across the `recover` boundary.
-
-There is conversely also not a clearly strong case for *keeping* this bound, but
-as it's the more conservative route (and backwards compatible to remove) it will
-remain for now.
 
 # Drawbacks
 
