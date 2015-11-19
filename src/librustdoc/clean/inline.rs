@@ -170,12 +170,19 @@ fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean
         ty::TyBareFn(_, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
         _ => panic!("bad function"),
     };
+
+    let constness = if csearch::is_const_fn(&tcx.sess.cstore, did) {
+        hir::Constness::Const
+    } else {
+        hir::Constness::NotConst
+    };
+
     let predicates = tcx.lookup_predicates(did);
     clean::Function {
         decl: decl,
         generics: (&t.generics, &predicates, subst::FnSpace).clean(cx),
         unsafety: style,
-        constness: hir::Constness::NotConst,
+        constness: constness,
         abi: abi,
     }
 }
@@ -345,9 +352,15 @@ pub fn build_impl(cx: &DocContext,
                     clean::TyMethodItem(clean::TyMethod {
                         unsafety, decl, self_, generics, abi
                     }) => {
+                        let constness = if csearch::is_const_fn(&tcx.sess.cstore, did) {
+                            hir::Constness::Const
+                        } else {
+                            hir::Constness::NotConst
+                        };
+
                         clean::MethodItem(clean::Method {
                             unsafety: unsafety,
-                            constness: hir::Constness::NotConst,
+                            constness: constness,
                             decl: decl,
                             self_: self_,
                             generics: generics,
