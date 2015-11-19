@@ -1,19 +1,19 @@
 - Feature Name: Public Stability
 - Start Date: 2015-09-03
-- RFC PR: 
-- Rust Issue: 
+- RFC PR: [rust-lang/rfcs#1270](https://github.com/rust-lang/rfcs/pull/1270)
+- Rust Issue: [rust-lang/rust#29935](https://github.com/rust-lang/rust/issues/29935)
 
 # Summary
 
 This RFC proposes to allow library authors to use a `#[deprecated]` attribute,
-with optional `since = "`*version*`"` and `reason = "`*free text*`"`fields. The 
-compiler can then warn on deprecated items, while `rustdoc` can document their 
+with optional `since = "`*version*`"` and `reason = "`*free text*`"`fields. The
+compiler can then warn on deprecated items, while `rustdoc` can document their
 deprecation accordingly.
 
 # Motivation
 
-Library authors want a way to evolve their APIs; which also involves 
-deprecating items. To do this cleanly, they need to document their intentions 
+Library authors want a way to evolve their APIs; which also involves
+deprecating items. To do this cleanly, they need to document their intentions
 and give their users enough time to react.
 
 Currently there is no support from the language for this oft-wanted feature
@@ -23,7 +23,7 @@ interface to use while maximizing usefulness of the metadata introduced.
 
 # Detailed design
 
-Public API items (both plain `fn`s, methods, trait- and inherent 
+Public API items (both plain `fn`s, methods, trait- and inherent
 `impl`ementations as well as `const` definitions, type definitions, struct
 fields and enum variants) can be given a `#[deprecated]` attribute. All
 possible fields are optional:
@@ -34,14 +34,14 @@ versions, thus the content of this field is not checked (but will be by external
 lints, e.g. [rust-clippy](https://github.com/Manishearth/rust-clippy).
 * `reason` should contain a human-readable string outlining the reason for
 deprecating the item. While this field is not required, library authors are
-strongly advised to make use of it to convey the reason for the deprecation to 
-users of their library. The string is interpreted as plain unformatted text 
-(for now) so that rustdoc can include it in the item's documentation without 
+strongly advised to make use of it to convey the reason for the deprecation to
+users of their library. The string is interpreted as plain unformatted text
+(for now) so that rustdoc can include it in the item's documentation without
 messing up the formatting.
 
-On use of a *deprecated* item, `rustc` will `warn` of the deprecation. Note 
-that during Cargo builds, warnings on dependencies get silenced. While this has 
-the upside of keeping things tidy, it has a downside when it comes to 
+On use of a *deprecated* item, `rustc` will `warn` of the deprecation. Note
+that during Cargo builds, warnings on dependencies get silenced. While this has
+the upside of keeping things tidy, it has a downside when it comes to
 deprecation:
 
 Let's say I have my `llogiq` crate that depends on `foobar` which uses a
@@ -50,7 +50,7 @@ try to build `foobar` directly. We may want to create a service like `crater`
 to warn on use of deprecated items in library crates, however this is outside
 the scope of this RFC.
 
-`rustdoc` will show deprecation on items, with a `[deprecated]` box that may 
+`rustdoc` will show deprecation on items, with a `[deprecated]` box that may
 optionally show the version and reason where available.
 
 The language reference will be extended to describe this feature as outlined
@@ -65,16 +65,16 @@ to avoid a name clash.
 Crate author Anna wants to evolve her crate's API. She has found that one
 type, `Foo`, has a better implementation in the `rust-foo` crate. Also she has
 written a `frob(Foo)` function to replace the earlier `Foo::frobnicate(self)`
-method. 
+method.
 
 So Anna first bumps the version of her crate (because deprecation is always
-done on a version change) from `0.1.1` to `0.2.1`. She also adds the following 
+done on a version change) from `0.1.1` to `0.2.1`. She also adds the following
 prefix to the `Foo` type:
 
 ```
 extern crate rust_foo;
 
-#[deprecated(since = "0.2.1", use="rust_foo::Foo", 
+#[deprecated(since = "0.2.1", use="rust_foo::Foo",
     reason="The rust_foo version is more advanced, and this crates' will likely be discontinued")]
 struct Foo { .. }
 ```
@@ -113,8 +113,8 @@ deprecation checks.
 even predefine a number of valid reason strings, as JEP277 currently does
 * Add a `use` field containing a plain text of what to use instead
 * Add a `use` field containing a path to some function, type, etc. to replace
-the current feature. Currently with the rustc-private feature, people are 
-describing a replacement in the `reason` field, which is clearly not the 
+the current feature. Currently with the rustc-private feature, people are
+describing a replacement in the `reason` field, which is clearly not the
 original intention of the field
 * Optionally, `cargo` could offer a new dependency category: "doc-dependencies"
 which are used to pull in other crates' documentations to link them (this is
@@ -122,7 +122,7 @@ obviously not only relevant to deprecation)
 
 # Unresolved questions
 
-* What other restrictions should we introduce now to avoid being bound to a 
+* What other restrictions should we introduce now to avoid being bound to a
 possibly flawed design?
 * Can / Should the `std` library make use of the `#[deprecated]` extensions?
 * Bikeshedding: Are the names good enough?
