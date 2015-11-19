@@ -634,18 +634,13 @@ impl<'a> FmtVisitor<'a> {
         let header_str = self.format_header("enum ", ident, vis);
         self.buffer.push_str(&header_str);
 
-        let separator = if self.config.item_brace_style == BraceStyle::AlwaysNextLine &&
-                           !enum_def.variants.is_empty() {
-            format!("\n{}", self.block_indent.to_string(self.config))
-        } else {
-            " ".to_owned()
-        };
         let enum_snippet = self.snippet(span);
         let body_start = span.lo + BytePos(enum_snippet.find_uncommented("{").unwrap() as u32 + 1);
         let generics_str = self.format_generics(generics,
                                                 "{",
-                                                &separator,
                                                 "{",
+                                                self.config.item_brace_style,
+                                                enum_def.variants.is_empty(),
                                                 self.block_indent,
                                                 self.block_indent.block_indent(self.config),
                                                 mk_sp(span.lo, body_start))
@@ -820,24 +815,23 @@ impl<'a> FmtVisitor<'a> {
 
         let body_lo = span_after(span, "{", self.codemap);
 
-        let separator = if self.config.item_brace_style == BraceStyle::AlwaysNextLine &&
-                           !fields.is_empty() {
-            format!("\n{}", self.block_indent.to_string(self.config))
-        } else {
-            " ".to_owned()
-        };
-
         let generics_str = match generics {
             Some(g) => {
                 try_opt!(self.format_generics(g,
                                               "{",
-                                              &separator,
                                               "{",
+                                              self.config.item_brace_style,
+                                              fields.is_empty(),
                                               offset,
                                               offset + header_str.len(),
                                               mk_sp(span.lo, body_lo)))
             }
-            None => format!("{}{{", separator),
+            None => if self.config.item_brace_style == BraceStyle::AlwaysNextLine &&
+                       !fields.is_empty() {
+                format!("\n{}{{", self.block_indent.to_string(self.config))
+            } else {
+                " {".to_owned()
+            },
         };
         result.push_str(&generics_str);
 
@@ -969,8 +963,9 @@ impl<'a> FmtVisitor<'a> {
     fn format_generics(&self,
                        generics: &ast::Generics,
                        opener: &str,
-                       separator: &str,
                        terminator: &str,
+                       brace_style: BraceStyle,
+                       force_same_line_brace: bool,
                        offset: Indent,
                        generics_offset: Indent,
                        span: Span)
@@ -985,11 +980,22 @@ impl<'a> FmtVisitor<'a> {
                                                                       terminator,
                                                                       Some(span.hi)));
             result.push_str(&where_clause_str);
-            result.push('\n');
-            result.push_str(&self.block_indent.to_string(self.config));
+            if !force_same_line_brace &&
+               (brace_style == BraceStyle::SameLineWhere ||
+                brace_style == BraceStyle::AlwaysNextLine) {
+                result.push('\n');
+                result.push_str(&self.block_indent.to_string(self.config));
+            } else {
+                result.push(' ');
+            }
             result.push_str(opener);
         } else {
-            result.push_str(separator);
+            if !force_same_line_brace && brace_style == BraceStyle::AlwaysNextLine {
+                result.push('\n');
+                result.push_str(&self.block_indent.to_string(self.config));
+            } else {
+                result.push(' ');
+            }
             result.push_str(opener);
         }
 

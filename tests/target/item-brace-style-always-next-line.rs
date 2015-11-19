@@ -30,10 +30,8 @@ mod M {
 
     // For empty enums and structs, the brace remains on the same line.
     enum C<T>
-        where T: Copy
-    {}
+        where T: Copy {}
 
     struct D<T>
-        where T: Copy
-    {}
+        where T: Copy {}
 }
