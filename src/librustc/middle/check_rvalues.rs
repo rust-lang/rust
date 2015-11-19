@@ -20,21 +20,21 @@ use middle::ty;
 use syntax::ast;
 use rustc_front::hir;
 use syntax::codemap::Span;
-use rustc_front::visit;
+use rustc_front::intravisit;
 
 pub fn check_crate(tcx: &ty::ctxt,
                    krate: &hir::Crate) {
     let mut rvcx = RvalueContext { tcx: tcx };
-    visit::walk_crate(&mut rvcx, krate);
+    krate.visit_all_items(&mut rvcx);
 }
 
 struct RvalueContext<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
 }
 
-impl<'a, 'tcx, 'v> visit::Visitor<'v> for RvalueContext<'a, 'tcx> {
+impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for RvalueContext<'a, 'tcx> {
     fn visit_fn(&mut self,
-                fk: visit::FnKind<'v>,
+                fk: intravisit::FnKind<'v>,
                 fd: &'v hir::FnDecl,
                 b: &'v hir::Block,
                 s: Span,
@@ -50,7 +50,7 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for RvalueContext<'a, 'tcx> {
             let mut euv = euv::ExprUseVisitor::new(&mut delegate, &infcx);
             euv.walk_fn(fd, b);
         }
-        visit::walk_fn(self, fk, fd, b, s)
+        intravisit::walk_fn(self, fk, fd, b, s)
     }
 }
 

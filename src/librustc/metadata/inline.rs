@@ -13,7 +13,7 @@ use rustc_front::hir;
 use rustc_front::util::IdVisitor;
 use syntax::ast_util::{IdRange, IdRangeComputingVisitor, IdVisitingOperation};
 use syntax::ptr::P;
-use rustc_front::visit::Visitor;
+use rustc_front::intravisit::Visitor;
 use self::InlinedItem::*;
 
 /// The data we save and restore about an inlined item or method.  This is not
@@ -48,11 +48,7 @@ impl InlinedItem {
     }
 
     pub fn visit_ids<O: IdVisitingOperation>(&self, operation: &mut O) {
-        let mut id_visitor = IdVisitor {
-            operation: operation,
-            pass_through_items: true,
-            visited_outermost: false,
-        };
+        let mut id_visitor = IdVisitor::new(operation);
         self.visit(&mut id_visitor);
     }
 

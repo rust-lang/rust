@@ -18,8 +18,8 @@ use middle::lang_items;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
-use rustc_front::visit::Visitor;
-use rustc_front::visit;
+use rustc_front::intravisit::Visitor;
+use rustc_front::intravisit;
 use rustc_front::hir;
 
 use std::collections::HashSet;
@@ -50,7 +50,7 @@ pub fn check_crate(krate: &hir::Crate,
 
     {
         let mut cx = Context { sess: sess, items: items };
-        visit::walk_crate(&mut cx, krate);
+        krate.visit_all_items(&mut cx);
     }
     verify(sess, items);
 }
@@ -114,7 +114,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
             None => {}
             Some(lang_item) => self.register(&lang_item, i.span),
         }
-        visit::walk_foreign_item(self, i)
+        intravisit::walk_foreign_item(self, i)
     }
 }
 

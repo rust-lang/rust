@@ -27,7 +27,7 @@ use syntax::print::pp;
 use syntax::print::pprust::PrintState;
 use util::nodemap::NodeMap;
 use rustc_front::hir;
-use rustc_front::visit;
+use rustc_front::intravisit;
 use rustc_front::print::pprust;
 
 
@@ -194,11 +194,11 @@ fn build_nodeid_to_index(decl: Option<&hir::FnDecl>,
             index: &'a mut NodeMap<Vec<CFGIndex>>,
         }
         let mut formals = Formals { entry: entry, index: index };
-        visit::walk_fn_decl(&mut formals, decl);
-        impl<'a, 'v> visit::Visitor<'v> for Formals<'a> {
+        intravisit::walk_fn_decl(&mut formals, decl);
+        impl<'a, 'v> intravisit::Visitor<'v> for Formals<'a> {
             fn visit_pat(&mut self, p: &hir::Pat) {
                 self.index.entry(p.id).or_insert(vec![]).push(self.entry);
-                visit::walk_pat(self, p)
+                intravisit::walk_pat(self, p)
             }
         }
     }
@@ -533,7 +533,7 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
 
     fn pretty_print_to<'b>(&self, wr: Box<io::Write + 'b>,
                            blk: &hir::Block) -> io::Result<()> {
-        let mut ps = pprust::rust_printer_annotated(wr, self);
+        let mut ps = pprust::rust_printer_annotated(wr, self, None);
         try!(ps.cbox(pprust::indent_unit));
         try!(ps.ibox(0));
         try!(ps.print_block(blk));

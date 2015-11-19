@@ -43,7 +43,6 @@ use syntax::attr;
 use syntax::codemap::DUMMY_SP;
 use syntax::ptr::P;
 
-use rustc_front::visit;
 use rustc_front::hir;
 
 // drop_glue pointer, size, align.
@@ -63,21 +62,12 @@ pub fn trans_impl(ccx: &CrateContext,
 
     debug!("trans_impl(name={}, id={})", name, id);
 
-    let mut v = TransItemVisitor { ccx: ccx };
-
     // Both here and below with generic methods, be sure to recurse and look for
     // items that we need to translate.
     if !generics.ty_params.is_empty() {
-        for impl_item in impl_items {
-            match impl_item.node {
-                hir::ImplItemKind::Method(..) => {
-                    visit::walk_impl_item(&mut v, impl_item);
-                }
-                _ => {}
-            }
-        }
         return;
     }
+
     for impl_item in impl_items {
         match impl_item.node {
             hir::ImplItemKind::Method(ref sig, ref body) => {
@@ -94,7 +84,6 @@ pub fn trans_impl(ccx: &CrateContext,
                                        if is_origin { OriginalTranslation } else { InlinedCopy });
                     }
                 }
-                visit::walk_impl_item(&mut v, impl_item);
             }
             _ => {}
         }

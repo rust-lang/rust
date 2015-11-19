@@ -1,8 +1,8 @@
 digraph block {
     N0[label="entry"];
     N1[label="exit"];
-    N2[label="stmt struct S19 {\l    x: isize,\l}\l"];
-    N3[label="stmt impl S19 {\l    fn inner(self) -> S19 { S19{x: self.x + self.x,} }\l}\l"];
+    N2[label="stmt "];
+    N3[label="stmt "];
     N4[label="expr 19"];
     N5[label="expr S19{x: 19,}"];
     N6[label="local s"];
@@ -11,7 +11,7 @@ digraph block {
     N9[label="expr s.inner()"];
     N10[label="expr s.inner().inner()"];
     N11[label="stmt s.inner().inner();"];
-    N12[label="block {\l    struct S19 {\l        x: isize,\l    }\l    impl S19 {\l        fn inner(self) -> S19 { S19{x: self.x + self.x,} }\l    }\l    let s = S19{x: 19,};\l    s.inner().inner();\l}\l"];
+    N12[label="block { let s = S19{x: 19,}; s.inner().inner(); }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;

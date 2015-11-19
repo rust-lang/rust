@@ -30,8 +30,8 @@ use syntax::codemap::Span;
 use syntax::ast::NodeId;
 use rustc_front::hir;
 use rustc_front::hir::{Expr, FnDecl, Block, Pat};
-use rustc_front::visit;
-use rustc_front::visit::Visitor;
+use rustc_front::intravisit;
+use rustc_front::intravisit::Visitor;
 
 mod lifetime;
 mod restrictions;
@@ -533,7 +533,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
             }
         }
 
-        visit::walk_expr(self, ex);
+        intravisit::walk_expr(self, ex);
     }
 }
 

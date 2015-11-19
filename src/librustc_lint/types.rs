@@ -28,7 +28,7 @@ use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 
 use rustc_front::hir;
-use rustc_front::visit::{self, Visitor};
+use rustc_front::intravisit::{self, Visitor};
 use rustc_front::util::is_shift_binop;
 
 declare_lint! {
@@ -626,7 +626,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ImproperCTypesVisitor<'a, 'tcx> {
                     "found Rust tuple type in foreign module; \
                      consider using a struct instead`")
             }
-            _ => visit::walk_ty(self, ty)
+            _ => intravisit::walk_ty(self, ty)
         }
     }
 }

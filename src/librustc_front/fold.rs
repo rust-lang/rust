@@ -77,8 +77,12 @@ pub trait Folder : Sized {
         noop_fold_foreign_item(ni, self)
     }
 
-    fn fold_item(&mut self, i: P<Item>) -> P<Item> {
+    fn fold_item(&mut self, i: Item) -> Item {
         noop_fold_item(i, self)
+    }
+
+    fn fold_item_id(&mut self, i: ItemId) -> ItemId {
+        noop_fold_item_id(i, self)
     }
 
     fn fold_struct_field(&mut self, sf: StructField) -> StructField {
@@ -271,7 +275,13 @@ pub trait Folder : Sized {
         noop_fold_where_predicate(where_predicate, self)
     }
 
+    /// called for the `id` on each declaration
     fn new_id(&mut self, i: NodeId) -> NodeId {
+        i
+    }
+
+    /// called for ids that are references (e.g., ItemDef)
+    fn map_id(&mut self, i: NodeId) -> NodeId {
         i
     }
 
@@ -342,7 +352,7 @@ pub fn noop_fold_decl<T: Folder>(d: P<Decl>, fld: &mut T) -> P<Decl> {
                 span: fld.new_span(span),
             },
             DeclItem(it) => Spanned {
-                node: DeclItem(fld.fold_item(it)),
+                node: DeclItem(fld.fold_item_id(it)),
                 span: fld.new_span(span),
             },
         }
@@ -879,34 +889,40 @@ pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T) -> P<ImplI
     })
 }
 
-pub fn noop_fold_mod<T: Folder>(Mod { inner, items }: Mod, folder: &mut T) -> Mod {
+pub fn noop_fold_mod<T: Folder>(Mod { inner, item_ids }: Mod, folder: &mut T) -> Mod {
     Mod {
         inner: folder.new_span(inner),
-        items: items.into_iter().map(|x| folder.fold_item(x)).collect(),
+        item_ids: item_ids.into_iter().map(|x| folder.fold_item_id(x)).collect(),
     }
 }
 
-pub fn noop_fold_crate<T: Folder>(Crate { module, attrs, config, span, exported_macros }: Crate,
+pub fn noop_fold_crate<T: Folder>(Crate { module, attrs, config, span,
+                                          exported_macros, items }: Crate,
                                   folder: &mut T)
                                   -> Crate {
     let config = folder.fold_meta_items(config);
 
-    let crate_mod = folder.fold_item(P(hir::Item {
+    let crate_mod = folder.fold_item(hir::Item {
         name: token::special_idents::invalid.name,
         attrs: attrs,
         id: DUMMY_NODE_ID,
         vis: hir::Public,
         span: span,
         node: hir::ItemMod(module),
-    }));
+    });
 
-    let (module, attrs, span) =
-        crate_mod.and_then(|hir::Item { attrs, span, node, .. }| {
+    let (module, attrs, span) = match crate_mod {
+        hir::Item { attrs, span, node, .. } => {
             match node {
                 hir::ItemMod(m) => (m, attrs, span),
                 _ => panic!("fold converted a module to not a module"),
             }
-        });
+        }
+    };
+
+    let items = items.into_iter()
+                     .map(|(id, item)| (id, folder.fold_item(item)))
+                     .collect();
 
     Crate {
         module: module,
@@ -914,31 +930,37 @@ pub fn noop_fold_crate<T: Folder>(Crate { module, attrs, config, span, exported_
         config: config,
         span: span,
         exported_macros: exported_macros,
+        items: items,
     }
 }
 
-pub fn noop_fold_item<T: Folder>(item: P<Item>, folder: &mut T) -> P<Item> {
-    item.map(|Item { id, name, attrs, node, vis, span }| {
-        let id = folder.new_id(id);
-        let node = folder.fold_item_underscore(node);
-        // FIXME: we should update the impl_pretty_name, but it uses pretty printing.
-        // let ident = match node {
-        //     // The node may have changed, recompute the "pretty" impl name.
-        //     ItemImpl(_, _, _, ref maybe_trait, ref ty, _) => {
-        //         impl_pretty_name(maybe_trait, Some(&**ty))
-        //     }
-        //     _ => ident
-        // };
+pub fn noop_fold_item_id<T: Folder>(i: ItemId, folder: &mut T) -> ItemId {
+    let id = folder.map_id(i.id);
+    ItemId { id: id }
+}
 
-        Item {
-            id: id,
-            name: folder.fold_name(name),
-            attrs: fold_attrs(attrs, folder),
-            node: node,
-            vis: vis,
-            span: folder.new_span(span),
-        }
-    })
+// fold one item into one item
+pub fn noop_fold_item<T: Folder>(item: Item, folder: &mut T) -> Item {
+    let Item { id, name, attrs, node, vis, span } = item;
+    let id = folder.new_id(id);
+    let node = folder.fold_item_underscore(node);
+    // FIXME: we should update the impl_pretty_name, but it uses pretty printing.
+    // let ident = match node {
+    //     // The node may have changed, recompute the "pretty" impl name.
+    //     ItemImpl(_, _, _, ref maybe_trait, ref ty, _) => {
+    //         impl_pretty_name(maybe_trait, Some(&**ty))
+    //     }
+    //     _ => ident
+    // };
+
+    Item {
+        id: id,
+        name: folder.fold_name(name),
+        attrs: fold_attrs(attrs, folder),
+        node: node,
+        vis: vis,
+        span: folder.new_span(span),
+    }
 }
 
 pub fn noop_fold_foreign_item<T: Folder>(ni: P<ForeignItem>, folder: &mut T) -> P<ForeignItem> {

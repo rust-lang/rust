@@ -32,7 +32,7 @@ use util::nodemap::NodeMap;
 
 use rustc_front::hir;
 use rustc_front::print::pprust::lifetime_to_string;
-use rustc_front::visit::{self, Visitor, FnKind};
+use rustc_front::intravisit::{self, Visitor, FnKind};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub enum DefRegion {
@@ -95,30 +95,28 @@ static ROOT_SCOPE: ScopeChain<'static> = RootScope;
 
 pub fn krate(sess: &Session, krate: &hir::Crate, def_map: &DefMap) -> NamedRegionMap {
     let mut named_region_map = NodeMap();
-    visit::walk_crate(&mut LifetimeContext {
+    krate.visit_all_items(&mut LifetimeContext {
         sess: sess,
         named_region_map: &mut named_region_map,
         scope: &ROOT_SCOPE,
         def_map: def_map,
         trait_ref_hack: false,
         labels_in_fn: vec![],
-    }, krate);
+    });
     sess.abort_if_errors();
     named_region_map
 }
 
 impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     fn visit_item(&mut self, item: &hir::Item) {
-        // Items save/restore the set of labels. This way inner items
-        // can freely reuse names, be they loop labels or lifetimes.
-        let saved = replace(&mut self.labels_in_fn, vec![]);
+        assert!(self.labels_in_fn.is_empty());
 
         // Items always introduce a new root scope
         self.with(RootScope, |_, this| {
             match item.node {
                 hir::ItemFn(..) => {
                     // Fn lifetimes get added in visit_fn below:
-                    visit::walk_item(this, item);
+                    intravisit::walk_item(this, item);
                 }
                 hir::ItemExternCrate(_) |
                 hir::ItemUse(_) |
@@ -128,7 +126,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                 hir::ItemStatic(..) |
                 hir::ItemConst(..) => {
                     // These sorts of items have no lifetime parameters at all.
-                    visit::walk_item(this, item);
+                    intravisit::walk_item(this, item);
                 }
                 hir::ItemTy(_, ref generics) |
                 hir::ItemEnum(_, ref generics) |
@@ -140,14 +138,14 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     let early_scope = EarlyScope(subst::TypeSpace, lifetimes, &ROOT_SCOPE);
                     this.with(early_scope, |old_scope, this| {
                         this.check_lifetime_defs(old_scope, lifetimes);
-                        visit::walk_item(this, item);
+                        intravisit::walk_item(this, item);
                     });
                 }
             }
         });
 
-        // Done traversing the item; restore saved set of labels.
-        replace(&mut self.labels_in_fn, saved);
+        // Done traversing the item; remove any labels it created
+        self.labels_in_fn.truncate(0);
     }
 
     fn visit_foreign_item(&mut self, item: &hir::ForeignItem) {
@@ -160,11 +158,11 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
             match item.node {
                 hir::ForeignItemFn(_, ref generics) => {
                     this.visit_early_late(subst::FnSpace, generics, |this| {
-                        visit::walk_foreign_item(this, item);
+                        intravisit::walk_foreign_item(this, item);
                     })
                 }
                 hir::ForeignItemStatic(..) => {
-                    visit::walk_foreign_item(this, item);
+                    intravisit::walk_foreign_item(this, item);
                 }
             }
         });
@@ -199,7 +197,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     // a bare fn has no bounds, so everything
                     // contained within is scoped within its binder.
                     this.check_lifetime_defs(old_scope, &c.lifetimes);
-                    visit::walk_ty(this, ty);
+                    intravisit::walk_ty(this, ty);
                 });
             }
             hir::TyPath(None, ref path) => {
@@ -212,12 +210,12 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                         });
                     }
                     _ => {
-                        visit::walk_ty(self, ty);
+                        intravisit::walk_ty(self, ty);
                     }
                 }
             }
             _ => {
-                visit::walk_ty(self, ty)
+                intravisit::walk_ty(self, ty)
             }
         }
     }
@@ -230,9 +228,9 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         if let hir::MethodTraitItem(ref sig, None) = trait_item.node {
             self.visit_early_late(
                 subst::FnSpace, &sig.generics,
-                |this| visit::walk_trait_item(this, trait_item))
+                |this| intravisit::walk_trait_item(this, trait_item))
         } else {
-            visit::walk_trait_item(self, trait_item);
+            intravisit::walk_trait_item(self, trait_item);
         }
 
         replace(&mut self.labels_in_fn, saved);
@@ -241,7 +239,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     fn visit_block(&mut self, b: &hir::Block) {
         self.with(BlockScope(region::DestructionScopeData::new(b.id),
                              self.scope),
-                  |_, this| visit::walk_block(this, b));
+                  |_, this| intravisit::walk_block(this, b));
     }
 
     fn visit_lifetime(&mut self, lifetime_ref: &hir::Lifetime) {
@@ -317,7 +315,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                 for lifetime in &trait_ref.bound_lifetimes {
                     this.visit_lifetime_def(lifetime);
                 }
-                visit::walk_path(this, &trait_ref.trait_ref.path)
+                intravisit::walk_path(this, &trait_ref.trait_ref.path)
             })
         } else {
             self.visit_trait_ref(&trait_ref.trait_ref)
@@ -417,7 +415,7 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
 
                 self.labels_in_fn.push((label, ex.span));
             }
-            visit::walk_expr(self, ex)
+            intravisit::walk_expr(self, ex)
         }
 
         fn visit_item(&mut self, _: &hir::Item) {
@@ -463,7 +461,7 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
 }
 
 impl<'a> LifetimeContext<'a> {
-    // This is just like visit::walk_fn, except that it extracts the
+    // This is just like intravisit::walk_fn, except that it extracts the
     // labels of the function body and swaps them in before visiting
     // the function body itself.
     fn walk_fn<'b>(&mut self,
@@ -473,16 +471,16 @@ impl<'a> LifetimeContext<'a> {
                    _span: Span) {
         match fk {
             FnKind::ItemFn(_, generics, _, _, _, _) => {
-                visit::walk_fn_decl(self, fd);
+                intravisit::walk_fn_decl(self, fd);
                 self.visit_generics(generics);
             }
             FnKind::Method(_, sig, _) => {
-                visit::walk_fn_decl(self, fd);
+                intravisit::walk_fn_decl(self, fd);
                 self.visit_generics(&sig.generics);
                 self.visit_explicit_self(&sig.explicit_self);
             }
             FnKind::Closure(..) => {
-                visit::walk_fn_decl(self, fd);
+                intravisit::walk_fn_decl(self, fd);
             }
         }
 

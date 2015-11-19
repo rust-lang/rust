@@ -29,7 +29,7 @@ use syntax::codemap::{Span, DUMMY_SP};
 
 use rustc_front::hir;
 use rustc_front::hir::{ViewPathGlob, ViewPathList, ViewPathSimple};
-use rustc_front::visit::{self, Visitor};
+use rustc_front::intravisit::Visitor;
 
 struct UnusedImportCheckVisitor<'a, 'b: 'a, 'tcx: 'b> {
     resolver: &'a mut Resolver<'b, 'tcx>,
@@ -118,7 +118,6 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
         // because this means that they were generated in some fashion by the
         // compiler and we don't need to consider them.
         if item.vis == hir::Public || item.span == DUMMY_SP {
-            visit::walk_item(self, item);
             return;
         }
 
@@ -158,12 +157,10 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             }
             _ => {}
         }
-
-        visit::walk_item(self, item);
     }
 }
 
 pub fn check_crate(resolver: &mut Resolver, krate: &hir::Crate) {
     let mut visitor = UnusedImportCheckVisitor { resolver: resolver };
-    visit::walk_crate(&mut visitor, krate);
+    krate.visit_all_items(&mut visitor);
 }

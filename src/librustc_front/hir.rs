@@ -35,6 +35,8 @@ pub use self::ViewPath_::*;
 pub use self::Visibility::*;
 pub use self::PathParameters::*;
 
+use intravisit::Visitor;
+use std::collections::BTreeMap;
 use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
 use syntax::abi::Abi;
 use syntax::ast::{Name, Ident, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
@@ -320,13 +322,41 @@ pub struct WhereEqPredicate {
     pub ty: P<Ty>,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
     pub module: Mod,
     pub attrs: Vec<Attribute>,
     pub config: CrateConfig,
     pub span: Span,
     pub exported_macros: Vec<MacroDef>,
+
+    // NB: We use a BTreeMap here so that `visit_all_items` iterates
+    // over the ids in increasing order. In principle it should not
+    // matter what order we visit things in, but in *practice* it
+    // does, because it can affect the order in which errors are
+    // detected, which in turn can make compile-fail tests yield
+    // slightly different results.
+    pub items: BTreeMap<NodeId, Item>,
+}
+
+impl Crate {
+    pub fn item(&self, id: NodeId) -> &Item {
+        &self.items[&id]
+    }
+
+    /// Visits all items in the crate in some determinstic (but
+    /// unspecified) order. If you just need to process every item,
+    /// but don't care about nesting, this method is the best choice.
+    ///
+    /// If you do care about nesting -- usually because your algorithm
+    /// follows lexical scoping rules -- then you want a different
+    /// approach. You should override `visit_nested_item` in your
+    /// visitor and then call `intravisit::walk_crate` instead.
+    pub fn visit_all_items<'hir, V:Visitor<'hir>>(&'hir self, visitor: &mut V) {
+        for (_, item) in &self.items {
+            visitor.visit_item(item);
+        }
+    }
 }
 
 /// A macro definition, in this crate or imported from another.
@@ -537,7 +567,7 @@ pub enum Decl_ {
     /// A local (let) binding:
     DeclLocal(P<Local>),
     /// An item binding:
-    DeclItem(P<Item>),
+    DeclItem(ItemId),
 }
 
 /// represents one arm of a 'match'
@@ -992,7 +1022,7 @@ pub struct Mod {
     /// For `mod foo;`, the inner span ranges from the first token
     /// to the last token in the external file.
     pub inner: Span,
-    pub items: Vec<P<Item>>,
+    pub item_ids: Vec<ItemId>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1205,7 +1235,13 @@ impl VariantData {
     }
 }
 
-
+// The bodies for items are stored "out of line", in a separate
+// hashmap in the `Crate`. Here we just record the node-id of the item
+// so it can fetched later.
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct ItemId {
+    pub id: NodeId,
+}
 
 //  FIXME (#3300): Should allow items to be anonymous. Right now
 //  we just use dummy names for anon items.

@@ -29,8 +29,7 @@ use std::cell::Cell;
 use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
 use rustc_front::print::pprust::pat_to_string;
-use rustc_front::visit;
-use rustc_front::visit::Visitor;
+use rustc_front::intravisit::{self, Visitor};
 use rustc_front::util as hir_util;
 use rustc_front::hir;
 
@@ -153,17 +152,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 // traffic in node-ids or update tables in the type context etc.
 
 impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
-    fn visit_item(&mut self, _: &hir::Item) {
-        // Ignore items
-    }
-
     fn visit_stmt(&mut self, s: &hir::Stmt) {
         if self.fcx.writeback_errors.get() {
             return;
         }
 
         self.visit_node_id(ResolvingExpr(s.span), hir_util::stmt_id(s));
-        visit::walk_stmt(self, s);
+        intravisit::walk_stmt(self, s);
     }
 
     fn visit_expr(&mut self, e: &hir::Expr) {
@@ -183,7 +178,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
             }
         }
 
-        visit::walk_expr(self, e);
+        intravisit::walk_expr(self, e);
     }
 
     fn visit_block(&mut self, b: &hir::Block) {
@@ -192,7 +187,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         }
 
         self.visit_node_id(ResolvingExpr(b.span), b.id);
-        visit::walk_block(self, b);
+        intravisit::walk_block(self, b);
     }
 
     fn visit_pat(&mut self, p: &hir::Pat) {
@@ -207,7 +202,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
                p.id,
                self.tcx().node_id_to_type(p.id));
 
-        visit::walk_pat(self, p);
+        intravisit::walk_pat(self, p);
     }
 
     fn visit_local(&mut self, l: &hir::Local) {
@@ -218,7 +213,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         let var_ty = self.fcx.local_ty(l.span, l.id);
         let var_ty = self.resolve(&var_ty, ResolvingLocal(l.span));
         write_ty_to_tcx(self.tcx(), l.id, var_ty);
-        visit::walk_local(self, l);
+        intravisit::walk_local(self, l);
     }
 
     fn visit_ty(&mut self, t: &hir::Ty) {
@@ -228,10 +223,10 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
                 write_ty_to_tcx(self.tcx(), count_expr.id, self.tcx().types.usize);
             }
             hir::TyBareFn(ref function_declaration) => {
-                visit::walk_fn_decl_nopat(self, &function_declaration.decl);
+                intravisit::walk_fn_decl_nopat(self, &function_declaration.decl);
                 walk_list!(self, visit_lifetime_def, &function_declaration.lifetimes);
             }
-            _ => visit::walk_ty(self, t)
+            _ => intravisit::walk_ty(self, t)
         }
     }
 }
