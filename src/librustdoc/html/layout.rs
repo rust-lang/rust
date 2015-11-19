@@ -137,7 +137,7 @@ r##"<!DOCTYPE html>
     <script src="{root_path}jquery.js"></script>
     <script src="{root_path}main.js"></script>
     {play_js}
-    <script async src="{root_path}search-index.js"></script>
+    <script defer src="{root_path}search-index.js"></script>
 </body>
 </html>"##,
     content   = *t,
