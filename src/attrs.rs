@@ -49,7 +49,7 @@ fn is_relevant_item(item: &Item) -> bool {
 
 fn is_relevant_impl(item: &ImplItem) -> bool {
     match item.node {
-        MethodImplItem(_, ref block) => is_relevant_block(block),
+        ImplItemKind::Method(_, ref block) => is_relevant_block(block),
         _ => false
     }
 }

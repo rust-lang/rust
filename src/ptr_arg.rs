@@ -34,7 +34,7 @@ impl LateLintPass for PtrArg {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
-        if let &MethodImplItem(ref sig, _) = &item.node {
+        if let &ImplItemKind::Method(ref sig, _) = &item.node {
             if let Some(Node::NodeItem(it)) = cx.tcx.map.find(cx.tcx.map.get_parent(item.id)) {
                 if let ItemImpl(_, _, _, Some(_), _, _) = it.node {
                     return; // ignore trait impls

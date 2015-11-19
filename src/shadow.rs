@@ -2,7 +2,7 @@ use std::ops::Deref;
 use rustc_front::hir::*;
 use reexport::*;
 use syntax::codemap::Span;
-use rustc_front::visit::{Visitor, FnKind};
+use rustc_front::intravisit::{Visitor, FnKind};
 
 use rustc::lint::*;
 use rustc::middle::def::Def::{DefVariant, DefStruct};
@@ -237,7 +237,7 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
 
 fn check_ty(cx: &LateContext, ty: &Ty, bindings: &mut Vec<(Name, Span)>) {
     match ty.node {
-        TyParen(ref sty) | TyObjectSum(ref sty, _) |
+        TyObjectSum(ref sty, _) |
         TyVec(ref sty) => check_ty(cx, sty, bindings),
         TyFixedLengthVec(ref fty, ref expr) => {
             check_ty(cx, fty, bindings);

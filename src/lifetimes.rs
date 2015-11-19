@@ -2,7 +2,7 @@ use rustc_front::hir::*;
 use reexport::*;
 use rustc::lint::*;
 use syntax::codemap::Span;
-use rustc_front::visit::{Visitor, walk_ty, walk_ty_param_bound};
+use rustc_front::intravisit::{Visitor, walk_ty, walk_ty_param_bound};
 use rustc::middle::def::Def::{DefTy, DefTrait};
 use std::collections::HashSet;
 
@@ -29,7 +29,7 @@ impl LateLintPass for LifetimePass {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
-        if let MethodImplItem(ref sig, _) = item.node {
+        if let ImplItemKind::Method(ref sig, _) = item.node {
             check_fn_inner(cx, &sig.decl, Some(&sig.explicit_self),
                            &sig.generics, item.span);
         }
