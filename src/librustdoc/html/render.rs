@@ -1829,12 +1829,12 @@ fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
-    try!(write!(w, "<pre class='rust fn'>{vis}{unsafety}{abi}{constness}fn \
+    try!(write!(w, "<pre class='rust fn'>{vis}{constness}{unsafety}{abi}fn \
                     {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(it.visibility),
+           constness = ConstnessSpace(f.constness),
            unsafety = UnsafetySpace(f.unsafety),
            abi = AbiSpace(f.abi),
-           constness = ConstnessSpace(f.constness),
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
            where_clause = WhereClause(&f.generics),
@@ -2055,8 +2055,8 @@ fn render_assoc_item(w: &mut fmt::Formatter, meth: &clean::Item,
         };
         write!(w, "{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
-               UnsafetySpace(unsafety),
                ConstnessSpace(constness),
+               UnsafetySpace(unsafety),
                match abi {
                    Abi::Rust => String::new(),
                    a => format!("extern {} ", a.to_string())
