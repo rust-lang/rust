@@ -105,7 +105,6 @@ fn is_cast_ty_equal(left: &Ty, right: &Ty) -> bool {
             is_cast_ty_equal(&*lrmut.ty, &*rrmut.ty),
         (&TyPath(ref lq, ref lpath), &TyPath(ref rq, ref rpath)) =>
             both(lq, rq, is_qself_equal) && is_path_equal(lpath, rpath),
-        (&TyParen(ref lty), &TyParen(ref rty)) => is_cast_ty_equal(lty, rty),
         (&TyInfer, &TyInfer) => true,
         _ => false
     }

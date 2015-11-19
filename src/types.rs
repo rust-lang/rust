@@ -3,7 +3,7 @@ use rustc_front::hir::*;
 use reexport::*;
 use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::codemap::Span;
-use rustc_front::visit::{FnKind, Visitor, walk_ty};
+use rustc_front::intravisit::{FnKind, Visitor, walk_ty};
 use rustc::middle::ty;
 use syntax::ast::IntTy::*;
 use syntax::ast::UintTy::*;
@@ -305,8 +305,8 @@ impl LateLintPass for TypeComplexityPass {
 
     fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
         match item.node {
-            ConstImplItem(ref ty, _) |
-            TypeImplItem(ref ty) => check_type(cx, ty),
+            ImplItemKind::Const(ref ty, _) |
+            ImplItemKind::Type(ref ty) => check_type(cx, ty),
             // methods are covered by check_fn
             _ => ()
         }

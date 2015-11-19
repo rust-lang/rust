@@ -4,7 +4,7 @@ use rustc_front::hir::*;
 use reexport::*;
 use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::codemap::{Span, Spanned};
-use rustc_front::visit::FnKind;
+use rustc_front::intravisit::FnKind;
 use rustc::middle::ty;
 use rustc::middle::const_eval::ConstVal::Float;
 use rustc::middle::const_eval::eval_const_expr_partial;

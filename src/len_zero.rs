@@ -71,7 +71,7 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[P<TraitItem>]
 
 fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[P<ImplItem>]) {
     fn is_named_self(item: &ImplItem, name: &str) -> bool {
-        item.name.as_str() == name && if let MethodImplItem(ref sig, _) =
+        item.name.as_str() == name && if let ImplItemKind::Method(ref sig, _) =
             item.node { is_self_sig(sig) } else { false }
     }
 

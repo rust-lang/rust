@@ -77,7 +77,7 @@ impl LateLintPass for MethodsPass {
         if let ItemImpl(_, _, _, None, ref ty, ref items) = item.node {
             for implitem in items {
                 let name = implitem.name;
-                if let MethodImplItem(ref sig, _) = implitem.node {
+                if let ImplItemKind::Method(ref sig, _) = implitem.node {
                     // check missing trait implementations
                     for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
                         if_let_chain! {

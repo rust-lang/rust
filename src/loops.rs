@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use reexport::*;
-use rustc_front::visit::{Visitor, walk_expr, walk_block, walk_decl};
+use rustc_front::intravisit::{Visitor, walk_expr, walk_block, walk_decl};
 use rustc::middle::ty;
 use rustc::middle::def::DefLocal;
 use consts::{constant_simple, Constant};
