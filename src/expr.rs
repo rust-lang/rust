@@ -688,6 +688,27 @@ fn is_simple_block(block: &ast::Block, codemap: &CodeMap) -> bool {
     !contains_comment(&snippet)
 }
 
+/// Checks whether a block contains at most one statement or expression, and no comments.
+pub fn is_simple_block_stmt(block: &ast::Block, codemap: &CodeMap) -> bool {
+    if (!block.stmts.is_empty() && block.expr.is_some()) ||
+       (block.stmts.len() != 1 && block.expr.is_none()) {
+        return false;
+    }
+
+    let snippet = codemap.span_to_snippet(block.span).unwrap();
+    !contains_comment(&snippet)
+}
+
+/// Checks whether a block contains no statements, expressions, or comments.
+pub fn is_empty_block(block: &ast::Block, codemap: &CodeMap) -> bool {
+    if !block.stmts.is_empty() || block.expr.is_some() {
+        return false;
+    }
+
+    let snippet = codemap.span_to_snippet(block.span).unwrap();
+    !contains_comment(&snippet)
+}
+
 // inter-match-arm-comment-rules:
 //  - all comments following a match arm before the start of the next arm
 //    are about the second arm

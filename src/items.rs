@@ -15,14 +15,14 @@ use utils::{format_mutability, format_visibility, contains_skip, span_after, end
             wrap_str, last_line_width, semicolon_for_expr, semicolon_for_stmt};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
             DefinitiveListTactic, definitive_tactic, format_item_list};
-use expr::rewrite_assign_rhs;
-use comment::{FindUncommented, contains_comment};
+use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
+use comment::FindUncommented;
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, StructLitStyle};
 
 use syntax::{ast, abi};
-use syntax::codemap::{Span, BytePos, CodeMap, mk_sp};
+use syntax::codemap::{Span, BytePos, mk_sp};
 use syntax::print::pprust;
 use syntax::parse::token;
 
@@ -1391,24 +1391,4 @@ fn span_for_where_pred(pred: &ast::WherePredicate) -> Span {
         ast::WherePredicate::RegionPredicate(ref p) => p.span,
         ast::WherePredicate::EqPredicate(ref p) => p.span,
     }
-}
-
-// Checks whether a block contains at most one statement or expression, and no comments.
-fn is_simple_block_stmt(block: &ast::Block, codemap: &CodeMap) -> bool {
-    if (!block.stmts.is_empty() && block.expr.is_some()) ||
-       (block.stmts.len() != 1 && block.expr.is_none()) {
-        return false;
-    }
-
-    let snippet = codemap.span_to_snippet(block.span).unwrap();
-    !contains_comment(&snippet)
-}
-
-fn is_empty_block(block: &ast::Block, codemap: &CodeMap) -> bool {
-    if !block.stmts.is_empty() || block.expr.is_some() {
-        return false;
-    }
-
-    let snippet = codemap.span_to_snippet(block.span).unwrap();
-    !contains_comment(&snippet)
 }
