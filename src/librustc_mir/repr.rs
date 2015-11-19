@@ -10,11 +10,9 @@
 
 use rustc::middle::const_eval::ConstVal;
 use rustc::middle::def_id::DefId;
-use rustc::middle::region::CodeExtent;
 use rustc::middle::subst::Substs;
 use rustc::middle::ty::{AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use rustc_back::slice;
-use rustc_data_structures::fnv::FnvHashMap;
 use rustc_front::hir::InlineAsm;
 use syntax::ast::Name;
 use syntax::codemap::Span;
@@ -154,48 +152,6 @@ pub struct TempDecl<'tcx> {
 // (`x` and `y`).
 pub struct ArgDecl<'tcx> {
     pub ty: Ty<'tcx>,
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Graph extents
-
-/// A moment in the flow of execution. It corresponds to a point in
-/// between two statements:
-///
-///    BB[block]:
-///                          <--- if statement == 0
-///        STMT[0]
-///                          <--- if statement == 1
-///        STMT[1]
-///        ...
-///                          <--- if statement == n-1
-///        STMT[n-1]
-///                          <--- if statement == n
-///
-/// where the block has `n` statements.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionPoint {
-    pub block: BasicBlock,
-    pub statement: u32,
-}
-
-/// A single-entry-multiple-exit region in the graph. We build one of
-/// these for every node-id during MIR construction. By construction
-/// we are assured that the entry dominates all points within, and
-/// that, for every interior point X, it is postdominated by some exit.
-pub struct GraphExtent {
-    pub entry: ExecutionPoint,
-    pub exit: GraphExtentExit,
-}
-
-pub enum GraphExtentExit {
-    /// `Statement(X)`: a very common special case covering a span
-    /// that is local to a single block. It starts at the entry point
-    /// and extends until the start of statement `X` (non-inclusive).
-    Statement(u32),
-
-    /// The more general case where the exits are a set of points.
-    Points(Vec<ExecutionPoint>),
 }
 
 ///////////////////////////////////////////////////////////////////////////

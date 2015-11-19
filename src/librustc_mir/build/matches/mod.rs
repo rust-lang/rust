@@ -42,7 +42,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // suitable extent for all of the bindings in this match. It's
         // easiest to do this up front because some of these arms may
         // be unreachable or reachable multiple times.
-        let var_extent = self.extent_of_innermost_scope().unwrap();
+        let var_extent = self.extent_of_innermost_scope();
         for arm in &arms {
             self.declare_bindings(var_extent, &arm.patterns[0]);
         }

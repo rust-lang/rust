@@ -206,7 +206,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             }
             ExprKind::Return { value } => {
                 unpack!(block = this.into(&Lvalue::ReturnPointer, block, value));
-                let extent = this.extent_of_outermost_scope().unwrap();
+                let extent = this.extent_of_outermost_scope();
                 this.exit_scope(expr_span, extent, block, END_BLOCK);
                 this.cfg.start_new_block().unit()
             }
