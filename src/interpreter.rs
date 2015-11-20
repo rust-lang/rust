@@ -6,6 +6,8 @@ use syntax::attr::AttrMetaMethods;
 
 use std::iter;
 
+const TRACE_EXECUTION: bool = false;
+
 #[derive(Clone, Debug, PartialEq)]
 enum Value {
     Uninit,
@@ -78,6 +80,8 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             for stmt in &block_data.statements {
                 use rustc_mir::repr::StatementKind::*;
 
+                if TRACE_EXECUTION { println!("{:?}", stmt); }
+
                 match stmt.kind {
                     Assign(ref lvalue, ref rvalue) => {
                         let index = self.eval_lvalue(lvalue);
@@ -90,6 +94,8 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     },
                 }
             }
+
+            if TRACE_EXECUTION { println!("{:?}", block_data.terminator); }
 
             match block_data.terminator {
                 Return => break,
