@@ -564,23 +564,26 @@ impl<'a> FmtVisitor<'a> {
                                           ")",
                                           |arg| {
                                               match *arg {
-                                                  ArgumentKind::Regular(arg) =>
-                                                      span_lo_for_arg(arg),
+                                                  ArgumentKind::Regular(arg) => {
+                                                      span_lo_for_arg(arg)
+                                                  }
                                                   ArgumentKind::Variadic(start) => start,
                                               }
                                           },
                                           |arg| {
                                               match *arg {
                                                   ArgumentKind::Regular(arg) => arg.ty.span.hi,
-                                                  ArgumentKind::Variadic(start) =>
-                                                      start + BytePos(3),
+                                                  ArgumentKind::Variadic(start) => {
+                                                      start + BytePos(3)
+                                                  }
                                               }
                                           },
                                           |arg| {
                                               match *arg {
                                                   ArgumentKind::Regular(..) => None,
-                                                  ArgumentKind::Variadic(..) =>
-                                                      Some("...".to_owned()),
+                                                  ArgumentKind::Variadic(..) => {
+                                                      Some("...".to_owned())
+                                                  }
                                               }
                                           },
                                           comment_span_start,
@@ -1118,8 +1121,9 @@ impl<'a> FmtVisitor<'a> {
 
         let extra_indent = match self.config.where_indent {
             BlockIndentStyle::Inherit => Indent::empty(),
-            BlockIndentStyle::Tabbed | BlockIndentStyle::Visual =>
-                Indent::new(config.tab_spaces, 0),
+            BlockIndentStyle::Tabbed | BlockIndentStyle::Visual => {
+                Indent::new(config.tab_spaces, 0)
+            }
         };
 
         let context = self.get_context();

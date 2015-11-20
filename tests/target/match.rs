@@ -13,8 +13,9 @@ fn foo() {
             foo()
         }
         // Perhaps this should introduce braces?
-        Foo(ref bar) =>
-            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+        Foo(ref bar) => {
+            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        }
         Pattern1 | Pattern2 | Pattern3 => false,
         Paternnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn |
         Paternnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn => {
@@ -29,8 +30,9 @@ fn foo() {
         Patternnnnnnnnnnnnnnnnnnn if looooooooooooooooooong_guard => meh,
 
         Patternnnnnnnnnnnnnnnnnnnnnnnnn |
-        Patternnnnnnnnnnnnnnnnnnnnnnnnn if looooooooooooooooooooooooooooooooooooooooong_guard =>
-            meh,
+        Patternnnnnnnnnnnnnnnnnnnnnnnnn if looooooooooooooooooooooooooooooooooooooooong_guard => {
+            meh
+        }
 
         // Test that earlier patterns can take the guard space
         (aaaa,
@@ -75,19 +77,24 @@ fn main() {
 // Test that one-line bodies align.
 fn main() {
     match r {
-        Variableeeeeeeeeeeeeeeeee => ("variable",
-                                      vec!["id", "name", "qualname", "value", "type", "scopeid"],
-                                      true,
-                                      true),
-        Enummmmmmmmmmmmmmmmmmmmm => ("enum",
-                                     vec!["id", "qualname", "scopeid", "value"],
-                                     true,
-                                     true),
-        Variantttttttttttttttttttttttt =>
+        Variableeeeeeeeeeeeeeeeee => {
+            ("variable",
+             vec!["id", "name", "qualname", "value", "type", "scopeid"],
+             true,
+             true)
+        }
+        Enummmmmmmmmmmmmmmmmmmmm => {
+            ("enum",
+             vec!["id", "qualname", "scopeid", "value"],
+             true,
+             true)
+        }
+        Variantttttttttttttttttttttttt => {
             ("variant",
              vec!["id", "name", "qualname", "type", "value", "scopeid"],
              true,
-             true),
+             true)
+        }
     }
 }
 
@@ -176,22 +183,28 @@ fn issue355() {
         // m comment
         m => vec!(3; 4),
         // Rewrite splits macro
-        nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn =>
-            println!("a", b),
+        nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn => {
+            println!("a", b)
+        }
         // Rewrite splits macro
-        oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo =>
-            vec![1, 2],
+        oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo => {
+            vec![1, 2]
+        }
         // Macro support fails to recognise this macro as splitable
         // We push the whole expr to a new line, TODO split this macro as well
-        pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp =>
-            vec!(3; 4),
+        pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp => {
+            vec!(3; 4)
+        }
         // q, r and s: Rewrite splits match arm
-        qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq =>
-            println!("a", b),
-        rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr =>
-            vec![1, 2],
-        ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss =>
-            vec!(3; 4),
+        qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq => {
+            println!("a", b)
+        }
+        rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr => {
+            vec![1, 2]
+        }
+        ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss => {
+            vec!(3; 4)
+        }
         // Funky bracketing styles
         t => println!{"a", b},
         u => vec![1, 2],
@@ -206,20 +219,24 @@ fn issue355() {
         wc => println!["a", b], // comment
         xc => vec![1, 2], // comment
         yc => vec![3; 4], // comment
-        yd => looooooooooooooooooooooooooooooooooooooooooooooooooooooooong_func(aaaaaaaaaa,
-                                                                                bbbbbbbbbb,
-                                                                                cccccccccc,
-                                                                                dddddddddd),
+        yd => {
+            looooooooooooooooooooooooooooooooooooooooooooooooooooooooong_func(aaaaaaaaaa,
+                                                                              bbbbbbbbbb,
+                                                                              cccccccccc,
+                                                                              dddddddddd)
+        }
     }
 }
 
 fn issue280() {
     {
         match x {
-            CompressionMode::DiscardNewline | CompressionMode::CompressWhitespaceNewline =>
-                ch == '\n',
-            ast::ItemConst(ref typ, ref expr) =>
-                self.process_static_or_const_item(item, &typ, &expr),
+            CompressionMode::DiscardNewline | CompressionMode::CompressWhitespaceNewline => {
+                ch == '\n'
+            }
+            ast::ItemConst(ref typ, ref expr) => {
+                self.process_static_or_const_item(item, &typ, &expr)
+            }
         }
     }
 }
@@ -253,12 +270,13 @@ fn issue496() {
         {
             {
                 match def {
-                    def::DefConst(def_id) | def::DefAssociatedConst(def_id) =>
+                    def::DefConst(def_id) | def::DefAssociatedConst(def_id) => {
                         match const_eval::lookup_const_by_id(cx.tcx, def_id, Some(self.pat.id)) {
                             Some(const_expr) => {
                                 x
                             }
-                        },
+                        }
+                    }
                 }
             }
         }
@@ -268,14 +286,15 @@ fn issue496() {
 fn issue494() {
     {
         match stmt.node {
-            hir::StmtExpr(ref expr, id) | hir::StmtSemi(ref expr, id) =>
+            hir::StmtExpr(ref expr, id) | hir::StmtSemi(ref expr, id) => {
                 result.push(StmtRef::Mirror(Box::new(Stmt {
                     span: stmt.span,
                     kind: StmtKind::Expr {
                         scope: cx.tcx.region_maps.node_extent(id),
                         expr: expr.to_ref(),
                     },
-                }))),
+                })))
+            }
         }
     }
 }

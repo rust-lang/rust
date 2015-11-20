@@ -571,13 +571,15 @@ impl<'a> Rewrite for Loop<'a> {
         let inner_offset = offset + self.keyword.len() + label_string.len();
 
         let pat_expr_string = match self.cond {
-            Some(cond) => try_opt!(rewrite_pat_expr(context,
-                                                    self.pat,
-                                                    cond,
-                                                    self.matcher,
-                                                    self.connector,
-                                                    inner_width,
-                                                    inner_offset)),
+            Some(cond) => {
+                try_opt!(rewrite_pat_expr(context,
+                                          self.pat,
+                                          cond,
+                                          self.matcher,
+                                          self.connector,
+                                          inner_width,
+                                          inner_offset))
+            }
             None => String::new(),
         };
 
@@ -711,6 +713,8 @@ fn block_contains_comment(block: &ast::Block, codemap: &CodeMap) -> bool {
 }
 
 // Checks that a block contains no statements, an expression and no comments.
+// FIXME: incorrectly returns false when comment is contained completely within
+// the expression.
 pub fn is_simple_block(block: &ast::Block, codemap: &CodeMap) -> bool {
     block.stmts.is_empty() && block.expr.is_some() && !block_contains_comment(block, codemap)
 }
@@ -936,6 +940,11 @@ impl Rewrite for ast::Arm {
 
         let comma = arm_comma(body);
 
+        // let body = match *body {
+        //     ast::ExprBlock(ref b) if is_simple_block(b, context.codemap) => b.expr,
+        //     ref x => x,
+        // };
+
         // Let's try and get the arm body on the same line as the condition.
         // 4 = ` => `.len()
         let same_line_body = if context.config.max_width > line_start + comma.len() + 4 {
@@ -944,12 +953,13 @@ impl Rewrite for ast::Arm {
             let rewrite = nop_block_collapse(body.rewrite(context, budget, offset), budget);
 
             match rewrite {
-                Some(ref body_str) if body_str.len() <= budget || comma.is_empty() =>
+                Some(ref body_str) if body_str.len() <= budget || comma.is_empty() => {
                     return Some(format!("{}{} => {}{}",
                                         attr_str.trim_left(),
                                         pats_str,
                                         body_str,
-                                        comma)),
+                                        comma));
+                }
                 _ => rewrite,
             }
         } else {
@@ -961,26 +971,34 @@ impl Rewrite for ast::Arm {
             return None;
         }
 
-        let body_budget = try_opt!(width.checked_sub(context.config.tab_spaces));
-        let indent = context.block_indent.block_indent(context.config);
-        let inner_context = &RewriteContext { block_indent: indent, ..*context };
-        let next_line_body = nop_block_collapse(body.rewrite(inner_context, body_budget, indent),
-                                                body_budget);
+        let mut result = format!("{}{} =>", attr_str.trim_left(), pats_str);
 
-        let body_str = try_opt!(match_arm_heuristic(same_line_body.as_ref().map(|x| &x[..]),
-                                                    next_line_body.as_ref().map(|x| &x[..])));
+        match same_line_body {
+            // FIXME: also take this branch is expr is block
+            Some(ref body) if !body.contains('\n') => {
+                result.push(' ');
+                result.push_str(&body);
+            }
+            _ => {
+                let body_budget = try_opt!(width.checked_sub(context.config.tab_spaces));
+                let indent = context.block_indent.block_indent(context.config);
+                let inner_context = &RewriteContext { block_indent: indent, ..*context };
+                let next_line_body = try_opt!(nop_block_collapse(body.rewrite(inner_context,
+                                                                              body_budget,
+                                                                              indent),
+                                                                 body_budget));
 
-        let spacer = match same_line_body {
-            Some(ref body) if body == body_str => " ".to_owned(),
-            _ => format!("\n{}",
-                         offset.block_indent(context.config).to_string(context.config)),
+                result.push_str(" {\n");
+                let indent_str = offset.block_indent(context.config).to_string(context.config);
+                result.push_str(&indent_str);
+                result.push_str(&next_line_body);
+                result.push('\n');
+                result.push_str(&offset.to_string(context.config));
+                result.push('}');
+            }
         };
 
-        Some(format!("{}{} =>{}{},",
-                     attr_str.trim_left(),
-                     pats_str,
-                     spacer,
-                     body_str))
+        Some(result)
     }
 }
 
@@ -1396,8 +1414,9 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
 
     match (context.config.struct_lit_style,
            context.config.struct_lit_multiline_style) {
-        (StructLitStyle::Block, _) if fields_str.contains('\n') || fields_str.len() > h_budget =>
-            format_on_newline(),
+        (StructLitStyle::Block, _) if fields_str.contains('\n') || fields_str.len() > h_budget => {
+            format_on_newline()
+        }
         (StructLitStyle::Block, MultilineStyle::ForceMulti) => format_on_newline(),
         _ => Some(format!("{} {{ {} }}", path_str, fields_str)),
     }
