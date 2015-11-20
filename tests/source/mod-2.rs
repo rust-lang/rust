@@ -1,4 +1,4 @@
 // Some nested mods
 
-mod nestedmod;
-mod no_new_line_beginning;
+ mod   nestedmod  ;
+pub  mod no_new_line_beginning;

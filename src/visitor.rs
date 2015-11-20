@@ -101,10 +101,15 @@ impl<'a> FmtVisitor<'a> {
 
         // TODO: we should compress any newlines here to just one
         self.format_missing_with_indent(b.span.hi - brace_compensation);
-        // FIXME: this is a terrible hack to indent the comments between the last
-        // item in the block and the closing brace to the block's level.
-        // The closing brace itself, however, should be indented at a shallower
-        // level.
+        self.close_block();
+        self.last_pos = b.span.hi;
+    }
+
+    // FIXME: this is a terrible hack to indent the comments between the last
+    // item in the block and the closing brace to the block's level.
+    // The closing brace itself, however, should be indented at a shallower
+    // level.
+    fn close_block(&mut self) {
         let total_len = self.buffer.len;
         let chars_too_many = if self.config.hard_tabs {
             1
@@ -113,7 +118,6 @@ impl<'a> FmtVisitor<'a> {
         };
         self.buffer.truncate(total_len - chars_too_many);
         self.buffer.push_str("}");
-        self.last_pos = b.span.hi;
         self.block_indent = self.block_indent.block_unindent(self.config);
     }
 
@@ -239,7 +243,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::Item_::ItemMod(ref module) => {
                 self.format_missing_with_indent(item.span.lo);
-                self.format_mod(module, item.span, item.ident);
+                self.format_mod(module, item.vis, item.span, item.ident);
             }
             ast::Item_::ItemMac(..) => {
                 self.format_missing_with_indent(item.span.lo);
@@ -433,23 +437,26 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    fn format_mod(&mut self, m: &ast::Mod, s: Span, ident: ast::Ident) {
-        debug!("FmtVisitor::format_mod: ident: {:?}, span: {:?}", ident, s);
-
+    fn format_mod(&mut self, m: &ast::Mod, vis: ast::Visibility, s: Span, ident: ast::Ident) {
         // Decide whether this is an inline mod or an external mod.
         let local_file_name = self.codemap.span_to_filename(s);
         let is_internal = local_file_name == self.codemap.span_to_filename(m.inner);
 
-        // TODO: Should rewrite properly `mod X;`
+        self.buffer.push_str(utils::format_visibility(vis));
+        self.buffer.push_str("mod ");
+        self.buffer.push_str(&ident.to_string());
 
         if is_internal {
+            self.buffer.push_str(" {");
+            self.last_pos = ::utils::span_after(s, "{", self.codemap);
             self.block_indent = self.block_indent.block_indent(self.config);
             self.walk_mod_items(m);
-            self.block_indent = self.block_indent.block_unindent(self.config);
-
             self.format_missing_with_indent(m.inner.hi - BytePos(1));
-            self.buffer.push_str("}");
+            self.close_block();
             self.last_pos = m.inner.hi;
+        } else {
+            self.buffer.push_str(";");
+            self.last_pos = s.hi;
         }
     }
 
