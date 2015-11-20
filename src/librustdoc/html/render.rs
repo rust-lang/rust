@@ -56,8 +56,8 @@ use serialize::json::{self, ToJson};
 use syntax::{abi, ast};
 use rustc::metadata::cstore::LOCAL_CRATE;
 use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
-use rustc::util::nodemap::DefIdSet;
 use rustc_front::hir;
 
 use clean::{self, SelfTy};
@@ -244,7 +244,7 @@ pub struct Cache {
     search_index: Vec<IndexItem>,
     privmod: bool,
     remove_priv: bool,
-    public_items: DefIdSet,
+    access_levels: AccessLevels<DefId>,
     deref_trait_did: Option<DefId>,
 
     // In rare case where a structure is defined in one module but implemented
@@ -415,8 +415,8 @@ pub fn run(mut krate: clean::Crate,
     // Crawl the crate to build various caches used for the output
     let analysis = ::ANALYSISKEY.with(|a| a.clone());
     let analysis = analysis.borrow();
-    let public_items = analysis.as_ref().map(|a| a.public_items.clone());
-    let public_items = public_items.unwrap_or(DefIdSet());
+    let access_levels = analysis.as_ref().map(|a| a.access_levels.clone());
+    let access_levels = access_levels.unwrap_or(Default::default());
     let paths: HashMap<DefId, (Vec<String>, ItemType)> =
       analysis.as_ref().map(|a| {
         let paths = a.external_paths.borrow_mut().take().unwrap();
@@ -435,7 +435,7 @@ pub fn run(mut krate: clean::Crate,
         primitive_locations: HashMap::new(),
         remove_priv: cx.passes.contains("strip-private"),
         privmod: false,
-        public_items: public_items,
+        access_levels: access_levels,
         orphan_methods: Vec::new(),
         traits: mem::replace(&mut krate.external_traits, HashMap::new()),
         deref_trait_did: analysis.as_ref().and_then(|a| a.deref_trait_did),
@@ -1053,7 +1053,7 @@ impl DocFolder for Cache {
                 if
                     !self.paths.contains_key(&item.def_id) ||
                     !item.def_id.is_local() ||
-                    self.public_items.contains(&item.def_id)
+                    self.access_levels.is_public(item.def_id)
                 {
                     self.paths.insert(item.def_id,
                                       (self.stack.clone(), shortty(&item)));

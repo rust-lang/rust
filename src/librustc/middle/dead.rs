@@ -19,7 +19,6 @@ use rustc_front::intravisit::{self, Visitor};
 use middle::{def, pat_util, privacy, ty};
 use middle::def_id::{DefId};
 use lint;
-use util::nodemap::NodeSet;
 
 use std::collections::HashSet;
 use syntax::{ast, codemap};
@@ -370,25 +369,10 @@ impl<'v> Visitor<'v> for LifeSeeder {
 }
 
 fn create_and_seed_worklist(tcx: &ty::ctxt,
-                            exported_items: &privacy::ExportedItems,
-                            reachable_symbols: &NodeSet,
+                            access_levels: &privacy::AccessLevels,
                             krate: &hir::Crate) -> Vec<ast::NodeId> {
     let mut worklist = Vec::new();
-
-    // Preferably, we would only need to seed the worklist with reachable
-    // symbols. However, since the set of reachable symbols differs
-    // depending on whether a crate is built as bin or lib, and we want
-    // the warning to be consistent, we also seed the worklist with
-    // exported symbols.
-    for id in exported_items {
-        worklist.push(*id);
-    }
-    for id in reachable_symbols {
-        // Reachable variants can be dead, because we warn about
-        // variants never constructed, not variants never used.
-        if let Some(ast_map::NodeVariant(..)) = tcx.map.find(*id) {
-            continue;
-        }
+    for (id, _) in &access_levels.map {
         worklist.push(*id);
     }
 
@@ -408,12 +392,10 @@ fn create_and_seed_worklist(tcx: &ty::ctxt,
 }
 
 fn find_live(tcx: &ty::ctxt,
-             exported_items: &privacy::ExportedItems,
-             reachable_symbols: &NodeSet,
+             access_levels: &privacy::AccessLevels,
              krate: &hir::Crate)
              -> Box<HashSet<ast::NodeId>> {
-    let worklist = create_and_seed_worklist(tcx, exported_items,
-                                            reachable_symbols, krate);
+    let worklist = create_and_seed_worklist(tcx, access_levels, krate);
     let mut symbol_visitor = MarkSymbolVisitor::new(tcx, worklist);
     symbol_visitor.mark_live_symbols();
     symbol_visitor.live_symbols
@@ -607,12 +589,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt,
-                   exported_items: &privacy::ExportedItems,
-                   reachable_symbols: &NodeSet) {
+pub fn check_crate(tcx: &ty::ctxt, access_levels: &privacy::AccessLevels) {
     let krate = tcx.map.krate();
-    let live_symbols = find_live(tcx, exported_items,
-                                 reachable_symbols, krate);
+    let live_symbols = find_live(tcx, access_levels, krate);
     let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };
     intravisit::walk_crate(&mut visitor, krate);
 }

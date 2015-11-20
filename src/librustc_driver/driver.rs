@@ -746,7 +746,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                         "const checking",
                                         || middle::check_const::check_crate(tcx));
 
-                                   let (exported_items, public_items) =
+                                   let access_levels =
                                        time(time_passes, "privacy checking", || {
                                            rustc_privacy::check_crate(tcx,
                                                                       &export_map,
@@ -755,7 +755,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
                                    // Do not move this check past lint
                                    time(time_passes, "stability index", || {
-                                       tcx.stability.borrow_mut().build(tcx, krate, &exported_items)
+                                       tcx.stability.borrow_mut().build(tcx, krate, &access_levels)
                                    });
 
                                    time(time_passes,
@@ -807,12 +807,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                    let reachable_map =
                                        time(time_passes,
                                             "reachability checking",
-                                            || reachable::find_reachable(tcx, &exported_items));
+                                            || reachable::find_reachable(tcx, &access_levels));
 
                                    time(time_passes, "death checking", || {
-                                       middle::dead::check_crate(tcx,
-                                                                 &exported_items,
-                                                                 &reachable_map)
+                                       middle::dead::check_crate(tcx, &access_levels);
                                    });
 
                                    let ref lib_features_used =
@@ -827,7 +825,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
                                    time(time_passes,
                                         "lint checking",
-                                        || lint::check_crate(tcx, &exported_items));
+                                        || lint::check_crate(tcx, &access_levels));
 
                                    // The above three passes generate errors w/o aborting
                                    tcx.sess.abort_if_errors();
@@ -836,8 +834,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                      mir_map,
                                      ty::CrateAnalysis {
                                          export_map: export_map,
-                                         exported_items: exported_items,
-                                         public_items: public_items,
+                                         access_levels: access_levels,
                                          reachable: reachable_map,
                                          name: name,
                                          glob_map: glob_map,
