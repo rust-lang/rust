@@ -37,6 +37,13 @@ pub mod pattern;
 
 /// A trait to abstract the idea of creating a new instance of a type from a
 /// string.
+///
+/// `FromStr`'s [`from_str()`] method is often used implicitly, through
+/// [`str`]'s [`parse()`] method. See [`parse()`]'s documentation for examples.
+///
+/// [`from_str()`]: #tymethod.from_str
+/// [`str`]: ../primitive.str.html
+/// [`parse()`]: ../primitive.str.html#method.parse
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait FromStr: Sized {
     /// The associated error which can be returned from parsing.
