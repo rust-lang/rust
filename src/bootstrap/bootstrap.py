@@ -135,6 +135,12 @@ class RustBuild:
                 return self.get_string(line)
         return None
 
+    def get_mk(self, key):
+        for line in iter(self.config_mk.splitlines()):
+            if line.startswith(key):
+                return line[line.find(':=') + 2:].strip()
+        return None
+
     def cargo(self):
         config = self.get_toml('cargo')
         if config:
@@ -145,6 +151,9 @@ class RustBuild:
         config = self.get_toml('rustc')
         if config:
             return config
+        config = self.get_mk('CFG_LOCAL_RUST')
+        if config:
+            return config + '/bin/rustc' + self.exe_suffix()
         return os.path.join(self.bin_root(), "bin/rustc" + self.exe_suffix())
 
     def get_string(self, line):
@@ -187,6 +196,9 @@ class RustBuild:
 
     def build_triple(self):
         config = self.get_toml('build')
+        if config:
+            return config
+        config = self.get_mk('CFG_BUILD')
         if config:
             return config
         try:
@@ -277,6 +289,10 @@ rb.verbose = args.verbose
 try:
     with open(args.config or 'config.toml') as config:
         rb.config_toml = config.read()
+except:
+    pass
+try:
+    rb.config_mk = open('config.mk').read()
 except:
     pass
 

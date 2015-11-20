@@ -65,6 +65,7 @@ pub struct Config {
     // misc
     pub channel: String,
     pub musl_root: Option<PathBuf>,
+    pub prefix: Option<String>,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -245,6 +246,111 @@ impl Config {
         }
 
         return config
+    }
+
+    pub fn update_with_config_mk(&mut self) {
+        let mut config = String::new();
+        File::open("config.mk").unwrap().read_to_string(&mut config).unwrap();
+        for line in config.lines() {
+            let mut parts = line.splitn(2, ":=").map(|s| s.trim());
+            let key = parts.next().unwrap();
+            let value = match parts.next() {
+                Some(n) if n.starts_with('\"') => &n[1..n.len() - 1],
+                Some(n) => n,
+                None => continue
+            };
+
+            macro_rules! check {
+                ($(($name:expr, $val:expr),)*) => {
+                    if value == "1" {
+                        $(
+                            if key == concat!("CFG_ENABLE_", $name) {
+                                $val = true;
+                                continue
+                            }
+                            if key == concat!("CFG_DISABLE_", $name) {
+                                $val = false;
+                                continue
+                            }
+                        )*
+                    }
+                }
+            }
+
+            check! {
+                ("CCACHE", self.ccache),
+                ("MANAGE_SUBMODULES", self.submodules),
+                ("COMPILER_DOCS", self.compiler_docs),
+                ("DOCS", self.docs),
+                ("LLVM_ASSERTIONS", self.llvm_assertions),
+                ("OPTIMIZE_LLVM", self.llvm_optimize),
+                ("LLVM_VERSION_CHECK", self.llvm_version_check),
+                ("LLVM_STATIC_STDCPP", self.llvm_static_stdcpp),
+                ("OPTIMIZE", self.rust_optimize),
+                ("DEBUG_ASSERTIONS", self.rust_debug_assertions),
+                ("DEBUGINFO", self.rust_debuginfo),
+                ("JEMALLOC", self.use_jemalloc),
+                ("DEBUG_JEMALLOC", self.debug_jemalloc),
+                ("RPATH", self.rust_rpath),
+            }
+
+            match key {
+                "CFG_BUILD" => self.build = value.to_string(),
+                "CFG_HOST" => {
+                    self.host = value.split(" ").map(|s| s.to_string())
+                                     .collect();
+                }
+                "CFG_TARGET" => {
+                    self.target = value.split(" ").map(|s| s.to_string())
+                                       .collect();
+                }
+                "CFG_MUSL_ROOT" if value.len() > 0 => {
+                    self.musl_root = Some(PathBuf::from(value));
+                }
+                "CFG_DEFAULT_AR" if value.len() > 0 => {
+                    self.rustc_default_ar = Some(value.to_string());
+                }
+                "CFG_DEFAULT_LINKER" if value.len() > 0 => {
+                    self.rustc_default_linker = Some(value.to_string());
+                }
+                "CFG_RELEASE_CHANNEL" => {
+                    self.channel = value.to_string();
+                }
+                "CFG_PREFIX" => {
+                    self.prefix = Some(value.to_string());
+                }
+                "CFG_LLVM_ROOT" if value.len() > 0 => {
+                    let target = self.target_config.entry(self.build.clone())
+                                     .or_insert(Target::default());
+                    let root = PathBuf::from(value);
+                    target.llvm_config = Some(root.join("bin/llvm-config"));
+                }
+                "CFG_JEMALLOC_ROOT" if value.len() > 0 => {
+                    let target = self.target_config.entry(self.build.clone())
+                                     .or_insert(Target::default());
+                    target.jemalloc = Some(PathBuf::from(value));
+                }
+                "CFG_ARM_LINUX_ANDROIDEABI_NDK" if value.len() > 0 => {
+                    let target = "arm-linux-androideabi".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.ndk = Some(PathBuf::from(value));
+                }
+                "CFG_I686_LINUX_ANDROID_NDK" if value.len() > 0 => {
+                    let target = "i686-linux-androideabi".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.ndk = Some(PathBuf::from(value));
+                }
+                "CFG_AARCH64_LINUX_ANDROID_NDK" if value.len() > 0 => {
+                    let target = "aarch64-linux-androideabi".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.ndk = Some(PathBuf::from(value));
+                }
+                _ => {}
+            }
+        }
     }
 }
 

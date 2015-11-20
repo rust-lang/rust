@@ -118,6 +118,7 @@ pub fn rustc<'a>(build: &'a Build, stage: u32, target: &str,
          .env("CFG_RELEASE_CHANNEL", &build.config.channel)
          .env("CFG_VERSION", &build.version)
          .env("CFG_BOOTSTRAP_KEY", &build.bootstrap_key)
+         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(String::new()))
          .env("RUSTC_BOOTSTRAP_KEY", &build.bootstrap_key)
          .env("CFG_LIBDIR_RELATIVE", "lib");
 
