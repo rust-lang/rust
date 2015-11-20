@@ -179,6 +179,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     // Allows the definition of `const fn` functions.
     ("const_fn", "1.2.0", Some(24111), Active),
 
+    // Allows indexing into constant arrays.
+    ("const_indexing", "1.4.0", Some(29947), Active),
+
     // Allows using #[prelude_import] on glob `use` items.
     //
     // rustc internal
@@ -494,6 +497,7 @@ pub struct Features {
     /// #![feature] attrs for non-language (library) features
     pub declared_lib_features: Vec<(InternedString, Span)>,
     pub const_fn: bool,
+    pub const_indexing: bool,
     pub static_recursion: bool,
     pub default_type_parameter_fallback: bool,
     pub type_macros: bool,
@@ -525,6 +529,7 @@ impl Features {
             declared_stable_lang_features: Vec::new(),
             declared_lib_features: Vec::new(),
             const_fn: false,
+            const_indexing: false,
             static_recursion: false,
             default_type_parameter_fallback: false,
             type_macros: false,
@@ -1097,6 +1102,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         declared_stable_lang_features: accepted_features,
         declared_lib_features: unknown_features,
         const_fn: cx.has_feature("const_fn"),
+        const_indexing: cx.has_feature("const_indexing"),
         static_recursion: cx.has_feature("static_recursion"),
         default_type_parameter_fallback: cx.has_feature("default_type_parameter_fallback"),
         type_macros: cx.has_feature("type_macros"),

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(const_indexing)]
+
 const FOO: [u32; 3] = [1, 2, 3];
 const BAR: u32 = FOO[5]; // no error, because the error below occurs before regular const eval
 

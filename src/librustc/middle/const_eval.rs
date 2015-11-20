@@ -1137,6 +1137,17 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
       hir::ExprTup(_) => Tuple(e.id),
       hir::ExprStruct(..) => Struct(e.id),
       hir::ExprIndex(ref arr, ref idx) => {
+        if !tcx.sess.features.borrow().const_indexing {
+            tcx.sess.span_err(
+                e.span,
+                "const indexing is an unstable feature");
+            fileline_help!(
+                tcx.sess,
+                e.span,
+                "in Nightly builds, add `#![feature(const_indexing)]` to the crate \
+                 attributes to enable");
+            signal!(e, NonConstPath)
+        }
         let arr_hint = if let ExprTypeChecked = ty_hint {
             ExprTypeChecked
         } else {
