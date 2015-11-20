@@ -37,6 +37,7 @@ pub mod mut_reference;
 pub mod len_zero;
 pub mod attrs;
 pub mod collapsible_if;
+pub mod block_in_if_condition;
 pub mod unicode;
 pub mod shadow;
 pub mod strings;
@@ -81,6 +82,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box misc::CmpOwned);
     reg.register_late_lint_pass(box attrs::AttrPass);
     reg.register_late_lint_pass(box collapsible_if::CollapsibleIf);
+    reg.register_late_lint_pass(box block_in_if_condition::BlockInIfCondition);
     reg.register_late_lint_pass(box misc::ModuloOne);
     reg.register_late_lint_pass(box unicode::Unicode);
     reg.register_late_lint_pass(box strings::StringAdd);
@@ -131,6 +133,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
         attrs::INLINE_ALWAYS,
         bit_mask::BAD_BIT_MASK,
         bit_mask::INEFFECTIVE_BIT_MASK,
+        block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
+        block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         collapsible_if::COLLAPSIBLE_IF,
         eq_op::EQ_OP,
         eta_reduction::REDUNDANT_CLOSURE,
