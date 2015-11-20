@@ -120,23 +120,19 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         let mut block = mir::START_BLOCK;
 
         loop {
-            use rustc_mir::repr::Terminator::*;
-
             let block_data = mir.basic_block_data(block);
 
             for stmt in &block_data.statements {
-                use rustc_mir::repr::StatementKind::*;
-
                 if TRACE_EXECUTION { println!("{:?}", stmt); }
 
                 match stmt.kind {
-                    Assign(ref lvalue, ref rvalue) => {
+                    mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
                         let ptr = self.eval_lvalue(lvalue);
                         let value = self.eval_rvalue(rvalue);
                         self.write_pointer(ptr, value);
                     }
 
-                    Drop(_kind, ref _lv) => {
+                    mir::StatementKind::Drop(_kind, ref _lv) => {
                         // TODO
                     },
                 }
@@ -145,10 +141,10 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             if TRACE_EXECUTION { println!("{:?}", block_data.terminator); }
 
             match block_data.terminator {
-                Return => break,
-                Goto { target } => block = target,
+                mir::Terminator::Return => break,
+                mir::Terminator::Goto { target } => block = target,
 
-                Call { data: mir::CallData { ref destination, ref func, ref args }, targets } => {
+                mir::Terminator::Call { data: mir::CallData { ref destination, ref func, ref args }, targets } => {
                     let ptr = self.eval_lvalue(destination);
                     let func_val = self.eval_operand(func);
 
@@ -168,7 +164,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     }
                 }
 
-                If { ref cond, targets } => {
+                mir::Terminator::If { ref cond, targets } => {
                     match self.eval_operand(cond) {
                         Value::Bool(true) => block = targets[0],
                         Value::Bool(false) => block = targets[1],
@@ -176,7 +172,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     }
                 }
 
-                SwitchInt { ref discr, switch_ty: _, ref values, ref targets } => {
+                mir::Terminator::SwitchInt { ref discr, switch_ty: _, ref values, ref targets } => {
                     let discr_val = self.read_lvalue(discr);
 
                     let index = values.iter().position(|v| discr_val == self.eval_constant(v))
@@ -185,9 +181,9 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     block = targets[index];
                 }
 
-                // Diverge => unimplemented!(),
-                // Panic { target } => unimplemented!(),
-                // Switch { ref discr, adt_def, ref targets } => unimplemented!(),
+                // mir::Terminator::Diverge => unimplemented!(),
+                // mir::Terminator::Panic { target } => unimplemented!(),
+                // mir::Terminator::Switch { ref discr, adt_def, ref targets } => unimplemented!(),
                 _ => unimplemented!(),
             }
         }
@@ -198,62 +194,64 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     }
 
     fn eval_lvalue(&self, lvalue: &mir::Lvalue) -> Pointer {
-        use rustc_mir::repr::Lvalue::*;
-
         let frame = self.call_stack.last().expect("missing call frame");
 
         match *lvalue {
-            ReturnPointer => Pointer::Stack(frame.return_val_offset()),
-            Arg(i)  => Pointer::Stack(frame.arg_offset(i)),
-            Var(i)  => Pointer::Stack(frame.var_offset(i)),
-            Temp(i) => Pointer::Stack(frame.temp_offset(i)),
+            mir::Lvalue::ReturnPointer => Pointer::Stack(frame.return_val_offset()),
+            mir::Lvalue::Arg(i)  => Pointer::Stack(frame.arg_offset(i)),
+            mir::Lvalue::Var(i)  => Pointer::Stack(frame.var_offset(i)),
+            mir::Lvalue::Temp(i) => Pointer::Stack(frame.temp_offset(i)),
+            _ => unimplemented!(),
+        }
+    }
+
+    fn eval_binary_op(&mut self, bin_op: mir::BinOp, left: Value, right: Value) -> Value {
+        match (left, right) {
+            (Value::Int(l), Value::Int(r)) => {
+                match bin_op {
+                    mir::BinOp::Add    => Value::Int(l + r),
+                    mir::BinOp::Sub    => Value::Int(l - r),
+                    mir::BinOp::Mul    => Value::Int(l * r),
+                    mir::BinOp::Div    => Value::Int(l / r),
+                    mir::BinOp::Rem    => Value::Int(l % r),
+                    mir::BinOp::BitXor => Value::Int(l ^ r),
+                    mir::BinOp::BitAnd => Value::Int(l & r),
+                    mir::BinOp::BitOr  => Value::Int(l | r),
+                    mir::BinOp::Shl    => Value::Int(l << r),
+                    mir::BinOp::Shr    => Value::Int(l >> r),
+                    mir::BinOp::Eq     => Value::Bool(l == r),
+                    mir::BinOp::Lt     => Value::Bool(l < r),
+                    mir::BinOp::Le     => Value::Bool(l <= r),
+                    mir::BinOp::Ne     => Value::Bool(l != r),
+                    mir::BinOp::Ge     => Value::Bool(l >= r),
+                    mir::BinOp::Gt     => Value::Bool(l > r),
+                }
+            }
+
             _ => unimplemented!(),
         }
     }
 
     fn eval_rvalue(&mut self, rvalue: &mir::Rvalue) -> Value {
-        use rustc_mir::repr::Rvalue::*;
-        use rustc_mir::repr::BinOp::*;
-        use rustc_mir::repr::UnOp::*;
-
         match *rvalue {
-            Use(ref operand) => self.eval_operand(operand),
+            mir::Rvalue::Use(ref operand) => self.eval_operand(operand),
 
-            BinaryOp(bin_op, ref left, ref right) => {
-                match (self.eval_operand(left), self.eval_operand(right)) {
-                    (Value::Int(l), Value::Int(r)) => {
-                        match bin_op {
-                            Add => Value::Int(l + r),
-                            Sub => Value::Int(l - r),
-                            Mul => Value::Int(l * r),
-                            Div => Value::Int(l / r),
-                            Rem => Value::Int(l % r),
-                            BitXor => Value::Int(l ^ r),
-                            BitAnd => Value::Int(l & r),
-                            BitOr => Value::Int(l | r),
-                            Shl => Value::Int(l << r),
-                            Shr => Value::Int(l >> r),
-                            Eq => Value::Bool(l == r),
-                            Lt => Value::Bool(l < r),
-                            Le => Value::Bool(l <= r),
-                            Ne => Value::Bool(l != r),
-                            Ge => Value::Bool(l >= r),
-                            Gt => Value::Bool(l > r),
-                        }
-                    }
-                    _ => unimplemented!(),
-                }
+            mir::Rvalue::BinaryOp(bin_op, ref left, ref right) => {
+                let left_val = self.eval_operand(left);
+                let right_val = self.eval_operand(right);
+                self.eval_binary_op(bin_op, left_val, right_val)
             }
 
-            UnaryOp(un_op, ref operand) => {
+            mir::Rvalue::UnaryOp(un_op, ref operand) => {
                 match (un_op, self.eval_operand(operand)) {
-                    (Not, Value::Int(n)) => Value::Int(!n),
-                    (Neg, Value::Int(n)) => Value::Int(-n),
+                    (mir::UnOp::Not, Value::Int(n)) => Value::Int(!n),
+                    (mir::UnOp::Neg, Value::Int(n)) => Value::Int(-n),
                     _ => unimplemented!(),
                 }
             }
 
-            // Aggregate(mir::AggregateKind::Adt(ref adt_def, variant, substs), ref operands) => {
+            // mir::Rvalue::Aggregate(mir::AggregateKind::Adt(ref adt_def, variant, substs),
+            //                        ref operands) => {
             //     let num_fields = adt_def.variants[variant].fields.len();
             //     debug_assert_eq!(num_fields, operands.len());
 
@@ -266,12 +264,10 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     }
 
     fn eval_operand(&mut self, op: &mir::Operand) -> Value {
-        use rustc_mir::repr::Operand::*;
-
         match *op {
-            Consume(ref lvalue) => self.read_lvalue(lvalue),
+            mir::Operand::Consume(ref lvalue) => self.read_lvalue(lvalue),
 
-            Constant(ref constant) => {
+            mir::Operand::Constant(ref constant) => {
                 match constant.literal {
                     mir::Literal::Value { ref value } => self.eval_constant(value),
 
@@ -284,18 +280,16 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     }
 
     fn eval_constant(&self, const_val: &const_eval::ConstVal) -> Value {
-        use rustc::middle::const_eval::ConstVal::*;
-
         match *const_val {
-            Float(_f) => unimplemented!(),
-            Int(i) => Value::Int(i),
-            Uint(_u) => unimplemented!(),
-            Str(ref _s) => unimplemented!(),
-            ByteStr(ref _bs) => unimplemented!(),
-            Bool(b) => Value::Bool(b),
-            Struct(_node_id) => unimplemented!(),
-            Tuple(_node_id) => unimplemented!(),
-            Function(_def_id) => unimplemented!(),
+            const_eval::ConstVal::Float(_f)         => unimplemented!(),
+            const_eval::ConstVal::Int(i)            => Value::Int(i),
+            const_eval::ConstVal::Uint(_u)          => unimplemented!(),
+            const_eval::ConstVal::Str(ref _s)       => unimplemented!(),
+            const_eval::ConstVal::ByteStr(ref _bs)  => unimplemented!(),
+            const_eval::ConstVal::Bool(b)           => Value::Bool(b),
+            const_eval::ConstVal::Struct(_node_id)  => unimplemented!(),
+            const_eval::ConstVal::Tuple(_node_id)   => unimplemented!(),
+            const_eval::ConstVal::Function(_def_id) => unimplemented!(),
         }
     }
 
