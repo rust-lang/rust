@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use metadata::csearch;
 use middle::pat_util;
 use middle::ty;
 use middle::ty::adjustment;
-use rustc::front::map as hir_map;
 use util::nodemap::FnvHashMap;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
 use lint::{LintPass, EarlyLintPass, LateLintPass};
@@ -138,16 +136,8 @@ impl LateLintPass for UnusedResults {
             ty::TyBool => return,
             ty::TyStruct(def, _) |
             ty::TyEnum(def, _) => {
-                if let Some(def_node_id) = cx.tcx.map.as_local_node_id(def.did) {
-                    if let hir_map::NodeItem(it) = cx.tcx.map.get(def_node_id) {
-                        check_must_use(cx, &it.attrs, s.span)
-                    } else {
-                        false
-                    }
-                } else {
-                    let attrs = csearch::get_item_attrs(&cx.sess().cstore, def.did);
-                    check_must_use(cx, &attrs[..], s.span)
-                }
+                let attrs = cx.tcx.get_attrs(def.did);
+                check_must_use(cx, &attrs[..], s.span)
             }
             _ => false,
         };
@@ -459,4 +449,3 @@ impl LateLintPass for UnusedAllocation {
         }
     }
 }
-

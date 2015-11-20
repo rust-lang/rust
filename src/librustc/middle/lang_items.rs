@@ -23,7 +23,7 @@ pub use self::LangItem::*;
 
 use front::map as hir_map;
 use session::Session;
-use metadata::csearch::each_lang_item;
+use metadata::util::CrateStore;
 use middle::def_id::DefId;
 use middle::ty;
 use middle::weak_lang_items;
@@ -205,11 +205,10 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     pub fn collect_external_language_items(&mut self) {
         let crate_store = &self.session.cstore;
         crate_store.iter_crate_data(|crate_number, _crate_metadata| {
-            each_lang_item(crate_store, crate_number, |index, item_index| {
+            for (index, item_index) in crate_store.lang_items(crate_number) {
                 let def_id = DefId { krate: crate_number, index: index };
                 self.collect_item(item_index, def_id, DUMMY_SP);
-                true
-            });
+            }
         })
     }
 

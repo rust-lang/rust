@@ -12,7 +12,7 @@
 
 use session::config;
 use session::Session;
-use metadata::csearch;
+use metadata::util::CrateStore;
 use middle::lang_items;
 
 use syntax::ast;
@@ -80,8 +80,8 @@ fn verify(sess: &Session, items: &lang_items::LanguageItems) {
 
     let mut missing = HashSet::new();
     sess.cstore.iter_crate_data(|cnum, _| {
-        for item in &csearch::get_missing_lang_items(&sess.cstore, cnum) {
-            missing.insert(*item);
+        for item in sess.cstore.missing_lang_items(cnum) {
+            missing.insert(item);
         }
     });
 
