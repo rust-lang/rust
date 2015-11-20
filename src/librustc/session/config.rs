@@ -513,6 +513,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "optimize with possible levels 0-3"),
     debug_assertions: Option<bool> = (None, parse_opt_bool,
         "explicitly enable the cfg(debug_assertions) directive"),
+    inline_threshold: Option<usize> = (None, parse_opt_uint,
+        "set the inlining threshold for"),
 }
 
 
