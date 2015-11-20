@@ -902,10 +902,10 @@ fn confirm_param_env_candidate<'cx,'tcx>(
                obligation.predicate.item_name);
 
     let origin = infer::RelateOutputImplTypes(obligation.cause.span);
-    match infcx.sub_trait_refs(false,
-                               origin,
-                               obligation.predicate.trait_ref.clone(),
-                               projection.projection_ty.trait_ref.clone()) {
+    match infcx.eq_trait_refs(false,
+                              origin,
+                              obligation.predicate.trait_ref.clone(),
+                              projection.projection_ty.trait_ref.clone()) {
         Ok(()) => { }
         Err(e) => {
             selcx.tcx().sess.span_bug(
