@@ -189,21 +189,25 @@ define CFG_MAKE_TOOLCHAIN
   endif
 
   CFG_COMPILE_C_$(1) = $$(CC_$(1)) \
+        $$(CFLAGS) \
         $$(CFG_GCCISH_CFLAGS) \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
         -c $$(call CFG_CC_OUTPUT_$(1),$$(1)) $$(2)
   CFG_LINK_C_$(1) = $$(CC_$(1)) \
+        $$(LDFLAGS) \
         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1) \
         $$(CFG_GCCISH_LINK_FLAGS_$(1)) \
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2) \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
   CFG_COMPILE_CXX_$(1) = $$(CXX_$(1)) \
+        $$(CXXFLAGS) \
         $$(CFG_GCCISH_CFLAGS) \
         $$(CFG_GCCISH_CXXFLAGS) \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
         $$(CFG_GCCISH_CXXFLAGS_$(1)) \
         -c $$(call CFG_CC_OUTPUT_$(1),$$(1)) $$(2)
   CFG_LINK_CXX_$(1) = $$(CXX_$(1)) \
+        $$(LDFLAGS) \
         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1) \
         $$(CFG_GCCISH_LINK_FLAGS_$(1)) \
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2) \
