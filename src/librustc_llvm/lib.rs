@@ -2044,7 +2044,6 @@ extern {
                                        Model: CodeGenModel,
                                        Reloc: RelocMode,
                                        Level: CodeGenOptLevel,
-                                       EnableSegstk: bool,
                                        UseSoftFP: bool,
                                        PositionIndependentExecutable: bool,
                                        FunctionSections: bool,

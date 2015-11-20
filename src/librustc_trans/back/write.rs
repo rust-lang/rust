@@ -218,7 +218,6 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
             code_model,
             reloc_model,
             opt_level,
-            true /* EnableSegstk */,
             use_softfp,
             !any_library && reloc_model == llvm::RelocPIC,
             ffunction_sections,
