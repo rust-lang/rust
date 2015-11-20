@@ -225,6 +225,26 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                 "the trait `{}` is not implemented for the type `{}`",
                                 trait_ref, trait_ref.self_ty());
 
+                            let mut counter = 1;
+                            infcx.tcx.sess.fileline_help(
+                                obligation.cause.span,
+                                "the following implementations were found:");
+                            infcx.tcx.lookup_trait_def(trait_ref.def_id()).for_each_relevant_impl(
+                                infcx.tcx,
+                                trait_ref.self_ty(),
+                                |impl_def_id| {
+                                    match infcx.tcx.impl_trait_ref(impl_def_id) {
+                                        Some(ref imp) => {
+                                            infcx.tcx.sess.fileline_help(
+                                                obligation.cause.span,
+                                                &format!("implementation {}: `{}`", counter, imp));
+                                            counter += 1;
+                                        },
+                                        None => (),
+                                    }
+                                }
+                            );
+
                             // Check if it has a custom "#[rustc_on_unimplemented]"
                             // error message, report with that message if it does
                             let custom_note = report_on_unimplemented(infcx, &trait_ref.0,
