@@ -22,6 +22,7 @@ use rustc::middle::subst::Substs;
 use rustc::middle::ty::{self, Ty};
 use rustc_front::hir;
 use syntax::ast;
+use syntax::ext::mtwt;
 use syntax::ptr::P;
 
 /// When there are multiple patterns in a single arm, each one has its
@@ -236,7 +237,7 @@ impl<'tcx> Mirror<'tcx> for PatNode<'tcx> {
             {
                 let id = match self.binding_map {
                     None => self.pat.id,
-                    Some(ref map) => map[&ident.node.name],
+                    Some(ref map) => map[&mtwt::resolve(ident.node)],
                 };
                 let var_ty = cx.tcx.node_id_to_type(self.pat.id);
                 let region = match var_ty.sty {

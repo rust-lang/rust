@@ -14,6 +14,7 @@ use middle::ty;
 use util::nodemap::FnvHashMap;
 
 use syntax::ast;
+use syntax::ext::mtwt;
 use rustc_front::hir;
 use rustc_front::util::walk_pat;
 use syntax::codemap::{respan, Span, Spanned, DUMMY_SP};
@@ -24,8 +25,8 @@ pub type PatIdMap = FnvHashMap<ast::Name, ast::NodeId>;
 // use the NodeId of their namesake in the first pattern.
 pub fn pat_id_map(dm: &DefMap, pat: &hir::Pat) -> PatIdMap {
     let mut map = FnvHashMap();
-    pat_bindings(dm, pat, |_bm, p_id, _s, path1| {
-        map.insert(path1.node, p_id);
+    pat_bindings_hygienic(dm, pat, |_bm, p_id, _s, path1| {
+        map.insert(mtwt::resolve(path1.node), p_id);
     });
     map
 }

@@ -24,6 +24,7 @@ use rustc::middle::pat_util;
 use rustc::middle::ty::{self, Ty};
 use rustc_front::hir;
 use rustc_front::util as hir_util;
+use syntax::ext::mtwt;
 use syntax::parse::token;
 use syntax::ptr::P;
 
@@ -477,8 +478,8 @@ fn convert_arm<'a, 'tcx: 'a>(cx: &Cx<'a, 'tcx>, arm: &'tcx hir::Arm) -> Arm<'tcx
         None
     } else {
         let mut map = FnvHashMap();
-        pat_util::pat_bindings(&cx.tcx.def_map, &arm.pats[0], |_, p_id, _, path| {
-            map.insert(path.node, p_id);
+        pat_util::pat_bindings_hygienic(&cx.tcx.def_map, &arm.pats[0], |_, p_id, _, path| {
+            map.insert(mtwt::resolve(path.node), p_id);
         });
         Some(Rc::new(map))
     };
