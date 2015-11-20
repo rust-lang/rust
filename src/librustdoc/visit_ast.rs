@@ -214,7 +214,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let analysis = match self.analysis {
             Some(analysis) => analysis, None => return false
         };
-        if !please_inline && analysis.public_items.contains(&def) {
+        if !please_inline && analysis.access_levels.is_public(def) {
             return false
         }
         if !self.view_item_stack.insert(def_node_id) { return false }

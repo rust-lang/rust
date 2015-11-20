@@ -329,7 +329,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
 // trait items are used from inlinable code through method call syntax or UFCS, or their
 // trait is a lang item.
 struct CollectPrivateImplItemsVisitor<'a> {
-    exported_items: &'a privacy::ExportedItems,
+    access_levels: &'a privacy::AccessLevels,
     worklist: &'a mut Vec<ast::NodeId>,
 }
 
@@ -337,7 +337,7 @@ impl<'a, 'v> Visitor<'v> for CollectPrivateImplItemsVisitor<'a> {
     fn visit_item(&mut self, item: &hir::Item) {
         // We need only trait impls here, not inherent impls, and only non-exported ones
         if let hir::ItemImpl(_, _, _, Some(_), _, ref impl_items) = item.node {
-            if !self.exported_items.contains(&item.id) {
+            if !self.access_levels.is_reachable(item.id) {
                 for impl_item in impl_items {
                     self.worklist.push(impl_item.id);
                 }
@@ -347,7 +347,7 @@ impl<'a, 'v> Visitor<'v> for CollectPrivateImplItemsVisitor<'a> {
 }
 
 pub fn find_reachable(tcx: &ty::ctxt,
-                      exported_items: &privacy::ExportedItems)
+                      access_levels: &privacy::AccessLevels)
                       -> NodeSet {
 
     let mut reachable_context = ReachableContext::new(tcx);
@@ -357,7 +357,7 @@ pub fn find_reachable(tcx: &ty::ctxt,
     //         If other crates link to us, they're going to expect to be able to
     //         use the lang items, so we need to be sure to mark them as
     //         exported.
-    for id in exported_items {
+    for (id, _) in &access_levels.map {
         reachable_context.worklist.push(*id);
     }
     for (_, item) in tcx.lang_items.items() {
@@ -369,7 +369,7 @@ pub fn find_reachable(tcx: &ty::ctxt,
     }
     {
         let mut collect_private_impl_items = CollectPrivateImplItemsVisitor {
-            exported_items: exported_items,
+            access_levels: access_levels,
             worklist: &mut reachable_context.worklist,
         };
         tcx.map.krate().visit_all_items(&mut collect_private_impl_items);

@@ -104,13 +104,11 @@ pub const INITIAL_DISCRIMINANT_VALUE: Disr = 0;
 /// produced by the driver and fed to trans and later passes.
 pub struct CrateAnalysis<'a> {
     pub export_map: ExportMap,
-    pub exported_items: middle::privacy::ExportedItems,
-    pub public_items: middle::privacy::PublicItems,
+    pub access_levels: middle::privacy::AccessLevels,
     pub reachable: NodeSet,
     pub name: &'a str,
     pub glob_map: Option<GlobMap>,
 }
-
 
 #[derive(Copy, Clone)]
 pub enum DtorKind {
