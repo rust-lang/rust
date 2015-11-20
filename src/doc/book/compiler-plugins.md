@@ -54,14 +54,21 @@ use rustc::plugin::Registry;
 fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         -> Box<MacResult + 'static> {
 
-    static NUMERALS: &'static [(&'static str, u32)] = &[
+    static NUMERALS: &'static [(&'static str, usize)] = &[
         ("M", 1000), ("CM", 900), ("D", 500), ("CD", 400),
         ("C",  100), ("XC",  90), ("L",  50), ("XL",  40),
         ("X",   10), ("IX",   9), ("V",   5), ("IV",   4),
         ("I",    1)];
 
-    let text = match args {
-        [TokenTree::Token(_, token::Ident(s, _))] => s.to_string(),
+    if args.len() != 1 {
+        cx.span_err(
+            sp,
+            &format!("argument should be a single identifier, but got {} arguments", args.len()));
+        return DummyResult::any(sp);
+    }
+
+    let text = match args[0] {
+        TokenTree::Token(_, token::Ident(s, _)) => s.to_string(),
         _ => {
             cx.span_err(sp, "argument should be a single identifier");
             return DummyResult::any(sp);
@@ -83,7 +90,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         }
     }
 
-    MacEager::expr(cx.expr_u32(sp, total))
+    MacEager::expr(cx.expr_usize(sp, total))
 }
 
 #[plugin_registrar]
