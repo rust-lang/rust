@@ -16,17 +16,64 @@ enum Value {
     Func(def_id::DefId),
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Pointer {
+    Stack(usize),
+    // TODO(tsion): Heap
+}
+
+/// A stack frame:
+///
+/// ```text
+/// +-----------------------+
+/// | ReturnPointer         | return value
+/// + - - - - - - - - - - - +
+/// | Arg(0)                |
+/// | Arg(1)                | arguments
+/// | ...                   |
+/// | Arg(num_args - 1)     |
+/// + - - - - - - - - - - - +
+/// | Var(0)                |
+/// | Var(1)                | variables
+/// | ...                   |
+/// | Var(num_vars - 1)     |
+/// + - - - - - - - - - - - +
+/// | Temp(0)               |
+/// | Temp(1)               | temporaries
+/// | ...                   |
+/// | Temp(num_temps - 1)   |
+/// + - - - - - - - - - - - +
+/// | Aggregates            | aggregates
+/// +-----------------------+
+/// ```
 #[derive(Debug)]
 struct Frame {
     offset: usize,
     num_args: usize,
     num_vars: usize,
     num_temps: usize,
+    // aggregates
 }
 
 impl Frame {
     fn size(&self) -> usize {
         1 + self.num_args + self.num_vars + self.num_temps
+    }
+
+    fn return_val_offset(&self) -> usize {
+        self.offset
+    }
+
+    fn arg_offset(&self, i: u32) -> usize {
+        self.offset + 1 + i as usize
+    }
+
+    fn var_offset(&self, i: u32) -> usize {
+        self.offset + 1 + self.num_args + i as usize
+    }
+
+    fn temp_offset(&self, i: u32) -> usize {
+        self.offset + 1 + self.num_args + self.num_vars + i as usize
     }
 }
 
@@ -84,9 +131,9 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
                 match stmt.kind {
                     Assign(ref lvalue, ref rvalue) => {
-                        let index = self.eval_lvalue(lvalue);
+                        let ptr = self.eval_lvalue(lvalue);
                         let value = self.eval_rvalue(rvalue);
-                        self.value_stack[index] = value;
+                        self.write_pointer(ptr, value);
                     }
 
                     Drop(_kind, ref _lv) => {
@@ -102,7 +149,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 Goto { target } => block = target,
 
                 Call { data: mir::CallData { ref destination, ref func, ref args }, targets } => {
-                    let index = self.eval_lvalue(destination);
+                    let ptr = self.eval_lvalue(destination);
                     let func_val = self.eval_operand(func);
 
                     if let Value::Func(def_id) = func_val {
@@ -111,7 +158,10 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                         let arg_vals: Vec<Value> =
                             args.iter().map(|arg| self.eval_operand(arg)).collect();
 
-                        self.value_stack[index] = self.call(mir, &arg_vals);
+                        // FIXME: Pass the destination lvalue such that the ReturnPointer inside
+                        // the function call will point to the destination.
+                        let return_val = self.call(mir, &arg_vals);
+                        self.write_pointer(ptr, return_val);
                         block = targets[0];
                     } else {
                         panic!("tried to call a non-function value: {:?}", func_val);
@@ -127,9 +177,9 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 }
 
                 SwitchInt { ref discr, switch_ty: _, ref values, ref targets } => {
-                    let discr_val = &self.value_stack[self.eval_lvalue(discr)];
+                    let discr_val = self.read_lvalue(discr);
 
-                    let index = values.iter().position(|v| *discr_val == self.eval_constant(v))
+                    let index = values.iter().position(|v| discr_val == self.eval_constant(v))
                         .expect("discriminant matched no values");
 
                     block = targets[index];
@@ -142,21 +192,21 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             }
         }
 
-        let ret_val = self.value_stack[self.eval_lvalue(&mir::Lvalue::ReturnPointer)].clone();
+        let ret_val = self.read_lvalue(&mir::Lvalue::ReturnPointer);
         self.pop_stack_frame();
         ret_val
     }
 
-    fn eval_lvalue(&self, lvalue: &mir::Lvalue) -> usize {
+    fn eval_lvalue(&self, lvalue: &mir::Lvalue) -> Pointer {
         use rustc_mir::repr::Lvalue::*;
 
         let frame = self.call_stack.last().expect("missing call frame");
 
         match *lvalue {
-            ReturnPointer => frame.offset,
-            Arg(i)  => frame.offset + 1 + i as usize,
-            Var(i)  => frame.offset + 1 + frame.num_args + i as usize,
-            Temp(i) => frame.offset + 1 + frame.num_args + frame.num_vars + i as usize,
+            ReturnPointer => Pointer::Stack(frame.return_val_offset()),
+            Arg(i)  => Pointer::Stack(frame.arg_offset(i)),
+            Var(i)  => Pointer::Stack(frame.var_offset(i)),
+            Temp(i) => Pointer::Stack(frame.temp_offset(i)),
             _ => unimplemented!(),
         }
     }
@@ -203,6 +253,14 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 }
             }
 
+            // Aggregate(mir::AggregateKind::Adt(ref adt_def, variant, substs), ref operands) => {
+            //     let num_fields = adt_def.variants[variant].fields.len();
+            //     debug_assert_eq!(num_fields, operands.len());
+
+            //     let data = operands.iter().map(|op| self.eval_operand(op)).collect();
+            //     Value::Adt(variant, data)
+            // }
+
             _ => unimplemented!(),
         }
     }
@@ -211,7 +269,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         use rustc_mir::repr::Operand::*;
 
         match *op {
-            Consume(ref lvalue) => self.value_stack[self.eval_lvalue(lvalue)].clone(),
+            Consume(ref lvalue) => self.read_lvalue(lvalue),
 
             Constant(ref constant) => {
                 match constant.literal {
@@ -238,6 +296,22 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             Struct(_node_id) => unimplemented!(),
             Tuple(_node_id) => unimplemented!(),
             Function(_def_id) => unimplemented!(),
+        }
+    }
+
+    fn read_lvalue(&self, lvalue: &mir::Lvalue) -> Value {
+        self.read_pointer(self.eval_lvalue(lvalue))
+    }
+
+    fn read_pointer(&self, p: Pointer) -> Value {
+        match p {
+            Pointer::Stack(offset) => self.value_stack[offset].clone(),
+        }
+    }
+
+    fn write_pointer(&mut self, p: Pointer, val: Value) {
+        match p {
+            Pointer::Stack(offset) => self.value_stack[offset] = val,
         }
     }
 }
