@@ -103,10 +103,12 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let replaced = match self.write_mode {
-            Some(mode) => match mode {
-                WriteMode::Coverage => replace_chars(old_snippet),
-                _ => old_snippet.to_owned(),
-            },
+            Some(mode) => {
+                match mode {
+                    WriteMode::Coverage => replace_chars(old_snippet),
+                    _ => old_snippet.to_owned(),
+                }
+            }
             None => old_snippet.to_owned(),
         };
         let snippet = &*replaced;

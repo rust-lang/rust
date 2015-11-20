@@ -75,9 +75,7 @@ pub fn last_line_width(s: &str) -> usize {
 fn is_skip(meta_item: &MetaItem) -> bool {
     match meta_item.node {
         MetaItem_::MetaWord(ref s) => *s == SKIP_ANNOTATION,
-        MetaItem_::MetaList(ref s, ref l) => {
-            *s == "cfg_attr" && l.len() == 2 && is_skip(&l[1])
-        }
+        MetaItem_::MetaList(ref s, ref l) => *s == "cfg_attr" && l.len() == 2 && is_skip(&l[1]),
         _ => false,
     }
 }

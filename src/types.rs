@@ -137,9 +137,7 @@ impl<'a> Rewrite for SegmentParam<'a> {
                          width,
                          offset)
             }
-            SegmentParam::Type(ref ty) => {
-                ty.rewrite(context, width, offset)
-            }
+            SegmentParam::Type(ref ty) => ty.rewrite(context, width, offset),
             SegmentParam::Binding(ref binding) => {
                 let mut result = format!("{} = ", binding.ident);
                 let budget = try_opt!(width.checked_sub(result.len()));
@@ -479,9 +477,7 @@ impl Rewrite for ast::Ty {
                 let budget = try_opt!(width.checked_sub(2));
                 ty.rewrite(context, budget, offset + 1).map(|ty_str| format!("[{}]", ty_str))
             }
-            ast::TyTup(ref items) => {
-                rewrite_tuple(context, items, self.span, width, offset)
-            }
+            ast::TyTup(ref items) => rewrite_tuple(context, items, self.span, width, offset),
             ast::TyPolyTraitRef(ref trait_ref) => trait_ref.rewrite(context, width, offset),
             ast::TyPath(ref q_self, ref path) => {
                 rewrite_path(context, false, q_self.as_ref(), path, width, offset)

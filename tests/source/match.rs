@@ -11,7 +11,6 @@ fn foo() {
             an_expression;
             foo()
         }
-        // Perhaps this should introduce braces?
         Foo(ref bar) =>
             aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
         Pattern1 | Pattern2 | Pattern3 => false,
@@ -83,7 +82,11 @@ fn main() {
                                                 "scopeid"),
                                            true,
                                            true),
-    }
+    };
+
+    match  x{
+    y=>{/*Block with comment. Preserve me.*/  }
+    z=>{stmt();} }
 }
 
 fn matches() {

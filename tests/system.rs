@@ -249,8 +249,10 @@ fn handle_result(result: HashMap<String, String>,
 fn get_target(file_name: &str, target: Option<&str>, write_mode: WriteMode) -> String {
     let file_path = Path::new(file_name);
     let (source_path_prefix, target_path_prefix) = match write_mode {
-        WriteMode::Coverage => (Path::new("tests/coverage-source/"),
-                                "tests/coverage-target/"),
+        WriteMode::Coverage => {
+            (Path::new("tests/coverage-source/"),
+             "tests/coverage-target/")
+        }
         _ => (Path::new("tests/source/"), "tests/target/"),
     };
 

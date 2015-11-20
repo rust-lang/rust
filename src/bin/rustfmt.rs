@@ -118,9 +118,7 @@ fn execute() -> i32 {
         Operation::Stdin(input, write_mode) => {
             // try to read config from local directory
             let config = match lookup_and_read_project_file(&Path::new(".")) {
-                Ok((_, toml)) => {
-                    Config::from_toml(&toml)
-                }
+                Ok((_, toml)) => Config::from_toml(&toml),
                 Err(_) => Default::default(),
             };
 

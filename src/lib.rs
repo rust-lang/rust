@@ -225,15 +225,9 @@ pub enum ErrorKind {
 impl fmt::Display for ErrorKind {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            ErrorKind::LineOverflow => {
-                write!(fmt, "line exceeded maximum length")
-            }
-            ErrorKind::TrailingWhitespace => {
-                write!(fmt, "left behind trailing whitespace")
-            }
-            ErrorKind::BadIssue(issue) => {
-                write!(fmt, "found {}", issue)
-            }
+            ErrorKind::LineOverflow => write!(fmt, "line exceeded maximum length"),
+            ErrorKind::TrailingWhitespace => write!(fmt, "left behind trailing whitespace"),
+            ErrorKind::BadIssue(issue) => write!(fmt, "found {}", issue),
         }
     }
 }

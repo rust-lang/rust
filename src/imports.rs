@@ -74,12 +74,8 @@ fn rewrite_single_use_list(path_str: String, vpi: &ast::PathListItem) -> String 
 
 fn rewrite_path_item(vpi: &&ast::PathListItem) -> Option<String> {
     let path_item_str = match vpi.node {
-        ast::PathListItem_::PathListIdent{ name, .. } => {
-            name.to_string()
-        }
-        ast::PathListItem_::PathListMod{ .. } => {
-            "self".to_owned()
-        }
+        ast::PathListItem_::PathListIdent{ name, .. } => name.to_string(),
+        ast::PathListItem_::PathListMod{ .. } => "self".to_owned(),
     };
 
     Some(append_alias(path_item_str, vpi))

@@ -392,9 +392,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                     match (block_open_index, newline_index) {
                         // Separator before comment, with the next item on same line.
                         // Comment belongs to next item.
-                        (Some(i), None) if i > separator_index => {
-                            separator_index + 1
-                        }
+                        (Some(i), None) if i > separator_index => separator_index + 1,
                         // Block-style post-comment before the separator.
                         (Some(i), None) => {
                             cmp::max(find_comment_end(&post_snippet[i..]).unwrap() + i,
