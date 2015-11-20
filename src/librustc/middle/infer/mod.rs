@@ -474,14 +474,26 @@ pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
     cx.commit_if_ok(|_| cx.eq_types(a_is_expected, origin, a, b))
 }
 
-pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
+pub fn mk_eq_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                    a_is_expected: bool,
                                    origin: TypeOrigin,
-                                   a: ty::PolyTraitRef<'tcx>,
-                                   b: ty::PolyTraitRef<'tcx>)
+                                   a: ty::TraitRef<'tcx>,
+                                   b: ty::TraitRef<'tcx>)
                                    -> UnitResult<'tcx>
 {
-    debug!("mk_sub_trait_refs({:?} <: {:?})",
+    debug!("mk_eq_trait_refs({:?} <: {:?})",
+           a, b);
+    cx.commit_if_ok(|_| cx.eq_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
+}
+
+pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
+                                        a_is_expected: bool,
+                                        origin: TypeOrigin,
+                                        a: ty::PolyTraitRef<'tcx>,
+                                        b: ty::PolyTraitRef<'tcx>)
+                                        -> UnitResult<'tcx>
+{
+    debug!("mk_sub_poly_trait_refs({:?} <: {:?})",
            a, b);
     cx.commit_if_ok(|_| cx.sub_poly_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
 }
@@ -857,14 +869,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         })
     }
 
-    pub fn sub_trait_refs(&self,
+    pub fn eq_trait_refs(&self,
                           a_is_expected: bool,
                           origin: TypeOrigin,
                           a: ty::TraitRef<'tcx>,
                           b: ty::TraitRef<'tcx>)
                           -> UnitResult<'tcx>
     {
-        debug!("sub_trait_refs({:?} <: {:?})",
+        debug!("eq_trait_refs({:?} <: {:?})",
                a,
                b);
         self.commit_if_ok(|_| {
@@ -872,7 +884,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            self.equate(a_is_expected, trace).relate(&a, &b).map(|_| ())
         })
     }
 
