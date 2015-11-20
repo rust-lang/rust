@@ -17,8 +17,9 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
 use rustc_front;
-use rustc::front::map::NodeItem;
 use rustc_front::{hir, lowering};
+use rustc::front::map::NodeItem;
+use rustc::session::config::CrateType::CrateTypeExecutable;
 
 use syntax::ast::{self, NodeId};
 use syntax::ast_util;
@@ -744,7 +745,14 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l ty::ctxt<'tcx>,
     }
 
     // Create output file.
-    let mut out_name = cratename.to_owned();
+    let executable = tcx.sess.crate_types.borrow().iter().any(|ct| *ct == CrateTypeExecutable);
+    let mut out_name = if executable {
+        "".to_owned()
+    } else {
+        "lib".to_owned()
+    };
+    out_name.push_str(&cratename);
+    out_name.push_str(&tcx.sess.opts.cg.extra_filename);
     out_name.push_str(".csv");
     root_path.push(&out_name);
     let output_file = match File::create(&root_path) {
