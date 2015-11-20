@@ -54,8 +54,7 @@ use self::FallbackChecks::*;
 use rustc::front::map as hir_map;
 use rustc::session::Session;
 use rustc::lint;
-use rustc::metadata::csearch;
-use rustc::metadata::decoder::{DefLike, DlDef};
+use rustc::metadata::util::{CrateStore, DefLike, DlDef};
 use rustc::middle::def::*;
 use rustc::middle::def_id::DefId;
 use rustc::middle::pat_util::pat_bindings_hygienic;
@@ -1235,7 +1234,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if let Some(node_id) = self.ast_map.as_local_node_id(did) {
             self.ast_map.expect_item(node_id).name
         } else {
-            csearch::get_trait_name(&self.session.cstore, did)
+            self.session.cstore.item_name(did)
         }
     }
 
@@ -3298,7 +3297,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 };
                 sig.explicit_self.node == hir::SelfStatic
             } else {
-                csearch::is_static_method(&this.session.cstore, did)
+                this.session.cstore.is_static_method(did)
             }
         }
 
