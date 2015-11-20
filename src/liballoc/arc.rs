@@ -385,7 +385,7 @@ impl<T: ?Sized> Deref for Arc<T> {
 impl<T: Clone> Arc<T> {
     #[unstable(feature = "arc_make_unique", reason = "renamed to Arc::make_mut",
                issue = "27718")]
-    #[deprecated(since = "1.4.0", reason = "renamed to Arc::make_mut")]
+    #[rustc_deprecated(since = "1.4.0", reason = "renamed to Arc::make_mut")]
     pub fn make_unique(this: &mut Self) -> &mut T {
         Arc::make_mut(this)
     }

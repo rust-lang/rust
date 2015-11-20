@@ -68,6 +68,8 @@
 #![no_core]
 #![deny(missing_docs)]
 
+#![cfg_attr(stage0, feature(rustc_attrs))]
+#![cfg_attr(stage0, allow(unused_attributes))]
 #![feature(allow_internal_unstable)]
 #![feature(associated_type_defaults)]
 #![feature(concat_idents)]
@@ -80,7 +82,6 @@
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
 #![feature(reflect)]
-#![feature(rustc_attrs)]
 #![feature(unwind_attributes)]
 #![cfg_attr(stage0, feature(simd))]
 #![cfg_attr(not(stage0), feature(repr_simd, platform_intrinsics))]

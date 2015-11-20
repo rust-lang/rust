@@ -392,7 +392,7 @@ pub fn catch_panic<F, R>(f: F) -> Result<R>
 /// this function will not return early due to a signal being received or a
 /// spurious wakeup.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.6.0", reason = "replaced by `std::thread::sleep`")]
+#[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::thread::sleep`")]
 pub fn sleep_ms(ms: u32) {
     sleep(Duration::from_millis(ms as u64))
 }
@@ -459,7 +459,7 @@ pub fn park() {
 ///
 /// See the module doc for more detail.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.6.0", reason = "replaced by `std::thread::park_timeout`")]
+#[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::thread::park_timeout`")]
 pub fn park_timeout_ms(ms: u32) {
     park_timeout(Duration::from_millis(ms as u64))
 }

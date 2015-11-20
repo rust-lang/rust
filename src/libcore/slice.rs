@@ -1423,7 +1423,7 @@ impl<'a, T> ExactSizeIterator for ChunksMut<'a, T> {}
 
 /// Converts a reference to A into a slice of length 1 (without copying).
 #[unstable(feature = "ref_slice", issue = "27774")]
-#[deprecated(since = "1.5.0", reason = "unclear whether belongs in libstd")]
+#[rustc_deprecated(since = "1.5.0", reason = "unclear whether belongs in libstd")]
 pub fn ref_slice<A>(s: &A) -> &[A] {
     unsafe {
         from_raw_parts(s, 1)
@@ -1432,7 +1432,7 @@ pub fn ref_slice<A>(s: &A) -> &[A] {
 
 /// Converts a reference to A into a slice of length 1 (without copying).
 #[unstable(feature = "ref_slice", issue = "27774")]
-#[deprecated(since = "1.5.0", reason = "unclear whether belongs in libstd")]
+#[rustc_deprecated(since = "1.5.0", reason = "unclear whether belongs in libstd")]
 pub fn mut_ref_slice<A>(s: &mut A) -> &mut [A] {
     unsafe {
         from_raw_parts_mut(s, 1)

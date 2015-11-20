@@ -206,7 +206,7 @@ for name in lib_feature_stats:
         lang_stable_since = language_feature_stats[name][4]
         lib_stable_since = lib_feature_stats[name][4]
 
-        if lang_status != lib_status and lib_status != "deprecated":
+        if lang_status != lib_status and lib_status != "rustc_deprecated":
             print("error: feature '%s' has lang status %s " +
                   "but lib status %s" % (name, lang_status, lib_status))
             errors = True

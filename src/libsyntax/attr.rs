@@ -381,7 +381,7 @@ pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::Me
     }
 }
 
-/// Represents the #[stable], #[unstable] and #[deprecated] attributes.
+/// Represents the #[stable], #[unstable] and #[rustc_deprecated] attributes.
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Stability {
     pub level: StabilityLevel,
@@ -420,7 +420,7 @@ fn find_stability_generic<'a, I>(diagnostic: &SpanHandler,
     'outer: for attr in attrs_iter {
         let tag = attr.name();
         let tag = &*tag;
-        if tag != "deprecated" && tag != "unstable" && tag != "stable" {
+        if tag != "rustc_deprecated" && tag != "unstable" && tag != "stable" {
             continue // not a stability level
         }
 
@@ -443,9 +443,9 @@ fn find_stability_generic<'a, I>(diagnostic: &SpanHandler,
             };
 
             match tag {
-                "deprecated" => {
+                "rustc_deprecated" => {
                     if depr.is_some() {
-                        diagnostic.span_err(item_sp, "multiple deprecated attributes");
+                        diagnostic.span_err(item_sp, "multiple rustc_deprecated attributes");
                         break
                     }
 
@@ -586,7 +586,7 @@ fn find_stability_generic<'a, I>(diagnostic: &SpanHandler,
             }
             stab.depr = Some(depr);
         } else {
-            diagnostic.span_err(item_sp, "deprecated attribute must be paired with \
+            diagnostic.span_err(item_sp, "rustc_deprecated attribute must be paired with \
                                           either stable or unstable attribute");
         }
     }

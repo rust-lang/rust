@@ -862,7 +862,7 @@ pub trait SliceConcatExt<T: ?Sized> {
     /// assert_eq!(["hello", "world"].connect(" "), "hello world");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.3.0", reason = "renamed to join")]
+    #[rustc_deprecated(since = "1.3.0", reason = "renamed to join")]
     fn connect(&self, sep: &T) -> Self::Output;
 }
 

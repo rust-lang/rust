@@ -86,7 +86,7 @@ impl f64 {
     /// Parses a float as with a given radix
     #[unstable(feature = "float_from_str_radix", reason = "recently moved API",
                issue = "27736")]
-    #[deprecated(since = "1.4.0",
+    #[rustc_deprecated(since = "1.4.0",
                  reason = "unclear how useful or correct this is")]
     pub fn from_str_radix(s: &str, radix: u32) -> Result<f64, ParseFloatError> {
         num::Float::from_str_radix(s, radix)
@@ -355,7 +355,7 @@ impl f64 {
     pub fn is_sign_positive(self) -> bool { num::Float::is_positive(self) }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "renamed to is_sign_positive")]
+    #[rustc_deprecated(since = "1.0.0", reason = "renamed to is_sign_positive")]
     #[inline]
     pub fn is_positive(self) -> bool { num::Float::is_positive(self) }
 
@@ -380,7 +380,7 @@ impl f64 {
     pub fn is_sign_negative(self) -> bool { num::Float::is_negative(self) }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "renamed to is_sign_negative")]
+    #[rustc_deprecated(since = "1.0.0", reason = "renamed to is_sign_negative")]
     #[inline]
     pub fn is_negative(self) -> bool { num::Float::is_negative(self) }
 

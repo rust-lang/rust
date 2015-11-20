@@ -922,7 +922,7 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 /// # Ok(())
 /// # }
 /// ```
-#[deprecated(since = "1.1.0",
+#[rustc_deprecated(since = "1.1.0",
              reason = "replaced with std::os::unix::fs::symlink and \
                        std::os::windows::fs::{symlink_file, symlink_dir}")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1176,7 +1176,7 @@ impl Iterator for WalkDir {
                      change and some methods may be removed.  For stable code, \
                      see the std::fs::metadata function.",
            issue = "27725")]
-#[deprecated(since = "1.5.0", reason = "replaced with inherent methods")]
+#[rustc_deprecated(since = "1.5.0", reason = "replaced with inherent methods")]
 pub trait PathExt {
     /// Gets information on the file, directory, etc at this path.
     ///

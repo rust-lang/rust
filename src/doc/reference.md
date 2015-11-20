@@ -2327,7 +2327,7 @@ The currently implemented features of the reference compiler are:
 
 * `staged_api` - Allows usage of stability markers and `#![staged_api]` in a
                  crate. Stability markers are also attributes: `#[stable]`,
-                 `#[unstable]`, and `#[deprecated]` are the three levels.
+                 `#[unstable]`, and `#[rustc_deprecated]` are the three levels.
 
 * `start` - Allows use of the `#[start]` attribute, which changes the entry point
             into a Rust program. This capability, especially the signature for the

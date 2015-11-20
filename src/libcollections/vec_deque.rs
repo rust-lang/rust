@@ -1058,7 +1058,7 @@ impl<T> VecDeque<T> {
     #[unstable(feature = "deque_extras",
                reason = "the naming of this function may be altered",
                issue = "27788")]
-    #[deprecated(since = "1.5.0", reason = "renamed to swap_remove_back")]
+    #[rustc_deprecated(since = "1.5.0", reason = "renamed to swap_remove_back")]
     pub fn swap_back_remove(&mut self, index: usize) -> Option<T> {
         self.swap_remove_back(index)
     }
@@ -1101,7 +1101,7 @@ impl<T> VecDeque<T> {
     #[unstable(feature = "deque_extras",
                reason = "the naming of this function may be altered",
                issue = "27788")]
-    #[deprecated(since = "1.5.0", reason = "renamed to swap_remove_front")]
+    #[rustc_deprecated(since = "1.5.0", reason = "renamed to swap_remove_front")]
     pub fn swap_front_remove(&mut self, index: usize) -> Option<T> {
         self.swap_remove_front(index)
     }
