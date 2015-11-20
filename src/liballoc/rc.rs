@@ -362,7 +362,7 @@ impl<T: Clone> Rc<T> {
     #[inline]
     #[unstable(feature = "rc_make_unique", reason = "renamed to Rc::make_mut",
                issue = "27718")]
-    #[deprecated(since = "1.4.0", reason = "renamed to Rc::make_mut")]
+    #[rustc_deprecated(since = "1.4.0", reason = "renamed to Rc::make_mut")]
     pub fn make_unique(&mut self) -> &mut T {
         Rc::make_mut(self)
     }

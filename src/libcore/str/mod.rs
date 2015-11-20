@@ -955,7 +955,7 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
 
 /// Created with the method `.lines_any()`.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.4.0", reason = "use lines()/Lines instead now")]
+#[rustc_deprecated(since = "1.4.0", reason = "use lines()/Lines instead now")]
 #[derive(Clone)]
 #[allow(deprecated)]
 pub struct LinesAny<'a>(Lines<'a>);

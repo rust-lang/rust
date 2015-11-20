@@ -370,7 +370,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
 
     // FIXME: #14407 these are only looked at on-demand so we can't
     // guarantee they'll have already been checked
-    ("deprecated", Whitelisted, Ungated),
+    ("rustc_deprecated", Whitelisted, Ungated),
     ("must_use", Whitelisted, Ungated),
     ("stable", Whitelisted, Ungated),
     ("unstable", Whitelisted, Ungated),

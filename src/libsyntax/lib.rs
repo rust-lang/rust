@@ -26,6 +26,8 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
 
+#![cfg_attr(stage0, feature(rustc_attrs))]
+#![cfg_attr(stage0, allow(unused_attributes))]
 #![feature(associated_consts)]
 #![feature(drain)]
 #![feature(filling_drop)]

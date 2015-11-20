@@ -105,7 +105,7 @@ impl<T: Ord> BTreeSet<T> {
     #[unstable(feature = "btree_b",
                reason = "probably want this to be on the type, eventually",
                issue = "27795")]
-    #[deprecated(since = "1.4.0", reason = "niche API")]
+    #[rustc_deprecated(since = "1.4.0", reason = "niche API")]
     #[allow(deprecated)]
     pub fn with_b(b: usize) -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::with_b(b) }
