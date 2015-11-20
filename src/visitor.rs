@@ -137,7 +137,8 @@ impl<'a> FmtVisitor<'a> {
                                 constness,
                                 abi,
                                 vis,
-                                codemap::mk_sp(s.lo, b.span.lo))
+                                codemap::mk_sp(s.lo, b.span.lo),
+                                &b)
             }
             visit::FnKind::Method(ident, ref sig, vis) => {
                 self.rewrite_fn(indent,
@@ -149,19 +150,20 @@ impl<'a> FmtVisitor<'a> {
                                 sig.constness,
                                 sig.abi,
                                 vis.unwrap_or(ast::Visibility::Inherited),
-                                codemap::mk_sp(s.lo, b.span.lo))
+                                codemap::mk_sp(s.lo, b.span.lo),
+                                &b)
             }
             visit::FnKind::Closure => None,
         };
 
         if let Some(fn_str) = rewrite {
             self.format_missing_with_indent(s.lo);
-            if let Some(ref single_line_fn) = self.rewrite_single_line_fn(&fn_str, &b) {
-                self.buffer.push_str(single_line_fn);
-                self.last_pos = b.span.hi;
-                return;
-            } else {
-                self.buffer.push_str(&fn_str);
+            self.buffer.push_str(&fn_str);
+            if let Some(c) = fn_str.chars().last() {
+                if c == '}' {
+                    self.last_pos = b.span.hi;
+                    return;
+                }
             }
         } else {
             self.format_missing(b.span.lo);

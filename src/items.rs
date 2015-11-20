@@ -177,7 +177,8 @@ impl<'a> FmtVisitor<'a> {
                       constness: ast::Constness,
                       abi: abi::Abi,
                       vis: ast::Visibility,
-                      span: Span)
+                      span: Span,
+                      block: &ast::Block)
                       -> Option<String> {
         let mut newline_brace = self.newline_for_brace(&generics.where_clause);
 
@@ -212,7 +213,7 @@ impl<'a> FmtVisitor<'a> {
             result.push(' ');
         }
 
-        Some(result)
+        self.single_line_fn(&result, block).or_else(|| Some(result))
     }
 
     pub fn rewrite_required_fn(&mut self,
@@ -447,10 +448,7 @@ impl<'a> FmtVisitor<'a> {
         Some((result, force_new_line_for_brace))
     }
 
-    pub fn rewrite_single_line_fn(&self,
-                                  fn_str: &str,
-                                  block: &ast::Block)
-                                  -> Option<String> {
+    fn single_line_fn(&self, fn_str: &str, block: &ast::Block) -> Option<String> {
 
         if fn_str.contains('\n') {
             return None;
