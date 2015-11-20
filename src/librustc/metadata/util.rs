@@ -16,6 +16,7 @@ use middle::lang_items;
 use middle::ty;
 use middle::def_id::{DefId, DefIndex};
 
+use std::any::Any;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::attr;
@@ -24,9 +25,18 @@ use rustc_front::hir;
 pub use metadata::csearch::FoundAst;
 pub use metadata::cstore::LinkagePreference;
 pub use metadata::decoder::DecodeInlinedItem;
+pub use metadata::decoder::DefLike;
 pub use metadata::inline::InlinedItem;
 
-pub trait CrateStore<'tcx> {
+pub use self::DefLike::{DlDef, DlField, DlImpl};
+
+pub struct ChildItem {
+    pub def: DefLike,
+    pub name: ast::Name,
+    pub vis: hir::Visibility
+}
+
+pub trait CrateStore<'tcx> : Any {
     // item info
     fn stability(&self, def: DefId) -> Option<attr::Stability>;
     fn closure_kind(&self, tcx: &ty::ctxt<'tcx>, def_id: DefId)
@@ -75,17 +85,24 @@ pub trait CrateStore<'tcx> {
     fn is_const_fn(&self, did: DefId) -> bool;
     fn is_defaulted_trait(&self, did: DefId) -> bool;
     fn is_impl(&self, did: DefId) -> bool;
+    fn is_static_method(&self, did: DefId) -> bool;
 
     // metadata
     fn dylib_dependency_formats(&self, cnum: ast::CrateNum)
-                                    -> Vec<(ast::CrateNum, cstore::LinkagePreference)>;
+                                    -> Vec<(ast::CrateNum, LinkagePreference)>;
     fn lang_items(&self, cnum: ast::CrateNum) -> Vec<(DefIndex, usize)>;
-    fn missing_lang_items(&self, cnum: ast::CrateNum)
-                          -> Vec<lang_items::LangItem>;
+    fn missing_lang_items(&self, cnum: ast::CrateNum) -> Vec<lang_items::LangItem>;
     fn is_staged_api(&self, cnum: ast::CrateNum) -> bool;
+    fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>;
+
+    // resolve
+    fn def_path(&self, def: DefId) -> ast_map::DefPath;
+    fn tuple_struct_definition_if_ctor(&self, did: DefId) -> Option<DefId>;
+    fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
+    fn item_children(&self, did: DefId) -> Vec<ChildItem>;
+    fn crate_top_level_items(&self, cnum: ast::CrateNum) -> Vec<ChildItem>;
 
     // misc.
-    fn def_path(&self, def: DefId) -> ast_map::DefPath;
     fn maybe_get_item_ast(&'tcx self, tcx: &ty::ctxt<'tcx>, def: DefId)
                           -> FoundAst<'tcx>;
 }
@@ -278,8 +295,13 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::is_impl(&*cdata, did.index)
     }
 
+    fn is_static_method(&self, def: DefId) -> bool {
+        let cdata = self.get_crate_data(def.krate);
+        decoder::is_static_method(&*cdata, def.index)
+    }
+
     fn dylib_dependency_formats(&self, cnum: ast::CrateNum)
-                                -> Vec<(ast::CrateNum, cstore::LinkagePreference)>
+                                -> Vec<(ast::CrateNum, LinkagePreference)>
     {
         let cdata = self.get_crate_data(cnum);
         decoder::get_dylib_dependency_formats(&cdata)
@@ -307,11 +329,64 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(cnum).staged_api
     }
 
-    fn def_path(&self, def: DefId) -> ast_map::DefPath {
+    fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>
+    {
+        let cdata = self.get_crate_data(cnum);
+        decoder::get_plugin_registrar_fn(cdata.data()).map(|index| DefId {
+            krate: cnum,
+            index: index
+        })
+    }
+
+    fn def_path(&self, def: DefId) -> ast_map::DefPath
+    {
         let cdata = self.get_crate_data(def.krate);
         let path = decoder::def_path(&*cdata, def.index);
         let local_path = cdata.local_def_path();
         local_path.into_iter().chain(path).collect()
+    }
+
+    fn tuple_struct_definition_if_ctor(&self, did: DefId) -> Option<DefId>
+    {
+        let cdata = self.get_crate_data(did.krate);
+        decoder::get_tuple_struct_definition_if_ctor(&*cdata, did.index)
+    }
+
+    fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>
+    {
+        let cdata = self.get_crate_data(def.krate);
+        decoder::get_struct_field_names(&self.intr, &*cdata, def.index)
+    }
+
+    fn item_children(&self, def_id: DefId) -> Vec<ChildItem>
+    {
+        let mut result = vec![];
+        let crate_data = self.get_crate_data(def_id.krate);
+        let get_crate_data = |cnum| self.get_crate_data(cnum);
+        decoder::each_child_of_item(
+            self.intr.clone(), &*crate_data,
+            def_id.index, get_crate_data,
+            |def, name, vis| result.push(ChildItem {
+                def: def,
+                name: name,
+                vis: vis
+            }));
+        result
+    }
+
+    fn crate_top_level_items(&self, cnum: ast::CrateNum) -> Vec<ChildItem>
+    {
+        let mut result = vec![];
+        let crate_data = self.get_crate_data(cnum);
+        let get_crate_data = |cnum| self.get_crate_data(cnum);
+        decoder::each_top_level_item_of_crate(
+            self.intr.clone(), &*crate_data, get_crate_data,
+            |def, name, vis| result.push(ChildItem {
+                def: def,
+                name: name,
+                vis: vis
+            }));
+        result
     }
 
     fn maybe_get_item_ast(&'tcx self, tcx: &ty::ctxt<'tcx>, def: DefId)

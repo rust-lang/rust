@@ -22,7 +22,7 @@ use middle::def_id::DefId;
 use middle::lang_items::FnOnceTraitLangItem;
 use middle::subst::Substs;
 use middle::traits::{Obligation, SelectionContext};
-use metadata::{csearch, cstore, decoder};
+use metadata::util::{self as mdutil, CrateStore, DefLike};
 use util::nodemap::{FnvHashSet};
 
 use syntax::ast;
@@ -418,31 +418,32 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
         fn handle_external_def(traits: &mut AllTraitsVec,
                                external_mods: &mut FnvHashSet<DefId>,
                                ccx: &CrateCtxt,
-                               cstore: &cstore::CStore,
-                               dl: decoder::DefLike) {
+                               cstore: &mdutil::CrateStore,
+                               dl: mdutil::DefLike) {
             match dl {
-                decoder::DlDef(def::DefTrait(did)) => {
+                mdutil::DlDef(def::DefTrait(did)) => {
                     traits.push(TraitInfo::new(did));
                 }
-                decoder::DlDef(def::DefMod(did)) => {
+                mdutil::DlDef(def::DefMod(did)) => {
                     if !external_mods.insert(did) {
                         return;
                     }
-                    csearch::each_child_of_item(cstore, did, |dl, _, _| {
+                    for child in cstore.item_children(did) {
                         handle_external_def(traits, external_mods,
-                                            ccx, cstore, dl)
-                    })
+                                            ccx, cstore, child.def)
+                    }
                 }
                 _ => {}
             }
         }
-        let cstore = &ccx.tcx.sess.cstore;
-        cstore.iter_crate_data(|cnum, _| {
-            csearch::each_top_level_item_of_crate(cstore, cnum, |dl, _, _| {
-                handle_external_def(&mut traits,
-                                    &mut external_mods,
-                                    ccx, cstore, dl)
-            })
+        let cstore: &mdutil::CrateStore = &ccx.tcx.sess.cstore;
+
+        // FIXME: privatize this
+        ccx.tcx.sess.cstore.iter_crate_data(|cnum, _| {
+            for child in cstore.crate_top_level_items(cnum) {
+                handle_external_def(&mut traits, &mut external_mods,
+                                    ccx, cstore, child.def)
+            }
         });
 
         *ccx.all_traits.borrow_mut() = Some(traits);
