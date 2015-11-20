@@ -74,6 +74,7 @@ options covering different styles. File an issue, or even better, submit a PR.
 ## Gotchas
 
 * For things you do not want rustfmt to mangle, use one of
+
     ```rust
     #[rustfmt_skip]
     #[cfg_attr(rustfmt, rustfmt_skip)]
