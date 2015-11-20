@@ -174,7 +174,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     }
                 }
 
-                mir::Terminator::SwitchInt { ref discr, switch_ty: _, ref values, ref targets } => {
+                mir::Terminator::SwitchInt { ref discr, ref values, ref targets, .. } => {
                     let discr_val = self.read_lvalue(discr);
 
                     let index = values.iter().position(|v| discr_val == self.eval_constant(v))
