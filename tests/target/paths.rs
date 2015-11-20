@@ -19,5 +19,4 @@ fn main() {
     let x: Foo<A>;
 }
 
-fn op(foo: Bar, key: &[u8], upd: Fn(Option<&memcache::Item>, Baz) -> Result) -> MapResult {
-}
+fn op(foo: Bar, key: &[u8], upd: Fn(Option<&memcache::Item>, Baz) -> Result) -> MapResult {}

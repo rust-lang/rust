@@ -1,8 +1,6 @@
 // Tests different fns
 
-fn foo(a: AAAA, b: BBB, c: CCC) -> RetType {
-
-}
+fn foo(a: AAAA, b: BBB, c: CCC) -> RetType {}
 
 fn foo(a: AAAA, b: BBB /* some, weird, inline comment */, c: CCC) -> RetType
     where T: Blah
@@ -34,8 +32,7 @@ fn foo<U, T>(a: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
 
 }
 
-fn foo<U: Fn(A) -> B /* paren inside generics */>() {
-}
+fn foo<U: Fn(A) -> B /* paren inside generics */>() {}
 
 impl Foo {
     fn with_no_errors<T, F>(&mut self, f: F) -> T
@@ -43,11 +40,9 @@ impl Foo {
     {
     }
 
-    fn foo(mut self, mut bar: u32) {
-    }
+    fn foo(mut self, mut bar: u32) {}
 
-    fn bar(self, mut bazz: u32) {
-    }
+    fn bar(self, mut bazz: u32) {}
 }
 
 pub fn render<'a,
@@ -75,12 +70,9 @@ impl Foo {
     }
 }
 
-fn homura<T: Deref<Target = i32>>(_: T) {
+fn homura<T: Deref<Target = i32>>(_: T) {}
 
-}
-
-fn issue377() -> (Box<CompositorProxy + Send>, Box<CompositorReceiver>) {
-}
+fn issue377() -> (Box<CompositorProxy + Send>, Box<CompositorReceiver>) {}
 
 fn main() {
     let _ = function(move || 5);

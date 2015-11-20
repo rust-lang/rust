@@ -12,10 +12,10 @@
 
 use Indent;
 use utils::{format_mutability, format_visibility, contains_skip, span_after, end_typaram,
-            wrap_str, last_line_width};
+            wrap_str, last_line_width, semicolon_for_expr};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
             DefinitiveListTactic, definitive_tactic, format_item_list};
-use expr::rewrite_assign_rhs;
+use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
 use comment::FindUncommented;
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
@@ -177,7 +177,8 @@ impl<'a> FmtVisitor<'a> {
                       constness: ast::Constness,
                       abi: abi::Abi,
                       vis: ast::Visibility,
-                      span: Span)
+                      span: Span,
+                      block: &ast::Block)
                       -> Option<String> {
         let mut newline_brace = self.newline_for_brace(&generics.where_clause);
 
@@ -212,7 +213,7 @@ impl<'a> FmtVisitor<'a> {
             result.push(' ');
         }
 
-        Some(result)
+        self.single_line_fn(&result, block).or_else(|| Some(result))
     }
 
     pub fn rewrite_required_fn(&mut self,
@@ -445,6 +446,53 @@ impl<'a> FmtVisitor<'a> {
         result.push_str(&where_clause_str);
 
         Some((result, force_new_line_for_brace))
+    }
+
+    fn single_line_fn(&self, fn_str: &str, block: &ast::Block) -> Option<String> {
+
+        if fn_str.contains('\n') {
+            return None;
+        }
+
+        let codemap = self.get_context().codemap;
+
+        if self.config.fn_empty_single_line && is_empty_block(block, codemap) &&
+           self.block_indent.width() + fn_str.len() + 2 <= self.config.max_width {
+            return Some(format!("{}{{}}", fn_str));
+        }
+
+        if self.config.fn_single_line && is_simple_block_stmt(block, codemap) {
+            let rewrite = {
+                if let Some(ref e) = block.expr {
+                    let suffix = if semicolon_for_expr(e) {
+                        ";"
+                    } else {
+                        ""
+                    };
+
+                    e.rewrite(&self.get_context(),
+                              self.config.max_width - self.block_indent.width(),
+                              self.block_indent)
+                     .map(|s| s + suffix)
+                     .or_else(|| Some(self.snippet(e.span)))
+                } else if let Some(ref stmt) = block.stmts.first() {
+                    stmt.rewrite(&self.get_context(),
+                                 self.config.max_width - self.block_indent.width(),
+                                 self.block_indent)
+                } else {
+                    None
+                }
+            };
+
+            if let Some(res) = rewrite {
+                let width = self.block_indent.width() + fn_str.len() + res.len() + 4;
+                if !res.contains('\n') && width <= self.config.max_width {
+                    return Some(format!("{}{{ {} }}", fn_str, res));
+                }
+            }
+        }
+
+        None
     }
 
     fn rewrite_args(&self,

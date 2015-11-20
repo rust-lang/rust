@@ -1,4 +1,3 @@
 // A standard mod
 
-fn a() {
-}
+fn a() {}
