@@ -348,8 +348,8 @@ impl<T, S> HashSet<T, S>
     ///     println!("{}", x);
     /// }
     ///
-    /// let diff: HashSet<_> = a.intersection(&b).cloned().collect();
-    /// assert_eq!(diff, [2, 3].iter().cloned().collect());
+    /// let intersection: HashSet<_> = a.intersection(&b).cloned().collect();
+    /// assert_eq!(intersection, [2, 3].iter().cloned().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T, S>) -> Intersection<'a, T, S> {
@@ -373,8 +373,8 @@ impl<T, S> HashSet<T, S>
     ///     println!("{}", x);
     /// }
     ///
-    /// let diff: HashSet<_> = a.union(&b).cloned().collect();
-    /// assert_eq!(diff, [1, 2, 3, 4].iter().cloned().collect());
+    /// let union: HashSet<_> = a.union(&b).cloned().collect();
+    /// assert_eq!(union, [1, 2, 3, 4].iter().cloned().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a HashSet<T, S>) -> Union<'a, T, S> {
