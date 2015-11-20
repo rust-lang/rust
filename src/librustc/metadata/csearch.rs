@@ -406,4 +406,3 @@ pub fn def_path(tcx: &ty::ctxt, def: DefId) -> ast_map::DefPath {
     let local_path = cdata.local_def_path();
     local_path.into_iter().chain(path).collect()
 }
-

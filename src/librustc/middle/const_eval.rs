@@ -16,9 +16,8 @@ use self::EvalHint::*;
 
 use front::map as ast_map;
 use front::map::blocks::FnLikeNode;
-use metadata::csearch;
-use metadata::inline::InlinedItem;
-use middle::{astencode, def, infer, subst, traits};
+use metadata::util::{self as mdutil, CrateStore, InlinedItem};
+use middle::{def, infer, subst, traits};
 use middle::def_id::DefId;
 use middle::pat_util::def_to_path;
 use middle::ty::{self, Ty};
@@ -145,13 +144,12 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
             None => {}
         }
         let mut used_ref_id = false;
-        let expr_id = match csearch::maybe_get_item_ast(tcx, def_id,
-            Box::new(astencode::decode_inlined_item)) {
-            csearch::FoundAst::Found(&InlinedItem::Item(ref item)) => match item.node {
+        let expr_id = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
+            mdutil::FoundAst::Found(&InlinedItem::Item(ref item)) => match item.node {
                 hir::ItemConst(_, ref const_expr) => Some(const_expr.id),
                 _ => None
             },
-            csearch::FoundAst::Found(&InlinedItem::TraitItem(trait_id, ref ti)) => match ti.node {
+            mdutil::FoundAst::Found(&InlinedItem::TraitItem(trait_id, ref ti)) => match ti.node {
                 hir::ConstTraitItem(_, _) => {
                     used_ref_id = true;
                     match maybe_ref_id {
@@ -170,7 +168,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                 }
                 _ => None
             },
-            csearch::FoundAst::Found(&InlinedItem::ImplItem(_, ref ii)) => match ii.node {
+            mdutil::FoundAst::Found(&InlinedItem::ImplItem(_, ref ii)) => match ii.node {
                 hir::ImplItemKind::Const(_, ref expr) => Some(expr.id),
                 _ => None
             },
@@ -196,15 +194,14 @@ fn inline_const_fn_from_external_crate(tcx: &ty::ctxt, def_id: DefId)
         None => {}
     }
 
-    if !csearch::is_const_fn(&tcx.sess.cstore, def_id) {
+    if !tcx.sess.cstore.is_const_fn(def_id) {
         tcx.extern_const_fns.borrow_mut().insert(def_id, ast::DUMMY_NODE_ID);
         return None;
     }
 
-    let fn_id = match csearch::maybe_get_item_ast(tcx, def_id,
-        box astencode::decode_inlined_item) {
-        csearch::FoundAst::Found(&InlinedItem::Item(ref item)) => Some(item.id),
-        csearch::FoundAst::Found(&InlinedItem::ImplItem(_, ref item)) => Some(item.id),
+    let fn_id = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
+        mdutil::FoundAst::Found(&InlinedItem::Item(ref item)) => Some(item.id),
+        mdutil::FoundAst::Found(&InlinedItem::ImplItem(_, ref item)) => Some(item.id),
         _ => None
     };
     tcx.extern_const_fns.borrow_mut().insert(def_id,

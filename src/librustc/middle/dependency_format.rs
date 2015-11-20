@@ -65,8 +65,8 @@ use syntax::ast;
 
 use session;
 use session::config;
-use metadata::cstore;
-use metadata::csearch;
+use metadata::util::CrateStore;
+use metadata::util::LinkagePreference::{self, RequireStatic, RequireDynamic};
 use util::nodemap::FnvHashMap;
 
 /// A list of dependencies for a certain crate type.
@@ -155,8 +155,8 @@ fn calculate_type(sess: &session::Session,
         let src = sess.cstore.get_used_crate_source(cnum).unwrap();
         if src.dylib.is_some() {
             info!("adding dylib: {}", data.name);
-            add_library(sess, cnum, cstore::RequireDynamic, &mut formats);
-            let deps = csearch::get_dylib_dependency_formats(&sess.cstore, cnum);
+            add_library(sess, cnum, RequireDynamic, &mut formats);
+            let deps = sess.cstore.dylib_dependency_formats(cnum);
             for &(depnum, style) in &deps {
                 info!("adding {:?}: {}", style,
                       sess.cstore.get_crate_data(depnum).name.clone());
@@ -168,8 +168,8 @@ fn calculate_type(sess: &session::Session,
     // Collect what we've got so far in the return vector.
     let mut ret = (1..sess.cstore.next_crate_num()).map(|i| {
         match formats.get(&i) {
-            Some(&cstore::RequireDynamic) => Linkage::Dynamic,
-            Some(&cstore::RequireStatic) => Linkage::IncludedFromDylib,
+            Some(&RequireDynamic) => Linkage::Dynamic,
+            Some(&RequireStatic) => Linkage::IncludedFromDylib,
             None => Linkage::NotLinked,
         }
     }).collect::<Vec<_>>();
@@ -186,7 +186,7 @@ fn calculate_type(sess: &session::Session,
            data.explicitly_linked.get() {
             assert!(src.rlib.is_some());
             info!("adding staticlib: {}", data.name);
-            add_library(sess, cnum, cstore::RequireStatic, &mut formats);
+            add_library(sess, cnum, RequireStatic, &mut formats);
             ret[cnum as usize - 1] = Linkage::Static;
         }
     });
@@ -229,8 +229,8 @@ fn calculate_type(sess: &session::Session,
 
 fn add_library(sess: &session::Session,
                cnum: ast::CrateNum,
-               link: cstore::LinkagePreference,
-               m: &mut FnvHashMap<ast::CrateNum, cstore::LinkagePreference>) {
+               link: LinkagePreference,
+               m: &mut FnvHashMap<ast::CrateNum, LinkagePreference>) {
     match m.get(&cnum) {
         Some(&link2) => {
             // If the linkages differ, then we'd have two copies of the library
@@ -240,7 +240,7 @@ fn add_library(sess: &session::Session,
             //
             // This error is probably a little obscure, but I imagine that it
             // can be refined over time.
-            if link2 != link || link == cstore::RequireStatic {
+            if link2 != link || link == RequireStatic {
                 let data = sess.cstore.get_crate_data(cnum);
                 sess.err(&format!("cannot satisfy dependencies so `{}` only \
                                    shows up once", data.name));
@@ -253,7 +253,7 @@ fn add_library(sess: &session::Session,
 }
 
 fn attempt_static(sess: &session::Session) -> Option<DependencyList> {
-    let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
+    let crates = sess.cstore.get_used_crates(RequireStatic);
     if !crates.iter().by_ref().all(|&(_, ref p)| p.is_some()) {
         return None
     }

@@ -16,7 +16,7 @@
 use front::map as ast_map;
 use session::Session;
 use lint;
-use metadata::csearch;
+use metadata::util::CrateStore;
 use middle;
 use middle::def::DefMap;
 use middle::def_id::DefId;
@@ -155,7 +155,7 @@ impl<'tcx> Tables<'tcx> {
             return kind;
         }
 
-        let kind = csearch::closure_kind(tcx, def_id);
+        let kind = tcx.sess.cstore.closure_kind(tcx, def_id);
         this.borrow_mut().closure_kinds.insert(def_id, kind);
         kind
     }
@@ -173,7 +173,7 @@ impl<'tcx> Tables<'tcx> {
             return ty.subst(tcx, &substs.func_substs);
         }
 
-        let ty = csearch::closure_ty(tcx, def_id);
+        let ty = tcx.sess.cstore.closure_ty(tcx, def_id);
         this.borrow_mut().closure_tys.insert(def_id, ty.clone());
         ty.subst(tcx, &substs.func_substs)
     }
