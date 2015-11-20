@@ -144,7 +144,9 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 mir::Terminator::Return => break,
                 mir::Terminator::Goto { target } => block = target,
 
-                mir::Terminator::Call { data: mir::CallData { ref destination, ref func, ref args }, targets } => {
+                mir::Terminator::Call { ref data, targets } => {
+                    let mir::CallData { ref destination, ref func, ref args } = *data;
+
                     let ptr = self.eval_lvalue(destination);
                     let func_val = self.eval_operand(func);
 
