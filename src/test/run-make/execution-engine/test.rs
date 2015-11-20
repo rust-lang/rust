@@ -27,6 +27,7 @@ use std::thread::Builder;
 use rustc::front::map as ast_map;
 use rustc::llvm;
 use rustc::metadata::cstore::RequireDynamic;
+use rustc::metadata::util::CrateStore;
 use rustc::middle::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Input, Options};
 use rustc::session::build_session;

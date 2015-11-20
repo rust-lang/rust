@@ -124,7 +124,7 @@ fn calculate_type(sess: &session::Session,
                 None => {}
             }
             sess.cstore.iter_crate_data(|cnum, data| {
-                let src = sess.cstore.get_used_crate_source(cnum).unwrap();
+                let src = sess.cstore.used_crate_source(cnum);
                 if src.rlib.is_some() { return }
                 sess.err(&format!("dependency `{}` not found in rlib format",
                                  data.name));
@@ -152,14 +152,14 @@ fn calculate_type(sess: &session::Session,
     // dependencies, ensuring there are no conflicts. The only valid case for a
     // dependency to be relied upon twice is for both cases to rely on a dylib.
     sess.cstore.iter_crate_data(|cnum, data| {
-        let src = sess.cstore.get_used_crate_source(cnum).unwrap();
+        let src = sess.cstore.used_crate_source(cnum);
         if src.dylib.is_some() {
             info!("adding dylib: {}", data.name);
             add_library(sess, cnum, RequireDynamic, &mut formats);
             let deps = sess.cstore.dylib_dependency_formats(cnum);
             for &(depnum, style) in &deps {
                 info!("adding {:?}: {}", style,
-                      sess.cstore.get_crate_data(depnum).name.clone());
+                      sess.cstore.crate_name(depnum));
                 add_library(sess, depnum, style, &mut formats);
             }
         }
@@ -180,7 +180,7 @@ fn calculate_type(sess: &session::Session,
     // If the crate hasn't been included yet and it's not actually required
     // (e.g. it's an allocator) then we skip it here as well.
     sess.cstore.iter_crate_data(|cnum, data| {
-        let src = sess.cstore.get_used_crate_source(cnum).unwrap();
+        let src = sess.cstore.used_crate_source(cnum);
         if src.dylib.is_none() &&
            !formats.contains_key(&cnum) &&
            data.explicitly_linked.get() {
@@ -205,7 +205,7 @@ fn calculate_type(sess: &session::Session,
     // making sure that everything is available in the requested format.
     for (cnum, kind) in ret.iter().enumerate() {
         let cnum = (cnum + 1) as ast::CrateNum;
-        let src = sess.cstore.get_used_crate_source(cnum).unwrap();
+        let src = sess.cstore.used_crate_source(cnum);
         match *kind {
             Linkage::NotLinked |
             Linkage::IncludedFromDylib => {}
@@ -216,10 +216,10 @@ fn calculate_type(sess: &session::Session,
                     Linkage::Static => "rlib",
                     _ => "dylib",
                 };
-                let data = sess.cstore.get_crate_data(cnum);
+                let name = sess.cstore.crate_name(cnum);
                 sess.err(&format!("crate `{}` required to be available in {}, \
                                   but it was not available in this form",
-                                 data.name, kind));
+                                  name, kind));
             }
         }
     }
@@ -241,9 +241,8 @@ fn add_library(sess: &session::Session,
             // This error is probably a little obscure, but I imagine that it
             // can be refined over time.
             if link2 != link || link == RequireStatic {
-                let data = sess.cstore.get_crate_data(cnum);
                 sess.err(&format!("cannot satisfy dependencies so `{}` only \
-                                   shows up once", data.name));
+                                   shows up once", sess.cstore.crate_name(cnum)));
                 sess.help("having upstream crates all available in one format \
                            will likely make this go away");
             }
@@ -253,7 +252,7 @@ fn add_library(sess: &session::Session,
 }
 
 fn attempt_static(sess: &session::Session) -> Option<DependencyList> {
-    let crates = sess.cstore.get_used_crates(RequireStatic);
+    let crates = sess.cstore.used_crates(RequireStatic);
     if !crates.iter().by_ref().all(|&(_, ref p)| p.is_some()) {
         return None
     }
@@ -261,7 +260,7 @@ fn attempt_static(sess: &session::Session) -> Option<DependencyList> {
     // All crates are available in an rlib format, so we're just going to link
     // everything in explicitly so long as it's actually required.
     let mut ret = (1..sess.cstore.next_crate_num()).map(|cnum| {
-        if sess.cstore.get_crate_data(cnum).explicitly_linked.get() {
+        if sess.cstore.is_explicitly_linked(cnum) {
             Linkage::Static
         } else {
             Linkage::NotLinked
@@ -288,7 +287,7 @@ fn activate_allocator(sess: &session::Session, list: &mut DependencyList) {
     let mut allocator_found = false;
     for (i, slot) in list.iter().enumerate() {
         let cnum = (i + 1) as ast::CrateNum;
-        if !sess.cstore.get_crate_data(cnum).is_allocator() {
+        if !sess.cstore.is_allocator(cnum) {
             continue
         }
         if let Linkage::NotLinked = *slot {
@@ -314,18 +313,18 @@ fn verify_ok(sess: &session::Session, list: &[Linkage]) {
     let mut allocator = None;
     for (i, linkage) in list.iter().enumerate() {
         let cnum = (i + 1) as ast::CrateNum;
-        let data = sess.cstore.get_crate_data(cnum);
-        if !data.is_allocator() {
+        if !sess.cstore.is_allocator(cnum) {
             continue
         }
         if let Linkage::NotLinked = *linkage {
             continue
         }
         if let Some(prev_alloc) = allocator {
-            let prev = sess.cstore.get_crate_data(prev_alloc);
+            let prev_name = sess.cstore.crate_name(prev_alloc);
+            let cur_name = sess.cstore.crate_name(cnum);
             sess.err(&format!("cannot link together two \
                                allocators: {} and {}",
-                              prev.name(), data.name()));
+                              prev_name, cur_name));
         }
         allocator = Some(cnum);
     }

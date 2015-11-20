@@ -21,10 +21,11 @@ use std::process::{Command, Output, Stdio};
 use std::ptr;
 use std::str;
 
+use metadata::util::CrateStore;
+
 use libc;
 use llvm::archive_ro::{ArchiveRO, Child};
 use llvm::{self, ArchiveKind};
-use rustc::metadata::loader::METADATA_FILENAME;
 use rustc::session::Session;
 use rustc_back::tempdir::TempDir;
 
@@ -169,11 +170,13 @@ impl<'a> ArchiveBuilder<'a> {
         // Ignoring all bytecode files, no matter of
         // name
         let bc_ext = ".bytecode.deflate";
+        let metadata_filename =
+            self.config.sess.cstore.metadata_filename().to_owned();
 
         self.add_archive(rlib, &name[..], move |fname: &str| {
             let skip_obj = lto && fname.starts_with(&obj_start)
                 && fname.ends_with(".o");
-            skip_obj || fname.ends_with(bc_ext) || fname == METADATA_FILENAME
+            skip_obj || fname.ends_with(bc_ext) || fname == metadata_filename
         })
     }
 

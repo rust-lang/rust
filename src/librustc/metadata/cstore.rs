@@ -159,7 +159,7 @@ impl CStore {
         I: FnMut(ast::CrateNum, &crate_metadata, Option<CrateSource>),
     {
         for (&k, v) in self.metas.borrow().iter() {
-            let origin = self.get_used_crate_source(k);
+            let origin = self.do_get_used_crate_source(k);
             origin.as_ref().map(|cs| { assert!(k == cs.cnum); });
             i(k, &**v, origin);
         }
@@ -172,8 +172,9 @@ impl CStore {
         }
     }
 
-    pub fn get_used_crate_source(&self, cnum: ast::CrateNum)
-                                     -> Option<CrateSource> {
+    // TODO: killdo
+    pub fn do_get_used_crate_source(&self, cnum: ast::CrateNum)
+                                    -> Option<CrateSource> {
         self.used_crate_sources.borrow_mut()
             .iter().find(|source| source.cnum == cnum).cloned()
     }
@@ -196,8 +197,9 @@ impl CStore {
     // In order to get this left-to-right dependency ordering, we perform a
     // topological sort of all crates putting the leaves at the right-most
     // positions.
-    pub fn get_used_crates(&self, prefer: LinkagePreference)
-                           -> Vec<(ast::CrateNum, Option<PathBuf>)> {
+    // TODO: killdo
+    pub fn do_get_used_crates(&self, prefer: LinkagePreference)
+                              -> Vec<(ast::CrateNum, Option<PathBuf>)> {
         let mut ordering = Vec::new();
         fn visit(cstore: &CStore, cnum: ast::CrateNum,
                  ordering: &mut Vec<ast::CrateNum>) {
