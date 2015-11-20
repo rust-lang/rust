@@ -154,16 +154,15 @@ impl<'a> FmtVisitor<'a> {
             visit::FnKind::Closure => None,
         };
 
-        if let Some(ref single_line_fn) = self.rewrite_single_line_fn(&rewrite, &b) {
-            self.format_missing_with_indent(s.lo);
-            self.buffer.push_str(single_line_fn);
-            self.last_pos = b.span.hi;
-            return;
-        }
-
         if let Some(fn_str) = rewrite {
             self.format_missing_with_indent(s.lo);
-            self.buffer.push_str(&fn_str);
+            if let Some(ref single_line_fn) = self.rewrite_single_line_fn(&fn_str, &b) {
+                self.buffer.push_str(single_line_fn);
+                self.last_pos = b.span.hi;
+                return;
+            } else {
+                self.buffer.push_str(&fn_str);
+            }
         } else {
             self.format_missing(b.span.lo);
         }

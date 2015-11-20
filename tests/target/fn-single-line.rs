@@ -9,7 +9,7 @@ fn foo_decl_local() { let z = 5; }
 
 fn foo_decl_item(x: &mut i32) { x = 3; }
 
-fn empty() { }
+fn empty() {}
 
 fn foo_return() -> String { "yay" }
 
@@ -55,9 +55,9 @@ fn lots_of_space() { 1 }
 fn mac() -> Vec<i32> { vec![] }
 
 trait CoolTypes {
-    fn dummy(&self) { }
+    fn dummy(&self) {}
 }
 
 trait CoolerTypes {
-    fn dummy(&self) { }
+    fn dummy(&self) {}
 }

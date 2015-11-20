@@ -448,20 +448,19 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub fn rewrite_single_line_fn(&self,
-                                  fn_rewrite: &Option<String>,
+                                  fn_str: &str,
                                   block: &ast::Block)
                                   -> Option<String> {
 
-        let fn_str = match *fn_rewrite {
-            Some(ref s) if !s.contains('\n') => s,
-            _ => return None,
-        };
+        if fn_str.contains('\n') {
+            return None;
+        }
 
         let codemap = self.get_context().codemap;
 
-        if is_empty_block(block, codemap) &&
-           self.block_indent.width() + fn_str.len() + 3 <= self.config.max_width {
-            return Some(format!("{}{{ }}", fn_str));
+        if self.config.fn_empty_single_line && is_empty_block(block, codemap) &&
+           self.block_indent.width() + fn_str.len() + 2 <= self.config.max_width {
+            return Some(format!("{}{{}}", fn_str));
         }
 
         if self.config.fn_single_line && is_simple_block_stmt(block, codemap) {
@@ -488,7 +487,7 @@ impl<'a> FmtVisitor<'a> {
             };
 
             if let Some(res) = rewrite {
-                let width = self.block_indent.width() + fn_str.len() + res.len() + 3;
+                let width = self.block_indent.width() + fn_str.len() + res.len() + 4;
                 if !res.contains('\n') && width <= self.config.max_width {
                     return Some(format!("{}{{ {} }}", fn_str, res));
                 }

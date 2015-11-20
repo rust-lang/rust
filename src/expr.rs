@@ -705,36 +705,25 @@ fn single_line_if_else(context: &RewriteContext,
     None
 }
 
-// Checks that a block contains no statements, an expression and no comments.
-fn is_simple_block(block: &ast::Block, codemap: &CodeMap) -> bool {
-    if !block.stmts.is_empty() || block.expr.is_none() {
-        return false;
-    }
-
+fn block_contains_comment(block: &ast::Block, codemap: &CodeMap) -> bool {
     let snippet = codemap.span_to_snippet(block.span).unwrap();
+    contains_comment(&snippet)
+}
 
-    !contains_comment(&snippet)
+// Checks that a block contains no statements, an expression and no comments.
+pub fn is_simple_block(block: &ast::Block, codemap: &CodeMap) -> bool {
+    block.stmts.is_empty() && block.expr.is_some() && !block_contains_comment(block, codemap)
 }
 
 /// Checks whether a block contains at most one statement or expression, and no comments.
 pub fn is_simple_block_stmt(block: &ast::Block, codemap: &CodeMap) -> bool {
-    if (!block.stmts.is_empty() && block.expr.is_some()) ||
-       (block.stmts.len() != 1 && block.expr.is_none()) {
-        return false;
-    }
-
-    let snippet = codemap.span_to_snippet(block.span).unwrap();
-    !contains_comment(&snippet)
+    (block.stmts.is_empty() || (block.stmts.len() == 1 && block.expr.is_none())) &&
+    !block_contains_comment(block, codemap)
 }
 
 /// Checks whether a block contains no statements, expressions, or comments.
 pub fn is_empty_block(block: &ast::Block, codemap: &CodeMap) -> bool {
-    if !block.stmts.is_empty() || block.expr.is_some() {
-        return false;
-    }
-
-    let snippet = codemap.span_to_snippet(block.span).unwrap();
-    !contains_comment(&snippet)
+    block.stmts.is_empty() && block.expr.is_none() && !block_contains_comment(block, codemap)
 }
 
 // inter-match-arm-comment-rules:
