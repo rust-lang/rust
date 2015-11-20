@@ -39,8 +39,15 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         ("X",   10), ("IX",   9), ("V",   5), ("IV",   4),
         ("I",    1)];
 
-    let text = match args {
-        [TokenTree::Token(_, token::Ident(s, _))] => s.to_string(),
+    if args.len() != 1 {
+        cx.span_err(
+            sp,
+            &format!("argument should be a single identifier, but got {} arguments", args.len()));
+        return DummyResult::any(sp);
+    }
+
+    let text = match args[0] {
+        TokenTree::Token(_, token::Ident(s, _)) => s.to_string(),
         _ => {
             cx.span_err(sp, "argument should be a single identifier");
             return DummyResult::any(sp);
