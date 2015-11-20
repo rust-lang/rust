@@ -76,6 +76,7 @@ use front::map as ast_map;
 use rustc_front::hir;
 use rustc_front::print::pprust;
 
+use metadata::util::CrateStore;
 use middle::def;
 use middle::def_id::DefId;
 use middle::infer::{self, TypeOrigin};
@@ -498,8 +499,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 // We compare strings because PathMod and PathName can be different
                 // for imported and non-imported crates
                 if exp_path == found_path {
-                    let crate_name = self.tcx.sess.cstore
-                                         .get_crate_data(did1.krate).name();
+                    let crate_name = self.tcx.sess.cstore.crate_name(did1.krate);
                     self.tcx.sess.span_note(sp, &format!("Perhaps two different versions \
                                                           of crate `{}` are being used?",
                                                           crate_name));

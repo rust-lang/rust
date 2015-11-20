@@ -242,7 +242,7 @@ impl<'a> CrateReader<'a> {
             // We're also sure to compare *paths*, not actual byte slices. The
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
-            let source = self.sess.cstore.get_used_crate_source(cnum).unwrap();
+            let source = self.sess.cstore.do_get_used_crate_source(cnum).unwrap();
             if let Some(locs) = self.sess.opts.externs.get(name) {
                 let found = locs.iter().any(|l| {
                     let l = fs::canonicalize(l).ok();
@@ -414,7 +414,7 @@ impl<'a> CrateReader<'a> {
                 if explicitly_linked && !data.explicitly_linked.get() {
                     data.explicitly_linked.set(explicitly_linked);
                 }
-                (cnum, data, self.sess.cstore.get_used_crate_source(cnum).unwrap())
+                (cnum, data, self.sess.cstore.do_get_used_crate_source(cnum).unwrap())
             }
             LookupResult::Loaded(library) => {
                 self.register_crate(root, ident, name, span, library,
