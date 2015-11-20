@@ -307,4 +307,5 @@ create_config! {
     take_source_hints: bool, true, "Retain some formatting characteristics from the source code";
     hard_tabs: bool, false, "Use tab characters for indentation, spaces for alignment";
     wrap_comments: bool, false, "Break comments to fit on the line";
+    wrap_match_arms: bool, true, "Wrap multiline match arms in blocks";
 }

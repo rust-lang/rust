@@ -941,10 +941,11 @@ impl Rewrite for ast::Arm {
         }
 
         let body = match **body {
-            ast::Expr { node: ast::ExprBlock(ref b), .. } if !is_unsafe_block(b) &&
-                                                             is_simple_block(b,
-                                                                             context.codemap) => {
-                b.expr.as_ref().map(|e| &**e).unwrap()
+            ast::Expr { node: ast::ExprBlock(ref block), .. } if !is_unsafe_block(block) &&
+                                                                 is_simple_block(block,
+                                                                                 context.codemap) &&
+                                                                 context.config.wrap_match_arms => {
+                block.expr.as_ref().map(|e| &**e).unwrap()
             }
             ref x => x,
         };
@@ -959,7 +960,8 @@ impl Rewrite for ast::Arm {
             let rewrite = nop_block_collapse(body.rewrite(context, budget, offset), budget);
 
             match rewrite {
-                Some(ref body_str) if !body_str.contains('\n') || comma.is_empty() => {
+                Some(ref body_str) if !body_str.contains('\n') || !context.config.wrap_match_arms ||
+                                      comma.is_empty() => {
                     return Some(format!("{}{} => {}{}",
                                         attr_str.trim_left(),
                                         pats_str,
@@ -970,7 +972,7 @@ impl Rewrite for ast::Arm {
             }
         }
 
-        // FIXME: we're doing a second rewrite of the expr -- this may not be
+        // FIXME: we're doing a second rewrite of the expr; This may not be
         // necessary.
         let body_budget = try_opt!(width.checked_sub(context.config.tab_spaces));
         let indent = context.block_indent.block_indent(context.config);
@@ -980,13 +982,20 @@ impl Rewrite for ast::Arm {
                                                                       indent),
                                                          body_budget));
         let indent_str = offset.block_indent(context.config).to_string(context.config);
+        let (body_prefix, body_suffix) = if context.config.wrap_match_arms {
+            (" {", "}")
+        } else {
+            ("", "")
+        };
 
-        Some(format!("{}{} => {{\n{}{}\n{}}}",
+        Some(format!("{}{} =>{}\n{}{}\n{}{}",
                      attr_str.trim_left(),
                      pats_str,
+                     body_prefix,
                      indent_str,
                      next_line_body,
-                     offset.to_string(context.config)))
+                     offset.to_string(context.config),
+                     body_suffix))
     }
 }
 
