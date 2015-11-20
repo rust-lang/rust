@@ -100,3 +100,17 @@ fn issue123() {
 
     Foo { a: ddddddddddddddddddddd, b: cccccccccccccccccccccccccccccccccccccc };
 }
+
+fn issue491() {
+    Foo {
+        guard: None,
+        arm: 0, // Comment
+    };
+
+    Foo {
+        arm: 0, // Comment
+    };
+
+    Foo { a: aaaaaaaaaa, b: bbbbbbbb, c: cccccccccc, d: dddddddddd, /* a comment */
+      e: eeeeeeeee };
+}

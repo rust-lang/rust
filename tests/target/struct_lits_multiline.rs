@@ -32,7 +32,7 @@ fn main() {
         // Comment
         a: foo(), // Comment
         // Comment
-        b: bar(), /* Comment */
+        b: bar(), // Comment
     };
 
     Foo {
@@ -105,5 +105,12 @@ fn issue201_2() {
             ..c
         },
         ..b
+    };
+}
+
+fn issue491() {
+    Foo {
+        guard: None,
+        arm: 0, // Comment
     };
 }

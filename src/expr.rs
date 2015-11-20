@@ -1373,7 +1373,11 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         },
         indent: indent,
         width: budget,
-        ends_with_newline: false,
+        ends_with_newline: match tactic {
+            DefinitiveListTactic::Horizontal => false,
+            DefinitiveListTactic::Vertical => true,
+            DefinitiveListTactic::Mixed => unreachable!(),
+        },
         config: context.config,
     };
     let fields_str = try_opt!(write_list(&item_vec, &fmt));
