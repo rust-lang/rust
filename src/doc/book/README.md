@@ -42,7 +42,6 @@ Copious cross-linking connects these parts together.
 ### Contributing
 
 The source files from which this book is generated can be found on
-[GitHub][trpl].
+[GitHub][book].
 
-[trpl]: https://github.com/rust-lang/rust/tree/master/src/doc/trpl
-
+[book]: https://github.com/rust-lang/rust/tree/master/src/doc/book
