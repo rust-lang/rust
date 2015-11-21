@@ -90,20 +90,22 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     }
 
     fn push_stack_frame(&mut self, mir: &Mir, args: &[Value], return_ptr: Pointer) {
-        self.call_stack.push(Frame {
+        let frame = Frame {
             return_ptr: return_ptr,
             offset: self.value_stack.len(),
             num_args: mir.arg_decls.len(),
             num_vars: mir.var_decls.len(),
             num_temps: mir.temp_decls.len(),
-        });
+        };
 
-        let frame = self.call_stack.last().unwrap();
         self.value_stack.extend(iter::repeat(Value::Uninit).take(frame.size()));
 
         for (i, arg) in args.iter().enumerate() {
             self.value_stack[frame.arg_offset(i)] = arg.clone();
         }
+
+        self.call_stack.push(frame);
+
     }
 
     fn pop_stack_frame(&mut self) {
