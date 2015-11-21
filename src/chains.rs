@@ -194,8 +194,22 @@ fn rewrite_chain_expr(expr: &ast::Expr,
                                 width,
                                 offset)
         }
-        ast::Expr_::ExprField(_, ref field) => Some(format!(".{}", field.node)),
-        ast::Expr_::ExprTupField(_, ref field) => Some(format!(".{}", field.node)),
+        ast::Expr_::ExprField(_, ref field) => {
+            let s = format!(".{}", field.node);
+            if s.len() <= width {
+                Some(s)
+            } else {
+                None
+            }
+        }
+        ast::Expr_::ExprTupField(_, ref field) => {
+            let s = format!(".{}", field.node);
+            if s.len() <= width {
+                Some(s)
+            } else {
+                None
+            }
+        }
         _ => unreachable!(),
     }
 }
