@@ -1997,6 +1997,22 @@ It is not possible to use stability attributes outside of the standard library.
 Also, for now, it is not possible to write deprecation messages either.
 "##,
 
+E0498: r##"
+A plugin attribute was incorrectly used. Erroneous code example:
+
+```
+#![feature(plugin)]
+#![plugin="foo")] // error: malformed plugin attribute
+```
+
+The plugin name must be written without quotes and within parenthesis. Example:
+
+```
+#![feature(plugin)]
+#![plugin(foo)] // ok!
+```
+"##,
+
 E0517: r##"
 This error indicates that a `#[repr(..)]` attribute was placed on an unsupported
 item.
@@ -2070,6 +2086,7 @@ If you wish to apply this attribute to all methods in an impl, manually annotate
 each method; it is not possible to annotate the entire impl with an `#[inline]`
 attribute.
 "##,
+
 }
 
 
@@ -2122,4 +2139,5 @@ register_diagnostics! {
     E0491, // in type `..`, reference has a longer lifetime than the data it...
     E0492, // cannot borrow a constant which contains interior mutability
     E0495, // cannot infer an appropriate lifetime due to conflicting requirements
+    E0514, // metadata version mismatch
 }
