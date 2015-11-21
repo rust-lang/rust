@@ -18,7 +18,7 @@ CFG_RELEASE_NUM=1.5.0
 # An optional number to put after the label, e.g. '.2' -> '-beta.2'
 # NB Make sure it starts with a dot to conform to semver pre-release
 # versions (section 9)
-CFG_PRERELEASE_VERSION=.3
+CFG_PRERELEASE_VERSION=.4
 
 # Append a version-dependent hash to each library, so we can install different
 # versions in the same place
