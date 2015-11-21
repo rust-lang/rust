@@ -36,17 +36,17 @@ impl Public<Private<isize>> {
     fn d() -> Private<isize> { panic!() }
 }
 impl Public<isize> {
-    pub fn e(&self) -> Private<isize> { panic!() } //~ ERROR private type in exported type signature
+    pub fn e(&self) -> Private<isize> { panic!() } //~ ERROR private type in public interface
     fn f(&self) -> Private<isize> { panic!() }
 }
 
-pub fn x(_: Private<isize>) {} //~ ERROR private type in exported type signature
+pub fn x(_: Private<isize>) {} //~ ERROR private type in public interface
 
 fn y(_: Private<isize>) {}
 
 
 pub struct Foo {
-    pub x: Private<isize>, //~ ERROR private type in exported type signature
+    pub x: Private<isize>, //~ ERROR private type in public interface
     y: Private<isize>
 }
 
@@ -55,9 +55,9 @@ struct Bar {
 }
 
 pub enum Baz {
-    Baz1(Private<isize>), //~ ERROR private type in exported type signature
+    Baz1(Private<isize>), //~ ERROR private type in public interface
     Baz2 {
-        y: Private<isize> //~ ERROR private type in exported type signature
+        y: Private<isize> //~ ERROR private type in public interface
     },
 }
 
@@ -69,14 +69,14 @@ enum Qux {
 }
 
 pub trait PubTrait {
-    fn foo(&self) -> Private<isize> { panic!( )} //~ ERROR private type in exported type signature
-    fn bar(&self) -> Private<isize>; //~ ERROR private type in exported type signature
-    fn baz() -> Private<isize>; //~ ERROR private type in exported type signature
+    fn foo(&self) -> Private<isize> { panic!( )} //~ ERROR private type in public interface
+    fn bar(&self) -> Private<isize>; //~ ERROR private type in public interface
+    fn baz() -> Private<isize>; //~ ERROR private type in public interface
 }
 
 impl PubTrait for Public<isize> {
-    fn bar(&self) -> Private<isize> { panic!() } //~ ERROR private type in exported type signature
-    fn baz() -> Private<isize> { panic!() } //~ ERROR private type in exported type signature
+    fn bar(&self) -> Private<isize> { panic!() } //~ ERROR private type in public interface
+    fn baz() -> Private<isize> { panic!() } //~ ERROR private type in public interface
 }
 impl PubTrait for Public<Private<isize>> {
     fn bar(&self) -> Private<isize> { panic!() }
@@ -117,7 +117,7 @@ impl ParamTrait<Private<isize>> for Private<isize> {
     fn foo() -> Private<isize> { panic!( )}
 }
 
-impl<T: ParamTrait<Private<isize>>>  //~ ERROR private type in exported type signature
+impl<T: ParamTrait<Private<isize>>>  //~ ERROR private type in public interface
      ParamTrait<T> for Public<i8> {
     fn foo() -> T { panic!() }
 }

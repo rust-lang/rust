@@ -12,6 +12,6 @@ trait Foo {
     fn dummy(&self) { }
 }
 
-pub trait Bar : Foo {} //~ ERROR private trait in exported type
+pub trait Bar : Foo {} //~ ERROR private trait in public interface
 
 fn main() {}

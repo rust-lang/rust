@@ -14,12 +14,12 @@
 mod a {
     struct Priv;
 
-    pub fn expose_a() -> Priv { //~Error: private type in exported type signature
+    pub fn expose_a() -> Priv { //~Error: private type in public interface
         panic!();
     }
 
     mod b {
-        pub fn expose_b() -> super::Priv { //~Error: private type in exported type signature
+        pub fn expose_b() -> super::Priv { //~Error: private type in public interface
             panic!();
         }
     }

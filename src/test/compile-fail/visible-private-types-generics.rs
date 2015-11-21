@@ -14,12 +14,12 @@ trait Foo {
 
 pub fn f<
     T
-    : Foo //~ ERROR private trait in exported type parameter bound
+    : Foo //~ ERROR private trait in public interface
 >() {}
 
 pub fn g<T>() where
     T
-    : Foo //~ ERROR private trait in exported type parameter bound
+    : Foo //~ ERROR private trait in public interface
 {}
 
 pub struct S;
@@ -27,39 +27,39 @@ pub struct S;
 impl S {
     pub fn f<
         T
-        : Foo //~ ERROR private trait in exported type parameter bound
+        : Foo //~ ERROR private trait in public interface
     >() {}
 
     pub fn g<T>() where
         T
-        : Foo //~ ERROR private trait in exported type parameter bound
+        : Foo //~ ERROR private trait in public interface
     {}
 }
 
 pub struct S1<
     T
-    : Foo //~ ERROR private trait in exported type parameter bound
+    : Foo //~ ERROR private trait in public interface
 > {
     x: T
 }
 
 pub struct S2<T> where
     T
-    : Foo //~ ERROR private trait in exported type parameter bound
+    : Foo //~ ERROR private trait in public interface
 {
     x: T
 }
 
 pub enum E1<
     T
-    : Foo //~ ERROR private trait in exported type parameter bound
+    : Foo //~ ERROR private trait in public interface
 > {
     V1(T)
 }
 
 pub enum E2<T> where
     T
-    : Foo //~ ERROR private trait in exported type parameter bound
+    : Foo //~ ERROR private trait in public interface
 {
     V2(T)
 }
