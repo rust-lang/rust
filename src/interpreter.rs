@@ -13,6 +13,7 @@ enum Value {
     Uninit,
     Bool(bool),
     Int(i64), // FIXME: Should be bit-width aware.
+    Adt { variant: usize, data: Pointer },
     Func(def_id::DefId),
 }
 
@@ -20,6 +21,14 @@ enum Value {
 enum Pointer {
     Stack(usize),
     // TODO(tsion): Heap
+}
+
+impl Pointer {
+    fn offset(self, i: usize) -> Self {
+        match self {
+            Pointer::Stack(p) => Pointer::Stack(p + i),
+        }
+    }
 }
 
 /// A stack frame:
@@ -51,12 +60,12 @@ struct Frame {
     num_args: usize,
     num_vars: usize,
     num_temps: usize,
-    // aggregates
+    num_aggregate_fields: usize,
 }
 
 impl Frame {
     fn size(&self) -> usize {
-        self.num_args + self.num_vars + self.num_temps
+        self.num_args + self.num_vars + self.num_temps + self.num_aggregate_fields
     }
 
     fn arg_offset(&self, i: usize) -> usize {
@@ -96,6 +105,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             num_args: mir.arg_decls.len(),
             num_vars: mir.var_decls.len(),
             num_temps: mir.temp_decls.len(),
+            num_aggregate_fields: 0,
         };
 
         self.value_stack.extend(iter::repeat(Value::Uninit).take(frame.size()));
@@ -111,6 +121,13 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     fn pop_stack_frame(&mut self) {
         let frame = self.call_stack.pop().expect("tried to pop stack frame, but there were none");
         self.value_stack.truncate(frame.offset);
+    }
+
+    fn allocate_aggregate(&mut self, size: usize) -> Pointer {
+        let frame = self.call_stack.last_mut().expect("missing call frame");
+        let ptr = Pointer::Stack(self.value_stack.len());
+        self.value_stack.extend(iter::repeat(Value::Uninit).take(frame.size()));
+        ptr
     }
 
     fn call(&mut self, mir: &Mir, args: &[Value], return_ptr: Pointer) {
@@ -245,14 +262,23 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 }
             }
 
-            // mir::Rvalue::Aggregate(mir::AggregateKind::Adt(ref adt_def, variant, substs),
-            //                        ref operands) => {
-            //     let num_fields = adt_def.variants[variant].fields.len();
-            //     debug_assert_eq!(num_fields, operands.len());
+            mir::Rvalue::Aggregate(mir::AggregateKind::Adt(ref adt_def, variant, substs),
+                                   ref operands) => {
+                let max_fields = adt_def.variants
+                    .iter()
+                    .map(|v| v.fields.len())
+                    .max()
+                    .unwrap_or(0);
 
-            //     let data = operands.iter().map(|op| self.eval_operand(op)).collect();
-            //     Value::Adt(variant, data)
-            // }
+                let ptr = self.allocate_aggregate(max_fields);
+
+                for (i, operand) in operands.iter().enumerate() {
+                    let val = self.eval_operand(operand);
+                    self.write_pointer(ptr.offset(i), val);
+                }
+
+                Value::Adt { variant: variant, data: ptr }
+            }
 
             _ => unimplemented!(),
         }
