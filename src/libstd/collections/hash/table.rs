@@ -123,7 +123,7 @@ pub enum BucketState<K, V, M> {
 // A GapThenFull encapsulates the state of two consecutive buckets at once.
 // The first bucket, called the gap, is known to be empty.
 // The second bucket is full.
-struct GapThenFull<K, V, M> {
+pub struct GapThenFull<K, V, M> {
     gap: EmptyBucket<K, V, ()>,
     full: FullBucket<K, V, M>,
 }

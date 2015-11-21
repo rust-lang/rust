@@ -78,7 +78,7 @@ pub struct Node<K, V> {
     _capacity: usize,
 }
 
-struct NodeSlice<'a, K: 'a, V: 'a> {
+pub struct NodeSlice<'a, K: 'a, V: 'a> {
     keys: &'a [K],
     vals: &'a [V],
     pub edges: &'a [Node<K, V>],
@@ -87,7 +87,7 @@ struct NodeSlice<'a, K: 'a, V: 'a> {
     has_edges: bool,
 }
 
-struct MutNodeSlice<'a, K: 'a, V: 'a> {
+pub struct MutNodeSlice<'a, K: 'a, V: 'a> {
     keys: &'a [K],
     vals: &'a mut [V],
     pub edges: &'a mut [Node<K, V>],
@@ -1344,7 +1344,7 @@ fn min_load_from_capacity(cap: usize) -> usize {
 /// A trait for pairs of `Iterator`s, one over edges and the other over key/value pairs. This is
 /// necessary, as the `MoveTraversalImpl` needs to have a destructor that deallocates the `Node`,
 /// and a pair of `Iterator`s would require two independent destructors.
-trait TraversalImpl {
+pub trait TraversalImpl {
     type Item;
     type Edge;
 
@@ -1358,7 +1358,7 @@ trait TraversalImpl {
 /// A `TraversalImpl` that actually is backed by two iterators. This works in the non-moving case,
 /// as no deallocation needs to be done.
 #[derive(Clone)]
-struct ElemsAndEdges<Elems, Edges>(Elems, Edges);
+pub struct ElemsAndEdges<Elems, Edges>(Elems, Edges);
 
 impl<K, V, E, Elems: DoubleEndedIterator, Edges: DoubleEndedIterator>
         TraversalImpl for ElemsAndEdges<Elems, Edges>
@@ -1375,7 +1375,7 @@ impl<K, V, E, Elems: DoubleEndedIterator, Edges: DoubleEndedIterator>
 }
 
 /// A `TraversalImpl` taking a `Node` by value.
-struct MoveTraversalImpl<K, V> {
+pub struct MoveTraversalImpl<K, V> {
     keys: RawItems<K>,
     vals: RawItems<V>,
     edges: RawItems<Node<K, V>>,
@@ -1436,7 +1436,7 @@ impl<K, V> Drop for MoveTraversalImpl<K, V> {
 
 /// An abstraction over all the different kinds of traversals a node supports
 #[derive(Clone)]
-struct AbsTraversal<Impl> {
+pub struct AbsTraversal<Impl> {
     inner: Impl,
     head_is_edge: bool,
     tail_is_edge: bool,

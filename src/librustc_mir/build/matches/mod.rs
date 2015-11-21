@@ -209,7 +209,7 @@ struct ArmBlocks {
 }
 
 #[derive(Clone, Debug)]
-struct Candidate<'pat, 'tcx:'pat> {
+pub struct Candidate<'pat, 'tcx:'pat> {
     // all of these must be satisfied...
     match_pairs: Vec<MatchPair<'pat, 'tcx>>,
 
@@ -235,7 +235,7 @@ struct Binding<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-struct MatchPair<'pat, 'tcx:'pat> {
+pub struct MatchPair<'pat, 'tcx:'pat> {
     // this lvalue...
     lvalue: Lvalue<'tcx>,
 
@@ -278,7 +278,7 @@ enum TestKind<'tcx> {
 }
 
 #[derive(Debug)]
-struct Test<'tcx> {
+pub struct Test<'tcx> {
     span: Span,
     kind: TestKind<'tcx>,
 }

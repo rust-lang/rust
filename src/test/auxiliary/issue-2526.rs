@@ -13,7 +13,7 @@
 
 use std::marker;
 
-struct arc_destruct<T: Sync> {
+pub struct arc_destruct<T: Sync> {
     _data: isize,
     _marker: marker::PhantomData<T>
 }
@@ -37,7 +37,7 @@ fn init() -> arc_destruct<context_res> {
     arc(context_res())
 }
 
-struct context_res {
+pub struct context_res {
     ctx : isize,
 }
 
