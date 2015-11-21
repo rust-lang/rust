@@ -2372,10 +2372,6 @@ The currently implemented features of the reference compiler are:
                    Such items should not be allowed by the compiler to exist,
                    so if you need this there probably is a compiler bug.
 
-* `visible_private_types` - Allows public APIs to expose otherwise private
-                            types, e.g. as the return type of a public function.
-                            This capability may be removed in the future.
-
 * `allow_internal_unstable` - Allows `macro_rules!` macros to be tagged with the
                               `#[allow_internal_unstable]` attribute, designed
                               to allow `std` macros to call
