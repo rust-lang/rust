@@ -273,6 +273,77 @@ on this topic:
 https://doc.rust-lang.org/reference.html#use-declarations
 "##,
 
+E0401: r##"
+Inner functions do not inherit type parameters from the functions they are
+embedded in. For example, this will not compile:
+
+```
+fn foo<T>(x: T) {
+    fn bar(y: T) { // T is defined in the "outer" function
+        // ..
+    }
+    bar(x);
+}
+```
+
+Functions inside functions are basically just like top-level functions, except
+that they can only be called from the function they are in.
+
+There are a couple of solutions for this.
+
+You can use a closure:
+
+```
+fn foo<T>(x: T) {
+    let bar = |y: T| { // explicit type annotation may not be necessary
+        // ..
+    }
+    bar(x);
+}
+```
+
+or copy over the parameters:
+
+```
+fn foo<T>(x: T) {
+    fn bar<T>(y: T) {
+        // ..
+    }
+    bar(x);
+}
+```
+
+Be sure to copy over any bounds as well:
+
+```
+fn foo<T: Copy>(x: T) {
+    fn bar<T: Copy>(y: T) {
+        // ..
+    }
+    bar(x);
+}
+```
+
+This may require additional type hints in the function body.
+
+In case the function is in an `impl`, defining a private helper function might
+be easier:
+
+```
+impl<T> Foo<T> {
+    pub fn foo(&self, x: T) {
+        self.bar(x);
+    }
+    fn bar(&self, y: T) {
+        // ..
+    }
+}
+```
+
+For default impls in traits, the private helper solution won't work, however
+closures or copying the parameters should still work.
+"##,
+
 E0403: r##"
 Some type parameters have the same name. Example of erroneous code:
 
@@ -909,7 +980,6 @@ register_diagnostics! {
     E0254, // import conflicts with imported crate in this module
     E0257,
     E0258,
-    E0401, // can't use type parameters from outer function
     E0402, // cannot use an outer type parameter in this context
     E0406, // undeclared associated type
     E0408, // variable from pattern #1 is not bound in pattern #
