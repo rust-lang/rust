@@ -15,7 +15,7 @@ use middle::dependency_format;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeMap, FnvHashMap};
 
-use syntax::ast::{NodeId, NodeIdAssigner};
+use syntax::ast::{NodeId, NodeIdAssigner, Name};
 use syntax::codemap::Span;
 use syntax::diagnostic::{self, Emitter};
 use syntax::diagnostics;
@@ -30,6 +30,7 @@ use rustc_back::target::Target;
 
 use std::path::{Path, PathBuf};
 use std::cell::{Cell, RefCell};
+use std::collections::HashSet;
 use std::env;
 
 pub mod config;
@@ -73,6 +74,10 @@ pub struct Session {
     /// The metadata::creader module may inject an allocator dependency if it
     /// didn't already find one, and this tracks what was injected.
     pub injected_allocator: Cell<Option<ast::CrateNum>>,
+
+    /// Names of all bang-style macros and syntax extensions
+    /// available in this crate
+    pub available_macros: RefCell<HashSet<Name>>,
 
     next_node_id: Cell<ast::NodeId>,
 }
@@ -468,6 +473,7 @@ pub fn build_session_(sopts: config::Options,
         can_print_warnings: can_print_warnings,
         next_node_id: Cell::new(1),
         injected_allocator: Cell::new(None),
+        available_macros: RefCell::new(HashSet::new()),
     };
 
     sess
