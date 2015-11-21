@@ -622,7 +622,7 @@ fn link_rlib<'a>(sess: &'a Session,
         ab.add_file(obj);
     }
 
-    for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
+    for (l, kind) in sess.cstore.used_libraries() {
         match kind {
             NativeLibraryKind::NativeStatic => ab.add_native_library(&l),
             NativeLibraryKind::NativeFramework |
@@ -970,7 +970,7 @@ fn link_args(cmd: &mut Linker,
     // sections if possible. See more comments in linker.rs
     cmd.gc_sections(dylib);
 
-    let used_link_args = sess.cstore.get_used_link_args().borrow();
+    let used_link_args = sess.cstore.used_link_args();
 
     if !dylib && t.options.position_independent_executables {
         let empty_vec = Vec::new();
@@ -1087,8 +1087,7 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         }
     });
 
-    let libs = sess.cstore.get_used_libraries();
-    let libs = libs.borrow();
+    let libs = sess.cstore.used_libraries();
 
     let staticlibs = libs.iter().filter_map(|&(ref l, kind)| {
         if kind == NativeLibraryKind::NativeStatic {Some(l)} else {None}

@@ -19,6 +19,7 @@ use rustc_trans::back::link;
 
 use driver;
 
+use rustc::metadata::cstore::CStore;
 use rustc::middle::ty;
 use rustc::middle::cfg;
 use rustc::middle::cfg::graphviz::LabelledCFG;
@@ -167,6 +168,7 @@ impl PpSourceMode {
     }
     fn call_with_pp_support_hir<'tcx, A, B, F>(&self,
                                                sess: &'tcx Session,
+                                               cstore: &CStore,
                                                ast_map: &hir_map::Map<'tcx>,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                id: &str,
@@ -193,6 +195,7 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 driver::phase_3_run_analysis_passes(sess,
+                                                    cstore,
                                                     ast_map.clone(),
                                                     arenas,
                                                     id,
@@ -668,6 +671,7 @@ impl fold::Folder for ReplaceBodyWithLoop {
 }
 
 pub fn pretty_print_input(sess: Session,
+                          cstore: &CStore,
                           cfg: ast::CrateConfig,
                           input: &Input,
                           ppm: PpMode,
@@ -687,7 +691,7 @@ pub fn pretty_print_input(sess: Session,
     let is_expanded = needs_expansion(&ppm);
     let compute_ast_map = needs_ast_map(&ppm, &opt_uii);
     let krate = if compute_ast_map {
-        match driver::phase_2_configure_and_expand(&sess, krate, &id[..], None) {
+        match driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id[..], None) {
             None => return,
             Some(k) => driver::assign_node_ids(&sess, k),
         }
@@ -741,6 +745,7 @@ pub fn pretty_print_input(sess: Session,
         (PpmHir(s), None) => {
             let out: &mut Write = &mut out;
             s.call_with_pp_support_hir(&sess,
+                                       cstore,
                                        &ast_map.unwrap(),
                                        &arenas,
                                        &id,
@@ -762,6 +767,7 @@ pub fn pretty_print_input(sess: Session,
         (PpmHir(s), Some(uii)) => {
             let out: &mut Write = &mut out;
             s.call_with_pp_support_hir(&sess,
+                                       cstore,
                                        &ast_map.unwrap(),
                                        &arenas,
                                        &id,
@@ -811,6 +817,7 @@ pub fn pretty_print_input(sess: Session,
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
                     driver::phase_3_run_analysis_passes(&sess,
+                                                        &cstore,
                                                         ast_map,
                                                         &arenas,
                                                         &id,

@@ -18,6 +18,7 @@ use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::metadata;
 use rustc::metadata::creader::LocalCrateReader;
+use rustc::metadata::cstore::CStore;
 use rustc::middle::{stability, ty, reachable};
 use rustc::middle::dependency_format;
 use rustc::middle;
@@ -57,6 +58,7 @@ use syntax::visit;
 use syntax;
 
 pub fn compile_input(sess: Session,
+                     cstore: &CStore,
                      cfg: ast::CrateConfig,
                      input: &Input,
                      outdir: &Option<PathBuf>,
@@ -87,6 +89,7 @@ pub fn compile_input(sess: Session,
             let outputs = build_output_filenames(input, outdir, output, &krate.attrs, &sess);
             let id = link::find_crate_name(Some(&sess), &krate.attrs, input);
             let expanded_crate = match phase_2_configure_and_expand(&sess,
+                                                                    &cstore,
                                                                     krate,
                                                                     &id[..],
                                                                     addl_plugins) {
@@ -136,6 +139,7 @@ pub fn compile_input(sess: Session,
              || lint::check_ast_crate(&sess, &expanded_crate));
 
         phase_3_run_analysis_passes(&sess,
+                                    &cstore,
                                     ast_map,
                                     &arenas,
                                     &id,
@@ -434,6 +438,7 @@ fn count_nodes(krate: &ast::Crate) -> usize {
 ///
 /// Returns `None` if we're aborting after handling -W help.
 pub fn phase_2_configure_and_expand(sess: &Session,
+                                    cstore: &CStore,
                                     mut krate: ast::Crate,
                                     crate_name: &str,
                                     addl_plugins: Option<Vec<String>>)
@@ -477,11 +482,11 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     let macros = time(time_passes,
                       "macro loading",
-                      || metadata::macro_import::read_macro_defs(sess, &krate));
+                      || metadata::macro_import::read_macro_defs(sess, &cstore, &krate));
 
     let mut addl_plugins = Some(addl_plugins);
     let registrars = time(time_passes, "plugin loading", || {
-        plugin::load::load_plugins(sess, &krate, addl_plugins.take().unwrap())
+        plugin::load::load_plugins(sess, &cstore, &krate, addl_plugins.take().unwrap())
     });
 
     let mut registry = Registry::new(sess, &krate);
@@ -670,6 +675,7 @@ pub fn make_map<'ast>(sess: &Session,
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
+                                               cstore: &CStore,
                                                ast_map: front::map::Map<'tcx>,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                name: &str,
@@ -683,7 +689,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     time(time_passes,
          "external crate/lib resolution",
-         || LocalCrateReader::new(sess, &ast_map).read_crates(krate));
+         || LocalCrateReader::new(sess, cstore, &ast_map).read_crates(krate));
 
     let lang_items = time(time_passes,
                           "language item collection",

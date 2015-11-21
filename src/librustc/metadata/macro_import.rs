@@ -12,6 +12,7 @@
 
 use session::Session;
 use metadata::creader::CrateReader;
+use metadata::cstore::CStore;
 
 use std::collections::{HashSet, HashMap};
 use syntax::codemap::Span;
@@ -30,11 +31,11 @@ struct MacroLoader<'a> {
 }
 
 impl<'a> MacroLoader<'a> {
-    fn new(sess: &'a Session) -> MacroLoader<'a> {
+    fn new(sess: &'a Session, cstore: &'a CStore) -> MacroLoader<'a> {
         MacroLoader {
             sess: sess,
             span_whitelist: HashSet::new(),
-            reader: CrateReader::new(sess),
+            reader: CrateReader::new(sess, cstore),
             macros: vec![],
         }
     }
@@ -45,8 +46,10 @@ pub fn call_bad_macro_reexport(a: &Session, b: Span) {
 }
 
 /// Read exported macros.
-pub fn read_macro_defs(sess: &Session, krate: &ast::Crate) -> Vec<ast::MacroDef> {
-    let mut loader = MacroLoader::new(sess);
+pub fn read_macro_defs(sess: &Session, cstore: &CStore, krate: &ast::Crate)
+                       -> Vec<ast::MacroDef>
+{
+    let mut loader = MacroLoader::new(sess, cstore);
 
     // We need to error on `#[macro_use] extern crate` when it isn't at the
     // crate root, because `$crate` won't work properly. Identify these by

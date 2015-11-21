@@ -343,7 +343,7 @@ impl<'tcx> TypeMap<'tcx> {
             let crate_hash = if source_def_id.is_local() {
                 cx.link_meta().crate_hash.clone()
             } else {
-                cx.sess().cstore.get_crate_hash(source_def_id.krate)
+                cx.sess().cstore.crate_hash(source_def_id.krate)
             };
 
             output.push_str(crate_hash.as_str());

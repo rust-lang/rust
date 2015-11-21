@@ -448,7 +448,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &hir::Item, warn_about_defns: bool,
             // compiler-generated `extern crate` items have a dummy span.
             if item.span == DUMMY_SP { return }
 
-            let cnum = match tcx.sess.cstore.find_extern_mod_stmt_cnum(item.id) {
+            let cnum = match tcx.sess.cstore.extern_mod_stmt_cnum(item.id) {
                 Some(cnum) => cnum,
                 None => return,
             };

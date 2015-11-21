@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use lint;
-use metadata::cstore::CStore;
 use metadata::filesearch;
+use metadata::util::CrateStore;
 use middle::dependency_format;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeMap, FnvHashMap};
@@ -21,7 +21,6 @@ use syntax::diagnostic::{self, Emitter};
 use syntax::diagnostics;
 use syntax::feature_gate;
 use syntax::parse;
-use syntax::parse::token;
 use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
@@ -32,6 +31,7 @@ use std::path::{Path, PathBuf};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::env;
+use std::rc::Rc;
 
 pub mod config;
 pub mod search_paths;
@@ -42,7 +42,7 @@ pub struct Session {
     pub target: config::Config,
     pub host: Target,
     pub opts: config::Options,
-    pub cstore: CStore,
+    pub cstore: Rc<for<'a> CrateStore<'a>>,
     pub parse_sess: ParseSess,
     // For a library crate, this is always none
     pub entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
@@ -392,7 +392,8 @@ fn split_msg_into_multilines(msg: &str) -> Option<String> {
 
 pub fn build_session(sopts: config::Options,
                      local_crate_source_file: Option<PathBuf>,
-                     registry: diagnostics::registry::Registry)
+                     registry: diagnostics::registry::Registry,
+                     cstore: Rc<for<'a> CrateStore<'a>>)
                      -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -410,12 +411,13 @@ pub fn build_session(sopts: config::Options,
     let span_diagnostic_handler =
         diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 
-    build_session_(sopts, local_crate_source_file, span_diagnostic_handler)
+    build_session_(sopts, local_crate_source_file, span_diagnostic_handler, cstore)
 }
 
 pub fn build_session_(sopts: config::Options,
                       local_crate_source_file: Option<PathBuf>,
-                      span_diagnostic: diagnostic::SpanHandler)
+                      span_diagnostic: diagnostic::SpanHandler,
+                      cstore: Rc<for<'a> CrateStore<'a>>)
                       -> Session {
     let host = match Target::search(config::host_triple()) {
         Ok(t) => t,
@@ -451,7 +453,7 @@ pub fn build_session_(sopts: config::Options,
         target: target_cfg,
         host: host,
         opts: sopts,
-        cstore: CStore::new(token::get_ident_interner()),
+        cstore: cstore,
         parse_sess: p_s,
         // For a library crate, this is always none
         entry_fn: RefCell::new(None),

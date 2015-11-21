@@ -3087,7 +3087,7 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
     // reachable extern fns. These functions are all part of the public ABI of
     // the final product, so LTO needs to preserve them.
     if sess.lto() {
-        sess.cstore.iter_crate_data(|cnum, _| {
+        for cnum in sess.cstore.crates() {
             let syms = sess.cstore.reachable_ids(cnum);
             reachable_symbols.extend(syms.into_iter().filter(|did| {
                 sess.cstore.is_extern_fn(shared_ccx.tcx(), *did) ||
@@ -3095,7 +3095,7 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
             }).map(|did| {
                 sess.cstore.item_symbol(did)
             }));
-        });
+        }
     }
 
     if codegen_units > 1 {

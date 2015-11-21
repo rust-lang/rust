@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use back::svh::Svh;
 use front::map as ast_map;
 use metadata::cstore;
 use metadata::decoder;
@@ -31,7 +32,6 @@ use rustc_front::hir;
 
 pub use metadata::common::LinkMeta;
 pub use metadata::creader::validate_crate_name;
-pub use metadata::csearch::FoundAst;
 pub use metadata::cstore::CrateSource;
 pub use metadata::cstore::LinkagePreference;
 pub use metadata::cstore::NativeLibraryKind;
@@ -46,6 +46,12 @@ pub struct ChildItem {
     pub def: DefLike,
     pub name: ast::Name,
     pub vis: hir::Visibility
+}
+
+pub enum FoundAst<'ast> {
+    Found(&'ast InlinedItem),
+    FoundParent(DefId, &'ast InlinedItem),
+    NotFound,
 }
 
 pub trait CrateStore<'tcx> : Any {
@@ -101,6 +107,7 @@ pub trait CrateStore<'tcx> : Any {
     fn is_static_method(&self, did: DefId) -> bool;
     fn is_extern_fn(&self, tcx: &ty::ctxt<'tcx>, did: DefId) -> bool;
     fn is_static(&self, did: DefId) -> bool;
+    fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool;
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: ast::CrateNum)
@@ -111,6 +118,7 @@ pub trait CrateStore<'tcx> : Any {
     fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool;
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool;
     fn crate_name(&self, cnum: ast::CrateNum) -> String;
+    fn crate_hash(&self, cnum: ast::CrateNum) -> Svh;
     fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>;
     fn native_libraries(&self, cnum: ast::CrateNum) -> Vec<(NativeLibraryKind, String)>;
     fn reachable_ids(&self, cnum: ast::CrateNum) -> Vec<DefId>;
@@ -125,6 +133,11 @@ pub trait CrateStore<'tcx> : Any {
     // misc. metadata
     fn maybe_get_item_ast(&'tcx self, tcx: &ty::ctxt<'tcx>, def: DefId)
                           -> FoundAst<'tcx>;
+    // This is basically a 1-based range of ints, which is a little
+    // silly - I may fix that.
+    fn crates(&self) -> Vec<ast::CrateNum>;
+    fn used_libraries(&self) -> Vec<(String, NativeLibraryKind)>;
+    fn used_link_args(&self) -> Vec<String>;
 
     // utility functions
     fn metadata_filename(&self) -> &str;
@@ -132,6 +145,7 @@ pub trait CrateStore<'tcx> : Any {
     fn encode_type(&self, tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Vec<u8>;
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>;
     fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource;
+    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>;
     fn encode_metadata(&self,
                        tcx: &ty::ctxt<'tcx>,
                        reexports: &def::ExportMap,
@@ -356,6 +370,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::is_static(&*cdata, did.index)
     }
 
+    fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool
+    {
+        self.do_is_statically_included_foreign_item(id)
+    }
+
     fn dylib_dependency_formats(&self, cnum: ast::CrateNum)
                                 -> Vec<(ast::CrateNum, LinkagePreference)>
     {
@@ -398,6 +417,12 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn crate_name(&self, cnum: ast::CrateNum) -> String
     {
         self.get_crate_data(cnum).name.clone()
+    }
+
+    fn crate_hash(&self, cnum: ast::CrateNum) -> Svh
+    {
+        let cdata = self.get_crate_data(cnum);
+        decoder::get_crate_hash(cdata.data())
     }
 
     fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>
@@ -480,6 +505,23 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::maybe_get_item_ast(&*cdata, tcx, def.index, decode_inlined_item)
     }
 
+    fn crates(&self) -> Vec<ast::CrateNum>
+    {
+        let mut result = vec![];
+        self.iter_crate_data(|cnum, _| result.push(cnum));
+        result
+    }
+
+    fn used_libraries(&self) -> Vec<(String, NativeLibraryKind)>
+    {
+        self.get_used_libraries().borrow().clone()
+    }
+
+    fn used_link_args(&self) -> Vec<String>
+    {
+        self.get_used_link_args().borrow().clone()
+    }
+
     fn metadata_filename(&self) -> &str
     {
         loader::METADATA_FILENAME
@@ -502,6 +544,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource
     {
         self.do_get_used_crate_source(cnum).unwrap()
+    }
+
+    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>
+    {
+        self.find_extern_mod_stmt_cnum(emod_id)
     }
 
     fn encode_metadata(&self,
