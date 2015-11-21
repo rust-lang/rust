@@ -81,7 +81,7 @@ wish there weren't. You can leave `FIXME`s, preferably with an issue number.
 
 ### A quick tour of Rustfmt
 
-Rustfmt is basically a pretty printer - that is, it's mode of operation is to
+Rustfmt is basically a pretty printer - that is, its mode of operation is to
 take an AST (abstract syntax tree) and print it in a nice way (including staying
 under the maximum permitted width for a line). In order to get that AST, we
 first have to parse the source text, we use the Rust compiler's parser to do
@@ -174,7 +174,7 @@ know how to reformat, but more often it is because Rustfmt can't fit the item
 into the required width. How to handle this is up to the caller. Often the
 caller just gives up, ultimately relying on the missed spans system to paste in
 the un-formatted source. A better solution (although not performed in many
-places) is for the caller to shuffle around some of it's other items to make
+places) is for the caller to shuffle around some of its other items to make
 more width, then call the function again with more space.
 
 Since it is common for callers to bail out when a callee fails, we often use a
