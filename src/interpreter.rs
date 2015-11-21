@@ -12,8 +12,8 @@ const TRACE_EXECUTION: bool = false;
 enum Value {
     Uninit,
     Bool(bool),
-    Int(i64), // FIXME: Should be bit-width aware.
-    Adt { variant: usize, data: Pointer },
+    Int(i64), // FIXME(tsion): Should be bit-width aware.
+    Adt { variant: usize, data_ptr: Pointer },
     Func(def_id::DefId),
 }
 
@@ -125,8 +125,10 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
     fn allocate_aggregate(&mut self, size: usize) -> Pointer {
         let frame = self.call_stack.last_mut().expect("missing call frame");
+        frame.num_aggregate_fields += size;
+
         let ptr = Pointer::Stack(self.value_stack.len());
-        self.value_stack.extend(iter::repeat(Value::Uninit).take(frame.size()));
+        self.value_stack.extend(iter::repeat(Value::Uninit).take(size));
         ptr
     }
 
@@ -195,9 +197,18 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     block = targets[index];
                 }
 
+                mir::Terminator::Switch { ref discr, ref targets, .. } => {
+                    let discr_val = self.read_lvalue(discr);
+
+                    if let Value::Adt { variant, .. } = discr_val {
+                        block = targets[variant];
+                    } else {
+                        panic!("Switch on non-Adt value: {:?}", discr_val);
+                    }
+                }
+
                 // mir::Terminator::Diverge => unimplemented!(),
                 // mir::Terminator::Panic { target } => unimplemented!(),
-                // mir::Terminator::Switch { ref discr, adt_def, ref targets } => unimplemented!(),
                 _ => unimplemented!(),
             }
         }
@@ -213,6 +224,37 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             mir::Lvalue::Arg(i)  => Pointer::Stack(frame.arg_offset(i as usize)),
             mir::Lvalue::Var(i)  => Pointer::Stack(frame.var_offset(i as usize)),
             mir::Lvalue::Temp(i) => Pointer::Stack(frame.temp_offset(i as usize)),
+
+            mir::Lvalue::Projection(ref proj) => {
+                // proj.base: Lvalue
+                // proj.elem: ProjectionElem<Operand>
+
+                let base_ptr = self.eval_lvalue(&proj.base);
+
+                match proj.elem {
+                    mir::ProjectionElem::Field(field) => {
+                        base_ptr.offset(field.index())
+                    }
+
+                    mir::ProjectionElem::Downcast(_, variant) => {
+                        let adt_val = self.read_pointer(base_ptr);
+
+                        match adt_val {
+                            Value::Adt { variant: actual_variant, data_ptr } => {
+                                debug_assert_eq!(variant, actual_variant);
+                                data_ptr
+                            }
+
+                            _ => panic!("Downcast attempted on non-Adt: {:?}", adt_val),
+                        }
+                    }
+
+                    mir::ProjectionElem::Deref => unimplemented!(),
+                    mir::ProjectionElem::Index(ref _operand) => unimplemented!(),
+                    mir::ProjectionElem::ConstantIndex { .. } => unimplemented!(),
+                }
+            }
+
             _ => unimplemented!(),
         }
     }
@@ -262,7 +304,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 }
             }
 
-            mir::Rvalue::Aggregate(mir::AggregateKind::Adt(ref adt_def, variant, substs),
+            mir::Rvalue::Aggregate(mir::AggregateKind::Adt(ref adt_def, variant, _substs),
                                    ref operands) => {
                 let max_fields = adt_def.variants
                     .iter()
@@ -277,7 +319,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     self.write_pointer(ptr.offset(i), val);
                 }
 
-                Value::Adt { variant: variant, data: ptr }
+                Value::Adt { variant: variant, data_ptr: ptr }
             }
 
             _ => unimplemented!(),
@@ -293,6 +335,9 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     mir::Literal::Value { ref value } => self.eval_constant(value),
 
                     mir::Literal::Item { def_id, substs: _ } => {
+                        // FIXME(tsion): Only items of function type shoud be wrapped into Func
+                        // values. One test currently fails because a unit-like enum variant gets
+                        // wrapped into Func here instead of a Value::Adt.
                         Value::Func(def_id)
                     }
                 }
