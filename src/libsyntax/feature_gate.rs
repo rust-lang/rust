@@ -82,7 +82,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     ("advanced_slice_patterns", "1.0.0", Some(23121), Active),
     ("tuple_indexing", "1.0.0", None, Accepted),
     ("associated_types", "1.0.0", None, Accepted),
-    ("visible_private_types", "1.0.0", Some(29627), Active),
+    ("visible_private_types", "1.0.0", None, Removed),
     ("slicing_syntax", "1.0.0", None, Accepted),
     ("box_syntax", "1.0.0", Some(27779), Active),
     ("placement_in_syntax", "1.0.0", Some(27779), Active),
@@ -514,7 +514,6 @@ pub enum AttributeGate {
 pub struct Features {
     pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
-    pub visible_private_types: bool,
     pub allow_quote: bool,
     pub allow_asm: bool,
     pub allow_log_syntax: bool,
@@ -551,7 +550,6 @@ impl Features {
         Features {
             unboxed_closures: false,
             rustc_diagnostic_macros: false,
-            visible_private_types: false,
             allow_quote: false,
             allow_asm: false,
             allow_log_syntax: false,
@@ -1130,7 +1128,6 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
     Features {
         unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
-        visible_private_types: cx.has_feature("visible_private_types"),
         allow_quote: cx.has_feature("quote"),
         allow_asm: cx.has_feature("asm"),
         allow_log_syntax: cx.has_feature("log_syntax"),
