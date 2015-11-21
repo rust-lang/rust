@@ -15,21 +15,21 @@ struct Priv;
 pub use self::private::public;
 
 mod private {
-    pub type Priv = super::Priv; //~ ERROR private type in exported type signature
+    pub type Priv = super::Priv; //~ ERROR private type in public interface
 
     pub fn public(_x: Priv) {
     }
 }
 
 struct __CFArray;
-pub type CFArrayRef = *const __CFArray; //~ ERROR private type in exported type signature
+pub type CFArrayRef = *const __CFArray; //~ ERROR private type in public interface
 trait Pointer { type Pointee; }
 impl<T> Pointer for *const T { type Pointee = T; }
 pub type __CFArrayRevealed = <CFArrayRef as Pointer>::Pointee;
-//~^ ERROR private type in exported type signature
+//~^ ERROR private type in public interface
 
 type Foo = u8;
-pub fn foo(f: Foo) {} //~ ERROR private type in exported type signature
+pub fn foo(f: Foo) {} //~ ERROR private type in public interface
 
 pub trait Exporter {
     type Output;
@@ -43,7 +43,7 @@ pub fn block() -> <Helper as Exporter>::Output {
     }
 
     impl Exporter for Helper {
-        type Output = Inner; //~ ERROR private type in exported type signature
+        type Output = Inner; //~ ERROR private type in public interface
     }
 
     Inner

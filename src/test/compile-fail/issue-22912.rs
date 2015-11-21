@@ -20,7 +20,7 @@ trait PrivateTrait {
 }
 
 impl PublicTrait for PublicType {
-    type Item = PrivateType;  //~ ERROR private type in exported type signature
+    type Item = PrivateType;  //~ ERROR private type in public interface
 }
 
 // OK

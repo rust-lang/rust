@@ -14,7 +14,7 @@ use std::any::TypeId;
 trait Private<P, R> {
     fn call(&self, p: P, r: R);
 }
-pub trait Public: Private< //~ ERROR private trait in exported type parameter bound
+pub trait Public: Private< //~ ERROR private trait in public interface
     <Self as Public>::P,
     <Self as Public>::R
 > {

@@ -16,7 +16,7 @@ mod y {
     struct Bar { x: u32 }
 
     impl Foo {
-        pub fn foo(&self, x: Self, y: Bar) { } //~ ERROR private type in exported type signature
+        pub fn foo(&self, x: Self, y: Bar) { } //~ ERROR private type in public interface
     }
 }
 
@@ -26,9 +26,9 @@ mod x {
     struct Bar { _x: u32 }
 
     impl Foo {
-        pub fn foo(&self, _x: Self, _y: Bar) { } //~ ERROR private type in exported type signature
+        pub fn foo(&self, _x: Self, _y: Bar) { } //~ ERROR private type in public interface
         pub fn bar(&self) -> Bar { Bar { _x: self.x } }
-        //~^ ERROR private type in exported type signature
+        //~^ ERROR private type in public interface
     }
 }
 

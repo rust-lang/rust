@@ -1136,7 +1136,7 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                             if item.vis != hir::Public {
                                 if !self.is_quiet {
                                     span_err!(self.tcx.sess, ty.span, E0446,
-                                              "private type in exported type signature");
+                                              "private type in public interface");
                                 }
                                 self.is_public = false;
                             }
@@ -1162,7 +1162,7 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                 if item.vis != hir::Public {
                     if !self.is_quiet {
                         span_err!(self.tcx.sess, trait_ref.path.span, E0445,
-                                  "private trait in exported type parameter bound");
+                                  "private trait in public interface");
                     }
                     self.is_public = false;
                 }
