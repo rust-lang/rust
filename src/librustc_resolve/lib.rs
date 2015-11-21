@@ -124,6 +124,12 @@ macro_rules! execute_callback {
     )
 }
 
+enum SuggestionType {
+    Macro(String),
+    Function(String),
+    NotFound,
+}
+
 pub enum ResolutionError<'a> {
     /// error E0401: can't use type parameters from outer function
     TypeParametersFromOuterFunction,
@@ -3616,9 +3622,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         NoSuggestion
     }
 
-    fn find_best_match_for_name(&mut self, name: &str) -> Option<String> {
+    fn find_best_match_for_name(&mut self, name: &str) -> SuggestionType {
         let mut maybes: Vec<token::InternedString> = Vec::new();
         let mut values: Vec<usize> = Vec::new();
+
+        if let Some(macro_name) = self.session.available_macros
+                                 .borrow().iter().find(|n| n.as_str() == name) {
+            return SuggestionType::Macro(format!("{}!", macro_name));
+        }
 
         for rib in self.value_ribs.iter().rev() {
             for (&k, _) in &rib.bindings {
@@ -3643,10 +3654,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         if !values.is_empty() && values[smallest] <= max_distance && name != &maybes[smallest][..] {
 
-            Some(maybes[smallest].to_string())
+            SuggestionType::Function(maybes[smallest].to_string())
 
         } else {
-            None
+            SuggestionType::NotFound
         }
     }
 
@@ -3758,8 +3769,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     NoSuggestion => {
                                         // limit search to 5 to reduce the number
                                         // of stupid suggestions
-                                        self.find_best_match_for_name(&path_name)
-                                            .map_or("".to_string(), |x| format!("`{}`", x))
+                                        match self.find_best_match_for_name(&path_name) {
+                                            SuggestionType::Macro(s) => {
+                                                format!("the macro `{}`", s)
+                                            }
+                                            SuggestionType::Function(s) => format!("`{}`", s),
+                                            SuggestionType::NotFound => "".to_string(),
+                                        }
                                     }
                                     Field => format!("`self.{}`", path_name),
                                     Method |
