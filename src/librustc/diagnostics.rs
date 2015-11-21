@@ -1899,6 +1899,85 @@ contain references (with a maximum lifetime of `'a`).
 [1]: https://github.com/rust-lang/rfcs/pull/1156
 "##,
 
+E0492: r##"
+A borrow of a constant containing interior mutability was attempted. Erroneous
+code example:
+
+```
+use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
+
+const A: AtomicUsize = ATOMIC_USIZE_INIT;
+static B: &'static AtomicUsize = &A;
+// error: cannot borrow a constant which contains interior mutability, create a
+//        static instead
+```
+
+A `const` represents a constant value that should never change. If one takes
+a `&` reference to the constant, then one is taking a pointer to some memory
+location containing the value. Normally this is perfectly fine: most values
+can't be changed via a shared `&` pointer, but interior mutability would allow
+it. That is, a constant value could be mutated. On the other hand, a `static` is
+explicitly a single memory location, which can be mutated at will.
+
+So, in order to solve this error, either use statics which are `Sync`:
+
+```
+use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
+
+static A: AtomicUsize = ATOMIC_USIZE_INIT;
+static B: &'static AtomicUsize = &A; // ok!
+```
+
+You can also have this error while using a cell type:
+
+```
+#![feature(const_fn)]
+
+use std::cell::Cell;
+
+const A: Cell<usize> = Cell::new(1);
+const B: &'static Cell<usize> = &A;
+// error: cannot borrow a constant which contains interior mutability, create
+//        a static instead
+
+// or:
+struct C { a: Cell<usize> }
+
+const D: C = C { a: Cell::new(1) };
+const E: &'static Cell<usize> = &D.a; // error
+
+// or:
+const F: &'static C = &D; // error
+```
+
+This is because cell types internally use `UnsafeCell`, which isn't `Sync`.
+These aren't thread safe, and thus can't be placed in statics. In this case,
+`StaticMutex` would work just fine, but it isn't stable yet:
+https://doc.rust-lang.org/nightly/std/sync/struct.StaticMutex.html
+
+However, if you still wish to use these types, you can achieve this by an unsafe
+wrapper:
+
+```
+#![feature(const_fn)]
+
+use std::cell::Cell;
+use std::marker::Sync;
+
+struct NotThreadSafe<T> {
+    value: Cell<T>,
+}
+
+unsafe impl<T> Sync for NotThreadSafe<T> {}
+
+static A: NotThreadSafe<usize> = NotThreadSafe { value : Cell::new(1) };
+static B: &'static NotThreadSafe<usize> = &A; // ok!
+```
+
+Remember this solution is unsafe! You will have to ensure that accesses to the
+cell are synchronized.
+"##,
+
 E0493: r##"
 A type with a destructor was assigned to an invalid type of variable. Erroneous
 code example:
@@ -1967,7 +2046,6 @@ impl<'a> Foo<'a> {
 
 Please change the name of one of the lifetimes to remove this error. Example:
 
-
 ```
 struct Foo<'a> {
     a: &'a i32,
@@ -1995,22 +2073,6 @@ fn foo() {}
 
 It is not possible to use stability attributes outside of the standard library.
 Also, for now, it is not possible to write deprecation messages either.
-"##,
-
-E0498: r##"
-A plugin attribute was incorrectly used. Erroneous code example:
-
-```
-#![feature(plugin)]
-#![plugin="foo")] // error: malformed plugin attribute
-```
-
-The plugin name must be written without quotes and within parenthesis. Example:
-
-```
-#![feature(plugin)]
-#![plugin(foo)] // ok!
-```
 "##,
 
 E0517: r##"
@@ -2137,7 +2199,5 @@ register_diagnostics! {
     E0489, // type/lifetime parameter not in scope here
     E0490, // a value of type `..` is borrowed for too long
     E0491, // in type `..`, reference has a longer lifetime than the data it...
-    E0492, // cannot borrow a constant which contains interior mutability
     E0495, // cannot infer an appropriate lifetime due to conflicting requirements
-    E0514, // metadata version mismatch
 }
