@@ -26,8 +26,6 @@ enum Pointer {
 ///
 /// ```text
 /// +-----------------------+
-/// | ReturnPointer         | return value
-/// + - - - - - - - - - - - +
 /// | Arg(0)                |
 /// | Arg(1)                | arguments
 /// | ...                   |
@@ -48,6 +46,7 @@ enum Pointer {
 /// ```
 #[derive(Debug)]
 struct Frame {
+    return_ptr: Pointer,
     offset: usize,
     num_args: usize,
     num_vars: usize,
@@ -57,23 +56,19 @@ struct Frame {
 
 impl Frame {
     fn size(&self) -> usize {
-        1 + self.num_args + self.num_vars + self.num_temps
+        self.num_args + self.num_vars + self.num_temps
     }
 
-    fn return_val_offset(&self) -> usize {
-        self.offset
+    fn arg_offset(&self, i: usize) -> usize {
+        self.offset + i
     }
 
-    fn arg_offset(&self, i: u32) -> usize {
-        self.offset + 1 + i as usize
+    fn var_offset(&self, i: usize) -> usize {
+        self.offset + self.num_args + i
     }
 
-    fn var_offset(&self, i: u32) -> usize {
-        self.offset + 1 + self.num_args + i as usize
-    }
-
-    fn temp_offset(&self, i: u32) -> usize {
-        self.offset + 1 + self.num_args + self.num_vars + i as usize
+    fn temp_offset(&self, i: usize) -> usize {
+        self.offset + self.num_args + self.num_vars + i
     }
 }
 
@@ -89,13 +84,14 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         Interpreter {
             tcx: tcx,
             mir_map: mir_map,
-            value_stack: Vec::new(),
+            value_stack: vec![Value::Uninit], // Allocate a spot for the top-level return value.
             call_stack: Vec::new(),
         }
     }
 
-    fn push_stack_frame(&mut self, mir: &Mir, args: &[Value]) {
+    fn push_stack_frame(&mut self, mir: &Mir, args: &[Value], return_ptr: Pointer) {
         self.call_stack.push(Frame {
+            return_ptr: return_ptr,
             offset: self.value_stack.len(),
             num_args: mir.arg_decls.len(),
             num_vars: mir.var_decls.len(),
@@ -106,7 +102,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         self.value_stack.extend(iter::repeat(Value::Uninit).take(frame.size()));
 
         for (i, arg) in args.iter().enumerate() {
-            self.value_stack[frame.offset + 1 + i] = arg.clone();
+            self.value_stack[frame.arg_offset(i)] = arg.clone();
         }
     }
 
@@ -115,8 +111,8 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         self.value_stack.truncate(frame.offset);
     }
 
-    fn call(&mut self, mir: &Mir, args: &[Value]) -> Value {
-        self.push_stack_frame(mir, args);
+    fn call(&mut self, mir: &Mir, args: &[Value], return_ptr: Pointer) {
+        self.push_stack_frame(mir, args, return_ptr);
         let mut block = mir::START_BLOCK;
 
         loop {
@@ -156,10 +152,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                         let arg_vals: Vec<Value> =
                             args.iter().map(|arg| self.eval_operand(arg)).collect();
 
-                        // FIXME: Pass the destination lvalue such that the ReturnPointer inside
-                        // the function call will point to the destination.
-                        let return_val = self.call(mir, &arg_vals);
-                        self.write_pointer(ptr, return_val);
+                        self.call(mir, &arg_vals, ptr);
                         block = targets[0];
                     } else {
                         panic!("tried to call a non-function value: {:?}", func_val);
@@ -190,19 +183,17 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             }
         }
 
-        let ret_val = self.read_lvalue(&mir::Lvalue::ReturnPointer);
         self.pop_stack_frame();
-        ret_val
     }
 
     fn eval_lvalue(&self, lvalue: &mir::Lvalue) -> Pointer {
         let frame = self.call_stack.last().expect("missing call frame");
 
         match *lvalue {
-            mir::Lvalue::ReturnPointer => Pointer::Stack(frame.return_val_offset()),
-            mir::Lvalue::Arg(i)  => Pointer::Stack(frame.arg_offset(i)),
-            mir::Lvalue::Var(i)  => Pointer::Stack(frame.var_offset(i)),
-            mir::Lvalue::Temp(i) => Pointer::Stack(frame.temp_offset(i)),
+            mir::Lvalue::ReturnPointer => frame.return_ptr,
+            mir::Lvalue::Arg(i)  => Pointer::Stack(frame.arg_offset(i as usize)),
+            mir::Lvalue::Var(i)  => Pointer::Stack(frame.var_offset(i as usize)),
+            mir::Lvalue::Temp(i) => Pointer::Stack(frame.temp_offset(i as usize)),
             _ => unimplemented!(),
         }
     }
@@ -319,10 +310,12 @@ pub fn interpret_start_points<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &MirMap<'tcx>
                 let item = tcx.map.expect_item(id);
 
                 println!("Interpreting: {}", item.name);
-                let mut interpreter = Interpreter::new(tcx, mir_map);
-                let val = interpreter.call(mir, &[]);
-                let val_str = format!("{:?}", val);
 
+                let mut interpreter = Interpreter::new(tcx, mir_map);
+                let return_ptr = Pointer::Stack(0);
+                interpreter.call(mir, &[], return_ptr);
+
+                let val_str = format!("{:?}", interpreter.read_pointer(return_ptr));
                 if !check_expected(&val_str, attr) {
                     println!("=> {}\n", val_str);
                 }
