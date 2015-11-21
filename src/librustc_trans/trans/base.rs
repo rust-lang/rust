@@ -1223,6 +1223,9 @@ pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, dst: ValueRef, src: ValueRe
         let llsz = llsize_of(ccx, llty);
         let llalign = type_of::align_of(ccx, t);
         call_memcpy(bcx, dst, src, llsz, llalign as u32);
+    } else if common::type_is_fat_ptr(bcx.tcx(), t) {
+        let (data, extra) = load_fat_ptr(bcx, src, t);
+        store_fat_ptr(bcx, data, extra, dst, t);
     } else {
         store_ty(bcx, load_ty(bcx, src, t), dst, t);
     }
