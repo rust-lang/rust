@@ -32,7 +32,7 @@ impl Public<Private<isize>> {
     pub fn a(&self) -> Private<isize> { panic!() }
     fn b(&self) -> Private<isize> { panic!() }
 
-    pub fn c() -> Private<isize> { panic!() } //~ ERROR private type in exported type signature
+    pub fn c() -> Private<isize> { panic!() }
     fn d() -> Private<isize> { panic!() }
 }
 impl Public<isize> {
@@ -75,8 +75,8 @@ pub trait PubTrait {
 }
 
 impl PubTrait for Public<isize> {
-    fn bar(&self) -> Private<isize> { panic!() }
-    fn baz() -> Private<isize> { panic!() }
+    fn bar(&self) -> Private<isize> { panic!() } //~ ERROR private type in exported type signature
+    fn baz() -> Private<isize> { panic!() } //~ ERROR private type in exported type signature
 }
 impl PubTrait for Public<Private<isize>> {
     fn bar(&self) -> Private<isize> { panic!() }
@@ -108,7 +108,7 @@ pub trait ParamTrait<T> {
     fn foo() -> T;
 }
 
-impl ParamTrait<Private<isize>> //~ ERROR private type in exported type signature
+impl ParamTrait<Private<isize>>
    for Public<isize> {
     fn foo() -> Private<isize> { panic!() }
 }

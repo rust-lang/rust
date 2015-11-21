@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Test { type T; }
+pub trait Test { type T; }
 
 impl Test for u32 {
     type T = i32;

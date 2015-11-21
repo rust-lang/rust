@@ -14,7 +14,7 @@ use std::os::windows::prelude::*;
 use std::ptr;
 use libc::{c_void, c_long};
 
-type DWORD = u32;
+pub type DWORD = u32;
 type LPCWSTR = *const u16;
 type LONG = c_long;
 type LPDWORD = *mut DWORD;
@@ -34,7 +34,7 @@ const SYNCHRONIZE: REGSAM = 0x00100000;
 const REG_SZ: DWORD = 1;
 const ERROR_SUCCESS: i32 = 0;
 
-enum __HKEY__ {}
+pub enum __HKEY__ {}
 pub type HKEY = *mut __HKEY__;
 pub type PHKEY = *mut HKEY;
 pub type REGSAM = DWORD;
