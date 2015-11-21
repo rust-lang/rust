@@ -309,7 +309,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             ItemExternCrate(_) => {
                 // n.b. we don't need to look at the path option here, because cstore already
                 // did
-                if let Some(crate_id) = self.session.cstore.find_extern_mod_stmt_cnum(item.id) {
+                if let Some(crate_id) = self.session.cstore.extern_mod_stmt_cnum(item.id) {
                     let def_id = DefId {
                         krate: crate_id,
                         index: CRATE_DEF_INDEX,

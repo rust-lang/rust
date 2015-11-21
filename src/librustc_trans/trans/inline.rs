@@ -17,7 +17,6 @@ use trans::common::*;
 
 use rustc_front::hir;
 
-
 fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
     -> Option<DefId> {
     debug!("instantiate_inline({:?})", fn_id);

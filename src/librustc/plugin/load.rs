@@ -12,6 +12,7 @@
 
 use session::Session;
 use metadata::creader::CrateReader;
+use metadata::cstore::CStore;
 use plugin::registry::Registry;
 
 use std::borrow::ToOwned;
@@ -43,9 +44,9 @@ fn call_malformed_plugin_attribute(a: &Session, b: Span) {
 }
 
 /// Read plugin metadata and dynamically load registrar functions.
-pub fn load_plugins(sess: &Session, krate: &ast::Crate,
+pub fn load_plugins(sess: &Session, cstore: &CStore, krate: &ast::Crate,
                     addl_plugins: Option<Vec<String>>) -> Vec<PluginRegistrar> {
-    let mut loader = PluginLoader::new(sess);
+    let mut loader = PluginLoader::new(sess, cstore);
 
     for attr in &krate.attrs {
         if !attr.check_name("plugin") {
@@ -81,10 +82,10 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
 }
 
 impl<'a> PluginLoader<'a> {
-    fn new(sess: &'a Session) -> PluginLoader<'a> {
+    fn new(sess: &'a Session, cstore: &'a CStore) -> PluginLoader<'a> {
         PluginLoader {
             sess: sess,
-            reader: CrateReader::new(sess),
+            reader: CrateReader::new(sess, cstore),
             plugins: vec![],
         }
     }

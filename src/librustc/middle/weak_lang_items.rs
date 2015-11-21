@@ -79,11 +79,11 @@ fn verify(sess: &Session, items: &lang_items::LanguageItems) {
     if !needs_check { return }
 
     let mut missing = HashSet::new();
-    sess.cstore.iter_crate_data(|cnum, _| {
+    for cnum in sess.cstore.crates() {
         for item in sess.cstore.missing_lang_items(cnum) {
             missing.insert(item);
         }
-    });
+    }
 
     $(
         if missing.contains(&lang_items::$item) && items.$name().is_none() {

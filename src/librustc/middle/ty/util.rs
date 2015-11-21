@@ -458,7 +458,7 @@ impl<'tcx> ty::ctxt<'tcx> {
                 let h = if did.is_local() {
                     svh.clone()
                 } else {
-                    tcx.sess.cstore.get_crate_hash(did.krate)
+                    tcx.sess.cstore.crate_hash(did.krate)
                 };
                 h.as_str().hash(state);
                 did.index.hash(state);

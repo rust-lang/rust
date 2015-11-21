@@ -22,6 +22,7 @@ use metadata::decoder;
 use metadata::tyencode;
 use metadata::index::{self, IndexData};
 use metadata::inline::InlinedItemRef;
+use metadata::util::CrateStore;
 use middle::def;
 use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
@@ -1652,8 +1653,7 @@ fn encode_lang_items(ecx: &EncodeContext, rbml_w: &mut Encoder) {
 fn encode_native_libraries(ecx: &EncodeContext, rbml_w: &mut Encoder) {
     rbml_w.start_tag(tag_native_libraries);
 
-    for &(ref lib, kind) in ecx.tcx.sess.cstore.get_used_libraries()
-                               .borrow().iter() {
+    for &(ref lib, kind) in ecx.tcx.sess.cstore.used_libraries().iter() {
         match kind {
             cstore::NativeStatic => {} // these libraries are not propagated
             cstore::NativeFramework | cstore::NativeUnknown => {

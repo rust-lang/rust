@@ -418,7 +418,7 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
         fn handle_external_def(traits: &mut AllTraitsVec,
                                external_mods: &mut FnvHashSet<DefId>,
                                ccx: &CrateCtxt,
-                               cstore: &mdutil::CrateStore,
+                               cstore: &for<'a> mdutil::CrateStore<'a>,
                                dl: mdutil::DefLike) {
             match dl {
                 mdutil::DlDef(def::DefTrait(did)) => {
@@ -436,15 +436,14 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
                 _ => {}
             }
         }
-        let cstore: &mdutil::CrateStore = &ccx.tcx.sess.cstore;
+        let cstore = &*ccx.tcx.sess.cstore;
 
-        // FIXME: privatize this
-        ccx.tcx.sess.cstore.iter_crate_data(|cnum, _| {
+        for cnum in ccx.tcx.sess.cstore.crates() {
             for child in cstore.crate_top_level_items(cnum) {
                 handle_external_def(&mut traits, &mut external_mods,
                                     ccx, cstore, child.def)
             }
-        });
+        }
 
         *ccx.all_traits.borrow_mut() = Some(traits);
     }

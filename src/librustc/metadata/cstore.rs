@@ -94,7 +94,7 @@ enum_from_u32! {
 
 // Where a crate came from on the local filesystem. One of these two options
 // must be non-None.
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
@@ -266,7 +266,7 @@ impl CStore {
         self.statically_included_foreign_items.borrow_mut().insert(id);
     }
 
-    pub fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool {
+    pub fn do_is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool {
         self.statically_included_foreign_items.borrow().contains(&id)
     }
 }
