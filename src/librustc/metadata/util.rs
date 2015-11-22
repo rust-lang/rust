@@ -19,7 +19,7 @@ use middle::def;
 use middle::lang_items;
 use middle::ty::{self, Ty};
 use middle::def_id::{DefId, DefIndex};
-use util::nodemap::{NodeMap, NodeSet};
+use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use std::any::Any;
 use std::cell::RefCell;
@@ -75,6 +75,7 @@ pub trait CrateStore<'tcx> : Any {
     fn item_symbol(&self, def: DefId) -> String;
     fn trait_def(&self, tcx: &ty::ctxt<'tcx>, def: DefId)-> ty::TraitDef<'tcx>;
     fn adt_def(&self, tcx: &ty::ctxt<'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>;
+    fn method_arg_names(&self, did: DefId) -> Vec<String>;
     fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>;
 
     // trait info
@@ -104,10 +105,12 @@ pub trait CrateStore<'tcx> : Any {
     fn is_const_fn(&self, did: DefId) -> bool;
     fn is_defaulted_trait(&self, did: DefId) -> bool;
     fn is_impl(&self, did: DefId) -> bool;
-    fn is_static_method(&self, did: DefId) -> bool;
+    fn is_default_impl(&self, impl_did: DefId) -> bool;
     fn is_extern_fn(&self, tcx: &ty::ctxt<'tcx>, did: DefId) -> bool;
     fn is_static(&self, did: DefId) -> bool;
+    fn is_static_method(&self, did: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool;
+    fn is_typedef(&self, did: DefId) -> bool;
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: ast::CrateNum)
@@ -117,8 +120,11 @@ pub trait CrateStore<'tcx> : Any {
     fn is_staged_api(&self, cnum: ast::CrateNum) -> bool;
     fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool;
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool;
+    fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>;
     fn crate_name(&self, cnum: ast::CrateNum) -> String;
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh;
+    fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
+                                -> FnvHashMap<DefId, Vec<ast::Attribute>>;
     fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>;
     fn native_libraries(&self, cnum: ast::CrateNum) -> Vec<(NativeLibraryKind, String)>;
     fn reachable_ids(&self, cnum: ast::CrateNum) -> Vec<DefId>;
@@ -230,6 +236,12 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         let cdata = self.get_crate_data(def.krate);
         decoder::get_adt_def(&self.intr, &*cdata, def.index, tcx)
+    }
+
+    fn method_arg_names(&self, did: DefId) -> Vec<String>
+    {
+        let cdata = self.get_crate_data(did.krate);
+        decoder::get_method_arg_names(&cdata, did.index)
     }
 
     fn item_path(&self, def: DefId) -> Vec<ast_map::PathElem> {
@@ -352,10 +364,9 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::is_impl(&*cdata, did.index)
     }
 
-    fn is_static_method(&self, def: DefId) -> bool
-    {
-        let cdata = self.get_crate_data(def.krate);
-        decoder::is_static_method(&*cdata, def.index)
+    fn is_default_impl(&self, impl_did: DefId) -> bool {
+        let cdata = self.get_crate_data(impl_did.krate);
+        decoder::is_default_impl(&*cdata, impl_did.index)
     }
 
     fn is_extern_fn(&self, tcx: &ty::ctxt<'tcx>, did: DefId) -> bool
@@ -370,9 +381,20 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::is_static(&*cdata, did.index)
     }
 
+    fn is_static_method(&self, def: DefId) -> bool
+    {
+        let cdata = self.get_crate_data(def.krate);
+        decoder::is_static_method(&*cdata, def.index)
+    }
+
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool
     {
         self.do_is_statically_included_foreign_item(id)
+    }
+
+    fn is_typedef(&self, did: DefId) -> bool {
+        let cdata = self.get_crate_data(did.krate);
+        decoder::is_typedef(&*cdata, did.index)
     }
 
     fn dylib_dependency_formats(&self, cnum: ast::CrateNum)
@@ -414,6 +436,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(cnum).is_allocator()
     }
 
+    fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>
+    {
+        decoder::get_crate_attributes(self.get_crate_data(cnum).data())
+    }
+
     fn crate_name(&self, cnum: ast::CrateNum) -> String
     {
         self.get_crate_data(cnum).name.clone()
@@ -423,6 +450,12 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         let cdata = self.get_crate_data(cnum);
         decoder::get_crate_hash(cdata.data())
+    }
+
+    fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
+                                -> FnvHashMap<DefId, Vec<ast::Attribute>>
+    {
+        decoder::get_struct_field_attrs(&*self.get_crate_data(cnum))
     }
 
     fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>

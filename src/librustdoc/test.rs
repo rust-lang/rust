@@ -19,12 +19,14 @@ use std::io::prelude::*;
 use std::io;
 use std::path::PathBuf;
 use std::process::Command;
+use std::rc::Rc;
 use std::str;
 use std::sync::{Arc, Mutex};
 
 use testing;
 use rustc_lint;
 use rustc::front::map as hir_map;
+use rustc::metadata::cstore::CStore;
 use rustc::session::{self, config};
 use rustc::session::config::{get_unstable_features_setting, OutputType};
 use rustc::session::search_paths::{SearchPaths, PathKind};
@@ -33,6 +35,7 @@ use rustc_back::tempdir::TempDir;
 use rustc_driver::{driver, Compilation};
 use syntax::codemap::CodeMap;
 use syntax::diagnostic;
+use syntax::parse::token;
 
 use core;
 use clean;
@@ -73,15 +76,18 @@ pub fn run(input: &str,
     let span_diagnostic_handler =
     diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 
+    let cstore = Rc::new(CStore::new(token::get_ident_interner()));
+    let cstore_ = ::rustc_driver::cstore_to_cratestore(cstore.clone());
     let sess = session::build_session_(sessopts,
-                                      Some(input_path.clone()),
-                                      span_diagnostic_handler);
+                                       Some(input_path.clone()),
+                                       span_diagnostic_handler,
+                                       cstore_);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess);
     cfg.extend(config::parse_cfgspecs(cfgs));
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
-    let krate = driver::phase_2_configure_and_expand(&sess, krate,
+    let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate,
                                                      "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");
     let krate = driver::assign_node_ids(&sess, krate);
@@ -223,9 +229,12 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     let span_diagnostic_handler =
         diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 
+    let cstore = Rc::new(CStore::new(token::get_ident_interner()));
+    let cstore_ = ::rustc_driver::cstore_to_cratestore(cstore.clone());
     let sess = session::build_session_(sessopts,
                                        None,
-                                       span_diagnostic_handler);
+                                       span_diagnostic_handler,
+                                       cstore_);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let outdir = TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir");
@@ -236,7 +245,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     if no_run {
         control.after_analysis.stop = Compilation::Stop;
     }
-    driver::compile_input(sess, cfg, &input, &out, &None, None, control);
+    driver::compile_input(sess, &cstore, cfg, &input, &out, &None, None, control);
 
     if no_run { return }
 
