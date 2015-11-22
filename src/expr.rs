@@ -1364,6 +1364,9 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         _ => v_budget,
     };
 
+    let ends_with_newline = context.config.struct_lit_style != StructLitStyle::Visual &&
+                            tactic == DefinitiveListTactic::Vertical;
+
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
@@ -1374,11 +1377,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         },
         indent: indent,
         width: budget,
-        ends_with_newline: match tactic {
-            DefinitiveListTactic::Horizontal => false,
-            DefinitiveListTactic::Vertical => true,
-            DefinitiveListTactic::Mixed => unreachable!(),
-        },
+        ends_with_newline: ends_with_newline,
         config: context.config,
     };
     let fields_str = try_opt!(write_list(&item_vec, &fmt));
