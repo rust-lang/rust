@@ -35,9 +35,7 @@ use syntax::parse::token::{self, InternedString, special_idents};
 use syntax::ptr::P;
 
 use rustc_trans::back::link;
-use rustc::metadata::cstore;
-use rustc::metadata::csearch;
-use rustc::metadata::decoder;
+use rustc::metadata::util::{self as mdutil, CrateStore};
 use rustc::middle::def;
 use rustc::middle::def_id::{DefId, DefIndex};
 use rustc::middle::subst::{self, ParamSpace, VecPerParamSpace};
@@ -126,6 +124,8 @@ pub struct Crate {
     pub external_traits: HashMap<DefId, Trait>,
 }
 
+struct CrateNum(ast::CrateNum);
+
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
     fn clean(&self, cx: &DocContext) -> Crate {
         use rustc::session::config::Input;
@@ -135,9 +135,9 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         }
 
         let mut externs = Vec::new();
-        cx.sess().cstore.iter_crate_data(|n, meta| {
-            externs.push((n, meta.clean(cx)));
-        });
+        for cnum in cx.sess().cstore.crates() {
+            externs.push((cnum, CrateNum(cnum).clean(cx)));
+        }
         externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
         // Figure out the name of this crate
@@ -219,24 +219,22 @@ pub struct ExternalCrate {
     pub primitives: Vec<PrimitiveType>,
 }
 
-impl Clean<ExternalCrate> for cstore::crate_metadata {
+impl Clean<ExternalCrate> for CrateNum {
     fn clean(&self, cx: &DocContext) -> ExternalCrate {
         let mut primitives = Vec::new();
         cx.tcx_opt().map(|tcx| {
-            csearch::each_top_level_item_of_crate(&tcx.sess.cstore,
-                                                  self.cnum,
-                                                  |def, _, _| {
-                let did = match def {
-                    decoder::DlDef(def::DefMod(did)) => did,
-                    _ => return
+            for item in tcx.sess.cstore.crate_top_level_items(self.0) {
+                let did = match item.def {
+                    mdutil::DlDef(def::DefMod(did)) => did,
+                    _ => continue
                 };
                 let attrs = inline::load_attrs(cx, tcx, did);
                 PrimitiveType::find(&attrs).map(|prim| primitives.push(prim));
-            })
+            }
         });
         ExternalCrate {
-            name: self.name.to_string(),
-            attrs: decoder::get_crate_attributes(self.data()).clean(cx),
+            name: cx.sess().cstore.crate_name(self.0),
+            attrs: cx.sess().cstore.crate_attrs(self.0).clean(cx),
             primitives: primitives,
         }
     }
@@ -656,7 +654,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
                 (tcx.lang_items.sync_trait().unwrap(),
                  external_path(cx, "Sync", None, vec![], &empty)),
         };
-        let fqn = csearch::get_item_path(tcx, did);
+        let fqn = tcx.sess.cstore.item_path(did);
         let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
         cx.external_paths.borrow_mut().as_mut().unwrap().insert(did,
                                                                 (fqn, TypeTrait));
@@ -678,7 +676,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
             Some(tcx) => tcx,
             None => return RegionBound(Lifetime::statik())
         };
-        let fqn = csearch::get_item_path(tcx, self.def_id);
+        let fqn = tcx.sess.cstore.item_path(self.def_id);
         let fqn = fqn.into_iter().map(|i| i.to_string())
                      .collect::<Vec<String>>();
         let path = external_path(cx, fqn.last().unwrap(),
@@ -1140,7 +1138,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
         let mut names = if let Some(_) = cx.map.as_local_node_id(did) {
             vec![].into_iter()
         } else {
-            csearch::get_method_arg_names(&cx.tcx().sess.cstore, did).into_iter()
+            cx.tcx().sess.cstore.method_arg_names(did).into_iter()
         }.peekable();
         if names.peek().map(|s| &**s) == Some("self") {
             let _ = names.next();
@@ -1665,7 +1663,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyStruct(def, substs) |
             ty::TyEnum(def, substs) => {
                 let did = def.did;
-                let fqn = csearch::get_item_path(cx.tcx(), did);
+                let fqn = cx.tcx().sess.cstore.item_path(did);
                 let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
                 let kind = match self.sty {
                     ty::TyStruct(..) => TypeStruct,
@@ -1683,7 +1681,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             }
             ty::TyTrait(box ty::TraitTy { ref principal, ref bounds }) => {
                 let did = principal.def_id();
-                let fqn = csearch::get_item_path(cx.tcx(), did);
+                let fqn = cx.tcx().sess.cstore.item_path(did);
                 let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
                 let (typarams, bindings) = bounds.clean(cx);
                 let path = external_path(cx, &fqn.last().unwrap().to_string(),
@@ -1737,9 +1735,9 @@ impl Clean<Item> for hir::StructField {
 impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
         use syntax::parse::token::special_idents::unnamed_field;
-        use rustc::metadata::csearch;
-
-        let attr_map = csearch::get_struct_field_attrs(&cx.tcx().sess.cstore, self.did);
+        // FIXME: possible O(n^2)-ness! Not my fault.
+        let attr_map =
+            cx.tcx().sess.cstore.crate_struct_field_attrs(self.did.krate);
 
         let (name, attrs) = if self.name == unnamed_field.name {
             (None, None)
@@ -2815,7 +2813,7 @@ fn lang_struct(cx: &DocContext, did: Option<DefId>,
         Some(did) => did,
         None => return fallback(box t.clean(cx)),
     };
-    let fqn = csearch::get_item_path(cx.tcx(), did);
+    let fqn = cx.tcx().sess.cstore.item_path(did);
     let fqn: Vec<String> = fqn.into_iter().map(|i| {
         i.to_string()
     }).collect();

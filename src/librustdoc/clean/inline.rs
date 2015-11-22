@@ -16,8 +16,7 @@ use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 use rustc_front::hir;
 
-use rustc::metadata::csearch;
-use rustc::metadata::decoder;
+use rustc::metadata::util::{self as mdutil, CrateStore};
 use rustc::middle::def;
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty;
@@ -129,8 +128,7 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
 
 pub fn load_attrs(cx: &DocContext, tcx: &ty::ctxt,
                   did: DefId) -> Vec<clean::Attribute> {
-    let attrs = csearch::get_item_attrs(&tcx.sess.cstore, did);
-    attrs.into_iter().map(|a| a.clean(cx)).collect()
+    tcx.get_attrs(did).iter().map(|a| a.clean(cx)).collect()
 }
 
 /// Record an external fully qualified name in the external_paths cache.
@@ -140,7 +138,7 @@ pub fn load_attrs(cx: &DocContext, tcx: &ty::ctxt,
 pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
     match cx.tcx_opt() {
         Some(tcx) => {
-            let fqn = csearch::get_item_path(tcx, did);
+            let fqn = tcx.sess.cstore.item_path(did);
             let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
             cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
         }
@@ -211,7 +209,7 @@ fn build_type(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean::ItemEnum {
     let t = tcx.lookup_item_type(did);
     let predicates = tcx.lookup_predicates(did);
     match t.ty.sty {
-        ty::TyEnum(edef, _) if !csearch::is_typedef(&tcx.sess.cstore, did) => {
+        ty::TyEnum(edef, _) if !tcx.sess.cstore.is_typedef(did) => {
             return clean::EnumItem(clean::Enum {
                 generics: (&t.generics, &predicates, subst::TypeSpace).clean(cx),
                 variants_stripped: false,
@@ -250,23 +248,19 @@ pub fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
     // type being inlined, but impls can also be used when generating
     // documentation for primitives (no way to find those specifically).
     if cx.populated_crate_impls.borrow_mut().insert(did.krate) {
-        csearch::each_top_level_item_of_crate(&tcx.sess.cstore,
-                                              did.krate,
-                                              |def, _, _| {
-            populate_impls(cx, tcx, def, &mut impls)
-        });
+        for item in tcx.sess.cstore.crate_top_level_items(did.krate) {
+            populate_impls(cx, tcx, item.def, &mut impls);
+        }
 
         fn populate_impls(cx: &DocContext, tcx: &ty::ctxt,
-                          def: decoder::DefLike,
+                          def: mdutil::DefLike,
                           impls: &mut Vec<clean::Item>) {
             match def {
-                decoder::DlImpl(did) => build_impl(cx, tcx, did, impls),
-                decoder::DlDef(def::DefMod(did)) => {
-                    csearch::each_child_of_item(&tcx.sess.cstore,
-                                                did,
-                                                |def, _, _| {
-                        populate_impls(cx, tcx, def, impls)
-                    })
+                mdutil::DlImpl(did) => build_impl(cx, tcx, did, impls),
+                mdutil::DlDef(def::DefMod(did)) => {
+                    for item in tcx.sess.cstore.item_children(did) {
+                        populate_impls(cx, tcx, item.def, impls)
+                    }
                 }
                 _ => {}
             }
@@ -285,7 +279,7 @@ pub fn build_impl(cx: &DocContext,
     }
 
     let attrs = load_attrs(cx, tcx, did);
-    let associated_trait = csearch::get_impl_trait(tcx, did);
+    let associated_trait = tcx.impl_trait_ref(did);
     if let Some(ref t) = associated_trait {
         // If this is an impl for a #[doc(hidden)] trait, be sure to not inline
         let trait_attrs = load_attrs(cx, tcx, t.def_id);
@@ -295,7 +289,7 @@ pub fn build_impl(cx: &DocContext,
     }
 
     // If this is a defaulted impl, then bail out early here
-    if csearch::is_default_impl(&tcx.sess.cstore, did) {
+    if tcx.sess.cstore.is_default_impl(did) {
         return ret.push(clean::Item {
             inner: clean::DefaultImplItem(clean::DefaultImpl {
                 // FIXME: this should be decoded
@@ -315,7 +309,7 @@ pub fn build_impl(cx: &DocContext,
     }
 
     let predicates = tcx.lookup_predicates(did);
-    let trait_items = csearch::get_impl_items(&tcx.sess.cstore, did)
+    let trait_items = tcx.sess.cstore.impl_items(did)
             .iter()
             .filter_map(|did| {
         let did = did.def_id();
@@ -393,7 +387,7 @@ pub fn build_impl(cx: &DocContext,
             }
         }
     }).collect::<Vec<_>>();
-    let polarity = csearch::get_impl_polarity(tcx, did);
+    let polarity = tcx.trait_impl_polarity(did);
     let ty = tcx.lookup_item_type(did);
     let trait_ = associated_trait.clean(cx).map(|bound| {
         match bound {
@@ -454,24 +448,24 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
         let mut visited = HashSet::new();
-        csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, vis| {
-            match def {
-                decoder::DlDef(def::DefForeignMod(did)) => {
+        for item in tcx.sess.cstore.item_children(did) {
+            match item.def {
+                mdutil::DlDef(def::DefForeignMod(did)) => {
                     fill_in(cx, tcx, did, items);
                 }
-                decoder::DlDef(def) if vis == hir::Public => {
+                mdutil::DlDef(def) if item.vis == hir::Public => {
                     if !visited.insert(def) { return }
                     match try_inline_def(cx, tcx, def) {
                         Some(i) => items.extend(i),
                         None => {}
                     }
                 }
-                decoder::DlDef(..) => {}
+                mdutil::DlDef(..) => {}
                 // All impls were inlined above
-                decoder::DlImpl(..) => {}
-                decoder::DlField => panic!("unimplemented field"),
+                mdutil::DlImpl(..) => {}
+                mdutil::DlField => panic!("unimplemented field"),
             }
-        });
+        }
     }
 }
 

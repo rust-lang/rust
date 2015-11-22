@@ -22,11 +22,12 @@ extern crate syntax;
 use std::ffi::{CStr, CString};
 use std::mem::transmute;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::thread::Builder;
 
 use rustc::front::map as ast_map;
 use rustc::llvm;
-use rustc::metadata::cstore::RequireDynamic;
+use rustc::metadata::cstore::{CStore, RequireDynamic};
 use rustc::metadata::util::CrateStore;
 use rustc::middle::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Input, Options};
@@ -37,6 +38,7 @@ use rustc_resolve::MakeGlobMap;
 use libc::c_void;
 
 use syntax::diagnostics::registry::Registry;
+use syntax::parse::token;
 
 fn main() {
     let program = r#"
@@ -211,7 +213,10 @@ fn compile_program(input: &str, sysroot: PathBuf)
 
     let handle = thread.spawn(move || {
         let opts = build_exec_options(sysroot);
-        let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS));
+        let cstore = Rc::new(CStore::new(token::get_ident_interner()));
+        let cstore_ = ::rustc_driver::cstore_to_cratestore(cstore.clone());
+        let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS),
+                                 cstore_);
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let cfg = build_configuration(&sess);
@@ -220,7 +225,7 @@ fn compile_program(input: &str, sysroot: PathBuf)
 
         let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
-        let krate = driver::phase_2_configure_and_expand(&sess, krate, &id, None)
+        let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id, None)
             .expect("phase_2 returned `None`");
 
         let krate = driver::assign_node_ids(&sess, krate);
@@ -230,11 +235,12 @@ fn compile_program(input: &str, sysroot: PathBuf)
         let ast_map = driver::make_map(&sess, &mut hir_forest);
 
         driver::phase_3_run_analysis_passes(
-            &sess, ast_map, &arenas, &id, MakeGlobMap::No, |tcx, mir_map, analysis| {
+            &sess, &cstore, ast_map, &arenas, &id,
+            MakeGlobMap::No, |tcx, mir_map, analysis| {
 
             let trans = driver::phase_4_translate_to_llvm(tcx, mir_map, analysis);
 
-            let crates = tcx.sess.cstore.get_used_crates(RequireDynamic);
+            let crates = tcx.sess.cstore.used_crates(RequireDynamic);
 
             // Collect crates used in the session.
             // Reverse order finds dependencies first.
