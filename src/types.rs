@@ -492,13 +492,14 @@ impl Rewrite for ast::Ty {
                     None
                 }
             }
-            ast::TyBareFn(..) => {
-                wrap_str(pprust::ty_to_string(self),
-                         context.config.max_width,
-                         width,
-                         offset)
-            }
+            ast::TyBareFn(ref bare_fn) => bare_fn.rewrite(context, width, offset),
             ast::TyMac(..) | ast::TyTypeof(..) => unreachable!(),
         }
+    }
+}
+
+impl Rewrite for ast::BareFnTy {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+        None
     }
 }
