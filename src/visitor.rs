@@ -28,7 +28,7 @@ pub struct FmtVisitor<'a> {
     pub codemap: &'a CodeMap,
     pub buffer: StringBuffer,
     pub last_pos: BytePos,
-    // TODO: RAII util for indenting
+    // FIXME: use an RAII util or closure for indenting
     pub block_indent: Indent,
     pub config: &'a Config,
     pub write_mode: Option<WriteMode>,
@@ -99,7 +99,7 @@ impl<'a> FmtVisitor<'a> {
             }
         }
 
-        // TODO: we should compress any newlines here to just one
+        // FIXME: we should compress any newlines here to just one
         self.format_missing_with_indent(b.span.hi - brace_compensation);
         self.close_block();
         self.last_pos = b.span.hi;
@@ -178,12 +178,17 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn visit_item(&mut self, item: &ast::Item) {
-        // Don't look at attributes for modules.
+        // Don't look at attributes for modules (except for rustfmt_skip).
         // We want to avoid looking at attributes in another file, which the AST
-        // doesn't distinguish. FIXME This is overly conservative and means we miss
-        // attributes on inline modules.
+        // doesn't distinguish.
+        // FIXME This is overly conservative and means we miss attributes on
+        // inline modules.
         match item.node {
-            ast::Item_::ItemMod(_) => {}
+            ast::Item_::ItemMod(_) => {
+                if utils::contains_skip(&item.attrs) {
+                    return;
+                }
+            }
             _ => {
                 if self.visit_attrs(&item.attrs) {
                     return;
@@ -406,10 +411,6 @@ impl<'a> FmtVisitor<'a> {
 
     // Returns true if we should skip the following item.
     pub fn visit_attrs(&mut self, attrs: &[ast::Attribute]) -> bool {
-        if attrs.is_empty() {
-            return false;
-        }
-
         if utils::contains_skip(attrs) {
             return true;
         }
