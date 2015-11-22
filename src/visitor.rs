@@ -21,7 +21,7 @@ use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
 use macros::rewrite_macro;
-use items::{rewrite_static, format_impl};
+use items::{rewrite_static, rewrite_type_alias, format_impl};
 
 pub struct FmtVisitor<'a> {
     pub parse_session: &'a ParseSess,
@@ -299,8 +299,15 @@ impl<'a> FmtVisitor<'a> {
                               item.span,
                               item.id)
             }
-            ast::Item_::ItemTy(..) => {
-                // FIXME(#486): format type aliases.
+            ast::Item_::ItemTy(ref ty, ref generics) => {
+                let rewrite = rewrite_type_alias(&self.get_context(),
+                                                 self.block_indent,
+                                                 item.ident,
+                                                 ty,
+                                                 generics,
+                                                 item.vis,
+                                                 item.span);
+                self.push_rewrite(item.span, rewrite);
             }
         }
     }
