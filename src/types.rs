@@ -432,17 +432,19 @@ impl Rewrite for ast::PolyTraitRef {
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
             let max_path_width = try_opt!(width.checked_sub(extra_offset));
-            let path_str = try_opt!(rewrite_path(context,
-                                                 false,
-                                                 None,
-                                                 &self.trait_ref.path,
-                                                 max_path_width,
-                                                 offset + extra_offset));
+            let path_str = try_opt!(self.trait_ref
+                                        .rewrite(context, max_path_width, offset + extra_offset));
 
             Some(format!("for<{}> {}", lifetime_str, path_str))
         } else {
-            rewrite_path(context, false, None, &self.trait_ref.path, width, offset)
+            self.trait_ref.rewrite(context, width, offset)
         }
+    }
+}
+
+impl Rewrite for ast::TraitRef {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+        rewrite_path(context, false, None, &self.path, width, offset)
     }
 }
 

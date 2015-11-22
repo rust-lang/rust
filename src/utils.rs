@@ -143,6 +143,13 @@ pub fn semicolon_for_stmt(stmt: &ast::Stmt) -> bool {
 }
 
 #[inline]
+pub fn trim_newlines(input: &str) -> &str {
+    let start = input.find(|c| c != '\n' && c != '\r').unwrap_or(0);
+    let end = input.rfind(|c| c != '\n' && c != '\r').unwrap_or(0) + 1;
+    &input[start..end]
+}
+
+#[inline]
 #[cfg(target_pointer_width="64")]
 // Based on the trick layed out at
 // http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
