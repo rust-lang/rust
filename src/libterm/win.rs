@@ -19,7 +19,7 @@ use std::io::prelude::*;
 
 use attr;
 use color;
-use {Terminal,UnwrappableTerminal};
+use {Terminal, UnwrappableTerminal};
 
 /// A Terminal implementation which uses the Win32 Console API.
 pub struct WinConsole<T> {
@@ -50,23 +50,22 @@ struct CONSOLE_SCREEN_BUFFER_INFO {
 extern "system" {
     fn SetConsoleTextAttribute(handle: HANDLE, attr: WORD) -> BOOL;
     fn GetStdHandle(which: DWORD) -> HANDLE;
-    fn GetConsoleScreenBufferInfo(handle: HANDLE,
-                                  info: *mut CONSOLE_SCREEN_BUFFER_INFO) -> BOOL;
+    fn GetConsoleScreenBufferInfo(handle: HANDLE, info: *mut CONSOLE_SCREEN_BUFFER_INFO) -> BOOL;
 }
 
 fn color_to_bits(color: color::Color) -> u16 {
     // magic numbers from mingw-w64's wincon.h
 
     let bits = match color % 8 {
-        color::BLACK   => 0,
-        color::BLUE    => 0x1,
-        color::GREEN   => 0x2,
-        color::RED     => 0x4,
-        color::YELLOW  => 0x2 | 0x4,
+        color::BLACK => 0,
+        color::BLUE => 0x1,
+        color::GREEN => 0x2,
+        color::RED => 0x4,
+        color::YELLOW => 0x2 | 0x4,
         color::MAGENTA => 0x1 | 0x4,
-        color::CYAN    => 0x1 | 0x2,
-        color::WHITE   => 0x1 | 0x2 | 0x4,
-        _ => unreachable!()
+        color::CYAN => 0x1 | 0x2,
+        color::WHITE => 0x1 | 0x2 | 0x4,
+        _ => unreachable!(),
     };
 
     if color >= 8 {
@@ -86,7 +85,7 @@ fn bits_to_color(bits: u16) -> color::Color {
         0x5 => color::MAGENTA,
         0x3 => color::CYAN,
         0x7 => color::WHITE,
-        _ => unreachable!()
+        _ => unreachable!(),
     };
 
     color | (bits & 0x8) // copy the hi-intensity bit
@@ -116,13 +115,12 @@ impl<T: Write+Send+'static> WinConsole<T> {
 
     /// Returns `None` whenever the terminal cannot be created for some
     /// reason.
-    pub fn new(out: T) -> Option<Box<Terminal<T>+Send+'static>> {
+    pub fn new(out: T) -> Option<Box<Terminal<T> + Send + 'static>> {
         let fg;
         let bg;
         unsafe {
             let mut buffer_info = ::std::mem::uninitialized();
-            if GetConsoleScreenBufferInfo(GetStdHandle(-11i32 as DWORD),
-                                          &mut buffer_info) != 0 {
+            if GetConsoleScreenBufferInfo(GetStdHandle(-11i32 as DWORD), &mut buffer_info) != 0 {
                 fg = bits_to_color(buffer_info.wAttributes);
                 bg = bits_to_color(buffer_info.wAttributes >> 4);
             } else {
@@ -130,9 +128,13 @@ impl<T: Write+Send+'static> WinConsole<T> {
                 bg = color::BLACK;
             }
         }
-        Some(box WinConsole { buf: out,
-                              def_foreground: fg, def_background: bg,
-                              foreground: fg, background: bg })
+        Some(box WinConsole {
+            buf: out,
+            def_foreground: fg,
+            def_background: bg,
+            foreground: fg,
+            background: bg,
+        })
     }
 }
 
@@ -167,13 +169,13 @@ impl<T: Write+Send+'static> Terminal<T> for WinConsole<T> {
                 self.foreground = f;
                 self.apply();
                 Ok(true)
-            },
+            }
             attr::BackgroundColor(b) => {
                 self.background = b;
                 self.apply();
                 Ok(true)
-            },
-            _ => Ok(false)
+            }
+            _ => Ok(false),
         }
     }
 
@@ -182,7 +184,7 @@ impl<T: Write+Send+'static> Terminal<T> for WinConsole<T> {
         // it to do anything -cmr
         match attr {
             attr::ForegroundColor(_) | attr::BackgroundColor(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -194,11 +196,17 @@ impl<T: Write+Send+'static> Terminal<T> for WinConsole<T> {
         Ok(())
     }
 
-    fn get_ref<'a>(&'a self) -> &'a T { &self.buf }
+    fn get_ref<'a>(&'a self) -> &'a T {
+        &self.buf
+    }
 
-    fn get_mut<'a>(&'a mut self) -> &'a mut T { &mut self.buf }
+    fn get_mut<'a>(&'a mut self) -> &'a mut T {
+        &mut self.buf
+    }
 }
 
 impl<T: Write+Send+'static> UnwrappableTerminal<T> for WinConsole<T> {
-    fn unwrap(self) -> T { self.buf }
+    fn unwrap(self) -> T {
+        self.buf
+    }
 }

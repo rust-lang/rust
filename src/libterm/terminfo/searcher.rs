@@ -38,13 +38,15 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<PathBuf>> {
                 dirs_to_search.push(homedir.unwrap().join(".terminfo"))
             }
             match env::var("TERMINFO_DIRS") {
-                Ok(dirs) => for i in dirs.split(':') {
-                    if i == "" {
-                        dirs_to_search.push(PathBuf::from("/usr/share/terminfo"));
-                    } else {
-                        dirs_to_search.push(PathBuf::from(i));
+                Ok(dirs) => {
+                    for i in dirs.split(':') {
+                        if i == "" {
+                            dirs_to_search.push(PathBuf::from("/usr/share/terminfo"));
+                        } else {
+                            dirs_to_search.push(PathBuf::from(i));
+                        }
                     }
-                },
+                }
                 // Found nothing in TERMINFO_DIRS, use the default paths:
                 // According to  /etc/terminfo/README, after looking at
                 // ~/.terminfo, ncurses will search /etc/terminfo, then
@@ -86,9 +88,7 @@ pub fn open(term: &str) -> Result<File, String> {
                 Err(e) => Err(format!("error opening file: {:?}", e)),
             }
         }
-        None => {
-            Err(format!("could not find terminfo entry for {:?}", term))
-        }
+        None => Err(format!("could not find terminfo entry for {:?}", term)),
     }
 }
 
