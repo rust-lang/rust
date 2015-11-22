@@ -155,6 +155,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         matches::MATCH_BOOL,
         matches::MATCH_REF_PATS,
         matches::SINGLE_MATCH,
+        methods::OK_EXPECT,
         methods::SHOULD_IMPLEMENT_TRAIT,
         methods::STR_TO_STRING,
         methods::STRING_TO_STRING,

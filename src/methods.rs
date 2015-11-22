@@ -1,17 +1,18 @@
 use rustc_front::hir::*;
 use rustc::lint::*;
 use rustc::middle::ty;
-use rustc::middle::subst::Subst;
+use rustc::middle::subst::{Subst, TypeSpace};
 use std::iter;
 use std::borrow::Cow;
 
-use utils::{snippet, span_lint, match_path, match_type, walk_ptrs_ty_depth};
+use utils::{snippet, span_lint, match_path, match_type, walk_ptrs_ty_depth,
+    walk_ptrs_ty};
 use utils::{OPTION_PATH, RESULT_PATH, STRING_PATH};
 
 use self::SelfKind::*;
 use self::OutType::*;
 
-#[derive(Copy,Clone)]
+#[derive(Clone)]
 pub struct MethodsPass;
 
 declare_lint!(pub OPTION_UNWRAP_USED, Allow,
@@ -30,16 +31,21 @@ declare_lint!(pub WRONG_SELF_CONVENTION, Warn,
 declare_lint!(pub WRONG_PUB_SELF_CONVENTION, Allow,
               "defining a public method named with an established prefix (like \"into_\") that takes \
                `self` with the wrong convention");
+declare_lint!(pub OK_EXPECT, Warn,
+              "using `ok().expect()`, which gives worse error messages than \
+               calling `expect` directly on the Result");
+
 
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(OPTION_UNWRAP_USED, RESULT_UNWRAP_USED, STR_TO_STRING, STRING_TO_STRING,
-                    SHOULD_IMPLEMENT_TRAIT, WRONG_SELF_CONVENTION)
+                    SHOULD_IMPLEMENT_TRAIT, WRONG_SELF_CONVENTION, OK_EXPECT)
     }
 }
 
 impl LateLintPass for MethodsPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+
         if let ExprMethodCall(ref name, _, ref args) = expr.node {
             let (obj_ty, ptr_depth) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&args[0]));
             if name.node.as_str() == "unwrap" {
@@ -68,6 +74,22 @@ impl LateLintPass for MethodsPass {
                 } else if match_type(cx, obj_ty, &STRING_PATH) {
                     span_lint(cx, STRING_TO_STRING, expr.span, "`String.to_string()` is a no-op; use \
                                                                 `clone()` to make a copy");
+                }
+            }
+            else if name.node.as_str() == "expect" {
+                if let ExprMethodCall(ref inner_name, _, ref inner_args) = args[0].node {
+                    if inner_name.node.as_str() == "ok"
+                            && match_type(cx, cx.tcx.expr_ty(&inner_args[0]), &RESULT_PATH) {
+                        let result_type = cx.tcx.expr_ty(&inner_args[0]);
+                        if let Some(error_type) = get_error_type(cx, result_type) {
+                            if has_debug_impl(error_type, cx) {
+                                span_lint(cx, OK_EXPECT, expr.span,
+                                         "called `ok().expect()` on a Result \
+                                          value. You can call `expect` directly
+                                          on the `Result`");
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -113,6 +135,41 @@ impl LateLintPass for MethodsPass {
             }
         }
     }
+}
+
+// Given a `Result<T, E>` type, return its error type (`E`)
+fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
+    if !match_type(cx, ty, &RESULT_PATH) {
+        return None;
+    }
+    if let ty::TyEnum(_, substs) = ty.sty {
+        if let Some(err_ty) = substs.types.opt_get(TypeSpace, 1) {
+            return Some(err_ty);
+        }
+    }
+    None
+}
+
+// This checks whether a given type is known to implement Debug. It's
+// conservative, i.e. it should not return false positives, but will return
+// false negatives.
+fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
+    let no_ref_ty = walk_ptrs_ty(ty);
+    let debug = match cx.tcx.lang_items.debug_trait() {
+        Some(debug) => debug,
+        None => return false
+    };
+    let debug_def = cx.tcx.lookup_trait_def(debug);
+    let mut debug_impl_exists = false;
+    debug_def.for_each_relevant_impl(cx.tcx, no_ref_ty, |d| {
+        let self_ty = &cx.tcx.impl_trait_ref(d).and_then(|im| im.substs.self_ty());
+        if let Some(self_ty) = *self_ty {
+            if !self_ty.flags.get().contains(ty::TypeFlags::HAS_PARAMS) {
+                debug_impl_exists = true;
+            }
+        }
+    });
+    debug_impl_exists
 }
 
 const CONVENTIONS: [(&'static str, &'static [SelfKind]); 5] = [
