@@ -803,8 +803,10 @@ mod tests {
         let output = String::from_utf8(result.stdout).unwrap();
 
         for (ref k, ref v) in env::vars() {
-            // don't check windows magical empty-named variables
-            assert!(k.is_empty() ||
+            // Windows has hidden environment variables whose names start with
+            // equals signs (`=`). Those do not show up in the output of the
+            // `set` command.
+            assert!((cfg!(windows) && k.starts_with("=")) ||
                     output.contains(&format!("{}={}", *k, *v)),
                     "output doesn't contain `{}={}`\n{}",
                     k, v, output);
