@@ -2,6 +2,13 @@
 fn simple(// pre-comment on a function!?
           i: i32, // yes, it's possible!
           response: NoWay /* hose */) {
+    fn op(x: Typ,
+          key: &[u8],
+          upd: Box<Fn(Option<&memcache::Item>)
+                      -> (memcache::Status, Result<memcache::Item, Option<String>>)>)
+          -> MapResult {
+    }
+
     "cool"
 }
 
@@ -23,7 +30,8 @@ fn generic<T>(arg: T) -> &SomeType
                 C,
                 D,
                 // pre comment
-                E /* last comment */) -> &SomeType
+                E /* last comment */)
+                -> &SomeType
 {
     arg(a, b, c, d, e)
 }

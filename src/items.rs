@@ -473,10 +473,7 @@ pub fn format_struct(context: &RewriteContext,
     }
 }
 
-fn format_unit_struct(item_name: &str,
-                      ident: ast::Ident,
-                      vis: ast::Visibility)
-                      -> Option<String> {
+fn format_unit_struct(item_name: &str, ident: ast::Ident, vis: ast::Visibility) -> Option<String> {
     let mut result = String::with_capacity(1024);
 
     let header_str = format_header(item_name, ident, vis);

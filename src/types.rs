@@ -200,11 +200,7 @@ fn rewrite_segment(expr_context: bool,
                                      ">",
                                      |param| param.get_span().lo,
                                      |param| param.get_span().hi,
-                                     |seg| {
-                                         seg.rewrite(context,
-                                                     context.config.max_width,
-                                                     offset + extra_offset)
-                                     },
+                                     |seg| seg.rewrite(context, list_width, offset + extra_offset),
                                      list_lo,
                                      span_hi);
             let list_str = try_opt!(format_item_list(items,
@@ -218,16 +214,8 @@ fn rewrite_segment(expr_context: bool,
             format!("{}<{}>", separator, list_str)
         }
         ast::PathParameters::ParenthesizedParameters(ref data) => {
-            let output = match data.output {
-                Some(ref ty) => {
-                    let type_str = try_opt!(ty.rewrite(context, width, offset));
-                    format!(" -> {}", type_str)
-                }
-                None => String::new(),
-            };
-
             // 2 for ()
-            let budget = try_opt!(width.checked_sub(output.len() + 2));
+            let budget = try_opt!(width.checked_sub(2));
             // 1 for (
             let offset = offset + 1;
             let list_lo = span_after(data.span, "(", context.codemap);
@@ -239,9 +227,30 @@ fn rewrite_segment(expr_context: bool,
                                      |ty| ty.rewrite(context, budget, offset),
                                      list_lo,
                                      span_hi);
+            println!("got here");
+
             let list_str = try_opt!(format_fn_args(items, budget, offset, context.config));
 
-            format!("({}){}", list_str, output)
+            println!("got here 2");
+            let output = match data.output {
+                Some(ref ty) => {
+                    let budget = try_opt!(width.checked_sub(4));
+                    let type_str = try_opt!(ty.rewrite(context, budget, offset + 4));
+                    format!(" -> {}", type_str)
+                }
+                None => String::new(),
+            };
+
+            println!("got here 3");
+
+            let infix = if output.len() + list_str.len() > width {
+                format!("\n{}", (offset - 1).to_string(context.config))
+            } else {
+                String::new()
+            };
+            println!("({}){}{}", &list_str, &infix, &output);
+
+            format!("({}){}{}", list_str, infix, output)
         }
         _ => String::new(),
     };
