@@ -907,6 +907,8 @@ pub fn diagnostics_registry() -> diagnostics::registry::Registry {
     all_errors.push_all(&rustc_typeck::DIAGNOSTICS);
     all_errors.push_all(&rustc_borrowck::DIAGNOSTICS);
     all_errors.push_all(&rustc_resolve::DIAGNOSTICS);
+    all_errors.push_all(&rustc_privacy::DIAGNOSTICS);
+    all_errors.push_all(&rustc_trans::DIAGNOSTICS);
 
     Registry::new(&*all_errors)
 }
