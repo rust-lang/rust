@@ -89,30 +89,27 @@ try!(file.read(&mut buffer));
 ```
 
 ### No access mode set
-On Windows it is possible to open a file without setting an access mode. You can
-do practically nothing with the file, but you can read
-[metadata](https://msdn.microsoft.com/en-us/library/windows/desktop/aa363788%28v=vs.85%29.aspx)
-such as the file size or timestamp.
+Even if you don't have read or write permission to a file, it is possible to
+open it on some systems by opening it with no access mode set (or the equivalent
+there of). This is true for Windows, Linux (with the flag `O_PATH`) and
+GNU/Hurd.
 
-On Unix it is traditionally not possible to open a file without specifying the
-access mode, because of the way the access flags where defined: something like
-`O_RDONLY = 0`, `O_WRONLY = 1` and `O_RDWR = 2`. When no flags are set, the
-access mode is `0` and you fall back to opening the file read-only.
+What can be done with a file opened this way is system-specific and niche. Since
+Linux version 2.6.39 all three operating systems support reading metadata such
+as the file size and timestamps.
 
-Linux since version 2.6.39 has functionality similar to Windows by opening the
-file with `O_RDONLY | O_PATH`. Since version 3.6 you can call `fstat` on a file
-descriptor opened this way.
+On practically all variants of Unix opening a file without specifying the access
+mode falls back to opening the file read-only. This is because of the way the
+access flags where traditionally defined: `O_RDONLY = 0`, `O_WRONLY = 1` and
+`O_RDWR = 2`. When no flags are set, the access mode is `0`: read-only. But
+code that relies on this is considered buggy and not portable.
 
-For what it's worth
-[GNU/Hurd](http://www.gnu.org/software/libc/manual/html_node/Access-Modes.html)
-allows opening files without an access mode, because it defines `O_RDONLY = 1`
-and `O_WRONLY = 2`. It allows all operations on the file that do not involve
-reading or writing the data, like `chmod`.
-
-On Unix systems that fall back to opening the file read-only, Rust will fail
-opening the file with `E_INVALID`. Otherwise, if for example you are developing
-on OS X but forget to set `.read(true)` when opening a file, it would work on
-OS X but not on other systems.
+What should Rust do when no access mode is specified? Fall back to read-only,
+open with the most similar system-specific mode, or always fail to open? This
+RFC proposes to always fail. This is the conservative choice, and can be changed
+to open in a system-specific mode if a clear use case arises. Implementing a
+fallback is not worth it: it is no great effort to set the access mode
+explicitly.
 
 
 ### Windows-specific
@@ -312,143 +309,6 @@ On Unix this is done by setting the creation mode using `.custom_flags()` with
 specifying `.access_mode()` (see above).
 
 
-## Sharing / locking
-On Unix it is possible for multiple processes to read and write to the same file
-at the same time.
-
-When you open a file on Windows, the system by default denies other processes to
-read or write to the file, or delete it. By setting the sharing mode, it is
-possible to allow other processes read, write and/or delete access. For
-cross-platform consistency, Rust imitates Unix by setting all sharing flags.
-
-Unix has no equivalent to the kind of file locking that Windows has. It has two
-types of advisory locking, POSIX and BSD-style. Advisory means any process that
-does not use locking itself can happily ignore the locking af another process.
-As if that is not bad enough, they both have
-[problems](http://0pointer.de/blog/projects/locking.html) that make them close
-to unusable for modern multi-threaded programs. Linux may in some very rare
-cases support mandatory file locking, but it is just as broken as advisory.
-
-For Rust, the sharing mode can be set with a Windows-specific option. Given the
-problems above, I don't expect there to ever be a cross-platform option for file
-locking.
-
-
-### Windows-specific: Share mode
-`.share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)`
-
-It is possible to set the individual share permissions with `.share_mode()`.
-
-The current philosophy of this function is that others should have no rights,
-unless explicitly granted. I think a better fit for Rust would be to give all
-others all rights, unless explicitly denied, e.g.:
-`.share_mode(DENY_READ | DENY_WRITE | DENY_DELETE)`.
-
-
-## Caching behaviour
-
-### Read cache hint
-Instead of requesting only the data necessary for a single `read()` call from a
-storage device, an operating system may request more data than necessary to have
-it already available for the next read call (e.g. the read-ahead cache). If you
-read the file sequentially this is beneficial, for completely random access it
-can become a penalty. Operating systems generally have good heuristics, but you
-may get a performance win if you give the os a hint about how you will read the
-file.
-
-Do some real-world benchmarks before setting this option.
-
-
-#### Cache hint
-```
-.cache_hint(enum CacheHint)
-
-enum CacheHint {
-    None,
-    Sequential,
-    Random,
-}
-```
-
-On Windows this maps to the flags `FILE_FLAG_SEQUENTIAL_SCAN` and
-`FILE_FLAG_RANDOM_ACCESS`. On Linux and FreeBSD they map to the system call
-`posix_fadvise()` with the flags `POSIX_FADV_SEQUENTIAL` and
-`POSIX_FADV_RANDOM`.
-
-This option is ignored on operating systems that do not support caching hints.
-
-
-### Write cache
-See [Ensuring data reaches disk](https://lwn.net/Articles/457667/)
-
-1. copy data to kernel space
-2. the kernel may wait a short wile
-3. data is written to the cache of the storage device
-4. data is written to persistent storage
-
-The Rust functions `sync_all()` and `sync_data()` control step 2: they force all
-data in the write buffer of the kernel to be written to the storage device. This
-is important to ensure critical data reaches the storage device in case of a
-system crash or power outage, but comes with a large performance penalty.
-
-All modern operating systems also support a mode where each call to `write()`
-will not return until the data is written to the storage device, thus removing
-step 2 for _all_ writes. This can be a useful options for writing critical data,
-where you would call `sync_data()` after each write. This saves a system call
-for each write, and you are sure to never forget it.
-
-
-#### Sync all
-`.sync_all(true)`: implement an open option with the same name as the free
-standing call.
-
-On Windows this means setting the flag `FILE_FLAG_WRITE_THROUGH`, and on Unix
-(except OS X) the flag `O_SYNC`.
-
-OS X does not support `O_SYNC`, but it is possible to call fcntl with
-`F_NOCACHE` to get the same effect. This has the side-effect that data also does
-not end up in the read cache, so this can have a performance penalty when
-reading if a file is opened with a read-write access mode.
-
-
-#### Sync data
-`.sync_data(true)`
-
-Some systems support syncing only the data written, but can wait with updating
-less critical metadata such as the last modified timestamp. If the metadata is
-not critical (and it rarely is), you should always use `sync_data()` as an easy
-performance win.
-
-Linux since version 2.6.33 supports this mode with `O_DSYNC`, as does Solaris
-and recent versions of NetBSD. If a system does not support only syncing data,
-Rust will fall back to full syncing.
-
-If `.sync_all(true)` is specified, `.sync_data()` is ignored.
-
-
-### Completely bypass the kernel
-Normally the os kernel will process read or write calls and store the data
-temporarily in a kernel-space buffer. The kernel makes sure the data size and
-alignment of reads and writes correspondent to sectors on the storage device,
-usually 512 or 4096 bytes. Also the kernel can keep data recently read or
-written in cache, to speed up future file operations.
-
-Some operating systems allow you to completely bypass the copy of data to or
-from kernel space. This is generally a bad idea. Applications will have to
-figure out and handle alignment restrictions themselves, and implement manual
-caching. It is mostly useful for database applications that may have more
-knowledge about their optimal caching behaviour than the os. And it can have a
-use when reading many gigabytes of data (like a backup process), which may
-destroy the os cache for other processes.
-
-This is available on Windows with the flag `FILE_FLAG_NO_BUFFERING`, and on
-Linux and some variants of BSD with `O_DIRECT`. Making correct use of this mode
-involves low-level tuning and operating system dependant behaviour. It makes no
-sense for Rust to expose this as a simple, cross-platform option. For
-applications that really wish to use it, it is no problem to submit it as a
-custom flag.
-
-
 ## Asynchronous IO
 Out op scope.
 
@@ -502,31 +362,41 @@ For the custom flags on Unix, the bits that define the access mode are masked
 out with `O_ACCMODE`, to ensure they do not interfere with the access mode set
 by Rusts options.
 
-| [Windows](https://msdn.microsoft.com/en-us/library/windows/desktop/hh449426%28v=vs.85%29.aspx):
-|:---------------------------
-| FILE_FLAG_BACKUP_SEMANTICS
-| FILE_FLAG_DELETE_ON_CLOSE
-| FILE_FLAG_NO_BUFFERING
-| FILE_FLAG_OPEN_NO_RECALL
-| FILE_FLAG_OPEN_REPARSE_POINT
-| FILE_FLAG_OVERLAPPED
-| FILE_FLAG_POSIX_SEMANTICS
-| FILE_FLAG_RANDOM_ACCESS
-| FILE_FLAG_SESSION_AWARE
-| FILE_FLAG_SEQUENTIAL_SCAN
-| FILE_FLAG_WRITE_THROUGH
+[Windows](https://msdn.microsoft.com/en-us/library/windows/desktop/hh449426%28v=vs.85%29.aspx):
+
+bit| flag
+--:|:--------------------------------
+31 | FILE_FLAG_WRITE_THROUGH
+30 | FILE_FLAG_OVERLAPPED
+29 | FILE_FLAG_NO_BUFFERING
+28 | FILE_FLAG_RANDOM_ACCESS
+27 | FILE_FLAG_SEQUENTIAL_SCAN
+26 | FILE_FLAG_DELETE_ON_CLOSE
+25 | FILE_FLAG_BACKUP_SEMANTICS
+24 | FILE_FLAG_POSIX_SEMANTICS
+23 | FILE_FLAG_SESSION_AWARE
+21 | FILE_FLAG_OPEN_REPARSE_POINT
+20 | FILE_FLAG_OPEN_NO_RECALL
+19 | FILE_FLAG_FIRST_PIPE_INSTANCE
+18 | FILE_FLAG_OPEN_REQUIRING_OPLOCK
+
 
 Unix:
 
 | POSIX       | Linux       | OS X        | FreeBSD     | OpenBSD     | NetBSD      |Dragonfly BSD| Solaris     |
 |:------------|:------------|:------------|:------------|:------------|:------------|:------------|:------------|
-| O_DIRECTORY | O_DIRECTORY |             | O_DIRECTORY | O_DIRECTORY | O_DIRECTORY | O_DIRECTORY | O_DIRECTORY |
-| O_NOCTTY    | O_NOCTTY    |             | O_NOCTTY    |             | O_NOCTTY    |             | O_NOCTTY    |
+| O_TRUNC     | O_TRUNC     | O_TRUNC     | O_TRUNC     | O_TRUNC     | O_TRUNC     | O_TRUNC     | O_TRUNC     |
+| O_CREAT     | O_CREAT     | O_CREAT     | O_CREAT     | O_CREAT     | O_CREAT     | O_CREAT     | O_CREAT     |
+| O_EXCL      | O_EXCL      | O_EXCL      | O_EXCL      | O_EXCL      | O_EXCL      | O_EXCL      | O_EXCL      |
+| O_APPEND    | O_APPEND    | O_APPEND    | O_APPEND    | O_APPEND    | O_APPEND    | O_APPEND    | O_APPEND    |
+| O_CLOEXEC   | O_CLOEXEC   | O_CLOEXEC   | O_CLOEXEC   | O_CLOEXEC   | O_CLOEXEC   | O_CLOEXEC   | O_CLOEXEC   |
+| O_DIRECTORY | O_DIRECTORY | O_DIRECTORY | O_DIRECTORY | O_DIRECTORY | O_DIRECTORY | O_DIRECTORY | O_DIRECTORY |
+| O_NOCTTY    | O_NOCTTY    | O_NOCTTY    | O_NOCTTY    |             | O_NOCTTY    |             | O_NOCTTY    |
 | O_NOFOLLOW  | O_NOFOLLOW  | O_NOFOLLOW  | O_NOFOLLOW  | O_NOFOLLOW  | O_NOFOLLOW  | O_NOFOLLOW  | O_NOFOLLOW  |
 | O_NONBLOCK  | O_NONBLOCK  | O_NONBLOCK  | O_NONBLOCK  | O_NONBLOCK  | O_NONBLOCK  | O_NONBLOCK  | O_NONBLOCK  |
-| O_DSYNC     | O_DSYNC     |             |             |             | O_DSYNC     |             | O_DSYNC     |
+| O_SYNC      | O_SYNC      | O_SYNC      | O_SYNC      | O_SYNC      | O_SYNC      | O_FSYNC     | O_SYNC      |
+| O_DSYNC     | O_DSYNC     | O_DSYNC     |             |             | O_DSYNC     |             | O_DSYNC     |
 | O_RSYNC     |             |             |             |             | O_RSYNC     |             | O_RSYNC     |
-| O_SYNC      | O_SYNC      |             | O_SYNC      | O_SYNC      | O_SYNC      | O_FSYNC     | O_SYNC      |
 |             | O_DIRECT    |             | O_DIRECT    |             | O_DIRECT    | O_DIRECT    |             |
 |             | O_ASYNC     |             |             |             | O_ASYNC     |             |             |
 |             | O_NOATIME   |             |             |             |             |             |             |
@@ -561,21 +431,20 @@ HANDLE                hTemplateFile;
 - Current: when `.append(true)` is set, it is not possible to modify file
   attributes on Windows, but it is possible to change the file mode on Unix.
   New: allow file attributes to be modified on Windows in append-mode.
-- Current: `.read()` and `.write()` set individual bit flags instead of generic
-  flags. New: Set generic flags, as recommend by Microsoft. e.g. `GENERIC_WRITE`
-  instead of `FILE_GENERIC_WRITE` and `GENERIC_READ` instead of
+- Current: On Windows `.read()` and `.write()` set individual bit flags instead
+  of generic flags. New: Set generic flags, as recommend by Microsoft. e.g.
+  `GENERIC_WRITE` instead of `FILE_GENERIC_WRITE` and `GENERIC_READ` instead of
   `FILE_GENERIC_READ`. Currently truncate is broken on Windows, this fixes it.
 - Current: when no access mode is set, this falls back to opening the file
-  read-only on Unix.
-  New: open with `O_RDONLY | O_PATH` on Linux, and fail with `E_INVALID` on all
-  other Unix variants.
+  read-only on Unix, and opening with no access permissions on Windows.
+  New: always fail to open if no access mode is set.
 - Rename the Windows-specific `.desired_access()` to `.access_mode()`
 
 ### Creation mode
-- Do not allow `.truncate(true)` if the access mode is read-only and/or append.
-  This is currently buggy on Windows, and works on some versions of Unix, but
-  not on others (implementation defined).
 - Implement `.create_new()`.
+- Do not allow `.truncate(true)` if the access mode is read-only and/or append.
+- Do not allow `.create(true)` or `.create_new (true)` if the access mode is
+  read-only.
 - Remove the Windows-specific `.creation_disposition()`.
   It has no use, because all its options can be set in a cross-platform way.
 - Split the Windows-specific `.flags_and_attributes()` into `.custom_flags()`
@@ -584,14 +453,6 @@ HANDLE                hTemplateFile;
   separation between file attributes, that are somewhat similar to Unix mode
   bits, and the custom flags that modify the behaviour of the current file
   handle.
-
-### Sharing / locking
-- Currently `.share_mode()` grants permissions, change it to grant by default,
-  and possibly deny permissions.
-
-### Caching behaviour
-- Implement `.cache_hint()`.
-- Implement `.sync_all()` and `.sync_data()`.
 
 ### Other options
 - Set the close-on-exec flag atomically on Unix if supported.
@@ -620,17 +481,181 @@ Also this RFC is in line with the vision for IO in the
 
 
 # Alternatives
-Keep the status quo.
+The first version of this RFC contained a proposal for options that control
+caching anf file locking. They are out of scope for now, but included here for
+reference.
+
+
+## Sharing / locking
+On Unix it is possible for multiple processes to read and write to the same file
+at the same time.
+
+When you open a file on Windows, the system by default denies other processes to
+read or write to the file, or delete it. By setting the sharing mode, it is
+possible to allow other processes read, write and/or delete access. For
+cross-platform consistency, Rust imitates Unix by setting all sharing flags.
+
+Unix has no equivalent to the kind of file locking that Windows has. It has two
+types of advisory locking, POSIX and BSD-style. Advisory means any process that
+does not use locking itself can happily ignore the locking af another process.
+As if that is not bad enough, they both have
+[problems](http://0pointer.de/blog/projects/locking.html) that make them close
+to unusable for modern multi-threaded programs. Linux may in some very rare
+cases support mandatory file locking, but it is just as broken as advisory.
+
+
+### Windows-specific: Share mode
+`.share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)`
+
+It is possible to set the individual share permissions with `.share_mode()`.
+
+The current philosophy of this function is that others should have no rights,
+unless explicitly granted. I think a better fit for Rust would be to give all
+others all rights, unless explicitly denied, e.g.:
+`.share_mode(DENY_READ | DENY_WRITE | DENY_DELETE)`.
+
+
+## Controlling caching
+When dealing file file systems and hard disks, there are several kinds of
+caches. Giving hints or controlling them may improve performance or data
+consistency.
+1. *read-ahead (performance of reads and overwrites)*
+   Instead of requesting only the data necessary for a single `read()` call from
+   a storage device, an operating system may request more data than necessary to
+   have it already available for the next read.
+2. *os cache  (performance of reads and overwrites)*
+   The os may keep the data of previous reads and writes in memory to increase
+   the performance of future reads and possibly writes.
+3. *os staging area (convenience/performance of reads and writes)*
+   The size and alignment of data reads and writes to a disk should
+   correspondent to sectors on the storage device, usually 512 or 4096 bytes.
+   The os makes sure a regular `write()` or `read()` doesn't have to care about
+   this. For example a small write (say a 100 bytes) has to rewrite a whole
+   sector. The os often has the surrounding data in its cache and can
+   efficiently combine it to write the whole sector.
+4. *delayed writing (performance/correctness of writes)*
+   The os may delay writes to improve performance, for example by batching
+   consecutive writes, and scheduling with reads to minimize seeking.
+5. *on-disk write cache (performance/correctness of writes)*
+   Most hard disk / storage devices have a small RAM cache. It can speed up
+   reads, and writes can return as soon as the data is written to the devices
+   cache.
+
+
+### Read-ahead hint
+```
+.read_ahead_hint(enum CacheHint)
+
+enum ReadAheadHint {
+    Default,
+    Sequential,
+    Random,
+}
+```
+
+If you read a file sequentially the read-ahead is beneficial, for completely
+random access it can become a penalty.
+
+- `Default` uses the generally good heuristics of the operating system.
+- `Sequential` indicates sequential but not neccesary consecutive access.
+  With this the os may increase the amount of data that is read ahead.
+- `Random` indicates mainly random access. The os may disable its read-ahead
+  cache.
+
+This option is treated as a hint. It is ignored if the os does not support it,
+or if the behaviour of the application proves it is set wrong.
+
+Open flags / system calls:
+- Windows: flags `FILE_FLAG_SEQUENTIAL_SCAN` and `FILE_FLAG_RANDOM_ACCESS`
+- Linux, FreeBSD, NetBSD: `posix_fadvise()` with the flags
+  `POSIX_FADV_SEQUENTIAL` and `POSIX_FADV_RANDOM`
+- OS X: `fcntl()` with with `F_RDAHEAD 0` for random (there is no special mode
+  for sequential).
+
+
+### OS cache
+`used_once(true)`
+
+When reading many gigabytes of data a process may push useful data from other
+processes out of the os cache. To keep the performance of the whole system up, a
+process could indicate to the os whether data is only needed once, or not needed
+anymore. On Linux, FreeBSD and NetBSD this is possible with fcntl
+`POSIX_FADV_DONTNEED` after a read or write with sync (or before close). On
+FreeBSD and NetBSD it is also possible to specify this up-front with fnctl
+`POSIX_FADV_NOREUSE`, and on OS X with fnctl `F_NOCACHE`. Windows does not seem
+to provide an option for this.
+
+This option may negatively effect the performance of writes smaller than the
+sector size, as cached data may not be available to the os staging area.
+
+This control over the os cache is the main reason some applications use direct
+io, despite it being less convenient and disabling other useful caches.
+
+
+### Delayed writing and on-disk write cache
+`.sync_data(true)` and `.sync_all(true)`
+
+There can be two delays (by the os and by the disk cache) between when an
+application performs a write, and when the data is written to persistent
+storage. They increase performance, but increase the risk of data loss in case
+of a systems crash or power outage.
+
+When dealing with critical data, it may be useful to control these caches to
+make the chance of data loss smaller. The application should normally do so by
+calling Rusts stand-alone functions `sync_data()` or `sync_all()` at meaningful
+points (e.g. when the file is in a consistent state, or a state it can recover
+from).
+
+However, `.sync_data()` and `.sync_all()` may also be given as an open option.
+This guarantees every write will not return before the data is written to disk.
+These options improve reliability as and you can never accidentally forget a
+sync.
+
+Whether perfermance with these options is worse than with the stand-alone
+functions is hard to say. With these options the data maybe has to be
+synchronised more often. But the stand-alone functions often sync outstanding
+writes to all files, while the options possibly sync only the current file.
+
+The difference between `.sync_all()` and `.sync_data(true)` is that
+`.sync_data(true)` does not update the less critical metadata such as the last
+modified timestamp (although it will be written eventually).
+
+Open flags:
+- Windows: `FILE_FLAG_WRITE_THROUGH` for `.sync_all()`
+- Unix: `O_SYNC` for `.sync_all()` and `O_DSYNC` for `.sync_data()`
+
+If a system does not support syncing only data, this option will fall back to
+syncing both data and metadata. If `.sync_all(true)` is specified,
+`.sync_data()` is ignored.
+
+
+### Direct access / no caching
+Most operating systems offer a mode that reads data straight from disk to an
+application buffer, or that writes straight from a buffer to disk. This avoid
+the small cost of a memory copy. It has the side effect that the data is not
+available to the os to provide caching. Also, because this does not use the
+_os staging area_ all reads and writes have to take care of data sizes and
+alignment themselves.
+
+Overview:
+- _os staging area_: not used
+- _read-ahead_: not used
+- _os cache_: data may be used, but is not added
+- _delayed writing_: no delay
+- _on-disk write cache_: maybe
+
+Open flags / system calls:
+- Windows: flag `FILE_FLAG_NO_BUFFERING`
+- Linux, FreeBSD, NetBSD, Dragonfly BSD: flag `O_DIRECT`
+
+The other options offer a more fine-grained control over caching, and usually
+offer better performance or correctness guarantees. This option is sometimes
+used by applications as a crude way to control (disable) the _os cache_.
+
+Rust should not currently expose this as an open option, because it should be
+used with an abstraction / external crate that handles the data size and
+alignment requirements. If it should be used at all.
 
 
 # Unresolved questions
-Implementation and testing of `.sync_all()` and `.sync_data()` could uncover
-some corner cases, but I don't expect any that would give great trouble.
-
-Should `.cache_hint()` take an enum?
-
-Rename the Windows-specific `.desired_access()` to `.access_mode()`?
-
-What should be done about the missing variables for `CreateFile2`?
-
-Are there any other options that we should define while at it?
+None.
