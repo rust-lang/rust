@@ -2042,6 +2042,79 @@ It is not possible to use stability attributes outside of the standard library.
 Also, for now, it is not possible to write deprecation messages either.
 "##,
 
+E0517: r##"
+This error indicates that a `#[repr(..)]` attribute was placed on an unsupported
+item.
+
+Examples of erroneous code:
+
+```
+#[repr(C)]
+type Foo = u8;
+
+#[repr(packed)]
+enum Foo {Bar, Baz}
+
+#[repr(u8)]
+struct Foo {bar: bool, baz: bool}
+
+#[repr(C)]
+impl Foo {
+    ...
+}
+```
+
+ - The `#[repr(C)]` attribute can only be placed on structs and enums
+ - The `#[repr(packed)]` and `#[repr(simd)]` attributes only work on structs
+ - The `#[repr(u8)]`, `#[repr(i16)]`, etc attributes only work on enums
+
+These attributes do not work on typedefs, since typedefs are just aliases.
+
+Representations like `#[repr(u8)]`, `#[repr(i64)]` are for selecting the
+discriminant size for C-like enums (when there is no associated data, e.g. `enum
+Color {Red, Blue, Green}`), effectively setting the size of the enum to the size
+of the provided type. Such an enum can be cast to a value of the same type as
+well. In short, `#[repr(u8)]` makes the enum behave like an integer with a
+constrained set of allowed values.
+
+Only C-like enums can be cast to numerical primitives, so this attribute will
+not apply to structs.
+
+`#[repr(packed)]` reduces padding to make the struct size smaller. The
+representation of enums isn't strictly defined in Rust, and this attribute won't
+work on enums.
+
+`#[repr(simd)]` will give a struct consisting of a homogenous series of machine
+types (i.e. `u8`, `i32`, etc) a representation that permits vectorization via
+SIMD. This doesn't make much sense for enums since they don't consist of a
+single list of data.
+"##,
+
+E0518: r##"
+This error indicates that an `#[inline(..)]` attribute was incorrectly placed on
+something other than a function or method.
+
+Examples of erroneous code:
+
+```
+#[inline(always)]
+struct Foo;
+
+#[inline(never)]
+impl Foo {
+    ...
+}
+```
+
+`#[inline]` hints the compiler whether or not to attempt to inline a method or
+function. By default, the compiler does a pretty good job of figuring this out
+itself, but if you feel the need for annotations, `#[inline(always)]` and
+`#[inline(never)]` can override or force the compiler's decision.
+
+If you wish to apply this attribute to all methods in an impl, manually annotate
+each method; it is not possible to annotate the entire impl with an `#[inline]`
+attribute.
+"##,
 }
 
 

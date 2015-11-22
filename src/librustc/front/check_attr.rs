@@ -41,9 +41,7 @@ struct CheckAttrVisitor<'a> {
 impl<'a> CheckAttrVisitor<'a> {
     fn check_inline(&self, attr: &ast::Attribute, target: Target) {
         if target != Target::Fn {
-            self.sess.span_err(
-                attr.span,
-                "attribute should be applied to function");
+            span_err!(self.sess, attr.span, E0518, "attribute should be applied to function");
         }
     }
 
@@ -56,33 +54,34 @@ impl<'a> CheckAttrVisitor<'a> {
         };
         for word in words {
             let word: &str = &word.name();
-            match word {
+            let message = match word {
                 "C" => {
                     if target != Target::Struct && target != Target::Enum {
-                        self.sess.span_err(
-                            attr.span,
-                            "attribute should be applied to struct or enum");
+                            "attribute should be applied to struct or enum"
+                    } else {
+                        continue
                     }
                 }
                 "packed" |
                 "simd" => {
                     if target != Target::Struct {
-                        self.sess.span_err(
-                            attr.span,
-                            "attribute should be applied to struct");
+                        "attribute should be applied to struct"
+                    } else {
+                        continue
                     }
                 }
                 "i8" | "u8" | "i16" | "u16" |
                 "i32" | "u32" | "i64" | "u64" |
                 "isize" | "usize" => {
                     if target != Target::Enum {
-                        self.sess.span_err(
-                            attr.span,
-                            "attribute should be applied to enum");
+                            "attribute should be applied to enum"
+                    } else {
+                        continue
                     }
                 }
-                _ => (),
-            }
+                _ => continue,
+            };
+            span_err!(self.sess, attr.span, E0517, "{}", message);
         }
     }
 
