@@ -16,13 +16,14 @@
 
 extern crate syntax;
 extern crate rustc;
+extern crate rustc_plugin;
 
 use syntax::codemap::Span;
 use syntax::ast::TokenTree;
 use syntax::parse::token;
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax::ext::build::AstBuilder;  // trait for expr_usize
-use rustc::plugin::Registry;
+use rustc_plugin::Registry;
 
 // WARNING WARNING WARNING WARNING WARNING
 // =======================================

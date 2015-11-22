@@ -10,8 +10,8 @@
 
 //! Used by plugin crates to tell `rustc` about the plugins they provide.
 
-use lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
-use session::Session;
+use rustc::lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
+use rustc::session::Session;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
 use syntax::ext::base::{IdentTT, MultiModifier, MultiDecorator};

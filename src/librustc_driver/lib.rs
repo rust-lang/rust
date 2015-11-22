@@ -45,6 +45,7 @@ extern crate rustc_back;
 extern crate rustc_borrowck;
 extern crate rustc_front;
 extern crate rustc_lint;
+extern crate rustc_plugin;
 extern crate rustc_privacy;
 extern crate rustc_mir;
 extern crate rustc_resolve;

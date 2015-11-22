@@ -14,10 +14,11 @@
 #![feature(box_syntax, rustc_private)]
 
 extern crate rustc;
+extern crate rustc_plugin;
 
 use std::any::Any;
 use std::cell::RefCell;
-use rustc::plugin::Registry;
+use rustc_plugin::Registry;
 
 struct Foo {
     foo: isize

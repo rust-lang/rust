@@ -33,7 +33,6 @@
 #![feature(const_fn)]
 #![feature(core)]
 #![feature(duration_span)]
-#![feature(dynamic_lib)]
 #![feature(enumset)]
 #![feature(hashmap_hasher)]
 #![feature(into_cow)]
@@ -100,8 +99,8 @@ pub mod front {
 }
 
 pub mod middle {
-    pub mod expr_use_visitor; // STAGE0: increase glitch immunity
     pub mod astconv_util;
+    pub mod expr_use_visitor; // STAGE0: increase glitch immunity
     pub mod astencode;
     pub mod cfg;
     pub mod check_const;
@@ -141,8 +140,6 @@ pub mod middle {
 pub mod metadata;
 
 pub mod session;
-
-pub mod plugin;
 
 pub mod lint;
 

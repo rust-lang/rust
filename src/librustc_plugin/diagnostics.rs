@@ -8,22 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// force-host
+#![allow(non_snake_case)]
 
-#![feature(plugin_registrar)]
-#![feature(rustc_private)]
+register_long_diagnostics! {
 
-extern crate rustc;
-extern crate rustc_plugin;
+}
 
-use rustc_plugin::Registry;
-
-#[plugin_registrar]
-pub fn plugin_registrar(reg: &mut Registry) {
-    // This pass is built in to LLVM.
-    //
-    // Normally, we would name a pass that was registered through
-    // C++ static object constructors in the same .so file as the
-    // plugin registrar.
-    reg.register_llvm_pass("gvn");
+register_diagnostics! {
+    E0498  // malformed plugin attribute
 }
