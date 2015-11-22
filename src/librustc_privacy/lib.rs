@@ -1505,3 +1505,5 @@ pub fn check_crate(tcx: &ty::ctxt,
 
     access_levels
 }
+
+__build_diagnostic_array! { librustc_privacy, DIAGNOSTICS }

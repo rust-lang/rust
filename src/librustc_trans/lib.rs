@@ -89,3 +89,5 @@ pub mod save;
 pub mod lib {
     pub use llvm;
 }
+
+__build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

@@ -858,6 +858,9 @@ It is also possible to manually transmute:
 ```
 ptr::read(&v as *const _ as *const SomeType) // `v` transmuted to `SomeType`
 ```
+
+Note that this does not move `v` (unlike `transmute`), and may need a
+call to `mem::forget(v)` in case you want to avoid destructors being called.
 "##,
 
 E0152: r##"
