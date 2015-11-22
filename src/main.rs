@@ -1,12 +1,10 @@
 #![feature(rustc_private)]
 
+extern crate miri;
 extern crate rustc;
 extern crate rustc_driver;
-extern crate rustc_mir;
-extern crate syntax;
 
-mod interpreter;
-
+use miri::interpreter;
 use rustc::session::Session;
 use rustc_driver::{driver, CompilerCalls, Compilation};
 
