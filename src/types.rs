@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast::{self, Mutability};
+use syntax::ast::{self, Mutability, FunctionRetTy};
 use syntax::print::pprust;
 use syntax::codemap::{self, Span, BytePos};
+use syntax::abi;
 
 use Indent;
 use lists::{format_item_list, itemize_list, format_fn_args};
@@ -214,48 +215,60 @@ fn rewrite_segment(expr_context: bool,
             format!("{}<{}>", separator, list_str)
         }
         ast::PathParameters::ParenthesizedParameters(ref data) => {
-            // 2 for ()
-            let budget = try_opt!(width.checked_sub(2));
-            // 1 for (
-            let offset = offset + 1;
-            let list_lo = span_after(data.span, "(", context.codemap);
-            let items = itemize_list(context.codemap,
-                                     data.inputs.iter(),
-                                     ")",
-                                     |ty| ty.span.lo,
-                                     |ty| ty.span.hi,
-                                     |ty| ty.rewrite(context, budget, offset),
-                                     list_lo,
-                                     span_hi);
-            println!("got here");
-
-            let list_str = try_opt!(format_fn_args(items, budget, offset, context.config));
-
-            println!("got here 2");
-            let output = match data.output {
-                Some(ref ty) => {
-                    let budget = try_opt!(width.checked_sub(4));
-                    let type_str = try_opt!(ty.rewrite(context, budget, offset + 4));
-                    format!(" -> {}", type_str)
-                }
-                None => String::new(),
-            };
-
-            println!("got here 3");
-
-            let infix = if output.len() + list_str.len() > width {
-                format!("\n{}", (offset - 1).to_string(context.config))
-            } else {
-                String::new()
-            };
-            println!("({}){}{}", &list_str, &infix, &output);
-
-            format!("({}){}{}", list_str, infix, output)
+            try_opt!(format_function_type(data.inputs.iter().map(|x| &**x),
+                                          data.output.as_ref().map(|x| &**x),
+                                          data.span,
+                                          context,
+                                          width,
+                                          offset))
         }
         _ => String::new(),
     };
 
     Some(format!("{}{}", segment.identifier, params))
+}
+
+fn format_function_type<'a, I>(inputs: I,
+                               output: Option<&ast::Ty>,
+                               span: Span,
+                               context: &RewriteContext,
+                               width: usize,
+                               offset: Indent)
+                               -> Option<String>
+    where I: Iterator<Item = &'a ast::Ty>
+{
+    // 2 for ()
+    let budget = try_opt!(width.checked_sub(2));
+    // 1 for (
+    let offset = offset + 1;
+    let list_lo = span_after(span, "(", context.codemap);
+    let items = itemize_list(context.codemap,
+                             inputs,
+                             ")",
+                             |ty| ty.span.lo,
+                             |ty| ty.span.hi,
+                             |ty| ty.rewrite(context, budget, offset),
+                             list_lo,
+                             span.hi);
+
+    let list_str = try_opt!(format_fn_args(items, budget, offset, context.config));
+
+    let output = match output {
+        Some(ref ty) => {
+            let budget = try_opt!(width.checked_sub(4));
+            let type_str = try_opt!(ty.rewrite(context, budget, offset + 4));
+            format!(" -> {}", type_str)
+        }
+        None => String::new(),
+    };
+
+    let infix = if output.len() + list_str.len() > width {
+        format!("\n{}", (offset - 1).to_string(context.config))
+    } else {
+        String::new()
+    };
+
+    Some(format!("({}){}{}", list_str, infix, output))
 }
 
 impl Rewrite for ast::WherePredicate {
@@ -501,14 +514,47 @@ impl Rewrite for ast::Ty {
                     None
                 }
             }
-            ast::TyBareFn(ref bare_fn) => bare_fn.rewrite(context, width, offset),
+            ast::TyBareFn(ref bare_fn) => {
+                rewrite_bare_fn(bare_fn, self.span, context, width, offset)
+            }
             ast::TyMac(..) | ast::TyTypeof(..) => unreachable!(),
         }
     }
 }
 
-impl Rewrite for ast::BareFnTy {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
-        None
+fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
+                   span: Span,
+                   context: &RewriteContext,
+                   width: usize,
+                   offset: Indent)
+                   -> Option<String> {
+    let mut result = String::with_capacity(128);
+
+    result.push_str(&::utils::format_unsafety(bare_fn.unsafety));
+
+    if bare_fn.abi != abi::Rust {
+        result.push_str(&::utils::format_abi(bare_fn.abi));
     }
+
+    result.push_str("fn");
+
+    let output = match bare_fn.decl.output {
+        FunctionRetTy::Return(ref ty) => Some(&**ty),
+        FunctionRetTy::NoReturn(..) => None,
+        FunctionRetTy::DefaultReturn(..) => unreachable!(),
+    };
+
+    let budget = try_opt!(width.checked_sub(result.len()));
+    let indent = offset + result.len();
+
+    let rewrite = try_opt!(format_function_type(bare_fn.decl.inputs.iter().map(|x| &*(x.ty)),
+                                                output,
+                                                span,
+                                                context,
+                                                budget,
+                                                indent));
+
+    result.push_str(&rewrite);
+
+    Some(result)
 }

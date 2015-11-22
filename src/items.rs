@@ -80,11 +80,7 @@ impl Rewrite for ast::Local {
 
 impl<'a> FmtVisitor<'a> {
     pub fn format_foreign_mod(&mut self, fm: &ast::ForeignMod, span: Span) {
-        self.buffer.push_str("extern ");
-
-        if fm.abi != abi::Abi::C {
-            self.buffer.push_str(&format!("{} ", fm.abi));
-        }
+        self.buffer.push_str(&::utils::format_abi(fm.abi));
 
         let snippet = self.snippet(span);
         let brace_pos = snippet.find_uncommented("{").unwrap() as u32;
@@ -856,17 +852,14 @@ fn rewrite_fn_base(context: &RewriteContext,
     let mut result = String::with_capacity(1024);
     // Vis unsafety abi.
     result.push_str(format_visibility(vis));
+    result.push_str(::utils::format_unsafety(unsafety));
 
-    if let ast::Unsafety::Unsafe = unsafety {
-        result.push_str("unsafe ");
-    }
     if let ast::Constness::Const = constness {
         result.push_str("const ");
     }
+
     if abi != abi::Rust {
-        result.push_str("extern ");
-        result.push_str(&abi.to_string());
-        result.push(' ');
+        result.push_str(&::utils::format_abi(abi));
     }
 
     // fn foo

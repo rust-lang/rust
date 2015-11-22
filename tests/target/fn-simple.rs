@@ -50,3 +50,17 @@ fn zzzzzzzzzzzzzzzzzzzz<Type, NodeType>(selff: Type,
                                                                  NodeType>)
                                         -> SearchStack<'a, K, V, Type, NodeType> {
 }
+
+unsafe fn generic_call(cx: *mut JSContext,
+                       argc: libc::c_uint,
+                       vp: *mut JSVal,
+                       is_lenient: bool,
+                       call: unsafe extern "C" fn(*const JSJitInfo,
+                                                  *mut JSContext,
+                                                  HandleObject,
+                                                  *mut libc::c_void,
+                                                  u32,
+                                                  *mut JSVal)
+                                                  -> u8) {
+    let f: fn(_, _) -> _ = panic!();
+}
