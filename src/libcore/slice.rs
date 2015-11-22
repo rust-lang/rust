@@ -566,14 +566,29 @@ impl<T> ops::IndexMut<usize> for [T] {
     }
 }
 
+#[inline(never)]
+#[cold]
+fn slice_index_len_fail(index: usize, len: usize) -> ! {
+    panic!("index {} out of range for slice of length {}", index, len);
+}
+
+#[inline(never)]
+#[cold]
+fn slice_index_order_fail(index: usize, end: usize) -> ! {
+    panic!("slice index starts at {} but ends at {}", index, end);
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::Range<usize>> for [T] {
     type Output = [T];
 
     #[inline]
     fn index(&self, index: ops::Range<usize>) -> &[T] {
-        assert!(index.start <= index.end);
-        assert!(index.end <= self.len());
+        if index.start > index.end {
+            slice_index_order_fail(index.start, index.end);
+        } else if index.end > self.len() {
+            slice_index_len_fail(index.end, self.len());
+        }
         unsafe {
             from_raw_parts (
                 self.as_ptr().offset(index.start as isize),
@@ -614,8 +629,11 @@ impl<T> ops::Index<RangeFull> for [T] {
 impl<T> ops::IndexMut<ops::Range<usize>> for [T] {
     #[inline]
     fn index_mut(&mut self, index: ops::Range<usize>) -> &mut [T] {
-        assert!(index.start <= index.end);
-        assert!(index.end <= self.len());
+        if index.start > index.end {
+            slice_index_order_fail(index.start, index.end);
+        } else if index.end > self.len() {
+            slice_index_len_fail(index.end, self.len());
+        }
         unsafe {
             from_raw_parts_mut(
                 self.as_mut_ptr().offset(index.start as isize),
