@@ -158,3 +158,10 @@ fn deconstruct(foo: Bar)
                    HttpVersion,
                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA) {
 }
+
+#[rustfmt_skip]
+mod a{
+fn foo(x:    T) {
+    let x:    T = dfasdf;
+}
+}

@@ -123,3 +123,10 @@ fn deconstruct(foo: Bar) -> (SocketAddr, Method, Headers,
                      RequestUri, HttpVersion,
                      AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA) {
 }
+
+#[rustfmt_skip]
+mod a{
+fn foo(x:    T) {
+    let x:    T = dfasdf;
+}
+}
