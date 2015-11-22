@@ -1,5 +1,5 @@
 
-extern {
+extern "C" {
     fn c_func(x: *mut *mut libc::c_void);
 
     fn c_func(x: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX,
@@ -11,7 +11,7 @@ extern {
     pub fn bar();
 }
 
-extern {
+extern "C" {
     fn DMR_GetDevice(pHDev: *mut HDEV,
                      searchMode: DeviceSearchMode,
                      pSearchString: *const c_char,
@@ -28,7 +28,7 @@ extern "Rust" {
     pub static mut var: SomeType;
 }
 
-extern {
+extern "C" {
     fn syscall(number: libc::c_long, // comment 1
                // comm 2
                ... /* sup? */)
@@ -37,7 +37,7 @@ extern {
     fn foo(x: *const c_char, ...) -> libc::c_long;
 }
 
-extern {
+extern "C" {
     pub fn freopen(filename: *const c_char,
                    mode: *const c_char,
                    mode2: *const c_char,

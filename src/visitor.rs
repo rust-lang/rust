@@ -220,20 +220,24 @@ impl<'a> FmtVisitor<'a> {
                 self.last_pos = item.span.hi;
             }
             ast::Item_::ItemStruct(ref def, ref generics) => {
-                let indent = self.block_indent;
-                let rewrite = self.format_struct("struct ",
-                                                 item.ident,
-                                                 item.vis,
-                                                 def,
-                                                 Some(generics),
-                                                 item.span,
-                                                 indent)
-                                  .map(|s| {
-                                      match *def {
-                                          ast::VariantData::Tuple(..) => s + ";",
-                                          _ => s,
-                                      }
-                                  });
+                let rewrite = {
+                    let indent = self.block_indent;
+                    let context = self.get_context();
+                    ::items::format_struct(&context,
+                                           "struct ",
+                                           item.ident,
+                                           item.vis,
+                                           def,
+                                           Some(generics),
+                                           item.span,
+                                           indent)
+                        .map(|s| {
+                            match *def {
+                                ast::VariantData::Tuple(..) => s + ";",
+                                _ => s,
+                            }
+                        })
+                };
                 self.push_rewrite(item.span, rewrite);
             }
             ast::Item_::ItemEnum(ref def, ref generics) => {

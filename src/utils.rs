@@ -12,6 +12,7 @@ use std::cmp::Ordering;
 
 use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItem_};
 use syntax::codemap::{CodeMap, Span, BytePos};
+use syntax::abi;
 
 use Indent;
 use comment::FindUncommented;
@@ -46,11 +47,25 @@ pub fn format_visibility(vis: Visibility) -> &'static str {
 }
 
 #[inline]
+pub fn format_unsafety(unsafety: ast::Unsafety) -> &'static str {
+    match unsafety {
+        ast::Unsafety::Unsafe => "unsafe ",
+        ast::Unsafety::Normal => "",
+    }
+}
+
+#[inline]
 pub fn format_mutability(mutability: ast::Mutability) -> &'static str {
     match mutability {
         ast::Mutability::MutMutable => "mut ",
         ast::Mutability::MutImmutable => "",
     }
+}
+
+#[inline]
+// FIXME(#451): include "C"?
+pub fn format_abi(abi: abi::Abi) -> String {
+    format!("extern {} ", abi)
 }
 
 // The width of the first line in s.
