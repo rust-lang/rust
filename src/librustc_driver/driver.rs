@@ -553,15 +553,16 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             recursion_limit: sess.recursion_limit.get(),
             trace_mac: sess.opts.debugging_opts.trace_macros,
         };
-        let ret = syntax::ext::expand::expand_crate(&sess.parse_sess,
-                                                    cfg,
-                                                    macros,
-                                                    syntax_exts,
-                                                    &mut feature_gated_cfgs,
-                                                    krate);
+        let (ret, macro_names) = syntax::ext::expand::expand_crate(&sess.parse_sess,
+                                                                    cfg,
+                                                                    macros,
+                                                                    syntax_exts,
+                                                                    &mut feature_gated_cfgs,
+                                                                    krate);
         if cfg!(windows) {
             env::set_var("PATH", &_old_path);
         }
+        *sess.available_macros.borrow_mut() = macro_names;
         ret
     });
 

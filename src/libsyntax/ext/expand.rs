@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast::{Block, Crate, DeclLocal, ExprMac, PatMac};
-use ast::{Local, Ident, Mac_};
+use ast::{Local, Ident, Mac_, Name};
 use ast::{ItemMac, MacStmtWithSemicolon, Mrk, Stmt, StmtDecl, StmtMac};
 use ast::{StmtExpr, StmtSemi};
 use ast::TokenTree;
@@ -31,6 +31,8 @@ use util::small_vector::SmallVector;
 use visit;
 use visit::Visitor;
 use std_inject;
+
+use std::collections::HashSet;
 
 
 pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
@@ -1261,7 +1263,7 @@ pub fn expand_crate<'feat>(parse_sess: &parse::ParseSess,
                            imported_macros: Vec<ast::MacroDef>,
                            user_exts: Vec<NamedSyntaxExtension>,
                            feature_gated_cfgs: &mut Vec<GatedCfg>,
-                           c: Crate) -> Crate {
+                           c: Crate) -> (Crate, HashSet<Name>) {
     let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg,
                               feature_gated_cfgs);
     if std_inject::no_core(&c) {
@@ -1271,21 +1273,23 @@ pub fn expand_crate<'feat>(parse_sess: &parse::ParseSess,
     } else {
         cx.crate_root = Some("std");
     }
+    let ret = {
+        let mut expander = MacroExpander::new(&mut cx);
 
-    let mut expander = MacroExpander::new(&mut cx);
+        for def in imported_macros {
+            expander.cx.insert_macro(def);
+        }
 
-    for def in imported_macros {
-        expander.cx.insert_macro(def);
-    }
+        for (name, extension) in user_exts {
+            expander.cx.syntax_env.insert(name, extension);
+        }
 
-    for (name, extension) in user_exts {
-        expander.cx.syntax_env.insert(name, extension);
-    }
-
-    let mut ret = expander.fold_crate(c);
-    ret.exported_macros = expander.cx.exported_macros.clone();
-    parse_sess.span_diagnostic.handler().abort_if_errors();
-    return ret;
+        let mut ret = expander.fold_crate(c);
+        ret.exported_macros = expander.cx.exported_macros.clone();
+        parse_sess.span_diagnostic.handler().abort_if_errors();
+        ret
+    };
+    return (ret, cx.syntax_env.names);
 }
 
 // HYGIENIC CONTEXT EXTENSION:
@@ -1480,7 +1484,7 @@ mod tests {
         let ps = parse::ParseSess::new();
         let crate_ast = panictry!(string_to_parser(&ps, crate_str).parse_crate_mod());
         // the cfg argument actually does matter, here...
-        expand_crate(&ps,test_ecfg(),vec!(),vec!(), &mut vec![], crate_ast)
+        expand_crate(&ps,test_ecfg(),vec!(),vec!(), &mut vec![], crate_ast).0
     }
 
     // find the pat_ident paths in a crate
