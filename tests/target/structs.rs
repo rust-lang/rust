@@ -149,3 +149,7 @@ mod m {
         a: T,
     }
 }
+
+struct Foo<T>(TTTTTTTTTTTTTTTTTTT,
+              /// Qux
+              UUUUUUUUUUUUUUUUUUU);

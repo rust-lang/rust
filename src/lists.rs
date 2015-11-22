@@ -14,7 +14,6 @@ use std::iter::Peekable;
 use syntax::codemap::{self, CodeMap, BytePos};
 
 use Indent;
-use utils::wrap_str;
 use comment::{FindUncommented, rewrite_comment, find_comment_end};
 use config::Config;
 
@@ -280,12 +279,7 @@ pub fn write_list<'b, I, T>(items: I, formatting: &ListFormatting<'b>) -> Option
             }
         }
 
-        // Make sure that string actually fits.
-        let item_str = try_opt!(wrap_str(&inner_item[..],
-                                         formatting.config.max_width,
-                                         formatting.width,
-                                         formatting.indent));
-        result.push_str(&item_str);
+        result.push_str(&inner_item[..]);
 
         // Post-comments
         if tactic != DefinitiveListTactic::Vertical && item.post_comment.is_some() {

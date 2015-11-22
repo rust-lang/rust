@@ -1195,15 +1195,14 @@ impl Rewrite for ast::StructField {
             ast::StructFieldKind::NamedField(_, vis) |
             ast::StructFieldKind::UnnamedField(vis) => format_visibility(vis),
         };
-        let indent = context.block_indent.block_indent(context.config);
         let mut attr_str = try_opt!(self.node
                                         .attrs
                                         .rewrite(context,
-                                                 context.config.max_width - indent.width(),
-                                                 indent));
+                                                 context.config.max_width - offset.width(),
+                                                 offset));
         if !attr_str.is_empty() {
             attr_str.push('\n');
-            attr_str.push_str(&indent.to_string(context.config));
+            attr_str.push_str(&offset.to_string(context.config));
         }
 
         let result = match name {
