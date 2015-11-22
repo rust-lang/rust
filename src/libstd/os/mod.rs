@@ -31,4 +31,5 @@ pub use sys::ext as windows;
 #[cfg(target_os = "netbsd")]   pub mod netbsd;
 #[cfg(target_os = "openbsd")]   pub mod openbsd;
 
-pub mod raw;
+#[stable(feature = "raw_os", since = "1.1.0")]
+pub use core::os::raw;
