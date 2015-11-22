@@ -2181,6 +2181,5 @@ register_diagnostics! {
     E0491, // in type `..`, reference has a longer lifetime than the data it...
     E0492, // cannot borrow a constant which contains interior mutability
     E0495, // cannot infer an appropriate lifetime due to conflicting requirements
-    E0498, // malformed plugin attribute
     E0514, // metadata version mismatch
 }

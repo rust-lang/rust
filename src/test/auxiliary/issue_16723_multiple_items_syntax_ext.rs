@@ -15,12 +15,13 @@
 
 extern crate syntax;
 extern crate rustc;
+extern crate rustc_plugin;
 
 use syntax::ast;
 use syntax::codemap;
 use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
 use syntax::util::small_vector::SmallVector;
-use rustc::plugin::Registry;
+use rustc_plugin::Registry;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {

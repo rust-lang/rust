@@ -10,10 +10,10 @@
 
 //! Used by `rustc` when loading a plugin.
 
-use session::Session;
-use metadata::creader::CrateReader;
-use metadata::cstore::CStore;
-use plugin::registry::Registry;
+use rustc::session::Session;
+use rustc::metadata::creader::CrateReader;
+use rustc::metadata::cstore::CStore;
+use registry::Registry;
 
 use std::borrow::ToOwned;
 use std::env;

@@ -13,7 +13,7 @@
 //! This currently only contains the definitions and implementations
 //! of most of the lints that `rustc` supports directly, it does not
 //! contain the infrastructure for defining/registering lints. That is
-//! available in `rustc::lint` and `rustc::plugin` respectively.
+//! available in `rustc::lint` and `rustc_plugin` respectively.
 //!
 //! # Note
 //!
