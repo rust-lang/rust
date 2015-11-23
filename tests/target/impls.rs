@@ -36,3 +36,23 @@ impl<'a, 'b, X, Y: Foo<Bar>> Foo<'a, X> for Bar<'b, Y> where X: Fooooooooooooooo
         "hi"
     }
 }
+
+impl Foo {
+    fn foo() {}
+}
+
+mod a {
+    impl Foo {
+        // Hello!
+        fn foo() {}
+    }
+}
+
+
+mod b {
+    mod a {
+        impl Foo {
+            fn foo() {}
+        }
+    }
+}
