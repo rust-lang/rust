@@ -4303,7 +4303,7 @@ impl<A> Iterator for StepBy<A, RangeFrom<A>> where
 #[unstable(feature = "range_inclusive",
            reason = "likely to be replaced by range notation and adapters",
            issue = "27777")]
-#[deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
+#[rustc_deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
 #[allow(deprecated)]
 pub struct RangeInclusive<A> {
     range: ops::Range<A>,
@@ -4315,7 +4315,7 @@ pub struct RangeInclusive<A> {
 #[unstable(feature = "range_inclusive",
            reason = "likely to be replaced by range notation and adapters",
            issue = "27777")]
-#[deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
+#[rustc_deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
 #[allow(deprecated)]
 pub fn range_inclusive<A>(start: A, stop: A) -> RangeInclusive<A>
     where A: Step + One + Clone
@@ -4329,7 +4329,7 @@ pub fn range_inclusive<A>(start: A, stop: A) -> RangeInclusive<A>
 #[unstable(feature = "range_inclusive",
            reason = "likely to be replaced by range notation and adapters",
            issue = "27777")]
-#[deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
+#[rustc_deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
 #[allow(deprecated)]
 impl<A> Iterator for RangeInclusive<A> where
     A: PartialEq + Step + One + Clone,
@@ -4365,7 +4365,7 @@ impl<A> Iterator for RangeInclusive<A> where
 #[unstable(feature = "range_inclusive",
            reason = "likely to be replaced by range notation and adapters",
            issue = "27777")]
-#[deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
+#[rustc_deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
 #[allow(deprecated)]
 impl<A> DoubleEndedIterator for RangeInclusive<A> where
     A: PartialEq + Step + One + Clone,
@@ -4743,7 +4743,7 @@ pub fn once<T>(value: T) -> Once<T> {
 ///
 /// If two sequences are equal up until the point where one ends,
 /// the shorter sequence compares less.
-#[deprecated(since = "1.4.0", reason = "use the equivalent methods on `Iterator` instead")]
+#[rustc_deprecated(since = "1.4.0", reason = "use the equivalent methods on `Iterator` instead")]
 #[unstable(feature = "iter_order_deprecated", reason = "needs review and revision",
            issue = "27737")]
 pub mod order {

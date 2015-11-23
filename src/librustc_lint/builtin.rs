@@ -577,10 +577,10 @@ impl LateLintPass for MissingDebugImplementations {
 declare_lint! {
     DEPRECATED,
     Warn,
-    "detects use of #[deprecated] items"
+    "detects use of #[rustc_deprecated] items"
 }
 
-/// Checks for use of items with `#[deprecated]` attributes
+/// Checks for use of items with `#[rustc_deprecated]` attributes
 #[derive(Copy, Clone)]
 pub struct Stability;
 

@@ -37,6 +37,8 @@
 // SNAP 1af31d4
 #![allow(unused_attributes)]
 
+#![cfg_attr(stage0, feature(rustc_attrs))]
+#![cfg_attr(stage0, allow(unused_attributes))]
 #![feature(alloc)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]

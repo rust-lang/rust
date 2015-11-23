@@ -74,6 +74,8 @@
 #![no_std]
 #![cfg_attr(not(stage0), needs_allocator)]
 
+#![cfg_attr(stage0, feature(rustc_attrs))]
+#![cfg_attr(stage0, allow(unused_attributes))]
 #![feature(allocator)]
 #![feature(box_syntax)]
 #![feature(coerce_unsized)]
