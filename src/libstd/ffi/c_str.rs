@@ -213,7 +213,7 @@ impl CString {
     /// using the pointer.
     #[unstable(feature = "cstr_memory2", reason = "recently added",
                issue = "27769")]
-    #[deprecated(since = "1.4.0", reason = "renamed to from_raw")]
+    #[rustc_deprecated(since = "1.4.0", reason = "renamed to from_raw")]
     pub unsafe fn from_ptr(ptr: *const c_char) -> CString {
         CString::from_raw(ptr as *mut _)
     }
@@ -240,7 +240,7 @@ impl CString {
     /// Failure to call `from_raw` will lead to a memory leak.
     #[unstable(feature = "cstr_memory2", reason = "recently added",
                issue = "27769")]
-    #[deprecated(since = "1.4.0", reason = "renamed to into_raw")]
+    #[rustc_deprecated(since = "1.4.0", reason = "renamed to into_raw")]
     pub fn into_ptr(self) -> *const c_char {
         self.into_raw() as *const _
     }

@@ -241,7 +241,7 @@ impl<T: Ord> BinaryHeap<T> {
     #[unstable(feature = "binary_heap_extras",
                reason = "needs to be audited",
                issue = "28147")]
-    #[deprecated(since = "1.5.0", reason = "use BinaryHeap::from instead")]
+    #[rustc_deprecated(since = "1.5.0", reason = "use BinaryHeap::from instead")]
     pub fn from_vec(vec: Vec<T>) -> BinaryHeap<T> {
         BinaryHeap::from(vec)
     }

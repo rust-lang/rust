@@ -161,7 +161,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[unstable(feature = "btree_b",
                reason = "probably want this to be on the type, eventually",
                issue = "27795")]
-    #[deprecated(since = "1.4.0", reason = "niche API")]
+    #[rustc_deprecated(since = "1.4.0", reason = "niche API")]
     pub fn with_b(b: usize) -> BTreeMap<K, V> {
         assert!(b > 1, "B must be greater than 1");
         BTreeMap {

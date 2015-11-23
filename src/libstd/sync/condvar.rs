@@ -166,7 +166,7 @@ impl Condvar {
     /// Like `wait`, the lock specified will be re-acquired when this function
     /// returns, regardless of whether the timeout elapsed or not.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.6.0", reason = "replaced by `std::sync::Condvar::wait_timeout`")]
+    #[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::sync::Condvar::wait_timeout`")]
     #[allow(deprecated)]
     pub fn wait_timeout_ms<'a, T>(&self, guard: MutexGuard<'a, T>, ms: u32)
                                   -> LockResult<(MutexGuard<'a, T>, bool)> {
@@ -290,7 +290,8 @@ impl StaticCondvar {
     #[unstable(feature = "static_condvar",
                reason = "may be merged with Condvar in the future",
                issue = "27717")]
-    #[deprecated(since = "1.6.0", reason = "replaced by `std::sync::StaticCondvar::wait_timeout`")]
+    #[rustc_deprecated(since = "1.6.0",
+                       reason = "replaced by `std::sync::StaticCondvar::wait_timeout`")]
     pub fn wait_timeout_ms<'a, T>(&'static self, guard: MutexGuard<'a, T>, ms: u32)
                                   -> LockResult<(MutexGuard<'a, T>, bool)> {
         match self.wait_timeout(guard, Duration::from_millis(ms as u64)) {

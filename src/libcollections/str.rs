@@ -665,7 +665,7 @@ impl str {
     /// assert_eq!(v, ["foo", "bar", "", "baz"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.4.0", reason = "use lines() instead now")]
+    #[rustc_deprecated(since = "1.4.0", reason = "use lines() instead now")]
     #[inline]
     #[allow(deprecated)]
     pub fn lines_any(&self) -> LinesAny {
