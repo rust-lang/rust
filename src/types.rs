@@ -215,8 +215,12 @@ fn rewrite_segment(expr_context: bool,
             format!("{}<{}>", separator, list_str)
         }
         ast::PathParameters::ParenthesizedParameters(ref data) => {
+            let output = match data.output {
+                Some(ref ty) => FunctionRetTy::Return(ty.clone()),
+                None => FunctionRetTy::DefaultReturn(codemap::DUMMY_SP),
+            };
             try_opt!(format_function_type(data.inputs.iter().map(|x| &**x),
-                                          data.output.as_ref().map(|x| &**x),
+                                          &output,
                                           data.span,
                                           context,
                                           width,
@@ -229,7 +233,7 @@ fn rewrite_segment(expr_context: bool,
 }
 
 fn format_function_type<'a, I>(inputs: I,
-                               output: Option<&ast::Ty>,
+                               output: &FunctionRetTy,
                                span: Span,
                                context: &RewriteContext,
                                width: usize,
@@ -253,13 +257,14 @@ fn format_function_type<'a, I>(inputs: I,
 
     let list_str = try_opt!(format_fn_args(items, budget, offset, context.config));
 
-    let output = match output {
-        Some(ref ty) => {
+    let output = match *output {
+        FunctionRetTy::Return(ref ty) => {
             let budget = try_opt!(width.checked_sub(4));
             let type_str = try_opt!(ty.rewrite(context, budget, offset + 4));
             format!(" -> {}", type_str)
         }
-        None => String::new(),
+        FunctionRetTy::NoReturn(..) => " -> !".to_owned(),
+        FunctionRetTy::DefaultReturn(..) => String::new(),
     };
 
     let infix = if output.len() + list_str.len() > width {
@@ -540,17 +545,11 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
 
     result.push_str("fn");
 
-    let output = match bare_fn.decl.output {
-        FunctionRetTy::Return(ref ty) => Some(&**ty),
-        FunctionRetTy::NoReturn(..) => None,
-        FunctionRetTy::DefaultReturn(..) => unreachable!(),
-    };
-
     let budget = try_opt!(width.checked_sub(result.len()));
     let indent = offset + result.len();
 
     let rewrite = try_opt!(format_function_type(bare_fn.decl.inputs.iter().map(|x| &*(x.ty)),
-                                                output,
+                                                &bare_fn.decl.output,
                                                 span,
                                                 context,
                                                 budget,
