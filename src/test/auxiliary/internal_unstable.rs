@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(staged_api, allow_internal_unstable)]
-#![staged_api]
 #![stable(feature = "stable", since = "1.0.0")]
 
 #[unstable(feature = "function", issue = "0")]

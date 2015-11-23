@@ -11,7 +11,6 @@
 // Various checks that stability attributes are used correctly, per RFC 507
 
 #![feature(staged_api)]
-#![staged_api]
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

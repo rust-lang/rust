@@ -11,7 +11,6 @@
 #![crate_type = "lib"]
 #![unstable(feature = "test_feature", issue = "0")]
 #![feature(staged_api)]
-#![staged_api]
 
 pub fn unstable() {}
 

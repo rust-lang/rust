@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(staged_api)]
-#![staged_api]
 #![deny(deprecated)]
 
 #![unstable(feature = "test_feature", issue = "0")]
