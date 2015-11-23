@@ -74,8 +74,7 @@ fn test_show() {
 
 #[test]
 fn deref() {
-    fn homura<T: Deref<Target = i32>>(_: T) {
-    }
+    fn homura<T: Deref<Target = i32>>(_: T) {}
     homura(Box::new(765));
 }
 

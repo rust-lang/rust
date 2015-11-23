@@ -18,7 +18,7 @@
 use core::{isize, usize};
 
 #[allow(improper_ctypes)]
-extern {
+extern "C" {
     #[allocator]
     fn __rust_allocate(size: usize, align: usize) -> *mut u8;
     fn __rust_deallocate(ptr: *mut u8, old_size: usize, align: usize);
