@@ -10,7 +10,6 @@
 #![crate_name="lint_stability"]
 #![crate_type = "lib"]
 #![feature(staged_api)]
-#![staged_api]
 #![stable(feature = "lint_stability", since = "1.0.0")]
 
 #[stable(feature = "test_feature", since = "1.0.0")]

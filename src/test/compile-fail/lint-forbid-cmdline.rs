@@ -11,7 +11,6 @@
 // compile-flags: -F deprecated
 
 #![feature(staged_api)]
-#![staged_api]
 #[allow(deprecated)] //~ ERROR allow(deprecated) overruled by outer forbid(deprecated)
 fn main() {
 }
