@@ -340,20 +340,20 @@ impl<'a> FmtVisitor<'a> {
         }
 
         match ii.node {
-            ast::MethodImplItem(ref sig, ref body) => {
+            ast::ImplItemKind::Method(ref sig, ref body) => {
                 self.visit_fn(visit::FnKind::Method(ii.ident, sig, Some(ii.vis)),
                               &sig.decl,
                               body,
                               ii.span,
                               ii.id);
             }
-            ast::ConstImplItem(..) => {
+            ast::ImplItemKind::Const(..) => {
                 // FIXME: Implement
             }
-            ast::TypeImplItem(_) => {
+            ast::ImplItemKind::Type(_) => {
                 // FIXME: Implement
             }
-            ast::MacImplItem(ref mac) => {
+            ast::ImplItemKind::Macro(ref mac) => {
                 self.visit_mac(mac);
             }
         }

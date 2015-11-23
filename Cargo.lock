@@ -9,7 +9,7 @@ dependencies = [
  "regex 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "strings 0.0.1 (git+https://github.com/nrc/strings.rs.git)",
- "syntex_syntax 0.21.0 (git+https://github.com/serde-rs/syntex)",
+ "syntex_syntax 0.22.0 (git+https://github.com/serde-rs/syntex)",
  "term 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.1.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-segmentation 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -25,7 +25,7 @@ dependencies = [
 
 [[package]]
 name = "bitflags"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -112,10 +112,10 @@ dependencies = [
 
 [[package]]
 name = "syntex_syntax"
-version = "0.21.0"
-source = "git+https://github.com/serde-rs/syntex#069fe5d5e8cc8132dc3cb97099511240b9d4facc"
+version = "0.22.0"
+source = "git+https://github.com/serde-rs/syntex#7913a15053ef5f2526aeff8b318f49d010582efd"
 dependencies = [
- "bitflags 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitflags 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
