@@ -428,7 +428,7 @@ pub enum TestResult {
 unsafe impl Send for TestResult {}
 
 enum OutputLocation<T> {
-    Pretty(Box<term::Terminal<term::WriterWrapper> + Send>),
+    Pretty(Box<term::StdoutTerminal>),
     Raw(T),
 }
 
