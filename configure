@@ -1053,12 +1053,13 @@ fi
 # point in the script; after this point, script logic should inspect
 # $CFG_USING_CLANG rather than $CFG_ENABLE_CLANG.
 
-# Set CFG_{CC,CXX,CPP,CFLAGS,CXXFLAGS}
+# Set CFG_{CC,CXX,CPP,CFLAGS,CXXFLAGS,LDFLAGS}
 envopt CC
 envopt CXX
 envopt CPP
 envopt CFLAGS
 envopt CXXFLAGS
+envopt LDFLAGS
 
 # stdc++ name in use
 # used to manage non-standard name (on OpenBSD for example)
@@ -1667,9 +1668,9 @@ do
 
         CXX=$LLVM_CXX
         CC=$LLVM_CC
-        CFLAGS=$LLVM_CFLAGS
-        CXXFLAGS=$LLVM_CXXFLAGS
-        LDFLAGS=$LLVM_LDFLAGS
+        CFLAGS="$CFLAGS $LLVM_CFLAGS"
+        CXXFLAGS="$CXXFLAGS $LLVM_CXXFLAGS"
+        LDFLAGS="$LDFLAGS $LLVM_LDFLAGS"
 
         if [ -z "$CFG_DISABLE_LIBCPP" ] && [ -n "$CFG_USING_CLANG" ]; then
             LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
