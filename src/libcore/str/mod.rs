@@ -1441,6 +1441,7 @@ pub trait StrExt {
 }
 
 #[inline(never)]
+#[cold]
 fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     assert!(begin <= end);
     panic!("index {} and/or {} in `{}` do not lie on character boundary",
