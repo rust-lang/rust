@@ -88,8 +88,7 @@ use core::convert::From;
 #[unstable(feature = "box_heap",
            reason = "may be renamed; uncertain about custom allocator design",
            issue = "27779")]
-pub const HEAP: ExchangeHeapSingleton =
-    ExchangeHeapSingleton { _force_singleton: () };
+pub const HEAP: ExchangeHeapSingleton = ExchangeHeapSingleton { _force_singleton: () };
 
 /// This the singleton type used solely for `boxed::HEAP`.
 #[unstable(feature = "box_heap",
@@ -238,7 +237,7 @@ impl<T> Box<T> {
     }
 }
 
-impl<T : ?Sized> Box<T> {
+impl<T: ?Sized> Box<T> {
     /// Constructs a box from the raw pointer.
     ///
     /// After this function call, pointer is owned by resulting box.
@@ -535,8 +534,7 @@ pub trait FnBox<A> {
 }
 
 #[unstable(feature = "fnbox", reason = "Newly introduced", issue = "0")]
-impl<A,F> FnBox<A> for F
-    where F: FnOnce<A>
+impl<A, F> FnBox<A> for F where F: FnOnce<A>
 {
     type Output = F::Output;
 
@@ -546,7 +544,7 @@ impl<A,F> FnBox<A> for F
 }
 
 #[unstable(feature = "fnbox", reason = "Newly introduced", issue = "0")]
-impl<'a,A,R> FnOnce<A> for Box<FnBox<A,Output=R>+'a> {
+impl<'a, A, R> FnOnce<A> for Box<FnBox<A, Output = R> + 'a> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {
@@ -555,7 +553,7 @@ impl<'a,A,R> FnOnce<A> for Box<FnBox<A,Output=R>+'a> {
 }
 
 #[unstable(feature = "fnbox", reason = "Newly introduced", issue = "0")]
-impl<'a,A,R> FnOnce<A> for Box<FnBox<A,Output=R>+Send+'a> {
+impl<'a, A, R> FnOnce<A> for Box<FnBox<A, Output = R> + Send + 'a> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {
@@ -564,7 +562,7 @@ impl<'a,A,R> FnOnce<A> for Box<FnBox<A,Output=R>+Send+'a> {
 }
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl<T: Clone> Clone for Box<[T]> {
