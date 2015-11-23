@@ -231,6 +231,16 @@ impl fmt::Display for SystemTimeError {
 mod tests {
     use super::{Instant, SystemTime, Duration, UNIX_EPOCH};
 
+    macro_rules! assert_almost_eq {
+        ($a:expr, $b:expr) => ({
+            let (a, b) = ($a, $b);
+            if a != b {
+                let (a, b) = if a > b {(a, b)} else {(b, a)};
+                assert!(a - Duration::new(0, 1) <= b);
+            }
+        })
+    }
+
     #[test]
     fn instant_monotonic() {
         let a = Instant::now();
@@ -249,11 +259,11 @@ mod tests {
         let a = Instant::now();
         let b = Instant::now();
         let dur = b.duration_from_earlier(a);
-        assert_eq!(b - dur, a);
-        assert_eq!(a + dur, b);
+        assert_almost_eq!(b - dur, a);
+        assert_almost_eq!(a + dur, b);
 
         let second = Duration::new(1, 0);
-        assert_eq!(a - second + second, a);
+        assert_almost_eq!(a - second + second, a);
     }
 
     #[test]
@@ -269,31 +279,31 @@ mod tests {
         let b = SystemTime::now();
         match b.duration_from_earlier(a) {
             Ok(dur) if dur == Duration::new(0, 0) => {
-                assert_eq!(a, b);
+                assert_almost_eq!(a, b);
             }
             Ok(dur) => {
                 assert!(b > a);
-                assert_eq!(b - dur, a);
-                assert_eq!(a + dur, b);
+                assert_almost_eq!(b - dur, a);
+                assert_almost_eq!(a + dur, b);
             }
             Err(dur) => {
                 let dur = dur.duration();
                 assert!(a > b);
-                assert_eq!(b + dur, a);
-                assert_eq!(b - dur, a);
+                assert_almost_eq!(b + dur, a);
+                assert_almost_eq!(b - dur, a);
             }
         }
 
         let second = Duration::new(1, 0);
-        assert_eq!(a.duration_from_earlier(a - second).unwrap(), second);
-        assert_eq!(a.duration_from_earlier(a + second).unwrap_err().duration(),
-                   second);
+        assert_almost_eq!(a.duration_from_earlier(a - second).unwrap(), second);
+        assert_almost_eq!(a.duration_from_earlier(a + second).unwrap_err()
+                           .duration(), second);
 
-        assert_eq!(a - second + second, a);
+        assert_almost_eq!(a - second + second, a);
 
         let eighty_years = second * 60 * 60 * 24 * 365 * 80;
-        assert_eq!(a - eighty_years + eighty_years, a);
-        assert_eq!(a - (eighty_years * 10) + (eighty_years * 10), a);
+        assert_almost_eq!(a - eighty_years + eighty_years, a);
+        assert_almost_eq!(a - (eighty_years * 10) + (eighty_years * 10), a);
     }
 
     #[test]
