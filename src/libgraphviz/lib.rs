@@ -416,10 +416,10 @@ impl<'a> Id<'a> {
                 _ => return Err(()),
             }
             if !chars.all(is_constituent) {
-                return Err(())
+                return Err(());
             }
         }
-        return Ok(Id{ name: name });
+        return Ok(Id { name: name });
 
         fn is_letter_or_underscore(c: char) -> bool {
             in_range('a', c, 'z') || in_range('A', c, 'Z') || c == '_'
@@ -496,11 +496,10 @@ pub trait Labeller<'a,N,E> {
 /// Escape tags in such a way that it is suitable for inclusion in a
 /// Graphviz HTML label.
 pub fn escape_html(s: &str) -> String {
-    s
-        .replace("&", "&amp;")
-        .replace("\"", "&quot;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
+    s.replace("&", "&amp;")
+     .replace("\"", "&quot;")
+     .replace("<", "&lt;")
+     .replace(">", "&gt;")
 }
 
 impl<'a> LabelText<'a> {
@@ -523,9 +522,11 @@ impl<'a> LabelText<'a> {
             // not escaping \\, since Graphviz escString needs to
             // interpret backslashes; see EscStr above.
             '\\' => f(c),
-            _ => for c in c.escape_default() {
-                f(c)
-            },
+            _ => {
+                for c in c.escape_default() {
+                    f(c)
+                }
+            }
         }
     }
     fn escape_str(s: &str) -> String {
@@ -553,11 +554,13 @@ impl<'a> LabelText<'a> {
     fn pre_escaped_content(self) -> Cow<'a, str> {
         match self {
             EscStr(s) => s,
-            LabelStr(s) => if s.contains('\\') {
-                (&*s).escape_default().into_cow()
-            } else {
-                s
-            },
+            LabelStr(s) => {
+                if s.contains('\\') {
+                    (&*s).escape_default().into_cow()
+                } else {
+                    s
+                }
+            }
             HtmlStr(s) => s,
         }
     }
@@ -738,7 +741,12 @@ mod tests {
     }
 
     fn edge(from: usize, to: usize, label: &'static str, style: Style) -> Edge {
-        Edge { from: from, to: to, label: label, style: style }
+        Edge {
+            from: from,
+            to: to,
+            label: label,
+            style: style,
+        }
     }
 
     struct LabelledGraph {
@@ -1009,7 +1017,7 @@ r#"digraph single_cyclic_node {
 
     #[test]
     fn hasse_diagram() {
-        let labels = AllNodesLabelled(vec!("{x,y}", "{x}", "{y}", "{}"));
+        let labels = AllNodesLabelled(vec!["{x,y}", "{x}", "{y}", "{}"]);
         let r = test_input(LabelledGraph::new("hasse_diagram",
                                               labels,
                                               vec![edge(0, 1, "", Style::None),
@@ -1033,7 +1041,7 @@ r#"digraph hasse_diagram {
 
     #[test]
     fn left_aligned_text() {
-        let labels = AllNodesLabelled(vec!(
+        let labels = AllNodesLabelled(vec![
             "if test {\
            \\l    branch1\
            \\l} else {\
@@ -1043,7 +1051,7 @@ r#"digraph hasse_diagram {
            \\l",
             "branch1",
             "branch2",
-            "afterward"));
+            "afterward"]);
 
         let mut writer = Vec::new();
 
