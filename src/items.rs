@@ -506,10 +506,6 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
         result.push('{');
 
         if !items.is_empty() {
-            result.push('\n');
-            let indent_str = context.block_indent.to_string(context.config);
-            result.push_str(&indent_str);
-
             let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config, None);
             visitor.block_indent = context.block_indent.block_indent(context.config);
 
@@ -521,8 +517,11 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
                 visitor.visit_impl_item(&item);
             }
 
+            result.push('\n');
             result.push_str(trim_newlines(&visitor.buffer.to_string()));
             result.push('\n');
+
+            let indent_str = context.block_indent.to_string(context.config);
             result.push_str(&indent_str);
         }
         result.push('}');
