@@ -12,7 +12,7 @@
 
 use Indent;
 use utils::{format_mutability, format_visibility, contains_skip, span_after, end_typaram,
-            wrap_str, last_line_width, semicolon_for_expr};
+            wrap_str, last_line_width, semicolon_for_expr, format_unsafety, trim_newlines};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
             DefinitiveListTactic, definitive_tactic, format_item_list};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
@@ -432,6 +432,104 @@ impl<'a> FmtVisitor<'a> {
         } else {
             None
         }
+    }
+}
+
+pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -> Option<String> {
+    if let ast::Item_::ItemImpl(unsafety,
+                                polarity,
+                                ref generics,
+                                ref trait_ref,
+                                ref self_ty,
+                                ref items) = item.node {
+        let mut result = String::new();
+        result.push_str(format_visibility(item.vis));
+        result.push_str(format_unsafety(unsafety));
+        result.push_str("impl");
+
+        let lo = span_after(item.span, "impl", context.codemap);
+        let hi = match *trait_ref {
+            Some(ref tr) => tr.path.span.lo,
+            None => self_ty.span.lo,
+        };
+        let generics_str = try_opt!(rewrite_generics(context,
+                                                     generics,
+                                                     offset,
+                                                     offset + result.len(),
+                                                     mk_sp(lo, hi)));
+        result.push_str(&generics_str);
+
+        // FIXME might need to linebreak in the impl header, here would be a
+        // good place.
+        result.push(' ');
+        if polarity == ast::ImplPolarity::Negative {
+            result.push_str("!");
+        }
+        if let &Some(ref trait_ref) = trait_ref {
+            let budget = try_opt!(context.config.max_width.checked_sub(result.len()));
+            let indent = offset + result.len();
+            result.push_str(&*try_opt!(trait_ref.rewrite(context, budget, indent)));
+            result.push_str(" for ");
+        }
+
+        let budget = try_opt!(context.config.max_width.checked_sub(result.len()));
+        let indent = offset + result.len();
+        result.push_str(&*try_opt!(self_ty.rewrite(context, budget, indent)));
+
+        let where_clause_str = try_opt!(rewrite_where_clause(context,
+                                                             &generics.where_clause,
+                                                             context.config,
+                                                             context.block_indent,
+                                                             context.config.where_density,
+                                                             "{",
+                                                             None));
+        if !where_clause_str.contains('\n') &&
+           result.len() + where_clause_str.len() + offset.width() > context.config.max_width {
+            result.push('\n');
+            let width = context.block_indent.width() + context.config.tab_spaces - 1;
+            let where_indent = Indent::new(0, width);
+            result.push_str(&where_indent.to_string(context.config));
+        }
+        result.push_str(&where_clause_str);
+
+        match context.config.item_brace_style {
+            BraceStyle::AlwaysNextLine => result.push('\n'),
+            BraceStyle::PreferSameLine => result.push(' '),
+            BraceStyle::SameLineWhere => {
+                if where_clause_str.len() > 0 {
+                    result.push('\n')
+                } else {
+                    result.push(' ')
+                }
+            }
+        }
+        result.push('{');
+
+        if !items.is_empty() {
+            result.push('\n');
+            let indent_str = context.block_indent.to_string(context.config);
+            result.push_str(&indent_str);
+
+            let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config, None);
+            visitor.block_indent = context.block_indent.block_indent(context.config);
+
+            let snippet = context.snippet(item.span);
+            let open_pos = try_opt!(snippet.find_uncommented("{")) + 1;
+            visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
+
+            for item in items {
+                visitor.visit_impl_item(&item);
+            }
+
+            result.push_str(trim_newlines(&visitor.buffer.to_string()));
+            result.push('\n');
+            result.push_str(&indent_str);
+        }
+        result.push('}');
+
+        Some(result)
+    } else {
+        unreachable!();
     }
 }
 

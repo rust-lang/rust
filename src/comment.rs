@@ -219,7 +219,10 @@ pub enum CodeCharKind {
     Comment,
 }
 
-impl<T> CharClasses<T> where T: Iterator, T::Item: RichChar {
+impl<T> CharClasses<T>
+    where T: Iterator,
+          T::Item: RichChar
+{
     fn new(base: T) -> CharClasses<T> {
         CharClasses {
             base: base.peekable(),
@@ -228,7 +231,10 @@ impl<T> CharClasses<T> where T: Iterator, T::Item: RichChar {
     }
 }
 
-impl<T> Iterator for CharClasses<T> where T: Iterator, T::Item: RichChar {
+impl<T> Iterator for CharClasses<T>
+    where T: Iterator,
+          T::Item: RichChar
+{
     type Item = (CodeCharKind, T::Item);
 
     fn next(&mut self) -> Option<(CodeCharKind, T::Item)> {

@@ -21,7 +21,7 @@ use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
 use macros::rewrite_macro;
-use items::rewrite_static;
+use items::{rewrite_static, format_impl};
 
 pub struct FmtVisitor<'a> {
     pub parse_session: &'a ParseSess,
@@ -200,14 +200,12 @@ impl<'a> FmtVisitor<'a> {
             ast::Item_::ItemUse(ref vp) => {
                 self.format_import(item.vis, vp, item.span);
             }
-            // FIXME(#78): format impl definitions.
-            ast::Item_::ItemImpl(_, _, _, _, _, ref impl_items) => {
+            ast::Item_::ItemImpl(..) => {
                 self.format_missing_with_indent(item.span.lo);
-                self.block_indent = self.block_indent.block_indent(self.config);
-                for item in impl_items {
-                    self.visit_impl_item(&item);
+                if let Some(impl_str) = format_impl(&self.get_context(), item, self.block_indent) {
+                    self.buffer.push_str(&impl_str);
+                    self.last_pos = item.span.hi;
                 }
-                self.block_indent = self.block_indent.block_unindent(self.config);
             }
             // FIXME(#78): format traits.
             ast::Item_::ItemTrait(_, _, _, ref trait_items) => {
@@ -334,7 +332,7 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
+    pub fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
         if self.visit_attrs(&ii.attrs) {
             return;
         }
@@ -465,8 +463,8 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    pub fn format_separate_mod(&mut self, m: &ast::Mod, filename: &str) {
-        let filemap = self.codemap.get_filemap(filename);
+    pub fn format_separate_mod(&mut self, m: &ast::Mod) {
+        let filemap = self.codemap.lookup_char_pos(m.inner.lo).file;
         self.last_pos = filemap.start_pos;
         self.block_indent = Indent::empty();
         self.walk_mod_items(m);
