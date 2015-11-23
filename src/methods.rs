@@ -5,7 +5,7 @@ use rustc::middle::subst::{Subst, TypeSpace};
 use std::iter;
 use std::borrow::Cow;
 
-use utils::{snippet, span_lint, match_path, match_type, walk_ptrs_ty_depth,
+use utils::{snippet, span_lint, span_note_and_lint, match_path, match_type, walk_ptrs_ty_depth,
     walk_ptrs_ty};
 use utils::{OPTION_PATH, RESULT_PATH, STRING_PATH};
 
@@ -34,12 +34,18 @@ declare_lint!(pub WRONG_PUB_SELF_CONVENTION, Allow,
 declare_lint!(pub OK_EXPECT, Warn,
               "using `ok().expect()`, which gives worse error messages than \
                calling `expect` directly on the Result");
-
+declare_lint!(pub OPTION_MAP_UNWRAP_OR, Warn,
+              "using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as \
+               `map_or(a, f)`)");
+declare_lint!(pub OPTION_MAP_UNWRAP_OR_ELSE, Warn,
+              "using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as \
+               `map_or_else(g, f)`)");
 
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(OPTION_UNWRAP_USED, RESULT_UNWRAP_USED, STR_TO_STRING, STRING_TO_STRING,
-                    SHOULD_IMPLEMENT_TRAIT, WRONG_SELF_CONVENTION, OK_EXPECT)
+                    SHOULD_IMPLEMENT_TRAIT, WRONG_SELF_CONVENTION, OK_EXPECT, OPTION_MAP_UNWRAP_OR,
+                    OPTION_MAP_UNWRAP_OR_ELSE)
     }
 }
 
@@ -89,6 +95,66 @@ impl LateLintPass for MethodsPass {
                                           on the `Result`");
                             }
                         }
+                    }
+                }
+            }
+            // check Option.map(_).unwrap_or(_)
+            else if name.node.as_str() == "unwrap_or" {
+                if let ExprMethodCall(ref inner_name, _, ref inner_args) = args[0].node {
+                    if inner_name.node.as_str() == "map"
+                            && match_type(cx, cx.tcx.expr_ty(&inner_args[0]), &OPTION_PATH) {
+                        // lint message
+                        let msg =
+                            "called `map(f).unwrap_or(a)` on an Option value. This can be done \
+                             more directly by calling `map_or(a, f)` instead";
+                        // get args to map() and unwrap_or()
+                        let map_arg = snippet(cx, inner_args[1].span, "..");
+                        let unwrap_arg = snippet(cx, args[1].span, "..");
+                        // lint, with note if neither arg is > 1 line and both map() and
+                        // unwrap_or() have the same span
+                        let multiline = map_arg.lines().count() > 1
+                                        || unwrap_arg.lines().count() > 1;
+                        let same_span = inner_args[1].span.expn_id == args[1].span.expn_id;
+                        if same_span && !multiline {
+                            span_note_and_lint(
+                                cx, OPTION_MAP_UNWRAP_OR, expr.span, msg, expr.span,
+                                &format!("replace this with map_or({1}, {0})",
+                                         map_arg, unwrap_arg)
+                            );
+                        }
+                        else if same_span && multiline {
+                            span_lint(cx, OPTION_MAP_UNWRAP_OR, expr.span, msg);
+                        };
+                    }
+                }
+            }
+            // check Option.map(_).unwrap_or_else(_)
+            else if name.node.as_str() == "unwrap_or_else" {
+                if let ExprMethodCall(ref inner_name, _, ref inner_args) = args[0].node {
+                    if inner_name.node.as_str() == "map"
+                            && match_type(cx, cx.tcx.expr_ty(&inner_args[0]), &OPTION_PATH) {
+                        // lint message
+                        let msg =
+                            "called `map(f).unwrap_or_else(g)` on an Option value. This can be \
+                             done more directly by calling `map_or_else(g, f)` instead";
+                        // get args to map() and unwrap_or_else()
+                        let map_arg = snippet(cx, inner_args[1].span, "..");
+                        let unwrap_arg = snippet(cx, args[1].span, "..");
+                        // lint, with note if neither arg is > 1 line and both map() and
+                        // unwrap_or_else() have the same span
+                        let multiline = map_arg.lines().count() > 1
+                                        || unwrap_arg.lines().count() > 1;
+                        let same_span = inner_args[1].span.expn_id == args[1].span.expn_id;
+                        if same_span && !multiline {
+                            span_note_and_lint(
+                                cx, OPTION_MAP_UNWRAP_OR_ELSE, expr.span, msg, expr.span,
+                                &format!("replace this with map_or_else({1}, {0})",
+                                         map_arg, unwrap_arg)
+                            );
+                        }
+                        else if same_span && multiline {
+                            span_lint(cx, OPTION_MAP_UNWRAP_OR_ELSE, expr.span, msg);
+                        };
                     }
                 }
             }
