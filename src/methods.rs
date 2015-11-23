@@ -85,7 +85,7 @@ impl LateLintPass for MethodsPass {
                             if has_debug_impl(error_type, cx) {
                                 span_lint(cx, OK_EXPECT, expr.span,
                                          "called `ok().expect()` on a Result \
-                                          value. You can call `expect` directly
+                                          value. You can call `expect` directly \
                                           on the `Result`");
                             }
                         }
