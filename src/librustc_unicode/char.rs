@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A Unicode scalar value
+//! Unicode scalar values
 //!
 //! This module provides the `CharExt` trait, as well as its
 //! implementation for the primitive `char` type, in order to allow
@@ -244,10 +244,11 @@ impl char {
     /// character, as `char`s.
     ///
     /// All characters are escaped with Rust syntax of the form `\\u{NNNN}`
-    /// where `NNNN` is the shortest hexadecimal representation of the code
-    /// point.
+    /// where `NNNN` is the shortest hexadecimal representation.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// for c in '❤'.escape_unicode() {
@@ -383,6 +384,8 @@ impl char {
     /// UTF-8.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// let n = 'ß'.len_utf16();
@@ -857,6 +860,8 @@ pub struct DecodeUtf16<I>
 /// returning unpaired surrogates as `Err`s.
 ///
 /// # Examples
+///
+/// Basic usage:
 ///
 /// ```
 /// #![feature(decode_utf16)]
