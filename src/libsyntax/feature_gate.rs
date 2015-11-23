@@ -277,8 +277,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     // Not used any more, but we can't feature gate it
     ("no_stack_check", Normal, Ungated),
 
-    ("staged_api", CrateLevel, Gated("staged_api",
-                                     "staged_api is for use by rustc only")),
     ("plugin", CrateLevel, Gated("plugin",
                                  "compiler plugins are experimental \
                                   and possibly buggy")),
@@ -501,6 +499,7 @@ pub struct Features {
     pub cfg_target_vendor: bool,
     pub augmented_assignments: bool,
     pub braced_empty_structs: bool,
+    pub staged_api: bool,
 }
 
 impl Features {
@@ -532,6 +531,7 @@ impl Features {
             cfg_target_vendor: false,
             augmented_assignments: false,
             braced_empty_structs: false,
+            staged_api: false,
         }
     }
 }
@@ -1104,6 +1104,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         cfg_target_vendor: cx.has_feature("cfg_target_vendor"),
         augmented_assignments: cx.has_feature("augmented_assignments"),
         braced_empty_structs: cx.has_feature("braced_empty_structs"),
+        staged_api: cx.has_feature("staged_api"),
     }
 }
 
