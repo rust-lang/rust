@@ -463,8 +463,8 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    pub fn format_separate_mod(&mut self, m: &ast::Mod, filename: &str) {
-        let filemap = self.codemap.get_filemap(filename);
+    pub fn format_separate_mod(&mut self, m: &ast::Mod) {
+        let filemap = self.codemap.lookup_char_pos(m.inner.lo).file;
         self.last_pos = filemap.start_pos;
         self.block_indent = Indent::empty();
         self.walk_mod_items(m);

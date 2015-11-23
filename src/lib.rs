@@ -298,7 +298,7 @@ fn fmt_ast(krate: &ast::Crate,
             println!("Formatting {}", path);
         }
         let mut visitor = FmtVisitor::from_codemap(parse_session, config, Some(mode));
-        visitor.format_separate_mod(module, path);
+        visitor.format_separate_mod(module);
         file_map.insert(path.to_owned(), visitor.buffer);
     }
     file_map
@@ -404,7 +404,7 @@ pub fn format_string(input: String, config: &Config, mode: WriteMode) -> FileMap
 
     // do the actual formatting
     let mut visitor = FmtVisitor::from_codemap(&parse_session, config, Some(mode));
-    visitor.format_separate_mod(&krate.module, path);
+    visitor.format_separate_mod(&krate.module);
 
     // append final newline
     visitor.buffer.push_str("\n");
