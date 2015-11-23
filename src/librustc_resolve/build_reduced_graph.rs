@@ -18,18 +18,15 @@ use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
 use resolve_imports::ImportResolution;
 use Module;
-use ModuleKind::*;
 use Namespace::{TypeNS, ValueNS};
 use NameBindings;
 use {names_to_string, module_to_string};
 use ParentLink::{self, ModuleParentLink, BlockParentLink};
 use Resolver;
 use resolve_imports::Shadowable;
-use TypeNsDef;
 use {resolve_error, ResolutionError};
 
 use self::DuplicateCheckingMode::*;
-use self::NamespaceError::*;
 
 use rustc::metadata::csearch;
 use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
@@ -62,27 +59,10 @@ use std::rc::Rc;
 // another item exists with the same name in some namespace.
 #[derive(Copy, Clone, PartialEq)]
 enum DuplicateCheckingMode {
-    ForbidDuplicateModules,
-    ForbidDuplicateTypesAndModules,
+    ForbidDuplicateTypes,
     ForbidDuplicateValues,
     ForbidDuplicateTypesAndValues,
     OverwriteDuplicates,
-}
-
-#[derive(Copy, Clone, PartialEq)]
-enum NamespaceError {
-    NoError,
-    ModuleError,
-    TypeError,
-    ValueError,
-}
-
-fn namespace_error_to_string(ns: NamespaceError) -> &'static str {
-    match ns {
-        NoError => "",
-        ModuleError | TypeError => "type or module",
-        ValueError => "value",
-    }
 }
 
 struct GraphBuilder<'a, 'b: 'a, 'tcx: 'b> {
@@ -106,121 +86,63 @@ impl<'a, 'b:'a, 'tcx:'b> DerefMut for GraphBuilder<'a, 'b, 'tcx> {
 impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     /// Constructs the reduced graph for the entire crate.
     fn build_reduced_graph(self, krate: &hir::Crate) {
-        let parent = self.graph_root.get_module();
         let mut visitor = BuildReducedGraphVisitor {
+            parent: self.graph_root.clone(),
             builder: self,
-            parent: parent,
         };
         intravisit::walk_crate(&mut visitor, krate);
     }
 
-    /// Adds a new child item to the module definition of the parent node and
-    /// returns its corresponding name bindings as well as the current parent.
-    /// Or, if we're inside a block, creates (or reuses) an anonymous module
-    /// corresponding to the innermost block ID and returns the name bindings
-    /// as well as the newly-created parent.
-    ///
-    /// # Panics
-    ///
-    /// Panics if this node does not have a module definition and we are not inside
-    /// a block.
+    /// Adds a new child item to the module definition of the parent node,
+    /// or if there is already a child, does duplicate checking on the child.
+    /// Returns the child's corresponding name bindings.
     fn add_child(&self,
                  name: Name,
                  parent: &Rc<Module>,
                  duplicate_checking_mode: DuplicateCheckingMode,
                  // For printing errors
                  sp: Span)
-                 -> Rc<NameBindings> {
-        // If this is the immediate descendant of a module, then we add the
-        // child name directly. Otherwise, we create or reuse an anonymous
-        // module and add the child to that.
-
+                 -> NameBindings {
         self.check_for_conflicts_between_external_crates_and_items(&**parent, name, sp);
 
         // Add or reuse the child.
         let child = parent.children.borrow().get(&name).cloned();
         match child {
             None => {
-                let child = Rc::new(NameBindings::new());
+                let child = NameBindings::new();
                 parent.children.borrow_mut().insert(name, child.clone());
                 child
             }
             Some(child) => {
                 // Enforce the duplicate checking mode:
                 //
-                // * If we're requesting duplicate module checking, check that
-                //   there isn't a module in the module with the same name.
-                //
                 // * If we're requesting duplicate type checking, check that
-                //   there isn't a type in the module with the same name.
+                //   the name isn't defined in the type namespace.
                 //
                 // * If we're requesting duplicate value checking, check that
-                //   there isn't a value in the module with the same name.
+                //   the name isn't defined in the value namespace.
                 //
-                // * If we're requesting duplicate type checking and duplicate
-                //   value checking, check that there isn't a duplicate type
-                //   and a duplicate value with the same name.
+                // * If we're requesting duplicate type and value checking,
+                //   check that the name isn't defined in either namespace.
                 //
                 // * If no duplicate checking was requested at all, do
                 //   nothing.
 
-                let mut duplicate_type = NoError;
                 let ns = match duplicate_checking_mode {
-                    ForbidDuplicateModules => {
-                        if child.get_module_if_available().is_some() {
-                            duplicate_type = ModuleError;
-                        }
-                        Some(TypeNS)
-                    }
-                    ForbidDuplicateTypesAndModules => {
-                        if child.defined_in_namespace(TypeNS) {
-                            duplicate_type = TypeError;
-                        }
-                        Some(TypeNS)
-                    }
-                    ForbidDuplicateValues => {
-                        if child.defined_in_namespace(ValueNS) {
-                            duplicate_type = ValueError;
-                        }
-                        Some(ValueNS)
-                    }
-                    ForbidDuplicateTypesAndValues => {
-                        let mut n = None;
-                        match child.def_for_namespace(TypeNS) {
-                            Some(DefMod(_)) | None => {}
-                            Some(_) => {
-                                n = Some(TypeNS);
-                                duplicate_type = TypeError;
-                            }
-                        }
-                        if child.defined_in_namespace(ValueNS) {
-                            duplicate_type = ValueError;
-                            n = Some(ValueNS);
-                        }
-                        n
-                    }
-                    OverwriteDuplicates => None,
+                    ForbidDuplicateTypes if child.type_ns.defined() => TypeNS,
+                    ForbidDuplicateValues if child.value_ns.defined() => ValueNS,
+                    ForbidDuplicateTypesAndValues if child.type_ns.defined() => TypeNS,
+                    ForbidDuplicateTypesAndValues if child.value_ns.defined() => ValueNS,
+                    _ => return child,
                 };
-                if duplicate_type != NoError {
-                    // Return an error here by looking up the namespace that
-                    // had the duplicate.
-                    let ns = ns.unwrap();
-                    resolve_error(
-                        self,
-                        sp,
-                        ResolutionError::DuplicateDefinition(
-                            namespace_error_to_string(duplicate_type),
-                            name)
-                    );
-                    {
-                        let r = child.span_for_namespace(ns);
-                        if let Some(sp) = r {
-                            self.session.span_note(sp,
-                                                   &format!("first definition of {} `{}` here",
-                                      namespace_error_to_string(duplicate_type),
-                                      name));
-                        }
-                    }
+
+                // Record an error here by looking up the namespace that had the duplicate
+                let ns_str = match ns { TypeNS => "type or module", ValueNS => "value" };
+                resolve_error(self, sp, ResolutionError::DuplicateDefinition(ns_str, name));
+
+                if let Some(sp) = child[ns].span() {
+                    let note = format!("first definition of {} `{}` here", ns_str, name);
+                    self.session.span_note(sp, &note);
                 }
                 child
             }
@@ -395,11 +317,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     };
                     self.external_exports.insert(def_id);
                     let parent_link = ModuleParentLink(Rc::downgrade(parent), name);
-                    let external_module = Rc::new(Module::new(parent_link,
-                                                              Some(def_id),
-                                                              NormalModuleKind,
-                                                              false,
-                                                              true));
+                    let def = DefMod(def_id);
+                    let external_module = Module::new(parent_link, Some(def), false, true);
+
                     debug!("(build reduced graph for item) found extern `{}`",
                            module_to_string(&*external_module));
                     self.check_for_conflicts_between_external_crates(&**parent, name, sp);
@@ -412,40 +332,13 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             }
 
             ItemMod(..) => {
-                let child = parent.children.borrow().get(&name).cloned();
-                if let Some(child) = child {
-                    // check if there's struct of the same name already defined
-                    if child.defined_in_namespace(TypeNS) &&
-                       child.get_module_if_available().is_none() {
-                        self.session.span_warn(sp,
-                                               &format!("duplicate definition of {} `{}`. \
-                                                         Defining a module and a struct with \
-                                                         the same name will be disallowed soon.",
-                                                        namespace_error_to_string(TypeError),
-                                                        name));
-                        {
-                            let r = child.span_for_namespace(TypeNS);
-                            if let Some(sp) = r {
-                                self.session.span_note(sp,
-                                                       &format!("first definition of {} `{}` here",
-                                          namespace_error_to_string(TypeError),
-                                          name));
-                            }
-                        }
-                    }
-                }
-                let name_bindings = self.add_child(name, parent, ForbidDuplicateModules, sp);
+                let name_bindings = self.add_child(name, parent, ForbidDuplicateTypes, sp);
 
                 let parent_link = self.get_parent_link(parent, name);
-                let def_id = self.ast_map.local_def_id(item.id);
-                name_bindings.define_module(parent_link,
-                                            Some(def_id),
-                                            NormalModuleKind,
-                                            false,
-                                            is_public,
-                                            sp);
-
-                name_bindings.get_module()
+                let def = DefMod(self.ast_map.local_def_id(item.id));
+                let module = Module::new(parent_link, Some(def), false, is_public);
+                name_bindings.define_module(module.clone(), sp);
+                module
             }
 
             ItemForeignMod(..) => parent.clone(),
@@ -477,42 +370,26 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             ItemTy(..) => {
                 let name_bindings = self.add_child(name,
                                                    parent,
-                                                   ForbidDuplicateTypesAndModules,
+                                                   ForbidDuplicateTypes,
                                                    sp);
 
-                name_bindings.define_type(DefTy(self.ast_map.local_def_id(item.id), false),
-                                          sp,
-                                          modifiers);
-
                 let parent_link = self.get_parent_link(parent, name);
-                name_bindings.set_module_kind(parent_link,
-                                              Some(self.ast_map.local_def_id(item.id)),
-                                              TypeModuleKind,
-                                              false,
-                                              is_public,
-                                              sp);
+                let def = DefTy(self.ast_map.local_def_id(item.id), false);
+                let module = Module::new(parent_link, Some(def), false, is_public);
+                name_bindings.define_module(module, sp);
                 parent.clone()
             }
 
             ItemEnum(ref enum_definition, _) => {
                 let name_bindings = self.add_child(name,
                                                    parent,
-                                                   ForbidDuplicateTypesAndModules,
+                                                   ForbidDuplicateTypes,
                                                    sp);
 
-                name_bindings.define_type(DefTy(self.ast_map.local_def_id(item.id), true),
-                                          sp,
-                                          modifiers);
-
                 let parent_link = self.get_parent_link(parent, name);
-                name_bindings.set_module_kind(parent_link,
-                                              Some(self.ast_map.local_def_id(item.id)),
-                                              EnumModuleKind,
-                                              false,
-                                              is_public,
-                                              sp);
-
-                let module = name_bindings.get_module();
+                let def = DefTy(self.ast_map.local_def_id(item.id), true);
+                let module = Module::new(parent_link, Some(def), false, is_public);
+                name_bindings.define_module(module.clone(), sp);
 
                 for variant in &(*enum_definition).variants {
                     let item_def_id = self.ast_map.local_def_id(item.id);
@@ -525,31 +402,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             ItemStruct(ref struct_def, _) => {
                 // Adding to both Type and Value namespaces or just Type?
                 let (forbid, ctor_id) = if struct_def.is_struct() {
-                    (ForbidDuplicateTypesAndModules, None)
+                    (ForbidDuplicateTypes, None)
                 } else {
-                    let child = parent.children.borrow().get(&name).cloned();
-                    if let Some(child) = child {
-                        // check if theres a DefMod
-                        if let Some(DefMod(_)) = child.def_for_namespace(TypeNS) {
-                            self.session.span_warn(sp,
-                                                   &format!("duplicate definition of {} `{}`. \
-                                                             Defining a module and a struct \
-                                                             with the same name will be \
-                                                             disallowed soon.",
-                                                            namespace_error_to_string(TypeError),
-                                                            name));
-                            {
-                                let r = child.span_for_namespace(TypeNS);
-                                if let Some(sp) = r {
-                                    self.session
-                                        .span_note(sp,
-                                                   &format!("first definition of {} `{}` here",
-                                                            namespace_error_to_string(TypeError),
-                                                            name));
-                                }
-                            }
-                        }
-                    }
                     (ForbidDuplicateTypesAndValues, Some(struct_def.id()))
                 };
 
@@ -590,20 +444,16 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             ItemTrait(_, _, _, ref items) => {
                 let name_bindings = self.add_child(name,
                                                    parent,
-                                                   ForbidDuplicateTypesAndModules,
+                                                   ForbidDuplicateTypes,
                                                    sp);
+
+                let def_id = self.ast_map.local_def_id(item.id);
 
                 // Add all the items within to a new module.
                 let parent_link = self.get_parent_link(parent, name);
-                name_bindings.define_module(parent_link,
-                                            Some(self.ast_map.local_def_id(item.id)),
-                                            TraitModuleKind,
-                                            false,
-                                            is_public,
-                                            sp);
-                let module_parent = name_bindings.get_module();
-
-                let def_id = self.ast_map.local_def_id(item.id);
+                let def = DefTrait(def_id);
+                let module_parent = Module::new(parent_link, Some(def), false, is_public);
+                name_bindings.define_module(module_parent.clone(), sp);
 
                 // Add the names of all the items to the trait info.
                 for trait_item in items {
@@ -635,7 +485,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     self.trait_item_map.insert((trait_item.name, def_id), trait_item_def_id);
                 }
 
-                name_bindings.define_type(DefTrait(def_id), sp, modifiers);
                 parent.clone()
             }
         }
@@ -704,11 +553,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     {}",
                    block_id);
 
-            let new_module = Rc::new(Module::new(BlockParentLink(Rc::downgrade(parent), block_id),
-                                                 None,
-                                                 AnonymousModuleKind,
-                                                 false,
-                                                 false));
+            let parent_link = BlockParentLink(Rc::downgrade(parent), block_id);
+            let new_module = Module::new(parent_link, None, false, false);
             parent.anonymous_children.borrow_mut().insert(block_id, new_module.clone());
             new_module
         } else {
@@ -733,7 +579,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             DefModifiers::empty()
         } | DefModifiers::IMPORTABLE;
         let is_exported = is_public &&
-                          match new_parent.def_id.get() {
+                          match new_parent.def_id() {
             None => true,
             Some(did) => self.external_exports.contains(&did),
         };
@@ -741,37 +587,21 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             self.external_exports.insert(def.def_id());
         }
 
-        let kind = match def {
-            DefTy(_, true) => EnumModuleKind,
-            DefTy(_, false) | DefStruct(..) => TypeModuleKind,
-            _ => NormalModuleKind,
-        };
-
         match def {
-            DefMod(def_id) |
-            DefForeignMod(def_id) |
-            DefStruct(def_id) |
-            DefTy(def_id, _) => {
-                let type_def = child_name_bindings.type_def.borrow().clone();
-                match type_def {
-                    Some(TypeNsDef { module_def: Some(module_def), .. }) => {
-                        debug!("(building reduced graph for external crate) already created \
-                                module");
-                        module_def.def_id.set(Some(def_id));
-                    }
-                    Some(_) | None => {
-                        debug!("(building reduced graph for external crate) building module {} {}",
-                               final_ident,
-                               is_public);
-                        let parent_link = self.get_parent_link(new_parent, name);
-
-                        child_name_bindings.define_module(parent_link,
-                                                          Some(def_id),
-                                                          kind,
-                                                          true,
-                                                          is_public,
-                                                          DUMMY_SP);
-                    }
+            DefMod(_) |
+            DefForeignMod(_) |
+            DefStruct(_) |
+            DefTy(..) => {
+                if let Some(module_def) = child_name_bindings.type_ns.module() {
+                    debug!("(building reduced graph for external crate) already created module");
+                    module_def.def.set(Some(def));
+                } else {
+                    debug!("(building reduced graph for external crate) building module {} {}",
+                           final_ident,
+                           is_public);
+                    let parent_link = self.get_parent_link(new_parent, name);
+                    let module = Module::new(parent_link, Some(def), true, is_public);
+                    child_name_bindings.define_module(module, DUMMY_SP);
                 }
             }
             _ => {}
@@ -807,12 +637,12 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                        final_ident);
                 // impl methods have already been defined with the correct importability
                 // modifier
-                let mut modifiers = match *child_name_bindings.value_def.borrow() {
+                let mut modifiers = match *child_name_bindings.value_ns.borrow() {
                     Some(ref def) => (modifiers & !DefModifiers::IMPORTABLE) |
                                      (def.modifiers & DefModifiers::IMPORTABLE),
                     None => modifiers,
                 };
-                if new_parent.kind.get() != NormalModuleKind {
+                if !new_parent.is_normal() {
                     modifiers = modifiers & !DefModifiers::IMPORTABLE;
                 }
                 child_name_bindings.define_value(def, DUMMY_SP, modifiers);
@@ -841,33 +671,30 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     }
                 }
 
-                child_name_bindings.define_type(def, DUMMY_SP, modifiers);
-
                 // Define a module if necessary.
                 let parent_link = self.get_parent_link(new_parent, name);
-                child_name_bindings.set_module_kind(parent_link,
-                                                    Some(def_id),
-                                                    TraitModuleKind,
-                                                    true,
-                                                    is_public,
-                                                    DUMMY_SP)
+                let module = Module::new(parent_link, Some(def), true, is_public);
+                child_name_bindings.define_module(module, DUMMY_SP);
             }
             DefTy(..) | DefAssociatedTy(..) => {
                 debug!("(building reduced graph for external crate) building type {}",
                        final_ident);
 
-                let modifiers = match new_parent.kind.get() {
-                    NormalModuleKind => modifiers,
+                let modifiers = match new_parent.is_normal() {
+                    true => modifiers,
                     _ => modifiers & !DefModifiers::IMPORTABLE,
                 };
 
-                child_name_bindings.define_type(def, DUMMY_SP, modifiers);
+                if let DefTy(..) = def {
+                    child_name_bindings.type_ns.set_modifiers(modifiers);
+                } else {
+                    child_name_bindings.define_type(def, DUMMY_SP, modifiers);
+                }
             }
             DefStruct(def_id) => {
                 debug!("(building reduced graph for external crate) building type and value for \
                         {}",
                        final_ident);
-                child_name_bindings.define_type(def, DUMMY_SP, modifiers);
                 let fields = csearch::get_struct_field_names(&self.session.cstore, def_id);
 
                 if fields.is_empty() {
@@ -922,7 +749,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                         self.handle_external_def(def,
                                                  def_visibility,
-                                                 &*child_name_bindings,
+                                                 &child_name_bindings,
                                                  &name.as_str(),
                                                  name,
                                                  root);
@@ -943,7 +770,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         debug!("(populating external module) attempting to populate {}",
                module_to_string(&**module));
 
-        let def_id = match module.def_id.get() {
+        let def_id = match module.def_id() {
             None => {
                 debug!("(populating external module) ... no def ID!");
                 return;
@@ -977,8 +804,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     /// crate.
     fn build_reduced_graph_for_external_crate(&mut self, root: &Rc<Module>) {
         csearch::each_top_level_item_of_crate(&self.session.cstore,
-                                              root.def_id
-                                                  .get()
+                                              root.def_id()
                                                   .unwrap()
                                                   .krate,
                                               |def_like, name, visibility| {

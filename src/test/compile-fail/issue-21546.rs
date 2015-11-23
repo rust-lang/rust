@@ -16,7 +16,7 @@ mod Foo { }
 
 #[allow(dead_code)]
 struct Foo;
-//~^ WARNING duplicate definition of type or module `Foo`
+//~^ ERROR duplicate definition of type or module `Foo`
 
 
 #[allow(non_snake_case)]
@@ -25,7 +25,7 @@ mod Bar { }
 
 #[allow(dead_code)]
 struct Bar(i32);
-//~^ WARNING duplicate definition of type or module `Bar`
+//~^ ERROR duplicate definition of type or module `Bar`
 
 
 #[allow(dead_code)]
@@ -34,7 +34,7 @@ struct Baz(i32);
 
 #[allow(non_snake_case)]
 mod Baz { }
-//~^ WARNING duplicate definition of type or module `Baz`
+//~^ ERROR duplicate definition of type or module `Baz`
 
 
 #[allow(dead_code)]
@@ -43,7 +43,7 @@ struct Qux { x: bool }
 
 #[allow(non_snake_case)]
 mod Qux { }
-//~^ WARNING duplicate definition of type or module `Qux`
+//~^ ERROR duplicate definition of type or module `Qux`
 
 
 #[allow(dead_code)]
@@ -52,7 +52,7 @@ struct Quux;
 
 #[allow(non_snake_case)]
 mod Quux { }
-//~^ WARNING duplicate definition of type or module `Quux`
+//~^ ERROR duplicate definition of type or module `Quux`
 
 
 #[allow(dead_code)]
