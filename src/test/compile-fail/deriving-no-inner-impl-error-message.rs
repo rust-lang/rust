@@ -17,8 +17,8 @@ struct E {
 }
 #[derive(Clone)]
 struct C {
-    x: NoCloneOrEq
-    //~^ ERROR the trait `core::clone::Clone` is not implemented for the type `NoCloneOrEq`
+    x: NoCloneOrEq //~ ERROR the trait `core::clone::Clone` is not implemented for the type
+        //~^ ERROR the trait `core::clone::Clone` is not implemented for the type `NoCloneOrEq`
 }
 
 

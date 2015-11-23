@@ -17,7 +17,8 @@ struct Error;
 
 #[derive(Clone)]
 struct Struct(
-    Error //~ ERROR
+    Error //~ ERROR the trait `core::clone::Clone` is not implemented for the type `Error`
+        //~^ ERROR the trait `core::clone::Clone` is not implemented for the type `Error`
 );
 
 fn main() {}

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+// no-pretty-expanded FIXME #15189
 
 #[derive(Clone)]
 enum E<T,U> {
@@ -18,5 +18,10 @@ enum E<T,U> {
 }
 
 pub fn main() {
-    let _ = E::A::<isize, isize>(1).clone();
+    let mut foo = E::A::<isize, isize>(1).clone();
+
+    // Test both code-paths of clone_from (same variant/different variant)
+    foo.clone_from(&E::A(32));
+    foo.clone_from(&E::B(1, 2));
+    foo.clone_from(&E::B(3, 4));
 }

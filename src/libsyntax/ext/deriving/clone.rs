@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use ast;
 use ast::{MetaItem, Expr};
 use codemap::Span;
 use ext::base::{ExtCtxt, Annotatable};
@@ -39,10 +40,22 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                 explicit_self: borrowed_explicit_self(),
                 args: Vec::new(),
                 ret_ty: Self_,
-                attributes: attrs,
+                attributes: attrs.clone(),
                 is_unsafe: false,
                 combine_substructure: combine_substructure(Box::new(|c, s, sub| {
                     cs_clone("Clone", c, s, sub)
+                })),
+            },
+            MethodDef {
+                name: "clone_from",
+                generics: LifetimeBounds::empty(),
+                explicit_self: borrowed_mut_explicit_self(),
+                args: vec![borrowed_self()],
+                ret_ty: nil_ty(),
+                attributes: attrs,
+                is_unsafe: false,
+                combine_substructure: combine_substructure(Box::new(|c, s, sub| {
+                    cs_clone_from("Clone", c, s, sub)
                 })),
             }
         ),
@@ -111,4 +124,31 @@ fn cs_clone(
             cx.expr_struct(trait_span, ctor_path, fields)
         }
     }
+}
+
+fn cs_clone_from(
+    name: &str,
+    cx: &mut ExtCtxt, span: Span,
+    substr: &Substructure) -> P<Expr> {
+
+    let fn_path = cx.std_path(&["clone", "Clone", "clone_from"]);
+    cs_call_global(
+        |cx, span, exprs| {
+            cx.expr_block(cx.block(span, exprs.into_iter().map(|expr| {
+                cx.stmt_expr(expr)
+            }).collect(), None))
+        },
+        Box::new(|cx, span, (self_args, _), _non_self_args| {
+            if self_args.len() != 2 {
+                cx.span_bug(span, &format!("not exactly 2 arguments in `derive({})`", name))
+            } else {
+                let clone_path = cx.std_path(&["clone", "Clone", "clone"]);
+                let args = vec![cx.expr_addr_of(span, self_args[1].clone())];
+
+                let rhs = cx.expr_call_global(span, clone_path, args);
+                let lhs = self_args[0].clone();
+                cx.expr(span, ast::ExprAssign(lhs, rhs))
+            }
+        }),
+        cx, span, substr, fn_path, ast::MutMutable)
 }
