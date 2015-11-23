@@ -231,6 +231,17 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                 format!("expected function, found `{}`", actual)
             }, callee_ty, None);
 
+            if let hir::ExprCall(ref expr, _) = call_expr.node {
+                let tcx = fcx.tcx();
+                if let Some(pr) = tcx.def_map.borrow().get(&expr.id) {
+                    if pr.depth == 0 {
+                        if let Some(span) = tcx.map.span_if_local(pr.def_id()) {
+                            tcx.sess.span_note(span, "defined here")
+                        }
+                    }
+                }
+            }
+
             // This is the "default" function signature, used in case of error.
             // In that case, we check each argument against "error" in order to
             // set up all the node type bindings.
