@@ -405,7 +405,7 @@ enum Result<T, E> {
 
 The `Result` type is a richer version of `Option`. Instead of expressing the
 possibility of *absence* like `Option` does, `Result` expresses the possibility
-of *error*. Usually, the *error* is used to explain why the result of some
+of *error*. Usually, the *error* is used to explain why the execution of some
 computation failed. This is a strictly more general form of `Option`. Consider
 the following type alias, which is semantically equivalent to the real
 `Option<T>` in every way:
