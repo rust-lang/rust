@@ -1,7 +1,7 @@
-- Feature Name: expand-open-options
+- Feature Name: `expand_open_options`
 - Start Date: 2015-08-04
-- RFC PR:
-- Rust Issue:
+- RFC PR: [rust-lang/rfcs#1252](https://github.com/rust-lang/rfcs/pull/1252)
+- Rust Issue: [rust-lang/rust#30014](https://github.com/rust-lang/rust/issues/30014)
 
 # Summary
 
@@ -65,7 +65,7 @@ _Implementation detail_: On Windows opening a file in append-mode has one flag
 _less_, the right to change existing data is removed. On Unix opening a file in
 append-mode has one flag _extra_, that sets the status of the file descriptor to
 append-mode. You could say that on Windows write is a superset of append, while
-on Unix append is a superset of write. 
+on Unix append is a superset of write.
 
 Because of this append is treated as a separate access mode in Rust, and if
 `.append(true)` is specified than `.write()` is ignored.
@@ -317,7 +317,7 @@ Out op scope.
 
 ### Inheritance of file descriptors
 Leaking file descriptors to child processes can cause problems and can be a
-security vulnerability. See this report by 
+security vulnerability. See this report by
 [Python](https://www.python.org/dev/peps/pep-0446/).
 
 On Windows, child processes do not inherit file descriptors by default (but this
