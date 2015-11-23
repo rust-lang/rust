@@ -118,8 +118,10 @@ impl<'a, T: Clone> WeightedChoice<'a, T> {
         for item in &mut *items {
             running_total = match running_total.checked_add(item.weight) {
                 Some(n) => n,
-                None => panic!("WeightedChoice::new called with a total weight larger than a \
-                                usize can contain"),
+                None => {
+                    panic!("WeightedChoice::new called with a total weight larger than a usize \
+                            can contain")
+                }
             };
 
             item.weight = running_total;
@@ -199,7 +201,6 @@ mod ziggurat_tables;
 /// * `pdf`: the probability density function
 /// * `zero_case`: manual sampling from the tail when we chose the
 ///    bottom box (i.e. i == 0)
-
 // the perf improvement (25-50%) is definitely worth the extra code
 // size from force-inlining.
 #[inline(always)]

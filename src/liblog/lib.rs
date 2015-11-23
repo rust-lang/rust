@@ -296,7 +296,7 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
             n => {
                 let filter = mem::transmute::<_, &String>(n);
                 if !args.to_string().contains(filter) {
-                    return
+                    return;
                 }
             }
         }
@@ -375,7 +375,7 @@ pub fn mod_enabled(level: u32, module: &str) -> bool {
     // check being expanded manually in the logging macro, this function checks
     // the log level again.
     if level > unsafe { LOG_LEVEL } {
-        return false
+        return false;
     }
 
     // This assertion should never get tripped unless we're in an at_exit
@@ -393,9 +393,7 @@ fn enabled(level: u32, module: &str, iter: slice::Iter<directive::LogDirective>)
     for directive in iter.rev() {
         match directive.name {
             Some(ref name) if !module.starts_with(&name[..]) => {}
-            Some(..) | None => {
-                return level <= directive.level
-            }
+            Some(..) | None => return level <= directive.level,
         }
     }
     level <= DEFAULT_LOG_LEVEL

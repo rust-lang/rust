@@ -12,8 +12,8 @@
 
 use {Rng, SeedableRng, Rand};
 
-const KEY_WORDS    : usize =  8; // 8 words for the 256-bit key
-const STATE_WORDS  : usize = 16;
+const KEY_WORDS: usize = 8; // 8 words for the 256-bit key
+const STATE_WORDS: usize = 16;
 const CHACHA_ROUNDS: usize = 20; // Cryptographically secure from 8 upwards as of this writing
 
 /// A random number generator that uses the ChaCha20 algorithm [1].
@@ -77,7 +77,6 @@ fn core(output: &mut [u32; STATE_WORDS], input: &[u32; STATE_WORDS]) {
 }
 
 impl ChaChaRng {
-
     /// Create an ChaCha random number generator using the default
     /// fixed key of 8 zero words.
     pub fn new_unseeded() -> ChaChaRng {
@@ -173,7 +172,6 @@ impl Rng for ChaChaRng {
 }
 
 impl<'a> SeedableRng<&'a [u32]> for ChaChaRng {
-
     fn reseed(&mut self, seed: &'a [u32]) {
         // reset state
         self.init(&[0; KEY_WORDS]);
