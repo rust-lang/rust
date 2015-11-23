@@ -121,3 +121,22 @@ impl<T: ParamTrait<Private<isize>>>  //~ ERROR private type in public interface
      ParamTrait<T> for Public<i8> {
     fn foo() -> T { panic!() }
 }
+
+type PrivAlias = Public<i8>;
+
+trait PrivTrait2 {
+    type Alias;
+}
+impl PrivTrait2 for Private<isize> {
+    type Alias = Public<u8>;
+}
+
+impl PubTrait for PrivAlias {
+    fn bar(&self) -> Private<isize> { panic!() } //~ ERROR private type in public interface
+    fn baz() -> Private<isize> { panic!() } //~ ERROR private type in public interface
+}
+
+impl PubTrait for <Private<isize> as PrivTrait2>::Alias {
+    fn bar(&self) -> Private<isize> { panic!() } //~ ERROR private type in public interface
+    fn baz() -> Private<isize> { panic!() } //~ ERROR private type in public interface
+}
