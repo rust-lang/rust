@@ -57,7 +57,7 @@ pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{from_utf8_unchecked, ParseBoolError};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use rustc_unicode::str::{SplitWhitespace};
+pub use rustc_unicode::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
 
@@ -95,8 +95,8 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
 
         // this is wrong without the guarantee that `self` is non-empty
         // `len` calculation may overflow but push_str but will check boundaries
-        let len = sep.len() * (self.len() - 1)
-            + self.iter().map(|s| s.borrow().len()).sum::<usize>();
+        let len = sep.len() * (self.len() - 1) +
+                  self.iter().map(|s| s.borrow().len()).sum::<usize>();
         let mut result = String::with_capacity(len);
         let mut first = true;
 
@@ -122,7 +122,7 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
 #[derive(Clone)]
 #[unstable(feature = "str_utf16", issue = "27714")]
 pub struct Utf16Units<'a> {
-    encoder: Utf16Encoder<Chars<'a>>
+    encoder: Utf16Encoder<Chars<'a>>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -130,10 +130,14 @@ impl<'a> Iterator for Utf16Units<'a> {
     type Item = u16;
 
     #[inline]
-    fn next(&mut self) -> Option<u16> { self.encoder.next() }
+    fn next(&mut self) -> Option<u16> {
+        self.encoder.next()
+    }
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) { self.encoder.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.encoder.size_hint()
+    }
 }
 
 // Return the initial codepoint accumulator for the first byte.
@@ -151,16 +155,16 @@ macro_rules! utf8_acc_cont_byte {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<str> for String {
     #[inline]
-    fn borrow(&self) -> &str { &self[..] }
+    fn borrow(&self) -> &str {
+        &self[..]
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToOwned for str {
     type Owned = String;
     fn to_owned(&self) -> String {
-        unsafe {
-            String::from_utf8_unchecked(self.as_bytes().to_owned())
-        }
+        unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
     }
 }
 
@@ -1450,13 +1454,16 @@ impl str {
             // See http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
             // for the definition of `Final_Sigma`.
             debug_assert!('Σ'.len_utf8() == 2);
-            let is_word_final =
-                case_ignoreable_then_cased(from[..i].chars().rev()) &&
-                !case_ignoreable_then_cased(from[i + 2..].chars());
-            to.push_str(if is_word_final { "ς" } else { "σ" });
+            let is_word_final = case_ignoreable_then_cased(from[..i].chars().rev()) &&
+                                !case_ignoreable_then_cased(from[i + 2..].chars());
+            to.push_str(if is_word_final {
+                "ς"
+            } else {
+                "σ"
+            });
         }
 
-        fn case_ignoreable_then_cased<I: Iterator<Item=char>>(iter: I) -> bool {
+        fn case_ignoreable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
             use rustc_unicode::derived_property::{Cased, Case_Ignorable};
             match iter.skip_while(|&c| Case_Ignorable(c)).next() {
                 Some(c) => Cased(c),

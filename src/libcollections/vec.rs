@@ -248,7 +248,10 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Vec<T> {
-        Vec { buf: RawVec::new(), len: 0 }
+        Vec {
+            buf: RawVec::new(),
+            len: 0,
+        }
     }
 
     /// Constructs a new, empty `Vec<T>` with the specified capacity.
@@ -280,7 +283,10 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> Vec<T> {
-        Vec { buf: RawVec::with_capacity(capacity), len: 0 }
+        Vec {
+            buf: RawVec::with_capacity(capacity),
+            len: 0,
+        }
     }
 
     /// Creates a `Vec<T>` directly from the raw components of another vector.
@@ -329,8 +335,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_raw_parts(ptr: *mut T, length: usize,
-                                 capacity: usize) -> Vec<T> {
+    pub unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Vec<T> {
         Vec {
             buf: RawVec::from_raw_parts(ptr, capacity),
             len: length,
@@ -547,9 +552,12 @@ impl<T> Vec<T> {
         assert!(index <= len);
 
         // space for the new element
-        if len == self.buf.cap() { self.buf.double(); }
+        if len == self.buf.cap() {
+            self.buf.double();
+        }
 
-        unsafe { // infallible
+        unsafe {
+            // infallible
             // The spot to put the new value
             {
                 let p = self.as_mut_ptr().offset(index as isize);
@@ -582,7 +590,8 @@ impl<T> Vec<T> {
     pub fn remove(&mut self, index: usize) -> T {
         let len = self.len();
         assert!(index < len);
-        unsafe { // infallible
+        unsafe {
+            // infallible
             let ret;
             {
                 // the place we are taking from.
@@ -613,7 +622,9 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, [2, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn retain<F>(&mut self, mut f: F) where F: FnMut(&T) -> bool {
+    pub fn retain<F>(&mut self, mut f: F)
+        where F: FnMut(&T) -> bool
+    {
         let len = self.len();
         let mut del = 0;
         {
@@ -623,7 +634,7 @@ impl<T> Vec<T> {
                 if !f(&v[i]) {
                     del += 1;
                 } else if del > 0 {
-                    v.swap(i-del, i);
+                    v.swap(i - del, i);
                 }
             }
         }
@@ -650,7 +661,9 @@ impl<T> Vec<T> {
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if self.len == self.buf.cap() { self.buf.double(); }
+        if self.len == self.buf.cap() {
+            self.buf.double();
+        }
         unsafe {
             let end = self.as_mut_ptr().offset(self.len as isize);
             ptr::write(end, value);
@@ -702,14 +715,13 @@ impl<T> Vec<T> {
         self.reserve(other.len());
         let len = self.len();
         unsafe {
-            ptr::copy_nonoverlapping(
-                other.as_ptr(),
-                self.get_unchecked_mut(len),
-                other.len());
+            ptr::copy_nonoverlapping(other.as_ptr(), self.get_unchecked_mut(len), other.len());
         }
 
         self.len += other.len();
-        unsafe { other.set_len(0); }
+        unsafe {
+            other.set_len(0);
+        }
     }
 
     /// Create a draining iterator that removes the specified range in the vector
@@ -738,7 +750,9 @@ impl<T> Vec<T> {
     #[unstable(feature = "drain",
                reason = "recently added, matches RFC",
                issue = "27711")]
-    pub fn drain<R>(&mut self, range: R) -> Drain<T> where R: RangeArgument<usize> {
+    pub fn drain<R>(&mut self, range: R) -> Drain<T>
+        where R: RangeArgument<usize>
+    {
         // Memory safety
         //
         // When the Drain is first created, it shortens the length of
@@ -760,9 +774,8 @@ impl<T> Vec<T> {
             self.set_len(start);
             // Use the borrow in the IterMut to indicate borrowing behavior of the
             // whole Drain iterator (like &mut T).
-            let range_slice = slice::from_raw_parts_mut(
-                                        self.as_mut_ptr().offset(start as isize),
-                                        end - start);
+            let range_slice = slice::from_raw_parts_mut(self.as_mut_ptr().offset(start as isize),
+                                                        end - start);
             Drain {
                 tail_start: end,
                 tail_len: len - end,
@@ -799,7 +812,9 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize { self.len }
+    pub fn len(&self) -> usize {
+        self.len
+    }
 
     /// Returns `true` if the vector contains no elements.
     ///
@@ -813,7 +828,9 @@ impl<T> Vec<T> {
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool { self.len() == 0 }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 
     /// Splits the collection into two at the given index.
     ///
@@ -847,14 +864,12 @@ impl<T> Vec<T> {
             self.set_len(at);
             other.set_len(other_len);
 
-            ptr::copy_nonoverlapping(
-                self.as_ptr().offset(at as isize),
-                other.as_mut_ptr(),
-                other.len());
+            ptr::copy_nonoverlapping(self.as_ptr().offset(at as isize),
+                                     other.as_mut_ptr(),
+                                     other.len());
         }
         other
     }
-
 }
 
 impl<T: Clone> Vec<T> {
@@ -937,9 +952,7 @@ impl<T: Clone> Vec<T> {
             // similarly fast) when T is Copy. LLVM is easily confused, so any
             // extra operations during the loop can prevent this optimisation.
             unsafe {
-                ptr::write(
-                    self.get_unchecked_mut(len),
-                    other.get_unchecked(i).clone());
+                ptr::write(self.get_unchecked_mut(len), other.get_unchecked(i).clone());
                 self.set_len(len + 1);
             }
         }
@@ -1021,7 +1034,9 @@ impl<T: PartialEq> Vec<T> {
             // Duplicate, advance r. End of vec. Truncate to w.
 
             let ln = self.len();
-            if ln <= 1 { return; }
+            if ln <= 1 {
+                return;
+            }
 
             // Avoid bounds checks by using raw pointers.
             let p = self.as_mut_ptr();
@@ -1063,9 +1078,11 @@ pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T:Clone> Clone for Vec<T> {
+impl<T: Clone> Clone for Vec<T> {
     #[cfg(not(test))]
-    fn clone(&self) -> Vec<T> { <[T]>::to_vec(&**self) }
+    fn clone(&self) -> Vec<T> {
+        <[T]>::to_vec(&**self)
+    }
 
     // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
     // required for this method definition, is not available. Instead use the
@@ -1158,7 +1175,6 @@ impl<T> ops::Index<ops::RangeFull> for Vec<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::Range<usize>> for Vec<T> {
-
     #[inline]
     fn index_mut(&mut self, index: ops::Range<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
@@ -1166,7 +1182,6 @@ impl<T> ops::IndexMut<ops::Range<usize>> for Vec<T> {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeTo<usize>> for Vec<T> {
-
     #[inline]
     fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
@@ -1174,7 +1189,6 @@ impl<T> ops::IndexMut<ops::RangeTo<usize>> for Vec<T> {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeFrom<usize>> for Vec<T> {
-
     #[inline]
     fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
@@ -1182,7 +1196,6 @@ impl<T> ops::IndexMut<ops::RangeFrom<usize>> for Vec<T> {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeFull> for Vec<T> {
-
     #[inline]
     fn index_mut(&mut self, _index: ops::RangeFull) -> &mut [T] {
         self
@@ -1216,7 +1229,7 @@ impl<T> ops::DerefMut for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
-    fn from_iter<I: IntoIterator<Item=T>>(iterable: I) -> Vec<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iterable: I) -> Vec<T> {
         // Unroll the first iteration, as the vector is going to be
         // expanded on this iteration in every case when the iterable is not
         // empty, but the loop in extend_desugared() is not going to see the
@@ -1271,7 +1284,11 @@ impl<T> IntoIterator for Vec<T> {
             };
             let buf = ptr::read(&self.buf);
             mem::forget(self);
-            IntoIter { _buf: buf, ptr: begin, end: end }
+            IntoIter {
+                _buf: buf,
+                ptr: begin,
+                end: end,
+            }
         }
     }
 }
@@ -1299,13 +1316,13 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Extend<T> for Vec<T> {
     #[inline]
-    fn extend<I: IntoIterator<Item=T>>(&mut self, iterable: I) {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iterable: I) {
         self.extend_desugared(iterable.into_iter())
     }
 }
 
 impl<T> Vec<T> {
-    fn extend_desugared<I: Iterator<Item=T>>(&mut self, mut iterator: I) {
+    fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
         // This function should be the moral equivalent of:
         //
         //      for item in iterator {
@@ -1328,7 +1345,7 @@ impl<T> Vec<T> {
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
-    fn extend<I: IntoIterator<Item=&'a T>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
 }
@@ -1466,7 +1483,7 @@ impl<'a> From<&'a str> for Vec<u8> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
-    fn from_iter<I: IntoIterator<Item=T>>(it: I) -> Cow<'a, [T]> {
+    fn from_iter<I: IntoIterator<Item = T>>(it: I) -> Cow<'a, [T]> {
         Cow::Owned(FromIterator::from_iter(it))
     }
 }
@@ -1494,13 +1511,13 @@ impl<'a, T> IntoCow<'a, [T]> for &'a [T] where T: Clone {
 pub struct IntoIter<T> {
     _buf: RawVec<T>,
     ptr: *const T,
-    end: *const T
+    end: *const T,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Send> Send for IntoIter<T> { }
+unsafe impl<T: Send> Send for IntoIter<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Sync> Sync for IntoIter<T> { }
+unsafe impl<T: Sync> Sync for IntoIter<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Iterator for IntoIter<T> {
@@ -1534,7 +1551,12 @@ impl<T> Iterator for IntoIter<T> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let diff = (self.end as usize) - (self.ptr as usize);
         let size = mem::size_of::<T>();
-        let exact = diff / (if size == 0 {1} else {size});
+        let exact = diff /
+                    (if size == 0 {
+                         1
+                     } else {
+                         size
+                     });
         (exact, Some(exact))
     }
 
@@ -1605,11 +1627,7 @@ impl<'a, T> Iterator for Drain<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        self.iter.next().map(|elt|
-            unsafe {
-                ptr::read(elt as *const _)
-            }
-        )
+        self.iter.next().map(|elt| unsafe { ptr::read(elt as *const _) })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1621,11 +1639,7 @@ impl<'a, T> Iterator for Drain<'a, T> {
 impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
-        self.iter.next_back().map(|elt|
-            unsafe {
-                ptr::read(elt as *const _)
-            }
-        )
+        self.iter.next_back().map(|elt| unsafe { ptr::read(elt as *const _) })
     }
 }
 
@@ -1633,7 +1647,7 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
 impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         // exhaust self first
-        while let Some(_) = self.next() { }
+        while let Some(_) = self.next() {}
 
         if self.tail_len > 0 {
             unsafe {
