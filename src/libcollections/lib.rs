@@ -74,8 +74,11 @@
 extern crate rustc_unicode;
 extern crate alloc;
 
-#[cfg(test)] #[macro_use] extern crate std;
-#[cfg(test)] extern crate test;
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+#[cfg(test)]
+extern crate test;
 
 pub use binary_heap::BinaryHeap;
 pub use btree_map::BTreeMap;
