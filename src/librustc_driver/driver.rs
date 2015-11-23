@@ -738,7 +738,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                freevars,
                                region_map,
                                lang_items,
-                               stability::Index::new(krate),
+                               stability::Index::new(sess),
                                |tcx| {
                                    // passes are timed inside typeck
                                    typeck::check_crate(tcx, trait_map);

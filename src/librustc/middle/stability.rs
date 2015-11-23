@@ -279,19 +279,9 @@ impl<'tcx> Index<'tcx> {
                            |v| intravisit::walk_crate(v, krate));
     }
 
-    pub fn new(krate: &Crate) -> Index {
-        let mut is_staged_api = false;
-        for attr in &krate.attrs {
-            if attr.name() == "staged_api" {
-                if let ast::MetaWord(_) = attr.node.value.node {
-                    attr::mark_used(attr);
-                    is_staged_api = true;
-                    break
-                }
-            }
-        }
+    pub fn new(sess: &Session) -> Index<'tcx> {
         let mut staged_api = FnvHashMap();
-        staged_api.insert(LOCAL_CRATE, is_staged_api);
+        staged_api.insert(LOCAL_CRATE, sess.features.borrow().staged_api);
         Index {
             staged_api: staged_api,
             map: DefIdMap(),
