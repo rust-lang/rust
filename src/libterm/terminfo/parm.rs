@@ -10,15 +10,14 @@
 
 //! Parameterized string expansion
 
-pub use self::Param::*;
+use self::Param::*;
 use self::States::*;
 use self::FormatState::*;
 use self::FormatOp::*;
-use std::ascii::AsciiExt;
-use std::mem::replace;
+
 use std::iter::repeat;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum States {
     Nothing,
     Percent,
@@ -27,15 +26,15 @@ enum States {
     PushParam,
     CharConstant,
     CharClose,
-    IntConstant(isize),
+    IntConstant(i32),
     FormatPattern(Flags, FormatState),
-    SeekIfElse(isize),
-    SeekIfElsePercent(isize),
-    SeekIfEnd(isize),
-    SeekIfEndPercent(isize),
+    SeekIfElse(usize),
+    SeekIfElsePercent(usize),
+    SeekIfEnd(usize),
+    SeekIfEndPercent(usize),
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, PartialEq, Clone)]
 enum FormatState {
     FormatStateFlags,
     FormatStateWidth,
@@ -47,7 +46,7 @@ enum FormatState {
 #[derive(Clone)]
 pub enum Param {
     Words(String),
-    Number(isize),
+    Number(i32),
 }
 
 /// Container for static and dynamic variable arrays
@@ -94,11 +93,11 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
     // Copy parameters into a local vector for mutability
     let mut mparams = [Number(0), Number(0), Number(0), Number(0), Number(0), Number(0),
                        Number(0), Number(0), Number(0)];
-    for (dst, src) in mparams.iter_mut().zip(params) {
+    for (dst, src) in mparams.iter_mut().zip(params.iter()) {
         *dst = (*src).clone();
     }
 
-    for &c in cap {
+    for &c in cap.iter() {
         let cur = c as char;
         let mut old_state = state;
         match state {
@@ -116,20 +115,13 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                         state = Nothing
                     }
                     'c' => {
-                        if !stack.is_empty() {
-                            match stack.pop().unwrap() {
-                                // if c is 0, use 0200 (128) for ncurses compatibility
-                                Number(c) => {
-                                    output.push(if c == 0 {
-                                        128
-                                    } else {
-                                        c as u8
-                                    })
-                                }
-                                _ => return Err("a non-char was used with %c".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
+                        match stack.pop() {
+                            // if c is 0, use 0200 (128) for ncurses compatibility
+                            Some(Number(0)) => output.push(128u8),
+                            // Don't check bounds. ncurses just casts and truncates.
+                            Some(Number(c)) => output.push(c as u8),
+                            Some(_) => return Err("a non-char was used with %c".to_string()),
+                            None => return Err("stack is empty".to_string()),
                         }
                     }
                     'p' => state = PushParam,
@@ -138,208 +130,89 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                     '\'' => state = CharConstant,
                     '{' => state = IntConstant(0),
                     'l' => {
-                        if !stack.is_empty() {
-                            match stack.pop().unwrap() {
-                                Words(s) => stack.push(Number(s.len() as isize)),
-                                _ => return Err("a non-str was used with %l".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
+                        match stack.pop() {
+                            Some(Words(s)) => stack.push(Number(s.len() as i32)),
+                            Some(_) => return Err("a non-str was used with %l".to_string()),
+                            None => return Err("stack is empty".to_string()),
                         }
                     }
-                    '+' => {
-                        if stack.len() > 1 {
-                            match (stack.pop().unwrap(), stack.pop().unwrap()) {
-                                (Number(y), Number(x)) => stack.push(Number(x + y)),
-                                _ => return Err("non-numbers on stack with +".to_owned()),
+                    '+' | '-' | '/' | '*' | '^' | '&' | '|' | 'm' => {
+                        match (stack.pop(), stack.pop()) {
+                            (Some(Number(y)), Some(Number(x))) => {
+                                stack.push(Number(match cur {
+                                    '+' => x + y,
+                                    '-' => x - y,
+                                    '*' => x * y,
+                                    '/' => x / y,
+                                    '|' => x | y,
+                                    '&' => x & y,
+                                    '^' => x ^ y,
+                                    'm' => x % y,
+                                    _ => unreachable!("All cases handled"),
+                                }))
                             }
-                        } else {
-                            return Err("stack is empty".to_owned());
+                            (Some(_), Some(_)) => {
+                                return Err(format!("non-numbers on stack with {}", cur))
+                            }
+                            _ => return Err("stack is empty".to_string()),
                         }
                     }
-                    '-' => {
-                        if stack.len() > 1 {
-                            match (stack.pop().unwrap(), stack.pop().unwrap()) {
-                                (Number(y), Number(x)) => stack.push(Number(x - y)),
-                                _ => return Err("non-numbers on stack with -".to_owned()),
+                    '=' | '>' | '<' | 'A' | 'O' => {
+                        match (stack.pop(), stack.pop()) {
+                            (Some(Number(y)), Some(Number(x))) => {
+                                stack.push(Number(if match cur {
+                                    '=' => x == y,
+                                    '<' => x < y,
+                                    '>' => x > y,
+                                    'A' => x > 0 && y > 0,
+                                    'O' => x > 0 || y > 0,
+                                    _ => unreachable!(),
+                                } {
+                                    1
+                                } else {
+                                    0
+                                }))
                             }
-                        } else {
-                            return Err("stack is empty".to_owned());
+                            (Some(_), Some(_)) => {
+                                return Err(format!("non-numbers on stack with {}", cur))
+                            }
+                            _ => return Err("stack is empty".to_string()),
                         }
                     }
-                    '*' => {
-                        if stack.len() > 1 {
-                            match (stack.pop().unwrap(), stack.pop().unwrap()) {
-                                (Number(y), Number(x)) => stack.push(Number(x * y)),
-                                _ => return Err("non-numbers on stack with *".to_owned()),
+                    '!' | '~' => {
+                        match stack.pop() {
+                            Some(Number(x)) => {
+                                stack.push(Number(match cur {
+                                    '!' if x > 0 => 0,
+                                    '!' => 1,
+                                    '~' => !x,
+                                    _ => unreachable!(),
+                                }))
                             }
-                        } else {
-                            return Err("stack is empty".to_owned());
-                        }
-                    }
-                    '/' => {
-                        if stack.len() > 1 {
-                            match (stack.pop().unwrap(), stack.pop().unwrap()) {
-                                (Number(y), Number(x)) => stack.push(Number(x / y)),
-                                _ => return Err("non-numbers on stack with /".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
-                        }
-                    }
-                    'm' => {
-                        if stack.len() > 1 {
-                            match (stack.pop().unwrap(), stack.pop().unwrap()) {
-                                (Number(y), Number(x)) => stack.push(Number(x % y)),
-                                _ => return Err("non-numbers on stack with %".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
-                        }
-                    }
-                    '&' => {
-                        if stack.len() > 1 {
-                            match (stack.pop().unwrap(), stack.pop().unwrap()) {
-                                (Number(y), Number(x)) => stack.push(Number(x & y)),
-                                _ => return Err("non-numbers on stack with &".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
-                        }
-                    }
-                    '|' => {
-                        if stack.len() > 1 {
-                            match (stack.pop().unwrap(), stack.pop().unwrap()) {
-                                (Number(y), Number(x)) => stack.push(Number(x | y)),
-                                _ => return Err("non-numbers on stack with |".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
-                        }
-                    }
-                    '^' => {
-                        if stack.len() > 1 {
-                            match (stack.pop().unwrap(), stack.pop().unwrap()) {
-                                (Number(y), Number(x)) => stack.push(Number(x ^ y)),
-                                _ => return Err("non-numbers on stack with ^".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
-                        }
-                    }
-                    '=' => {
-                        if stack.len() > 1 {
-                            match (stack.pop().unwrap(), stack.pop().unwrap()) {
-                                (Number(y), Number(x)) => {
-                                    stack.push(Number(if x == y {
-                                        1
-                                    } else {
-                                        0
-                                    }))
-                                }
-                                _ => return Err("non-numbers on stack with =".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
-                        }
-                    }
-                    '>' => {
-                        if stack.len() > 1 {
-                            match (stack.pop().unwrap(), stack.pop().unwrap()) {
-                                (Number(y), Number(x)) => {
-                                    stack.push(Number(if x > y {
-                                        1
-                                    } else {
-                                        0
-                                    }))
-                                }
-                                _ => return Err("non-numbers on stack with >".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
-                        }
-                    }
-                    '<' => {
-                        if stack.len() > 1 {
-                            match (stack.pop().unwrap(), stack.pop().unwrap()) {
-                                (Number(y), Number(x)) => {
-                                    stack.push(Number(if x < y {
-                                        1
-                                    } else {
-                                        0
-                                    }))
-                                }
-                                _ => return Err("non-numbers on stack with <".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
-                        }
-                    }
-                    'A' => {
-                        if stack.len() > 1 {
-                            match (stack.pop().unwrap(), stack.pop().unwrap()) {
-                                (Number(0), Number(_)) => stack.push(Number(0)),
-                                (Number(_), Number(0)) => stack.push(Number(0)),
-                                (Number(_), Number(_)) => stack.push(Number(1)),
-                                _ => return Err("non-numbers on stack with logical and".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
-                        }
-                    }
-                    'O' => {
-                        if stack.len() > 1 {
-                            match (stack.pop().unwrap(), stack.pop().unwrap()) {
-                                (Number(0), Number(0)) => stack.push(Number(0)),
-                                (Number(_), Number(_)) => stack.push(Number(1)),
-                                _ => return Err("non-numbers on stack with logical or".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
-                        }
-                    }
-                    '!' => {
-                        if !stack.is_empty() {
-                            match stack.pop().unwrap() {
-                                Number(0) => stack.push(Number(1)),
-                                Number(_) => stack.push(Number(0)),
-                                _ => return Err("non-number on stack with logical not".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
-                        }
-                    }
-                    '~' => {
-                        if !stack.is_empty() {
-                            match stack.pop().unwrap() {
-                                Number(x) => stack.push(Number(!x)),
-                                _ => return Err("non-number on stack with %~".to_owned()),
-                            }
-                        } else {
-                            return Err("stack is empty".to_owned());
+                            Some(_) => return Err(format!("non-numbers on stack with {}", cur)),
+                            None => return Err("stack is empty".to_string()),
                         }
                     }
                     'i' => {
-                        match (mparams[0].clone(), mparams[1].clone()) {
-                            (Number(x), Number(y)) => {
+                        match (&mparams[0], &mparams[1]) {
+                            (&Number(x), &Number(y)) => {
                                 mparams[0] = Number(x + 1);
                                 mparams[1] = Number(y + 1);
                             }
-                            (_, _) => return Err("first two params not numbers with %i".to_owned()),
+                            (_, _) => {
+                                return Err("first two params not numbers with %i".to_string())
+                            }
                         }
                     }
 
                     // printf-style support for %doxXs
                     'd' | 'o' | 'x' | 'X' | 's' => {
-                        if !stack.is_empty() {
+                        if let Some(arg) = stack.pop() {
                             let flags = Flags::new();
-                            let res = format(stack.pop().unwrap(), FormatOp::from_char(cur), flags);
-                            if res.is_err() {
-                                return res;
-                            }
-                            output.push_all(&res.unwrap())
+                            let res = try!(format(arg, FormatOp::from_char(cur), flags));
+                            output.extend(res.iter().map(|x| *x));
                         } else {
-                            return Err("stack is empty".to_owned());
+                            return Err("stack is empty".to_string());
                         }
                     }
                     ':' | '#' | ' ' | '.' | '0'...'9' => {
@@ -362,47 +235,45 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                     // conditionals
                     '?' => (),
                     't' => {
-                        if !stack.is_empty() {
-                            match stack.pop().unwrap() {
-                                Number(0) => state = SeekIfElse(0),
-                                Number(_) => (),
-                                _ => return Err("non-number on stack with conditional".to_owned()),
+                        match stack.pop() {
+                            Some(Number(0)) => state = SeekIfElse(0),
+                            Some(Number(_)) => (),
+                            Some(_) => {
+                                return Err("non-number on stack with conditional".to_string())
                             }
-                        } else {
-                            return Err("stack is empty".to_owned());
+                            None => return Err("stack is empty".to_string()),
                         }
                     }
                     'e' => state = SeekIfEnd(0),
                     ';' => (),
-
-                    _ => return Err(format!("unrecognized format option {:?}", cur)),
+                    _ => return Err(format!("unrecognized format option {}", cur)),
                 }
             }
             PushParam => {
                 // params are 1-indexed
                 stack.push(mparams[match cur.to_digit(10) {
                                Some(d) => d as usize - 1,
-                               None => return Err("bad param number".to_owned()),
+                               None => return Err("bad param number".to_string()),
                            }]
                            .clone());
             }
             SetVar => {
                 if cur >= 'A' && cur <= 'Z' {
-                    if !stack.is_empty() {
+                    if let Some(arg) = stack.pop() {
                         let idx = (cur as u8) - b'A';
-                        vars.sta[idx as usize] = stack.pop().unwrap();
+                        vars.sta[idx as usize] = arg;
                     } else {
-                        return Err("stack is empty".to_owned());
+                        return Err("stack is empty".to_string());
                     }
                 } else if cur >= 'a' && cur <= 'z' {
-                    if !stack.is_empty() {
+                    if let Some(arg) = stack.pop() {
                         let idx = (cur as u8) - b'a';
-                        vars.dyn[idx as usize] = stack.pop().unwrap();
+                        vars.dyn[idx as usize] = arg;
                     } else {
-                        return Err("stack is empty".to_owned());
+                        return Err("stack is empty".to_string());
                     }
                 } else {
-                    return Err("bad variable name in %P".to_owned());
+                    return Err("bad variable name in %P".to_string());
                 }
             }
             GetVar => {
@@ -413,47 +284,45 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                     let idx = (cur as u8) - b'a';
                     stack.push(vars.dyn[idx as usize].clone());
                 } else {
-                    return Err("bad variable name in %g".to_owned());
+                    return Err("bad variable name in %g".to_string());
                 }
             }
             CharConstant => {
-                stack.push(Number(c as isize));
+                stack.push(Number(c as i32));
                 state = CharClose;
             }
             CharClose => {
                 if cur != '\'' {
-                    return Err("malformed character constant".to_owned());
+                    return Err("malformed character constant".to_string());
                 }
             }
             IntConstant(i) => {
-                match cur {
-                    '}' => {
-                        stack.push(Number(i));
-                        state = Nothing;
+                if cur == '}' {
+                    stack.push(Number(i));
+                    state = Nothing;
+                } else if let Some(digit) = cur.to_digit(10) {
+                    match i.checked_mul(10).and_then(|i_ten| i_ten.checked_add(digit as i32)) {
+                        Some(i) => {
+                            state = IntConstant(i);
+                            old_state = Nothing;
+                        }
+                        None => return Err("int constant too large".to_string()),
                     }
-                    '0'...'9' => {
-                        state = IntConstant(i * 10 + (cur as isize - '0' as isize));
-                        old_state = Nothing;
-                    }
-                    _ => return Err("bad isize constant".to_owned()),
+                } else {
+                    return Err("bad int constant".to_string());
                 }
             }
             FormatPattern(ref mut flags, ref mut fstate) => {
                 old_state = Nothing;
                 match (*fstate, cur) {
                     (_, 'd') | (_, 'o') | (_, 'x') | (_, 'X') | (_, 's') => {
-                        if !stack.is_empty() {
-                            let res = format(stack.pop().unwrap(),
-                                             FormatOp::from_char(cur),
-                                             *flags);
-                            if res.is_err() {
-                                return res;
-                            }
-                            output.push_all(&res.unwrap());
+                        if let Some(arg) = stack.pop() {
+                            let res = try!(format(arg, FormatOp::from_char(cur), *flags));
+                            output.extend(res.iter().map(|x| *x));
                             // will cause state to go to Nothing
                             old_state = FormatPattern(*flags, *fstate);
                         } else {
-                            return Err("stack is empty".to_owned());
+                            return Err("stack is empty".to_string());
                         }
                     }
                     (FormatStateFlags, '#') => {
@@ -479,7 +348,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                         let old = flags.width;
                         flags.width = flags.width * 10 + (cur as usize - '0' as usize);
                         if flags.width < old {
-                            return Err("format width overflow".to_owned());
+                            return Err("format width overflow".to_string());
                         }
                     }
                     (FormatStateWidth, '.') => {
@@ -489,10 +358,10 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                         let old = flags.precision;
                         flags.precision = flags.precision * 10 + (cur as usize - '0' as usize);
                         if flags.precision < old {
-                            return Err("format precision overflow".to_owned());
+                            return Err("format precision overflow".to_string());
                         }
                     }
-                    _ => return Err("invalid format specifier".to_owned()),
+                    _ => return Err("invalid format specifier".to_string()),
                 }
             }
             SeekIfElse(level) => {
@@ -543,7 +412,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
     Ok(output)
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, PartialEq, Clone)]
 struct Flags {
     width: usize,
     precision: usize,
@@ -600,61 +469,55 @@ impl FormatOp {
 fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
     let mut s = match val {
         Number(d) => {
-            let s = match (op, flags.sign) {
-                (FormatDigit, true) => format!("{:+}", d).into_bytes(),
-                (FormatDigit, false) => format!("{}", d).into_bytes(),
-                (FormatOctal, _) => format!("{:o}", d).into_bytes(),
-                (FormatHex, _) => format!("{:x}", d).into_bytes(),
-                (FormatHEX, _) => format!("{:X}", d).into_bytes(),
-                (FormatString, _) => return Err("non-number on stack with %s".to_owned()),
-            };
-            let mut s: Vec<u8> = s.into_iter().collect();
-            if flags.precision > s.len() {
-                let mut s_ = Vec::with_capacity(flags.precision);
-                let n = flags.precision - s.len();
-                s_.extend(repeat(b'0').take(n));
-                s_.extend(s);
-                s = s_;
-            }
-            assert!(!s.is_empty(), "string conversion produced empty result");
             match op {
                 FormatDigit => {
-                    if flags.space && !(s[0] == b'-' || s[0] == b'+') {
-                        s.insert(0, b' ');
+                    if flags.sign {
+                        format!("{:+01$}", d, flags.precision)
+                    } else if d < 0 {
+                        // C doesn't take sign into account in precision calculation.
+                        format!("{:01$}", d, flags.precision + 1)
+                    } else if flags.space {
+                        format!(" {:01$}", d, flags.precision)
+                    } else {
+                        format!("{:01$}", d, flags.precision)
                     }
                 }
                 FormatOctal => {
-                    if flags.alternate && s[0] != b'0' {
-                        s.insert(0, b'0');
+                    if flags.alternate {
+                        // Leading octal zero counts against precision.
+                        format!("0{:01$o}", d, flags.precision.saturating_sub(1))
+                    } else {
+                        format!("{:01$o}", d, flags.precision)
                     }
                 }
                 FormatHex => {
-                    if flags.alternate {
-                        let s_ = replace(&mut s, vec![b'0', b'x']);
-                        s.extend(s_);
+                    if flags.alternate && d != 0 {
+                        format!("0x{:01$x}", d, flags.precision)
+                    } else {
+                        format!("{:01$x}", d, flags.precision)
                     }
                 }
                 FormatHEX => {
-                    s = s.to_ascii_uppercase();
-                    if flags.alternate {
-                        let s_ = replace(&mut s, vec![b'0', b'X']);
-                        s.extend(s_);
+                    if flags.alternate && d != 0 {
+                        format!("0X{:01$X}", d, flags.precision)
+                    } else {
+                        format!("{:01$X}", d, flags.precision)
                     }
                 }
-                FormatString => unreachable!(),
+                FormatString => return Err("non-number on stack with %s".to_string()),
             }
-            s
+            .into_bytes()
         }
         Words(s) => {
             match op {
                 FormatString => {
-                    let mut s = s.as_bytes().to_vec();
+                    let mut s = s.into_bytes();
                     if flags.precision > 0 && flags.precision < s.len() {
                         s.truncate(flags.precision);
                     }
                     s
                 }
-                _ => return Err(format!("non-string on stack with %{:?}", op.to_char())),
+                _ => return Err(format!("non-string on stack with %{}", op.to_char())),
             }
         }
     };
@@ -665,7 +528,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
         } else {
             let mut s_ = Vec::with_capacity(flags.width);
             s_.extend(repeat(b' ').take(n));
-            s_.extend(s);
+            s_.extend(s.into_iter());
             s = s_;
         }
     }
@@ -673,8 +536,9 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{expand, Param, Words, Variables, Number};
+mod test {
+    use super::{expand, Variables};
+    use super::Param::{self, Words, Number};
     use std::result::Result::Ok;
 
     #[test]
@@ -711,12 +575,12 @@ mod tests {
                    vars: &mut Variables)
                    -> Result<Vec<u8>, String> {
             let mut u8v: Vec<_> = fmt.bytes().collect();
-            u8v.extend(cap.bytes());
+            u8v.extend(cap.as_bytes().iter().map(|&b| b));
             expand(&u8v, params, vars)
         }
 
         let caps = ["%d", "%c", "%s", "%Pa", "%l", "%!", "%~"];
-        for &cap in &caps {
+        for &cap in caps.iter() {
             let res = get_res("", cap, &[], vars);
             assert!(res.is_err(),
                     "Op {} succeeded incorrectly with 0 stack entries",
@@ -733,7 +597,7 @@ mod tests {
                     res.err().unwrap());
         }
         let caps = ["%+", "%-", "%*", "%/", "%m", "%&", "%|", "%A", "%O"];
-        for &cap in &caps {
+        for &cap in caps.iter() {
             let res = expand(cap.as_bytes(), &[], vars);
             assert!(res.is_err(),
                     "Binop {} succeeded incorrectly with 0 stack entries",
@@ -744,7 +608,7 @@ mod tests {
                     cap);
             let res = get_res("%{1}%{2}", cap, &[], vars);
             assert!(res.is_ok(),
-                    "Binop {} failed with 2 stack entries: {:?}",
+                    "Binop {} failed with 2 stack entries: {}",
                     cap,
                     res.err().unwrap());
         }
@@ -757,20 +621,20 @@ mod tests {
 
     #[test]
     fn test_comparison_ops() {
-        let v = [('<', [1, 0, 0]), ('=', [0, 1, 0]), ('>', [0, 0, 1])];
-        for &(op, bs) in &v {
+        let v = [('<', [1u8, 0u8, 0u8]), ('=', [0u8, 1u8, 0u8]), ('>', [0u8, 0u8, 1u8])];
+        for &(op, bs) in v.iter() {
             let s = format!("%{{1}}%{{2}}%{}%d", op);
             let res = expand(s.as_bytes(), &[], &mut Variables::new());
             assert!(res.is_ok(), res.err().unwrap());
-            assert_eq!(res.unwrap(), [b'0' + bs[0]]);
+            assert_eq!(res.unwrap(), vec![b'0' + bs[0]]);
             let s = format!("%{{1}}%{{1}}%{}%d", op);
             let res = expand(s.as_bytes(), &[], &mut Variables::new());
             assert!(res.is_ok(), res.err().unwrap());
-            assert_eq!(res.unwrap(), [b'0' + bs[1]]);
+            assert_eq!(res.unwrap(), vec![b'0' + bs[1]]);
             let s = format!("%{{2}}%{{1}}%{}%d", op);
             let res = expand(s.as_bytes(), &[], &mut Variables::new());
             assert!(res.is_ok(), res.err().unwrap());
-            assert_eq!(res.unwrap(), [b'0' + bs[2]]);
+            assert_eq!(res.unwrap(), vec![b'0' + bs[2]]);
         }
     }
 
@@ -800,7 +664,7 @@ mod tests {
                             Words("foo".to_string())],
                           vars),
                    Ok("foofoo ffo".bytes().collect::<Vec<_>>()));
-        assert_eq!(expand(b"%p1%:-4.2s", &[Words("foo".to_owned())], vars),
+        assert_eq!(expand(b"%p1%:-4.2s", &[Words("foo".to_string())], vars),
                    Ok("fo  ".bytes().collect::<Vec<_>>()));
 
         assert_eq!(expand(b"%p1%d%p1%.3d%p1%5d%p1%:+d", &[Number(1)], vars),
