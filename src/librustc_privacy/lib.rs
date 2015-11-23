@@ -1128,11 +1128,21 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                 def::DefPrimTy(..) | def::DefSelfTy(..) | def::DefTyParam(..) => {
                     // Public
                 }
+                def::DefAssociatedTy(..) if self.is_quiet => {
+                    // Conservatively approximate the whole type alias as public without
+                    // recursing into its components when determining impl publicity.
+                    return
+                }
                 def::DefStruct(def_id) | def::DefTy(def_id, _) |
                 def::DefTrait(def_id) | def::DefAssociatedTy(def_id, _) => {
                     // Non-local means public, local needs to be checked
                     if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
                         if let Some(ast_map::NodeItem(ref item)) = self.tcx.map.find(node_id) {
+                            if let (&hir::ItemTy(..), true) = (&item.node, self.is_quiet) {
+                                // Conservatively approximate the whole type alias as public without
+                                // recursing into its components when determining impl publicity.
+                                return
+                            }
                             if item.vis != hir::Public {
                                 if !self.is_quiet {
                                     span_err!(self.tcx.sess, ty.span, E0446,
