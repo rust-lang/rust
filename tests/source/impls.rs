@@ -26,6 +26,16 @@ impl Foo {
     fn foo() {}
 }
 
+impl Boo {
+
+    // BOO
+    fn boo() {}
+    // FOO
+
+    
+    
+}
+
 mod a {
     impl Foo {
         // Hello!
