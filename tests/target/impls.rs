@@ -13,6 +13,7 @@ pub impl Foo for Bar {
     fn foo() {
         "hi"
     }
+    // Comment 3
 }
 
 pub unsafe impl<'a, 'b, X, Y: Foo<Bar>> !Foo<'a, X> for Bar<'b, Y> where X: Foo<'a, Z>
