@@ -171,3 +171,10 @@ pub mod fmt;
 
 // note: does not need to be public
 mod tuple;
+
+/* Raw OS-specific types for the current platform/architecture */
+
+pub mod os {
+    #![allow(missing_docs, bad_style)]
+    pub mod raw;
+}
