@@ -62,13 +62,7 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
         debug!("finalizing import uses for {:?}",
                self.session.codemap().span_to_snippet(span));
 
-        if !self.used_imports.contains(&(id, TypeNS)) &&
-           !self.used_imports.contains(&(id, ValueNS)) {
-            self.session.add_lint(lint::builtin::UNUSED_IMPORTS,
-                                  id,
-                                  span,
-                                  "unused import".to_string());
-        }
+        self.check_import(id, span);
 
         let mut def_map = self.def_map.borrow_mut();
         let path_res = if let Some(r) = def_map.get_mut(&id) {
@@ -109,6 +103,16 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             type_used: t_used,
         };
     }
+
+    fn check_import(&self, id: ast::NodeId, span: Span) {
+        if !self.used_imports.contains(&(id, TypeNS)) &&
+           !self.used_imports.contains(&(id, ValueNS)) {
+            self.session.add_lint(lint::builtin::UNUSED_IMPORTS,
+                                  id,
+                                  span,
+                                  "unused import".to_string());
+        }
+    }
 }
 
 impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
@@ -144,14 +148,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                         }
                     }
                     ViewPathGlob(_) => {
-                        if !self.used_imports.contains(&(item.id, TypeNS)) &&
-                           !self.used_imports.contains(&(item.id, ValueNS)) {
-                            self.session
-                                .add_lint(lint::builtin::UNUSED_IMPORTS,
-                                          item.id,
-                                          p.span,
-                                          "unused import".to_string());
-                        }
+                        self.check_import(item.id, p.span);
                     }
                 }
             }
