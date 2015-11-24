@@ -135,8 +135,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
         self.push_scope(extent, block);
         let rv = unpack!(block = f(self));
-        assert_eq!(self.extent_of_innermost_scope(), extent);
-        self.pop_scope(block);
+        self.pop_scope(extent, block);
         debug!("in_scope: exiting extent={:?} block={:?}", extent, block);
         block.and(rv)
     }
@@ -156,12 +155,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         });
     }
 
-    /// Pops the innermost scope, adding any drops onto the end of
-    /// `block` that are needed.  This must match 1-to-1 with
-    /// `push_scope`.
-    pub fn pop_scope(&mut self, block: BasicBlock) {
-        debug!("pop_scope({:?})", block);
+    /// Pops a scope, which should have extent `extent`, adding any
+    /// drops onto the end of `block` that are needed.  This must
+    /// match 1-to-1 with `push_scope`.
+    pub fn pop_scope(&mut self, extent: CodeExtent, block: BasicBlock) {
+        debug!("pop_scope({:?}, {:?})", extent, block);
         let scope = self.scopes.pop().unwrap();
+
+        assert_eq!(scope.extent, extent);
 
         // add in any drops needed on the fallthrough path (any other
         // exiting paths, such as those that arise from `break`, will
