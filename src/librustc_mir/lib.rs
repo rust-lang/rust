@@ -34,5 +34,4 @@ pub mod mir_map;
 mod hair;
 mod graphviz;
 pub mod transform;
-pub mod visit;
 

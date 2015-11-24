@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::middle::ty::Region;
-use rustc::mir::repr::*;
+use middle::ty::Region;
+use mir::repr::*;
 
 pub trait Visitor<'tcx> {
     // Override these, and call `self.super_xxx` to revert back to the
