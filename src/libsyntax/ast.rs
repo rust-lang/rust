@@ -1258,7 +1258,7 @@ impl fmt::Debug for IntTy {
 
 impl fmt::Display for IntTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", ast_util::int_ty_to_string(*self, None))
+        write!(f, "{}", ast_util::int_ty_to_string(*self))
     }
 }
 
@@ -1303,7 +1303,7 @@ impl fmt::Debug for UintTy {
 
 impl fmt::Display for UintTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", ast_util::uint_ty_to_string(*self, None))
+        write!(f, "{}", ast_util::uint_ty_to_string(*self))
     }
 }
 
