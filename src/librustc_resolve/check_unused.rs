@@ -16,6 +16,8 @@
 // resolve data structures and because it finalises the privacy information for
 // `use` directives.
 //
+// Unused trait imports can't be checked until the method resolution. We save
+// candidates here, and do the actual check in librustc_typeck/check_unused.rs.
 
 use std::ops::{Deref, DerefMut};
 
@@ -104,13 +106,21 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
         };
     }
 
-    fn check_import(&self, id: ast::NodeId, span: Span) {
+    fn check_import(&mut self, id: ast::NodeId, span: Span) {
         if !self.used_imports.contains(&(id, TypeNS)) &&
            !self.used_imports.contains(&(id, ValueNS)) {
+            if self.maybe_unused_trait_imports.contains(&id) {
+                // Check later.
+                return;
+            }
             self.session.add_lint(lint::builtin::UNUSED_IMPORTS,
                                   id,
                                   span,
                                   "unused import".to_string());
+        } else {
+            // This trait import is definitely used, in a way other than
+            // method resolution.
+            self.maybe_unused_trait_imports.remove(&id);
         }
     }
 }

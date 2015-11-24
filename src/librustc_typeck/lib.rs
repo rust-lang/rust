@@ -120,6 +120,7 @@ use std::cell::RefCell;
 pub mod diagnostics;
 
 pub mod check;
+pub mod check_unused;
 mod rscope;
 mod astconv;
 pub mod collect;
@@ -361,6 +362,7 @@ pub fn check_crate(tcx: &ty::ctxt, trait_map: ty::TraitMap) {
     time(time_passes, "wf checking (new)", ||
         check::check_wf_new(&ccx));
 
+    check_unused::check_crate(tcx);
     check_for_entry_fn(&ccx);
     tcx.sess.abort_if_errors();
 }

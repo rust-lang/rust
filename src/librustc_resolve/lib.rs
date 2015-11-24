@@ -61,7 +61,7 @@ use rustc::middle::pat_util::pat_bindings;
 use rustc::middle::privacy::*;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::middle::ty::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
-use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
+use rustc::util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 
 use syntax::ast;
 use syntax::ast::{CRATE_NODE_ID, Ident, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
@@ -1141,6 +1141,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
 
     used_imports: HashSet<(NodeId, Namespace)>,
     used_crates: HashSet<CrateNum>,
+    maybe_unused_trait_imports: NodeSet,
 
     // Callback function for intercepting walks
     callback: Option<Box<Fn(hir_map::Node, &mut bool) -> bool>>,
@@ -1192,13 +1193,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             freevars_seen: NodeMap(),
             export_map: NodeMap(),
             trait_map: NodeMap(),
-            used_imports: HashSet::new(),
-            used_crates: HashSet::new(),
             external_exports: DefIdSet(),
 
             emit_errors: true,
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
             glob_map: HashMap::new(),
+
+            used_imports: HashSet::new(),
+            used_crates: HashSet::new(),
+            maybe_unused_trait_imports: NodeSet(),
 
             callback: None,
             resolved: false,
@@ -3669,7 +3672,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if self.trait_item_map.contains_key(&(name, did)) {
                     let id = import.type_ns.id;
                     add_trait_info(&mut found_traits, did, Some(id), name);
-                    self.used_imports.insert((id, TypeNS));
+                    self.maybe_unused_trait_imports.insert(id);
                     let trait_name = self.get_trait_name(did);
                     self.record_import_use(id, trait_name);
                     if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
@@ -3820,6 +3823,7 @@ fn module_to_string(module: &Module) -> String {
 pub struct CrateMap {
     pub def_map: RefCell<DefMap>,
     pub freevars: FreevarMap,
+    pub maybe_unused_trait_imports: NodeSet,
     pub export_map: ExportMap,
     pub trait_map: TraitMap,
     pub external_exports: ExternalExports,
@@ -3848,6 +3852,7 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
     CrateMap {
         def_map: resolver.def_map,
         freevars: resolver.freevars,
+        maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
         export_map: resolver.export_map,
         trait_map: resolver.trait_map,
         external_exports: resolver.external_exports,
