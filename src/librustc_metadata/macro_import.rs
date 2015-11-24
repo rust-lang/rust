@@ -10,9 +10,10 @@
 
 //! Used by `rustc` when loading a crate with exported macros.
 
-use session::Session;
-use metadata::creader::CrateReader;
-use metadata::cstore::CStore;
+use creader::CrateReader;
+use cstore::CStore;
+
+use rustc::session::Session;
 
 use std::collections::{HashSet, HashMap};
 use syntax::codemap::Span;

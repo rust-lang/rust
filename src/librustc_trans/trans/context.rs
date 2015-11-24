@@ -10,7 +10,7 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
-use metadata::common::LinkMeta;
+use middle::cstore::LinkMeta;
 use middle::def::ExportMap;
 use middle::def_id::DefId;
 use middle::traits;

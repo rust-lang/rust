@@ -15,8 +15,7 @@ pub use self::StabilityLevel::*;
 
 use session::Session;
 use lint;
-use metadata::cstore::LOCAL_CRATE;
-use metadata::util::CrateStore;
+use middle::cstore::{CrateStore, LOCAL_CRATE};
 use middle::def;
 use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::ty;

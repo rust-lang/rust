@@ -50,7 +50,6 @@ extern crate rustc_front;
 extern crate rustc_back;
 
 pub use rustc::lint as lint;
-pub use rustc::metadata as metadata;
 pub use rustc::middle as middle;
 pub use rustc::session as session;
 pub use rustc::util as util;

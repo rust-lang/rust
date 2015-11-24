@@ -65,8 +65,8 @@ use syntax::ast;
 
 use session;
 use session::config;
-use metadata::util::CrateStore;
-use metadata::util::LinkagePreference::{self, RequireStatic, RequireDynamic};
+use middle::cstore::CrateStore;
+use middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
 use util::nodemap::FnvHashMap;
 
 /// A list of dependencies for a certain crate type.

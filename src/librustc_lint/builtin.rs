@@ -29,11 +29,11 @@
 //! a `pub fn new()`.
 
 use middle::{cfg, def, infer, stability, traits};
+use middle::cstore::CrateStore;
 use middle::def_id::DefId;
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use middle::ty::adjustment;
-use rustc::metadata::util::CrateStore;
 use rustc::front::map as hir_map;
 use util::nodemap::{NodeSet};
 use lint::{Level, LateContext, LintContext, LintArray, Lint};

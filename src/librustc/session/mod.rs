@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use lint;
-use metadata::filesearch;
-use metadata::util::CrateStore;
+use middle::cstore::CrateStore;
 use middle::dependency_format;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeMap, FnvHashMap};
@@ -34,6 +33,7 @@ use std::env;
 use std::rc::Rc;
 
 pub mod config;
+pub mod filesearch;
 pub mod search_paths;
 
 // Represents the data associated with a compilation

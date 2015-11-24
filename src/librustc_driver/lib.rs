@@ -47,6 +47,7 @@ extern crate rustc_front;
 extern crate rustc_lint;
 extern crate rustc_plugin;
 extern crate rustc_privacy;
+extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_resolve;
 extern crate rustc_trans;
@@ -68,11 +69,11 @@ use rustc_trans::back::link;
 use rustc_trans::save;
 use rustc::session::{config, Session, build_session};
 use rustc::session::config::{Input, PrintRequest, OutputType};
+use rustc::middle::cstore::CrateStore;
 use rustc::lint::Lint;
 use rustc::lint;
-use rustc::metadata;
-use rustc::metadata::cstore::CStore;
-use rustc::metadata::util::CrateStore;
+use rustc_metadata::loader;
+use rustc_metadata::cstore::CStore;
 use rustc::util::common::time;
 
 use std::cmp::Ordering::Equal;
@@ -448,7 +449,7 @@ impl RustcDefaultCalls {
                 &Input::File(ref ifile) => {
                     let path = &(*ifile);
                     let mut v = Vec::new();
-                    metadata::loader::list_file_metadata(&sess.target.target, path, &mut v)
+                    loader::list_file_metadata(&sess.target.target, path, &mut v)
                         .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
                 }

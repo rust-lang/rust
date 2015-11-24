@@ -13,7 +13,7 @@ pub use self::Row::*;
 use super::escape;
 use super::span_utils::SpanUtils;
 
-use metadata::cstore::LOCAL_CRATE;
+use middle::cstore::LOCAL_CRATE;
 use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::ty;
 

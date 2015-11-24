@@ -11,8 +11,8 @@
 //! Used by `rustc` when loading a plugin.
 
 use rustc::session::Session;
-use rustc::metadata::creader::CrateReader;
-use rustc::metadata::cstore::CStore;
+use rustc_metadata::creader::CrateReader;
+use rustc_metadata::cstore::CStore;
 use registry::Registry;
 
 use std::borrow::ToOwned;

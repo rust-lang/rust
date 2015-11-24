@@ -16,10 +16,10 @@
 //! Most of the documentation on regions can be found in
 //! `middle/typeck/infer/region_inference.rs`
 
-use metadata::inline::InlinedItem;
 use front::map as ast_map;
 use session::Session;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
+use middle::cstore::InlinedItem;
 use middle::ty::{self, Ty};
 
 use std::cell::RefCell;

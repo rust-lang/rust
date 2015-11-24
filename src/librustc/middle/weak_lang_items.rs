@@ -12,7 +12,7 @@
 
 use session::config;
 use session::Session;
-use metadata::util::CrateStore;
+use middle::cstore::CrateStore;
 use middle::lang_items;
 
 use syntax::ast;

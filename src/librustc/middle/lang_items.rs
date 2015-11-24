@@ -23,7 +23,7 @@ pub use self::LangItem::*;
 
 use front::map as hir_map;
 use session::Session;
-use metadata::util::CrateStore;
+use middle::cstore::CrateStore;
 use middle::def_id::DefId;
 use middle::ty;
 use middle::weak_lang_items;

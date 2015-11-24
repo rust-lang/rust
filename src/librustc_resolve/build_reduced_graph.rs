@@ -28,7 +28,7 @@ use {resolve_error, ResolutionError};
 
 use self::DuplicateCheckingMode::*;
 
-use rustc::metadata::util::{CrateStore, ChildItem, DlDef, DlField, DlImpl};
+use rustc::middle::cstore::{CrateStore, ChildItem, DlDef, DlField, DlImpl};
 use rustc::middle::def::*;
 use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
 

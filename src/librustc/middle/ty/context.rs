@@ -16,8 +16,8 @@
 use front::map as ast_map;
 use session::Session;
 use lint;
-use metadata::util::CrateStore;
 use middle;
+use middle::cstore::CrateStore;
 use middle::def::DefMap;
 use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;

@@ -21,9 +21,8 @@ pub use self::LvaluePreference::*;
 
 use front::map as ast_map;
 use front::map::LinkedPath;
-use metadata::cstore::LOCAL_CRATE;
-use metadata::util::CrateStore;
 use middle;
+use middle::cstore::{CrateStore, LOCAL_CRATE};
 use middle::def::{self, ExportMap};
 use middle::def_id::DefId;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};

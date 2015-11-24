@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use metadata::cstore::LOCAL_CRATE;
+use middle::cstore::LOCAL_CRATE;
 use middle::ty;
 use syntax::ast::CrateNum;
 use std::fmt;
