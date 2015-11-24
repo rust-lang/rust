@@ -234,7 +234,7 @@ impl TcpListener {
     ///
     /// Binding with a port number of 0 will request that the OS assigns a port
     /// to this listener. The port allocated can be queried via the
-    /// `socket_addr` function.
+    /// `local_addr` method.
     ///
     /// The address type can be any implementor of `ToSocketAddrs` trait. See
     /// its documentation for concrete examples.
