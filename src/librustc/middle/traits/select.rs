@@ -2695,11 +2695,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                skol_obligation_trait_ref);
 
         let origin = infer::RelateOutputImplTypes(obligation.cause.span);
-        if let Err(e) = self.infcx.sub_trait_refs(false,
-                                                  origin,
-                                                  impl_trait_ref.value.clone(),
-                                                  skol_obligation_trait_ref) {
-            debug!("match_impl: failed sub_trait_refs due to `{}`", e);
+        if let Err(e) = self.infcx.eq_trait_refs(false,
+                                                 origin,
+                                                 impl_trait_ref.value.clone(),
+                                                 skol_obligation_trait_ref) {
+            debug!("match_impl: failed eq_trait_refs due to `{}`", e);
             return Err(());
         }
 

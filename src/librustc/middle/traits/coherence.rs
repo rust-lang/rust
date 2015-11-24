@@ -20,7 +20,7 @@ use super::util;
 use metadata::cstore::LOCAL_CRATE;
 use middle::def_id::DefId;
 use middle::subst::{Subst, Substs, TypeSpace};
-use middle::ty::{self, ToPolyTraitRef, Ty};
+use middle::ty::{self, Ty};
 use middle::infer::{self, InferCtxt};
 use syntax::codemap::{DUMMY_SP, Span};
 
@@ -41,12 +41,11 @@ pub fn overlapping_impls(infcx: &InferCtxt,
 
     let selcx = &mut SelectionContext::intercrate(infcx);
     infcx.probe(|_| {
-        overlap(selcx, impl1_def_id, impl2_def_id) || overlap(selcx, impl2_def_id, impl1_def_id)
+        overlap(selcx, impl1_def_id, impl2_def_id)
     })
 }
 
-/// Can the types from impl `a` be used to satisfy impl `b`?
-/// (Including all conditions)
+/// Can both impl `a` and impl `b` be satisfied by a common type (including `where` clauses)?
 fn overlap(selcx: &mut SelectionContext,
            a_def_id: DefId,
            b_def_id: DefId)
@@ -68,16 +67,16 @@ fn overlap(selcx: &mut SelectionContext,
 
     debug!("overlap: b_trait_ref={:?}", b_trait_ref);
 
-    // Does `a <: b` hold? If not, no overlap.
-    if let Err(_) = infer::mk_sub_poly_trait_refs(selcx.infcx(),
-                                                  true,
-                                                  infer::Misc(DUMMY_SP),
-                                                  a_trait_ref.to_poly_trait_ref(),
-                                                  b_trait_ref.to_poly_trait_ref()) {
+    // Do `a` and `b` unify? If not, no overlap.
+    if let Err(_) = infer::mk_eq_trait_refs(selcx.infcx(),
+                                            true,
+                                            infer::Misc(DUMMY_SP),
+                                            a_trait_ref,
+                                            b_trait_ref) {
         return false;
     }
 
-    debug!("overlap: subtraitref check succeeded");
+    debug!("overlap: unification check succeeded");
 
     // Are any of the obligations unsatisfiable? If so, no overlap.
     let infcx = selcx.infcx();
