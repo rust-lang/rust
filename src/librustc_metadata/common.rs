@@ -12,8 +12,6 @@
 
 pub use self::astencode_tag::*;
 
-use back::svh::Svh;
-
 // RBML enum definitions and utils shared by the encoder and decoder
 //
 // 0x00..0x1f: reserved for RBML generic type tags
@@ -190,12 +188,6 @@ pub const tag_reachable_id: usize = 0x87;
 pub const tag_items_data_item_stability: usize = 0x88;
 
 pub const tag_items_data_item_repr: usize = 0x89;
-
-#[derive(Clone, Debug)]
-pub struct LinkMeta {
-    pub crate_name: String,
-    pub crate_hash: Svh,
-}
 
 pub const tag_struct_fields: usize = 0x10d; // top-level only
 pub const tag_struct_field: usize = 0x8a;

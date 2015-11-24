@@ -17,12 +17,11 @@ use super::svh::Svh;
 use session::config;
 use session::config::NoDebugInfo;
 use session::config::{OutputFilenames, Input, OutputType};
+use session::filesearch;
 use session::search_paths::PathKind;
 use session::Session;
-use metadata::{util as mdutil};
-use metadata::filesearch;
-use metadata::util::{CrateStore, LinkMeta};
-use metadata::util::{LinkagePreference, NativeLibraryKind};
+use middle::cstore::{self, CrateStore, LinkMeta};
+use middle::cstore::{LinkagePreference, NativeLibraryKind};
 use middle::dependency_format::Linkage;
 use middle::ty::{self, Ty};
 use rustc::front::map::DefPath;
@@ -138,7 +137,7 @@ pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],
                        input: &Input) -> String {
     let validate = |s: String, span: Option<Span>| {
-        mdutil::validate_crate_name(sess, &s[..], span);
+        cstore::validate_crate_name(sess, &s[..], span);
         s
     };
 

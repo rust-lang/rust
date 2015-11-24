@@ -17,12 +17,12 @@ use astconv::AstConv;
 use check::{self, FnCtxt};
 use front::map as hir_map;
 use middle::ty::{self, Ty, ToPolyTraitRef, ToPredicate, HasTypeFlags};
+use middle::cstore::{self, CrateStore, DefLike};
 use middle::def;
 use middle::def_id::DefId;
 use middle::lang_items::FnOnceTraitLangItem;
 use middle::subst::Substs;
 use middle::traits::{Obligation, SelectionContext};
-use metadata::util::{self as mdutil, CrateStore, DefLike};
 use util::nodemap::{FnvHashSet};
 
 use syntax::ast;
@@ -418,13 +418,13 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
         fn handle_external_def(traits: &mut AllTraitsVec,
                                external_mods: &mut FnvHashSet<DefId>,
                                ccx: &CrateCtxt,
-                               cstore: &for<'a> mdutil::CrateStore<'a>,
-                               dl: mdutil::DefLike) {
+                               cstore: &for<'a> cstore::CrateStore<'a>,
+                               dl: cstore::DefLike) {
             match dl {
-                mdutil::DlDef(def::DefTrait(did)) => {
+                cstore::DlDef(def::DefTrait(did)) => {
                     traits.push(TraitInfo::new(did));
                 }
-                mdutil::DlDef(def::DefMod(did)) => {
+                cstore::DlDef(def::DefMod(did)) => {
                     if !external_mods.insert(did) {
                         return;
                     }

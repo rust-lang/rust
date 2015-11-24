@@ -8,159 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use back::svh::Svh;
-use front::map as ast_map;
-use metadata::cstore;
-use metadata::decoder;
-use metadata::encoder;
-use metadata::loader;
-use middle::astencode;
+use astencode;
+use cstore;
+use decoder;
+use encoder;
+use loader;
+
+use middle::cstore::{CrateStore, CrateSource, ChildItem, FoundAst};
+use middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
 use middle::def;
 use middle::lang_items;
 use middle::ty::{self, Ty};
 use middle::def_id::{DefId, DefIndex};
-use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
-use std::any::Any;
+use rustc::front::map as ast_map;
+use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
+
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::path::PathBuf;
 use syntax::ast;
 use syntax::attr;
+use rustc_back::svh::Svh;
 use rustc_back::target::Target;
 use rustc_front::hir;
-
-pub use metadata::common::LinkMeta;
-pub use metadata::creader::validate_crate_name;
-pub use metadata::cstore::CrateSource;
-pub use metadata::cstore::LinkagePreference;
-pub use metadata::cstore::NativeLibraryKind;
-pub use metadata::decoder::DecodeInlinedItem;
-pub use metadata::decoder::DefLike;
-pub use metadata::inline::InlinedItem;
-
-pub use self::DefLike::{DlDef, DlField, DlImpl};
-pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};
-
-pub struct ChildItem {
-    pub def: DefLike,
-    pub name: ast::Name,
-    pub vis: hir::Visibility
-}
-
-pub enum FoundAst<'ast> {
-    Found(&'ast InlinedItem),
-    FoundParent(DefId, &'ast InlinedItem),
-    NotFound,
-}
-
-pub trait CrateStore<'tcx> : Any {
-    // item info
-    fn stability(&self, def: DefId) -> Option<attr::Stability>;
-    fn closure_kind(&self, tcx: &ty::ctxt<'tcx>, def_id: DefId)
-                    -> ty::ClosureKind;
-    fn closure_ty(&self, tcx: &ty::ctxt<'tcx>, def_id: DefId)
-                  -> ty::ClosureTy<'tcx>;
-    fn item_variances(&self, def: DefId) -> ty::ItemVariances;
-    fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr>;
-    fn item_type(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
-                 -> ty::TypeScheme<'tcx>;
-    fn item_path(&self, def: DefId) -> Vec<ast_map::PathElem>;
-    fn item_name(&self, def: DefId) -> ast::Name;
-    fn item_predicates(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
-                       -> ty::GenericPredicates<'tcx>;
-    fn item_super_predicates(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
-                             -> ty::GenericPredicates<'tcx>;
-    fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>;
-    fn item_symbol(&self, def: DefId) -> String;
-    fn trait_def(&self, tcx: &ty::ctxt<'tcx>, def: DefId)-> ty::TraitDef<'tcx>;
-    fn adt_def(&self, tcx: &ty::ctxt<'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>;
-    fn method_arg_names(&self, did: DefId) -> Vec<String>;
-    fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>;
-
-    // trait info
-    fn implementations_of_trait(&self, def_id: DefId) -> Vec<DefId>;
-    fn provided_trait_methods(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
-                              -> Vec<Rc<ty::Method<'tcx>>>;
-    fn trait_item_def_ids(&self, def: DefId)
-                          -> Vec<ty::ImplOrTraitItemId>;
-
-    // impl info
-    fn impl_items(&self, impl_def_id: DefId) -> Vec<ty::ImplOrTraitItemId>;
-    fn impl_trait_ref(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
-                      -> Option<ty::TraitRef<'tcx>>;
-    fn impl_polarity(&self, def: DefId) -> Option<hir::ImplPolarity>;
-    fn custom_coerce_unsized_kind(&self, def: DefId)
-                                  -> Option<ty::adjustment::CustomCoerceUnsized>;
-    fn associated_consts(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
-                         -> Vec<Rc<ty::AssociatedConst<'tcx>>>;
-
-    // trait/impl-item info
-    fn trait_of_item(&self, tcx: &ty::ctxt<'tcx>, def_id: DefId)
-                     -> Option<DefId>;
-    fn impl_or_trait_item(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
-                          -> ty::ImplOrTraitItem<'tcx>;
-
-    // flags
-    fn is_const_fn(&self, did: DefId) -> bool;
-    fn is_defaulted_trait(&self, did: DefId) -> bool;
-    fn is_impl(&self, did: DefId) -> bool;
-    fn is_default_impl(&self, impl_did: DefId) -> bool;
-    fn is_extern_fn(&self, tcx: &ty::ctxt<'tcx>, did: DefId) -> bool;
-    fn is_static(&self, did: DefId) -> bool;
-    fn is_static_method(&self, did: DefId) -> bool;
-    fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool;
-    fn is_typedef(&self, did: DefId) -> bool;
-
-    // crate metadata
-    fn dylib_dependency_formats(&self, cnum: ast::CrateNum)
-                                    -> Vec<(ast::CrateNum, LinkagePreference)>;
-    fn lang_items(&self, cnum: ast::CrateNum) -> Vec<(DefIndex, usize)>;
-    fn missing_lang_items(&self, cnum: ast::CrateNum) -> Vec<lang_items::LangItem>;
-    fn is_staged_api(&self, cnum: ast::CrateNum) -> bool;
-    fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool;
-    fn is_allocator(&self, cnum: ast::CrateNum) -> bool;
-    fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>;
-    fn crate_name(&self, cnum: ast::CrateNum) -> String;
-    fn crate_hash(&self, cnum: ast::CrateNum) -> Svh;
-    fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
-                                -> FnvHashMap<DefId, Vec<ast::Attribute>>;
-    fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>;
-    fn native_libraries(&self, cnum: ast::CrateNum) -> Vec<(NativeLibraryKind, String)>;
-    fn reachable_ids(&self, cnum: ast::CrateNum) -> Vec<DefId>;
-
-    // resolve
-    fn def_path(&self, def: DefId) -> ast_map::DefPath;
-    fn tuple_struct_definition_if_ctor(&self, did: DefId) -> Option<DefId>;
-    fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
-    fn item_children(&self, did: DefId) -> Vec<ChildItem>;
-    fn crate_top_level_items(&self, cnum: ast::CrateNum) -> Vec<ChildItem>;
-
-    // misc. metadata
-    fn maybe_get_item_ast(&'tcx self, tcx: &ty::ctxt<'tcx>, def: DefId)
-                          -> FoundAst<'tcx>;
-    // This is basically a 1-based range of ints, which is a little
-    // silly - I may fix that.
-    fn crates(&self) -> Vec<ast::CrateNum>;
-    fn used_libraries(&self) -> Vec<(String, NativeLibraryKind)>;
-    fn used_link_args(&self) -> Vec<String>;
-
-    // utility functions
-    fn metadata_filename(&self) -> &str;
-    fn metadata_section_name(&self, target: &Target) -> &str;
-    fn encode_type(&self, tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Vec<u8>;
-    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>;
-    fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource;
-    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>;
-    fn encode_metadata(&self,
-                       tcx: &ty::ctxt<'tcx>,
-                       reexports: &def::ExportMap,
-                       item_symbols: &RefCell<NodeMap<String>>,
-                       link_meta: &LinkMeta,
-                       reachable: &NodeSet,
-                       krate: &hir::Crate) -> Vec<u8>;
-    fn metadata_encoding_version(&self) -> &[u8];
-}
 
 impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn stability(&self, def: DefId) -> Option<attr::Stability>

@@ -12,17 +12,17 @@
 
 //! Validates all used crates and extern libraries and loads their metadata
 
-use back::svh::Svh;
-use session::{config, Session};
-use session::search_paths::PathKind;
-use metadata::common::rustc_version;
-use metadata::cstore;
-use metadata::cstore::{CStore, CrateSource, MetadataBlob};
-use metadata::decoder;
-use metadata::loader;
-use metadata::loader::CratePaths;
-use util::nodemap::FnvHashMap;
-use front::map as hir_map;
+use common::rustc_version;
+use cstore::{self, CStore, CrateSource, MetadataBlob};
+use decoder;
+use loader::{self, CratePaths};
+
+use rustc::back::svh::Svh;
+use rustc::session::{config, Session};
+use rustc::session::search_paths::PathKind;
+use rustc::middle::cstore::validate_crate_name;
+use rustc::util::nodemap::FnvHashMap;
+use rustc::front::map as hir_map;
 
 use std::cell::{RefCell, Cell};
 use std::path::PathBuf;
@@ -90,29 +90,6 @@ struct CrateInfo {
     id: ast::NodeId,
     should_link: bool,
 }
-
-pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
-    let say = |s: &str| {
-        match (sp, sess) {
-            (_, None) => panic!("{}", s),
-            (Some(sp), Some(sess)) => sess.span_err(sp, s),
-            (None, Some(sess)) => sess.err(s),
-        }
-    };
-    if s.is_empty() {
-        say("crate name must not be empty");
-    }
-    for c in s.chars() {
-        if c.is_alphanumeric() { continue }
-        if c == '_'  { continue }
-        say(&format!("invalid character `{}` in crate name: `{}`", c, s));
-    }
-    match sess {
-        Some(sess) => sess.abort_if_errors(),
-        None => {}
-    }
-}
-
 
 fn register_native_lib(sess: &Session,
                        cstore: &CStore,

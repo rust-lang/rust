@@ -13,23 +13,25 @@
 #![allow(unused_must_use)] // everything is just a MemWriter, can't fail
 #![allow(non_camel_case_types)]
 
-use back::svh::Svh;
-use session::config;
-use metadata::common::*;
-use metadata::cstore;
-use metadata::cstore::LOCAL_CRATE;
-use metadata::decoder;
-use metadata::tyencode;
-use metadata::index::{self, IndexData};
-use metadata::inline::InlinedItemRef;
-use metadata::util::CrateStore;
+use common::*;
+use cstore;
+use decoder;
+use tyencode;
+use index::{self, IndexData};
+
+use middle::cstore::{LOCAL_CRATE, CrateStore, InlinedItemRef, LinkMeta};
 use middle::def;
 use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
 use middle::stability;
 use middle::subst;
 use middle::ty::{self, Ty};
-use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
+
+use rustc::back::svh::Svh;
+use rustc::front::map::{LinkedPath, PathElem, PathElems};
+use rustc::front::map as ast_map;
+use rustc::session::config;
+use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use serialize::Encodable;
 use std::cell::RefCell;
@@ -49,8 +51,6 @@ use rbml::writer::Encoder;
 use rustc_front::hir;
 use rustc_front::intravisit::Visitor;
 use rustc_front::intravisit;
-use front::map::{LinkedPath, PathElem, PathElems};
-use front::map as ast_map;
 
 pub type EncodeInlinedItem<'a> =
     Box<FnMut(&EncodeContext, &mut Encoder, InlinedItemRef) + 'a>;

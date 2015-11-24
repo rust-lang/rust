@@ -16,9 +16,6 @@ use rustc::session::Session;
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
-use rustc::metadata;
-use rustc::metadata::creader::LocalCrateReader;
-use rustc::metadata::cstore::CStore;
 use rustc::middle::{stability, ty, reachable};
 use rustc::middle::dependency_format;
 use rustc::middle;
@@ -26,6 +23,9 @@ use rustc::util::nodemap::NodeMap;
 use rustc::util::common::time;
 use rustc_borrowck as borrowck;
 use rustc_resolve as resolve;
+use rustc_metadata::macro_import;
+use rustc_metadata::creader::LocalCrateReader;
+use rustc_metadata::cstore::CStore;
 use rustc_trans::back::link;
 use rustc_trans::back::write;
 use rustc_trans::trans;
@@ -482,7 +482,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     let macros = time(time_passes,
                       "macro loading",
-                      || metadata::macro_import::read_macro_defs(sess, &cstore, &krate));
+                      || macro_import::read_macro_defs(sess, &cstore, &krate));
 
     let mut addl_plugins = Some(addl_plugins);
     let registrars = time(time_passes, "plugin loading", || {

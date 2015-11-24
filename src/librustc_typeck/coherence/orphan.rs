@@ -11,7 +11,7 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use metadata::cstore::LOCAL_CRATE;
+use middle::cstore::LOCAL_CRATE;
 use middle::def_id::DefId;
 use middle::traits;
 use middle::ty;

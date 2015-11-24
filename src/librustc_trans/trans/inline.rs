@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::{AvailableExternallyLinkage, InternalLinkage, SetLinkage};
-use metadata::util::{CrateStore, FoundAst, InlinedItem};
+use middle::cstore::{CrateStore, FoundAst, InlinedItem};
 use middle::def_id::DefId;
 use middle::subst::Substs;
 use trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};

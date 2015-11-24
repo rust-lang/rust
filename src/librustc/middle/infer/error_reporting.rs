@@ -76,7 +76,7 @@ use front::map as ast_map;
 use rustc_front::hir;
 use rustc_front::print::pprust;
 
-use metadata::util::CrateStore;
+use middle::cstore::CrateStore;
 use middle::def;
 use middle::def_id::DefId;
 use middle::infer::{self, TypeOrigin};

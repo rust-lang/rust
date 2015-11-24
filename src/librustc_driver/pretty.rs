@@ -19,7 +19,6 @@ use rustc_trans::back::link;
 
 use driver;
 
-use rustc::metadata::cstore::CStore;
 use rustc::middle::ty;
 use rustc::middle::cfg;
 use rustc::middle::cfg::graphviz::LabelledCFG;
@@ -28,6 +27,7 @@ use rustc::session::config::Input;
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
 use rustc_resolve as resolve;
+use rustc_metadata::cstore::CStore;
 
 use syntax::ast;
 use syntax::codemap;

@@ -22,7 +22,7 @@ use session::search_paths::SearchPaths;
 
 use rustc_back::target::Target;
 use lint;
-use metadata::cstore;
+use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::attr;

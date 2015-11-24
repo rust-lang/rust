@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use metadata::cstore::LOCAL_CRATE;
+use middle::cstore::LOCAL_CRATE;
 use middle::def_id::{DefId, DefIndex};
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_front::hir;

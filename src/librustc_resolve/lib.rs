@@ -54,7 +54,7 @@ use self::FallbackChecks::*;
 use rustc::front::map as hir_map;
 use rustc::session::Session;
 use rustc::lint;
-use rustc::metadata::util::{CrateStore, DefLike, DlDef};
+use rustc::middle::cstore::{CrateStore, DefLike, DlDef};
 use rustc::middle::def::*;
 use rustc::middle::def_id::DefId;
 use rustc::middle::pat_util::pat_bindings_hygienic;

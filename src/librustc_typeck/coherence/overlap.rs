@@ -11,8 +11,7 @@
 //! Overlap: No two impls for the same trait are implemented for the
 //! same type.
 
-use metadata::cstore::LOCAL_CRATE;
-use metadata::util::CrateStore;
+use middle::cstore::{CrateStore, LOCAL_CRATE};
 use middle::def_id::DefId;
 use middle::traits;
 use middle::ty;

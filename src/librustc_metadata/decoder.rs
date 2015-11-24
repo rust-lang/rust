@@ -12,29 +12,27 @@
 
 #![allow(non_camel_case_types)]
 
-pub use self::DefLike::*;
 use self::Family::*;
 
-use front::map as hir_map;
+use cstore::{self, crate_metadata};
+use common::*;
+use encoder::def_to_u64;
+use index;
+use tydecode::TyDecoder;
+
+use rustc::back::svh::Svh;
+use rustc::front::map as hir_map;
+use rustc::util::nodemap::FnvHashMap;
 use rustc_front::hir;
 
-use back::svh::Svh;
-use metadata::cstore::crate_metadata;
-use metadata::cstore::LOCAL_CRATE;
-use metadata::common::*;
-use metadata::cstore;
-use metadata::encoder::def_to_u64;
-use metadata::index;
-use metadata::inline::InlinedItem;
-use metadata::tydecode::TyDecoder;
-use metadata::util::FoundAst;
+use middle::cstore::{LOCAL_CRATE, FoundAst, InlinedItem, LinkagePreference};
+use middle::cstore::{DefLike, DlDef, DlField, DlImpl};
 use middle::def;
 use middle::def_id::{DefId, DefIndex};
 use middle::lang_items;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{self, RegionEscape, Ty};
-use util::nodemap::FnvHashMap;
 
 use std::cell::{Cell, RefCell};
 use std::io::prelude::*;
@@ -588,14 +586,6 @@ pub fn get_symbol_from_buf(data: &[u8], id: DefIndex) -> String {
     let pos = index.lookup_item(data, id).unwrap();
     let doc = reader::doc_at(data, pos as usize).unwrap().doc;
     item_symbol(doc)
-}
-
-// Something that a name can resolve to.
-#[derive(Copy, Clone, Debug)]
-pub enum DefLike {
-    DlDef(def::Def),
-    DlImpl(DefId),
-    DlField
 }
 
 /// Iterates over the language items in the given crate.
@@ -1315,7 +1305,7 @@ pub fn each_exported_macro<F>(data: &[u8], intr: &IdentInterner, mut f: F) where
 }
 
 pub fn get_dylib_dependency_formats(cdata: Cmd)
-    -> Vec<(ast::CrateNum, cstore::LinkagePreference)>
+    -> Vec<(ast::CrateNum, LinkagePreference)>
 {
     let formats = reader::get_doc(rbml::Doc::new(cdata.data()),
                                   tag_dylib_dependency_formats);
@@ -1332,9 +1322,9 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
             None => panic!("didn't find a crate in the cnum_map")
         };
         result.push((cnum, if link == "d" {
-            cstore::RequireDynamic
+            LinkagePreference::RequireDynamic
         } else {
-            cstore::RequireStatic
+            LinkagePreference::RequireStatic
         }));
     }
     return result;

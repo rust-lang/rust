@@ -99,7 +99,6 @@ extern crate rustc_back;
 
 pub use rustc::front;
 pub use rustc::lint;
-pub use rustc::metadata;
 pub use rustc::middle;
 pub use rustc::session;
 pub use rustc::util;

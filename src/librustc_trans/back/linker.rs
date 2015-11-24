@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use back::archive;
-use metadata::util::CrateStore;
+use middle::cstore::CrateStore;
 use middle::dependency_format::Linkage;
 use session::Session;
 use session::config::CrateTypeDylib;
