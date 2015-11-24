@@ -2751,8 +2751,13 @@ pub type FreevarMap = NodeMap<Vec<Freevar>>;
 
 pub type CaptureModeMap = NodeMap<hir::CaptureClause>;
 
+pub struct TraitCandidate {
+    pub def_id: DefId,
+    pub import_id: Option<NodeId>,
+}
+
 // Trait method resolution
-pub type TraitMap = NodeMap<Vec<DefId>>;
+pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
 
 // Map from the NodeId of a glob import to a list of items which are actually
 // imported.

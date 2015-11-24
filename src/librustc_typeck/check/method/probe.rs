@@ -44,6 +44,7 @@ struct ProbeContext<'a, 'tcx:'a> {
     inherent_candidates: Vec<Candidate<'tcx>>,
     extension_candidates: Vec<Candidate<'tcx>>,
     impl_dups: HashSet<DefId>,
+    import_id: Option<ast::NodeId>,
 
     /// Collects near misses when the candidate functions are missing a `self` keyword and is only
     /// used for error reporting
@@ -66,6 +67,7 @@ struct Candidate<'tcx> {
     xform_self_ty: Ty<'tcx>,
     item: ty::ImplOrTraitItem<'tcx>,
     kind: CandidateKind<'tcx>,
+    import_id: Option<ast::NodeId>,
 }
 
 #[derive(Debug)]
@@ -83,6 +85,7 @@ enum CandidateKind<'tcx> {
 pub struct Pick<'tcx> {
     pub item: ty::ImplOrTraitItem<'tcx>,
     pub kind: PickKind<'tcx>,
+    pub import_id: Option<ast::NodeId>,
 
     // Indicates that the source expression should be autoderef'd N times
     //
@@ -246,6 +249,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             inherent_candidates: Vec::new(),
             extension_candidates: Vec::new(),
             impl_dups: HashSet::new(),
+            import_id: None,
             steps: Rc::new(steps),
             opt_simplified_steps: opt_simplified_steps,
             static_candidates: Vec::new(),
@@ -427,7 +431,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         self.inherent_candidates.push(Candidate {
             xform_self_ty: xform_self_ty,
             item: item,
-            kind: InherentImplCandidate(impl_substs, obligations)
+            kind: InherentImplCandidate(impl_substs, obligations),
+            import_id: self.import_id,
         });
     }
 
@@ -455,7 +460,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             this.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
                 item: item,
-                kind: ObjectCandidate
+                kind: ObjectCandidate,
+                import_id: this.import_id,
             });
         });
     }
@@ -524,7 +530,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             this.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
                 item: item,
-                kind: WhereClauseCandidate(poly_trait_ref)
+                kind: WhereClauseCandidate(poly_trait_ref),
+                import_id: this.import_id,
             });
         });
     }
@@ -568,9 +575,13 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let mut duplicates = HashSet::new();
         let opt_applicable_traits = self.fcx.ccx.trait_map.get(&expr_id);
         if let Some(applicable_traits) = opt_applicable_traits {
-            for &trait_did in applicable_traits {
+            for trait_candidate in applicable_traits {
+                let trait_did = trait_candidate.def_id;
                 if duplicates.insert(trait_did) {
-                    try!(self.assemble_extension_candidates_for_trait(trait_did));
+                    self.import_id = trait_candidate.import_id;
+                    let result = self.assemble_extension_candidates_for_trait(trait_did);
+                    self.import_id = None;
+                    try!(result);
                 }
             }
         }
@@ -670,7 +681,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             self.extension_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
                 item: item.clone(),
-                kind: ExtensionImplCandidate(impl_def_id, impl_substs, obligations)
+                kind: ExtensionImplCandidate(impl_def_id, impl_substs, obligations),
+                import_id: self.import_id,
             });
         });
     }
@@ -745,7 +757,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             self.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
                 item: item.clone(),
-                kind: TraitCandidate
+                kind: TraitCandidate,
+                import_id: self.import_id,
             });
         }
 
@@ -802,7 +815,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     self.extension_candidates.push(Candidate {
                         xform_self_ty: xform_self_ty,
                         item: item.clone(),
-                        kind: TraitCandidate
+                        kind: TraitCandidate,
+                        import_id: self.import_id,
                     });
                 }
             }
@@ -833,7 +847,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             self.extension_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
                 item: item.clone(),
-                kind: WhereClauseCandidate(poly_bound)
+                kind: WhereClauseCandidate(poly_bound),
+                import_id: self.import_id,
             });
         }
     }
@@ -1126,6 +1141,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         Some(Pick {
             item: probes[0].item.clone(),
             kind: TraitPick,
+            import_id: probes[0].import_id,
             autoderefs: 0,
             autoref: None,
             unsize: None
@@ -1329,6 +1345,7 @@ impl<'tcx> Candidate<'tcx> {
                     WhereClausePick(trait_ref.clone())
                 }
             },
+            import_id: self.import_id,
             autoderefs: 0,
             autoref: None,
             unsize: None

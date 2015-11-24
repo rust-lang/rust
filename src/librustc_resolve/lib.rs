@@ -60,7 +60,7 @@ use rustc::middle::def_id::DefId;
 use rustc::middle::pat_util::pat_bindings;
 use rustc::middle::privacy::*;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
-use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
+use rustc::middle::ty::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 
 use syntax::ast;
@@ -3608,14 +3608,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn get_traits_containing_item(&mut self, name: Name) -> Vec<DefId> {
+    fn get_traits_containing_item(&mut self, name: Name) -> Vec<TraitCandidate> {
         debug!("(getting traits containing item) looking for '{}'", name);
 
-        fn add_trait_info(found_traits: &mut Vec<DefId>, trait_def_id: DefId, name: Name) {
+        fn add_trait_info(found_traits: &mut Vec<TraitCandidate>,
+                          trait_def_id: DefId,
+                          import_id: Option<NodeId>,
+                          name: Name) {
             debug!("(adding trait info) found trait {:?} for method '{}'",
                    trait_def_id,
                    name);
-            found_traits.push(trait_def_id);
+            found_traits.push(TraitCandidate {
+                def_id: trait_def_id,
+                import_id: import_id,
+            });
         }
 
         let mut found_traits = Vec::new();
@@ -3625,7 +3631,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             match self.current_trait_ref {
                 Some((trait_def_id, _)) => {
                     if self.trait_item_map.contains_key(&(name, trait_def_id)) {
-                        add_trait_info(&mut found_traits, trait_def_id, name);
+                        add_trait_info(&mut found_traits, trait_def_id, None, name);
                     }
                 }
                 None => {} // Nothing to do.
@@ -3645,7 +3651,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         _ => continue,
                     };
                     if self.trait_item_map.contains_key(&(name, trait_def_id)) {
-                        add_trait_info(&mut found_traits, trait_def_id, name);
+                        add_trait_info(&mut found_traits, trait_def_id, None, name);
                     }
                 }
             }
@@ -3661,8 +3667,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some(..) | None => continue,
                 };
                 if self.trait_item_map.contains_key(&(name, did)) {
-                    add_trait_info(&mut found_traits, did, name);
                     let id = import.type_ns.id;
+                    add_trait_info(&mut found_traits, did, Some(id), name);
                     self.used_imports.insert((id, TypeNS));
                     let trait_name = self.get_trait_name(did);
                     self.record_import_use(id, trait_name);
