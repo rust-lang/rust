@@ -16,21 +16,87 @@ mod prim_bool { }
 
 #[doc(primitive = "char")]
 //
-/// A Unicode scalar value.
+/// A character type.
 ///
-/// A `char` represents a
-/// *[Unicode scalar
-/// value](http://www.unicode.org/glossary/#unicode_scalar_value)*, as it can
-/// contain any Unicode code point except high-surrogate and low-surrogate code
-/// points.
+/// The `char` type represents a single character. More specifically, since
+/// 'character' isn't a well-defined concept in Unicode, `char` is a '[Unicode
+/// scalar value]', which is similar to, but not the same as, a '[Unicode code
+/// point]'. 
 ///
-/// As such, only values in the ranges \[0x0,0xD7FF\] and \[0xE000,0x10FFFF\]
-/// (inclusive) are allowed. A `char` can always be safely cast to a `u32`;
-/// however the converse is not always true due to the above range limits
-/// and, as such, should be performed via the `from_u32` function.
+/// [Unicode scalar value]: http://www.unicode.org/glossary/#unicode_scalar_value
+/// [Unicode code point]: http://www.unicode.org/glossary/#code_point
 ///
-/// *[See also the `std::char` module](char/index.html).*
+/// This documentation describes a number of methods and trait implementations on the
+/// `char` type. For technical reasons, there is additional, separate
+/// documentation in [the `std::char` module](char/index.html) as well.
 ///
+/// # Representation
+///
+/// `char` is always four bytes in size. This is a different representation than
+/// a given character would have as part of a [`String`], for example:
+///
+/// ```
+/// let v = vec!['h', 'e', 'l', 'l', 'o'];
+///
+/// // five elements times four bytes for each element
+/// assert_eq!(20, v.len() * std::mem::size_of::<char>());
+///
+/// let s = String::from("hello");
+///
+/// // five elements times one byte per element
+/// assert_eq!(5, s.len() * std::mem::size_of::<u8>());
+/// ```
+///
+/// [`String`]: string/struct.String.html
+///
+/// As always, remember that a human intuition for 'character' may not map to
+/// Unicode's definitions. For example, emoji symbols such as '❤️' are more than
+/// one byte; ❤️ in particular is six:
+///
+/// ```
+/// let s = String::from("❤️");
+///
+/// // six bytes times one byte for each element
+/// assert_eq!(6, s.len() * std::mem::size_of::<u8>());
+/// ```
+///
+/// This also means it won't fit into a `char`. This code:
+///
+/// ```ignore
+/// let heart = '❤️';
+/// ```
+///
+/// gives an error:
+///
+/// ```text
+/// error: character literal may only contain one codepoint: '❤
+/// let heart = '❤️';
+///             ^~
+/// ```
+///
+/// Another implication of this is that if you want to do per-`char`acter
+/// processing, it can end up using a lot more memory:
+///
+/// ```
+/// let s = String::from("love: ❤️");
+/// let v: Vec<char> = s.chars().collect();
+///
+/// assert_eq!(12, s.len() * std::mem::size_of::<u8>());
+/// assert_eq!(32, v.len() * std::mem::size_of::<char>());
+/// ```
+///
+/// Or may give you results you may not expect:
+///
+/// ```
+/// let s = String::from("❤️");
+/// 
+/// let mut iter = s.chars();
+///
+/// // we get two chars out of a single ❤️
+/// assert_eq!(Some('\u{2764}'), iter.next());
+/// assert_eq!(Some('\u{fe0f}'), iter.next());
+/// assert_eq!(None, iter.next());
+/// ```
 mod prim_char { }
 
 #[doc(primitive = "unit")]
