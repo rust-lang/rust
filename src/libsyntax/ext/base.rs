@@ -678,9 +678,9 @@ impl<'a> ExtCtxt<'a> {
     pub fn bt_push(&mut self, ei: ExpnInfo) {
         self.recursion_count += 1;
         if self.recursion_count > self.ecfg.recursion_limit {
-            panic!(self.span_fatal(ei.call_site,
+            self.span_fatal(ei.call_site,
                             &format!("recursion limit reached while expanding the macro `{}`",
-                                    ei.callee.name())));
+                                    ei.callee.name()));
         }
 
         let mut call_site = ei.call_site;

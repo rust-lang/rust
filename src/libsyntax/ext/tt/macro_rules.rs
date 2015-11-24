@@ -209,12 +209,12 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 best_fail_msg = (*msg).clone();
             },
             Error(err_sp, ref msg) => {
-                panic!(cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..]))
+                cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..])
             }
         }
     }
 
-    panic!(cx.span_fatal(best_fail_spot.substitute_dummy(sp), &best_fail_msg[..]));
+     cx.span_fatal(best_fail_spot.substitute_dummy(sp), &best_fail_msg[..]);
 }
 
 // Note that macro-by-example's input is also matched against a token tree:

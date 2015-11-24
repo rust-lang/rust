@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that the unboxed closure sugar can be used with an arbitrary
-// struct type and that it is equivalent to the same syntax using
-// angle brackets. This test covers only simple types and in
-// particular doesn't test bound regions.
-
 #![allow(dead_code)]
 #![deny(unreachable_code)]
 
