@@ -443,7 +443,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     debug!("(resolving single import) found value binding");
                     value_result = BoundResult(target_module.clone(),
                                                child_name_bindings.value_ns.clone());
-                    if directive.is_public && !child_name_bindings.value_ns.is_public() {
+                    if directive.is_public && !child_name_bindings.value_ns.is_reexportable() {
                         let msg = format!("`{}` is private, and cannot be reexported", source);
                         let note_msg = format!("Consider marking `{}` as `pub` in the imported \
                                                 module",
@@ -458,7 +458,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     type_result = BoundResult(target_module.clone(),
                                               child_name_bindings.type_ns.clone());
                     if !pub_err && directive.is_public &&
-                       !child_name_bindings.type_ns.is_public() {
+                       !child_name_bindings.type_ns.is_reexportable() {
                         let msg = format!("`{}` is private, and cannot be reexported", source);
                         let note_msg = format!("Consider declaring module `{}` as a `pub mod`",
                                                source);

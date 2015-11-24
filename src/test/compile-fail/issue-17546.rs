@@ -14,7 +14,7 @@ use foo::NoResult; // Through a re-export
 mod foo {
     pub use self::MyEnum::NoResult;
 
-    enum MyEnum {
+    pub enum MyEnum {
         Result,
         NoResult
     }
