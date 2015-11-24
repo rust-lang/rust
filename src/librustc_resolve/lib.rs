@@ -907,6 +907,9 @@ bitflags! {
     flags DefModifiers: u8 {
         const PUBLIC     = 1 << 0,
         const IMPORTABLE = 1 << 1,
+        // All variants are considered `PUBLIC`, but some of them live in private enums.
+        // We need to track them to prohibit reexports like `pub use PrivEnum::Variant`.
+        const PRIVATE_VARIANT = 1 << 2,
     }
 }
 
@@ -1005,6 +1008,11 @@ impl NameBinding {
 
     fn is_public(&self) -> bool {
         self.defined_with(DefModifiers::PUBLIC)
+    }
+
+    fn is_reexportable(&self) -> bool {
+        self.defined_with(DefModifiers::PUBLIC) &&
+        !self.defined_with(DefModifiers::PRIVATE_VARIANT)
     }
 
     fn def_and_lp(&self) -> (Def, LastPrivate) {
