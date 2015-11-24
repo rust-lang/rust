@@ -71,6 +71,8 @@ use html::item_type::ItemType;
 use html::markdown::{self, Markdown};
 use html::{highlight, layout};
 
+use html::styles;
+
 /// A pair of name and its optional document.
 pub type NameDoc = (String, Option<String>);
 
@@ -600,10 +602,13 @@ fn write_shared(cx: &Context,
                include_bytes!("static/jquery-2.1.4.min.js")));
     try!(write(cx.dst.join("main.js"),
                include_bytes!("static/main.js")));
+    try!(write(cx.dst.join("switcher.js"),
+               include_bytes!("static/switcher.js")));
     try!(write(cx.dst.join("playpen.js"),
                include_bytes!("static/playpen.js")));
-    try!(write(cx.dst.join("main.css"),
-               include_bytes!("static/main.css")));
+    try!(styles::include_style_files(&cx.dst));
+    try!(write(cx.dst.join("rustdoc.css"),
+               include_bytes!("static/rustdoc.css")));
     try!(write(cx.dst.join("normalize.css"),
                include_bytes!("static/normalize.css")));
     try!(write(cx.dst.join("FiraSans-Regular.woff"),
@@ -742,7 +747,7 @@ fn render_sources(cx: &mut Context,
 
 /// Writes the entire contents of a string to a destination, not attempting to
 /// catch any errors.
-fn write(dst: PathBuf, contents: &[u8]) -> Result<(), Error> {
+pub fn write(dst: PathBuf, contents: &[u8]) -> Result<(), Error> {
     Ok(try_err!(try_err!(File::create(&dst), &dst).write_all(contents), &dst))
 }
 

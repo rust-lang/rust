@@ -93,3 +93,4 @@ tmp.*.rs
 version.md
 version.ml
 version.texi
+src/librustdoc/html/styles.rs

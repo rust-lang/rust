@@ -86,6 +86,7 @@ pub mod html {
     pub mod markdown;
     pub mod render;
     pub mod toc;
+    pub mod styles;
 }
 pub mod markdown;
 pub mod passes;
