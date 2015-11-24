@@ -13,6 +13,7 @@
 #![feature(custom_attribute)]
 #![feature(box_syntax)]
 #![feature(placement_in_syntax)]
+#![feature(stmt_expr_attributes)]
 
 fn main() { }
 

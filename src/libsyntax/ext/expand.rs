@@ -21,7 +21,7 @@ use attr::{AttrMetaMethods, WithAttrs};
 use codemap;
 use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use ext::base::*;
-use feature_gate::{self, Features, GatedCfg};
+use feature_gate::{self, Features, GatedCfgAttr};
 use fold;
 use fold::*;
 use util::move_map::MoveMap;
@@ -586,7 +586,7 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
                         // also, don't forget to expand the init:
                         init: init.map(|e| fld.fold_expr(e)),
                         span: span,
-                        attrs: attrs
+                        attrs: fold::fold_thin_attrs(attrs, fld),
                     }
                 });
                 SmallVector::one(P(Spanned {
@@ -1280,7 +1280,7 @@ pub fn expand_crate<'feat>(parse_sess: &parse::ParseSess,
                            // these are the macros being imported to this crate:
                            imported_macros: Vec<ast::MacroDef>,
                            user_exts: Vec<NamedSyntaxExtension>,
-                           feature_gated_cfgs: &mut Vec<GatedCfg>,
+                           feature_gated_cfgs: &mut Vec<GatedCfgAttr>,
                            c: Crate) -> (Crate, HashSet<Name>) {
     let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg,
                               feature_gated_cfgs);
