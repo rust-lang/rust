@@ -2490,6 +2490,8 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // of arguments when we typecheck the functions. This isn't really the
     // right way to do this.
     let xs = [false, true];
+    let mut any_diverges = false; // has any of the arguments diverged?
+    let mut warned = false; // have we already warned about unreachable code?
     for check_blocks in &xs {
         let check_blocks = *check_blocks;
         debug!("check_blocks={}", check_blocks);
@@ -2512,6 +2514,16 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             supplied_arg_count
         };
         for (i, arg) in args.iter().take(t).enumerate() {
+            if any_diverges && !warned {
+                fcx.ccx
+                    .tcx
+                    .sess
+                    .add_lint(lint::builtin::UNREACHABLE_CODE,
+                              arg.id,
+                              arg.span,
+                              "unreachable expression".to_string());
+                warned = true;
+            }
             let is_block = match arg.node {
                 hir::ExprClosure(..) => true,
                 _ => false
@@ -2542,7 +2554,23 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     coerce_ty.map(|ty| demand::suptype(fcx, arg.span, formal_ty, ty));
                 });
             }
+
+            if let Some(&arg_ty) = fcx.inh.tables.borrow().node_types.get(&arg.id) {
+                any_diverges = any_diverges || fcx.infcx().type_var_diverges(arg_ty);
+            }
         }
+        if any_diverges && !warned {
+            let parent = fcx.ccx.tcx.map.get_parent_node(args[0].id);
+            fcx.ccx
+                .tcx
+                .sess
+                .add_lint(lint::builtin::UNREACHABLE_CODE,
+                          parent,
+                          sp,
+                          "unreachable call".to_string());
+            warned = true;
+        }
+
     }
 
     // We also need to make sure we at least write the ty of the other
