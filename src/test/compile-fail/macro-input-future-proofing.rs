@@ -25,6 +25,8 @@ macro_rules! errors_everywhere {
     ($($ty:ty)* -) => (); //~ ERROR `$ty:ty` is followed by `-`
     ($($a:ty, $b:ty)* -) => (); //~ ERROR `$b:ty` is followed by `-`
     ($($ty:ty)-+) => (); //~ ERROR `$ty:ty` is followed by `-`, which is not allowed for `ty`
+    ( $($a:expr)* $($b:tt)* ) => { };
+    //~^ ERROR `$a:expr` is followed by `$b:tt`, which is not allowed for `expr` fragments
 }
 
 fn main() { }
