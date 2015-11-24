@@ -17,6 +17,16 @@ macro_rules! m {
     }
 }
 
+macro_rules! n {
+    (#[$attr:meta] $e:expr) => {
+        "expr excludes attr"
+    };
+    ($e:expr) => {
+        "expr includes attr"
+    }
+}
+
 fn main() {
-    assert_eq!(m!(#[attr] 1 + 1), "expr includes attr");
+    assert_eq!(m!(#[attr] 1), "expr includes attr");
+    assert_eq!(n!(#[attr] 1), "expr excludes attr");
 }
