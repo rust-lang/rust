@@ -111,24 +111,21 @@ pub fn is_path(e: P<Expr>) -> bool {
     match e.node { ExprPath(..) => true, _ => false }
 }
 
-/// Get a string representation of a signed int type, with its value.
-/// We want to avoid "45int" and "-3int" in favor of "45" and "-3"
-pub fn int_ty_to_string(t: IntTy, val: Option<i64>) -> String {
-    let s = match t {
+pub fn int_ty_to_string(t: IntTy) -> &'static str {
+    match t {
         TyIs => "isize",
         TyI8 => "i8",
         TyI16 => "i16",
         TyI32 => "i32",
         TyI64 => "i64"
-    };
-
-    match val {
-        // cast to a u64 so we can correctly print INT64_MIN. All integral types
-        // are parsed as u64, so we wouldn't want to print an extra negative
-        // sign.
-        Some(n) => format!("{}{}", n as u64, s),
-        None => s.to_string()
     }
+}
+
+pub fn int_val_to_string(t: IntTy, val: i64) -> String {
+    // cast to a u64 so we can correctly print INT64_MIN. All integral types
+    // are parsed as u64, so we wouldn't want to print an extra negative
+    // sign.
+    format!("{}{}", val as u64, int_ty_to_string(t))
 }
 
 pub fn int_ty_max(t: IntTy) -> u64 {
@@ -140,21 +137,18 @@ pub fn int_ty_max(t: IntTy) -> u64 {
     }
 }
 
-/// Get a string representation of an unsigned int type, with its value.
-/// We want to avoid "42u" in favor of "42us". "42uint" is right out.
-pub fn uint_ty_to_string(t: UintTy, val: Option<u64>) -> String {
-    let s = match t {
+pub fn uint_ty_to_string(t: UintTy) -> &'static str {
+    match t {
         TyUs => "usize",
         TyU8 => "u8",
         TyU16 => "u16",
         TyU32 => "u32",
         TyU64 => "u64"
-    };
-
-    match val {
-        Some(n) => format!("{}{}", n, s),
-        None => s.to_string()
     }
+}
+
+pub fn uint_val_to_string(t: UintTy, val: u64) -> String {
+    format!("{}{}", val, uint_ty_to_string(t))
 }
 
 pub fn uint_ty_max(t: UintTy) -> u64 {
@@ -166,10 +160,10 @@ pub fn uint_ty_max(t: UintTy) -> u64 {
     }
 }
 
-pub fn float_ty_to_string(t: FloatTy) -> String {
+pub fn float_ty_to_string(t: FloatTy) -> &'static str {
     match t {
-        TyF32 => "f32".to_string(),
-        TyF64 => "f64".to_string(),
+        TyF32 => "f32",
+        TyF64 => "f64",
     }
 }
 

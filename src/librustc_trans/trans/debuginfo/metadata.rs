@@ -46,7 +46,7 @@ use std::rc::Rc;
 use syntax;
 use syntax::util::interner::Interner;
 use syntax::codemap::Span;
-use syntax::{ast, codemap};
+use syntax::{ast, ast_util, codemap};
 use syntax::parse::token;
 
 
@@ -932,26 +932,17 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let (name, encoding) = match t.sty {
         ty::TyTuple(ref elements) if elements.is_empty() =>
-            ("()".to_string(), DW_ATE_unsigned),
-        ty::TyBool => ("bool".to_string(), DW_ATE_boolean),
-        ty::TyChar => ("char".to_string(), DW_ATE_unsigned_char),
-        ty::TyInt(int_ty) => match int_ty {
-            ast::TyIs => ("isize".to_string(), DW_ATE_signed),
-            ast::TyI8 => ("i8".to_string(), DW_ATE_signed),
-            ast::TyI16 => ("i16".to_string(), DW_ATE_signed),
-            ast::TyI32 => ("i32".to_string(), DW_ATE_signed),
-            ast::TyI64 => ("i64".to_string(), DW_ATE_signed)
+            ("()", DW_ATE_unsigned),
+        ty::TyBool => ("bool", DW_ATE_boolean),
+        ty::TyChar => ("char", DW_ATE_unsigned_char),
+        ty::TyInt(int_ty) => {
+            (ast_util::int_ty_to_string(int_ty), DW_ATE_signed)
         },
-        ty::TyUint(uint_ty) => match uint_ty {
-            ast::TyUs => ("usize".to_string(), DW_ATE_unsigned),
-            ast::TyU8 => ("u8".to_string(), DW_ATE_unsigned),
-            ast::TyU16 => ("u16".to_string(), DW_ATE_unsigned),
-            ast::TyU32 => ("u32".to_string(), DW_ATE_unsigned),
-            ast::TyU64 => ("u64".to_string(), DW_ATE_unsigned)
+        ty::TyUint(uint_ty) => {
+            (ast_util::uint_ty_to_string(uint_ty), DW_ATE_unsigned)
         },
-        ty::TyFloat(float_ty) => match float_ty {
-            ast::TyF32 => ("f32".to_string(), DW_ATE_float),
-            ast::TyF64 => ("f64".to_string(), DW_ATE_float),
+        ty::TyFloat(float_ty) => {
+            (ast_util::float_ty_to_string(float_ty), DW_ATE_float)
         },
         _ => cx.sess().bug("debuginfo::basic_type_metadata - t is invalid type")
     };
