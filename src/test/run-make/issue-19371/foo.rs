@@ -13,12 +13,13 @@
 extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_lint;
+extern crate rustc_metadata;
 extern crate syntax;
 
-use rustc::metadata::cstore::CStore;
 use rustc::session::{build_session, Session};
 use rustc::session::config::{basic_options, build_configuration, Input, OutputType};
 use rustc_driver::driver::{compile_input, CompileController};
+use rustc_metadata::cstore::CStore;
 use syntax::diagnostics::registry::Registry;
 use syntax::parse::token;
 
