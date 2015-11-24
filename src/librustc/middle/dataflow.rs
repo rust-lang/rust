@@ -14,8 +14,6 @@
 //! and thus uses bitvectors. Your job is simply to specify the so-called
 //! GEN and KILL bits for each expression.
 
-pub use self::EntryOrExit::*;
-
 use middle::cfg;
 use middle::cfg::CFGIndex;
 use middle::ty;
@@ -340,7 +338,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         }
         let indices = get_cfg_indices(id, &self.nodeid_to_index);
         for &cfgidx in indices {
-            if !self.each_bit_for_node(Entry, cfgidx, |i| f(i)) {
+            if !self.each_bit_for_node(EntryOrExit::Entry, cfgidx, |i| f(i)) {
                 return false;
             }
         }
@@ -363,8 +361,8 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         let on_entry = &self.on_entry[start.. end];
         let temp_bits;
         let slice = match e {
-            Entry => on_entry,
-            Exit => {
+            EntryOrExit::Entry => on_entry,
+            EntryOrExit::Exit => {
                 let mut t = on_entry.to_vec();
                 self.apply_gen_kill(cfgidx, &mut t);
                 temp_bits = t;
