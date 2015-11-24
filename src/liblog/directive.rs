@@ -17,7 +17,7 @@ pub struct LogDirective {
     pub level: u32,
 }
 
-pub const LOG_LEVEL_NAMES: [&'static str; 4] = ["ERROR", "WARN", "INFO", "DEBUG"];
+pub const LOG_LEVEL_NAMES: [&'static str; 5] = ["ERROR", "WARN", "INFO", "DEBUG", "TRACE"];
 
 /// Parse an individual log level that is either a number or a symbolic log level
 fn parse_log_level(level: &str) -> Option<u32> {
