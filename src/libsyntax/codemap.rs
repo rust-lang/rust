@@ -807,6 +807,96 @@ impl CodeMap {
                         hi.col.to_usize() + 1)).to_string()
     }
 
+    // Returns true if two spans have the same callee
+    // (Assumes the same ExpnFormat implies same callee)
+    fn match_callees(&self, sp_a: &Span, sp_b: &Span) -> bool {
+        let fmt_a = self
+            .with_expn_info(sp_a.expn_id,
+                            |ei| ei.map(|ei| ei.callee.format.clone()));
+
+        let fmt_b = self
+            .with_expn_info(sp_b.expn_id,
+                            |ei| ei.map(|ei| ei.callee.format.clone()));
+        fmt_a == fmt_b
+    }
+
+    /// Returns a formatted string showing the expansion chain of a span
+    ///
+    /// Spans are printed in the following format:
+    ///
+    /// filename:start_line:col: end_line:col
+    /// snippet
+    ///   Callee:
+    ///   Callee span
+    ///   Callsite:
+    ///   Callsite span
+    ///
+    /// Callees and callsites are printed recursively (if available, otherwise header
+    /// and span is omitted), expanding into their own callee/callsite spans.
+    /// Each layer of recursion has an increased indent, and snippets are truncated
+    /// to at most 50 characters. Finally, recursive calls to the same macro are squashed,
+    /// with '...' used to represent any number of recursive calls.
+    pub fn span_to_expanded_string(&self, sp: Span) -> String {
+        self.span_to_expanded_string_internal(sp, "")
+    }
+
+    fn span_to_expanded_string_internal(&self, sp:Span, indent: &str) -> String {
+        let mut indent = indent.to_owned();
+        let mut output = "".to_owned();
+        let span_str = self.span_to_string(sp);
+        let mut span_snip = self.span_to_snippet(sp)
+            .unwrap_or("Snippet unavailable".to_owned());
+        if span_snip.len() > 50 {
+            span_snip.truncate(50);
+            span_snip.push_str("...");
+        }
+        output.push_str(&format!("{}{}\n{}`{}`\n", indent, span_str, indent, span_snip));
+
+        if sp.expn_id == NO_EXPANSION || sp.expn_id == COMMAND_LINE_EXPN {
+            return output;
+        }
+
+        let mut callee = self.with_expn_info(sp.expn_id,
+                                             |ei| ei.and_then(|ei| ei.callee.span.clone()));
+        let mut callsite = self.with_expn_info(sp.expn_id,
+                                               |ei| ei.map(|ei| ei.call_site.clone()));
+
+        indent.push_str("  ");
+        let mut is_recursive = false;
+
+        while callee.is_some() && self.match_callees(&sp, &callee.unwrap()) {
+            callee = self.with_expn_info(callee.unwrap().expn_id,
+                                         |ei| ei.and_then(|ei| ei.callee.span.clone()));
+            is_recursive = true;
+        }
+        if let Some(span) = callee {
+            output.push_str(&indent);
+            output.push_str("Callee:\n");
+            if is_recursive {
+                output.push_str(&indent);
+                output.push_str("...\n");
+            }
+            output.push_str(&(self.span_to_expanded_string_internal(span, &indent)));
+        }
+
+        is_recursive = false;
+        while callsite.is_some() && self.match_callees(&sp, &callsite.unwrap()) {
+            callsite = self.with_expn_info(callsite.unwrap().expn_id,
+                                           |ei| ei.map(|ei| ei.call_site.clone()));
+            is_recursive = true;
+        }
+        if let Some(span) = callsite {
+            output.push_str(&indent);
+            output.push_str("Callsite:\n");
+            if is_recursive {
+                output.push_str(&indent);
+                output.push_str("...\n");
+            }
+            output.push_str(&(self.span_to_expanded_string_internal(span, &indent)));
+        }
+        output
+    }
+
     pub fn span_to_filename(&self, sp: Span) -> FileName {
         self.lookup_char_pos(sp.lo).file.name.to_string()
     }
@@ -1273,5 +1363,119 @@ mod tests {
         let sstr =  cm.span_to_string(span);
 
         assert_eq!(sstr, "blork.rs:2:1: 2:12");
+    }
+
+    #[test]
+    fn t10() {
+        // Test span_to_expanded_string works in base case (no expansion)
+        let cm = init_code_map();
+        let span = Span { lo: BytePos(0), hi: BytePos(11), expn_id: NO_EXPANSION };
+        let sstr = cm.span_to_expanded_string(span);
+        assert_eq!(sstr, "blork.rs:1:1: 1:12\n`first line.`\n");
+
+        let span = Span { lo: BytePos(12), hi: BytePos(23), expn_id: NO_EXPANSION };
+        let sstr =  cm.span_to_expanded_string(span);
+        assert_eq!(sstr, "blork.rs:2:1: 2:12\n`second line`\n");
+    }
+
+    #[test]
+    fn t11() {
+        // Test span_to_expanded_string works with expansion
+        use ast::Name;
+        let cm = init_code_map();
+        let root = Span { lo: BytePos(0), hi: BytePos(11), expn_id: NO_EXPANSION };
+        let format = ExpnFormat::MacroBang(Name(0u32));
+        let callee = NameAndSpan { format: format,
+                                   allow_internal_unstable: false,
+                                   span: None };
+
+        let info = ExpnInfo { call_site: root, callee: callee };
+        let id = cm.record_expansion(info);
+        let sp = Span { lo: BytePos(12), hi: BytePos(23), expn_id: id };
+
+        let sstr = cm.span_to_expanded_string(sp);
+        assert_eq!(sstr,
+                   "blork.rs:2:1: 2:12\n`second line`\n  Callsite:\n  \
+                    blork.rs:1:1: 1:12\n  `first line.`\n");
+    }
+
+    fn init_expansion_chain(cm: &CodeMap) -> Span {
+        // Creates an expansion chain containing two recursive calls
+        // root -> expA -> expA -> expB -> expB -> end
+        use ast::Name;
+
+        let root = Span { lo: BytePos(0), hi: BytePos(11), expn_id: NO_EXPANSION };
+
+        let format_root = ExpnFormat::MacroBang(Name(0u32));
+        let callee_root = NameAndSpan { format: format_root,
+                                        allow_internal_unstable: false,
+                                        span: Some(root) };
+
+        let info_a1 = ExpnInfo { call_site: root, callee: callee_root };
+        let id_a1 = cm.record_expansion(info_a1);
+        let span_a1 = Span { lo: BytePos(12), hi: BytePos(23), expn_id: id_a1 };
+
+        let format_a = ExpnFormat::MacroBang(Name(1u32));
+        let callee_a = NameAndSpan { format: format_a,
+                                      allow_internal_unstable: false,
+                                      span: Some(span_a1) };
+
+        let info_a2 = ExpnInfo { call_site: span_a1, callee: callee_a.clone() };
+        let id_a2 = cm.record_expansion(info_a2);
+        let span_a2 = Span { lo: BytePos(12), hi: BytePos(23), expn_id: id_a2 };
+
+        let info_b1 = ExpnInfo { call_site: span_a2, callee: callee_a };
+        let id_b1 = cm.record_expansion(info_b1);
+        let span_b1 = Span { lo: BytePos(25), hi: BytePos(36), expn_id: id_b1 };
+
+        let format_b = ExpnFormat::MacroBang(Name(2u32));
+        let callee_b = NameAndSpan { format: format_b,
+                                     allow_internal_unstable: false,
+                                     span: None };
+
+        let info_b2 = ExpnInfo { call_site: span_b1, callee: callee_b.clone() };
+        let id_b2 = cm.record_expansion(info_b2);
+        let span_b2 = Span { lo: BytePos(25), hi: BytePos(36), expn_id: id_b2 };
+
+        let info_end = ExpnInfo { call_site: span_b2, callee: callee_b };
+        let id_end = cm.record_expansion(info_end);
+        Span { lo: BytePos(37), hi: BytePos(48), expn_id: id_end }
+    }
+
+    #[test]
+    fn t12() {
+        // Test span_to_expanded_string collapses recursive macros and handles
+        // recursive callsite and callee expansions
+        let cm = init_code_map();
+        let end = init_expansion_chain(&cm);
+        let sstr = cm.span_to_expanded_string(end);
+        let res_str =
+r"blork2.rs:2:1: 2:12
+`second line`
+  Callsite:
+  ...
+  blork2.rs:1:1: 1:12
+  `first line.`
+    Callee:
+    blork.rs:2:1: 2:12
+    `second line`
+      Callee:
+      blork.rs:1:1: 1:12
+      `first line.`
+      Callsite:
+      blork.rs:1:1: 1:12
+      `first line.`
+    Callsite:
+    ...
+    blork.rs:2:1: 2:12
+    `second line`
+      Callee:
+      blork.rs:1:1: 1:12
+      `first line.`
+      Callsite:
+      blork.rs:1:1: 1:12
+      `first line.`
+";
+        assert_eq!(sstr, res_str);
     }
 }
