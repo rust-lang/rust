@@ -864,7 +864,7 @@ pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T) -> P<ImplI
 pub fn noop_fold_mod<T: Folder>(Mod { inner, item_ids }: Mod, folder: &mut T) -> Mod {
     Mod {
         inner: folder.new_span(inner),
-        items_ids: item_ids.move_map(|x| folder.fold_item_id(x)),
+        item_ids: item_ids.move_map(|x| folder.fold_item_id(x)),
     }
 }
 
