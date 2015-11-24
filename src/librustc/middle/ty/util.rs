@@ -28,7 +28,7 @@ use std::cmp;
 use std::hash::{Hash, SipHasher, Hasher};
 use std::rc::Rc;
 use syntax::ast::{self, Name};
-use syntax::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
+use syntax::attr::{self, SignedInt, UnsignedInt};
 use syntax::codemap::Span;
 
 use rustc_front::hir;

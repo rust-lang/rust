@@ -16,7 +16,7 @@
 use self::wrapping::OverflowingOps;
 
 use char::CharExt;
-use cmp::{Eq, PartialOrd};
+use cmp::PartialOrd;
 use convert::From;
 use fmt;
 use intrinsics;

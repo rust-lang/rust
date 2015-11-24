@@ -29,14 +29,13 @@ use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangIte
 use middle::subst::{self, ParamSpace, Subst, Substs, VecPerParamSpace};
 use middle::traits;
 use middle::ty;
-use middle::ty::fold::TypeFolder;
 use middle::ty::walk::TypeWalker;
 use util::common::memoized;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap};
 use util::nodemap::FnvHashMap;
 
 use serialize::{Encodable, Encoder, Decodable, Decoder};
-use std::borrow::{Borrow, Cow};
+use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::hash::{Hash, Hasher};
 use std::iter;

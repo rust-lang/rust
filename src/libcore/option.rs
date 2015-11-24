@@ -146,7 +146,6 @@
 use self::Option::*;
 
 use clone::Clone;
-use cmp::{Eq, Ord};
 use default::Default;
 use iter::ExactSizeIterator;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, IntoIterator};

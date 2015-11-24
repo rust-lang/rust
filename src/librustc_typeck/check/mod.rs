@@ -100,7 +100,7 @@ use middle::ty::{self, HasTypeFlags, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::{MethodCall, MethodCallee};
 use middle::ty::adjustment;
 use middle::ty::error::TypeError;
-use middle::ty::fold::{TypeFolder, TypeFoldable};
+use middle::ty::fold::TypeFoldable;
 use middle::ty::util::Representability;
 use require_c_abi_if_variadic;
 use rscope::{ElisionFailureInfo, RegionScope};

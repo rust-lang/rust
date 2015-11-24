@@ -115,14 +115,12 @@ impl Ord for RcStr {
 
 impl fmt::Debug for RcStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use std::fmt::Debug;
         self[..].fmt(f)
     }
 }
 
 impl fmt::Display for RcStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use std::fmt::Display;
         self[..].fmt(f)
     }
 }

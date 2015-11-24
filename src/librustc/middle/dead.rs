@@ -22,7 +22,7 @@ use lint;
 
 use std::collections::HashSet;
 use syntax::{ast, codemap};
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr;
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live NodeItem that is a

@@ -15,7 +15,7 @@ use middle::infer::{InferCtxt, GenericKind};
 use middle::subst::Substs;
 use middle::traits;
 use middle::ty::{self, RegionEscape, ToPredicate, Ty};
-use middle::ty::fold::{TypeFoldable, TypeFolder};
+use middle::ty::fold::TypeFoldable;
 
 use syntax::ast;
 use syntax::codemap::Span;

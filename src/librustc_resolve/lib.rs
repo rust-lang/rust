@@ -66,7 +66,6 @@ use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 use syntax::ast;
 use syntax::ast::{CRATE_NODE_ID, Ident, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
 use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64, TyF64, TyF32};
-use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::{self, special_names, special_idents};
 use syntax::codemap::{self, Span, Pos};
 use syntax::util::lev_distance::{lev_distance, max_suggestion_distance};

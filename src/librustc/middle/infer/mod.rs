@@ -33,7 +33,7 @@ use middle::ty::adjustment;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
 use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
-use middle::ty::fold::{TypeFolder, TypeFoldable};
+use middle::ty::fold::TypeFoldable;
 use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{RefCell, Ref};

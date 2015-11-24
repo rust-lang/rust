@@ -46,7 +46,7 @@ use middle::ty::{IntType, UintType};
 use middle::ty::{self, Ty};
 use middle::ty::error::TypeError;
 use middle::ty::fold::{TypeFolder, TypeFoldable};
-use middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::relate::{RelateResult, TypeRelation};
 
 use syntax::ast;
 use syntax::codemap::Span;

@@ -10,7 +10,6 @@
 
 //! Method lookup: the secret sauce of Rust. See `README.md`.
 
-use astconv::AstConv;
 use check::FnCtxt;
 use middle::def;
 use middle::def_id::DefId;

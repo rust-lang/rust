@@ -30,7 +30,6 @@ use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::*;
 
 use syntax::ast::{NodeId, Name};
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
 use std::mem::replace;

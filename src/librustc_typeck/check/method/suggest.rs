@@ -13,7 +13,6 @@
 
 use CrateCtxt;
 
-use astconv::AstConv;
 use check::{self, FnCtxt};
 use front::map as hir_map;
 use middle::ty::{self, Ty, ToPolyTraitRef, ToPredicate, HasTypeFlags};
