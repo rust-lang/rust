@@ -677,8 +677,8 @@ apply to the crate as a whole.
 ```
 
 A crate that contains a `main` function can be compiled to an executable. If a
-`main` function is present, its return type must be [`unit`](#tuple-types)
-and it must take no arguments.
+`main` function is present, its return type must be `()`
+("[unit](#tuple-types)") and it must take no arguments.
 
 # Items and attributes
 
