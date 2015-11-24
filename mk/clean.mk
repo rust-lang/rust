@@ -65,7 +65,8 @@ clean-generic-$(2)-$(1):
          -name '*.def' -o \
          -name '*.py' -o \
          -name '*.pyc' -o \
-         -name '*.bc' \
+         -name '*.bc' -o \
+         -name '*.rs' \
          \) \
          | xargs rm -f
 	$(Q)find $(1) \

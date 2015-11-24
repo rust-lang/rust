@@ -24,8 +24,7 @@ use middle::ty::{self, TypeAndMut, Ty, HasTypeFlags};
 use middle::ty::fold::TypeFoldable;
 
 use std::fmt;
-use syntax::abi;
-use syntax::ast;
+use syntax::{abi, ast_util};
 use syntax::parse::token;
 use syntax::ast::CRATE_NODE_ID;
 use rustc_front::hir;
@@ -774,55 +773,14 @@ impl<'tcx> fmt::Display for ty::TraitRef<'tcx> {
     }
 }
 
-pub fn int_ty_to_string(t: ast::IntTy, val: Option<i64>) -> String {
-    let s = match t {
-        ast::TyIs => "isize",
-        ast::TyI8 => "i8",
-        ast::TyI16 => "i16",
-        ast::TyI32 => "i32",
-        ast::TyI64 => "i64"
-    };
-
-    match val {
-        // cast to a u64 so we can correctly print INT64_MIN. All integral types
-        // are parsed as u64, so we wouldn't want to print an extra negative
-        // sign.
-        Some(n) => format!("{}{}", n as u64, s),
-        None => s.to_string()
-    }
-}
-
-pub fn uint_ty_to_string(t: ast::UintTy, val: Option<u64>) -> String {
-    let s = match t {
-        ast::TyUs => "usize",
-        ast::TyU8 => "u8",
-        ast::TyU16 => "u16",
-        ast::TyU32 => "u32",
-        ast::TyU64 => "u64"
-    };
-
-    match val {
-        Some(n) => format!("{}{}", n, s),
-        None => s.to_string()
-    }
-}
-
-
-pub fn float_ty_to_string(t: ast::FloatTy) -> String {
-    match t {
-        ast::TyF32 => "f32".to_string(),
-        ast::TyF64 => "f64".to_string(),
-    }
-}
-
 impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TyBool => write!(f, "bool"),
             TyChar => write!(f, "char"),
-            TyInt(t) => write!(f, "{}", int_ty_to_string(t, None)),
-            TyUint(t) => write!(f, "{}", uint_ty_to_string(t, None)),
-            TyFloat(t) => write!(f, "{}", float_ty_to_string(t)),
+            TyInt(t) => write!(f, "{}", ast_util::int_ty_to_string(t)),
+            TyUint(t) => write!(f, "{}", ast_util::uint_ty_to_string(t)),
+            TyFloat(t) => write!(f, "{}", ast_util::float_ty_to_string(t)),
             TyBox(typ) => write!(f, "Box<{}>",  typ),
             TyRawPtr(ref tm) => {
                 write!(f, "*{} {}", match tm.mutbl {
