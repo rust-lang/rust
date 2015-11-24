@@ -58,7 +58,7 @@ impl<'a> ParserAnyMacro<'a> {
             parser.span_err(span, &msg[..]);
 
             let msg = format!("caused by the macro expansion here; the usage \
-                               of `{}!` is likely invalid in this {} context",
+                               of `{}!` is likely invalid in {} context",
                                self.macro_ident, context);
             parser.span_note(self.site_span, &msg[..]);
         }
