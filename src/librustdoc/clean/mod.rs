@@ -35,7 +35,7 @@ use syntax::parse::token::{self, InternedString, special_idents};
 use syntax::ptr::P;
 
 use rustc_trans::back::link;
-use rustc::metadata::util::{self as mdutil, CrateStore};
+use rustc::middle::cstore::{self, CrateStore};
 use rustc::middle::def;
 use rustc::middle::def_id::{DefId, DefIndex};
 use rustc::middle::subst::{self, ParamSpace, VecPerParamSpace};
@@ -225,7 +225,7 @@ impl Clean<ExternalCrate> for CrateNum {
         cx.tcx_opt().map(|tcx| {
             for item in tcx.sess.cstore.crate_top_level_items(self.0) {
                 let did = match item.def {
-                    mdutil::DlDef(def::DefMod(did)) => did,
+                    cstore::DlDef(def::DefMod(did)) => did,
                     _ => continue
                 };
                 let attrs = inline::load_attrs(cx, tcx, did);

@@ -107,7 +107,7 @@ fn test_env<F>(source_string: &str,
     let diagnostic_handler = diagnostic::Handler::with_emitter(true, emitter);
     let span_diagnostic_handler = diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 
-    let cstore = ::rustc::metadata::cstore::CStore::new(token::get_ident_interner());
+    let cstore = ::rustc_metadata::cstore::CStore::new(token::get_ident_interner());
     let sess = session::build_session_(options, None, span_diagnostic_handler,
                                        Box::new(cstore));
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));

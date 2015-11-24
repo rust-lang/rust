@@ -12,7 +12,6 @@ pub use self::MaybeTyped::*;
 use rustc_lint;
 use rustc_driver::{driver, target_features};
 use rustc::session::{self, config};
-use rustc::metadata::cstore::CStore;
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::ty;
@@ -21,6 +20,7 @@ use rustc::lint;
 use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc_front::lowering::{lower_crate, LoweringContext};
+use rustc_metadata::cstore::CStore;
 
 use syntax::{ast, codemap, diagnostic};
 use syntax::feature_gate::UnstableFeatures;

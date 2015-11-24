@@ -16,7 +16,7 @@ use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 use rustc_front::hir;
 
-use rustc::metadata::util::{self as mdutil, CrateStore};
+use rustc::middle::cstore::{self, CrateStore};
 use rustc::middle::def;
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty;
@@ -253,11 +253,11 @@ pub fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
         }
 
         fn populate_impls(cx: &DocContext, tcx: &ty::ctxt,
-                          def: mdutil::DefLike,
+                          def: cstore::DefLike,
                           impls: &mut Vec<clean::Item>) {
             match def {
-                mdutil::DlImpl(did) => build_impl(cx, tcx, did, impls),
-                mdutil::DlDef(def::DefMod(did)) => {
+                cstore::DlImpl(did) => build_impl(cx, tcx, did, impls),
+                cstore::DlDef(def::DefMod(did)) => {
                     for item in tcx.sess.cstore.item_children(did) {
                         populate_impls(cx, tcx, item.def, impls)
                     }
@@ -450,20 +450,20 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
         let mut visited = HashSet::new();
         for item in tcx.sess.cstore.item_children(did) {
             match item.def {
-                mdutil::DlDef(def::DefForeignMod(did)) => {
+                cstore::DlDef(def::DefForeignMod(did)) => {
                     fill_in(cx, tcx, did, items);
                 }
-                mdutil::DlDef(def) if item.vis == hir::Public => {
+                cstore::DlDef(def) if item.vis == hir::Public => {
                     if !visited.insert(def) { return }
                     match try_inline_def(cx, tcx, def) {
                         Some(i) => items.extend(i),
                         None => {}
                     }
                 }
-                mdutil::DlDef(..) => {}
+                cstore::DlDef(..) => {}
                 // All impls were inlined above
-                mdutil::DlImpl(..) => {}
-                mdutil::DlField => panic!("unimplemented field"),
+                cstore::DlImpl(..) => {}
+                cstore::DlField => panic!("unimplemented field"),
             }
         }
     }

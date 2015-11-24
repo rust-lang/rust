@@ -16,6 +16,7 @@ extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_front;
 extern crate rustc_lint;
+extern crate rustc_metadata;
 extern crate rustc_resolve;
 extern crate syntax;
 
@@ -27,14 +28,14 @@ use std::thread::Builder;
 
 use rustc::front::map as ast_map;
 use rustc::llvm;
-use rustc::metadata::cstore::{CStore, RequireDynamic};
-use rustc::metadata::util::CrateStore;
+use rustc::middle::cstore::{CrateStore, LinkagePreference};
 use rustc::middle::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Input, Options};
 use rustc::session::build_session;
 use rustc_driver::driver;
 use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_resolve::MakeGlobMap;
+use rustc_metadata::cstore::CStore;
 use libc::c_void;
 
 use syntax::diagnostics::registry::Registry;
@@ -240,7 +241,7 @@ fn compile_program(input: &str, sysroot: PathBuf)
 
             let trans = driver::phase_4_translate_to_llvm(tcx, mir_map, analysis);
 
-            let crates = tcx.sess.cstore.used_crates(RequireDynamic);
+            let crates = tcx.sess.cstore.used_crates(LinkagePreference::RequireDynamic);
 
             // Collect crates used in the session.
             // Reverse order finds dependencies first.
