@@ -40,16 +40,12 @@ pub struct FileSearch<'a> {
 
 impl<'a> FileSearch<'a> {
     pub fn for_each_lib_search_path<F>(&self, mut f: F) where
-        F: FnMut(&Path, PathKind) -> FileMatch,
+        F: FnMut(&Path, PathKind)
     {
         let mut visited_dirs = HashSet::new();
-        let mut found = false;
 
         for (path, kind) in self.search_paths.iter(self.kind) {
-            match f(path, kind) {
-                FileMatches => found = true,
-                FileDoesntMatch => ()
-            }
+            f(path, kind);
             visited_dirs.insert(path.to_path_buf());
         }
 
@@ -57,35 +53,10 @@ impl<'a> FileSearch<'a> {
         let tlib_path = make_target_lib_path(self.sysroot,
                                              self.triple);
         if !visited_dirs.contains(&tlib_path) {
-            match f(&tlib_path, PathKind::All) {
-                FileMatches => found = true,
-                FileDoesntMatch => ()
-            }
+            f(&tlib_path, PathKind::All);
         }
 
         visited_dirs.insert(tlib_path);
-        // Try RUST_PATH
-        if !found {
-            let rustpath = rust_path();
-            for path in &rustpath {
-                let tlib_path = make_rustpkg_lib_path(
-                    self.sysroot, path, self.triple);
-                debug!("is {} in visited_dirs? {}", tlib_path.display(),
-                        visited_dirs.contains(&tlib_path));
-
-                if !visited_dirs.contains(&tlib_path) {
-                    visited_dirs.insert(tlib_path.clone());
-                    // Don't keep searching the RUST_PATH if one match turns up --
-                    // if we did, we'd get a "multiple matching crates" error
-                    match f(&tlib_path, PathKind::All) {
-                       FileMatches => {
-                           break;
-                       }
-                       FileDoesntMatch => ()
-                    }
-                }
-            }
-        }
     }
 
     pub fn get_lib_path(&self) -> PathBuf {
@@ -101,7 +72,6 @@ impl<'a> FileSearch<'a> {
                 Ok(files) => {
                     let files = files.filter_map(|p| p.ok().map(|s| s.path()))
                                      .collect::<Vec<_>>();
-                    let mut rslt = FileDoesntMatch;
                     fn is_rlib(p: &Path) -> bool {
                         p.extension().and_then(|s| s.to_str()) == Some("rlib")
                     }
@@ -117,16 +87,14 @@ impl<'a> FileSearch<'a> {
                         match maybe_picked {
                             FileMatches => {
                                 debug!("picked {}", path.display());
-                                rslt = FileMatches;
                             }
                             FileDoesntMatch => {
                                 debug!("rejected {}", path.display());
                             }
                         }
                     }
-                    rslt
                 }
-                Err(..) => FileDoesntMatch,
+                Err(..) => (),
             }
         });
     }
@@ -149,7 +117,6 @@ impl<'a> FileSearch<'a> {
         let mut paths = Vec::new();
         self.for_each_lib_search_path(|lib_search_path, _| {
             paths.push(lib_search_path.to_path_buf());
-            FileDoesntMatch
         });
         paths
     }
@@ -179,14 +146,6 @@ fn make_target_lib_path(sysroot: &Path,
     sysroot.join(&relative_target_lib_path(sysroot, target_triple))
 }
 
-fn make_rustpkg_lib_path(sysroot: &Path,
-                         dir: &Path,
-                         triple: &str) -> PathBuf {
-    let mut p = dir.join(&find_libdir(sysroot));
-    p.push(triple);
-    p
-}
-
 pub fn get_or_default_sysroot() -> PathBuf {
     // Follow symlinks.  If the resolved path is relative, make it absolute.
     fn canonicalize(path: Option<PathBuf>) -> Option<PathBuf> {
@@ -205,56 +164,6 @@ pub fn get_or_default_sysroot() -> PathBuf {
         Some(mut p) => { p.pop(); p.pop(); p }
         None => panic!("can't determine value for sysroot")
     }
-}
-
-#[cfg(windows)]
-const PATH_ENTRY_SEPARATOR: char = ';';
-#[cfg(not(windows))]
-const PATH_ENTRY_SEPARATOR: char = ':';
-
-/// Returns RUST_PATH as a string, without default paths added
-pub fn get_rust_path() -> Option<String> {
-    env::var("RUST_PATH").ok()
-}
-
-/// Returns the value of RUST_PATH, as a list
-/// of Paths. Includes default entries for, if they exist:
-/// $HOME/.rust
-/// DIR/.rust for any DIR that's the current working directory
-/// or an ancestor of it
-pub fn rust_path() -> Vec<PathBuf> {
-    let mut env_rust_path: Vec<PathBuf> = match get_rust_path() {
-        Some(env_path) => {
-            let env_path_components =
-                env_path.split(PATH_ENTRY_SEPARATOR);
-            env_path_components.map(|s| PathBuf::from(s)).collect()
-        }
-        None => Vec::new()
-    };
-    let cwd = env::current_dir().unwrap();
-    // now add in default entries
-    let cwd_dot_rust = cwd.join(".rust");
-    if !env_rust_path.contains(&cwd_dot_rust) {
-        env_rust_path.push(cwd_dot_rust);
-    }
-    if !env_rust_path.contains(&cwd) {
-        env_rust_path.push(cwd.clone());
-    }
-    let mut cur = &*cwd;
-    while let Some(parent) = cur.parent() {
-        let candidate = parent.join(".rust");
-        if !env_rust_path.contains(&candidate) && candidate.exists() {
-            env_rust_path.push(candidate.clone());
-        }
-        cur = parent;
-    }
-    if let Some(h) = env::home_dir() {
-        let p = h.join(".rust");
-        if !env_rust_path.contains(&p) && p.exists() {
-            env_rust_path.push(p);
-        }
-    }
-    env_rust_path
 }
 
 // The name of the directory rustc expects libraries to be located.

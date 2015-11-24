@@ -20,7 +20,6 @@ use session::config::{OutputFilenames, Input, OutputType};
 use session::search_paths::PathKind;
 use session::Session;
 use metadata::common::LinkMeta;
-use metadata::filesearch::FileDoesntMatch;
 use metadata::loader::METADATA_FILENAME;
 use metadata::{encoder, cstore, filesearch, csearch, creader};
 use middle::dependency_format::Linkage;
@@ -588,7 +587,6 @@ fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
     let mut search = Vec::new();
     sess.target_filesearch(PathKind::Native).for_each_lib_search_path(|path, _| {
         search.push(path.to_path_buf());
-        FileDoesntMatch
     });
     return search;
 }
@@ -1085,7 +1083,6 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
             PathKind::Framework => { cmd.framework_path(path); }
             _ => { cmd.include_path(&fix_windows_verbatim_for_gcc(path)); }
         }
-        FileDoesntMatch
     });
 
     let libs = sess.cstore.get_used_libraries();
