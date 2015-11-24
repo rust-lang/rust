@@ -25,9 +25,8 @@ impl LintPass for MatchPass {
 
 impl LateLintPass for MatchPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+        if in_external_macro(cx, expr.span) { return; }
         if let ExprMatch(ref ex, ref arms, MatchSource::Normal) = expr.node {
-            if in_external_macro(cx, expr.span) { return; }
-
             // check preconditions for SINGLE_MATCH
                 // only two arms
             if arms.len() == 2 &&
@@ -51,19 +50,6 @@ impl LateLintPass for MatchPass {
                                             snippet(cx, arms[0].pats[0].span, ".."),
                                             snippet(cx, ex.span, ".."),
                                             expr_block(cx, &arms[0].body, None, "..")));
-            }
-
-            // check preconditions for MATCH_REF_PATS
-            if has_only_ref_pats(arms) {
-                if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
-                    span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
-                        "you don't need to add `&` to both the expression to match \
-                         and the patterns: use `match {} {{ ...`", snippet(cx, inner.span, "..")));
-                } else {
-                    span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
-                        "instead of prefixing all patterns with `&`, you can dereference the \
-                         expression to match: `match *{} {{ ...`", snippet(cx, ex.span, "..")));
-                }
             }
 
             // check preconditions for MATCH_BOOL
@@ -123,6 +109,22 @@ impl LateLintPass for MatchPass {
                 }
             }
         }
+        if let ExprMatch(ref ex, ref arms, source) = expr.node {
+            // check preconditions for MATCH_REF_PATS
+            if has_only_ref_pats(arms) {
+                if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
+                    let template = match_template(source, "", &snippet(cx, inner.span, ".."));
+                    span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
+                        "you don't need to add `&` to both the expression \
+                         and the patterns: use `{}`", template));
+                } else {
+                    let template = match_template(source, "*", &snippet(cx, ex.span, ".."));
+                    span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
+                        "instead of prefixing all patterns with `&`, you can dereference the \
+                         expression: `{}`", template));
+                }
+            }
+        }
     }
 }
 
@@ -142,4 +144,21 @@ fn has_only_ref_pats(arms: &[Arm]) -> bool {
     }).collect::<Option<Vec<bool>>>();
     // look for Some(v) where there's at least one true element
     mapped.map_or(false, |v| v.iter().any(|el| *el))
+}
+
+fn match_template(source: MatchSource, op: &str, expr: &str) -> String {
+    match source {
+        MatchSource::Normal => {
+            format!("match {}{} {{ ...", op, expr)
+        }
+        MatchSource::IfLetDesugar { .. } => {
+            format!("if let ... = {}{} {{", op, expr)
+        }
+        MatchSource::WhileLetDesugar => {
+            format!("while let ... = {}{} {{", op, expr)
+        }
+        MatchSource::ForLoopDesugar => {
+            panic!("for loop desugared to match with &-patterns!")
+        }
+    }
 }
