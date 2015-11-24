@@ -51,3 +51,10 @@ mod b {
         }
     }
 }
+
+impl Foo { add_fun!(); }
+
+impl Blah {
+    fn boop() {}
+    add_fun!();
+}

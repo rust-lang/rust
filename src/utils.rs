@@ -146,7 +146,11 @@ pub fn semicolon_for_stmt(stmt: &ast::Stmt) -> bool {
 pub fn trim_newlines(input: &str) -> &str {
     let start = input.find(|c| c != '\n' && c != '\r').unwrap_or(0);
     let end = input.rfind(|c| c != '\n' && c != '\r').unwrap_or(0) + 1;
-    &input[start..end]
+    if start == 0 && end == 1 {
+        input
+    } else {
+        &input[start..end]
+    }
 }
 
 #[inline]
