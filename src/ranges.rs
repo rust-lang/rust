@@ -40,10 +40,10 @@ impl LateLintPass for StepByZero {
                 if_let_chain! {
                     [
                         // .iter() call
-                        let &ExprMethodCall( Spanned { node: ref iter_name, .. }, _, ref iter_args ) = iter,
+                        let ExprMethodCall( Spanned { node: ref iter_name, .. }, _, ref iter_args ) = *iter,
                         iter_name.as_str() == "iter",
                         // range expression in .zip() call: 0..x.len()
-                        let &ExprRange(Some(ref from), Some(ref to)) = zip_arg,
+                        let ExprRange(Some(ref from), Some(ref to)) = *zip_arg,
                         is_integer_literal(from, 0),
                         // .len() call
                         let ExprMethodCall(Spanned { node: ref len_name, .. }, _, ref len_args) = to.node,

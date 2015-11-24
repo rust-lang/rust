@@ -84,10 +84,10 @@ impl LateLintPass for CmpNan {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
             if is_comparison_binop(cmp.node) {
-                if let &ExprPath(_, ref path) = &left.node {
+                if let ExprPath(_, ref path) = left.node {
                     check_nan(cx, path, expr.span);
                 }
-                if let &ExprPath(_, ref path) = &right.node {
+                if let ExprPath(_, ref path) = right.node {
                     check_nan(cx, path, expr.span);
                 }
             }
@@ -189,7 +189,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other_span: Span, left: bool, o
                 }
         }
         ExprCall(ref path, ref v) if v.len() == 1 => {
-            if let &ExprPath(None, ref path) = &path.node {
+            if let ExprPath(None, ref path) = path.node {
                 if match_path(path, &["String", "from_str"]) ||
                     match_path(path, &["String", "from"]) {
                             snippet(cx, v[0].span, "..")
@@ -235,7 +235,7 @@ impl LintPass for ModuloOne {
 impl LateLintPass for ModuloOne {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprBinary(ref cmp, _, ref right) = expr.node {
-            if let &Spanned {node: BinOp_::BiRem, ..} = cmp {
+            if let Spanned {node: BinOp_::BiRem, ..} = *cmp {
                 if is_integer_literal(right, 1) {
                     cx.span_lint(MODULO_ONE, expr.span, "any number modulo 1 will be 0");
                 }

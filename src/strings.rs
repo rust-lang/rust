@@ -34,14 +34,14 @@ impl LintPass for StringAdd {
 
 impl LateLintPass for StringAdd {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
-        if let &ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) = &e.node {
+        if let ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) = e.node {
             if is_string(cx, left) {
                 if let Allow = cx.current_level(STRING_ADD_ASSIGN) {
                     // the string_add_assign is allow, so no duplicates
                 } else {
                     let parent = get_parent_expr(cx, e);
                     if let Some(ref p) = parent {
-                        if let &ExprAssign(ref target, _) = &p.node {
+                        if let ExprAssign(ref target, _) = p.node {
                             // avoid duplicate matches
                             if is_exp_equal(cx, target, left) { return; }
                         }
@@ -51,7 +51,7 @@ impl LateLintPass for StringAdd {
                     "you added something to a string. \
                      Consider using `String::push_str()` instead")
             }
-        } else if let &ExprAssign(ref target, ref src) = &e.node {
+        } else if let ExprAssign(ref target, ref src) = e.node {
             if is_string(cx, target) && is_add(cx, src, target) {
                 span_lint(cx, STRING_ADD_ASSIGN, e.span,
                     "you assigned the result of adding something to this string. \

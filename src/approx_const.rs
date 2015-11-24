@@ -44,7 +44,7 @@ impl LintPass for ApproxConstant {
 
 impl LateLintPass for ApproxConstant {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
-        if let &ExprLit(ref lit) = &e.node {
+        if let ExprLit(ref lit) = e.node {
             check_lit(cx, lit, e);
         }
     }
