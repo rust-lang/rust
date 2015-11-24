@@ -807,6 +807,7 @@ mod tests {
             // equals signs (`=`). Those do not show up in the output of the
             // `set` command.
             assert!((cfg!(windows) && k.starts_with("=")) ||
+                    k.starts_with("DYLD") ||
                     output.contains(&format!("{}={}", *k, *v)),
                     "output doesn't contain `{}={}`\n{}",
                     k, v, output);
