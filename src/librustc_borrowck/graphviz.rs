@@ -22,7 +22,6 @@ use borrowck::{BorrowckCtxt, LoanPath};
 use dot;
 use rustc::middle::cfg::CFGIndex;
 use rustc::middle::dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
-use rustc::middle::dataflow;
 use std::rc::Rc;
 use std::borrow::IntoCow;
 
@@ -134,8 +133,8 @@ impl<'a, 'tcx> dot::Labeller<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a, 't
     fn graph_id(&'a self) -> dot::Id<'a> { self.inner.graph_id() }
     fn node_id(&'a self, n: &Node<'a>) -> dot::Id<'a> { self.inner.node_id(n) }
     fn node_label(&'a self, n: &Node<'a>) -> dot::LabelText<'a> {
-        let prefix = self.dataflow_for(dataflow::Entry, n);
-        let suffix = self.dataflow_for(dataflow::Exit, n);
+        let prefix = self.dataflow_for(EntryOrExit::Entry, n);
+        let suffix = self.dataflow_for(EntryOrExit::Exit, n);
         let inner_label = self.inner.node_label(n);
         inner_label
             .prefix_line(dot::LabelText::LabelStr(prefix.into_cow()))
