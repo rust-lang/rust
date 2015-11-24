@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![deny(non_snake_case)]
+#![feature(stmt_expr_attributes)]
 
 fn main() {
     let a = 413;
