@@ -19,7 +19,6 @@ use syntax::codemap::Span;
 
 struct Builder<'a, 'tcx: 'a> {
     hir: Cx<'a, 'tcx>,
-    extents: FnvHashMap<CodeExtent, Vec<GraphExtent>>,
     cfg: CFG<'tcx>,
     scopes: Vec<scope::Scope<'tcx>>,
     loop_scopes: Vec<scope::LoopScope>,
@@ -92,7 +91,6 @@ pub fn construct<'a,'tcx>(mut hir: Cx<'a,'tcx>,
     let mut builder = Builder {
         hir: hir,
         cfg: cfg,
-        extents: FnvHashMap(),
         scopes: vec![],
         loop_scopes: vec![],
         temp_decls: temp_decls,
@@ -117,7 +115,6 @@ pub fn construct<'a,'tcx>(mut hir: Cx<'a,'tcx>,
 
     Mir {
         basic_blocks: builder.cfg.basic_blocks,
-        extents: builder.extents,
         var_decls: builder.var_decls,
         arg_decls: arg_decls,
         temp_decls: builder.temp_decls,
