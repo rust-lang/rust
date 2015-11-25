@@ -22,13 +22,13 @@ use use_from_trait_xc::Trait::CONST;
 //~^ ERROR `CONST` is not directly importable
 
 use use_from_trait_xc::Foo::new;
-//~^ ERROR `new` is not directly importable
+//~^ ERROR unresolved import `use_from_trait_xc::Foo::new`
 
 use use_from_trait_xc::Foo::C;
 //~^ ERROR unresolved import `use_from_trait_xc::Foo::C`
 
 use use_from_trait_xc::Bar::new as bnew;
-//~^ ERROR `bnew` is not directly importable
+//~^ ERROR unresolved import `use_from_trait_xc::Bar::new`
 
 use use_from_trait_xc::Baz::new as baznew;
 //~^ ERROR `baznew` is not directly importable
