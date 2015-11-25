@@ -63,7 +63,8 @@
 //! }
 //!
 //! impl<'a> dot::Labeller<'a, Nd, Ed> for Edges {
-//!     fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new("example1").unwrap() }
+//! fn graph_id(&'a self) -> dot::Id<'a> {
+//! dot::Id::new("example1").unwrap() }
 //!
 //!     fn node_id(&'a self, n: &Nd) -> dot::Id<'a> {
 //!         dot::Id::new(format!("N{}", *n)).unwrap()
@@ -168,7 +169,8 @@
 //! }
 //!
 //! impl<'a> dot::Labeller<'a, Nd, Ed<'a>> for Graph {
-//!     fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new("example2").unwrap() }
+//! fn graph_id(&'a self) -> dot::Id<'a> {
+//! dot::Id::new("example2").unwrap() }
 //!     fn node_id(&'a self, n: &Nd) -> dot::Id<'a> {
 //!         dot::Id::new(format!("N{}", n)).unwrap()
 //!     }
@@ -182,7 +184,8 @@
 //!
 //! impl<'a> dot::GraphWalk<'a, Nd, Ed<'a>> for Graph {
 //!     fn nodes(&self) -> dot::Nodes<'a,Nd> { (0..self.nodes.len()).collect() }
-//!     fn edges(&'a self) -> dot::Edges<'a,Ed<'a>> { self.edges.iter().collect() }
+//! fn edges(&'a self) -> dot::Edges<'a,Ed<'a>> {
+//! self.edges.iter().collect() }
 //!     fn source(&self, e: &Ed) -> Nd { let & &(s,_) = e; s }
 //!     fn target(&self, e: &Ed) -> Nd { let & &(_,t) = e; t }
 //! }
@@ -226,7 +229,8 @@
 //! }
 //!
 //! impl<'a> dot::Labeller<'a, Nd<'a>, Ed<'a>> for Graph {
-//!     fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new("example3").unwrap() }
+//! fn graph_id(&'a self) -> dot::Id<'a> {
+//! dot::Id::new("example3").unwrap() }
 //!     fn node_id(&'a self, n: &Nd<'a>) -> dot::Id<'a> {
 //!         dot::Id::new(format!("N{}", n.0)).unwrap()
 //!     }
@@ -416,10 +420,10 @@ impl<'a> Id<'a> {
                 _ => return Err(()),
             }
             if !chars.all(is_constituent) {
-                return Err(())
+                return Err(());
             }
         }
-        return Ok(Id{ name: name });
+        return Ok(Id { name: name });
 
         fn is_letter_or_underscore(c: char) -> bool {
             in_range('a', c, 'z') || in_range('A', c, 'Z') || c == '_'
@@ -496,11 +500,10 @@ pub trait Labeller<'a,N,E> {
 /// Escape tags in such a way that it is suitable for inclusion in a
 /// Graphviz HTML label.
 pub fn escape_html(s: &str) -> String {
-    s
-        .replace("&", "&amp;")
-        .replace("\"", "&quot;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
+    s.replace("&", "&amp;")
+     .replace("\"", "&quot;")
+     .replace("<", "&lt;")
+     .replace(">", "&gt;")
 }
 
 impl<'a> LabelText<'a> {
@@ -738,7 +741,12 @@ mod tests {
     }
 
     fn edge(from: usize, to: usize, label: &'static str, style: Style) -> Edge {
-        Edge { from: from, to: to, label: label, style: style }
+        Edge {
+            from: from,
+            to: to,
+            label: label,
+            style: style,
+        }
     }
 
     struct LabelledGraph {
@@ -915,7 +923,7 @@ mod tests {
         let labels: Trivial = UnlabelledNodes(0);
         let r = test_input(LabelledGraph::new("empty_graph", labels, vec![], None));
         assert_eq!(r.unwrap(),
-r#"digraph empty_graph {
+                   r#"digraph empty_graph {
 }
 "#);
     }
@@ -925,7 +933,7 @@ r#"digraph empty_graph {
         let labels: Trivial = UnlabelledNodes(1);
         let r = test_input(LabelledGraph::new("single_node", labels, vec![], None));
         assert_eq!(r.unwrap(),
-r#"digraph single_node {
+                   r#"digraph single_node {
     N0[label="N0"];
 }
 "#);
@@ -937,7 +945,7 @@ r#"digraph single_node {
         let styles = Some(vec![Style::Dashed]);
         let r = test_input(LabelledGraph::new("single_node", labels, vec![], styles));
         assert_eq!(r.unwrap(),
-r#"digraph single_node {
+                   r#"digraph single_node {
     N0[label="N0"][style="dashed"];
 }
 "#);
@@ -951,7 +959,7 @@ r#"digraph single_node {
                                                    vec![edge(0, 1, "E", Style::None)],
                                                    None));
         assert_eq!(result.unwrap(),
-r#"digraph single_edge {
+                   r#"digraph single_edge {
     N0[label="N0"];
     N1[label="N1"];
     N0 -> N1[label="E"];
@@ -967,7 +975,7 @@ r#"digraph single_edge {
                                                    vec![edge(0, 1, "E", Style::Bold)],
                                                    None));
         assert_eq!(result.unwrap(),
-r#"digraph single_edge {
+                   r#"digraph single_edge {
     N0[label="N0"];
     N1[label="N1"];
     N0 -> N1[label="E"][style="bold"];
@@ -984,7 +992,7 @@ r#"digraph single_edge {
                                                    vec![edge(0, 1, "A-1", Style::None)],
                                                    styles));
         assert_eq!(result.unwrap(),
-r#"digraph test_some_labelled {
+                   r#"digraph test_some_labelled {
     N0[label="A"];
     N1[label="N1"][style="dotted"];
     N0 -> N1[label="A-1"];
@@ -1000,7 +1008,7 @@ r#"digraph test_some_labelled {
                                               vec![edge(0, 0, "E", Style::None)],
                                               None));
         assert_eq!(r.unwrap(),
-r#"digraph single_cyclic_node {
+                   r#"digraph single_cyclic_node {
     N0[label="N0"];
     N0 -> N0[label="E"];
 }
@@ -1009,7 +1017,7 @@ r#"digraph single_cyclic_node {
 
     #[test]
     fn hasse_diagram() {
-        let labels = AllNodesLabelled(vec!("{x,y}", "{x}", "{y}", "{}"));
+        let labels = AllNodesLabelled(vec!["{x,y}", "{x}", "{y}", "{}"]);
         let r = test_input(LabelledGraph::new("hasse_diagram",
                                               labels,
                                               vec![edge(0, 1, "", Style::None),
@@ -1018,7 +1026,7 @@ r#"digraph single_cyclic_node {
                                                    edge(2, 3, "", Style::None)],
                                               None));
         assert_eq!(r.unwrap(),
-r#"digraph hasse_diagram {
+                   r#"digraph hasse_diagram {
     N0[label="{x,y}"];
     N1[label="{x}"];
     N2[label="{y}"];
@@ -1033,17 +1041,11 @@ r#"digraph hasse_diagram {
 
     #[test]
     fn left_aligned_text() {
-        let labels = AllNodesLabelled(vec!(
-            "if test {\
-           \\l    branch1\
-           \\l} else {\
-           \\l    branch2\
-           \\l}\
-           \\lafterward\
-           \\l",
-            "branch1",
-            "branch2",
-            "afterward"));
+        let labels = AllNodesLabelled(vec!["if test {\\l    branch1\\l} else {\\l    \
+                                            branch2\\l}\\lafterward\\l",
+                                           "branch1",
+                                           "branch2",
+                                           "afterward"]);
 
         let mut writer = Vec::new();
 
@@ -1059,7 +1061,7 @@ r#"digraph hasse_diagram {
         Read::read_to_string(&mut &*writer, &mut r).unwrap();
 
         assert_eq!(r,
-r#"digraph syntax_tree {
+                   r#"digraph syntax_tree {
     N0[label="if test {\l    branch1\l} else {\l    branch2\l}\lafterward\l"];
     N1[label="branch1"];
     N2[label="branch2"];
