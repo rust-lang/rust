@@ -207,9 +207,8 @@ impl SystemTimeError {
     /// second system time was from the first.
     ///
     /// A `SystemTimeError` is returned from the `duration_from_earlier`
-    /// operation whenever the second duration, `earlier`, actually represents a
-    /// point later in time than the `self` of the method call. This function
-    /// will extract and return the amount of time later `earlier` actually is.
+    /// operation whenever the second system time represents a point later
+    /// in time than the `self` of the method call.
     pub fn duration(&self) -> Duration {
         self.0
     }
