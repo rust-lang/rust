@@ -94,9 +94,10 @@ impl<'a> FmtVisitor<'a> {
         fn replace_chars(string: &str) -> String {
             string.chars()
                   .map(|ch| {
-                      match ch.is_whitespace() {
-                          true => ch,
-                          false => 'X',
+                      if ch.is_whitespace() {
+                          ch
+                      } else {
+                          'X'
                       }
                   })
                   .collect()

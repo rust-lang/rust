@@ -465,7 +465,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
         if polarity == ast::ImplPolarity::Negative {
             result.push_str("!");
         }
-        if let &Some(ref trait_ref) = trait_ref {
+        if let Some(ref trait_ref) = *trait_ref {
             let budget = try_opt!(context.config.max_width.checked_sub(result.len()));
             let indent = offset + result.len();
             result.push_str(&*try_opt!(trait_ref.rewrite(context, budget, indent)));
@@ -496,7 +496,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
             BraceStyle::AlwaysNextLine => result.push('\n'),
             BraceStyle::PreferSameLine => result.push(' '),
             BraceStyle::SameLineWhere => {
-                if where_clause_str.len() > 0 {
+                if !where_clause_str.is_empty() {
                     result.push('\n')
                 } else {
                     result.push(' ')
@@ -720,7 +720,7 @@ fn format_tuple_struct(context: &RewriteContext,
     result.push_str(&body);
     result.push(')');
 
-    if where_clause_str.len() > 0 && !where_clause_str.contains('\n') &&
+    if !where_clause_str.is_empty() && !where_clause_str.contains('\n') &&
        (result.contains('\n') ||
         context.block_indent.width() + result.len() + where_clause_str.len() + 1 >
         context.config.max_width) {
@@ -1052,7 +1052,7 @@ fn rewrite_fn_base(context: &RewriteContext,
             let indent = match context.config.fn_return_indent {
                 ReturnIndent::WithWhereClause => indent + 4,
                 // Aligning with non-existent args looks silly.
-                _ if arg_str.len() == 0 => {
+                _ if arg_str.is_empty() => {
                     force_new_line_for_brace = true;
                     indent + 4
                 }

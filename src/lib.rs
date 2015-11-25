@@ -410,7 +410,7 @@ pub fn format_string(input: String, config: &Config, mode: WriteMode) -> FileMap
     visitor.buffer.push_str("\n");
     file_map.insert(path.to_owned(), visitor.buffer);
 
-    return file_map;
+    file_map
 }
 
 pub fn format(file: &Path, config: &Config, mode: WriteMode) -> FileMap {
@@ -427,7 +427,7 @@ pub fn format(file: &Path, config: &Config, mode: WriteMode) -> FileMap {
     // newlines so we must add one on for each file. This is sad.
     filemap::append_newlines(&mut file_map);
 
-    return file_map;
+    file_map
 }
 
 // args are the arguments passed on the command line, generally passed through
