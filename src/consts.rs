@@ -195,9 +195,9 @@ impl fmt::Display for Constant {
                 let (sign, suffix) = match *ity {
                     LitIntType::SignedIntLit(ref sity, ref sign) =>
                         (if let Sign::Minus = *sign { "-" } else { "" },
-                         ast_util::int_ty_to_string(*sity, None)),
+                         ast_util::int_ty_to_string(*sity)),
                     LitIntType::UnsignedIntLit(ref uity) =>
-                        ("", ast_util::uint_ty_to_string(*uity, None)),
+                        ("", ast_util::uint_ty_to_string(*uity)),
                     LitIntType::UnsuffixedIntLit(ref sign) =>
                         (if let Sign::Minus = *sign { "-" } else { "" },
                          "".into()),
