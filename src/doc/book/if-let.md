@@ -58,7 +58,8 @@ if let Some(x) = option {
 ## `while let`
 
 In a similar fashion, `while let` can be used when you want to conditionally
-loop as long as a value matches a certain pattern. It turns code like this:
+loop over an iterator as long as a value matches a certain pattern. It turns 
+code like this:
 
 ```rust
 # let option: Option<i32> = None;
@@ -73,8 +74,9 @@ loop {
 Into code like this:
 
 ```rust
-# let option: Option<i32> = None;
-while let Some(x) = option {
+# let v: vec![1, 3, 5, 7, 9, ];
+# let mut it: v.iter();
+while let Some(x) = it.next() {
     println!("{}", x);
 }
 ```
