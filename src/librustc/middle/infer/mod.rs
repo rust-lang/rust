@@ -13,7 +13,6 @@
 pub use self::LateBoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
-pub use self::TypeOrigin::*;
 pub use self::ValuePairs::*;
 pub use middle::ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
@@ -440,7 +439,7 @@ pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
     debug!("can_mk_subty({:?} <: {:?})", a, b);
     cx.probe(|_| {
         let trace = TypeTrace {
-            origin: Misc(codemap::DUMMY_SP),
+            origin: TypeOrigin::Misc(codemap::DUMMY_SP),
             values: Types(expected_found(true, a, b))
         };
         cx.sub(true, trace).relate(&a, &b).map(|_| ())
@@ -950,7 +949,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.commit_if_ok(|snapshot| {
             let (ty::EquatePredicate(a, b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
-            let origin = EquatePredicate(span);
+            let origin = TypeOrigin::EquatePredicate(span);
             let () = try!(mk_eqty(self, false, origin, a, b));
             self.leak_check(&skol_map, snapshot)
         })
@@ -1328,7 +1327,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                    actual: Ty<'tcx>,
                                    err: &TypeError<'tcx>) {
         let trace = TypeTrace {
-            origin: Misc(span),
+            origin: TypeOrigin::Misc(span),
             values: Types(ExpectedFound {
                 expected: expected,
                 found: actual
@@ -1342,7 +1341,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                             expected: type_variable::Default<'tcx>,
                                             actual: type_variable::Default<'tcx>) {
         let trace = TypeTrace {
-            origin: Misc(span),
+            origin: TypeOrigin::Misc(span),
             values: Types(ExpectedFound {
                 expected: expected.ty,
                 found: actual.ty
@@ -1393,8 +1392,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // generic so we don't have to do anything quite this
             // terrible.
             let e = self.tcx.types.err;
-            let trace = TypeTrace { origin: Misc(codemap::DUMMY_SP),
-                                    values: Types(expected_found(true, e, e)) };
+            let trace = TypeTrace {
+                origin: TypeOrigin::Misc(codemap::DUMMY_SP),
+                values: Types(expected_found(true, e, e))
+            };
             self.equate(true, trace).relate(a, b)
         }).map(|_| ())
     }
@@ -1525,7 +1526,7 @@ impl<'tcx> TypeTrace<'tcx> {
 
     pub fn dummy(tcx: &ty::ctxt<'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
-            origin: Misc(codemap::DUMMY_SP),
+            origin: TypeOrigin::Misc(codemap::DUMMY_SP),
             values: Types(ExpectedFound {
                 expected: tcx.types.err,
                 found: tcx.types.err,
@@ -1543,17 +1544,17 @@ impl<'tcx> fmt::Debug for TypeTrace<'tcx> {
 impl TypeOrigin {
     pub fn span(&self) -> Span {
         match *self {
-            MethodCompatCheck(span) => span,
-            ExprAssignable(span) => span,
-            Misc(span) => span,
-            RelateTraitRefs(span) => span,
-            RelateSelfType(span) => span,
-            RelateOutputImplTypes(span) => span,
-            MatchExpressionArm(match_span, _, _) => match_span,
-            IfExpression(span) => span,
-            IfExpressionWithNoElse(span) => span,
-            RangeExpression(span) => span,
-            EquatePredicate(span) => span,
+            TypeOrigin::MethodCompatCheck(span) => span,
+            TypeOrigin::ExprAssignable(span) => span,
+            TypeOrigin::Misc(span) => span,
+            TypeOrigin::RelateTraitRefs(span) => span,
+            TypeOrigin::RelateSelfType(span) => span,
+            TypeOrigin::RelateOutputImplTypes(span) => span,
+            TypeOrigin::MatchExpressionArm(match_span, _, _) => match_span,
+            TypeOrigin::IfExpression(span) => span,
+            TypeOrigin::IfExpressionWithNoElse(span) => span,
+            TypeOrigin::RangeExpression(span) => span,
+            TypeOrigin::EquatePredicate(span) => span,
         }
     }
 }

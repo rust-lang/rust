@@ -11,7 +11,7 @@
 
 use check::{coercion, FnCtxt};
 use middle::ty::{self, Ty};
-use middle::infer;
+use middle::infer::{self, TypeOrigin};
 
 use std::result::Result::{Err, Ok};
 use syntax::codemap::Span;
@@ -35,7 +35,7 @@ pub fn suptype_with_fn<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
     F: FnOnce(Span, Ty<'tcx>, Ty<'tcx>, &ty::error::TypeError<'tcx>),
 {
     // n.b.: order of actual, expected is reversed
-    match infer::mk_subty(fcx.infcx(), b_is_expected, infer::Misc(sp),
+    match infer::mk_subty(fcx.infcx(), b_is_expected, TypeOrigin::Misc(sp),
                           ty_b, ty_a) {
       Ok(()) => { /* ok */ }
       Err(ref err) => {
@@ -46,7 +46,7 @@ pub fn suptype_with_fn<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
 pub fn eqtype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
                         expected: Ty<'tcx>, actual: Ty<'tcx>) {
-    match infer::mk_eqty(fcx.infcx(), false, infer::Misc(sp), actual, expected) {
+    match infer::mk_eqty(fcx.infcx(), false, TypeOrigin::Misc(sp), actual, expected) {
         Ok(()) => { /* ok */ }
         Err(ref err) => { fcx.report_mismatched_types(sp, expected, actual, err); }
     }
