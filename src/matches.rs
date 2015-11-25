@@ -2,6 +2,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use rustc::middle::ty;
 use syntax::ast::Lit_::LitBool;
+use syntax::codemap::Span;
 
 use utils::{snippet, span_lint, span_help_and_lint, in_external_macro, expr_block};
 
@@ -113,12 +114,12 @@ impl LateLintPass for MatchPass {
             // check preconditions for MATCH_REF_PATS
             if has_only_ref_pats(arms) {
                 if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
-                    let template = match_template(source, "", &snippet(cx, inner.span, ".."));
+                    let template = match_template(cx, expr.span, source, "", inner);
                     span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
                         "you don't need to add `&` to both the expression \
                          and the patterns: use `{}`", template));
                 } else {
-                    let template = match_template(source, "*", &snippet(cx, ex.span, ".."));
+                    let template = match_template(cx, expr.span, source, "*", ex);
                     span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
                         "instead of prefixing all patterns with `&`, you can dereference the \
                          expression: `{}`", template));
@@ -146,19 +147,24 @@ fn has_only_ref_pats(arms: &[Arm]) -> bool {
     mapped.map_or(false, |v| v.iter().any(|el| *el))
 }
 
-fn match_template(source: MatchSource, op: &str, expr: &str) -> String {
+fn match_template(cx: &LateContext,
+                  span: Span,
+                  source: MatchSource,
+                  op: &str,
+                  expr: &Expr) -> String {
+    let expr_snippet = snippet(cx, expr.span, "..");
     match source {
         MatchSource::Normal => {
-            format!("match {}{} {{ ...", op, expr)
+            format!("match {}{} {{ ...", op, expr_snippet)
         }
         MatchSource::IfLetDesugar { .. } => {
-            format!("if let ... = {}{} {{", op, expr)
+            format!("if let ... = {}{} {{", op, expr_snippet)
         }
         MatchSource::WhileLetDesugar => {
-            format!("while let ... = {}{} {{", op, expr)
+            format!("while let ... = {}{} {{", op, expr_snippet)
         }
         MatchSource::ForLoopDesugar => {
-            panic!("for loop desugared to match with &-patterns!")
+            cx.sess().span_bug(span, "for loop desugared to match with &-patterns!")
         }
     }
 }
