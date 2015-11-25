@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! invalid {
-    _ => (); //~^ ERROR invalid macro matcher
+#![feature(type_macros)]
+
+macro_rules! t {
+    () => ( String ; );     //~ ERROR macro expansion ignores token `;`
 }
 
 fn main() {
+    let i: Vec<t!()>;       //~ NOTE caused by the macro expansion here
 }
