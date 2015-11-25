@@ -206,7 +206,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         for c in c.escape_default() {
-            m.push(c)
+            m.push(c);
         }
         self.fatal_span_(from_pos, to_pos, &m[..])
     }
@@ -217,7 +217,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         for c in c.escape_default() {
-            m.push(c)
+            m.push(c);
         }
         self.err_span_(from_pos, to_pos, &m[..]);
     }
