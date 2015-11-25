@@ -24,7 +24,7 @@ mod duration;
 
 /// A measurement of a monotonically increasing clock.
 ///
-/// Instants are guaranteed always be greater than any previously measured
+/// Instants are always guaranteed to be greater than any previously measured
 /// instant when created, and are often useful for tasks such as measuring
 /// benchmarks or timing how long an operation takes.
 ///
