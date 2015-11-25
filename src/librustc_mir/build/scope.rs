@@ -94,7 +94,6 @@ use syntax::codemap::Span;
 
 pub struct Scope<'tcx> {
     extent: CodeExtent,
-    exits: Vec<ExecutionPoint>,
     drops: Vec<(DropKind, Span, Lvalue<'tcx>)>,
     cached_block: Option<BasicBlock>,
 }
@@ -116,7 +115,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>
     {
-        let extent = self.extent_of_innermost_scope().unwrap();
+        let extent = self.extent_of_innermost_scope();
         let loop_scope = LoopScope {
             extent: extent.clone(),
             continue_block: loop_block,
@@ -128,60 +127,51 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         r
     }
 
-    /// Start a scope. The closure `f` should translate the contents
-    /// of the scope. See module comment for more details.
-    pub fn in_scope<F, R>(&mut self, extent: CodeExtent, block: BasicBlock, f: F) -> BlockAnd<R>
+    /// Convenience wrapper that pushes a scope and then executes `f`
+    /// to build its contents, popping the scope afterwards.
+    pub fn in_scope<F, R>(&mut self, extent: CodeExtent, mut block: BasicBlock, f: F) -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
+        self.push_scope(extent, block);
+        let rv = unpack!(block = f(self));
+        self.pop_scope(extent, block);
+        debug!("in_scope: exiting extent={:?} block={:?}", extent, block);
+        block.and(rv)
+    }
 
-        let start_point = self.cfg.end_point(block);
+    /// Push a scope onto the stack. You can then build code in this
+    /// scope and call `pop_scope` afterwards. Note that these two
+    /// calls must be paired; using `in_scope` as a convenience
+    /// wrapper maybe preferable.
+    pub fn push_scope(&mut self, extent: CodeExtent, block: BasicBlock) {
+        debug!("push_scope({:?}, {:?})", extent, block);
 
         // push scope, execute `f`, then pop scope again
         self.scopes.push(Scope {
             extent: extent.clone(),
             drops: vec![],
-            exits: vec![],
             cached_block: None,
         });
-        let BlockAnd(fallthrough_block, rv) = f(self);
-        let mut scope = self.scopes.pop().unwrap();
+    }
+
+    /// Pops a scope, which should have extent `extent`, adding any
+    /// drops onto the end of `block` that are needed.  This must
+    /// match 1-to-1 with `push_scope`.
+    pub fn pop_scope(&mut self, extent: CodeExtent, block: BasicBlock) {
+        debug!("pop_scope({:?}, {:?})", extent, block);
+        let scope = self.scopes.pop().unwrap();
+
+        assert_eq!(scope.extent, extent);
 
         // add in any drops needed on the fallthrough path (any other
         // exiting paths, such as those that arise from `break`, will
         // have drops already)
         for (kind, span, lvalue) in scope.drops {
-            self.cfg.push_drop(fallthrough_block, span, kind, &lvalue);
-        }
-
-        // add the implicit fallthrough edge
-        scope.exits.push(self.cfg.end_point(fallthrough_block));
-
-        // compute the extent from start to finish and store it in the graph
-        let graph_extent = self.graph_extent(start_point, scope.exits);
-        self.extents.entry(extent)
-                    .or_insert(vec![])
-                    .push(graph_extent);
-
-        debug!("in_scope: exiting extent={:?} fallthrough_block={:?}", extent, fallthrough_block);
-        fallthrough_block.and(rv)
-    }
-
-    /// Creates a graph extent (SEME region) from an entry point and
-    /// exit points.
-    fn graph_extent(&self, entry: ExecutionPoint, exits: Vec<ExecutionPoint>) -> GraphExtent {
-        if exits.len() == 1 && entry.block == exits[0].block {
-            GraphExtent {
-                entry: entry,
-                exit: GraphExtentExit::Statement(exits[0].statement),
-            }
-        } else {
-            GraphExtent {
-                entry: entry,
-                exit: GraphExtentExit::Points(exits),
-            }
+            self.cfg.push_drop(block, span, kind, &lvalue);
         }
     }
+
 
     /// Finds the loop scope for a given label. This is used for
     /// resolving `break` and `continue`.
@@ -232,8 +222,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             for &(kind, drop_span, ref lvalue) in &scope.drops {
                 self.cfg.push_drop(block, drop_span, kind, lvalue);
             }
-
-            scope.exits.push(self.cfg.end_point(block));
         }
 
         self.cfg.terminate(block, Terminator::Goto { target: target });
@@ -272,12 +260,12 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         }
     }
 
-    pub fn extent_of_innermost_scope(&self) -> Option<CodeExtent> {
-        self.scopes.last().map(|scope| scope.extent)
+    pub fn extent_of_innermost_scope(&self) -> CodeExtent {
+        self.scopes.last().map(|scope| scope.extent).unwrap()
     }
 
-    pub fn extent_of_outermost_scope(&self) -> Option<CodeExtent> {
-        self.scopes.first().map(|scope| scope.extent)
+    pub fn extent_of_outermost_scope(&self) -> CodeExtent {
+        self.scopes.first().map(|scope| scope.extent).unwrap()
     }
 }
 
