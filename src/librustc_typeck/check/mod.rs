@@ -3507,9 +3507,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let t_cast = structurally_resolved_type(fcx, expr.span, t_cast);
         check_expr_with_expectation(fcx, e, ExpectCastableToType(t_cast));
         let t_expr = fcx.expr_ty(e);
+        let t_cast = fcx.infcx().resolve_type_vars_if_possible(&t_cast);
 
         // Eagerly check for some obvious errors.
-        if t_expr.references_error() {
+        if t_expr.references_error() || t_cast.references_error() {
             fcx.write_error(id);
         } else if !fcx.type_is_known_to_be_sized(t_cast, expr.span) {
             report_cast_to_unsized_type(fcx, expr.span, t.span, e.span, t_cast, t_expr, id);
