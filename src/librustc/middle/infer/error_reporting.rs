@@ -78,7 +78,7 @@ use rustc_front::print::pprust;
 
 use middle::def;
 use middle::def_id::DefId;
-use middle::infer;
+use middle::infer::{self, TypeOrigin};
 use middle::region;
 use middle::subst;
 use middle::ty::{self, Ty, HasTypeFlags};
@@ -474,7 +474,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         self.check_and_note_conflicting_crates(terr, trace.origin.span());
 
         match trace.origin {
-            infer::MatchExpressionArm(_, arm_span, source) => match source {
+            TypeOrigin::MatchExpressionArm(_, arm_span, source) => match source {
                 hir::MatchSource::IfLetDesugar{..} =>
                     self.tcx.sess.span_note(arm_span, "`if let` arm with an incompatible type"),
                 _ => self.tcx.sess.span_note(arm_span, "match arm with an incompatible type"),
@@ -1602,38 +1602,38 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
             }
             infer::Subtype(ref trace) => {
                 let desc = match trace.origin {
-                    infer::Misc(_) => {
+                    TypeOrigin::Misc(_) => {
                         "types are compatible"
                     }
-                    infer::MethodCompatCheck(_) => {
+                    TypeOrigin::MethodCompatCheck(_) => {
                         "method type is compatible with trait"
                     }
-                    infer::ExprAssignable(_) => {
+                    TypeOrigin::ExprAssignable(_) => {
                         "expression is assignable"
                     }
-                    infer::RelateTraitRefs(_) => {
+                    TypeOrigin::RelateTraitRefs(_) => {
                         "traits are compatible"
                     }
-                    infer::RelateSelfType(_) => {
+                    TypeOrigin::RelateSelfType(_) => {
                         "self type matches impl self type"
                     }
-                    infer::RelateOutputImplTypes(_) => {
+                    TypeOrigin::RelateOutputImplTypes(_) => {
                         "trait type parameters matches those \
                                  specified on the impl"
                     }
-                    infer::MatchExpressionArm(_, _, _) => {
+                    TypeOrigin::MatchExpressionArm(_, _, _) => {
                         "match arms have compatible types"
                     }
-                    infer::IfExpression(_) => {
+                    TypeOrigin::IfExpression(_) => {
                         "if and else have compatible types"
                     }
-                    infer::IfExpressionWithNoElse(_) => {
+                    TypeOrigin::IfExpressionWithNoElse(_) => {
                         "if may be missing an else clause"
                     }
-                    infer::RangeExpression(_) => {
+                    TypeOrigin::RangeExpression(_) => {
                         "start and end of range have compatible types"
                     }
-                    infer::EquatePredicate(_) => {
+                    TypeOrigin::EquatePredicate(_) => {
                         "equality where clause is satisfied"
                     }
                 };
