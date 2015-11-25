@@ -200,18 +200,19 @@ pub enum NamedMatch {
 }
 
 pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
-            -> HashMap<Name, Rc<NamedMatch>> {
+            -> ParseResult<HashMap<Name, Rc<NamedMatch>>> {
     fn n_rec(p_s: &ParseSess, m: &TokenTree, res: &[Rc<NamedMatch>],
-             ret_val: &mut HashMap<Name, Rc<NamedMatch>>, idx: &mut usize) {
+             ret_val: &mut HashMap<Name, Rc<NamedMatch>>, idx: &mut usize)
+             -> Result<(), (codemap::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => {
                 for next_m in &seq.tts {
-                    n_rec(p_s, next_m, res, ret_val, idx)
+                    try!(n_rec(p_s, next_m, res, ret_val, idx))
                 }
             }
             TokenTree::Delimited(_, ref delim) => {
                 for next_m in &delim.tts {
-                    n_rec(p_s, next_m, res, ret_val, idx)
+                    try!(n_rec(p_s, next_m, res, ret_val, idx));
                 }
             }
             TokenTree::Token(sp, MatchNt(bind_name, _, _, _)) => {
@@ -221,26 +222,36 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
                         *idx += 1;
                     }
                     Occupied(..) => {
-                        panic!(p_s.span_diagnostic
-                           .span_fatal(sp,
-                                       &format!("duplicated bind name: {}",
-                                               bind_name)))
+                        return Err((sp, format!("duplicated bind name: {}", bind_name)))
                     }
                 }
             }
-            TokenTree::Token(_, SubstNt(..)) => panic!("Cannot fill in a NT"),
+            TokenTree::Token(sp, SubstNt(..)) => {
+                return Err((sp, "missing fragment specifier".to_string()))
+            }
             TokenTree::Token(_, _) => (),
         }
+
+        Ok(())
     }
+
     let mut ret_val = HashMap::new();
     let mut idx = 0;
-    for m in ms { n_rec(p_s, m, res, &mut ret_val, &mut idx) }
-    ret_val
+    for m in ms {
+        match n_rec(p_s, m, res, &mut ret_val, &mut idx) {
+            Ok(_) => {},
+            Err((sp, msg)) => return Error(sp, msg),
+        }
+    }
+
+    Success(ret_val)
 }
 
 pub enum ParseResult<T> {
     Success(T),
+    /// Arm failed to match
     Failure(codemap::Span, String),
+    /// Fatal error (malformed macro?). Abort compilation.
     Error(codemap::Span, String)
 }
 
@@ -429,7 +440,7 @@ pub fn parse(sess: &ParseSess,
                 for dv in &mut (&mut eof_eis[0]).matches {
                     v.push(dv.pop().unwrap());
                 }
-                return Success(nameize(sess, ms, &v[..]));
+                return nameize(sess, ms, &v[..]);
             } else if eof_eis.len() > 1 {
                 return Error(sp, "ambiguity: multiple successful parses".to_string());
             } else {
