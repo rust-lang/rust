@@ -191,7 +191,7 @@ pub fn definitive_tactic<'t, I, T>(items: I,
 
 // Format a list of commented items into a string.
 // TODO: add unit tests
-pub fn write_list<'b, I, T>(items: I, formatting: &ListFormatting<'b>) -> Option<String>
+pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
     where I: IntoIterator<Item = T>,
           T: AsRef<ListItem>
 {

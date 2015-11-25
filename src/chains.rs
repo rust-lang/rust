@@ -168,7 +168,7 @@ fn is_block_expr(expr: &ast::Expr, repr: &str) -> bool {
     }
 }
 
-fn pop_expr_chain<'a>(expr: &'a ast::Expr) -> Option<&'a ast::Expr> {
+fn pop_expr_chain(expr: &ast::Expr) -> Option<&ast::Expr> {
     match expr.node {
         ast::Expr_::ExprMethodCall(_, _, ref expressions) => Some(&expressions[0]),
         ast::Expr_::ExprTupField(ref subexpr, _) |

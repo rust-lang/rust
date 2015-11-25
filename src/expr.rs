@@ -1008,7 +1008,7 @@ fn rewrite_guard(context: &RewriteContext,
                  // the arm (excludes offset).
                  pattern_width: usize)
                  -> Option<String> {
-    if let &Some(ref guard) = guard {
+    if let Some(ref guard) = *guard {
         // First try to fit the guard string on the same line as the pattern.
         // 4 = ` if `, 5 = ` => {`
         let overhead = pattern_width + 4 + 5;
