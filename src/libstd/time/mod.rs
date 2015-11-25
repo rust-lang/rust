@@ -140,7 +140,7 @@ impl SystemTime {
     /// guaranteed to always be before later measurements (due to anomalies such
     /// as the system clock being adjusted either forwards or backwards).
     ///
-    /// If successful, `Ok(duration)` is returned where the duration represents
+    /// If successful, `Ok(Duration)` is returned where the duration represents
     /// the amount of time elapsed from the specified measurement to this one.
     ///
     /// Returns an `Err` if `earlier` is later than `self`, and the error
