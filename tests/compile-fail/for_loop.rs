@@ -132,11 +132,6 @@ fn main() {
     _index = 0;
     for _v in &vec { _index += 1 } //~ERROR the variable `_index` is used as a loop counter
 
-    let mut _index;
-    _index = 0;
-    for _v in &vec { _index += 1 } //~ERROR the variable `_index` is used as a loop counter
-    for _v in &vec { _index += 1 } // But this does not warn
-
     // Potential false positives
     let mut _index = 0;
     _index = 1;
@@ -187,4 +182,8 @@ fn main() {
     let mut _index = 0;
     { let mut _x = &mut _index; }
     for _v in &vec { _index += 1 }
+
+    let mut index = 0;
+    for _v in &vec { index += 1 }
+    println!("index: {}", index);
 }

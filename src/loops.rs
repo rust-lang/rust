@@ -150,7 +150,8 @@ impl LateLintPass for LoopsPass {
                     for (id, _) in visitor.states.iter().filter( |&(_,v)| *v == VarState::IncrOnce) {
                         let mut visitor2 = InitializeVisitor { cx: cx, end_expr: expr, var_id: id.clone(),
                                                                state: VarState::IncrOnce, name: None,
-                                                               depth: 0, done: false };
+                                                               depth: 0,
+                                                               past_loop: false };
                         walk_block(&mut visitor2, block);
 
                         if visitor2.state == VarState::Warn {
@@ -502,7 +503,7 @@ struct InitializeVisitor<'v, 't: 'v> {
     state: VarState,
     name: Option<Name>,
     depth: u32,              // depth of conditional expressions
-    done: bool
+    past_loop: bool
 }
 
 impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
@@ -530,12 +531,16 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
     }
 
     fn visit_expr(&mut self, expr: &'v Expr) {
-        if self.state == VarState::DontWarn || expr == self.end_expr {
-            self.done = true;
+        if self.state == VarState::DontWarn {
+            return;
+        }
+        if expr == self.end_expr {
+            self.past_loop = true;
+            return;
         }
         // No need to visit expressions before the variable is
-        // declared or after we've rejected it.
-        if self.state == VarState::IncrOnce || self.done {
+        // declared
+        if self.state == VarState::IncrOnce {
             return;
         }
 
@@ -556,11 +561,15 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
                     _ => ()
                 }
             }
+
+            if self.past_loop {
+                self.state = VarState::DontWarn;
+                return;
+            }
         }
         // If there are other loops between the declaration and the target loop, give up
-        else if is_loop(expr) {
+        else if !self.past_loop && is_loop(expr) {
             self.state = VarState::DontWarn;
-            self.done = true;
             return;
         }
         // Keep track of whether we're inside a conditional expression
