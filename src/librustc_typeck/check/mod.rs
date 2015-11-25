@@ -110,7 +110,6 @@ use TypeAndSubsts;
 use lint;
 use util::common::{block_query, ErrorReported, indenter, loop_query};
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
-use util::lev_distance::lev_distance;
 
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::{HashSet};
@@ -123,6 +122,7 @@ use syntax::codemap::{self, Span, Spanned};
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::{self, InternedString};
 use syntax::ptr::P;
+use syntax::util::lev_distance::lev_distance;
 
 use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
