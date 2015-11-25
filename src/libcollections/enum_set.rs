@@ -20,7 +20,7 @@
 
 use core::marker;
 use core::fmt;
-use core::iter::{FromIterator};
+use core::iter::FromIterator;
 use core::ops::{Sub, BitOr, BitAnd, BitXor};
 
 // FIXME(contentions): implement union family of methods? (general design may be
@@ -43,11 +43,13 @@ pub struct EnumSet<E> {
 impl<E> Copy for EnumSet<E> {}
 
 impl<E> Clone for EnumSet<E> {
-    fn clone(&self) -> EnumSet<E> { *self }
+    fn clone(&self) -> EnumSet<E> {
+        *self
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<E:CLike + fmt::Debug> fmt::Debug for EnumSet<E> {
+impl<E: CLike + fmt::Debug> fmt::Debug for EnumSet<E> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_set().entries(self).finish()
     }
@@ -79,18 +81,22 @@ pub trait CLike {
     fn from_usize(usize) -> Self;
 }
 
-fn bit<E:CLike>(e: &E) -> usize {
+fn bit<E: CLike>(e: &E) -> usize {
     use core::usize;
     let value = e.to_usize();
     assert!(value < usize::BITS,
-            "EnumSet only supports up to {} variants.", usize::BITS - 1);
+            "EnumSet only supports up to {} variants.",
+            usize::BITS - 1);
     1 << value
 }
 
-impl<E:CLike> EnumSet<E> {
+impl<E: CLike> EnumSet<E> {
     /// Returns an empty `EnumSet`.
     pub fn new() -> EnumSet<E> {
-        EnumSet {bits: 0, marker: marker::PhantomData}
+        EnumSet {
+            bits: 0,
+            marker: marker::PhantomData,
+        }
     }
 
     /// Returns the number of elements in the given `EnumSet`.
@@ -124,14 +130,18 @@ impl<E:CLike> EnumSet<E> {
 
     /// Returns the union of both `EnumSets`.
     pub fn union(&self, e: EnumSet<E>) -> EnumSet<E> {
-        EnumSet {bits: self.bits | e.bits,
-                 marker: marker::PhantomData}
+        EnumSet {
+            bits: self.bits | e.bits,
+            marker: marker::PhantomData,
+        }
     }
 
     /// Returns the intersection of both `EnumSets`.
     pub fn intersection(&self, e: EnumSet<E>) -> EnumSet<E> {
-        EnumSet {bits: self.bits & e.bits,
-                 marker: marker::PhantomData}
+        EnumSet {
+            bits: self.bits & e.bits,
+            marker: marker::PhantomData,
+        }
     }
 
     /// Adds an enum to the `EnumSet`, and returns `true` if it wasn't there before
@@ -159,35 +169,47 @@ impl<E:CLike> EnumSet<E> {
     }
 }
 
-impl<E:CLike> Sub for EnumSet<E> {
+impl<E: CLike> Sub for EnumSet<E> {
     type Output = EnumSet<E>;
 
     fn sub(self, e: EnumSet<E>) -> EnumSet<E> {
-        EnumSet {bits: self.bits & !e.bits, marker: marker::PhantomData}
+        EnumSet {
+            bits: self.bits & !e.bits,
+            marker: marker::PhantomData,
+        }
     }
 }
 
-impl<E:CLike> BitOr for EnumSet<E> {
+impl<E: CLike> BitOr for EnumSet<E> {
     type Output = EnumSet<E>;
 
     fn bitor(self, e: EnumSet<E>) -> EnumSet<E> {
-        EnumSet {bits: self.bits | e.bits, marker: marker::PhantomData}
+        EnumSet {
+            bits: self.bits | e.bits,
+            marker: marker::PhantomData,
+        }
     }
 }
 
-impl<E:CLike> BitAnd for EnumSet<E> {
+impl<E: CLike> BitAnd for EnumSet<E> {
     type Output = EnumSet<E>;
 
     fn bitand(self, e: EnumSet<E>) -> EnumSet<E> {
-        EnumSet {bits: self.bits & e.bits, marker: marker::PhantomData}
+        EnumSet {
+            bits: self.bits & e.bits,
+            marker: marker::PhantomData,
+        }
     }
 }
 
-impl<E:CLike> BitXor for EnumSet<E> {
+impl<E: CLike> BitXor for EnumSet<E> {
     type Output = EnumSet<E>;
 
     fn bitxor(self, e: EnumSet<E>) -> EnumSet<E> {
-        EnumSet {bits: self.bits ^ e.bits, marker: marker::PhantomData}
+        EnumSet {
+            bits: self.bits ^ e.bits,
+            marker: marker::PhantomData,
+        }
     }
 }
 
@@ -209,13 +231,17 @@ impl<E> Clone for Iter<E> {
     }
 }
 
-impl<E:CLike> Iter<E> {
+impl<E: CLike> Iter<E> {
     fn new(bits: usize) -> Iter<E> {
-        Iter { index: 0, bits: bits, marker: marker::PhantomData }
+        Iter {
+            index: 0,
+            bits: bits,
+            marker: marker::PhantomData,
+        }
     }
 }
 
-impl<E:CLike> Iterator for Iter<E> {
+impl<E: CLike> Iterator for Iter<E> {
     type Item = E;
 
     fn next(&mut self) -> Option<E> {
@@ -239,8 +265,8 @@ impl<E:CLike> Iterator for Iter<E> {
     }
 }
 
-impl<E:CLike> FromIterator<E> for EnumSet<E> {
-    fn from_iter<I: IntoIterator<Item=E>>(iter: I) -> EnumSet<E> {
+impl<E: CLike> FromIterator<E> for EnumSet<E> {
+    fn from_iter<I: IntoIterator<Item = E>>(iter: I) -> EnumSet<E> {
         let mut ret = EnumSet::new();
         ret.extend(iter);
         ret
@@ -248,7 +274,8 @@ impl<E:CLike> FromIterator<E> for EnumSet<E> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, E> IntoIterator for &'a EnumSet<E> where E: CLike {
+impl<'a, E> IntoIterator for &'a EnumSet<E> where E: CLike
+{
     type Item = E;
     type IntoIter = Iter<E>;
 
@@ -257,8 +284,8 @@ impl<'a, E> IntoIterator for &'a EnumSet<E> where E: CLike {
     }
 }
 
-impl<E:CLike> Extend<E> for EnumSet<E> {
-    fn extend<I: IntoIterator<Item=E>>(&mut self, iter: I) {
+impl<E: CLike> Extend<E> for EnumSet<E> {
+    fn extend<I: IntoIterator<Item = E>>(&mut self, iter: I) {
         for element in iter {
             self.insert(element);
         }
@@ -267,7 +294,7 @@ impl<E:CLike> Extend<E> for EnumSet<E> {
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, E: 'a + CLike + Copy> Extend<&'a E> for EnumSet<E> {
-    fn extend<I: IntoIterator<Item=&'a E>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = &'a E>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
 }

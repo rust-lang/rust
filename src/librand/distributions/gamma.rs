@@ -89,7 +89,7 @@ impl Gamma {
 
         let repr = match shape {
             1.0 => One(Exp::new(1.0 / scale)),
-            0.0 ... 1.0 => Small(GammaSmallShape::new_raw(shape, scale)),
+            0.0...1.0 => Small(GammaSmallShape::new_raw(shape, scale)),
             _ => Large(GammaLargeShape::new_raw(shape, scale)),
         };
         Gamma { repr: repr }
@@ -153,7 +153,8 @@ impl IndependentSample<f64> for GammaLargeShape {
         loop {
             let StandardNormal(x) = rng.gen::<StandardNormal>();
             let v_cbrt = 1.0 + self.c * x;
-            if v_cbrt <= 0.0 { // a^3 <= 0 iff a <= 0
+            if v_cbrt <= 0.0 {
+                // a^3 <= 0 iff a <= 0
                 continue;
             }
 

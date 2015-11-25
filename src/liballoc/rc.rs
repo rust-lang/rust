@@ -196,9 +196,10 @@ impl<T: ?Sized> !marker::Send for Rc<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !marker::Sync for Rc<T> {}
 
-#[cfg(not(stage0))] // remove cfg after new snapshot
+// remove cfg after new snapshot
+#[cfg(not(stage0))]
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 
 impl<T> Rc<T> {
     /// Constructs a new `Rc<T>`.
@@ -482,7 +483,6 @@ impl<T: ?Sized> Drop for Rc<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Clone for Rc<T> {
-
     /// Makes a clone of the `Rc<T>`.
     ///
     /// When you clone an `Rc<T>`, it will create another pointer to the data and
@@ -678,21 +678,21 @@ impl<T: ?Sized + Ord> Ord for Rc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized+Hash> Hash for Rc<T> {
+impl<T: ?Sized + Hash> Hash for Rc<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         (**self).hash(state);
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized+fmt::Display> fmt::Display for Rc<T> {
+impl<T: ?Sized + fmt::Display> fmt::Display for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized+fmt::Debug> fmt::Debug for Rc<T> {
+impl<T: ?Sized + fmt::Debug> fmt::Debug for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
@@ -731,9 +731,10 @@ impl<T: ?Sized> !marker::Send for Weak<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !marker::Sync for Weak<T> {}
 
-#[cfg(not(stage0))] // remove cfg after new snapshot
+// remove cfg after new snapshot
+#[cfg(not(stage0))]
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
 impl<T: ?Sized> Weak<T> {
     /// Upgrades a weak reference to a strong reference.
@@ -810,7 +811,6 @@ impl<T: ?Sized> Drop for Weak<T> {
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized> Clone for Weak<T> {
-
     /// Makes a clone of the `Weak<T>`.
     ///
     /// This increases the weak reference count.
@@ -832,7 +832,7 @@ impl<T: ?Sized> Clone for Weak<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized+fmt::Debug> fmt::Debug for Weak<T> {
+impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "(Weak)")
     }

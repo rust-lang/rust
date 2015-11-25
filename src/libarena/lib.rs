@@ -168,8 +168,8 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
 
         let start = round_up(after_tydesc, align);
 
-        //debug!("freeing object: idx = {}, size = {}, align = {}, done = {}",
-        //       start, size, align, is_done);
+        // debug!("freeing object: idx = {}, size = {}, align = {}, done = {}",
+        //        start, size, align, is_done);
         if is_done {
             ((*tydesc).drop_glue)(buf.offset(start as isize) as *const i8);
         }
@@ -201,8 +201,11 @@ struct TyDesc {
     align: usize,
 }
 
-trait AllTypes { fn dummy(&self) { } }
-impl<T:?Sized> AllTypes for T { }
+trait AllTypes {
+    fn dummy(&self) {}
+}
+
+impl<T: ?Sized> AllTypes for T {}
 
 unsafe fn get_tydesc<T>() -> *const TyDesc {
     use std::raw::TraitObject;
@@ -624,7 +627,7 @@ mod tests {
         for _ in 0..100000 {
             arena.alloc(Noncopy {
                 string: "hello world".to_string(),
-                array: vec!(1, 2, 3, 4, 5),
+                array: vec![1, 2, 3, 4, 5],
             });
         }
     }
@@ -635,7 +638,7 @@ mod tests {
         b.iter(|| {
             arena.alloc(Noncopy {
                 string: "hello world".to_string(),
-                array: vec!(1, 2, 3, 4, 5),
+                array: vec![1, 2, 3, 4, 5],
             })
         })
     }
@@ -645,7 +648,7 @@ mod tests {
         b.iter(|| {
             let _: Box<_> = box Noncopy {
                 string: "hello world".to_string(),
-                array: vec!(1, 2, 3, 4, 5),
+                array: vec![1, 2, 3, 4, 5],
             };
         })
     }
@@ -657,7 +660,7 @@ mod tests {
             arena.alloc(|| {
                 Noncopy {
                     string: "hello world".to_string(),
-                    array: vec!(1, 2, 3, 4, 5),
+                    array: vec![1, 2, 3, 4, 5],
                 }
             })
         })

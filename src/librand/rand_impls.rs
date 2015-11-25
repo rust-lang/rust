@@ -202,7 +202,7 @@ tuple_impl!{A, B, C, D, E, F, G, H, I, J}
 tuple_impl!{A, B, C, D, E, F, G, H, I, J, K}
 tuple_impl!{A, B, C, D, E, F, G, H, I, J, K, L}
 
-impl<T:Rand> Rand for Option<T> {
+impl<T: Rand> Rand for Option<T> {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> Option<T> {
         if rng.gen() {
