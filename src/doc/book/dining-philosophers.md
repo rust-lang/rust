@@ -45,8 +45,17 @@ Now, let’s imagine this sequence of events:
 6. ... ? All the forks are taken, but nobody can eat!
 
 There are different ways to solve this problem. We’ll get to our solution in
-the tutorial itself. For now, let’s get started modeling the problem itself.
-We’ll start with the philosophers:
+the tutorial itself. For now, let’s get started and create a new project with
+`cargo`:
+
+```bash
+$ cd ~/projects
+$ cargo new dining_philosophers --bin
+$ cd dining_philosophers
+```
+
+Now we can start modeling the problem itself. We’ll start with the philosophers
+in `src/main.rs`:
 
 ```rust
 struct Philosopher {
