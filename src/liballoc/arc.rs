@@ -637,6 +637,11 @@ impl<T: ?Sized> Weak<T> {
                 return None
             }
 
+            // See comments in `Arc::clone` for why we do this (for `mem::forget`).
+            if n > MAX_REFCOUNT {
+                unsafe { abort(); }
+            }
+
             // Relaxed is valid for the same reason it is on Arc's Clone impl
             let old = inner.strong.compare_and_swap(n, n + 1, Relaxed);
             if old == n {
