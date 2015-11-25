@@ -8,24 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unicode scalar values
+//! A character type.
 //!
-//! This module provides the `CharExt` trait, as well as its
-//! implementation for the primitive `char` type, in order to allow
-//! basic character manipulation.
+//! The `char` type represents a single character. More specifically, since
+//! 'character' isn't a well-defined concept in Unicode, `char` is a '[Unicode
+//! scalar value]', which is similar to, but not the same as, a '[Unicode code
+//! point]'.
 //!
-//! A `char` represents a
-//! *[Unicode scalar
-//! value](http://www.unicode.org/glossary/#unicode_scalar_value)*, as it can
-//! contain any Unicode code point except high-surrogate and low-surrogate code
-//! points.
+//! [Unicode scalar value]: http://www.unicode.org/glossary/#unicode_scalar_value
+//! [Unicode code point]: http://www.unicode.org/glossary/#code_point
 //!
-//! As such, only values in the ranges \[0x0,0xD7FF\] and \[0xE000,0x10FFFF\]
-//! (inclusive) are allowed. A `char` can always be safely cast to a `u32`;
-//! however the converse is not always true due to the above range limits
-//! and, as such, should be performed via the `from_u32` function.
+//! This module exists for technical reasons, the primary documentation for
+//! `char` is directly on [the `char` primitive type](../primitive.char.html)
+//! itself.
 //!
-//! *[See also the `char` primitive type](../primitive.char.html).*
+//! This module is the home of the iterator implementations for the iterators
+//! implemented on `char`, as well as some useful constants and conversion
+//! functions that convert various types to `char`.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -42,9 +41,13 @@ pub use core::char::{MAX, from_u32, from_u32_unchecked, from_digit, EscapeUnicod
 #[unstable(feature = "unicode", issue = "27783")]
 pub use tables::UNICODE_VERSION;
 
-/// An iterator over the lowercase mapping of a given character, returned from
-/// the [`to_lowercase` method](../primitive.char.html#method.to_lowercase) on
-/// characters.
+/// Returns an iterator that yields the lowercase equivalent of a `char`.
+///
+/// This `struct` is created by the [`to_lowercase()`] method on [`char`]. See
+/// its documentation for more.
+///
+/// [`to_lowercase()`]: primitive.char.html#method.escape_to_lowercase
+/// [`char`]: primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ToLowercase(CaseMappingIter);
 
@@ -56,9 +59,13 @@ impl Iterator for ToLowercase {
     }
 }
 
-/// An iterator over the uppercase mapping of a given character, returned from
-/// the [`to_uppercase` method](../primitive.char.html#method.to_uppercase) on
-/// characters.
+/// Returns an iterator that yields the uppercase equivalent of a `char`.
+///
+/// This `struct` is created by the [`to_uppercase()`] method on [`char`]. See
+/// its documentation for more.
+///
+/// [`to_uppercase()`]: primitive.char.html#method.escape_to_uppercase
+/// [`char`]: primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ToUppercase(CaseMappingIter);
 
