@@ -44,7 +44,7 @@ impl<'a> ParserAnyMacro<'a> {
     /// about e.g. the semicolon in `macro_rules! kapow { () => {
     /// panic!(); } }` doesn't get picked up by .parse_expr(), but it's
     /// allowed to be there.
-    fn ensure_complete_parse(&self, allow_semi: bool) {
+    fn ensure_complete_parse(&self, allow_semi: bool, context: &str) {
         let mut parser = self.parser.borrow_mut();
         if allow_semi && parser.token == token::Semi {
             panictry!(parser.bump())
@@ -58,8 +58,8 @@ impl<'a> ParserAnyMacro<'a> {
             parser.span_err(span, &msg[..]);
 
             let msg = format!("caused by the macro expansion here; the usage \
-                               of `{}` is likely invalid in this context",
-                               self.macro_ident);
+                               of `{}!` is likely invalid in {} context",
+                               self.macro_ident, context);
             parser.span_note(self.site_span, &msg[..]);
         }
     }
@@ -68,12 +68,12 @@ impl<'a> ParserAnyMacro<'a> {
 impl<'a> MacResult for ParserAnyMacro<'a> {
     fn make_expr(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Expr>> {
         let ret = panictry!(self.parser.borrow_mut().parse_expr());
-        self.ensure_complete_parse(true);
+        self.ensure_complete_parse(true, "expression");
         Some(ret)
     }
     fn make_pat(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Pat>> {
         let ret = panictry!(self.parser.borrow_mut().parse_pat());
-        self.ensure_complete_parse(false);
+        self.ensure_complete_parse(false, "pattern");
         Some(ret)
     }
     fn make_items(self: Box<ParserAnyMacro<'a>>) -> Option<SmallVector<P<ast::Item>>> {
@@ -81,7 +81,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         while let Some(item) = panictry!(self.parser.borrow_mut().parse_item()) {
             ret.push(item);
         }
-        self.ensure_complete_parse(false);
+        self.ensure_complete_parse(false, "item");
         Some(ret)
     }
 
@@ -95,7 +95,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
                 _ => ret.push(panictry!(parser.parse_impl_item()))
             }
         }
-        self.ensure_complete_parse(false);
+        self.ensure_complete_parse(false, "item");
         Some(ret)
     }
 
@@ -115,13 +115,13 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
                 }
             }
         }
-        self.ensure_complete_parse(false);
+        self.ensure_complete_parse(false, "statement");
         Some(ret)
     }
 
     fn make_ty(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Ty>> {
         let ret = panictry!(self.parser.borrow_mut().parse_ty());
-        self.ensure_complete_parse(true);
+        self.ensure_complete_parse(false, "type");
         Some(ret)
     }
 }
@@ -327,7 +327,7 @@ fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &TokenTree, sp: Span) {
         tt @ &TokenTree::Sequence(..) => {
             check_matcher(cx, Some(tt).into_iter(), &Eof);
         },
-        _ => cx.span_err(sp, "Invalid macro matcher; matchers must be contained \
+        _ => cx.span_err(sp, "invalid macro matcher; matchers must be contained \
                               in balanced delimiters or a repetition indicator")
     };
     // we don't abort on errors on rejection, the driver will do that for us
