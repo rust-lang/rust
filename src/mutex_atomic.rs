@@ -34,7 +34,7 @@ pub struct MutexAtomic;
 impl LateLintPass for MutexAtomic {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         let ty = cx.tcx.expr_ty(expr);
-        if let &ty::TyStruct(_, subst) = &ty.sty {
+        if let ty::TyStruct(_, subst) = ty.sty {
             if match_type(cx, ty, &MUTEX_PATH) {
                 let mutex_param = &subst.types.get(ParamSpace::TypeSpace, 0).sty;
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {

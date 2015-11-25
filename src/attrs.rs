@@ -42,7 +42,7 @@ impl LateLintPass for AttrPass {
 }
 
 fn is_relevant_item(item: &Item) -> bool {
-    if let &ItemFn(_, _, _, _, _, ref block) = &item.node {
+    if let ItemFn(_, _, _, _, _, ref block) = item.node {
         is_relevant_block(block)
     } else { false }
 }

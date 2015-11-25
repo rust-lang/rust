@@ -168,7 +168,7 @@ impl <'v, 't> RefVisitor<'v, 't>  {
     }
 
     fn record(&mut self, lifetime: &Option<Lifetime>) {
-        if let &Some(ref lt) = lifetime {
+        if let Some(ref lt) = *lifetime {
             if lt.name.as_str() == "'static" {
                 self.lts.push(Static);
             } else {

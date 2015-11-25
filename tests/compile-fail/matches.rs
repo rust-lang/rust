@@ -78,7 +78,7 @@ fn match_bool() {
 fn ref_pats() {
     {
         let v = &Some(0);
-        match v {  //~ERROR instead of prefixing all patterns with `&`
+        match v {  //~ERROR dereference the expression: `match *v { ...`
             &Some(v) => println!("{:?}", v),
             &None => println!("none"),
         }
@@ -88,13 +88,13 @@ fn ref_pats() {
         }
     }
     let tup =& (1, 2);
-    match tup {  //~ERROR instead of prefixing all patterns with `&`
+    match tup {  //~ERROR dereference the expression: `match *tup { ...`
         &(v, 1) => println!("{}", v),
         _ => println!("none"),
     }
     // special case: using & both in expr and pats
     let w = Some(0);
-    match &w {  //~ERROR you don't need to add `&` to both
+    match &w {  //~ERROR use `match w { ...`
         &Some(v) => println!("{:?}", v),
         &None => println!("none"),
     }
@@ -102,6 +102,16 @@ fn ref_pats() {
     let w = Some(0);
     match w {
         _ => println!("none"),
+    }
+
+    let a = &Some(0);
+    if let &None = a { //~ERROR dereference the expression: `if let ... = *a {`
+        println!("none");
+    }
+
+    let b = Some(0);
+    if let &None = &b { //~ERROR use `if let ... = b {`
+        println!("none");
     }
 }
 

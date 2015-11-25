@@ -182,7 +182,7 @@ fn check_ineffective_gt(cx: &LateContext, span: Span, m: u64, c: u64, op: &str) 
 fn fetch_int_literal(cx: &LateContext, lit : &Expr) -> Option<u64> {
     match lit.node {
         ExprLit(ref lit_ptr) => {
-            if let &LitInt(value, _) = &lit_ptr.node {
+            if let LitInt(value, _) = lit_ptr.node {
                 Option::Some(value) //TODO: Handle sign
             } else { Option::None }
         }

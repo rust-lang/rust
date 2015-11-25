@@ -63,8 +63,8 @@ fn check_decl(cx: &LateContext, decl: &Decl, bindings: &mut Vec<(Name, Span)>) {
     if is_from_for_desugar(decl) { return; }
     if let DeclLocal(ref local) = decl.node {
         let Local{ ref pat, ref ty, ref init, id: _, span } = **local;
-        if let &Some(ref t) = ty { check_ty(cx, t, bindings) }
-        if let &Some(ref o) = init {
+        if let Some(ref t) = *ty { check_ty(cx, t, bindings) }
+        if let Some(ref o) = *init {
             check_expr(cx, o, bindings);
             check_pat(cx, pat, &Some(o), span, bindings);
         } else {
@@ -210,7 +210,7 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
         ExprIf(ref cond, ref then, ref otherwise) => {
             check_expr(cx, cond, bindings);
             check_block(cx, then, bindings);
-            if let &Some(ref o) = otherwise { check_expr(cx, o, bindings); }
+            if let Some(ref o) = *otherwise { check_expr(cx, o, bindings); }
         }
         ExprWhile(ref cond, ref block, _) => {
             check_expr(cx, cond, bindings);

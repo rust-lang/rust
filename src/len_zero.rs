@@ -125,7 +125,7 @@ fn check_len_zero(cx: &LateContext, span: Span, name: &Name,
 fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
     /// get a ImplOrTraitItem and return true if it matches is_empty(self)
     fn is_is_empty(cx: &LateContext, id: &ImplOrTraitItemId) -> bool {
-        if let &MethodTraitItemId(def_id) = id {
+        if let MethodTraitItemId(def_id) = *id {
             if let ty::MethodTraitItem(ref method) =
                 cx.tcx.impl_or_trait_item(def_id) {
                     method.name.as_str() == "is_empty"

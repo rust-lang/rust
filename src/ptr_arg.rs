@@ -28,13 +28,13 @@ impl LintPass for PtrArg {
 
 impl LateLintPass for PtrArg {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
-        if let &ItemFn(ref decl, _, _, _, _, _) = &item.node {
+        if let ItemFn(ref decl, _, _, _, _, _) = item.node {
             check_fn(cx, decl);
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
-        if let &ImplItemKind::Method(ref sig, _) = &item.node {
+        if let ImplItemKind::Method(ref sig, _) = item.node {
             if let Some(Node::NodeItem(it)) = cx.tcx.map.find(cx.tcx.map.get_parent(item.id)) {
                 if let ItemImpl(_, _, _, Some(_), _, _) = it.node {
                     return; // ignore trait impls
@@ -45,7 +45,7 @@ impl LateLintPass for PtrArg {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
-        if let &MethodTraitItem(ref sig, _) = &item.node {
+        if let MethodTraitItem(ref sig, _) = item.node {
             check_fn(cx, &sig.decl);
         }
     }
