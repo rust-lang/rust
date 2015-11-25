@@ -35,8 +35,8 @@ mod duration;
 /// backwards.
 ///
 /// Instants are opaque types that can only be compared to one another. There is
-/// no method to get "the number of seconds" from an instant but instead it only
-/// allow learning the duration between two instants (or comparing two
+/// no method to get "the number of seconds" from an instant. Instead, it only
+/// allows measuring the duration between two instants (or comparing two
 /// instants).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[unstable(feature = "time2", reason = "recently added", issue = "29866")]
