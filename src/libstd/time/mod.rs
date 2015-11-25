@@ -94,8 +94,9 @@ impl Instant {
     ///
     /// # Panics
     ///
-    /// This function may panic if the current time is earlier than this instant
-    /// which can happen if an `Instant` is produced synthetically.
+    /// This function may panic if the current time is earlier than this
+    /// instant, which is something that can happen if an `Instant` is
+    /// produced synthetically.
     pub fn elapsed(&self) -> Duration {
         Instant::now().duration_from_earlier(*self)
     }
