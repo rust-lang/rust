@@ -41,7 +41,7 @@ use libc::{c_int, c_void, size_t};
                not(target_os = "android"),
                not(target_env = "musl")),
            link(name = "pthread"))]
-extern {
+extern "C" {
     fn je_mallocx(size: size_t, flags: c_int) -> *mut c_void;
     fn je_rallocx(ptr: *mut c_void, size: size_t, flags: c_int) -> *mut c_void;
     fn je_xallocx(ptr: *mut c_void, size: size_t, extra: size_t, flags: c_int) -> size_t;

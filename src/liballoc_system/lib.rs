@@ -79,7 +79,7 @@ mod imp {
     use libc;
     use MIN_ALIGN;
 
-    extern {
+    extern "C" {
         // Apparently android doesn't have posix_memalign
         #[cfg(target_os = "android")]
         fn memalign(align: libc::size_t, size: libc::size_t) -> *mut libc::c_void;
@@ -180,7 +180,7 @@ mod imp {
         } else {
             let ptr = HeapAlloc(GetProcessHeap(), 0, (size + align) as SIZE_T) as *mut u8;
             if ptr.is_null() {
-                return ptr
+                return ptr;
             }
             align_ptr(ptr, align)
         }
@@ -196,7 +196,7 @@ mod imp {
                                   header.0 as LPVOID,
                                   (size + align) as SIZE_T) as *mut u8;
             if new.is_null() {
-                return new
+                return new;
             }
             align_ptr(new, align)
         }

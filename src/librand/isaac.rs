@@ -54,7 +54,6 @@ static EMPTY: IsaacRng = IsaacRng {
 };
 
 impl IsaacRng {
-
     /// Create an ISAAC random number generator using the default
     /// fixed seed.
     pub fn new_unseeded() -> IsaacRng {
@@ -403,7 +402,7 @@ impl Isaac64Rng {
         // abbreviations
         let mut a = self.a;
         let mut b = self.b + self.c;
-        const MIDPOINT: usize =  RAND_SIZE_64 / 2;
+        const MIDPOINT: usize = RAND_SIZE_64 / 2;
         const MP_VEC: [(usize, usize); 2] = [(0, MIDPOINT), (MIDPOINT, 0)];
         macro_rules! ind {
             ($x:expr) => {

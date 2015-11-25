@@ -61,9 +61,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> String {
-        String {
-            vec: Vec::new(),
-        }
+        String { vec: Vec::new() }
     }
 
     /// Creates a new string buffer with the given capacity.
@@ -92,9 +90,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> String {
-        String {
-            vec: Vec::with_capacity(capacity),
-        }
+        String { vec: Vec::with_capacity(capacity) }
     }
 
     // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
@@ -167,7 +163,12 @@ impl String {
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
         match str::from_utf8(&vec) {
             Ok(..) => Ok(String { vec: vec }),
-            Err(e) => Err(FromUtf8Error { bytes: vec, error: e })
+            Err(e) => {
+                Err(FromUtf8Error {
+                    bytes: vec,
+                    error: e,
+                })
+            }
         }
     }
 
@@ -240,9 +241,7 @@ impl String {
         let mut res = String::with_capacity(total);
 
         if i > 0 {
-            unsafe {
-                res.as_mut_vec().push_all(&v[..i])
-            };
+            unsafe { res.as_mut_vec().push_all(&v[..i]) };
         }
 
         // subseqidx is the index of the first byte of the subsequence we're
@@ -280,10 +279,10 @@ impl String {
                     }
                     3 => {
                         match (byte, safe_get(v, i, total)) {
-                            (0xE0         , 0xA0 ... 0xBF) => (),
-                            (0xE1 ... 0xEC, 0x80 ... 0xBF) => (),
-                            (0xED         , 0x80 ... 0x9F) => (),
-                            (0xEE ... 0xEF, 0x80 ... 0xBF) => (),
+                            (0xE0, 0xA0...0xBF) => (),
+                            (0xE1...0xEC, 0x80...0xBF) => (),
+                            (0xED, 0x80...0x9F) => (),
+                            (0xEE...0xEF, 0x80...0xBF) => (),
                             _ => {
                                 error!();
                                 continue;
@@ -298,9 +297,9 @@ impl String {
                     }
                     4 => {
                         match (byte, safe_get(v, i, total)) {
-                            (0xF0         , 0x90 ... 0xBF) => (),
-                            (0xF1 ... 0xF3, 0x80 ... 0xBF) => (),
-                            (0xF4         , 0x80 ... 0x8F) => (),
+                            (0xF0, 0x90...0xBF) => (),
+                            (0xF1...0xF3, 0x80...0xBF) => (),
+                            (0xF4, 0x80...0x8F) => (),
                             _ => {
                                 error!();
                                 continue;
@@ -326,9 +325,7 @@ impl String {
             }
         }
         if subseqidx < total {
-            unsafe {
-                res.as_mut_vec().push_all(&v[subseqidx..total])
-            };
+            unsafe { res.as_mut_vec().push_all(&v[subseqidx..total]) };
         }
         Cow::Owned(res)
     }
@@ -388,9 +385,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_raw_parts(buf: *mut u8, length: usize, capacity: usize) -> String {
-        String {
-            vec: Vec::from_raw_parts(buf, length, capacity),
-        }
+        String { vec: Vec::from_raw_parts(buf, length, capacity) }
     }
 
     /// Converts a vector of bytes to a `String` without checking that the
@@ -567,10 +562,10 @@ impl String {
                 unsafe {
                     // Attempt to not use an intermediate buffer by just pushing bytes
                     // directly onto this string.
-                    let slice = slice::from_raw_parts_mut (
-                        self.vec.as_mut_ptr().offset(cur_len as isize),
-                        ch_len
-                    );
+                    let slice = slice::from_raw_parts_mut(self.vec
+                                                              .as_mut_ptr()
+                                                              .offset(cur_len as isize),
+                                                          ch_len);
                     let used = ch.encode_utf8(slice).unwrap_or(0);
                     self.vec.set_len(cur_len + used);
                 }
@@ -630,7 +625,7 @@ impl String {
     pub fn pop(&mut self) -> Option<char> {
         let len = self.len();
         if len == 0 {
-            return None
+            return None;
         }
 
         let ch = self.char_at_reverse(len);
@@ -742,7 +737,9 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize { self.vec.len() }
+    pub fn len(&self) -> usize {
+        self.vec.len()
+    }
 
     /// Returns true if the string contains no bytes
     ///
@@ -756,7 +753,9 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool { self.len() == 0 }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 
     /// Truncates the string, returning it to 0 length.
     ///
@@ -802,7 +801,9 @@ impl String {
     #[unstable(feature = "drain",
                reason = "recently added, matches RFC",
                issue = "27711")]
-    pub fn drain<R>(&mut self, range: R) -> Drain where R: RangeArgument<usize> {
+    pub fn drain<R>(&mut self, range: R) -> Drain
+        where R: RangeArgument<usize>
+    {
         // Memory safety
         //
         // The String version of Drain does not have the memory safety issues
@@ -852,11 +853,15 @@ impl FromUtf8Error {
     /// Consumes this error, returning the bytes that were attempted to make a
     /// `String` with.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_bytes(self) -> Vec<u8> { self.bytes }
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.bytes
+    }
 
     /// Access the underlying UTF8-error that was the cause of this error.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn utf8_error(&self) -> Utf8Error { self.error }
+    pub fn utf8_error(&self) -> Utf8Error {
+        self.error
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -886,7 +891,7 @@ impl Clone for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<char> for String {
-    fn from_iter<I: IntoIterator<Item=char>>(iterable: I) -> String {
+    fn from_iter<I: IntoIterator<Item = char>>(iterable: I) -> String {
         let mut buf = String::new();
         buf.extend(iterable);
         buf
@@ -895,7 +900,7 @@ impl FromIterator<char> for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> FromIterator<&'a str> for String {
-    fn from_iter<I: IntoIterator<Item=&'a str>>(iterable: I) -> String {
+    fn from_iter<I: IntoIterator<Item = &'a str>>(iterable: I) -> String {
         let mut buf = String::new();
         buf.extend(iterable);
         buf
@@ -904,7 +909,7 @@ impl<'a> FromIterator<&'a str> for String {
 
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl FromIterator<String> for String {
-    fn from_iter<I: IntoIterator<Item=String>>(iterable: I) -> String {
+    fn from_iter<I: IntoIterator<Item = String>>(iterable: I) -> String {
         let mut buf = String::new();
         buf.extend(iterable);
         buf
@@ -913,7 +918,7 @@ impl FromIterator<String> for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<char> for String {
-    fn extend<I: IntoIterator<Item=char>>(&mut self, iterable: I) {
+    fn extend<I: IntoIterator<Item = char>>(&mut self, iterable: I) {
         let iterator = iterable.into_iter();
         let (lower_bound, _) = iterator.size_hint();
         self.reserve(lower_bound);
@@ -925,14 +930,14 @@ impl Extend<char> for String {
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a> Extend<&'a char> for String {
-    fn extend<I: IntoIterator<Item=&'a char>>(&mut self, iterable: I) {
+    fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iterable: I) {
         self.extend(iterable.into_iter().cloned());
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
-    fn extend<I: IntoIterator<Item=&'a str>>(&mut self, iterable: I) {
+    fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iterable: I) {
         for s in iterable {
             self.push_str(s)
         }
@@ -941,7 +946,7 @@ impl<'a> Extend<&'a str> for String {
 
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl Extend<String> for String {
-    fn extend<I: IntoIterator<Item=String>>(&mut self, iterable: I) {
+    fn extend<I: IntoIterator<Item = String>>(&mut self, iterable: I) {
         for s in iterable {
             self.push_str(&s)
         }
@@ -973,9 +978,13 @@ impl<'a, 'b> Pattern<'a> for &'b String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for String {
     #[inline]
-    fn eq(&self, other: &String) -> bool { PartialEq::eq(&self[..], &other[..]) }
+    fn eq(&self, other: &String) -> bool {
+        PartialEq::eq(&self[..], &other[..])
+    }
     #[inline]
-    fn ne(&self, other: &String) -> bool { PartialEq::ne(&self[..], &other[..]) }
+    fn ne(&self, other: &String) -> bool {
+        PartialEq::ne(&self[..], &other[..])
+    }
 }
 
 macro_rules! impl_eq {
