@@ -350,16 +350,8 @@ impl<'a> CrateReader<'a> {
     fn is_staged_api(&self, data: &[u8]) -> bool {
         let attrs = decoder::get_crate_attributes(data);
         for attr in &attrs {
-            if attr.name() == "feature" {
-                if let Some(metas) = attr.meta_item_list() {
-                    for meta in metas {
-                        if let ast::MetaWord(ref name) = meta.node {
-                            if &name[..] == "staged_api" {
-                                return true
-                            }
-                        }
-                    }
-                }
+            if attr.name() == "stable" || attr.name() == "unstable" {
+                return true
             }
         }
         false
