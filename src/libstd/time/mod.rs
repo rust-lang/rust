@@ -29,7 +29,7 @@ mod duration;
 /// benchmarks or timing how long an operation takes.
 ///
 /// Note, however, that instants are not guaranteed to be **steady**.  In other
-/// words each tick of the underlying clock may not be the same length (e.g.
+/// words, each tick of the underlying clock may not be the same length (e.g.
 /// some seconds may be longer than others). An instant may jump forwards or
 /// experience time dilation (slow down or speed up), but it will never go
 /// backwards.
@@ -59,7 +59,7 @@ pub struct Instant(time::Instant);
 /// Although a `SystemTime` cannot be directly inspected, the `UNIX_EPOCH`
 /// constant is provided in this module as an anchor in time to learn
 /// information about a `SystemTime`. By calculating the duration from this
-/// fixed point in time a `SystemTime` can be converted to a human-readable time
+/// fixed point in time, a `SystemTime` can be converted to a human-readable time,
 /// or perhaps some other string representation.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[unstable(feature = "time2", reason = "recently added", issue = "29866")]
