@@ -106,7 +106,10 @@ pub mod target_features;
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
 
-// [stage0]: kill this
+// SNAP 1af31d4
+// This is a terrible hack. Our stage0 is older than 1.4 and does not
+// support DST coercions, so this function performs the corecion
+// manually. This should go away.
 pub fn cstore_to_cratestore(a: Rc<CStore>) -> Rc<for<'s> CrateStore<'s>>
 {
     use std::mem;

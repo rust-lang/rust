@@ -447,12 +447,12 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
     fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource
     {
-        self.do_get_used_crate_source(cnum).unwrap()
+        self.opt_used_crate_source(cnum).unwrap()
     }
 
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>
     {
-        self.find_extern_mod_stmt_cnum(emod_id)
+        self.do_extern_mod_stmt_cnum(emod_id)
     }
 
     fn encode_metadata(&self,

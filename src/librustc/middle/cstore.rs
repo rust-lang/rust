@@ -42,7 +42,7 @@ use syntax::codemap::Span;
 use syntax::ptr::P;
 use rustc_back::target::Target;
 use rustc_front::hir;
-use rustc_front::visit::Visitor;
+use rustc_front::intravisit::Visitor;
 use rustc_front::util::IdVisitor;
 
 pub use self::DefLike::{DlDef, DlField, DlImpl};
@@ -123,6 +123,13 @@ pub enum FoundAst<'ast> {
     NotFound,
 }
 
+/// A store of Rust crates, through with their metadata
+/// can be accessed.
+///
+/// The `: Any` bound is a temporary measure that allows access
+/// to the backing `rustc_metadata::cstore::CStore` object. It
+/// will be removed in the near future - if you need to access
+/// internal APIs, please tell us.
 pub trait CrateStore<'tcx> : Any {
     // item info
     fn stability(&self, def: DefId) -> Option<attr::Stability>;
@@ -244,11 +251,7 @@ impl InlinedItem {
     }
 
     pub fn visit_ids<O: IdVisitingOperation>(&self, operation: &mut O) {
-        let mut id_visitor = IdVisitor {
-            operation: operation,
-            pass_through_items: true,
-            visited_outermost: false,
-        };
+        let mut id_visitor = IdVisitor::new(operation);
         self.visit(&mut id_visitor);
     }
 }

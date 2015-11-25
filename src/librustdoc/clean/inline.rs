@@ -169,7 +169,7 @@ fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean
         _ => panic!("bad function"),
     };
 
-    let constness = if csearch::is_const_fn(&tcx.sess.cstore, did) {
+    let constness = if tcx.sess.cstore.is_const_fn(did) {
         hir::Constness::Const
     } else {
         hir::Constness::NotConst
@@ -346,7 +346,7 @@ pub fn build_impl(cx: &DocContext,
                     clean::TyMethodItem(clean::TyMethod {
                         unsafety, decl, self_, generics, abi
                     }) => {
-                        let constness = if csearch::is_const_fn(&tcx.sess.cstore, did) {
+                        let constness = if tcx.sess.cstore.is_const_fn(did) {
                             hir::Constness::Const
                         } else {
                             hir::Constness::NotConst

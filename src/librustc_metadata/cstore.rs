@@ -136,7 +136,7 @@ impl CStore {
         I: FnMut(ast::CrateNum, &crate_metadata, Option<CrateSource>),
     {
         for (&k, v) in self.metas.borrow().iter() {
-            let origin = self.do_get_used_crate_source(k);
+            let origin = self.opt_used_crate_source(k);
             origin.as_ref().map(|cs| { assert!(k == cs.cnum); });
             i(k, &**v, origin);
         }
@@ -149,9 +149,8 @@ impl CStore {
         }
     }
 
-    // TODO: killdo
-    pub fn do_get_used_crate_source(&self, cnum: ast::CrateNum)
-                                    -> Option<CrateSource> {
+    pub fn opt_used_crate_source(&self, cnum: ast::CrateNum)
+                                 -> Option<CrateSource> {
         self.used_crate_sources.borrow_mut()
             .iter().find(|source| source.cnum == cnum).cloned()
     }
@@ -174,7 +173,6 @@ impl CStore {
     // In order to get this left-to-right dependency ordering, we perform a
     // topological sort of all crates putting the leaves at the right-most
     // positions.
-    // TODO: killdo
     pub fn do_get_used_crates(&self, prefer: LinkagePreference)
                               -> Vec<(ast::CrateNum, Option<PathBuf>)> {
         let mut ordering = Vec::new();
@@ -234,17 +232,17 @@ impl CStore {
         self.extern_mod_crate_map.borrow_mut().insert(emod_id, cnum);
     }
 
-    pub fn find_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId)
-                                     -> Option<ast::CrateNum> {
-        self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
-    }
-
     pub fn add_statically_included_foreign_item(&self, id: ast::NodeId) {
         self.statically_included_foreign_items.borrow_mut().insert(id);
     }
 
     pub fn do_is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool {
         self.statically_included_foreign_items.borrow().contains(&id)
+    }
+
+    pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>
+    {
+        self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
     }
 }
 

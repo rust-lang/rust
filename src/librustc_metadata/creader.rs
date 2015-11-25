@@ -20,7 +20,7 @@ use loader::{self, CratePaths};
 use rustc::back::svh::Svh;
 use rustc::session::{config, Session};
 use rustc::session::search_paths::PathKind;
-use rustc::middle::cstore::validate_crate_name;
+use rustc::middle::cstore::{CrateStore, validate_crate_name};
 use rustc::util::nodemap::FnvHashMap;
 use rustc::front::map as hir_map;
 
@@ -223,7 +223,7 @@ impl<'a> CrateReader<'a> {
             // We're also sure to compare *paths*, not actual byte slices. The
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
-            let source = self.cstore.do_get_used_crate_source(cnum).unwrap();
+            let source = self.cstore.used_crate_source(cnum);
             if let Some(locs) = self.sess.opts.externs.get(name) {
                 let found = locs.iter().any(|l| {
                     let l = fs::canonicalize(l).ok();
@@ -395,7 +395,7 @@ impl<'a> CrateReader<'a> {
                 if explicitly_linked && !data.explicitly_linked.get() {
                     data.explicitly_linked.set(explicitly_linked);
                 }
-                (cnum, data, self.cstore.do_get_used_crate_source(cnum).unwrap())
+                (cnum, data, self.cstore.used_crate_source(cnum))
             }
             LookupResult::Loaded(library) => {
                 self.register_crate(root, ident, name, span, library,
@@ -707,7 +707,8 @@ impl<'a> CrateReader<'a> {
 }
 
 impl<'a, 'b> LocalCrateReader<'a, 'b> {
-    pub fn new(sess: &'a Session, cstore: &'a CStore, map: &'a hir_map::Map<'b>) -> LocalCrateReader<'a, 'b> {
+    pub fn new(sess: &'a Session, cstore: &'a CStore,
+               map: &'a hir_map::Map<'b>) -> LocalCrateReader<'a, 'b> {
         LocalCrateReader {
             sess: sess,
             cstore: cstore,
