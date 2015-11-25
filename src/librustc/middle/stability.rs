@@ -85,7 +85,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                    item_sp: Span, kind: AnnotationKind, visit_children: F)
         where F: FnOnce(&mut Annotator)
     {
-        if self.index.staged_api[&LOCAL_CRATE] {
+        if self.index.staged_api[&LOCAL_CRATE] && self.tcx.sess.features.borrow().staged_api {
             debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
             if let Some(mut stab) = attr::find_stability(self.tcx.sess.diagnostic(),
                                                          attrs, item_sp) {
@@ -279,9 +279,17 @@ impl<'tcx> Index<'tcx> {
                            |v| intravisit::walk_crate(v, krate));
     }
 
-    pub fn new(sess: &Session) -> Index<'tcx> {
+    pub fn new(krate: &Crate) -> Index<'tcx> {
+        let mut is_staged_api = false;
+        for attr in &krate.attrs {
+            if attr.name() == "stable" || attr.name() == "unstable" {
+                is_staged_api = true;
+                break
+            }
+        }
+
         let mut staged_api = FnvHashMap();
-        staged_api.insert(LOCAL_CRATE, sess.features.borrow().staged_api);
+        staged_api.insert(LOCAL_CRATE, is_staged_api);
         Index {
             staged_api: staged_api,
             map: DefIdMap(),

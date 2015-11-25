@@ -136,7 +136,7 @@ fn test_env<F>(source_string: &str,
                                freevars,
                                region_map,
                                lang_items,
-                               stability::Index::new(&sess),
+                               stability::Index::new(krate),
                                |tcx| {
                                    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
                                    body(Env { infcx: &infcx });
