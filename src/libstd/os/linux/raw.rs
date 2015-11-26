@@ -26,7 +26,8 @@ pub use self::arch::{off_t, ino_t, nlink_t, blksize_t, blkcnt_t, stat, time_t};
 #[cfg(any(target_arch = "x86",
           target_arch = "le32",
           target_arch = "powerpc",
-          target_arch = "arm"))]
+          target_arch = "arm",
+          target_arch = "asmjs"))]
 mod arch {
     use super::{dev_t, mode_t};
     use os::raw::{c_long, c_short};
@@ -34,7 +35,14 @@ mod arch {
 
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = i32;
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = i32;
-    #[stable(feature = "raw_ext", since = "1.1.0")] pub type ino_t = u32;
+
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    #[cfg(not(any(target_env = "musl", target_arch = "asmjs")))]
+    pub type ino_t = u32;
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    #[cfg(any(target_env = "musl", target_arch = "asmjs"))]
+    pub type ino_t = u64;
+
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type nlink_t = u32;
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type off_t = i32;
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type time_t = i32;

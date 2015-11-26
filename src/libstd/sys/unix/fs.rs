@@ -293,7 +293,8 @@ impl DirEntry {
     #[cfg(any(target_os = "macos",
               target_os = "ios",
               target_os = "linux",
-              target_os = "solaris"))]
+              target_os = "solaris",
+              target_os = "emscripten"))]
     pub fn ino(&self) -> raw::ino_t {
         self.entry.d_ino
     }
@@ -326,7 +327,8 @@ impl DirEntry {
         }
     }
     #[cfg(any(target_os = "android",
-              target_os = "linux"))]
+              target_os = "linux",
+              target_os = "emscripten"))]
     fn name_bytes(&self) -> &[u8] {
         unsafe {
             CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes()

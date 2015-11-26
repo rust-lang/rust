@@ -131,7 +131,8 @@ impl fmt::Debug for Command {
 pub struct ExitStatus(c_int);
 
 #[cfg(any(target_os = "linux", target_os = "android",
-          target_os = "nacl", target_os = "solaris"))]
+          target_os = "nacl", target_os = "solaris",
+          target_os = "emscripten"))]
 mod status_imp {
     pub fn WIFEXITED(status: i32) -> bool { (status & 0xff) == 0 }
     pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }

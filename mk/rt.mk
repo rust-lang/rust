@@ -254,6 +254,15 @@ ifeq ($$(findstring freebsd,$(1)),freebsd)
 	COMPRT_CFLAGS_$(1) += -I/usr/include/c++/v1
 endif
 
+ifeq ($$(findstring emscripten,$(1)),emscripten)
+
+# FIXME: emscripten doesn't use compiler-rt and can't build it without
+# further hacks
+$$(COMPRT_LIB_$(1)):
+	touch $$@
+
+else
+
 $$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS)
 	@$$(call E, make: compiler-rt)
 	$$(Q)$$(MAKE) -C "$(S)src/compiler-rt" \
@@ -266,7 +275,10 @@ $$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS)
 		TargetTriple=$(1) \
 		triple-builtins
 	$$(Q)cp $$(COMPRT_BUILD_DIR_$(1))/triple/builtins/libcompiler_rt.a $$@
+
+endif # if emscripten
 endif
+
 ################################################################################
 # libbacktrace
 #
@@ -297,6 +309,12 @@ else
 
 ifeq ($$(findstring msvc,$(1)),msvc)
 # See comment above
+$$(BACKTRACE_LIB_$(1)):
+	touch $$@
+else
+
+ifeq ($$(findstring emscripten,$(1)),emscripten)
+# FIXME: libbacktrace doesn't understand the emscripten triple
 $$(BACKTRACE_LIB_$(1)):
 	touch $$@
 else
@@ -348,6 +366,7 @@ $$(BACKTRACE_LIB_$(1)): $$(BACKTRACE_BUILD_DIR_$(1))/Makefile $$(MKFILE_DEPS)
 		INCDIR=$(S)src/libbacktrace
 	$$(Q)cp $$(BACKTRACE_BUILD_DIR_$(1))/.libs/libbacktrace.a $$@
 
+endif # endif for emscripten
 endif # endif for msvc
 endif # endif for ios
 endif # endif for darwin
