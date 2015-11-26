@@ -2676,7 +2676,7 @@ impl Clean<Item> for doctree::Macro {
             inner: MacroItem(Macro {
                 source: format!("macro_rules! {} {{\n{}}}",
                     name.trim_right_matches('!'), self.matchers.iter().map(|span|
-                        format!("    {} => {{ ... }}\n", span.to_src(cx))).collect::<String>()),
+                        format!("    {} => {{ ... }};\n", span.to_src(cx))).collect::<String>()),
                 imported_from: self.imported_from.clean(cx),
             }),
         }
