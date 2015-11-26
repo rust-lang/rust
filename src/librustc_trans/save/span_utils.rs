@@ -13,6 +13,8 @@ use rustc::session::Session;
 use save::generated_code;
 
 use std::cell::Cell;
+use std::env;
+use std::path::Path;
 
 use syntax::ast;
 use syntax::codemap::*;
@@ -35,6 +37,15 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
+    pub fn make_path_string(file_name: &str) -> String {
+        let path = Path::new(file_name);
+        if path.is_absolute() {
+            path.clone().display().to_string()
+        } else {
+            env::current_dir().unwrap().join(&path).display().to_string()
+        }
+    }
+
     // Standard string for extents/location.
     #[rustfmt_skip]
     pub fn extent_str(&self, span: Span) -> String {
@@ -47,7 +58,7 @@ impl<'a> SpanUtils<'a> {
 
         format!("file_name,\"{}\",file_line,{},file_col,{},extent_start,{},extent_start_bytes,{},\
                  file_line_end,{},file_col_end,{},extent_end,{},extent_end_bytes,{}",
-                lo_loc.file.name,
+                SpanUtils::make_path_string(&lo_loc.file.name),
                 lo_loc.line, lo_loc.col.to_usize(), lo_pos.to_usize(), lo_pos_byte.to_usize(),
                 hi_loc.line, hi_loc.col.to_usize(), hi_pos.to_usize(), hi_pos_byte.to_usize())
     }
