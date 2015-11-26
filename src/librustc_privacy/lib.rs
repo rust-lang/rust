@@ -38,6 +38,7 @@ use std::mem::replace;
 use rustc_front::hir;
 use rustc_front::intravisit::{self, Visitor};
 
+use rustc::lint;
 use rustc::middle::def;
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
@@ -1488,9 +1489,17 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                             }
                             if item.vis != hir::Public {
                                 if !self.is_quiet {
-                                    let is_warning = !self.old_error_set.contains(&ty.id);
-                                    span_err_or_warn!(is_warning, self.tcx.sess, ty.span, E0446,
-                                                      "private type in public interface");
+                                    if self.old_error_set.contains(&ty.id) {
+                                        span_err!(self.tcx.sess, ty.span, E0446,
+                                                  "private type in public interface");
+                                    } else {
+                                        self.tcx.sess.add_lint (
+                                            lint::builtin::PRIVATE_IN_PUBLIC,
+                                            node_id,
+                                            ty.span,
+                                            "private type in public interface".to_string()
+                                        );
+                                    }
                                 }
                                 self.is_public = false;
                             }
@@ -1515,9 +1524,15 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
             if let Some(ast_map::NodeItem(ref item)) = self.tcx.map.find(node_id) {
                 if item.vis != hir::Public {
                     if !self.is_quiet {
-                        let is_warning = !self.old_error_set.contains(&trait_ref.ref_id);
-                        span_err_or_warn!(is_warning, self.tcx.sess, trait_ref.path.span, E0445,
-                                          "private trait in public interface");
+                        if self.old_error_set.contains(&trait_ref.ref_id) {
+                            span_err!(self.tcx.sess, trait_ref.path.span, E0445,
+                                      "private trait in public interface");
+                        } else {
+                            self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
+                                                   node_id,
+                                                   trait_ref.path.span,
+                                                   "private trait in public interface".to_string());
+                        }
                     }
                     self.is_public = false;
                 }
