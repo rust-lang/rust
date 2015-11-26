@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(staged_api)]
-#![staged_api]
 #![stable(feature = "foo", since = "1.2.0")]
 
 

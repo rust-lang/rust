@@ -11,7 +11,7 @@
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "alloc_system"]
 #![crate_type = "rlib"]
-#![staged_api]
+#![cfg_attr(stage0, staged_api)]
 #![no_std]
 #![cfg_attr(not(stage0), allocator)]
 #![cfg_attr(stage0, allow(improper_ctypes))]

@@ -12,7 +12,6 @@
 #![deny(deprecated)]
 #![allow(dead_code)]
 #![feature(staged_api)]
-#![staged_api]
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

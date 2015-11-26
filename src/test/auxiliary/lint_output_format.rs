@@ -11,7 +11,6 @@
 #![crate_name="lint_output_format"]
 #![crate_type = "lib"]
 #![feature(staged_api)]
-#![staged_api]
 #![unstable(feature = "test_feature", issue = "0")]
 
 #[stable(feature = "test_feature", since = "1.0.0")]
