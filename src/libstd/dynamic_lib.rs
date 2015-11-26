@@ -183,7 +183,8 @@ mod tests {
           target_os = "dragonfly",
           target_os = "bitrig",
           target_os = "netbsd",
-          target_os = "openbsd"))]
+          target_os = "openbsd",
+          target_os = "emscripten"))]
 mod dl {
     use prelude::v1::*;
 

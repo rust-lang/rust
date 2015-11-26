@@ -301,6 +301,12 @@ $$(BACKTRACE_LIB_$(1)):
 	touch $$@
 else
 
+ifeq ($$(findstring emscripten,$(1)),emscripten)
+# FIXME: libbacktrace doesn't understand the emscripten triple
+$$(BACKTRACE_LIB_$(1)):
+	touch $$@
+else
+
 ifdef CFG_ENABLE_FAST_MAKE
 BACKTRACE_DEPS := $(S)/.gitmodules
 else
@@ -348,6 +354,7 @@ $$(BACKTRACE_LIB_$(1)): $$(BACKTRACE_BUILD_DIR_$(1))/Makefile $$(MKFILE_DEPS)
 		INCDIR=$(S)src/libbacktrace
 	$$(Q)cp $$(BACKTRACE_BUILD_DIR_$(1))/.libs/libbacktrace.a $$@
 
+endif # endif for emscripten
 endif # endif for msvc
 endif # endif for ios
 endif # endif for darwin

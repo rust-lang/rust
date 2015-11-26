@@ -86,6 +86,10 @@ pub const unwinder_private_data_size: usize = 2;
 #[cfg(target_arch = "powerpc")]
 pub const unwinder_private_data_size: usize = 2;
 
+#[cfg(target_arch = "asmjs")]
+// FIXME: Copied from arm. Need to confirm.
+pub const unwinder_private_data_size: usize = 20;
+
 #[repr(C)]
 pub struct _Unwind_Exception {
     pub exception_class: _Unwind_Exception_Class,

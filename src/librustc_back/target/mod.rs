@@ -448,7 +448,8 @@ impl Target {
             x86_64_pc_windows_msvc,
             i686_pc_windows_msvc,
 
-            le32_unknown_nacl
+            le32_unknown_nacl,
+            asmjs_unknown_emscripten
         );
 
 

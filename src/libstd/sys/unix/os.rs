@@ -38,7 +38,8 @@ static ENV_LOCK: StaticMutex = StaticMutex::new();
 /// Returns the platform-specific value of errno
 pub fn errno() -> i32 {
     extern {
-        #[cfg_attr(any(target_os = "linux"), link_name = "__errno_location")]
+        #[cfg_attr(any(target_os = "linux", target_os = "emscripten"),
+                   link_name = "__errno_location")]
         #[cfg_attr(any(target_os = "bitrig",
                        target_os = "netbsd",
                        target_os = "openbsd",
@@ -234,7 +235,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "emscripten"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     ::fs::read_link("/proc/self/exe")
 }
@@ -359,7 +360,8 @@ pub fn args() -> Args {
           target_os = "bitrig",
           target_os = "netbsd",
           target_os = "openbsd",
-          target_os = "nacl"))]
+          target_os = "nacl",
+          target_os = "emscripten"))]
 pub fn args() -> Args {
     use sys_common;
     let bytes = sys_common::args::clone().unwrap_or(Vec::new());

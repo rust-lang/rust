@@ -38,7 +38,8 @@ pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
           target_os = "dragonfly",
           target_os = "bitrig",
           target_os = "netbsd",
-          target_os = "openbsd"))]
+          target_os = "openbsd",
+          target_os = "emscripten"))]
 mod imp {
     use prelude::v1::*;
 
