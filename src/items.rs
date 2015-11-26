@@ -16,7 +16,7 @@ use utils::{format_mutability, format_visibility, contains_skip, span_after, end
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
             DefinitiveListTactic, definitive_tactic, format_item_list};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
-use comment::FindUncommented;
+use comment::{FindUncommented, contains_comment};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, StructLitStyle};
@@ -505,27 +505,31 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
         }
         result.push('{');
 
-        if !items.is_empty() {
+        let snippet = context.snippet(item.span);
+        let open_pos = try_opt!(snippet.find_uncommented("{")) + 1;
+
+        if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
             let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config, None);
             visitor.block_indent = context.block_indent.block_indent(context.config);
-
-            let snippet = context.snippet(item.span);
-            let open_pos = try_opt!(snippet.find_uncommented("{")) + 1;
             visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
 
             for item in items {
                 visitor.visit_impl_item(&item);
             }
 
-            result.push('\n');
-            result.push_str(trim_newlines(&visitor.buffer.to_string()));
-            result.push('\n');
+            visitor.format_missing(item.span.hi - BytePos(1));
 
-            let indent_str = context.block_indent.to_string(context.config);
-            result.push_str(&indent_str);
+            let inner_indent_str = visitor.block_indent.to_string(context.config);
+            let outer_indent_str = context.block_indent.to_string(context.config);
+
+            result.push('\n');
+            result.push_str(&inner_indent_str);
+            result.push_str(&trim_newlines(&visitor.buffer.to_string().trim()));
+            result.push('\n');
+            result.push_str(&outer_indent_str);
         }
-        result.push('}');
 
+        result.push('}');
         Some(result)
     } else {
         unreachable!();
