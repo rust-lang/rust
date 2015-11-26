@@ -35,9 +35,9 @@ pub unsafe trait Send {
 unsafe impl Send for .. { }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> !Send for *const T { }
+impl<T: ?Sized> !Send for *const T { }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> !Send for *mut T { }
+impl<T: ?Sized> !Send for *mut T { }
 
 /// Types with a constant size known at compile-time.
 ///
@@ -230,9 +230,9 @@ pub unsafe trait Sync {
 unsafe impl Sync for .. { }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> !Sync for *const T { }
+impl<T: ?Sized> !Sync for *const T { }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> !Sync for *mut T { }
+impl<T: ?Sized> !Sync for *mut T { }
 
 macro_rules! impls{
     ($t: ident) => (
