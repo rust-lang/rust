@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::free_region::FreeRegionMap;
-use middle::infer;
+use middle::infer::{self, TypeOrigin};
 use middle::traits;
 use middle::ty::{self};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace};
@@ -282,7 +282,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
     let err = infcx.commit_if_ok(|snapshot| {
-        let origin = infer::MethodCompatCheck(impl_m_span);
+        let origin = TypeOrigin::MethodCompatCheck(impl_m_span);
 
         let (impl_sig, _) =
             infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
@@ -448,7 +448,7 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
     let trait_ty = trait_c.ty.subst(tcx, &trait_to_skol_substs);
 
     let err = infcx.commit_if_ok(|_| {
-        let origin = infer::Misc(impl_c_span);
+        let origin = TypeOrigin::Misc(impl_c_span);
 
         // There is no "body" here, so just pass dummy id.
         let impl_ty =

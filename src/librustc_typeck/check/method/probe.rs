@@ -23,7 +23,7 @@ use middle::ty::{self, NoPreference, RegionEscape, Ty, ToPolyTraitRef, TraitRef}
 use middle::ty::HasTypeFlags;
 use middle::ty::fold::TypeFoldable;
 use middle::infer;
-use middle::infer::InferCtxt;
+use middle::infer::{InferCtxt, TypeOrigin};
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 use rustc_front::hir;
@@ -1136,7 +1136,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     // MISCELLANY
 
     fn make_sub_ty(&self, sub: Ty<'tcx>, sup: Ty<'tcx>) -> infer::UnitResult<'tcx> {
-        self.infcx().sub_types(false, infer::Misc(DUMMY_SP), sub, sup)
+        self.infcx().sub_types(false, TypeOrigin::Misc(DUMMY_SP), sub, sup)
     }
 
     fn has_applicable_self(&self, item: &ty::ImplOrTraitItem) -> bool {

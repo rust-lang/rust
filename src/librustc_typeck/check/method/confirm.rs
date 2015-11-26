@@ -19,7 +19,7 @@ use middle::ty::{self, NoPreference, PreferMutLvalue, Ty};
 use middle::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
 use middle::ty::fold::TypeFoldable;
 use middle::infer;
-use middle::infer::InferCtxt;
+use middle::infer::{InferCtxt, TypeOrigin};
 use syntax::codemap::Span;
 use rustc_front::hir;
 
@@ -367,7 +367,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                        self_ty: Ty<'tcx>,
                        method_self_ty: Ty<'tcx>)
     {
-        match self.fcx.mk_subty(false, infer::Misc(self.span), self_ty, method_self_ty) {
+        match self.fcx.mk_subty(false, TypeOrigin::Misc(self.span), self_ty, method_self_ty) {
             Ok(_) => {}
             Err(_) => {
                 self.tcx().sess.span_bug(

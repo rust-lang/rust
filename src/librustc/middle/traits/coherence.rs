@@ -21,7 +21,7 @@ use metadata::cstore::LOCAL_CRATE;
 use middle::def_id::DefId;
 use middle::subst::{Subst, Substs, TypeSpace};
 use middle::ty::{self, Ty};
-use middle::infer::{self, InferCtxt};
+use middle::infer::{self, InferCtxt, TypeOrigin};
 use syntax::codemap::{DUMMY_SP, Span};
 
 #[derive(Copy, Clone)]
@@ -70,7 +70,7 @@ fn overlap(selcx: &mut SelectionContext,
     // Do `a` and `b` unify? If not, no overlap.
     if let Err(_) = infer::mk_eq_trait_refs(selcx.infcx(),
                                             true,
-                                            infer::Misc(DUMMY_SP),
+                                            TypeOrigin::Misc(DUMMY_SP),
                                             a_trait_ref,
                                             b_trait_ref) {
         return false;

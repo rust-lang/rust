@@ -25,7 +25,7 @@ use rustc_typeck::middle::subst;
 use rustc_typeck::middle::subst::Subst;
 use rustc_typeck::middle::ty::{self, Ty, RegionEscape};
 use rustc_typeck::middle::ty::relate::TypeRelation;
-use rustc_typeck::middle::infer;
+use rustc_typeck::middle::infer::{self, TypeOrigin};
 use rustc_typeck::middle::infer::lub::Lub;
 use rustc_typeck::middle::infer::glb::Glb;
 use rustc_typeck::middle::infer::sub::Sub;
@@ -230,7 +230,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     pub fn make_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-        match infer::mk_subty(self.infcx, true, infer::Misc(DUMMY_SP), a, b) {
+        match infer::mk_subty(self.infcx, true, TypeOrigin::Misc(DUMMY_SP), a, b) {
             Ok(_) => true,
             Err(ref e) => panic!("Encountered error: {}", e),
         }

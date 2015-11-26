@@ -21,7 +21,7 @@ use super::VtableClosureData;
 use super::VtableImplData;
 use super::util;
 
-use middle::infer;
+use middle::infer::{self, TypeOrigin};
 use middle::subst::Subst;
 use middle::ty::{self, ToPredicate, RegionEscape, HasTypeFlags, ToPolyTraitRef, Ty};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
@@ -138,7 +138,7 @@ fn project_and_unify_type<'cx,'tcx>(
            obligations);
 
     let infcx = selcx.infcx();
-    let origin = infer::RelateOutputImplTypes(obligation.cause.span);
+    let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
     match infer::mk_eqty(infcx, true, origin, normalized_ty, obligation.predicate.ty) {
         Ok(()) => Ok(Some(obligations)),
         Err(err) => Err(MismatchedProjectionTypes { err: err }),
@@ -183,7 +183,7 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
 
             debug!("consider_unification_despite_ambiguity: ret_type={:?}",
                    ret_type);
-            let origin = infer::RelateOutputImplTypes(obligation.cause.span);
+            let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
             let obligation_ty = obligation.predicate.ty;
             match infer::mk_eqty(infcx, true, origin, obligation_ty, ret_type) {
                 Ok(()) => { }
@@ -645,7 +645,7 @@ fn assemble_candidates_from_predicates<'cx,'tcx,I>(
                 let same_name = data.item_name() == obligation.predicate.item_name;
 
                 let is_match = same_name && infcx.probe(|_| {
-                    let origin = infer::Misc(obligation.cause.span);
+                    let origin = TypeOrigin::Misc(obligation.cause.span);
                     let data_poly_trait_ref =
                         data.to_poly_trait_ref();
                     let obligation_poly_trait_ref =
@@ -901,7 +901,7 @@ fn confirm_param_env_candidate<'cx,'tcx>(
     assert_eq!(projection.projection_ty.item_name,
                obligation.predicate.item_name);
 
-    let origin = infer::RelateOutputImplTypes(obligation.cause.span);
+    let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
     match infcx.eq_trait_refs(false,
                               origin,
                               obligation.predicate.trait_ref.clone(),

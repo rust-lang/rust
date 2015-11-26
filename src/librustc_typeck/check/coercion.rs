@@ -62,7 +62,7 @@
 
 use check::{autoderef, FnCtxt, UnresolvedTypeAction};
 
-use middle::infer::{self, Coercion};
+use middle::infer::{self, Coercion, TypeOrigin};
 use middle::traits::{self, ObligationCause};
 use middle::traits::{predicate_for_trait_def, report_selection_error};
 use middle::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
@@ -444,7 +444,7 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.infcx().commit_if_ok(|_| {
             let coerce = Coerce {
                 fcx: fcx,
-                origin: infer::ExprAssignable(expr.span),
+                origin: TypeOrigin::ExprAssignable(expr.span),
                 unsizing_obligations: RefCell::new(vec![])
             };
             let adjustment = try!(coerce.coerce(expr, a, b));
