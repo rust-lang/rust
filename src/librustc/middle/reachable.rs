@@ -228,16 +228,16 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     fn propagate_node(&mut self, node: &ast_map::Node,
                       search_item: ast::NodeId) {
         if !self.any_library {
-            // If we are building an executable, then there's no need to flag
-            // anything as external except for `extern fn` types. These
-            // functions may still participate in some form of native interface,
-            // but all other rust-only interfaces can be private (they will not
-            // participate in linkage after this product is produced)
+            // If we are building an executable, only explicitly extern
+            // types need to be exported.
             if let ast_map::NodeItem(item) = *node {
-                if let hir::ItemFn(_, _, _, abi, _, _) = item.node {
-                    if abi != abi::Rust {
-                        self.reachable_symbols.insert(search_item);
-                    }
+                let reachable = if let hir::ItemFn(_, _, _, abi, _, _) = item.node {
+                    abi != abi::Rust
+                } else {
+                    false
+                };
+                if reachable || attr::contains_extern_indicator(&item.attrs) {
+                    self.reachable_symbols.insert(search_item);
                 }
             }
         } else {

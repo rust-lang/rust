@@ -344,9 +344,9 @@ pub fn is_const_fn(cstore: &cstore::CStore, did: DefId) -> bool {
     decoder::is_const_fn(&*cdata, did.index)
 }
 
-pub fn is_static(cstore: &cstore::CStore, did: DefId) -> bool {
+pub fn is_extern_item(cstore: &cstore::CStore, did: DefId, tcx: &ty::ctxt) -> bool {
     let cdata = cstore.get_crate_data(did.krate);
-    decoder::is_static(&*cdata, did.index)
+    decoder::is_extern_item(&*cdata, did.index, tcx)
 }
 
 pub fn is_impl(cstore: &cstore::CStore, did: DefId) -> bool {
@@ -379,12 +379,6 @@ pub fn is_defaulted_trait(cstore: &cstore::CStore, trait_def_id: DefId) -> bool 
 pub fn is_default_impl(cstore: &cstore::CStore, impl_did: DefId) -> bool {
     let cdata = cstore.get_crate_data(impl_did.krate);
     decoder::is_default_impl(&*cdata, impl_did.index)
-}
-
-pub fn is_extern_fn(cstore: &cstore::CStore, did: DefId,
-                    tcx: &ty::ctxt) -> bool {
-    let cdata = cstore.get_crate_data(did.krate);
-    decoder::is_extern_fn(&*cdata, did.index, tcx)
 }
 
 pub fn closure_kind<'tcx>(tcx: &ty::ctxt<'tcx>, def_id: DefId) -> ty::ClosureKind {

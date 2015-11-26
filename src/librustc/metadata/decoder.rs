@@ -1425,11 +1425,28 @@ pub fn is_const_fn(cdata: Cmd, id: DefIndex) -> bool {
     }
 }
 
-pub fn is_static(cdata: Cmd, id: DefIndex) -> bool {
-    let item_doc = cdata.lookup_item(id);
-    match item_family(item_doc) {
+pub fn is_extern_item(cdata: Cmd, id: DefIndex, tcx: &ty::ctxt) -> bool {
+    let item_doc = match cdata.get_item(id) {
+        Some(doc) => doc,
+        None => return false,
+    };
+    let applicable = match item_family(item_doc) {
         ImmStatic | MutStatic => true,
+        Fn => {
+            let ty::TypeScheme { generics, ty } = get_type(cdata, id, tcx);
+            let no_generics = generics.types.is_empty();
+            match ty.sty {
+                ty::TyBareFn(_, fn_ty) if fn_ty.abi != abi::Rust => return no_generics,
+                _ => no_generics,
+            }
+        },
         _ => false,
+    };
+
+    if applicable {
+        attr::contains_extern_indicator(&get_attributes(item_doc))
+    } else {
+        false
     }
 }
 
@@ -1547,22 +1564,6 @@ pub fn get_imported_filemaps(metadata: &[u8]) -> Vec<codemap::FileMap> {
         let mut decoder = reader::Decoder::new(filemap_doc);
         Decodable::decode(&mut decoder).unwrap()
     }).collect()
-}
-
-pub fn is_extern_fn(cdata: Cmd, id: DefIndex, tcx: &ty::ctxt) -> bool {
-    let item_doc = match cdata.get_item(id) {
-        Some(doc) => doc,
-        None => return false,
-    };
-    if let Fn = item_family(item_doc) {
-        let ty::TypeScheme { generics, ty } = get_type(cdata, id, tcx);
-        generics.types.is_empty() && match ty.sty {
-            ty::TyBareFn(_, fn_ty) => fn_ty.abi != abi::Rust,
-            _ => false,
-        }
-    } else {
-        false
-    }
 }
 
 pub fn closure_kind(cdata: Cmd, closure_id: DefIndex) -> ty::ClosureKind {
