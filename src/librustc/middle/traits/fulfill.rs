@@ -57,12 +57,7 @@ pub struct FulfillmentContext<'tcx> {
 
     // A list of all obligations that have been registered with this
     // fulfillment context.
-    predicates: Vec<PredicateObligation<'tcx>>,
-
-    // Remembers the count of trait obligations that we have already
-    // attempted to select. This is used to avoid repeating work
-    // when `select_new_obligations` is called.
-    attempted_mark: usize,
+    predicates: Vec<PendingPredicateObligation<'tcx>>,
 
     // A set of constraints that regionck must validate. Each
     // constraint has the form `T:'a`, meaning "some type `T` must
@@ -100,6 +95,12 @@ pub struct RegionObligation<'tcx> {
     pub cause: ObligationCause<'tcx>,
 }
 
+#[derive(Clone, Debug)]
+pub struct PendingPredicateObligation<'tcx> {
+    pub obligation: PredicateObligation<'tcx>,
+    pub stalled_on: Vec<Ty<'tcx>>,
+}
+
 impl<'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
     ///
@@ -122,7 +123,6 @@ impl<'tcx> FulfillmentContext<'tcx> {
         FulfillmentContext {
             duplicate_set: FulfilledPredicates::new(),
             predicates: Vec::new(),
-            attempted_mark: 0,
             region_obligations: NodeMap(),
             errors_will_be_reported: errors_will_be_reported,
         }
@@ -198,6 +198,10 @@ impl<'tcx> FulfillmentContext<'tcx> {
         }
 
         debug!("register_predicate({:?})", obligation);
+        let obligation = PendingPredicateObligation {
+            obligation: obligation,
+            stalled_on: vec![]
+        };
         self.predicates.push(obligation);
     }
 
@@ -221,7 +225,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
         let errors: Vec<FulfillmentError> =
             self.predicates
             .iter()
-            .map(|o| FulfillmentError::new((*o).clone(), CodeAmbiguity))
+            .map(|o| FulfillmentError::new(o.obligation.clone(), CodeAmbiguity))
             .collect();
 
         if errors.is_empty() {
@@ -229,18 +233,6 @@ impl<'tcx> FulfillmentContext<'tcx> {
         } else {
             Err(errors)
         }
-    }
-
-    /// Attempts to select obligations that were registered since the call to a selection routine.
-    /// This is used by the type checker to eagerly attempt to resolve obligations in hopes of
-    /// gaining type information. It'd be equally valid to use `select_where_possible` but it
-    /// results in `O(n^2)` performance (#18208).
-    pub fn select_new_obligations<'a>(&mut self,
-                                      infcx: &InferCtxt<'a,'tcx>)
-                                      -> Result<(),Vec<FulfillmentError<'tcx>>>
-    {
-        let mut selcx = SelectionContext::new(infcx);
-        self.select(&mut selcx, true)
     }
 
     pub fn select_where_possible<'a>(&mut self,
@@ -251,7 +243,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
         self.select(&mut selcx, false)
     }
 
-    pub fn pending_obligations(&self) -> &[PredicateObligation<'tcx>] {
+    pub fn pending_obligations(&self) -> &[PendingPredicateObligation<'tcx>] {
         &self.predicates
     }
 
@@ -299,35 +291,24 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
             let mut new_obligations = Vec::new();
 
-            // If we are only attempting obligations we haven't seen yet,
-            // then set `skip` to the number of obligations we've already
-            // seen.
-            let mut skip = if only_new_obligations {
-                self.attempted_mark
-            } else {
-                0
-            };
-
             // First pass: walk each obligation, retaining
             // only those that we cannot yet process.
             {
                 let region_obligations = &mut self.region_obligations;
-                self.predicates.retain(|predicate| {
-                    // Hack: Retain does not pass in the index, but we want
-                    // to avoid processing the first `start_count` entries.
-                    let processed =
-                        if skip == 0 {
-                            process_predicate(selcx, predicate,
-                                              &mut new_obligations, &mut errors, region_obligations)
-                        } else {
-                            skip -= 1;
-                            false
-                        };
-                    !processed
-                });
+                let mut i = 0;
+                while i < self.predicates.len() {
+                    let processed = process_predicate(selcx,
+                                                      &mut self.predicates[i],
+                                                      &mut new_obligations,
+                                                      &mut errors,
+                                                      region_obligations);
+                    if processed {
+                        self.predicates.swap_remove(i);
+                    } else {
+                        i += 1;
+                    }
+                }
             }
-
-            self.attempted_mark = self.predicates.len();
 
             if self.predicates.len() == count {
                 // Nothing changed.
@@ -354,7 +335,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
 }
 
 fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
-                              obligation: &PredicateObligation<'tcx>,
+                              pending_obligation: &mut PendingPredicateObligation<'tcx>,
                               new_obligations: &mut Vec<PredicateObligation<'tcx>>,
                               errors: &mut Vec<FulfillmentError<'tcx>>,
                               region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
@@ -367,11 +348,53 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
      * type inference.
      */
 
+    // if we were stalled on some unresolved variables, first check
+    // whether any of them have been resolved; if not, don't bother
+    // doing more work yet
+    if !pending_obligation.stalled_on.is_empty() {
+        if pending_obligation.stalled_on.iter().all(|&ty| {
+            let resolved_ty = selcx.infcx().resolve_type_vars_if_possible(&ty);
+            resolved_ty == ty // nothing changed here
+        }) {
+            debug!("process_predicate: pending obligation {:?} still stalled on {:?}",
+                   selcx.infcx().resolve_type_vars_if_possible(&pending_obligation.obligation),
+                   pending_obligation.stalled_on);
+            return false;
+        }
+        pending_obligation.stalled_on = vec![];
+    }
+
+    let obligation = &mut pending_obligation.obligation;
     match obligation.predicate {
         ty::Predicate::Trait(ref data) => {
             let trait_obligation = obligation.with(data.clone());
             match selcx.select(&trait_obligation) {
                 Ok(None) => {
+                    // This is a bit subtle: for the most part, the
+                    // only reason we can fail to make progress on
+                    // trait selection is because we don't have enough
+                    // information about the types in the trait. One
+                    // exception is that we sometimes haven't decided
+                    // what kind of closure a closure is. *But*, in
+                    // that case, it turns out, the type of the
+                    // closure will also change, because the closure
+                    // also includes references to its upvars as part
+                    // of its type, and those types are resolved at
+                    // the same time.
+                    pending_obligation.stalled_on =
+                        data.skip_binder() // ok b/c this check doesn't care about regions
+                        .input_types()
+                        .iter()
+                        .map(|t| selcx.infcx().resolve_type_vars_if_possible(t))
+                        .filter(|t| t.has_infer_types())
+                        .flat_map(|t| t.walk())
+                        .filter(|t| t.is_ty_var())
+                        .collect();
+
+                    debug!("process_predicate: pending obligation {:?} now stalled on {:?}",
+                           selcx.infcx().resolve_type_vars_if_possible(obligation),
+                           pending_obligation.stalled_on);
+
                     false
                 }
                 Ok(Some(s)) => {
