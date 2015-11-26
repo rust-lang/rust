@@ -764,19 +764,15 @@ pub fn rewrite_type_alias(context: &RewriteContext,
     result.push_str(&generics_str);
     result.push_str(" = ");
 
-    let last_line_length = match generics_str.rfind("\n") {
-        Some(index) => " = ".len() + generics_str.len() - index,
-        None => result.len(),
-    };
-
+    let line_width = last_line_width(&result);
     let budget = try_opt!(context.config
                                  .max_width
-                                 .checked_sub(indent.width() + last_line_length + ";".len()));
-    let type_indent = indent + last_line_length;
+                                 .checked_sub(indent.width() + line_width + ";".len()));
+    let type_indent = indent + line_width;
     // Try to fit the type on the same line
     let ty_str = try_opt!(ty.rewrite(context, budget, type_indent)
                             .or_else(|| {
-                                // The line was to short try and put the type on the next line
+                                // The line was too short, try to put the type on the next line
 
                                 // Remove the space after '='
                                 result.pop();
