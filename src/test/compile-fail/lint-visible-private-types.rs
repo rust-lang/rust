@@ -121,3 +121,12 @@ impl<T: ParamTrait<Private<isize>>>  //~ ERROR private type in public interface
      ParamTrait<T> for Public<i8> {
     fn foo() -> T { panic!() }
 }
+
+type PrivAliasPrivType = Private<isize>;
+pub fn f1(_: PrivAliasPrivType) {} //~ ERROR private type in public interface
+
+type PrivAliasGeneric<T = Private<isize>> = T;
+pub fn f2(_: PrivAliasGeneric) {} //~ ERROR private type in public interface
+
+type Result<T> = std::result::Result<T, Private<isize>>;
+pub fn f3(_: Result<u8>) {} //~ ERROR private type in public interface
