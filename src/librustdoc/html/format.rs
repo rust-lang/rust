@@ -18,7 +18,7 @@
 use std::fmt;
 use std::iter::repeat;
 
-use rustc::metadata::cstore::LOCAL_CRATE;
+use rustc::middle::cstore::LOCAL_CRATE;
 use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
 use syntax::abi::Abi;
 use rustc_front::hir;

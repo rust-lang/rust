@@ -17,11 +17,11 @@ use super::svh::Svh;
 use session::config;
 use session::config::NoDebugInfo;
 use session::config::{OutputFilenames, Input, OutputType};
+use session::filesearch;
 use session::search_paths::PathKind;
 use session::Session;
-use metadata::common::LinkMeta;
-use metadata::loader::METADATA_FILENAME;
-use metadata::{encoder, cstore, filesearch, csearch, creader};
+use middle::cstore::{self, CrateStore, LinkMeta};
+use middle::cstore::{LinkagePreference, NativeLibraryKind};
 use middle::dependency_format::Linkage;
 use middle::ty::{self, Ty};
 use rustc::front::map::DefPath;
@@ -137,7 +137,7 @@ pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],
                        input: &Input) -> String {
     let validate = |s: String, span: Option<Span>| {
-        creader::validate_crate_name(sess, &s[..], span);
+        cstore::validate_crate_name(sess, &s[..], span);
         s
     };
 
@@ -216,7 +216,7 @@ fn symbol_hash<'tcx>(tcx: &ty::ctxt<'tcx>,
         symbol_hasher.input_str(&meta[..]);
     }
     symbol_hasher.input_str("-");
-    symbol_hasher.input(&encoder::encoded_ty(tcx, t));
+    symbol_hasher.input(&tcx.sess.cstore.encode_type(tcx, t));
     // Prefix with 'h' so that it never blends into adjacent digits
     let mut hash = String::from("h");
     hash.push_str(&truncated_hash_result(symbol_hasher));
@@ -504,7 +504,7 @@ pub fn filename_for_input(sess: &Session,
 
 pub fn each_linked_rlib(sess: &Session,
                         f: &mut FnMut(ast::CrateNum, &Path)) {
-    let crates = sess.cstore.get_used_crates(cstore::RequireStatic).into_iter();
+    let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic).into_iter();
     let fmts = sess.dependency_formats.borrow();
     let fmts = fmts.get(&config::CrateTypeExecutable).or_else(|| {
         fmts.get(&config::CrateTypeStaticlib)
@@ -516,7 +516,7 @@ pub fn each_linked_rlib(sess: &Session,
             Linkage::NotLinked | Linkage::IncludedFromDylib => continue,
             _ => {}
         }
-        let name = sess.cstore.get_crate_data(cnum).name.clone();
+        let name = sess.cstore.crate_name(cnum).clone();
         let path = match path {
             Some(p) => p,
             None => {
@@ -621,10 +621,11 @@ fn link_rlib<'a>(sess: &'a Session,
         ab.add_file(obj);
     }
 
-    for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
+    for (l, kind) in sess.cstore.used_libraries() {
         match kind {
-            cstore::NativeStatic => ab.add_native_library(&l),
-            cstore::NativeFramework | cstore::NativeUnknown => {}
+            NativeLibraryKind::NativeStatic => ab.add_native_library(&l),
+            NativeLibraryKind::NativeFramework |
+            NativeLibraryKind::NativeUnknown => {}
         }
     }
 
@@ -666,7 +667,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // contain the metadata in a separate file. We use a temp directory
             // here so concurrent builds in the same directory don't try to use
             // the same filename for metadata (stomping over one another)
-            let metadata = tmpdir.join(METADATA_FILENAME);
+            let metadata = tmpdir.join(sess.cstore.metadata_filename());
             match fs::File::create(&metadata).and_then(|mut f| {
                 f.write_all(&trans.metadata)
             }) {
@@ -805,10 +806,10 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
     let mut all_native_libs = vec![];
 
     each_linked_rlib(sess, &mut |cnum, path| {
-        let name = sess.cstore.get_crate_data(cnum).name();
+        let name = sess.cstore.crate_name(cnum);
         ab.add_rlib(path, &name, sess.lto()).unwrap();
 
-        let native_libs = csearch::get_native_libraries(&sess.cstore, cnum);
+        let native_libs = sess.cstore.native_libraries(cnum);
         all_native_libs.extend(native_libs);
     });
 
@@ -824,9 +825,9 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
 
     for &(kind, ref lib) in &all_native_libs {
         let name = match kind {
-            cstore::NativeStatic => "static library",
-            cstore::NativeUnknown => "library",
-            cstore::NativeFramework => "framework",
+            NativeLibraryKind::NativeStatic => "static library",
+            NativeLibraryKind::NativeUnknown => "library",
+            NativeLibraryKind::NativeFramework => "framework",
         };
         sess.note(&format!("{}: {}", name, *lib));
     }
@@ -968,7 +969,7 @@ fn link_args(cmd: &mut Linker,
     // sections if possible. See more comments in linker.rs
     cmd.gc_sections(dylib);
 
-    let used_link_args = sess.cstore.get_used_link_args().borrow();
+    let used_link_args = sess.cstore.used_link_args();
 
     if !dylib && t.options.position_independent_executables {
         let empty_vec = Vec::new();
@@ -1049,7 +1050,7 @@ fn link_args(cmd: &mut Linker,
             path
         };
         let mut rpath_config = RPathConfig {
-            used_crates: sess.cstore.get_used_crates(cstore::RequireDynamic),
+            used_crates: sess.cstore.used_crates(LinkagePreference::RequireDynamic),
             out_filename: out_filename.to_path_buf(),
             has_rpath: sess.target.target.options.has_rpath,
             is_like_osx: sess.target.target.options.is_like_osx,
@@ -1085,14 +1086,13 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         }
     });
 
-    let libs = sess.cstore.get_used_libraries();
-    let libs = libs.borrow();
+    let libs = sess.cstore.used_libraries();
 
     let staticlibs = libs.iter().filter_map(|&(ref l, kind)| {
-        if kind == cstore::NativeStatic {Some(l)} else {None}
+        if kind == NativeLibraryKind::NativeStatic {Some(l)} else {None}
     });
     let others = libs.iter().filter(|&&(_, kind)| {
-        kind != cstore::NativeStatic
+        kind != NativeLibraryKind::NativeStatic
     });
 
     // Some platforms take hints about whether a library is static or dynamic.
@@ -1116,9 +1116,9 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
 
     for &(ref l, kind) in others {
         match kind {
-            cstore::NativeUnknown => cmd.link_dylib(l),
-            cstore::NativeFramework => cmd.link_framework(l),
-            cstore::NativeStatic => unreachable!(),
+            NativeLibraryKind::NativeUnknown => cmd.link_dylib(l),
+            NativeLibraryKind::NativeFramework => cmd.link_framework(l),
+            NativeLibraryKind::NativeStatic => unreachable!(),
         }
     }
 }
@@ -1147,13 +1147,13 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
 
     // Invoke get_used_crates to ensure that we get a topological sorting of
     // crates.
-    let deps = sess.cstore.get_used_crates(cstore::RequireDynamic);
+    let deps = sess.cstore.used_crates(LinkagePreference::RequireDynamic);
 
     for &(cnum, _) in &deps {
         // We may not pass all crates through to the linker. Some crates may
         // appear statically in an existing dylib, meaning we'll pick up all the
         // symbols from the dylib.
-        let src = sess.cstore.get_used_crate_source(cnum).unwrap();
+        let src = sess.cstore.used_crate_source(cnum);
         match data[cnum as usize - 1] {
             Linkage::NotLinked |
             Linkage::IncludedFromDylib => {}
@@ -1217,7 +1217,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
         time(sess.time_passes(), &format!("altering {}.rlib", name), || {
             let cfg = archive_config(sess, &dst, Some(cratepath));
             let mut archive = ArchiveBuilder::new(cfg);
-            archive.remove_file(METADATA_FILENAME);
+            archive.remove_file(sess.cstore.metadata_filename());
             archive.update_symbols();
 
             let mut any_objects = false;
@@ -1292,14 +1292,14 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
     // This passes RequireStatic, but the actual requirement doesn't matter,
     // we're just getting an ordering of crate numbers, we're not worried about
     // the paths.
-    let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
+    let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic);
     for (cnum, _) in crates {
-        let libs = csearch::get_native_libraries(&sess.cstore, cnum);
+        let libs = sess.cstore.native_libraries(cnum);
         for &(kind, ref lib) in &libs {
             match kind {
-                cstore::NativeUnknown => cmd.link_dylib(lib),
-                cstore::NativeFramework => cmd.link_framework(lib),
-                cstore::NativeStatic => {
+                NativeLibraryKind::NativeUnknown => cmd.link_dylib(lib),
+                NativeLibraryKind::NativeFramework => cmd.link_framework(lib),
+                NativeLibraryKind::NativeStatic => {
                     sess.bug("statics shouldn't be propagated");
                 }
             }

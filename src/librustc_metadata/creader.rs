@@ -12,17 +12,17 @@
 
 //! Validates all used crates and extern libraries and loads their metadata
 
-use back::svh::Svh;
-use session::{config, Session};
-use session::search_paths::PathKind;
-use metadata::common::rustc_version;
-use metadata::cstore;
-use metadata::cstore::{CStore, CrateSource, MetadataBlob};
-use metadata::decoder;
-use metadata::loader;
-use metadata::loader::CratePaths;
-use util::nodemap::FnvHashMap;
-use front::map as hir_map;
+use common::rustc_version;
+use cstore::{self, CStore, CrateSource, MetadataBlob};
+use decoder;
+use loader::{self, CratePaths};
+
+use rustc::back::svh::Svh;
+use rustc::session::{config, Session};
+use rustc::session::search_paths::PathKind;
+use rustc::middle::cstore::{CrateStore, validate_crate_name};
+use rustc::util::nodemap::FnvHashMap;
+use rustc::front::map as hir_map;
 
 use std::cell::{RefCell, Cell};
 use std::path::PathBuf;
@@ -43,12 +43,14 @@ use log;
 
 pub struct LocalCrateReader<'a, 'b:'a> {
     sess: &'a Session,
+    cstore: &'a CStore,
     creader: CrateReader<'a>,
     ast_map: &'a hir_map::Map<'b>,
 }
 
 pub struct CrateReader<'a> {
     sess: &'a Session,
+    cstore: &'a CStore,
     next_crate_num: ast::CrateNum,
     foreign_item_map: FnvHashMap<String, Vec<ast::NodeId>>,
 }
@@ -89,30 +91,8 @@ struct CrateInfo {
     should_link: bool,
 }
 
-pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
-    let say = |s: &str| {
-        match (sp, sess) {
-            (_, None) => panic!("{}", s),
-            (Some(sp), Some(sess)) => sess.span_err(sp, s),
-            (None, Some(sess)) => sess.err(s),
-        }
-    };
-    if s.is_empty() {
-        say("crate name must not be empty");
-    }
-    for c in s.chars() {
-        if c.is_alphanumeric() { continue }
-        if c == '_'  { continue }
-        say(&format!("invalid character `{}` in crate name: `{}`", c, s));
-    }
-    match sess {
-        Some(sess) => sess.abort_if_errors(),
-        None => {}
-    }
-}
-
-
 fn register_native_lib(sess: &Session,
+                       cstore: &CStore,
                        span: Option<Span>,
                        name: String,
                        kind: cstore::NativeLibraryKind) {
@@ -139,7 +119,7 @@ fn register_native_lib(sess: &Session,
             None => sess.err(msg),
         }
     }
-    sess.cstore.add_used_library(name, kind);
+    cstore.add_used_library(name, kind);
 }
 
 // Extra info about a crate loaded for plugins or exported macros.
@@ -164,10 +144,11 @@ impl PMDSource {
 }
 
 impl<'a> CrateReader<'a> {
-    pub fn new(sess: &'a Session) -> CrateReader<'a> {
+    pub fn new(sess: &'a Session, cstore: &'a CStore) -> CrateReader<'a> {
         CrateReader {
             sess: sess,
-            next_crate_num: sess.cstore.next_crate_num(),
+            cstore: cstore,
+            next_crate_num: cstore.next_crate_num(),
             foreign_item_map: FnvHashMap(),
         }
     }
@@ -224,7 +205,7 @@ impl<'a> CrateReader<'a> {
     fn existing_match(&self, name: &str, hash: Option<&Svh>, kind: PathKind)
                       -> Option<ast::CrateNum> {
         let mut ret = None;
-        self.sess.cstore.iter_crate_data(|cnum, data| {
+        self.cstore.iter_crate_data(|cnum, data| {
             if data.name != name { return }
 
             match hash {
@@ -242,7 +223,7 @@ impl<'a> CrateReader<'a> {
             // We're also sure to compare *paths*, not actual byte slices. The
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
-            let source = self.sess.cstore.get_used_crate_source(cnum).unwrap();
+            let source = self.cstore.used_crate_source(cnum);
             if let Some(locs) = self.sess.opts.externs.get(name) {
                 let found = locs.iter().any(|l| {
                     let l = fs::canonicalize(l).ok();
@@ -342,8 +323,8 @@ impl<'a> CrateReader<'a> {
             cnum: cnum,
         };
 
-        self.sess.cstore.set_crate_data(cnum, cmeta.clone());
-        self.sess.cstore.add_used_crate_source(source.clone());
+        self.cstore.set_crate_data(cnum, cmeta.clone());
+        self.cstore.add_used_crate_source(source.clone());
         (cnum, cmeta, source)
     }
 
@@ -398,7 +379,7 @@ impl<'a> CrateReader<'a> {
                 let meta_hash = decoder::get_crate_hash(library.metadata
                                                                .as_slice());
                 let mut result = LookupResult::Loaded(library);
-                self.sess.cstore.iter_crate_data(|cnum, data| {
+                self.cstore.iter_crate_data(|cnum, data| {
                     if data.name() == name && meta_hash == data.hash() {
                         assert!(hash.is_none());
                         result = LookupResult::Previous(cnum);
@@ -410,11 +391,11 @@ impl<'a> CrateReader<'a> {
 
         match result {
             LookupResult::Previous(cnum) => {
-                let data = self.sess.cstore.get_crate_data(cnum);
+                let data = self.cstore.get_crate_data(cnum);
                 if explicitly_linked && !data.explicitly_linked.get() {
                     data.explicitly_linked.set(explicitly_linked);
                 }
-                (cnum, data, self.sess.cstore.get_used_crate_source(cnum).unwrap())
+                (cnum, data, self.cstore.used_crate_source(cnum))
             }
             LookupResult::Loaded(library) => {
                 self.register_crate(root, ident, name, span, library,
@@ -512,7 +493,7 @@ impl<'a> CrateReader<'a> {
         let source_name = format!("<{} macros>", item.ident);
         let mut macros = vec![];
         decoder::each_exported_macro(ekrate.metadata.as_slice(),
-                                     &*self.sess.cstore.intr,
+                                     &*self.cstore.intr,
             |name, attrs, body| {
                 // NB: Don't use parse::parse_tts_from_source_str because it parses with
                 // quote_depth > 0.
@@ -593,14 +574,14 @@ impl<'a> CrateReader<'a> {
     }
 
     fn register_statically_included_foreign_items(&mut self) {
-        let libs = self.sess.cstore.get_used_libraries();
+        let libs = self.cstore.get_used_libraries();
         for (lib, list) in self.foreign_item_map.iter() {
             let is_static = libs.borrow().iter().any(|&(ref name, kind)| {
                 lib == name && kind == cstore::NativeStatic
             });
             if is_static {
                 for id in list {
-                    self.sess.cstore.add_statically_included_foreign_item(*id);
+                    self.cstore.add_statically_included_foreign_item(*id);
                 }
             }
         }
@@ -614,7 +595,7 @@ impl<'a> CrateReader<'a> {
         // also bail out as we don't need to implicitly inject one.
         let mut needs_allocator = false;
         let mut found_required_allocator = false;
-        self.sess.cstore.iter_crate_data(|cnum, data| {
+        self.cstore.iter_crate_data(|cnum, data| {
             needs_allocator = needs_allocator || data.needs_allocator();
             if data.is_allocator() {
                 debug!("{} required by rlib and is an allocator", data.name());
@@ -693,7 +674,7 @@ impl<'a> CrateReader<'a> {
         //
         // Here we inject a dependency from all crates with #![needs_allocator]
         // to the crate tagged with #![allocator] for this compilation unit.
-        self.sess.cstore.iter_crate_data(|cnum, data| {
+        self.cstore.iter_crate_data(|cnum, data| {
             if !data.needs_allocator() {
                 return
             }
@@ -707,10 +688,10 @@ impl<'a> CrateReader<'a> {
 
         fn validate(me: &CrateReader, krate: ast::CrateNum,
                     allocator: ast::CrateNum) {
-            let data = me.sess.cstore.get_crate_data(krate);
+            let data = me.cstore.get_crate_data(krate);
             if data.needs_allocator() {
                 let krate_name = data.name();
-                let data = me.sess.cstore.get_crate_data(allocator);
+                let data = me.cstore.get_crate_data(allocator);
                 let alloc_name = data.name();
                 me.sess.err(&format!("the allocator crate `{}` cannot depend \
                                       on a crate that needs an allocator, but \
@@ -726,10 +707,12 @@ impl<'a> CrateReader<'a> {
 }
 
 impl<'a, 'b> LocalCrateReader<'a, 'b> {
-    pub fn new(sess: &'a Session, map: &'a hir_map::Map<'b>) -> LocalCrateReader<'a, 'b> {
+    pub fn new(sess: &'a Session, cstore: &'a CStore,
+               map: &'a hir_map::Map<'b>) -> LocalCrateReader<'a, 'b> {
         LocalCrateReader {
             sess: sess,
-            creader: CrateReader::new(sess),
+            cstore: cstore,
+            creader: CrateReader::new(sess, cstore),
             ast_map: map,
         }
     }
@@ -743,11 +726,11 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
         self.creader.inject_allocator_crate();
 
         if log_enabled!(log::INFO) {
-            dump_crates(&self.sess.cstore);
+            dump_crates(&self.cstore);
         }
 
         for &(ref name, kind) in &self.sess.opts.libs {
-            register_native_lib(self.sess, None, name.clone(), kind);
+            register_native_lib(self.sess, self.cstore, None, name.clone(), kind);
         }
         self.creader.register_statically_included_foreign_items();
     }
@@ -755,7 +738,7 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
     fn process_crate(&self, c: &hir::Crate) {
         for a in c.attrs.iter().filter(|m| m.name() == "link_args") {
             match a.value_str() {
-                Some(ref linkarg) => self.sess.cstore.add_used_link_args(&linkarg),
+                Some(ref linkarg) => self.cstore.add_used_link_args(&linkarg),
                 None => { /* fallthrough */ }
             }
         }
@@ -783,7 +766,7 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
                         self.ast_map.with_path(i.id, |path| {
                             cmeta.update_local_path(path)
                         });
-                        self.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
+                        self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
                     }
                     None => ()
                 }
@@ -801,7 +784,7 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
         // First, add all of the custom #[link_args] attributes
         for m in i.attrs.iter().filter(|a| a.check_name("link_args")) {
             if let Some(linkarg) = m.value_str() {
-                self.sess.cstore.add_used_link_args(&linkarg);
+                self.cstore.add_used_link_args(&linkarg);
             }
         }
 
@@ -836,7 +819,7 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
                     InternedString::new("foo")
                 }
             };
-            register_native_lib(self.sess, Some(m.span), n.to_string(), kind);
+            register_native_lib(self.sess, self.cstore, Some(m.span), n.to_string(), kind);
         }
 
         // Finally, process the #[linked_from = "..."] attribute

@@ -22,7 +22,7 @@ use arena::TypedArena;
 use back::link;
 use session;
 use llvm::{self, ValueRef, get_params};
-use metadata::cstore::LOCAL_CRATE;
+use middle::cstore::LOCAL_CRATE;
 use middle::def;
 use middle::def_id::DefId;
 use middle::infer;

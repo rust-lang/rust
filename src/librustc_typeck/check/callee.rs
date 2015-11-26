@@ -25,7 +25,7 @@ use super::UnresolvedTypeAction;
 use super::write_call;
 
 use CrateCtxt;
-use metadata::cstore::LOCAL_CRATE;
+use middle::cstore::LOCAL_CRATE;
 use middle::def_id::DefId;
 use middle::infer;
 use middle::ty::{self, LvaluePreference, Ty};

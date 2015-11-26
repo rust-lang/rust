@@ -28,8 +28,7 @@ use {resolve_error, ResolutionError};
 
 use self::DuplicateCheckingMode::*;
 
-use rustc::metadata::csearch;
-use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
+use rustc::middle::cstore::{CrateStore, ChildItem, DlDef, DlField, DlImpl};
 use rustc::middle::def::*;
 use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
 
@@ -310,7 +309,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             ItemExternCrate(_) => {
                 // n.b. we don't need to look at the path option here, because cstore already
                 // did
-                if let Some(crate_id) = self.session.cstore.find_extern_mod_stmt_cnum(item.id) {
+                if let Some(crate_id) = self.session.cstore.extern_mod_stmt_cnum(item.id) {
                     let def_id = DefId {
                         krate: crate_id,
                         index: CRATE_DEF_INDEX,
@@ -625,7 +624,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             }
             DefFn(ctor_id, true) => {
                 child_name_bindings.define_value(
-                csearch::get_tuple_struct_definition_if_ctor(&self.session.cstore, ctor_id)
+                self.session.cstore.tuple_struct_definition_if_ctor(ctor_id)
                     .map_or(def, |_| DefStruct(ctor_id)), DUMMY_SP, modifiers);
             }
             DefFn(..) |
@@ -654,11 +653,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 // If this is a trait, add all the trait item names to the trait
                 // info.
 
-                let trait_item_def_ids = csearch::get_trait_item_def_ids(&self.session.cstore,
-                                                                         def_id);
+                let trait_item_def_ids = self.session.cstore.trait_item_def_ids(def_id);
                 for trait_item_def in &trait_item_def_ids {
-                    let trait_item_name = csearch::get_trait_name(&self.session.cstore,
-                                                                  trait_item_def.def_id());
+                    let trait_item_name =
+                        self.session.cstore.item_name(trait_item_def.def_id());
 
                     debug!("(building reduced graph for external crate) ... adding trait item \
                             '{}'",
@@ -695,7 +693,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 debug!("(building reduced graph for external crate) building type and value for \
                         {}",
                        final_ident);
-                let fields = csearch::get_struct_field_names(&self.session.cstore, def_id);
+                child_name_bindings.define_type(def, DUMMY_SP, modifiers);
+                let fields = self.session.cstore.struct_field_names(def_id);
 
                 if fields.is_empty() {
                     child_name_bindings.define_value(def, DUMMY_SP, modifiers);
@@ -719,39 +718,29 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_def(&mut self,
                                                   root: &Rc<Module>,
-                                                  def_like: DefLike,
-                                                  name: Name,
-                                                  def_visibility: Visibility) {
-        match def_like {
+                                                  xcdef: ChildItem) {
+        match xcdef.def {
             DlDef(def) => {
                 // Add the new child item, if necessary.
                 match def {
                     DefForeignMod(def_id) => {
                         // Foreign modules have no names. Recur and populate
                         // eagerly.
-                        csearch::each_child_of_item(&self.session.cstore,
-                                                    def_id,
-                                                    |def_like,
-                                                     child_name,
-                                                     vis| {
-                            self.build_reduced_graph_for_external_crate_def(
-                                root,
-                                def_like,
-                                child_name,
-                                vis)
-                        });
+                        for child in self.session.cstore.item_children(def_id) {
+                            self.build_reduced_graph_for_external_crate_def(root, child)
+                        }
                     }
                     _ => {
-                        let child_name_bindings = self.add_child(name,
+                        let child_name_bindings = self.add_child(xcdef.name,
                                                                  root,
                                                                  OverwriteDuplicates,
                                                                  DUMMY_SP);
 
                         self.handle_external_def(def,
-                                                 def_visibility,
+                                                 xcdef.vis,
                                                  &child_name_bindings,
-                                                 &name.as_str(),
-                                                 name,
+                                                 &xcdef.name.as_str(),
+                                                 xcdef.name,
                                                  root);
                     }
                 }
@@ -778,16 +767,11 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             Some(def_id) => def_id,
         };
 
-        csearch::each_child_of_item(&self.session.cstore,
-                                    def_id,
-                                    |def_like, child_name, visibility| {
-                                        debug!("(populating external module) ... found ident: {}",
-                                               child_name);
-                                        self.build_reduced_graph_for_external_crate_def(module,
-                                                                                        def_like,
-                                                                                        child_name,
-                                                                                        visibility)
-                                    });
+        for child in self.session.cstore.item_children(def_id) {
+            debug!("(populating external module) ... found ident: {}",
+                   child.name);
+            self.build_reduced_graph_for_external_crate_def(module, child);
+        }
         module.populated.set(true)
     }
 
@@ -803,13 +787,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     /// Builds the reduced graph rooted at the 'use' directive for an external
     /// crate.
     fn build_reduced_graph_for_external_crate(&mut self, root: &Rc<Module>) {
-        csearch::each_top_level_item_of_crate(&self.session.cstore,
-                                              root.def_id()
-                                                  .unwrap()
-                                                  .krate,
-                                              |def_like, name, visibility| {
-            self.build_reduced_graph_for_external_crate_def(root, def_like, name, visibility)
-        });
+        let root_cnum = root.def_id().unwrap().krate;
+        for child in self.session.cstore.crate_top_level_items(root_cnum) {
+            self.build_reduced_graph_for_external_crate_def(root, child);
+        }
     }
 
     /// Creates and adds an import directive to the given module.

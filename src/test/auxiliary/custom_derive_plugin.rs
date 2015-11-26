@@ -16,6 +16,7 @@
 
 extern crate syntax;
 extern crate rustc;
+extern crate rustc_plugin;
 
 use syntax::ast;
 use syntax::codemap::Span;
@@ -25,7 +26,7 @@ use syntax::ext::deriving::generic::{cs_fold, TraitDef, MethodDef, combine_subst
 use syntax::ext::deriving::generic::ty::{Literal, LifetimeBounds, Path, borrowed_explicit_self};
 use syntax::parse::token;
 use syntax::ptr::P;
-use rustc::plugin::Registry;
+use rustc_plugin::Registry;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {

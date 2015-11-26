@@ -20,12 +20,15 @@ use rustc::lint;
 use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc_front::lowering::{lower_crate, LoweringContext};
+use rustc_metadata::cstore::CStore;
 
 use syntax::{ast, codemap, diagnostic};
 use syntax::feature_gate::UnstableFeatures;
+use syntax::parse::token;
 
 use std::cell::{RefCell, Cell};
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 use visit_ast::RustdocVisitor;
 use clean;
@@ -118,8 +121,10 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     let span_diagnostic_handler =
         diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 
+    let cstore = Rc::new(CStore::new(token::get_ident_interner()));
+    let cstore_ = ::rustc_driver::cstore_to_cratestore(cstore.clone());
     let sess = session::build_session_(sessopts, cpath,
-                                       span_diagnostic_handler);
+                                       span_diagnostic_handler, cstore_);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess);
@@ -130,7 +135,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     let name = link::find_crate_name(Some(&sess), &krate.attrs,
                                      &input);
 
-    let krate = driver::phase_2_configure_and_expand(&sess, krate, &name, None)
+    let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate, &name, None)
                     .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
     let krate = driver::assign_node_ids(&sess, krate);
@@ -141,6 +146,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     let hir_map = driver::make_map(&sess, &mut hir_forest);
 
     driver::phase_3_run_analysis_passes(&sess,
+                                        &cstore,
                                         hir_map,
                                         &arenas,
                                         &name,

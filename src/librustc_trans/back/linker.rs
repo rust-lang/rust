@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use back::archive;
-use metadata::csearch;
+use middle::cstore::CrateStore;
 use middle::dependency_format::Linkage;
 use session::Session;
 use session::config::CrateTypeDylib;
@@ -342,9 +342,9 @@ impl<'a> Linker for MsvcLinker<'a> {
                     None
                 }
             }).flat_map(|cnum| {
-                csearch::get_reachable_ids(cstore, cnum)
+                cstore.reachable_ids(cnum)
             }).map(|did| {
-                csearch::get_symbol(cstore, did)
+                cstore.item_symbol(did)
             });
             for symbol in symbols {
                 try!(writeln!(f, "  {}", symbol));

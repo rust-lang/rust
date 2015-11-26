@@ -54,7 +54,7 @@ use externalfiles::ExternalHtml;
 
 use serialize::json::{self, ToJson};
 use syntax::{abi, ast};
-use rustc::metadata::cstore::LOCAL_CRATE;
+use rustc::middle::cstore::LOCAL_CRATE;
 use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;

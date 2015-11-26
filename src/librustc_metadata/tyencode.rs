@@ -23,7 +23,7 @@ use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::ParamTy;
 use middle::ty::{self, Ty};
-use util::nodemap::FnvHashMap;
+use rustc::util::nodemap::FnvHashMap;
 
 use rustc_front::hir;
 

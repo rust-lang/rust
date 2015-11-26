@@ -13,7 +13,7 @@
 //! This currently only contains the definitions and implementations
 //! of most of the lints that `rustc` supports directly, it does not
 //! contain the infrastructure for defining/registering lints. That is
-//! available in `rustc::lint` and `rustc::plugin` respectively.
+//! available in `rustc::lint` and `rustc_plugin` respectively.
 //!
 //! # Note
 //!
@@ -50,7 +50,6 @@ extern crate rustc_front;
 extern crate rustc_back;
 
 pub use rustc::lint as lint;
-pub use rustc::metadata as metadata;
 pub use rustc::middle as middle;
 pub use rustc::session as session;
 pub use rustc::util as util;

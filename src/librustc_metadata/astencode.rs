@@ -12,19 +12,21 @@
 // FIXME: remove this after snapshot, and Results are handled
 #![allow(unused_must_use)]
 
-use front::map as ast_map;
+use rustc::front::map as ast_map;
+use rustc::session::Session;
+
 use rustc_front::hir;
 use rustc_front::fold;
 use rustc_front::fold::Folder;
 
-use metadata::common as c;
-use metadata::cstore as cstore;
-use session::Session;
-use metadata::decoder;
-use metadata::encoder as e;
-use metadata::inline::{InlinedItem, InlinedItemRef};
-use metadata::tydecode;
-use metadata::tyencode;
+use common as c;
+use cstore;
+use decoder;
+use encoder as e;
+use tydecode;
+use tyencode;
+
+use middle::cstore::{InlinedItem, InlinedItemRef};
 use middle::ty::adjustment;
 use middle::ty::cast;
 use middle::check_const::ConstQualif;
@@ -89,7 +91,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
 
     // Folding could be avoided with a smarter encoder.
     let ii = simplify_ast(ii);
-    let id_range = ii.compute_id_range();
+    let id_range = inlined_item_id_range(&ii);
 
     rbml_w.start_tag(c::tag_ast as usize);
     id_range.encode(rbml_w);
@@ -1324,6 +1326,12 @@ fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
             _ => {}
         }
     }
+}
+
+fn inlined_item_id_range(v: &InlinedItem) -> ast_util::IdRange {
+    let mut visitor = ast_util::IdRangeComputingVisitor::new();
+    v.visit_ids(&mut visitor);
+    visitor.result()
 }
 
 // ______________________________________________________________________

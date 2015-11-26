@@ -17,12 +17,12 @@ use astconv::AstConv;
 use check::{self, FnCtxt};
 use front::map as hir_map;
 use middle::ty::{self, Ty, ToPolyTraitRef, ToPredicate, HasTypeFlags};
+use middle::cstore::{self, CrateStore, DefLike};
 use middle::def;
 use middle::def_id::DefId;
 use middle::lang_items::FnOnceTraitLangItem;
 use middle::subst::Substs;
 use middle::traits::{Obligation, SelectionContext};
-use metadata::{csearch, cstore, decoder};
 use util::nodemap::{FnvHashSet};
 
 use syntax::ast;
@@ -418,32 +418,32 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
         fn handle_external_def(traits: &mut AllTraitsVec,
                                external_mods: &mut FnvHashSet<DefId>,
                                ccx: &CrateCtxt,
-                               cstore: &cstore::CStore,
-                               dl: decoder::DefLike) {
+                               cstore: &for<'a> cstore::CrateStore<'a>,
+                               dl: cstore::DefLike) {
             match dl {
-                decoder::DlDef(def::DefTrait(did)) => {
+                cstore::DlDef(def::DefTrait(did)) => {
                     traits.push(TraitInfo::new(did));
                 }
-                decoder::DlDef(def::DefMod(did)) => {
+                cstore::DlDef(def::DefMod(did)) => {
                     if !external_mods.insert(did) {
                         return;
                     }
-                    csearch::each_child_of_item(cstore, did, |dl, _, _| {
+                    for child in cstore.item_children(did) {
                         handle_external_def(traits, external_mods,
-                                            ccx, cstore, dl)
-                    })
+                                            ccx, cstore, child.def)
+                    }
                 }
                 _ => {}
             }
         }
-        let cstore = &ccx.tcx.sess.cstore;
-        cstore.iter_crate_data(|cnum, _| {
-            csearch::each_top_level_item_of_crate(cstore, cnum, |dl, _, _| {
-                handle_external_def(&mut traits,
-                                    &mut external_mods,
-                                    ccx, cstore, dl)
-            })
-        });
+        let cstore = &*ccx.tcx.sess.cstore;
+
+        for cnum in ccx.tcx.sess.cstore.crates() {
+            for child in cstore.crate_top_level_items(cnum) {
+                handle_external_def(&mut traits, &mut external_mods,
+                                    ccx, cstore, child.def)
+            }
+        }
 
         *ccx.all_traits.borrow_mut() = Some(traits);
     }

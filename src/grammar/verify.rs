@@ -25,7 +25,9 @@ use std::path::Path;
 use syntax::parse;
 use syntax::parse::lexer;
 use rustc::session::{self, config};
+use rustc::middle::cstore::DummyCrateStore;
 
+use std::rc::Rc;
 use syntax::ast;
 use syntax::ast::Name;
 use syntax::codemap;
@@ -286,7 +288,8 @@ fn main() {
 
     let options = config::basic_options();
     let session = session::build_session(options, None,
-                                         syntax::diagnostics::registry::Registry::new(&[]));
+                                         syntax::diagnostics::registry::Registry::new(&[]),
+                                         Rc::new(DummyCrateStore));
     let filemap = session.parse_sess.codemap().new_filemap(String::from("<n/a>"), code);
     let mut lexer = lexer::StringReader::new(session.diagnostic(), filemap);
     let cm = session.codemap();

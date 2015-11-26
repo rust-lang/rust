@@ -28,8 +28,8 @@
 //! Use the former for unit-like structs and the latter for structs with
 //! a `pub fn new()`.
 
-use metadata::decoder;
 use middle::{cfg, def, infer, stability, traits};
+use middle::cstore::CrateStore;
 use middle::def_id::DefId;
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
@@ -936,8 +936,8 @@ impl LateLintPass for PluginAsLibrary {
             _ => return,
         };
 
-        let md = match cx.sess().cstore.find_extern_mod_stmt_cnum(it.id) {
-            Some(cnum) => cx.sess().cstore.get_crate_data(cnum),
+        let prfn = match cx.sess().cstore.extern_mod_stmt_cnum(it.id) {
+            Some(cnum) => cx.sess().cstore.plugin_registrar_fn(cnum),
             None => {
                 // Probably means we aren't linking the crate for some reason.
                 //
@@ -946,7 +946,7 @@ impl LateLintPass for PluginAsLibrary {
             }
         };
 
-        if decoder::get_plugin_registrar_fn(md.data()).is_some() {
+        if prfn.is_some() {
             cx.span_lint(PLUGIN_AS_LIBRARY, it.span,
                          "compiler plugin used as an ordinary library");
         }

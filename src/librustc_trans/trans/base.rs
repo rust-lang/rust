@@ -34,9 +34,8 @@ use back::{link, abi};
 use lint;
 use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
-use metadata::{csearch, encoder, loader};
-use middle::astencode;
 use middle::cfg;
+use middle::cstore::CrateStore;
 use middle::def_id::DefId;
 use middle::infer;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
@@ -199,7 +198,7 @@ fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let f = declare::declare_rust_fn(ccx, name, fn_ty);
 
-    let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
+    let attrs = ccx.sess().cstore.item_attrs(did);
     attributes::from_fn_attrs(ccx, &attrs[..], f);
 
     ccx.externs().borrow_mut().insert(name.to_string(), f);
@@ -230,7 +229,7 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   did: DefId,
                                   t: Ty<'tcx>)
                                   -> ValueRef {
-    let name = csearch::get_symbol(&ccx.sess().cstore, did);
+    let name = ccx.sess().cstore.item_symbol(did);
     let ty = type_of(ccx, t);
     match ccx.externs().borrow_mut().get(&name) {
         Some(n) => return *n,
@@ -874,7 +873,7 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      did: DefId,
                                      t: Ty<'tcx>)
                                      -> ValueRef {
-    let name = csearch::get_symbol(&ccx.sess().cstore, did);
+    let name = ccx.sess().cstore.item_symbol(did);
     match t.sty {
         ty::TyBareFn(_, ref fn_ty) => {
             match ccx.sess().target.target.adjust_abi(fn_ty.abi) {
@@ -885,7 +884,7 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     ccx.sess().bug("unexpected intrinsic in trans_external_path")
                 }
                 _ => {
-                    let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
+                    let attrs = ccx.sess().cstore.item_attrs(did);
                     foreign::register_foreign_item_fn(ccx, fn_ty.abi, t, &name, &attrs)
                 }
             }
@@ -2513,10 +2512,9 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
                                                                .as_local_node_id(start_def_id) {
                     get_item_val(ccx, start_node_id)
                 } else {
-                    let start_fn_type = csearch::get_type(ccx.tcx(), start_def_id).ty;
+                    let start_fn_type = ccx.tcx().lookup_item_type(start_def_id).ty;
                     trans_external_path(ccx, start_def_id, start_fn_type)
                 };
-
                 let args = {
                     let opaque_rust_main =
                         llvm::LLVMBuildPointerCast(bld,
@@ -2552,7 +2550,7 @@ fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                            -> String {
     match ccx.external_srcs().borrow().get(&id) {
         Some(&did) => {
-            let sym = csearch::get_symbol(&ccx.sess().cstore, did);
+            let sym = ccx.sess().cstore.item_symbol(did);
             debug!("found item {} in other crate...", sym);
             return sym;
         }
@@ -2602,7 +2600,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             let v = match i.node {
                 hir::ItemStatic(..) => {
                     // If this static came from an external crate, then
-                    // we need to get the symbol from csearch instead of
+                    // we need to get the symbol from metadata instead of
                     // using the current crate's name/version
                     // information in the hash of the symbol
                     let sym = sym();
@@ -2757,22 +2755,6 @@ fn register_method(ccx: &CrateContext,
     }
 }
 
-pub fn crate_ctxt_to_encode_parms<'a, 'tcx>(cx: &'a SharedCrateContext<'a, 'tcx>,
-                                            ie: encoder::EncodeInlinedItem<'a>,
-                                            reachable: &'a NodeSet)
-                                            -> encoder::EncodeParams<'a, 'tcx> {
-    encoder::EncodeParams {
-        diag: cx.sess().diagnostic(),
-        tcx: cx.tcx(),
-        reexports: cx.export_map(),
-        item_symbols: cx.item_symbols(),
-        link_meta: cx.link_meta(),
-        cstore: &cx.sess().cstore,
-        encode_inlined_item: ie,
-        reachable: reachable,
-    }
-}
-
 pub fn write_metadata(cx: &SharedCrateContext, krate: &hir::Crate, reachable: &NodeSet) -> Vec<u8> {
     use flate;
 
@@ -2785,14 +2767,13 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &hir::Crate, reachable: &N
         return Vec::new();
     }
 
-    let encode_inlined_item: encoder::EncodeInlinedItem = Box::new(|ecx, rbml_w, ii| {
-        astencode::encode_inlined_item(ecx, rbml_w, ii)
-    });
-
-    let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item, reachable);
-    let metadata = encoder::encode_metadata(encode_parms, krate);
-    let mut compressed = encoder::metadata_encoding_version.to_vec();
+    let cstore = &cx.tcx().sess.cstore;
+    let metadata = cstore.encode_metadata(
+        cx.tcx(), cx.export_map(), cx.item_symbols(), cx.link_meta(), reachable,
+        krate);
+    let mut compressed = cstore.metadata_encoding_version().to_vec();
     compressed.push_all(&flate::deflate_bytes(&metadata));
+
     let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed[..]);
     let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);
     let name = format!("rust_metadata_{}_{}",
@@ -2804,7 +2785,8 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &hir::Crate, reachable: &N
     };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
-        let name = loader::meta_section_name(&cx.sess().target.target);
+        let name =
+            cx.tcx().sess.cstore.metadata_section_name(&cx.sess().target.target);
         let name = CString::new(name).unwrap();
         llvm::LLVMSetSection(llglobal, name.as_ptr())
     }
@@ -3105,15 +3087,15 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
     // reachable extern fns. These functions are all part of the public ABI of
     // the final product, so LTO needs to preserve them.
     if sess.lto() {
-        sess.cstore.iter_crate_data(|cnum, _| {
-            let syms = csearch::get_reachable_ids(&sess.cstore, cnum);
+        for cnum in sess.cstore.crates() {
+            let syms = sess.cstore.reachable_ids(cnum);
             reachable_symbols.extend(syms.into_iter().filter(|did| {
-                csearch::is_extern_fn(&sess.cstore, *did, shared_ccx.tcx()) ||
-                csearch::is_static(&sess.cstore, *did)
+                sess.cstore.is_extern_fn(shared_ccx.tcx(), *did) ||
+                sess.cstore.is_static(*did)
             }).map(|did| {
-                csearch::get_symbol(&sess.cstore, did)
+                sess.cstore.item_symbol(did)
             }));
-        });
+        }
     }
 
     if codegen_units > 1 {

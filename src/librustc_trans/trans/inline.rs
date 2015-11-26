@@ -9,16 +9,13 @@
 // except according to those terms.
 
 use llvm::{AvailableExternallyLinkage, InternalLinkage, SetLinkage};
-use metadata::csearch;
-use metadata::inline::InlinedItem;
-use middle::astencode;
+use middle::cstore::{CrateStore, FoundAst, InlinedItem};
 use middle::def_id::DefId;
 use middle::subst::Substs;
 use trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
 use trans::common::*;
 
 use rustc_front::hir;
-
 
 fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
     -> Option<DefId> {
@@ -41,17 +38,13 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
         }
     }
 
-    let csearch_result =
-        csearch::maybe_get_item_ast(
-            ccx.tcx(), fn_id,
-            Box::new(astencode::decode_inlined_item));
-
-    let inline_id = match csearch_result {
-        csearch::FoundAst::NotFound => {
+    let inlined = ccx.tcx().sess.cstore.maybe_get_item_ast(ccx.tcx(), fn_id);
+    let inline_id = match inlined {
+        FoundAst::NotFound => {
             ccx.external().borrow_mut().insert(fn_id, None);
             return None;
         }
-        csearch::FoundAst::Found(&InlinedItem::Item(ref item)) => {
+        FoundAst::Found(&InlinedItem::Item(ref item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
 
@@ -94,12 +87,12 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
 
             item.id
         }
-        csearch::FoundAst::Found(&InlinedItem::Foreign(ref item)) => {
+        FoundAst::Found(&InlinedItem::Foreign(ref item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
             item.id
         }
-        csearch::FoundAst::FoundParent(parent_id, &InlinedItem::Item(ref item)) => {
+        FoundAst::FoundParent(parent_id, &InlinedItem::Item(ref item)) => {
             ccx.external().borrow_mut().insert(parent_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, parent_id);
 
@@ -129,11 +122,11 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
             trans_item(ccx, &**item);
             my_id
         }
-        csearch::FoundAst::FoundParent(_, _) => {
+        FoundAst::FoundParent(_, _) => {
             ccx.sess().bug("maybe_get_item_ast returned a FoundParent \
                             with a non-item parent");
         }
-        csearch::FoundAst::Found(&InlinedItem::TraitItem(_, ref trait_item)) => {
+        FoundAst::Found(&InlinedItem::TraitItem(_, ref trait_item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(trait_item.id));
             ccx.external_srcs().borrow_mut().insert(trait_item.id, fn_id);
 
@@ -153,7 +146,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
             // don't.
             trait_item.id
         }
-        csearch::FoundAst::Found(&InlinedItem::ImplItem(impl_did, ref impl_item)) => {
+        FoundAst::Found(&InlinedItem::ImplItem(impl_did, ref impl_item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(impl_item.id));
             ccx.external_srcs().borrow_mut().insert(impl_item.id, fn_id);
 
