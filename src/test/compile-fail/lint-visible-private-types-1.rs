@@ -37,5 +37,11 @@ impl PubTrait for <Private<isize> as PrivTrait2>::Alias {
     type Output = Private<isize>; //~ WARN private type in public interface
 }
 
+type PrivAliasPubType = u8;
+pub fn f1(_: PrivAliasPubType) {} // Ok, not an error
+
+type PrivAliasGeneric<T = Private<isize>> = T;
+pub fn f2(_: PrivAliasGeneric<u8>) {} // Ok, not an error
+
 #[rustc_error]
 fn main() {} //~ ERROR compilation successful

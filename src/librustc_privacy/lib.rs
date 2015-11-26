@@ -1460,13 +1460,38 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
     old_error_set: &'a NodeSet,
 }
 
+impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
+    // Check if the type alias contain private types when substituted
+    fn is_public_type_alias(&self, item: &hir::Item, path: &hir::Path) -> bool {
+        // Type alias is considered public if the aliased type is
+        // public, even if the type alias itself is private. So, something
+        // like `type A = u8; pub fn f() -> A {...}` doesn't cause an error.
+        if let hir::ItemTy(ref ty, ref generics) = item.node {
+            let mut check = SearchInterfaceForPrivateItemsVisitor {
+                tcx: self.tcx, is_quiet: self.is_quiet,
+                is_public: true, old_error_set: self.old_error_set,
+            };
+            check.visit_ty(ty);
+            let provided_params = path.segments.last().unwrap().parameters.types().len();
+            for ty_param in &generics.ty_params[provided_params..] {
+                if let Some(ref default_ty) = ty_param.default {
+                    check.visit_ty(default_ty);
+                }
+            }
+            check.is_public
+        } else {
+            false
+        }
+    }
+}
+
 impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &hir::Ty) {
         if self.is_quiet && !self.is_public {
             // We are in quiet mode and a private type is already found, no need to proceed
             return
         }
-        if let hir::TyPath(..) = ty.node {
+        if let hir::TyPath(_, ref path) = ty.node {
             let def = self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def();
             match def {
                 def::DefPrimTy(..) | def::DefSelfTy(..) | def::DefTyParam(..) => {
@@ -1482,12 +1507,7 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                     // Non-local means public, local needs to be checked
                     if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
                         if let Some(ast_map::NodeItem(ref item)) = self.tcx.map.find(node_id) {
-                            if let (&hir::ItemTy(..), true) = (&item.node, self.is_quiet) {
-                                // Conservatively approximate the whole type alias as public without
-                                // recursing into its components when determining impl publicity.
-                                return
-                            }
-                            if item.vis != hir::Public {
+                            if item.vis != hir::Public && !self.is_public_type_alias(item, path) {
                                 if !self.is_quiet {
                                     if self.old_error_set.contains(&ty.id) {
                                         span_err!(self.tcx.sess, ty.span, E0446,
