@@ -3253,7 +3253,7 @@ impl<'a> Parser<'a> {
                         let tts = try!(self.parse_seq_to_end(&token::CloseDelim(delim),
                                 seq_sep_none(), |p| p.parse_token_tree()));
                         let mac = Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT };
-                        pat = PatMac(codemap::Spanned {node: mac, span: self.span});
+                        pat = PatMac(codemap::Spanned {node: mac, span: mk_sp(lo, self.span.hi)});
                     } else {
                         // Parse ident @ pat
                         // This can give false positives and parse nullary enums,
@@ -4475,6 +4475,7 @@ impl<'a> Parser<'a> {
             let last_span = self.last_span;
             self.complain_if_pub_macro(vis, last_span);
 
+            let lo = self.span.lo;
             let pth = try!(self.parse_path(NoTypesAllowed));
             try!(self.expect(&token::Not));
 
@@ -4485,7 +4486,7 @@ impl<'a> Parser<'a> {
                                             |p| p.parse_token_tree()));
             let m_ = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m_,
-                                                span: mk_sp(self.span.lo,
+                                                span: mk_sp(lo,
                                                             self.span.hi) };
             if delim != token::Brace {
                 try!(self.expect(&token::Semi))
@@ -5513,6 +5514,8 @@ impl<'a> Parser<'a> {
             let last_span = self.last_span;
             self.complain_if_pub_macro(visibility, last_span);
 
+            let mac_lo = self.span.lo;
+
             // item macro.
             let pth = try!(self.parse_path(NoTypesAllowed));
             try!(self.expect(&token::Not));
@@ -5533,7 +5536,7 @@ impl<'a> Parser<'a> {
             // single-variant-enum... :
             let m = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m,
-                                             span: mk_sp(self.span.lo,
+                                             span: mk_sp(mac_lo,
                                                          self.span.hi) };
 
             if delim != token::Brace {
