@@ -739,6 +739,57 @@ fn format_tuple_struct(context: &RewriteContext,
     Some(result)
 }
 
+pub fn rewrite_type_alias(context: &RewriteContext,
+                          indent: Indent,
+                          ident: ast::Ident,
+                          ty: &ast::Ty,
+                          generics: &ast::Generics,
+                          vis: ast::Visibility,
+                          span: Span)
+                          -> Option<String> {
+    let mut result = String::new();
+
+    result.push_str(&format_visibility(vis));
+    result.push_str("type ");
+    result.push_str(&ident.to_string());
+
+    let generics_indent = indent + result.len();
+    let generics_span = mk_sp(span_after(span, "type", context.codemap), ty.span.lo);
+    let generics_str = try_opt!(rewrite_generics(context,
+                                                 generics,
+                                                 indent,
+                                                 generics_indent,
+                                                 generics_span));
+
+    result.push_str(&generics_str);
+    result.push_str(" = ");
+
+    let line_width = last_line_width(&result);
+    let budget = try_opt!(context.config
+                                 .max_width
+                                 .checked_sub(indent.width() + line_width + ";".len()));
+    let type_indent = indent + line_width;
+    // Try to fit the type on the same line
+    let ty_str = try_opt!(ty.rewrite(context, budget, type_indent)
+                            .or_else(|| {
+                                // The line was too short, try to put the type on the next line
+
+                                // Remove the space after '='
+                                result.pop();
+                                let type_indent = indent.block_indent(context.config);
+                                result.push('\n');
+                                result.push_str(&type_indent.to_string(context.config));
+                                let budget = try_opt!(context.config
+                                                             .max_width
+                                                             .checked_sub(type_indent.width() +
+                                                                          ";".len()));
+                                ty.rewrite(context, budget, type_indent)
+                            }));
+    result.push_str(&ty_str);
+    result.push_str(";");
+    Some(result)
+}
+
 impl Rewrite for ast::StructField {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         if contains_skip(&self.node.attrs) {
