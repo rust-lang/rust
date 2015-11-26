@@ -10,5 +10,5 @@
 
 fn main() {
     printlx!("oh noes!"); //~ ERROR macro undefined
-    //~^ HELP did you mean `println`?
+    //~^ HELP did you mean `println!`?
 }
