@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::def;
-use middle::infer;
+use middle::infer::{self, TypeOrigin};
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
 use middle::pat_util::pat_is_resolved_const;
 use middle::privacy::{AllPublic, LastMod};
@@ -509,12 +509,12 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 /* if-let construct without an else block */
                 hir::MatchSource::IfLetDesugar { contains_else_clause }
                 if !contains_else_clause => (
-                    infer::IfExpressionWithNoElse(expr.span),
+                    TypeOrigin::IfExpressionWithNoElse(expr.span),
                     bty,
                     result_ty,
                 ),
                 _ => (
-                    infer::MatchExpressionArm(expr.span, arm.body.span, match_src),
+                    TypeOrigin::MatchExpressionArm(expr.span, arm.body.span, match_src),
                     result_ty,
                     bty,
                 ),

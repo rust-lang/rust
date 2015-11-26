@@ -106,7 +106,7 @@ pub use rustc::util;
 
 use front::map as hir_map;
 use middle::def;
-use middle::infer;
+use middle::infer::{self, TypeOrigin};
 use middle::subst;
 use middle::ty::{self, Ty, HasTypeFlags};
 use session::config;
@@ -200,10 +200,10 @@ fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
     let result = match maybe_infcx {
         None => {
             let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
-            infer::mk_eqty(&infcx, t1_is_expected, infer::Misc(span), t1, t2)
+            infer::mk_eqty(&infcx, t1_is_expected, TypeOrigin::Misc(span), t1, t2)
         }
         Some(infcx) => {
-            infer::mk_eqty(infcx, t1_is_expected, infer::Misc(span), t1, t2)
+            infer::mk_eqty(infcx, t1_is_expected, TypeOrigin::Misc(span), t1, t2)
         }
     };
 
