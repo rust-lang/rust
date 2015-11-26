@@ -10,6 +10,8 @@
 
 // Checks for private types in public interfaces
 
+#![feature(rustc_attrs)]
+
 struct Priv;
 
 pub use self::private::public;
@@ -27,9 +29,6 @@ trait Pointer { type Pointee; }
 impl<T> Pointer for *const T { type Pointee = T; }
 pub type __CFArrayRevealed = <CFArrayRef as Pointer>::Pointee;
 //~^ WARN private type in public interface
-
-type Foo = u8;
-pub fn foo(f: Foo) {} //~ ERROR private type in public interface
 
 pub trait Exporter {
     type Output;
@@ -49,6 +48,7 @@ pub fn block() -> <Helper as Exporter>::Output {
     Inner
 }
 
-fn main() {
+#[rustc_error]
+fn main() { //~ ERROR compilation successful
     block().poke();
 }

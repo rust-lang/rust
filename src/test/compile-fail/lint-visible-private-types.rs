@@ -75,8 +75,8 @@ pub trait PubTrait {
 }
 
 impl PubTrait for Public<isize> {
-    fn bar(&self) -> Private<isize> { panic!() } //~ WARN private type in public interface
-    fn baz() -> Private<isize> { panic!() } //~ WARN private type in public interface
+    fn bar(&self) -> Private<isize> { panic!() } // Warns in lint checking phase
+    fn baz() -> Private<isize> { panic!() } // Warns in lint checking phase
 }
 impl PubTrait for Public<Private<isize>> {
     fn bar(&self) -> Private<isize> { panic!() }
@@ -120,23 +120,4 @@ impl ParamTrait<Private<isize>> for Private<isize> {
 impl<T: ParamTrait<Private<isize>>>  //~ ERROR private type in public interface
      ParamTrait<T> for Public<i8> {
     fn foo() -> T { panic!() }
-}
-
-type PrivAlias = Public<i8>;
-
-trait PrivTrait2 {
-    type Alias;
-}
-impl PrivTrait2 for Private<isize> {
-    type Alias = Public<u8>;
-}
-
-impl PubTrait for PrivAlias {
-    fn bar(&self) -> Private<isize> { panic!() } //~ WARN private type in public interface
-    fn baz() -> Private<isize> { panic!() } //~ WARN private type in public interface
-}
-
-impl PubTrait for <Private<isize> as PrivTrait2>::Alias {
-    fn bar(&self) -> Private<isize> { panic!() } //~ WARN private type in public interface
-    fn baz() -> Private<isize> { panic!() } //~ WARN private type in public interface
 }
