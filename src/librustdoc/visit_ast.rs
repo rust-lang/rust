@@ -400,11 +400,15 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     // convert each exported_macro into a doc item
     fn visit_macro(&self, def: &hir::MacroDef) -> Macro {
+        // Extract the spans of all matchers. They represent the "interface" of the macro.
+        let matchers = def.body.chunks(4).map(|arm| arm[0].get_span()).collect();
+
         Macro {
             id: def.id,
             attrs: def.attrs.clone(),
             name: def.name,
             whence: def.span,
+            matchers: matchers,
             stab: self.stability(def.id),
             imported_from: def.imported_from,
         }
