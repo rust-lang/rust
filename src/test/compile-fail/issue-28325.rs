@@ -10,13 +10,16 @@
 
 // Checks for private types in public interfaces
 
+#![feature(rustc_attrs)]
+#![allow(dead_code, unused_variables)]
+
 mod y {
     pub struct Foo { x: u32 }
 
     struct Bar { x: u32 }
 
     impl Foo {
-        pub fn foo(&self, x: Self, y: Bar) { } //~ ERROR private type in public interface
+        pub fn foo(&self, x: Self, y: Bar) { } //~ WARN private type in public interface
     }
 }
 
@@ -26,13 +29,14 @@ mod x {
     struct Bar { _x: u32 }
 
     impl Foo {
-        pub fn foo(&self, _x: Self, _y: Bar) { } //~ ERROR private type in public interface
+        pub fn foo(&self, _x: Self, _y: Bar) { } //~ WARN private type in public interface
         pub fn bar(&self) -> Bar { Bar { _x: self.x } }
-        //~^ ERROR private type in public interface
+        //~^ WARN private type in public interface
     }
 }
 
-pub fn main() {
+#[rustc_error]
+pub fn main() { //~ ERROR compilation successful
     let f = x::Foo { x: 4 };
     let b = f.bar();
     f.foo(x::Foo { x: 5 }, b);
