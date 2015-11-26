@@ -39,17 +39,20 @@ fn check_expr_mut(cx: &LateContext, expr: &Expr) {
     }
 
     unwrap_addr(expr).map_or((), |e| {
-        unwrap_addr(e).map(|_| {
-            span_lint(cx, MUT_MUT, expr.span,
-                      "generally you want to avoid `&mut &mut _` if possible")
-        }).unwrap_or_else(|| {
-            if let TyRef(_, TypeAndMut{ty: _, mutbl: MutMutable}) =
-                cx.tcx.expr_ty(e).sty {
-                    span_lint(cx, MUT_MUT, expr.span,
-                              "this expression mutably borrows a mutable reference. \
-                               Consider reborrowing")
+        unwrap_addr(e).map_or_else(
+            || {
+                if let TyRef(_, TypeAndMut{ty: _, mutbl: MutMutable}) =
+                    cx.tcx.expr_ty(e).sty {
+                        span_lint(cx, MUT_MUT, expr.span,
+                                  "this expression mutably borrows a mutable reference. \
+                                   Consider reborrowing")
                 }
-        })
+            },
+            |_| {
+                span_lint(cx, MUT_MUT, expr.span,
+                          "generally you want to avoid `&mut &mut _` if possible")
+            }
+        )
     })
 }
 

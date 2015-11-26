@@ -34,6 +34,55 @@ impl Mul<T> for T {
     fn mul(self, other: T) -> T { self } // no error, obviously
 }
 
+/// Utility macro to test linting behavior in `option_methods()`
+/// The lints included in `option_methods()` should not lint if the call to map is partially
+/// within a macro
+macro_rules! opt_map {
+    ($opt:expr, $map:expr) => {($opt).map($map)};
+}
+
+/// Checks implementation of the following lints:
+/// OPTION_MAP_UNWRAP_OR
+/// OPTION_MAP_UNWRAP_OR_ELSE
+fn option_methods() {
+    let opt = Some(1);
+
+    // Check OPTION_MAP_UNWRAP_OR
+    // single line case
+    let _ = opt.map(|x| x + 1) //~  ERROR called `map(f).unwrap_or(a)`
+                               //~| NOTE replace this
+               .unwrap_or(0); // should lint even though this call is on a separate line
+    // multi line cases
+    let _ = opt.map(|x| { //~ ERROR called `map(f).unwrap_or(a)`
+                        x + 1
+                    }
+              ).unwrap_or(0);
+    let _ = opt.map(|x| x + 1) //~ ERROR called `map(f).unwrap_or(a)`
+               .unwrap_or({
+                    0
+                });
+    // macro case
+    let _ = opt_map!(opt, |x| x + 1).unwrap_or(0); // should not lint
+
+    // Check OPTION_MAP_UNWRAP_OR_ELSE
+    // single line case
+    let _ = opt.map(|x| x + 1) //~  ERROR called `map(f).unwrap_or_else(g)`
+                               //~| NOTE replace this
+               .unwrap_or_else(|| 0); // should lint even though this call is on a separate line
+    // multi line cases
+    let _ = opt.map(|x| { //~ ERROR called `map(f).unwrap_or_else(g)`
+                        x + 1
+                    }
+              ).unwrap_or_else(|| 0);
+    let _ = opt.map(|x| x + 1) //~ ERROR called `map(f).unwrap_or_else(g)`
+               .unwrap_or_else(||
+                    0
+                );
+    // macro case
+    let _ = opt_map!(opt, |x| x + 1).unwrap_or_else(|| 0); // should not lint
+
+}
+
 fn main() {
     use std::io;
 
