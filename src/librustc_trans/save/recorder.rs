@@ -665,7 +665,7 @@ impl<'a, 'tcx: 'a> FmtStrs<'a, 'tcx> {
     pub fn external_crate_str(&mut self, span: Span, name: &str, num: ast::CrateNum) {
         let lo_loc = self.span.sess.codemap().lookup_char_pos(span.lo);
         self.record_without_span(ExternalCrate,
-                                 svec!(name, num, lo_loc.file.name),
+                                 svec!(name, num, SpanUtils::make_path_string(&lo_loc.file.name)),
                                  span);
     }
 
