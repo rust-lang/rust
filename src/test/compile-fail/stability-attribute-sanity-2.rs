@@ -11,7 +11,6 @@
 // More checks that stability attributes are used correctly
 
 #![feature(staged_api)]
-#![staged_api]
 
 #![stable(feature = "test_feature", since = "1.0.0")]
 

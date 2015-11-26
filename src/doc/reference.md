@@ -2325,10 +2325,6 @@ The currently implemented features of the reference compiler are:
 * `simd_ffi` - Allows use of SIMD vectors in signatures for foreign functions.
                The SIMD interface is subject to change.
 
-* `staged_api` - Allows usage of stability markers and `#![staged_api]` in a
-                 crate. Stability markers are also attributes: `#[stable]`,
-                 `#[unstable]`, and `#[rustc_deprecated]` are the three levels.
-
 * `start` - Allows use of the `#[start]` attribute, which changes the entry point
             into a Rust program. This capability, especially the signature for the
             annotated function, is subject to change.
