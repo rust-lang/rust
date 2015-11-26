@@ -123,7 +123,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
 
         match item.node {
             hir::ItemExternCrate(_) => {
-                if let Some(crate_num) = self.session.cstore.find_extern_mod_stmt_cnum(item.id) {
+                if let Some(crate_num) = self.session.cstore.extern_mod_stmt_cnum(item.id) {
                     if !self.used_crates.contains(&crate_num) {
                         self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATES,
                                               item.id,

@@ -212,19 +212,21 @@
 //! no means all of the necessary details. Take a look at the rest of
 //! metadata::loader or metadata::creader for all the juicy details!
 
-use back::svh::Svh;
-use session::Session;
-use session::search_paths::PathKind;
-use llvm;
-use llvm::{False, ObjectFile, mk_section_iter};
-use llvm::archive_ro::ArchiveRO;
-use metadata::cstore::{MetadataBlob, MetadataVec, MetadataArchive};
-use metadata::decoder;
-use metadata::encoder;
-use metadata::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
+use cstore::{MetadataBlob, MetadataVec, MetadataArchive};
+use decoder;
+use encoder;
+
+use rustc::back::svh::Svh;
+use rustc::session::Session;
+use rustc::session::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
+use rustc::session::search_paths::PathKind;
+use rustc::util::common;
+
+use rustc_llvm as llvm;
+use rustc_llvm::{False, ObjectFile, mk_section_iter};
+use rustc_llvm::archive_ro::ArchiveRO;
 use syntax::codemap::Span;
 use syntax::diagnostic::SpanHandler;
-use util::common;
 use rustc_back::target::Target;
 
 use std::cmp;

@@ -11,7 +11,7 @@
 //! Overlap: No two impls for the same trait are implemented for the
 //! same type.
 
-use metadata::cstore::LOCAL_CRATE;
+use middle::cstore::{CrateStore, LOCAL_CRATE};
 use middle::def_id::DefId;
 use middle::traits;
 use middle::ty;
@@ -156,9 +156,8 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
             span_note!(self.tcx.sess, self.span_of_impl(impl2),
                        "note conflicting implementation here");
         } else {
-            let crate_store = &self.tcx.sess.cstore;
-            let cdata = crate_store.get_crate_data(impl2.krate);
-            self.tcx.sess.note(&format!("conflicting implementation in crate `{}`", cdata.name));
+            let cname = self.tcx.sess.cstore.crate_name(impl2.krate);
+            self.tcx.sess.note(&format!("conflicting implementation in crate `{}`", cname));
         }
     }
 

@@ -33,6 +33,7 @@
 #![feature(set_stdio)]
 #![feature(staged_api)]
 #![feature(vec_push_all)]
+#![feature(raw)] // remove after snapshot
 
 extern crate arena;
 extern crate flate;
@@ -44,7 +45,9 @@ extern crate rustc_back;
 extern crate rustc_borrowck;
 extern crate rustc_front;
 extern crate rustc_lint;
+extern crate rustc_plugin;
 extern crate rustc_privacy;
+extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_resolve;
 extern crate rustc_trans;
@@ -66,9 +69,11 @@ use rustc_trans::back::link;
 use rustc_trans::save;
 use rustc::session::{config, Session, build_session};
 use rustc::session::config::{Input, PrintRequest, OutputType};
+use rustc::middle::cstore::CrateStore;
 use rustc::lint::Lint;
 use rustc::lint;
-use rustc::metadata;
+use rustc_metadata::loader;
+use rustc_metadata::cstore::CStore;
 use rustc::util::common::time;
 
 use std::cmp::Ordering::Equal;
@@ -77,6 +82,7 @@ use std::io::{self, Read, Write};
 use std::iter::repeat;
 use std::path::PathBuf;
 use std::process;
+use std::rc::Rc;
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -87,6 +93,7 @@ use syntax::ast;
 use syntax::parse;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostics;
+use syntax::parse::token;
 
 #[cfg(test)]
 pub mod test;
@@ -99,6 +106,23 @@ pub mod target_features;
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
 
+// SNAP 1af31d4
+// This is a terrible hack. Our stage0 is older than 1.4 and does not
+// support DST coercions, so this function performs the corecion
+// manually. This should go away.
+pub fn cstore_to_cratestore(a: Rc<CStore>) -> Rc<for<'s> CrateStore<'s>>
+{
+    use std::mem;
+    use std::raw::TraitObject;
+    unsafe {
+        let TraitObject { vtable, .. } =
+            mem::transmute::<&for<'s> CrateStore<'s>, TraitObject>(&*a);
+        mem::transmute(TraitObject {
+            data: mem::transmute(a),
+            vtable: vtable
+        })
+    }
+}
 
 pub fn run(args: Vec<String>) -> isize {
     monitor(move || run_compiler(&args, &mut RustcDefaultCalls));
@@ -135,7 +159,9 @@ pub fn run_compiler<'a>(args: &[String], callbacks: &mut CompilerCalls<'a>) {
         },
     };
 
-    let mut sess = build_session(sopts, input_file_path, descriptions);
+    let cstore = Rc::new(CStore::new(token::get_ident_interner()));
+    let cstore_ = cstore_to_cratestore(cstore.clone());
+    let mut sess = build_session(sopts, input_file_path, descriptions, cstore_);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     if sess.unstable_options() {
         sess.opts.show_span = matches.opt_str("show-span");
@@ -150,7 +176,7 @@ pub fn run_compiler<'a>(args: &[String], callbacks: &mut CompilerCalls<'a>) {
     let pretty = callbacks.parse_pretty(&sess, &matches);
     match pretty {
         Some((ppm, opt_uii)) => {
-            pretty::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile);
+            pretty::pretty_print_input(sess, &cstore, cfg, &input, ppm, opt_uii, ofile);
             return;
         }
         None => {
@@ -160,7 +186,8 @@ pub fn run_compiler<'a>(args: &[String], callbacks: &mut CompilerCalls<'a>) {
 
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
     let control = callbacks.build_controller(&sess);
-    driver::compile_input(sess, cfg, &input, &odir, &ofile, Some(plugins), control);
+    driver::compile_input(sess, &cstore, cfg, &input, &odir, &ofile,
+                          Some(plugins), control);
 }
 
 // Extract output directory and file from matches.
@@ -329,7 +356,9 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     describe_lints(&ls, false);
                     return None;
                 }
-                let sess = build_session(sopts.clone(), None, descriptions.clone());
+                let cstore = Rc::new(CStore::new(token::get_ident_interner()));
+                let cstore_ = cstore_to_cratestore(cstore.clone());
+                let sess = build_session(sopts.clone(), None, descriptions.clone(), cstore_);
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let should_stop = RustcDefaultCalls::print_crate_info(&sess, None, odir, ofile);
                 if should_stop == Compilation::Stop {
@@ -423,7 +452,7 @@ impl RustcDefaultCalls {
                 &Input::File(ref ifile) => {
                     let path = &(*ifile);
                     let mut v = Vec::new();
-                    metadata::loader::list_file_metadata(&sess.target.target, path, &mut v)
+                    loader::list_file_metadata(&sess.target.target, path, &mut v)
                         .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
                 }

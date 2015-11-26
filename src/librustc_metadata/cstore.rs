@@ -14,13 +14,15 @@
 // crates and libraries
 
 pub use self::MetadataBlob::*;
-pub use self::LinkagePreference::*;
-pub use self::NativeLibraryKind::*;
 
-use back::svh::Svh;
-use metadata::{creader, decoder, index, loader};
-use session::search_paths::PathKind;
-use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
+use creader;
+use decoder;
+use index;
+use loader;
+
+use rustc::back::svh::Svh;
+use rustc::front::map as ast_map;
+use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use std::cell::{RefCell, Ref, Cell};
 use std::rc::Rc;
@@ -32,7 +34,10 @@ use syntax::codemap;
 use syntax::parse::token;
 use syntax::parse::token::IdentInterner;
 use syntax::util::small_vector::SmallVector;
-use front::map as ast_map;
+
+pub use middle::cstore::{NativeLibraryKind, LinkagePreference};
+pub use middle::cstore::{NativeStatic, NativeFramework, NativeUnknown};
+pub use middle::cstore::{CrateSource, LinkMeta};
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -77,30 +82,6 @@ pub struct crate_metadata {
     pub explicitly_linked: Cell<bool>,
 }
 
-#[derive(Copy, Debug, PartialEq, Clone)]
-pub enum LinkagePreference {
-    RequireDynamic,
-    RequireStatic,
-}
-
-enum_from_u32! {
-    #[derive(Copy, Clone, PartialEq)]
-    pub enum NativeLibraryKind {
-        NativeStatic,    // native static library (.a archive)
-        NativeFramework, // OSX-specific
-        NativeUnknown,   // default way to specify a dynamic library
-    }
-}
-
-// Where a crate came from on the local filesystem. One of these two options
-// must be non-None.
-#[derive(PartialEq, Clone)]
-pub struct CrateSource {
-    pub dylib: Option<(PathBuf, PathKind)>,
-    pub rlib: Option<(PathBuf, PathKind)>,
-    pub cnum: ast::CrateNum,
-}
-
 pub struct CStore {
     metas: RefCell<FnvHashMap<ast::CrateNum, Rc<crate_metadata>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
@@ -111,10 +92,6 @@ pub struct CStore {
     statically_included_foreign_items: RefCell<NodeSet>,
     pub intr: Rc<IdentInterner>,
 }
-
-/// Item definitions in the currently-compiled crate would have the CrateNum
-/// LOCAL_CRATE in their DefId.
-pub const LOCAL_CRATE: ast::CrateNum = 0;
 
 impl CStore {
     pub fn new(intr: Rc<IdentInterner>) -> CStore {
@@ -159,7 +136,7 @@ impl CStore {
         I: FnMut(ast::CrateNum, &crate_metadata, Option<CrateSource>),
     {
         for (&k, v) in self.metas.borrow().iter() {
-            let origin = self.get_used_crate_source(k);
+            let origin = self.opt_used_crate_source(k);
             origin.as_ref().map(|cs| { assert!(k == cs.cnum); });
             i(k, &**v, origin);
         }
@@ -172,8 +149,8 @@ impl CStore {
         }
     }
 
-    pub fn get_used_crate_source(&self, cnum: ast::CrateNum)
-                                     -> Option<CrateSource> {
+    pub fn opt_used_crate_source(&self, cnum: ast::CrateNum)
+                                 -> Option<CrateSource> {
         self.used_crate_sources.borrow_mut()
             .iter().find(|source| source.cnum == cnum).cloned()
     }
@@ -196,8 +173,8 @@ impl CStore {
     // In order to get this left-to-right dependency ordering, we perform a
     // topological sort of all crates putting the leaves at the right-most
     // positions.
-    pub fn get_used_crates(&self, prefer: LinkagePreference)
-                           -> Vec<(ast::CrateNum, Option<PathBuf>)> {
+    pub fn do_get_used_crates(&self, prefer: LinkagePreference)
+                              -> Vec<(ast::CrateNum, Option<PathBuf>)> {
         let mut ordering = Vec::new();
         fn visit(cstore: &CStore, cnum: ast::CrateNum,
                  ordering: &mut Vec<ast::CrateNum>) {
@@ -216,8 +193,8 @@ impl CStore {
         let mut libs = self.used_crate_sources.borrow()
             .iter()
             .map(|src| (src.cnum, match prefer {
-                RequireDynamic => src.dylib.clone().map(|p| p.0),
-                RequireStatic => src.rlib.clone().map(|p| p.0),
+                LinkagePreference::RequireDynamic => src.dylib.clone().map(|p| p.0),
+                LinkagePreference::RequireStatic => src.rlib.clone().map(|p| p.0),
             }))
             .collect::<Vec<_>>();
         libs.sort_by(|&(a, _), &(b, _)| {
@@ -255,17 +232,17 @@ impl CStore {
         self.extern_mod_crate_map.borrow_mut().insert(emod_id, cnum);
     }
 
-    pub fn find_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId)
-                                     -> Option<ast::CrateNum> {
-        self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
-    }
-
     pub fn add_statically_included_foreign_item(&self, id: ast::NodeId) {
         self.statically_included_foreign_items.borrow_mut().insert(id);
     }
 
-    pub fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool {
+    pub fn do_is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool {
         self.statically_included_foreign_items.borrow().contains(&id)
+    }
+
+    pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>
+    {
+        self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
     }
 }
 

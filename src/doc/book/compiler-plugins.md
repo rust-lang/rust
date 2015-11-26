@@ -8,12 +8,12 @@ extend the compiler's behavior with new syntax extensions, lint checks, etc.
 A plugin is a dynamic library crate with a designated *registrar* function that
 registers extensions with `rustc`. Other crates can load these extensions using
 the crate attribute `#![plugin(...)]`.  See the
-[`rustc::plugin`](../rustc/plugin/index.html) documentation for more about the
+[`rustc_plugin`](../rustc_plugin/index.html) documentation for more about the
 mechanics of defining and loading a plugin.
 
 If present, arguments passed as `#![plugin(foo(... args ...))]` are not
 interpreted by rustc itself.  They are provided to the plugin through the
-`Registry`'s [`args` method](../rustc/plugin/registry/struct.Registry.html#method.args).
+`Registry`'s [`args` method](../rustc_plugin/registry/struct.Registry.html#method.args).
 
 In the vast majority of cases, a plugin should *only* be used through
 `#![plugin]` and not through an `extern crate` item.  Linking a plugin would
@@ -43,13 +43,14 @@ that implements Roman numeral integer literals.
 
 extern crate syntax;
 extern crate rustc;
+extern crate rustc_plugin;
 
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ast::TokenTree;
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax::ext::build::AstBuilder;  // trait for expr_usize
-use rustc::plugin::Registry;
+use rustc_plugin::Registry;
 
 fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         -> Box<MacResult + 'static> {
@@ -120,7 +121,7 @@ The advantages over a simple `fn(&str) -> u32` are:
 In addition to procedural macros, you can define new
 [`derive`](../reference.html#derive)-like attributes and other kinds of
 extensions.  See
-[`Registry::register_syntax_extension`](../rustc/plugin/registry/struct.Registry.html#method.register_syntax_extension)
+[`Registry::register_syntax_extension`](../rustc_plugin/registry/struct.Registry.html#method.register_syntax_extension)
 and the [`SyntaxExtension`
 enum](https://doc.rust-lang.org/syntax/ext/base/enum.SyntaxExtension.html).  For
 a more involved macro example, see
@@ -189,10 +190,11 @@ extern crate syntax;
 // Load rustc as a plugin to get macros
 #[macro_use]
 extern crate rustc;
+extern crate rustc_plugin;
 
 use rustc::lint::{EarlyContext, LintContext, LintPass, EarlyLintPass,
                   EarlyLintPassObject, LintArray};
-use rustc::plugin::Registry;
+use rustc_plugin::Registry;
 use syntax::ast;
 
 declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");

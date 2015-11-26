@@ -158,7 +158,7 @@ can be combined to control the exact logging you want to see. For example, when
 debugging linking in the compiler, you might set the following:
 
 ```sh
-RUST_LOG=rustc::metadata::creader,rustc::util::filesearch,rustc::back::rpath
+RUST_LOG=rustc_metadata::creader,rustc::util::filesearch,rustc::back::rpath
 ```
 
 For a full description, see [the logging crate][1].

@@ -1899,51 +1899,6 @@ contain references (with a maximum lifetime of `'a`).
 [1]: https://github.com/rust-lang/rfcs/pull/1156
 "##,
 
-E0454: r##"
-A link name was given with an empty name. Erroneous code example:
-
-```
-#[link(name = "")] extern {} // error: #[link(name = "")] given with empty name
-```
-
-The rust compiler cannot link to an external library if you don't give it its
-name. Example:
-
-```
-#[link(name = "some_lib")] extern {} // ok!
-```
-"##,
-
-E0458: r##"
-An unknown "kind" was specified for a link attribute. Erroneous code example:
-
-```
-#[link(kind = "wonderful_unicorn")] extern {}
-// error: unknown kind: `wonderful_unicorn`
-```
-
-Please specify a valid "kind" value, from one of the following:
- * static
- * dylib
- * framework
-"##,
-
-E0459: r##"
-A link was used without a name parameter. Erroneous code example:
-
-```
-#[link(kind = "dylib")] extern {}
-// error: #[link(...)] specified without `name = "foo"`
-```
-
-Please add the name parameter to allow the rust compiler to find the library
-you want. Example:
-
-```
-#[link(kind = "dylib", name = "some_lib")] extern {} // ok!
-```
-"##,
-
 E0493: r##"
 A type with a destructor was assigned to an invalid type of variable. Erroneous
 code example:
@@ -2144,20 +2099,6 @@ register_diagnostics! {
     E0400, // overloaded derefs are not allowed in constants
     E0452, // malformed lint attribute
     E0453, // overruled by outer forbid
-    E0455, // native frameworks are only available on OSX targets
-    E0456, // plugin `..` is not available for triple `..`
-    E0457, // plugin `..` only found in rlib format, but must be available...
-    E0460, // found possibly newer version of crate `..`
-    E0461, // couldn't find crate `..` with expected target triple ..
-    E0462, // found staticlib `..` instead of rlib or dylib
-    E0463, // can't find crate for `..`
-    E0464, // multiple matching crates for `..`
-    E0465, // multiple .. candidates for `..` found
-    E0466, // bad macro import
-    E0467, // bad macro reexport
-    E0468, // an `extern crate` loading macros must be at the crate root
-    E0469, // imported macro not found
-    E0470, // reexported macro not found
     E0471, // constant evaluation error: ..
     E0472, // asm! is unsupported on this target
     E0473, // dereference of reference outside its lifetime
@@ -2181,6 +2122,4 @@ register_diagnostics! {
     E0491, // in type `..`, reference has a longer lifetime than the data it...
     E0492, // cannot borrow a constant which contains interior mutability
     E0495, // cannot infer an appropriate lifetime due to conflicting requirements
-    E0498, // malformed plugin attribute
-    E0514, // metadata version mismatch
 }

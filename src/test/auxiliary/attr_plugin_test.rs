@@ -16,9 +16,10 @@
 extern crate syntax;
 
 extern crate rustc;
+extern crate rustc_plugin;
 
 use syntax::feature_gate::AttributeType;
-use rustc::plugin::Registry;
+use rustc_plugin::Registry;
 
 
 

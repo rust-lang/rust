@@ -909,7 +909,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                     None => item.ident.to_string(),
                 };
                 let alias_span = self.span.span_for_last_ident(item.span);
-                let cnum = match self.sess.cstore.find_extern_mod_stmt_cnum(item.id) {
+                let cnum = match self.sess.cstore.extern_mod_stmt_cnum(item.id) {
                     Some(cnum) => cnum,
                     None => 0,
                 };
@@ -1216,4 +1216,3 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
         walk_list!(self, visit_expr, &l.init);
     }
 }
-

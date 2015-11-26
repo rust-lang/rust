@@ -14,10 +14,11 @@
 
 extern crate syntax;
 extern crate rustc;
+extern crate rustc_plugin;
 
 use syntax::parse::token;
 use syntax::ext::base::MacroRulesTT;
-use rustc::plugin::Registry;
+use rustc_plugin::Registry;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {

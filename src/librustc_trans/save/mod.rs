@@ -199,12 +199,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_external_crates(&self) -> Vec<CrateData> {
         let mut result = Vec::new();
 
-        self.tcx.sess.cstore.iter_crate_data(|n, cmd| {
+        for n in self.tcx.sess.cstore.crates() {
             result.push(CrateData {
-                name: cmd.name.clone(),
+                name: self.tcx.sess.cstore.crate_name(n),
                 number: n,
             });
-        });
+        }
 
         result
     }

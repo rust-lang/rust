@@ -62,10 +62,8 @@ extern crate serialize;
 #[macro_use] extern crate syntax;
 
 pub use rustc::session;
-pub use rustc::metadata;
 pub use rustc::middle;
 pub use rustc::lint;
-pub use rustc::plugin;
 pub use rustc::util;
 
 pub mod back {

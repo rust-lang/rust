@@ -15,12 +15,11 @@ pub use self::StabilityLevel::*;
 
 use session::Session;
 use lint;
-use metadata::cstore::LOCAL_CRATE;
+use middle::cstore::{CrateStore, LOCAL_CRATE};
 use middle::def;
 use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::ty;
 use middle::privacy::AccessLevels;
-use metadata::csearch;
 use syntax::parse::token::InternedString;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::ast;
@@ -448,7 +447,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &hir::Item, warn_about_defns: bool,
             // compiler-generated `extern crate` items have a dummy span.
             if item.span == DUMMY_SP { return }
 
-            let cnum = match tcx.sess.cstore.find_extern_mod_stmt_cnum(item.id) {
+            let cnum = match tcx.sess.cstore.extern_mod_stmt_cnum(item.id) {
                 Some(cnum) => cnum,
                 None => return,
             };
@@ -621,7 +620,7 @@ fn is_staged_api(tcx: &ty::ctxt, id: DefId) -> bool {
             }
         _ => {
             *tcx.stability.borrow_mut().staged_api.entry(id.krate).or_insert_with(
-                || csearch::is_staged_api(&tcx.sess.cstore, id.krate))
+                || tcx.sess.cstore.is_staged_api(id.krate))
         }
     }
 }
@@ -653,7 +652,7 @@ fn lookup_uncached<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<&'tcx Stabil
     let item_stab = if id.is_local() {
         None // The stability cache is filled partially lazily
     } else {
-        csearch::get_stability(&tcx.sess.cstore, id).map(|st| tcx.intern_stability(st))
+        tcx.sess.cstore.stability(id).map(|st| tcx.intern_stability(st))
     };
 
     item_stab.or_else(|| {

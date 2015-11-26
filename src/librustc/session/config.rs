@@ -22,7 +22,7 @@ use session::search_paths::SearchPaths;
 
 use rustc_back::target::Target;
 use lint;
-use metadata::cstore;
+use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::attr;
@@ -1122,10 +1122,11 @@ impl fmt::Display for CrateType {
 
 #[cfg(test)]
 mod tests {
-
+    use middle::cstore::DummyCrateStore;
     use session::config::{build_configuration, optgroups, build_session_options};
     use session::build_session;
 
+    use std::rc::Rc;
     use getopts::getopts;
     use syntax::attr;
     use syntax::attr::AttrMetaMethods;
@@ -1141,7 +1142,7 @@ mod tests {
             };
         let registry = diagnostics::registry::Registry::new(&[]);
         let sessopts = build_session_options(matches);
-        let sess = build_session(sessopts, None, registry);
+        let sess = build_session(sessopts, None, registry, Rc::new(DummyCrateStore));
         let cfg = build_configuration(&sess);
         assert!((attr::contains_name(&cfg[..], "test")));
     }
@@ -1160,7 +1161,8 @@ mod tests {
             };
         let registry = diagnostics::registry::Registry::new(&[]);
         let sessopts = build_session_options(matches);
-        let sess = build_session(sessopts, None, registry);
+        let sess = build_session(sessopts, None, registry,
+                                 Rc::new(DummyCrateStore));
         let cfg = build_configuration(&sess);
         let mut test_items = cfg.iter().filter(|m| m.name() == "test");
         assert!(test_items.next().is_some());
@@ -1175,7 +1177,8 @@ mod tests {
             ], &optgroups()).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
-            let sess = build_session(sessopts, None, registry);
+            let sess = build_session(sessopts, None, registry,
+                                     Rc::new(DummyCrateStore));
             assert!(!sess.can_print_warnings);
         }
 
@@ -1186,7 +1189,8 @@ mod tests {
             ], &optgroups()).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
-            let sess = build_session(sessopts, None, registry);
+            let sess = build_session(sessopts, None, registry,
+                                     Rc::new(DummyCrateStore));
             assert!(sess.can_print_warnings);
         }
 
@@ -1196,7 +1200,8 @@ mod tests {
             ], &optgroups()).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
-            let sess = build_session(sessopts, None, registry);
+            let sess = build_session(sessopts, None, registry,
+                                     Rc::new(DummyCrateStore));
             assert!(sess.can_print_warnings);
         }
     }

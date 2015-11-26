@@ -12,30 +12,27 @@
 
 #![allow(non_camel_case_types)]
 
-pub use self::DefLike::*;
 use self::Family::*;
 
-use front::map as hir_map;
+use cstore::{self, crate_metadata};
+use common::*;
+use encoder::def_to_u64;
+use index;
+use tydecode::TyDecoder;
+
+use rustc::back::svh::Svh;
+use rustc::front::map as hir_map;
+use rustc::util::nodemap::FnvHashMap;
 use rustc_front::hir;
 
-use back::svh::Svh;
-use metadata::cstore::crate_metadata;
-use metadata::cstore::LOCAL_CRATE;
-use metadata::common::*;
-use metadata::csearch::MethodInfo;
-use metadata::csearch;
-use metadata::cstore;
-use metadata::encoder::def_to_u64;
-use metadata::index;
-use metadata::inline::InlinedItem;
-use metadata::tydecode::TyDecoder;
+use middle::cstore::{LOCAL_CRATE, FoundAst, InlinedItem, LinkagePreference};
+use middle::cstore::{DefLike, DlDef, DlField, DlImpl};
 use middle::def;
 use middle::def_id::{DefId, DefIndex};
 use middle::lang_items;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{self, RegionEscape, Ty};
-use util::nodemap::FnvHashMap;
 
 use std::cell::{Cell, RefCell};
 use std::io::prelude::*;
@@ -591,14 +588,6 @@ pub fn get_symbol_from_buf(data: &[u8], id: DefIndex) -> String {
     item_symbol(doc)
 }
 
-// Something that a name can resolve to.
-#[derive(Copy, Clone, Debug)]
-pub enum DefLike {
-    DlDef(def::Def),
-    DlImpl(DefId),
-    DlField
-}
-
 /// Iterates over the language items in the given crate.
 pub fn each_lang_item<F>(cdata: Cmd, mut f: F) -> bool where
     F: FnMut(DefIndex, usize) -> bool,
@@ -771,24 +760,24 @@ pub type DecodeInlinedItem<'a> =
 
 pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: DefIndex,
                                 mut decode_inlined_item: DecodeInlinedItem)
-                                -> csearch::FoundAst<'tcx> {
+                                -> FoundAst<'tcx> {
     debug!("Looking up item: {:?}", id);
     let item_doc = cdata.lookup_item(id);
     let item_did = item_def_id(item_doc, cdata);
     let path = item_path(item_doc).split_last().unwrap().1.to_vec();
     let def_path = def_path(cdata, id);
     match decode_inlined_item(cdata, tcx, path, def_path, item_doc, item_did) {
-        Ok(ii) => csearch::FoundAst::Found(ii),
+        Ok(ii) => FoundAst::Found(ii),
         Err((path, def_path)) => {
             match item_parent_item(cdata, item_doc) {
                 Some(did) => {
                     let parent_item = cdata.lookup_item(did.index);
                     match decode_inlined_item(cdata, tcx, path, def_path, parent_item, did) {
-                        Ok(ii) => csearch::FoundAst::FoundParent(did, ii),
-                        Err(_) => csearch::FoundAst::NotFound
+                        Ok(ii) => FoundAst::FoundParent(did, ii),
+                        Err(_) => FoundAst::NotFound
                     }
                 }
-                None => csearch::FoundAst::NotFound
+                None => FoundAst::NotFound
             }
         }
     }
@@ -995,42 +984,6 @@ pub fn get_associated_consts<'tcx>(intr: Rc<IdentInterner>,
             }
         })
     }).collect()
-}
-
-pub fn get_methods_if_impl(intr: Rc<IdentInterner>,
-                                  cdata: Cmd,
-                                  node_id: DefIndex)
-                               -> Option<Vec<MethodInfo> > {
-    let item = cdata.lookup_item(node_id);
-    if item_family(item) != Impl {
-        return None;
-    }
-
-    // If this impl implements a trait, don't consider it.
-    if reader::tagged_docs(item, tag_item_trait_ref).next().is_some() {
-        return None;
-    }
-
-    let impl_method_ids = reader::tagged_docs(item, tag_item_impl_item)
-        .map(|impl_method_doc| item_def_id(impl_method_doc, cdata));
-
-    let mut impl_methods = Vec::new();
-    for impl_method_id in impl_method_ids {
-        let impl_method_doc = cdata.lookup_item(impl_method_id.index);
-        let family = item_family(impl_method_doc);
-        match family {
-            StaticMethod | Method => {
-                impl_methods.push(MethodInfo {
-                    name: item_name(&*intr, impl_method_doc),
-                    def_id: item_def_id(impl_method_doc, cdata),
-                    vis: item_visibility(impl_method_doc),
-                });
-            }
-            _ => {}
-        }
-    }
-
-    return Some(impl_methods);
 }
 
 /// If node_id is the constructor of a tuple struct, retrieve the NodeId of
@@ -1352,7 +1305,7 @@ pub fn each_exported_macro<F>(data: &[u8], intr: &IdentInterner, mut f: F) where
 }
 
 pub fn get_dylib_dependency_formats(cdata: Cmd)
-    -> Vec<(ast::CrateNum, cstore::LinkagePreference)>
+    -> Vec<(ast::CrateNum, LinkagePreference)>
 {
     let formats = reader::get_doc(rbml::Doc::new(cdata.data()),
                                   tag_dylib_dependency_formats);
@@ -1369,9 +1322,9 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
             None => panic!("didn't find a crate in the cnum_map")
         };
         result.push((cnum, if link == "d" {
-            cstore::RequireDynamic
+            LinkagePreference::RequireDynamic
         } else {
-            cstore::RequireStatic
+            LinkagePreference::RequireStatic
         }));
     }
     return result;

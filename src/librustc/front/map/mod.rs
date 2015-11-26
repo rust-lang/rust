@@ -14,8 +14,8 @@ use self::MapEntry::*;
 use self::collector::NodeCollector;
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData, DisambiguatedDefPathData};
 
-use metadata::inline::InlinedItem;
-use metadata::inline::InlinedItem as II;
+use middle::cstore::InlinedItem;
+use middle::cstore::InlinedItem as II;
 use middle::def_id::DefId;
 
 use syntax::abi;
