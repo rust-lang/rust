@@ -278,3 +278,130 @@ pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
         None => {}
     }
 }
+
+/// A dummy crate store that does not support any non-local crates,
+/// for test purposes.
+pub struct DummyCrateStore;
+#[allow(unused_variables)]
+impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
+    // item info
+    fn stability(&self, def: DefId) -> Option<attr::Stability> { unimplemented!() }
+    fn closure_kind(&self, tcx: &ty::ctxt<'tcx>, def_id: DefId)
+                    -> ty::ClosureKind  { unimplemented!() }
+    fn closure_ty(&self, tcx: &ty::ctxt<'tcx>, def_id: DefId)
+                  -> ty::ClosureTy<'tcx>  { unimplemented!() }
+    fn item_variances(&self, def: DefId) -> ty::ItemVariances { unimplemented!() }
+    fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr> { unimplemented!() }
+    fn item_type(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+                 -> ty::TypeScheme<'tcx> { unimplemented!() }
+    fn item_path(&self, def: DefId) -> Vec<hir_map::PathElem> { unimplemented!() }
+    fn item_name(&self, def: DefId) -> ast::Name { unimplemented!() }
+    fn item_predicates(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+                       -> ty::GenericPredicates<'tcx> { unimplemented!() }
+    fn item_super_predicates(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+                             -> ty::GenericPredicates<'tcx> { unimplemented!() }
+    fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute> { unimplemented!() }
+    fn item_symbol(&self, def: DefId) -> String { unimplemented!() }
+    fn trait_def(&self, tcx: &ty::ctxt<'tcx>, def: DefId)-> ty::TraitDef<'tcx>
+        { unimplemented!() }
+    fn adt_def(&self, tcx: &ty::ctxt<'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>
+        { unimplemented!() }
+    fn method_arg_names(&self, did: DefId) -> Vec<String> { unimplemented!() }
+    fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId> { vec![] }
+
+    // trait info
+    fn implementations_of_trait(&self, def_id: DefId) -> Vec<DefId> { vec![] }
+    fn provided_trait_methods(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+                              -> Vec<Rc<ty::Method<'tcx>>> { unimplemented!() }
+    fn trait_item_def_ids(&self, def: DefId)
+                          -> Vec<ty::ImplOrTraitItemId> { unimplemented!() }
+
+    // impl info
+    fn impl_items(&self, impl_def_id: DefId) -> Vec<ty::ImplOrTraitItemId>
+        { unimplemented!() }
+    fn impl_trait_ref(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+                      -> Option<ty::TraitRef<'tcx>> { unimplemented!() }
+    fn impl_polarity(&self, def: DefId) -> Option<hir::ImplPolarity> { unimplemented!() }
+    fn custom_coerce_unsized_kind(&self, def: DefId)
+                                  -> Option<ty::adjustment::CustomCoerceUnsized>
+        { unimplemented!() }
+    fn associated_consts(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+                         -> Vec<Rc<ty::AssociatedConst<'tcx>>> { unimplemented!() }
+
+    // trait/impl-item info
+    fn trait_of_item(&self, tcx: &ty::ctxt<'tcx>, def_id: DefId)
+                     -> Option<DefId> { unimplemented!() }
+    fn impl_or_trait_item(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+                          -> ty::ImplOrTraitItem<'tcx> { unimplemented!() }
+
+    // flags
+    fn is_const_fn(&self, did: DefId) -> bool { unimplemented!() }
+    fn is_defaulted_trait(&self, did: DefId) -> bool { unimplemented!() }
+    fn is_impl(&self, did: DefId) -> bool { unimplemented!() }
+    fn is_default_impl(&self, impl_did: DefId) -> bool { unimplemented!() }
+    fn is_extern_fn(&self, tcx: &ty::ctxt<'tcx>, did: DefId) -> bool { unimplemented!() }
+    fn is_static(&self, did: DefId) -> bool { unimplemented!() }
+    fn is_static_method(&self, did: DefId) -> bool { unimplemented!() }
+    fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool { false }
+    fn is_typedef(&self, did: DefId) -> bool { unimplemented!() }
+
+    // crate metadata
+    fn dylib_dependency_formats(&self, cnum: ast::CrateNum)
+                                    -> Vec<(ast::CrateNum, LinkagePreference)>
+        { unimplemented!() }
+    fn lang_items(&self, cnum: ast::CrateNum) -> Vec<(DefIndex, usize)>
+        { unimplemented!() }
+    fn missing_lang_items(&self, cnum: ast::CrateNum) -> Vec<lang_items::LangItem>
+        { unimplemented!() }
+    fn is_staged_api(&self, cnum: ast::CrateNum) -> bool { unimplemented!() }
+    fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool { unimplemented!() }
+    fn is_allocator(&self, cnum: ast::CrateNum) -> bool { unimplemented!() }
+    fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>
+        { unimplemented!() }
+    fn crate_name(&self, cnum: ast::CrateNum) -> String { unimplemented!() }
+    fn crate_hash(&self, cnum: ast::CrateNum) -> Svh { unimplemented!() }
+    fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
+                                -> FnvHashMap<DefId, Vec<ast::Attribute>>
+        { unimplemented!() }
+    fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>
+        { unimplemented!() }
+    fn native_libraries(&self, cnum: ast::CrateNum) -> Vec<(NativeLibraryKind, String)>
+        { unimplemented!() }
+    fn reachable_ids(&self, cnum: ast::CrateNum) -> Vec<DefId> { unimplemented!() }
+
+    // resolve
+    fn def_path(&self, def: DefId) -> hir_map::DefPath { unimplemented!() }
+    fn tuple_struct_definition_if_ctor(&self, did: DefId) -> Option<DefId>
+        { unimplemented!() }
+    fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { unimplemented!() }
+    fn item_children(&self, did: DefId) -> Vec<ChildItem> { unimplemented!() }
+    fn crate_top_level_items(&self, cnum: ast::CrateNum) -> Vec<ChildItem>
+        { unimplemented!() }
+
+    // misc. metadata
+    fn maybe_get_item_ast(&'tcx self, tcx: &ty::ctxt<'tcx>, def: DefId)
+                          -> FoundAst<'tcx> { unimplemented!() }
+    // This is basically a 1-based range of ints, which is a little
+    // silly - I may fix that.
+    fn crates(&self) -> Vec<ast::CrateNum> { vec![] }
+    fn used_libraries(&self) -> Vec<(String, NativeLibraryKind)> { vec![] }
+    fn used_link_args(&self) -> Vec<String> { vec![] }
+
+    // utility functions
+    fn metadata_filename(&self) -> &str { unimplemented!() }
+    fn metadata_section_name(&self, target: &Target) -> &str { unimplemented!() }
+    fn encode_type(&self, tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Vec<u8>
+        { unimplemented!() }
+    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>
+        { vec![] }
+    fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource { unimplemented!() }
+    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum> { None }
+    fn encode_metadata(&self,
+                       tcx: &ty::ctxt<'tcx>,
+                       reexports: &def::ExportMap,
+                       item_symbols: &RefCell<NodeMap<String>>,
+                       link_meta: &LinkMeta,
+                       reachable: &NodeSet,
+                       krate: &hir::Crate) -> Vec<u8> { vec![] }
+    fn metadata_encoding_version(&self) -> &[u8] { unimplemented!() }
+}
