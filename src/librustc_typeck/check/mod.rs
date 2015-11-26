@@ -1235,15 +1235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return ty;
         }
 
-        // If not, try resolving any new fcx obligations that have cropped up.
-        self.select_new_obligations();
-        ty = self.infcx().resolve_type_vars_if_possible(&ty);
-        if !ty.has_infer_types() {
-            debug!("resolve_type_vars_if_possible: ty={:?}", ty);
-            return ty;
-        }
-
-        // If not, try resolving *all* pending obligations as much as
+        // If not, try resolving pending obligations as much as
         // possible. This can help substantially when there are
         // indirect dependencies that don't seem worth tracking
         // precisely.
@@ -2029,22 +2021,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
         }
     }
-
-    /// Try to select any fcx obligation that we haven't tried yet, in an effort
-    /// to improve inference. You could just call
-    /// `select_obligations_where_possible` except that it leads to repeated
-    /// work.
-    fn select_new_obligations(&self) {
-        match
-            self.inh.infcx.fulfillment_cx
-            .borrow_mut()
-            .select_new_obligations(self.infcx())
-        {
-            Ok(()) => { }
-            Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
-        }
-    }
-
 }
 
 impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
@@ -2496,7 +2472,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // an "opportunistic" vtable resolution of any trait bounds on
         // the call. This helps coercions.
         if check_blocks {
-            fcx.select_new_obligations();
+            fcx.select_obligations_where_possible();
         }
 
         // For variadic functions, we don't have a declared type for all of
