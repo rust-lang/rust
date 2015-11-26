@@ -69,11 +69,10 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
             i += 1;
         }
         // like the first, a last line of all stars should be omitted
-        if j > i &&
-           lines[j - 1]
-               .chars()
-               .skip(1)
-               .all(|c| c == '*') {
+        if j > i && lines[j - 1]
+                        .chars()
+                        .skip(1)
+                        .all(|c| c == '*') {
             j -= 1;
         }
         while j > i && lines[j - 1].trim().is_empty() {
@@ -169,11 +168,7 @@ fn read_shebang_comment(rdr: &mut StringReader,
     let p = rdr.last_pos;
     debug!("<<< shebang comment");
     comments.push(Comment {
-        style: if code_to_the_left {
-            Trailing
-        } else {
-            Isolated
-        },
+        style: if code_to_the_left { Trailing } else { Isolated },
         lines: vec![rdr.read_one_line_comment()],
         pos: p,
     });
@@ -198,11 +193,7 @@ fn read_line_comments(rdr: &mut StringReader,
     debug!("<<< line comments");
     if !lines.is_empty() {
         comments.push(Comment {
-            style: if code_to_the_left {
-                Trailing
-            } else {
-                Isolated
-            },
+            style: if code_to_the_left { Trailing } else { Isolated },
             lines: lines,
             pos: p,
         });
