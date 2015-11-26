@@ -790,7 +790,7 @@ impl<'a> ExtCtxt<'a> {
             }
         }
         if let Some((suggestion, _)) = min {
-            self.span_help(span, &format!("did you mean `{}`?", suggestion));
+            self.fileline_help(span, &format!("did you mean `{}!`?", suggestion));
         }
     }
 }
