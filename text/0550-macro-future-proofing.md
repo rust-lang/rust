@@ -473,7 +473,7 @@ reasonable freedom and can be extended in the future.
 - Updated by https://github.com/rust-lang/rfcs/pull/1209, which added
   semicolons into the follow set for types.
 
-- Updated by (fill in after PR number is assigned).
+- Updated by https://github.com/rust-lang/rfcs/pull/1384:
   * replaced detailed design with a specification-oriented presentation rather than an implementation-oriented algorithm.
   * fixed some oversights in the specification (that led to matchers like `break { stuff }` being accepted),
   * expanded the follows sets for `ty` to include `OpenDelim(Brace), Ident(where), Or` (since Rust's grammar already requires all of `|foo:TY| {}`, `fn foo() -> TY {}` and `fn foo() -> TY where {}` to work).
