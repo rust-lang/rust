@@ -72,7 +72,7 @@ use syntax::ext::mtwt;
 use syntax::parse::token::{self, special_names, special_idents};
 use syntax::ptr::P;
 use syntax::codemap::{self, Span, Pos};
-use syntax::util::lev_distance::lev_distance;
+use syntax::util::lev_distance::{lev_distance, max_suggestion_distance};
 
 use rustc_front::intravisit::{self, FnKind, Visitor};
 use rustc_front::hir;
@@ -3384,11 +3384,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        // As a loose rule to avoid obviously incorrect suggestions, clamp the
-        // maximum edit distance we will accept for a suggestion to one third of
-        // the typo'd name's length.
-        let max_distance = std::cmp::max(name.len(), 3) / 3;
-
+        let max_distance = max_suggestion_distance(name);
         if !values.is_empty() && values[smallest] <= max_distance && name != &maybes[smallest][..] {
 
             SuggestionType::Function(maybes[smallest].to_string())
