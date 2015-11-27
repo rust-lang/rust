@@ -199,6 +199,10 @@ pub struct TargetOptions {
     /// Flag indicating whether ELF TLS (e.g. #[thread_local]) is available for
     /// this target.
     pub has_elf_tls: bool,
+    // This is mainly for easy compatibility with emscripten.
+    // If we give emcc .o files that are actually .bc files it
+    // will 'just work'.
+    pub obj_is_bitcode: bool,
 }
 
 impl Default for TargetOptions {
@@ -245,6 +249,7 @@ impl Default for TargetOptions {
             exe_allocation_crate: "alloc_system".to_string(),
             allow_asm: true,
             has_elf_tls: false,
+            obj_is_bitcode: false,
         }
     }
 }
