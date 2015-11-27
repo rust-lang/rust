@@ -191,6 +191,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac,
                 pth.span,
                 &format!("macro undefined: '{}!'",
                         &extname));
+            fld.cx.suggest_macro_name(&extname.as_str(), pth.span);
 
             // let compilation continue
             None
