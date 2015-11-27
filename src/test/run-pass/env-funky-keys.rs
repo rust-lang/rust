@@ -26,7 +26,7 @@ use std::ffi::OsStr;
 use std::ptr;
 
 fn main() {
-    if env::args_os().next().is_none() {
+    if env::args_os().count() == 2 {
         for (key, value) in env::vars_os() {
             panic!("found env value {:?} {:?}", key, value);
         }
@@ -36,7 +36,7 @@ fn main() {
     let current_exe = env::current_exe().unwrap().into_os_string().to_cstring().unwrap();
     let new_env_var = OsStr::new("FOOBAR").to_cstring().unwrap();
     let filename: *const c_char = current_exe.as_ptr();
-    let argv: &[*const c_char] = &[ptr::null()];
+    let argv: &[*const c_char] = &[filename, filename, ptr::null()];
     let envp: &[*const c_char] = &[new_env_var.as_ptr(), ptr::null()];
     unsafe {
         execve(filename, &argv[0], &envp[0]);
