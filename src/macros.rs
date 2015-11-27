@@ -20,7 +20,7 @@
 // and those with brackets will be formatted as array literals.
 
 use syntax::ast;
-use syntax::parse::token::{Eof, Comma, Token};
+use syntax::parse::token::Token;
 use syntax::parse::tts_to_parser;
 use syntax::codemap::{mk_sp, BytePos};
 
