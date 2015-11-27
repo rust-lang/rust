@@ -33,8 +33,8 @@ fn check_expr_mut(cx: &LateContext, expr: &Expr) {
 
     fn unwrap_addr(expr: &Expr) -> Option<&Expr> {
         match expr.node {
-            ExprAddrOf(MutMutable, ref e) => Option::Some(e),
-            _ => Option::None
+            ExprAddrOf(MutMutable, ref e) => Some(e),
+            _ => None
         }
     }
 
@@ -58,7 +58,7 @@ fn check_expr_mut(cx: &LateContext, expr: &Expr) {
 
 fn unwrap_mut(ty: &Ty) -> Option<&Ty> {
     match ty.node {
-        TyRptr(_, MutTy{ ty: ref pty, mutbl: MutMutable }) => Option::Some(pty),
-        _ => Option::None
+        TyRptr(_, MutTy{ ty: ref pty, mutbl: MutMutable }) => Some(pty),
+        _ => None
     }
 }

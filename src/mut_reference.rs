@@ -60,7 +60,7 @@ fn check_arguments(cx: &LateContext, arguments: &[P<Expr>], type_definition: &Ty
             match parameter.sty {
                 TypeVariants::TyRef(_, TypeAndMut {ty: _, mutbl: MutImmutable}) |
                 TypeVariants::TyRawPtr(TypeAndMut {ty: _, mutbl: MutImmutable}) => {
-                    if let Expr_::ExprAddrOf(MutMutable, _) = argument.node {
+                    if let ExprAddrOf(MutMutable, _) = argument.node {
                         span_lint(cx, UNNECESSARY_MUT_PASSED, 
                                   argument.span, &format!("The function/method \"{}\" \
                                   doesn't need a mutable reference", 
