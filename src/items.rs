@@ -476,10 +476,12 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
         let indent = offset + result.len();
         result.push_str(&*try_opt!(self_ty.rewrite(context, budget, indent)));
 
+        let where_budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
         let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                              &generics.where_clause,
                                                              context.config,
                                                              context.block_indent,
+                                                             where_budget,
                                                              context.config.where_density,
                                                              "{",
                                                              None));
@@ -678,27 +680,31 @@ fn format_tuple_struct(context: &RewriteContext,
 
     let body_lo = fields[0].span.lo;
 
-    let (generics_str, where_clause_str) = match generics {
+    let where_clause_str = match generics {
         Some(ref generics) => {
             let generics_str = try_opt!(rewrite_generics(context,
                                                          generics,
                                                          offset,
                                                          offset + header_str.len(),
                                                          mk_sp(span.lo, body_lo)));
+            result.push_str(&generics_str);
 
+            let where_budget = try_opt!(context.config
+                                               .max_width
+                                               .checked_sub(last_line_width(&result)));
             let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                                  &generics.where_clause,
                                                                  context.config,
                                                                  context.block_indent,
+                                                                 where_budget,
                                                                  Density::Compressed,
                                                                  ";",
                                                                  None));
 
-            (generics_str, where_clause_str)
+            where_clause_str
         }
-        None => ("".to_owned(), "".to_owned()),
+        None => "".to_owned(),
     };
-    result.push_str(&generics_str);
     result.push('(');
 
     let item_indent = context.block_indent + result.len();
@@ -1168,10 +1174,12 @@ fn rewrite_fn_base(context: &RewriteContext,
     };
 
     // Where clause.
+    let where_budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
     let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                          where_clause,
                                                          context.config,
                                                          indent,
+                                                         where_budget,
                                                          where_density,
                                                          "{",
                                                          Some(span.hi)));
@@ -1409,6 +1417,7 @@ fn rewrite_where_clause(context: &RewriteContext,
                         where_clause: &ast::WhereClause,
                         config: &Config,
                         indent: Indent,
+                        width: usize,
                         density: Density,
                         terminator: &str,
                         span_end: Option<BytePos>)
@@ -1462,9 +1471,15 @@ fn rewrite_where_clause(context: &RewriteContext,
     };
     let preds_str = try_opt!(write_list(&item_vec, &fmt));
 
-    // 9 = " where ".len() + " {".len()
+    // When '{' is the terminator just assume that it is put on the next line for single line where
+    // clauses
+    let end_length = if terminator == ";" {
+        1
+    } else {
+        0
+    };
     if density == Density::Tall || preds_str.contains('\n') ||
-       indent.width() + 9 + preds_str.len() > context.config.max_width {
+       indent.width() + " where ".len() + preds_str.len() + end_length > width {
         Some(format!("\n{}where {}",
                      (indent + extra_indent).to_string(context.config),
                      preds_str))
@@ -1490,10 +1505,12 @@ fn format_generics(context: &RewriteContext,
     let mut result = try_opt!(rewrite_generics(context, generics, offset, generics_offset, span));
 
     if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
+        let budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
         let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                              &generics.where_clause,
                                                              context.config,
                                                              context.block_indent,
+                                                             budget,
                                                              Density::Tall,
                                                              terminator,
                                                              Some(span.hi)));
