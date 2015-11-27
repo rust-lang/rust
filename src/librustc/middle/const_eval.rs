@@ -515,6 +515,21 @@ pub enum EvalHint<'tcx> {
     UncheckedExprNoHint,
 }
 
+impl<'tcx> EvalHint<'tcx> {
+    fn erase_hint(&self) -> EvalHint<'tcx> {
+        match *self {
+            ExprTypeChecked => ExprTypeChecked,
+            UncheckedExprHint(_) | UncheckedExprNoHint => UncheckedExprNoHint,
+        }
+    }
+    fn checked_or(&self, ty: Ty<'tcx>) -> EvalHint<'tcx> {
+        match *self {
+            ExprTypeChecked => ExprTypeChecked,
+            _ => UncheckedExprHint(ty),
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum IntTy { I8, I16, I32, I64 }
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -846,13 +861,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
       }
       hir::ExprBinary(op, ref a, ref b) => {
         let b_ty = match op.node {
-            hir::BiShl | hir::BiShr => {
-                if let ExprTypeChecked = ty_hint {
-                    ExprTypeChecked
-                } else {
-                    UncheckedExprHint(tcx.types.usize)
-                }
-            }
+            hir::BiShl | hir::BiShr => ty_hint.checked_or(tcx.types.usize),
             _ => ty_hint
         };
         match (try!(eval_const_expr_partial(tcx, &**a, ty_hint, fn_args)),
@@ -1072,11 +1081,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           try!(eval_const_expr_partial(tcx, const_expr, item_hint, fn_args))
       }
       hir::ExprCall(ref callee, ref args) => {
-          let sub_ty_hint = if let ExprTypeChecked = ty_hint {
-              ExprTypeChecked
-          } else {
-              UncheckedExprNoHint // we cannot reason about UncheckedExprHint here
-          };
+          let sub_ty_hint = ty_hint.erase_hint();
           let callee_val = try!(eval_const_expr_partial(tcx, callee, sub_ty_hint, fn_args));
           let (decl, block, constness) = try!(get_fn_def(tcx, e, callee_val));
           match (ty_hint, constness) {
@@ -1109,9 +1114,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           debug!("const call({:?})", call_args);
           try!(eval_const_expr_partial(tcx, &**result, ty_hint, Some(&call_args)))
       },
-      hir::ExprLit(ref lit) => {
-          lit_to_const(&**lit, ety)
-      }
+      hir::ExprLit(ref lit) => lit_to_const(&**lit, ety),
       hir::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => try!(eval_const_expr_partial(tcx, &**expr, ty_hint, fn_args)),
@@ -1124,17 +1127,9 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
         if !tcx.sess.features.borrow().const_indexing {
             signal!(e, IndexOpFeatureGated);
         }
-        let arr_hint = if let ExprTypeChecked = ty_hint {
-            ExprTypeChecked
-        } else {
-            UncheckedExprNoHint
-        };
+        let arr_hint = ty_hint.erase_hint();
         let arr = try!(eval_const_expr_partial(tcx, arr, arr_hint, fn_args));
-        let idx_hint = if let ExprTypeChecked = ty_hint {
-            ExprTypeChecked
-        } else {
-            UncheckedExprHint(tcx.types.usize)
-        };
+        let idx_hint = ty_hint.checked_or(tcx.types.usize);
         let idx = match try!(eval_const_expr_partial(tcx, idx, idx_hint, fn_args)) {
             Int(i) if i >= 0 => i as u64,
             Int(_) => signal!(idx, IndexNegative),
@@ -1169,11 +1164,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
       }
       hir::ExprVec(ref v) => Array(e.id, v.len() as u64),
       hir::ExprRepeat(_, ref n) => {
-          let len_hint = if let ExprTypeChecked = ty_hint {
-              ExprTypeChecked
-          } else {
-              UncheckedExprHint(tcx.types.usize)
-          };
+          let len_hint = ty_hint.checked_or(tcx.types.usize);
           Repeat(
               e.id,
               match try!(eval_const_expr_partial(tcx, &**n, len_hint, fn_args)) {
@@ -1185,11 +1176,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           )
       },
       hir::ExprTupField(ref base, index) => {
-        let base_hint = if let ExprTypeChecked = ty_hint {
-            ExprTypeChecked
-        } else {
-            UncheckedExprNoHint
-        };
+        let base_hint = ty_hint.erase_hint();
         if let Ok(c) = eval_const_expr_partial(tcx, base, base_hint, fn_args) {
             if let Tuple(tup_id) = c {
                 if let hir::ExprTup(ref fields) = tcx.map.expect_expr(tup_id).node {
@@ -1209,12 +1196,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
       }
       hir::ExprField(ref base, field_name) => {
+        let base_hint = ty_hint.erase_hint();
         // Get the base expression if it is a struct and it is constant
-        let base_hint = if let ExprTypeChecked = ty_hint {
-            ExprTypeChecked
-        } else {
-            UncheckedExprNoHint
-        };
         if let Ok(c) = eval_const_expr_partial(tcx, base, base_hint, fn_args) {
             if let Struct(struct_id) = c {
                 if let hir::ExprStruct(_, ref fields, _) = tcx.map.expect_expr(struct_id).node {
