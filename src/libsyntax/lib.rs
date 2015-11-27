@@ -65,6 +65,7 @@ macro_rules! panictry {
 
 pub mod util {
     pub mod interner;
+    pub mod lev_distance;
     pub mod node_count;
     pub mod parser;
     #[cfg(test)]

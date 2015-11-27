@@ -41,6 +41,14 @@ pub fn lev_distance(me: &str, t: &str) -> usize {
     dcol[t_last + 1]
 }
 
+pub fn max_suggestion_distance(name: &str) -> usize {
+    use std::cmp::max;
+    // As a loose rule to avoid obviously incorrect suggestions, clamp the
+    // maximum edit distance we will accept for a suggestion to one third of
+    // the typo'd name's length.
+    max(name.len(), 3) / 3
+}
+
 #[test]
 fn test_lev_distance() {
     use std::char::{ from_u32, MAX };
