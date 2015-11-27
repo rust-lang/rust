@@ -17,7 +17,9 @@ extern crate collections;
 // for unicode nfc normalization
 extern crate unicode_normalization;
 
-use rustc::plugin::Registry;
+extern crate rustc_plugin;
+
+use rustc_plugin::Registry;
 
 #[macro_use]
 pub mod utils;
