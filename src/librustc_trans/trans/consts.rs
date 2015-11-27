@@ -287,27 +287,26 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                           -> Result<ValueRef, ConstEvalFailure> {
     debug!("get_const_expr_as_global: {:?}", expr.id);
     // Special-case constants to cache a common global for all uses.
-    match expr.node {
-        hir::ExprPath(..) => {
-            let def = ccx.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
-            match def {
-                def::DefConst(def_id) | def::DefAssociatedConst(def_id) => {
-                    if !ccx.tcx().tables.borrow().adjustments.contains_key(&expr.id) {
-                        debug!("get_const_expr_as_global ({:?}): found const {:?}",
-                               expr.id, def_id);
-                        return get_const_val(ccx, def_id, expr);
-                    }
+    if let hir::ExprPath(..) = expr.node {
+        // `def` must be its own statement and cannot be in the `match`
+        // otherwise the `def_map` will be borrowed for the entire match instead
+        // of just to get the `def` value
+        let def = ccx.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
+        match def {
+            def::DefConst(def_id) | def::DefAssociatedConst(def_id) => {
+                if !ccx.tcx().tables.borrow().adjustments.contains_key(&expr.id) {
+                    debug!("get_const_expr_as_global ({:?}): found const {:?}",
+                           expr.id, def_id);
+                    return get_const_val(ccx, def_id, expr);
                 }
-                _ => {}
-            }
+            },
+            _ => {},
         }
-        _ => {}
     }
 
     let key = (expr.id, param_substs);
-    match ccx.const_values().borrow().get(&key) {
-        Some(&val) => return Ok(val),
-        None => {}
+    if let Some(&val) = ccx.const_values().borrow().get(&key) {
+        return Ok(val);
     }
     let ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs,
                                               &ccx.tcx().expr_ty(expr));
@@ -316,10 +315,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // references, even when only the latter are correct.
         try!(const_expr_unadjusted(ccx, expr, ty, param_substs, None, trueconst))
     } else {
-        match const_expr(ccx, expr, param_substs, None, trueconst) {
-            Err(err) => return Err(err),
-            Ok((ok, _)) => ok,
-        }
+        try!(const_expr(ccx, expr, param_substs, None, trueconst)).0
     };
 
     // boolean SSA values are i1, but they have to be stored in i8 slots,
@@ -577,9 +573,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
     let _icx = push_ctxt("const_expr");
     Ok(match e.node {
-        hir::ExprLit(ref lit) => {
-            const_lit(cx, e, &**lit)
-        },
+        hir::ExprLit(ref lit) => const_lit(cx, e, &**lit),
         hir::ExprBinary(b, ref e1, ref e2) => {
             /* Neither type is bottom, and we expect them to be unified
              * already, so the following is safe. */
