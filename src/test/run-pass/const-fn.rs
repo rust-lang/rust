@@ -29,4 +29,5 @@ fn main() {
 
     assert_eq!(DIFF, 22);
 
+    let _: [&'static str; sub(100, 99) as usize] = ["hi"];
 }
