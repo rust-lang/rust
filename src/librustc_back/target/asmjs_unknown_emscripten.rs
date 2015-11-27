@@ -22,6 +22,7 @@ pub fn target() -> Target {
         linker_is_gnu: true,
         allow_asm: false,
         archive_format: "gnu".to_string(),
+        obj_is_bitcode: true,
         .. Default::default()
     };
     Target {
