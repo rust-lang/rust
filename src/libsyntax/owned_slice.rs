@@ -11,11 +11,8 @@
 use std::fmt;
 use std::iter::FromIterator;
 use std::ops::Deref;
-use std::ptr;
 use std::slice;
 use std::vec;
-
-use util::MoveMap;
 
 /// A non-growable owned slice. This is a separate type to allow the
 /// representation to change.
@@ -27,6 +24,42 @@ pub struct OwnedSlice<T> {
 impl<T> OwnedSlice<T> {
     pub fn new() -> OwnedSlice<T> {
         OwnedSlice  { data: Box::new([]) }
+    }
+
+    #[unstable(feature = "rustc_private", issue = "0")]
+    #[rustc_deprecated(since = "1.6.0", reason = "use `OwnedSlice::new` instead")]
+    pub fn empty() -> OwnedSlice<T> {
+        OwnedSlice  { data: Box::new([]) }
+    }
+
+    #[unstable(feature = "rustc_private", issue = "0")]
+    #[rustc_deprecated(since = "1.6.0", reason = "use `OwnedSlice::from` instead")]
+    pub fn from_vec(v: Vec<T>) -> OwnedSlice<T> {
+        OwnedSlice { data: v.into_boxed_slice() }
+    }
+
+    #[unstable(feature = "rustc_private", issue = "0")]
+    #[rustc_deprecated(since = "1.6.0", reason = "use `OwnedSlice::into` instead")]
+    pub fn into_vec(self) -> Vec<T> {
+        self.data.into_vec()
+    }
+
+    #[unstable(feature = "rustc_private", issue = "0")]
+    #[rustc_deprecated(since = "1.6.0", reason = "use `&owned_slice[..]` instead")]
+    pub fn as_slice<'a>(&'a self) -> &'a [T] {
+        &*self.data
+    }
+
+    #[unstable(feature = "rustc_private", issue = "0")]
+    #[rustc_deprecated(since = "1.6.0", reason = "use `OwnedSlice::into_iter` instead")]
+    pub fn move_iter(self) -> vec::IntoIter<T> {
+        self.data.into_vec().into_iter()
+    }
+
+    #[unstable(feature = "rustc_private", issue = "0")]
+    #[rustc_deprecated(since = "1.6.0", reason = "use `iter().map(f).collect()` instead")]
+    pub fn map<U, F: FnMut(&T) -> U>(&self, f: F) -> OwnedSlice<U> {
+        self.iter().map(f).collect()
     }
 }
 
@@ -84,18 +117,5 @@ impl<'a, T> IntoIterator for &'a mut OwnedSlice<T> {
     type IntoIter = slice::IterMut<'a, T>;
     fn into_iter(self) -> Self::IntoIter {
         self.data.iter_mut()
-    }
-}
-
-impl<T> MoveMap for OwnedSlice<T> {
-    type Item = T;
-    fn move_map<F>(mut self, mut f: F) -> OwnedSlice<T> where F: FnMut(T) -> T {
-        for p in &mut self {
-            unsafe {
-                // FIXME(#5016) this shouldn't need to zero to be safe.
-                ptr::write(p, f(ptr::read_and_drop(p)));
-            }
-        }
-        self
     }
 }
