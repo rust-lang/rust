@@ -148,7 +148,7 @@ short strings anyway.
 One last thing you’ll notice: we just define a `Philosopher`, and seemingly
 don’t do anything with it. Rust is an ‘expression based’ language, which means
 that almost everything in Rust is an expression which returns a value. This is
-true of functions as well, the last expression is automatically returned. Since
+true of functions as well — the last expression is automatically returned. Since
 we create a new `Philosopher` as the last expression of this function, we end
 up returning it.
 
@@ -178,8 +178,8 @@ fn main() {
 }
 ```
 
-Here, we create five variable bindings with five new philosophers. These are my
-favorite five, but you can substitute anyone you want. If we _didn’t_ define
+Here, we create five variable bindings with five new philosophers.
+If we _didn’t_ define
 that `new()` function, it would look like this:
 
 ```rust
@@ -440,10 +440,13 @@ closure as an argument and calls that closure on each element in turn.
 Here’s where the concurrency happens. The `thread::spawn` function takes a closure
 as an argument and executes that closure in a new thread. This closure needs
 an extra annotation, `move`, to indicate that the closure is going to take
-ownership of the values it’s capturing. Primarily, the `p` variable of the
+ownership of the values it’s capturing. In this case, it's the `p` variable of the
 `map` function.
 
-Inside the thread, all we do is call `eat()` on `p`. Also note that the call to `thread::spawn` lacks a trailing semicolon, making this an expression. This distinction is important, yielding the correct return value. For more details, read [Expressions vs. Statements][es].
+Inside the thread, all we do is call `eat()` on `p`. Also note that
+the call to `thread::spawn` lacks a trailing semicolon, making this an
+expression. This distinction is important, yielding the correct return
+value. For more details, read [Expressions vs. Statements][es].
 
 [es]: functions.html#expressions-vs-statements
 
