@@ -5,6 +5,22 @@ different types between each other. The first, `as`, is for safe casts.
 In contrast, `transmute` allows for arbitrary casting, and is one of the
 most dangerous features of Rust!
 
+# Coercion
+
+Coercion between types is implicit and has no explicit syntax. Coercion occurs
+in `let`, `const`, and `static` statements; in function call arguments; in
+field values in struct initialization; and in a function result.
+
+The main cases of coercion are:
+
+ * `&mut T` to `&T`
+
+ * `*mut T` to `*const T`
+
+ * `&T` to `*const T`
+
+ * `&mut T` to `*mut T`
+ 
 # `as`
 
 The `as` keyword does safe casting:
@@ -31,10 +47,10 @@ For example:
 
 ```rust
 let a = "hello";
-let b = a as String
+let b = a as String;
 ```
 
-Coercions always occur implicitly so this form is only for clarity.
+All coercions will be made implicitly when necessary and unambiguous.
 
 ## Numeric casts
 
@@ -58,7 +74,7 @@ Perhaps surprisingly, it is safe to cast pointers to and from integers, and
 to cast between pointers to different types subject to some constraints. It
 is only unsafe to dereference the pointer.
 
-* `e` has type `*T`, `U` is a pointer to `*U_0`, and either `U_0: Sized` or
+* `e` has type `*T`, `U` has type `*U_0`, and either `U_0: Sized` or
   unsize_kind(`T`) = unsize_kind(`U_0`); a *ptr-ptr-cast*
 * `e` has type `*T` and `U` is a numeric type, while `T: Sized`; *ptr-addr-cast*
 * `e` is an integer and `U` is `*U_0`, while `U_0: Sized`; *addr-ptr-cast*
