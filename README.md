@@ -59,7 +59,7 @@ rustfmt.toml, place it in the project directory and it will apply the options
 in that file. See `cargo run -- --config-help` for the options which are available,
 or if you prefer to see source code, [src/config.rs].
 
-By default, Rustfmt uses a style which (mostly) confirms to the
+By default, Rustfmt uses a style which (mostly) conforms to the
 [Rust style guidelines](https://github.com/rust-lang/rust/tree/master/src/doc/style).
 There are many details which the style guidelines do not cover, and in these
 cases we try to adhere to a style similar to that used in the
