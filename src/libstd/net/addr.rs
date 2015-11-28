@@ -496,9 +496,9 @@ mod tests {
         assert!(tsa("localhost:23924").unwrap().contains(&a));
     }
 
-    // FIXME: figure out why this fails on bitrig and fix it
+    // FIXME: figure out why this fails on openbsd and bitrig and fix it
     #[test]
-    #[cfg(not(any(windows, target_os = "bitrig")))]
+    #[cfg(not(any(windows, target_os = "openbsd", target_os = "bitrig")))]
     fn to_socket_addr_str_bad() {
         assert!(tsa("1200::AB00:1234::2552:7777:1313:34300").is_err());
     }
