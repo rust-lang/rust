@@ -332,8 +332,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             identifier: last_identifier,
             parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                 lifetimes: lifetimes,
-                types: OwnedSlice::from_vec(types),
-                bindings: OwnedSlice::from_vec(bindings),
+                types: OwnedSlice::from(types),
+                bindings: OwnedSlice::from(bindings),
             })
         });
         ast::Path {
@@ -370,8 +370,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             identifier: ident,
             parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                 lifetimes: lifetimes,
-                types: OwnedSlice::from_vec(types),
-                bindings: OwnedSlice::from_vec(bindings),
+                types: OwnedSlice::from(types),
+                bindings: OwnedSlice::from(bindings),
             })
         });
 

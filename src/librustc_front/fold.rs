@@ -20,7 +20,7 @@ use syntax::codemap::{respan, Span, Spanned};
 use syntax::owned_slice::OwnedSlice;
 use syntax::ptr::P;
 use syntax::parse::token;
-use syntax::util::move_map::MoveMap;
+use syntax::util::MoveMap;
 
 pub trait Folder : Sized {
     // Any additions to this trait should happen in form

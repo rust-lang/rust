@@ -178,8 +178,8 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
                 identifier: identifier,
                 parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                     lifetimes: Vec::new(),
-                    types: OwnedSlice::empty(),
-                    bindings: OwnedSlice::empty(),
+                    types: OwnedSlice::new(),
+                    bindings: OwnedSlice::new(),
                 })
             }
         ),
@@ -239,7 +239,7 @@ pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
 pub fn empty_generics() -> Generics {
     Generics {
         lifetimes: Vec::new(),
-        ty_params: OwnedSlice::empty(),
+        ty_params: OwnedSlice::new(),
         where_clause: WhereClause {
             id: DUMMY_NODE_ID,
             predicates: Vec::new(),

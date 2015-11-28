@@ -519,7 +519,7 @@ impl<'a> State<'a> {
             hir::TyBareFn(ref f) => {
                 let generics = hir::Generics {
                     lifetimes: f.lifetimes.clone(),
-                    ty_params: OwnedSlice::empty(),
+                    ty_params: OwnedSlice::new(),
                     where_clause: hir::WhereClause {
                         id: ast::DUMMY_NODE_ID,
                         predicates: Vec::new(),
@@ -2258,7 +2258,7 @@ impl<'a> State<'a> {
         }
         let generics = hir::Generics {
             lifetimes: Vec::new(),
-            ty_params: OwnedSlice::empty(),
+            ty_params: OwnedSlice::new(),
             where_clause: hir::WhereClause {
                 id: ast::DUMMY_NODE_ID,
                 predicates: Vec::new(),

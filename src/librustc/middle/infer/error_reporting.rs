@@ -94,6 +94,7 @@ use syntax::owned_slice::OwnedSlice;
 use syntax::codemap::{self, Pos, Span};
 use syntax::parse::token;
 use syntax::ptr::P;
+use syntax::util::MoveMap;
 
 impl<'tcx> ty::ctxt<'tcx> {
     pub fn note_and_explain_region(&self,
@@ -1156,15 +1157,15 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                          lifetime: hir::Lifetime,
                          region_names: &HashSet<ast::Name>)
                          -> OwnedSlice<hir::TyParam> {
-        ty_params.map(|ty_param| {
-            let bounds = self.rebuild_ty_param_bounds(ty_param.bounds.clone(),
+        ty_params.move_map(|ty_param| {
+            let bounds = self.rebuild_ty_param_bounds(ty_param.bounds,
                                                       lifetime,
                                                       region_names);
             hir::TyParam {
                 name: ty_param.name,
                 id: ty_param.id,
                 bounds: bounds,
-                default: ty_param.default.clone(),
+                default: ty_param.default,
                 span: ty_param.span,
             }
         })
@@ -1175,15 +1176,15 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                                lifetime: hir::Lifetime,
                                region_names: &HashSet<ast::Name>)
                                -> OwnedSlice<hir::TyParamBound> {
-        ty_param_bounds.map(|tpb| {
+        ty_param_bounds.move_map(|tpb| {
             match tpb {
-                &hir::RegionTyParamBound(lt) => {
+                hir::RegionTyParamBound(lt) => {
                     // FIXME -- it's unclear whether I'm supposed to
                     // substitute lifetime here. I suspect we need to
                     // be passing down a map.
                     hir::RegionTyParamBound(lt)
                 }
-                &hir::TraitTyParamBound(ref poly_tr, modifier) => {
+                hir::TraitTyParamBound(ref poly_tr, modifier) => {
                     let tr = &poly_tr.trait_ref;
                     let last_seg = tr.path.segments.last().unwrap();
                     let mut insert = Vec::new();
@@ -1497,10 +1498,10 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         }
                     }
                 }
-                let new_types = data.types.map(|t| {
+                let new_types = data.types.iter().map(|t| {
                     self.rebuild_arg_ty_or_output(&**t, lifetime, anon_nums, region_names)
-                });
-                let new_bindings = data.bindings.map(|b| {
+                }).collect();
+                let new_bindings = data.bindings.iter().map(|b| {
                     hir::TypeBinding {
                         id: b.id,
                         name: b.name,
@@ -1510,7 +1511,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                                                           region_names),
                         span: b.span
                     }
-                });
+                }).collect();
                 hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
                     lifetimes: new_lts,
                     types: new_types,

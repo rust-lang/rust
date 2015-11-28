@@ -26,8 +26,8 @@ use codemap::{respan, Span, Spanned};
 use owned_slice::OwnedSlice;
 use parse::token;
 use ptr::P;
+use util::MoveMap;
 use util::small_vector::SmallVector;
-use util::move_map::MoveMap;
 
 use std::rc::Rc;
 

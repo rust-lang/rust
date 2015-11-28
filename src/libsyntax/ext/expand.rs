@@ -32,6 +32,7 @@ use util::small_vector::SmallVector;
 use visit;
 use visit::Visitor;
 use std_inject;
+use util::MoveMap;
 
 use std::collections::HashSet;
 

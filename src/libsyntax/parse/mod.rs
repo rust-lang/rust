@@ -944,7 +944,7 @@ mod tests {
                                     abi::Rust,
                                     ast::Generics{ // no idea on either of these:
                                         lifetimes: Vec::new(),
-                                        ty_params: OwnedSlice::empty(),
+                                        ty_params: OwnedSlice::new(),
                                         where_clause: ast::WhereClause {
                                             id: ast::DUMMY_NODE_ID,
                                             predicates: Vec::new(),

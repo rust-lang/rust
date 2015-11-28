@@ -262,8 +262,8 @@ impl PathParameters {
     pub fn none() -> PathParameters {
         AngleBracketedParameters(AngleBracketedParameterData {
             lifetimes: Vec::new(),
-            types: OwnedSlice::empty(),
-            bindings: OwnedSlice::empty(),
+            types: OwnedSlice::new(),
+            bindings: OwnedSlice::new(),
         })
     }
 

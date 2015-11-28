@@ -204,11 +204,11 @@ use ext::build::AstBuilder;
 use codemap::{self, DUMMY_SP};
 use codemap::Span;
 use diagnostic::SpanHandler;
-use util::move_map::MoveMap;
 use owned_slice::OwnedSlice;
 use parse::token::{intern, InternedString};
 use parse::token::special_idents;
 use ptr::P;
+use util::MoveMap;
 
 use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 
@@ -490,7 +490,7 @@ impl<'a> TraitDef<'a> {
 
         let Generics { mut lifetimes, ty_params, mut where_clause } =
             self.generics.to_generics(cx, self.span, type_ident, generics);
-        let mut ty_params = ty_params.into_vec();
+        let mut ty_params: Vec<_> = ty_params.into();
 
         // Copy the lifetimes
         lifetimes.extend(generics.lifetimes.iter().cloned());
@@ -516,7 +516,7 @@ impl<'a> TraitDef<'a> {
 
             cx.typaram(self.span,
                        ty_param.ident,
-                       OwnedSlice::from_vec(bounds),
+                       OwnedSlice::from(bounds),
                        None)
         }));
 
@@ -528,7 +528,7 @@ impl<'a> TraitDef<'a> {
                         span: self.span,
                         bound_lifetimes: wb.bound_lifetimes.clone(),
                         bounded_ty: wb.bounded_ty.clone(),
-                        bounds: OwnedSlice::from_vec(wb.bounds.iter().cloned().collect())
+                        bounds: wb.bounds.iter().cloned().collect()
                     })
                 }
                 ast::WherePredicate::RegionPredicate(ref rb) => {
@@ -579,7 +579,7 @@ impl<'a> TraitDef<'a> {
                         span: self.span,
                         bound_lifetimes: vec![],
                         bounded_ty: ty,
-                        bounds: OwnedSlice::from_vec(bounds),
+                        bounds: OwnedSlice::from(bounds),
                     };
 
                     let predicate = ast::WherePredicate::BoundPredicate(predicate);
@@ -590,7 +590,7 @@ impl<'a> TraitDef<'a> {
 
         let trait_generics = Generics {
             lifetimes: lifetimes,
-            ty_params: OwnedSlice::from_vec(ty_params),
+            ty_params: OwnedSlice::from(ty_params),
             where_clause: where_clause
         };
 
@@ -598,9 +598,9 @@ impl<'a> TraitDef<'a> {
         let trait_ref = cx.trait_ref(trait_path);
 
         // Create the type parameters on the `self` path.
-        let self_ty_params = generics.ty_params.map(|ty_param| {
+        let self_ty_params = generics.ty_params.iter().map(|ty_param| {
             cx.ty_ident(self.span, ty_param.ident)
-        });
+        }).collect();
 
         let self_lifetimes: Vec<ast::Lifetime> =
             generics.lifetimes
@@ -611,7 +611,7 @@ impl<'a> TraitDef<'a> {
         // Create the type of `self`.
         let self_type = cx.ty_path(
             cx.path_all(self.span, false, vec!( type_ident ), self_lifetimes,
-                        self_ty_params.into_vec(), Vec::new()));
+                        self_ty_params, Vec::new()));
 
         let attr = cx.attribute(
             self.span,
