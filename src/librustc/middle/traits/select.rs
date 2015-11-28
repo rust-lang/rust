@@ -1563,7 +1563,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match other {
-            &ObjectCandidate(..) |
+            &ObjectCandidate |
             &ParamCandidate(_) | &ProjectionCandidate => match victim {
                 &DefaultImplCandidate(..) => {
                     self.tcx().sess.bug(
@@ -1572,16 +1572,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 &ImplCandidate(..) |
                 &ClosureCandidate(..) |
-                &FnPointerCandidate(..) |
-                &BuiltinObjectCandidate(..) |
-                &BuiltinUnsizeCandidate(..) |
+                &FnPointerCandidate |
+                &BuiltinObjectCandidate |
+                &BuiltinUnsizeCandidate |
                 &DefaultImplObjectCandidate(..) |
                 &BuiltinCandidate(..) => {
                     // We have a where-clause so don't go around looking
                     // for impls.
                     true
                 }
-                &ObjectCandidate(..) |
+                &ObjectCandidate |
                 &ProjectionCandidate => {
                     // Arbitrarily give param candidates priority
                     // over projection and object candidates.

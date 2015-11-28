@@ -69,7 +69,7 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
         }
 
         TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-        TyStr(..) | TyArray(..) | TySlice(..) | TyBareFn(..) | TyTuple(..) |
+        TyStr | TyArray(..) | TySlice(..) | TyBareFn(..) | TyTuple(..) |
         TyParam(..) | TyError |
         TyRawPtr(_) | TyRef(_, _) | TyProjection(..) => {
             None

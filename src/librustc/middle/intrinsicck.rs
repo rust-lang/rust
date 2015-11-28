@@ -225,11 +225,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
                 intravisit::walk_fn(self, fk, fd, b, s);
                 self.param_envs.pop();
             }
-            FnKind::Closure(..) => {
+            FnKind::Closure => {
                 intravisit::walk_fn(self, fk, fd, b, s);
             }
         }
-
     }
 
     fn visit_expr(&mut self, expr: &hir::Expr) {

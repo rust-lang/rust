@@ -101,7 +101,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 self.extend(result, &cmt, LpInterior(i.cleaned()))
             }
 
-            Categorization::StaticItem(..) => {
+            Categorization::StaticItem => {
                 Safe
             }
 

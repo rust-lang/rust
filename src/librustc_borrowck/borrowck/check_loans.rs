@@ -540,14 +540,14 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                             ol, old_loan_msg)
                 }
 
-                euv::OverloadedOperator(..) |
-                euv::AddrOf(..) |
-                euv::AutoRef(..) |
-                euv::AutoUnsafe(..) |
-                euv::ClosureInvocation(..) |
-                euv::ForLoop(..) |
-                euv::RefBinding(..) |
-                euv::MatchDiscriminant(..) => {
+                euv::OverloadedOperator |
+                euv::AddrOf |
+                euv::AutoRef |
+                euv::AutoUnsafe |
+                euv::ClosureInvocation |
+                euv::ForLoop |
+                euv::RefBinding |
+                euv::MatchDiscriminant => {
                     format!("previous borrow of `{}` occurs here{}",
                             ol, old_loan_msg)
                 }

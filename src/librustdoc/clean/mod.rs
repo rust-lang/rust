@@ -774,7 +774,7 @@ impl Clean<Option<Lifetime>> for ty::Region {
             ty::ReScope(..) |
             ty::ReVar(..) |
             ty::ReSkolemized(..) |
-            ty::ReEmpty(..) => None
+            ty::ReEmpty => None
         }
     }
 }
@@ -1607,7 +1607,7 @@ impl Clean<Type> for hir::Ty {
             TyPolyTraitRef(ref bounds) => {
                 PolyTraitRef(bounds.clean(cx))
             },
-            TyInfer(..) => {
+            TyInfer => {
                 Infer
             },
             TyTypeof(..) => {

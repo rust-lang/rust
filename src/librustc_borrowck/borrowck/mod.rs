@@ -942,8 +942,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                            "consider changing this closure to take self by mutable reference");
                 }
             }
-            mc::AliasableStatic(..) |
-            mc::AliasableStaticMut(..) => {
+            mc::AliasableStatic |
+            mc::AliasableStaticMut => {
                 span_err!(
                     self.tcx.sess, span, E0388,
                     "{} in a static location", prefix);
@@ -998,7 +998,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn note_and_explain_bckerr(&self, err: BckError<'tcx>) {
         let code = err.code;
         match code {
-            err_mutbl(..) => {
+            err_mutbl => {
                 match err.cmt.note {
                     mc::NoteClosureEnv(upvar_id) | mc::NoteUpvarRef(upvar_id) => {
                         // If this is an `Fn` closure, it simply can't mutate upvars.
