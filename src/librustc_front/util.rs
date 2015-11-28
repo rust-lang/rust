@@ -350,13 +350,13 @@ pub fn ident_to_path(s: Span, ident: Ident) -> Path {
     hir::Path {
         span: s,
         global: false,
-        segments: vec!(hir::PathSegment {
+        segments: hir_vec![hir::PathSegment {
             identifier: ident,
             parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
                 lifetimes: Vec::new(),
                 types: OwnedSlice::new(),
                 bindings: OwnedSlice::new(),
             }),
-        }),
+        }],
     }
 }

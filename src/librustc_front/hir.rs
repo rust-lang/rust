@@ -40,7 +40,7 @@ use std::collections::BTreeMap;
 use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
 use syntax::abi::Abi;
 use syntax::ast::{Name, Ident, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
-use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, CrateConfig};
+use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::attr::ThinAttributes;
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::InternedString;
@@ -51,6 +51,18 @@ use util;
 
 use std::fmt;
 use serialize::{Encodable, Encoder, Decoder};
+
+pub type Vec<T> = ::std::vec::Vec<T>;
+
+macro_rules! hir_vec {
+    ($elem:expr; $n:expr) => (
+        hir::Vec::from(vec![$elem; $n])
+    );
+    ($($x:expr),*) => (
+        hir::Vec::from(vec![$($x),*])
+    );
+    ($($x:expr,)*) => (vec![$($x),*])
+}
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
@@ -322,6 +334,8 @@ pub struct WhereEqPredicate {
     pub path: Path,
     pub ty: P<Ty>,
 }
+
+pub type CrateConfig = Vec<P<MetaItem>>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {

@@ -47,6 +47,7 @@ extern crate rustc_bitflags;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
+#[macro_use]
 pub mod hir;
 pub mod lowering;
 pub mod fold;

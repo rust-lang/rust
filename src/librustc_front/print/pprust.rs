@@ -522,7 +522,7 @@ impl<'a> State<'a> {
                     ty_params: OwnedSlice::new(),
                     where_clause: hir::WhereClause {
                         id: ast::DUMMY_NODE_ID,
-                        predicates: Vec::new(),
+                        predicates: hir::Vec::new(),
                     },
                 };
                 try!(self.print_ty_fn(f.abi, f.unsafety, &*f.decl, None, &generics, None));
@@ -2257,11 +2257,11 @@ impl<'a> State<'a> {
             try!(self.print_generics(generics));
         }
         let generics = hir::Generics {
-            lifetimes: Vec::new(),
+            lifetimes: hir::Vec::new(),
             ty_params: OwnedSlice::new(),
             where_clause: hir::WhereClause {
                 id: ast::DUMMY_NODE_ID,
-                predicates: Vec::new(),
+                predicates: hir::Vec::new(),
             },
         };
         try!(self.print_fn(decl,
