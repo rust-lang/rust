@@ -24,7 +24,7 @@ use middle::ty::{self, TypeAndMut, Ty, HasTypeFlags};
 use middle::ty::fold::TypeFoldable;
 
 use std::fmt;
-use syntax::{abi, ast_util};
+use syntax::{abi};
 use syntax::parse::token;
 use syntax::ast::CRATE_NODE_ID;
 use rustc_front::hir;
@@ -778,9 +778,9 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
         match *self {
             TyBool => write!(f, "bool"),
             TyChar => write!(f, "char"),
-            TyInt(t) => write!(f, "{}", ast_util::int_ty_to_string(t)),
-            TyUint(t) => write!(f, "{}", ast_util::uint_ty_to_string(t)),
-            TyFloat(t) => write!(f, "{}", ast_util::float_ty_to_string(t)),
+            TyInt(t) => write!(f, "{}", t.ty_to_string()),
+            TyUint(t) => write!(f, "{}", t.ty_to_string()),
+            TyFloat(t) => write!(f, "{}", t.ty_to_string()),
             TyBox(typ) => write!(f, "Box<{}>",  typ),
             TyRawPtr(ref tm) => {
                 write!(f, "*{} {}", match tm.mutbl {

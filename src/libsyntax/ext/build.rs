@@ -11,7 +11,6 @@
 use abi;
 use ast::{Ident, Generics, Expr};
 use ast;
-use ast_util;
 use attr;
 use codemap::{Span, respan, Spanned, DUMMY_SP, Pos};
 use ext::base::ExtCtxt;
@@ -991,7 +990,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             name,
             inputs,
             output,
-            ast_util::empty_generics(),
+            Generics::default(),
             body)
     }
 
@@ -1029,7 +1028,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn item_enum(&self, span: Span, name: Ident,
                  enum_definition: ast::EnumDef) -> P<ast::Item> {
         self.item_enum_poly(span, name, enum_definition,
-                            ast_util::empty_generics())
+                            Generics::default())
     }
 
     fn item_struct(&self, span: Span, name: Ident,
@@ -1038,7 +1037,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             span,
             name,
             struct_def,
-            ast_util::empty_generics()
+            Generics::default()
         )
     }
 
@@ -1086,7 +1085,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn item_ty(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> P<ast::Item> {
-        self.item_ty_poly(span, name, ty, ast_util::empty_generics())
+        self.item_ty_poly(span, name, ty, Generics::default())
     }
 
     fn attribute(&self, sp: Span, mi: P<ast::MetaItem>) -> ast::Attribute {

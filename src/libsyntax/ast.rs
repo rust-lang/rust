@@ -48,7 +48,6 @@ pub use self::PathParameters::*;
 use attr::ThinAttributes;
 use codemap::{Span, Spanned, DUMMY_SP, ExpnId};
 use abi::Abi;
-use ast_util;
 use ext::base;
 use ext::tt::macro_parser;
 use owned_slice::OwnedSlice;
@@ -427,6 +426,19 @@ impl Generics {
     }
 }
 
+impl Default for Generics {
+    fn default() ->  Generics {
+        Generics {
+            lifetimes: Vec::new(),
+            ty_params: OwnedSlice::empty(),
+            where_clause: WhereClause {
+                id: DUMMY_NODE_ID,
+                predicates: Vec::new(),
+            }
+        }
+    }
+}
+
 /// A `where` clause in a definition
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereClause {
@@ -657,6 +669,57 @@ pub enum BinOp_ {
     BiGt,
 }
 
+impl BinOp_ {
+    pub fn to_string(&self) -> &'static str {
+        match *self {
+            BiAdd => "+",
+            BiSub => "-",
+            BiMul => "*",
+            BiDiv => "/",
+            BiRem => "%",
+            BiAnd => "&&",
+            BiOr => "||",
+            BiBitXor => "^",
+            BiBitAnd => "&",
+            BiBitOr => "|",
+            BiShl => "<<",
+            BiShr => ">>",
+            BiEq => "==",
+            BiLt => "<",
+            BiLe => "<=",
+            BiNe => "!=",
+            BiGe => ">=",
+            BiGt => ">"
+        }
+    }
+    pub fn lazy(&self) -> bool {
+        match *self {
+            BiAnd | BiOr => true,
+            _ => false
+        }
+    }
+
+    pub fn is_shift(&self) -> bool {
+        match *self {
+            BiShl | BiShr => true,
+            _ => false
+        }
+    }
+    pub fn is_comparison(&self) -> bool {
+        match *self {
+            BiEq | BiLt | BiLe | BiNe | BiGt | BiGe =>
+            true,
+            BiAnd | BiOr | BiAdd | BiSub | BiMul | BiDiv | BiRem |
+            BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr =>
+            false,
+        }
+    }
+    /// Returns `true` if the binary operator takes its arguments by value
+    pub fn is_by_value(&self) -> bool {
+        !BinOp_::is_comparison(self)
+    }
+}
+
 pub type BinOp = Spanned<BinOp_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -669,13 +732,31 @@ pub enum UnOp {
     UnNeg
 }
 
+impl UnOp {
+    /// Returns `true` if the unary operator takes its argument by value
+    pub fn is_by_value(u: UnOp) -> bool {
+        match u {
+            UnNeg | UnNot => true,
+            _ => false,
+        }
+    }
+
+    pub fn to_string(op: UnOp) -> &'static str {
+        match op {
+            UnDeref => "*",
+            UnNot => "!",
+            UnNeg => "-",
+        }
+    }
+}
+
 /// A statement
 pub type Stmt = Spanned<Stmt_>;
 
 impl fmt::Debug for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "stmt({}: {})",
-               ast_util::stmt_id(self)
+               self.node.id()
                    .map_or(Cow::Borrowed("<macro>"),|id|Cow::Owned(id.to_string())),
                pprust::stmt_to_string(self))
     }
@@ -697,6 +778,15 @@ pub enum Stmt_ {
 }
 
 impl Stmt_ {
+    pub fn id(&self) -> Option<NodeId> {
+        match *self {
+            StmtDecl(_, id) => Some(id),
+            StmtExpr(_, id) => Some(id),
+            StmtSemi(_, id) => Some(id),
+            StmtMac(..) => None,
+        }
+    }
+
     pub fn attrs(&self) -> &[Attribute] {
         match *self {
             StmtDecl(ref d, _) => d.attrs(),
@@ -1226,6 +1316,16 @@ pub enum Lit_ {
     LitBool(bool),
 }
 
+impl Lit_ {
+    /// Returns true if this literal is a string and false otherwise.
+    pub fn is_str(&self) -> bool {
+        match *self {
+            LitStr(..) => true,
+            _ => false,
+        }
+    }
+}
+
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1301,11 +1401,37 @@ impl fmt::Debug for IntTy {
 
 impl fmt::Display for IntTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", ast_util::int_ty_to_string(*self))
+        write!(f, "{}", self.ty_to_string())
     }
 }
 
 impl IntTy {
+    pub fn ty_to_string(&self) -> &'static str {
+        match *self {
+            TyIs => "isize",
+            TyI8 => "i8",
+            TyI16 => "i16",
+            TyI32 => "i32",
+            TyI64 => "i64"
+        }
+    }
+
+    pub fn val_to_string(&self, val: i64) -> String {
+        // cast to a u64 so we can correctly print INT64_MIN. All integral types
+        // are parsed as u64, so we wouldn't want to print an extra negative
+        // sign.
+        format!("{}{}", val as u64, self.ty_to_string())
+    }
+
+    pub fn ty_max(&self) -> u64 {
+        match *self {
+            TyI8 => 0x80,
+            TyI16 => 0x8000,
+            TyIs | TyI32 => 0x80000000, // actually ni about TyIs
+            TyI64 => 0x8000000000000000
+        }
+    }
+
     pub fn bit_width(&self) -> Option<usize> {
         Some(match *self {
             TyIs => return None,
@@ -1327,6 +1453,29 @@ pub enum UintTy {
 }
 
 impl UintTy {
+    pub fn ty_to_string(&self) -> &'static str {
+        match *self {
+            TyUs => "usize",
+            TyU8 => "u8",
+            TyU16 => "u16",
+            TyU32 => "u32",
+            TyU64 => "u64"
+        }
+    }
+
+    pub fn val_to_string(&self, val: u64) -> String {
+        format!("{}{}", val, self.ty_to_string())
+    }
+
+    pub fn ty_max(&self) -> u64 {
+        match *self {
+            TyU8 => 0xff,
+            TyU16 => 0xffff,
+            TyUs | TyU32 => 0xffffffff, // actually ni about TyUs
+            TyU64 => 0xffffffffffffffff
+        }
+    }
+
     pub fn bit_width(&self) -> Option<usize> {
         Some(match *self {
             TyUs => return None,
@@ -1346,7 +1495,7 @@ impl fmt::Debug for UintTy {
 
 impl fmt::Display for UintTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", ast_util::uint_ty_to_string(*self))
+        write!(f, "{}", self.ty_to_string())
     }
 }
 
@@ -1364,11 +1513,18 @@ impl fmt::Debug for FloatTy {
 
 impl fmt::Display for FloatTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", ast_util::float_ty_to_string(*self))
+        write!(f, "{}", self.ty_to_string())
     }
 }
 
 impl FloatTy {
+    pub fn ty_to_string(&self) -> &'static str {
+        match *self {
+            TyF32 => "f32",
+            TyF64 => "f64",
+        }
+    }
+
     pub fn bit_width(&self) -> usize {
         match *self {
             TyF32 => 32,
