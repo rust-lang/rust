@@ -11,6 +11,7 @@
 use hair::*;
 
 use rustc_front::hir;
+use syntax::owned_slice::OwnedSlice;
 use syntax::ptr::P;
 
 pub trait ToRef {
@@ -53,6 +54,17 @@ impl<'a,'tcx:'a,T,U> ToRef for &'tcx Option<T>
 }
 
 impl<'a,'tcx:'a,T,U> ToRef for &'tcx Vec<T>
+    where &'tcx T: ToRef<Output=U>
+{
+    type Output = Vec<U>;
+
+    fn to_ref(self) -> Vec<U> {
+        self.iter().map(|expr| expr.to_ref()).collect()
+    }
+}
+
+
+impl<'a,'tcx:'a,T,U> ToRef for &'tcx OwnedSlice<T>
     where &'tcx T: ToRef<Output=U>
 {
     type Output = Vec<U>;

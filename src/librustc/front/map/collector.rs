@@ -16,6 +16,7 @@ use rustc_front::util;
 use rustc_front::intravisit::{self, Visitor};
 use middle::def_id::{CRATE_DEF_INDEX, DefIndex};
 use std::iter::repeat;
+use std::vec;
 use syntax::ast::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 use syntax::codemap::Span;
 
@@ -23,7 +24,7 @@ use syntax::codemap::Span;
 /// Map.
 pub struct NodeCollector<'ast> {
     pub krate: &'ast Crate,
-    pub map: Vec<MapEntry<'ast>>,
+    pub map: vec::Vec<MapEntry<'ast>>,
     pub definitions: Definitions,
     pub parent_node: NodeId,
 }
@@ -50,7 +51,7 @@ impl<'ast> NodeCollector<'ast> {
                   parent: &'ast InlinedParent,
                   parent_node: NodeId,
                   parent_def_path: DefPath,
-                  map: Vec<MapEntry<'ast>>,
+                  map: vec::Vec<MapEntry<'ast>>,
                   definitions: Definitions)
                   -> NodeCollector<'ast> {
         let mut collector = NodeCollector {

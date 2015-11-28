@@ -1254,7 +1254,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
         let mut lifetimes = Vec::new();
         for lt in add {
             lifetimes.push(hir::LifetimeDef { lifetime: *lt,
-                                              bounds: Vec::new() });
+                                              bounds: hir::Vec::new() });
         }
         for lt in &generics.lifetimes {
             if keep.contains(&lt.lifetime.name) ||
@@ -1263,7 +1263,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
             }
         }
         hir::Generics {
-            lifetimes: lifetimes,
+            lifetimes: lifetimes.into(),
             ty_params: ty_params,
             where_clause: where_clause,
         }
@@ -1274,7 +1274,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                        lifetime: hir::Lifetime,
                        anon_nums: &HashSet<u32>,
                        region_names: &HashSet<ast::Name>)
-                       -> Vec<hir::Arg> {
+                       -> hir::Vec<hir::Arg> {
         let mut new_inputs = Vec::new();
         for arg in inputs {
             let new_ty = self.rebuild_arg_ty_or_output(&*arg.ty, lifetime,
@@ -1286,7 +1286,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
             };
             new_inputs.push(possibly_new_arg);
         }
-        new_inputs
+        new_inputs.into()
     }
 
     fn rebuild_output(&self, ty: &hir::FunctionRetTy,
@@ -1513,7 +1513,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     }
                 }).collect();
                 hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
-                    lifetimes: new_lts,
+                    lifetimes: new_lts.into(),
                     types: new_types,
                     bindings: new_bindings,
                })
@@ -1529,7 +1529,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
         hir::Path {
             span: path.span,
             global: path.global,
-            segments: new_segs
+            segments: new_segs.into()
         }
     }
 }

@@ -1010,7 +1010,7 @@ pub fn trans_static(ccx: &CrateContext,
                     m: hir::Mutability,
                     expr: &hir::Expr,
                     id: ast::NodeId,
-                    attrs: &Vec<ast::Attribute>)
+                    attrs: &[ast::Attribute])
                     -> Result<ValueRef, ConstEvalErr> {
     unsafe {
         let _icx = push_ctxt("trans_static");

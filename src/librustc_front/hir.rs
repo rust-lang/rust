@@ -52,7 +52,7 @@ use util;
 use std::fmt;
 use serialize::{Encodable, Encoder, Decoder};
 
-pub type Vec<T> = ::std::vec::Vec<T>;
+pub type Vec<T> = OwnedSlice<T>;
 
 macro_rules! hir_vec {
     ($elem:expr; $n:expr) => (
