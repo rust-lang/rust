@@ -1052,7 +1052,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     (impl_def_id, substs, ref_obligations)
                 }
 
-                ObjectCandidate(..) |
+                ObjectCandidate |
                 TraitCandidate |
                 WhereClauseCandidate(..) => {
                     // These have no additional conditions to check.

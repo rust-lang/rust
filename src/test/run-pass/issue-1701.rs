@@ -20,7 +20,7 @@ fn noise(a: animal) -> Option<String> {
       animal::cat(..)    => { Some("meow".to_string()) }
       animal::dog(..)    => { Some("woof".to_string()) }
       animal::rabbit(..) => { None }
-      animal::tiger(..)  => { Some("roar".to_string()) }
+      animal::tiger  => { Some("roar".to_string()) }
     }
 }
 

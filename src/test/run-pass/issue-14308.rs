@@ -10,7 +10,6 @@
 
 
 struct A(isize);
-struct B;
 
 fn main() {
     let x = match A(3) {
@@ -22,12 +21,4 @@ fn main() {
         A(..) => 2
     };
     assert_eq!(x, 2);
-
-    // This next test uses a (..) wildcard match on a nullary struct.
-    // There's no particularly good reason to support this, but it's currently allowed,
-    // and this makes sure it doesn't ICE or break LLVM.
-    let x = match B {
-        B(..) => 3
-    };
-    assert_eq!(x, 3);
 }

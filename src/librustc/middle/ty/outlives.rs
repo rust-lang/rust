@@ -188,21 +188,21 @@ fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
         // the type and then visits the types that are lexically
         // contained within. (The comments refer to relevant rules
         // from RFC1214.)
-        ty::TyBool(..) |        // OutlivesScalar
-        ty::TyChar(..) |        // OutlivesScalar
+        ty::TyBool |            // OutlivesScalar
+        ty::TyChar |            // OutlivesScalar
         ty::TyInt(..) |         // OutlivesScalar
         ty::TyUint(..) |        // OutlivesScalar
         ty::TyFloat(..) |       // OutlivesScalar
         ty::TyEnum(..) |        // OutlivesNominalType
         ty::TyStruct(..) |      // OutlivesNominalType
         ty::TyBox(..) |         // OutlivesNominalType (ish)
-        ty::TyStr(..) |         // OutlivesScalar (ish)
+        ty::TyStr |             // OutlivesScalar (ish)
         ty::TyArray(..) |       // ...
         ty::TySlice(..) |       // ...
         ty::TyRawPtr(..) |      // ...
         ty::TyRef(..) |         // OutlivesReference
         ty::TyTuple(..) |       // ...
-        ty::TyError(..) => {
+        ty::TyError => {
             push_region_constraints(out, ty.regions());
             for subty in ty.walk_shallow() {
                 compute_components(infcx, subty, out);

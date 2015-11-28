@@ -14,13 +14,8 @@
 
 struct Empty1 {}
 
-enum E {
-    Empty2 {}
-}
-
 fn main() {
     let e1 = Empty1 {};
-    let e2 = E::Empty2 {};
 
     // Rejected by parser as yet
     // match e1 {
@@ -29,11 +24,4 @@ fn main() {
     match e1 {
         Empty1(..) => () //~ ERROR unresolved enum variant, struct or const `Empty1`
     }
-    // Issue #28692
-    // match e2 {
-    //     E::Empty2() => () // ERROR unresolved enum variant, struct or const `Empty2`
-    // }
-    // match e2 {
-    //     E::Empty2(..) => () // ERROR unresolved enum variant, struct or const `Empty2`
-    // }
 }
