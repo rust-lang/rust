@@ -30,6 +30,7 @@ use middle::ty::{self, ToPredicate, HasTypeFlags, ToPolyTraitRef, TraitRef, Ty};
 use middle::ty::fold::TypeFoldable;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
+use std::cmp;
 use std::fmt;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap::Span;
@@ -225,38 +226,49 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                 "the trait `{}` is not implemented for the type `{}`",
                                 trait_ref, trait_ref.self_ty());
 
-                            let mut counter = 1;
-                            infcx.tcx.sess.fileline_help(
-                                obligation.cause.span,
-                                "the following implementations were found:");
-                            infcx.tcx.lookup_trait_def(trait_ref.def_id()).for_each_relevant_impl(
-                                infcx.tcx,
-                                trait_ref.self_ty(),
-                                |impl_def_id| {
-                                    match infcx.tcx.impl_trait_ref(impl_def_id) {
-                                        Some(ref imp) => {
-                                            infcx.tcx.sess.fileline_help(
-                                                obligation.cause.span,
-                                                &format!("implementation {}: `{}`", counter, imp));
-                                            counter += 1;
-                                        },
-                                        None => (),
-                                    }
-                                }
-                            );
-
                             // Check if it has a custom "#[rustc_on_unimplemented]"
                             // error message, report with that message if it does
                             let custom_note = report_on_unimplemented(infcx, &trait_ref.0,
                                                                       obligation.cause.span);
                             if let Some(s) = custom_note {
                                 err.fileline_note(obligation.cause.span, &s);
+                            } else {
+                                let mut impl_candidates = Vec::new();
+                                infcx.tcx.lookup_trait_def(trait_ref.def_id())
+                                         .for_each_relevant_impl(
+                                    infcx.tcx,
+                                    trait_ref.self_ty(),
+                                    |impl_def_id| {
+                                        match infcx.tcx.impl_trait_ref(impl_def_id) {
+                                            Some(ref imp) => {
+                                                impl_candidates.push(format!("  {}", imp));
+                                            },
+                                            None => (),
+                                        }
+                                    }
+                                );
+
+                                if impl_candidates.len() > 0 {
+                                    err.fileline_help(
+                                        obligation.cause.span,
+                                        &format!("the following implementations were found:"));
+
+                                    let end = cmp::min(4, impl_candidates.len());
+                                    for candidate in &impl_candidates[0..end] {
+                                        err.fileline_help(obligation.cause.span,
+                                                                     candidate);
+                                    }
+                                    if impl_candidates.len() > 4 {
+                                        err.fileline_help(obligation.cause.span,
+                                                          &format!("and {} others",
+                                                                   impl_candidates.len()-4));
+                                    }
+                                }
                             }
                             note_obligation_cause(infcx, &mut err, obligation);
                             err.emit();
                         }
-                    }
-
+                    },
                     ty::Predicate::Equate(ref predicate) => {
                         let predicate = infcx.resolve_type_vars_if_possible(predicate);
                         let err = infcx.equality_predicate(obligation.cause.span,
