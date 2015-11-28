@@ -2663,15 +2663,18 @@ pub struct Macro {
 
 impl Clean<Item> for doctree::Macro {
     fn clean(&self, cx: &DocContext) -> Item {
+        let name = format!("{}!", self.name.clean(cx));
         Item {
-            name: Some(format!("{}!", self.name.clean(cx))),
+            name: Some(name.clone()),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
             visibility: hir::Public.clean(cx),
             stability: self.stab.clean(cx),
             def_id: cx.map.local_def_id(self.id),
             inner: MacroItem(Macro {
-                source: self.whence.to_src(cx),
+                source: format!("macro_rules! {} {{\n{}}}",
+                    name.trim_right_matches('!'), self.matchers.iter().map(|span|
+                        format!("    {} => {{ ... }};\n", span.to_src(cx))).collect::<String>()),
                 imported_from: self.imported_from.clean(cx),
             }),
         }
