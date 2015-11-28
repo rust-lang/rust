@@ -1471,12 +1471,16 @@ fn rewrite_where_clause(context: &RewriteContext,
     };
     let preds_str = try_opt!(write_list(&item_vec, &fmt));
 
-    // When '{' is the terminator just assume that it is put on the next line for single line where
-    // clauses
-    let end_length = if terminator == ";" {
-        1
+    let end_length = if terminator == "{" {
+        // If the brace is on the next line we don't need to count it otherwise it needs two
+        // characters " {"
+        match context.config.item_brace_style {
+            BraceStyle::AlwaysNextLine => 0,
+            BraceStyle::PreferSameLine => 2,
+            BraceStyle::SameLineWhere => 0,
+        }
     } else {
-        0
+        terminator.len()
     };
     if density == Density::Tall || preds_str.contains('\n') ||
        indent.width() + " where ".len() + preds_str.len() + end_length > width {
