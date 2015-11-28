@@ -213,6 +213,7 @@ pub struct Macro {
     pub id: ast::NodeId,
     pub attrs: Vec<ast::Attribute>,
     pub whence: Span,
+    pub matchers: Vec<Span>,
     pub stab: Option<attr::Stability>,
     pub imported_from: Option<Name>,
 }
