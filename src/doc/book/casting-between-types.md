@@ -7,9 +7,12 @@ most dangerous features of Rust!
 
 # Coercion
 
-Coercion between types is implicit and has no explicit syntax. Coercion occurs
-in `let`, `const`, and `static` statements; in function call arguments; in
-field values in struct initialization; and in a function result.
+Coercion between types is implicit and has no syntax of its own, but can
+be spelled out with [`as`](#explicit-coercions).
+
+Coercion occurs in `let`, `const`, and `static` statements; in
+function call arguments; in field values in struct initialization; and in a
+function result.
 
 The main cases of coercion are:
 
@@ -20,6 +23,9 @@ The main cases of coercion are:
  * `&T` to `*const T`
 
  * `&mut T` to `*mut T`
+ 
+ * A custom coercion using [`Deref`](deref-coercions.md)
+ 
  
 # `as`
 
@@ -50,15 +56,14 @@ let a = "hello";
 let b = a as String;
 ```
 
-All coercions will be made implicitly when necessary and unambiguous.
-
 ## Numeric casts
 
 A cast `e as U` is also valid in any of the following cases:
 
  * `e` has type `T` and `T` and `U` are any numeric types; *numeric-cast*
- * `e` is a C-like enum and `U` is an integer type; *enum-cast*
- * `e` has type `bool` or `char` and `U` is an integer; *prim-int-cast*
+ * `e` is a C-like enum (with no data attached to the variants),
+    and `U` is an integer type; *enum-cast*
+ * `e` has type `bool` or `char` and `U` is an integer type; *prim-int-cast*
  * `e` has type `u8` and `U` is `char`; *u8-char-cast*
  
 For example
@@ -68,7 +73,7 @@ let one = true as u8;
 let at_sign = 64 as char;
 ```
 
-For numeric casts, there are quite a few cases to consider:
+The semantics of numeric casts are:
 
 * Casting between two integers of the same size (e.g. i32 -> u32) is a no-op
 * Casting from a larger integer to a smaller integer (e.g. u32 -> u8) will
@@ -100,13 +105,20 @@ Perhaps surprisingly, it is safe to cast pointers to and from integers, and
 to cast between pointers to different types subject to some constraints. It
 is only unsafe to dereference the pointer.
 
+`e as U` is a valid pointer cast in any of the following cases:
+
 * `e` has type `*T`, `U` has type `*U_0`, and either `U_0: Sized` or
-  unsize_kind(`T`) = unsize_kind(`U_0`); a *ptr-ptr-cast*
+  `unsize_kind(T) == unsize_kind(U_0)`; a *ptr-ptr-cast*
+  
 * `e` has type `*T` and `U` is a numeric type, while `T: Sized`; *ptr-addr-cast*
+
 * `e` is an integer and `U` is `*U_0`, while `U_0: Sized`; *addr-ptr-cast*
+
 * `e` has type `&[T; n]` and `U` is `*const T`; *array-ptr-cast*
+
 * `e` is a function pointer type and `U` has type `*T`,
   while `T: Sized`; *fptr-ptr-cast*
+
 * `e` is a function pointer type and `U` is an integer; *fptr-addr-cast*
 
 
