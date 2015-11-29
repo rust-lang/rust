@@ -67,6 +67,32 @@ For example
 let one = true as u8;
 let at_sign = 64 as char;
 ```
+
+For numeric casts, there are quite a few cases to consider:
+
+* Casting between two integers of the same size (e.g. i32 -> u32) is a no-op
+* Casting from a larger integer to a smaller integer (e.g. u32 -> u8) will
+  truncate
+* Casting from a smaller integer to a larger integer (e.g. u8 -> u32) will
+    * zero-extend if the source is unsigned
+    * sign-extend if the source is signed
+* Casting from a float to an integer will round the float towards zero
+    * **[NOTE: currently this will cause Undefined Behavior if the rounded
+      value cannot be represented by the target integer type][float-int]**.
+      This includes Inf and NaN. This is a bug and will be fixed.
+* Casting from an integer to float will produce the floating point
+  representation of the integer, rounded if necessary (rounding strategy
+  unspecified)
+* Casting from an f32 to an f64 is perfect and lossless
+* Casting from an f64 to an f32 will produce the closest possible value
+  (rounding strategy unspecified)
+    * **[NOTE: currently this will cause Undefined Behavior if the value
+      is finite but larger or smaller than the largest or smallest finite
+      value representable by f32][float-float]**. This is a bug and will
+      be fixed.
+
+[float-int]: https://github.com/rust-lang/rust/issues/10184
+[float-float]: https://github.com/rust-lang/rust/issues/15536
  
 ## Pointer casts
  
