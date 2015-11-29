@@ -3253,7 +3253,8 @@ impl<'a> Parser<'a> {
                         let tts = try!(self.parse_seq_to_end(&token::CloseDelim(delim),
                                 seq_sep_none(), |p| p.parse_token_tree()));
                         let mac = Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT };
-                        pat = PatMac(codemap::Spanned {node: mac, span: mk_sp(lo, self.span.hi)});
+                        pat = PatMac(codemap::Spanned {node: mac,
+                                                       span: mk_sp(lo, self.last_span.hi)});
                     } else {
                         // Parse ident @ pat
                         // This can give false positives and parse nullary enums,
@@ -4487,7 +4488,7 @@ impl<'a> Parser<'a> {
             let m_ = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m_,
                                                 span: mk_sp(lo,
-                                                            self.span.hi) };
+                                                            self.last_span.hi) };
             if delim != token::Brace {
                 try!(self.expect(&token::Semi))
             }
@@ -5537,7 +5538,7 @@ impl<'a> Parser<'a> {
             let m = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m,
                                              span: mk_sp(mac_lo,
-                                                         self.span.hi) };
+                                                         self.last_span.hi) };
 
             if delim != token::Brace {
                 if !try!(self.eat(&token::Semi) ){
