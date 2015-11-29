@@ -13,7 +13,6 @@ use ast;
 use ast_util;
 use codemap;
 use codemap::Span;
-use owned_slice::OwnedSlice;
 use parse::token;
 use print::pprust;
 use ptr::P;
@@ -178,8 +177,8 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
                 identifier: identifier,
                 parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                     lifetimes: Vec::new(),
-                    types: OwnedSlice::new(),
-                    bindings: OwnedSlice::new(),
+                    types: P::new(),
+                    bindings: P::new(),
                 })
             }
         ),
@@ -239,7 +238,7 @@ pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
 pub fn empty_generics() -> Generics {
     Generics {
         lifetimes: Vec::new(),
-        ty_params: OwnedSlice::new(),
+        ty_params: P::new(),
         where_clause: WhereClause {
             id: DUMMY_NODE_ID,
             predicates: Vec::new(),

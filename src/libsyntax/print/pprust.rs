@@ -18,7 +18,6 @@ use attr::ThinAttributesExt;
 use ast_util;
 use util::parser::AssocOp;
 use attr;
-use owned_slice::OwnedSlice;
 use attr::{AttrMetaMethods, AttributeMethods};
 use codemap::{self, CodeMap, BytePos};
 use diagnostic;
@@ -1002,7 +1001,7 @@ impl<'a> State<'a> {
             ast::TyBareFn(ref f) => {
                 let generics = ast::Generics {
                     lifetimes: f.lifetimes.clone(),
-                    ty_params: OwnedSlice::new(),
+                    ty_params: P::new(),
                     where_clause: ast::WhereClause {
                         id: ast::DUMMY_NODE_ID,
                         predicates: Vec::new(),
@@ -3025,7 +3024,7 @@ impl<'a> State<'a> {
         }
         let generics = ast::Generics {
             lifetimes: Vec::new(),
-            ty_params: OwnedSlice::new(),
+            ty_params: P::new(),
             where_clause: ast::WhereClause {
                 id: ast::DUMMY_NODE_ID,
                 predicates: Vec::new(),

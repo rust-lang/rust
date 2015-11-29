@@ -42,7 +42,6 @@ use syntax::abi::Abi;
 use syntax::ast::{Name, Ident, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::attr::ThinAttributes;
-use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 
@@ -52,7 +51,7 @@ use util;
 use std::fmt;
 use serialize::{Encodable, Encoder, Decoder};
 
-pub type Vec<T> = OwnedSlice<T>;
+pub type Vec<T> = P<[T]>;
 
 macro_rules! hir_vec {
     ($elem:expr; $n:expr) => (
@@ -139,8 +138,8 @@ impl PathParameters {
     pub fn none() -> PathParameters {
         AngleBracketedParameters(AngleBracketedParameterData {
             lifetimes: Vec::new(),
-            types: OwnedSlice::new(),
-            bindings: OwnedSlice::new(),
+            types: Vec::new(),
+            bindings: Vec::new(),
         })
     }
 
@@ -213,10 +212,10 @@ pub struct AngleBracketedParameterData {
     /// The lifetime parameters for this path segment.
     pub lifetimes: Vec<Lifetime>,
     /// The type parameters for this path segment, if present.
-    pub types: OwnedSlice<P<Ty>>,
+    pub types: Vec<P<Ty>>,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
-    pub bindings: OwnedSlice<TypeBinding>,
+    pub bindings: Vec<TypeBinding>,
 }
 
 impl AngleBracketedParameterData {
@@ -256,7 +255,7 @@ pub enum TraitBoundModifier {
     Maybe,
 }
 
-pub type TyParamBounds = OwnedSlice<TyParamBound>;
+pub type TyParamBounds = Vec<TyParamBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TyParam {
@@ -272,7 +271,7 @@ pub struct TyParam {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Generics {
     pub lifetimes: Vec<LifetimeDef>,
-    pub ty_params: OwnedSlice<TyParam>,
+    pub ty_params: Vec<TyParam>,
     pub where_clause: WhereClause,
 }
 
@@ -315,7 +314,7 @@ pub struct WhereBoundPredicate {
     /// The type being bounded
     pub bounded_ty: P<Ty>,
     /// Trait and lifetime bounds (`Clone+Send+'static`)
-    pub bounds: OwnedSlice<TyParamBound>,
+    pub bounds: TyParamBounds,
 }
 
 /// A lifetime predicate, e.g. `'a: 'b+'c`

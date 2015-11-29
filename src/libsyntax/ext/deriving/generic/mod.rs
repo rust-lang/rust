@@ -204,7 +204,6 @@ use ext::build::AstBuilder;
 use codemap::{self, DUMMY_SP};
 use codemap::Span;
 use diagnostic::SpanHandler;
-use owned_slice::OwnedSlice;
 use parse::token::{intern, InternedString};
 use parse::token::special_idents;
 use ptr::P;
@@ -516,7 +515,7 @@ impl<'a> TraitDef<'a> {
 
             cx.typaram(self.span,
                        ty_param.ident,
-                       OwnedSlice::from(bounds),
+                       P::from(bounds),
                        None)
         }));
 
@@ -579,7 +578,7 @@ impl<'a> TraitDef<'a> {
                         span: self.span,
                         bound_lifetimes: vec![],
                         bounded_ty: ty,
-                        bounds: OwnedSlice::from(bounds),
+                        bounds: P::from(bounds),
                     };
 
                     let predicate = ast::WherePredicate::BoundPredicate(predicate);
@@ -590,7 +589,7 @@ impl<'a> TraitDef<'a> {
 
         let trait_generics = Generics {
             lifetimes: lifetimes,
-            ty_params: OwnedSlice::from(ty_params),
+            ty_params: P::from(ty_params),
             where_clause: where_clause
         };
 

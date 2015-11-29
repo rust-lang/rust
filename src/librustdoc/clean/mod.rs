@@ -108,7 +108,7 @@ impl<T, U> Clean<U> for ty::Binder<T> where T: Clean<U> {
     }
 }
 
-impl<T: Clean<U>, U> Clean<Vec<U>> for syntax::owned_slice::OwnedSlice<T> {
+impl<T: Clean<U>, U> Clean<Vec<U>> for P<[T]> {
     fn clean(&self, cx: &DocContext) -> Vec<U> {
         self.iter().map(|x| x.clean(cx)).collect()
     }

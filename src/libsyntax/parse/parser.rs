@@ -50,7 +50,7 @@ use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{Ty, Ty_, TypeBinding, TyMac};
 use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
-use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr};
+use ast::{TyParam, TyParamBounds, TyParen, TyPath, TyPolyTraitRef, TyPtr};
 use ast::{TyRptr, TyTup, TyU32, TyVec};
 use ast::TypeTraitItem;
 use ast::{UnnamedField, UnsafeBlock};
@@ -73,7 +73,6 @@ use parse::{new_sub_parser_from_file, ParseSess};
 use util::parser::{AssocOp, Fixity};
 use print::pprust;
 use ptr::P;
-use owned_slice::OwnedSlice;
 use parse::PResult;
 use diagnostic::FatalError;
 
@@ -752,7 +751,7 @@ impl<'a> Parser<'a> {
     pub fn parse_seq_to_before_gt_or_return<T, F>(&mut self,
                                                   sep: Option<token::Token>,
                                                   mut f: F)
-                                                  -> PResult<(OwnedSlice<T>, bool)> where
+                                                  -> PResult<(P<[T]>, bool)> where
         F: FnMut(&mut Parser) -> PResult<Option<T>>,
     {
         let mut v = Vec::new();
@@ -773,7 +772,7 @@ impl<'a> Parser<'a> {
             if i % 2 == 0 {
                 match try!(f(self)) {
                     Some(result) => v.push(result),
-                    None => return Ok((OwnedSlice::from(v), true))
+                    None => return Ok((P::from(v), true))
                 }
             } else {
                 if let Some(t) = sep.as_ref() {
@@ -782,7 +781,7 @@ impl<'a> Parser<'a> {
 
             }
         }
-        return Ok((OwnedSlice::from(v), false));
+        return Ok((P::from(v), false));
     }
 
     /// Parse a sequence bracketed by '<' and '>', stopping
@@ -790,7 +789,7 @@ impl<'a> Parser<'a> {
     pub fn parse_seq_to_before_gt<T, F>(&mut self,
                                         sep: Option<token::Token>,
                                         mut f: F)
-                                        -> PResult<OwnedSlice<T>> where
+                                        -> PResult<P<[T]>> where
         F: FnMut(&mut Parser) -> PResult<T>,
     {
         let (result, returned) = try!(self.parse_seq_to_before_gt_or_return(sep,
@@ -802,7 +801,7 @@ impl<'a> Parser<'a> {
     pub fn parse_seq_to_gt<T, F>(&mut self,
                                  sep: Option<token::Token>,
                                  f: F)
-                                 -> PResult<OwnedSlice<T>> where
+                                 -> PResult<P<[T]>> where
         F: FnMut(&mut Parser) -> PResult<T>,
     {
         let v = try!(self.parse_seq_to_before_gt(sep, f));
@@ -813,7 +812,7 @@ impl<'a> Parser<'a> {
     pub fn parse_seq_to_gt_or_return<T, F>(&mut self,
                                            sep: Option<token::Token>,
                                            f: F)
-                                           -> PResult<(OwnedSlice<T>, bool)> where
+                                           -> PResult<(P<[T]>, bool)> where
         F: FnMut(&mut Parser) -> PResult<Option<T>>,
     {
         let (v, returned) = try!(self.parse_seq_to_before_gt_or_return(sep, f));
@@ -1077,7 +1076,7 @@ impl<'a> Parser<'a> {
             let other_bounds = if try!(self.eat(&token::BinOp(token::Plus)) ){
                 try!(self.parse_ty_param_bounds(BoundParsingMode::Bare))
             } else {
-                OwnedSlice::new()
+                P::new()
             };
             let all_bounds =
                 Some(TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)).into_iter()
@@ -1710,8 +1709,8 @@ impl<'a> Parser<'a> {
 
                 ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                     lifetimes: lifetimes,
-                    types: OwnedSlice::from(types),
-                    bindings: OwnedSlice::from(bindings),
+                    types: P::from(types),
+                    bindings: P::from(bindings),
                 })
             } else if try!(self.eat(&token::OpenDelim(token::Paren)) ){
                 let lo = self.last_span.lo;
@@ -1774,8 +1773,8 @@ impl<'a> Parser<'a> {
                     identifier: identifier,
                     parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                         lifetimes: lifetimes,
-                        types: OwnedSlice::from(types),
-                        bindings: OwnedSlice::from(bindings),
+                        types: P::from(types),
+                        bindings: P::from(bindings),
                     }),
                 });
 
@@ -3883,10 +3882,10 @@ impl<'a> Parser<'a> {
     // otherwise returns empty list.
     fn parse_colon_then_ty_param_bounds(&mut self,
                                         mode: BoundParsingMode)
-                                        -> PResult<OwnedSlice<TyParamBound>>
+                                        -> PResult<TyParamBounds>
     {
         if !try!(self.eat(&token::Colon) ){
-            Ok(OwnedSlice::new())
+            Ok(P::new())
         } else {
             self.parse_ty_param_bounds(mode)
         }
@@ -3898,7 +3897,7 @@ impl<'a> Parser<'a> {
     // and     bound     = 'region | trait_ref
     fn parse_ty_param_bounds(&mut self,
                              mode: BoundParsingMode)
-                             -> PResult<OwnedSlice<TyParamBound>>
+                             -> PResult<TyParamBounds>
     {
         let mut result = vec!();
         loop {
@@ -3940,7 +3939,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        return Ok(OwnedSlice::from(result));
+        return Ok(P::from(result));
     }
 
     /// Matches typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?

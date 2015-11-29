@@ -19,7 +19,6 @@ use ast::{Expr,Generics,Ident};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{Span,respan};
-use owned_slice::OwnedSlice;
 use parse::token::special_idents;
 use ptr::P;
 
@@ -208,7 +207,7 @@ fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam>)
                -> Generics {
     Generics {
         lifetimes: lifetimes,
-        ty_params: OwnedSlice::from(ty_params),
+        ty_params: P::from(ty_params),
         where_clause: ast::WhereClause {
             id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),

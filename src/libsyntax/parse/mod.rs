@@ -668,7 +668,6 @@ mod tests {
     use super::*;
     use std::rc::Rc;
     use codemap::{Span, BytePos, Pos, Spanned, NO_EXPANSION};
-    use owned_slice::OwnedSlice;
     use ast::{self, TokenTree};
     use abi;
     use attr::{first_attr_value_str_by_name, AttrMetaMethods};
@@ -944,7 +943,7 @@ mod tests {
                                     abi::Rust,
                                     ast::Generics{ // no idea on either of these:
                                         lifetimes: Vec::new(),
-                                        ty_params: OwnedSlice::new(),
+                                        ty_params: P::new(),
                                         where_clause: ast::WhereClause {
                                             id: ast::DUMMY_NODE_ID,
                                             predicates: Vec::new(),

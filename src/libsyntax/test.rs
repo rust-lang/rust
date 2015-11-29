@@ -31,7 +31,6 @@ use ext::build::AstBuilder;
 use ext::expand::ExpansionConfig;
 use fold::Folder;
 use fold;
-use owned_slice::OwnedSlice;
 use parse::token::{intern, InternedString};
 use parse::{token, ParseSess};
 use print::pprust;
