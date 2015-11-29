@@ -234,7 +234,13 @@ fn report_elision_failure(
         }
     }
 
-    if !any_lifetimes {
+    if len == 0 {
+        fileline_help!(tcx.sess, default_span,
+                       "this function's return type contains a borrowed value, but \
+                        there is no value for it to be borrowed from");
+        fileline_help!(tcx.sess, default_span,
+                       "consider giving it a 'static lifetime");
+    } else if !any_lifetimes {
         fileline_help!(tcx.sess, default_span,
                        "this function's return type contains a borrowed value with \
                         an elided lifetime, but the lifetime cannot be derived from \
@@ -247,12 +253,6 @@ fn report_elision_failure(
                        "this function's return type contains a borrowed value, but \
                         the signature does not say which {} it is borrowed from",
                        m);
-    } else if len == 0 {
-        fileline_help!(tcx.sess, default_span,
-                       "this function's return type contains a borrowed value, but \
-                        there is no value for it to be borrowed from");
-        fileline_help!(tcx.sess, default_span,
-                       "consider giving it a 'static lifetime");
     } else {
         fileline_help!(tcx.sess, default_span,
                        "this function's return type contains a borrowed value, but \
