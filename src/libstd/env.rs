@@ -326,7 +326,7 @@ fn _remove_var(k: &OsStr) {
     })
 }
 
-/// An iterator over `Path` instances for parsing an environment variable
+/// An iterator over `PathBuf` instances for parsing an environment variable
 /// according to platform-specific conventions.
 ///
 /// This structure is returned from `std::env::split_paths`.
