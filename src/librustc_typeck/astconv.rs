@@ -203,10 +203,14 @@ fn report_elision_failure(
 {
     let mut m = String::new();
     let len = params.len();
+    let mut any_lifetimes = false;
+
     for (i, info) in params.into_iter().enumerate() {
         let ElisionFailureInfo {
             name, lifetime_count: n, have_bound_regions
         } = info;
+
+        any_lifetimes = any_lifetimes || (n > 0);
 
         let help_name = if name.is_empty() {
             format!("argument {}", i + 1)
@@ -229,7 +233,16 @@ fn report_elision_failure(
             m.push_str(", ");
         }
     }
-    if len == 1 {
+
+    if !any_lifetimes {
+        fileline_help!(tcx.sess, default_span,
+                       "this function's return type contains a borrowed value with \
+                        an elided lifetime, but the lifetime cannot be derived from \
+                        the arguments");
+        fileline_help!(tcx.sess, default_span,
+                       "consider giving it an explicit bounded or 'static \
+                        lifetime");
+    } else if len == 1 {
         fileline_help!(tcx.sess, default_span,
                        "this function's return type contains a borrowed value, but \
                         the signature does not say which {} it is borrowed from",
