@@ -235,7 +235,7 @@ mod tests {
             let (a, b) = ($a, $b);
             if a != b {
                 let (a, b) = if a > b {(a, b)} else {(b, a)};
-                assert!(a - Duration::new(0, 1) <= b);
+                assert!(a - Duration::new(0, 100) <= b);
             }
         })
     }
