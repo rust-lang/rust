@@ -36,7 +36,41 @@ pub struct String {
     vec: Vec<u8>,
 }
 
-/// A possible error value from the `String::from_utf8` function.
+/// A possible error value when converting a `String` from a UTF-8 byte vector.
+///
+/// This type is the error type for the [`from_utf8()`] method on [`String`]. It
+/// is designed in such a way to carefully avoid reallocations: the
+/// [`into_bytes()`] method will give back the byte vector that was used in the
+/// conversion attempt.
+///
+/// [`from_utf8()`]: struct.String.html#method.from_utf8
+/// [`String`]: struct.String.html
+/// [`into_bytes()`]: struct.FromUtf8Error.html#method.into_bytes
+///
+/// The [`Utf8Error`] type provided by [`std::str`] represents an error that may
+/// occur when converting a slice of [`u8`]s to a [`&str`]. In this sense, it's
+/// an analogue to `FromUtf8Error`, and you can get one from a `FromUtf8Error`
+/// through the [`utf8_error()`] method.
+///
+/// [`Utf8Error`]: ../str/struct.Utf8Error.html
+/// [`std::str`]: ../str/index.html
+/// [`u8`]: ../primitive.u8.html
+/// [`&str`]: ../primitive.str.html
+/// [`utf8_error()`]: #method.utf8_error
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// // some invalid bytes, in a vector
+/// let bytes = vec![0, 159];
+///
+/// let value = String::from_utf8(bytes);
+///
+/// assert!(value.is_err());
+/// assert_eq!(vec![0, 159], value.unwrap_err().into_bytes());
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct FromUtf8Error {
@@ -44,7 +78,24 @@ pub struct FromUtf8Error {
     error: Utf8Error,
 }
 
-/// A possible error value from the `String::from_utf16` function.
+/// A possible error value when converting a `String` from a UTF-16 byte slice.
+///
+/// This type is the error type for the [`from_utf16()`] method on [`String`].
+///
+/// [`from_utf16()`]: struct.String.html#method.from_utf16
+/// [`String`]: struct.String.html
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// // 𝄞mu<invalid>ic
+/// let v = &[0xD834, 0xDD1E, 0x006d, 0x0075,
+///           0xD800, 0x0069, 0x0063];
+///
+/// assert!(String::from_utf16(v).is_err());
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct FromUtf16Error(());
@@ -337,13 +388,14 @@ impl String {
     ///
     /// ```
     /// // 𝄞music
-    /// let mut v = &mut [0xD834, 0xDD1E, 0x006d, 0x0075,
-    ///                   0x0073, 0x0069, 0x0063];
+    /// let v = &[0xD834, 0xDD1E, 0x006d, 0x0075,
+    ///           0x0073, 0x0069, 0x0063];
     /// assert_eq!(String::from_utf16(v).unwrap(),
     ///            "𝄞music".to_string());
     ///
     /// // 𝄞mu<invalid>ic
-    /// v[4] = 0xD800;
+    /// let v = &[0xD834, 0xDD1E, 0x006d, 0x0075,
+    ///           0xD800, 0x0069, 0x0063];
     /// assert!(String::from_utf16(v).is_err());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -850,14 +902,52 @@ impl String {
 }
 
 impl FromUtf8Error {
-    /// Consumes this error, returning the bytes that were attempted to make a
-    /// `String` with.
+    /// Returns the bytes that were attempted to convert to a `String`.
+    ///
+    /// This method is carefully constructed to avoid allocation. It will
+    /// consume the error, moving out the bytes, so that a copy of the bytes
+    /// does not need to be made.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// // some invalid bytes, in a vector
+    /// let bytes = vec![0, 159];
+    ///
+    /// let value = String::from_utf8(bytes);
+    ///
+    /// assert_eq!(vec![0, 159], value.unwrap_err().into_bytes());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_bytes(self) -> Vec<u8> {
         self.bytes
     }
 
-    /// Access the underlying UTF8-error that was the cause of this error.
+    /// Fetch a `Utf8Error` to get more details about the conversion failure.
+    ///
+    /// The [`Utf8Error`] type provided by [`std::str`] represents an error that may
+    /// occur when converting a slice of [`u8`]s to a [`&str`]. In this sense, it's
+    /// an analogue to `FromUtf8Error`. See its documentation for more details
+    /// on using it.
+    ///
+    /// [`Utf8Error`]: ../str/struct.Utf8Error.html
+    /// [`std::str`]: ../str/index.html
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// // some invalid bytes, in a vector
+    /// let bytes = vec![0, 159];
+    ///
+    /// let error = String::from_utf8(bytes).unwrap_err().utf8_error();
+    ///
+    /// // the first byte is invalid here
+    /// assert_eq!(1, error.valid_up_to());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn utf8_error(&self) -> Utf8Error {
         self.error
