@@ -1950,9 +1950,9 @@ const E: &'static Cell<usize> = &D.a; // error
 const F: &'static C = &D; // error
 ```
 
-This is because cell types internally use `UnsafeCell`, which isn't `Sync`.
-These aren't thread safe, and thus can't be placed in statics. In this case,
-`StaticMutex` would work just fine, but it isn't stable yet:
+This is because cell types do operations that are not thread-safe. Due to this,
+they don't implement Sync and thus can't be placed in statics. In this
+case, `StaticMutex` would work just fine, but it isn't stable yet:
 https://doc.rust-lang.org/nightly/std/sync/struct.StaticMutex.html
 
 However, if you still wish to use these types, you can achieve this by an unsafe
