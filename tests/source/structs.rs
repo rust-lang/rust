@@ -32,7 +32,7 @@ struct Qux<'a,
 (
     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, // Comment
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB,
-    #[AnAttr]    
+    #[AnAttr]
     // Comment
     /// Testdoc
     G,
