@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use hair::*;
-use repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
 use hair::cx::Cx;
 use hair::cx::block;
@@ -19,6 +18,7 @@ use rustc::middle::def;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::pat_util;
 use rustc::middle::ty::{self, VariantDef, Ty};
+use rustc::mir::repr::*;
 use rustc_front::hir;
 use rustc_front::util as hir_util;
 use syntax::ext::mtwt;

@@ -40,7 +40,7 @@ use middle::traits;
 use middle::ty::{self, HasTypeFlags, Ty};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use rustc_front::hir;
-use rustc_mir::repr::Mir;
+use rustc::mir::repr::Mir;
 use util::nodemap::{FnvHashMap, NodeMap};
 
 use arena::TypedArena;

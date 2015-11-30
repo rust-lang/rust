@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::BasicBlockRef;
-use rustc_mir::repr as mir;
+use rustc::mir::repr as mir;
 use trans::base;
 use trans::build;
 use trans::common::Block;

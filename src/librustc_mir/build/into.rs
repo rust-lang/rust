@@ -14,9 +14,9 @@
 //! wrapped up as expressions (e.g. blocks). To make this ergonomic, we use this
 //! latter `EvalInto` trait.
 
-use build::{BlockAnd, Builder};
+use build::{BlockAnd, BlockAndExtension, Builder};
 use hair::*;
-use repr::*;
+use rustc::mir::repr::*;
 
 pub trait EvalInto<'tcx> {
     fn eval_into<'a>(self,

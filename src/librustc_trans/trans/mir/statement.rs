@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::middle::ty::LvaluePreference;
-use rustc_mir::repr as mir;
+use rustc::mir::repr as mir;
 use trans::common::Block;
 use trans::debuginfo::DebugLoc;
 use trans::glue;

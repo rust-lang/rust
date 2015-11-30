@@ -32,9 +32,6 @@ extern crate syntax;
 pub mod build;
 pub mod mir_map;
 mod hair;
-pub mod repr;
 mod graphviz;
 pub mod transform;
-pub mod tcx;
-pub mod visit;
 

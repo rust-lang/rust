@@ -10,12 +10,12 @@
 
 //! See docs in build/expr/mod.rs
 
-use build::{BlockAnd, Builder};
+use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::{Category, RvalueFunc};
 use build::scope::LoopScope;
 use hair::*;
-use repr::*;
 use rustc::middle::region::CodeExtent;
+use rustc::mir::repr::*;
 use syntax::codemap::Span;
 
 impl<'a,'tcx> Builder<'a,'tcx> {

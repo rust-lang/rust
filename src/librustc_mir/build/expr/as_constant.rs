@@ -12,7 +12,7 @@
 
 use build::Builder;
 use hair::*;
-use repr::*;
+use rustc::mir::repr::*;
 
 impl<'a,'tcx> Builder<'a,'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that

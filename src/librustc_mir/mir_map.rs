@@ -23,7 +23,7 @@ extern crate rustc_front;
 use build;
 use dot;
 use transform::*;
-use repr::Mir;
+use rustc::mir::repr::Mir;
 use hair::cx::Cx;
 use std::fs::File;
 
