@@ -14,18 +14,24 @@ Coercion occurs in `let`, `const`, and `static` statements; in
 function call arguments; in field values in struct initialization; and in a
 function result.
 
-The main cases of coercion are:
+The most common case of coercion is removing mutability from a reference:
 
  * `&mut T` to `&T`
+ 
+An analogous conversion is to remove mutability from a
+[raw pointer](raw-pointers.md):
 
  * `*mut T` to `*const T`
+ 
+References can also be coerced to raw pointers:
 
  * `&T` to `*const T`
 
  * `&mut T` to `*mut T`
- 
- * A custom coercion using [`Deref`](deref-coercions.md)
- 
+
+Custom coercion may be defined using [`Deref`](deref-coercions.md).
+
+Coercion is transitive.
  
 # `as`
 
@@ -71,6 +77,7 @@ For example
 ```rust
 let one = true as u8;
 let at_sign = 64 as char;
+let two_hundred = -56i8 as u8;
 ```
 
 The semantics of numeric casts are:
@@ -101,9 +108,14 @@ The semantics of numeric casts are:
  
 ## Pointer casts
  
-Perhaps surprisingly, it is safe to cast pointers to and from integers, and
-to cast between pointers to different types subject to some constraints. It
-is only unsafe to dereference the pointer.
+Perhaps surprisingly, it is safe to cast [raw pointers](raw-pointers.md) to and
+from integers, and to cast between pointers to different types subject to
+some constraints. It is only unsafe to dereference the pointer:
+
+```rust
+let a = 300 as *const char; // a pointer to location 300
+let b = a as u32;
+```
 
 `e as U` is a valid pointer cast in any of the following cases:
 
