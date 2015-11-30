@@ -751,25 +751,9 @@ pub trait ThinAttributesExt {
 
 impl ThinAttributesExt for ThinAttributes {
     fn map_thin_attrs<F>(self, f: F) -> Self
-        where F: FnOnce(Vec<Attribute>) -> Vec<Attribute> {
-
-        // This is kinda complicated... Ensure the function is
-        // always called, and that None inputs or results are
-        // correctly handled.
-        if let Some(mut b) = self {
-            use std::mem::replace;
-
-            let vec = replace(&mut *b, Vec::new());
-            let vec = f(vec);
-            if vec.len() == 0 {
-                None
-            } else {
-                replace(&mut*b, vec);
-                Some(b)
-            }
-        } else {
-            f(Vec::new()).into_thin_attrs()
-        }
+        where F: FnOnce(Vec<Attribute>) -> Vec<Attribute>
+    {
+        f(self.map(|b| *b).unwrap_or(Vec::new())).into_thin_attrs()
     }
 
     fn prepend(self, attrs: ThinAttributes) -> Self {
