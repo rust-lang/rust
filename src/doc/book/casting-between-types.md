@@ -49,13 +49,6 @@ expression, `e as U2` is not necessarily so (in fact it will only be valid if
 
 A cast `e as U` is valid if `e` has type `T` and `T` *coerces* to `U`.
 
-For example:
-
-```rust
-let a = "hello";
-let b = a as String;
-```
-
 ## Numeric casts
 
 A cast `e as U` is also valid in any of the following cases:
