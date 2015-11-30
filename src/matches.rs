@@ -140,7 +140,7 @@ fn is_unit_expr(expr: &Expr) -> bool {
 fn has_only_ref_pats(arms: &[Arm]) -> bool {
     let mapped = arms.iter().flat_map(|a| &a.pats).map(|p| match p.node {
         PatRegion(..) => Some(true),  // &-patterns
-        PatWild(..) => Some(false),   // an "anything" wildcard is also fine
+        PatWild => Some(false),   // an "anything" wildcard is also fine
         _ => None,                    // any other pattern is not fine
     }).collect::<Option<Vec<bool>>>();
     // look for Some(v) where there's at least one true element
