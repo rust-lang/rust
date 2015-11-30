@@ -477,7 +477,7 @@ reasonable freedom and can be extended in the future.
   * replaced detailed design with a specification-oriented presentation rather than an implementation-oriented algorithm.
   * fixed some oversights in the specification (that led to matchers like `break { stuff }` being accepted),
   * expanded the follows sets for `ty` to include `OpenDelim(Brace), Ident(where), Or` (since Rust's grammar already requires all of `|foo:TY| {}`, `fn foo() -> TY {}` and `fn foo() -> TY where {}` to work).
-  * expanded the follow set for `pat` to include `Or` (since Rust's grammar already requires `match (true,false) { PAT | PAT => {} }` and `|PAT| {}` to work). See also [RFC issue 1336][].
+  * expanded the follow set for `pat` to include `Or` (since Rust's grammar already requires `match (true,false) { PAT | PAT => {} }` and `|PAT| {}` to work); see also [RFC issue 1336][]. Also added `If` and `In` to follow set for `pat` (to make the specifiation match the old implementation).
 
 [RFC issue 1336]: https://github.com/rust-lang/rfcs/issues/1336
 
