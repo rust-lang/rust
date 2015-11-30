@@ -44,7 +44,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
         // entry-point for all syntax extensions.
         ast::ExprMac(mac) => {
 
-            // FIXME: for now, drop attributes on the macro itself
+            // Assert that we drop any macro attributes on the floor here
             drop(attrs);
 
             let expanded_expr = match expand_mac_invoc(mac, span,
@@ -505,7 +505,7 @@ fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
         _ => return expand_non_macro_stmt(stmt, fld)
     };
 
-    // FIXME: for now, drop attrs on macros.
+    // Assert that we drop any macro attributes on the floor here
     drop(attrs);
 
     let maybe_new_items =
