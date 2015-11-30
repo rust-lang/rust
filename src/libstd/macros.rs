@@ -472,8 +472,8 @@ pub mod builtin {
     /// boolean expression evaluation of configuration flags. This frequently
     /// leads to less duplicated code.
     ///
-    /// The syntax given to this macro is the same syntax as the `cfg`
-    /// attribute.
+    /// The syntax given to this macro is the same syntax as [the `cfg`
+    /// attribute](../reference.html#conditional-compilation).
     ///
     /// # Examples
     ///
@@ -486,7 +486,7 @@ pub mod builtin {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
-    macro_rules! cfg { ($cfg:tt) => ({ /* compiler built-in */ }) }
+    macro_rules! cfg { ($($cfg:tt)*) => ({ /* compiler built-in */ }) }
 
     /// Parse the current given file as an expression.
     ///
@@ -501,5 +501,5 @@ pub mod builtin {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
-    macro_rules! include { ($cfg:tt) => ({ /* compiler built-in */ }) }
+    macro_rules! include { ($file:expr) => ({ /* compiler built-in */ }) }
 }
