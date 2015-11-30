@@ -823,7 +823,7 @@ fn rewrite_match(context: &RewriteContext,
             // We couldn't format the arm, just reproduce the source.
             let snippet = context.snippet(mk_sp(arm_start_pos(arm), arm_end_pos(arm)));
             result.push_str(&snippet);
-            result.push_str(arm_comma(&arm.body));
+            result.push_str(arm_comma(context, &arm.body));
         }
     }
     // BytePos(1) = closing match brace.
@@ -854,8 +854,10 @@ fn arm_end_pos(arm: &ast::Arm) -> BytePos {
     arm.body.span.hi
 }
 
-fn arm_comma(body: &ast::Expr) -> &'static str {
-    if let ast::ExprBlock(ref block) = body.node {
+fn arm_comma(context: &RewriteContext, body: &ast::Expr) -> &'static str {
+    if context.config.match_block_trailing_comma {
+        ","
+    } else if let ast::ExprBlock(ref block) = body.node {
         if let ast::DefaultBlock = block.rules {
             ""
         } else {
@@ -950,7 +952,7 @@ impl Rewrite for ast::Arm {
             ref x => x,
         };
 
-        let comma = arm_comma(body);
+        let comma = arm_comma(context, body);
 
         // Let's try and get the arm body on the same line as the condition.
         // 4 = ` => `.len()
@@ -961,7 +963,8 @@ impl Rewrite for ast::Arm {
 
             match rewrite {
                 Some(ref body_str) if !body_str.contains('\n') || !context.config.wrap_match_arms ||
-                                      comma.is_empty() => {
+                                      comma.is_empty() ||
+                                      context.config.match_block_trailing_comma => {
                     return Some(format!("{}{} => {}{}",
                                         attr_str.trim_left(),
                                         pats_str,
