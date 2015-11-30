@@ -924,13 +924,13 @@ pub trait Iterator {
     ///
     /// assert_eq!(iter.next(), Some(&2));
     ///
-    /// // we can peek() multiple times, the itererator won't advance
+    /// // we can peek() multiple times, the iterator won't advance
     /// assert_eq!(iter.peek(), Some(&&3));
     /// assert_eq!(iter.peek(), Some(&&3));
     ///
     /// assert_eq!(iter.next(), Some(&3));
     ///
-    /// // after the itererator is finished, so is peek()
+    /// // after the iterator is finished, so is peek()
     /// assert_eq!(iter.peek(), None);
     /// assert_eq!(iter.next(), None);
     /// ```
@@ -3556,13 +3556,13 @@ impl<I: Iterator> Peekable<I> {
     ///
     /// assert_eq!(iter.next(), Some(&2));
     ///
-    /// // we can peek() multiple times, the itererator won't advance
+    /// // we can peek() multiple times, the iterator won't advance
     /// assert_eq!(iter.peek(), Some(&&3));
     /// assert_eq!(iter.peek(), Some(&&3));
     ///
     /// assert_eq!(iter.next(), Some(&3));
     ///
-    /// // after the itererator is finished, so is peek()
+    /// // after the iterator is finished, so is peek()
     /// assert_eq!(iter.peek(), None);
     /// assert_eq!(iter.next(), None);
     /// ```
