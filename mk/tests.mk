@@ -163,8 +163,8 @@ endef
 
 $(foreach doc,$(DOCS), \
   $(eval $(call DOCTEST,md-$(doc),$(S)src/doc/$(doc).md)))
-$(foreach file,$(wildcard $(S)src/doc/trpl/*.md), \
-  $(eval $(call DOCTEST,$(file:$(S)src/doc/trpl/%.md=trpl-%),$(file))))
+$(foreach file,$(wildcard $(S)src/doc/book/*.md), \
+  $(eval $(call DOCTEST,$(file:$(S)src/doc/book/%.md=book-%),$(file))))
 $(foreach file,$(wildcard $(S)src/doc/nomicon/*.md), \
   $(eval $(call DOCTEST,$(file:$(S)src/doc/nomicon/%.md=nomicon-%),$(file))))
 ######################################################################
