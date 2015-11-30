@@ -29,4 +29,4 @@ rustdoc reference.md
 An overview of how to use the `rustdoc` command is available [in the docs][1].
 Further details are available from the command line by with `rustdoc --help`.
 
-[1]: https://github.com/rust-lang/rust/blob/master/src/doc/trpl/documentation.md
+[1]: https://github.com/rust-lang/rust/blob/master/src/doc/book/documentation.md
