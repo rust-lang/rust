@@ -29,7 +29,7 @@ References can also be coerced to raw pointers:
 
  * `&mut T` to `*mut T`
 
-Custom coercion may be defined using [`Deref`](deref-coercions.md).
+Custom coercions may be defined using [`Deref`](deref-coercions.md).
 
 Coercion is transitive.
  
