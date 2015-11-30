@@ -412,9 +412,9 @@ specifier for the NT.
 The current legal fragment specifiers are: `item`, `block`, `stmt`, `pat`,
 `expr`, `ty`, `ident`, `path`, `meta`, and `tt`.
 
-- `FOLLOW(pat)` = `{FatArrow, Comma, Eq, Or}`
+- `FOLLOW(pat)` = `{FatArrow, Comma, Eq, Or, Ident(if), Ident(in)}`
 - `FOLLOW(expr)` = `{FatArrow, Comma, Semicolon}`
-- `FOLLOW(ty)` = `{OpenDelim(Brace), Comma, FatArrow, Colon, Eq, Gt, Ident(as), Ident(where), Semi, Or}`
+- `FOLLOW(ty)` = `{OpenDelim(Brace), Comma, FatArrow, Colon, Eq, Gt, Semi, Or, Ident(as), Ident(where)}`
 - `FOLLOW(stmt)` = `FOLLOW(expr)`
 - `FOLLOW(path)` = `FOLLOW(ty)`
 - `FOLLOW(block)` = any token
