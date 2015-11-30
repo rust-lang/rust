@@ -396,7 +396,7 @@ FOLLOW(M) = FOLLOW(t1) ∩ FOLLOW(t2) ∩ ... ∩ FOLLOW(tN)
 ```
 
 Examples of FOLLOW (expressed as equality relations between sets, to avoid
-incoporating details of FOLLOW(NT) in these examples):
+incorporating details of FOLLOW(NT) in these examples):
 
  * FOLLOW(`$( $d:ident $e:expr )*`) = FOLLOW(`$e:expr`)
  * FOLLOW(`$( $d:ident $e:expr )* $(;)*`) = FOLLOW(`$e:expr`) ∩ ANYTOKEN = FOLLOW(`$e:expr`)
