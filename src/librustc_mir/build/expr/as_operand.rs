@@ -10,10 +10,10 @@
 
 //! See docs in build/expr/mod.rs
 
-use build::{BlockAnd, Builder};
+use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::Category;
 use hair::*;
-use repr::*;
+use rustc::mir::repr::*;
 
 impl<'a,'tcx> Builder<'a,'tcx> {
     /// Compile `expr` into a value that can be used as an operand.

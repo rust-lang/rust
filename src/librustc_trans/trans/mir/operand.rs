@@ -10,7 +10,7 @@
 
 use llvm::ValueRef;
 use rustc::middle::ty::{Ty, HasTypeFlags};
-use rustc_mir::repr as mir;
+use rustc::mir::repr as mir;
 use trans::base;
 use trans::common::{self, Block};
 use trans::datum;

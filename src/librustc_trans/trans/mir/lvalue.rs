@@ -10,8 +10,8 @@
 
 use llvm::ValueRef;
 use rustc::middle::ty::{self, Ty, HasTypeFlags};
-use rustc_mir::repr as mir;
-use rustc_mir::tcx::LvalueTy;
+use rustc::mir::repr as mir;
+use rustc::mir::tcx::LvalueTy;
 use trans::adt;
 use trans::base;
 use trans::build;
