@@ -1,3 +1,4 @@
+// rustfmt-wrap_match_arms: false
 // rustfmt-match_block_trailing_comma: true
 // Match expressions, no unwrapping of block arms or wrapping of multiline
 // expressions.
@@ -7,10 +8,8 @@ fn foo() {
         a => {
             "line1";
             "line2"
-        },
-        b => {
-            (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
-             bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)
-        },
+        }
+        b => (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+              bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb),
     }
 }

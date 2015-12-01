@@ -20,7 +20,7 @@ use string::{StringFormat, rewrite_string};
 use utils::{span_after, extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
             semicolon_for_stmt};
 use visitor::FmtVisitor;
-use config::{StructLitStyle, MultilineStyle};
+use config::{Config, StructLitStyle, MultilineStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment};
 use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg};
@@ -823,7 +823,7 @@ fn rewrite_match(context: &RewriteContext,
             // We couldn't format the arm, just reproduce the source.
             let snippet = context.snippet(mk_sp(arm_start_pos(arm), arm_end_pos(arm)));
             result.push_str(&snippet);
-            result.push_str(arm_comma(context, &arm.body));
+            result.push_str(arm_comma(&context.config, &arm.body));
         }
     }
     // BytePos(1) = closing match brace.
@@ -854,8 +854,8 @@ fn arm_end_pos(arm: &ast::Arm) -> BytePos {
     arm.body.span.hi
 }
 
-fn arm_comma(context: &RewriteContext, body: &ast::Expr) -> &'static str {
-    if context.config.match_block_trailing_comma {
+fn arm_comma(config: &Config, body: &ast::Expr) -> &'static str {
+    if config.match_block_trailing_comma {
         ","
     } else if let ast::ExprBlock(ref block) = body.node {
         if let ast::DefaultBlock = block.rules {
@@ -952,7 +952,7 @@ impl Rewrite for ast::Arm {
             ref x => x,
         };
 
-        let comma = arm_comma(context, body);
+        let comma = arm_comma(&context.config, body);
 
         // Let's try and get the arm body on the same line as the condition.
         // 4 = ` => `.len()
@@ -960,11 +960,14 @@ impl Rewrite for ast::Arm {
             let budget = context.config.max_width - line_start - comma.len() - 4;
             let offset = Indent::new(offset.block_indent, line_start + 4 - offset.block_indent);
             let rewrite = nop_block_collapse(body.rewrite(context, budget, offset), budget);
+            let is_body_str_block = match rewrite {
+                Some(ref s) => s.trim().starts_with("{") && s.trim().ends_with("}"),
+                None => false,
+            };
 
             match rewrite {
                 Some(ref body_str) if !body_str.contains('\n') || !context.config.wrap_match_arms ||
-                                      comma.is_empty() ||
-                                      context.config.match_block_trailing_comma => {
+                                      is_body_str_block => {
                     return Some(format!("{}{} => {}{}",
                                         attr_str.trim_left(),
                                         pats_str,
@@ -986,7 +989,11 @@ impl Rewrite for ast::Arm {
                                                          body_budget));
         let indent_str = offset.block_indent(context.config).to_string(context.config);
         let (body_prefix, body_suffix) = if context.config.wrap_match_arms {
-            (" {", "}")
+            if context.config.match_block_trailing_comma {
+                (" {", "},")
+            } else {
+                (" {", "}")
+            }
         } else {
             ("", "")
         };
