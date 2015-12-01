@@ -41,3 +41,5 @@ unsafe fn generic_call(cx: *mut JSContext, argc: libc::c_uint, vp: *mut JSVal,
                                               -> u8) {
     let f:  fn  ( _ , _  ) ->  _   =  panic!()  ;
 }
+
+pub fn start_export_thread<C: CryptoSchemee + 'static>(database: &Database, crypto_scheme: &C, block_size: usize, source_path: &Path) -> BonzoResult<mpsc::Consumer<'static, FileInstruction>> {}
