@@ -1216,6 +1216,64 @@ fn reverse_translate_def_id(cdata: Cmd, did: DefId) -> Option<DefId> {
     None
 }
 
+/// Translates a `Span` from an extern crate to the corresponding `Span`
+/// within the local crate's codemap.
+pub fn translate_span(cdata: Cmd,
+                      codemap: &codemap::CodeMap,
+                      last_filemap_index_hint: &Cell<usize>,
+                      span: codemap::Span)
+                      -> codemap::Span {
+    let span = if span.lo > span.hi {
+        // Currently macro expansion sometimes produces invalid Span values
+        // where lo > hi. In order not to crash the compiler when trying to
+        // translate these values, let's transform them into something we
+        // can handle (and which will produce useful debug locations at
+        // least some of the time).
+        // This workaround is only necessary as long as macro expansion is
+        // not fixed. FIXME(#23480)
+        codemap::mk_sp(span.lo, span.lo)
+    } else {
+        span
+    };
+
+    let imported_filemaps = cdata.imported_filemaps(&codemap);
+    let filemap = {
+        // Optimize for the case that most spans within a translated item
+        // originate from the same filemap.
+        let last_filemap_index = last_filemap_index_hint.get();
+        let last_filemap = &imported_filemaps[last_filemap_index];
+
+        if span.lo >= last_filemap.original_start_pos &&
+           span.lo <= last_filemap.original_end_pos &&
+           span.hi >= last_filemap.original_start_pos &&
+           span.hi <= last_filemap.original_end_pos {
+            last_filemap
+        } else {
+            let mut a = 0;
+            let mut b = imported_filemaps.len();
+
+            while b - a > 1 {
+                let m = (a + b) / 2;
+                if imported_filemaps[m].original_start_pos > span.lo {
+                    b = m;
+                } else {
+                    a = m;
+                }
+            }
+
+            last_filemap_index_hint.set(a);
+            &imported_filemaps[a]
+        }
+    };
+
+    let lo = (span.lo - filemap.original_start_pos) +
+              filemap.translated_filemap.start_pos;
+    let hi = (span.hi - filemap.original_start_pos) +
+              filemap.translated_filemap.start_pos;
+
+    codemap::mk_sp(lo, hi)
+}
+
 pub fn each_inherent_implementation_for_type<F>(cdata: Cmd,
                                                 id: DefIndex,
                                                 mut callback: F)
