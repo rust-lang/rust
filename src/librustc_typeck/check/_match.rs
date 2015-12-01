@@ -636,8 +636,11 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
     let report_bad_struct_kind = |is_warning| {
         bad_struct_kind_err(tcx.sess, pat.span, path, is_warning);
-        fcx.write_error(pat.id);
+        if is_warning {
+            return
+        }
 
+        fcx.write_error(pat.id);
         if let Some(subpats) = subpats {
             for pat in subpats {
                 check_pat(pcx, &**pat, tcx.types.err);
