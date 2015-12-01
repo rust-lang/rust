@@ -293,44 +293,64 @@ mod prim_slice { }
 
 #[doc(primitive = "str")]
 //
-/// Unicode string slices.
+/// String slices.
 ///
-/// Rust's `str` type is one of the core primitive types of the language. `&str`
-/// is the borrowed string type. This type of string can only be created from
-/// other strings, unless it is a `&'static str` (see below). It is not possible
-/// to move out of borrowed strings because they are owned elsewhere.
+/// The `str` type, also called a 'string slice', is the most primitive string
+/// type. It is usually seen in its borrowed form, `&str`. It is also the type
+/// of string literals, `&'static str`.
+///
+/// Strings slices are always valid UTF-8.
+///
+/// This documentation describes a number of methods and trait implementations
+/// on the `str` type. For technical reasons, there is additional, separate
+/// documentation in [the `std::str` module](str/index.html) as well.
 ///
 /// # Examples
 ///
-/// Here's some code that uses a `&str`:
+/// String literals are string slices:
 ///
 /// ```
-/// let s = "Hello, world.";
+/// let hello = "Hello, world!";
+///
+/// // with an explicit type annotation
+/// let hello: &'static str = "Hello, world!";
 /// ```
 ///
-/// This `&str` is a `&'static str`, which is the type of string literals.
-/// They're `'static` because literals are available for the entire lifetime of
-/// the program.
-///
-/// You can get a non-`'static` `&str` by taking a slice of a `String`:
-///
-/// ```
-/// let some_string = "Hello, world.".to_string();
-/// let s = &some_string;
-/// ```
+/// They are `'static` because they're stored directly in the final binary, and
+/// so will be valid for the `'static` duration.
 ///
 /// # Representation
 ///
-/// Rust's string type, `str`, is a sequence of Unicode scalar values encoded as
-/// a stream of UTF-8 bytes. All [strings](../../reference.html#literals) are
-/// guaranteed to be validly encoded UTF-8 sequences. Additionally, strings are
-/// not null-terminated and can thus contain null bytes.
+/// A `&str` is made up of two components: a pointer to some bytes, and a
+/// length. You can look at these with the [`.as_ptr()`] and [`len()`] methods:
 ///
-/// The actual representation of `str`s have direct mappings to slices: `&str`
-/// is the same as `&[u8]`.
+/// ```
+/// use std::slice;
+/// use std::str;
 ///
-/// *[See also the `std::str` module](str/index.html).*
+/// let story = "Once upon a time...";
 ///
+/// let ptr = story.as_ptr();
+/// let len = story.len();
+///
+/// // story has thirteen bytes
+/// assert_eq!(19, len);
+///
+/// // We can re-build a str out of ptr and len. This is all unsafe becuase
+/// // we are responsible for making sure the two components are valid:
+/// let s = unsafe {
+///     // First, we build a &[u8]...
+///     let slice = slice::from_raw_parts(ptr, len);
+///
+///     // ... and then convert that slice into a string slice
+///     str::from_utf8(slice)
+/// };
+///
+/// assert_eq!(s, Ok(story));
+/// ```
+///
+/// [`.as_ptr()`]: #method.as_ptr
+/// [`len()`]: # method.len
 mod prim_str { }
 
 #[doc(primitive = "tuple")]
