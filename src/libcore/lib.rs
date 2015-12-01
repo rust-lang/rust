@@ -85,6 +85,7 @@
 #![feature(unwind_attributes)]
 #![cfg_attr(stage0, feature(simd))]
 #![cfg_attr(not(stage0), feature(repr_simd, platform_intrinsics))]
+#![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 

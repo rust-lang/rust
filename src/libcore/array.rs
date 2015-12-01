@@ -27,7 +27,7 @@ use default::Default;
 use fmt;
 use hash::{Hash, self};
 use iter::IntoIterator;
-use marker::{Copy, Sized, Unsize};
+use marker::{Sized, Unsize};
 use option::Option;
 use slice::{Iter, IterMut, SliceExt};
 
@@ -91,13 +91,6 @@ macro_rules! array_impls {
             impl<T> BorrowMut<[T]> for [T; $N] {
                 fn borrow_mut(&mut self) -> &mut [T] {
                     self
-                }
-            }
-
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<T:Copy> Clone for [T; $N] {
-                fn clone(&self) -> [T; $N] {
-                    *self
                 }
             }
 
@@ -210,3 +203,31 @@ macro_rules! array_impl_default {
 }
 
 array_impl_default!{32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+
+macro_rules! array_impl_clone {
+    {$n:expr, $t:ident $($ts:ident)*} => {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl<T: Clone> Clone for [T; $n] {
+            fn clone(&self) -> [T; $n] {
+                let &[ref $t, $(ref $ts),*] = self;
+                [$t.clone(), $($ts.clone()),*]
+            }
+        }
+        array_impl_clone!{($n - 1), $($ts)*}
+    };
+    {$n:expr,} => {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl<T: Clone> Clone for [T; 0] {
+            fn clone(&self) -> [T; 0] {
+                []
+            }
+        }
+    };
+}
+
+array_impl_clone! { 32,
+    t00 t01 t02 t03 t04 t05 t06 t07 t08 t09
+    t10 t11 t12 t13 t14 t15 t16 t17 t18 t19
+    t20 t21 t22 t23 t24 t25 t26 t27 t28 t29
+    t30 t31
+}
