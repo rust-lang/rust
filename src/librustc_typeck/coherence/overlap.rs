@@ -65,22 +65,19 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         // borrows are safe.
         let blanket_impls = trait_def.blanket_impls.borrow();
         let nonblanket_impls = trait_def.nonblanket_impls.borrow();
-        let trait_def_id = trait_def.trait_ref.def_id;
 
         // Conflicts can only occur between a blanket impl and another impl,
         // or between 2 non-blanket impls of the same kind.
 
         for (i, &impl1_def_id) in blanket_impls.iter().enumerate() {
             for &impl2_def_id in &blanket_impls[(i+1)..] {
-                self.check_if_impls_overlap(trait_def_id,
-                                            impl1_def_id,
+                self.check_if_impls_overlap(impl1_def_id,
                                             impl2_def_id);
             }
 
             for v in nonblanket_impls.values() {
                 for &impl2_def_id in v {
-                    self.check_if_impls_overlap(trait_def_id,
-                                                impl1_def_id,
+                    self.check_if_impls_overlap(impl1_def_id,
                                                 impl2_def_id);
                 }
             }
@@ -89,8 +86,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         for impl_group in nonblanket_impls.values() {
             for (i, &impl1_def_id) in impl_group.iter().enumerate() {
                 for &impl2_def_id in &impl_group[(i+1)..] {
-                    self.check_if_impls_overlap(trait_def_id,
-                                                impl1_def_id,
+                    self.check_if_impls_overlap(impl1_def_id,
                                                 impl2_def_id);
                 }
             }
@@ -121,40 +117,47 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
 
 
     fn check_if_impls_overlap(&self,
-                              trait_def_id: DefId,
                               impl1_def_id: DefId,
                               impl2_def_id: DefId)
     {
         if let Some((impl1_def_id, impl2_def_id)) = self.order_impls(
             impl1_def_id, impl2_def_id)
         {
-            debug!("check_if_impls_overlap({:?}, {:?}, {:?})",
-                   trait_def_id,
+            debug!("check_if_impls_overlap({:?}, {:?})",
                    impl1_def_id,
                    impl2_def_id);
 
             let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, None, false);
-            if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id) {
-                self.report_overlap_error(trait_def_id, impl1_def_id, impl2_def_id);
+            if let Some(trait_ref) = traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id) {
+                self.report_overlap_error(impl1_def_id, impl2_def_id, trait_ref);
             }
         }
     }
 
-    fn report_overlap_error(&self, trait_def_id: DefId,
-                            impl1: DefId, impl2: DefId) {
+    fn report_overlap_error(&self,
+                            impl1: DefId,
+                            impl2: DefId,
+                            trait_ref: ty::TraitRef)
+    {
+        // only print the Self type if it's concrete; otherwise, it's not adding much information.
+        let self_type = {
+            trait_ref.substs.self_ty().and_then(|ty| {
+                if let ty::TyInfer(_) = ty.sty {
+                    None
+                } else {
+                    Some(format!(" for type `{}`", ty))
+                }
+            }).unwrap_or(String::new())
+        };
 
         span_err!(self.tcx.sess, self.span_of_impl(impl1), E0119,
-                  "conflicting implementations for trait `{}`",
-                  self.tcx.item_path_str(trait_def_id));
-
-        self.report_overlap_note(impl2);
-    }
-
-    fn report_overlap_note(&self, impl2: DefId) {
+                  "conflicting implementations of trait `{}`{}:",
+                  trait_ref,
+                  self_type);
 
         if impl2.is_local() {
             span_note!(self.tcx.sess, self.span_of_impl(impl2),
-                       "note conflicting implementation here");
+                       "conflicting implementation is here:");
         } else {
             let cname = self.tcx.sess.cstore.crate_name(impl2.krate);
             self.tcx.sess.note(&format!("conflicting implementation in crate `{}`", cname));
@@ -180,9 +183,9 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                 let prev_default_impl = self.default_impls.insert(trait_ref.def_id, item.id);
                 match prev_default_impl {
                     Some(prev_id) => {
-                        self.report_overlap_error(trait_ref.def_id,
-                                                  impl_def_id,
-                                                  self.tcx.map.local_def_id(prev_id));
+                        self.report_overlap_error(impl_def_id,
+                                                  self.tcx.map.local_def_id(prev_id),
+                                                  trait_ref);
                     }
                     None => { }
                 }

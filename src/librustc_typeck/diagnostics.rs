@@ -1569,8 +1569,8 @@ struct Foo {
     value: usize
 }
 
-impl MyTrait for Foo { // error: conflicting implementations for trait
-                       //        `MyTrait`
+impl MyTrait for Foo { // error: conflicting implementations of trait
+                       //        `MyTrait` for type `Foo`
     fn get(&self) -> usize { self.value }
 }
 ```

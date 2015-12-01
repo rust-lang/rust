@@ -15,7 +15,7 @@ trait MyTrait {}
 impl MyTrait for .. {}
 
 impl MyTrait for .. {}
-//~^ ERROR conflicting implementations for trait `MyTrait`
+//~^ ERROR conflicting implementations of trait `MyTrait`
 
 trait MySafeTrait {}
 
