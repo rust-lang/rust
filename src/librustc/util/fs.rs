@@ -109,23 +109,3 @@ pub fn rename_or_copy_remove<P: AsRef<Path>, Q: AsRef<Path>>(p: P,
         }
     }
 }
-
-// Like std::fs::create_dir_all, except handles concurrent calls among multiple
-// threads or processes.
-pub fn create_dir_racy(path: &Path) -> io::Result<()> {
-    match fs::create_dir(path) {
-        Ok(()) => return Ok(()),
-        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => return Ok(()),
-        Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
-        Err(e) => return Err(e),
-    }
-    match path.parent() {
-        Some(p) => try!(create_dir_racy(p)),
-        None => return Err(io::Error::new(io::ErrorKind::Other, "failed to create whole tree")),
-    }
-    match fs::create_dir(path) {
-        Ok(()) => Ok(()),
-        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(()),
-        Err(e) => Err(e),
-    }
-}

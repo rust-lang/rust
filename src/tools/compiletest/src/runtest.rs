@@ -25,7 +25,7 @@ use util::logv;
 use std::collections::HashSet;
 use std::env;
 use std::fmt;
-use std::fs::{self, File};
+use std::fs::{self, File, create_dir_all};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
@@ -395,7 +395,7 @@ actual:\n\
 
         let out_dir = self.output_base_name().with_extension("pretty-out");
         let _ = fs::remove_dir_all(&out_dir);
-        self.create_dir_racy(&out_dir);
+        create_dir_all(&out_dir).unwrap();
 
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = vec!["-".to_owned(),
@@ -1269,7 +1269,7 @@ actual:\n\
 
     fn compose_and_run_compiler(&self, args: ProcArgs, input: Option<String>) -> ProcRes {
         if !self.props.aux_builds.is_empty() {
-            self.create_dir_racy(&self.aux_output_dir_name());
+            create_dir_all(&self.aux_output_dir_name()).unwrap();
         }
 
         let aux_dir = self.aux_output_dir_name();
@@ -1340,22 +1340,6 @@ actual:\n\
                              input)
     }
 
-    // Like std::fs::create_dir_all, except handles concurrent calls among multiple
-    // threads or processes.
-    fn create_dir_racy(&self, path: &Path) {
-        match fs::create_dir(path) {
-            Ok(()) => return,
-            Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => return,
-            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
-            Err(e) => panic!("failed to create dir {:?}: {}", path, e),
-        }
-        self.create_dir_racy(path.parent().unwrap());
-        match fs::create_dir(path) {
-            Ok(()) => {}
-            Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => {}
-            Err(e) => panic!("failed to create dir {:?}: {}", path, e),
-        }
-    }
 
     fn compose_and_run(&self,
                        ProcArgs{ args, prog }: ProcArgs,
@@ -1435,7 +1419,7 @@ actual:\n\
 
 
                 let mir_dump_dir = self.get_mir_dump_dir();
-                self.create_dir_racy(mir_dump_dir.as_path());
+                create_dir_all(mir_dump_dir.as_path()).unwrap();
                 let mut dir_opt = "dump-mir-dir=".to_string();
                 dir_opt.push_str(mir_dump_dir.to_str().unwrap());
                 debug!("dir_opt: {:?}", dir_opt);
@@ -1923,7 +1907,7 @@ actual:\n\
 
         let out_dir = self.output_base_name();
         let _ = fs::remove_dir_all(&out_dir);
-        self.create_dir_racy(&out_dir);
+        create_dir_all(&out_dir).unwrap();
 
         let proc_res = self.document(&out_dir);
         if !proc_res.status.success() {
@@ -2299,7 +2283,7 @@ actual:\n\
         if tmpdir.exists() {
             self.aggressive_rm_rf(&tmpdir).unwrap();
         }
-        self.create_dir_racy(&tmpdir);
+        create_dir_all(&tmpdir).unwrap();
 
         let host = &self.config.host;
         let make = if host.contains("bitrig") || host.contains("dragonfly") ||

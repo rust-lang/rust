@@ -461,7 +461,7 @@ fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
 }
 
 fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(),()> {
-    match fs_util::create_dir_racy(path) {
+    match std_fs::create_dir_all(path) {
         Ok(()) => {
             debug!("{} directory created successfully", dir_tag);
             Ok(())

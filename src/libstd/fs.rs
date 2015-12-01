@@ -1534,6 +1534,12 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// error conditions for when a directory is being created (after it is
 /// determined to not exist) are outlined by `fs::create_dir`.
 ///
+/// Notable exception is made for situations where any of the directories
+/// specified in the `path` could not be created as it was created concurrently.
+/// Such cases are considered success. In other words: calling `create_dir_all`
+/// concurrently from multiple threads or processes is guaranteed to not fail
+/// due to race itself.
+///
 /// # Examples
 ///
 /// ```
@@ -1769,11 +1775,21 @@ impl DirBuilder {
     }
 
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
-        if path == Path::new("") || path.is_dir() { return Ok(()) }
-        if let Some(p) = path.parent() {
-            self.create_dir_all(p)?
+        match self.inner.mkdir(path) {
+            Ok(()) => return Ok(()),
+            Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => return Ok(()),
+            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e),
         }
-        self.inner.mkdir(path)
+        match path.parent() {
+            Some(p) => try!(create_dir_all(p)),
+            None => return Err(io::Error::new(io::ErrorKind::Other, "failed to create whole tree")),
+        }
+        match self.inner.mkdir(path) {
+            Ok(()) => Ok(()),
+            Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 }
 
