@@ -12,7 +12,7 @@ use hir;
 use hir::*;
 use intravisit::{self, Visitor, FnKind};
 use syntax::ast_util;
-use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID};
+use syntax::ast::{Name, NodeId, DUMMY_NODE_ID};
 use syntax::codemap::Span;
 use syntax::ptr::P;
 use syntax::owned_slice::OwnedSlice;

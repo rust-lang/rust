@@ -26,7 +26,7 @@
 //! property.
 
 use syntax::abi::Abi;
-use syntax::ast::{Ident, NodeId, CRATE_NODE_ID, Name, Attribute};
+use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
 use syntax::codemap::Span;
 use hir::*;
 
