@@ -8,7 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! An owned, growable string that enforces that its contents are valid UTF-8.
+//! A UTF-8 encoded, growable string.
+//!
+//! This module contains the [`String`] type, a trait for converting
+//! [`ToString`]s, and several error types that may result from working with
+//! [`String`]s.
+//!
+//! [`String`]: struct.String.html
+//! [`ToString`]: trait.ToString.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -29,7 +36,190 @@ use str::{self, FromStr, Utf8Error, Chars};
 use vec::Vec;
 use boxed::Box;
 
-/// A growable string stored as a UTF-8 encoded buffer.
+/// A UTF-8 encoded, growable string.
+///
+/// The `String` type is the most common string type that has ownership over the
+/// contents of the string. It has a close relationship with its borrowed
+/// counterpart, the primitive [`str`].
+///
+/// [`str`]: ../primitive.str.html
+///
+/// # Examples
+///
+/// You can create a `String` from a literal string with `String::from`:
+///
+/// ```
+/// let hello = String::from("Hello, world!");
+/// ```
+///
+/// You can append a [`char`] to a `String` with the [`push()`] method, and
+/// append a [`&str`] with the [`push_str()`] method:
+///
+/// ```
+/// let mut hello = String::from("Hello, ");
+///
+/// hello.push('w');
+/// hello.push_str("orld!");
+/// ```
+///
+/// [`push()`]: #method.push
+/// [`push_str()`]: #method.push_str
+///
+/// If you have a vector of UTF-8 bytes, you can create a `String` from it with
+/// the [`from_utf8()`] method:
+///
+/// ```
+/// // some bytes, in a vector
+/// let sparkle_heart = vec![240, 159, 146, 150];
+///
+/// // We know these bytes are valid, so we'll use `unwrap()`.
+/// let sparkle_heart = String::from_utf8(sparkle_heart).unwrap();
+///
+/// assert_eq!("💖", sparkle_heart);
+/// ```
+///
+/// [`from_utf8()`]: #method.from_utf8
+///
+/// # UTF-8
+///
+/// `String`s are always valid UTF-8. This has a few implications, the first of
+/// which is that if you need a non-UTF-8 string, consider [`OsString`]. It is
+/// similar, but without the UTF-8 constraint. The second implication is that
+/// you cannot index into a `String`:
+///
+/// ```ignore
+/// let s = "hello";
+///
+/// println!("The first letter of s is {}", s[0]); // ERROR!!!
+/// ```
+///
+/// [`OsString`]: ../ffi/struct.OsString.html
+///
+/// Indexing is intended to be a constant-time operation, but UTF-8 encoding
+/// does not allow us to do this. Furtheremore, it's not clear what sort of
+/// thing the index should return: a byte, a codepoint, or a grapheme cluster.
+/// The [`as_bytes()`] and [`chars()`] methods return iterators over the first
+/// two, respectively.
+///
+/// [`as_bytes()`]: #method.as_bytes
+/// [`chars()`]: #method.chars
+///
+/// # Deref
+///
+/// `String`s implement [`Deref`]`<Target=str>`, and so inherit all of [`str`]'s
+/// methods. In addition, this means that you can pass a `String` to any
+/// function which takes a [`&str`] by using an ampersand (`&`):
+///
+/// ```
+/// fn takes_str(s: &str) { }
+///
+/// let s = String::from("Hello");
+///
+/// takes_str(&s);
+/// ```
+///
+/// [`&str`]: ../primitive.str.html
+/// [`Deref`]: ../ops/trait.Deref.html
+///
+/// This will create a [`&str`] from the `String` and pass it in. This
+/// conversion is very inexpensive, and so generally, functions will accept
+/// [`&str`]s as arguments unless they need a `String` for some specific reason.
+///
+///
+/// # Representation
+///
+/// A `String` is made up of three components: a pointer to some bytes, a
+/// length, and a capacity. The pointer points to an internal buffer `String`
+/// uses to store its data. The length is the number of bytes currently stored
+/// in the buffer, and the capacity is the size of the buffer in bytes. As such,
+/// the length will always be less than or equal to the capacity.
+///
+/// This buffer is always stored on the heap.
+///
+/// You can look at these with the [`as_ptr()`], [`len()`], and [`capacity()`]
+/// methods:
+///
+/// ```
+/// use std::mem;
+///
+/// let story = String::from("Once upon a time...");
+///
+/// let ptr = story.as_ptr();
+/// let len = story.len();
+/// let capacity = story.capacity();
+///
+/// // story has thirteen bytes
+/// assert_eq!(19, len);
+///
+/// // Now that we have our parts, we throw the story away.
+/// mem::forget(story);
+///
+/// // We can re-build a String out of ptr, len, and capacity. This is all
+/// // unsafe becuase we are responsible for making sure the components are
+/// // valid:
+/// let s = unsafe { String::from_raw_parts(ptr as *mut _, len, capacity) } ;
+///
+/// assert_eq!(String::from("Once upon a time..."), s);
+/// ```
+///
+/// [`as_ptr()`]: #method.as_ptr
+/// [`len()`]: # method.len
+/// [`capacity()`]: # method.capacity
+///
+/// If a `String` has enough capacity, adding elements to it will not
+/// re-allocate. For example, consider this program:
+///
+/// ```
+/// let mut s = String::new();
+///
+/// println!("{}", s.capacity());
+///
+/// for _ in 0..5 {
+///     s.push_str("hello");
+///     println!("{}", s.capacity());
+/// }
+/// ```
+///
+/// This will output the following:
+///
+/// ```text
+/// 0
+/// 5
+/// 10
+/// 20
+/// 20
+/// 40
+/// ```
+///
+/// At first, we have no memory allocated at all, but as we append to the
+/// string, it increases its capacity appropriately. If we instead use the
+/// [`with_capacity()`] method to allocate the correct capacity initially:
+///
+/// ```
+/// let mut s = String::with_capacity(25);
+///
+/// println!("{}", s.capacity());
+///
+/// for _ in 0..5 {
+///     s.push_str("hello");
+///     println!("{}", s.capacity());
+/// }
+/// ```
+///
+/// [`with_capacity()`]: #method.with_capacity
+///
+/// We end up with a different output:
+///
+/// ```text
+/// 25
+/// 25
+/// 25
+/// 25
+/// 25
+/// 25
+/// ```
+///
+/// Here, there's no need to allocate more memory inside the loop.
 #[derive(PartialOrd, Eq, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct String {
@@ -139,7 +329,7 @@ impl String {
     /// // some bytes, in a vector
     /// let sparkle_heart = vec![240, 159, 146, 150];
     ///
-    /// // We know these bytes are valid, so just use `unwrap()`.
+    /// // We know these bytes are valid, so we'll use `unwrap()`.
     /// let sparkle_heart = String::from_utf8(sparkle_heart).unwrap();
     ///
     /// assert_eq!("💖", sparkle_heart);
@@ -201,7 +391,7 @@ impl String {
     /// // some bytes, in a vector
     /// let sparkle_heart = vec![240, 159, 146, 150];
     ///
-    /// // We know these bytes are valid, so just use `unwrap()`.
+    /// // We know these bytes are valid, so we'll use `unwrap()`.
     /// let sparkle_heart = String::from_utf8(sparkle_heart).unwrap();
     ///
     /// assert_eq!("💖", sparkle_heart);
