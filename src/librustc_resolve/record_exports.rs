@@ -130,13 +130,14 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
 
     fn add_exports_for_module(&mut self, exports: &mut Vec<Export>, module_: &Module) {
         for (name, import_resolution) in module_.import_resolutions.borrow().iter() {
-            if !import_resolution.is_public {
-                continue;
-            }
             let xs = [TypeNS, ValueNS];
             for &ns in &xs {
-                match import_resolution.target_for_namespace(ns) {
-                    Some(target) => {
+                if !import_resolution[ns].is_public {
+                    continue;
+                }
+
+                match import_resolution[ns].target {
+                    Some(ref target) => {
                         debug!("(computing exports) maybe export '{}'", name);
                         self.add_export_of_namebinding(exports, *name, &target.binding)
                     }
