@@ -4,7 +4,7 @@
 
 * `as`: primitive casting.  See [Casting Between Types (`as`)].
 * `break`: break out of loop.  See [Loops (Ending Iteration Early)].
-* `const`: constant items.  See [`const` and `static`].
+* `const`: constant items and constant raw pointers.  See [`const` and `static`], [Raw Pointers].
 * `continue`: continue to next loop iteration.  See [Loops (Ending Iteration Early)].
 * `crate`: external crate linkage.  See [Crates and Modules (Importing External Crates)].
 * `else`: fallback for `if` and `if let` constructs.  See [`if`], [`if let`].
@@ -39,7 +39,7 @@
 
 ## Operators and Symbols
 
-* `!` (`expr!(…)`, `expr!{…}`, `expr![…]`): denotes macro expansion.  See [Macros].
+* `!` (`ident!(…)`, `ident!{…}`, `ident![…]`): denotes macro expansion.  See [Macros].
 * `!` (`!expr`): bitwise or logical complement.  Overloadable (`Not`).
 * `%` (`expr % expr`): arithmetic remainder.  Overloadable (`Rem`).
 * `%=` (`var %= expr`): arithmetic remainder & assignment.
@@ -89,6 +89,7 @@
 * `^=` (`var ^= expr`): bitwise exclusive or & assignment.
 * `|` (`expr | expr`): bitwise or.  Overloadable (`BitOr`).
 * `|` (`pat | pat`): pattern alternatives.  See [Patterns (Multiple patterns)].
+* `|` (`|…| expr`): closures.  See [Closures].
 * `|=` (`var |= expr`): bitwise or & assignment.
 * `||` (`expr || expr`): logical or.
 * `_`: "ignored" pattern binding.  See [Patterns (Ignoring bindings)].
@@ -105,6 +106,7 @@
 * `br"…"`, `br#"…"#`, `br##"…"##`, …: raw byte string literal, combination of raw and byte string literal. See [Reference (Raw Byte String Literals)].
 * `'…'`: character literal.  See [Primitive Types (`char`)].
 * `b'…'`: ASCII byte literal.
+* `|…| expr`: closure.  See [Closures].
 
 <!-- Path-related syntax -->
 
@@ -173,6 +175,8 @@
 * `[…]`: array literal.  See [Primitive Types (Arrays)].
 * `[expr; len]`: array literal containing `len` copies of `expr`.  See [Primitive Types (Arrays)].
 * `[type; len]`: array type containing `len` instances of `type`.  See [Primitive Types (Arrays)].
+* `expr[expr]`: collection indexing.  Overloadable (`Index`, `IndexMut`).
+* `expr[..]`, `expr[a..]`, `expr[..b]`, `expr[a..b]`: collection indexing pretending to be collection slicing, using `Range`, `RangeFrom`, `RangeTo`, `RangeFull` as the "index".
 
 [`const` and `static` (`static`)]: const-and-static.html#static
 [`const` and `static`]: const-and-static.html
