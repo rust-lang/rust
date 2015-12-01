@@ -671,9 +671,9 @@ pub mod consts {
     ///
     /// Some possible values:
     ///
-    /// - .so
-    /// - .dylib
-    /// - .dll
+    /// - so
+    /// - dylib
+    /// - dll
     #[stable(feature = "env", since = "1.0.0")]
     pub const DLL_EXTENSION: &'static str = super::os::DLL_EXTENSION;
 
@@ -682,7 +682,9 @@ pub mod consts {
     ///
     /// Some possible values:
     ///
-    /// - exe
+    /// - .exe
+    /// - .nexe
+    /// - .pexe
     /// - `""` (an empty string)
     #[stable(feature = "env", since = "1.0.0")]
     pub const EXE_SUFFIX: &'static str = super::os::EXE_SUFFIX;
