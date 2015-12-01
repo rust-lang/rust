@@ -1037,13 +1037,6 @@ impl NameBindings {
         }
     }
 
-    fn create_from_module(module: Rc<Module>) -> NameBindings {
-        NameBindings {
-            type_ns: NameBinding::create_from_module(module),
-            value_ns: NameBinding::new(),
-        }
-    }
-
     /// Creates a new module in this set of name bindings.
     fn define_module(&self, module: Rc<Module>, sp: Span) {
         self.type_ns.set(NsDef::create_from_module(module, Some(sp)));
