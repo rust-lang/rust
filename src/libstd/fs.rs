@@ -715,7 +715,7 @@ impl DirEntry {
     /// This function will not traverse symlinks if this entry points at a
     /// symlink.
     ///
-    /// # Platform behavior
+    /// # Platform-specific behavior
     ///
     /// On Windows this function is cheap to call (no extra system calls
     /// needed), but on Unix platforms this function is the equivalent of
@@ -730,7 +730,7 @@ impl DirEntry {
     /// This function will not traverse symlinks if this entry points at a
     /// symlink.
     ///
-    /// # Platform behavior
+    /// # Platform-specific behavior
     ///
     /// On Windows and most Unix platforms this function is free (no extra
     /// system calls needed), but some Unix platforms may require the equivalent
@@ -758,12 +758,12 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// guarantee that the file is immediately deleted (e.g. depending on
 /// platform, other open file descriptors may prevent immediate removal).
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `unlink` function on Unix
 /// and the `DeleteFile` function on Windows.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -794,12 +794,12 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function will traverse symbolic links to query information about the
 /// destination file.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `stat` function on Unix
 /// and the `GetFileAttributesEx` function on Windows.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -827,12 +827,12 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 
 /// Query the metadata about a file without following symlinks.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `lstat` function on Unix
 /// and the `GetFileAttributesEx` function on Windows.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -862,12 +862,12 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// This will not work if the new name is on a different mount point.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `rename` function on Unix
 /// and the `MoveFileEx` function with the `MOVEFILE_REPLACE_EXISTING` flag on Windows.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -903,14 +903,14 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 ///
 /// On success, the total number of bytes copied is returned.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `open` function in Unix
 /// with `O_RDONLY` for `from` and `O_WRONLY`, `O_CREAT`, and `O_TRUNC` for `to`.
 /// `O_CLOEXEC` is set for returned file descriptors.
 /// On Windows, this function currently corresponds to `CopyFileEx`.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -941,12 +941,12 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// The `dst` path will be a link pointing to the `src` path. Note that systems
 /// often require these two paths to both be located on the same filesystem.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `link` function on Unix
 /// and the `CreateHardLink` function on Windows.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -998,13 +998,13 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 
 /// Reads a symbolic link, returning the file that the link points to.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `readlink` function on Unix
 /// and the `CreateFile` function with `FILE_FLAG_OPEN_REPARSE_POINT` and
 /// `FILE_FLAG_BACKUP_SEMANTICS` flags on Windows.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1032,12 +1032,12 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// Returns the canonical form of a path with all intermediate components
 /// normalized and symbolic links resolved.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `realpath` function on Unix
 /// and the `CreateFile` and `GetFinalPathNameByHandle` functions on Windows.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1064,12 +1064,12 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 
 /// Creates a new, empty directory at the provided path
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `mkdir` function on Unix
 /// and the `CreateDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1097,12 +1097,12 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Recursively create a directory and all of its parent components if they
 /// are missing.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `mkdir` function on Unix
 /// and the `CreateDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1131,12 +1131,12 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 
 /// Removes an existing, empty directory.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `rmdir` function on Unix
 /// and the `RemoveDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1167,13 +1167,13 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function does **not** follow symbolic links and it will simply remove the
 /// symbolic link itself.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to `opendir`, `lstat`, `rm` and `rmdir` functions on Unix
 /// and the `FindFirstFile`, `GetFileAttributesEx`, `DeleteFile`, and `RemoveDirectory` functions
 /// on Windows.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1212,12 +1212,12 @@ fn _remove_dir_all(path: &Path) -> io::Result<()> {
 /// The iterator will yield instances of `io::Result<DirEntry>`. New errors may
 /// be encountered after an iterator is initially constructed.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `opendir` function on Unix
 /// and the `FindFirstFile` function on Windows.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1315,12 +1315,12 @@ impl Iterator for WalkDir {
 
 /// Changes the permissions found on a file or a directory.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `chmod` function on Unix
 /// and the `SetFileAttributes` function on Windows.
 /// Note that, this [may change in the future][changes].
-/// [changes]: https://github.com/rust-lang/rust/pull/28613
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
