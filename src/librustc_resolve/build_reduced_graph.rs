@@ -16,7 +16,7 @@
 use DefModifiers;
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
-use resolve_imports::ImportResolution;
+use resolve_imports::{ImportResolution, NsImportResolution};
 use Module;
 use Namespace::{TypeNS, ValueNS};
 use NameBindings;
@@ -827,9 +827,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         resolution.outstanding_references += 1;
 
                         // the source of this name is different now
-                        resolution.type_id = id;
-                        resolution.value_id = id;
-                        resolution.is_public = is_public;
+                        let ns_resolution =
+                            NsImportResolution { id: id, is_public: is_public, target: None };
+                        resolution[TypeNS] = ns_resolution.clone();
+                        resolution[ValueNS] = ns_resolution;
                         return;
                     }
                     None => {}
