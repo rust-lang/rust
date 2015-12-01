@@ -109,7 +109,7 @@ stack frame. It grows upward, the more functions we call.
 
 There are some important things we have to take note of here. The numbers 0, 1,
 and 2 are all solely for illustrative purposes, and bear no relationship to the
-actual numbers the computer will actually use. In particular, the series of
+address values the computer will use in reality. In particular, the series of
 addresses are in reality going to be separated by some number of bytes that
 separate each address, and that separation may even exceed the size of the
 value being stored.
@@ -464,7 +464,7 @@ At the end of `bar()`, it calls `baz()`:
 | (2<sup>30</sup>) - 2 |      | 5                      |
 | ...                  | ...  | ...                    |
 | 12                   | g    | 100                    |
-| 11                   | f    | → 9                    |
+| 11                   | f    | → (2<sup>30</sup>) - 2 |
 | 10                   | e    | → 9                    |
 | 9                    | d    | → (2<sup>30</sup>) - 2 |
 | 8                    | c    | 5                      |

@@ -1141,7 +1141,18 @@ impl ops::DerefMut for String {
     }
 }
 
-/// Error returned from `String::from`
+/// An error when parsing a `String`.
+///
+/// This `enum` is slightly awkward: it will never actually exist. This error is
+/// part of the type signature of the implementation of [`FromStr`] on
+/// [`String`]. The return type of [`from_str()`], requires that an error be
+/// defined, but, given that a [`String`] can always be made into a new
+/// [`String`] without error, this type will never actually be returned. As
+/// such, it is only here to satisfy said signature, and is useless otherwise.
+///
+/// [`FromStr`]: ../str/trait.FromStr.html
+/// [`String`]: struct.String.html
+/// [`from_str()`]: ../str/trait.FromStr.html#tymethod.from_str
 #[stable(feature = "str_parse_error", since = "1.5.0")]
 #[derive(Copy)]
 pub enum ParseError {}
@@ -1179,10 +1190,28 @@ impl PartialEq for ParseError {
 #[stable(feature = "str_parse_error", since = "1.5.0")]
 impl Eq for ParseError {}
 
-/// A generic trait for converting a value to a string
+/// A trait for converting a value to a `String`.
+///
+/// This trait is automatically implemented for any type which implements the
+/// [`Display`] trait. As such, `ToString` shouldn't be implemented directly:
+/// [`Display`] should be implemented instead, and you get the `ToString`
+/// implementation for free.
+///
+/// [`Display`]: ../fmt/trait.Display.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToString {
-    /// Converts the value of `self` to an owned string
+    /// Converts the given value to a `String`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let i = 5;
+    /// let five = String::from("5");
+    ///
+    /// assert_eq!(five, i.to_string());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_string(&self) -> String;
 }
