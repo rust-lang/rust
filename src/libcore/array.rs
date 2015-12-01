@@ -209,8 +209,7 @@ macro_rules! array_impl_clone {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<T: Clone> Clone for [T; $n] {
             fn clone(&self) -> [T; $n] {
-                let temp = [&self[$i], $(&self[$idx]),*];
-                [temp[$i].clone(), $(temp[$idx].clone()),*]
+                [self[$i-$i].clone(), $(self[$i-$idx].clone()),*]
             }
         }
         array_impl_clone!{$i, $($idx,)*}
