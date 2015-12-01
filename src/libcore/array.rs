@@ -205,15 +205,15 @@ macro_rules! array_impl_default {
 array_impl_default!{32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
 
 macro_rules! array_impl_clone {
-    {$n:expr, $t:ident $($ts:ident)*} => {
+    {$n:expr, $i:expr, $($idx:expr,)*} => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<T: Clone> Clone for [T; $n] {
             fn clone(&self) -> [T; $n] {
-                let &[ref $t, $(ref $ts),*] = self;
-                [$t.clone(), $($ts.clone()),*]
+                let temp = [&self[$i], $(&self[$idx]),*];
+                [temp[$i].clone(), $(temp[$idx].clone()),*]
             }
         }
-        array_impl_clone!{($n - 1), $($ts)*}
+        array_impl_clone!{$i, $($idx,)*}
     };
     {$n:expr,} => {
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -225,9 +225,9 @@ macro_rules! array_impl_clone {
     };
 }
 
-array_impl_clone! { 32,
-    t00 t01 t02 t03 t04 t05 t06 t07 t08 t09
-    t10 t11 t12 t13 t14 t15 t16 t17 t18 t19
-    t20 t21 t22 t23 t24 t25 t26 t27 t28 t29
-    t30 t31
+array_impl_clone! {
+                                32, 31, 30,
+    29, 28, 27, 26, 25, 24, 23, 22, 21, 20,
+    19, 18, 17, 16, 15, 14, 13, 12, 11, 10,
+     9,  8,  7,  6,  5,  4,  3,  2,  1,  0,
 }
