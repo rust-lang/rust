@@ -172,14 +172,14 @@
 //!
 //! Now imagine that I have an implementation of `ConvertTo` for `Object`:
 //!
-//!     impl ConvertTo<int> for Object { ... }
+//!     impl ConvertTo<isize> for Object { ... }
 //!
 //! And I want to call `convertAll` on an array of strings. Suppose
 //! further that for whatever reason I specifically supply the value of
 //! `String` for the type parameter `T`:
 //!
 //!     let mut vector = vec!["string", ...];
-//!     convertAll::<int, String>(vector);
+//!     convertAll::<isize, String>(vector);
 //!
 //! Is this legal? To put another way, can we apply the `impl` for
 //! `Object` to the type `String`? The answer is yes, but to see why
@@ -190,7 +190,7 @@
 //! - It will then call the impl of `convertTo()` that is intended
 //!   for use with objects. This has the type:
 //!
-//!       fn(self: &Object) -> int
+//!       fn(self: &Object) -> isize
 //!
 //!   It is ok to provide a value for `self` of type `&String` because
 //!   `&String <: &Object`.
@@ -198,17 +198,17 @@
 //! OK, so intuitively we want this to be legal, so let's bring this back
 //! to variance and see whether we are computing the correct result. We
 //! must first figure out how to phrase the question "is an impl for
-//! `Object,int` usable where an impl for `String,int` is expected?"
+//! `Object,isize` usable where an impl for `String,isize` is expected?"
 //!
 //! Maybe it's helpful to think of a dictionary-passing implementation of
 //! type classes. In that case, `convertAll()` takes an implicit parameter
 //! representing the impl. In short, we *have* an impl of type:
 //!
-//!     V_O = ConvertTo<int> for Object
+//!     V_O = ConvertTo<isize> for Object
 //!
 //! and the function prototype expects an impl of type:
 //!
-//!     V_S = ConvertTo<int> for String
+//!     V_S = ConvertTo<isize> for String
 //!
 //! As with any argument, this is legal if the type of the value given
 //! (`V_O`) is a subtype of the type expected (`V_S`). So is `V_O <: V_S`?
@@ -217,7 +217,7 @@
 //! covariant, it means that:
 //!
 //!     V_O <: V_S iff
-//!         int <: int
+//!         isize <: isize
 //!         String <: Object
 //!
 //! These conditions are satisfied and so we are happy.
