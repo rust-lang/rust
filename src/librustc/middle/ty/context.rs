@@ -408,7 +408,10 @@ impl<'tcx> ctxt<'tcx> {
                             -> &'tcx ty::TraitDef<'tcx> {
         let did = def.trait_ref.def_id;
         let interned = self.arenas.trait_defs.alloc(def);
-        self.trait_defs.borrow_mut().insert(did, interned);
+        if let Some(prev) = self.trait_defs.borrow_mut().insert(did, interned) {
+            self.sess.bug(&format!("Tried to overwrite interned TraitDef: {:?}",
+                                   prev))
+        }
         interned
     }
 
@@ -425,7 +428,10 @@ impl<'tcx> ctxt<'tcx> {
         let def = ty::AdtDefData::new(self, did, kind, variants);
         let interned = self.arenas.adt_defs.alloc(def);
         // this will need a transmute when reverse-variance is removed
-        self.adt_defs.borrow_mut().insert(did, interned);
+        if let Some(prev) = self.adt_defs.borrow_mut().insert(did, interned) {
+            self.sess.bug(&format!("Tried to overwrite interned AdtDef: {:?}",
+                                   prev))
+        }
         interned
     }
 
@@ -435,13 +441,20 @@ impl<'tcx> ctxt<'tcx> {
         }
 
         let interned = self.arenas.stability.alloc(stab);
-        self.stability_interner.borrow_mut().insert(interned, interned);
+        if let Some(prev) = self.stability_interner
+                                .borrow_mut()
+                                .insert(interned, interned) {
+            self.sess.bug(&format!("Tried to overwrite interned Stability: {:?}",
+                                   prev))
+        }
         interned
     }
 
     pub fn store_free_region_map(&self, id: NodeId, map: FreeRegionMap) {
-        self.free_region_maps.borrow_mut()
-                             .insert(id, map);
+        if self.free_region_maps.borrow_mut().insert(id, map).is_some() {
+            self.sess.bug(&format!("Tried to overwrite interned FreeRegionMap for NodeId {:?}",
+                                   id))
+        }
     }
 
     pub fn free_region_map(&self, id: NodeId) -> FreeRegionMap {
