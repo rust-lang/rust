@@ -214,8 +214,8 @@ mod prim_pointer { }
 
 #[doc(primitive = "array")]
 //
-/// A fixed-size array, denoted `[T; N]`, for the element type, `T`, and
-/// the non-negative compile time constant size, `N`.
+/// A fixed-size array, denoted `[T; N]`, for the element type, `T`, and the
+/// non-negative compile time constant size, `N`.
 ///
 /// Arrays values are created either with an explicit expression that lists
 /// each element: `[x, y, z]` or a repeat expression: `[x; N]`. The repeat
@@ -223,8 +223,8 @@ mod prim_pointer { }
 ///
 /// The type `[T; N]` is `Copy` if `T: Copy`.
 ///
-/// Arrays of sizes from 0 to 32 (inclusive) implement the following traits
-/// if the element type allows it:
+/// Arrays of sizes from 0 to 32 (inclusive) implement the following traits if
+/// the element type allows it:
 ///
 /// - `Clone` (only if `T: Copy`)
 /// - `Debug`
@@ -235,8 +235,8 @@ mod prim_pointer { }
 /// - `Borrow`, `BorrowMut`
 /// - `Default`
 ///
-/// Arrays dereference to [slices (`[T]`)][slice], so their methods can be called
-/// on arrays.
+/// Arrays coerce to [slices (`[T]`)][slice], so their methods can be called on
+/// arrays.
 ///
 /// [slice]: primitive.slice.html
 ///
