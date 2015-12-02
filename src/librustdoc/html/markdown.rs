@@ -14,7 +14,7 @@
 //! (bundled into the rust runtime). This module self-contains the C bindings
 //! and necessary legwork to render markdown, and exposes all of the
 //! functionality through a unit-struct, `Markdown`, which has an implementation
-//! of `fmt::String`. Example usage:
+//! of `fmt::Display`. Example usage:
 //!
 //! ```rust,ignore
 //! use rustdoc::html::markdown::Markdown;
@@ -29,19 +29,19 @@
 use libc;
 use std::ascii::AsciiExt;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::default::Default;
 use std::ffi::CString;
 use std::fmt;
 use std::slice;
 use std::str;
 
+use html::render::{with_unique_id, reset_ids};
 use html::toc::TocBuilder;
 use html::highlight;
 use html::escape::Escape;
 use test;
 
-/// A unit struct which has the `fmt::String` trait implemented. When
+/// A unit struct which has the `fmt::Display` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
 pub struct Markdown<'a>(pub &'a str);
@@ -210,10 +210,6 @@ fn collapse_whitespace(s: &str) -> String {
     s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-thread_local!(static USED_HEADER_MAP: RefCell<HashMap<String, usize>> = {
-    RefCell::new(HashMap::new())
-});
-
 thread_local!(pub static PLAYGROUND_KRATE: RefCell<Option<Option<String>>> = {
     RefCell::new(None)
 });
@@ -311,31 +307,22 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         let opaque = unsafe { (*data).opaque as *mut hoedown_html_renderer_state };
         let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
 
-        // Make sure our hyphenated ID is unique for this page
-        let id = USED_HEADER_MAP.with(|map| {
-            let id = match map.borrow_mut().get_mut(&id) {
-                None => id,
-                Some(a) => { *a += 1; format!("{}-{}", id, *a - 1) }
-            };
-            map.borrow_mut().insert(id.clone(), 1);
-            id
+        let text = with_unique_id(id, |id| {
+            let sec = opaque.toc_builder.as_mut().map_or("".to_owned(), |builder| {
+                format!("{} ", builder.push(level as u32, s.clone(), id.to_owned()))
+            });
+
+            // Render the HTML
+            format!("<h{lvl} id='{id}' class='section-header'>\
+                    <a href='#{id}'>{sec}{}</a></h{lvl}>",
+                    s, lvl = level, id = id, sec = sec)
         });
-
-
-        let sec = opaque.toc_builder.as_mut().map_or("".to_owned(), |builder| {
-            format!("{} ", builder.push(level as u32, s.clone(), id.clone()))
-        });
-
-        // Render the HTML
-        let text = format!("<h{lvl} id='{id}' class='section-header'>\
-                           <a href='#{id}'>{sec}{}</a></h{lvl}>",
-                           s, lvl = level, id = id, sec = sec);
 
         let text = CString::new(text).unwrap();
         unsafe { hoedown_buffer_puts(ob, text.as_ptr()) }
     }
 
-    reset_headers();
+    reset_ids();
 
     extern fn codespan(
         ob: *mut hoedown_buffer,
@@ -498,18 +485,6 @@ impl LangString {
 
         data
     }
-}
-
-/// By default this markdown renderer generates anchors for each header in the
-/// rendered document. The anchor name is the contents of the header separated
-/// by hyphens, and a thread-local map is used to disambiguate among duplicate
-/// headers (numbers are appended).
-///
-/// This method will reset the local table for these headers. This is typically
-/// used at the beginning of rendering an entire HTML page to reset from the
-/// previous state (if any).
-pub fn reset_headers() {
-    USED_HEADER_MAP.with(|s| s.borrow_mut().clear());
 }
 
 impl<'a> fmt::Display for Markdown<'a> {
