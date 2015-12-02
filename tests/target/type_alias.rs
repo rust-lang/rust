@@ -22,6 +22,19 @@ pub type Exactly100CharsTest<'a, 'b, 'c, 'd, LONGPARAMETERNAME, LONGPARAMETERNAM
 pub type Exactly101CharsTest<'a, 'b, 'c, 'd, LONGPARAMETERNAME, LONGPARAMETERNAME, A, B> =
     Vec<Test>;
 
+pub type Exactly100CharsToEqualTest<'a, 'b, 'c, 'd, LONGPARAMETERNAME, LONGPARAMETERNAME, A, B, C> =
+    Vec<i32>;
+
+pub type GenericsFitButNotEqualTest<'a,
+                                    'b,
+                                    'c,
+                                    'd,
+                                    LONGPARAMETERNAME,
+                                    LONGPARAMETERNAME,
+                                    A1,
+                                    B,
+                                    C> = Vec<i32>;
+
 pub type CommentTest<// Lifetime
                      'a, // Type
                      T> = ();

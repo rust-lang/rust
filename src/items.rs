@@ -455,6 +455,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
         let generics_str = try_opt!(rewrite_generics(context,
                                                      generics,
                                                      offset,
+                                                     context.config.max_width,
                                                      offset + result.len(),
                                                      mk_sp(lo, hi)));
         result.push_str(&generics_str);
@@ -686,6 +687,7 @@ fn format_tuple_struct(context: &RewriteContext,
             let generics_str = try_opt!(rewrite_generics(context,
                                                          generics,
                                                          offset,
+                                                         context.config.max_width,
                                                          offset + header_str.len(),
                                                          mk_sp(span.lo, body_lo)));
             result.push_str(&generics_str);
@@ -763,9 +765,11 @@ pub fn rewrite_type_alias(context: &RewriteContext,
 
     let generics_indent = indent + result.len();
     let generics_span = mk_sp(span_after(span, "type", context.codemap), ty.span.lo);
+    let generics_width = context.config.max_width - " =".len();
     let generics_str = try_opt!(rewrite_generics(context,
                                                  generics,
                                                  indent,
+                                                 generics_width,
                                                  generics_indent,
                                                  generics_span));
 
@@ -773,9 +777,12 @@ pub fn rewrite_type_alias(context: &RewriteContext,
     result.push_str(" = ");
 
     let line_width = last_line_width(&result);
-    let budget = try_opt!(context.config
-                                 .max_width
-                                 .checked_sub(indent.width() + line_width + ";".len()));
+    // This checked_sub may fail as the extra space after '=' is not taken into account
+    // In that case the budget is set to 0 which will make ty.rewrite retry on a new line
+    let budget = context.config
+                        .max_width
+                        .checked_sub(indent.width() + line_width + ";".len())
+                        .unwrap_or(0);
     let type_indent = indent + line_width;
     // Try to fit the type on the same line
     let ty_str = try_opt!(ty.rewrite(context, budget, type_indent)
@@ -1031,6 +1038,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     let generics_str = try_opt!(rewrite_generics(context,
                                                  generics,
                                                  indent,
+                                                 context.config.max_width,
                                                  generics_indent,
                                                  generics_span));
     result.push_str(&generics_str);
@@ -1366,6 +1374,7 @@ fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause) -> bool {
 fn rewrite_generics(context: &RewriteContext,
                     generics: &ast::Generics,
                     offset: Indent,
+                    width: usize,
                     generics_offset: Indent,
                     span: Span)
                     -> Option<String> {
@@ -1384,7 +1393,7 @@ fn rewrite_generics(context: &RewriteContext,
         BlockIndentStyle::Visual => generics_offset + 1,
     };
 
-    let h_budget = context.config.max_width - generics_offset.width() - 2;
+    let h_budget = try_opt!(width.checked_sub(generics_offset.width() + 2));
     // FIXME: might need to insert a newline if the generics are really long.
 
     // Strings for the generics.
@@ -1483,6 +1492,8 @@ fn rewrite_where_clause(context: &RewriteContext,
             BraceStyle::PreferSameLine => 2,
             BraceStyle::SameLineWhere => 0,
         }
+    } else if terminator == "=" {
+        2
     } else {
         terminator.len()
     };
@@ -1510,7 +1521,12 @@ fn format_generics(context: &RewriteContext,
                    generics_offset: Indent,
                    span: Span)
                    -> Option<String> {
-    let mut result = try_opt!(rewrite_generics(context, generics, offset, generics_offset, span));
+    let mut result = try_opt!(rewrite_generics(context,
+                                               generics,
+                                               offset,
+                                               context.config.max_width,
+                                               generics_offset,
+                                               span));
 
     if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
         let budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
