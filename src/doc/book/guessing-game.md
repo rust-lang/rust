@@ -779,7 +779,7 @@ fn main() {
 ```
 
 And try it out. But wait, didn’t we just add an infinite loop? Yup. Remember
-our discussion about `parse()`? If we give a non-number answer, we’ll `return`
+our discussion about `parse()`? If we give a non-number answer, we’ll `panic!`
 and quit. Observe:
 
 ```bash
