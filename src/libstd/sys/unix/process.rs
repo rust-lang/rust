@@ -38,6 +38,7 @@ pub struct Command {
     pub uid: Option<uid_t>,
     pub gid: Option<gid_t>,
     pub session_leader: bool,
+    pub tty: Option<RawFd>,
 }
 
 impl Command {
@@ -50,6 +51,7 @@ impl Command {
             uid: None,
             gid: None,
             session_leader: false,
+            tty: None,
         }
     }
 
@@ -337,7 +339,23 @@ impl Process {
             // process leader already. We just forked so it shouldn't return
             // error, but ignore it anyway.
             let _ = libc::setsid();
+
+            // Associate the tty file descriptor with the controlling terminal,
+            // then close it unless it is an stdio handle. Errors returned by
+            // close are ignored.
+            if let Some(tty) = cfg.tty {
+
+                const TIOCSCTTY: u64 = 0x540E;
+
+                if cvt_r(|| libc::funcs::bsd44::ioctl(tty, TIOCSCTTY)).is_err() {
+                    fail(&mut output);
+                } else if tty > 2 {
+                    let _ = libc::close(tty);
+                }
+
+            }
         }
+
         if !dirp.is_null() && libc::chdir(dirp) == -1 {
             fail(&mut output);
         }
