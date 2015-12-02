@@ -56,12 +56,12 @@ And this is what we end up with for initialization:
 ```rust,ignore
 impl<T> Vec<T> {
     fn into_iter(self) -> IntoIter<T> {
-        // Can't destructure Vec since it's Drop
+        // Can't destructure Vec since it's Drop.
         let ptr = self.ptr;
         let cap = self.cap;
         let len = self.len;
 
-        // Make sure not to drop Vec since that will free the buffer
+        // Make sure not to drop Vec since that will free the buffer.
         mem::forget(self);
 
         unsafe {
@@ -70,7 +70,7 @@ impl<T> Vec<T> {
                 cap: cap,
                 start: *ptr,
                 end: if cap == 0 {
-                    // can't offset off this pointer, it's not allocated!
+                    // Can't offset off this pointer, it's not allocated!
                     *ptr
                 } else {
                     ptr.offset(len as isize)
@@ -132,7 +132,7 @@ contains that weren't yielded.
 impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
         if self.cap != 0 {
-            // drop any remaining elements
+            // Drop any remaining elements.
             for _ in &mut *self {}
 
             let align = mem::align_of::<T>();

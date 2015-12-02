@@ -32,7 +32,7 @@ Structs can actually store a single DST directly as their last field, but this
 makes them a DST as well:
 
 ```rust
-// Can't be stored on the stack directly
+// Can't be stored on the stack directly.
 struct Foo {
     info: u32,
     data: [u8],
@@ -51,13 +51,13 @@ a variable position based on its alignment][dst-issue].**
 Rust actually allows types to be specified that occupy no space:
 
 ```rust
-struct Foo; // No fields = no size
+struct Foo; // No fields = no size.
 
-// All fields have no size = no size
+// All fields have no size = no size.
 struct Baz {
     foo: Foo,
-    qux: (),      // empty tuple has no size
-    baz: [u8; 0], // empty array has no size
+    qux: (),      // Empty tuple has no size.
+    baz: [u8; 0], // Empty array has no size.
 }
 ```
 
@@ -99,7 +99,7 @@ types can only be talked about at the type level, and never at the value level.
 Empty types can be declared by specifying an enum with no variants:
 
 ```rust
-enum Void {} // No variants = EMPTY
+enum Void {} // No variants = EMPTY.
 ```
 
 Empty types are even more marginal than ZSTs. The primary motivating example for

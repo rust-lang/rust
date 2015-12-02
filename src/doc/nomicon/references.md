@@ -102,12 +102,12 @@ reborrowed to point to a field of its referent:
 ```rust
 let x = &mut (1, 2);
 {
-    // reborrow x to a subfield
+    // Reborrow x to a subfield.
     let y = &mut x.0;
-    // y is now live, but x isn't
+    // y is now live, but x isn't.
     *y = 3;
 }
-// y goes out of scope, so x is live again
+// y goes out of scope, so x is live again.
 *x = (5, 7);
 ```
 
@@ -119,15 +119,15 @@ disjointness can be statically proven:
 ```rust
 let x = &mut (1, 2);
 {
-    // reborrow x to two disjoint subfields
+    // Reborrow x to two disjoint subfields.
     let y = &mut x.0;
     let z = &mut x.1;
 
-    // y and z are now live, but x isn't
+    // y and z are now live, but x isn't.
     *y = 3;
     *z = 4;
 }
-// y and z go out of scope, so x is live again
+// y and z go out of scope, so x is live again.
 *x = (5, 7);
 ```
 

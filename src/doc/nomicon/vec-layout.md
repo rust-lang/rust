@@ -44,8 +44,8 @@ use std::ops::Deref;
 use std::mem;
 
 struct Unique<T> {
-    ptr: *const T,              // *const for variance
-    _marker: PhantomData<T>,    // For the drop checker
+    ptr: *const T,              // *const for variance.
+    _marker: PhantomData<T>,    // For the drop checker.
 }
 
 // Deriving Send and Sync is safe because we are the Unique owners

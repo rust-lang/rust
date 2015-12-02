@@ -30,7 +30,7 @@ impl<T> Vec<T> {
     fn new() -> Self {
         assert!(mem::size_of::<T>() != 0, "We're not ready to handle ZSTs");
         unsafe {
-            // need to cast EMPTY to the actual ptr type we want, let
+            // Need to cast EMPTY to the actual ptr type we want, let
             // inference handle it.
             Vec { ptr: Unique::new(heap::EMPTY as *mut _), len: 0, cap: 0 }
         }
@@ -176,9 +176,9 @@ Ok with all the nonsense out of the way, let's actually allocate some memory:
 
 ```rust,ignore
 fn grow(&mut self) {
-    // this is all pretty delicate, so let's say it's all unsafe
+    // This is all pretty delicate, so let's say it's all unsafe.
     unsafe {
-        // current API requires us to specify size and alignment manually.
+        // Current API requires us to specify size and alignment manually.
         let align = mem::align_of::<T>();
         let elem_size = mem::size_of::<T>();
 
@@ -186,13 +186,13 @@ fn grow(&mut self) {
             let ptr = heap::allocate(elem_size, align);
             (1, ptr)
         } else {
-            // as an invariant, we can assume that `self.cap < isize::MAX`,
+            // As an invariant, we can assume that `self.cap < isize::MAX`,
             // so this doesn't need to be checked.
             let new_cap = self.cap * 2;
-            // Similarly this can't overflow due to previously allocating this
+            // Similarly this can't overflow due to previously allocating this.
             let old_num_bytes = self.cap * elem_size;
 
-            // check that the new allocation doesn't exceed `isize::MAX` at all
+            // Check that the new allocation doesn't exceed `isize::MAX` at all
             // regardless of the actual size of the capacity. This combines the
             // `new_cap <= isize::MAX` and `new_num_bytes <= usize::MAX` checks
             // we need to make. We lose the ability to allocate e.g. 2/3rds of
@@ -209,7 +209,7 @@ fn grow(&mut self) {
             (new_cap, ptr)
         };
 
-        // If allocate or reallocate fail, we'll get `null` back
+        // If allocate or reallocate fail, we'll get `null` back.
         if ptr.is_null() { oom(); }
 
         self.ptr = Unique::new(ptr as *mut _);

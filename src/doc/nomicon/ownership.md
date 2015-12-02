@@ -19,10 +19,10 @@ language have made at one point:
 
 ```rust,ignore
 fn as_str(data: &u32) -> &str {
-    // compute the string
+    // Compute the string.
     let s = format!("{}", data);
 
-    // OH NO! We returned a reference to something that
+    // OH NOES! We returned a reference to something that
     // exists only in this function!
     // Dangling pointer! Use after free! Alas!
     // (this does not compile in Rust)
@@ -48,10 +48,10 @@ For instance in this code,
 
 ```rust,ignore
 let mut data = vec![1, 2, 3];
-// get an internal reference
+// Get an internal reference.
 let x = &data[0];
 
-// OH NO! `push` causes the backing storage of `data` to be reallocated.
+// OH NOES! `push` causes the backing storage of `data` to be reallocated.
 // Dangling pointer! User after free! Alas!
 // (this does not compile in Rust)
 data.push(4);

@@ -44,7 +44,7 @@ impl<T: Clone> Vec<T> {
     fn push_all(&mut self, to_push: &[T]) {
         self.reserve(to_push.len());
         unsafe {
-            // can't overflow because we just reserved this
+            // Can't overflow because we just reserved this.
             self.set_len(self.len() + to_push.len());
 
             for (i, x) in to_push.iter().enumerate() {
@@ -191,7 +191,7 @@ impl<'a, T> Hole<'a, T> {
 
 impl<'a, T> Drop for Hole<'a, T> {
     fn drop(&mut self) {
-        // fill the hole again
+        // Fill the hole again.
         unsafe {
             let pos = self.pos;
             ptr::write(&mut self.data[pos], self.elt.take().unwrap());

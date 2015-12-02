@@ -85,7 +85,7 @@ impl<T> Drop for SuperBox<T> {
     fn drop(&mut self) {
         unsafe {
             // Hyper-optimized: deallocate the box's contents for it
-            // without `drop`ing the contents
+            // without `drop`ing the contents.
             heap::deallocate((*self.my_box.ptr) as *mut u8,
                              mem::size_of::<T>(),
                              mem::align_of::<T>());

@@ -64,7 +64,7 @@ pub struct Vec<T> {
 impl<T> Vec<T> {
     pub fn push(&mut self, elem: T) {
         if self.len == self.cap {
-            // not important for this example
+            // Not important for this example.
             self.reallocate();
         }
         unsafe {
@@ -84,7 +84,7 @@ adding the following method:
 
 ```rust,ignore
 fn make_room(&mut self) {
-    // grow the capacity
+    // Grow the capacity.
     self.cap += 1;
 }
 ```
