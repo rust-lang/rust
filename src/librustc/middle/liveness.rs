@@ -1583,7 +1583,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             let r = self.should_warn(var);
             if let Some(name) = r {
 
-                // annoying: for parameters in funcs like `fn(x: int)
+                // annoying: for parameters in funcs like `fn(x: isize)
                 // {ret}`, there is only one node, so asking about
                 // assigned_on_exit() is not meaningful.
                 let is_assigned = if ln == self.s.exit_ln {
