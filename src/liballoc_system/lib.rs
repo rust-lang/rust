@@ -26,6 +26,8 @@
 
 extern crate libc;
 
+use libc::{c_int, c_void, size_t};
+
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values. In practice, the alignment is a
 // constant at the call site and the branch will be optimized out.
@@ -82,27 +84,27 @@ mod imp {
     extern "C" {
         // Apparently android doesn't have posix_memalign
         #[cfg(target_os = "android")]
-        fn memalign(align: libc::size_t, size: libc::size_t) -> *mut libc::c_void;
+        fn memalign(align: size_t, size: size_t) -> *mut c_void;
 
         #[cfg(not(target_os = "android"))]
-        fn posix_memalign(memptr: *mut *mut libc::c_void,
-                          align: libc::size_t,
-                          size: libc::size_t)
-                          -> libc::c_int;
+        fn posix_memalign(memptr: *mut *mut c_void,
+                          align: size_t,
+                          size: size_t)
+                          -> c_int;
     }
 
     pub unsafe fn allocate(size: usize, align: usize) -> *mut u8 {
         if align <= MIN_ALIGN {
-            libc::malloc(size as libc::size_t) as *mut u8
+            libc::malloc(size as size_t) as *mut u8
         } else {
             #[cfg(target_os = "android")]
             unsafe fn more_aligned_malloc(size: usize, align: usize) -> *mut u8 {
-                memalign(align as libc::size_t, size as libc::size_t) as *mut u8
+                memalign(align as size_t, size as size_t) as *mut u8
             }
             #[cfg(not(target_os = "android"))]
             unsafe fn more_aligned_malloc(size: usize, align: usize) -> *mut u8 {
                 let mut out = ptr::null_mut();
-                let ret = posix_memalign(&mut out, align as libc::size_t, size as libc::size_t);
+                let ret = posix_memalign(&mut out, align as size_t, size as size_t);
                 if ret != 0 {
                     ptr::null_mut()
                 } else {
@@ -115,7 +117,7 @@ mod imp {
 
     pub unsafe fn reallocate(ptr: *mut u8, old_size: usize, size: usize, align: usize) -> *mut u8 {
         if align <= MIN_ALIGN {
-            libc::realloc(ptr as *mut libc::c_void, size as libc::size_t) as *mut u8
+            libc::realloc(ptr as *mut c_void, size as size_t) as *mut u8
         } else {
             let new_ptr = allocate(size, align);
             ptr::copy(ptr, new_ptr, cmp::min(size, old_size));
@@ -133,7 +135,7 @@ mod imp {
     }
 
     pub unsafe fn deallocate(ptr: *mut u8, _old_size: usize, _align: usize) {
-        libc::free(ptr as *mut libc::c_void)
+        libc::free(ptr as *mut c_void)
     }
 
     pub fn usable_size(size: usize, _align: usize) -> usize {
