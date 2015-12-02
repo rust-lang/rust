@@ -853,15 +853,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         }
 
-        // Add external module children from the containing module.
-        for (&name, module) in target_module.external_module_children.borrow().iter() {
-            self.merge_import_resolution(module_,
-                                         target_module.clone(),
-                                         import_directive,
-                                         name,
-                                         NameBindings::create_from_module(module.clone()));
-        }
-
         // Record the destination of this import
         if let Some(did) = target_module.def_id() {
             self.resolver.def_map.borrow_mut().insert(id,
