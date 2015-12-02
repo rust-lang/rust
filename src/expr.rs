@@ -960,14 +960,15 @@ impl Rewrite for ast::Arm {
             let budget = context.config.max_width - line_start - comma.len() - 4;
             let offset = Indent::new(offset.block_indent, line_start + 4 - offset.block_indent);
             let rewrite = nop_block_collapse(body.rewrite(context, budget, offset), budget);
-            let is_body_str_block = match rewrite {
-                Some(ref s) => s.trim().starts_with("{") && s.trim().ends_with("}"),
-                None => false,
+            let is_block = if let ast::ExprBlock(ref block) = body.node {
+                true
+            } else {
+                false
             };
 
             match rewrite {
                 Some(ref body_str) if !body_str.contains('\n') || !context.config.wrap_match_arms ||
-                                      is_body_str_block => {
+                                      is_block => {
                     return Some(format!("{}{} => {}{}",
                                         attr_str.trim_left(),
                                         pats_str,
