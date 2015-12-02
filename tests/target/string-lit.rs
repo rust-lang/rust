@@ -25,6 +25,8 @@ not
 remove
 formatting"#;
 
+    filename.replace(" ", "\\");
+
     let xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx = funktion("yyyyyyyyyyyyyyyyyyyyy\
                                                                             yyyyyyyyyyyyyyyyyyyyy\
                                                                             yyyyyyyyyyyyyyyyyyyyy\
