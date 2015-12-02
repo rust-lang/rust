@@ -21,6 +21,7 @@ use rustc::session::search_paths::SearchPaths;
 
 use externalfiles::ExternalHtml;
 
+use html::styles;
 use html::escape::Escape;
 use html::markdown;
 use html::markdown::{Markdown, MarkdownWithToc, find_testable_code, reset_headers};
@@ -101,9 +102,18 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
     <title>{title}</title>
 
     {css}
+    <link rel="stylesheet" type="text/css" href="../rustdoc.css">
+    {styles}
     {in_header}
 </head>
 <body class="rustdoc">
+    <div id="style-changer">
+        {divs}
+        <script src="../switcher.js"></script>
+        <script>
+            switch_style();
+        </script>
+    </div>
     <!--[if lte IE 8]>
     <div class="warning">
         This old browser is unsupported and will most likely display funky
@@ -127,6 +137,8 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
         text = rendered,
         after_content = external_html.after_content,
         playground = playground,
+        divs = styles::get_divs(),
+        styles = styles::css_file_links("../"),
         );
 
     match err {

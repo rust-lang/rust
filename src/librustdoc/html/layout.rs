@@ -13,6 +13,7 @@ use std::io::prelude::*;
 use std::io;
 
 use externalfiles::ExternalHtml;
+use html::styles;
 
 #[derive(Clone)]
 pub struct Layout {
@@ -47,12 +48,20 @@ r##"<!DOCTYPE html>
 
     <title>{title}</title>
 
-    <link rel="stylesheet" type="text/css" href="{root_path}main.css">
+    <link rel="stylesheet" type="text/css" href="{root_path}rustdoc.css">
+    {styles}
 
     {favicon}
     {in_header}
 </head>
 <body class="rustdoc">
+    <div id="style-changer">
+        {divs}
+        <script src="{root_path}switcher.js"></script>
+        <script>
+            switch_style();
+        </script>
+    </div>
     <!--[if lte IE 8]>
     <div class="warning">
         This old browser is unsupported and will most likely display funky
@@ -143,6 +152,8 @@ r##"<!DOCTYPE html>
     content   = *t,
     root_path = page.root_path,
     ty        = page.ty,
+    styles    = styles::css_file_links(&page.root_path),
+    divs      = styles::get_divs(),
     logo      = if layout.logo.is_empty() {
         "".to_string()
     } else {
