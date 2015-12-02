@@ -59,9 +59,9 @@
 //! There are a number of troublesome scenarios in the tests
 //! `region-dependent-*.rs`, but here is one example:
 //!
-//!     struct Foo { i: isize }
+//!     struct Foo { i: i32 }
 //!     struct Bar { foo: Foo  }
-//!     fn get_i(x: &'a Bar) -> &'a int {
+//!     fn get_i(x: &'a Bar) -> &'a i32 {
 //!        let foo = &x.foo; // Lifetime L1
 //!        &foo.i            // Lifetime L2
 //!     }
@@ -233,8 +233,8 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     /// Consider this silly example:
     ///
     /// ```
-    /// fn borrow(x: &int) -> &isize {x}
-    /// fn foo(x: @int) -> isize {  // block: B
+    /// fn borrow(x: &i32) -> &i32 {x}
+    /// fn foo(x: @i32) -> i32 {  // block: B
     ///     let b = borrow(x);    // region: <R0>
     ///     *b
     /// }
@@ -243,7 +243,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     /// Here, the region of `b` will be `<R0>`.  `<R0>` is constrained to be some subregion of the
     /// block B and some superregion of the call.  If we forced it now, we'd choose the smaller
     /// region (the call).  But that would make the *b illegal.  Since we don't resolve, the type
-    /// of b will be `&<R0>.isize` and then `*b` will require that `<R0>` be bigger than the let and
+    /// of b will be `&<R0>.i32` and then `*b` will require that `<R0>` be bigger than the let and
     /// the `*b` expression, so we will effectively resolve `<R0>` to be the block B.
     pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
         self.fcx.infcx().resolve_type_vars_if_possible(&unresolved_ty)
