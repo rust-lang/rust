@@ -357,9 +357,13 @@ Cargo uses the dependencies section to know what dependencies on external
 crates you have, and what versions you require. In this case, we’ve specified version `0.3.0`,
 which Cargo understands to be any release that’s compatible with this specific version.
 Cargo understands [Semantic Versioning][semver], which is a standard for writing version
-numbers. If we wanted to use only `0.3.0` exactly, we could use `=0.3.0`. If we
-wanted to use the latest version we could use `*`; We could use a range of
-versions. [Cargo’s documentation][cargodoc] contains more details.
+numbers. A bare number like above is actually shorthand for `^0.3.0`,
+meaning "anything compatible with 0.3.0".
+If we wanted to use only `0.3.0` exactly, we could say `rand="=0.3.0"`
+(note the two equal signs).
+And if we wanted to use the latest version we could use `*`.
+We could also use a range of versions.
+[Cargo’s documentation][cargodoc] contains more details.
 
 [semver]: http://semver.org
 [cargodoc]: http://doc.crates.io/crates-io.html
