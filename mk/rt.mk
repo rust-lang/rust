@@ -35,7 +35,7 @@
 # that's per-target so you're allowed to conditionally add files based on the
 # target.
 ################################################################################
-NATIVE_LIBS := rust_builtin hoedown miniz rust_test_helpers
+NATIVE_LIBS := hoedown miniz rust_test_helpers
 
 # $(1) is the target triple
 define NATIVE_LIBRARIES
@@ -50,8 +50,6 @@ NATIVE_DEPS_hoedown_$(1) := hoedown/src/autolink.c \
 			hoedown/src/stack.c \
 			hoedown/src/version.c
 NATIVE_DEPS_miniz_$(1) = miniz.c
-NATIVE_DEPS_rust_builtin_$(1) := rust_builtin.c \
-			rust_android_dummy.c
 NATIVE_DEPS_rust_test_helpers_$(1) := rust_test_helpers.c
 
 ################################################################################
