@@ -539,6 +539,15 @@ impl Thread {
     }
 }
 
+impl PartialEq<Thread> for Thread {
+    fn eq(&self, other: &Thread) -> bool {
+        // Compare the Arcs
+        (&*self.inner as *const Inner) == (&*other.inner as *const Inner)
+    }
+}
+
+impl Eq for Thread {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Thread {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -658,6 +667,20 @@ mod tests {
         Builder::new().name("ada lovelace".to_string()).spawn(move|| {
             assert!(thread::current().name().unwrap() == "ada lovelace".to_string());
         }).unwrap().join().unwrap();
+    }
+
+    #[test]
+    fn test_thread_eq() {
+        let (tx, rx) = channel();
+        let t1 = thread::spawn(move|| {
+            tx.send(thread::current()).unwrap();
+        }).thread();
+        let t2 = rx.recv().unwrap();
+        let t3 = thread::spawn(move|| {
+        }).thread();
+        assert!(t1 == t1);
+        assert!(t1 == t2);
+        assert!(t1 != t3);
     }
 
     #[test]
