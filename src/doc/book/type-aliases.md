@@ -53,7 +53,9 @@ if x == y {
 ```
 
 This compiles without error. Values of a `Num` type are the same as a value of
-type `i32`, in every way.
+type `i32`, in every way. You can use [tuple struct] to really get a new type.
+
+[tuple struct]: structs.html#tuple-structs
 
 You can also use type aliases with generics:
 
