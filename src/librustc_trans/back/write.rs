@@ -54,11 +54,12 @@ pub fn write_output_file(
         pm: llvm::PassManagerRef,
         m: ModuleRef,
         output: &Path,
+        skip_codegen: bool,
         file_type: llvm::FileType) {
     unsafe {
         let output_c = path2cstr(output);
         let result = llvm::LLVMRustWriteOutputFile(
-                target, pm, m, output_c.as_ptr(), file_type);
+                target, pm, m, output_c.as_ptr(), skip_codegen, file_type);
         if !result {
             llvm_err(handler, format!("could not write output to {}", output.display()));
         }
@@ -546,15 +547,19 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         if config.emit_asm {
             let path = output_names.with_extension(&format!("{}.s", name_extra));
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &path,
+                write_output_file(cgcx.handler, tm, cpm, llmod, &path, false,
                                   llvm::AssemblyFileType);
             });
         }
 
         if config.emit_obj {
+            // If we already emitted asm code, the codegen has already been done for this module,
+            // so don't do it again. See LLVMRustWriteOutputFile for details.
+            let skip_codegen = config.emit_asm;
             let path = output_names.with_extension(&format!("{}.o", name_extra));
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::ObjectFileType);
+                write_output_file(cgcx.handler, tm, cpm, llmod, &path, skip_codegen,
+                                  llvm::ObjectFileType);
             });
         }
     });
