@@ -213,8 +213,8 @@ Let's discuss our sample example documentation:
 ```
 
 You'll notice that you don't need a `fn main()` or anything here. `rustdoc` will
-automatically add a `main()` wrapper around your code, and in the right place.
-For example:
+automatically add a `main()` wrapper around your code, using heuristics to attempt
+to put it in the right place. For example:
 
 ```rust
 /// ```
@@ -242,11 +242,18 @@ Here's the full algorithm rustdoc uses to preprocess examples:
    `unused_attributes`, and `dead_code`. Small examples often trigger
    these lints.
 3. If the example does not contain `extern crate`, then `extern crate
-   <mycrate>;` is inserted.
-2. Finally, if the example does not contain `fn main`, the remainder of the
-   text is wrapped in `fn main() { your_code }`
+   <mycrate>;` is inserted (note the lack of `#[macro_use]`).
+4. Finally, if the example does not contain `fn main`, the remainder of the
+   text is wrapped in `fn main() { your_code }`.
 
-Sometimes, this isn't enough, though. For example, all of these code samples
+This generated `fn main` can be a problem! If you have `extern crate` or a `mod`
+statements in the example code that are referred to by `use` statements, they will
+fail to resolve unless you include at least `fn main() {}` to inhibit step 4.
+`#[macro_use] extern crate` also does not work except at the crate root, so when
+testing macros an explicit `main` is always required. It doesn't have to clutter
+up your docs, though -- keep reading!
+
+Sometimes this algorithm isn't enough, though. For example, all of these code samples
 with `///` we've been talking about? The raw text:
 
 ```text
@@ -370,8 +377,8 @@ macro_rules! panic_unless {
 
 You’ll note three things: we need to add our own `extern crate` line, so that
 we can add the `#[macro_use]` attribute. Second, we’ll need to add our own
-`main()` as well. Finally, a judicious use of `#` to comment out those two
-things, so they don’t show up in the output.
+`main()` as well (for reasons discussed above). Finally, a judicious use of
+`#` to comment out those two things, so they don’t show up in the output.
 
 Another case where the use of `#` is handy is when you want to ignore
 error handling. Lets say you want the following,

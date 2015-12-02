@@ -486,7 +486,9 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         //! come about when variables of `&mut` type are re-borrowed,
         //! as in this example:
         //!
-        //!     fn counter<'a>(v: &'a mut Foo) -> &'a mut uint {
+        //!     struct Foo { counter: usize }
+        //!
+        //!     fn counter<'a>(v: &'a mut Foo) -> &'a mut usize {
         //!         &mut v.counter
         //!     }
         //!

@@ -357,9 +357,13 @@ Cargo uses the dependencies section to know what dependencies on external
 crates you have, and what versions you require. In this case, we’ve specified version `0.3.0`,
 which Cargo understands to be any release that’s compatible with this specific version.
 Cargo understands [Semantic Versioning][semver], which is a standard for writing version
-numbers. If we wanted to use only `0.3.0` exactly, we could use `=0.3.0`. If we
-wanted to use the latest version we could use `*`; We could use a range of
-versions. [Cargo’s documentation][cargodoc] contains more details.
+numbers. A bare number like above is actually shorthand for `^0.3.0`,
+meaning "anything compatible with 0.3.0".
+If we wanted to use only `0.3.0` exactly, we could say `rand="=0.3.0"`
+(note the two equal signs).
+And if we wanted to use the latest version we could use `*`.
+We could also use a range of versions.
+[Cargo’s documentation][cargodoc] contains more details.
 
 [semver]: http://semver.org
 [cargodoc]: http://doc.crates.io/crates-io.html
@@ -521,11 +525,11 @@ Please input your guess.
 You guessed: 5
 ```
 
-Great! Next up: let’s compare our guess to the secret guess.
+Great! Next up: comparing our guess to the secret number.
 
 # Comparing guesses
 
-Now that we’ve got user input, let’s compare our guess to the random guess.
+Now that we’ve got user input, let’s compare our guess to the secret number.
 Here’s our next step, though it doesn’t quite compile yet:
 
 ```rust,ignore
@@ -775,7 +779,7 @@ fn main() {
 ```
 
 And try it out. But wait, didn’t we just add an infinite loop? Yup. Remember
-our discussion about `parse()`? If we give a non-number answer, we’ll `return`
+our discussion about `parse()`? If we give a non-number answer, we’ll `panic!`
 and quit. Observe:
 
 ```bash
