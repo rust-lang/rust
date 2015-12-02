@@ -330,7 +330,7 @@ mod inner {
             // Nano calculations can't overflow because nanos are <1B which fit
             // in a u32.
             let mut nsec = other.subsec_nanos() + self.t.tv_nsec as u32;
-            if nsec > NSEC_PER_SEC as u32 {
+            if nsec >= NSEC_PER_SEC as u32 {
                 nsec -= NSEC_PER_SEC as u32;
                 secs = secs.checked_add(1).expect("overflow when adding \
                                                    duration to time");
