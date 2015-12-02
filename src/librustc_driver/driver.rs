@@ -19,7 +19,6 @@ use rustc::lint;
 use rustc::middle::{stability, ty, reachable};
 use rustc::middle::dependency_format;
 use rustc::middle;
-use rustc::util::nodemap::NodeMap;
 use rustc::util::common::time;
 use rustc_borrowck as borrowck;
 use rustc_resolve as resolve;
@@ -49,7 +48,6 @@ use syntax::ast::{self, NodeIdAssigner};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::diagnostics;
-use syntax::feature_gate::UnstableFeatures;
 use syntax::fold::Folder;
 use syntax::parse;
 use syntax::parse::token;
@@ -777,19 +775,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                         "match checking",
                                         || middle::check_match::check_crate(tcx));
 
-                                   let mir_map = match tcx.sess.opts.unstable_features {
-                                       UnstableFeatures::Disallow => {
-                                           // use this as a shorthand for beta/stable, and skip
-                                           // MIR construction there until known regressions are
-                                           // addressed
-                                           NodeMap()
-                                       }
-                                       UnstableFeatures::Allow | UnstableFeatures::Cheat => {
-                                           time(time_passes,
-                                                "MIR dump",
-                                                || mir::mir_map::build_mir_for_crate(tcx))
-                                       }
-                                   };
+                                   let mir_map =
+                                       time(time_passes,
+                                            "MIR dump",
+                                            || mir::mir_map::build_mir_for_crate(tcx));
 
                                    time(time_passes,
                                         "liveness checking",
