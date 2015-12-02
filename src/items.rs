@@ -774,6 +774,20 @@ pub fn rewrite_type_alias(context: &RewriteContext,
                                                  generics_span));
 
     result.push_str(&generics_str);
+
+    let where_budget = try_opt!(context.config
+                                       .max_width
+                                       .checked_sub(last_line_width(&result)));
+    let where_clause_str = try_opt!(rewrite_where_clause(context,
+                                                         &generics.where_clause,
+                                                         context.config,
+                                                         context.config.item_brace_style,
+                                                         indent,
+                                                         where_budget,
+                                                         context.config.where_density,
+                                                         "=",
+                                                         Some(span.hi)));
+    result.push_str(&where_clause_str);
     result.push_str(" = ");
 
     let line_width = last_line_width(&result);
