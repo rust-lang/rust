@@ -531,7 +531,7 @@ impl Child {
     }
 
     /// Simultaneously waits for the child to exit and collect all remaining
-    /// output on the stdout/stderr handles, returning a `Output`
+    /// output on the stdout/stderr handles, returning an `Output`
     /// instance.
     ///
     /// The stdin handle to the child process, if any, will be closed
