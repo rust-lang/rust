@@ -276,7 +276,6 @@ endif
 # LLVM macros
 ######################################################################
 
-# FIXME: x86-ism
 LLVM_COMPONENTS=x86 arm aarch64 mips powerpc ipo bitreader bitwriter linker asmparser mcjit \
                 interpreter instrumentation
 
