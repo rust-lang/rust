@@ -521,11 +521,11 @@ Please input your guess.
 You guessed: 5
 ```
 
-Great! Next up: let’s compare our guess to the secret guess.
+Great! Next up: comparing our guess to the secret number.
 
 # Comparing guesses
 
-Now that we’ve got user input, let’s compare our guess to the random guess.
+Now that we’ve got user input, let’s compare our guess to the secret number.
 Here’s our next step, though it doesn’t quite compile yet:
 
 ```rust,ignore
