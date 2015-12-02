@@ -108,3 +108,14 @@ pub extern "C" fn __rust_usable_size(size: usize, align: usize) -> usize {
     let flags = align_to_flags(align);
     unsafe { je_nallocx(size as size_t, flags) as usize }
 }
+
+// These symbols are used by jemalloc on android but the really old android
+// we're building on doesn't have them defined, so just make sure the symbols
+// are available.
+#[no_mangle]
+#[cfg(target_os = "android")]
+pub extern fn pthread_atfork(_prefork: *mut u8,
+                             _postfork_parent: *mut u8,
+                             _postfork_child: *mut u8) -> i32 {
+    0
+}

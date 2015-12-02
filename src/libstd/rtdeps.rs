@@ -12,11 +12,6 @@
 //! the standard library This varies per-platform, but these libraries are
 //! necessary for running libstd.
 
-// A few small shims in C that haven't been translated to Rust yet
-#[cfg(all(not(test), not(windows)))]
-#[link(name = "rust_builtin", kind = "static")]
-extern {}
-
 // LLVM implements the `frem` instruction as a call to `fmod`, which lives in
 // libm. Hence, we must explicitly link to it.
 //
