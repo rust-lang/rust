@@ -342,6 +342,35 @@ impl fmt::Display for IndexItemFunctionType {
 thread_local!(static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
 thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
                     RefCell::new(Vec::new()));
+thread_local!(static USED_ID_MAP: RefCell<HashMap<String, usize>> =
+                    RefCell::new(HashMap::new()));
+
+/// This method resets the local table of used ID attributes. This is typically
+/// used at the beginning of rendering an entire HTML page to reset from the
+/// previous state (if any).
+pub fn reset_ids() {
+    USED_ID_MAP.with(|s| s.borrow_mut().clear());
+}
+
+pub fn with_unique_id<T, F: FnOnce(&str) -> T>(candidate: String, f: F) -> T {
+    USED_ID_MAP.with(|map| {
+        let (id, ret) = match map.borrow_mut().get_mut(&candidate) {
+            None => {
+                let ret = f(&candidate);
+                (candidate, ret)
+            },
+            Some(a) => {
+                let id = format!("{}-{}", candidate, *a);
+                let ret = f(&id);
+                *a += 1;
+                (id, ret)
+            }
+        };
+
+        map.borrow_mut().insert(id, 1);
+        ret
+    })
+}
 
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate,
@@ -1274,7 +1303,7 @@ impl Context {
                 keywords: &keywords,
             };
 
-            markdown::reset_headers();
+            reset_ids();
 
             // We have a huge number of calls to write, so try to alleviate some
             // of the pain by using a buffered writer instead of invoking the
