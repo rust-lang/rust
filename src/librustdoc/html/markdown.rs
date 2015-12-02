@@ -35,7 +35,7 @@ use std::fmt;
 use std::slice;
 use std::str;
 
-use html::render::{with_unique_id, reset_ids};
+use html::render::with_unique_id;
 use html::toc::TocBuilder;
 use html::highlight;
 use html::escape::Escape;
@@ -322,8 +322,6 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         unsafe { hoedown_buffer_puts(ob, text.as_ptr()) }
     }
 
-    reset_ids();
-
     extern fn codespan(
         ob: *mut hoedown_buffer,
         text: *const hoedown_buffer,
@@ -554,6 +552,7 @@ pub fn plain_summary_line(md: &str) -> String {
 mod tests {
     use super::{LangString, Markdown};
     use super::plain_summary_line;
+    use html::render::reset_ids;
 
     #[test]
     fn test_lang_string_parse() {
@@ -593,6 +592,7 @@ mod tests {
         fn t(input: &str, expect: &str) {
             let output = format!("{}", Markdown(input));
             assert_eq!(output, expect);
+            reset_ids();
         }
 
         t("# Foo bar", "\n<h1 id='foo-bar' class='section-header'>\
