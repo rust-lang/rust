@@ -66,7 +66,7 @@
 //!
 //! ```
 //! struct List {
-//!     value: int,
+//!     value: isize,
 //!     tail: Option<Box<List>>,
 //! }
 //! ```
