@@ -230,26 +230,6 @@ impl<T: Ord> BinaryHeap<T> {
         BinaryHeap { data: Vec::with_capacity(capacity) }
     }
 
-    /// Creates a `BinaryHeap` from a vector. This is sometimes called
-    /// `heapifying` the vector.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(binary_heap_extras)]
-    /// # #![allow(deprecated)]
-    ///
-    /// use std::collections::BinaryHeap;
-    /// let heap = BinaryHeap::from_vec(vec![9, 1, 2, 7, 3, 2]);
-    /// ```
-    #[unstable(feature = "binary_heap_extras",
-               reason = "needs to be audited",
-               issue = "28147")]
-    #[rustc_deprecated(since = "1.5.0", reason = "use BinaryHeap::from instead")]
-    pub fn from_vec(vec: Vec<T>) -> BinaryHeap<T> {
-        BinaryHeap::from(vec)
-    }
-
     /// Returns an iterator visiting all values in the underlying vector, in
     /// arbitrary order.
     ///

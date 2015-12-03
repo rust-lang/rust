@@ -360,14 +360,6 @@ impl<T: ?Sized> Rc<T> {
 }
 
 impl<T: Clone> Rc<T> {
-    #[inline]
-    #[unstable(feature = "rc_make_unique", reason = "renamed to Rc::make_mut",
-               issue = "27718")]
-    #[rustc_deprecated(since = "1.4.0", reason = "renamed to Rc::make_mut")]
-    pub fn make_unique(&mut self) -> &mut T {
-        Rc::make_mut(self)
-    }
-
     /// Make a mutable reference into the given `Rc<T>` by cloning the inner
     /// data if the `Rc<T>` doesn't have one strong reference and no weak
     /// references.

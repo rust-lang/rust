@@ -11,7 +11,6 @@
 use std::collections::BTreeMap;
 use std::collections::Bound::{Excluded, Included, Unbounded, self};
 use std::collections::btree_map::Entry::{Occupied, Vacant};
-use std::iter::range_inclusive;
 use std::rc::Rc;
 
 #[test]
@@ -188,7 +187,7 @@ fn test_range() {
     for i in 0..size {
         for j in i..size {
             let mut kvs = map.range(Included(&i), Included(&j)).map(|(&k, &v)| (k, v));
-            let mut pairs = range_inclusive(i, j).map(|i| (i, i));
+            let mut pairs = (i..j+1).map(|i| (i, i));
 
             for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
                 assert_eq!(kv, pair);

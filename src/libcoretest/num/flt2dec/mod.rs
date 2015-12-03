@@ -10,7 +10,6 @@
 
 use std::prelude::v1::*;
 use std::{str, mem, i16, f32, f64, fmt};
-use std::slice::bytes;
 use std::__rand as rand;
 use rand::{Rand, XorShiftRng};
 use rand::distributions::{IndependentSample, Range};
@@ -101,7 +100,7 @@ fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16
 
     // check significant digits
     for i in 1..cut.unwrap_or(expected.len() - 1) {
-        bytes::copy_memory(&expected[..i], &mut expected_);
+        expected_.clone_from_slice(&expected[..i]);
         let mut expectedk_ = expectedk;
         if expected[i] >= b'5' {
             // check if this is a rounding-to-even case.
@@ -148,7 +147,7 @@ fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16
     // check infinite zero digits
     if let Some(cut) = cut {
         for i in cut..expected.len()-1 {
-            bytes::copy_memory(&expected[..cut], &mut expected_);
+            expected_.clone_from_slice(&expected[..cut]);
             for c in &mut expected_[cut..i] { *c = b'0'; }
 
             try_exact!(f(&decoded) => &mut buf, &expected_[..i], expectedk;

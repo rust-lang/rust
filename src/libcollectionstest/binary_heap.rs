@@ -14,7 +14,7 @@ use std::collections::BinaryHeap;
 fn test_iterator() {
     let data = vec![5, 9, 3];
     let iterout = [9, 5, 3];
-    let heap = BinaryHeap::from_vec(data);
+    let heap = BinaryHeap::from(data);
     let mut i = 0;
     for el in &heap {
         assert_eq!(*el, iterout[i]);
@@ -26,7 +26,7 @@ fn test_iterator() {
 fn test_iterator_reverse() {
     let data = vec![5, 9, 3];
     let iterout = vec![3, 5, 9];
-    let pq = BinaryHeap::from_vec(data);
+    let pq = BinaryHeap::from(data);
 
     let v: Vec<_> = pq.iter().rev().cloned().collect();
     assert_eq!(v, iterout);
@@ -36,7 +36,7 @@ fn test_iterator_reverse() {
 fn test_move_iter() {
     let data = vec![5, 9, 3];
     let iterout = vec![9, 5, 3];
-    let pq = BinaryHeap::from_vec(data);
+    let pq = BinaryHeap::from(data);
 
     let v: Vec<_> = pq.into_iter().collect();
     assert_eq!(v, iterout);
@@ -45,7 +45,7 @@ fn test_move_iter() {
 #[test]
 fn test_move_iter_size_hint() {
     let data = vec![5, 9];
-    let pq = BinaryHeap::from_vec(data);
+    let pq = BinaryHeap::from(data);
 
     let mut it = pq.into_iter();
 
@@ -63,7 +63,7 @@ fn test_move_iter_size_hint() {
 fn test_move_iter_reverse() {
     let data = vec![5, 9, 3];
     let iterout = vec![3, 5, 9];
-    let pq = BinaryHeap::from_vec(data);
+    let pq = BinaryHeap::from(data);
 
     let v: Vec<_> = pq.into_iter().rev().collect();
     assert_eq!(v, iterout);
@@ -74,7 +74,7 @@ fn test_peek_and_pop() {
     let data = vec![2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
     let mut sorted = data.clone();
     sorted.sort();
-    let mut heap = BinaryHeap::from_vec(data);
+    let mut heap = BinaryHeap::from(data);
     while !heap.is_empty() {
         assert_eq!(heap.peek().unwrap(), sorted.last().unwrap());
         assert_eq!(heap.pop().unwrap(), sorted.pop().unwrap());
@@ -83,7 +83,7 @@ fn test_peek_and_pop() {
 
 #[test]
 fn test_push() {
-    let mut heap = BinaryHeap::from_vec(vec![2, 4, 9]);
+    let mut heap = BinaryHeap::from(vec![2, 4, 9]);
     assert_eq!(heap.len(), 3);
     assert!(*heap.peek().unwrap() == 9);
     heap.push(11);
@@ -105,7 +105,7 @@ fn test_push() {
 
 #[test]
 fn test_push_unique() {
-    let mut heap = BinaryHeap::<Box<_>>::from_vec(vec![box 2, box 4, box 9]);
+    let mut heap = BinaryHeap::<Box<_>>::from(vec![box 2, box 4, box 9]);
     assert_eq!(heap.len(), 3);
     assert!(*heap.peek().unwrap() == box 9);
     heap.push(box 11);
@@ -127,7 +127,7 @@ fn test_push_unique() {
 
 #[test]
 fn test_push_pop() {
-    let mut heap = BinaryHeap::from_vec(vec![5, 5, 2, 1, 3]);
+    let mut heap = BinaryHeap::from(vec![5, 5, 2, 1, 3]);
     assert_eq!(heap.len(), 5);
     assert_eq!(heap.push_pop(6), 6);
     assert_eq!(heap.len(), 5);
@@ -141,7 +141,7 @@ fn test_push_pop() {
 
 #[test]
 fn test_replace() {
-    let mut heap = BinaryHeap::from_vec(vec![5, 5, 2, 1, 3]);
+    let mut heap = BinaryHeap::from(vec![5, 5, 2, 1, 3]);
     assert_eq!(heap.len(), 5);
     assert_eq!(heap.replace(6).unwrap(), 5);
     assert_eq!(heap.len(), 5);
@@ -154,7 +154,7 @@ fn test_replace() {
 }
 
 fn check_to_vec(mut data: Vec<i32>) {
-    let heap = BinaryHeap::from_vec(data.clone());
+    let heap = BinaryHeap::from(data.clone());
     let mut v = heap.clone().into_vec();
     v.sort();
     data.sort();

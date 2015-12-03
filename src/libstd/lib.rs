@@ -233,7 +233,6 @@
 #![feature(const_fn)]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
-#![feature(core_simd)]
 #![feature(decode_utf16)]
 #![feature(drop_in_place)]
 #![feature(dropck_parametricity)]
@@ -255,6 +254,7 @@
 #![feature(rand)]
 #![feature(range_inclusive)]
 #![feature(raw)]
+#![feature(repr_simd)]
 #![feature(reflect_marker)]
 #![feature(shared)]
 #![feature(slice_bytes)]
@@ -333,9 +333,6 @@ pub use core::ops;
 pub use core::ptr;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::raw;
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-pub use core::simd;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
 #[stable(feature = "rust1", since = "1.0.0")]

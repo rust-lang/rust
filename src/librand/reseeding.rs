@@ -122,7 +122,6 @@ impl Default for ReseedWithDefault {
 mod tests {
     use std::prelude::v1::*;
 
-    use core::iter::order;
     use super::{ReseedingRng, ReseedWithDefault};
     use {SeedableRng, Rng};
 
@@ -167,8 +166,8 @@ mod tests {
     fn test_rng_seeded() {
         let mut ra: MyRng = SeedableRng::from_seed((ReseedWithDefault, 2));
         let mut rb: MyRng = SeedableRng::from_seed((ReseedWithDefault, 2));
-        assert!(order::equals(ra.gen_ascii_chars().take(100),
-                              rb.gen_ascii_chars().take(100)));
+        assert!(ra.gen_ascii_chars().take(100)
+                  .eq(rb.gen_ascii_chars().take(100)));
     }
 
     #[test]

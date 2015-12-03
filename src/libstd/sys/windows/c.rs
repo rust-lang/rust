@@ -16,7 +16,10 @@ use os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort};
 use os::raw::{c_char, c_short, c_ulonglong};
 use libc::{wchar_t, size_t, c_void};
 use ptr;
-use simd;
+
+#[cfg_attr(not(stage0), repr(simd))]
+#[repr(C)]
+struct u64x2(u64, u64);
 
 pub use self::GET_FILEEX_INFO_LEVELS::*;
 pub use self::FILE_INFO_BY_HANDLE_CLASS::*;
@@ -783,7 +786,7 @@ pub struct FLOATING_SAVE_AREA {
 #[cfg(target_arch = "x86_64")]
 #[repr(C)]
 pub struct CONTEXT {
-    _align_hack: [simd::u64x2; 0], // FIXME align on 16-byte
+    _align_hack: [u64x2; 0], // FIXME align on 16-byte
     pub P1Home: DWORDLONG,
     pub P2Home: DWORDLONG,
     pub P3Home: DWORDLONG,
@@ -843,7 +846,7 @@ pub struct CONTEXT {
 #[cfg(target_arch = "x86_64")]
 #[repr(C)]
 pub struct M128A {
-    _align_hack: [simd::u64x2; 0], // FIXME align on 16-byte
+    _align_hack: [u64x2; 0], // FIXME align on 16-byte
     pub Low:  c_ulonglong,
     pub High: c_longlong
 }
@@ -851,7 +854,7 @@ pub struct M128A {
 #[cfg(target_arch = "x86_64")]
 #[repr(C)]
 pub struct FLOATING_SAVE_AREA {
-    _align_hack: [simd::u64x2; 0], // FIXME align on 16-byte
+    _align_hack: [u64x2; 0], // FIXME align on 16-byte
     _Dummy: [u8; 512] // FIXME: Fill this out
 }
 
