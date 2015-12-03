@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![no_std] //~ ERROR no_std is experimental
+#![no_core] //~ ERROR no_core is experimental
 
 fn main() {}

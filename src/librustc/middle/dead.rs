@@ -255,7 +255,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
             // necessary for the pattern to match. Those construction sites
             // can't be reached unless the variant is constructed elsewhere.
             let len = self.ignore_variant_stack.len();
-            self.ignore_variant_stack.push_all(&*variants);
+            self.ignore_variant_stack.extend_from_slice(&*variants);
             intravisit::walk_arm(self, arm);
             self.ignore_variant_stack.truncate(len);
         } else {

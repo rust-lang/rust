@@ -21,8 +21,8 @@
             issue = "27783")]
 #![feature(allocator)]
 #![feature(libc)]
-#![feature(no_std)]
 #![feature(staged_api)]
+#![cfg_attr(stage0, feature(no_std))]
 
 extern crate libc;
 

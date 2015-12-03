@@ -83,7 +83,6 @@ annotated version of `alloc_system`
 // Allocators are not allowed to depend on the standard library which in turn
 // requires an allocator in order to avoid circular dependencies. This crate,
 // however, can use all of libcore.
-#![feature(no_std)]
 #![no_std]
 
 // Let's give a unique name to our custom allocator

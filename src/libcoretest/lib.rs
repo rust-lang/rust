@@ -31,6 +31,7 @@
 #![feature(libc)]
 #![feature(nonzero)]
 #![feature(num_bits_bytes)]
+#![feature(peekable_is_empty)]
 #![feature(ptr_as_ref)]
 #![feature(rand)]
 #![feature(range_inclusive)]

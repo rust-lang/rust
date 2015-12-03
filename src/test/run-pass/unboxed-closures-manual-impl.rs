@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(unboxed_closures, core)]
-
-use std::ops::FnMut;
+#![feature(unboxed_closures, fn_traits)]
 
 struct S;
 

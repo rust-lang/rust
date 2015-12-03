@@ -72,6 +72,8 @@ impl OsString {
     /// On Windows system, only UTF-8 byte sequences will successfully
     /// convert; non UTF-8 data will produce `None`.
     #[unstable(feature = "convert", reason = "recently added", issue = "27704")]
+    #[rustc_deprecated(reason = "RFC was closed, hides subtle Windows semantics",
+                       since = "1.6.0")]
     pub fn from_bytes<B>(bytes: B) -> Option<OsString> where B: Into<Vec<u8>> {
         Self::_from_bytes(bytes.into())
     }
@@ -256,6 +258,8 @@ impl OsStr {
     /// valid unicode, in which case it produces UTF-8-encoded
     /// data. This may entail checking validity.
     #[unstable(feature = "convert", reason = "recently added", issue = "27704")]
+    #[rustc_deprecated(reason = "RFC was closed, hides subtle Windows semantics",
+                       since = "1.6.0")]
     pub fn to_bytes(&self) -> Option<&[u8]> {
         if cfg!(windows) {
             self.to_str().map(|s| s.as_bytes())
@@ -272,6 +276,9 @@ impl OsStr {
     /// `self.to_bytes()`, and inherits the platform behavior of the
     /// `to_bytes` method.
     #[unstable(feature = "convert", reason = "recently added", issue = "27704")]
+    #[rustc_deprecated(reason = "RFC was closed, hides subtle Windows semantics",
+                       since = "1.6.0")]
+    #[allow(deprecated)]
     pub fn to_cstring(&self) -> Option<CString> {
         self.to_bytes().and_then(|b| CString::new(b).ok())
     }

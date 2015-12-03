@@ -91,6 +91,8 @@ pub struct DirEntry(fs_imp::DirEntry);
                      may change and this may end up accounting for files such \
                      as symlinks differently",
            issue = "27707")]
+#[rustc_deprecated(reason = "superceded by the walkdir crate",
+                   since = "1.6.0")]
 pub struct WalkDir {
     cur: Option<ReadDir>,
     stack: Vec<io::Result<ReadDir>>,
@@ -156,8 +158,7 @@ pub struct FileType(fs_imp::FileType);
 /// A builder used to create directories in various manners.
 ///
 /// This builder also supports platform-specific options.
-#[unstable(feature = "dir_builder", reason = "recently added API",
-           issue = "27710")]
+#[stable(feature = "dir_builder", since = "1.6.0")]
 pub struct DirBuilder {
     inner: fs_imp::DirBuilder,
     recursive: bool,
@@ -1132,16 +1133,23 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
                      may change and this may end up accounting for files such \
                      as symlinks differently",
            issue = "27707")]
+#[rustc_deprecated(reason = "superceded by the walkdir crate",
+                   since = "1.6.0")]
+#[allow(deprecated)]
 pub fn walk_dir<P: AsRef<Path>>(path: P) -> io::Result<WalkDir> {
     _walk_dir(path.as_ref())
 }
 
+#[allow(deprecated)]
 fn _walk_dir(path: &Path) -> io::Result<WalkDir> {
     let start = try!(read_dir(path));
     Ok(WalkDir { cur: Some(start), stack: Vec::new() })
 }
 
 #[unstable(feature = "fs_walk", issue = "27707")]
+#[rustc_deprecated(reason = "superceded by the walkdir crate",
+                   since = "1.6.0")]
+#[allow(deprecated)]
 impl Iterator for WalkDir {
     type Item = io::Result<DirEntry>;
 
@@ -1275,11 +1283,10 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions)
     fs_imp::set_perm(path.as_ref(), perm.0)
 }
 
-#[unstable(feature = "dir_builder", reason = "recently added API",
-           issue = "27710")]
 impl DirBuilder {
     /// Creates a new set of options with default mode/security settings for all
     /// platforms and also non-recursive.
+    #[stable(feature = "dir_builder", since = "1.6.0")]
     pub fn new() -> DirBuilder {
         DirBuilder {
             inner: fs_imp::DirBuilder::new(),
@@ -1292,6 +1299,7 @@ impl DirBuilder {
     /// permissions settings.
     ///
     /// This option defaults to `false`
+    #[stable(feature = "dir_builder", since = "1.6.0")]
     pub fn recursive(&mut self, recursive: bool) -> &mut Self {
         self.recursive = recursive;
         self
@@ -1303,7 +1311,6 @@ impl DirBuilder {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(dir_builder)]
     /// use std::fs::{self, DirBuilder};
     ///
     /// let path = "/tmp/foo/bar/baz";
@@ -1313,6 +1320,7 @@ impl DirBuilder {
     ///
     /// assert!(fs::metadata(path).unwrap().is_dir());
     /// ```
+    #[stable(feature = "dir_builder", since = "1.6.0")]
     pub fn create<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         self._create(path.as_ref())
     }

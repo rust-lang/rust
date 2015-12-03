@@ -10,7 +10,7 @@
 
 // no-prefer-dynamic
 
-#![feature(allocator, no_std, core)]
+#![feature(allocator)]
 #![allocator]
 #![crate_type = "rlib"]
 #![no_std]

@@ -346,7 +346,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // Use the minimum integer type we figured out above
             let fields : Vec<_> = cases.iter().map(|c| {
                 let mut ftys = vec!(ty_of_inttype(cx.tcx(), min_ity));
-                ftys.push_all(&c.tys);
+                ftys.extend_from_slice(&c.tys);
                 if dtor { ftys.push(cx.tcx().dtor_type()); }
                 mk_struct(cx, &ftys, false, t)
             }).collect();
@@ -399,7 +399,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             let fields : Vec<_> = cases.iter().map(|c| {
                 let mut ftys = vec!(ty_of_inttype(cx.tcx(), ity));
-                ftys.push_all(&c.tys);
+                ftys.extend_from_slice(&c.tys);
                 if dtor { ftys.push(cx.tcx().dtor_type()); }
                 mk_struct(cx, &ftys[..], false, t)
             }).collect();
@@ -444,7 +444,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
             let field_ty = monomorphize::field_ty(tcx, substs, &nonzero_fields[0]);
             match field_ty.sty {
                 ty::TyRawPtr(ty::TypeAndMut { ty, .. }) if !type_is_sized(tcx, ty) => {
-                    path.push_all(&[0, FAT_PTR_ADDR]);
+                    path.extend_from_slice(&[0, FAT_PTR_ADDR]);
                     Some(path)
                 },
                 ty::TyRawPtr(..) | ty::TyInt(..) | ty::TyUint(..) => {
@@ -1212,9 +1212,9 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
             let (max_sz, _) = union_size_and_align(&cases[..]);
             let lldiscr = C_integral(ll_inttype(ccx, ity), discr as u64, true);
             let mut f = vec![lldiscr];
-            f.push_all(vals);
+            f.extend_from_slice(vals);
             let mut contents = build_const_struct(ccx, case, &f[..]);
-            contents.push_all(&[padding(ccx, max_sz - case.size)]);
+            contents.extend_from_slice(&[padding(ccx, max_sz - case.size)]);
             C_struct(ccx, &contents[..], false)
         }
         Univariant(ref st, _dro) => {

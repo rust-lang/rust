@@ -132,7 +132,6 @@ functions.
 
 use prelude::v1::*;
 use i16;
-use slice::bytes;
 pub use self::decoder::{decode, DecodableFloat, FullDecoded, Decoded};
 
 pub mod estimator;
@@ -211,7 +210,7 @@ impl<'a> Part<'a> {
                     }
                 }
                 Part::Copy(buf) => {
-                    bytes::copy_memory(buf, out);
+                    out.clone_from_slice(buf);
                 }
             }
             Some(len)
@@ -246,7 +245,7 @@ impl<'a> Formatted<'a> {
     /// (It may still leave partially written bytes in the buffer; do not rely on that.)
     pub fn write(&self, out: &mut [u8]) -> Option<usize> {
         if out.len() < self.sign.len() { return None; }
-        bytes::copy_memory(self.sign, out);
+        out.clone_from_slice(self.sign);
 
         let mut written = self.sign.len();
         for part in self.parts {

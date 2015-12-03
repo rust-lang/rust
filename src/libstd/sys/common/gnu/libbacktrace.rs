@@ -134,9 +134,9 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
             } else {
                 None
             };
-        let filename = match selfname.as_ref().and_then(|s| s.as_os_str().to_bytes()) {
+        let filename = match selfname.as_ref().and_then(|s| s.to_str()) {
             Some(path) => {
-                let bytes = path;
+                let bytes = path.as_bytes();
                 if bytes.len() < LAST_FILENAME.len() {
                     let i = bytes.iter();
                     for (slot, val) in LAST_FILENAME.iter_mut().zip(i) {

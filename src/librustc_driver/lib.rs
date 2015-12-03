@@ -32,7 +32,6 @@
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
-#![feature(vec_push_all)]
 #![feature(raw)] // remove after snapshot
 
 extern crate arena;
@@ -932,12 +931,12 @@ pub fn diagnostics_registry() -> diagnostics::registry::Registry {
     use syntax::diagnostics::registry::Registry;
 
     let mut all_errors = Vec::new();
-    all_errors.push_all(&rustc::DIAGNOSTICS);
-    all_errors.push_all(&rustc_typeck::DIAGNOSTICS);
-    all_errors.push_all(&rustc_borrowck::DIAGNOSTICS);
-    all_errors.push_all(&rustc_resolve::DIAGNOSTICS);
-    all_errors.push_all(&rustc_privacy::DIAGNOSTICS);
-    all_errors.push_all(&rustc_trans::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_typeck::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_borrowck::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_resolve::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
 
     Registry::new(&*all_errors)
 }

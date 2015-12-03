@@ -13,7 +13,6 @@ use io::prelude::*;
 
 use cmp;
 use io::{self, SeekFrom, Error, ErrorKind};
-use slice;
 
 /// A `Cursor` wraps another type and provides it with a
 /// [`Seek`](trait.Seek.html) implementation.
@@ -255,8 +254,8 @@ impl Write for Cursor<Vec<u8>> {
         // there (left), and what will be appended on the end (right)
         let space = self.inner.len() - pos as usize;
         let (left, right) = buf.split_at(cmp::min(space, buf.len()));
-        slice::bytes::copy_memory(left, &mut self.inner[(pos as usize)..]);
-        self.inner.push_all(right);
+        self.inner[(pos as usize)..].clone_from_slice(left);
+        self.inner.extend_from_slice(right);
 
         // Bump us forward
         self.set_position(pos + buf.len() as u64);

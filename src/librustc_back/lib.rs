@@ -36,10 +36,9 @@
 #![feature(libc)]
 #![feature(rand)]
 #![feature(rustc_private)]
-#![feature(slice_bytes)]
+#![feature(clone_from_slice)]
 #![feature(staged_api)]
 #![feature(step_by)]
-#![feature(vec_push_all)]
 #![cfg_attr(test, feature(test, rand))]
 
 extern crate syntax;

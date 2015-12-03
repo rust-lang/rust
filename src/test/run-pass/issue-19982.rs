@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(core,unboxed_closures)]
+#![feature(fn_traits, unboxed_closures)]
 
 #[allow(dead_code)]
 struct Foo;

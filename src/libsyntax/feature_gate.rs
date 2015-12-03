@@ -132,7 +132,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     ("unmarked_api", "1.0.0", None, Active),
 
     // Allows using #![no_std]
-    ("no_std", "1.0.0", Some(27701), Active),
+    ("no_std", "1.0.0", None, Accepted),
 
     // Allows using #![no_core]
     ("no_core", "1.3.0", Some(29639), Active),
@@ -286,8 +286,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("plugin", CrateLevel, Gated("plugin",
                                  "compiler plugins are experimental \
                                   and possibly buggy")),
-    ("no_std", CrateLevel, Gated("no_std",
-                                 "no_std is experimental")),
+    ("no_std", CrateLevel, Ungated),
     ("no_core", CrateLevel, Gated("no_core",
                                   "no_core is experimental")),
     ("lang", Normal, Gated("lang_items",

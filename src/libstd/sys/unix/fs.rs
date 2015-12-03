@@ -355,8 +355,7 @@ impl DirBuilder {
 }
 
 fn cstr(path: &Path) -> io::Result<CString> {
-    path.as_os_str().to_cstring().ok_or(
-        io::Error::new(io::ErrorKind::InvalidInput, "path contained a null"))
+    Ok(try!(CString::new(path.as_os_str().as_bytes())))
 }
 
 impl FromInner<c_int> for File {

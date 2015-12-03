@@ -346,7 +346,7 @@ pub fn unindent(s: &str) -> String {
 
     if !lines.is_empty() {
         let mut unindented = vec![ lines[0].trim().to_string() ];
-        unindented.push_all(&lines[1..].iter().map(|&line| {
+        unindented.extend_from_slice(&lines[1..].iter().map(|&line| {
             if line.chars().all(|c| c.is_whitespace()) {
                 line.to_string()
             } else {

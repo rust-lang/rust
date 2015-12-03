@@ -19,13 +19,12 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_patterns)]
-#![feature(duration_span)]
 #![feature(enumset)]
 #![feature(quote)]
-#![feature(staged_api)]
-#![feature(vec_push_all)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
+#![feature(staged_api)]
+#![feature(time2)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

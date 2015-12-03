@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#![feature(lang_items, unboxed_closures, core)]
+#![feature(lang_items, unboxed_closures, fn_traits)]
 
 use std::ops::{Fn, FnMut, FnOnce};
 

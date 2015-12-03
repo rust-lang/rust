@@ -1385,58 +1385,120 @@ pub trait StrExt {
     // NB there are no docs here are they're all located on the StrExt trait in
     // libcollections, not here.
 
+    #[stable(feature = "core", since = "1.6.0")]
     fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool;
-    fn contains_char<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool;
+    #[stable(feature = "core", since = "1.6.0")]
     fn chars(&self) -> Chars;
+    #[stable(feature = "core", since = "1.6.0")]
     fn bytes(&self) -> Bytes;
+    #[stable(feature = "core", since = "1.6.0")]
     fn char_indices(&self) -> CharIndices;
+    #[stable(feature = "core", since = "1.6.0")]
     fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn rsplit_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplitTerminator<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> Matches<'a, P>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn rmatches<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatches<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn lines(&self) -> Lines;
+    #[stable(feature = "core", since = "1.6.0")]
+    #[rustc_deprecated(since = "1.6.0", reason = "use lines() instead now")]
     #[allow(deprecated)]
     fn lines_any(&self) -> LinesAny;
-    fn char_len(&self) -> usize;
-    fn slice_chars(&self, begin: usize, end: usize) -> &str;
+    #[stable(feature = "core", since = "1.6.0")]
     unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str;
+    #[stable(feature = "core", since = "1.6.0")]
     unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str;
+    #[stable(feature = "core", since = "1.6.0")]
     fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool;
+    #[stable(feature = "core", since = "1.6.0")]
     fn ends_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool
         where P::Searcher: ReverseSearcher<'a>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
         where P::Searcher: DoubleEndedSearcher<'a>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str;
+    #[stable(feature = "core", since = "1.6.0")]
     fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
         where P::Searcher: ReverseSearcher<'a>;
+    #[unstable(feature = "str_char",
+               reason = "it is unclear whether this method pulls its weight \
+                         with the existence of the char_indices iterator or \
+                         this method may want to be replaced with checked \
+                         slicing",
+               issue = "27754")]
     fn is_char_boundary(&self, index: usize) -> bool;
+    #[unstable(feature = "str_char",
+               reason = "often replaced by char_indices, this method may \
+                         be removed in favor of just char_at() or eventually \
+                         removed altogether",
+               issue = "27754")]
     fn char_range_at(&self, start: usize) -> CharRange;
+    #[unstable(feature = "str_char",
+               reason = "often replaced by char_indices, this method may \
+                         be removed in favor of just char_at_reverse() or \
+                         eventually removed altogether",
+               issue = "27754")]
     fn char_range_at_reverse(&self, start: usize) -> CharRange;
+    #[unstable(feature = "str_char",
+               reason = "frequently replaced by the chars() iterator, this \
+                         method may be removed or possibly renamed in the \
+                         future; it is normally replaced by chars/char_indices \
+                         iterators or by getting the first char from a \
+                         subslice",
+               issue = "27754")]
     fn char_at(&self, i: usize) -> char;
+    #[unstable(feature = "str_char",
+               reason = "see char_at for more details, but reverse semantics \
+                         are also somewhat unclear, especially with which \
+                         cases generate panics",
+               issue = "27754")]
     fn char_at_reverse(&self, i: usize) -> char;
+    #[stable(feature = "core", since = "1.6.0")]
     fn as_bytes(&self) -> &[u8];
+    #[stable(feature = "core", since = "1.6.0")]
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
         where P::Searcher: ReverseSearcher<'a>;
     fn find_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn split_at(&self, mid: usize) -> (&str, &str);
+    #[stable(feature = "core", since = "1.6.0")]
     fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str);
+    #[unstable(feature = "str_char",
+               reason = "awaiting conventions about shifting and slices and \
+                         may not be warranted with the existence of the chars \
+                         and/or char_indices iterators",
+               issue = "27754")]
     fn slice_shift_char(&self) -> Option<(char, &str)>;
-    fn subslice_offset(&self, inner: &str) -> usize;
+    #[stable(feature = "core", since = "1.6.0")]
     fn as_ptr(&self) -> *const u8;
+    #[stable(feature = "core", since = "1.6.0")]
     fn len(&self) -> usize;
+    #[stable(feature = "core", since = "1.6.0")]
     fn is_empty(&self) -> bool;
+    #[stable(feature = "core", since = "1.6.0")]
     fn parse<T: FromStr>(&self) -> Result<T, T::Err>;
 }
 
@@ -1448,17 +1510,10 @@ fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
           begin, end, s);
 }
 
-#[unstable(feature = "core_str_ext",
-           reason = "stable interface provided by `impl str` in later crates",
-           issue = "27701")]
+#[stable(feature = "core", since = "1.6.0")]
 impl StrExt for str {
     #[inline]
     fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
-        pat.is_contained_in(self)
-    }
-
-    #[inline]
-    fn contains_char<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
         pat.is_contained_in(self)
     }
 
@@ -1557,32 +1612,6 @@ impl StrExt for str {
     #[allow(deprecated)]
     fn lines_any(&self) -> LinesAny {
         LinesAny(self.lines())
-    }
-
-    #[inline]
-    fn char_len(&self) -> usize { self.chars().count() }
-
-    fn slice_chars(&self, begin: usize, end: usize) -> &str {
-        assert!(begin <= end);
-        let mut count = 0;
-        let mut begin_byte = None;
-        let mut end_byte = None;
-
-        // This could be even more efficient by not decoding,
-        // only finding the char boundaries
-        for (idx, _) in self.char_indices() {
-            if count == begin { begin_byte = Some(idx); }
-            if count == end { end_byte = Some(idx); break; }
-            count += 1;
-        }
-        if begin_byte.is_none() && count == begin { begin_byte = Some(self.len()) }
-        if end_byte.is_none() && count == end { end_byte = Some(self.len()) }
-
-        match (begin_byte, end_byte) {
-            (None, _) => panic!("slice_chars: `begin` is beyond end of string"),
-            (_, None) => panic!("slice_chars: `end` is beyond end of string"),
-            (Some(a), Some(b)) => unsafe { self.slice_unchecked(a, b) }
-        }
     }
 
     #[inline]
@@ -1772,17 +1801,6 @@ impl StrExt for str {
             let next_s = unsafe { self.slice_unchecked(ch.len_utf8(), self.len()) };
             Some((ch, next_s))
         }
-    }
-
-    fn subslice_offset(&self, inner: &str) -> usize {
-        let a_start = self.as_ptr() as usize;
-        let a_end = a_start + self.len();
-        let b_start = inner.as_ptr() as usize;
-        let b_end = b_start + inner.len();
-
-        assert!(a_start <= b_start);
-        assert!(b_end <= a_end);
-        b_start - a_start
     }
 
     #[inline]

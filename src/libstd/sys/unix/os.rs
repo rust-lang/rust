@@ -149,7 +149,7 @@ pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
         if path.contains(&sep) {
             return Err(JoinPathsError)
         }
-        joined.push_all(path);
+        joined.extend_from_slice(path);
     }
     Ok(OsStringExt::from_vec(joined))
 }

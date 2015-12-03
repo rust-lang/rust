@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(no_std, rand, collections, rustc_private)]
+#![feature(rand, collections, rustc_private)]
 #![no_std]
 
 extern crate rand;

@@ -18,6 +18,7 @@ use io::{self, Error, ErrorKind};
 use sys_common::net as net_imp;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
@@ -136,6 +137,9 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
 /// cannot be resolved, it is returned in string format.
 #[unstable(feature = "lookup_addr", reason = "recent addition",
            issue = "27705")]
+#[rustc_deprecated(reason = "ipaddr type is being deprecated",
+                   since = "1.6.0")]
+#[allow(deprecated)]
 pub fn lookup_addr(addr: &IpAddr) -> io::Result<String> {
     net_imp::lookup_addr(addr)
 }

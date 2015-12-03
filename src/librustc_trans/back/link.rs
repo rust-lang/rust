@@ -907,7 +907,7 @@ fn link_natively(sess: &Session, dylib: bool,
                                  prog.status));
                 sess.note(&format!("{:?}", &cmd));
                 let mut output = prog.stderr.clone();
-                output.push_all(&prog.stdout);
+                output.extend_from_slice(&prog.stdout);
                 sess.note(&*escape_string(&output[..]));
                 sess.abort_if_errors();
             }

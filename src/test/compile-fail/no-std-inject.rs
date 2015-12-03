@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(no_std, core)]
 #![no_std]
 
 extern crate core; //~ ERROR: an external crate named `core` has already
