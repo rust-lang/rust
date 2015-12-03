@@ -142,6 +142,7 @@ pub trait CrateStore<'tcx> : Any {
     fn item_type(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
                  -> ty::TypeScheme<'tcx>;
     fn item_path(&self, def: DefId) -> Vec<hir_map::PathElem>;
+    fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem>;
     fn item_name(&self, def: DefId) -> ast::Name;
     fn item_predicates(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
                        -> ty::GenericPredicates<'tcx>;
@@ -295,6 +296,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn item_type(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
                  -> ty::TypeScheme<'tcx> { unimplemented!() }
     fn item_path(&self, def: DefId) -> Vec<hir_map::PathElem> { unimplemented!() }
+    fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> { unimplemented!() }
     fn item_name(&self, def: DefId) -> ast::Name { unimplemented!() }
     fn item_predicates(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
                        -> ty::GenericPredicates<'tcx> { unimplemented!() }
