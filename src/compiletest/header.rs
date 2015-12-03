@@ -34,6 +34,8 @@ pub struct TestProps {
     pub exec_env: Vec<(String,String)> ,
     // Lines to check if they appear in the expected debugger output
     pub check_lines: Vec<String> ,
+    // Build documentation for all specified aux-builds as well
+    pub build_aux_docs: bool,
     // Flag to force a crate to be built with the host architecture
     pub force_host: bool,
     // Check stdout for error-pattern output as well as stderr
@@ -59,6 +61,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut run_flags = None;
     let mut pp_exact = None;
     let mut check_lines = Vec::new();
+    let mut build_aux_docs = false;
     let mut force_host = false;
     let mut check_stdout = false;
     let mut no_prefer_dynamic = false;
@@ -81,6 +84,10 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
         if pp_exact.is_none() {
             pp_exact = parse_pp_exact(ln, testfile);
+        }
+
+        if !build_aux_docs {
+            build_aux_docs = parse_build_aux_docs(ln);
         }
 
         if !force_host {
@@ -144,6 +151,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         aux_builds: aux_builds,
         exec_env: exec_env,
         check_lines: check_lines,
+        build_aux_docs: build_aux_docs,
         force_host: force_host,
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
@@ -282,6 +290,10 @@ fn parse_check_line(line: &str) -> Option<String> {
 
 fn parse_force_host(line: &str) -> bool {
     parse_name_directive(line, "force-host")
+}
+
+fn parse_build_aux_docs(line: &str) -> bool {
+    parse_name_directive(line, "build-aux-docs")
 }
 
 fn parse_check_stdout(line: &str) -> bool {
