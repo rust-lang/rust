@@ -13,29 +13,26 @@
 //! Does not support hashed database, only filesystem!
 
 use std::env;
-use std::fs::File;
-use std::io::prelude::*;
+use std::fs;
 use std::path::PathBuf;
 
 /// Return path to database entry for `term`
 #[allow(deprecated)]
-pub fn get_dbpath_for_term(term: &str) -> Option<Box<PathBuf>> {
-    if term.is_empty() {
-        return None;
-    }
-
-    let homedir = env::home_dir();
-
+pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
     let mut dirs_to_search = Vec::new();
-    let first_char = term.char_at(0);
+    let first_char = match term.chars().next() {
+        Some(c) => c,
+        None => return None,
+    };
 
     // Find search directory
     match env::var_os("TERMINFO") {
         Some(dir) => dirs_to_search.push(PathBuf::from(dir)),
         None => {
-            if homedir.is_some() {
+            if let Some(mut homedir) = env::home_dir() {
                 // ncurses compatibility;
-                dirs_to_search.push(homedir.unwrap().join(".terminfo"))
+                homedir.push(".terminfo");
+                dirs_to_search.push(homedir)
             }
             match env::var("TERMINFO_DIRS") {
                 Ok(dirs) => {
@@ -61,35 +58,26 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<PathBuf>> {
     };
 
     // Look for the terminal in all of the search directories
-    for p in &dirs_to_search {
-        if p.exists() {
-            let f = first_char.to_string();
-            let newp = p.join(&f).join(term);
-            if newp.exists() {
-                return Some(box newp);
+    for mut p in dirs_to_search {
+        if fs::metadata(&p).is_ok() {
+            p.push(&first_char.to_string());
+            p.push(&term);
+            if fs::metadata(&p).is_ok() {
+                return Some(p);
             }
-            // on some installations the dir is named after the hex of the char (e.g. OS X)
-            let f = format!("{:x}", first_char as usize);
-            let newp = p.join(&f).join(term);
-            if newp.exists() {
-                return Some(box newp);
+            p.pop();
+            p.pop();
+
+            // on some installations the dir is named after the hex of the char
+            // (e.g. OS X)
+            p.push(&format!("{:x}", first_char as usize));
+            p.push(term);
+            if fs::metadata(&p).is_ok() {
+                return Some(p);
             }
         }
     }
     None
-}
-
-/// Return open file for `term`
-pub fn open(term: &str) -> Result<File, String> {
-    match get_dbpath_for_term(term) {
-        Some(x) => {
-            match File::open(&*x) {
-                Ok(file) => Ok(file),
-                Err(e) => Err(format!("error opening file: {:?}", e)),
-            }
-        }
-        None => Err(format!("could not find terminfo entry for {:?}", term)),
-    }
 }
 
 #[test]
@@ -108,12 +96,4 @@ fn test_get_dbpath_for_term() {
     env::set_var("TERMINFO_DIRS", ":");
     assert!(x("screen") == "/usr/share/terminfo/s/screen");
     env::remove_var("TERMINFO_DIRS");
-}
-
-#[test]
-#[ignore(reason = "see test_get_dbpath_for_term")]
-fn test_open() {
-    open("screen").unwrap();
-    let t = open("nonexistent terminal that hopefully does not exist");
-    assert!(t.is_err());
 }

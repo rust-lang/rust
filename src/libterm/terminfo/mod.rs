@@ -12,16 +12,20 @@
 
 use std::collections::HashMap;
 use std::env;
+use std::error;
+use std::fmt;
+use std::fs::File;
 use std::io::prelude::*;
 use std::io;
+use std::io::BufReader;
+use std::path::Path;
 
-use attr;
+use Attr;
 use color;
 use Terminal;
-use UnwrappableTerminal;
-use self::searcher::open;
+use self::searcher::get_dbpath_for_term;
 use self::parser::compiled::{parse, msys_terminfo};
-use self::parm::{expand, Number, Variables};
+use self::parm::{expand, Variables, Param};
 
 
 /// A parsed terminfo database entry.
@@ -37,6 +41,80 @@ pub struct TermInfo {
     pub strings: HashMap<String, Vec<u8>>,
 }
 
+/// A terminfo creation error.
+#[derive(Debug)]
+pub enum Error {
+    /// TermUnset Indicates that the environment doesn't include enough information to find
+    /// the terminfo entry.
+    TermUnset,
+    /// MalformedTerminfo indicates that parsing the terminfo entry failed.
+    MalformedTerminfo(String),
+    /// io::Error forwards any io::Errors encountered when finding or reading the terminfo entry.
+    IoError(io::Error),
+}
+
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        "failed to create TermInfo"
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        use self::Error::*;
+        match self {
+            &IoError(ref e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::Error::*;
+        match self {
+            &TermUnset => Ok(()),
+            &MalformedTerminfo(ref e) => e.fmt(f),
+            &IoError(ref e) => e.fmt(f),
+        }
+    }
+}
+
+impl TermInfo {
+    /// Create a TermInfo based on current environment.
+    pub fn from_env() -> Result<TermInfo, Error> {
+        let term = match env::var("TERM") {
+            Ok(name) => TermInfo::from_name(&name),
+            Err(..) => return Err(Error::TermUnset),
+        };
+
+        if term.is_err() && env::var("MSYSCON").ok().map_or(false, |s| "mintty.exe" == s) {
+            // msys terminal
+            Ok(msys_terminfo())
+        } else {
+            term
+        }
+    }
+
+    /// Create a TermInfo for the named terminal.
+    pub fn from_name(name: &str) -> Result<TermInfo, Error> {
+        get_dbpath_for_term(name)
+            .ok_or_else(|| {
+                Error::IoError(io::Error::new(io::ErrorKind::NotFound, "terminfo file not found"))
+            })
+            .and_then(|p| TermInfo::from_path(&(*p)))
+    }
+
+    /// Parse the given TermInfo.
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<TermInfo, Error> {
+        Self::_from_path(path.as_ref())
+    }
+    // Keep the metadata small
+    fn _from_path(path: &Path) -> Result<TermInfo, Error> {
+        let file = try!(File::open(path).map_err(|e| Error::IoError(e)));
+        let mut reader = BufReader::new(file);
+        parse(&mut reader, false).map_err(|e| Error::MalformedTerminfo(e))
+    }
+}
+
 pub mod searcher;
 
 /// TermInfo format parsing.
@@ -47,21 +125,21 @@ pub mod parser {
 pub mod parm;
 
 
-fn cap_for_attr(attr: attr::Attr) -> &'static str {
+fn cap_for_attr(attr: Attr) -> &'static str {
     match attr {
-        attr::Bold => "bold",
-        attr::Dim => "dim",
-        attr::Italic(true) => "sitm",
-        attr::Italic(false) => "ritm",
-        attr::Underline(true) => "smul",
-        attr::Underline(false) => "rmul",
-        attr::Blink => "blink",
-        attr::Standout(true) => "smso",
-        attr::Standout(false) => "rmso",
-        attr::Reverse => "rev",
-        attr::Secure => "invis",
-        attr::ForegroundColor(_) => "setaf",
-        attr::BackgroundColor(_) => "setab",
+        Attr::Bold => "bold",
+        Attr::Dim => "dim",
+        Attr::Italic(true) => "sitm",
+        Attr::Italic(false) => "ritm",
+        Attr::Underline(true) => "smul",
+        Attr::Underline(false) => "rmul",
+        Attr::Blink => "blink",
+        Attr::Standout(true) => "smso",
+        Attr::Standout(false) => "rmso",
+        Attr::Reverse => "rev",
+        Attr::Secure => "invis",
+        Attr::ForegroundColor(_) => "setaf",
+        Attr::BackgroundColor(_) => "setab",
     }
 }
 
@@ -70,23 +148,15 @@ fn cap_for_attr(attr: attr::Attr) -> &'static str {
 pub struct TerminfoTerminal<T> {
     num_colors: u16,
     out: T,
-    ti: Box<TermInfo>,
+    ti: TermInfo,
 }
 
-impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
+impl<T: Write+Send> Terminal for TerminfoTerminal<T> {
+    type Output = T;
     fn fg(&mut self, color: color::Color) -> io::Result<bool> {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
-            let s = expand(self.ti
-                               .strings
-                               .get("setaf")
-                               .unwrap(),
-                           &[Number(color as isize)],
-                           &mut Variables::new());
-            if s.is_ok() {
-                try!(self.out.write_all(&s.unwrap()));
-                return Ok(true);
-            }
+            return self.apply_cap("setaf", &[Param::Number(color as i32)]);
         }
         Ok(false)
     }
@@ -94,42 +164,22 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
     fn bg(&mut self, color: color::Color) -> io::Result<bool> {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
-            let s = expand(self.ti
-                               .strings
-                               .get("setab")
-                               .unwrap(),
-                           &[Number(color as isize)],
-                           &mut Variables::new());
-            if s.is_ok() {
-                try!(self.out.write_all(&s.unwrap()));
-                return Ok(true);
-            }
+            return self.apply_cap("setab", &[Param::Number(color as i32)]);
         }
         Ok(false)
     }
 
-    fn attr(&mut self, attr: attr::Attr) -> io::Result<bool> {
+    fn attr(&mut self, attr: Attr) -> io::Result<bool> {
         match attr {
-            attr::ForegroundColor(c) => self.fg(c),
-            attr::BackgroundColor(c) => self.bg(c),
-            _ => {
-                let cap = cap_for_attr(attr);
-                let parm = self.ti.strings.get(cap);
-                if parm.is_some() {
-                    let s = expand(parm.unwrap(), &[], &mut Variables::new());
-                    if s.is_ok() {
-                        try!(self.out.write_all(&s.unwrap()));
-                        return Ok(true);
-                    }
-                }
-                Ok(false)
-            }
+            Attr::ForegroundColor(c) => self.fg(c),
+            Attr::BackgroundColor(c) => self.bg(c),
+            _ => self.apply_cap(cap_for_attr(attr), &[]),
         }
     }
 
-    fn supports_attr(&self, attr: attr::Attr) -> bool {
+    fn supports_attr(&self, attr: Attr) -> bool {
         match attr {
-            attr::ForegroundColor(_) | attr::BackgroundColor(_) => self.num_colors > 0,
+            Attr::ForegroundColor(_) | Attr::BackgroundColor(_) => self.num_colors > 0,
             _ => {
                 let cap = cap_for_attr(attr);
                 self.ti.strings.get(cap).is_some()
@@ -137,22 +187,22 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
         }
     }
 
-    fn reset(&mut self) -> io::Result<()> {
-        let mut cap = self.ti.strings.get("sgr0");
-        if cap.is_none() {
-            // are there any terminals that have color/attrs and not sgr0?
-            // Try falling back to sgr, then op
-            cap = self.ti.strings.get("sgr");
-            if cap.is_none() {
-                cap = self.ti.strings.get("op");
+    fn reset(&mut self) -> io::Result<bool> {
+        // are there any terminals that have color/attrs and not sgr0?
+        // Try falling back to sgr, then op
+        let cmd = match ["sg0", "sgr", "op"]
+                            .iter()
+                            .filter_map(|cap| self.ti.strings.get(*cap))
+                            .next() {
+            Some(op) => {
+                match expand(&op, &[], &mut Variables::new()) {
+                    Ok(cmd) => cmd,
+                    Err(e) => return Err(io::Error::new(io::ErrorKind::InvalidData, e)),
+                }
             }
-        }
-        let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_owned()),
-                           |op| expand(op, &[], &mut Variables::new()));
-        if s.is_ok() {
-            return self.out.write_all(&s.unwrap());
-        }
-        Ok(())
+            None => return Ok(false),
+        };
+        self.out.write_all(&cmd).and(Ok(true))
     }
 
     fn get_ref<'a>(&'a self) -> &'a T {
@@ -162,64 +212,36 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
     fn get_mut<'a>(&'a mut self) -> &'a mut T {
         &mut self.out
     }
-}
 
-impl<T: Write+Send+'static> UnwrappableTerminal<T> for TerminfoTerminal<T> {
-    fn unwrap(self) -> T {
+    fn into_inner(self) -> T
+        where Self: Sized
+    {
         self.out
     }
 }
 
-impl<T: Write+Send+'static> TerminfoTerminal<T> {
-    /// Returns `None` whenever the terminal cannot be created for some
-    /// reason.
-    pub fn new(out: T) -> Option<Box<Terminal<T> + Send + 'static>> {
-        let term = match env::var("TERM") {
-            Ok(t) => t,
-            Err(..) => {
-                debug!("TERM environment variable not defined");
-                return None;
-            }
-        };
-
-        let mut file = match open(&term[..]) {
-            Ok(f) => f,
-            Err(err) => {
-                return match env::var("MSYSCON") {
-                    Ok(ref val) if &val[..] == "mintty.exe" => {
-                        // msys terminal
-                        Some(box TerminfoTerminal {
-                            out: out,
-                            ti: msys_terminfo(),
-                            num_colors: 8,
-                        })
-                    }
-                    _ => {
-                        debug!("error finding terminfo entry: {:?}", err);
-                        None
-                    }
-                };
-            }
-        };
-
-        let ti = parse(&mut file, false);
-        if ti.is_err() {
-            debug!("error parsing terminfo entry: {:?}", ti.err().unwrap());
-            return None;
-        }
-
-        let inf = ti.unwrap();
-        let nc = if inf.strings.get("setaf").is_some() && inf.strings.get("setab").is_some() {
-            inf.numbers.get("colors").map_or(0, |&n| n)
+impl<T: Write+Send> TerminfoTerminal<T> {
+    /// Create a new TerminfoTerminal with the given TermInfo and Write.
+    pub fn new_with_terminfo(out: T, terminfo: TermInfo) -> TerminfoTerminal<T> {
+        let nc = if terminfo.strings.contains_key("setaf") &&
+                    terminfo.strings.contains_key("setab") {
+            terminfo.numbers.get("colors").map_or(0, |&n| n)
         } else {
             0
         };
 
-        Some(box TerminfoTerminal {
+        TerminfoTerminal {
             out: out,
-            ti: inf,
+            ti: terminfo,
             num_colors: nc,
-        })
+        }
+    }
+
+    /// Create a new TerminfoTerminal for the current environment with the given Write.
+    ///
+    /// Returns `None` when the terminfo cannot be found or parsed.
+    pub fn new(out: T) -> Option<TerminfoTerminal<T>> {
+        TermInfo::from_env().map(move |ti| TerminfoTerminal::new_with_terminfo(out, ti)).ok()
     }
 
     fn dim_if_necessary(&self, color: color::Color) -> color::Color {
@@ -227,6 +249,18 @@ impl<T: Write+Send+'static> TerminfoTerminal<T> {
             color - 8
         } else {
             color
+        }
+    }
+
+    fn apply_cap(&mut self, cmd: &str, params: &[Param]) -> io::Result<bool> {
+        match self.ti.strings.get(cmd) {
+            Some(cmd) => {
+                match expand(&cmd, params, &mut Variables::new()) {
+                    Ok(s) => self.out.write_all(&s).and(Ok(true)),
+                    Err(e) => Err(io::Error::new(io::ErrorKind::InvalidData, e)),
+                }
+            }
+            None => Ok(false),
         }
     }
 }

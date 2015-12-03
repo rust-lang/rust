@@ -20,7 +20,7 @@ use std::cell::{RefCell, Cell};
 use std::{cmp, error, fmt};
 use std::io::prelude::*;
 use std::io;
-use term::{self, WriterWrapper};
+use term;
 
 /// maximum number of lines we will print for each error; arbitrary.
 const MAX_LINES: usize = 6;
@@ -318,7 +318,7 @@ pub struct EmitterWriter {
 }
 
 enum Destination {
-    Terminal(Box<term::Terminal<WriterWrapper> + Send>),
+    Terminal(Box<term::StderrTerminal>),
     Raw(Box<Write + Send>),
 }
 
@@ -365,7 +365,7 @@ impl EmitterWriter {
 
     fn print_maybe_styled(&mut self,
                           args: fmt::Arguments,
-                          color: term::attr::Attr,
+                          color: term::Attr,
                           print_newline_at_end: bool) -> io::Result<()> {
         match self.dst {
             Terminal(ref mut t) => {
@@ -408,13 +408,13 @@ impl EmitterWriter {
             try!(write!(&mut self.dst, "{} ", topic));
         }
 
-        try!(print_maybe_styled!(self, term::attr::ForegroundColor(lvl.color()),
+        try!(print_maybe_styled!(self, term::Attr::ForegroundColor(lvl.color()),
                                  "{}: ", lvl.to_string()));
-        try!(print_maybe_styled!(self, term::attr::Bold, "{}", msg));
+        try!(print_maybe_styled!(self, term::Attr::Bold, "{}", msg));
 
         match code {
             Some(code) => {
-                let style = term::attr::ForegroundColor(term::color::BRIGHT_MAGENTA);
+                let style = term::Attr::ForegroundColor(term::color::BRIGHT_MAGENTA);
                 try!(print_maybe_styled!(self, style, " [{}]", code.clone()));
             }
             None => ()
@@ -646,7 +646,7 @@ impl EmitterWriter {
                     s.pop();
                 }
 
-                try!(println_maybe_styled!(self, term::attr::ForegroundColor(lvl.color()),
+                try!(println_maybe_styled!(self, term::Attr::ForegroundColor(lvl.color()),
                                            "{}", s));
             }
         }
@@ -719,7 +719,7 @@ impl EmitterWriter {
             }
         }
         s.push('^');
-        println_maybe_styled!(self, term::attr::ForegroundColor(lvl.color()),
+        println_maybe_styled!(self, term::Attr::ForegroundColor(lvl.color()),
                               "{}", s)
     }
 
