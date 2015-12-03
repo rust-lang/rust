@@ -315,7 +315,6 @@ def emit_bsearch_range_table(f):
     f.write("""
 fn bsearch_range_table(c: char, r: &'static [(char, char)]) -> bool {
     use core::cmp::Ordering::{Equal, Less, Greater};
-    use core::slice::SliceExt;
     r.binary_search_by(|&(lo, hi)| {
          if lo <= c && c <= hi {
              Equal
@@ -358,7 +357,6 @@ def emit_conversions_module(f, to_upper, to_lower, to_title):
     f.write("pub mod conversions {")
     f.write("""
     use core::cmp::Ordering::{Equal, Less, Greater};
-    use core::slice::SliceExt;
     use core::option::Option;
     use core::option::Option::{Some, None};
     use core::result::Result::{Ok, Err};
@@ -404,7 +402,6 @@ def emit_charwidth_module(f, width_table):
     f.write("pub mod charwidth {\n")
     f.write("    use core::option::Option;\n")
     f.write("    use core::option::Option::{Some, None};\n")
-    f.write("    use core::slice::SliceExt;\n")
     f.write("    use core::result::Result::{Ok, Err};\n")
     f.write("""
     fn bsearch_range_value_table(c: char, is_cjk: bool, r: &'static [(char, char, u8, u8)]) -> u8 {

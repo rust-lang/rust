@@ -37,13 +37,12 @@
 
 #![feature(asm)]
 #![feature(box_syntax)]
-#![feature(duration_span)]
 #![feature(fnbox)]
-#![feature(iter_cmp)]
 #![feature(libc)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
+#![feature(time2)]
 
 extern crate getopts;
 extern crate serialize;
@@ -79,7 +78,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Instant, Duration};
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
@@ -714,7 +713,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::Res
             PadOnRight => t.desc.name.as_slice().len(),
         }
     }
-    match tests.iter().max_by(|t|len_if_padded(*t)) {
+    match tests.iter().max_by_key(|t|len_if_padded(*t)) {
         Some(t) => {
             let n = t.desc.name.as_slice();
             st.max_name_len = n.len();
@@ -1121,12 +1120,12 @@ pub fn black_box<T>(dummy: T) -> T { dummy }
 impl Bencher {
     /// Callback for benchmark functions to run in their body.
     pub fn iter<T, F>(&mut self, mut inner: F) where F: FnMut() -> T {
-        self.dur = Duration::span(|| {
-            let k = self.iterations;
-            for _ in 0..k {
-                black_box(inner());
-            }
-        });
+        let start = Instant::now();
+        let k = self.iterations;
+        for _ in 0..k {
+            black_box(inner());
+        }
+        self.dur = start.elapsed();
     }
 
     pub fn ns_elapsed(&mut self) -> u64 {
@@ -1169,29 +1168,24 @@ impl Bencher {
         let mut total_run = Duration::new(0, 0);
         let samples : &mut [f64] = &mut [0.0_f64; 50];
         loop {
-            let mut summ = None;
-            let mut summ5 = None;
+            let loop_start = Instant::now();
 
-            let loop_run = Duration::span(|| {
+            for p in &mut *samples {
+                self.bench_n(n, |x| f(x));
+                *p = self.ns_per_iter() as f64;
+            };
 
-                for p in &mut *samples {
-                    self.bench_n(n, |x| f(x));
-                    *p = self.ns_per_iter() as f64;
-                };
+            stats::winsorize(samples, 5.0);
+            let summ = stats::Summary::new(samples);
 
-                stats::winsorize(samples, 5.0);
-                summ = Some(stats::Summary::new(samples));
+            for p in &mut *samples {
+                self.bench_n(5 * n, |x| f(x));
+                *p = self.ns_per_iter() as f64;
+            };
 
-                for p in &mut *samples {
-                    self.bench_n(5 * n, |x| f(x));
-                    *p = self.ns_per_iter() as f64;
-                };
-
-                stats::winsorize(samples, 5.0);
-                summ5 = Some(stats::Summary::new(samples));
-            });
-            let summ = summ.unwrap();
-            let summ5 = summ5.unwrap();
+            stats::winsorize(samples, 5.0);
+            let summ5 = stats::Summary::new(samples);
+            let loop_run = loop_start.elapsed();
 
             // If we've run for 100ms and seem to have converged to a
             // stable median.

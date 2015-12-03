@@ -593,7 +593,6 @@ pub trait Read {
     /// [file]: ../std/fs/struct.File.html
     ///
     /// ```
-    /// #![feature(read_exact)]
     /// use std::io;
     /// use std::io::prelude::*;
     /// use std::fs::File;
@@ -607,7 +606,7 @@ pub trait Read {
     /// # Ok(())
     /// # }
     /// ```
-    #[unstable(feature = "read_exact", reason = "recently added", issue = "27585")]
+    #[stable(feature = "read_exact", since = "1.6.0")]
     fn read_exact(&mut self, mut buf: &mut [u8]) -> Result<()> {
         while !buf.is_empty() {
             match self.read(buf) {
@@ -618,7 +617,7 @@ pub trait Read {
             }
         }
         if !buf.is_empty() {
-            Err(Error::new(ErrorKind::UnexpectedEOF,
+            Err(Error::new(ErrorKind::UnexpectedEof,
                            "failed to fill whole buffer"))
         } else {
             Ok(())
@@ -838,6 +837,10 @@ pub trait Read {
                                          of where errors happen is currently \
                                          unclear and may change",
                issue = "27802")]
+    #[rustc_deprecated(reason = "error handling semantics unclear and \
+                                 don't seem to have an ergonomic resolution",
+                       since = "1.6.0")]
+    #[allow(deprecated)]
     fn tee<W: Write>(self, out: W) -> Tee<Self, W> where Self: Sized {
         Tee { reader: self, writer: out }
     }
@@ -1101,6 +1104,10 @@ pub trait Write {
                                          of where errors happen is currently \
                                          unclear and may change",
                issue = "27802")]
+    #[rustc_deprecated(reason = "error handling semantics unclear and \
+                                 don't seem to have an ergonomic resolution",
+                       since = "1.6.0")]
+    #[allow(deprecated)]
     fn broadcast<W: Write>(self, other: W) -> Broadcast<Self, W>
         where Self: Sized
     {
@@ -1189,11 +1196,11 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
             };
             match available.iter().position(|x| *x == delim) {
                 Some(i) => {
-                    buf.push_all(&available[..i + 1]);
+                    buf.extend_from_slice(&available[..i + 1]);
                     (true, i + 1)
                 }
                 None => {
-                    buf.push_all(available);
+                    buf.extend_from_slice(available);
                     (false, available.len())
                 }
             }
@@ -1484,6 +1491,9 @@ pub trait BufRead: Read {
 /// [broadcast]: trait.Write.html#method.broadcast
 #[unstable(feature = "io", reason = "awaiting stability of Write::broadcast",
            issue = "27802")]
+#[rustc_deprecated(reason = "error handling semantics unclear and \
+                             don't seem to have an ergonomic resolution",
+                   since = "1.6.0")]
 pub struct Broadcast<T, U> {
     first: T,
     second: U,
@@ -1491,6 +1501,10 @@ pub struct Broadcast<T, U> {
 
 #[unstable(feature = "io", reason = "awaiting stability of Write::broadcast",
            issue = "27802")]
+#[rustc_deprecated(reason = "error handling semantics unclear and \
+                             don't seem to have an ergonomic resolution",
+                   since = "1.6.0")]
+#[allow(deprecated)]
 impl<T: Write, U: Write> Write for Broadcast<T, U> {
     fn write(&mut self, data: &[u8]) -> Result<usize> {
         let n = try!(self.first.write(data));
@@ -1593,6 +1607,9 @@ impl<T: BufRead> BufRead for Take<T> {
 /// [tee]: trait.Read.html#method.tee
 #[unstable(feature = "io", reason = "awaiting stability of Read::tee",
            issue = "27802")]
+#[rustc_deprecated(reason = "error handling semantics unclear and \
+                             don't seem to have an ergonomic resolution",
+                   since = "1.6.0")]
 pub struct Tee<R, W> {
     reader: R,
     writer: W,
@@ -1600,6 +1617,10 @@ pub struct Tee<R, W> {
 
 #[unstable(feature = "io", reason = "awaiting stability of Read::tee",
            issue = "27802")]
+#[rustc_deprecated(reason = "error handling semantics unclear and \
+                             don't seem to have an ergonomic resolution",
+                   since = "1.6.0")]
+#[allow(deprecated)]
 impl<R: Read, W: Write> Read for Tee<R, W> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         let n = try!(self.reader.read(buf));
@@ -1907,7 +1928,7 @@ mod tests {
 
         let mut c = Cursor::new(&b""[..]);
         assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(),
-                   io::ErrorKind::UnexpectedEOF);
+                   io::ErrorKind::UnexpectedEof);
 
         let mut c = Cursor::new(&b"123"[..]).chain(Cursor::new(&b"456789"[..]));
         c.read_exact(&mut buf).unwrap();
@@ -1915,7 +1936,7 @@ mod tests {
         c.read_exact(&mut buf).unwrap();
         assert_eq!(&buf, b"5678");
         assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(),
-                   io::ErrorKind::UnexpectedEOF);
+                   io::ErrorKind::UnexpectedEof);
     }
 
     #[test]
@@ -1924,11 +1945,11 @@ mod tests {
 
         let mut c = &b""[..];
         assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(),
-                   io::ErrorKind::UnexpectedEOF);
+                   io::ErrorKind::UnexpectedEof);
 
         let mut c = &b"123"[..];
         assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(),
-                   io::ErrorKind::UnexpectedEOF);
+                   io::ErrorKind::UnexpectedEof);
         // make sure the optimized (early returning) method is being used
         assert_eq!(&buf, &[0; 4]);
 

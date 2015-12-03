@@ -280,7 +280,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         let mut result = String::new();
         while self.peek() != term {
             unsafe {
-                result.as_mut_vec().push_all(&[self.next_byte()])
+                result.as_mut_vec().extend_from_slice(&[self.next_byte()])
             }
         }
         self.next();

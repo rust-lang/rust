@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unboxed_closures, core)]
+#![feature(unboxed_closures, fn_traits)]
 
 use std::marker::PhantomData;
 use std::ops::Fn;

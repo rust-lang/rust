@@ -11,6 +11,7 @@
 /// Entry point of thread panic, for details, see std::macros
 #[macro_export]
 #[allow_internal_unstable]
+#[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {
     () => (
         panic!("explicit panic")
@@ -154,21 +155,47 @@ macro_rules! debug_assert {
 /// debug_assert_eq!(a, b);
 /// ```
 #[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! debug_assert_eq {
     ($($arg:tt)*) => (if cfg!(debug_assertions) { assert_eq!($($arg)*); })
 }
 
-/// Short circuiting evaluation on Err
+/// Helper macro for unwrapping `Result` values while returning early with an
+/// error if the value of the expression is `Err`. Can only be used in
+/// functions that return `Result` because of the early return of `Err` that
+/// it provides.
 ///
-/// `libstd` contains a more general `try!` macro that uses `From<E>`.
+/// # Examples
+///
+/// ```
+/// use std::io;
+/// use std::fs::File;
+/// use std::io::prelude::*;
+///
+/// fn write_to_file_using_try() -> Result<(), io::Error> {
+///     let mut file = try!(File::create("my_best_friends.txt"));
+///     try!(file.write_all(b"This is a list of my best friends."));
+///     println!("I wrote to the file");
+///     Ok(())
+/// }
+/// // This is equivalent to:
+/// fn write_to_file_using_match() -> Result<(), io::Error> {
+///     let mut file = try!(File::create("my_best_friends.txt"));
+///     match file.write_all(b"This is a list of my best friends.") {
+///         Ok(_) => (),
+///         Err(e) => return Err(e),
+///     }
+///     println!("I wrote to the file");
+///     Ok(())
+/// }
+/// ```
 #[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! try {
-    ($e:expr) => ({
-        use $crate::result::Result::{Ok, Err};
-
-        match $e {
-            Ok(e) => e,
-            Err(e) => return Err(e),
+    ($expr:expr) => (match $expr {
+        $crate::result::Result::Ok(val) => val,
+        $crate::result::Result::Err(err) => {
+            return $crate::result::Result::Err($crate::convert::From::from(err))
         }
     })
 }
@@ -194,6 +221,7 @@ macro_rules! try {
 /// assert_eq!(w, b"testformatted arguments");
 /// ```
 #[macro_export]
+#[stable(feature = "core", since = "1.6.0")]
 macro_rules! write {
     ($dst:expr, $($arg:tt)*) => ($dst.write_fmt(format_args!($($arg)*)))
 }
@@ -271,9 +299,7 @@ macro_rules! writeln {
 /// }
 /// ```
 #[macro_export]
-#[unstable(feature = "core",
-           reason = "relationship with panic is unclear",
-           issue = "27701")]
+#[stable(feature = "core", since = "1.6.0")]
 macro_rules! unreachable {
     () => ({
         panic!("internal error: entered unreachable code")
@@ -334,9 +360,7 @@ macro_rules! unreachable {
 /// }
 /// ```
 #[macro_export]
-#[unstable(feature = "core",
-           reason = "relationship with panic is unclear",
-           issue = "27701")]
+#[stable(feature = "core", since = "1.6.0")]
 macro_rules! unimplemented {
     () => (panic!("not yet implemented"))
 }

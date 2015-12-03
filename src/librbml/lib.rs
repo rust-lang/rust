@@ -126,7 +126,7 @@
 
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(slice_bytes)]
+#![feature(clone_from_slice)]
 
 #![cfg_attr(test, feature(test))]
 
@@ -241,7 +241,6 @@ pub mod reader {
 
     use std::isize;
     use std::mem::transmute;
-    use std::slice::bytes;
 
     use serialize;
 
@@ -482,7 +481,7 @@ pub mod reader {
             // of the page and segfault.
 
             let mut b = [0; 8];
-            bytes::copy_memory(&d.data[d.end-8..d.end], &mut b);
+            b.clone_from_slice(&d.data[d.end-8..d.end]);
             let data = unsafe { (*(b.as_ptr() as *const u64)).to_be() };
             let len = d.end - d.start;
             if len < 8 {
@@ -872,7 +871,6 @@ pub mod writer {
     use std::mem;
     use std::io::prelude::*;
     use std::io::{self, SeekFrom, Cursor};
-    use std::slice::bytes;
 
     use super::{ EsVec, EsMap, EsEnum, EsSub8, EsSub32, EsVecElt, EsMapKey,
         EsU64, EsU32, EsU16, EsU8, EsI64, EsI32, EsI16, EsI8,
@@ -962,7 +960,7 @@ pub mod writer {
                 {
                     let last_size_pos = last_size_pos as usize;
                     let data = &self.writer.get_ref()[last_size_pos+4..cur_pos as usize];
-                    bytes::copy_memory(data, &mut buf);
+                    buf.clone_from_slice(data);
                 }
 
                 // overwrite the size and data and continue

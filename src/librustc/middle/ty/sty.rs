@@ -1185,7 +1185,8 @@ impl<'tcx> TyS<'tcx> {
             }
             TyTrait(ref obj) => {
                 let mut v = vec![obj.bounds.region_bound];
-                v.push_all(obj.principal.skip_binder().substs.regions().as_slice());
+                v.extend_from_slice(obj.principal.skip_binder()
+                                       .substs.regions().as_slice());
                 v
             }
             TyEnum(_, substs) |

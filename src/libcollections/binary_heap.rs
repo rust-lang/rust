@@ -581,10 +581,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// The elements are removed in arbitrary order.
     #[inline]
-    #[unstable(feature = "drain",
-               reason = "matches collection reform specification, \
-                         waiting for dust to settle",
-               issue = "27711")]
+    #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<T> {
         Drain { iter: self.data.drain(..) }
     }
@@ -738,7 +735,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// An iterator that drains a `BinaryHeap`.
-#[unstable(feature = "drain", reason = "recent addition", issue = "27711")]
+#[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     iter: vec::Drain<'a, T>,
 }

@@ -12,14 +12,9 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(unknown_features)]
-#![feature(box_syntax)]
-#![feature(unboxed_closures, core)]
-
 fn main() {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let task: Box<Fn(isize) -> isize> = Box::new(|x| x);
-    task.call((0, ));
+    task(0);
 
     let mut task: Box<FnMut(isize) -> isize> = Box::new(|x| x);
     task(0);

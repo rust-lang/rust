@@ -1733,7 +1733,7 @@ fn projection_declared_bounds<'a, 'tcx>(rcx: &Rcx<'a,'tcx>,
     let mut declared_bounds =
         declared_generic_bounds_from_env(rcx, GenericKind::Projection(projection_ty));
 
-    declared_bounds.push_all(
+    declared_bounds.extend_from_slice(
         &declared_projection_bounds_from_trait(rcx, span, projection_ty));
 
     declared_bounds

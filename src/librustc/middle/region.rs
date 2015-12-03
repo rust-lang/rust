@@ -630,7 +630,7 @@ impl RegionMaps {
             }
 
             *vec = Vec::with_capacity(64);
-            vec.push_all(buf);
+            vec.extend_from_slice(buf);
             loop {
                 vec.push(scope);
                 match scope_map[scope.0 as usize].into_option() {

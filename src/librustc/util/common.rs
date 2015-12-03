@@ -18,7 +18,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::repeat;
 use std::path::Path;
-use std::time::Duration;
+use std::time::Instant;
 
 use rustc_front::hir;
 use rustc_front::intravisit;
@@ -44,15 +44,9 @@ pub fn time<T, F>(do_it: bool, what: &str, f: F) -> T where
         r
     });
 
-    let mut rv = None;
-    let dur = {
-        let ref mut rvp = rv;
-
-        Duration::span(move || {
-            *rvp = Some(f())
-        })
-    };
-    let rv = rv.unwrap();
+    let start = Instant::now();
+    let rv = f();
+    let dur = start.elapsed();
 
     // Hack up our own formatting for the duration to make it easier for scripts
     // to parse (always use the same number of decimal places and the same unit).

@@ -29,7 +29,6 @@
 #![cfg_attr(stage0, feature(rustc_attrs))]
 #![cfg_attr(stage0, allow(unused_attributes))]
 #![feature(associated_consts)]
-#![feature(drain)]
 #![feature(filling_drop)]
 #![feature(libc)]
 #![feature(rustc_private)]
@@ -37,7 +36,6 @@
 #![feature(str_char)]
 #![feature(str_escape)]
 #![feature(unicode)]
-#![feature(vec_push_all)]
 
 extern crate fmt_macros;
 extern crate serialize;

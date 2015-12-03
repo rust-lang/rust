@@ -376,7 +376,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             self.local_ccxs
                 .iter()
                 .zip(0..self.local_ccxs.len())
-                .min_by(|&(local_ccx, _idx)| local_ccx.n_llvm_insns.get())
+                .min_by_key(|&(local_ccx, _idx)| local_ccx.n_llvm_insns.get())
                 .unwrap();
         CrateContext {
             shared: self,

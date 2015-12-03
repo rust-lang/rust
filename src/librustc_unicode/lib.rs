@@ -35,12 +35,10 @@
 #![no_std]
 
 #![cfg_attr(stage0, feature(rustc_attrs))]
+#![cfg_attr(stage0, feature(no_std))]
 #![cfg_attr(stage0, allow(unused_attributes))]
 #![feature(core_char_ext)]
-#![feature(core_slice_ext)]
-#![feature(core_str_ext)]
 #![feature(lang_items)]
-#![feature(no_std)]
 #![feature(staged_api)]
 
 mod tables;

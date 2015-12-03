@@ -1748,62 +1748,96 @@ pub enum FpCategory {
            issue = "27702")]
 pub trait Float: Sized {
     /// Returns the NaN value.
+    #[unstable(feature = "float_extras", reason = "needs removal",
+               issue = "27752")]
     fn nan() -> Self;
     /// Returns the infinite value.
+    #[unstable(feature = "float_extras", reason = "needs removal",
+               issue = "27752")]
     fn infinity() -> Self;
     /// Returns the negative infinite value.
+    #[unstable(feature = "float_extras", reason = "needs removal",
+               issue = "27752")]
     fn neg_infinity() -> Self;
     /// Returns -0.0.
+    #[unstable(feature = "float_extras", reason = "needs removal",
+               issue = "27752")]
     fn neg_zero() -> Self;
     /// Returns 0.0.
+    #[unstable(feature = "float_extras", reason = "needs removal",
+               issue = "27752")]
     fn zero() -> Self;
     /// Returns 1.0.
+    #[unstable(feature = "float_extras", reason = "needs removal",
+               issue = "27752")]
     fn one() -> Self;
     /// Parses the string `s` with the radix `r` as a float.
+    #[unstable(feature = "float_from_str_radix", reason = "recently moved API",
+               issue = "27736")]
+    #[rustc_deprecated(since = "1.4.0",
+                 reason = "unclear how useful or correct this is")]
     fn from_str_radix(s: &str, r: u32) -> Result<Self, ParseFloatError>;
 
     /// Returns true if this value is NaN and false otherwise.
+    #[stable(feature = "core", since = "1.6.0")]
     fn is_nan(self) -> bool;
     /// Returns true if this value is positive infinity or negative infinity and
     /// false otherwise.
+    #[stable(feature = "core", since = "1.6.0")]
     fn is_infinite(self) -> bool;
     /// Returns true if this number is neither infinite nor NaN.
+    #[stable(feature = "core", since = "1.6.0")]
     fn is_finite(self) -> bool;
     /// Returns true if this number is neither zero, infinite, denormal, or NaN.
+    #[stable(feature = "core", since = "1.6.0")]
     fn is_normal(self) -> bool;
     /// Returns the category that this number falls into.
+    #[stable(feature = "core", since = "1.6.0")]
     fn classify(self) -> FpCategory;
 
     /// Returns the mantissa, exponent and sign as integers, respectively.
+    #[unstable(feature = "float_extras", reason = "signature is undecided",
+               issue = "27752")]
     fn integer_decode(self) -> (u64, i16, i8);
 
     /// Computes the absolute value of `self`. Returns `Float::nan()` if the
     /// number is `Float::nan()`.
+    #[stable(feature = "core", since = "1.6.0")]
     fn abs(self) -> Self;
     /// Returns a number that represents the sign of `self`.
     ///
     /// - `1.0` if the number is positive, `+0.0` or `Float::infinity()`
     /// - `-1.0` if the number is negative, `-0.0` or `Float::neg_infinity()`
     /// - `Float::nan()` if the number is `Float::nan()`
+    #[stable(feature = "core", since = "1.6.0")]
     fn signum(self) -> Self;
+
     /// Returns `true` if `self` is positive, including `+0.0` and
     /// `Float::infinity()`.
-    fn is_positive(self) -> bool;
+    #[stable(feature = "core", since = "1.6.0")]
+    fn is_sign_positive(self) -> bool;
     /// Returns `true` if `self` is negative, including `-0.0` and
     /// `Float::neg_infinity()`.
-    fn is_negative(self) -> bool;
+    #[stable(feature = "core", since = "1.6.0")]
+    fn is_sign_negative(self) -> bool;
 
     /// Take the reciprocal (inverse) of a number, `1/x`.
+    #[stable(feature = "core", since = "1.6.0")]
     fn recip(self) -> Self;
 
     /// Raise a number to an integer power.
     ///
     /// Using this function is generally faster than using `powf`
+    #[stable(feature = "core", since = "1.6.0")]
     fn powi(self, n: i32) -> Self;
 
     /// Convert radians to degrees.
+    #[unstable(feature = "float_extras", reason = "desirability is unclear",
+               issue = "27752")]
     fn to_degrees(self) -> Self;
     /// Convert degrees to radians.
+    #[unstable(feature = "float_extras", reason = "desirability is unclear",
+               issue = "27752")]
     fn to_radians(self) -> Self;
 }
 

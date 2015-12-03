@@ -13,7 +13,6 @@ use cmp;
 use io::{self, SeekFrom, Read, Write, Seek, BufRead, Error, ErrorKind};
 use fmt;
 use mem;
-use slice;
 use string::String;
 use vec::Vec;
 
@@ -157,7 +156,7 @@ impl<'a> Read for &'a [u8] {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let amt = cmp::min(buf.len(), self.len());
         let (a, b) = self.split_at(amt);
-        slice::bytes::copy_memory(a, buf);
+        buf.clone_from_slice(a);
         *self = b;
         Ok(amt)
     }
@@ -165,10 +164,11 @@ impl<'a> Read for &'a [u8] {
     #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         if buf.len() > self.len() {
-            return Err(Error::new(ErrorKind::UnexpectedEOF, "failed to fill whole buffer"));
+            return Err(Error::new(ErrorKind::UnexpectedEof,
+                                  "failed to fill whole buffer"));
         }
         let (a, b) = self.split_at(buf.len());
-        slice::bytes::copy_memory(a, buf);
+        buf.clone_from_slice(a);
         *self = b;
         Ok(())
     }
@@ -189,7 +189,7 @@ impl<'a> Write for &'a mut [u8] {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         let amt = cmp::min(data.len(), self.len());
         let (a, b) = mem::replace(self, &mut []).split_at_mut(amt);
-        slice::bytes::copy_memory(&data[..amt], a);
+        a.clone_from_slice(&data[..amt]);
         *self = b;
         Ok(amt)
     }
@@ -211,13 +211,13 @@ impl<'a> Write for &'a mut [u8] {
 impl Write for Vec<u8> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.push_all(buf);
+        self.extend_from_slice(buf);
         Ok(buf.len())
     }
 
     #[inline]
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        self.push_all(buf);
+        self.extend_from_slice(buf);
         Ok(())
     }
 

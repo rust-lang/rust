@@ -1009,7 +1009,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
             }
         }
         ArgVals(vs) => {
-            llargs.push_all(vs);
+            llargs.extend_from_slice(vs);
         }
     }
 

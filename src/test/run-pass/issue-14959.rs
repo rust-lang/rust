@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unboxed_closures, core)]
+#![feature(fn_traits, unboxed_closures)]
 
 use std::ops::Fn;
 

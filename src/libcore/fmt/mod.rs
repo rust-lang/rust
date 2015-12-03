@@ -878,7 +878,7 @@ impl<'a> Formatter<'a> {
 
         let mut prefixed = false;
         if self.alternate() {
-            prefixed = true; width += prefix.char_len();
+            prefixed = true; width += prefix.chars().count();
         }
 
         // Writes the sign if it exists, and then the prefix if it was requested
@@ -942,18 +942,13 @@ impl<'a> Formatter<'a> {
         }
         // The `precision` field can be interpreted as a `max-width` for the
         // string being formatted
-        match self.precision {
-            Some(max) => {
-                // If there's a maximum width and our string is longer than
-                // that, then we must always have truncation. This is the only
-                // case where the maximum length will matter.
-                let char_len = s.char_len();
-                if char_len >= max {
-                    let nchars = ::cmp::min(max, char_len);
-                    return self.buf.write_str(s.slice_chars(0, nchars));
-                }
+        if let Some(max) = self.precision {
+            // If there's a maximum width and our string is longer than
+            // that, then we must always have truncation. This is the only
+            // case where the maximum length will matter.
+            if let Some((i, _)) = s.char_indices().skip(max).next() {
+                return self.buf.write_str(&s[..i])
             }
-            None => {}
         }
         // The `width` field is more of a `min-width` parameter at this point.
         match self.width {
@@ -962,13 +957,13 @@ impl<'a> Formatter<'a> {
             None => self.buf.write_str(s),
             // If we're under the maximum width, check if we're over the minimum
             // width, if so it's as easy as just emitting the string.
-            Some(width) if s.char_len() >= width => {
+            Some(width) if s.chars().count() >= width => {
                 self.buf.write_str(s)
             }
             // If we're under both the maximum and the minimum width, then fill
             // up the minimum width with the specified string + some alignment.
             Some(width) => {
-                self.with_padding(width - s.char_len(), Alignment::Left, |me| {
+                self.with_padding(width - s.chars().count(), Alignment::Left, |me| {
                     me.buf.write_str(s)
                 })
             }

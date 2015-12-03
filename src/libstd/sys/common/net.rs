@@ -15,6 +15,7 @@ use fmt;
 use io::{self, Error, ErrorKind};
 use libc::{c_int, c_char, c_void};
 use mem;
+#[allow(deprecated)]
 use net::{SocketAddr, Shutdown, IpAddr};
 use ptr;
 use str::from_utf8;
@@ -129,6 +130,7 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
 // lookup_addr
 ////////////////////////////////////////////////////////////////////////////////
 
+#[allow(deprecated)]
 pub fn lookup_addr(addr: &IpAddr) -> io::Result<String> {
     init();
 

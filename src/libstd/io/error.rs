@@ -79,6 +79,7 @@ struct Custom {
 /// exhaustively match against it.
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub enum ErrorKind {
     /// An entity was not found, often a file.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -155,8 +156,19 @@ pub enum ErrorKind {
     /// This typically means that an operation could only succeed if it read a
     /// particular number of bytes but only a smaller number of bytes could be
     /// read.
-    #[unstable(feature = "read_exact", reason = "recently added", issue = "27585")]
+    #[unstable(feature = "read_exact_old", reason = "recently added",
+               issue = "0")]
+    #[rustc_deprecated(since = "1.6.0", reason = "renamed to UnexpectedEof")]
     UnexpectedEOF,
+
+    /// An error returned when an operation could not be completed because an
+    /// "end of file" was reached prematurely.
+    ///
+    /// This typically means that an operation could only succeed if it read a
+    /// particular number of bytes but only a smaller number of bytes could be
+    /// read.
+    #[stable(feature = "read_exact", since = "1.6.0")]
+    UnexpectedEof,
 
     /// Any I/O error not part of this list.
     #[unstable(feature = "io_error_internals",

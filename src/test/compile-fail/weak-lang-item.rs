@@ -12,7 +12,6 @@
 // error-pattern: language item required, but not found: `panic_fmt`
 // error-pattern: language item required, but not found: `eh_personality`
 
-#![feature(no_std)]
 #![no_std]
 
 extern crate core;

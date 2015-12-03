@@ -1009,15 +1009,12 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
     }
 }
 
-fn is_compiler_error_or_warning(mut line: &str) -> bool {
-    // Remove initial prefix which may contain a colon
-    let mut components = Path::new(line).components();
-    if let Some(Component::Prefix(_)) = components.peek() {
-        components.next();
-    }
-
-    // Safe as path was originally constructed from a &str ^
-    line = components.as_path().to_str().unwrap();
+fn is_compiler_error_or_warning(line: &str) -> bool {
+    let mut c = Path::new(line).components();
+    let line = match c.next() {
+        Some(Component::Prefix(_)) => c.as_path().to_str().unwrap(),
+        _ => line,
+    };
 
     let mut i = 0;
     return
@@ -1314,7 +1311,7 @@ fn make_compile_args<F>(config: &Config,
                         "-L".to_owned(),
                         config.build_base.to_str().unwrap().to_owned(),
                         format!("--target={}", target));
-    args.push_all(&extras);
+    args.extend_from_slice(&extras);
     if !props.no_prefer_dynamic {
         args.push("-C".to_owned());
         args.push("prefer-dynamic".to_owned());

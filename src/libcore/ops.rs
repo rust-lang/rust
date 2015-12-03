@@ -1732,7 +1732,7 @@ impl<'a, T: ?Sized> DerefMut for &'a mut T {
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 pub trait Fn<Args> : FnMut<Args> {
     /// This is called when the call operator is used.
-    #[unstable(feature = "core", issue = "27701")]
+    #[unstable(feature = "fn_traits", issue = "29625")]
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
 }
 
@@ -1743,7 +1743,7 @@ pub trait Fn<Args> : FnMut<Args> {
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 pub trait FnMut<Args> : FnOnce<Args> {
     /// This is called when the call operator is used.
-    #[unstable(feature = "core", issue = "27701")]
+    #[unstable(feature = "fn_traits", issue = "29625")]
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
@@ -1754,11 +1754,11 @@ pub trait FnMut<Args> : FnOnce<Args> {
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
-    #[unstable(feature = "core", issue = "27701")]
+    #[unstable(feature = "fn_traits", issue = "29625")]
     type Output;
 
     /// This is called when the call operator is used.
-    #[unstable(feature = "core", issue = "27701")]
+    #[unstable(feature = "fn_traits", issue = "29625")]
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
 }
 

@@ -257,19 +257,25 @@ pub fn from_digit(num: u32, radix: u32) -> Option<char> {
            reason = "the stable interface is `impl char` in later crate",
            issue = "27701")]
 pub trait CharExt {
+    #[stable(feature = "core", since = "1.6.0")]
     fn is_digit(self, radix: u32) -> bool;
+    #[stable(feature = "core", since = "1.6.0")]
     fn to_digit(self, radix: u32) -> Option<u32>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn escape_unicode(self) -> EscapeUnicode;
+    #[stable(feature = "core", since = "1.6.0")]
     fn escape_default(self) -> EscapeDefault;
+    #[stable(feature = "core", since = "1.6.0")]
     fn len_utf8(self) -> usize;
+    #[stable(feature = "core", since = "1.6.0")]
     fn len_utf16(self) -> usize;
+    #[stable(feature = "core", since = "1.6.0")]
     fn encode_utf8(self, dst: &mut [u8]) -> Option<usize>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn encode_utf16(self, dst: &mut [u16]) -> Option<usize>;
 }
 
-#[unstable(feature = "core_char_ext",
-           reason = "the stable interface is `impl char` in later crate",
-           issue = "27701")]
+#[stable(feature = "core", since = "1.6.0")]
 impl CharExt for char {
     #[inline]
     fn is_digit(self, radix: u32) -> bool {
