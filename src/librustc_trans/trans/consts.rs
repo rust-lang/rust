@@ -1004,7 +1004,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             try!(const_fn_call(cx, MethodCallKey(method_call),
                                method_did, &arg_vals, param_substs, trueconst))
         },
-        hir::ExprType(ref e, _) => const_expr(cx, &**e, param_substs).0,
+        hir::ExprType(ref e, _) => try!(const_expr(cx, &**e, param_substs, fn_args, trueconst)).0,
         hir::ExprBlock(ref block) => {
             match block.expr {
                 Some(ref expr) => try!(const_expr(

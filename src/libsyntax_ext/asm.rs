@@ -62,8 +62,8 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     // parsed as `asm!(z)` with `z = "x": y` which is type ascription.
     let first_colon = tts.iter().position(|tt| {
         match *tt {
-            ast::TtToken(_, token::Colon) |
-            ast::TtToken(_, token::ModSep) => true,
+            ast::TokenTree::Token(_, token::Colon) |
+            ast::TokenTree::Token(_, token::ModSep) => true,
             _ => false
         }
     }).unwrap_or(tts.len());
@@ -99,7 +99,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
                 // This is most likely malformed.
                 if p2.token != token::Eof {
-                    let mut extra_tts = p2.parse_all_token_trees();
+                    let mut extra_tts = panictry!(p2.parse_all_token_trees());
                     extra_tts.extend(tts[first_colon..].iter().cloned());
                     p = parse::tts_to_parser(cx.parse_sess, extra_tts, cx.cfg());
                 }
