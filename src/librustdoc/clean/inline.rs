@@ -138,7 +138,7 @@ pub fn load_attrs(cx: &DocContext, tcx: &ty::ctxt,
 pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
     match cx.tcx_opt() {
         Some(tcx) => {
-            let fqn = tcx.sess.cstore.item_path(did);
+            let fqn = tcx.sess.cstore.extern_item_path(did);
             let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
             cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
         }

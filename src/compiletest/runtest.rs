@@ -1149,11 +1149,20 @@ fn compile_test(config: &Config, props: &TestProps,
 }
 
 fn document(config: &Config, props: &TestProps,
-            testfile: &Path) -> (ProcRes, PathBuf) {
+            testfile: &Path, out_dir: &Path) -> ProcRes {
+    if props.build_aux_docs {
+        for rel_ab in &props.aux_builds {
+            let abs_ab = config.aux_base.join(rel_ab);
+            let aux_props = header::load_props(&abs_ab);
+
+            let auxres = document(config, &aux_props, &abs_ab, out_dir);
+            if !auxres.status.success() {
+                return auxres;
+            }
+        }
+    }
+
     let aux_dir = aux_output_dir_name(config, testfile);
-    let out_dir = output_base_name(config, testfile);
-    let _ = fs::remove_dir_all(&out_dir);
-    ensure_dir(&out_dir);
     let mut args = vec!["-L".to_owned(),
                         aux_dir.to_str().unwrap().to_owned(),
                         "-o".to_owned(),
@@ -1164,7 +1173,7 @@ fn document(config: &Config, props: &TestProps,
         prog: config.rustdoc_path.to_str().unwrap().to_owned(),
         args: args,
     };
-    (compose_and_run_compiler(config, props, testfile, args, None), out_dir)
+    compose_and_run_compiler(config, props, testfile, args, None)
 }
 
 fn exec_compiled_test(config: &Config, props: &TestProps,
@@ -1723,7 +1732,11 @@ fn charset() -> &'static str {
 }
 
 fn run_rustdoc_test(config: &Config, props: &TestProps, testfile: &Path) {
-    let (proc_res, out_dir) = document(config, props, testfile);
+    let out_dir = output_base_name(config, testfile);
+    let _ = fs::remove_dir_all(&out_dir);
+    ensure_dir(&out_dir);
+
+    let proc_res = document(config, props, testfile, &out_dir);
     if !proc_res.status.success() {
         fatal_proc_rec("rustdoc failed!", &proc_res);
     }

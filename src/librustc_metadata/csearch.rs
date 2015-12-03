@@ -21,7 +21,7 @@ use middle::lang_items;
 use middle::ty::{self, Ty};
 use middle::def_id::{DefId, DefIndex};
 
-use rustc::front::map as ast_map;
+use rustc::front::map as hir_map;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use std::cell::RefCell;
@@ -29,6 +29,7 @@ use std::rc::Rc;
 use std::path::PathBuf;
 use syntax::ast;
 use syntax::attr;
+use syntax::parse::token;
 use rustc_back::svh::Svh;
 use rustc_back::target::Target;
 use rustc_front::hir;
@@ -115,7 +116,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_method_arg_names(&cdata, did.index)
     }
 
-    fn item_path(&self, def: DefId) -> Vec<ast_map::PathElem> {
+    fn item_path(&self, def: DefId) -> Vec<hir_map::PathElem> {
         let cdata = self.get_crate_data(def.krate);
         let path = decoder::get_item_path(&*cdata, def.index);
 
@@ -125,6 +126,17 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
             r.push_all(&path);
             r
         })
+    }
+
+    fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> {
+        let cdata = self.get_crate_data(def.krate);
+        let path = decoder::get_item_path(&*cdata, def.index);
+
+        let mut r = Vec::with_capacity(path.len() + 1);
+        let crate_name = hir_map::PathMod(token::intern(&cdata.name));
+        r.push(crate_name);
+        r.push_all(&path);
+        r
     }
 
     fn item_name(&self, def: DefId) -> ast::Name {
@@ -350,7 +362,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_reachable_ids(&*cdata)
     }
 
-    fn def_path(&self, def: DefId) -> ast_map::DefPath
+    fn def_path(&self, def: DefId) -> hir_map::DefPath
     {
         let cdata = self.get_crate_data(def.krate);
         let path = decoder::def_path(&*cdata, def.index);
