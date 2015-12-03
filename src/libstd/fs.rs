@@ -1299,6 +1299,20 @@ impl DirBuilder {
 
     /// Create the specified directory with the options configured in this
     /// builder.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dir_builder)]
+    /// use std::fs::{self, DirBuilder};
+    ///
+    /// let path = "/tmp/foo/bar/baz";
+    /// DirBuilder::new()
+    ///     .recursive(true)
+    ///     .create(path).unwrap();
+    ///
+    /// assert!(fs::metadata(path).unwrap().is_dir());
+    /// ```
     pub fn create<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         self._create(path.as_ref())
     }
