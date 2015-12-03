@@ -35,7 +35,7 @@ use std::fmt;
 use std::slice;
 use std::str;
 
-use html::render::with_unique_id;
+use html::render::derive_id;
 use html::toc::TocBuilder;
 use html::highlight;
 use html::escape::Escape;
@@ -307,16 +307,16 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         let opaque = unsafe { (*data).opaque as *mut hoedown_html_renderer_state };
         let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
 
-        let text = with_unique_id(id, |id| {
-            let sec = opaque.toc_builder.as_mut().map_or("".to_owned(), |builder| {
-                format!("{} ", builder.push(level as u32, s.clone(), id.to_owned()))
-            });
+        let id = derive_id(id);
 
-            // Render the HTML
-            format!("<h{lvl} id='{id}' class='section-header'>\
-                    <a href='#{id}'>{sec}{}</a></h{lvl}>",
-                    s, lvl = level, id = id, sec = sec)
+        let sec = opaque.toc_builder.as_mut().map_or("".to_owned(), |builder| {
+            format!("{} ", builder.push(level as u32, s.clone(), id.clone()))
         });
+
+        // Render the HTML
+        let text = format!("<h{lvl} id='{id}' class='section-header'>\
+                           <a href='#{id}'>{sec}{}</a></h{lvl}>",
+                           s, lvl = level, id = id, sec = sec);
 
         let text = CString::new(text).unwrap();
         unsafe { hoedown_buffer_puts(ob, text.as_ptr()) }
