@@ -2789,6 +2789,10 @@ impl<'a> Parser<'a> {
                 lhs = self.mk_expr(lhs.span.lo, rhs.span.hi,
                                    ExprCast(lhs, rhs), None);
                 continue
+            } else if op == AssocOp::Colon {
+                let rhs = try!(self.parse_ty());
+                lhs = self.mk_expr(lhs.span.lo, rhs.span.hi, ExprType(lhs, rhs));
+                continue
             } else if op == AssocOp::DotDot {
                     // If we didn’t have to handle `x..`, it would be pretty easy to generalise
                     // it to the Fixity::None code.
@@ -2857,7 +2861,9 @@ impl<'a> Parser<'a> {
                     let aopexpr = self.mk_assign_op(codemap::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(lhs_span.lo, rhs_span.hi, aopexpr, None)
                 }
-                AssocOp::As | AssocOp::DotDot => self.bug("As or DotDot branch reached")
+                AssocOp::As | AssocOp::Colon | AssocOp::DotDot => {
+                    self.bug("As, Colon or DotDot branch reached")
+                }
             };
 
             if op.fixity() == Fixity::None { break }

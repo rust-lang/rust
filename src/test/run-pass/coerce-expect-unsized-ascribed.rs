@@ -16,25 +16,25 @@ use std::fmt::Debug;
 // A version of coerce-expect-unsized that uses type ascription.
 
 pub fn main() {
-    let _ = box { [1, 2, 3] }: Box<[int]>;
-    let _ = box if true { [1, 2, 3] } else { [1, 3, 4] }: Box<[int]>;
-    let _ = box match true { true => [1, 2, 3], false => [1, 3, 4] }: Box<[int]>;
-    let _ = box { |x| (x as u8) }: Box<Fn(int) -> _>;
+    let _ = box { [1, 2, 3] }: Box<[i32]>;
+    let _ = box if true { [1, 2, 3] } else { [1, 3, 4] }: Box<[i32]>;
+    let _ = box match true { true => [1, 2, 3], false => [1, 3, 4] }: Box<[i32]>;
+    let _ = box { |x| (x as u8) }: Box<Fn(i32) -> _>;
     let _ = box if true { false } else { true }: Box<Debug>;
     let _ = box match true { true => 'a', false => 'b' }: Box<Debug>;
 
-    let _ = &{ [1, 2, 3] }: &[int];
-    let _ = &if true { [1, 2, 3] } else { [1, 3, 4] }: &[int];
-    let _ = &match true { true => [1, 2, 3], false => [1, 3, 4] }: &[int];
-    let _ = &{ |x| (x as u8) }: &Fn(int) -> _;
+    let _ = &{ [1, 2, 3] }: &[i32];
+    let _ = &if true { [1, 2, 3] } else { [1, 3, 4] }: &[i32];
+    let _ = &match true { true => [1, 2, 3], false => [1, 3, 4] }: &[i32];
+    let _ = &{ |x| (x as u8) }: &Fn(i32) -> _;
     let _ = &if true { false } else { true }: &Debug;
     let _ = &match true { true => 'a', false => 'b' }: &Debug;
 
-    let _ = Box::new([1, 2, 3]): Box<[int]>;
-    let _ = Box::new(|x| (x as u8)): Box<Fn(int) -> _>;
+    let _ = Box::new([1, 2, 3]): Box<[i32]>;
+    let _ = Box::new(|x| (x as u8)): Box<Fn(i32) -> _>;
 
     let _ = vec![
         Box::new(|x| (x as u8)),
         box |x| (x as i16 as u8),
-    ]: Vec<Box<Fn(int) -> _>>;
+    ]: Vec<Box<Fn(i32) -> _>>;
 }

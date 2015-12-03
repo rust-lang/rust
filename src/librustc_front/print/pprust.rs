@@ -336,7 +336,8 @@ fn needs_parentheses(expr: &hir::Expr) -> bool {
         hir::ExprBinary(..) |
         hir::ExprClosure(..) |
         hir::ExprAssignOp(..) |
-        hir::ExprCast(..) => true,
+        hir::ExprCast(..) |
+        hir::ExprType(..) => true,
         _ => false,
     }
 }
@@ -1352,6 +1353,11 @@ impl<'a> State<'a> {
                 try!(self.print_expr(&**expr));
                 try!(space(&mut self.s));
                 try!(self.word_space("as"));
+                try!(self.print_type(&**ty));
+            }
+            hir::ExprType(ref expr, ref ty) => {
+                try!(self.print_expr(&**expr));
+                try!(self.word_space(":"));
                 try!(self.print_type(&**ty));
             }
             hir::ExprIf(ref test, ref blk, ref elseopt) => {

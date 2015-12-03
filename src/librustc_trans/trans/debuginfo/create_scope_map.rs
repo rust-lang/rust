@@ -320,6 +320,7 @@ fn walk_expr(cx: &CrateContext,
         hir::ExprPath(..) => {}
 
         hir::ExprCast(ref sub_exp, _)     |
+        hir::ExprType(ref sub_exp, _) |
         hir::ExprAddrOf(_, ref sub_exp)  |
         hir::ExprField(ref sub_exp, _) |
         hir::ExprTupField(ref sub_exp, _) =>

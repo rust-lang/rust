@@ -1125,6 +1125,10 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 let expr = lower_expr(lctx, expr);
                 hir::ExprCast(expr, lower_ty(lctx, ty))
             }
+            ExprType(ref expr, ref ty) => {
+                let expr = lower_expr(lctx, expr);
+                hir::ExprType(expr, lower_ty(lctx, ty))
+            }
             ExprAddrOf(m, ref ohs) => {
                 let m = lower_mutability(lctx, m);
                 let ohs = lower_expr(lctx, ohs);

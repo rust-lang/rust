@@ -2610,6 +2610,10 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
             }
         }
 
+        hir::ExprType(ref expr, _) => {
+            expr_kind(tcx, expr)
+        }
+
         hir::ExprUnary(hir::UnDeref, _) |
         hir::ExprField(..) |
         hir::ExprTupField(..) |
