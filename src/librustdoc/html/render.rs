@@ -343,13 +343,33 @@ thread_local!(static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
 thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
                     RefCell::new(Vec::new()));
 thread_local!(static USED_ID_MAP: RefCell<HashMap<String, usize>> =
-                    RefCell::new(HashMap::new()));
+                    RefCell::new(init_ids()));
+
+fn init_ids() -> HashMap<String, usize> {
+    [
+     "main",
+     "search",
+     "help",
+     "TOC",
+     "render-detail",
+     "associated-types",
+     "associated-const",
+     "required-methods",
+     "provided-methods",
+     "implementors",
+     "implementors-list",
+     "methods",
+     "deref-methods",
+     "implementations",
+     "derived_implementations"
+     ].into_iter().map(|id| (String::from(*id), 1)).collect::<HashMap<_, _>>()
+}
 
 /// This method resets the local table of used ID attributes. This is typically
 /// used at the beginning of rendering an entire HTML page to reset from the
 /// previous state (if any).
 pub fn reset_ids() {
-    USED_ID_MAP.with(|s| s.borrow_mut().clear());
+    USED_ID_MAP.with(|s| *s.borrow_mut() = init_ids());
 }
 
 pub fn with_unique_id<T, F: FnOnce(&str) -> T>(candidate: String, f: F) -> T {
