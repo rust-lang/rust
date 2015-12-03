@@ -159,8 +159,8 @@ pub enum RegionResolutionError<'tcx> {
 /// like to indicate so to the user.
 /// For example, the following function
 /// ```
-/// struct Foo { bar: isize }
-/// fn foo2<'a, 'b>(x: &'a Foo) -> &'b isize {
+/// struct Foo { bar: i32 }
+/// fn foo2<'a, 'b>(x: &'a Foo) -> &'b i32 {
 ///    &x.bar
 /// }
 /// ```

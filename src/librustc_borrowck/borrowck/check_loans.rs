@@ -719,10 +719,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     /// For example:
     ///
     /// ```ignore
-    /// let a: isize;
+    /// let a: i32;
     /// a = 10; // ok, even though a is uninitialized
     ///
-    /// struct Point { x: usize, y: usize }
+    /// struct Point { x: u32, y: u32 }
     /// let p: Point;
     /// p.x = 22; // ok, even though `p` is uninitialized
     ///
