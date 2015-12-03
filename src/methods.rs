@@ -54,20 +54,19 @@ impl LateLintPass for MethodsPass {
 
         if let ExprMethodCall(ref name, _, ref args) = expr.node {
             let (obj_ty, ptr_depth) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&args[0]));
-            if name.node.as_str() == "unwrap" {
-                if match_type(cx, obj_ty, &OPTION_PATH) {
+            match &*name.node.as_str() {
+                "unwrap" if match_type(cx, obj_ty, &OPTION_PATH) => {
                     span_lint(cx, OPTION_UNWRAP_USED, expr.span,
                               "used unwrap() on an Option value. If you don't want \
                                to handle the None case gracefully, consider using \
                                expect() to provide a better panic message");
-                } else if match_type(cx, obj_ty, &RESULT_PATH) {
+                },
+                "unwrap" if match_type(cx, obj_ty, &RESULT_PATH) => {
                     span_lint(cx, RESULT_UNWRAP_USED, expr.span,
                               "used unwrap() on a Result value. Graceful handling \
                                of Err values is preferred");
-                }
-            }
-            else if name.node.as_str() == "to_string" {
-                if obj_ty.sty == ty::TyStr {
+                },
+                "to_string" if obj_ty.sty == ty::TyStr => {
                     let mut arg_str = snippet(cx, args[0].span, "_");
                     if ptr_depth > 1 {
                         arg_str = Cow::Owned(format!(
@@ -77,13 +76,12 @@ impl LateLintPass for MethodsPass {
                     }
                     span_lint(cx, STR_TO_STRING, expr.span, &format!(
                         "`{}.to_owned()` is faster", arg_str));
-                } else if match_type(cx, obj_ty, &STRING_PATH) {
+                },
+                "to_string" if match_type(cx, obj_ty, &STRING_PATH) => {
                     span_lint(cx, STRING_TO_STRING, expr.span, "`String.to_string()` is a no-op; use \
                                                                 `clone()` to make a copy");
-                }
-            }
-            else if name.node.as_str() == "expect" {
-                if let ExprMethodCall(ref inner_name, _, ref inner_args) = args[0].node {
+                },
+                "expect" => if let ExprMethodCall(ref inner_name, _, ref inner_args) = args[0].node {
                     if inner_name.node.as_str() == "ok"
                             && match_type(cx, cx.tcx.expr_ty(&inner_args[0]), &RESULT_PATH) {
                         let result_type = cx.tcx.expr_ty(&inner_args[0]);
@@ -96,11 +94,9 @@ impl LateLintPass for MethodsPass {
                             }
                         }
                     }
-                }
-            }
-            // check Option.map(_).unwrap_or(_)
-            else if name.node.as_str() == "unwrap_or" {
-                if let ExprMethodCall(ref inner_name, _, ref inner_args) = args[0].node {
+                },
+                // check Option.map(_).unwrap_or(_)
+                "unwrap_or" => if let ExprMethodCall(ref inner_name, _, ref inner_args) = args[0].node {
                     if inner_name.node.as_str() == "map"
                             && match_type(cx, cx.tcx.expr_ty(&inner_args[0]), &OPTION_PATH) {
                         // lint message
@@ -126,11 +122,9 @@ impl LateLintPass for MethodsPass {
                             span_lint(cx, OPTION_MAP_UNWRAP_OR, expr.span, msg);
                         };
                     }
-                }
-            }
-            // check Option.map(_).unwrap_or_else(_)
-            else if name.node.as_str() == "unwrap_or_else" {
-                if let ExprMethodCall(ref inner_name, _, ref inner_args) = args[0].node {
+                },
+                // check Option.map(_).unwrap_or_else(_)
+                "unwrap_or_else" => if let ExprMethodCall(ref inner_name, _, ref inner_args) = args[0].node {
                     if inner_name.node.as_str() == "map"
                             && match_type(cx, cx.tcx.expr_ty(&inner_args[0]), &OPTION_PATH) {
                         // lint message
@@ -156,7 +150,8 @@ impl LateLintPass for MethodsPass {
                             span_lint(cx, OPTION_MAP_UNWRAP_OR_ELSE, expr.span, msg);
                         };
                     }
-                }
+                },
+                _ => {},
             }
         }
     }
