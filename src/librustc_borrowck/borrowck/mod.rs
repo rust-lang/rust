@@ -21,7 +21,7 @@ pub use self::MovedValueUseKind::*;
 use self::InteriorKind::*;
 
 use rustc::front::map as hir_map;
-use rustc::front::map::blocks::{FnLikeNode, FnParts};
+use rustc::front::map::blocks::FnParts;
 use rustc::middle::cfg;
 use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
@@ -227,25 +227,12 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                    move_data:flowed_moves }
 }
 
-/// This and a `ty::ctxt` is all you need to run the dataflow analyses
-/// used in the borrow checker.
-pub struct FnPartsWithCFG<'a> {
-    pub fn_parts: FnParts<'a>,
-    pub cfg:  &'a cfg::CFG,
-}
-
-impl<'a> FnPartsWithCFG<'a> {
-    pub fn from_fn_like(f: &'a FnLikeNode,
-                        g: &'a cfg::CFG) -> FnPartsWithCFG<'a> {
-        FnPartsWithCFG { fn_parts: f.to_fn_parts(), cfg: g }
-    }
-}
-
 /// Accessor for introspective clients inspecting `AnalysisData` and
 /// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     tcx: &'a ty::ctxt<'tcx>,
-    input: FnPartsWithCFG<'a>)
+    fn_parts: FnParts<'a>,
+    cfg: &cfg::CFG)
     -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>)
 {
 
@@ -260,15 +247,13 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
         }
     };
 
-    let p = input.fn_parts;
-
     let dataflow_data = build_borrowck_dataflow_data(&mut bccx,
-                                                     p.kind,
-                                                     &*p.decl,
-                                                     input.cfg,
-                                                     &*p.body,
-                                                     p.span,
-                                                     p.id);
+                                                     fn_parts.kind,
+                                                     &*fn_parts.decl,
+                                                     cfg,
+                                                     &*fn_parts.body,
+                                                     fn_parts.span,
+                                                     fn_parts.id);
 
     (bccx, dataflow_data)
 }
