@@ -208,7 +208,6 @@ impl Rand for ChaChaRng {
 mod tests {
     use std::prelude::v1::*;
 
-    use core::iter::order;
     use {Rng, SeedableRng};
     use super::ChaChaRng;
 
@@ -217,8 +216,8 @@ mod tests {
         let s = ::test::rng().gen_iter::<u32>().take(8).collect::<Vec<u32>>();
         let mut ra: ChaChaRng = SeedableRng::from_seed(&*s);
         let mut rb: ChaChaRng = SeedableRng::from_seed(&*s);
-        assert!(order::equals(ra.gen_ascii_chars().take(100),
-                              rb.gen_ascii_chars().take(100)));
+        assert!(ra.gen_ascii_chars().take(100)
+                  .eq(rb.gen_ascii_chars().take(100)));
     }
 
     #[test]
@@ -226,8 +225,8 @@ mod tests {
         let seed: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
         let mut ra: ChaChaRng = SeedableRng::from_seed(seed);
         let mut rb: ChaChaRng = SeedableRng::from_seed(seed);
-        assert!(order::equals(ra.gen_ascii_chars().take(100),
-                              rb.gen_ascii_chars().take(100)));
+        assert!(ra.gen_ascii_chars().take(100)
+                  .eq(rb.gen_ascii_chars().take(100)));
     }
 
     #[test]

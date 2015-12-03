@@ -240,7 +240,6 @@ use fmt;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSizeIterator, IntoIterator};
 use ops::FnOnce;
 use option::Option::{self, None, Some};
-use slice;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
@@ -403,58 +402,6 @@ impl<T, E> Result<T, E> {
         match *self {
             Ok(ref mut x) => Ok(x),
             Err(ref mut x) => Err(x),
-        }
-    }
-
-    /// Converts from `Result<T, E>` to `&[T]` (without copying)
-    #[inline]
-    #[unstable(feature = "as_slice", reason = "unsure of the utility here",
-               issue = "27776")]
-    #[rustc_deprecated(since = "1.4.0", reason = "niche API, unclear of usefulness")]
-    #[allow(deprecated)]
-    pub fn as_slice(&self) -> &[T] {
-        match *self {
-            Ok(ref x) => slice::ref_slice(x),
-            Err(_) => {
-                // work around lack of implicit coercion from fixed-size array to slice
-                let emp: &[_] = &[];
-                emp
-            }
-        }
-    }
-
-    /// Converts from `Result<T, E>` to `&mut [T]` (without copying)
-    ///
-    /// ```
-    /// #![feature(as_slice)]
-    /// # #![allow(deprecated)]
-    ///
-    /// let mut x: Result<&str, u32> = Ok("Gold");
-    /// {
-    ///     let v = x.as_mut_slice();
-    ///     assert!(v == ["Gold"]);
-    ///     v[0] = "Silver";
-    ///     assert!(v == ["Silver"]);
-    /// }
-    /// assert_eq!(x, Ok("Silver"));
-    ///
-    /// let mut x: Result<&str, u32> = Err(45);
-    /// assert!(x.as_mut_slice().is_empty());
-    /// ```
-    #[inline]
-    #[unstable(feature = "as_slice",
-               reason = "waiting for mut conventions",
-               issue = "27776")]
-    #[rustc_deprecated(since = "1.4.0", reason = "niche API, unclear of usefulness")]
-    #[allow(deprecated)]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
-        match *self {
-            Ok(ref mut x) => slice::mut_ref_slice(x),
-            Err(_) => {
-                // work around lack of implicit coercion from fixed-size array to slice
-                let emp: &mut [_] = &mut [];
-                emp
-            }
         }
     }
 

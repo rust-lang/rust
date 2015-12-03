@@ -830,18 +830,6 @@ fn test_range() {
 }
 
 #[test]
-fn test_range_inclusive() {
-    assert!(range_inclusive(0, 5).collect::<Vec<isize>>() ==
-            vec![0, 1, 2, 3, 4, 5]);
-    assert!(range_inclusive(0, 5).rev().collect::<Vec<isize>>() ==
-            vec![5, 4, 3, 2, 1, 0]);
-    assert_eq!(range_inclusive(200, -5).count(), 0);
-    assert_eq!(range_inclusive(200, -5).rev().count(), 0);
-    assert_eq!(range_inclusive(200, 200).collect::<Vec<isize>>(), [200]);
-    assert_eq!(range_inclusive(200, 200).rev().collect::<Vec<isize>>(), [200]);
-}
-
-#[test]
 fn test_range_step() {
     assert_eq!((0..20).step_by(5).collect::<Vec<isize>>(), [0, 5, 10, 15]);
     assert_eq!((20..0).step_by(-5).collect::<Vec<isize>>(), [20, 15, 10, 5]);

@@ -151,25 +151,14 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     pub fn new() -> BTreeMap<K, V> {
-        // FIXME(Gankro): Tune this as a function of size_of<K/V>?
-        BTreeMap::with_b(6)
-    }
-
-    /// Makes a new empty BTreeMap with the given B.
-    ///
-    /// B cannot be less than 2.
-    #[unstable(feature = "btree_b",
-               reason = "probably want this to be on the type, eventually",
-               issue = "27795")]
-    #[rustc_deprecated(since = "1.4.0", reason = "niche API")]
-    pub fn with_b(b: usize) -> BTreeMap<K, V> {
-        assert!(b > 1, "B must be greater than 1");
         BTreeMap {
             length: 0,
             depth: 1,
-            root: Node::make_leaf_root(b),
-            b: b,
+            root: Node::make_leaf_root(6),
+            // FIXME(Gankro): Tune this as a function of size_of<K/V>?
+            b: 6,
         }
+
     }
 
     /// Clears the map, removing all values.
@@ -185,11 +174,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert!(a.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow(deprecated)]
     pub fn clear(&mut self) {
-        let b = self.b;
         // avoid recursive destructors by manually traversing the tree
-        for _ in mem::replace(self, BTreeMap::with_b(b)) {}
+        for _ in mem::replace(self, BTreeMap::new()) {}
     }
 
     // Searching in a B-Tree is pretty straightforward.

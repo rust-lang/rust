@@ -1115,15 +1115,6 @@ impl<T> VecDeque<T> {
         self.pop_back()
     }
 
-    /// deprecated
-    #[unstable(feature = "deque_extras",
-               reason = "the naming of this function may be altered",
-               issue = "27788")]
-    #[rustc_deprecated(since = "1.5.0", reason = "renamed to swap_remove_back")]
-    pub fn swap_back_remove(&mut self, index: usize) -> Option<T> {
-        self.swap_remove_back(index)
-    }
-
     /// Removes an element from anywhere in the `VecDeque` and returns it,
     /// replacing it with the first element.
     ///
@@ -1156,15 +1147,6 @@ impl<T> VecDeque<T> {
             return None;
         }
         self.pop_front()
-    }
-
-    /// deprecated
-    #[unstable(feature = "deque_extras",
-               reason = "the naming of this function may be altered",
-               issue = "27788")]
-    #[rustc_deprecated(since = "1.5.0", reason = "renamed to swap_remove_front")]
-    pub fn swap_front_remove(&mut self, index: usize) -> Option<T> {
-        self.swap_remove_front(index)
     }
 
     /// Inserts an element at `index` within the `VecDeque`. Whichever
@@ -2178,7 +2160,7 @@ mod tests {
                             tester.push_front(i);
                         }
                         for i in 0..len {
-                            assert_eq!(tester.swap_back_remove(i), Some(len * 2 - 1 - i));
+                            assert_eq!(tester.swap_remove_back(i), Some(len * 2 - 1 - i));
                         }
                     } else {
                         for i in 0..len * 2 {
@@ -2186,7 +2168,7 @@ mod tests {
                         }
                         for i in 0..len {
                             let idx = tester.len() - 1 - i;
-                            assert_eq!(tester.swap_front_remove(idx), Some(len * 2 - 1 - i));
+                            assert_eq!(tester.swap_remove_front(idx), Some(len * 2 - 1 - i));
                         }
                     }
                     assert!(tester.tail < tester.cap());

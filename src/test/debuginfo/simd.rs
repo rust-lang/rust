@@ -43,9 +43,28 @@
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
-#![feature(core_simd)]
+#![feature(repr_simd)]
 
-use std::simd::{i8x16, i16x8,i32x4,i64x2,u8x16,u16x8,u32x4,u64x2,f32x4,f64x2};
+#[repr(simd)]
+struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8);
+#[repr(simd)]
+struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+#[repr(simd)]
+struct i32x4(i32, i32, i32, i32);
+#[repr(simd)]
+struct i64x2(i64, i64);
+#[repr(simd)]
+struct u8x16(u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8);
+#[repr(simd)]
+struct u16x8(u16, u16, u16, u16, u16, u16, u16, u16);
+#[repr(simd)]
+struct u32x4(u32, u32, u32, u32);
+#[repr(simd)]
+struct u64x2(u64, u64);
+#[repr(simd)]
+struct f32x4(f32, f32, f32, f32);
+#[repr(simd)]
+struct f64x2(f64, f64);
 
 fn main() {
 

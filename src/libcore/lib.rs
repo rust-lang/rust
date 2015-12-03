@@ -153,12 +153,6 @@ pub mod option;
 pub mod raw;
 pub mod result;
 
-#[cfg(stage0)]
-#[path = "simd_old.rs"]
-pub mod simd;
-#[cfg(not(stage0))]
-pub mod simd;
-
 pub mod slice;
 pub mod str;
 pub mod hash;
