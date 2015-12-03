@@ -630,11 +630,7 @@ mod tests {
     #[bench]
     pub fn bench_copy_nonarena(b: &mut Bencher) {
         b.iter(|| {
-            let _: Box<_> = Box::new(Point {
-                x: 1,
-                y: 2,
-                z: 3
-            });
+            let _: Box<_> = Box::new(Point { x: 1, y: 2, z: 3 });
         })
     }
 
@@ -676,11 +672,7 @@ mod tests {
             for _ in 0..100 {
                 arena.alloc(|| ());
             }
-            arena.alloc(|| Point {
-                x: 1,
-                y: 2,
-                z: 3,
-            });
+            arena.alloc(|| Point { x: 1, y: 2, z: 3 });
         }
     }
 
@@ -690,11 +682,7 @@ mod tests {
         for _ in 0..10 {
             arena.clear();
             for _ in 0..10000 {
-                arena.alloc(Point {
-                    x: 1,
-                    y: 2,
-                    z: 3,
-                });
+                arena.alloc(Point { x: 1, y: 2, z: 3 });
             }
         }
     }
@@ -705,14 +693,12 @@ mod tests {
         for _ in 0..10 {
             arena.clear();
             for _ in 0..10000 {
-                arena.alloc(|| Point {
-                    x: 1,
-                    y: 2,
-                    z: 3,
-                });
-                arena.alloc(|| Noncopy {
-                    string: "hello world".to_string(),
-                    array: vec![],
+                arena.alloc(|| Point { x: 1, y: 2, z: 3 });
+                arena.alloc(|| {
+                    Noncopy {
+                        string: "hello world".to_string(),
+                        array: vec![],
+                    }
                 });
             }
         }
@@ -722,11 +708,7 @@ mod tests {
     pub fn test_arena_alloc_bytes() {
         let arena = Arena::new();
         for i in 0..10000 {
-            arena.alloc(|| Point {
-                x: 1,
-                y: 2,
-                z: 3,
-            });
+            arena.alloc(|| Point { x: 1, y: 2, z: 3 });
             for byte in arena.alloc_bytes(i % 42).iter_mut() {
                 *byte = i as u8;
             }
@@ -754,10 +736,10 @@ mod tests {
         for i in 0..10 {
             // Arena allocate something with drop glue to make sure it
             // doesn't leak.
-            arena.alloc(|| { Rc::new(i) });
+            arena.alloc(|| Rc::new(i));
             // Allocate something with funny size and alignment, to keep
             // things interesting.
-            arena.alloc(|| { [0u8, 1, 2] });
+            arena.alloc(|| [0u8, 1, 2]);
         }
         // Now, panic while allocating
         arena.alloc::<Rc<i32>, _>(|| {
@@ -771,7 +753,7 @@ mod tests {
         b.iter(|| {
             arena.alloc(Noncopy {
                 string: "hello world".to_string(),
-                array: vec!( 1, 2, 3, 4, 5 ),
+                array: vec![1, 2, 3, 4, 5],
             })
         })
     }
@@ -781,7 +763,7 @@ mod tests {
         b.iter(|| {
             let _: Box<_> = Box::new(Noncopy {
                 string: "hello world".to_string(),
-                array: vec!( 1, 2, 3, 4, 5 ),
+                array: vec![1, 2, 3, 4, 5],
             });
         })
     }
@@ -790,9 +772,11 @@ mod tests {
     pub fn bench_noncopy_old_arena(b: &mut Bencher) {
         let arena = Arena::new();
         b.iter(|| {
-            arena.alloc(|| Noncopy {
-                string: "hello world".to_string(),
-                array: vec!( 1, 2, 3, 4, 5 ),
+            arena.alloc(|| {
+                Noncopy {
+                    string: "hello world".to_string(),
+                    array: vec![1, 2, 3, 4, 5],
+                }
             })
         })
     }
