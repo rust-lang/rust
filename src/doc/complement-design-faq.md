@@ -76,13 +76,11 @@ See [the C++ FQA][fqa]  about the "static initialization order fiasco", and
 [Eric Lippert's blog][elp] for the challenges in C#, which also has this
 feature.
 
-A nice replacement is the [lazy constructor macro][lcm] by [Marvin
-Löbel][kim].
+A nice replacement is [lazy_static][lazy_static].
 
 [fqa]: http://yosefk.com/c++fqa/ctors.html#fqa-10.12
 [elp]: http://ericlippert.com/2013/02/06/static-constructors-part-one/
-[lcm]: https://gist.github.com/Kimundi/8782487
-[kim]: https://github.com/Kimundi
+[lazy_static]: https://crates.io/crates/lazy_static
 
 ## The language does not require a runtime
 
