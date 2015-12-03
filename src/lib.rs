@@ -1,7 +1,11 @@
 #![feature(plugin_registrar, box_syntax)]
 #![feature(rustc_private, core, collections)]
-#![feature(num_bits_bytes)]
+#![feature(num_bits_bytes, iter_arith)]
 #![allow(unknown_lints)]
+
+// this only exists to allow the "dogfood" integration test to work
+#[allow(dead_code)]
+fn main() { println!("What are you doing? Don't run clippy as an executable"); }
 
 #[macro_use]
 extern crate syntax;
@@ -59,6 +63,7 @@ pub mod needless_update;
 pub mod no_effect;
 pub mod temporary_assignment;
 pub mod transmute;
+pub mod cyclomatic_complexity;
 
 mod reexport {
     pub use syntax::ast::{Name, Ident, NodeId};
@@ -110,6 +115,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box map_clone::MapClonePass);
     reg.register_late_lint_pass(box temporary_assignment::TemporaryAssignmentPass);
     reg.register_late_lint_pass(box transmute::UselessTransmute);
+    reg.register_late_lint_pass(box cyclomatic_complexity::CyclomaticComplexity::new(25));
 
     reg.register_lint_group("clippy_pedantic", vec![
         methods::OPTION_UNWRAP_USED,
@@ -138,6 +144,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         collapsible_if::COLLAPSIBLE_IF,
+        cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
         eq_op::EQ_OP,
         eta_reduction::REDUNDANT_CLOSURE,
         identity_op::IDENTITY_OP,
