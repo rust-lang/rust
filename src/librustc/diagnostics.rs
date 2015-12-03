@@ -1899,6 +1899,50 @@ contain references (with a maximum lifetime of `'a`).
 [1]: https://github.com/rust-lang/rfcs/pull/1156
 "##,
 
+E0400: r##"
+A user-defined dereference was attempted in an invalid context. Erroneous
+code example:
+
+```
+use std::ops::Deref;
+
+struct A;
+
+impl Deref for A {
+    type Target = str;
+
+    fn deref(&self)-> &str { "foo" }
+}
+
+const S: &'static str = &A;
+// error: user-defined dereference operators are not allowed in constants
+
+fn main() {
+    let foo = S;
+}
+```
+
+You cannot directly use a dereference operation whilst initializing a constant
+or a static. To fix this error, restructure your code to avoid this dereference,
+perharps moving it inline:
+
+```
+use std::ops::Deref;
+
+struct A;
+
+impl Deref for A {
+    type Target = str;
+
+    fn deref(&self)-> &str { "foo" }
+}
+
+fn main() {
+    let foo : &str = &A;
+}
+```
+"##,
+
 E0492: r##"
 A borrow of a constant containing interior mutability was attempted. Erroneous
 code example:
@@ -2175,7 +2219,6 @@ register_diagnostics! {
     E0314, // closure outlives stack frame
     E0315, // cannot invoke closure outside of its lifetime
     E0316, // nested quantification of lifetimes
-    E0400, // overloaded derefs are not allowed in constants
     E0452, // malformed lint attribute
     E0453, // overruled by outer forbid
     E0471, // constant evaluation error: ..
