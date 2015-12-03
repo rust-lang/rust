@@ -608,7 +608,7 @@ endif
 
 # CTEST_DISABLE_NONSELFHOST_$(TEST_GROUP), if set, will cause that
 # test group to be disabled *unless* the target is able to build a
-# compiler (i.e. when the target triple is in the set of of host
+# compiler (i.e. when the target triple is in the set of host
 # triples).  The associated message will be printed as a warning
 # during attempts to run those tests.
 
