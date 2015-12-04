@@ -1,3 +1,400 @@
+Version 1.5.0 (2015-12-10)
+==========================
+
+* ~700 changes, numerous bugfixes
+
+Highlights
+----------
+
+* Stabilized APIs:
+  [`BinaryHeap::from`], [`BinaryHeap::into_sorted_vec`],
+  [`BinaryHeap::into_vec`], [`Condvar::wait_timeout`],
+  [`FileTypeExt::is_block_device`], [`FileTypeExt::is_char_device`],
+  [`FileTypeExt::is_fifo`], [`FileTypeExt::is_socket`],
+  [`FileTypeExt`], [`Formatter::alternate`], [`Formatter::fill`],
+  [`Formatter::precision`], [`Formatter::sign_aware_zero_pad`],
+  [`Formatter::sign_minus`], [`Formatter::sign_plus`],
+  [`Formatter::width`], [`Iterator::cmp`], [`Iterator::eq`],
+  [`Iterator::ge`], [`Iterator::gt`], [`Iterator::le`],
+  [`Iterator::lt`], [`Iterator::ne`], [`Iterator::partial_cmp`],
+  [`Path::canonicalize`], [`Path::exists`], [`Path::is_dir`],
+  [`Path::is_file`], [`Path::metadata`], [`Path::read_dir`],
+  [`Path::read_link`], [`Path::symlink_metadata`],
+  [`Utf8Error::valid_up_to`], [`Vec::resize`],
+  [`VecDeque::as_mut_slices`], [`VecDeque::as_slices`],
+  [`VecDeque::insert`], [`VecDeque::shrink_to_fit`],
+  [`VecDeque::swap_remove_back`], [`VecDeque::swap_remove_front`],
+  [`slice::split_first_mut`], [`slice::split_first`],
+  [`slice::split_last_mut`], [`slice::split_last`],
+  [`char::from_u32_unchecked`], [`fs::canonicalize`],
+  [`str::MatchIndices`], [`str::RMatchIndices`],
+  [`str::match_indices`], [`str::rmatch_indices`],
+  [`str::slice_mut_unchecked`], [`string::ParseError`].
+* Rust applications hosted on crates.io can be installed locally to
+  `~/.cargo/bin` with the [`cargo install`] command. Among other
+  things this makes it easier to augment Cargo with new subcommands:
+  when a binary named e.g. `cargo-foo` is found in `$PATH` it can be
+  invoked as `cargo foo`.
+* Crates with wildcard (`*`) dependencies will [emit warnings when
+  published][1.5w]. In 1.6 it will no longer be possible to publish
+  crates with wildcard dependencies.
+
+Breaking Changes
+----------------
+
+* The rules determining when a particular lifetime must outlive
+  a particular value (known as '[dropck]') have been [modified
+  to not rely on parametricity][1.5p].
+* [Implementations of `AsRef` and `AsMut` were added to `Box`, `Rc`,
+  and `Arc`][1.5a]. Because these smart pointer types implement
+  `Deref`, this causes breakage in cases where the interior type
+  contains methods of the same name.
+* [Correct a bug in Rc/Arc][1.5c] that caused [dropck] to be unaware
+  that they could drop their content. Soundness fix.
+* All method invocations are [properly checked][1.5wf1] for
+  [well-formedness][1.5wf2]. Soundness fix.
+* Traits whose supertraits contain `Self` are [not object
+  safe][1.5o]. Soundness fix.
+* Target specifications support a [`no_default_libraries`][1.5nd]
+  setting that controls whether `-nodefaultlibs` is passed to the
+  linker, and in turn the `is_like_windows` setting no longer affects
+  the `-nodefaultlibs` flag.
+* `#[derive(Show)]`, long-deprecated, [has been removed][1.5ds].
+* The `#[inline]` and `#[repr]` attributes [can only appear
+  in valid locations][1.5at].
+* Native libraries linked from the local crate are [passed to
+  the linker before native libraries from upstream crates][1.5nl].
+* Two rarely-used attributes, `#[no_debug]` and
+  `#[omit_gdb_pretty_printer_section]` [are feature gated][1.5fg].
+* Negation of unsigned integers, which has been a warning for
+  several releases, [is now behind a feature gate and will
+  generate errors][1.5nu].
+* The parser accidentally accepted visibility modifiers on
+  enum variants, a bug [which has been fixed][1.5ev].
+* [A bug was fixed that allowed `use` statements to import unstable
+  features][1.5use].
+
+Language
+--------
+
+* When evaluating expressions at compile-time that are not
+  compile-time constants (const-evaluating expressions in non-const
+  contexts), incorrect code such as overlong bitshifts and arithmetic
+  overflow will [generate a warning instead of an error][1.5ce],
+  delaying the error until runtime. This will allow the
+  const-evaluator to be expanded in the future backwards-compatibly.
+* The `improper_ctypes` lint [no longer warns about using `isize` and
+  `usize` in FFI][1.5ict].
+
+Libraries
+---------
+
+* `Arc<T>` and `Rc<T>` are [covariant with respect to `T` instead of
+  invariant][1.5c].
+* `Default` is [implemented for mutable slices][1.5d].
+* `FromStr` is [implemented for `SockAddrV4` and `SockAddrV6`][1.5s].
+* There are now `From` conversions [between floating point
+  types][1.5f] where the conversions are lossless.
+* Thera are now `From` conversions [between integer types][1.5i] where
+  the conversions are lossless.
+* [`fs::Metadata` implements `Clone`][1.5fs].
+* The `parse` method [accepts a leading "+" when parsing
+  integers][1.5pi].
+* [`AsMut` is implemented for `Vec`][1.5am].
+* The `clone_from` implementations for `String` and `BinaryHeap` [have
+  been optimized][1.5cf] and no longer rely on the default impl.
+* The `extern "Rust"`, `extern "C"`, `unsafe extern "Rust"` and
+  `unsafe extern "C"` function types now [implement `Clone`,
+  `PartialEq`, `Eq`, `PartialOrd`, `Ord`, `Hash`, `fmt::Pointer`, and
+  `fmt::Debug` for up to 12 arguments][1.5fp].
+* [Dropping `Vec`s is much faster in unoptimized builds when the
+  element types don't implement `Drop`][1.5dv].
+* A bug that caused in incorrect behavior when [combining `VecDeque`
+  with zero-sized types][1.5vdz] was resolved.
+* [`PartialOrd` for slices is faster][1.5po].
+
+Miscellaneous
+-------------
+
+* [Crate metadata size was reduced by 20%][1.5md].
+* [Improvements to code generation reduced the size of libcore by 3.3
+  MB and rustc's memory usage by 18MB][1.5m].
+* [Improvements to deref translation increased performance in
+  unoptimized builds][1.5dr].
+* Various errors in trait resolution [are deduplicated to only be
+  reported once][1.5te].
+* Rust has preliminary [support for rumprun kernels][1.5rr].
+* Rust has preliminary [support for NetBSD on amd64][1.5na].
+
+[1.5use]: https://github.com/rust-lang/rust/pull/28364
+[1.5po]: https://github.com/rust-lang/rust/pull/28436
+[1.5ev]: https://github.com/rust-lang/rust/pull/28442
+[1.5nu]: https://github.com/rust-lang/rust/pull/28468
+[1.5dr]: https://github.com/rust-lang/rust/pull/28491
+[1.5vdz]: https://github.com/rust-lang/rust/pull/28494
+[1.5md]: https://github.com/rust-lang/rust/pull/28521
+[1.5fg]: https://github.com/rust-lang/rust/pull/28522
+[1.5dv]: https://github.com/rust-lang/rust/pull/28531
+[1.5na]: https://github.com/rust-lang/rust/pull/28543
+[1.5fp]: https://github.com/rust-lang/rust/pull/28560
+[1.5rr]: https://github.com/rust-lang/rust/pull/28593
+[1.5cf]: https://github.com/rust-lang/rust/pull/28602
+[1.5nl]: https://github.com/rust-lang/rust/pull/28605
+[1.5te]: https://github.com/rust-lang/rust/pull/28645
+[1.5at]: https://github.com/rust-lang/rust/pull/28650
+[1.5am]: https://github.com/rust-lang/rust/pull/28663
+[1.5m]: https://github.com/rust-lang/rust/pull/28778
+[1.5ict]: https://github.com/rust-lang/rust/pull/28779
+[1.5a]: https://github.com/rust-lang/rust/pull/28811
+[1.5pi]: https://github.com/rust-lang/rust/pull/28826
+[1.5ce]: https://github.com/rust-lang/rfcs/blob/master/text/1229-compile-time-asserts.md
+[1.5p]: https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
+[1.5i]: https://github.com/rust-lang/rust/pull/28921
+[1.5fs]: https://github.com/rust-lang/rust/pull/29021
+[1.5f]: https://github.com/rust-lang/rust/pull/29129
+[1.5ds]: https://github.com/rust-lang/rust/pull/29148
+[1.5s]: https://github.com/rust-lang/rust/pull/29190
+[1.5d]: https://github.com/rust-lang/rust/pull/29245
+[1.5o]: https://github.com/rust-lang/rust/pull/29259
+[1.5nd]: https://github.com/rust-lang/rust/pull/28578
+[1.5wf2]: https://github.com/rust-lang/rfcs/blob/master/text/1214-projections-lifetimes-and-wf.md
+[1.5wf1]: https://github.com/rust-lang/rust/pull/28669
+[dropck]: https://doc.rust-lang.org/nightly/nomicon/dropck.html
+[1.5c]: https://github.com/rust-lang/rust/pull/29110
+[1.5w]: https://github.com/rust-lang/rfcs/blob/master/text/1241-no-wildcard-deps.md
+[`cargo install`]: https://github.com/rust-lang/rfcs/blob/master/text/1200-cargo-install.md
+[`BinaryHeap::from`]: http://doc.rust-lang.org/nightly/std/convert/trait.From.html#method.from
+[`BinaryHeap::into_sorted_vec`]: http://doc.rust-lang.org/nightly/std/collections/struct.BinaryHeap.html#method.into_sorted_vec
+[`BinaryHeap::into_vec`]: http://doc.rust-lang.org/nightly/std/collections/struct.BinaryHeap.html#method.into_vec
+[`Condvar::wait_timeout`]: http://doc.rust-lang.org/nightly/std/sync/struct.Condvar.html#method.wait_timeout
+[`FileTypeExt::is_block_device`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.FileTypeExt.html#tymethod.is_block_device
+[`FileTypeExt::is_char_device`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.FileTypeExt.html#tymethod.is_char_device
+[`FileTypeExt::is_fifo`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.FileTypeExt.html#tymethod.is_fifo
+[`FileTypeExt::is_socket`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.FileTypeExt.html#tymethod.is_socket
+[`FileTypeExt`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.FileTypeExt.html
+[`Formatter::alternate`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.alternate
+[`Formatter::fill`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.fill
+[`Formatter::precision`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.precision
+[`Formatter::sign_aware_zero_pad`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.sign_aware_zero_pad
+[`Formatter::sign_minus`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.sign_minus
+[`Formatter::sign_plus`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.sign_plus
+[`Formatter::width`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.width
+[`Iterator::cmp`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.cmp
+[`Iterator::eq`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.eq
+[`Iterator::ge`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.ge
+[`Iterator::gt`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.gt
+[`Iterator::le`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.le
+[`Iterator::lt`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.lt
+[`Iterator::ne`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.ne
+[`Iterator::partial_cmp`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.partial_cmp
+[`Path::canonicalize`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.canonicalize
+[`Path::exists`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.exists
+[`Path::is_dir`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.is_dir
+[`Path::is_file`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.is_file
+[`Path::metadata`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.metadata
+[`Path::read_dir`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.read_dir
+[`Path::read_link`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.read_link
+[`Path::symlink_metadata`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.symlink_metadata
+[`Utf8Error::valid_up_to`]: http://doc.rust-lang.org/nightly/core/str/struct.Utf8Error.html#method.valid_up_to
+[`Vec::resize`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.resize
+[`VecDeque::as_mut_slices`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.as_mut_slices
+[`VecDeque::as_slices`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.as_slices
+[`VecDeque::insert`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.insert
+[`VecDeque::shrink_to_fit`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.shrink_to_fit
+[`VecDeque::swap_remove_back`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.swap_remove_back
+[`VecDeque::swap_remove_front`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.swap_remove_front
+[`slice::split_first_mut`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.split_first_mut
+[`slice::split_first`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.split_first
+[`slice::split_last_mut`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.split_last_mut
+[`slice::split_last`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.split_last
+[`char::from_u32_unchecked`]: http://doc.rust-lang.org/nightly/std/char/fn.from_u32_unchecked.html
+[`fs::canonicalize`]: http://doc.rust-lang.org/nightly/std/fs/fn.canonicalize.html
+[`str::MatchIndices`]: http://doc.rust-lang.org/nightly/std/str/struct.MatchIndices.html
+[`str::RMatchIndices`]: http://doc.rust-lang.org/nightly/std/str/struct.RMatchIndices.html
+[`str::match_indices`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.match_indices
+[`str::rmatch_indices`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.rmatch_indices
+[`str::slice_mut_unchecked`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.slice_mut_unchecked
+[`string::ParseError`]: http://doc.rust-lang.org/nightly/std/string/enum.ParseError.html
+
+Version 1.4.0 (2015-10-29)
+==========================
+
+* ~1200 changes, numerous bugfixes
+
+Highlights
+----------
+
+* Windows builds targeting the 64-bit MSVC ABI and linker (instead of
+  GNU) are now supported and recommended for use.
+
+Breaking Changes
+----------------
+
+* [Several changes have been made to fix type soundness and improve
+  the behavior of associated types][sound]. See [RFC 1214]. Although
+  we have mostly introduced these changes as warnings this release, to
+  become errors next release, there are still some scenarios that will
+  see immediate breakage.
+* [The `str::lines` and `BufRead::lines` iterators treat `\r\n` as
+  line breaks in addition to `\n`][crlf].
+* [Loans of `'static` lifetime extend to the end of a function][stat].
+* [`str::parse` no longer introduces avoidable rounding error when
+  parsing floating point numbers. Together with earlier changes to
+  float formatting/output, "round trips" like f.to_string().parse()
+  now preserve the value of f exactly. Additionally, leading plus
+  signs are now accepted][fp3].
+
+
+Language
+--------
+
+* `use` statements that import multiple items [can now rename
+  them][i], as in `use foo::{bar as kitten, baz as puppy}`.
+* [Binops work correctly on fat pointers][binfat].
+* `pub extern crate`, which does not behave as expected, [issues a
+  warning][pec] until a better solution is found.
+
+Libraries
+---------
+
+* [Many APIs were stabilized][stab]: `<Box<str>>::into_string`,
+  [`Arc::downgrade`], [`Arc::get_mut`], [`Arc::make_mut`],
+  [`Arc::try_unwrap`], [`Box::from_raw`], [`Box::into_raw`], [`CStr::to_str`],
+  [`CStr::to_string_lossy`], [`CString::from_raw`], [`CString::into_raw`],
+  [`IntoRawFd::into_raw_fd`], [`IntoRawFd`],
+  `IntoRawHandle::into_raw_handle`, `IntoRawHandle`,
+  `IntoRawSocket::into_raw_socket`, `IntoRawSocket`, [`Rc::downgrade`],
+  [`Rc::get_mut`], [`Rc::make_mut`], [`Rc::try_unwrap`], [`Result::expect`],
+  [`String::into_boxed_str`], [`TcpStream::read_timeout`],
+  [`TcpStream::set_read_timeout`], [`TcpStream::set_write_timeout`],
+  [`TcpStream::write_timeout`], [`UdpSocket::read_timeout`],
+  [`UdpSocket::set_read_timeout`], [`UdpSocket::set_write_timeout`],
+  [`UdpSocket::write_timeout`], `Vec::append`, `Vec::split_off`,
+  [`VecDeque::append`], [`VecDeque::retain`], [`VecDeque::split_off`],
+  [`rc::Weak::upgrade`], [`rc::Weak`], [`slice::Iter::as_slice`],
+  [`slice::IterMut::into_slice`], [`str::CharIndices::as_str`],
+  [`str::Chars::as_str`], [`str::split_at_mut`], [`str::split_at`],
+  [`sync::Weak::upgrade`], [`sync::Weak`], [`thread::park_timeout`],
+  [`thread::sleep`].
+* [Some APIs were deprecated][dep]: `BTreeMap::with_b`,
+  `BTreeSet::with_b`, `Option::as_mut_slice`, `Option::as_slice`,
+  `Result::as_mut_slice`, `Result::as_slice`, `f32::from_str_radix`,
+  `f64::from_str_radix`.
+* [Reverse-searching strings is faster with the 'two-way'
+  algorithm][s].
+* [`std::io::copy` allows `?Sized` arguments][cc].
+* The `Windows`, `Chunks`, and `ChunksMut` iterators over slices all
+  [override `count`, `nth` and `last` with an O(1)
+  implementation][it].
+* [`Default` is implemented for arrays up to `[T; 32]`][d].
+* [`IntoRawFd` has been added to the Unix-specific prelude,
+  `IntoRawSocket` and `IntoRawHandle` to the Windows-specific
+  prelude][pr].
+* [`Extend<String>` and `FromIterator<String` are both implemented for
+  `String`][es].
+* [`IntoIterator` is implemented for references to `Option` and
+  `Result`][into2].
+* [`HashMap` and `HashSet` implement `Extend<&T>` where `T:
+  Copy`][ext] as part of [RFC 839]. This will cause type inferance
+  breakage in rare situations.
+* [`BinaryHeap` implements `Debug`][bh2].
+* [`Borrow` and `BorrowMut` are implemented for fixed-size
+  arrays][bm].
+* [`extern fn`s with the "Rust" and "C" ABIs implement common
+  traits including `Eq`, `Ord`, `Debug`, `Hash`][fp].
+* [String comparison is faster][faststr].
+* `&mut T` where `T: std::fmt::Write` [also implements
+  `std::fmt::Write`][mutw].
+* [A stable regression in `VecDeque::push_back` and other
+  capicity-altering methods that caused panics for zero-sized types
+  was fixed][vd].
+* [Function pointers implement traits for up to 12 parameters][fp2].
+
+Miscellaneous
+-------------
+
+* The compiler [no longer uses the 'morestack' feature to prevent
+  stack overflow][mm]. Instead it uses guard pages and stack
+  probes (though stack probes are not yet implemented on any platform
+  but Windows).
+* [The compiler matches traits faster when projections are involved][p].
+* The 'improper_ctypes' lint [no longer warns about use of `isize` and
+  `usize`][ffi].
+* [Cargo now displays useful information about what its doing during
+  `cargo update`][cu].
+
+[`Arc::downgrade`]: http://doc.rust-lang.org/nightly/alloc/arc/struct.Arc.html#method.downgrade
+[`Arc::make_mut`]: http://doc.rust-lang.org/nightly/alloc/arc/struct.Arc.html#method.make_mut
+[`Arc::get_mut`]: http://doc.rust-lang.org/nightly/alloc/arc/struct.Arc.html#method.get_mut
+[`Arc::try_unwrap`]: http://doc.rust-lang.org/nightly/alloc/arc/struct.Arc.html#method.try_unwrap
+[`Box::from_raw`]: http://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html#method.from_raw
+[`Box::into_raw`]: http://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html#method.into_raw
+[`CStr::to_str`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.to_str
+[`CStr::to_string_lossy`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.to_string_lossy
+[`CString::from_raw`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.from_raw
+[`CString::into_raw`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.into_raw
+[`IntoRawFd::into_raw_fd`]: http://doc.rust-lang.org/nightly/std/os/unix/io/trait.IntoRawFd.html#tymethod.into_raw_fd
+[`IntoRawFd`]: http://doc.rust-lang.org/nightly/std/os/unix/io/trait.IntoRawFd.html
+[`Rc::downgrade`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.downgrade
+[`Rc::get_mut`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.get_mut
+[`Rc::make_mut`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.make_mut
+[`Rc::try_unwrap`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.try_unwrap
+[`Result::expect`]: http://doc.rust-lang.org/nightly/core/result/enum.Result.html#method.expect
+[`String::into_boxed_str`]: http://doc.rust-lang.org/nightly/collections/string/struct.String.html#method.into_boxed_str
+[`TcpStream::read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.read_timeout
+[`TcpStream::set_read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_read_timeout
+[`TcpStream::write_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.write_timeout
+[`TcpStream::set_write_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_write_timeout
+[`UdpSocket::read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.read_timeout
+[`UdpSocket::set_read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_read_timeout
+[`UdpSocket::write_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.write_timeout
+[`UdpSocket::set_write_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_write_timeout
+[`VecDeque::append`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.append
+[`VecDeque::retain`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.retain
+[`VecDeque::split_off`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.split_off
+[`rc::Weak::upgrade`]: http://doc.rust-lang.org/nightly/std/rc/struct.Weak.html#method.upgrade
+[`rc::Weak`]: http://doc.rust-lang.org/nightly/std/rc/struct.Weak.html
+[`slice::Iter::as_slice`]: http://doc.rust-lang.org/nightly/std/slice/struct.Iter.html#method.as_slice
+[`slice::IterMut::into_slice`]: http://doc.rust-lang.org/nightly/std/slice/struct.IterMut.html#method.into_slice
+[`str::CharIndices::as_str`]: http://doc.rust-lang.org/nightly/std/str/struct.CharIndices.html#method.as_str
+[`str::Chars::as_str`]: http://doc.rust-lang.org/nightly/std/str/struct.Chars.html#method.as_str
+[`str::split_at_mut`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.split_at_mut
+[`str::split_at`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.split_at
+[`sync::Weak::upgrade`]: http://doc.rust-lang.org/nightly/std/sync/struct.Weak.html#method.upgrade
+[`sync::Weak`]: http://doc.rust-lang.org/nightly/std/sync/struct.Weak.html
+[`thread::park_timeout`]: http://doc.rust-lang.org/nightly/std/thread/fn.park_timeout.html
+[`thread::sleep`]: http://doc.rust-lang.org/nightly/std/thread/fn.sleep.html
+[bh2]: https://github.com/rust-lang/rust/pull/28156
+[binfat]: https://github.com/rust-lang/rust/pull/28270
+[bm]: https://github.com/rust-lang/rust/pull/28197
+[cc]: https://github.com/rust-lang/rust/pull/27531
+[crlf]: https://github.com/rust-lang/rust/pull/28034
+[cu]: https://github.com/rust-lang/cargo/pull/1931
+[d]: https://github.com/rust-lang/rust/pull/27825
+[dep]: https://github.com/rust-lang/rust/pull/28339
+[es]: https://github.com/rust-lang/rust/pull/27956
+[ext]: https://github.com/rust-lang/rust/pull/28094
+[faststr]: https://github.com/rust-lang/rust/pull/28338
+[ffi]: https://github.com/rust-lang/rust/pull/28779
+[fp]: https://github.com/rust-lang/rust/pull/28268
+[fp2]: https://github.com/rust-lang/rust/pull/28560
+[fp3]: https://github.com/rust-lang/rust/pull/27307
+[i]: https://github.com/rust-lang/rust/pull/27451
+[into2]: https://github.com/rust-lang/rust/pull/28039
+[it]: https://github.com/rust-lang/rust/pull/27652
+[mm]: https://github.com/rust-lang/rust/pull/27338
+[mutw]: https://github.com/rust-lang/rust/pull/28368
+[sound]: https://github.com/rust-lang/rust/pull/27641
+[p]: https://github.com/rust-lang/rust/pull/27866
+[pec]: https://github.com/rust-lang/rust/pull/28486
+[pr]: https://github.com/rust-lang/rust/pull/27896
+[RFC 839]: https://github.com/rust-lang/rfcs/blob/master/text/0839-embrace-extend-extinguish.md
+[RFC 1214]: https://github.com/rust-lang/rfcs/blob/master/text/1214-projections-lifetimes-and-wf.md
+[s]: https://github.com/rust-lang/rust/pull/27474
+[stab]: https://github.com/rust-lang/rust/pull/28339
+[stat]: https://github.com/rust-lang/rust/pull/28321
+[vd]: https://github.com/rust-lang/rust/pull/28494
+
 Version 1.3.0 (2015-09-17)
 ==============================
 
