@@ -135,7 +135,7 @@ Snapshot binaries are currently built and tested on several platforms:
 You may find that other platforms work, but these are our officially
 supported build environments that are most likely to work.
 
-Rust currently needs about 1.5 GiB of RAM (1GiB on 32-bit *nix) to build without swapping; if it hits
+Rust currently needs about 1.5 GiB of RAM (850 MiB on 32-bit *nix) to build without swapping; if it hits
 swap, it will take a very long time to build.
 
 There is more advice about hacking on Rust in [CONTRIBUTING.md].
