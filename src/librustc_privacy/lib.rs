@@ -1467,11 +1467,14 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
         // public, even if the type alias itself is private. So, something
         // like `type A = u8; pub fn f() -> A {...}` doesn't cause an error.
         if let hir::ItemTy(ref ty, ref generics) = item.node {
-            let mut check = SearchInterfaceForPrivateItemsVisitor {
-                tcx: self.tcx, is_quiet: self.is_quiet,
-                is_public: true, old_error_set: self.old_error_set,
-            };
+            let mut check = SearchInterfaceForPrivateItemsVisitor { is_public: true, ..*self };
             check.visit_ty(ty);
+            // If a private type alias with default type parameters is used in public
+            // interface we must ensure, that the defaults are public if they are actually used.
+            // ```
+            // type Alias<T = Private> = T;
+            // pub fn f() -> Alias {...} // `Private` is implicitly used here, so it must be public
+            // ```
             let provided_params = path.segments.last().unwrap().parameters.types().len();
             for ty_param in &generics.ty_params[provided_params..] {
                 if let Some(ref default_ty) = ty_param.default {
@@ -1500,29 +1503,32 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                 def::DefAssociatedTy(..) if self.is_quiet => {
                     // Conservatively approximate the whole type alias as public without
                     // recursing into its components when determining impl publicity.
+                    // For example, `impl <Type as Trait>::Alias {...}` may be a public impl
+                    // even if both `Type` and `Trait` are private.
+                    // Ideally, associated types should be substituted in the same way as
+                    // free type aliases, but this isn't done yet.
                     return
                 }
                 def::DefStruct(def_id) | def::DefTy(def_id, _) |
                 def::DefTrait(def_id) | def::DefAssociatedTy(def_id, _) => {
-                    // Non-local means public, local needs to be checked
+                    // Non-local means public (private items can't leave their crate, modulo bugs)
                     if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
-                        if let Some(ast_map::NodeItem(ref item)) = self.tcx.map.find(node_id) {
-                            if item.vis != hir::Public && !self.is_public_type_alias(item, path) {
-                                if !self.is_quiet {
-                                    if self.old_error_set.contains(&ty.id) {
-                                        span_err!(self.tcx.sess, ty.span, E0446,
-                                                  "private type in public interface");
-                                    } else {
-                                        self.tcx.sess.add_lint (
-                                            lint::builtin::PRIVATE_IN_PUBLIC,
-                                            node_id,
-                                            ty.span,
-                                            "private type in public interface".to_string()
-                                        );
-                                    }
+                        let item = self.tcx.map.expect_item(node_id);
+                        if item.vis != hir::Public && !self.is_public_type_alias(item, path) {
+                            if !self.is_quiet {
+                                if self.old_error_set.contains(&ty.id) {
+                                    span_err!(self.tcx.sess, ty.span, E0446,
+                                              "private type in public interface");
+                                } else {
+                                    self.tcx.sess.add_lint (
+                                        lint::builtin::PRIVATE_IN_PUBLIC,
+                                        node_id,
+                                        ty.span,
+                                        "private type in public interface (error E0446)".to_string()
+                                    );
                                 }
-                                self.is_public = false;
                             }
+                            self.is_public = false;
                         }
                     }
                 }
@@ -1538,24 +1544,24 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
             // We are in quiet mode and a private type is already found, no need to proceed
             return
         }
-        // Non-local means public, local needs to be checked
+        // Non-local means public (private items can't leave their crate, modulo bugs)
         let def_id = self.tcx.trait_ref_to_def_id(trait_ref);
         if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
-            if let Some(ast_map::NodeItem(ref item)) = self.tcx.map.find(node_id) {
-                if item.vis != hir::Public {
-                    if !self.is_quiet {
-                        if self.old_error_set.contains(&trait_ref.ref_id) {
-                            span_err!(self.tcx.sess, trait_ref.path.span, E0445,
-                                      "private trait in public interface");
-                        } else {
-                            self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
-                                                   node_id,
-                                                   trait_ref.path.span,
-                                                   "private trait in public interface".to_string());
-                        }
+            let item = self.tcx.map.expect_item(node_id);
+            if item.vis != hir::Public {
+                if !self.is_quiet {
+                    if self.old_error_set.contains(&trait_ref.ref_id) {
+                        span_err!(self.tcx.sess, trait_ref.path.span, E0445,
+                                  "private trait in public interface");
+                    } else {
+                        self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
+                                               node_id,
+                                               trait_ref.path.span,
+                                               "private trait in public interface (error E0445)"
+                                                    .to_string());
                     }
-                    self.is_public = false;
                 }
+                self.is_public = false;
             }
         }
 
@@ -1585,8 +1591,8 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
         check.is_public
     }
 
-    // A trait is considered public if it doesn't contain any private components
-    fn is_public_trait(&self, trait_ref: &hir::TraitRef) -> bool {
+    // A trait reference is considered public if it doesn't contain any private components
+    fn is_public_trait_ref(&self, trait_ref: &hir::TraitRef) -> bool {
         let mut check = SearchInterfaceForPrivateItemsVisitor {
             tcx: self.tcx, is_quiet: true, is_public: true, old_error_set: self.old_error_set
         };
@@ -1650,7 +1656,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
             // A trait impl is public when both its type and its trait are public
             // Subitems of trait impls have inherited publicity
             hir::ItemImpl(_, _, ref generics, Some(ref trait_ref), ref ty, ref impl_items) => {
-                if self.is_public_ty(ty) && self.is_public_trait(trait_ref) {
+                if self.is_public_ty(ty) && self.is_public_trait_ref(trait_ref) {
                     check.visit_generics(generics);
                     for impl_item in impl_items {
                         check.visit_impl_item(impl_item);
