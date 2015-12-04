@@ -34,6 +34,7 @@ pub mod ffi;
 pub mod fs;
 pub mod process;
 pub mod raw;
+pub mod thread;
 
 /// A prelude for conveniently writing platform-specific code.
 ///

@@ -24,6 +24,8 @@
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = i32;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = i32;
 
+#[unstable(feature = "pthread_t", issue = "29791")] pub type pthread_t = usize;
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
