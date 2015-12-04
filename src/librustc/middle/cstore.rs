@@ -135,6 +135,7 @@ pub enum FoundAst<'ast> {
 pub trait CrateStore<'tcx> : Any {
     // item info
     fn stability(&self, def: DefId) -> Option<attr::Stability>;
+    fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>;
     fn closure_kind(&self, tcx: &ty::ctxt<'tcx>, def_id: DefId)
                     -> ty::ClosureKind;
     fn closure_ty(&self, tcx: &ty::ctxt<'tcx>, def_id: DefId)
@@ -292,6 +293,7 @@ pub struct DummyCrateStore;
 impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     // item info
     fn stability(&self, def: DefId) -> Option<attr::Stability> { unimplemented!() }
+    fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> { unimplemented!() }
     fn closure_kind(&self, tcx: &ty::ctxt<'tcx>, def_id: DefId)
                     -> ty::ClosureKind  { unimplemented!() }
     fn closure_ty(&self, tcx: &ty::ctxt<'tcx>, def_id: DefId)
