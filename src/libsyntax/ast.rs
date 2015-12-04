@@ -45,6 +45,7 @@ pub use self::ViewPath_::*;
 pub use self::Visibility::*;
 pub use self::PathParameters::*;
 
+use attr::ThinAttributes;
 use codemap::{Span, Spanned, DUMMY_SP, ExpnId};
 use abi::Abi;
 use ast_util;
@@ -692,8 +693,21 @@ pub enum Stmt_ {
     /// Expr with trailing semi-colon (may have any type):
     StmtSemi(P<Expr>, NodeId),
 
-    StmtMac(P<Mac>, MacStmtStyle),
+    StmtMac(P<Mac>, MacStmtStyle, ThinAttributes),
 }
+
+impl Stmt_ {
+    pub fn attrs(&self) -> &[Attribute] {
+        match *self {
+            StmtDecl(ref d, _) => d.attrs(),
+            StmtExpr(ref e, _) |
+            StmtSemi(ref e, _) => e.attrs(),
+            StmtMac(_, _, Some(ref b)) => b,
+            StmtMac(_, _, None) => &[],
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum MacStmtStyle {
     /// The macro statement had a trailing semicolon, e.g. `foo! { ... };`
@@ -718,6 +732,16 @@ pub struct Local {
     pub init: Option<P<Expr>>,
     pub id: NodeId,
     pub span: Span,
+    pub attrs: ThinAttributes,
+}
+
+impl Local {
+    pub fn attrs(&self) -> &[Attribute] {
+        match self.attrs {
+            Some(ref b) => b,
+            None => &[],
+        }
+    }
 }
 
 pub type Decl = Spanned<Decl_>;
@@ -728,6 +752,15 @@ pub enum Decl_ {
     DeclLocal(P<Local>),
     /// An item binding:
     DeclItem(P<Item>),
+}
+
+impl Decl {
+    pub fn attrs(&self) -> &[Attribute] {
+        match self.node {
+            DeclLocal(ref l) => l.attrs(),
+            DeclItem(ref i) => i.attrs(),
+        }
+    }
 }
 
 /// represents one arm of a 'match'
@@ -766,6 +799,16 @@ pub struct Expr {
     pub id: NodeId,
     pub node: Expr_,
     pub span: Span,
+    pub attrs: ThinAttributes
+}
+
+impl Expr {
+    pub fn attrs(&self) -> &[Attribute] {
+        match self.attrs {
+            Some(ref b) => b,
+            None => &[],
+        }
+    }
 }
 
 impl fmt::Debug for Expr {
@@ -1790,6 +1833,12 @@ pub struct Item {
     pub node: Item_,
     pub vis: Visibility,
     pub span: Span,
+}
+
+impl Item {
+    pub fn attrs(&self) -> &[Attribute] {
+        &self.attrs
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

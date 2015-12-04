@@ -202,6 +202,7 @@ impl Token {
             Interpolated(NtIdent(..))   => true,
             Interpolated(NtBlock(..))   => true,
             Interpolated(NtPath(..))    => true,
+            Pound                       => true, // for expression attributes
             _                           => false,
         }
     }

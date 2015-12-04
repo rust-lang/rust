@@ -42,6 +42,7 @@ use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::ast;
+use syntax::attr::ThinAttributesExt;
 use rustc_front::hir;
 use rustc_front::util;
 use rustc_front::intravisit as hir_visit;
@@ -674,11 +675,18 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, e: &hir::Expr) {
-        run_lints!(self, check_expr, late_passes, e);
-        hir_visit::walk_expr(self, e);
+        self.with_lint_attrs(e.attrs.as_attr_slice(), |cx| {
+            run_lints!(cx, check_expr, late_passes, e);
+            hir_visit::walk_expr(cx, e);
+        })
     }
 
     fn visit_stmt(&mut self, s: &hir::Stmt) {
+        // statement attributes are actually just attributes on one of
+        // - item
+        // - local
+        // - expression
+        // so we keep track of lint levels there
         run_lints!(self, check_stmt, late_passes, s);
         hir_visit::walk_stmt(self, s);
     }
@@ -730,8 +738,10 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     }
 
     fn visit_local(&mut self, l: &hir::Local) {
-        run_lints!(self, check_local, late_passes, l);
-        hir_visit::walk_local(self, l);
+        self.with_lint_attrs(l.attrs.as_attr_slice(), |cx| {
+            run_lints!(cx, check_local, late_passes, l);
+            hir_visit::walk_local(cx, l);
+        })
     }
 
     fn visit_block(&mut self, b: &hir::Block) {

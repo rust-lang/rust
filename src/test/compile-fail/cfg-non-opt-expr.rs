@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
-
 fn main() {
-    #[attr] //~ ERROR expected item
-    let __isize = 0;
+    let _ = #[cfg(unset)] ();
+    //~^ ERROR removing an expression is not supported in this position
+    let _ = 1 + 2 + #[cfg(unset)] 3;
+    //~^ ERROR removing an expression is not supported in this position
+    let _ = [1, 2, 3][#[cfg(unset)] 1];
+    //~^ ERROR removing an expression is not supported in this position
 }

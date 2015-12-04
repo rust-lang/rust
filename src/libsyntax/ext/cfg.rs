@@ -20,6 +20,7 @@ use ext::build::AstBuilder;
 use attr;
 use attr::*;
 use parse::token;
+use config::CfgDiagReal;
 
 pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
                        sp: Span,
@@ -33,7 +34,12 @@ pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
         return DummyResult::expr(sp);
     }
 
-    let matches_cfg = attr::cfg_matches(&cx.parse_sess.span_diagnostic, &cx.cfg, &cfg,
-                                        cx.feature_gated_cfgs);
+    let matches_cfg = {
+        let mut diag = CfgDiagReal {
+            diag: &cx.parse_sess.span_diagnostic,
+            feature_gated_cfgs: cx.feature_gated_cfgs,
+        };
+        attr::cfg_matches(&cx.cfg, &cfg, &mut diag)
+    };
     MacEager::expr(cx.expr_bool(sp, matches_cfg))
 }

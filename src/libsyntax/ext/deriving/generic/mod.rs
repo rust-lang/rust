@@ -204,7 +204,7 @@ use ext::build::AstBuilder;
 use codemap::{self, DUMMY_SP};
 use codemap::Span;
 use diagnostic::SpanHandler;
-use fold::MoveMap;
+use util::move_map::MoveMap;
 use owned_slice::OwnedSlice;
 use parse::token::{intern, InternedString};
 use parse::token::special_idents;
