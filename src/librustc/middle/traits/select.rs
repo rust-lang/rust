@@ -836,8 +836,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(None);
         }
 
-
-        // If there are *NO* candidates, that there are no impls --
+        // If there are *NO* candidates, then there are no impls --
         // that we know of, anyway. Note that in the case where there
         // are unbound type variables within the obligation, it might
         // be the case that you could still satisfy the obligation
