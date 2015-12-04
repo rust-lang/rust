@@ -176,7 +176,7 @@ fn determine_operation(matches: &Matches) -> Operation {
     }
 
     // if no file argument is supplied, read from stdin
-    if matches.free.len() == 0 {
+    if matches.free.is_empty() {
 
         let mut buffer = String::new();
         match io::stdin().read_to_string(&mut buffer) {
@@ -198,7 +198,7 @@ fn determine_operation(matches: &Matches) -> Operation {
         None => WriteMode::Replace,
     };
 
-    let files: Vec<_> = matches.free.iter().map(|a| PathBuf::from(a)).collect();
+    let files: Vec<_> = matches.free.iter().map(PathBuf::from).collect();
 
     Operation::Format(files, write_mode)
 }
