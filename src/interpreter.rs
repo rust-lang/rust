@@ -1,6 +1,6 @@
 use rustc::middle::{const_eval, def_id, ty};
+use rustc::mir::repr::{self as mir, Mir};
 use rustc_mir::mir_map::MirMap;
-use rustc_mir::repr::{self as mir, Mir};
 use syntax::ast::Attribute;
 use syntax::attr::AttrMetaMethods;
 
@@ -335,7 +335,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     mir::Literal::Value { ref value } => self.eval_constant(value),
 
                     mir::Literal::Item { def_id, substs: _ } => {
-                        // FIXME(tsion): Only items of function type shoud be wrapped into Func
+                        // FIXME(tsion): Only items of function type should be wrapped into Func
                         // values. One test currently fails because a unit-like enum variant gets
                         // wrapped into Func here instead of a Value::Adt.
                         Value::Func(def_id)
@@ -356,6 +356,8 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             const_eval::ConstVal::Struct(_node_id)  => unimplemented!(),
             const_eval::ConstVal::Tuple(_node_id)   => unimplemented!(),
             const_eval::ConstVal::Function(_def_id) => unimplemented!(),
+            const_eval::ConstVal::Array(_, _)       => unimplemented!(),
+            const_eval::ConstVal::Repeat(_, _)      => unimplemented!(),
         }
     }
 
