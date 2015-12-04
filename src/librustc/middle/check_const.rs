@@ -25,7 +25,8 @@
 // by borrowck::gather_loans
 
 use middle::ty::cast::{CastKind};
-use middle::const_eval;
+use middle::const_eval::{self, ConstEvalErr};
+use middle::const_eval::ErrKind::IndexOpFeatureGated;
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::def;
 use middle::def_id::DefId;
@@ -477,6 +478,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                             match const_eval::eval_const_expr_partial(
                                     self.tcx, ex, ExprTypeChecked, None) {
                                 Ok(_) => {}
+                                Err(ConstEvalErr { kind: IndexOpFeatureGated, ..}) => {},
                                 Err(msg) => {
                                     self.tcx.sess.add_lint(::lint::builtin::CONST_ERR, ex.id,
                                                            msg.span,
