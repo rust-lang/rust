@@ -62,7 +62,7 @@ mod simplify;
 
 // extract the stability index for a node from tcx, if possible
 fn get_stability(cx: &DocContext, def_id: DefId) -> Option<Stability> {
-    cx.tcx_opt().and_then(|tcx| stability::lookup(tcx, def_id)).clean(cx)
+    cx.tcx_opt().and_then(|tcx| stability::lookup_stability(tcx, def_id)).clean(cx)
 }
 
 pub trait Clean<T> {
@@ -2689,12 +2689,12 @@ impl Clean<Stability> for attr::Stability {
                 attr::Stable {ref since} => since.to_string(),
                 _ => "".to_string(),
             },
-            deprecated_since: match self.depr {
-                Some(attr::Deprecation {ref since, ..}) => since.to_string(),
+            deprecated_since: match self.rustc_depr {
+                Some(attr::RustcDeprecation {ref since, ..}) => since.to_string(),
                 _=> "".to_string(),
             },
             reason: {
-                if let Some(ref depr) = self.depr {
+                if let Some(ref depr) = self.rustc_depr {
                     depr.reason.to_string()
                 } else if let attr::Unstable {reason: Some(ref reason), ..} = self.level {
                     reason.to_string()
@@ -2782,7 +2782,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedType<'tcx> {
             inner: AssociatedTypeItem(bounds, self.ty.clean(cx)),
             visibility: self.vis.clean(cx),
             def_id: self.def_id,
-            stability: stability::lookup(cx.tcx(), self.def_id).clean(cx),
+            stability: stability::lookup_stability(cx.tcx(), self.def_id).clean(cx),
         }
     }
 }
