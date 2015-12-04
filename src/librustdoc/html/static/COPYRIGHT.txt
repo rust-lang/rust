@@ -32,7 +32,7 @@ included, and carry their own copyright notices and license terms:
     Copyright 2005, 2015 jQuery Foundation, Inc.
     Licensed under the MIT license (see LICENSE-MIT.txt).
 
-* main.css, main.js, and playpen.js:
+* rustdoc.css, main.js, and playpen.js:
 
     Copyright 2015 The Rust Developers.
     Licensed under the Apache License, Version 2.0 (see LICENSE-APACHE.txt) or
