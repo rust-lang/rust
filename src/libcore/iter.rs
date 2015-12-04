@@ -3194,7 +3194,7 @@ impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
     #[inline]
     fn next(&mut self) -> Option<(A::Item, B::Item)> {
         match (self.a.next(), self.b.next()) {
-            (Some(x), Some(y)) => Some(x, y),
+            (Some(x), Some(y)) => Some((x, y)),
             _ => None,
         }
     }
