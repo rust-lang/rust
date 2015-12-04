@@ -3193,11 +3193,10 @@ impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
 
     #[inline]
     fn next(&mut self) -> Option<(A::Item, B::Item)> {
-        self.a.next().and_then(|x| {
-            self.b.next().and_then(|y| {
-                Some((x, y))
-            })
-        })
+        match (self.a.next(), self.b.next()) {
+            (Some(x), Some(y)) => Some(x, y),
+            _ => None,
+        }
     }
 
     #[inline]
