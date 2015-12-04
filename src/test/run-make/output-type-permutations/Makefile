@@ -27,11 +27,15 @@ all:
 	rm $(TMPDIR)/foo
 	$(RUSTC) foo.rs --emit asm=$(TMPDIR)/foo
 	rm $(TMPDIR)/foo
+	$(RUSTC) foo.rs --emit=asm=$(TMPDIR)/foo
+	rm $(TMPDIR)/foo
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
 	$(RUSTC) foo.rs --emit llvm-bc -o $(TMPDIR)/foo
 	rm $(TMPDIR)/foo
 	$(RUSTC) foo.rs --emit llvm-bc=$(TMPDIR)/foo
+	rm $(TMPDIR)/foo
+	$(RUSTC) foo.rs --emit=llvm-bc=$(TMPDIR)/foo
 	rm $(TMPDIR)/foo
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
@@ -39,17 +43,23 @@ all:
 	rm $(TMPDIR)/foo
 	$(RUSTC) foo.rs --emit llvm-ir=$(TMPDIR)/foo
 	rm $(TMPDIR)/foo
+	$(RUSTC) foo.rs --emit=llvm-ir=$(TMPDIR)/foo
+	rm $(TMPDIR)/foo
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
 	$(RUSTC) foo.rs --emit obj -o $(TMPDIR)/foo
 	rm $(TMPDIR)/foo
 	$(RUSTC) foo.rs --emit obj=$(TMPDIR)/foo
 	rm $(TMPDIR)/foo
+	$(RUSTC) foo.rs --emit=obj=$(TMPDIR)/foo
+	rm $(TMPDIR)/foo
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
 	$(RUSTC) foo.rs --emit link -o $(TMPDIR)/$(call BIN,foo)
 	rm $(TMPDIR)/$(call BIN,foo)
 	$(RUSTC) foo.rs --emit link=$(TMPDIR)/$(call BIN,foo)
+	rm $(TMPDIR)/$(call BIN,foo)
+	$(RUSTC) foo.rs --emit=link=$(TMPDIR)/$(call BIN,foo)
 	rm $(TMPDIR)/$(call BIN,foo)
 	rm -f $(TMPDIR)/foo.pdb
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
@@ -58,11 +68,15 @@ all:
 	rm $(TMPDIR)/foo
 	$(RUSTC) foo.rs --crate-type=rlib --emit link=$(TMPDIR)/foo
 	rm $(TMPDIR)/foo
+	$(RUSTC) foo.rs --crate-type=rlib --emit=link=$(TMPDIR)/foo
+	rm $(TMPDIR)/foo
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
 	$(RUSTC) foo.rs --crate-type=dylib -o $(TMPDIR)/$(call BIN,foo)
 	rm $(TMPDIR)/$(call BIN,foo)
 	$(RUSTC) foo.rs --crate-type=dylib --emit link=$(TMPDIR)/$(call BIN,foo)
+	rm $(TMPDIR)/$(call BIN,foo)
+	$(RUSTC) foo.rs --crate-type=dylib --emit=link=$(TMPDIR)/$(call BIN,foo)
 	rm $(TMPDIR)/$(call BIN,foo)
 	rm -f $(TMPDIR)/foo.{exp,lib,pdb}
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
@@ -71,11 +85,15 @@ all:
 	rm $(TMPDIR)/foo
 	$(RUSTC) foo.rs --crate-type=staticlib --emit link=$(TMPDIR)/foo
 	rm $(TMPDIR)/foo
+	$(RUSTC) foo.rs --crate-type=staticlib --emit=link=$(TMPDIR)/foo
+	rm $(TMPDIR)/foo
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
 	$(RUSTC) foo.rs --crate-type=bin -o $(TMPDIR)/$(call BIN,foo)
 	rm $(TMPDIR)/$(call BIN,foo)
 	$(RUSTC) foo.rs --crate-type=bin --emit link=$(TMPDIR)/$(call BIN,foo)
+	rm $(TMPDIR)/$(call BIN,foo)
+	$(RUSTC) foo.rs --crate-type=bin --emit=link=$(TMPDIR)/$(call BIN,foo)
 	rm $(TMPDIR)/$(call BIN,foo)
 	rm -f $(TMPDIR)/foo.pdb
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
@@ -92,6 +110,17 @@ all:
 			--emit llvm-bc=$(TMPDIR)/bc \
 		        --emit obj=$(TMPDIR)/obj \
 			--emit link=$(TMPDIR)/link \
+			--crate-type=staticlib
+	rm $(TMPDIR)/asm
+	rm $(TMPDIR)/ir
+	rm $(TMPDIR)/bc
+	rm $(TMPDIR)/obj
+	rm $(TMPDIR)/link
+	$(RUSTC) foo.rs --emit=asm=$(TMPDIR)/asm \
+			--emit llvm-ir=$(TMPDIR)/ir \
+			--emit=llvm-bc=$(TMPDIR)/bc \
+		        --emit obj=$(TMPDIR)/obj \
+			--emit=link=$(TMPDIR)/link \
 			--crate-type=staticlib
 	rm $(TMPDIR)/asm
 	rm $(TMPDIR)/ir
