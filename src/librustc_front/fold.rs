@@ -14,39 +14,13 @@
 use hir::*;
 use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID, Attribute, Attribute_, MetaItem};
 use syntax::ast::{MetaWord, MetaList, MetaNameValue};
+use syntax::attr::ThinAttributesExt;
 use hir;
 use syntax::codemap::{respan, Span, Spanned};
 use syntax::owned_slice::OwnedSlice;
 use syntax::ptr::P;
 use syntax::parse::token;
-use std::ptr;
-
-// This could have a better place to live.
-pub trait MoveMap<T> {
-    fn move_map<F>(self, f: F) -> Self where F: FnMut(T) -> T;
-}
-
-impl<T> MoveMap<T> for Vec<T> {
-    fn move_map<F>(mut self, mut f: F) -> Vec<T>
-        where F: FnMut(T) -> T
-    {
-        for p in &mut self {
-            unsafe {
-                // FIXME(#5016) this shouldn't need to zero to be safe.
-                ptr::write(p, f(ptr::read_and_drop(p)));
-            }
-        }
-        self
-    }
-}
-
-impl<T> MoveMap<T> for OwnedSlice<T> {
-    fn move_map<F>(self, f: F) -> OwnedSlice<T>
-        where F: FnMut(T) -> T
-    {
-        OwnedSlice::from_vec(self.into_vec().move_map(f))
-    }
-}
+use syntax::util::move_map::MoveMap;
 
 pub trait Folder : Sized {
     // Any additions to this trait should happen in form
@@ -332,7 +306,7 @@ pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<
 }
 
 pub fn fold_attrs<T: Folder>(attrs: Vec<Attribute>, fld: &mut T) -> Vec<Attribute> {
-    attrs.into_iter().flat_map(|x| fld.fold_attribute(x)).collect()
+    attrs.move_flat_map(|x| fld.fold_attribute(x))
 }
 
 pub fn noop_fold_arm<T: Folder>(Arm { attrs, pats, guard, body }: Arm, fld: &mut T) -> Arm {
@@ -501,13 +475,14 @@ pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesizedPara
 }
 
 pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
-    l.map(|Local { id, pat, ty, init, span }| {
+    l.map(|Local { id, pat, ty, init, span, attrs }| {
         Local {
             id: fld.new_id(id),
             ty: ty.map(|t| fld.fold_ty(t)),
             pat: fld.fold_pat(pat),
             init: init.map(|e| fld.fold_expr(e)),
             span: fld.new_span(span),
+            attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs, fld)),
         }
     })
 }
@@ -769,7 +744,7 @@ pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
     b.map(|Block { id, stmts, expr, rules, span }| {
         Block {
             id: folder.new_id(id),
-            stmts: stmts.into_iter().map(|s| folder.fold_stmt(s)).collect(),
+            stmts: stmts.move_map(|s| folder.fold_stmt(s)),
             expr: expr.map(|x| folder.fold_expr(x)),
             rules: rules,
             span: folder.new_span(span),
@@ -816,9 +791,8 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
             ItemDefaultImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
         }
         ItemImpl(unsafety, polarity, generics, ifce, ty, impl_items) => {
-            let new_impl_items = impl_items.into_iter()
-                                           .map(|item| folder.fold_impl_item(item))
-                                           .collect();
+            let new_impl_items = impl_items
+                .move_map(|item| folder.fold_impl_item(item));
             let ifce = match ifce {
                 None => None,
                 Some(ref trait_ref) => {
@@ -834,9 +808,7 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
         }
         ItemTrait(unsafety, generics, bounds, items) => {
             let bounds = folder.fold_bounds(bounds);
-            let items = items.into_iter()
-                             .map(|item| folder.fold_trait_item(item))
-                             .collect();
+            let items = items.move_map(|item| folder.fold_trait_item(item));
             ItemTrait(unsafety, folder.fold_generics(generics), bounds, items)
         }
     }
@@ -892,7 +864,7 @@ pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T) -> P<ImplI
 pub fn noop_fold_mod<T: Folder>(Mod { inner, item_ids }: Mod, folder: &mut T) -> Mod {
     Mod {
         inner: folder.new_span(inner),
-        item_ids: item_ids.into_iter().map(|x| folder.fold_item_id(x)).collect(),
+        item_ids: item_ids.move_map(|x| folder.fold_item_id(x)),
     }
 }
 
@@ -1048,7 +1020,7 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
     })
 }
 
-pub fn noop_fold_expr<T: Folder>(Expr { id, node, span }: Expr, folder: &mut T) -> Expr {
+pub fn noop_fold_expr<T: Folder>(Expr { id, node, span, attrs }: Expr, folder: &mut T) -> Expr {
     Expr {
         id: folder.new_id(id),
         node: match node {
@@ -1171,6 +1143,7 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span }: Expr, folder: &mut T) 
             }
         },
         span: folder.new_span(span),
+        attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs, folder)),
     }
 }
 

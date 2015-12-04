@@ -25,6 +25,7 @@
 
 use abi::Abi;
 use ast::*;
+use attr::ThinAttributesExt;
 use codemap::Span;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -628,7 +629,12 @@ pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
         StmtExpr(ref expression, _) | StmtSemi(ref expression, _) => {
             visitor.visit_expr(expression)
         }
-        StmtMac(ref mac, _) => visitor.visit_mac(mac),
+        StmtMac(ref mac, _, ref attrs) => {
+            visitor.visit_mac(mac);
+            for attr in attrs.as_attr_slice() {
+                visitor.visit_attribute(attr);
+            }
+        }
     }
 }
 

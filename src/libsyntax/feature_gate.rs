@@ -227,6 +227,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // Allows cfg(target_vendor = "...").
     ("cfg_target_vendor", "1.5.0", Some(29718), Active),
+
+    // Allow attributes on expressions and non-item statements
+    ("stmt_expr_attributes", "1.6.0", Some(15701), Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -408,21 +411,53 @@ const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)]
 ];
 
 #[derive(Debug, Eq, PartialEq)]
+pub enum GatedCfgAttr {
+    GatedCfg(GatedCfg),
+    GatedAttr(Span),
+}
+
+#[derive(Debug, Eq, PartialEq)]
 pub struct GatedCfg {
     span: Span,
     index: usize,
 }
 
-impl Ord for GatedCfg {
-    fn cmp(&self, other: &GatedCfg) -> cmp::Ordering {
-        (self.span.lo.0, self.span.hi.0, self.index)
-            .cmp(&(other.span.lo.0, other.span.hi.0, other.index))
+impl Ord for GatedCfgAttr {
+    fn cmp(&self, other: &GatedCfgAttr) -> cmp::Ordering {
+        let to_tup = |s: &GatedCfgAttr| match *s {
+            GatedCfgAttr::GatedCfg(ref gated_cfg) => {
+                (gated_cfg.span.lo.0, gated_cfg.span.hi.0, gated_cfg.index)
+            }
+            GatedCfgAttr::GatedAttr(ref span) => {
+                (span.lo.0, span.hi.0, GATED_CFGS.len())
+            }
+        };
+        to_tup(self).cmp(&to_tup(other))
     }
 }
 
-impl PartialOrd for GatedCfg {
-    fn partial_cmp(&self, other: &GatedCfg) -> Option<cmp::Ordering> {
+impl PartialOrd for GatedCfgAttr {
+    fn partial_cmp(&self, other: &GatedCfgAttr) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl GatedCfgAttr {
+    pub fn check_and_emit(&self, diagnostic: &SpanHandler, features: &Features) {
+        match *self {
+            GatedCfgAttr::GatedCfg(ref cfg) => {
+                cfg.check_and_emit(diagnostic, features);
+            }
+            GatedCfgAttr::GatedAttr(span) => {
+                if !features.stmt_expr_attributes {
+                    emit_feature_err(diagnostic,
+                                     "stmt_expr_attributes",
+                                     span,
+                                     GateIssue::Language,
+                                     EXPLAIN_STMT_ATTR_SYNTAX);
+                }
+            }
+        }
     }
 }
 
@@ -438,7 +473,7 @@ impl GatedCfg {
                       }
                   })
     }
-    pub fn check_and_emit(&self, diagnostic: &SpanHandler, features: &Features) {
+    fn check_and_emit(&self, diagnostic: &SpanHandler, features: &Features) {
         let (cfg, feature, has_feature) = GATED_CFGS[self.index];
         if !has_feature(features) {
             let explain = format!("`cfg({})` is experimental and subject to change", cfg);
@@ -504,6 +539,7 @@ pub struct Features {
     pub augmented_assignments: bool,
     pub braced_empty_structs: bool,
     pub staged_api: bool,
+    pub stmt_expr_attributes: bool,
 }
 
 impl Features {
@@ -537,6 +573,7 @@ impl Features {
             augmented_assignments: false,
             braced_empty_structs: false,
             staged_api: false,
+            stmt_expr_attributes: false,
         }
     }
 }
@@ -549,6 +586,9 @@ const EXPLAIN_PLACEMENT_IN: &'static str =
 
 const EXPLAIN_PUSHPOP_UNSAFE: &'static str =
     "push/pop_unsafe macros are experimental and subject to change.";
+
+const EXPLAIN_STMT_ATTR_SYNTAX: &'static str =
+    "attributes on non-item statements and expressions are experimental.";
 
 pub fn check_for_box_syntax(f: Option<&Features>, diag: &SpanHandler, span: Span) {
     if let Some(&Features { allow_box: true, .. }) = f {
@@ -1111,6 +1151,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         augmented_assignments: cx.has_feature("augmented_assignments"),
         braced_empty_structs: cx.has_feature("braced_empty_structs"),
         staged_api: cx.has_feature("staged_api"),
+        stmt_expr_attributes: cx.has_feature("stmt_expr_attributes"),
     }
 }
 

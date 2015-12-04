@@ -16,10 +16,13 @@ pub use self::IntType::*;
 
 use ast;
 use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
+use ast::{Stmt, StmtDecl, StmtExpr, StmtMac, StmtSemi, DeclItem, DeclLocal};
+use ast::{Expr, Item, Local, Decl};
 use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
+use config::CfgDiag;
 use diagnostic::SpanHandler;
-use feature_gate::GatedCfg;
+use feature_gate::{GatedCfg, GatedCfgAttr};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::token::{InternedString, intern_and_get_ident};
 use parse::token;
@@ -356,26 +359,35 @@ pub fn requests_inline(attrs: &[Attribute]) -> bool {
 }
 
 /// Tests if a cfg-pattern matches the cfg set
-pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::MetaItem,
-                   feature_gated_cfgs: &mut Vec<GatedCfg>) -> bool {
+pub fn cfg_matches<T: CfgDiag>(cfgs: &[P<MetaItem>],
+                           cfg: &ast::MetaItem,
+                           diag: &mut T) -> bool {
     match cfg.node {
         ast::MetaList(ref pred, ref mis) if &pred[..] == "any" =>
-            mis.iter().any(|mi| cfg_matches(diagnostic, cfgs, &**mi, feature_gated_cfgs)),
+            mis.iter().any(|mi| cfg_matches(cfgs, &**mi, diag)),
         ast::MetaList(ref pred, ref mis) if &pred[..] == "all" =>
-            mis.iter().all(|mi| cfg_matches(diagnostic, cfgs, &**mi, feature_gated_cfgs)),
+            mis.iter().all(|mi| cfg_matches(cfgs, &**mi, diag)),
         ast::MetaList(ref pred, ref mis) if &pred[..] == "not" => {
             if mis.len() != 1 {
-                diagnostic.span_err(cfg.span, "expected 1 cfg-pattern");
+                diag.emit_error(|diagnostic| {
+                    diagnostic.span_err(cfg.span, "expected 1 cfg-pattern");
+                });
                 return false;
             }
-            !cfg_matches(diagnostic, cfgs, &*mis[0], feature_gated_cfgs)
+            !cfg_matches(cfgs, &*mis[0], diag)
         }
         ast::MetaList(ref pred, _) => {
-            diagnostic.span_err(cfg.span, &format!("invalid predicate `{}`", pred));
+            diag.emit_error(|diagnostic| {
+                diagnostic.span_err(cfg.span,
+                    &format!("invalid predicate `{}`", pred));
+            });
             false
         },
         ast::MetaWord(_) | ast::MetaNameValue(..) => {
-            feature_gated_cfgs.extend(GatedCfg::gate(cfg));
+            diag.flag_gated(|feature_gated_cfgs| {
+                feature_gated_cfgs.extend(
+                    GatedCfg::gate(cfg).map(GatedCfgAttr::GatedCfg));
+            });
             contains(cfgs, cfg)
         }
     }
@@ -718,5 +730,159 @@ impl IntType {
             SignedInt(ast::TyI64) | UnsignedInt(ast::TyU64) => true,
             SignedInt(ast::TyIs) | UnsignedInt(ast::TyUs) => false
         }
+    }
+}
+
+/// A list of attributes, behind a optional box as
+/// a space optimization.
+pub type ThinAttributes = Option<Box<Vec<Attribute>>>;
+
+pub trait ThinAttributesExt {
+    fn map_thin_attrs<F>(self, f: F) -> Self
+        where F: FnOnce(Vec<Attribute>) -> Vec<Attribute>;
+    fn prepend(mut self, attrs: Self) -> Self;
+    fn append(mut self, attrs: Self) -> Self;
+    fn update<F>(&mut self, f: F)
+        where Self: Sized,
+              F: FnOnce(Self) -> Self;
+    fn as_attr_slice(&self) -> &[Attribute];
+    fn into_attr_vec(self) -> Vec<Attribute>;
+}
+
+impl ThinAttributesExt for ThinAttributes {
+    fn map_thin_attrs<F>(self, f: F) -> Self
+        where F: FnOnce(Vec<Attribute>) -> Vec<Attribute>
+    {
+        f(self.map(|b| *b).unwrap_or(Vec::new())).into_thin_attrs()
+    }
+
+    fn prepend(self, attrs: ThinAttributes) -> Self {
+        attrs.map_thin_attrs(|mut attrs| {
+            attrs.extend(self.into_attr_vec());
+            attrs
+        })
+    }
+
+    fn append(self, attrs: ThinAttributes) -> Self {
+        self.map_thin_attrs(|mut self_| {
+            self_.extend(attrs.into_attr_vec());
+            self_
+        })
+    }
+
+    fn update<F>(&mut self, f: F)
+        where Self: Sized,
+              F: FnOnce(ThinAttributes) -> ThinAttributes
+    {
+        let self_ = f(self.take());
+        *self = self_;
+    }
+
+    fn as_attr_slice(&self) -> &[Attribute] {
+        match *self {
+            Some(ref b) => b,
+            None => &[],
+        }
+    }
+
+    fn into_attr_vec(self) -> Vec<Attribute> {
+        match self {
+            Some(b) => *b,
+            None => Vec::new(),
+        }
+    }
+}
+
+pub trait AttributesExt {
+    fn into_thin_attrs(self) -> ThinAttributes;
+}
+
+impl AttributesExt for Vec<Attribute> {
+    fn into_thin_attrs(self) -> ThinAttributes {
+        if self.len() == 0 {
+            None
+        } else {
+            Some(Box::new(self))
+        }
+    }
+}
+
+/// A cheap way to add Attributes to an AST node.
+pub trait WithAttrs {
+    // FIXME: Could be extended to anything IntoIter<Item=Attribute>
+    fn with_attrs(self, attrs: ThinAttributes) -> Self;
+}
+
+impl WithAttrs for P<Expr> {
+    fn with_attrs(self, attrs: ThinAttributes) -> Self {
+        self.map(|mut e| {
+            e.attrs.update(|a| a.append(attrs));
+            e
+        })
+    }
+}
+
+impl WithAttrs for P<Item> {
+    fn with_attrs(self, attrs: ThinAttributes) -> Self {
+        self.map(|Item { ident, attrs: mut ats, id, node, vis, span }| {
+            ats.extend(attrs.into_attr_vec());
+            Item {
+                ident: ident,
+                attrs: ats,
+                id: id,
+                node: node,
+                vis: vis,
+                span: span,
+            }
+        })
+    }
+}
+
+impl WithAttrs for P<Local> {
+    fn with_attrs(self, attrs: ThinAttributes) -> Self {
+        self.map(|Local { pat, ty, init, id, span, attrs: mut ats }| {
+            ats.update(|a| a.append(attrs));
+            Local {
+                pat: pat,
+                ty: ty,
+                init: init,
+                id: id,
+                span: span,
+                attrs: ats,
+            }
+        })
+    }
+}
+
+impl WithAttrs for P<Decl> {
+    fn with_attrs(self, attrs: ThinAttributes) -> Self {
+        self.map(|Spanned { span, node }| {
+            Spanned {
+                span: span,
+                node: match node {
+                    DeclLocal(local) => DeclLocal(local.with_attrs(attrs)),
+                    DeclItem(item) => DeclItem(item.with_attrs(attrs)),
+                }
+            }
+        })
+    }
+}
+
+impl WithAttrs for P<Stmt> {
+    fn with_attrs(self, attrs: ThinAttributes) -> Self {
+        self.map(|Spanned { span, node }| {
+            Spanned {
+                span: span,
+                node: match node {
+                    StmtDecl(decl, id) => StmtDecl(decl.with_attrs(attrs), id),
+                    StmtExpr(expr, id) => StmtExpr(expr.with_attrs(attrs), id),
+                    StmtSemi(expr, id) => StmtSemi(expr.with_attrs(attrs), id),
+                    StmtMac(mac, style, mut ats) => {
+                        ats.update(|a| a.append(attrs));
+                        StmtMac(mac, style, ats)
+                    }
+                },
+            }
+        })
     }
 }

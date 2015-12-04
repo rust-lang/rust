@@ -66,6 +66,7 @@ use hir;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use syntax::ast::*;
+use syntax::attr::{ThinAttributes, ThinAttributesExt};
 use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned, Span};
 use syntax::owned_slice::OwnedSlice;
@@ -331,6 +332,7 @@ pub fn lower_local(lctx: &LoweringContext, l: &Local) -> P<hir::Local> {
         pat: lower_pat(lctx, &l.pat),
         init: l.init.as_ref().map(|e| lower_expr(lctx, e)),
         span: l.span,
+        attrs: l.attrs.clone(),
     })
 }
 
@@ -984,16 +986,16 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
                     let make_call = |lctx: &LoweringContext, p, args| {
                         let path = core_path(lctx, e.span, p);
-                        let path = expr_path(lctx, path);
-                        expr_call(lctx, e.span, path, args)
+                        let path = expr_path(lctx, path, None);
+                        expr_call(lctx, e.span, path, args, None)
                     };
 
                     let mk_stmt_let = |lctx: &LoweringContext, bind, expr| {
-                        stmt_let(lctx, e.span, false, bind, expr)
+                        stmt_let(lctx, e.span, false, bind, expr, None)
                     };
 
                     let mk_stmt_let_mut = |lctx: &LoweringContext, bind, expr| {
-                        stmt_let(lctx, e.span, true, bind, expr)
+                        stmt_let(lctx, e.span, true, bind, expr, None)
                     };
 
                     // let placer = <placer_expr> ;
@@ -1002,21 +1004,22 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                                             vec![],
                                                             placer_expr,
                                                             e.span,
-                                                            hir::PopUnstableBlock);
+                                                            hir::PopUnstableBlock,
+                                                            None);
                         mk_stmt_let(lctx, placer_ident, placer_expr)
                     };
 
                     // let mut place = Placer::make_place(placer);
                     let s2 = {
-                        let placer = expr_ident(lctx, e.span, placer_ident);
+                        let placer = expr_ident(lctx, e.span, placer_ident, None);
                         let call = make_call(lctx, &make_place, vec![placer]);
                         mk_stmt_let_mut(lctx, place_ident, call)
                     };
 
                     // let p_ptr = Place::pointer(&mut place);
                     let s3 = {
-                        let agent = expr_ident(lctx, e.span, place_ident);
-                        let args = vec![expr_mut_addr_of(lctx, e.span, agent)];
+                        let agent = expr_ident(lctx, e.span, place_ident, None);
+                        let args = vec![expr_mut_addr_of(lctx, e.span, agent, None)];
                         let call = make_call(lctx, &place_pointer, args);
                         mk_stmt_let(lctx, p_ptr_ident, call)
                     };
@@ -1027,12 +1030,13 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                                            vec![],
                                                            value_expr,
                                                            e.span,
-                                                           hir::PopUnstableBlock);
+                                                           hir::PopUnstableBlock,
+                                                           None);
                         signal_block_expr(lctx,
                                           vec![],
                                           value_expr,
                                           e.span,
-                                          hir::PopUnsafeBlock(hir::CompilerGenerated))
+                                          hir::PopUnsafeBlock(hir::CompilerGenerated), None)
                     };
 
                     // push_unsafe!({
@@ -1040,27 +1044,28 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     //     InPlace::finalize(place)
                     // })
                     let expr = {
-                        let ptr = expr_ident(lctx, e.span, p_ptr_ident);
+                        let ptr = expr_ident(lctx, e.span, p_ptr_ident, None);
                         let call_move_val_init =
                             hir::StmtSemi(
                                 make_call(lctx, &move_val_init, vec![ptr, pop_unsafe_expr]),
                                 lctx.next_id());
                         let call_move_val_init = respan(e.span, call_move_val_init);
 
-                        let place = expr_ident(lctx, e.span, place_ident);
+                        let place = expr_ident(lctx, e.span, place_ident, None);
                         let call = make_call(lctx, &inplace_finalize, vec![place]);
                         signal_block_expr(lctx,
                                           vec![P(call_move_val_init)],
                                           call,
                                           e.span,
-                                          hir::PushUnsafeBlock(hir::CompilerGenerated))
+                                          hir::PushUnsafeBlock(hir::CompilerGenerated), None)
                     };
 
                     signal_block_expr(lctx,
                                       vec![s1, s2, s3],
                                       expr,
                                       e.span,
-                                      hir::PushUnstableBlock)
+                                      hir::PushUnstableBlock,
+                                      e.attrs.clone())
                 });
             }
 
@@ -1123,7 +1128,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                     rules: hir::DefaultBlock,
                                     span: span,
                                 });
-                                expr_block(lctx, blk)
+                                expr_block(lctx, blk, None)
                             })
                         }
                         _ => lower_expr(lctx, els),
@@ -1215,7 +1220,13 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                 maybe_expr.as_ref().map(|x| lower_expr(lctx, x)))
             }
             ExprParen(ref ex) => {
-                return lower_expr(lctx, ex);
+                // merge attributes into the inner expression.
+                return lower_expr(lctx, ex).map(|mut ex| {
+                    ex.attrs.update(|attrs| {
+                        attrs.prepend(e.attrs.clone())
+                    });
+                    ex
+                });
             }
 
             // Desugar ExprIfLet
@@ -1233,7 +1244,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     // `<pat> => <body>`
                     let pat_arm = {
                         let body = lower_block(lctx, body);
-                        let body_expr = expr_block(lctx, body);
+                        let body_expr = expr_block(lctx, body, None);
                         arm(vec![lower_pat(lctx, pat)], body_expr)
                     };
 
@@ -1252,7 +1263,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                                 attrs: vec![],
                                                 pats: vec![pat_under],
                                                 guard: Some(cond),
-                                                body: expr_block(lctx, then),
+                                                body: expr_block(lctx, then, None),
                                             });
                                             else_opt.map(|else_opt| (else_opt, true))
                                         }
@@ -1284,7 +1295,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                         let pat_under = pat_wild(lctx, e.span);
                         let else_expr =
                             else_opt.unwrap_or_else(
-                                || expr_tuple(lctx, e.span, vec![]));
+                                || expr_tuple(lctx, e.span, vec![], None));
                         arm(vec![pat_under], else_expr)
                     };
 
@@ -1294,13 +1305,15 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     arms.push(else_arm);
 
                     let sub_expr = lower_expr(lctx, sub_expr);
+                    // add attributes to the outer returned expr node
                     expr(lctx,
                          e.span,
                          hir::ExprMatch(sub_expr,
                                         arms,
                                         hir::MatchSource::IfLetDesugar {
                                             contains_else_clause: contains_else_clause,
-                                        }))
+                                        }),
+                         e.attrs.clone())
                 });
             }
 
@@ -1320,14 +1333,14 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     // `<pat> => <body>`
                     let pat_arm = {
                         let body = lower_block(lctx, body);
-                        let body_expr = expr_block(lctx, body);
+                        let body_expr = expr_block(lctx, body, None);
                         arm(vec![lower_pat(lctx, pat)], body_expr)
                     };
 
                     // `_ => break`
                     let break_arm = {
                         let pat_under = pat_wild(lctx, e.span);
-                        let break_expr = expr_break(lctx, e.span);
+                        let break_expr = expr_break(lctx, e.span, None);
                         arm(vec![pat_under], break_expr)
                     };
 
@@ -1338,11 +1351,13 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                           e.span,
                                           hir::ExprMatch(sub_expr,
                                                          arms,
-                                                         hir::MatchSource::WhileLetDesugar));
+                                                         hir::MatchSource::WhileLetDesugar),
+                                          None);
 
                     // `[opt_ident]: loop { ... }`
                     let loop_block = block_expr(lctx, match_expr);
-                    expr(lctx, e.span, hir::ExprLoop(loop_block, opt_ident))
+                    // add attributes to the outer returned expr node
+                    expr(lctx, e.span, hir::ExprLoop(loop_block, opt_ident), e.attrs.clone())
                 });
             }
 
@@ -1379,6 +1394,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                             id: lctx.next_id(),
                             node: hir::ExprBlock(body_block),
                             span: body_span,
+                            attrs: None,
                         });
                         let pat = lower_pat(lctx, pat);
                         let some_pat = pat_some(lctx, e.span, pat);
@@ -1388,7 +1404,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
                     // `::std::option::Option::None => break`
                     let break_arm = {
-                        let break_expr = expr_break(lctx, e.span);
+                        let break_expr = expr_break(lctx, e.span, None);
 
                         arm(vec![pat_none(lctx, e.span)], break_expr)
                     };
@@ -1400,20 +1416,28 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
                             path_global(e.span, strs)
                         };
-                        let iter = expr_ident(lctx, e.span, iter);
-                        let ref_mut_iter = expr_mut_addr_of(lctx, e.span, iter);
-                        let next_path = expr_path(lctx, next_path);
-                        let next_expr = expr_call(lctx, e.span, next_path, vec![ref_mut_iter]);
+                        let iter = expr_ident(lctx, e.span, iter, None);
+                        let ref_mut_iter = expr_mut_addr_of(lctx, e.span, iter, None);
+                        let next_path = expr_path(lctx, next_path, None);
+                        let next_expr = expr_call(lctx,
+                                                  e.span,
+                                                  next_path,
+                                                  vec![ref_mut_iter],
+                                                  None);
                         let arms = vec![pat_arm, break_arm];
 
                         expr(lctx,
                              e.span,
-                             hir::ExprMatch(next_expr, arms, hir::MatchSource::ForLoopDesugar))
+                             hir::ExprMatch(next_expr, arms, hir::MatchSource::ForLoopDesugar),
+                             None)
                     };
 
                     // `[opt_ident]: loop { ... }`
                     let loop_block = block_expr(lctx, match_expr);
-                    let loop_expr = expr(lctx, e.span, hir::ExprLoop(loop_block, opt_ident));
+                    let loop_expr = expr(lctx,
+                                         e.span,
+                                         hir::ExprLoop(loop_block, opt_ident),
+                                         None);
 
                     // `mut iter => { ... }`
                     let iter_arm = {
@@ -1432,28 +1456,31 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                             path_global(e.span, strs)
                         };
 
-                        let into_iter = expr_path(lctx, into_iter_path);
-                        expr_call(lctx, e.span, into_iter, vec![head])
+                        let into_iter = expr_path(lctx, into_iter_path, None);
+                        expr_call(lctx, e.span, into_iter, vec![head], None)
                     };
 
                     let match_expr = expr_match(lctx,
                                                 e.span,
                                                 into_iter_expr,
                                                 vec![iter_arm],
-                                                hir::MatchSource::ForLoopDesugar);
+                                                hir::MatchSource::ForLoopDesugar,
+                                                None);
 
                     // `{ let result = ...; result }`
                     let result_ident = lctx.str_to_ident("result");
-                    let let_stmt = stmt_let(lctx, e.span, false, result_ident, match_expr);
-                    let result = expr_ident(lctx, e.span, result_ident);
+                    let let_stmt = stmt_let(lctx, e.span, false, result_ident, match_expr, None);
+                    let result = expr_ident(lctx, e.span, result_ident, None);
                     let block = block_all(lctx, e.span, vec![let_stmt], Some(result));
-                    expr_block(lctx, block)
+                    // add the attributes to the outer returned expr node
+                    expr_block(lctx, block, e.attrs.clone())
                 });
             }
 
             ExprMac(_) => panic!("Shouldn't exist here"),
         },
         span: e.span,
+        attrs: e.attrs.clone(),
     })
 }
 
@@ -1552,52 +1579,62 @@ fn arm(pats: Vec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
     }
 }
 
-fn expr_break(lctx: &LoweringContext, span: Span) -> P<hir::Expr> {
-    expr(lctx, span, hir::ExprBreak(None))
+fn expr_break(lctx: &LoweringContext, span: Span,
+              attrs: ThinAttributes) -> P<hir::Expr> {
+    expr(lctx, span, hir::ExprBreak(None), attrs)
 }
 
 fn expr_call(lctx: &LoweringContext,
              span: Span,
              e: P<hir::Expr>,
-             args: Vec<P<hir::Expr>>)
+             args: Vec<P<hir::Expr>>,
+             attrs: ThinAttributes)
              -> P<hir::Expr> {
-    expr(lctx, span, hir::ExprCall(e, args))
+    expr(lctx, span, hir::ExprCall(e, args), attrs)
 }
 
-fn expr_ident(lctx: &LoweringContext, span: Span, id: Ident) -> P<hir::Expr> {
-    expr_path(lctx, path_ident(span, id))
+fn expr_ident(lctx: &LoweringContext, span: Span, id: Ident,
+              attrs: ThinAttributes) -> P<hir::Expr> {
+    expr_path(lctx, path_ident(span, id), attrs)
 }
 
-fn expr_mut_addr_of(lctx: &LoweringContext, span: Span, e: P<hir::Expr>) -> P<hir::Expr> {
-    expr(lctx, span, hir::ExprAddrOf(hir::MutMutable, e))
+fn expr_mut_addr_of(lctx: &LoweringContext, span: Span, e: P<hir::Expr>,
+                    attrs: ThinAttributes) -> P<hir::Expr> {
+    expr(lctx, span, hir::ExprAddrOf(hir::MutMutable, e), attrs)
 }
 
-fn expr_path(lctx: &LoweringContext, path: hir::Path) -> P<hir::Expr> {
-    expr(lctx, path.span, hir::ExprPath(None, path))
+fn expr_path(lctx: &LoweringContext, path: hir::Path,
+             attrs: ThinAttributes) -> P<hir::Expr> {
+    expr(lctx, path.span, hir::ExprPath(None, path), attrs)
 }
 
 fn expr_match(lctx: &LoweringContext,
               span: Span,
               arg: P<hir::Expr>,
               arms: Vec<hir::Arm>,
-              source: hir::MatchSource)
+              source: hir::MatchSource,
+              attrs: ThinAttributes)
               -> P<hir::Expr> {
-    expr(lctx, span, hir::ExprMatch(arg, arms, source))
+    expr(lctx, span, hir::ExprMatch(arg, arms, source), attrs)
 }
 
-fn expr_block(lctx: &LoweringContext, b: P<hir::Block>) -> P<hir::Expr> {
-    expr(lctx, b.span, hir::ExprBlock(b))
+fn expr_block(lctx: &LoweringContext, b: P<hir::Block>,
+              attrs: ThinAttributes) -> P<hir::Expr> {
+    expr(lctx, b.span, hir::ExprBlock(b), attrs)
 }
 
-fn expr_tuple(lctx: &LoweringContext, sp: Span, exprs: Vec<P<hir::Expr>>) -> P<hir::Expr> {
-    expr(lctx, sp, hir::ExprTup(exprs))
+fn expr_tuple(lctx: &LoweringContext, sp: Span, exprs: Vec<P<hir::Expr>>,
+              attrs: ThinAttributes) -> P<hir::Expr> {
+    expr(lctx, sp, hir::ExprTup(exprs), attrs)
 }
 
-fn expr(lctx: &LoweringContext, span: Span, node: hir::Expr_) -> P<hir::Expr> {
+fn expr(lctx: &LoweringContext, span: Span, node: hir::Expr_,
+        attrs: ThinAttributes) -> P<hir::Expr> {
     P(hir::Expr {
         id: lctx.next_id(),
         node: node,
         span: span,
+        attrs: attrs,
     })
 }
 
@@ -1605,7 +1642,8 @@ fn stmt_let(lctx: &LoweringContext,
             sp: Span,
             mutbl: bool,
             ident: Ident,
-            ex: P<hir::Expr>)
+            ex: P<hir::Expr>,
+            attrs: ThinAttributes)
             -> P<hir::Stmt> {
     let pat = if mutbl {
         pat_ident_binding_mode(lctx, sp, ident, hir::BindByValue(hir::MutMutable))
@@ -1618,6 +1656,7 @@ fn stmt_let(lctx: &LoweringContext,
         init: Some(ex),
         id: lctx.next_id(),
         span: sp,
+        attrs: attrs,
     });
     let decl = respan(sp, hir::DeclLocal(local));
     P(respan(sp, hir::StmtDecl(P(decl), lctx.next_id())))
@@ -1755,7 +1794,8 @@ fn signal_block_expr(lctx: &LoweringContext,
                      stmts: Vec<P<hir::Stmt>>,
                      expr: P<hir::Expr>,
                      span: Span,
-                     rule: hir::BlockCheckMode)
+                     rule: hir::BlockCheckMode,
+                     attrs: ThinAttributes)
                      -> P<hir::Expr> {
     let id = lctx.next_id();
     expr_block(lctx,
@@ -1765,7 +1805,8 @@ fn signal_block_expr(lctx: &LoweringContext,
                    id: id,
                    stmts: stmts,
                    expr: Some(expr),
-               }))
+               }),
+               attrs)
 }
 
 

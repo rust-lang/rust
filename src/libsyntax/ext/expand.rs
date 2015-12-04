@@ -17,13 +17,14 @@ use ast;
 use ext::mtwt;
 use ext::build::AstBuilder;
 use attr;
-use attr::AttrMetaMethods;
+use attr::{AttrMetaMethods, WithAttrs};
 use codemap;
 use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use ext::base::*;
-use feature_gate::{self, Features, GatedCfg};
+use feature_gate::{self, Features, GatedCfgAttr};
 use fold;
 use fold::*;
+use util::move_map::MoveMap;
 use parse;
 use parse::token::{fresh_mark, fresh_name, intern};
 use ptr::P;
@@ -37,11 +38,15 @@ use std::collections::HashSet;
 
 pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
     let expr_span = e.span;
-    return e.and_then(|ast::Expr {id, node, span}| match node {
+    return e.and_then(|ast::Expr {id, node, span, attrs}| match node {
 
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
         ast::ExprMac(mac) => {
+
+            // Assert that we drop any macro attributes on the floor here
+            drop(attrs);
+
             let expanded_expr = match expand_mac_invoc(mac, span,
                                                        |r| r.make_expr(),
                                                        mark_expr, fld) {
@@ -60,6 +65,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 id: ast::DUMMY_NODE_ID,
                 node: e.node,
                 span: span,
+                attrs: e.attrs,
             })
         }
 
@@ -73,12 +79,14 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             let placer = fld.fold_expr(placer);
             let value_expr = fld.fold_expr(value_expr);
             fld.cx.expr(span, ast::ExprInPlace(placer, value_expr))
+                .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
         ast::ExprWhile(cond, body, opt_ident) => {
             let cond = fld.fold_expr(cond);
             let (body, opt_ident) = expand_loop_block(body, opt_ident, fld);
             fld.cx.expr(span, ast::ExprWhile(cond, body, opt_ident))
+                .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
         ast::ExprWhileLet(pat, expr, body, opt_ident) => {
@@ -96,11 +104,13 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             assert!(rewritten_pats.len() == 1);
 
             fld.cx.expr(span, ast::ExprWhileLet(rewritten_pats.remove(0), expr, body, opt_ident))
+                .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
         ast::ExprLoop(loop_block, opt_ident) => {
             let (loop_block, opt_ident) = expand_loop_block(loop_block, opt_ident, fld);
             fld.cx.expr(span, ast::ExprLoop(loop_block, opt_ident))
+                .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
         ast::ExprForLoop(pat, head, body, opt_ident) => {
@@ -118,6 +128,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             let head = fld.fold_expr(head);
             fld.cx.expr(span, ast::ExprForLoop(rewritten_pats.remove(0), head, body, opt_ident))
+                .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
         ast::ExprIfLet(pat, sub_expr, body, else_opt) => {
@@ -136,6 +147,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             let else_opt = else_opt.map(|else_opt| fld.fold_expr(else_opt));
             let sub_expr = fld.fold_expr(sub_expr);
             fld.cx.expr(span, ast::ExprIfLet(rewritten_pats.remove(0), sub_expr, body, else_opt))
+                .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
         ast::ExprClosure(capture_clause, fn_decl, block) => {
@@ -144,14 +156,16 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             let new_node = ast::ExprClosure(capture_clause,
                                             rewritten_fn_decl,
                                             rewritten_block);
-            P(ast::Expr{id:id, node: new_node, span: fld.new_span(span)})
+            P(ast::Expr{id:id, node: new_node, span: fld.new_span(span),
+                        attrs: fold_thin_attrs(attrs, fld)})
         }
 
         _ => {
             P(noop_fold_expr(ast::Expr {
                 id: id,
                 node: node,
-                span: span
+                span: span,
+                attrs: attrs
             }, fld))
         }
     });
@@ -487,10 +501,13 @@ pub fn expand_item_mac(it: P<ast::Item>,
 /// Expand a stmt
 fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
     let stmt = stmt.and_then(|stmt| stmt);
-    let (mac, style) = match stmt.node {
-        StmtMac(mac, style) => (mac, style),
+    let (mac, style, attrs) = match stmt.node {
+        StmtMac(mac, style, attrs) => (mac, style, attrs),
         _ => return expand_non_macro_stmt(stmt, fld)
     };
+
+    // Assert that we drop any macro attributes on the floor here
+    drop(attrs);
 
     let maybe_new_items =
         expand_mac_invoc(mac.and_then(|m| m), stmt.span,
@@ -539,7 +556,7 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
         StmtDecl(decl, node_id) => decl.and_then(|Spanned {node: decl, span}| match decl {
             DeclLocal(local) => {
                 // take it apart:
-                let rewritten_local = local.map(|Local {id, pat, ty, init, span}| {
+                let rewritten_local = local.map(|Local {id, pat, ty, init, span, attrs}| {
                     // expand the ty since TyFixedLengthVec contains an Expr
                     // and thus may have a macro use
                     let expanded_ty = ty.map(|t| fld.fold_ty(t));
@@ -569,7 +586,8 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
                         pat: rewritten_pat,
                         // also, don't forget to expand the init:
                         init: init.map(|e| fld.fold_expr(e)),
-                        span: span
+                        span: span,
+                        attrs: fold::fold_thin_attrs(attrs, fld),
                     }
                 });
                 SmallVector::one(P(Spanned {
@@ -1263,7 +1281,7 @@ pub fn expand_crate<'feat>(parse_sess: &parse::ParseSess,
                            // these are the macros being imported to this crate:
                            imported_macros: Vec<ast::MacroDef>,
                            user_exts: Vec<NamedSyntaxExtension>,
-                           feature_gated_cfgs: &mut Vec<GatedCfg>,
+                           feature_gated_cfgs: &mut Vec<GatedCfgAttr>,
                            c: Crate) -> (Crate, HashSet<Name>) {
     let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg,
                               feature_gated_cfgs);
