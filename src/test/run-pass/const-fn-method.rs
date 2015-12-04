@@ -22,4 +22,5 @@ const FOO: Foo = Foo::new();
 
 pub fn main() {
     assert_eq!(FOO.value, 22);
+    let _: [&'static str; Foo::new().value as usize] = ["hey"; 22];
 }

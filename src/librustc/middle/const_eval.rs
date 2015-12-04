@@ -403,6 +403,7 @@ pub enum ErrKind {
     InvalidOpForUintInt(hir::BinOp_),
     NegateOn(ConstVal),
     NotOn(ConstVal),
+    CallOn(ConstVal),
 
     NegateWithOverflow(i64),
     AddiWithOverflow(i64, i64),
@@ -419,6 +420,7 @@ pub enum ErrKind {
     ShiftRightWithOverflow,
     MissingStructField,
     NonConstPath,
+    UnimplementedConstVal(&'static str),
     UnresolvedPath,
     ExpectedConstTuple,
     ExpectedConstStruct,
@@ -449,6 +451,7 @@ impl ConstEvalErr {
             InvalidOpForUintInt(..) => "can't do this op on a usize and isize".into_cow(),
             NegateOn(ref const_val) => format!("negate on {}", const_val.description()).into_cow(),
             NotOn(ref const_val) => format!("not on {}", const_val.description()).into_cow(),
+            CallOn(ref const_val) => format!("call on {}", const_val.description()).into_cow(),
 
             NegateWithOverflow(..) => "attempted to negate with overflow".into_cow(),
             AddiWithOverflow(..) => "attempted to add with overflow".into_cow(),
@@ -465,6 +468,8 @@ impl ConstEvalErr {
             ShiftRightWithOverflow => "attempted right shift with overflow".into_cow(),
             MissingStructField  => "nonexistent struct field".into_cow(),
             NonConstPath        => "non-constant path in constant expression".into_cow(),
+            UnimplementedConstVal(what) =>
+                format!("unimplemented constant expression: {}", what).into_cow(),
             UnresolvedPath => "unresolved path in constant expression".into_cow(),
             ExpectedConstTuple => "expected constant tuple".into_cow(),
             ExpectedConstStruct => "expected constant struct".into_cow(),
@@ -1043,8 +1048,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                       (None, None)
                   }
               },
-              Some(def::DefFn(id, _)) => return Ok(Function(id)),
-              // FIXME: implement const methods?
+              Some(def::DefMethod(id)) | Some(def::DefFn(id, _)) => return Ok(Function(id)),
               _ => (None, None)
           };
           let const_expr = match const_expr {
@@ -1070,31 +1074,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           } else {
               UncheckedExprNoHint // we cannot reason about UncheckedExprHint here
           };
-          let (
-              decl,
-              block,
-              constness,
-          ) = match try!(eval_const_expr_partial(tcx, callee, sub_ty_hint, fn_args)) {
-              Function(did) => if did.is_local() {
-                  match tcx.map.find(did.index.as_u32()) {
-                      Some(ast_map::NodeItem(it)) => match it.node {
-                          hir::ItemFn(
-                              ref decl,
-                              hir::Unsafety::Normal,
-                              constness,
-                              abi::Abi::Rust,
-                              _, // ducktype generics? types are funky in const_eval
-                              ref block,
-                          ) => (decl, block, constness),
-                          _ => signal!(e, NonConstPath),
-                      },
-                      _ => signal!(e, NonConstPath),
-                  }
-              } else {
-                  signal!(e, NonConstPath)
-              },
-              _ => signal!(e, NonConstPath),
-          };
+          let callee_val = try!(eval_const_expr_partial(tcx, callee, sub_ty_hint, fn_args));
+          let (decl, block, constness) = try!(get_fn_def(tcx, e, callee_val));
           match (ty_hint, constness) {
               (ExprTypeChecked, _) => {
                   // no need to check for constness... either check_const
@@ -1440,4 +1421,47 @@ pub fn compare_lit_exprs<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
     };
     compare_const_vals(&a, &b)
+}
+
+
+// returns Err if callee is not `Function`
+// `e` is only used for error reporting/spans
+fn get_fn_def<'a>(tcx: &'a ty::ctxt,
+                  e: &hir::Expr,
+                  callee: ConstVal)
+                  -> Result<(&'a hir::FnDecl, &'a hir::Block, hir::Constness), ConstEvalErr> {
+    let did = match callee {
+        Function(did) => did,
+        callee => signal!(e, CallOn(callee)),
+    };
+    debug!("fn call: {:?}", tcx.map.get_if_local(did));
+    match tcx.map.get_if_local(did) {
+        None => signal!(e, UnimplementedConstVal("calling non-local const fn")), // non-local
+        Some(ast_map::NodeItem(it)) => match it.node {
+            hir::ItemFn(
+                ref decl,
+                hir::Unsafety::Normal,
+                constness,
+                abi::Abi::Rust,
+                _, // ducktype generics? types are funky in const_eval
+                ref block,
+            ) => Ok((&**decl, &**block, constness)),
+            _ => signal!(e, NonConstPath),
+        },
+        Some(ast_map::NodeImplItem(it)) => match it.node {
+            hir::ImplItemKind::Method(
+                hir::MethodSig {
+                    ref decl,
+                    unsafety: hir::Unsafety::Normal,
+                    constness,
+                    abi: abi::Abi::Rust,
+                    .. // ducktype generics? types are funky in const_eval
+                },
+                ref block,
+            ) => Ok((decl, block, constness)),
+            _ => signal!(e, NonConstPath),
+        },
+        Some(ast_map::NodeTraitItem(..)) => signal!(e, NonConstPath),
+        Some(_) => unimplemented!(),
+    }
 }
