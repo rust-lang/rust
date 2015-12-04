@@ -43,7 +43,7 @@ pub fn foo<T: Foo> (t: T) {} // ok!
 "##,
 
 E0446: r##"
-A private type was used in an public type signature. Erroneous code example:
+A private type was used in a public type signature. Erroneous code example:
 
 ```
 mod Foo {
