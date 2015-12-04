@@ -106,5 +106,18 @@ fn trait_obj_elided<'a>(_arg: &'a WithLifetime) -> &'a str { unimplemented!() }
 // unambiguous if we elided the lifetime
 fn trait_obj_elided2<'a>(_arg: &'a Drop) -> &'a str { unimplemented!() } //~ERROR explicit lifetimes given
 
+type FooAlias<'a> = Foo<'a>;
+
+fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str { unimplemented!() } //~ERROR explicit lifetimes given
+
+// no warning, two input lifetimes (named on the reference, anonymous on Foo)
+fn alias_with_lt2<'a>(_foo: &'a FooAlias) -> &'a str { unimplemented!() }
+
+// no warning, two input lifetimes (anonymous on the reference, named on Foo)
+fn alias_with_lt3<'a>(_foo: &FooAlias<'a> ) -> &'a str { unimplemented!() }
+
+// no warning, two input lifetimes
+fn alias_with_lt4<'a, 'b>(_foo: &'a FooAlias<'b> ) -> &'a str { unimplemented!() }
+
 fn main() {
 }
