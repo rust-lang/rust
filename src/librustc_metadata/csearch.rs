@@ -42,6 +42,12 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_stability(&*cdata, def.index)
     }
 
+    fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>
+    {
+        let cdata = self.get_crate_data(def.krate);
+        decoder::get_deprecation(&*cdata, def.index)
+    }
+
     fn closure_kind(&self, _tcx: &ty::ctxt<'tcx>, def_id: DefId) -> ty::ClosureKind
     {
         assert!(!def_id.is_local());

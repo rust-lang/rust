@@ -120,7 +120,7 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
         attrs: load_attrs(cx, tcx, did),
         inner: inner,
         visibility: Some(hir::Public),
-        stability: stability::lookup(tcx, did).clean(cx),
+        stability: stability::lookup_stability(tcx, did).clean(cx),
         def_id: did,
     });
     Some(ret)
@@ -303,7 +303,7 @@ pub fn build_impl(cx: &DocContext,
             name: None,
             attrs: attrs,
             visibility: Some(hir::Inherited),
-            stability: stability::lookup(tcx, did).clean(cx),
+            stability: stability::lookup_stability(tcx, did).clean(cx),
             def_id: did,
         });
     }
@@ -333,7 +333,7 @@ pub fn build_impl(cx: &DocContext,
                     source: clean::Span::empty(),
                     attrs: vec![],
                     visibility: None,
-                    stability: stability::lookup(tcx, did).clean(cx),
+                    stability: stability::lookup_stability(tcx, did).clean(cx),
                     def_id: did
                 })
             }
@@ -381,7 +381,7 @@ pub fn build_impl(cx: &DocContext,
                     source: clean::Span::empty(),
                     attrs: vec![],
                     visibility: None,
-                    stability: stability::lookup(tcx, did).clean(cx),
+                    stability: stability::lookup_stability(tcx, did).clean(cx),
                     def_id: did
                 })
             }
@@ -414,7 +414,7 @@ pub fn build_impl(cx: &DocContext,
         name: None,
         attrs: attrs,
         visibility: Some(hir::Inherited),
-        stability: stability::lookup(tcx, did).clean(cx),
+        stability: stability::lookup_stability(tcx, did).clean(cx),
         def_id: did,
     });
 
