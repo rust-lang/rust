@@ -47,6 +47,7 @@ r##"<!DOCTYPE html>
 
     <title>{title}</title>
 
+    <link rel="stylesheet" type="text/css" href="{root_path}rustdoc.css">
     <link rel="stylesheet" type="text/css" href="{root_path}main.css">
 
     {favicon}
