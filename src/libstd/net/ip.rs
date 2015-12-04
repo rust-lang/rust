@@ -13,8 +13,6 @@
                                       be stable",
             issue = "27709")]
 
-use prelude::v1::*;
-
 use cmp::Ordering;
 use fmt;
 use hash;
@@ -446,17 +444,19 @@ impl fmt::Display for Ipv6Addr {
                 let (zeros_at, zeros_len) = find_zero_slice(&self.segments());
 
                 if zeros_len > 1 {
-                    fn fmt_subslice(segments: &[u16]) -> String {
-                        segments
-                            .iter()
-                            .map(|&seg| format!("{:x}", seg))
-                            .collect::<Vec<String>>()
-                            .join(":")
+                    fn fmt_subslice(segments: &[u16], fmt: &mut fmt::Formatter) -> fmt::Result {
+                        if !segments.is_empty() {
+                            try!(write!(fmt, "{:x}", segments[0]));
+                            for &seg in &segments[1..] {
+                                try!(write!(fmt, ":{:x}", seg));
+                            }
+                        }
+                        Ok(())
                     }
 
-                    write!(fmt, "{}::{}",
-                           fmt_subslice(&self.segments()[..zeros_at]),
-                           fmt_subslice(&self.segments()[zeros_at + zeros_len..]))
+                    try!(fmt_subslice(&self.segments()[..zeros_at], fmt));
+                    try!(fmt.write_str("::"));
+                    fmt_subslice(&self.segments()[zeros_at + zeros_len..], fmt)
                 } else {
                     let &[a, b, c, d, e, f, g, h] = &self.segments();
                     write!(fmt, "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}",
