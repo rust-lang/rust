@@ -216,7 +216,7 @@ macro_rules! array_impl_clone {
     };
     {$n:expr,} => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: Clone> Clone for [T; 0] {
+        impl<T> Clone for [T; 0] {
             fn clone(&self) -> [T; 0] {
                 []
             }
