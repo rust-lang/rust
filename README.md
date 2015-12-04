@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 80 lints included in this crate:
+There are 81 lints included in this crate:
 
 name                                                                                                     | default | meaning
 ---------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -15,6 +15,7 @@ name                                                                            
 [block_in_if_condition_expr](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_expr) | warn    | braces can be eliminated in conditions that are expressions, e.g `if { true } ...`
 [block_in_if_condition_stmt](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_stmt) | warn    | avoid complex blocks in conditions, instead move the block higher and bind it with 'let'; e.g: `if { let x = true; x } ...`
 [box_vec](https://github.com/Manishearth/rust-clippy/wiki#box_vec)                                       | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
+[boxed_local](https://github.com/Manishearth/rust-clippy/wiki#boxed_local)                               | warn    | using Box<T> where unnecessary
 [cast_possible_truncation](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_truncation)     | allow   | casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`
 [cast_possible_wrap](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_wrap)                 | allow   | casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`
 [cast_precision_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_precision_loss)               | allow   | casts that cause loss of precision, e.g `x as f32` where `x: u64`
