@@ -1924,7 +1924,7 @@ fn main() {
 
 You cannot directly use a dereference operation whilst initializing a constant
 or a static. To fix this error, restructure your code to avoid this dereference,
-perharps moving it inline:
+perhaps moving it inline:
 
 ```
 use std::ops::Deref;
@@ -1940,6 +1940,23 @@ impl Deref for A {
 fn main() {
     let foo : &str = &A;
 }
+```
+"##,
+
+E0452: r##"
+An invalid lint attribute has been given. Erroneous code example:
+
+```
+#![allow(foo = "")] // error: malformed lint attribute
+```
+
+Lint attributes only accept a list of identifiers (where each identifier is a
+lint name). Ensure the attribute is of this form:
+
+```
+#![allow(foo)] // ok!
+// or:
+#![allow(foo, foo2)] // ok!
 ```
 "##,
 
@@ -2219,7 +2236,6 @@ register_diagnostics! {
     E0314, // closure outlives stack frame
     E0315, // cannot invoke closure outside of its lifetime
     E0316, // nested quantification of lifetimes
-    E0452, // malformed lint attribute
     E0453, // overruled by outer forbid
     E0471, // constant evaluation error: ..
     E0472, // asm! is unsupported on this target
