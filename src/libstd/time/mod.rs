@@ -303,6 +303,11 @@ mod tests {
         let eighty_years = second * 60 * 60 * 24 * 365 * 80;
         assert_almost_eq!(a - eighty_years + eighty_years, a);
         assert_almost_eq!(a - (eighty_years * 10) + (eighty_years * 10), a);
+
+        let one_second_from_epoch = UNIX_EPOCH + Duration::new(1, 0);
+        let one_second_from_epoch2 = UNIX_EPOCH + Duration::new(0, 500_000_000)
+            + Duration::new(0, 500_000_000);
+        assert_eq!(one_second_from_epoch, one_second_from_epoch2);
     }
 
     #[test]
