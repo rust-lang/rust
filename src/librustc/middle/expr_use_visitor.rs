@@ -458,12 +458,12 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                     self.consume_expr(&**input);
                 }
 
-                for &(_, ref output, is_rw, is_indirect) in &ia.outputs {
-                    if is_indirect {
-                        self.consume_expr(&**output);
+                for output in &ia.outputs {
+                    if output.is_indirect {
+                        self.consume_expr(&*output.expr);
                     } else {
-                        self.mutate_expr(expr, &**output,
-                                           if is_rw { WriteAndRead } else { JustWrite });
+                        self.mutate_expr(expr, &*output.expr,
+                                         if output.is_rw { WriteAndRead } else { JustWrite });
                     }
                 }
             }
