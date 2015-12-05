@@ -2708,3 +2708,22 @@ fn get_index_type_name(clean_type: &clean::Type) -> Option<String> {
 pub fn cache() -> Arc<Cache> {
     CACHE_KEY.with(|c| c.borrow().clone())
 }
+
+#[cfg(test)]
+#[test]
+fn test_unique_id() {
+    let input = ["foo", "examples", "examples", "method.into_iter","examples",
+                 "method.into_iter", "foo", "main", "search", "methods",
+                 "examples", "method.into_iter", "assoc_type.Item", "assoc_type.Item"];
+    let expected = ["foo", "examples", "examples-1", "method.into_iter", "examples-2",
+                    "method.into_iter-1", "foo-1", "main-1", "search-1", "methods-1",
+                    "examples-3", "method.into_iter-2", "assoc_type.Item", "assoc_type.Item-1"];
+
+    let test = || {
+        let actual: Vec<String> = input.iter().map(|s| derive_id(s.to_string())).collect();
+        assert_eq!(&actual[..], expected);
+    };
+    test();
+    reset_ids();
+    test();
+}
