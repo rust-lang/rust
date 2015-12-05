@@ -62,7 +62,7 @@ fn check_decl(cx: &LateContext, decl: &Decl, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx, decl.span) { return; }
     if is_from_for_desugar(decl) { return; }
     if let DeclLocal(ref local) = decl.node {
-        let Local{ ref pat, ref ty, ref init, id: _, span } = **local;
+        let Local{ ref pat, ref ty, ref init, id: _, span, attrs: _ } = **local;
         if let Some(ref t) = *ty { check_ty(cx, t, bindings) }
         if let Some(ref o) = *init {
             check_expr(cx, o, bindings);

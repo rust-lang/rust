@@ -29,6 +29,7 @@ fn expr(n: Expr_) -> Expr {
         id: 1,
         node: n,
         span: COMMAND_LINE_SP,
+        attrs: None
     }
 }
 
