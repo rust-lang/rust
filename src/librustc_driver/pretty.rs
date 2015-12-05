@@ -888,9 +888,10 @@ fn print_flowgraph<W: Write>(variants: Vec<borrowck_dot::Variant>,
             return Ok(());
         }
         blocks::FnLikeCode(fn_like) => {
-            let fn_parts = borrowck::FnPartsWithCFG::from_fn_like(&fn_like, &cfg);
-            let (bccx, analysis_data) = borrowck::build_borrowck_dataflow_data_for_fn(tcx,
-                                                                                      fn_parts);
+            let (bccx, analysis_data) =
+                borrowck::build_borrowck_dataflow_data_for_fn(tcx,
+                                                              fn_like.to_fn_parts(),
+                                                              &cfg);
 
             let lcfg = borrowck_dot::DataflowLabeller {
                 inner: lcfg,
