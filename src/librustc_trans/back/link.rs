@@ -490,7 +490,10 @@ pub fn filename_for_input(sess: &Session,
                                                 suffix))
         }
         config::CrateTypeStaticlib => {
-            outputs.out_directory.join(&format!("lib{}.a", libname))
+            let (prefix, suffix) = (&sess.target.target.options.staticlib_prefix,
+                                    &sess.target.target.options.staticlib_suffix);
+            outputs.out_directory.join(&format!("{}{}{}", prefix, libname,
+                                                suffix))
         }
         config::CrateTypeExecutable => {
             let suffix = &sess.target.target.options.exe_suffix;
