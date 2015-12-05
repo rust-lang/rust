@@ -2221,16 +2221,16 @@ impl<'a> State<'a> {
                 try!(self.word_space(":"));
 
                 try!(self.commasep(Inconsistent, &a.outputs,
-                                   |s, &(ref co, ref o, is_rw, _)| {
-                    match co.slice_shift_char() {
-                        Some(('=', operand)) if is_rw => {
+                                   |s, out| {
+                    match out.constraint.slice_shift_char() {
+                        Some(('=', operand)) if out.is_rw => {
                             try!(s.print_string(&format!("+{}", operand),
                                                 ast::CookedStr))
                         }
-                        _ => try!(s.print_string(&co, ast::CookedStr))
+                        _ => try!(s.print_string(&out.constraint, ast::CookedStr))
                     }
                     try!(s.popen());
-                    try!(s.print_expr(&**o));
+                    try!(s.print_expr(&*out.expr));
                     try!(s.pclose());
                     Ok(())
                 }));

@@ -41,27 +41,27 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     // Prepare the output operands
     let mut outputs = Vec::new();
     let mut inputs = Vec::new();
-    for (i, &(ref c, ref out, is_rw, is_indirect)) in ia.outputs.iter().enumerate() {
-        constraints.push((*c).clone());
+    for (i, out) in ia.outputs.iter().enumerate() {
+        constraints.push(out.constraint.clone());
 
-        let out_datum = unpack_datum!(bcx, expr::trans(bcx, &**out));
-        if is_indirect {
+        let out_datum = unpack_datum!(bcx, expr::trans(bcx, &*out.expr));
+        if out.is_indirect {
             bcx = callee::trans_arg_datum(bcx,
-                                          expr_ty(bcx, &**out),
+                                          expr_ty(bcx, &*out.expr),
                                           out_datum,
                                           cleanup::CustomScope(temp_scope),
                                           callee::DontAutorefArg,
                                           &mut inputs);
-            if is_rw {
+            if out.is_rw {
                 ext_inputs.push(*inputs.last().unwrap());
                 ext_constraints.push(i.to_string());
             }
         } else {
             output_types.push(type_of::type_of(bcx.ccx(), out_datum.ty));
             outputs.push(out_datum.val);
-            if is_rw {
+            if out.is_rw {
                 bcx = callee::trans_arg_datum(bcx,
-                                              expr_ty(bcx, &**out),
+                                              expr_ty(bcx, &*out.expr),
                                               out_datum,
                                               cleanup::CustomScope(temp_scope),
                                               callee::DontAutorefArg,

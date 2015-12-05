@@ -126,7 +126,12 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
                     let is_rw = output.is_some();
                     let is_indirect = constraint.contains("*");
-                    outputs.push((output.unwrap_or(constraint), out, is_rw, is_indirect));
+                    outputs.push(ast::InlineAsmOutput {
+                        constraint: output.unwrap_or(constraint),
+                        expr: out,
+                        is_rw: is_rw,
+                        is_indirect: is_indirect,
+                    });
                 }
             }
             Inputs => {
