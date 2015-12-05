@@ -654,10 +654,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
                 (tcx.lang_items.sync_trait().unwrap(),
                  external_path(cx, "Sync", None, vec![], &empty)),
         };
-        let fqn = tcx.sess.cstore.item_path(did);
-        let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
-        cx.external_paths.borrow_mut().as_mut().unwrap().insert(did,
-                                                                (fqn, TypeTrait));
+        inline::record_extern_fqn(cx, did, TypeTrait);
         TraitBound(PolyTrait {
             trait_: ResolvedPath {
                 path: path,
@@ -676,13 +673,9 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
             Some(tcx) => tcx,
             None => return RegionBound(Lifetime::statik())
         };
-        let fqn = tcx.sess.cstore.item_path(self.def_id);
-        let fqn = fqn.into_iter().map(|i| i.to_string())
-                     .collect::<Vec<String>>();
-        let path = external_path(cx, fqn.last().unwrap(),
+        inline::record_extern_fqn(cx, self.def_id, TypeTrait);
+        let path = external_path(cx, &tcx.item_name(self.def_id).as_str(),
                                  Some(self.def_id), vec![], self.substs);
-        cx.external_paths.borrow_mut().as_mut().unwrap().insert(self.def_id,
-                                                            (fqn, TypeTrait));
 
         debug!("ty::TraitRef\n  substs.types(TypeSpace): {:?}\n",
                self.substs.types.get_slice(ParamSpace::TypeSpace));
@@ -1663,15 +1656,13 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyStruct(def, substs) |
             ty::TyEnum(def, substs) => {
                 let did = def.did;
-                let fqn = cx.tcx().sess.cstore.item_path(did);
-                let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
                 let kind = match self.sty {
                     ty::TyStruct(..) => TypeStruct,
                     _ => TypeEnum,
                 };
-                let path = external_path(cx, &fqn.last().unwrap().to_string(),
+                inline::record_extern_fqn(cx, did, kind);
+                let path = external_path(cx, &cx.tcx().item_name(did).as_str(),
                                          None, vec![], substs);
-                cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
                 ResolvedPath {
                     path: path,
                     typarams: None,
@@ -1681,12 +1672,10 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             }
             ty::TyTrait(box ty::TraitTy { ref principal, ref bounds }) => {
                 let did = principal.def_id();
-                let fqn = cx.tcx().sess.cstore.item_path(did);
-                let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
+                inline::record_extern_fqn(cx, did, TypeTrait);
                 let (typarams, bindings) = bounds.clean(cx);
-                let path = external_path(cx, &fqn.last().unwrap().to_string(),
+                let path = external_path(cx, &cx.tcx().item_name(did).as_str(),
                                          Some(did), bindings, principal.substs());
-                cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, TypeTrait));
                 ResolvedPath {
                     path: path,
                     typarams: Some(typarams),
@@ -2816,11 +2805,7 @@ fn lang_struct(cx: &DocContext, did: Option<DefId>,
         Some(did) => did,
         None => return fallback(box t.clean(cx)),
     };
-    let fqn = cx.tcx().sess.cstore.item_path(did);
-    let fqn: Vec<String> = fqn.into_iter().map(|i| {
-        i.to_string()
-    }).collect();
-    cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, TypeStruct));
+    inline::record_extern_fqn(cx, did, TypeStruct);
     ResolvedPath {
         typarams: None,
         did: did,
