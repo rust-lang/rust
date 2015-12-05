@@ -52,10 +52,11 @@ Comma separated list of types of crates for the compiler to emit.
 \fB\-\-crate\-name\fR \fINAME\fR
 Specify the name of the crate being built.
 .TP
-\fB\-\-emit\fR [asm|llvm\-bc|llvm\-ir|obj|link|dep\-info]
-Configure the output that \fBrustc\fR will produce. Each option may also be of
-the form KIND=PATH to specify the explicit output location for that particular
-emission kind.
+\fB\-\-emit\fR [asm|llvm\-bc|llvm\-ir|obj|link|dep\-info][=\fIPATH\fR]
+Configure the output that \fBrustc\fR will produce.
+
+Each emission may also have an optional explicit output \fIPATH\fR specified for that particular
+emission kind. This path takes precedence over the \fB-o\fR option.
 .TP
 \fB\-\-print\fR [crate\-name|file\-names|sysroot]
 Comma separated list of compiler information to print on stdout.
