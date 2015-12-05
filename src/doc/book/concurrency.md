@@ -295,12 +295,12 @@ fn main() {
             let mut data = data.lock().unwrap();
             *data += 1;
 
-            let _ = tx.send(());
+            tx.send(()).unwrap();
         });
     }
 
     for _ in 0..10 {
-        let _ = rx.recv();
+        rx.recv().unwrap();
     }
 }
 ```
@@ -324,7 +324,7 @@ fn main() {
         thread::spawn(move || {
             let answer = i * i;
 
-            let _ = tx.send(answer);
+            tx.send(answer).unwrap();
         });
     }
 
