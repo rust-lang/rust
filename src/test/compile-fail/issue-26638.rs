@@ -14,6 +14,10 @@ fn parse_type(iter: Box<Iterator<Item=&str>+'static>) -> &str { iter.next() }
 
 fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
 //~^ ERROR missing lifetime specifier [E0106]
-//~^^ HELP 0 elided free lifetimes
+//~^^ HELP lifetime cannot be derived
+
+fn parse_type_3() -> &str { unimplemented!() }
+//~^ ERROR missing lifetime specifier [E0106]
+//~^^ HELP no value for it to be borrowed from
 
 fn main() {}
