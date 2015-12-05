@@ -585,6 +585,7 @@ mod tests {
     fn issue_17736() {
         let markdown = "# title";
         format!("{}", Markdown(markdown));
+        reset_ids();
     }
 
     #[test]
@@ -607,6 +608,32 @@ mod tests {
           "\n<h4 id='foo--bar--baz--qux' class='section-header'>\
           <a href='#foo--bar--baz--qux'><strong>Foo?</strong> &amp; *bar?!*  \
           <em><code>baz</code></em> ❤ #qux</a></h4>");
+    }
+
+    #[test]
+    fn test_header_ids_multiple_blocks() {
+        fn t(input: &str, expect: &str) {
+            let output = format!("{}", Markdown(input));
+            assert_eq!(output, expect);
+        }
+
+        let test = || {
+            t("# Example", "\n<h1 id='example' class='section-header'>\
+              <a href='#example'>Example</a></h1>");
+            t("# Panics", "\n<h1 id='panics' class='section-header'>\
+              <a href='#panics'>Panics</a></h1>");
+            t("# Example", "\n<h1 id='example-1' class='section-header'>\
+              <a href='#example-1'>Example</a></h1>");
+            t("# Main", "\n<h1 id='main-1' class='section-header'>\
+              <a href='#main-1'>Main</a></h1>");
+            t("# Example", "\n<h1 id='example-2' class='section-header'>\
+              <a href='#example-2'>Example</a></h1>");
+            t("# Panics", "\n<h1 id='panics-1' class='section-header'>\
+              <a href='#panics-1'>Panics</a></h1>");
+        };
+        test();
+        reset_ids();
+        test();
     }
 
     #[test]
