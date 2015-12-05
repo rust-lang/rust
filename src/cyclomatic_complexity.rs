@@ -44,17 +44,16 @@ impl CyclomaticComplexity {
         if narms > 0 {
             narms = narms - 1;
         }
+        
         if cc < narms {
-            println!("cc = {}, arms = {}", cc, narms);
-            println!("{:?}", block);
-            println!("{:?}", span);
-            panic!("cc = {}, arms = {}", cc, narms);
-        }
-        let rust_cc = cc - narms;
-        if rust_cc > self.limit.limit() {
-            cx.span_lint_help(CYCLOMATIC_COMPLEXITY, span,
-            &format!("The function has a cyclomatic complexity of {}.", rust_cc),
-            "You could split it up into multiple smaller functions");
+            report_cc_bug(cx, cc, narms, span);
+        } else {
+            let rust_cc = cc - narms;
+            if rust_cc > self.limit.limit() {
+                cx.span_lint_help(CYCLOMATIC_COMPLEXITY, span,
+                &format!("The function has a cyclomatic complexity of {}.", rust_cc),
+                "You could split it up into multiple smaller functions");
+            }
         }
     }
 }
@@ -101,5 +100,19 @@ impl<'a> Visitor<'a> for MatchArmCounter {
             ExprClosure(..) => {},
             _ => walk_expr(self, e),
         }
+    }
+}
+
+#[cfg(feature="debugging")]
+fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, span: Span) {
+    cx.sess().span_bug(span, &format!("Clippy encountered a bug calculating cyclomatic complexity: \
+                                       cc = {}, arms = {}. Please file a bug report.", cc, narms));;
+}
+#[cfg(not(feature="debugging"))]
+fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, span: Span) {
+    if cx.current_level(CYCLOMATIC_COMPLEXITY) != Level::Allow {
+        cx.sess().span_note(span, &format!("Clippy encountered a bug calculating cyclomatic complexity \
+                                            (hide this message with `#[allow(cyclomatic_complexity)]`): \
+                                            cc = {}, arms = {}. Please file a bug report.", cc, narms));
     }
 }

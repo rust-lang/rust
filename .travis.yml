@@ -4,5 +4,5 @@ sudo: false
 
 script:
  - python util/update_lints.py -c
- - cargo test
+ - cargo test --features debugging
  - bash util/dogfood.sh
