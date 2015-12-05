@@ -131,7 +131,7 @@ pub fn trans_constval<'blk, 'tcx>(bcx: common::Block<'blk, 'tcx>,
             }
         },
         ConstVal::Array(id, _) | ConstVal::Repeat(id, _) => {
-            let expr = ccx.tcx().map.expect_expr(id);
+            let expr = bcx.tcx().map.expect_expr(id);
             expr::trans(bcx, expr).datum.val
         },
         ConstVal::Function(_) => {
