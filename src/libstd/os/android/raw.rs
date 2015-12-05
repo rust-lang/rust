@@ -12,6 +12,10 @@
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
 
+use os::raw::c_long;
+
+#[unstable(feature = "pthread_t", issue = "29791")] pub type pthread_t = c_long;
+
 #[doc(inline)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
 pub use self::arch::{dev_t, mode_t, blkcnt_t, blksize_t, ino_t, nlink_t, off_t, stat, time_t};

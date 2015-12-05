@@ -21,6 +21,8 @@
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = i64;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type fflags_t = u32;
 
+#[unstable(feature = "pthread_t", issue = "29791")] pub type pthread_t = usize;
+
 #[doc(inline)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
 pub use self::arch::{stat, time_t};

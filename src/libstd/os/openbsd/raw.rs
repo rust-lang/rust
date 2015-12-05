@@ -25,6 +25,8 @@ use os::unix::raw::{uid_t, gid_t};
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type off_t = i64;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type time_t = i64;
 
+#[unstable(feature = "pthread_t", issue = "29791")] pub type pthread_t = usize;
+
 #[repr(C)]
 #[derive(Clone)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
