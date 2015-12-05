@@ -62,7 +62,7 @@ macro_rules! panictry {
 }
 
 pub mod util {
-    pub use self::move_map::MoveMap;
+    pub use self::move_map::{MoveMap, MoveFlatMap};
 
     pub mod interner;
     pub mod lev_distance;
@@ -72,7 +72,6 @@ pub mod util {
     #[cfg(test)]
     pub mod parser_testing;
     pub mod small_vector;
-    pub mod move_map;
 }
 
 pub mod diagnostics {

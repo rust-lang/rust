@@ -19,7 +19,7 @@ use hir;
 use syntax::codemap::{respan, Span, Spanned};
 use syntax::ptr::P;
 use syntax::parse::token;
-use syntax::util::MoveMap;
+use syntax::util::{MoveMap, MoveFlatMap};
 
 pub trait Folder : Sized {
     // Any additions to this trait should happen in form
@@ -477,7 +477,7 @@ pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
             pat: fld.fold_pat(pat),
             init: init.map(|e| fld.fold_expr(e)),
             span: fld.new_span(span),
-            attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs, fld)),
+            attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs.into(), fld).into()),
         }
     })
 }
@@ -1132,7 +1132,7 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span, attrs }: Expr, folder: &
             }
         },
         span: folder.new_span(span),
-        attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs, folder)),
+        attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs.into(), folder).into()),
     }
 }
 

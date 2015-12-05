@@ -1298,7 +1298,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                         let pat_under = pat_wild(lctx, e.span);
                         let else_expr =
                             else_opt.unwrap_or_else(
-                                || expr_tuple(lctx, e.span, hir_vec![]), None);
+                                || expr_tuple(lctx, e.span, hir_vec![], None));
                         arm(hir_vec![pat_under], else_expr)
                     };
 
@@ -1460,7 +1460,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                         };
 
                         let into_iter = expr_path(lctx, into_iter_path, None);
-                        expr_call(lctx, e.span, into_iter, hir_vec![head])
+                        expr_call(lctx, e.span, into_iter, hir_vec![head], None)
                     };
 
                     let match_expr = expr_match(lctx,

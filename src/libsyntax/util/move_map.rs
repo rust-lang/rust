@@ -8,21 +8,38 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use owned_slice::OwnedSlice;
-
 use std::ptr;
 
-pub trait MoveMap<T>: Sized {
-    fn move_map<F>(self, mut f: F) -> Self where F: FnMut(T) -> T {
-        self.move_flat_map(|e| Some(f(e)))
-    }
-
-    fn move_flat_map<F, I>(self, f: F) -> Self
-        where F: FnMut(T) -> I,
-              I: IntoIterator<Item=T>;
+pub trait MoveMap {
+    type Item;
+    fn move_map<F>(self, f: F) -> Self
+        where F: FnMut(Self::Item) -> Self::Item;
 }
 
-impl<T> MoveMap<T> for Vec<T> {
+pub trait MoveFlatMap {
+    type Item;
+    fn move_flat_map<F, I>(self, f: F) -> Self
+        where F: FnMut(Self::Item) -> I,
+              I: IntoIterator<Item = Self::Item>;
+}
+
+impl<Container, T> MoveMap for Container
+    where for<'a> &'a mut Container: IntoIterator<Item = &'a mut T>
+{
+    type Item = T;
+    fn move_map<F>(mut self, mut f: F) -> Container where F: FnMut(T) -> T {
+        for p in &mut self {
+            unsafe {
+                // FIXME(#5016) this shouldn't need to zero to be safe.
+                ptr::write(p, f(ptr::read_and_drop(p)));
+            }
+        }
+        self
+    }
+}
+
+impl<T> MoveFlatMap for Vec<T> {
+    type Item = T;
     fn move_flat_map<F, I>(mut self, mut f: F) -> Self
         where F: FnMut(T) -> I,
               I: IntoIterator<Item=T>
@@ -69,11 +86,13 @@ impl<T> MoveMap<T> for Vec<T> {
     }
 }
 
-impl<T> MoveMap<T> for OwnedSlice<T> {
+impl<T> MoveFlatMap for ::ptr::P<[T]> {
+    type Item = T;
     fn move_flat_map<F, I>(self, f: F) -> Self
         where F: FnMut(T) -> I,
               I: IntoIterator<Item=T>
     {
-        OwnedSlice::from_vec(self.into_vec().move_flat_map(f))
+        let v: Vec<_> = self.into();
+        v.move_flat_map(f).into()
     }
 }

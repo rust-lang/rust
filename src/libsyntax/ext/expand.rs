@@ -24,7 +24,6 @@ use ext::base::*;
 use feature_gate::{self, Features, GatedCfgAttr};
 use fold;
 use fold::*;
-use util::move_map::MoveMap;
 use parse;
 use parse::token::{fresh_mark, fresh_name, intern};
 use ptr::P;
@@ -32,6 +31,7 @@ use util::small_vector::SmallVector;
 use visit;
 use visit::Visitor;
 use std_inject;
+use util::MoveMap;
 
 use std::collections::HashSet;
 

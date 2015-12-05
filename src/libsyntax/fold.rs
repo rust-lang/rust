@@ -25,8 +25,7 @@ use ast_util;
 use codemap::{respan, Span, Spanned};
 use parse::token;
 use ptr::P;
-// Reexported for backward compatibility, it was defined here before
-pub use util::MoveMap;
+use util::{MoveMap, MoveFlatMap};
 use util::small_vector::SmallVector;
 
 use std::rc::Rc;
