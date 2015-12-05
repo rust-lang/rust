@@ -50,6 +50,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let did = inline::maybe_instantiate_inline(bcx.ccx(), did);
                 let expr = const_eval::lookup_const_by_id(bcx.tcx(), did, None)
                             .expect("def was const, but lookup_const_by_id failed");
+                // FIXME: this is falling back to translating from HIR. This is not easy to fix,
+                // because we would have somehow adapt const_eval to work on MIR rather than HIR.
                 let d = expr::trans(bcx, expr);
                 OperandRef::from_rvalue_datum(d.datum.to_rvalue_datum(d.bcx, "").datum)
             }

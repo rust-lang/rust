@@ -26,11 +26,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                           -> OperandRef<'tcx>
     {
         let ccx = bcx.ccx();
-        let val = consts::trans_constval(ccx, cv, ty, bcx.fcx.param_substs);
+        let val = consts::trans_constval(bcx, cv, ty, bcx.fcx.param_substs);
         let val = if common::type_is_immediate(ccx, ty) {
-            Immediate(val)
+            OperandValue::Immediate(val)
         } else {
-            Ref(val)
+            OperandValue::Ref(val)
         };
 
         assert!(!ty.has_erasable_regions());
