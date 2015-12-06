@@ -8,7 +8,7 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-RUN_INSALLER = cd tmp/empty_dir && \
+RUN_INSTALLER = cd tmp/empty_dir && \
 	sh ../../tmp/dist/$(1)/install.sh \
 		--prefix="$(DESTDIR)$(CFG_PREFIX)" \
 		--libdir="$(DESTDIR)$(CFG_LIBDIR)" \
@@ -22,11 +22,11 @@ else
 	$(Q)$(MAKE) prepare_install
 endif
 ifeq ($(CFG_DISABLE_DOCS),)
-	$(Q)$(call RUN_INSALLER,$(DOC_PKG_NAME)-$(CFG_BUILD)) --disable-ldconfig
+	$(Q)$(call RUN_INSTALLER,$(DOC_PKG_NAME)-$(CFG_BUILD)) --disable-ldconfig
 endif
 	$(Q)$(foreach target,$(CFG_TARGET),\
-	  ($(call RUN_INSALLER,$(STD_PKG_NAME)-$(target)) --disable-ldconfig);)
-	$(Q)$(call RUN_INSALLER,$(PKG_NAME)-$(CFG_BUILD))
+	  ($(call RUN_INSTALLER,$(STD_PKG_NAME)-$(target)) --disable-ldconfig);)
+	$(Q)$(call RUN_INSTALLER,$(PKG_NAME)-$(CFG_BUILD))
 # Remove tmp files because it's a decent amount of disk space
 	$(Q)rm -R tmp/dist
 
@@ -40,11 +40,11 @@ else
 	$(Q)$(MAKE) prepare_uninstall
 endif
 ifeq ($(CFG_DISABLE_DOCS),)
-	$(Q)$(call RUN_INSALLER,$(DOC_PKG_NAME)-$(CFG_BUILD)) --uninstall
+	$(Q)$(call RUN_INSTALLER,$(DOC_PKG_NAME)-$(CFG_BUILD)) --uninstall
 endif
-	$(Q)$(call RUN_INSALLER,$(PKG_NAME)-$(CFG_BUILD)) --uninstall
+	$(Q)$(call RUN_INSTALLER,$(PKG_NAME)-$(CFG_BUILD)) --uninstall
 	$(Q)$(foreach target,$(CFG_TARGET),\
-	  ($(call RUN_INSALLER,$(STD_PKG_NAME)-$(target)) --uninstall);)
+	  ($(call RUN_INSTALLER,$(STD_PKG_NAME)-$(target)) --uninstall);)
 # Remove tmp files because it's a decent amount of disk space
 	$(Q)rm -R tmp/dist
 
