@@ -70,15 +70,13 @@ impl PredecessorMap {
         self.map[block.index()]
     }
 
-    pub fn add_predecessor(&mut self, block: BasicBlock, _predecessor: BasicBlock) {
+    pub fn add_predecessor(&mut self, block: BasicBlock) {
         self.map[block.index()] += 1;
     }
 
-    pub fn remove_predecessor(&mut self, block: BasicBlock, _predecessor: BasicBlock) {
+    pub fn remove_predecessor(&mut self, block: BasicBlock) {
         self.map[block.index()] -= 1;
     }
-
-    pub fn replace_predecessor(&mut self, _block: BasicBlock, _old: BasicBlock, _new: BasicBlock) { }
 }
 
 struct PredecessorVisitor {
@@ -99,8 +97,8 @@ impl<'tcx> Visitor<'tcx> for PredecessorVisitor {
         self.super_mir(mir);
     }
 
-    fn visit_branch(&mut self, source: BasicBlock, target: BasicBlock) {
-        self.predecessor_map.add_predecessor(target, source);
+    fn visit_branch(&mut self, _source: BasicBlock, target: BasicBlock) {
+        self.predecessor_map.add_predecessor(target);
     }
 }
 

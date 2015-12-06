@@ -64,8 +64,8 @@ impl SimplifyCfg {
 
                 if *target != new_target {
                     changed = true;
-                    predecessor_map.remove_predecessor(*target, bb);
-                    predecessor_map.add_predecessor(new_target, bb);
+                    predecessor_map.remove_predecessor(*target);
+                    predecessor_map.add_predecessor(new_target);
                     *target = new_target;
                 }
             }
@@ -81,10 +81,9 @@ impl SimplifyCfg {
                     };
                     mem::swap(&mut other_data, mir.basic_block_data_mut(target));
 
-                    predecessor_map.replace_predecessor(target, bb, target);
-                    for succ in other_data.terminator.successors() {
-                        predecessor_map.replace_predecessor(*succ, target, bb);
-                    }
+                    // target used to have 1 predecessor (bb), and still has only one (itself)
+                    // All the successors of target have had target replaced by bb in their
+                    // list of predecessors, keeping the number the same.
 
                     let data = mir.basic_block_data_mut(bb);
                     data.statements.append(&mut other_data.statements);
