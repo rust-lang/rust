@@ -116,8 +116,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             LvalueTy::Downcast { adt_def: _, substs: _, variant_index: v } => v,
                         };
                         let discr = discr as u64;
-                        (adt::trans_field_ptr(bcx, &base_repr, tr_base.llval, discr, field.index()),
-                         if common::type_is_sized(tcx, projected_ty.to_ty(tcx)) {
+                        let is_sized = common::type_is_sized(tcx, projected_ty.to_ty(tcx));
+                        let base = if is_sized {
+                            adt::MaybeSizedValue::sized(tr_base.llval)
+                        } else {
+                            adt::MaybeSizedValue::unsized_(tr_base.llval, tr_base.llextra)
+                        };
+                        (adt::trans_field_ptr(bcx, &base_repr, base, discr, field.index()),
+                         if is_sized {
                              ptr::null_mut()
                          } else {
                              tr_base.llextra

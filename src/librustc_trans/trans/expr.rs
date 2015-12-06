@@ -542,10 +542,13 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
             assert!(coerce_index < src_fields.len() && src_fields.len() == target_fields.len());
 
+            let source_val = adt::MaybeSizedValue::sized(source.val);
+            let target_val = adt::MaybeSizedValue::sized(target.val);
+
             let iter = src_fields.iter().zip(target_fields).enumerate();
             for (i, (src_ty, target_ty)) in iter {
-                let ll_source = adt::trans_field_ptr(bcx, &repr_source, source.val, 0, i);
-                let ll_target = adt::trans_field_ptr(bcx, &repr_target, target.val, 0, i);
+                let ll_source = adt::trans_field_ptr(bcx, &repr_source, source_val, 0, i);
+                let ll_target = adt::trans_field_ptr(bcx, &repr_target, target_val, 0, i);
 
                 // If this is the field we need to coerce, recurse on it.
                 if i == coerce_index {
@@ -737,7 +740,9 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let d = base_datum.get_element(
         bcx,
         vinfo.fields[ix].1,
-        |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, vinfo.discr, ix));
+        |srcval| {
+            adt::trans_field_ptr(bcx, &*repr, srcval, vinfo.discr, ix)
+        });
 
     if type_is_sized(bcx.tcx(), d.ty) {
         DatumBlock { datum: d.to_expr_datum(), bcx: bcx }
@@ -1512,9 +1517,10 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         // Second, trans the base to the dest.
         assert_eq!(discr, 0);
 
+        let addr = adt::MaybeSizedValue::sized(addr);
         match expr_kind(bcx.tcx(), &*base.expr) {
             ExprKind::RvalueDps | ExprKind::RvalueDatum if !bcx.fcx.type_needs_drop(ty) => {
-                bcx = trans_into(bcx, &*base.expr, SaveIn(addr));
+                bcx = trans_into(bcx, &*base.expr, SaveIn(addr.value));
             },
             ExprKind::RvalueStmt => {
                 bcx.tcx().sess.bug("unexpected expr kind for struct base expr")
@@ -1538,6 +1544,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     } else {
         // No base means we can write all fields directly in place.
+        let addr = adt::MaybeSizedValue::sized(addr);
         for &(i, ref e) in fields {
             let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
             let e_ty = expr_ty_adjusted(bcx, &**e);
