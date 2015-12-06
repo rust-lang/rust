@@ -23,6 +23,13 @@ impl UnifyKey for ty::IntVid {
     fn tag(_: Option<ty::IntVid>) -> &'static str { "IntVid" }
 }
 
+impl UnifyKey for ty::RegionVid {
+    type Value = ();
+    fn index(&self) -> u32 { self.index }
+    fn from_index(i: u32) -> ty::RegionVid { ty::RegionVid { index: i } }
+    fn tag(_: Option<ty::RegionVid>) -> &'static str { "RegionVid" }
+}
+
 impl<'tcx> ToType<'tcx> for IntVarValue {
     fn to_type(&self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
         match *self {
