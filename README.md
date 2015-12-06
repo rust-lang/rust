@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 81 lints included in this crate:
+There are 82 lints included in this crate:
 
 name                                                                                                     | default | meaning
 ---------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -84,6 +84,7 @@ name                                                                            
 [unstable_as_mut_slice](https://github.com/Manishearth/rust-clippy/wiki#unstable_as_mut_slice)           | warn    | as_mut_slice is not stable and can be replaced by &mut v[..]see https://github.com/rust-lang/rust/issues/27729
 [unstable_as_slice](https://github.com/Manishearth/rust-clippy/wiki#unstable_as_slice)                   | warn    | as_slice is not stable and can be replaced by & v[..]see https://github.com/rust-lang/rust/issues/27729
 [unused_collect](https://github.com/Manishearth/rust-clippy/wiki#unused_collect)                         | warn    | `collect()`ing an iterator without using the result; this is usually better written as a for loop
+[unused_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#unused_lifetimes)                     | warn    | unused lifetimes in function definitions
 [useless_transmute](https://github.com/Manishearth/rust-clippy/wiki#useless_transmute)                   | warn    | transmutes that have the same to and from types
 [while_let_loop](https://github.com/Manishearth/rust-clippy/wiki#while_let_loop)                         | warn    | `loop { if let { ... } else break }` can be written as a `while let` loop
 [while_let_on_iterator](https://github.com/Manishearth/rust-clippy/wiki#while_let_on_iterator)           | warn    | using a while-let loop instead of a for loop on an iterator

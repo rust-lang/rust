@@ -154,6 +154,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,
         lifetimes::NEEDLESS_LIFETIMES,
+        lifetimes::UNUSED_LIFETIMES,
         loops::EMPTY_LOOP,
         loops::EXPLICIT_COUNTER_LOOP,
         loops::EXPLICIT_ITER_LOOP,
