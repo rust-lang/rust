@@ -2122,7 +2122,7 @@ heuristics!
   `unwrap`. Be warned: if it winds up in someone else's hands, don't be
   surprised if they are agitated by poor error messages!
 * If you're writing a quick 'n' dirty program and feel ashamed about panicking
-  anyway, then using either a `String` or a `Box<Error + Send + Sync>` for your
+  anyway, then use either a `String` or a `Box<Error + Send + Sync>` for your
   error type (the `Box<Error + Send + Sync>` type is because of the
   [available `From` impls](../std/convert/trait.From.html)).
 * Otherwise, in a program, define your own error types with appropriate
