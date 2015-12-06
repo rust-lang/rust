@@ -246,17 +246,16 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
     sys::fs::symlink(src.as_ref(), dst.as_ref())
 }
 
-#[unstable(feature = "dir_builder", reason = "recently added API",
-           issue = "27710")]
+#[stable(feature = "dir_builder", since = "1.6.0")]
 /// An extension trait for `fs::DirBuilder` for unix-specific options.
 pub trait DirBuilderExt {
     /// Sets the mode to create new directories with. This option defaults to
     /// 0o777.
+    #[stable(feature = "dir_builder", since = "1.6.0")]
     fn mode(&mut self, mode: raw::mode_t) -> &mut Self;
 }
 
-#[unstable(feature = "dir_builder", reason = "recently added API",
-           issue = "27710")]
+#[stable(feature = "dir_builder", since = "1.6.0")]
 impl DirBuilderExt for fs::DirBuilder {
     fn mode(&mut self, mode: raw::mode_t) -> &mut fs::DirBuilder {
         self.as_inner_mut().set_mode(mode);

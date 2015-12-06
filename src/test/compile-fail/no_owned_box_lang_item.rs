@@ -12,8 +12,8 @@
 
 // error-pattern: requires `owned_box` lang_item
 
+#![feature(lang_items, box_syntax)]
 #![no_std]
-#![feature(lang_items, no_std, box_syntax)]
 
 fn main() {
     let x = box 1i32;

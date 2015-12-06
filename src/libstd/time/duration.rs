@@ -66,6 +66,8 @@ impl Duration {
                          wait for a more general \"moment in time\" \
                          abstraction",
                issue = "27799")]
+    #[rustc_deprecated(reason = "use std::time::Instant instead",
+                       since = "1.6.0")]
     pub fn span<F>(f: F) -> Duration where F: FnOnce() {
         let start = Instant::now();
         f();

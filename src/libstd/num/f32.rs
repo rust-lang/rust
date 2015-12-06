@@ -131,6 +131,7 @@ impl f32 {
                issue = "27736")]
     #[rustc_deprecated(since = "1.4.0",
                  reason = "unclear how useful or correct this is")]
+    #[allow(deprecated)]
     pub fn from_str_radix(s: &str, radix: u32) -> Result<f32, ParseFloatError> {
         num::Float::from_str_radix(s, radix)
     }
@@ -424,7 +425,7 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_sign_positive(self) -> bool { num::Float::is_positive(self) }
+    pub fn is_sign_positive(self) -> bool { num::Float::is_sign_positive(self) }
 
     /// Returns `true` if `self`'s sign is negative, including `-0.0`
     /// and `NEG_INFINITY`.
@@ -443,7 +444,7 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_sign_negative(self) -> bool { num::Float::is_negative(self) }
+    pub fn is_sign_negative(self) -> bool { num::Float::is_sign_negative(self) }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error. This produces a more accurate result with better performance than

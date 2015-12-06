@@ -10,7 +10,7 @@
 
 #![deny(unused_attributes)]
 #![allow(dead_code, unused_imports)]
-#![feature(core, custom_attribute)]
+#![feature(custom_attribute)]
 
 #![foo] //~ ERROR unused attribute
 

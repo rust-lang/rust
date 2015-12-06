@@ -11,7 +11,6 @@
 // Check that placement in respects unstable code checks.
 
 #![feature(placement_in_syntax)]
-#![feature(core)]
 
 extern crate core;
 

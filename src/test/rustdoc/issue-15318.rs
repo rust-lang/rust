@@ -11,7 +11,6 @@
 // aux-build:issue-15318.rs
 // ignore-cross-compile
 
-#![feature(no_std)]
 #![no_std]
 
 extern crate issue_15318;

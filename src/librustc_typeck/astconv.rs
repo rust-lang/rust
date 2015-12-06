@@ -1049,7 +1049,7 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
             let hi = bounds.iter().map(|x| match *x {
                 hir::TraitTyParamBound(ref tr, _) => tr.span.hi,
                 hir::RegionTyParamBound(ref r) => r.span.hi,
-            }).max_by(|x| x.to_usize());
+            }).max_by_key(|x| x.to_usize());
             let full_span = hi.map(|hi| Span {
                 lo: ty.span.lo,
                 hi: hi,

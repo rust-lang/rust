@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, start, no_std, collections)]
+#![feature(lang_items, start, collections)]
 #![no_std]
 
 extern crate std as other;

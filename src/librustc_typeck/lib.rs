@@ -77,14 +77,11 @@ This API is completely unstable and subject to change.
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(drain)]
-#![feature(iter_cmp)]
 #![feature(iter_arith)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(vec_push_all)]
 #![feature(cell_extras)]
 
 #[macro_use] extern crate log;

@@ -1523,7 +1523,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
             parameters: new_parameters
         };
         let mut new_segs = Vec::new();
-        new_segs.push_all(path.segments.split_last().unwrap().1);
+        new_segs.extend_from_slice(path.segments.split_last().unwrap().1);
         new_segs.push(new_seg);
         hir::Path {
             span: path.span,
@@ -1831,7 +1831,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
         Some(node) => match node {
             ast_map::NodeItem(item) => match item.node {
                 hir::ItemFn(_, _, _, _, ref gen, _) => {
-                    taken.push_all(&gen.lifetimes);
+                    taken.extend_from_slice(&gen.lifetimes);
                     None
                 },
                 _ => None
@@ -1839,7 +1839,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
             ast_map::NodeImplItem(ii) => {
                 match ii.node {
                     hir::ImplItemKind::Method(ref sig, _) => {
-                        taken.push_all(&sig.generics.lifetimes);
+                        taken.extend_from_slice(&sig.generics.lifetimes);
                         Some(ii.id)
                     }
                     _ => None,
@@ -1856,7 +1856,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
             Some(node) => match node {
                 ast_map::NodeItem(item) => match item.node {
                     hir::ItemImpl(_, _, ref gen, _, _, _) => {
-                        taken.push_all(&gen.lifetimes);
+                        taken.extend_from_slice(&gen.lifetimes);
                     }
                     _ => ()
                 },

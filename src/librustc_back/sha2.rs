@@ -12,7 +12,6 @@
 //! use. This implementation is not intended for external use or for any use where security is
 //! important.
 
-use std::slice::bytes::{MutableByteVector, copy_memory};
 use serialize::hex::ToHex;
 
 /// Write a u32 into a vector, which must be 4 bytes long. The value is written in big-endian
@@ -134,16 +133,14 @@ impl FixedBuffer for FixedBuffer64 {
         if self.buffer_idx != 0 {
             let buffer_remaining = size - self.buffer_idx;
             if input.len() >= buffer_remaining {
-                    copy_memory(
-                        &input[..buffer_remaining],
-                        &mut self.buffer[self.buffer_idx..size]);
+                self.buffer[self.buffer_idx..size]
+                    .clone_from_slice(&input[..buffer_remaining]);
                 self.buffer_idx = 0;
                 func(&self.buffer);
                 i += buffer_remaining;
             } else {
-                copy_memory(
-                    input,
-                    &mut self.buffer[self.buffer_idx..self.buffer_idx + input.len()]);
+                self.buffer[self.buffer_idx..self.buffer_idx + input.len()]
+                    .clone_from_slice(input);
                 self.buffer_idx += input.len();
                 return;
             }
@@ -160,9 +157,7 @@ impl FixedBuffer for FixedBuffer64 {
         // data left in the input vector will be less than the buffer size and the buffer will
         // be empty.
         let input_remaining = input.len() - i;
-        copy_memory(
-            &input[i..],
-            &mut self.buffer[..input_remaining]);
+        self.buffer[..input_remaining].clone_from_slice(&input[i..]);
         self.buffer_idx += input_remaining;
     }
 
@@ -172,7 +167,9 @@ impl FixedBuffer for FixedBuffer64 {
 
     fn zero_until(&mut self, idx: usize) {
         assert!(idx >= self.buffer_idx);
-        self.buffer[self.buffer_idx..idx].set_memory(0);
+        for slot in self.buffer[self.buffer_idx..idx].iter_mut() {
+            *slot = 0;
+        }
         self.buffer_idx = idx;
     }
 

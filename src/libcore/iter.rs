@@ -1903,6 +1903,7 @@ pub trait Iterator {
     ///
     /// ```
     /// #![feature(iter_cmp)]
+    /// #![allow(deprecated)]
     ///
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().max_by(|x| x.abs()).unwrap(), -10);
@@ -1911,9 +1912,30 @@ pub trait Iterator {
     #[unstable(feature = "iter_cmp",
                reason = "may want to produce an Ordering directly; see #15311",
                issue = "27724")]
+    #[rustc_deprecated(reason = "renamed to max_by_key", since = "1.6.0")]
     fn max_by<B: Ord, F>(self, f: F) -> Option<Self::Item> where
         Self: Sized,
         F: FnMut(&Self::Item) -> B,
+    {
+        self.max_by_key(f)
+    }
+
+    /// Returns the element that gives the maximum value from the
+    /// specified function.
+    ///
+    /// Returns the rightmost element if the comparison determines two elements
+    /// to be equally maximum.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [-3_i32, 0, 1, 5, -10];
+    /// assert_eq!(*a.iter().max_by_key(|x| x.abs()).unwrap(), -10);
+    /// ```
+    #[inline]
+    #[stable(feature = "iter_cmp_by_key", since = "1.6.0")]
+    fn max_by_key<B: Ord, F>(self, f: F) -> Option<Self::Item>
+        where Self: Sized, F: FnMut(&Self::Item) -> B,
     {
         select_fold1(self,
                      f,
@@ -1933,6 +1955,7 @@ pub trait Iterator {
     ///
     /// ```
     /// #![feature(iter_cmp)]
+    /// #![allow(deprecated)]
     ///
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().min_by(|x| x.abs()).unwrap(), 0);
@@ -1941,9 +1964,29 @@ pub trait Iterator {
     #[unstable(feature = "iter_cmp",
                reason = "may want to produce an Ordering directly; see #15311",
                issue = "27724")]
+    #[rustc_deprecated(reason = "renamed to min_by_key", since = "1.6.0")]
     fn min_by<B: Ord, F>(self, f: F) -> Option<Self::Item> where
         Self: Sized,
         F: FnMut(&Self::Item) -> B,
+    {
+        self.min_by_key(f)
+    }
+
+    /// Returns the element that gives the minimum value from the
+    /// specified function.
+    ///
+    /// Returns the latest element if the comparison determines two elements
+    /// to be equally minimum.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [-3_i32, 0, 1, 5, -10];
+    /// assert_eq!(*a.iter().min_by_key(|x| x.abs()).unwrap(), 0);
+    /// ```
+    #[stable(feature = "iter_cmp_by_key", since = "1.6.0")]
+    fn min_by_key<B: Ord, F>(self, f: F) -> Option<Self::Item>
+        where Self: Sized, F: FnMut(&Self::Item) -> B,
     {
         select_fold1(self,
                      f,
@@ -3588,7 +3631,7 @@ impl<I: Iterator> Peekable<I> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(core)]
+    /// #![feature(peekable_is_empty)]
     ///
     /// let xs = [1, 2, 3];
     ///
@@ -3604,7 +3647,7 @@ impl<I: Iterator> Peekable<I> {
     ///
     /// assert_eq!(iter.is_empty(), true);
     /// ```
-    #[unstable(feature = "core", issue = "27701")]
+    #[unstable(feature = "peekable_is_empty", issue = "27701")]
     #[inline]
     pub fn is_empty(&mut self) -> bool {
         self.peek().is_none()

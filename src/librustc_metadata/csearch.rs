@@ -122,8 +122,8 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
         cdata.with_local_path(|cpath| {
             let mut r = Vec::with_capacity(cpath.len() + path.len());
-            r.push_all(cpath);
-            r.push_all(&path);
+            r.extend_from_slice(cpath);
+            r.extend_from_slice(&path);
             r
         })
     }
@@ -135,7 +135,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         let mut r = Vec::with_capacity(path.len() + 1);
         let crate_name = hir_map::PathMod(token::intern(&cdata.name));
         r.push(crate_name);
-        r.push_all(&path);
+        r.extend_from_slice(&path);
         r
     }
 

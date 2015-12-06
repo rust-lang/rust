@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, no_std, libc)]
+#![feature(lang_items, libc)]
 #![no_std]
 #![crate_type = "dylib"]
 

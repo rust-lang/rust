@@ -31,7 +31,6 @@
 #![feature(staged_api)]
 #![feature(test)]
 #![feature(unicode)]
-#![feature(vec_push_all)]
 
 extern crate arena;
 extern crate getopts;

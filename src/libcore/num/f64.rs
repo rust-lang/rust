@@ -243,14 +243,14 @@ impl Float for f64 {
     /// Returns `true` if `self` is positive, including `+0.0` and
     /// `Float::infinity()`.
     #[inline]
-    fn is_positive(self) -> bool {
+    fn is_sign_positive(self) -> bool {
         self > 0.0 || (1.0 / self) == Float::infinity()
     }
 
     /// Returns `true` if `self` is negative, including `-0.0` and
     /// `Float::neg_infinity()`.
     #[inline]
-    fn is_negative(self) -> bool {
+    fn is_sign_negative(self) -> bool {
         self < 0.0 || (1.0 / self) == Float::neg_infinity()
     }
 

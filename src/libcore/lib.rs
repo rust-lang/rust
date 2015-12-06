@@ -52,18 +52,16 @@
 // Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "core"]
-#![unstable(feature = "core",
-            reason = "the libcore library has not yet been scrutinized for \
-                      stabilization in terms of structure and naming",
-            issue = "27701")]
+#![stable(feature = "core", since = "1.6.0")]
 #![cfg_attr(stage0, staged_api)]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/",
-       issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
-#![doc(test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
+       issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
+       test(no_crate_inject, attr(deny(warnings))),
+       test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
 #![no_core]
 #![deny(missing_docs)]
@@ -90,9 +88,6 @@
 
 #[macro_use]
 mod macros;
-
-#[macro_use]
-mod cmp_macros;
 
 #[path = "num/float_macros.rs"]
 #[macro_use]

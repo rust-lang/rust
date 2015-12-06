@@ -16,7 +16,7 @@
 #![feature(staged_api)]
 #![cfg_attr(stage0, staged_api)]
 #![crate_type = "rlib"]
-#![feature(no_std)]
+#![cfg_attr(stage0, feature(no_std))]
 #![no_std]
 #![unstable(feature = "rustc_private", issue = "27812")]
 

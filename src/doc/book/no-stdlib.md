@@ -16,7 +16,6 @@ in the same format as C:
 # #![feature(libc)]
 #![feature(lang_items)]
 #![feature(start)]
-#![feature(no_std)]
 #![no_std]
 
 // Pull in the system libc library for what crt0.o likely requires
@@ -46,7 +45,6 @@ compiler's name mangling too:
 
 ```rust
 # #![feature(libc)]
-#![feature(no_std)]
 #![feature(lang_items)]
 #![feature(start)]
 #![no_std]
@@ -104,9 +102,6 @@ vectors provided from C, using idiomatic Rust practices.
 # #![feature(libc)]
 #![feature(lang_items)]
 #![feature(start)]
-#![feature(no_std)]
-#![feature(core)]
-#![feature(core_slice_ext)]
 #![feature(raw)]
 #![no_std]
 

@@ -71,7 +71,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
                                     callee::DontAutorefArg,
                                     &mut inputs);
     }
-    inputs.push_all(&ext_inputs[..]);
+    inputs.extend_from_slice(&ext_inputs[..]);
 
     // no failure occurred preparing operands, no need to cleanup
     fcx.pop_custom_cleanup_scope(temp_scope);

@@ -160,7 +160,7 @@ mod hack {
         where T: Clone
     {
         let mut vector = Vec::with_capacity(s.len());
-        vector.push_all(s);
+        vector.extend_from_slice(s);
         vector
     }
 }
@@ -777,6 +777,33 @@ impl<T> [T] {
         self.sort_by(|a, b| a.cmp(b))
     }
 
+    /// Sorts the slice, in place, using `key` to extract a key by which to
+    /// order the sort by.
+    ///
+    /// This sort is `O(n log n)` worst-case and stable, but allocates
+    /// approximately `2 * n`, where `n` is the length of `self`.
+    ///
+    /// This is a stable sort.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(slice_sort_by_key)]
+    ///
+    /// let mut v = [-5i32, 4, 1, -3, 2];
+    ///
+    /// v.sort_by_key(|k| k.abs());
+    /// assert!(v == [1, 2, -3, 4, -5]);
+    /// ```
+    #[unstable(feature = "slice_sort_by_key", reason = "recently added",
+               issue = "27724")]
+    #[inline]
+    pub fn sort_by_key<B, F>(&mut self, mut f: F)
+        where F: FnMut(&T) -> B, B: Ord
+    {
+        self.sort_by(|a, b| f(a).cmp(&f(b)))
+    }
+
     /// Sorts the slice, in place, using `compare` to compare
     /// elements.
     ///
@@ -906,7 +933,7 @@ impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
         let size = self.iter().fold(0, |acc, v| acc + v.borrow().len());
         let mut result = Vec::with_capacity(size);
         for v in self {
-            result.push_all(v.borrow())
+            result.extend_from_slice(v.borrow())
         }
         result
     }
@@ -921,7 +948,7 @@ impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
             } else {
                 result.push(sep.clone())
             }
-            result.push_all(v.borrow())
+            result.extend_from_slice(v.borrow())
         }
         result
     }

@@ -659,7 +659,7 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
         append_configuration(&mut user_cfg, InternedString::new("test"))
     }
     let mut v = user_cfg.into_iter().collect::<Vec<_>>();
-    v.push_all(&default_cfg[..]);
+    v.extend_from_slice(&default_cfg[..]);
     v
 }
 
@@ -818,7 +818,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
 /// long-term interface for rustc.
 pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
     let mut opts = rustc_short_optgroups();
-    opts.push_all(&[
+    opts.extend_from_slice(&[
         opt::multi("", "extern", "Specify where an external rust library is \
                                 located",
                  "NAME=PATH"),

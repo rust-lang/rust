@@ -778,8 +778,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(drain)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// // draining using `..` clears the whole deque.
@@ -789,9 +787,7 @@ impl<T> VecDeque<T> {
     /// assert!(v.is_empty());
     /// ```
     #[inline]
-    #[unstable(feature = "drain",
-               reason = "matches collection reform specification, waiting for dust to settle",
-               issue = "27711")]
+    #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain<R>(&mut self, range: R) -> Drain<T>
         where R: RangeArgument<usize>
     {
@@ -1893,9 +1889,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// A draining VecDeque iterator
-#[unstable(feature = "drain",
-           reason = "matches collection reform specification, waiting for dust to settle",
-           issue = "27711")]
+#[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     after_tail: usize,
     after_head: usize,
@@ -1903,9 +1897,9 @@ pub struct Drain<'a, T: 'a> {
     deque: *mut VecDeque<T>,
 }
 
-#[unstable(feature = "drain", issue = "27711")]
+#[stable(feature = "drain", since = "1.6.0")]
 unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
-#[unstable(feature = "drain", issue = "27711")]
+#[stable(feature = "drain", since = "1.6.0")]
 unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
