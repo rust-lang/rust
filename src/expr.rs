@@ -11,6 +11,8 @@
 use std::cmp::Ordering;
 use std::borrow::Borrow;
 use std::mem::swap;
+use std::ops::Deref;
+use std::iter::ExactSizeIterator;
 
 use {Indent, Spanned};
 use rewrite::{Rewrite, RewriteContext};
@@ -75,7 +77,11 @@ impl Rewrite for ast::Expr {
                                    offset)
             }
             ast::Expr_::ExprTup(ref items) => {
-                rewrite_tuple(context, items, self.span, width, offset)
+                rewrite_tuple(context,
+                              items.iter().map(|x| &**x),
+                              self.span,
+                              width,
+                              offset)
             }
             ast::Expr_::ExprWhile(ref cond, ref block, label) => {
                 Loop::new_while(None, cond, block, label).rewrite(context, width, offset)
@@ -960,7 +966,7 @@ impl Rewrite for ast::Arm {
             let budget = context.config.max_width - line_start - comma.len() - 4;
             let offset = Indent::new(offset.block_indent, line_start + 4 - offset.block_indent);
             let rewrite = nop_block_collapse(body.rewrite(context, budget, offset), budget);
-            let is_block = if let ast::ExprBlock(ref block) = body.node {
+            let is_block = if let ast::ExprBlock(..) = body.node {
                 true
             } else {
                 false
@@ -1431,25 +1437,27 @@ fn rewrite_field(context: &RewriteContext,
     expr.map(|s| format!("{}: {}", name, s))
 }
 
-pub fn rewrite_tuple<'a, R>(context: &RewriteContext,
-                            items: &'a [ptr::P<R>],
+pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
+                            mut items: I,
                             span: Span,
                             width: usize,
                             offset: Indent)
                             -> Option<String>
-    where R: Rewrite + Spanned + 'a
+    where I: ExactSizeIterator,
+          <I as Iterator>::Item: Deref,
+          <I::Item as Deref>::Target: Rewrite + Spanned + 'a
 {
-    debug!("rewrite_tuple_lit: width: {}, offset: {:?}", width, offset);
     let indent = offset + 1;
     // In case of length 1, need a trailing comma
     if items.len() == 1 {
         // 3 = "(" + ",)"
         let budget = try_opt!(width.checked_sub(3));
-        return items[0].rewrite(context, budget, indent).map(|s| format!("({},)", s));
+        return items.next().unwrap().rewrite(context, budget, indent).map(|s| format!("({},)", s));
     }
 
+    let list_lo = span_after(span, "(", context.codemap);
     let items = itemize_list(context.codemap,
-                             items.iter(),
+                             items,
                              ")",
                              |item| item.span().lo,
                              |item| item.span().hi,
@@ -1460,7 +1468,7 @@ pub fn rewrite_tuple<'a, R>(context: &RewriteContext,
                                                                                 1));
                                  item.rewrite(context, inner_width, indent)
                              },
-                             span.lo + BytePos(1), // Remove parens
+                             list_lo,
                              span.hi - BytePos(1));
     let budget = try_opt!(width.checked_sub(2));
     let list_str = try_opt!(format_fn_args(items, budget, indent, context.config));

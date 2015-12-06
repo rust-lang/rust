@@ -48,7 +48,13 @@ impl Rewrite for Pat {
                 let prefix = format!("&{}", format_mutability(mutability));
                 rewrite_unary_prefix(context, &prefix, &**pat, width, offset)
             }
-            Pat_::PatTup(ref items) => rewrite_tuple(context, items, self.span, width, offset),
+            Pat_::PatTup(ref items) => {
+                rewrite_tuple(context,
+                              items.iter().map(|x| &**x),
+                              self.span,
+                              width,
+                              offset)
+            }
             Pat_::PatEnum(ref path, Some(ref pat_vec)) => {
                 let path_str = try_opt!(::types::rewrite_path(context,
                                                               true,
