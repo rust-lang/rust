@@ -29,3 +29,8 @@ trait Runnable {
 trait TraitWithExpr {
     fn fn_with_expr(x: [i32; 1]);
 }
+
+trait Test {
+    fn read_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> Result<T, Self::Error>
+        where F: FnOnce(&mut Self) -> Result<T, Self::Error>;
+}
