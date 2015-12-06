@@ -3,7 +3,7 @@ use reexport::*;
 use rustc::lint::*;
 use syntax::codemap::Span;
 use rustc_front::intravisit::{Visitor, walk_ty, walk_ty_param_bound};
-use rustc::middle::def::Def::{DefTy, DefTrait};
+use rustc::middle::def::Def::{DefTy, DefTrait, DefStruct};
 use std::collections::HashSet;
 
 use utils::{in_external_macro, span_lint};
@@ -186,23 +186,22 @@ impl <'v, 't> RefVisitor<'v, 't>  {
         let last_path_segment = path.segments.last().map(|s| &s.parameters);
         if let Some(&AngleBracketedParameters(ref params)) = last_path_segment {
             if params.lifetimes.is_empty() {
-                let def = self.cx.tcx.def_map.borrow().get(&ty.id).map(|r| r.full_def());
-                match def {
-                    Some(DefTy(def_id, _)) => {
-                        if let Some(ty_def) = self.cx.tcx.adt_defs.borrow().get(&def_id) {
-                            let scheme = ty_def.type_scheme(self.cx.tcx);
-                            for _ in scheme.generics.regions.as_slice() {
+                if let Some(def) = self.cx.tcx.def_map.borrow().get(&ty.id).map(|r| r.full_def()) {
+                    match def {
+                        DefTy(def_id, _) | DefStruct(def_id) => {
+                            let type_scheme = self.cx.tcx.lookup_item_type(def_id);
+                            for _ in type_scheme.generics.regions.as_slice() {
                                 self.record(&None);
                             }
-                        }
+                        },
+                        DefTrait(def_id) => {
+                            let trait_def = self.cx.tcx.trait_defs.borrow()[&def_id];
+                            for _ in &trait_def.generics.regions {
+                                self.record(&None);
+                            }
+                        },
+                        _ => {}
                     }
-                    Some(DefTrait(def_id)) => {
-                        let trait_def = self.cx.tcx.trait_defs.borrow()[&def_id];
-                        for _ in &trait_def.generics.regions {
-                            self.record(&None);
-                        }
-                    }
-                    _ => {}
                 }
             }
         }

@@ -259,7 +259,6 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext, e: &Expr) -> Option<&'c Expr> {
         if let NodeExpr(parent) = node { Some(parent) } else { None } )
 }
 
-#[allow(needless_lifetimes)] // workaround for https://github.com/Manishearth/rust-clippy/issues/417
 pub fn get_enclosing_block<'c>(cx: &'c LateContext, node: NodeId) -> Option<&'c Block> {
     let map = &cx.tcx.map;
     let enclosing_node = map.get_enclosing_scope(node)
