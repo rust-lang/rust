@@ -21,27 +21,6 @@ impl SimplifyCfg {
         SimplifyCfg
     }
 
-    fn remove_dead_blocks(&self, mir: &mut Mir) {
-        let mut seen = vec![false; mir.basic_blocks.len()];
-
-        // These blocks are always required.
-        seen[START_BLOCK.index()] = true;
-        seen[END_BLOCK.index()] = true;
-        seen[DIVERGE_BLOCK.index()] = true;
-
-        let mut worklist = vec![START_BLOCK];
-        while let Some(bb) = worklist.pop() {
-            for succ in mir.basic_block_data(bb).terminator.successors() {
-                if !seen[succ.index()] {
-                    seen[succ.index()] = true;
-                    worklist.push(*succ);
-                }
-            }
-        }
-
-        util::retain_basic_blocks(mir, &seen);
-    }
-
     fn remove_goto_chains(&self, mir: &mut Mir) -> bool {
 
         // Find the target at the end of the jump chain, return None if there is a loop
@@ -66,7 +45,7 @@ impl SimplifyCfg {
         }
 
         let mut changed = false;
-        for bb in mir.all_basic_blocks() {
+        util::adjust_reachable_basic_blocks(mir, |mir, bb| {
             // Temporarily swap out the terminator we're modifying to keep borrowck happy
             let mut terminator = Terminator::Diverge;
             mem::swap(&mut terminator, &mut mir.basic_block_data_mut(bb).terminator);
@@ -82,7 +61,7 @@ impl SimplifyCfg {
             }
 
             mir.basic_block_data_mut(bb).terminator = terminator;
-        }
+        });
 
         changed
     }
@@ -90,7 +69,7 @@ impl SimplifyCfg {
     fn simplify_branches(&self, mir: &mut Mir) -> bool {
         let mut changed = false;
 
-        for bb in mir.all_basic_blocks() {
+        util::adjust_reachable_basic_blocks(mir, |mir, bb| {
             // Temporarily swap out the terminator we're modifying to keep borrowck happy
             let mut terminator = Terminator::Diverge;
             mem::swap(&mut terminator, &mut mir.basic_block_data_mut(bb).terminator);
@@ -114,7 +93,7 @@ impl SimplifyCfg {
                 }
                 _ => terminator
             }
-        }
+        });
 
         changed
     }
@@ -126,7 +105,6 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
         while changed {
             changed = self.simplify_branches(mir);
             changed |= self.remove_goto_chains(mir);
-            self.remove_dead_blocks(mir);
         }
 
         // FIXME: Should probably be moved into some kind of pass manager
