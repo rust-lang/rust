@@ -729,13 +729,8 @@ overhead (at least in terms of the size of the values being returned
 from the allocation calls), because the error type for the `Result`
 can be zero-sized if so desired. That is why the error is an
 associated type of the `Allocator`: allocators that want to ensure the
-results have minimum size can use the zero-sized `RequestUnsatisfied`
-or `MemoryExhausted` types as their associated `Self::Error`.
-
- * `RequestUnsatisfied` is a catch-all type that any allocator
-   could use as its error type; doing so provides no hint to the
-   client as to what they could do to try to service future memory
-   requests.
+results have minimum size can use the zero-sized `MemoryExhausted` type
+as their associated `Self::Error`.
 
  * `MemoryExhausted` is a specific error type meant for allocators
    that could in principle handle *any* sane input request, if there
