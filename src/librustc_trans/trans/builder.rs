@@ -811,6 +811,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                    .collect::<Vec<String>>()
                    .join(", "));
 
+        let mut fn_ty = val_ty(llfn);
+        // Strip off pointers
+        while fn_ty.kind() == llvm::TypeKind::Pointer {
+            fn_ty = fn_ty.element_type();
+        }
+
+        assert!(fn_ty.kind() == llvm::TypeKind::Function,
+                "builder::call not passed a function");
+
+        let param_tys = fn_ty.func_params();
+
+        let iter = param_tys.into_iter()
+            .zip(args.iter().map(|&v| val_ty(v)));
+        for (i, (expected_ty, actual_ty)) in iter.enumerate() {
+            if expected_ty != actual_ty {
+                self.ccx.sess().bug(
+                    &format!(
+                        "Type mismatch in function call of {}.  Expected {} for param {}, got {}",
+                        self.ccx.tn().val_to_string(llfn),
+                        self.ccx.tn().type_to_string(expected_ty),
+                        i,
+                        self.ccx.tn().type_to_string(actual_ty)));
+
+            }
+        }
+
         unsafe {
             let v = llvm::LLVMBuildCall(self.llbuilder, llfn, args.as_ptr(),
                                         args.len() as c_uint, noname());
