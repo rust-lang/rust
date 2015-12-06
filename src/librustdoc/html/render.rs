@@ -602,8 +602,10 @@ fn write_shared(cx: &Context,
                include_bytes!("static/main.js")));
     try!(write(cx.dst.join("playpen.js"),
                include_bytes!("static/playpen.js")));
+    try!(write(cx.dst.join("rustdoc.css"),
+               include_bytes!("static/rustdoc.css")));
     try!(write(cx.dst.join("main.css"),
-               include_bytes!("static/main.css")));
+               include_bytes!("static/styles/main.css")));
     try!(write(cx.dst.join("normalize.css"),
                include_bytes!("static/normalize.css")));
     try!(write(cx.dst.join("FiraSans-Regular.woff"),

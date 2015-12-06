@@ -1,0 +1,125 @@
+/**
+ * Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+ * file at the top-level directory of this distribution and at
+ * http://rust-lang.org/COPYRIGHT.
+ *
+ * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+ * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+ * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+ * option. This file may not be copied, modified, or distributed
+ * except according to those terms.
+ */
+
+/* General structure and fonts */
+
+body {
+    background-color: white;
+    color: black;
+}
+
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+    color: black;
+}
+h1.fqn {
+    border-bottom-color: #D5D5D5;
+}
+h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+    border-bottom-color: #DDDDDD;
+}
+
+.docblock code {
+    background-color: #F5F5F5;
+}
+pre {
+    background-color: #F5F5F5;
+}
+
+.sidebar .location {
+    background: #e1e1e1;
+    color: #333;
+}
+
+.block a:hover {
+    background: #F5F5F5;
+}
+
+.line-numbers span { color: #c67e2d; }
+.line-numbers .line-highlighted {
+    background-color: #f6fdb0 !important;
+}
+
+:target { background: #FDFFD3; }
+.content .highlighted {
+    color: #000 !important;
+    background-color: #ccc;
+}
+.content .highlighted a, .content .highlighted span { color: #000 !important; }
+.content .highlighted.trait { background-color: #fece7e; }
+.content .highlighted.mod { background-color: #afc6e4; }
+.content .highlighted.enum { background-color: #b4d1b9; }
+.content .highlighted.struct { background-color: #e7b1a0; }
+.content .highlighted.fn { background-color: #c6afb3; }
+.content .highlighted.method { background-color: #c6afb3; }
+.content .highlighted.tymethod { background-color: #c6afb3; }
+.content .highlighted.type { background-color: #c6afb3; }
+
+.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
+    border-bottom-color: #DDD;
+}
+
+.docblock table {
+    border-color: #ddd;
+}
+
+.docblock table td {
+    border-top-color: #ddd;
+    border-bottom-color: #ddd;
+}
+
+.docblock table th {
+    border-top-color: #ddd;
+    border-bottom-color: #ddd;
+}
+
+.content a.primitive { color: #39a7bf; }
+.content span.mod, .content a.mod, block a.current.mod { color: #4d76ae; }
+.content span.fn, .content a.fn, .block a.current.fn,
+.content span.method, .content a.method, .block a.current.method,
+.content span.tymethod, .content a.tymethod, .block a.current.tymethod,
+.content .fnname { color: #8c6067; }
+
+pre.rust .comment { color: #8E908C; }
+pre.rust .doccomment { color: #4D4D4C; }
+
+nav {
+    border-bottom-color: #e0e0e0;
+}
+nav.main .current {
+    border-top-color: #000;
+    border-bottom-color: #000;
+}
+nav.main .separator {
+    border-color: 1px solid #000;
+}
+a {
+    color: #000;
+}
+
+.docblock a, .stability a {
+    color: #4e8bca;
+}
+
+a.test-arrow {
+    color: #f5f5f5;
+}
+
+.content span.trait, .content a.trait, .block a.current.trait { color: #8866ff; }
+
+.search-input {
+    color: #555;
+    box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+    background-color: white;
+}
+
+em.stab.unstable { background: #FFF5D6; border-color: #FFC600; }
+em.stab.deprecated { background: #F3DFFF; border-color: #7F0087; }
