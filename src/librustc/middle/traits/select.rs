@@ -1720,9 +1720,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::TyArray(element_ty, _) => {
+            ty::TyArray(element_ty, n) => {
                 // [T; n]
                 match bound {
+                    ty::BoundCopy if n == 0 => ok_if(Vec::new()),
                     ty::BoundCopy => ok_if(vec![element_ty]),
                     ty::BoundSized => ok_if(Vec::new()),
                     ty::BoundSync | ty::BoundSend => {
