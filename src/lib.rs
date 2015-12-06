@@ -26,7 +26,7 @@ extern crate diff;
 extern crate term;
 
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax::codemap::{mk_sp, Span};
 use syntax::diagnostic::{EmitterWriter, Handler};
 use syntax::parse::{self, ParseSess};
 
@@ -85,6 +85,16 @@ impl Spanned for ast::Pat {
 impl Spanned for ast::Ty {
     fn span(&self) -> Span {
         self.span
+    }
+}
+
+impl Spanned for ast::Arg {
+    fn span(&self) -> Span {
+        if items::is_named_arg(self) {
+            mk_sp(self.pat.span.lo, self.ty.span.hi)
+        } else {
+            self.ty.span
+        }
     }
 }
 

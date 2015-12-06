@@ -968,7 +968,7 @@ pub fn span_hi_for_arg(arg: &ast::Arg) -> BytePos {
     }
 }
 
-fn is_named_arg(arg: &ast::Arg) -> bool {
+pub fn is_named_arg(arg: &ast::Arg) -> bool {
     if let ast::Pat_::PatIdent(_, ident, _) = arg.pat.node {
         ident.node != token::special_idents::invalid
     } else {

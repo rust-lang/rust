@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ops::Deref;
+use std::iter::ExactSizeIterator;
+
 use syntax::ast::{self, Mutability, FunctionRetTy};
 use syntax::print::pprust;
 use syntax::codemap::{self, Span, BytePos};
 use syntax::abi;
 
-use Indent;
+use {Indent, Spanned};
 use lists::{format_item_list, itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, span_after, format_mutability, wrap_str};
@@ -239,7 +242,9 @@ fn format_function_type<'a, I>(inputs: I,
                                width: usize,
                                offset: Indent)
                                -> Option<String>
-    where I: Iterator<Item = &'a ast::Ty>
+    where I: ExactSizeIterator,
+          <I as Iterator>::Item: Deref,
+          <I::Item as Deref>::Target: Rewrite + Spanned + 'a
 {
     // 2 for ()
     let budget = try_opt!(width.checked_sub(2));
@@ -249,8 +254,8 @@ fn format_function_type<'a, I>(inputs: I,
     let items = itemize_list(context.codemap,
                              inputs,
                              ")",
-                             |ty| ty.span.lo,
-                             |ty| ty.span.hi,
+                             |ty| ty.span().lo,
+                             |ty| ty.span().hi,
                              |ty| ty.rewrite(context, budget, offset),
                              list_lo,
                              span.hi);
@@ -506,7 +511,13 @@ impl Rewrite for ast::Ty {
                 let budget = try_opt!(width.checked_sub(2));
                 ty.rewrite(context, budget, offset + 1).map(|ty_str| format!("[{}]", ty_str))
             }
-            ast::TyTup(ref items) => rewrite_tuple(context, items, self.span, width, offset),
+            ast::TyTup(ref items) => {
+                rewrite_tuple(context,
+                              items.iter().map(|x| &**x),
+                              self.span,
+                              width,
+                              offset)
+            }
             ast::TyPolyTraitRef(ref trait_ref) => trait_ref.rewrite(context, width, offset),
             ast::TyPath(ref q_self, ref path) => {
                 rewrite_path(context, false, q_self.as_ref(), path, width, offset)
@@ -548,7 +559,7 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
     let budget = try_opt!(width.checked_sub(result.len()));
     let indent = offset + result.len();
 
-    let rewrite = try_opt!(format_function_type(bare_fn.decl.inputs.iter().map(|x| &*(x.ty)),
+    let rewrite = try_opt!(format_function_type(bare_fn.decl.inputs.iter(),
                                                 &bare_fn.decl.output,
                                                 span,
                                                 context,
