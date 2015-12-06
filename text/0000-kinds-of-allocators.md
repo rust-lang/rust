@@ -709,9 +709,6 @@ to both the allocation and deallocation call sites.
   callers who can make use of excess memory to avoid unnecessary calls
   to `realloc`.
 
-
-### Why `alloc_array_unchecked` and `dealloc_array_unchecked`?
-
 ### Why the `Kind` abstraction?
 
 While we do want to require clients to hand the allocator the size and
