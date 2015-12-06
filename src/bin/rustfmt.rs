@@ -33,6 +33,8 @@ enum Operation {
     Format(Vec<PathBuf>, WriteMode),
     /// Print the help message.
     Help,
+    // Print version information
+    Version,
     /// Print detailed configuration help.
     ConfigHelp,
     /// Invalid program input, including reason.
@@ -82,6 +84,7 @@ fn update_config(config: &mut Config, matches: &Matches) {
 fn execute() -> i32 {
     let mut opts = Options::new();
     opts.optflag("h", "help", "show this message");
+    opts.optflag("V", "version", "show version information");
     opts.optflag("v", "verbose", "show progress");
     opts.optopt("",
                 "write-mode",
@@ -109,6 +112,10 @@ fn execute() -> i32 {
         }
         Operation::Help => {
             print_usage(&opts, "");
+            0
+        }
+        Operation::Version => {
+            print_version();
             0
         }
         Operation::ConfigHelp => {
@@ -166,6 +173,14 @@ fn print_usage(opts: &Options, reason: &str) {
     println!("{}", opts.usage(&reason));
 }
 
+fn print_version() {
+    println!("{}.{}.{}{}",
+             option_env!("CARGO_PKG_VERSION_MAJOR").unwrap_or("X"),
+             option_env!("CARGO_PKG_VERSION_MINOR").unwrap_or("X"),
+             option_env!("CARGO_PKG_VERSION_PATCH").unwrap_or("X"),
+             option_env!("CARGO_PKG_VERSION_PRE").unwrap_or(""));
+}
+
 fn determine_operation(matches: &Matches) -> Operation {
     if matches.opt_present("h") {
         return Operation::Help;
@@ -173,6 +188,10 @@ fn determine_operation(matches: &Matches) -> Operation {
 
     if matches.opt_present("config-help") {
         return Operation::ConfigHelp;
+    }
+
+    if matches.opt_present("version") {
+        return Operation::Version;
     }
 
     // if no file argument is supplied, read from stdin
