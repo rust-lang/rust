@@ -1225,6 +1225,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         value.fold_with(&mut r)
     }
 
+    pub fn resolve_type_and_region_vars_if_possible<T>(&self, value: &T) -> T
+        where T: TypeFoldable<'tcx>
+    {
+        let mut r = resolve::OpportunisticTypeAndRegionResolver::new(self);
+        value.fold_with(&mut r)
+    }
+
     /// Resolves all type variables in `t` and then, if any were left
     /// unresolved, substitutes an error type. This is used after the
     /// main checking when doing a second pass before writeback. The
