@@ -22,7 +22,7 @@ pub fn update_basic_block_ids(mir: &mut Mir, replacements: &[BasicBlock]) {
 }
 
 /// Run a function on every reachable basic block, then delete any unreachable blocks.
-/// The function given should not add or remove and blocks from the control flow graph.
+/// The function given should not add or remove any blocks from the control flow graph.
 pub fn adjust_reachable_basic_blocks<F: FnMut(&mut Mir, BasicBlock)>(mir: &mut Mir, mut func: F) {
     let mut seen = vec![false; mir.basic_blocks.len()];
 
