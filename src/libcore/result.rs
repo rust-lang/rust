@@ -227,6 +227,8 @@
 //! }
 //! ```
 //!
+//! (The real `try!` macro uses `From<E>` to convert between error types automatically.)
+//!
 //! `try!` is imported by the prelude and is available everywhere, but it can only
 //! be used in functions that return `Result` because of the early return of
 //! `Err` that it provides.

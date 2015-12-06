@@ -159,16 +159,15 @@ macro_rules! debug_assert_eq {
 }
 
 /// Short circuiting evaluation on Err
-///
-/// `libstd` contains a more general `try!` macro that uses `From<E>`.
 #[macro_export]
 macro_rules! try {
     ($e:expr) => ({
         use $crate::result::Result::{Ok, Err};
+        use $crate::convert::From;
 
         match $e {
             Ok(e) => e,
-            Err(e) => return Err(e),
+            Err(e) => return Err(From::from(e)),
         }
     })
 }
