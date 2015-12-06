@@ -51,41 +51,34 @@ pub fn retain_basic_blocks(mir: &mut Mir, keep: &[bool]) {
     update_basic_block_ids(mir, &replacements);
 }
 
-// A simple map to perform quick lookups of the predecessors of a BasicBlock.
-// Since BasicBlocks usually only have a small number of predecessors, we use a
-// simple vector. Also, if a block has the same target more than once, for
-// example in a switch, it will appear in the target's predecessor list multiple
-// times. This allows to update the map more easily when modifying the graph.
+// A simple map to perform quick lookups of the number of predecessors of a
+// BasicBlock. If a block has the same target more than once, for
+// example in a switch, it will appear in the target's predecessor list
+// multiple times. This makes updating the map easier when modifying the graph.
 pub struct PredecessorMap {
-    map: Vec<Vec<BasicBlock>>,
+    map: Vec<usize>,
 }
 
 impl PredecessorMap {
     pub fn new(num_blocks: usize) -> PredecessorMap {
         PredecessorMap {
-            map: vec![Vec::new(); num_blocks],
+            map: vec![0; num_blocks],
         }
     }
 
-    pub fn predecessors(&self, block: BasicBlock) -> &[BasicBlock] {
-        &self.map[block.index()]
+    pub fn num_predecessors(&self, block: BasicBlock) -> usize {
+        self.map[block.index()]
     }
 
-    pub fn add_predecessor(&mut self, block: BasicBlock, predecessor: BasicBlock) {
-        self.map[block.index()].push(predecessor);
+    pub fn add_predecessor(&mut self, block: BasicBlock, _predecessor: BasicBlock) {
+        self.map[block.index()] += 1;
     }
 
-    pub fn remove_predecessor(&mut self, block: BasicBlock, predecessor: BasicBlock) {
-        let pos = self.map[block.index()].iter().position(|&p| p == predecessor).expect(
-            &format!("{:?} is not registered as a predecessor of {:?}", predecessor, block));
-
-        self.map[block.index()].swap_remove(pos);
+    pub fn remove_predecessor(&mut self, block: BasicBlock, _predecessor: BasicBlock) {
+        self.map[block.index()] -= 1;
     }
 
-    pub fn replace_predecessor(&mut self, block: BasicBlock, old: BasicBlock, new: BasicBlock) {
-        self.remove_predecessor(block, old);
-        self.add_predecessor(block, new);
-    }
+    pub fn replace_predecessor(&mut self, _block: BasicBlock, _old: BasicBlock, _new: BasicBlock) { }
 }
 
 struct PredecessorVisitor {

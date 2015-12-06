@@ -73,7 +73,7 @@ impl SimplifyCfg {
             // See if we can merge the target block into this one
             match terminator {
                 Terminator::Goto { target } if target.index() > DIVERGE_BLOCK.index() &&
-                        predecessor_map.predecessors(target).len() == 1 => {
+                        predecessor_map.num_predecessors(target) == 1 => {
                     changed = true;
                     let mut other_data = BasicBlockData {
                         statements: Vec::new(),
