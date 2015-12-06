@@ -221,25 +221,23 @@ impl<'a> FmtVisitor<'a> {
                                sig: &ast::MethodSig,
                                span: Span)
                                -> Option<String> {
-        // Drop semicolon or it will be interpreted as comment
+        // Drop semicolon or it will be interpreted as comment.
         let span = mk_sp(span.lo, span.hi - BytePos(1));
         let context = self.get_context();
 
-        // FIXME: silly formatting of the `.0`.
-        let mut result = try_opt!(rewrite_fn_base(&context,
-                                                  indent,
-                                                  ident,
-                                                  &sig.decl,
-                                                  Some(&sig.explicit_self),
-                                                  &sig.generics,
-                                                  sig.unsafety,
-                                                  sig.constness,
-                                                  sig.abi,
-                                                  ast::Visibility::Inherited,
-                                                  span,
-                                                  false,
-                                                  false))
-                             .0;
+        let (mut result, _) = try_opt!(rewrite_fn_base(&context,
+                                                       indent,
+                                                       ident,
+                                                       &sig.decl,
+                                                       Some(&sig.explicit_self),
+                                                       &sig.generics,
+                                                       sig.unsafety,
+                                                       sig.constness,
+                                                       sig.abi,
+                                                       ast::Visibility::Inherited,
+                                                       span,
+                                                       false,
+                                                       false));
 
         // Re-attach semicolon
         result.push(';');
@@ -1080,7 +1078,7 @@ fn rewrite_fn_base(context: &RewriteContext,
            arg_indent);
 
     // Check if vertical layout was forced by compute_budget_for_args.
-    if one_line_budget <= 0 {
+    if one_line_budget == 0 {
         if context.config.fn_args_paren_newline {
             result.push('\n');
             result.push_str(&arg_indent.to_string(context.config));
@@ -1338,28 +1336,21 @@ fn compute_budgets_for_args(context: &RewriteContext,
                             ret_str_len: usize,
                             newline_brace: bool)
                             -> (usize, usize, Indent) {
-    // Try keeping everything on the same line
+    // Try keeping everything on the same line.
     if !result.contains("\n") {
-        // 3 = `() `, space is before ret_string
+        // 3 = `() `, space is before ret_string.
         let mut used_space = indent.width() + result.len() + ret_str_len + 3;
         if !newline_brace {
             used_space += 2;
         }
-        let one_line_budget = if used_space > context.config.max_width {
-            0
-        } else {
-            context.config.max_width - used_space
-        };
+        let one_line_budget = context.config.max_width.checked_sub(used_space).unwrap_or(0);
 
-        // 2 = `()`
-        let used_space = indent.width() + result.len() + 2;
-        let max_space = context.config.max_width;
-        debug!("compute_budgets_for_args: used_space: {}, max_space: {}",
-               used_space,
-               max_space);
-        if used_space < max_space {
+        if one_line_budget > 0 {
+            let multi_line_budget = context.config.max_width -
+                                    (indent.width() + result.len() + "()".len());
+
             return (one_line_budget,
-                    max_space - used_space,
+                    multi_line_budget,
                     indent + result.len() + 1);
         }
     }
