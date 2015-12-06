@@ -58,7 +58,7 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
             
             let argument_option = match arguments[1].node {
                 ExprLit(ref span) => {
-                    if let Spanned {node: LitBool(lit), span: _} = **span {
+                    if let Spanned {node: LitBool(lit), ..} = **span {
                         if lit {Argument::True} else {Argument::False}
                     } else {
                         return; // The function is called with a literal

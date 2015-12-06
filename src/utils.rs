@@ -167,8 +167,8 @@ pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
     let parent_id = cx.tcx.map.get_parent(expr.id);
     match cx.tcx.map.find(parent_id) {
         Some(NodeItem(&Item{ ref name, .. })) |
-        Some(NodeTraitItem(&TraitItem{ id: _, ref name, .. })) |
-        Some(NodeImplItem(&ImplItem{ id: _, ref name, .. })) => {
+        Some(NodeTraitItem(&TraitItem{ ref name, .. })) |
+        Some(NodeImplItem(&ImplItem{ ref name, .. })) => {
             Some(*name)
         }
         _ => None,
