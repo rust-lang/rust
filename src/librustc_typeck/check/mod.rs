@@ -704,9 +704,9 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       hir::ItemStruct(..) => {
         check_struct(ccx, it.id, it.span);
       }
-      hir::ItemTy(ref t, ref generics) => {
+      hir::ItemTy(_, ref generics) => {
         let pty_ty = ccx.tcx.node_id_to_type(it.id);
-        check_bounds_are_used(ccx, t.span, &generics.ty_params, pty_ty);
+        check_bounds_are_used(ccx, &generics.ty_params, pty_ty);
       }
       hir::ItemForeignMod(ref m) => {
         if m.abi == abi::RustIntrinsic {
@@ -4904,7 +4904,6 @@ pub fn may_break(cx: &ty::ctxt, id: ast::NodeId, b: &hir::Block) -> bool {
 }
 
 pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                       span: Span,
                                        tps: &OwnedSlice<hir::TyParam>,
                                        ty: Ty<'tcx>) {
     debug!("check_bounds_are_used(n_tps={}, ty={:?})",
@@ -4923,7 +4922,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     for (i, b) in tps_used.iter().enumerate() {
         if !*b {
-            span_err!(ccx.tcx.sess, span, E0091,
+            span_err!(ccx.tcx.sess, tps[i].span, E0091,
                 "type parameter `{}` is unused",
                 tps[i].name);
         }
