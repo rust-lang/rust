@@ -925,7 +925,7 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
                                  prog.status));
                 sess.note(&format!("{:?}", &cmd));
                 let mut note = prog.stderr.clone();
-                note.push_all(&prog.stdout);
+                note.extend_from_slice(&prog.stdout);
                 sess.note(str::from_utf8(&note[..]).unwrap());
                 sess.abort_if_errors();
             }

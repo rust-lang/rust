@@ -217,6 +217,7 @@
 #![cfg_attr(stage0, allow(improper_ctypes))]
 
 #![cfg_attr(stage0, feature(rustc_attrs))]
+#![cfg_attr(stage0, feature(no_std))]
 #![cfg_attr(stage0, allow(unused_attributes))]
 #![feature(alloc)]
 #![feature(allow_internal_unstable)]
@@ -230,12 +231,10 @@
 #![feature(collections)]
 #![feature(collections_bound)]
 #![feature(const_fn)]
-#![feature(core)]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
 #![feature(core_simd)]
 #![feature(decode_utf16)]
-#![feature(drain)]
 #![feature(drop_in_place)]
 #![feature(dropck_parametricity)]
 #![feature(float_extras)]
@@ -249,7 +248,6 @@
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(macro_reexport)]
-#![feature(no_std)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
 #![feature(placement_in_syntax)]
@@ -288,7 +286,7 @@
 // imported by the compiler (via our #[no_std] attribute) In this case we just
 // add a new crate name so we can attach the reexports to it.
 #[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
-                 unreachable, unimplemented, write, writeln)]
+                 unreachable, unimplemented, write, writeln, try)]
 extern crate core as __core;
 
 #[macro_use]

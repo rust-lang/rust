@@ -30,7 +30,6 @@
 #![feature(const_fn)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
-#![feature(iter_cmp)]
 #![feature(iter_arith)]
 #![feature(libc)]
 #![feature(path_relative_from)]
@@ -40,7 +39,6 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(unicode)]
-#![feature(vec_push_all)]
 
 #![allow(trivial_casts)]
 

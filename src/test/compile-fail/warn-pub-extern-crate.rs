@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that `pub extern crate` gives a warning.
-
+#![feature(rustc_attrs)]
 
 pub extern crate core; //~WARN `pub extern crate` does not work
-//~^ ERROR core
 
-fn main() {
-}
+#[rustc_error]
+fn main() {} //~ ERROR: compilation successful

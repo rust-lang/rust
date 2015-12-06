@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(no_std, lang_items, core)]
+#![feature(lang_items)]
 #![no_std]
 
 pub mod str {

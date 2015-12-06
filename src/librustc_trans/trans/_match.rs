@@ -559,7 +559,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     enter_match(bcx, dm, m, col, val, |pats| {
         if pat_is_binding_or_wild(&dm.borrow(), &*pats[col]) {
             let mut r = pats[..col].to_vec();
-            r.push_all(&pats[col + 1..]);
+            r.extend_from_slice(&pats[col + 1..]);
             Some(r)
         } else {
             None
@@ -877,7 +877,7 @@ fn pick_column_to_specialize(def_map: &RefCell<DefMap>, m: &[Match]) -> Option<u
     (0..m[0].pats.len())
         .filter(column_contains_any_nonwild_patterns)
         .map(|col| (col, column_score(m, col)))
-        .max_by(|&(_, score)| score)
+        .max_by_key(|&(_, score)| score)
         .map(|(col, _)| col)
 }
 
@@ -1167,7 +1167,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let dm = &tcx.def_map;
 
     let mut vals_left = vals[0..col].to_vec();
-    vals_left.push_all(&vals[col + 1..]);
+    vals_left.extend_from_slice(&vals[col + 1..]);
     let ccx = bcx.fcx.ccx;
 
     // Find a real id (we're adding placeholder wildcard patterns, but
@@ -1241,7 +1241,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let mut vals: Vec<_> = field_vals.into_iter()
                 .map(|v|MatchInput::from_val(v))
                 .collect();
-            vals.push_all(&vals_left);
+            vals.extend_from_slice(&vals_left);
             compile_submatch(bcx, &pats, &vals, chk, has_genuine_default);
             return;
         }
@@ -1401,7 +1401,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         let mut opt_vals: Vec<_> = unpacked.into_iter()
             .map(|v|MatchInput::from_val(v))
             .collect();
-        opt_vals.push_all(&vals_left[..]);
+        opt_vals.extend_from_slice(&vals_left[..]);
         compile_submatch(opt_cx,
                          &opt_ms[..],
                          &opt_vals[..],

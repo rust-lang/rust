@@ -12,7 +12,6 @@
 
 #![crate_type = "lib"]
 #![feature(lang_items)]
-#![feature(no_std)]
 #![no_std]
 
 // OK

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(unboxed_closures)]
-#![feature(core)]
+#![feature(fn_traits)]
 
 struct Fun<F>(F);
 

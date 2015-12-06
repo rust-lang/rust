@@ -980,8 +980,8 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
     };
     head.map(|mut head| {
-        head.push_all(&r[..col]);
-        head.push_all(&r[col + 1..]);
+        head.extend_from_slice(&r[..col]);
+        head.extend_from_slice(&r[col + 1..]);
         head
     })
 }

@@ -15,7 +15,7 @@
 #![feature(collections)]
 #![feature(collections_bound)]
 #![feature(const_fn)]
-#![feature(core)]
+#![feature(fn_traits)]
 #![feature(deque_extras)]
 #![feature(drain)]
 #![feature(enumset)]

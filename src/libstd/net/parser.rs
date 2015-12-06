@@ -17,6 +17,7 @@ use prelude::v1::*;
 
 use error::Error;
 use fmt;
+#[allow(deprecated)]
 use net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use str::FromStr;
 
@@ -261,6 +262,7 @@ impl<'a> Parser<'a> {
         self.read_atomically(|p| p.read_ipv6_addr_impl())
     }
 
+    #[allow(deprecated)]
     fn read_ip_addr(&mut self) -> Option<IpAddr> {
         let ipv4_addr = |p: &mut Parser| p.read_ipv4_addr().map(IpAddr::V4);
         let ipv6_addr = |p: &mut Parser| p.read_ipv6_addr().map(IpAddr::V6);
@@ -306,6 +308,7 @@ impl<'a> Parser<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl FromStr for IpAddr {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<IpAddr, AddrParseError> {

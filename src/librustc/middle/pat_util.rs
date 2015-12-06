@@ -178,7 +178,7 @@ pub fn pat_contains_ref_binding(dm: &RefCell<DefMap>, pat: &hir::Pat) -> Option<
 pub fn arm_contains_ref_binding(dm: &RefCell<DefMap>, arm: &hir::Arm) -> Option<hir::Mutability> {
     arm.pats.iter()
             .filter_map(|pat| pat_contains_ref_binding(dm, pat))
-            .max_by(|m| match *m {
+            .max_by_key(|m| match *m {
                 hir::MutMutable => 1,
                 hir::MutImmutable => 0,
             })

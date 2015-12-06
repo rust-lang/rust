@@ -43,8 +43,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
-#![feature(core_slice_ext)]
-#![feature(core_str_ext)]
 #![feature(fmt_internals)]
 #![feature(fmt_radix)]
 #![feature(heap_api)]
@@ -68,9 +66,10 @@
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(decode_utf16)]
 #![feature(drop_in_place)]
+#![feature(clone_from_slice)]
 #![cfg_attr(test, feature(clone_from_slice, rand, test))]
 
-#![feature(no_std)]
+#![cfg_attr(stage0, feature(no_std))]
 #![no_std]
 
 extern crate rustc_unicode;

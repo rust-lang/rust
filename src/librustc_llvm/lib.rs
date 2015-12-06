@@ -32,7 +32,6 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(staged_api)]
-#![feature(vec_push_all)]
 #![feature(linked_from)]
 
 extern crate libc;
@@ -2309,7 +2308,7 @@ pub unsafe extern "C" fn rust_llvm_string_write_impl(sr: RustStringRef,
     let slice = slice::from_raw_parts(ptr as *const u8, size as usize);
 
     let sr = sr as RustStringRepr;
-    (*sr).borrow_mut().push_all(slice);
+    (*sr).borrow_mut().extend_from_slice(slice);
 }
 
 pub fn build_string<F>(f: F) -> Option<String> where F: FnOnce(RustStringRef){

@@ -11,7 +11,7 @@
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
-#![feature(unboxed_closures, core)]
+#![feature(unboxed_closures, fn_traits)]
 
 // Test that unboxing shim for calling rust-call ABI methods through a
 // trait box works and does not cause an ICE.

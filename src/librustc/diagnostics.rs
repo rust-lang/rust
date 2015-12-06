@@ -872,7 +872,6 @@ You can build a free-standing crate by adding `#![no_std]` to the crate
 attributes:
 
 ```
-#![feature(no_std)]
 #![no_std]
 ```
 

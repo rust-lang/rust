@@ -8,18 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
-
-#![feature(unboxed_closures, core)]
-
 pub trait Handler {
     fn handle(&self, &mut String);
 }
 
-impl<F> Handler for F
-where F: for<'a, 'b> Fn(&'a mut String) {
+impl<F> Handler for F where F: for<'a, 'b> Fn(&'a mut String) {
     fn handle(&self, st: &mut String) {
-        self.call((st,))
+        self(st)
     }
 }
 

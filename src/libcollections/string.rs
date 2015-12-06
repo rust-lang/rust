@@ -482,7 +482,7 @@ impl String {
         let mut res = String::with_capacity(total);
 
         if i > 0 {
-            unsafe { res.as_mut_vec().push_all(&v[..i]) };
+            unsafe { res.as_mut_vec().extend_from_slice(&v[..i]) };
         }
 
         // subseqidx is the index of the first byte of the subsequence we're
@@ -498,10 +498,10 @@ impl String {
             macro_rules! error { () => ({
                 unsafe {
                     if subseqidx != i_ {
-                        res.as_mut_vec().push_all(&v[subseqidx..i_]);
+                        res.as_mut_vec().extend_from_slice(&v[subseqidx..i_]);
                     }
                     subseqidx = i;
-                    res.as_mut_vec().push_all(REPLACEMENT);
+                    res.as_mut_vec().extend_from_slice(REPLACEMENT);
                 }
             })}
 
@@ -566,7 +566,7 @@ impl String {
             }
         }
         if subseqidx < total {
-            unsafe { res.as_mut_vec().push_all(&v[subseqidx..total]) };
+            unsafe { res.as_mut_vec().extend_from_slice(&v[subseqidx..total]) };
         }
         Cow::Owned(res)
     }
@@ -699,7 +699,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_str(&mut self, string: &str) {
-        self.vec.push_all(string.as_bytes())
+        self.vec.extend_from_slice(string.as_bytes())
     }
 
     /// Returns the number of bytes that this string buffer can hold without
@@ -1026,8 +1026,6 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// #![feature(drain)]
-    ///
     /// let mut s = String::from("α is alpha, β is beta");
     /// let beta_offset = s.find('β').unwrap_or(s.len());
     ///
@@ -1040,9 +1038,7 @@ impl String {
     /// s.drain(..);
     /// assert_eq!(s, "");
     /// ```
-    #[unstable(feature = "drain",
-               reason = "recently added, matches RFC",
-               issue = "27711")]
+    #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain<R>(&mut self, range: R) -> Drain
         where R: RangeArgument<usize>
     {
@@ -1600,7 +1596,7 @@ impl fmt::Write for String {
 }
 
 /// A draining iterator for `String`.
-#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
+#[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a> {
     /// Will be used as &'a mut String in the destructor
     string: *mut String,
@@ -1612,12 +1608,12 @@ pub struct Drain<'a> {
     iter: Chars<'a>,
 }
 
-#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
+#[stable(feature = "drain", since = "1.6.0")]
 unsafe impl<'a> Sync for Drain<'a> {}
-#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
+#[stable(feature = "drain", since = "1.6.0")]
 unsafe impl<'a> Send for Drain<'a> {}
 
-#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a> Drop for Drain<'a> {
     fn drop(&mut self) {
         unsafe {
@@ -1631,7 +1627,7 @@ impl<'a> Drop for Drain<'a> {
     }
 }
 
-#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a> Iterator for Drain<'a> {
     type Item = char;
 
@@ -1645,7 +1641,7 @@ impl<'a> Iterator for Drain<'a> {
     }
 }
 
-#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a> DoubleEndedIterator for Drain<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {

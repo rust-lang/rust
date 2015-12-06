@@ -10,7 +10,7 @@
 
 // See rsbegin.rs for details.
 
-#![feature(no_std)]
+#![cfg_attr(stage0, feature(no_std))]
 
 #![crate_type="rlib"]
 #![no_std]

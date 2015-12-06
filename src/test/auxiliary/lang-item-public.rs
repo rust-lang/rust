@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(no_std, core, libc)]
+#![feature(libc)]
 #![no_std]
 #![feature(lang_items)]
 

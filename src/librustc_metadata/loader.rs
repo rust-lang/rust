@@ -237,7 +237,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::ptr;
 use std::slice;
-use std::time::Duration;
+use std::time::Instant;
 
 use flate;
 
@@ -728,12 +728,11 @@ impl ArchiveMetadata {
 // Just a small wrapper to time how long reading metadata takes.
 fn get_metadata_section(target: &Target, filename: &Path)
                         -> Result<MetadataBlob, String> {
-    let mut ret = None;
-    let dur = Duration::span(|| {
-        ret = Some(get_metadata_section_imp(target, filename));
-    });
-    info!("reading {:?} => {:?}", filename.file_name().unwrap(), dur);
-    ret.unwrap()
+    let start = Instant::now();
+    let ret = get_metadata_section_imp(target, filename);
+    info!("reading {:?} => {:?}", filename.file_name().unwrap(),
+          start.elapsed());
+    return ret
 }
 
 fn get_metadata_section_imp(target: &Target, filename: &Path)

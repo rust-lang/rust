@@ -777,6 +777,8 @@ impl<'a> Components<'a> {
 
     /// Examine the next component without consuming it.
     #[unstable(feature = "path_components_peek", issue = "27727")]
+    #[rustc_deprecated(reason = "use peekable() instead",
+                       since = "1.6.0")]
     pub fn peek(&self) -> Option<Component<'a>> {
         self.clone().next()
     }

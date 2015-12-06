@@ -23,7 +23,10 @@ use sys_common::{AsInner, FromInner};
 
 /// An IP address, either an IPv4 or IPv6 address.
 #[unstable(feature = "ip_addr", reason = "recent addition", issue = "27801")]
+#[rustc_deprecated(reason = "too small a type to pull its weight",
+                   since = "1.6.0")]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash, PartialOrd, Ord)]
+#[allow(deprecated)]
 pub enum IpAddr {
     /// Representation of an IPv4 address.
     V4(Ipv4Addr),
@@ -178,6 +181,7 @@ impl Ipv4Addr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl fmt::Display for IpAddr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {

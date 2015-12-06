@@ -43,7 +43,7 @@ pub struct Command {
 impl Command {
     pub fn new(program: &OsStr) -> Command {
         Command {
-            program: program.to_cstring().unwrap(),
+            program: os2c(program),
             args: Vec::new(),
             env: None,
             cwd: None,
@@ -54,10 +54,10 @@ impl Command {
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
-        self.args.push(arg.to_cstring().unwrap())
+        self.args.push(os2c(arg));
     }
     pub fn args<'a, I: Iterator<Item = &'a OsStr>>(&mut self, args: I) {
-        self.args.extend(args.map(|s| s.to_cstring().unwrap()))
+        self.args.extend(args.map(os2c));
     }
     fn init_env_map(&mut self) {
         if self.env.is_none() {
@@ -76,8 +76,12 @@ impl Command {
         self.env = Some(HashMap::new())
     }
     pub fn cwd(&mut self, dir: &OsStr) {
-        self.cwd = Some(dir.to_cstring().unwrap())
+        self.cwd = Some(os2c(dir));
     }
+}
+
+fn os2c(s: &OsStr) -> CString {
+    CString::new(s.as_bytes()).unwrap()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -430,9 +434,9 @@ fn make_envp(env: Option<&HashMap<OsString, OsString>>)
 
         for pair in env {
             let mut kv = Vec::new();
-            kv.push_all(pair.0.as_bytes());
+            kv.extend_from_slice(pair.0.as_bytes());
             kv.push('=' as u8);
-            kv.push_all(pair.1.as_bytes());
+            kv.extend_from_slice(pair.1.as_bytes());
             kv.push(0); // terminating null
             tmps.push(kv);
         }

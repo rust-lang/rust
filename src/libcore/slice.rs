@@ -61,72 +61,98 @@ use raw::Slice as RawSlice;
 //
 
 /// Extension methods for slices.
-#[allow(missing_docs)] // docs in libcollections
-#[doc(hidden)]
 #[unstable(feature = "core_slice_ext",
            reason = "stable interface provided by `impl [T]` in later crates",
            issue = "27701")]
+#[allow(missing_docs)] // documented elsewhere
 pub trait SliceExt {
     type Item;
 
+    #[stable(feature = "core", since = "1.6.0")]
     fn split_at(&self, mid: usize) -> (&[Self::Item], &[Self::Item]);
+    #[stable(feature = "core", since = "1.6.0")]
     fn iter(&self) -> Iter<Self::Item>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn split<P>(&self, pred: P) -> Split<Self::Item, P>
                     where P: FnMut(&Self::Item) -> bool;
+    #[stable(feature = "core", since = "1.6.0")]
     fn splitn<P>(&self, n: usize, pred: P) -> SplitN<Self::Item, P>
                      where P: FnMut(&Self::Item) -> bool;
+    #[stable(feature = "core", since = "1.6.0")]
     fn rsplitn<P>(&self,  n: usize, pred: P) -> RSplitN<Self::Item, P>
                       where P: FnMut(&Self::Item) -> bool;
+    #[stable(feature = "core", since = "1.6.0")]
     fn windows(&self, size: usize) -> Windows<Self::Item>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn chunks(&self, size: usize) -> Chunks<Self::Item>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn get(&self, index: usize) -> Option<&Self::Item>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn first(&self) -> Option<&Self::Item>;
-    fn tail(&self) -> &[Self::Item];
-    fn init(&self) -> &[Self::Item];
+    #[stable(feature = "core", since = "1.6.0")]
     fn split_first(&self) -> Option<(&Self::Item, &[Self::Item])>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn split_last(&self) -> Option<(&Self::Item, &[Self::Item])>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn last(&self) -> Option<&Self::Item>;
+    #[stable(feature = "core", since = "1.6.0")]
     unsafe fn get_unchecked(&self, index: usize) -> &Self::Item;
+    #[stable(feature = "core", since = "1.6.0")]
     fn as_ptr(&self) -> *const Self::Item;
-    fn binary_search_by<F>(&self, f: F) -> Result<usize, usize> where
-        F: FnMut(&Self::Item) -> Ordering;
+    #[stable(feature = "core", since = "1.6.0")]
+    fn binary_search(&self, x: &Self::Item) -> Result<usize, usize>
+        where Self::Item: Ord;
+    #[stable(feature = "core", since = "1.6.0")]
+    fn binary_search_by<F>(&self, f: F) -> Result<usize, usize>
+        where F: FnMut(&Self::Item) -> Ordering;
+    #[stable(feature = "core", since = "1.6.0")]
     fn len(&self) -> usize;
+    #[stable(feature = "core", since = "1.6.0")]
     fn is_empty(&self) -> bool { self.len() == 0 }
+    #[stable(feature = "core", since = "1.6.0")]
     fn get_mut(&mut self, index: usize) -> Option<&mut Self::Item>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn iter_mut(&mut self) -> IterMut<Self::Item>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn first_mut(&mut self) -> Option<&mut Self::Item>;
-    fn tail_mut(&mut self) -> &mut [Self::Item];
-    fn init_mut(&mut self) -> &mut [Self::Item];
+    #[stable(feature = "core", since = "1.6.0")]
     fn split_first_mut(&mut self) -> Option<(&mut Self::Item, &mut [Self::Item])>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn split_last_mut(&mut self) -> Option<(&mut Self::Item, &mut [Self::Item])>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn last_mut(&mut self) -> Option<&mut Self::Item>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn split_mut<P>(&mut self, pred: P) -> SplitMut<Self::Item, P>
                         where P: FnMut(&Self::Item) -> bool;
+    #[stable(feature = "core", since = "1.6.0")]
     fn splitn_mut<P>(&mut self, n: usize, pred: P) -> SplitNMut<Self::Item, P>
                      where P: FnMut(&Self::Item) -> bool;
+    #[stable(feature = "core", since = "1.6.0")]
     fn rsplitn_mut<P>(&mut self,  n: usize, pred: P) -> RSplitNMut<Self::Item, P>
                       where P: FnMut(&Self::Item) -> bool;
+    #[stable(feature = "core", since = "1.6.0")]
     fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<Self::Item>;
+    #[stable(feature = "core", since = "1.6.0")]
     fn swap(&mut self, a: usize, b: usize);
+    #[stable(feature = "core", since = "1.6.0")]
     fn split_at_mut(&mut self, mid: usize) -> (&mut [Self::Item], &mut [Self::Item]);
+    #[stable(feature = "core", since = "1.6.0")]
     fn reverse(&mut self);
+    #[stable(feature = "core", since = "1.6.0")]
     unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut Self::Item;
+    #[stable(feature = "core", since = "1.6.0")]
     fn as_mut_ptr(&mut self) -> *mut Self::Item;
 
-    fn position_elem(&self, t: &Self::Item) -> Option<usize> where Self::Item: PartialEq;
-
-    fn rposition_elem(&self, t: &Self::Item) -> Option<usize> where Self::Item: PartialEq;
-
+    #[stable(feature = "core", since = "1.6.0")]
     fn contains(&self, x: &Self::Item) -> bool where Self::Item: PartialEq;
 
+    #[stable(feature = "core", since = "1.6.0")]
     fn starts_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
+    #[stable(feature = "core", since = "1.6.0")]
     fn ends_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
-    fn binary_search(&self, x: &Self::Item) -> Result<usize, usize> where Self::Item: Ord;
-    fn next_permutation(&mut self) -> bool where Self::Item: Ord;
-    fn prev_permutation(&mut self) -> bool where Self::Item: Ord;
-
+    #[unstable(feature = "clone_from_slice", issue= "27750")]
     fn clone_from_slice(&mut self, &[Self::Item]) -> usize where Self::Item: Clone;
 }
 
@@ -242,15 +268,9 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn tail(&self) -> &[T] { &self[1..] }
-
-    #[inline]
     fn split_first(&self) -> Option<(&T, &[T])> {
         if self.is_empty() { None } else { Some((&self[0], &self[1..])) }
     }
-
-    #[inline]
-    fn init(&self) -> &[T] { &self[..self.len() - 1] }
 
     #[inline]
     fn split_last(&self) -> Option<(&T, &[T])> {
@@ -347,20 +367,11 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn tail_mut(&mut self) -> &mut [T] { &mut self[1 ..] }
-
-    #[inline]
     fn split_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
         if self.is_empty() { None } else {
             let split = self.split_at_mut(1);
             Some((&mut split.0[0], split.1))
         }
-    }
-
-    #[inline]
-    fn init_mut(&mut self) -> &mut [T] {
-        let len = self.len();
-        &mut self[.. (len - 1)]
     }
 
     #[inline]
@@ -445,16 +456,6 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn position_elem(&self, x: &T) -> Option<usize> where T: PartialEq {
-        self.iter().position(|y| *x == *y)
-    }
-
-    #[inline]
-    fn rposition_elem(&self, t: &T) -> Option<usize> where T: PartialEq {
-        self.iter().rposition(|x| *x == *t)
-    }
-
-    #[inline]
     fn contains(&self, x: &T) -> bool where T: PartialEq {
         self.iter().any(|elt| *x == *elt)
     }
@@ -473,66 +474,6 @@ impl<T> SliceExt for [T] {
 
     fn binary_search(&self, x: &T) -> Result<usize, usize> where T: Ord {
         self.binary_search_by(|p| p.cmp(x))
-    }
-
-    fn next_permutation(&mut self) -> bool where T: Ord {
-        // These cases only have 1 permutation each, so we can't do anything.
-        if self.len() < 2 { return false; }
-
-        // Step 1: Identify the longest, rightmost weakly decreasing part of the vector
-        let mut i = self.len() - 1;
-        while i > 0 && self[i-1] >= self[i] {
-            i -= 1;
-        }
-
-        // If that is the entire vector, this is the last-ordered permutation.
-        if i == 0 {
-            return false;
-        }
-
-        // Step 2: Find the rightmost element larger than the pivot (i-1)
-        let mut j = self.len() - 1;
-        while j >= i && self[j] <= self[i-1]  {
-            j -= 1;
-        }
-
-        // Step 3: Swap that element with the pivot
-        self.swap(j, i-1);
-
-        // Step 4: Reverse the (previously) weakly decreasing part
-        self[i..].reverse();
-
-        true
-    }
-
-    fn prev_permutation(&mut self) -> bool where T: Ord {
-        // These cases only have 1 permutation each, so we can't do anything.
-        if self.len() < 2 { return false; }
-
-        // Step 1: Identify the longest, rightmost weakly increasing part of the vector
-        let mut i = self.len() - 1;
-        while i > 0 && self[i-1] <= self[i] {
-            i -= 1;
-        }
-
-        // If that is the entire vector, this is the first-ordered permutation.
-        if i == 0 {
-            return false;
-        }
-
-        // Step 2: Reverse the weakly increasing part
-        self[i..].reverse();
-
-        // Step 3: Find the rightmost element equal to or bigger than the pivot (i-1)
-        let mut j = self.len() - 1;
-        while j >= i && self[j-1] < self[i-1]  {
-            j -= 1;
-        }
-
-        // Step 4: Swap that element with the pivot
-        self.swap(i-1, j);
-
-        true
     }
 
     #[inline]
@@ -1514,6 +1455,9 @@ pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
 /// Operations on `[u8]`.
 #[unstable(feature = "slice_bytes", reason = "needs review",
            issue = "27740")]
+#[rustc_deprecated(reason = "unidiomatic functions not pulling their weight",
+                   since = "1.6.0")]
+#[allow(deprecated)]
 pub mod bytes {
     use ptr;
     use slice::SliceExt;

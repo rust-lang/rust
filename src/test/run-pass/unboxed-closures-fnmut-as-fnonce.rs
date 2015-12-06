@@ -12,9 +12,7 @@
 // FnMut or FnOnce to be used where FnMut is implemented.
 
 
-#![feature(unboxed_closures, core)]
-
-use std::ops::{FnMut,FnOnce};
+#![feature(unboxed_closures, fn_traits)]
 
 struct S;
 

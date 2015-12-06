@@ -451,7 +451,7 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // supertype, as the "discriminant type" (issue #23116).
     let contains_ref_bindings = arms.iter()
                                     .filter_map(|a| tcx.arm_contains_ref_binding(a))
-                                    .max_by(|m| match *m {
+                                    .max_by_key(|m| match *m {
                                         hir::MutMutable => 1,
                                         hir::MutImmutable => 0,
                                     });

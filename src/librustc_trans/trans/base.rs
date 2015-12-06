@@ -2772,7 +2772,7 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &hir::Crate, reachable: &N
         cx.tcx(), cx.export_map(), cx.item_symbols(), cx.link_meta(), reachable,
         krate);
     let mut compressed = cstore.metadata_encoding_version().to_vec();
-    compressed.push_all(&flate::deflate_bytes(&metadata));
+    compressed.extend_from_slice(&flate::deflate_bytes(&metadata));
 
     let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed[..]);
     let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);

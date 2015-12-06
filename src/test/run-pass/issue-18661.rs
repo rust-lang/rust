@@ -13,10 +13,8 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unboxed_closures, core)]
-
 pub fn inside<F: Fn()>(c: F) {
-    c.call(());
+    c();
 }
 
 // Use different number of type parameters and closure type to trigger

@@ -254,7 +254,7 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return an error instead.
-    #[unstable(feature = "mutex_into_inner", reason = "recently added", issue = "28968")]
+    #[stable(feature = "mutex_into_inner", since = "1.6.0")]
     pub fn into_inner(self) -> LockResult<T> where T: Sized {
         // We know statically that there are no outstanding references to
         // `self` so there's no need to lock the inner StaticMutex.
@@ -284,7 +284,7 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return an error instead.
-    #[unstable(feature = "mutex_get_mut", reason = "recently added", issue = "28968")]
+    #[stable(feature = "mutex_get_mut", since = "1.6.0")]
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         // We know statically that there are no other references to `self`, so
         // there's no need to lock the inner StaticMutex.

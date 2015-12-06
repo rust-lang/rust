@@ -18,7 +18,6 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (8, 0, 0);
 
 fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
     use core::cmp::Ordering::{Equal, Less, Greater};
-    use core::slice::SliceExt;
     r.binary_search_by(|&(lo,hi)| {
         if lo <= c && c <= hi { Equal }
         else if hi < c { Less }
@@ -1190,7 +1189,6 @@ pub mod property {
 
 pub mod conversions {
     use core::cmp::Ordering::{Equal, Less, Greater};
-    use core::slice::SliceExt;
     use core::option::Option;
     use core::option::Option::{Some, None};
     use core::result::Result::{Ok, Err};

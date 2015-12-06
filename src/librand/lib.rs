@@ -32,13 +32,12 @@
             issue = "27703")]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
-#![feature(core_slice_ext)]
-#![feature(no_std)]
 #![feature(num_bits_bytes)]
 #![feature(staged_api)]
 #![feature(step_by)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
+#![cfg_attr(stage0, feature(no_std))]
 
 #![cfg_attr(test, feature(test, rand, rustc_private, iter_order_deprecated))]
 

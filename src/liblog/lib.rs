@@ -174,7 +174,6 @@
 
 #![feature(box_syntax)]
 #![feature(const_fn)]
-#![feature(iter_cmp)]
 #![feature(staged_api)]
 #![feature(static_mutex)]
 
@@ -418,7 +417,7 @@ fn init() {
     });
 
     let max_level = {
-        let max = directives.iter().max_by(|d| d.level);
+        let max = directives.iter().max_by_key(|d| d.level);
         max.map(|d| d.level).unwrap_or(DEFAULT_LOG_LEVEL)
     };
 
