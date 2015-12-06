@@ -191,6 +191,7 @@ impl<'a> FmtVisitor<'a> {
             }
             _ => {
                 if self.visit_attrs(&item.attrs) {
+                    self.push_rewrite(item.span, None);
                     return;
                 }
             }
@@ -377,11 +378,9 @@ impl<'a> FmtVisitor<'a> {
 
     fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
         self.format_missing_with_indent(span.lo);
-
-        if let Some(res) = rewrite {
-            self.buffer.push_str(&res);
-            self.last_pos = span.hi;
-        }
+        let result = rewrite.unwrap_or_else(|| self.snippet(span));
+        self.buffer.push_str(&result);
+        self.last_pos = span.hi;
     }
 
     pub fn from_codemap(parse_session: &'a ParseSess,

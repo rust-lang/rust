@@ -85,3 +85,9 @@ fn inner() {
     #![inline]
     x
 }
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+fn foo(a: i32) -> i32 {
+    // comment
+    if a > 0 { 1 } else { 2 }
+}
