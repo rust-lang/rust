@@ -52,12 +52,11 @@ with the accepted values are:
 * Packing values must be a power of two.
 
 By specifying this attribute, the alignment of the struct would be the smaller
-of the specified packing and the default alignment of the struct otherwise. The
-alignments of each struct field for the purpose of positioning fields would also
-be the smaller of the specified packing and the alignment of the type of that
-field. If the specified packing is greater than or equal to the default
-alignment of the struct, then the alignment and layout of the struct should be
-unaffected.
+of the specified packing and the default alignment of the struct. The alignments
+of each struct field for the purpose of positioning fields would also be the
+smaller of the specified packing and the alignment of the type of that field. If
+the specified packing is greater than or equal to the default alignment of the
+struct, then the alignment and layout of the struct should be unaffected.
 
 When combined with `#[repr(C)]` the size alignment and layout of the struct
 should match the equivalent struct in C.
