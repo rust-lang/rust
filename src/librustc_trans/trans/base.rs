@@ -2378,7 +2378,7 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
             }
         }
         hir::ItemImpl(_, _, ref generics, _, _, ref impl_items) => {
-            meth::trans_impl(ccx, item.name, &impl_items[..], generics, item.id);
+            meth::trans_impl(ccx, item.name, impl_items, generics, item.id);
         }
         hir::ItemMod(_) => {
             // modules have no equivalent at runtime, they just affect

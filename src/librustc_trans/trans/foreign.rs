@@ -481,7 +481,7 @@ fn gate_simd_ffi(tcx: &ty::ctxt, decl: &hir::FnDecl, ty: &ty::BareFnTy) {
 pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &hir::ForeignMod) {
     let _icx = push_ctxt("foreign::trans_foreign_mod");
     for foreign_item in &foreign_mod.items {
-        let lname = link_name(&**foreign_item);
+        let lname = link_name(foreign_item);
 
         if let hir::ForeignItemFn(ref decl, _) = foreign_item.node {
             match foreign_mod.abi {

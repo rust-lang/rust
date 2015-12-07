@@ -720,7 +720,7 @@ fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &hir::Block) {
                     parent: stmt_extent,
                 };
             }
-            visitor.visit_stmt(&**statement)
+            visitor.visit_stmt(statement)
         }
         walk_list!(visitor, visit_expr, &blk.expr);
     }

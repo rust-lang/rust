@@ -1156,7 +1156,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         let num_implemented_methods = ast_items.len();
         for (i, &trait_item_def_id) in items.iter().enumerate() {
             let ast_item = if i < num_implemented_methods {
-                Some(&*ast_items[i])
+                Some(&ast_items[i])
             } else {
                 None
             };
@@ -1321,7 +1321,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                 }
             }
 
-            let trait_item = &*ms[i];
+            let trait_item = &ms[i];
             encode_attributes(rbml_w, &trait_item.attrs);
             match trait_item.node {
                 hir::ConstTraitItem(_, ref default) => {

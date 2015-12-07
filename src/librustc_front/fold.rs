@@ -47,7 +47,7 @@ pub trait Folder : Sized {
         noop_fold_view_path(view_path, self)
     }
 
-    fn fold_foreign_item(&mut self, ni: P<ForeignItem>) -> P<ForeignItem> {
+    fn fold_foreign_item(&mut self, ni: ForeignItem) -> ForeignItem {
         noop_fold_foreign_item(ni, self)
     }
 
@@ -67,11 +67,11 @@ pub trait Folder : Sized {
         noop_fold_item_underscore(i, self)
     }
 
-    fn fold_trait_item(&mut self, i: P<TraitItem>) -> P<TraitItem> {
+    fn fold_trait_item(&mut self, i: TraitItem) -> TraitItem {
         noop_fold_trait_item(i, self)
     }
 
-    fn fold_impl_item(&mut self, i: P<ImplItem>) -> P<ImplItem> {
+    fn fold_impl_item(&mut self, i: ImplItem) -> ImplItem {
         noop_fold_impl_item(i, self)
     }
 
@@ -83,7 +83,7 @@ pub trait Folder : Sized {
         noop_fold_block(b, self)
     }
 
-    fn fold_stmt(&mut self, s: P<Stmt>) -> P<Stmt> {
+    fn fold_stmt(&mut self, s: Stmt) -> Stmt {
         noop_fold_stmt(s, self)
     }
 
@@ -107,7 +107,7 @@ pub trait Folder : Sized {
         noop_fold_ty(t, self)
     }
 
-    fn fold_ty_binding(&mut self, t: P<TypeBinding>) -> P<TypeBinding> {
+    fn fold_ty_binding(&mut self, t: TypeBinding) -> TypeBinding {
         noop_fold_ty_binding(t, self)
     }
 
@@ -119,7 +119,7 @@ pub trait Folder : Sized {
         noop_fold_foreign_mod(nm, self)
     }
 
-    fn fold_variant(&mut self, v: P<Variant>) -> P<Variant> {
+    fn fold_variant(&mut self, v: Variant) -> Variant {
         noop_fold_variant(v, self)
     }
 
@@ -333,15 +333,13 @@ pub fn noop_fold_decl<T: Folder>(d: P<Decl>, fld: &mut T) -> P<Decl> {
     })
 }
 
-pub fn noop_fold_ty_binding<T: Folder>(b: P<TypeBinding>, fld: &mut T) -> P<TypeBinding> {
-    b.map(|TypeBinding { id, name, ty, span }| {
-        TypeBinding {
-            id: fld.new_id(id),
-            name: name,
-            ty: fld.fold_ty(ty),
-            span: fld.new_span(span),
-        }
-    })
+pub fn noop_fold_ty_binding<T: Folder>(b: TypeBinding, fld: &mut T) -> TypeBinding {
+    TypeBinding {
+        id: fld.new_id(b.id),
+        name: b.name,
+        ty: fld.fold_ty(b.ty),
+        span: fld.new_span(b.span),
+    }
 }
 
 pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
@@ -402,18 +400,16 @@ pub fn noop_fold_foreign_mod<T: Folder>(ForeignMod { abi, items }: ForeignMod,
     }
 }
 
-pub fn noop_fold_variant<T: Folder>(v: P<Variant>, fld: &mut T) -> P<Variant> {
-    v.map(|Spanned { node: Variant_ { name, attrs, data, disr_expr }, span }| {
-        Spanned {
-            node: Variant_ {
-                name: name,
-                attrs: fold_attrs(attrs, fld),
-                data: fld.fold_variant_data(data),
-                disr_expr: disr_expr.map(|e| fld.fold_expr(e)),
-            },
-            span: fld.new_span(span),
-        }
-    })
+pub fn noop_fold_variant<T: Folder>(v: Variant, fld: &mut T) -> Variant {
+    Spanned {
+        node: Variant_ {
+            name: v.node.name,
+            attrs: fold_attrs(v.node.attrs, fld),
+            data: fld.fold_variant_data(v.node.data),
+            disr_expr: v.node.disr_expr.map(|e| fld.fold_expr(e)),
+        },
+        span: fld.new_span(v.span),
+    }
 }
 
 pub fn noop_fold_name<T: Folder>(n: Name, _: &mut T) -> Name {
@@ -814,51 +810,47 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
     }
 }
 
-pub fn noop_fold_trait_item<T: Folder>(i: P<TraitItem>,
+pub fn noop_fold_trait_item<T: Folder>(i: TraitItem,
                                        folder: &mut T)
-                                       -> P<TraitItem> {
-    i.map(|TraitItem { id, name, attrs, node, span }| {
-        TraitItem {
-            id: folder.new_id(id),
-            name: folder.fold_name(name),
-            attrs: fold_attrs(attrs, folder),
-            node: match node {
-                ConstTraitItem(ty, default) => {
-                    ConstTraitItem(folder.fold_ty(ty), default.map(|x| folder.fold_expr(x)))
-                }
-                MethodTraitItem(sig, body) => {
-                    MethodTraitItem(noop_fold_method_sig(sig, folder),
-                                    body.map(|x| folder.fold_block(x)))
-                }
-                TypeTraitItem(bounds, default) => {
-                    TypeTraitItem(folder.fold_bounds(bounds),
-                                  default.map(|x| folder.fold_ty(x)))
-                }
-            },
-            span: folder.new_span(span),
-        }
-    })
+                                       -> TraitItem {
+    TraitItem {
+        id: folder.new_id(i.id),
+        name: folder.fold_name(i.name),
+        attrs: fold_attrs(i.attrs, folder),
+        node: match i.node {
+            ConstTraitItem(ty, default) => {
+                ConstTraitItem(folder.fold_ty(ty), default.map(|x| folder.fold_expr(x)))
+            }
+            MethodTraitItem(sig, body) => {
+                MethodTraitItem(noop_fold_method_sig(sig, folder),
+                                body.map(|x| folder.fold_block(x)))
+            }
+            TypeTraitItem(bounds, default) => {
+                TypeTraitItem(folder.fold_bounds(bounds),
+                              default.map(|x| folder.fold_ty(x)))
+            }
+        },
+        span: folder.new_span(i.span),
+    }
 }
 
-pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T) -> P<ImplItem> {
-    i.map(|ImplItem { id, name, attrs, node, vis, span }| {
-        ImplItem {
-            id: folder.new_id(id),
-            name: folder.fold_name(name),
-            attrs: fold_attrs(attrs, folder),
-            vis: vis,
-            node: match node {
-                ImplItemKind::Const(ty, expr) => {
-                    ImplItemKind::Const(folder.fold_ty(ty), folder.fold_expr(expr))
-                }
-                ImplItemKind::Method(sig, body) => {
-                    ImplItemKind::Method(noop_fold_method_sig(sig, folder), folder.fold_block(body))
-                }
-                ImplItemKind::Type(ty) => ImplItemKind::Type(folder.fold_ty(ty)),
-            },
-            span: folder.new_span(span),
-        }
-    })
+pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T) -> ImplItem {
+    ImplItem {
+        id: folder.new_id(i.id),
+        name: folder.fold_name(i.name),
+        attrs: fold_attrs(i.attrs, folder),
+        vis: i.vis,
+        node: match i.node {
+            ImplItemKind::Const(ty, expr) => {
+                ImplItemKind::Const(folder.fold_ty(ty), folder.fold_expr(expr))
+            }
+            ImplItemKind::Method(sig, body) => {
+                ImplItemKind::Method(noop_fold_method_sig(sig, folder), folder.fold_block(body))
+            }
+            ImplItemKind::Type(ty) => ImplItemKind::Type(folder.fold_ty(ty)),
+        },
+        span: folder.new_span(i.span),
+    }
 }
 
 pub fn noop_fold_mod<T: Folder>(Mod { inner, item_ids }: Mod, folder: &mut T) -> Mod {
@@ -935,24 +927,22 @@ pub fn noop_fold_item<T: Folder>(item: Item, folder: &mut T) -> Item {
     }
 }
 
-pub fn noop_fold_foreign_item<T: Folder>(ni: P<ForeignItem>, folder: &mut T) -> P<ForeignItem> {
-    ni.map(|ForeignItem { id, name, attrs, node, span, vis }| {
-        ForeignItem {
-            id: folder.new_id(id),
-            name: folder.fold_name(name),
-            attrs: fold_attrs(attrs, folder),
-            node: match node {
-                ForeignItemFn(fdec, generics) => {
-                    ForeignItemFn(folder.fold_fn_decl(fdec), folder.fold_generics(generics))
-                }
-                ForeignItemStatic(t, m) => {
-                    ForeignItemStatic(folder.fold_ty(t), m)
-                }
-            },
-            vis: vis,
-            span: folder.new_span(span),
-        }
-    })
+pub fn noop_fold_foreign_item<T: Folder>(ni: ForeignItem, folder: &mut T) -> ForeignItem {
+    ForeignItem {
+        id: folder.new_id(ni.id),
+        name: folder.fold_name(ni.name),
+        attrs: fold_attrs(ni.attrs, folder),
+        node: match ni.node {
+            ForeignItemFn(fdec, generics) => {
+                ForeignItemFn(folder.fold_fn_decl(fdec), folder.fold_generics(generics))
+            }
+            ForeignItemStatic(t, m) => {
+                ForeignItemStatic(folder.fold_ty(t), m)
+            }
+        },
+        vis: ni.vis,
+        span: folder.new_span(ni.span),
+    }
 }
 
 pub fn noop_fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> MethodSig {
@@ -1147,32 +1137,29 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span, attrs }: Expr, folder: &
     }
 }
 
-pub fn noop_fold_stmt<T: Folder>(stmt: P<Stmt>, folder: &mut T)
-                                 -> P<Stmt> {
-    stmt.map(|Spanned { node, span }| {
-        let span = folder.new_span(span);
-        match node {
-            StmtDecl(d, id) => {
-                let id = folder.new_id(id);
-                Spanned {
-                    node: StmtDecl(folder.fold_decl(d), id),
-                    span: span
-                }
-            }
-            StmtExpr(e, id) => {
-                let id = folder.new_id(id);
-                Spanned {
-                    node: StmtExpr(folder.fold_expr(e), id),
-                    span: span,
-                }
-            }
-            StmtSemi(e, id) => {
-                let id = folder.new_id(id);
-                Spanned {
-                    node: StmtSemi(folder.fold_expr(e), id),
-                    span: span,
-                }
+pub fn noop_fold_stmt<T: Folder>(stmt: Stmt, folder: &mut T) -> Stmt {
+    let span = folder.new_span(stmt.span);
+    match stmt.node {
+        StmtDecl(d, id) => {
+            let id = folder.new_id(id);
+            Spanned {
+                node: StmtDecl(folder.fold_decl(d), id),
+                span: span
             }
         }
-    })
+        StmtExpr(e, id) => {
+            let id = folder.new_id(id);
+            Spanned {
+                node: StmtExpr(folder.fold_expr(e), id),
+                span: span,
+            }
+        }
+        StmtSemi(e, id) => {
+            let id = folder.new_id(id);
+            Spanned {
+                node: StmtSemi(folder.fold_expr(e), id),
+                span: span,
+            }
+        }
+    }
 }
