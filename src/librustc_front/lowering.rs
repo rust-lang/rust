@@ -199,13 +199,13 @@ pub fn lower_decl(lctx: &LoweringContext, d: &Decl) -> P<hir::Decl> {
     }
 }
 
-pub fn lower_ty_binding(lctx: &LoweringContext, b: &TypeBinding) -> P<hir::TypeBinding> {
-    P(hir::TypeBinding {
+pub fn lower_ty_binding(lctx: &LoweringContext, b: &TypeBinding) -> hir::TypeBinding {
+    hir::TypeBinding {
         id: b.id,
         name: b.ident.name,
         ty: lower_ty(lctx, &b.ty),
         span: b.span,
-    })
+    }
 }
 
 pub fn lower_ty(lctx: &LoweringContext, t: &Ty) -> P<hir::Ty> {
@@ -264,8 +264,8 @@ pub fn lower_foreign_mod(lctx: &LoweringContext, fm: &ForeignMod) -> hir::Foreig
     }
 }
 
-pub fn lower_variant(lctx: &LoweringContext, v: &Variant) -> P<hir::Variant> {
-    P(Spanned {
+pub fn lower_variant(lctx: &LoweringContext, v: &Variant) -> hir::Variant {
+    Spanned {
         node: hir::Variant_ {
             name: v.node.name.name,
             attrs: v.node.attrs.clone(),
@@ -273,7 +273,7 @@ pub fn lower_variant(lctx: &LoweringContext, v: &Variant) -> P<hir::Variant> {
             disr_expr: v.node.disr_expr.as_ref().map(|e| lower_expr(lctx, e)),
         },
         span: v.span,
-    })
+    }
 }
 
 pub fn lower_path(lctx: &LoweringContext, p: &Path) -> hir::Path {
@@ -650,8 +650,8 @@ pub fn lower_item_underscore(lctx: &LoweringContext, i: &Item_) -> hir::Item_ {
     }
 }
 
-pub fn lower_trait_item(lctx: &LoweringContext, i: &TraitItem) -> P<hir::TraitItem> {
-    P(hir::TraitItem {
+pub fn lower_trait_item(lctx: &LoweringContext, i: &TraitItem) -> hir::TraitItem {
+    hir::TraitItem {
         id: i.id,
         name: i.ident.name,
         attrs: i.attrs.clone(),
@@ -670,11 +670,11 @@ pub fn lower_trait_item(lctx: &LoweringContext, i: &TraitItem) -> P<hir::TraitIt
             }
         },
         span: i.span,
-    })
+    }
 }
 
-pub fn lower_impl_item(lctx: &LoweringContext, i: &ImplItem) -> P<hir::ImplItem> {
-    P(hir::ImplItem {
+pub fn lower_impl_item(lctx: &LoweringContext, i: &ImplItem) -> hir::ImplItem {
+    hir::ImplItem {
         id: i.id,
         name: i.ident.name,
         attrs: i.attrs.clone(),
@@ -690,7 +690,7 @@ pub fn lower_impl_item(lctx: &LoweringContext, i: &ImplItem) -> P<hir::ImplItem>
             ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
         },
         span: i.span,
-    })
+    }
 }
 
 pub fn lower_mod(lctx: &LoweringContext, m: &Mod) -> hir::Mod {
@@ -760,8 +760,8 @@ pub fn lower_item(lctx: &LoweringContext, i: &Item) -> hir::Item {
     }
 }
 
-pub fn lower_foreign_item(lctx: &LoweringContext, i: &ForeignItem) -> P<hir::ForeignItem> {
-    P(hir::ForeignItem {
+pub fn lower_foreign_item(lctx: &LoweringContext, i: &ForeignItem) -> hir::ForeignItem {
+    hir::ForeignItem {
         id: i.id,
         name: i.ident.name,
         attrs: i.attrs.clone(),
@@ -775,7 +775,7 @@ pub fn lower_foreign_item(lctx: &LoweringContext, i: &ForeignItem) -> P<hir::For
         },
         vis: lower_visibility(lctx, i.vis),
         span: i.span,
-    })
+    }
 }
 
 pub fn lower_method_sig(lctx: &LoweringContext, sig: &MethodSig) -> hir::MethodSig {
@@ -1054,7 +1054,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                         let place = expr_ident(lctx, e.span, place_ident, None);
                         let call = make_call(lctx, &inplace_finalize, vec![place]);
                         signal_block_expr(lctx,
-                                          vec![P(call_move_val_init)],
+                                          vec![call_move_val_init],
                                           call,
                                           e.span,
                                           hir::PushUnsafeBlock(hir::CompilerGenerated), None)
@@ -1484,25 +1484,25 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
     })
 }
 
-pub fn lower_stmt(lctx: &LoweringContext, s: &Stmt) -> P<hir::Stmt> {
+pub fn lower_stmt(lctx: &LoweringContext, s: &Stmt) -> hir::Stmt {
     match s.node {
         StmtDecl(ref d, id) => {
-            P(Spanned {
+            Spanned {
                 node: hir::StmtDecl(lower_decl(lctx, d), id),
                 span: s.span,
-            })
+            }
         }
         StmtExpr(ref e, id) => {
-            P(Spanned {
+            Spanned {
                 node: hir::StmtExpr(lower_expr(lctx, e), id),
                 span: s.span,
-            })
+            }
         }
         StmtSemi(ref e, id) => {
-            P(Spanned {
+            Spanned {
                 node: hir::StmtSemi(lower_expr(lctx, e), id),
                 span: s.span,
-            })
+            }
         }
         StmtMac(..) => panic!("Shouldn't exist here"),
     }
@@ -1644,7 +1644,7 @@ fn stmt_let(lctx: &LoweringContext,
             ident: Ident,
             ex: P<hir::Expr>,
             attrs: ThinAttributes)
-            -> P<hir::Stmt> {
+            -> hir::Stmt {
     let pat = if mutbl {
         pat_ident_binding_mode(lctx, sp, ident, hir::BindByValue(hir::MutMutable))
     } else {
@@ -1659,7 +1659,7 @@ fn stmt_let(lctx: &LoweringContext,
         attrs: attrs,
     });
     let decl = respan(sp, hir::DeclLocal(local));
-    P(respan(sp, hir::StmtDecl(P(decl), lctx.next_id())))
+    respan(sp, hir::StmtDecl(P(decl), lctx.next_id()))
 }
 
 fn block_expr(lctx: &LoweringContext, expr: P<hir::Expr>) -> P<hir::Block> {
@@ -1668,7 +1668,7 @@ fn block_expr(lctx: &LoweringContext, expr: P<hir::Expr>) -> P<hir::Block> {
 
 fn block_all(lctx: &LoweringContext,
              span: Span,
-             stmts: Vec<P<hir::Stmt>>,
+             stmts: Vec<hir::Stmt>,
              expr: Option<P<hir::Expr>>)
              -> P<hir::Block> {
     P(hir::Block {
@@ -1748,7 +1748,7 @@ fn path_all(sp: Span,
             mut idents: Vec<Ident>,
             lifetimes: Vec<hir::Lifetime>,
             types: Vec<P<hir::Ty>>,
-            bindings: Vec<P<hir::TypeBinding>>)
+            bindings: Vec<hir::TypeBinding>)
             -> hir::Path {
     let last_identifier = idents.pop().unwrap();
     let mut segments: Vec<hir::PathSegment> = idents.into_iter()
@@ -1791,7 +1791,7 @@ fn core_path(lctx: &LoweringContext, span: Span, components: &[&str]) -> hir::Pa
 }
 
 fn signal_block_expr(lctx: &LoweringContext,
-                     stmts: Vec<P<hir::Stmt>>,
+                     stmts: Vec<hir::Stmt>,
                      expr: P<hir::Expr>,
                      span: Span,
                      rule: hir::BlockCheckMode,

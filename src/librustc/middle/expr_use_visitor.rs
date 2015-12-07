@@ -637,7 +637,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         debug!("walk_block(blk.id={})", blk.id);
 
         for stmt in &blk.stmts {
-            self.walk_stmt(&**stmt);
+            self.walk_stmt(stmt);
         }
 
         if let Some(ref tail_expr) = blk.expr {

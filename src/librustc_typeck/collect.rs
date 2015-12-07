@@ -1061,7 +1061,7 @@ fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                         def: ty::AdtDefMaster<'tcx>,
                                         scheme: ty::TypeScheme<'tcx>,
                                         predicates: ty::GenericPredicates<'tcx>,
-                                        variants: &[P<hir::Variant>]) {
+                                        variants: &[hir::Variant]) {
     // fill the field types
     for (variant, ty_variant) in variants.iter().zip(def.variants.iter()) {
         for (f, ty_f) in variant.node.data.fields().iter().zip(ty_variant.fields.iter()) {
@@ -1479,7 +1479,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item)
                                                  ast_generics: &hir::Generics,
                                                  trait_predicates: &ty::GenericPredicates<'tcx>,
                                                  self_trait_ref: ty::TraitRef<'tcx>,
-                                                 trait_items: &[P<hir::TraitItem>])
+                                                 trait_items: &[hir::TraitItem])
                                                  -> Vec<ty::Predicate<'tcx>>
     {
         trait_items.iter().flat_map(|trait_item| {
@@ -2410,7 +2410,7 @@ fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
 fn enforce_impl_lifetimes_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                 ast_generics: &hir::Generics,
                                                 impl_def_id: DefId,
-                                                impl_items: &[P<hir::ImplItem>])
+                                                impl_items: &[hir::ImplItem])
 {
     // Every lifetime used in an associated type must be constrained.
     let impl_scheme = tcx.lookup_item_type(impl_def_id);

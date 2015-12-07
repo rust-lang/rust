@@ -711,11 +711,11 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       hir::ItemForeignMod(ref m) => {
         if m.abi == abi::RustIntrinsic {
             for item in &m.items {
-                intrinsic::check_intrinsic_type(ccx, &**item);
+                intrinsic::check_intrinsic_type(ccx, item);
             }
         } else if m.abi == abi::PlatformIntrinsic {
             for item in &m.items {
-                intrinsic::check_platform_intrinsic_type(ccx, &**item);
+                intrinsic::check_platform_intrinsic_type(ccx, item);
             }
         } else {
             for item in &m.items {
@@ -880,7 +880,7 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             impl_span: Span,
                                             impl_trait_ref: &ty::TraitRef<'tcx>,
-                                            impl_items: &[P<hir::ImplItem>]) {
+                                            impl_items: &[hir::ImplItem]) {
     // Locate trait methods
     let tcx = ccx.tcx;
     let trait_items = tcx.trait_items(impl_trait_ref.def_id);
@@ -4024,8 +4024,8 @@ fn check_block_with_expected<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let mut any_diverges = false;
     let mut any_err = false;
     for s in &blk.stmts {
-        check_stmt(fcx, &**s);
-        let s_id = ::rustc_front::util::stmt_id(&**s);
+        check_stmt(fcx, s);
+        let s_id = ::rustc_front::util::stmt_id(s);
         let s_ty = fcx.node_ty(s_id);
         if any_diverges && !warned && match s.node {
             hir::StmtDecl(ref decl, _) => {
@@ -4193,7 +4193,7 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
 
 pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                     sp: Span,
-                                    vs: &'tcx [P<hir::Variant>],
+                                    vs: &'tcx [hir::Variant],
                                     id: ast::NodeId) {
 
     fn disr_in_range(ccx: &CrateCtxt,
@@ -4224,7 +4224,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     }
 
     fn do_check<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                          vs: &'tcx [P<hir::Variant>],
+                          vs: &'tcx [hir::Variant],
                           id: ast::NodeId,
                           hint: attr::ReprAttr) {
         #![allow(trivial_numeric_casts)]

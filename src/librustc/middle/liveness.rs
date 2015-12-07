@@ -866,7 +866,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                                -> LiveNode {
         let succ = self.propagate_through_opt_expr(blk.expr.as_ref().map(|e| &**e), succ);
         blk.stmts.iter().rev().fold(succ, |succ, stmt| {
-            self.propagate_through_stmt(&**stmt, succ)
+            self.propagate_through_stmt(stmt, succ)
         })
     }
 

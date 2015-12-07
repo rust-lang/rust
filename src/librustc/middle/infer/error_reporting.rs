@@ -1501,7 +1501,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     self.rebuild_arg_ty_or_output(&**t, lifetime, anon_nums, region_names)
                 });
                 let new_bindings = data.bindings.map(|b| {
-                    P(hir::TypeBinding {
+                    hir::TypeBinding {
                         id: b.id,
                         name: b.name,
                         ty: self.rebuild_arg_ty_or_output(&*b.ty,
@@ -1509,7 +1509,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                                                           anon_nums,
                                                           region_names),
                         span: b.span
-                    })
+                    }
                 });
                 hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
                     lifetimes: new_lts,

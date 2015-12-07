@@ -394,13 +394,13 @@ fn simplify_ast(ii: InlinedItemRef) -> InlinedItem {
             InlinedItem::Item(P(fold::noop_fold_item(i.clone(), &mut fld)))
         }
         InlinedItemRef::TraitItem(d, ti) => {
-            InlinedItem::TraitItem(d, fold::noop_fold_trait_item(P(ti.clone()), &mut fld))
+            InlinedItem::TraitItem(d, P(fold::noop_fold_trait_item(ti.clone(), &mut fld)))
         }
         InlinedItemRef::ImplItem(d, ii) => {
-            InlinedItem::ImplItem(d, fold::noop_fold_impl_item(P(ii.clone()), &mut fld))
+            InlinedItem::ImplItem(d, P(fold::noop_fold_impl_item(ii.clone(), &mut fld)))
         }
         InlinedItemRef::Foreign(i) => {
-            InlinedItem::Foreign(fold::noop_fold_foreign_item(P(i.clone()), &mut fld))
+            InlinedItem::Foreign(P(fold::noop_fold_foreign_item(i.clone(), &mut fld)))
         }
     }
 }
