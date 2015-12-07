@@ -521,15 +521,18 @@ then
     # if configure is running in an interactive bash shell. /usr/bin/env
     # exists *everywhere*.
     BIN_TO_PROBE="$SHELL"
-    if [ -z "$BIN_TO_PROBE" -a -e "/usr/bin/env" ]; then
-       BIN_TO_PROBE="/usr/bin/env"
+    if [ ! -r "$BIN_TO_PROBE" ]; then
+        if [ -r "/usr/bin/env" ]; then
+            BIN_TO_PROBE="/usr/bin/env"
+        else
+            warn "Cannot check if the userland is i686 or x86_64"
+        fi
     fi
-    if [ -n "$BIN_TO_PROBE" ]; then
-       file -L "$BIN_TO_PROBE" | grep -q "x86[_-]64"
-       if [ $? != 0 ]; then
-            CFG_CPUTYPE=i686
-       fi
-     fi
+    file -L "$BIN_TO_PROBE" | grep -q "x86[_-]64"
+    if [ $? != 0 ]; then
+        msg "i686 userland on x86_64 Linux kernel"
+        CFG_CPUTYPE=i686
+    fi
 fi
 
 
