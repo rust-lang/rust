@@ -79,7 +79,8 @@ Windows API.
 [alternatives]: #alternatives
 
 * The alternative is not doing this and forcing people to continue using
-  `#[repr(packed)]` with manual padding.
+  `#[repr(packed)]` with manual padding, although such structs would always have
+  an alignment of 1 which is often wrong.
 * Alternatively a new attribute could be used such as `#[pack]`.
 * `#[repr(packed)]` could be extended as either `#[repr(packed(N))]` or
   `#[repr(packed = "N")]`.
