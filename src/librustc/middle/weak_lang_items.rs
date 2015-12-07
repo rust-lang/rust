@@ -102,8 +102,8 @@ impl<'a> Context<'a> {
             }
         } else)* {
             span_err!(self.sess, span, E0264,
-                               "unknown external lang item: `{}`",
-                                       name);
+                      "unknown external lang item: `{}`",
+                      name);
         }
     }
 }

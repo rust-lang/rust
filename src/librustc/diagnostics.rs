@@ -1037,6 +1037,31 @@ fn foo<'a, 'b, 'a>(x: &'a str, y: &'b str) { }
 ```
 "##,
 
+E0264: r##"
+An unknown external lang item was used. Erroneous code example:
+
+```
+#![feature(lang_items)]
+
+extern "C" {
+    #[lang = "cake"] // error: unknown external lang item: `cake`
+    fn cake();
+}
+```
+
+A list of available external lang items is available in
+`src/librustc/middle/weak_lang_items.rs`. Example:
+
+```
+#![feature(lang_items)]
+
+extern "C" {
+    #[lang = "panic_fmt"] // ok!
+    fn cake();
+}
+```
+"##,
+
 E0265: r##"
 This error indicates that a static or constant references itself.
 All statics and constants need to resolve to a value in an acyclic manner.
@@ -2200,7 +2225,6 @@ register_diagnostics! {
 //  E0134,
 //  E0135,
     E0229, // associated type bindings are not allowed here
-    E0264, // unknown external lang item
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied
