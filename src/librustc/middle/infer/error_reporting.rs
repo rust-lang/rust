@@ -1152,10 +1152,10 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
     }
 
     fn rebuild_ty_params(&self,
-                         ty_params: hir::Vec<hir::TyParam>,
+                         ty_params: hir::HirVec<hir::TyParam>,
                          lifetime: hir::Lifetime,
                          region_names: &HashSet<ast::Name>)
-                         -> hir::Vec<hir::TyParam> {
+                         -> hir::HirVec<hir::TyParam> {
         ty_params.move_map(|ty_param| {
             let bounds = self.rebuild_ty_param_bounds(ty_param.bounds,
                                                       lifetime,
@@ -1247,13 +1247,13 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         add: &Vec<hir::Lifetime>,
                         keep: &HashSet<ast::Name>,
                         remove: &HashSet<ast::Name>,
-                        ty_params: hir::Vec<hir::TyParam>,
+                        ty_params: hir::HirVec<hir::TyParam>,
                         where_clause: hir::WhereClause)
                         -> hir::Generics {
         let mut lifetimes = Vec::new();
         for lt in add {
             lifetimes.push(hir::LifetimeDef { lifetime: *lt,
-                                              bounds: hir::Vec::new() });
+                                              bounds: hir::HirVec::new() });
         }
         for lt in &generics.lifetimes {
             if keep.contains(&lt.lifetime.name) ||
@@ -1273,7 +1273,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                        lifetime: hir::Lifetime,
                        anon_nums: &HashSet<u32>,
                        region_names: &HashSet<ast::Name>)
-                       -> hir::Vec<hir::Arg> {
+                       -> hir::HirVec<hir::Arg> {
         let mut new_inputs = Vec::new();
         for arg in inputs {
             let new_ty = self.rebuild_arg_ty_or_output(&*arg.ty, lifetime,

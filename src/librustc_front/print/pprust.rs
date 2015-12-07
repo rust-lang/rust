@@ -518,10 +518,10 @@ impl<'a> State<'a> {
             hir::TyBareFn(ref f) => {
                 let generics = hir::Generics {
                     lifetimes: f.lifetimes.clone(),
-                    ty_params: hir::Vec::new(),
+                    ty_params: hir::HirVec::new(),
                     where_clause: hir::WhereClause {
                         id: ast::DUMMY_NODE_ID,
-                        predicates: hir::Vec::new(),
+                        predicates: hir::HirVec::new(),
                     },
                 };
                 try!(self.print_ty_fn(f.abi, f.unsafety, &*f.decl, None, &generics, None));
@@ -2256,11 +2256,11 @@ impl<'a> State<'a> {
             try!(self.print_generics(generics));
         }
         let generics = hir::Generics {
-            lifetimes: hir::Vec::new(),
-            ty_params: hir::Vec::new(),
+            lifetimes: hir::HirVec::new(),
+            ty_params: hir::HirVec::new(),
             where_clause: hir::WhereClause {
                 id: ast::DUMMY_NODE_ID,
-                predicates: hir::Vec::new(),
+                predicates: hir::HirVec::new(),
             },
         };
         try!(self.print_fn(decl,

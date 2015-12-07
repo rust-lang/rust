@@ -352,14 +352,14 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
 
         hir::ExprVec(ref exprs) => {
             let pats = exprs.iter().map(|expr| const_expr_to_pat(tcx, &**expr, span)).collect();
-            hir::PatVec(pats, None, hir::Vec::new())
+            hir::PatVec(pats, None, hir::HirVec::new())
         }
 
         hir::ExprPath(_, ref path) => {
             let opt_def = tcx.def_map.borrow().get(&expr.id).map(|d| d.full_def());
             match opt_def {
                 Some(def::DefStruct(..)) =>
-                    hir::PatStruct(path.clone(), hir::Vec::new(), false),
+                    hir::PatStruct(path.clone(), hir::HirVec::new(), false),
                 Some(def::DefVariant(..)) =>
                     hir::PatEnum(path.clone(), None),
                 _ => {

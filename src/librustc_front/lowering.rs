@@ -139,7 +139,7 @@ impl<'a, 'hir> LoweringContext<'a> {
     }
 }
 
-pub fn lower_attrs(_lctx: &LoweringContext, attrs: &Vec<Attribute>) -> hir::Vec<Attribute> {
+pub fn lower_attrs(_lctx: &LoweringContext, attrs: &Vec<Attribute>) -> hir::HirVec<Attribute> {
     attrs.clone().into()
 }
 
@@ -414,7 +414,7 @@ pub fn lower_ty_param(lctx: &LoweringContext, tp: &TyParam) -> hir::TyParam {
 
 pub fn lower_ty_params(lctx: &LoweringContext,
                        tps: &[TyParam])
-                       -> hir::Vec<hir::TyParam> {
+                       -> hir::HirVec<hir::TyParam> {
     tps.iter().map(|tp| lower_ty_param(lctx, tp)).collect()
 }
 
@@ -433,13 +433,13 @@ pub fn lower_lifetime_def(lctx: &LoweringContext, l: &LifetimeDef) -> hir::Lifet
     }
 }
 
-pub fn lower_lifetimes(lctx: &LoweringContext, lts: &Vec<Lifetime>) -> hir::Vec<hir::Lifetime> {
+pub fn lower_lifetimes(lctx: &LoweringContext, lts: &Vec<Lifetime>) -> hir::HirVec<hir::Lifetime> {
     lts.iter().map(|l| lower_lifetime(lctx, l)).collect()
 }
 
 pub fn lower_lifetime_defs(lctx: &LoweringContext,
                            lts: &Vec<LifetimeDef>)
-                           -> hir::Vec<hir::LifetimeDef> {
+                           -> hir::HirVec<hir::LifetimeDef> {
     lts.iter().map(|l| lower_lifetime_def(lctx, l)).collect()
 }
 
@@ -1572,7 +1572,7 @@ pub fn lower_trait_bound_modifier(_lctx: &LoweringContext,
 
 // Helper methods for building HIR.
 
-fn arm(pats: hir::Vec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
+fn arm(pats: hir::HirVec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
     hir::Arm {
         attrs: hir_vec![],
         pats: pats,
@@ -1589,7 +1589,7 @@ fn expr_break(lctx: &LoweringContext, span: Span,
 fn expr_call(lctx: &LoweringContext,
              span: Span,
              e: P<hir::Expr>,
-             args: hir::Vec<P<hir::Expr>>,
+             args: hir::HirVec<P<hir::Expr>>,
              attrs: ThinAttributes)
              -> P<hir::Expr> {
     expr(lctx, span, hir::ExprCall(e, args), attrs)
@@ -1613,7 +1613,7 @@ fn expr_path(lctx: &LoweringContext, path: hir::Path,
 fn expr_match(lctx: &LoweringContext,
               span: Span,
               arg: P<hir::Expr>,
-              arms: hir::Vec<hir::Arm>,
+              arms: hir::HirVec<hir::Arm>,
               source: hir::MatchSource,
               attrs: ThinAttributes)
               -> P<hir::Expr> {
@@ -1625,7 +1625,7 @@ fn expr_block(lctx: &LoweringContext, b: P<hir::Block>,
     expr(lctx, b.span, hir::ExprBlock(b), attrs)
 }
 
-fn expr_tuple(lctx: &LoweringContext, sp: Span, exprs: hir::Vec<P<hir::Expr>>,
+fn expr_tuple(lctx: &LoweringContext, sp: Span, exprs: hir::HirVec<P<hir::Expr>>,
               attrs: ThinAttributes) -> P<hir::Expr> {
     expr(lctx, sp, hir::ExprTup(exprs), attrs)
 }
@@ -1665,12 +1665,12 @@ fn stmt_let(lctx: &LoweringContext,
 }
 
 fn block_expr(lctx: &LoweringContext, expr: P<hir::Expr>) -> P<hir::Block> {
-    block_all(lctx, expr.span, hir::Vec::new(), Some(expr))
+    block_all(lctx, expr.span, hir::HirVec::new(), Some(expr))
 }
 
 fn block_all(lctx: &LoweringContext,
              span: Span,
-             stmts: hir::Vec<hir::Stmt>,
+             stmts: hir::HirVec<hir::Stmt>,
              expr: Option<P<hir::Expr>>)
              -> P<hir::Block> {
     P(hir::Block {
@@ -1697,7 +1697,7 @@ fn pat_none(lctx: &LoweringContext, span: Span) -> P<hir::Pat> {
 fn pat_enum(lctx: &LoweringContext,
             span: Span,
             path: hir::Path,
-            subpats: hir::Vec<P<hir::Pat>>)
+            subpats: hir::HirVec<P<hir::Pat>>)
             -> P<hir::Pat> {
     let pt = hir::PatEnum(path, Some(subpats));
     pat(lctx, span, pt)
@@ -1738,19 +1738,19 @@ fn path_ident(span: Span, id: Ident) -> hir::Path {
 }
 
 fn path(span: Span, strs: Vec<Ident>) -> hir::Path {
-    path_all(span, false, strs, hir::Vec::new(), hir::Vec::new(), hir::Vec::new())
+    path_all(span, false, strs, hir::HirVec::new(), hir::HirVec::new(), hir::HirVec::new())
 }
 
 fn path_global(span: Span, strs: Vec<Ident>) -> hir::Path {
-    path_all(span, true, strs, hir::Vec::new(), hir::Vec::new(), hir::Vec::new())
+    path_all(span, true, strs, hir::HirVec::new(), hir::HirVec::new(), hir::HirVec::new())
 }
 
 fn path_all(sp: Span,
             global: bool,
             mut idents: Vec<Ident>,
-            lifetimes: hir::Vec<hir::Lifetime>,
-            types: hir::Vec<P<hir::Ty>>,
-            bindings: hir::Vec<hir::TypeBinding>)
+            lifetimes: hir::HirVec<hir::Lifetime>,
+            types: hir::HirVec<P<hir::Ty>>,
+            bindings: hir::HirVec<hir::TypeBinding>)
             -> hir::Path {
     let last_identifier = idents.pop().unwrap();
     let mut segments: Vec<hir::PathSegment> = idents.into_iter()
@@ -1793,7 +1793,7 @@ fn core_path(lctx: &LoweringContext, span: Span, components: &[&str]) -> hir::Pa
 }
 
 fn signal_block_expr(lctx: &LoweringContext,
-                     stmts: hir::Vec<hir::Stmt>,
+                     stmts: hir::HirVec<hir::Stmt>,
                      expr: P<hir::Expr>,
                      span: Span,
                      rule: hir::BlockCheckMode,

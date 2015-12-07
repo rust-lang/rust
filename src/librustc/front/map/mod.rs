@@ -35,7 +35,6 @@ use std::io;
 use std::iter;
 use std::mem;
 use std::slice;
-use std::vec;
 
 pub mod blocks;
 mod collector;
@@ -165,7 +164,7 @@ impl<'ast> Clone for MapEntry<'ast> {
 
 #[derive(Debug)]
 pub struct InlinedParent {
-    path: vec::Vec<PathElem>,
+    path: Vec<PathElem>,
     ii: InlinedItem
 }
 
@@ -262,7 +261,7 @@ pub struct Map<'ast> {
     ///
     /// Also, indexing is pretty quick when you've got a vector and
     /// plain old integers.
-    map: RefCell<vec::Vec<MapEntry<'ast>>>,
+    map: RefCell<Vec<MapEntry<'ast>>>,
 
     definitions: RefCell<Definitions>,
 }
@@ -843,7 +842,7 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
 /// crate.  The `path` should be the path to the item but should not include
 /// the item itself.
 pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
-                                          path: vec::Vec<PathElem>,
+                                          path: Vec<PathElem>,
                                           def_path: DefPath,
                                           ii: InlinedItem,
                                           fold_ops: F)

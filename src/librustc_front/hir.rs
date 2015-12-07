@@ -51,14 +51,18 @@ use util;
 use std::fmt;
 use serialize::{Encodable, Encoder, Decoder};
 
-pub type Vec<T> = P<[T]>;
+/// HIR doesn't commit to a concrete storage type and have its own alias for a vector.
+/// It can be `Vec`, `P<[T]>` or potentially `Box<[T]>`, or some other container with similar
+/// behavior. Unlike AST, HIR is mostly a static structure, so we use an owned slice instead
+/// of `Vec` to avoid keeping extra capacity.
+pub type HirVec<T> = P<[T]>;
 
 macro_rules! hir_vec {
     ($elem:expr; $n:expr) => (
-        hir::Vec::from(vec![$elem; $n])
+        hir::HirVec::from(vec![$elem; $n])
     );
     ($($x:expr),*) => (
-        hir::Vec::from(vec![$($x),*])
+        hir::HirVec::from(vec![$($x),*])
     );
     ($($x:expr,)*) => (vec![$($x),*])
 }
@@ -83,7 +87,7 @@ impl fmt::Debug for Lifetime {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct LifetimeDef {
     pub lifetime: Lifetime,
-    pub bounds: Vec<Lifetime>,
+    pub bounds: HirVec<Lifetime>,
 }
 
 /// A "Path" is essentially Rust's notion of a name; for instance:
@@ -96,7 +100,7 @@ pub struct Path {
     /// module (like paths in an import).
     pub global: bool,
     /// The segments in the path: the things separated by `::`.
-    pub segments: Vec<PathSegment>,
+    pub segments: HirVec<PathSegment>,
 }
 
 impl fmt::Debug for Path {
@@ -137,9 +141,9 @@ pub enum PathParameters {
 impl PathParameters {
     pub fn none() -> PathParameters {
         AngleBracketedParameters(AngleBracketedParameterData {
-            lifetimes: Vec::new(),
-            types: Vec::new(),
-            bindings: Vec::new(),
+            lifetimes: HirVec::new(),
+            types: HirVec::new(),
+            bindings: HirVec::new(),
         })
     }
 
@@ -169,7 +173,7 @@ impl PathParameters {
 
     /// Returns the types that the user wrote. Note that these do not necessarily map to the type
     /// parameters in the parenthesized case.
-    pub fn types(&self) -> Vec<&P<Ty>> {
+    pub fn types(&self) -> HirVec<&P<Ty>> {
         match *self {
             AngleBracketedParameters(ref data) => {
                 data.types.iter().collect()
@@ -183,24 +187,24 @@ impl PathParameters {
         }
     }
 
-    pub fn lifetimes(&self) -> Vec<&Lifetime> {
+    pub fn lifetimes(&self) -> HirVec<&Lifetime> {
         match *self {
             AngleBracketedParameters(ref data) => {
                 data.lifetimes.iter().collect()
             }
             ParenthesizedParameters(_) => {
-                Vec::new()
+                HirVec::new()
             }
         }
     }
 
-    pub fn bindings(&self) -> Vec<&TypeBinding> {
+    pub fn bindings(&self) -> HirVec<&TypeBinding> {
         match *self {
             AngleBracketedParameters(ref data) => {
                 data.bindings.iter().collect()
             }
             ParenthesizedParameters(_) => {
-                Vec::new()
+                HirVec::new()
             }
         }
     }
@@ -210,12 +214,12 @@ impl PathParameters {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct AngleBracketedParameterData {
     /// The lifetime parameters for this path segment.
-    pub lifetimes: Vec<Lifetime>,
+    pub lifetimes: HirVec<Lifetime>,
     /// The type parameters for this path segment, if present.
-    pub types: Vec<P<Ty>>,
+    pub types: HirVec<P<Ty>>,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
-    pub bindings: Vec<TypeBinding>,
+    pub bindings: HirVec<TypeBinding>,
 }
 
 impl AngleBracketedParameterData {
@@ -231,7 +235,7 @@ pub struct ParenthesizedParameterData {
     pub span: Span,
 
     /// `(A,B)`
-    pub inputs: Vec<P<Ty>>,
+    pub inputs: HirVec<P<Ty>>,
 
     /// `C`
     pub output: Option<P<Ty>>,
@@ -255,7 +259,7 @@ pub enum TraitBoundModifier {
     Maybe,
 }
 
-pub type TyParamBounds = Vec<TyParamBound>;
+pub type TyParamBounds = HirVec<TyParamBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TyParam {
@@ -270,8 +274,8 @@ pub struct TyParam {
 /// of a function, enum, trait, etc.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Generics {
-    pub lifetimes: Vec<LifetimeDef>,
-    pub ty_params: Vec<TyParam>,
+    pub lifetimes: HirVec<LifetimeDef>,
+    pub ty_params: HirVec<TyParam>,
     pub where_clause: WhereClause,
 }
 
@@ -291,7 +295,7 @@ impl Generics {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereClause {
     pub id: NodeId,
-    pub predicates: Vec<WherePredicate>,
+    pub predicates: HirVec<WherePredicate>,
 }
 
 /// A single predicate in a `where` clause
@@ -310,7 +314,7 @@ pub enum WherePredicate {
 pub struct WhereBoundPredicate {
     pub span: Span,
     /// Any lifetimes from a `for` binding
-    pub bound_lifetimes: Vec<LifetimeDef>,
+    pub bound_lifetimes: HirVec<LifetimeDef>,
     /// The type being bounded
     pub bounded_ty: P<Ty>,
     /// Trait and lifetime bounds (`Clone+Send+'static`)
@@ -322,7 +326,7 @@ pub struct WhereBoundPredicate {
 pub struct WhereRegionPredicate {
     pub span: Span,
     pub lifetime: Lifetime,
-    pub bounds: Vec<Lifetime>,
+    pub bounds: HirVec<Lifetime>,
 }
 
 /// An equality predicate (unsupported), e.g. `T=int`
@@ -334,15 +338,15 @@ pub struct WhereEqPredicate {
     pub ty: P<Ty>,
 }
 
-pub type CrateConfig = Vec<P<MetaItem>>;
+pub type CrateConfig = HirVec<P<MetaItem>>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
     pub module: Mod,
-    pub attrs: Vec<Attribute>,
+    pub attrs: HirVec<Attribute>,
     pub config: CrateConfig,
     pub span: Span,
-    pub exported_macros: Vec<MacroDef>,
+    pub exported_macros: HirVec<MacroDef>,
 
     // NB: We use a BTreeMap here so that `visit_all_items` iterates
     // over the ids in increasing order. In principle it should not
@@ -379,20 +383,20 @@ impl Crate {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MacroDef {
     pub name: Name,
-    pub attrs: Vec<Attribute>,
+    pub attrs: HirVec<Attribute>,
     pub id: NodeId,
     pub span: Span,
     pub imported_from: Option<Name>,
     pub export: bool,
     pub use_locally: bool,
     pub allow_internal_unstable: bool,
-    pub body: Vec<TokenTree>,
+    pub body: HirVec<TokenTree>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Block {
     /// Statements in a block
-    pub stmts: Vec<Stmt>,
+    pub stmts: HirVec<Stmt>,
     /// An expression at the end of the block
     /// without a semicolon, if any
     pub expr: Option<P<Expr>>,
@@ -451,7 +455,7 @@ pub enum Pat_ {
     PatIdent(BindingMode, Spanned<Ident>, Option<P<Pat>>),
 
     /// "None" means a `Variant(..)` pattern where we don't bind the fields to names.
-    PatEnum(Path, Option<Vec<P<Pat>>>),
+    PatEnum(Path, Option<HirVec<P<Pat>>>),
 
     /// An associated const named using the qualified path `<T>::CONST` or
     /// `<T as Trait>::CONST`. Associated consts from inherent impls can be
@@ -461,9 +465,9 @@ pub enum Pat_ {
 
     /// Destructuring of a struct, e.g. `Foo {x, y, ..}`
     /// The `bool` is `true` in the presence of a `..`
-    PatStruct(Path, Vec<Spanned<FieldPat>>, bool),
+    PatStruct(Path, HirVec<Spanned<FieldPat>>, bool),
     /// A tuple pattern `(a, b)`
-    PatTup(Vec<P<Pat>>),
+    PatTup(HirVec<P<Pat>>),
     /// A `box` pattern
     PatBox(P<Pat>),
     /// A reference pattern, e.g. `&mut (a, b)`
@@ -474,7 +478,7 @@ pub enum Pat_ {
     PatRange(P<Expr>, P<Expr>),
     /// `[a, b, ..i, y, z]` is represented as:
     ///     `PatVec(box [a, b], Some(i), box [y, z])`
-    PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
+    PatVec(HirVec<P<Pat>>, Option<P<Pat>>, HirVec<P<Pat>>),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -588,8 +592,8 @@ pub enum Decl_ {
 /// represents one arm of a 'match'
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Arm {
-    pub attrs: Vec<Attribute>,
-    pub pats: Vec<P<Pat>>,
+    pub attrs: HirVec<Attribute>,
+    pub pats: HirVec<P<Pat>>,
     pub guard: Option<P<Expr>>,
     pub body: P<Expr>,
 }
@@ -638,12 +642,12 @@ pub enum Expr_ {
     /// A `box x` expression.
     ExprBox(P<Expr>),
     /// An array (`[a, b, c, d]`)
-    ExprVec(Vec<P<Expr>>),
+    ExprVec(HirVec<P<Expr>>),
     /// A function call
     ///
     /// The first field resolves to the function itself,
     /// and the second field is the list of arguments
-    ExprCall(P<Expr>, Vec<P<Expr>>),
+    ExprCall(P<Expr>, HirVec<P<Expr>>),
     /// A method call (`x.foo::<Bar, Baz>(a, b, c, d)`)
     ///
     /// The `Spanned<Name>` is the identifier for the method name.
@@ -656,9 +660,9 @@ pub enum Expr_ {
     ///
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprMethodCall(foo, [Bar, Baz], [x, a, b, c, d])`.
-    ExprMethodCall(Spanned<Name>, Vec<P<Ty>>, Vec<P<Expr>>),
+    ExprMethodCall(Spanned<Name>, HirVec<P<Ty>>, HirVec<P<Expr>>),
     /// A tuple (`(a, b, c ,d)`)
-    ExprTup(Vec<P<Expr>>),
+    ExprTup(HirVec<P<Expr>>),
     /// A binary operation (For example: `a + b`, `a * b`)
     ExprBinary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (For example: `!x`, `*x`)
@@ -681,7 +685,7 @@ pub enum Expr_ {
     ExprLoop(P<Block>, Option<Ident>),
     /// A `match` block, with a source that indicates whether or not it is
     /// the result of a desugaring, and if so, which kind.
-    ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
+    ExprMatch(P<Expr>, HirVec<Arm>, MatchSource),
     /// A closure (for example, `move |a, b, c| {a + b + c}`)
     ExprClosure(CaptureClause, P<FnDecl>, P<Block>),
     /// A block (`{ ... }`)
@@ -708,7 +712,7 @@ pub enum Expr_ {
     /// parameters, e.g. foo::bar::<baz>.
     ///
     /// Optionally "qualified",
-    /// e.g. `<Vec<T> as SomeTrait>::SomeType`.
+    /// e.g. `<HirVec<T> as SomeTrait>::SomeType`.
     ExprPath(Option<QSelf>, Path),
 
     /// A referencing operation (`&a` or `&mut a`)
@@ -727,7 +731,7 @@ pub enum Expr_ {
     ///
     /// For example, `Foo {x: 1, y: 2}`, or
     /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
-    ExprStruct(Path, Vec<Field>, Option<P<Expr>>),
+    ExprStruct(Path, HirVec<Field>, Option<P<Expr>>),
 
     /// A vector literal constructed from one repeated element.
     ///
@@ -741,11 +745,11 @@ pub enum Expr_ {
 /// separately. `position` represents the index of the associated
 /// item qualified with this Self type.
 ///
-///     <Vec<T> as a::b::Trait>::AssociatedItem
+///     <HirVec<T> as a::b::Trait>::AssociatedItem
 ///      ^~~~~     ~~~~~~~~~~~~~~^
 ///      ty        position = 3
 ///
-///     <Vec<T>>::AssociatedItem
+///     <HirVec<T>>::AssociatedItem
 ///      ^~~~~    ^
 ///      ty       position = 0
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -798,7 +802,7 @@ pub struct MethodSig {
 pub struct TraitItem {
     pub id: NodeId,
     pub name: Name,
-    pub attrs: Vec<Attribute>,
+    pub attrs: HirVec<Attribute>,
     pub node: TraitItem_,
     pub span: Span,
 }
@@ -815,7 +819,7 @@ pub struct ImplItem {
     pub id: NodeId,
     pub name: Name,
     pub vis: Visibility,
-    pub attrs: Vec<Attribute>,
+    pub attrs: HirVec<Attribute>,
     pub node: ImplItemKind,
     pub span: Span,
 }
@@ -866,7 +870,7 @@ pub enum PrimTy {
 pub struct BareFnTy {
     pub unsafety: Unsafety,
     pub abi: Abi,
-    pub lifetimes: Vec<LifetimeDef>,
+    pub lifetimes: HirVec<LifetimeDef>,
     pub decl: P<FnDecl>,
 }
 
@@ -883,9 +887,9 @@ pub enum Ty_ {
     /// A bare function (e.g. `fn(usize) -> bool`)
     TyBareFn(P<BareFnTy>),
     /// A tuple (`(A, B, C, D,...)`)
-    TyTup(Vec<P<Ty>>),
+    TyTup(HirVec<P<Ty>>),
     /// A path (`module::module::...::Type`), optionally
-    /// "qualified", e.g. `<Vec<T> as SomeTrait>::SomeType`.
+    /// "qualified", e.g. `<HirVec<T> as SomeTrait>::SomeType`.
     ///
     /// Type parameters are stored in the Path itself
     TyPath(Option<QSelf>, Path),
@@ -904,9 +908,9 @@ pub enum Ty_ {
 pub struct InlineAsm {
     pub asm: InternedString,
     pub asm_str_style: StrStyle,
-    pub outputs: Vec<(InternedString, P<Expr>, bool)>,
-    pub inputs: Vec<(InternedString, P<Expr>)>,
-    pub clobbers: Vec<InternedString>,
+    pub outputs: HirVec<(InternedString, P<Expr>, bool)>,
+    pub inputs: HirVec<(InternedString, P<Expr>)>,
+    pub clobbers: HirVec<InternedString>,
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
@@ -947,7 +951,7 @@ impl Arg {
 /// Represents the header (not the body) of a function declaration
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct FnDecl {
-    pub inputs: Vec<Arg>,
+    pub inputs: HirVec<Arg>,
     pub output: FunctionRetTy,
     pub variadic: bool,
 }
@@ -1038,24 +1042,24 @@ pub struct Mod {
     /// For `mod foo;`, the inner span ranges from the first token
     /// to the last token in the external file.
     pub inner: Span,
-    pub item_ids: Vec<ItemId>,
+    pub item_ids: HirVec<ItemId>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ForeignMod {
     pub abi: Abi,
-    pub items: Vec<ForeignItem>,
+    pub items: HirVec<ForeignItem>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct EnumDef {
-    pub variants: Vec<Variant>,
+    pub variants: HirVec<Variant>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Variant_ {
     pub name: Name,
-    pub attrs: Vec<Attribute>,
+    pub attrs: HirVec<Attribute>,
     pub data: VariantData,
     /// Explicit discriminant, eg `Foo = 1`
     pub disr_expr: Option<P<Expr>>,
@@ -1116,7 +1120,7 @@ pub enum ViewPath_ {
     ViewPathGlob(Path),
 
     /// `foo::bar::{a,b,c}`
-    ViewPathList(Path, Vec<PathListItem>),
+    ViewPathList(Path, HirVec<PathListItem>),
 }
 
 /// TraitRef's appear in impls.
@@ -1134,7 +1138,7 @@ pub struct TraitRef {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct PolyTraitRef {
     /// The `'a` in `<'a> Foo<&'a T>`
-    pub bound_lifetimes: Vec<LifetimeDef>,
+    pub bound_lifetimes: HirVec<LifetimeDef>,
 
     /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`
     pub trait_ref: TraitRef,
@@ -1162,7 +1166,7 @@ pub struct StructField_ {
     pub kind: StructFieldKind,
     pub id: NodeId,
     pub ty: P<Ty>,
-    pub attrs: Vec<Attribute>,
+    pub attrs: HirVec<Attribute>,
 }
 
 impl StructField_ {
@@ -1211,8 +1215,8 @@ impl StructFieldKind {
 /// Id of the whole struct lives in `Item`.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum VariantData {
-    Struct(Vec<StructField>, NodeId),
-    Tuple(Vec<StructField>, NodeId),
+    Struct(HirVec<StructField>, NodeId),
+    Tuple(HirVec<StructField>, NodeId),
     Unit(NodeId),
 }
 
@@ -1267,7 +1271,7 @@ pub struct ItemId {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Item {
     pub name: Name,
-    pub attrs: Vec<Attribute>,
+    pub attrs: HirVec<Attribute>,
     pub id: NodeId,
     pub node: Item_,
     pub vis: Visibility,
@@ -1300,7 +1304,7 @@ pub enum Item_ {
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
     ItemStruct(VariantData, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(Unsafety, Generics, TyParamBounds, Vec<TraitItem>),
+    ItemTrait(Unsafety, Generics, TyParamBounds, HirVec<TraitItem>),
 
     // Default trait implementations
     ///
@@ -1312,7 +1316,7 @@ pub enum Item_ {
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
-             Vec<ImplItem>),
+             HirVec<ImplItem>),
 }
 
 impl Item_ {
@@ -1338,7 +1342,7 @@ impl Item_ {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ForeignItem {
     pub name: Name,
-    pub attrs: Vec<Attribute>,
+    pub attrs: HirVec<Attribute>,
     pub node: ForeignItem_,
     pub id: NodeId,
     pub span: Span,
