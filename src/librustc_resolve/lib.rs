@@ -69,7 +69,6 @@ use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64, TyF64, TyF32};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;
 use syntax::parse::token::{self, special_names, special_idents};
-use syntax::ptr::P;
 use syntax::codemap::{self, Span, Pos};
 use syntax::util::lev_distance::{lev_distance, max_suggestion_distance};
 
@@ -1907,7 +1906,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                             opt_trait_ref,
                                             &**self_type,
                                             item.id,
-                                            &impl_items[..]);
+                                            impl_items);
             }
 
             ItemTrait(_, ref generics, ref bounds, ref trait_items) => {
@@ -2223,7 +2222,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                               opt_trait_reference: &Option<TraitRef>,
                               self_type: &Ty,
                               item_id: NodeId,
-                              impl_items: &[P<ImplItem>]) {
+                              impl_items: &[ImplItem]) {
         // If applicable, create a rib for the type parameters.
         self.with_type_parameter_rib(HasTypeParameters(generics,
                                                        TypeSpace,

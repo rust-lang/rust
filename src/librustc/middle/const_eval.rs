@@ -61,7 +61,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
                             enum_def: DefId,
                             variant_def: DefId)
                             -> Option<&'a Expr> {
-    fn variant_expr<'a>(variants: &'a [P<hir::Variant>], id: ast::NodeId)
+    fn variant_expr<'a>(variants: &'a [hir::Variant], id: ast::NodeId)
                         -> Option<&'a Expr> {
         for variant in variants {
             if variant.node.data.id() == id {
@@ -77,7 +77,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
                 hir::ItemEnum(hir::EnumDef { ref variants }, _) => {
-                    variant_expr(&variants[..], variant_node_id)
+                    variant_expr(variants, variant_node_id)
                 }
                 _ => None
             },

@@ -41,7 +41,6 @@ use middle::ty::MethodCall;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap::DUMMY_SP;
-use syntax::ptr::P;
 
 use rustc_front::hir;
 
@@ -54,7 +53,7 @@ const VTABLE_OFFSET: usize = 3;
 /// see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 pub fn trans_impl(ccx: &CrateContext,
                   name: ast::Name,
-                  impl_items: &[P<hir::ImplItem>],
+                  impl_items: &[hir::ImplItem],
                   generics: &hir::Generics,
                   id: ast::NodeId) {
     let _icx = push_ctxt("meth::trans_impl");

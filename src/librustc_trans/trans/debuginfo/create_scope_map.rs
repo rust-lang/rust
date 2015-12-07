@@ -117,7 +117,7 @@ fn walk_block(cx: &CrateContext,
 
     // The interesting things here are statements and the concluding expression.
     for statement in &block.stmts {
-        scope_map.insert(rustc_front::util::stmt_id(&**statement),
+        scope_map.insert(rustc_front::util::stmt_id(statement),
                          scope_stack.last().unwrap().scope_metadata);
 
         match statement.node {

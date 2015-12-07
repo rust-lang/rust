@@ -852,13 +852,13 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
         II::Item(i) => II::Item(i.map(|i| fld.fold_item(i))),
         II::TraitItem(d, ti) => {
             II::TraitItem(fld.fold_ops.new_def_id(d),
-                          fld.fold_trait_item(ti))
+                          ti.map(|ti| fld.fold_trait_item(ti)))
         }
         II::ImplItem(d, ii) => {
             II::ImplItem(fld.fold_ops.new_def_id(d),
-                         fld.fold_impl_item(ii))
+                         ii.map(|ii| fld.fold_impl_item(ii)))
         }
-        II::Foreign(i) => II::Foreign(fld.fold_foreign_item(i))
+        II::Foreign(i) => II::Foreign(i.map(|i| fld.fold_foreign_item(i)))
     };
 
     let ii_parent = map.forest.inlined_items.alloc(InlinedParent {

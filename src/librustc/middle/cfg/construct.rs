@@ -62,7 +62,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn block(&mut self, blk: &hir::Block, pred: CFGIndex) -> CFGIndex {
         let mut stmts_exit = pred;
         for stmt in &blk.stmts {
-            stmts_exit = self.stmt(&**stmt, stmts_exit);
+            stmts_exit = self.stmt(stmt, stmts_exit);
         }
 
         let expr_exit = self.opt_expr(&blk.expr, stmts_exit);

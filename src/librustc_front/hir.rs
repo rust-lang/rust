@@ -183,7 +183,7 @@ impl PathParameters {
         }
     }
 
-    pub fn bindings(&self) -> Vec<&P<TypeBinding>> {
+    pub fn bindings(&self) -> Vec<&TypeBinding> {
         match *self {
             AngleBracketedParameters(ref data) => {
                 data.bindings.iter().collect()
@@ -204,7 +204,7 @@ pub struct AngleBracketedParameterData {
     pub types: OwnedSlice<P<Ty>>,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
-    pub bindings: OwnedSlice<P<TypeBinding>>,
+    pub bindings: OwnedSlice<TypeBinding>,
 }
 
 impl AngleBracketedParameterData {
@@ -379,7 +379,7 @@ pub struct MacroDef {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Block {
     /// Statements in a block
-    pub stmts: Vec<P<Stmt>>,
+    pub stmts: Vec<Stmt>,
     /// An expression at the end of the block
     /// without a semicolon, if any
     pub expr: Option<P<Expr>>,
@@ -1031,12 +1031,12 @@ pub struct Mod {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ForeignMod {
     pub abi: Abi,
-    pub items: Vec<P<ForeignItem>>,
+    pub items: Vec<ForeignItem>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct EnumDef {
-    pub variants: Vec<P<Variant>>,
+    pub variants: Vec<Variant>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1287,7 +1287,7 @@ pub enum Item_ {
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
     ItemStruct(VariantData, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(Unsafety, Generics, TyParamBounds, Vec<P<TraitItem>>),
+    ItemTrait(Unsafety, Generics, TyParamBounds, Vec<TraitItem>),
 
     // Default trait implementations
     ///
@@ -1299,7 +1299,7 @@ pub enum Item_ {
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
-             Vec<P<ImplItem>>),
+             Vec<ImplItem>),
 }
 
 impl Item_ {

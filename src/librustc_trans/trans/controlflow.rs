@@ -110,7 +110,7 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     fcx.push_ast_cleanup_scope(cleanup_debug_loc);
 
     for s in &b.stmts {
-        bcx = trans_stmt(bcx, &**s);
+        bcx = trans_stmt(bcx, s);
     }
 
     if dest != expr::Ignore {

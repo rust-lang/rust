@@ -392,7 +392,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 for variant in &(*enum_definition).variants {
                     let item_def_id = self.ast_map.local_def_id(item.id);
-                    self.build_reduced_graph_for_variant(&**variant, item_def_id, &module);
+                    self.build_reduced_graph_for_variant(variant, item_def_id, &module);
                 }
                 parent.clone()
             }
