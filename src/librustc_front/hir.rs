@@ -63,6 +63,12 @@ pub struct Ident {
 }
 
 impl Ident {
+    /// Creates a HIR identifier with both `name` and `unhygienic_name` initialized with
+    /// the argument. Hygiene properties of the created identifier depend entirely on this
+    /// argument. If the argument is a plain interned string `intern("iter")`, then the result
+    /// is unhygienic and can interfere with other entities named "iter". If the argument is
+    /// a "fresh" name created with `gensym("iter")`, then the result is hygienic and can't
+    /// interfere with other entities having the same string as a name.
     pub fn from_name(name: Name) -> Ident {
         Ident { name: name, unhygienic_name: name }
     }
@@ -157,6 +163,14 @@ impl fmt::Display for Path {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct PathSegment {
     /// The identifier portion of this path segment.
+    ///
+    /// Hygiene properties of this identifier are worth noting.
+    /// Most path segments are not hygienic and they are not renamed during
+    /// lowering from AST to HIR (see comments to `fn lower_path`). However segments from
+    /// unqualified paths with one segment originating from `ExprPath` (local-variable-like paths)
+    /// can be hygienic, so they are renamed. You should not normally care about this peculiarity
+    /// and just use `identifier.name` unless you modify identifier resolution code
+    /// (`fn resolve_identifier` and other functions called by it in `rustc_resolve`).
     pub identifier: Ident,
 
     /// Type/lifetime parameters attached to this path. They come in
