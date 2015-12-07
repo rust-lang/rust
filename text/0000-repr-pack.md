@@ -64,15 +64,21 @@ should match the equivalent struct in C.
 `#[repr(packed)]` and `#[repr(pack = "1")]` should have identical behavior.
 
 Because this lowers the effective alignment of fields in the same way that
-`#[repr(packed)]` does (which caused https://github.com/rust-lang/rust/issues/27060 ),
-while accessing a field should be safe, borrowing a field should be unsafe.
+`#[repr(packed)]` does (which caused [issue #27060][gh27060]), while accessing a
+field should be safe, borrowing a field should be unsafe.
+
+Specifying `#[repr(packed)]` and `#[repr(pack = "N")]` where N is not 1 should
+result in an error.
+
+Specifying `#[repr(pack = "A")]` and `#[repr(align = "B")]` should still pack
+together fields with the packing specified, but then increase the overall
+alignment to the alignment specified. Depends on [RFC #1358][rfc1358] landing.
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-This would unfortunately make my life easier even though one of the unstated
-goals of Rust is to make my life as difficult as possible when doing FFI with
-Windows API.
+Duplication in the language where `#[repr(packed)]` and `#[repr(pack = "1")]`
+have identical behavior.
 
 # Alternatives
 [alternatives]: #alternatives
@@ -91,3 +97,6 @@ Windows API.
   it match the behavior of other C/C++ compilers as well?
 * Should it still be safe to borrow fields whose alignment is less than or equal
   to the specified packing or should all field borrows be unsafe?
+
+[gh27060]: https://github.com/rust-lang/rust/issues/27060
+[rfc1358]: https://github.com/rust-lang/rfcs/pull/1358
