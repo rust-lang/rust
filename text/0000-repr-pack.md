@@ -13,17 +13,17 @@ specify a custom packing for `struct` types.
 [motivation]: #motivation
 
 Many C/C++ compilers allow a packing to be specified for structs which
-effectivally lowers the alignment for a struct and its fields (for example with
+effectively lowers the alignment for a struct and its fields (for example with
 MSVC there is `#pragma pack(N)`). Such packing is used extensively in certain
-C/C++ libraries (such as Windows API which uses it all over the place making
-writing Rust libraries such as `winapi` a nightmare).
+C/C++ libraries (such as Windows API which uses it pervasively making writing
+Rust libraries such as `winapi` challenging).
 
 At the moment the only way to work around the lack of a proper
 `#[repr(pack = "N")]` attribute is to use `#[repr(packed)]` and then manually
 fill in padding which is a burdensome task. Even then that isn't quite right
 because the overall alignment of the struct would end up as 1 even though it
 needs to be N (or the default if that is smaller than N), so this fills in a gap
-which is basically impossible to do in Rust at the moment.
+which is impossible to do in Rust at the moment.
 
 # Detailed design
 [design]: #detailed-design
