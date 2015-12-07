@@ -78,6 +78,8 @@ Windows API.
 * The alternative is not doing this and forcing people to continue using
   `#[repr(packed)]` with manual padding.
 * Alternatively a new attribute could be used such as `#[pack]`.
+* `#[repr(packed)]` could be extended as either `#[repr(packed(N))]` or
+  `#[repr(packed = "N")]`.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
