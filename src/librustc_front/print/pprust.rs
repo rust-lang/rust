@@ -473,7 +473,7 @@ impl<'a> State<'a> {
                              -> io::Result<()> {
         try!(self.print_inner_attributes(attrs));
         for item in &nmod.items {
-            try!(self.print_foreign_item(&**item));
+            try!(self.print_foreign_item(item));
         }
         Ok(())
     }
@@ -878,7 +878,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_variants(&mut self,
-                          variants: &[P<hir::Variant>],
+                          variants: &[hir::Variant],
                           span: codemap::Span)
                           -> io::Result<()> {
         try!(self.bopen());
@@ -887,7 +887,7 @@ impl<'a> State<'a> {
             try!(self.maybe_print_comment(v.span.lo));
             try!(self.print_outer_attributes(&v.node.attrs));
             try!(self.ibox(indent_unit));
-            try!(self.print_variant(&**v));
+            try!(self.print_variant(v));
             try!(word(&mut self.s, ","));
             try!(self.end());
             try!(self.maybe_print_trailing_comment(v.span, None));
@@ -1107,7 +1107,7 @@ impl<'a> State<'a> {
         try!(self.print_inner_attributes(attrs));
 
         for st in &blk.stmts {
-            try!(self.print_stmt(&**st));
+            try!(self.print_stmt(st));
         }
         match blk.expr {
             Some(ref expr) => {

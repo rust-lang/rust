@@ -14,7 +14,6 @@ use hair::cx::to_ref::ToRef;
 use rustc::middle::region::{BlockRemainder, CodeExtentData};
 use rustc_front::hir;
 use syntax::ast;
-use syntax::ptr::P;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
     type Output = Block<'tcx>;
@@ -36,7 +35,7 @@ fn mirror_stmts<'a,'tcx:'a,STMTS>(cx: &mut Cx<'a,'tcx>,
                                   block_id: ast::NodeId,
                                   mut stmts: STMTS)
                                   -> Vec<StmtRef<'tcx>>
-    where STMTS: Iterator<Item=(usize, &'tcx P<hir::Stmt>)>
+    where STMTS: Iterator<Item=(usize, &'tcx hir::Stmt)>
 {
     let mut result = vec![];
     while let Some((index, stmt)) = stmts.next() {

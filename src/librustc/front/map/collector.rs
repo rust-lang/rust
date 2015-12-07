@@ -140,7 +140,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                 for v in &enum_definition.variants {
                     let variant_def_index =
                         self.insert_def(v.node.data.id(),
-                                        NodeVariant(&**v),
+                                        NodeVariant(v),
                                         DefPathData::EnumVariant(v.node.name));
 
                     for field in v.node.data.fields() {

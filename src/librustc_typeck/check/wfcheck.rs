@@ -24,7 +24,6 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::{Span};
 use syntax::parse::token::{special_idents};
-use syntax::ptr::P;
 use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
 
@@ -225,7 +224,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
     fn check_trait(&mut self,
                    item: &hir::Item,
-                   items: &[P<hir::TraitItem>])
+                   items: &[hir::TraitItem])
     {
         let trait_def_id = self.tcx().map.local_def_id(item.id);
 
