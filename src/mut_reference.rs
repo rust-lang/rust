@@ -58,8 +58,8 @@ fn check_arguments(cx: &LateContext, arguments: &[P<Expr>], type_definition: &Ty
         let parameters = &fn_type.sig.skip_binder().inputs;
         for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
             match parameter.sty {
-                TypeVariants::TyRef(_, TypeAndMut {ty: _, mutbl: MutImmutable}) |
-                TypeVariants::TyRawPtr(TypeAndMut {ty: _, mutbl: MutImmutable}) => {
+                TypeVariants::TyRef(_, TypeAndMut {mutbl: MutImmutable, ..}) |
+                TypeVariants::TyRawPtr(TypeAndMut {mutbl: MutImmutable, ..}) => {
                     if let ExprAddrOf(MutMutable, _) = argument.node {
                         span_lint(cx, UNNECESSARY_MUT_PASSED, 
                                   argument.span, &format!("The function/method \"{}\" \

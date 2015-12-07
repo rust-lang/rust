@@ -41,7 +41,7 @@ fn check_expr_mut(cx: &LateContext, expr: &Expr) {
     unwrap_addr(expr).map_or((), |e| {
         unwrap_addr(e).map_or_else(
             || {
-                if let TyRef(_, TypeAndMut{ty: _, mutbl: MutMutable}) =
+                if let TyRef(_, TypeAndMut{mutbl: MutMutable, ..}) =
                     cx.tcx.expr_ty(e).sty {
                         span_lint(cx, MUT_MUT, expr.span,
                                   "this expression mutably borrows a mutable reference. \

@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 81 lints included in this crate:
+There are 82 lints included in this crate:
 
 name                                                                                                     | default | meaning
 ---------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -81,6 +81,7 @@ name                                                                            
 [unicode_not_nfc](https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc)                       | allow   | using a unicode literal not in NFC normal form (see http://www.unicode.org/reports/tr15/ for further information)
 [unit_cmp](https://github.com/Manishearth/rust-clippy/wiki#unit_cmp)                                     | warn    | comparing unit values (which is always `true` or `false`, respectively)
 [unnecessary_mut_passed](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_mut_passed)         | warn    | an argument is passed as a mutable reference although the function/method only demands an immutable reference
+[unneeded_field_pattern](https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern)         | warn    | Struct fields are bound to a wildcard instead of using `..`
 [unstable_as_mut_slice](https://github.com/Manishearth/rust-clippy/wiki#unstable_as_mut_slice)           | warn    | as_mut_slice is not stable and can be replaced by &mut v[..]see https://github.com/rust-lang/rust/issues/27729
 [unstable_as_slice](https://github.com/Manishearth/rust-clippy/wiki#unstable_as_slice)                   | warn    | as_slice is not stable and can be replaced by & v[..]see https://github.com/rust-lang/rust/issues/27729
 [unused_collect](https://github.com/Manishearth/rust-clippy/wiki#unused_collect)                         | warn    | `collect()`ing an iterator without using the result; this is usually better written as a for loop
