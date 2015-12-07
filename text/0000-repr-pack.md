@@ -20,7 +20,10 @@ writing Rust libraries such as `winapi` a nightmare).
 
 At the moment the only way to work around the lack of a proper
 `#[repr(pack = "N")]` attribute is to use `#[repr(packed)]` and then manually
-fill in padding which is a burdensome task.
+fill in padding which is a burdensome task. Even then that isn't quite right
+because the overall alignment of the struct would end up as 1 even though it
+needs to be N (or the default if that is smaller than N), so this fills in a gap
+which is basically impossible to do in Rust at the moment.
 
 # Detailed design
 [design]: #detailed-design
