@@ -2,9 +2,9 @@ use rustc_front::hir::*;
 use reexport::*;
 use rustc::lint::*;
 use syntax::codemap::Span;
-use rustc_front::intravisit::{Visitor, walk_ty, walk_ty_param_bound};
+use rustc_front::intravisit::{Visitor, walk_ty, walk_ty_param_bound, walk_fn_decl};
 use rustc::middle::def::Def::{DefTy, DefTrait, DefStruct};
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
 use utils::{in_external_macro, span_lint};
 
@@ -12,12 +12,15 @@ declare_lint!(pub NEEDLESS_LIFETIMES, Warn,
               "using explicit lifetimes for references in function arguments when elision rules \
                would allow omitting them");
 
+declare_lint!(pub UNUSED_LIFETIMES, Warn,
+              "unused lifetimes in function definitions");
+
 #[derive(Copy,Clone)]
 pub struct LifetimePass;
 
 impl LintPass for LifetimePass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(NEEDLESS_LIFETIMES)
+        lint_array!(NEEDLESS_LIFETIMES, UNUSED_LIFETIMES)
     }
 }
 
@@ -61,6 +64,7 @@ fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>,
         span_lint(cx, NEEDLESS_LIFETIMES, span,
                   "explicit lifetimes given in parameter types where they could be elided");
     }
+    report_extra_lifetimes(cx, decl, &generics.lifetimes);
 }
 
 fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>,
@@ -262,4 +266,25 @@ fn has_where_lifetimes(cx: &LateContext, where_clause: &WhereClause) -> bool {
         }
     }
     false
+}
+
+struct LifetimeChecker(HashMap<Name, Span>);
+
+impl<'v> Visitor<'v> for LifetimeChecker {
+
+    // for lifetimes as parameters of generics
+    fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
+        self.0.remove(&lifetime.name);
+    }
+}
+
+fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl,
+                          named_lts: &[LifetimeDef]) {
+    let hs = named_lts.iter().map(|lt| (lt.lifetime.name, lt.lifetime.span)).collect();
+    let mut checker = LifetimeChecker(hs);
+    walk_fn_decl(&mut checker, func);
+    for (_, v) in checker.0 {
+        span_lint(cx, UNUSED_LIFETIMES, v,
+                  "this lifetime isn't used in the function definition");
+    }
 }
