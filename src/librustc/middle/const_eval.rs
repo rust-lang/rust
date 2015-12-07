@@ -434,6 +434,8 @@ pub enum ErrKind {
 
     MiscBinaryOp,
     MiscCatchAll,
+
+    IndexOpFeatureGated,
 }
 
 impl ConstEvalErr {
@@ -483,6 +485,7 @@ impl ConstEvalErr {
 
             MiscBinaryOp => "bad operands for binary".into_cow(),
             MiscCatchAll => "unsupported constant expr".into_cow(),
+            IndexOpFeatureGated => "the index operation on const values is unstable".into_cow(),
         }
     }
 }
@@ -1119,15 +1122,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
       hir::ExprStruct(..) => Struct(e.id),
       hir::ExprIndex(ref arr, ref idx) => {
         if !tcx.sess.features.borrow().const_indexing {
-            tcx.sess.span_err(
-                e.span,
-                "const indexing is an unstable feature");
-            fileline_help!(
-                tcx.sess,
-                e.span,
-                "in Nightly builds, add `#![feature(const_indexing)]` to the crate \
-                 attributes to enable");
-            signal!(e, NonConstPath)
+            signal!(e, IndexOpFeatureGated);
         }
         let arr_hint = if let ExprTypeChecked = ty_hint {
             ExprTypeChecked

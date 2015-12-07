@@ -11,7 +11,7 @@
 #![deny(exceeding_bitshifts)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![feature(num_bits_bytes)]
+#![feature(num_bits_bytes, const_indexing)]
 
 fn main() {
       let n = 1u8 << 7;
@@ -62,4 +62,7 @@ fn main() {
 
 
       let n = 1i8<<(1isize+-1);
+
+      let n = 1i64 >> [63][0];
+      let n = 1i64 >> [64][0]; //~ ERROR: bitshift exceeds the type's number of bits
 }
