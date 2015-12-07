@@ -91,7 +91,7 @@ how to integrate allocators with GC.)
 
 ## The `Allocator` trait at a glance
 
-The source code for the `Allocator` trait prototype ks provided in an
+The source code for the `Allocator` trait prototype is provided in an
 [appendix][Source for Allocator]. But since that section is long, here
 we summarize the high-level points of the `Allocator` API.
 
