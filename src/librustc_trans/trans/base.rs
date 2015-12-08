@@ -2760,7 +2760,11 @@ fn register_method(ccx: &CrateContext,
     }
 }
 
-pub fn write_metadata(cx: &SharedCrateContext, krate: &hir::Crate, reachable: &NodeSet) -> Vec<u8> {
+pub fn write_metadata<'a, 'tcx>(cx: &SharedCrateContext<'a, 'tcx>,
+                                krate: &hir::Crate,
+                                reachable: &NodeSet,
+                                mir_map: &MirMap<'tcx>)
+                                -> Vec<u8> {
     use flate;
 
     let any_library = cx.sess()
@@ -2773,9 +2777,13 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &hir::Crate, reachable: &N
     }
 
     let cstore = &cx.tcx().sess.cstore;
-    let metadata = cstore.encode_metadata(
-        cx.tcx(), cx.export_map(), cx.item_symbols(), cx.link_meta(), reachable,
-        krate);
+    let metadata = cstore.encode_metadata(cx.tcx(),
+                                          cx.export_map(),
+                                          cx.item_symbols(),
+                                          cx.link_meta(),
+                                          reachable,
+                                          mir_map,
+                                          krate);
     let mut compressed = cstore.metadata_encoding_version().to_vec();
     compressed.extend_from_slice(&flate::deflate_bytes(&metadata));
 
@@ -3045,7 +3053,7 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
     let reachable_symbol_ids = filter_reachable_ids(&shared_ccx);
 
     // Translate the metadata.
-    let metadata = write_metadata(&shared_ccx, krate, &reachable_symbol_ids);
+    let metadata = write_metadata(&shared_ccx, krate, &reachable_symbol_ids, mir_map);
 
     if shared_ccx.sess().trans_stats() {
         let stats = shared_ccx.stats();
