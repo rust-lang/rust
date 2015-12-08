@@ -23,7 +23,7 @@ impl Circle {
 [methodsyntax]: method-syntax.html
 
 Traits are similar, except that we first define a trait with a method
-signature, then implement the trait for a struct. Like this:
+signature, then implement the trait for a type. In this example, we implement the trait `HasArea` for `Circle`:
 
 ```rust
 struct Circle {
