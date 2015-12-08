@@ -195,6 +195,11 @@ pub fn snippet<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<
     cx.sess().codemap().span_to_snippet(span).map(From::from).unwrap_or(Cow::Borrowed(default))
 }
 
+/// Converts a span to a code snippet. Returns None if not available.
+pub fn snippet_opt<T: LintContext>(cx: &T, span: Span) -> Option<String> {
+    cx.sess().codemap().span_to_snippet(span).ok()
+}
+
 /// convert a span (from a block) to a code snippet if available, otherwise use default, e.g.
 /// `snippet(cx, expr.span, "..")`
 /// This trims the code of indentation, except for the first line
@@ -315,6 +320,17 @@ pub fn span_note_and_lint<T: LintContext>(cx: &T, lint: &'static Lint, span: Spa
             cx.sess().span_note(note_span, note)
         }
         cx.sess().fileline_help(span, &format!("for further information visit \
+            https://github.com/Manishearth/rust-clippy/wiki#{}",
+            lint.name_lower()))
+    }
+}
+
+pub fn span_lint_and_then<T: LintContext, F>(cx: &T, lint: &'static Lint, sp: Span,
+        msg: &str, f: F) where F: Fn() {
+    cx.span_lint(lint, sp, msg);
+    if cx.current_level(lint) != Level::Allow {
+        f();
+        cx.sess().fileline_help(sp, &format!("for further information visit \
             https://github.com/Manishearth/rust-clippy/wiki#{}",
             lint.name_lower()))
     }
