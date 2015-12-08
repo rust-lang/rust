@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use rustc::middle::ty;
 
-use utils::{snippet, span_lint, is_adjusted};
+use utils::{snippet_opt, span_lint, is_adjusted};
 
 
 #[allow(missing_copy_implementations)]
@@ -75,9 +75,12 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                         return
                     }
                 }
-                span_lint(cx, REDUNDANT_CLOSURE, expr.span, &format!(
-                    "redundant closure found. Consider using `{}` in its place",
-                    snippet(cx, caller.span, "..")));
+                span_lint(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure found");
+                if let Some(snippet) = snippet_opt(cx, caller.span) {
+                    cx.sess().span_suggestion(expr.span,
+                                              "remove closure as shown:",
+                                              snippet);
+                }
             }
         }
     }
