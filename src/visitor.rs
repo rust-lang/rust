@@ -530,6 +530,7 @@ impl<'a> Rewrite for [ast::Attribute] {
         for (i, a) in self.iter().enumerate() {
             let a_str = context.snippet(a.span);
 
+            // Write comments and blank lines between attributes.
             if i > 0 {
                 let comment = context.snippet(codemap::mk_sp(self[i - 1].span.hi, a.span.lo));
                 // This particular horror show is to preserve line breaks in between doc
@@ -553,6 +554,7 @@ impl<'a> Rewrite for [ast::Attribute] {
                 result.push_str(&indent);
             }
 
+            // Write the attribute itself.
             result.push_str(&a_str);
 
             if i < self.len() - 1 {
