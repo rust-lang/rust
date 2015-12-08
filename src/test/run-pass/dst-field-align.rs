@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct Foo<T: ?Sized> {
-    a: u8,
+    a: u16,
     b: T
 }
 
@@ -29,6 +29,11 @@ struct Baz<T: ?Sized> {
 struct Packed<T: ?Sized> {
     a: u8,
     b: T
+}
+
+struct HasDrop<T: ?Sized> {
+    ptr: Box<usize>,
+    data: T
 }
 
 fn main() {
@@ -68,4 +73,15 @@ fn main() {
     let f : &Foo<Bar> = &f;
     let &Foo { a: _, b: ref bar } = f;
     assert_eq!(bar.get(), 11);
+
+    // Make sure that drop flags don't screw things up
+
+    let d : HasDrop<Baz<[i32; 4]>> = HasDrop {
+        ptr: Box::new(0),
+        data: Baz { a: [1,2,3,4] }
+    };
+    assert_eq!([1,2,3,4], d.data.a);
+
+    let d : &HasDrop<Baz<[i32]>> = &d;
+    assert_eq!(&[1,2,3,4], &d.data.a);
 }
