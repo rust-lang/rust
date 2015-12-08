@@ -55,7 +55,7 @@ impl<'a> FmtVisitor<'a> {
 
                 self.push_rewrite(stmt.span, rewrite);
             }
-            ast::Stmt_::StmtMac(ref mac, _macro_style) => {
+            ast::Stmt_::StmtMac(ref mac, _macro_style, _) => {
                 self.format_missing_with_indent(stmt.span.lo);
                 self.visit_mac(mac);
             }
@@ -360,6 +360,7 @@ impl<'a> FmtVisitor<'a> {
                 // FIXME: Implement
             }
             ast::ImplItemKind::Macro(ref mac) => {
+                self.format_missing_with_indent(ii.span.lo);
                 self.visit_mac(mac);
             }
         }

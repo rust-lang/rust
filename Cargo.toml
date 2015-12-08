@@ -1,12 +1,13 @@
 [package]
 
 name = "rustfmt"
-version = "0.0.1"
-authors = ["Nicholas Cameron <nrc@ncameron.org>"]
+version = "0.0.2"
+authors = ["Nicholas Cameron <ncameron@mozilla.com>", "Marcus Klaas <mail@marcusklaas.nl>", "The Rustfmt contributors"]
 description = "Tool to find and fix Rust formatting issues"
-repository = "https://github.com/nick29581/rustfmt"
+repository = "https://github.com/rust-lang-nursery/rustfmt"
 readme = "README.md"
 license = "Apache-2.0/MIT"
+include = ["src/*.rs", "Cargo.toml"]
 
 [dependencies]
 toml = "0.1.20"
@@ -20,5 +21,3 @@ syntex_syntax = { git = "https://github.com/serde-rs/syntex" }
 log = "0.3.2"
 env_logger = "0.3.1"
 getopts = "0.2"
-
-[dev-dependencies]
