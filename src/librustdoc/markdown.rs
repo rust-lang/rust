@@ -21,9 +21,10 @@ use rustc::session::search_paths::SearchPaths;
 
 use externalfiles::ExternalHtml;
 
+use html::render::reset_ids;
 use html::escape::Escape;
 use html::markdown;
-use html::markdown::{Markdown, MarkdownWithToc, find_testable_code, reset_headers};
+use html::markdown::{Markdown, MarkdownWithToc, find_testable_code};
 use test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `%`.
@@ -82,7 +83,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
     }
     let title = metadata[0];
 
-    reset_headers();
+    reset_ids();
 
     let rendered = if include_toc {
         format!("{}", MarkdownWithToc(text))
