@@ -24,3 +24,4 @@ CFG_RUN_TARG_i686-pc-windows-gnu=$(call CFG_RUN_i686-pc-windows-gnu,,$(2))
 CFG_GNU_TRIPLE_i686-pc-windows-gnu := i686-w64-mingw32
 CFG_THIRD_PARTY_OBJECTS_i686-pc-windows-gnu := crt2.o dllcrt2.o
 CFG_INSTALLED_OBJECTS_i686-pc-windows-gnu := crt2.o dllcrt2.o rsbegin.o rsend.o
+CFG_RUSTRT_HAS_STARTUP_OBJS_i686-pc-windows-gnu := 1
