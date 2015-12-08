@@ -60,8 +60,8 @@ impl FileDesc {
     #[cfg(target_env = "newlib")]
     pub fn set_cloexec(&self) {
         unsafe {
-            let previous = libc::fnctl(self.fd, libc::F_GETFD);
-            let ret = libc::fnctl(self.fd, libc::F_SETFD, previous | libc::FD_CLOEXEC);
+            let previous = libc::fcntl(self.fd, libc::F_GETFD);
+            let ret = libc::fcntl(self.fd, libc::F_SETFD, previous | libc::FD_CLOEXEC);
             debug_assert_eq!(ret, 0);
         }
     }
