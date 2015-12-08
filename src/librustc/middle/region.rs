@@ -125,6 +125,10 @@ pub const DUMMY_CODE_EXTENT : CodeExtent = CodeExtent(1);
 pub enum CodeExtentData {
     Misc(ast::NodeId),
 
+    // extent of the call-site for a function or closure (outlives
+    // the parameters as well as the body).
+    CallSiteScope { fn_id: ast::NodeId, body_id: ast::NodeId },
+
     // extent of parameters passed to a function or closure (they
     // outlive its body)
     ParameterScope { fn_id: ast::NodeId, body_id: ast::NodeId },
@@ -136,20 +140,20 @@ pub enum CodeExtentData {
     Remainder(BlockRemainder)
 }
 
-/// extent of destructors for temporaries of node-id
+/// extent of call-site for a function/method.
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
            RustcDecodable, Debug, Copy)]
-pub struct DestructionScopeData {
-    pub node_id: ast::NodeId
+pub struct CallSiteScopeData {
+    pub fn_id: ast::NodeId, pub body_id: ast::NodeId,
 }
 
-impl DestructionScopeData {
-    pub fn new(node_id: ast::NodeId) -> DestructionScopeData {
-        DestructionScopeData { node_id: node_id }
-    }
+impl CallSiteScopeData {
     pub fn to_code_extent(&self, region_maps: &RegionMaps) -> CodeExtent {
         region_maps.lookup_code_extent(
-            CodeExtentData::DestructionScope(self.node_id))
+            match *self {
+                CallSiteScopeData { fn_id, body_id } =>
+                    CodeExtentData::CallSiteScope { fn_id: fn_id, body_id: body_id },
+            })
     }
 }
 
@@ -190,6 +194,7 @@ impl CodeExtentData {
             // precise extent denoted by `self`.
             CodeExtentData::Remainder(br) => br.block,
             CodeExtentData::DestructionScope(node_id) => node_id,
+            CodeExtentData::CallSiteScope { fn_id: _, body_id } |
             CodeExtentData::ParameterScope { fn_id: _, body_id } => body_id,
         }
     }
@@ -215,6 +220,7 @@ impl CodeExtent {
         match ast_map.find(self.node_id(region_maps)) {
             Some(ast_map::NodeBlock(ref blk)) => {
                 match region_maps.code_extent_data(*self) {
+                    CodeExtentData::CallSiteScope { .. } |
                     CodeExtentData::ParameterScope { .. } |
                     CodeExtentData::Misc(_) |
                     CodeExtentData::DestructionScope(_) => Some(blk.span),
@@ -345,6 +351,10 @@ impl RegionMaps {
     // Returns the code extent for an item - the destruction scope.
     pub fn item_extent(&self, n: ast::NodeId) -> CodeExtent {
         self.lookup_code_extent(CodeExtentData::DestructionScope(n))
+    }
+    pub fn call_site_extent(&self, fn_id: ast::NodeId, body_id: ast::NodeId) -> CodeExtent {
+        assert!(fn_id != body_id);
+        self.lookup_code_extent(CodeExtentData::CallSiteScope { fn_id: fn_id, body_id: body_id })
     }
     pub fn opt_destruction_extent(&self, n: ast::NodeId) -> Option<CodeExtent> {
         self.code_extent_interner.borrow().get(&CodeExtentData::DestructionScope(n)).cloned()
@@ -1100,6 +1110,9 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
            visitor.sess.codemap().span_to_string(sp),
            body.id,
            visitor.cx.parent);
+
+    visitor.cx.parent = visitor.new_code_extent(
+        CodeExtentData::CallSiteScope { fn_id: id, body_id: body.id });
 
     let fn_decl_scope = visitor.new_code_extent(
         CodeExtentData::ParameterScope { fn_id: id, body_id: body.id });

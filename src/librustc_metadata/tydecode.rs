@@ -233,6 +233,17 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             // doesn't care about regions.
             //
             // May still be worth fixing though.
+            'C' => {
+                assert_eq!(self.next(), '[');
+                let fn_id = self.parse_uint() as ast::NodeId;
+                assert_eq!(self.next(), '|');
+                let body_id = self.parse_uint() as ast::NodeId;
+                assert_eq!(self.next(), ']');
+                region::CodeExtentData::CallSiteScope {
+                    fn_id: fn_id, body_id: body_id
+                }
+            }
+            // This creates scopes with the wrong NodeId. (See note above.)
             'P' => {
                 assert_eq!(self.next(), '[');
                 let fn_id = self.parse_uint() as ast::NodeId;
