@@ -763,10 +763,12 @@ impl<T> VecDeque<T> {
     }
 
     /// Create a draining iterator that removes the specified range in the
-    /// `VecDeque` and yields the removed items from start to end. The element
-    /// range is removed even if the iterator is not consumed until the end.
+    /// `VecDeque` and yields the removed items.
     ///
-    /// Note: It is unspecified how many elements are removed from the deque,
+    /// Note 1: The element range is removed even if the iterator is not
+    /// consumed until the end.
+    ///
+    /// Note 2: It is unspecified how many elements are removed from the deque,
     /// if the `Drain` value is not dropped, but the borrow it holds expires
     /// (eg. due to mem::forget).
     ///
@@ -779,11 +781,13 @@ impl<T> VecDeque<T> {
     ///
     /// ```
     /// use std::collections::VecDeque;
+
+    /// let mut v: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
+    /// assert_eq!(vec![3].into_iter().collect::<VecDeque<_>>(), v.drain(2..).collect());
+    /// assert_eq!(vec![1, 2].into_iter().collect::<VecDeque<_>>(), v);
     ///
-    /// // draining using `..` clears the whole deque.
-    /// let mut v = VecDeque::new();
-    /// v.push_back(1);
-    /// assert_eq!(v.drain(..).next(), Some(1));
+    /// // A full range clears all contents
+    /// v.drain(..);
     /// assert!(v.is_empty());
     /// ```
     #[inline]
