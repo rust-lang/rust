@@ -966,6 +966,12 @@ declare_lint! {
     "const items will not have their symbols exported"
 }
 
+declare_lint! {
+    NO_MANGLE_GENERIC_ITEMS,
+    Warn,
+    "generic items must be mangled"
+}
+
 #[derive(Copy, Clone)]
 pub struct InvalidNoMangleItems;
 
@@ -973,19 +979,26 @@ impl LintPass for InvalidNoMangleItems {
     fn get_lints(&self) -> LintArray {
         lint_array!(PRIVATE_NO_MANGLE_FNS,
                     PRIVATE_NO_MANGLE_STATICS,
-                    NO_MANGLE_CONST_ITEMS)
+                    NO_MANGLE_CONST_ITEMS,
+                    NO_MANGLE_GENERIC_ITEMS)
     }
 }
 
 impl LateLintPass for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
-            hir::ItemFn(..) => {
-                if attr::contains_name(&it.attrs, "no_mangle") &&
-                       !cx.access_levels.is_reachable(it.id) {
-                    let msg = format!("function {} is marked #[no_mangle], but not exported",
-                                      it.name);
-                    cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, &msg);
+            hir::ItemFn(_, _, _, _, ref generics, _) => {
+                if attr::contains_name(&it.attrs, "no_mangle") {
+                    if !cx.access_levels.is_reachable(it.id) {
+                        let msg = format!("function {} is marked #[no_mangle], but not exported",
+                                          it.name);
+                        cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, &msg);
+                    }
+                    if generics.is_parameterized() {
+                        cx.span_lint(NO_MANGLE_GENERIC_ITEMS,
+                                     it.span,
+                                     "generic functions must be mangled");
+                    }
                 }
             },
             hir::ItemStatic(..) => {
