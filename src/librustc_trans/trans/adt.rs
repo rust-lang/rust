@@ -275,7 +275,11 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 monomorphize::field_ty(cx.tcx(), substs, field)
             }).collect::<Vec<_>>();
             let packed = cx.tcx().lookup_packed(def.did);
-            let dtor = def.dtor_kind().has_drop_flag();
+            // FIXME(16758) don't add a drop flag to unsized structs, as it
+            // won't actually be in the location we say it is because it'll be after
+            // the unsized field. Several other pieces of code assume that the unsized
+            // field is definitely the last one.
+            let dtor = def.dtor_kind().has_drop_flag() && type_is_sized(cx.tcx(), t);
             if dtor {
                 ftys.push(cx.tcx().dtor_type());
             }
@@ -1105,8 +1109,8 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
 
 pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, val: MaybeSizedValue,
                                     ix: usize, needs_cast: bool) -> ValueRef {
+    let ccx = bcx.ccx();
     let ptr_val = if needs_cast {
-        let ccx = bcx.ccx();
         let fields = st.fields.iter().map(|&ty| {
             type_of::in_memory_type_of(ccx, ty)
         }).collect::<Vec<_>>();
@@ -1147,7 +1151,7 @@ pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, v
     // We need to get the pointer manually now.
     // We do this by casting to a *i8, then offsetting it by the appropriate amount.
     // We do this instead of, say, simply adjusting the pointer from the result of a GEP
-    // because the the field may have an arbitrary alignment in the LLVM representation
+    // because the field may have an arbitrary alignment in the LLVM representation
     // anyway.
     //
     // To demonstrate:
@@ -1161,9 +1165,15 @@ pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, v
 
     let meta = val.meta;
 
-    // st.size is the size of the sized portion of the struct. So the position
-    // exactly after it is the offset for unaligned data.
-    let unaligned_offset = C_uint(bcx.ccx(), st.size);
+    // Calculate the unaligned offset of the the unsized field.
+    let mut offset = 0;
+    for &ty in &st.fields[0..ix] {
+        let llty = type_of::sizing_type_of(ccx, ty);
+        let type_align = type_of::align_of(ccx, ty);
+        offset = roundup(offset, type_align);
+        offset += machine::llsize_of_alloc(ccx, llty);
+    }
+    let unaligned_offset = C_uint(bcx.ccx(), offset);
 
     // Get the alignment of the field
     let (_, align) = glue::size_and_align_of_dst(bcx, fty, meta);
