@@ -137,10 +137,11 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         let type_scheme = ccx.tcx.lookup_item_type(item_def_id);
         let type_predicates = ccx.tcx.lookup_predicates(item_def_id);
         reject_non_type_param_bounds(ccx.tcx, item.span, &type_predicates);
+        let free_id_outlive = ccx.tcx.region_maps.item_extent(item.id);
         let param_env = ccx.tcx.construct_parameter_environment(item.span,
                                                                 &type_scheme.generics,
                                                                 &type_predicates,
-                                                                item.id);
+                                                                free_id_outlive);
         let tables = RefCell::new(ty::Tables::empty());
         let inh = Inherited::new(ccx.tcx, &tables, param_env);
         let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(type_scheme.ty), item.id);

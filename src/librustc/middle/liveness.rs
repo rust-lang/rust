@@ -1466,10 +1466,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                  entry_ln: LiveNode,
                  body: &hir::Block)
     {
-        // within the fn body, late-bound regions are liberated:
+        // within the fn body, late-bound regions are liberated
+        // and must outlive the *call-site* of the function.
         let fn_ret =
             self.ir.tcx.liberate_late_bound_regions(
-                self.ir.tcx.region_maps.item_extent(body.id),
+                self.ir.tcx.region_maps.call_site_extent(id, body.id),
                 &self.fn_ret(id));
 
         match fn_ret {

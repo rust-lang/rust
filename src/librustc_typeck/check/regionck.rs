@@ -89,7 +89,7 @@ use middle::free_region::FreeRegionMap;
 use middle::implicator::{self, Implication};
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
-use middle::region::CodeExtent;
+use middle::region::{self, CodeExtent};
 use middle::subst::Substs;
 use middle::traits;
 use middle::ty::{self, RegionEscape, ReScope, Ty, MethodCall, HasTypeFlags};
@@ -180,6 +180,9 @@ pub struct Rcx<'a, 'tcx: 'a> {
     // id of innermost fn body id
     body_id: ast::NodeId,
 
+    // call_site scope of innermost fn
+    call_site_scope: Option<CodeExtent>,
+
     // id of innermost fn or loop
     repeating_scope: ast::NodeId,
 
@@ -200,6 +203,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         Rcx { fcx: fcx,
               repeating_scope: initial_repeating_scope,
               body_id: initial_body_id,
+              call_site_scope: None,
               subject: subject,
               region_bound_pairs: Vec::new(),
               free_region_map: FreeRegionMap::new(),
@@ -212,6 +216,10 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
 
     pub fn infcx(&self) -> &InferCtxt<'a,'tcx> {
         self.fcx.infcx()
+    }
+
+    fn set_call_site_scope(&mut self, call_site_scope: Option<CodeExtent>) -> Option<CodeExtent> {
+        mem::replace(&mut self.call_site_scope, call_site_scope)
     }
 
     fn set_body_id(&mut self, body_id: ast::NodeId) -> ast::NodeId {
@@ -275,13 +283,17 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     }
 
     fn visit_fn_body(&mut self,
-                     id: ast::NodeId,
+                     id: ast::NodeId, // the id of the fn itself
                      fn_decl: &hir::FnDecl,
                      body: &hir::Block,
                      span: Span)
     {
         // When we enter a function, we can derive
         debug!("visit_fn_body(id={})", id);
+
+        let call_site = self.fcx.tcx().region_maps.lookup_code_extent(
+            region::CodeExtentData::CallSiteScope { fn_id: id, body_id: body.id });
+        let old_call_site_scope = self.set_call_site_scope(Some(call_site));
 
         let fn_sig = {
             let fn_sig_map = &self.infcx().tables.borrow().liberated_fn_sigs;
@@ -300,7 +312,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         // For the return type, if diverging, substitute `bool` just
         // because it will have no effect.
         //
-        // FIXME(#25759) return types should not be implied bounds
+        // FIXME(#27579) return types should not be implied bounds
         let fn_sig_tys: Vec<_> =
             fn_sig.inputs.iter()
                          .cloned()
@@ -315,9 +327,18 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         self.visit_block(body);
         self.visit_region_obligations(body.id);
 
+        let call_site_scope = self.call_site_scope.unwrap();
+        debug!("visit_fn_body body.id {} call_site_scope: {:?}",
+               body.id, call_site_scope);
+        type_of_node_must_outlive(self,
+                                  infer::CallReturn(span),
+                                  body.id,
+                                  ty::ReScope(call_site_scope));
+
         self.region_bound_pairs.truncate(old_region_bounds_pairs_len);
 
         self.set_body_id(old_body_id);
+        self.set_call_site_scope(old_call_site_scope);
     }
 
     fn visit_region_obligations(&mut self, node_id: ast::NodeId)
@@ -832,6 +853,17 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
             rcx.visit_block(&**body);
 
             rcx.set_repeating_scope(repeating_scope);
+        }
+
+        hir::ExprRet(Some(ref ret_expr)) => {
+            let call_site_scope = rcx.call_site_scope;
+            debug!("visit_expr ExprRet ret_expr.id {} call_site_scope: {:?}",
+                   ret_expr.id, call_site_scope);
+            type_of_node_must_outlive(rcx,
+                                      infer::CallReturn(ret_expr.span),
+                                      ret_expr.id,
+                                      ty::ReScope(call_site_scope.unwrap()));
+            intravisit::walk_expr(rcx, expr);
         }
 
         _ => {

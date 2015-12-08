@@ -26,6 +26,7 @@ use middle::cstore::{CrateStore, LOCAL_CRATE};
 use middle::def::{self, ExportMap};
 use middle::def_id::DefId;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
+use middle::region::{CodeExtent};
 use middle::subst::{self, ParamSpace, Subst, Substs, VecPerParamSpace};
 use middle::traits;
 use middle::ty;
@@ -1098,7 +1099,7 @@ pub struct ParameterEnvironment<'a, 'tcx:'a> {
     /// FIXME(#3696). It would be nice to refactor so that free
     /// regions don't have this implicit scope and instead introduce
     /// relationships in the environment.
-    pub free_id: ast::NodeId,
+    pub free_id_outlive: CodeExtent,
 }
 
 impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
@@ -1113,7 +1114,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             caller_bounds: caller_bounds,
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
-            free_id: self.free_id,
+            free_id_outlive: self.free_id_outlive,
         }
     }
 
@@ -1131,7 +1132,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         cx.construct_parameter_environment(impl_item.span,
                                                            &scheme.generics,
                                                            &predicates,
-                                                           id)
+                                                           cx.region_maps.item_extent(id))
                     }
                     hir::ImplItemKind::Const(_, _) => {
                         let def_id = cx.map.local_def_id(id);
@@ -1140,7 +1141,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         cx.construct_parameter_environment(impl_item.span,
                                                            &scheme.generics,
                                                            &predicates,
-                                                           id)
+                                                           cx.region_maps.item_extent(id))
                     }
                     hir::ImplItemKind::Method(_, ref body) => {
                         let method_def_id = cx.map.local_def_id(id);
@@ -1152,7 +1153,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                     impl_item.span,
                                     method_generics,
                                     method_bounds,
-                                    body.id)
+                                    cx.region_maps.call_site_extent(id, body.id))
                             }
                             _ => {
                                 cx.sess
@@ -1175,7 +1176,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         cx.construct_parameter_environment(trait_item.span,
                                                            &trait_def.generics,
                                                            &predicates,
-                                                           id)
+                                                           cx.region_maps.item_extent(id))
                     }
                     hir::ConstTraitItem(..) => {
                         let def_id = cx.map.local_def_id(id);
@@ -1184,23 +1185,29 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         cx.construct_parameter_environment(trait_item.span,
                                                            &scheme.generics,
                                                            &predicates,
-                                                           id)
+                                                           cx.region_maps.item_extent(id))
                     }
                     hir::MethodTraitItem(_, ref body) => {
-                        // for the body-id, use the id of the body
-                        // block, unless this is a trait method with
-                        // no default, then fallback to the method id.
-                        let body_id = body.as_ref().map(|b| b.id).unwrap_or(id);
+                        // Use call-site for extent (unless this is a
+                        // trait method with no default; then fallback
+                        // to the method id).
                         let method_def_id = cx.map.local_def_id(id);
                         match cx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
                                 let method_generics = &method_ty.generics;
                                 let method_bounds = &method_ty.predicates;
+                                let extent = if let Some(ref body) = *body {
+                                    // default impl: use call_site extent as free_id_outlive bound.
+                                    cx.region_maps.call_site_extent(id, body.id)
+                                } else {
+                                    // no default impl: use item extent as free_id_outlive bound.
+                                    cx.region_maps.item_extent(id)
+                                };
                                 cx.construct_parameter_environment(
                                     trait_item.span,
                                     method_generics,
                                     method_bounds,
-                                    body_id)
+                                    extent)
                             }
                             _ => {
                                 cx.sess
@@ -1223,7 +1230,8 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         cx.construct_parameter_environment(item.span,
                                                            &fn_scheme.generics,
                                                            &fn_predicates,
-                                                           body.id)
+                                                           cx.region_maps.call_site_extent(id,
+                                                                                           body.id))
                     }
                     hir::ItemEnum(..) |
                     hir::ItemStruct(..) |
@@ -1236,7 +1244,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         cx.construct_parameter_environment(item.span,
                                                            &scheme.generics,
                                                            &predicates,
-                                                           id)
+                                                           cx.region_maps.item_extent(id))
                     }
                     hir::ItemTrait(..) => {
                         let def_id = cx.map.local_def_id(id);
@@ -1245,7 +1253,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         cx.construct_parameter_environment(item.span,
                                                            &trait_def.generics,
                                                            &predicates,
-                                                           id)
+                                                           cx.region_maps.item_extent(id))
                     }
                     _ => {
                         cx.sess.span_bug(item.span,
@@ -2576,18 +2584,17 @@ impl<'tcx> ctxt<'tcx> {
     /// are no free type/lifetime parameters in scope.
     pub fn empty_parameter_environment<'a>(&'a self)
                                            -> ParameterEnvironment<'a,'tcx> {
+
+        // for an empty parameter environment, there ARE no free
+        // regions, so it shouldn't matter what we use for the free id
+        let free_id_outlive = self.region_maps.node_extent(ast::DUMMY_NODE_ID);
         ty::ParameterEnvironment { tcx: self,
                                    free_substs: Substs::empty(),
                                    caller_bounds: Vec::new(),
                                    implicit_region_bound: ty::ReEmpty,
                                    selection_cache: traits::SelectionCache::new(),
                                    evaluation_cache: traits::EvaluationCache::new(),
-
-                                   // for an empty parameter
-                                   // environment, there ARE no free
-                                   // regions, so it shouldn't matter
-                                   // what we use for the free id
-                                   free_id: ast::DUMMY_NODE_ID }
+                                   free_id_outlive: free_id_outlive }
     }
 
     /// Constructs and returns a substitution that can be applied to move from
@@ -2596,7 +2603,7 @@ impl<'tcx> ctxt<'tcx> {
     /// free parameters. Since we currently represent bound/free type
     /// parameters in the same way, this only has an effect on regions.
     pub fn construct_free_substs(&self, generics: &Generics<'tcx>,
-                                 free_id: NodeId) -> Substs<'tcx> {
+                                 free_id_outlive: CodeExtent) -> Substs<'tcx> {
         // map T => T
         let mut types = VecPerParamSpace::empty();
         for def in generics.types.as_slice() {
@@ -2604,8 +2611,6 @@ impl<'tcx> ctxt<'tcx> {
                     def);
             types.push(def.space, self.mk_param_from_def(def));
         }
-
-        let free_id_outlive = self.region_maps.item_extent(free_id);
 
         // map bound 'a => free 'a
         let mut regions = VecPerParamSpace::empty();
@@ -2623,20 +2628,21 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    /// See `ParameterEnvironment` struct def'n for details
+    /// See `ParameterEnvironment` struct def'n for details.
+    /// If you were using `free_id: NodeId`, you might try `self.region_maps.item_extent(free_id)`
+    /// for the `free_id_outlive` parameter. (But note that that is not always quite right.)
     pub fn construct_parameter_environment<'a>(&'a self,
                                                span: Span,
                                                generics: &ty::Generics<'tcx>,
                                                generic_predicates: &ty::GenericPredicates<'tcx>,
-                                               free_id: NodeId)
+                                               free_id_outlive: CodeExtent)
                                                -> ParameterEnvironment<'a, 'tcx>
     {
         //
         // Construct the free substs.
         //
 
-        let free_substs = self.construct_free_substs(generics, free_id);
-        let free_id_outlive = self.region_maps.item_extent(free_id);
+        let free_substs = self.construct_free_substs(generics, free_id_outlive);
 
         //
         // Compute the bounds on Self and the type parameters.
@@ -2646,12 +2652,6 @@ impl<'tcx> ctxt<'tcx> {
         let bounds = self.liberate_late_bound_regions(free_id_outlive, &ty::Binder(bounds));
         let predicates = bounds.predicates.into_vec();
 
-        debug!("construct_parameter_environment: free_id={:?} free_subst={:?} predicates={:?}",
-               free_id,
-               free_substs,
-               predicates);
-
-        //
         // Finally, we have to normalize the bounds in the environment, in
         // case they contain any associated type projections. This process
         // can yield errors if the put in illegal associated types, like
@@ -2672,10 +2672,10 @@ impl<'tcx> ctxt<'tcx> {
             caller_bounds: predicates,
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
-            free_id: free_id,
+            free_id_outlive: free_id_outlive,
         };
 
-        let cause = traits::ObligationCause::misc(span, free_id);
+        let cause = traits::ObligationCause::misc(span, free_id_outlive.node_id(&self.region_maps));
         traits::normalize_param_env_or_error(unnormalized_env, cause)
     }
 
