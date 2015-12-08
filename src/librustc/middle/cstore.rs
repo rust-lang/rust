@@ -28,6 +28,7 @@ use middle::def;
 use middle::lang_items;
 use middle::ty::{self, Ty};
 use middle::def_id::{DefId, DefIndex};
+use mir::repr::Mir;
 use session::Session;
 use session::search_paths::PathKind;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
@@ -100,6 +101,7 @@ pub enum InlinedItem {
 }
 
 /// A borrowed version of `hir::InlinedItem`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum InlinedItemRef<'a> {
     Item(&'a hir::Item),
     TraitItem(DefId, &'a hir::TraitItem),
@@ -216,6 +218,8 @@ pub trait CrateStore<'tcx> : Any {
     // misc. metadata
     fn maybe_get_item_ast(&'tcx self, tcx: &ty::ctxt<'tcx>, def: DefId)
                           -> FoundAst<'tcx>;
+    fn maybe_get_item_mir(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+                          -> Option<Mir<'tcx>>;
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
     fn crates(&self) -> Vec<ast::CrateNum>;
@@ -235,6 +239,7 @@ pub trait CrateStore<'tcx> : Any {
                        item_symbols: &RefCell<NodeMap<String>>,
                        link_meta: &LinkMeta,
                        reachable: &NodeSet,
+                       mir_map: &NodeMap<Mir<'tcx>>,
                        krate: &hir::Crate) -> Vec<u8>;
     fn metadata_encoding_version(&self) -> &[u8];
 }
@@ -383,6 +388,9 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     // misc. metadata
     fn maybe_get_item_ast(&'tcx self, tcx: &ty::ctxt<'tcx>, def: DefId)
                           -> FoundAst<'tcx> { unimplemented!() }
+    fn maybe_get_item_mir(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+                          -> Option<Mir<'tcx>> { unimplemented!() }
+
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
     fn crates(&self) -> Vec<ast::CrateNum> { vec![] }
@@ -404,6 +412,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                        item_symbols: &RefCell<NodeMap<String>>,
                        link_meta: &LinkMeta,
                        reachable: &NodeSet,
+                       mir_map: &NodeMap<Mir<'tcx>>,
                        krate: &hir::Crate) -> Vec<u8> { vec![] }
     fn metadata_encoding_version(&self) -> &[u8] { unimplemented!() }
 }

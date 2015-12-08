@@ -18,6 +18,7 @@ use cstore::{self, crate_metadata};
 use common::*;
 use encoder::def_to_u64;
 use index;
+use tls_context;
 use tydecode::TyDecoder;
 
 use rustc::back::svh::Svh;
@@ -26,13 +27,16 @@ use rustc::util::nodemap::FnvHashMap;
 use rustc_front::hir;
 
 use middle::cstore::{LOCAL_CRATE, FoundAst, InlinedItem, LinkagePreference};
-use middle::cstore::{DefLike, DlDef, DlField, DlImpl};
+use middle::cstore::{DefLike, DlDef, DlField, DlImpl, tls};
 use middle::def;
 use middle::def_id::{DefId, DefIndex};
 use middle::lang_items;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{self, RegionEscape, Ty};
+
+use rustc::mir;
+use rustc::mir::visit::MutVisitor;
 
 use std::cell::{Cell, RefCell};
 use std::io::prelude::*;
@@ -48,7 +52,7 @@ use syntax::parse::token::{IdentInterner, special_idents};
 use syntax::parse::token;
 use syntax::ast;
 use syntax::abi;
-use syntax::codemap;
+use syntax::codemap::{self, Span};
 use syntax::print::pprust;
 use syntax::ptr::P;
 
@@ -779,6 +783,56 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: DefIndex,
                 }
                 None => FoundAst::NotFound
             }
+        }
+    }
+}
+
+pub fn maybe_get_item_mir<'tcx>(cdata: Cmd,
+                                tcx: &ty::ctxt<'tcx>,
+                                id: DefIndex)
+                                -> Option<mir::repr::Mir<'tcx>> {
+    let item_doc = cdata.lookup_item(id);
+
+    return reader::maybe_get_doc(item_doc, tag_mir as usize).map(|mir_doc| {
+        let dcx = tls_context::DecodingContext {
+            crate_metadata: cdata,
+            tcx: tcx,
+        };
+        let mut decoder = reader::Decoder::new(mir_doc);
+
+        let mut mir = tls::enter_decoding_context(&dcx, &mut decoder, |_, decoder| {
+            Decodable::decode(decoder).unwrap()
+        });
+
+        let mut def_id_and_span_translator = MirDefIdAndSpanTranslator {
+            crate_metadata: cdata,
+            codemap: tcx.sess.codemap(),
+            last_filemap_index_hint: Cell::new(0),
+        };
+
+        def_id_and_span_translator.visit_mir(&mut mir);
+
+        mir
+    });
+
+    struct MirDefIdAndSpanTranslator<'cdata, 'codemap> {
+        crate_metadata: Cmd<'cdata>,
+        codemap: &'codemap codemap::CodeMap,
+        last_filemap_index_hint: Cell<usize>
+    }
+
+    impl<'v, 'cdata, 'codemap> mir::visit::MutVisitor<'v>
+        for MirDefIdAndSpanTranslator<'cdata, 'codemap>
+    {
+        fn visit_def_id(&mut self, def_id: &mut DefId) {
+            *def_id = translate_def_id(self.crate_metadata, *def_id);
+        }
+
+        fn visit_span(&mut self, span: &mut Span) {
+            *span = translate_span(self.crate_metadata,
+                                   self.codemap,
+                                   &self.last_filemap_index_hint,
+                                   *span);
         }
     }
 }
