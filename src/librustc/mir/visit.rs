@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::def_id::DefId;
 use middle::ty::Region;
 use mir::repr::*;
 use rustc_data_structures::tuple_slice::TupleSlice;
+use syntax::codemap::Span;
 
 pub trait Visitor<'tcx> {
     // Override these, and call `self.super_xxx` to revert back to the
@@ -56,6 +58,18 @@ pub trait Visitor<'tcx> {
         self.super_constant(constant);
     }
 
+    fn visit_literal(&mut self, literal: &Literal<'tcx>) {
+        self.super_literal(literal);
+    }
+
+    fn visit_def_id(&mut self, def_id: DefId) {
+        self.super_def_id(def_id);
+    }
+
+    fn visit_span(&mut self, span: Span) {
+        self.super_span(span);
+    }
+
     // The `super_xxx` methods comprise the default behavior and are
     // not meant to be overidden.
 
@@ -74,6 +88,8 @@ pub trait Visitor<'tcx> {
     }
 
     fn super_statement(&mut self, block: BasicBlock, statement: &Statement<'tcx>) {
+        self.visit_span(statement.span);
+
         match statement.kind {
             StatementKind::Assign(ref lvalue, ref rvalue) => {
                 self.visit_assign(block, lvalue, rvalue);
@@ -218,7 +234,26 @@ pub trait Visitor<'tcx> {
     fn super_branch(&mut self, _source: BasicBlock, _target: BasicBlock) {
     }
 
-    fn super_constant(&mut self, _constant: &Constant<'tcx>) {
+    fn super_constant(&mut self, constant: &Constant<'tcx>) {
+        self.visit_span(constant.span);
+        self.visit_literal(&constant.literal);
+    }
+
+    fn super_literal(&mut self, literal: &Literal<'tcx>) {
+        match *literal {
+            Literal::Item { def_id, .. } => {
+                self.visit_def_id(def_id);
+            },
+            Literal::Value { .. } => {
+                // Nothing to do
+            }
+        }
+    }
+
+    fn super_def_id(&mut self, _def_id: DefId) {
+    }
+
+    fn super_span(&mut self, _span: Span) {
     }
 }
 
