@@ -152,12 +152,14 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(4).o: \
 	@$$(call E, rustc: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) --emit=obj -o $$@ $$<
 
+ifeq ($$(CFG_RUSTRT_HAS_STARTUP_OBJS_$(2)), 1)
 # Add dependencies on Rust startup objects to all crates that depend on core.
 # This ensures that they are built after core (since they depend on it),
 # but before everything else (since they are needed for linking dylib crates).
 $$(foreach crate, $$(TARGET_CRATES), \
 	$$(if $$(findstring core,$$(DEPS_$$(crate))), \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate))) : $$(TLIB$(1)_T_$(2)_H_$(3))/$(4).o
+endif
 
 endef
 
