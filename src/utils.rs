@@ -325,6 +325,17 @@ pub fn span_note_and_lint<T: LintContext>(cx: &T, lint: &'static Lint, span: Spa
     }
 }
 
+pub fn span_lint_and_then<T: LintContext, F>(cx: &T, lint: &'static Lint, sp: Span,
+        msg: &str, f: F) where F: Fn() {
+    cx.span_lint(lint, sp, msg);
+    if cx.current_level(lint) != Level::Allow {
+        f();
+        cx.sess().fileline_help(sp, &format!("for further information visit \
+            https://github.com/Manishearth/rust-clippy/wiki#{}",
+            lint.name_lower()))
+    }
+}
+
 /// return the base type for references and raw pointers
 pub fn walk_ptrs_ty(ty: ty::Ty) -> ty::Ty {
     match ty.sty {
