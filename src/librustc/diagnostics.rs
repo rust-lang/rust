@@ -2233,9 +2233,9 @@ register_diagnostics! {
     E0285, // overflow evaluation builtin bounds
     E0298, // mismatched types between arms
     E0299, // mismatched types between arms
-    E0300, // unexpanded macro
-    E0304, // expected signed integer constant
-    E0305, // expected constant
+    // E0300, // unexpanded macro
+    // E0304, // expected signed integer constant
+    // E0305, // expected constant
     E0311, // thing may not live long enough
     E0312, // lifetime of reference outlives lifetime of borrowed content
     E0313, // lifetime of borrowed pointer outlives lifetime of captured variable
