@@ -14,7 +14,7 @@
 //! (bundled into the rust runtime). This module self-contains the C bindings
 //! and necessary legwork to render markdown, and exposes all of the
 //! functionality through a unit-struct, `Markdown`, which has an implementation
-//! of `fmt::String`. Example usage:
+//! of `fmt::Display`. Example usage:
 //!
 //! ```rust,ignore
 //! use rustdoc::html::markdown::Markdown;
@@ -29,19 +29,19 @@
 use libc;
 use std::ascii::AsciiExt;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::default::Default;
 use std::ffi::CString;
 use std::fmt;
 use std::slice;
 use std::str;
 
+use html::render::derive_id;
 use html::toc::TocBuilder;
 use html::highlight;
 use html::escape::Escape;
 use test;
 
-/// A unit struct which has the `fmt::String` trait implemented. When
+/// A unit struct which has the `fmt::Display` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
 pub struct Markdown<'a>(pub &'a str);
@@ -210,10 +210,6 @@ fn collapse_whitespace(s: &str) -> String {
     s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-thread_local!(static USED_HEADER_MAP: RefCell<HashMap<String, usize>> = {
-    RefCell::new(HashMap::new())
-});
-
 thread_local!(pub static PLAYGROUND_KRATE: RefCell<Option<Option<String>>> = {
     RefCell::new(None)
 });
@@ -311,16 +307,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         let opaque = unsafe { (*data).opaque as *mut hoedown_html_renderer_state };
         let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
 
-        // Make sure our hyphenated ID is unique for this page
-        let id = USED_HEADER_MAP.with(|map| {
-            let id = match map.borrow_mut().get_mut(&id) {
-                None => id,
-                Some(a) => { *a += 1; format!("{}-{}", id, *a - 1) }
-            };
-            map.borrow_mut().insert(id.clone(), 1);
-            id
-        });
-
+        let id = derive_id(id);
 
         let sec = opaque.toc_builder.as_mut().map_or("".to_owned(), |builder| {
             format!("{} ", builder.push(level as u32, s.clone(), id.clone()))
@@ -334,8 +321,6 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         let text = CString::new(text).unwrap();
         unsafe { hoedown_buffer_puts(ob, text.as_ptr()) }
     }
-
-    reset_headers();
 
     extern fn codespan(
         ob: *mut hoedown_buffer,
@@ -500,18 +485,6 @@ impl LangString {
     }
 }
 
-/// By default this markdown renderer generates anchors for each header in the
-/// rendered document. The anchor name is the contents of the header separated
-/// by hyphens, and a thread-local map is used to disambiguate among duplicate
-/// headers (numbers are appended).
-///
-/// This method will reset the local table for these headers. This is typically
-/// used at the beginning of rendering an entire HTML page to reset from the
-/// previous state (if any).
-pub fn reset_headers() {
-    USED_HEADER_MAP.with(|s| s.borrow_mut().clear());
-}
-
 impl<'a> fmt::Display for Markdown<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let Markdown(md) = *self;
@@ -579,6 +552,7 @@ pub fn plain_summary_line(md: &str) -> String {
 mod tests {
     use super::{LangString, Markdown};
     use super::plain_summary_line;
+    use html::render::reset_ids;
 
     #[test]
     fn test_lang_string_parse() {
@@ -611,6 +585,7 @@ mod tests {
     fn issue_17736() {
         let markdown = "# title";
         format!("{}", Markdown(markdown));
+        reset_ids();
     }
 
     #[test]
@@ -618,6 +593,7 @@ mod tests {
         fn t(input: &str, expect: &str) {
             let output = format!("{}", Markdown(input));
             assert_eq!(output, expect);
+            reset_ids();
         }
 
         t("# Foo bar", "\n<h1 id='foo-bar' class='section-header'>\
@@ -632,6 +608,32 @@ mod tests {
           "\n<h4 id='foo--bar--baz--qux' class='section-header'>\
           <a href='#foo--bar--baz--qux'><strong>Foo?</strong> &amp; *bar?!*  \
           <em><code>baz</code></em> ❤ #qux</a></h4>");
+    }
+
+    #[test]
+    fn test_header_ids_multiple_blocks() {
+        fn t(input: &str, expect: &str) {
+            let output = format!("{}", Markdown(input));
+            assert_eq!(output, expect);
+        }
+
+        let test = || {
+            t("# Example", "\n<h1 id='example' class='section-header'>\
+              <a href='#example'>Example</a></h1>");
+            t("# Panics", "\n<h1 id='panics' class='section-header'>\
+              <a href='#panics'>Panics</a></h1>");
+            t("# Example", "\n<h1 id='example-1' class='section-header'>\
+              <a href='#example-1'>Example</a></h1>");
+            t("# Main", "\n<h1 id='main-1' class='section-header'>\
+              <a href='#main-1'>Main</a></h1>");
+            t("# Example", "\n<h1 id='example-2' class='section-header'>\
+              <a href='#example-2'>Example</a></h1>");
+            t("# Panics", "\n<h1 id='panics-1' class='section-header'>\
+              <a href='#panics-1'>Panics</a></h1>");
+        };
+        test();
+        reset_ids();
+        test();
     }
 
     #[test]
