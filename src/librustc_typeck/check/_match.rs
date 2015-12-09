@@ -26,7 +26,6 @@ use session::Session;
 use std::cmp;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::ast;
-use syntax::ext::mtwt;
 use syntax::codemap::{Span, Spanned};
 use syntax::ptr::P;
 
@@ -187,7 +186,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
             // if there are multiple arms, make sure they all agree on
             // what the type of the binding `x` ought to be
-            let canon_id = *pcx.map.get(&mtwt::resolve(path.node)).unwrap();
+            let canon_id = *pcx.map.get(&path.node.name).unwrap();
             if canon_id != pat.id {
                 let ct = fcx.local_ty(pat.span, canon_id);
                 demand::eqtype(fcx, pat.span, ct, typ);

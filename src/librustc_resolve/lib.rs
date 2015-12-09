@@ -57,7 +57,7 @@ use rustc::lint;
 use rustc::middle::cstore::{CrateStore, DefLike, DlDef};
 use rustc::middle::def::*;
 use rustc::middle::def_id::DefId;
-use rustc::middle::pat_util::pat_bindings_hygienic;
+use rustc::middle::pat_util::pat_bindings;
 use rustc::middle::privacy::*;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
@@ -67,7 +67,6 @@ use syntax::ast;
 use syntax::ast::{CRATE_NODE_ID, Ident, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
 use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64, TyF64, TyF32};
 use syntax::attr::AttrMetaMethods;
-use syntax::ext::mtwt;
 use syntax::parse::token::{self, special_names, special_idents};
 use syntax::codemap::{self, Span, Pos};
 use syntax::util::lev_distance::{lev_distance, max_suggestion_distance};
@@ -2314,8 +2313,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut result = HashMap::new();
-        pat_bindings_hygienic(&self.def_map, pat, |binding_mode, _id, sp, path1| {
-            let name = mtwt::resolve(path1.node);
+        pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path1| {
+            let name = path1.node;
             result.insert(name,
                           BindingInfo {
                               span: sp,
@@ -2519,9 +2518,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let const_ok = mode == RefutableMode && at_rhs.is_none();
 
                     let ident = path1.node;
-                    let renamed = mtwt::resolve(ident);
+                    let renamed = ident.name;
 
-                    match self.resolve_bare_identifier_pattern(ident.name, pattern.span) {
+                    match self.resolve_bare_identifier_pattern(ident.unhygienic_name,
+                                                               pattern.span) {
                         FoundStructOrEnumVariant(def, lp) if const_ok => {
                             debug!("(resolving pattern) resolving `{}` to struct or enum variant",
                                    renamed);
@@ -2910,7 +2910,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     // Resolve a single identifier
     fn resolve_identifier(&mut self,
-                          identifier: Ident,
+                          identifier: hir::Ident,
                           namespace: Namespace,
                           check_ribs: bool)
                           -> Option<LocalDef> {
@@ -2918,7 +2918,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if namespace == TypeNS {
             if let Some(&prim_ty) = self.primitive_type_table
                                         .primitive_types
-                                        .get(&identifier.name) {
+                                        .get(&identifier.unhygienic_name) {
                 return Some(LocalDef::from_def(DefPrimTy(prim_ty)));
             }
         }
@@ -2929,7 +2929,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        self.resolve_item_by_name_in_lexical_scope(identifier.name, namespace)
+        self.resolve_item_by_name_in_lexical_scope(identifier.unhygienic_name, namespace)
             .map(LocalDef::from_def)
     }
 
@@ -3143,13 +3143,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn resolve_identifier_in_local_ribs(&mut self,
-                                        ident: Ident,
+                                        ident: hir::Ident,
                                         namespace: Namespace)
                                         -> Option<LocalDef> {
         // Check the local set of ribs.
         let (name, ribs) = match namespace {
-            ValueNS => (mtwt::resolve(ident), &self.value_ribs),
-            TypeNS => (ident.name, &self.type_ribs),
+            ValueNS => (ident.name, &self.value_ribs),
+            TypeNS => (ident.unhygienic_name, &self.type_ribs),
         };
 
         for (i, rib) in ribs.iter().enumerate().rev() {
@@ -3550,8 +3550,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                     {
                         let rib = this.label_ribs.last_mut().unwrap();
-                        let renamed = mtwt::resolve(label);
-                        rib.bindings.insert(renamed, def_like);
+                        rib.bindings.insert(label.name, def_like);
                     }
 
                     intravisit::walk_expr(this, expr);
@@ -3559,8 +3558,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
-                let renamed = mtwt::resolve(label.node);
-                match self.search_label(renamed) {
+                match self.search_label(label.node.name) {
                     None => {
                         resolve_error(self,
                                       label.span,

@@ -112,6 +112,13 @@ pub fn compile_input(sess: Session,
         let mut hir_forest = time(sess.time_passes(),
                                   "lowering ast -> hir",
                                   || hir_map::Forest::new(lower_crate(&lcx, &expanded_crate)));
+
+        // Discard MTWT tables that aren't required past lowering to HIR.
+        if !sess.opts.debugging_opts.keep_mtwt_tables &&
+           !sess.opts.debugging_opts.save_analysis {
+            syntax::ext::mtwt::clear_tables();
+        }
+
         let arenas = ty::CtxtArenas::new();
         let ast_map = make_map(&sess, &mut hir_forest);
 
@@ -703,12 +710,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     } = time(time_passes,
              "resolution",
              || resolve::resolve_crate(sess, &ast_map, make_glob_map));
-
-    // Discard MTWT tables that aren't required past resolution.
-    // FIXME: get rid of uses of MTWT tables in typeck, mir and trans and clear them
-    if !sess.opts.debugging_opts.keep_mtwt_tables {
-        // syntax::ext::mtwt::clear_tables();
-    }
 
     let named_region_map = time(time_passes,
                                 "lifetime resolution",

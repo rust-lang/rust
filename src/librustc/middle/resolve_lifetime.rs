@@ -426,7 +426,7 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
     fn expression_label(ex: &hir::Expr) -> Option<ast::Name> {
         match ex.node {
             hir::ExprWhile(_, _, Some(label)) |
-            hir::ExprLoop(_, Some(label)) => Some(label.name),
+            hir::ExprLoop(_, Some(label)) => Some(label.unhygienic_name),
             _ => None,
         }
     }

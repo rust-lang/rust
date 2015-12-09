@@ -14,7 +14,6 @@ use middle::ty;
 use util::nodemap::FnvHashMap;
 
 use syntax::ast;
-use syntax::ext::mtwt;
 use rustc_front::hir;
 use rustc_front::util::walk_pat;
 use syntax::codemap::{respan, Span, Spanned, DUMMY_SP};
@@ -27,8 +26,8 @@ pub type PatIdMap = FnvHashMap<ast::Name, ast::NodeId>;
 // use the NodeId of their namesake in the first pattern.
 pub fn pat_id_map(dm: &RefCell<DefMap>, pat: &hir::Pat) -> PatIdMap {
     let mut map = FnvHashMap();
-    pat_bindings_hygienic(dm, pat, |_bm, p_id, _s, path1| {
-        map.insert(mtwt::resolve(path1.node), p_id);
+    pat_bindings(dm, pat, |_bm, p_id, _s, path1| {
+        map.insert(path1.node, p_id);
     });
     map
 }
@@ -124,9 +123,8 @@ pub fn pat_bindings<I>(dm: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) where
         true
     });
 }
-
-pub fn pat_bindings_hygienic<I>(dm: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) where
-    I: FnMut(hir::BindingMode, ast::NodeId, Span, &Spanned<ast::Ident>),
+pub fn pat_bindings_ident<I>(dm: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) where
+    I: FnMut(hir::BindingMode, ast::NodeId, Span, &Spanned<hir::Ident>),
 {
     walk_pat(pat, |p| {
         match p.node {
@@ -214,7 +212,7 @@ pub fn def_to_path(tcx: &ty::ctxt, id: DefId) -> hir::Path {
     tcx.with_path(id, |path| hir::Path {
         global: false,
         segments: path.last().map(|elem| hir::PathSegment {
-            identifier: ast::Ident::with_empty_ctxt(elem.name()),
+            identifier: hir::Ident::from_name(elem.name()),
             parameters: hir::PathParameters::none(),
         }).into_iter().collect(),
         span: DUMMY_SP,

@@ -67,10 +67,11 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use syntax::ast::*;
 use syntax::attr::{ThinAttributes, ThinAttributesExt};
+use syntax::ext::mtwt;
 use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned, Span};
 use syntax::owned_slice::OwnedSlice;
-use syntax::parse::token::{self, str_to_ident};
+use syntax::parse::token;
 use syntax::std_inject;
 use syntax::visit::{self, Visitor};
 
@@ -86,7 +87,7 @@ pub struct LoweringContext<'a> {
     // incrementing.
     cached_id: Cell<u32>,
     // Keep track of gensym'ed idents.
-    gensym_cache: RefCell<HashMap<(NodeId, &'static str), Ident>>,
+    gensym_cache: RefCell<HashMap<(NodeId, &'static str), hir::Ident>>,
     // A copy of cached_id, but is also set to an id while it is being cached.
     gensym_key: Cell<u32>,
 }
@@ -123,20 +124,27 @@ impl<'a, 'hir> LoweringContext<'a> {
         cached
     }
 
-    fn str_to_ident(&self, s: &'static str) -> Ident {
+    fn str_to_ident(&self, s: &'static str) -> hir::Ident {
         let cached_id = self.gensym_key.get();
         if cached_id == 0 {
-            return token::gensym_ident(s);
+            return hir::Ident::from_name(token::gensym(s));
         }
 
         let cached = self.gensym_cache.borrow().contains_key(&(cached_id, s));
         if cached {
             self.gensym_cache.borrow()[&(cached_id, s)]
         } else {
-            let result = token::gensym_ident(s);
+            let result = hir::Ident::from_name(token::gensym(s));
             self.gensym_cache.borrow_mut().insert((cached_id, s), result);
             result
         }
+    }
+}
+
+pub fn lower_ident(_lctx: &LoweringContext, ident: Ident) -> hir::Ident {
+    hir::Ident {
+        name: mtwt::resolve(ident),
+        unhygienic_name: ident.name,
     }
 }
 
@@ -276,20 +284,32 @@ pub fn lower_variant(lctx: &LoweringContext, v: &Variant) -> hir::Variant {
     }
 }
 
-pub fn lower_path(lctx: &LoweringContext, p: &Path) -> hir::Path {
+// Path segments are usually unhygienic, hygienic path segments can occur only in
+// identifier-like paths originating from `ExprPath`.
+// Make life simpler for rustc_resolve by renaming only such segments.
+pub fn lower_path_full(lctx: &LoweringContext, p: &Path, maybe_hygienic: bool) -> hir::Path {
+    let maybe_hygienic = maybe_hygienic && !p.global && p.segments.len() == 1;
     hir::Path {
         global: p.global,
         segments: p.segments
                    .iter()
                    .map(|&PathSegment { identifier, ref parameters }| {
                        hir::PathSegment {
-                           identifier: identifier,
+                           identifier: if maybe_hygienic {
+                               lower_ident(lctx, identifier)
+                           } else {
+                               hir::Ident::from_name(identifier.name)
+                           },
                            parameters: lower_path_parameters(lctx, parameters),
                        }
                    })
                    .collect(),
         span: p.span,
     }
+}
+
+pub fn lower_path(lctx: &LoweringContext, p: &Path) -> hir::Path {
+    lower_path_full(lctx, p, false)
 }
 
 pub fn lower_path_parameters(lctx: &LoweringContext,
@@ -844,7 +864,7 @@ pub fn lower_pat(lctx: &LoweringContext, p: &Pat) -> P<hir::Pat> {
             PatWild => hir::PatWild,
             PatIdent(ref binding_mode, pth1, ref sub) => {
                 hir::PatIdent(lower_binding_mode(lctx, binding_mode),
-                              pth1,
+                              respan(pth1.span, lower_ident(lctx, pth1.node)),
                               sub.as_ref().map(|x| lower_pat(lctx, x)))
             }
             PatLit(ref e) => hir::PatLit(lower_expr(lctx, e)),
@@ -1138,10 +1158,12 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 hir::ExprIf(lower_expr(lctx, cond), lower_block(lctx, blk), else_opt)
             }
             ExprWhile(ref cond, ref body, opt_ident) => {
-                hir::ExprWhile(lower_expr(lctx, cond), lower_block(lctx, body), opt_ident)
+                hir::ExprWhile(lower_expr(lctx, cond), lower_block(lctx, body),
+                               opt_ident.map(|ident| lower_ident(lctx, ident)))
             }
             ExprLoop(ref body, opt_ident) => {
-                hir::ExprLoop(lower_block(lctx, body), opt_ident)
+                hir::ExprLoop(lower_block(lctx, body),
+                              opt_ident.map(|ident| lower_ident(lctx, ident)))
             }
             ExprMatch(ref expr, ref arms) => {
                 hir::ExprMatch(lower_expr(lctx, expr),
@@ -1176,16 +1198,20 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                e2.as_ref().map(|x| lower_expr(lctx, x)))
             }
             ExprPath(ref qself, ref path) => {
-                let qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
+                let hir_qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
                     hir::QSelf {
                         ty: lower_ty(lctx, ty),
                         position: position,
                     }
                 });
-                hir::ExprPath(qself, lower_path(lctx, path))
+                hir::ExprPath(hir_qself, lower_path_full(lctx, path, qself.is_none()))
             }
-            ExprBreak(opt_ident) => hir::ExprBreak(opt_ident),
-            ExprAgain(opt_ident) => hir::ExprAgain(opt_ident),
+            ExprBreak(opt_ident) => hir::ExprBreak(opt_ident.map(|sp_ident| {
+                respan(sp_ident.span, lower_ident(lctx, sp_ident.node))
+            })),
+            ExprAgain(opt_ident) => hir::ExprAgain(opt_ident.map(|sp_ident| {
+                respan(sp_ident.span, lower_ident(lctx, sp_ident.node))
+            })),
             ExprRet(ref e) => hir::ExprRet(e.as_ref().map(|x| lower_expr(lctx, x))),
             ExprInlineAsm(InlineAsm {
                     ref inputs,
@@ -1356,8 +1382,10 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
                     // `[opt_ident]: loop { ... }`
                     let loop_block = block_expr(lctx, match_expr);
+                    let loop_expr = hir::ExprLoop(loop_block,
+                                                  opt_ident.map(|ident| lower_ident(lctx, ident)));
                     // add attributes to the outer returned expr node
-                    expr(lctx, e.span, hir::ExprLoop(loop_block, opt_ident), e.attrs.clone())
+                    expr(lctx, e.span, loop_expr, e.attrs.clone())
                 });
             }
 
@@ -1434,10 +1462,9 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
                     // `[opt_ident]: loop { ... }`
                     let loop_block = block_expr(lctx, match_expr);
-                    let loop_expr = expr(lctx,
-                                         e.span,
-                                         hir::ExprLoop(loop_block, opt_ident),
-                                         None);
+                    let loop_expr = hir::ExprLoop(loop_block,
+                                                  opt_ident.map(|ident| lower_ident(lctx, ident)));
+                    let loop_expr = expr(lctx, e.span, loop_expr, None);
 
                     // `mut iter => { ... }`
                     let iter_arm = {
@@ -1593,7 +1620,7 @@ fn expr_call(lctx: &LoweringContext,
     expr(lctx, span, hir::ExprCall(e, args), attrs)
 }
 
-fn expr_ident(lctx: &LoweringContext, span: Span, id: Ident,
+fn expr_ident(lctx: &LoweringContext, span: Span, id: hir::Ident,
               attrs: ThinAttributes) -> P<hir::Expr> {
     expr_path(lctx, path_ident(span, id), attrs)
 }
@@ -1641,7 +1668,7 @@ fn expr(lctx: &LoweringContext, span: Span, node: hir::Expr_,
 fn stmt_let(lctx: &LoweringContext,
             sp: Span,
             mutbl: bool,
-            ident: Ident,
+            ident: hir::Ident,
             ex: P<hir::Expr>,
             attrs: ThinAttributes)
             -> hir::Stmt {
@@ -1701,13 +1728,13 @@ fn pat_enum(lctx: &LoweringContext,
     pat(lctx, span, pt)
 }
 
-fn pat_ident(lctx: &LoweringContext, span: Span, ident: Ident) -> P<hir::Pat> {
+fn pat_ident(lctx: &LoweringContext, span: Span, ident: hir::Ident) -> P<hir::Pat> {
     pat_ident_binding_mode(lctx, span, ident, hir::BindByValue(hir::MutImmutable))
 }
 
 fn pat_ident_binding_mode(lctx: &LoweringContext,
                           span: Span,
-                          ident: Ident,
+                          ident: hir::Ident,
                           bm: hir::BindingMode)
                           -> P<hir::Pat> {
     let pat_ident = hir::PatIdent(bm,
@@ -1731,21 +1758,21 @@ fn pat(lctx: &LoweringContext, span: Span, pat: hir::Pat_) -> P<hir::Pat> {
     })
 }
 
-fn path_ident(span: Span, id: Ident) -> hir::Path {
+fn path_ident(span: Span, id: hir::Ident) -> hir::Path {
     path(span, vec![id])
 }
 
-fn path(span: Span, strs: Vec<Ident>) -> hir::Path {
+fn path(span: Span, strs: Vec<hir::Ident>) -> hir::Path {
     path_all(span, false, strs, Vec::new(), Vec::new(), Vec::new())
 }
 
-fn path_global(span: Span, strs: Vec<Ident>) -> hir::Path {
+fn path_global(span: Span, strs: Vec<hir::Ident>) -> hir::Path {
     path_all(span, true, strs, Vec::new(), Vec::new(), Vec::new())
 }
 
 fn path_all(sp: Span,
             global: bool,
-            mut idents: Vec<Ident>,
+            mut idents: Vec<hir::Ident>,
             lifetimes: Vec<hir::Lifetime>,
             types: Vec<P<hir::Ty>>,
             bindings: Vec<hir::TypeBinding>)
@@ -1774,12 +1801,12 @@ fn path_all(sp: Span,
     }
 }
 
-fn std_path(lctx: &LoweringContext, components: &[&str]) -> Vec<Ident> {
+fn std_path(lctx: &LoweringContext, components: &[&str]) -> Vec<hir::Ident> {
     let mut v = Vec::new();
     if let Some(s) = lctx.crate_root {
-        v.push(str_to_ident(s));
+        v.push(hir::Ident::from_name(token::intern(s)));
     }
-    v.extend(components.iter().map(|s| str_to_ident(s)));
+    v.extend(components.iter().map(|s| hir::Ident::from_name(token::intern(s))));
     return v;
 }
 

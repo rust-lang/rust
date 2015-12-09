@@ -39,7 +39,7 @@ use intravisit::Visitor;
 use std::collections::BTreeMap;
 use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
 use syntax::abi::Abi;
-use syntax::ast::{Name, Ident, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
+use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, CrateConfig};
 use syntax::attr::ThinAttributes;
 use syntax::owned_slice::OwnedSlice;
@@ -50,7 +50,65 @@ use print::pprust;
 use util;
 
 use std::fmt;
-use serialize::{Encodable, Encoder, Decoder};
+use std::hash::{Hash, Hasher};
+use serialize::{Encodable, Decodable, Encoder, Decoder};
+
+/// Identifier in HIR
+#[derive(Clone, Copy, Eq)]
+pub struct Ident {
+    /// Hygienic name (renamed), should be used by default
+    pub name: Name,
+    /// Unhygienic name (original, not renamed), needed in few places in name resolution
+    pub unhygienic_name: Name,
+}
+
+impl Ident {
+    /// Creates a HIR identifier with both `name` and `unhygienic_name` initialized with
+    /// the argument. Hygiene properties of the created identifier depend entirely on this
+    /// argument. If the argument is a plain interned string `intern("iter")`, then the result
+    /// is unhygienic and can interfere with other entities named "iter". If the argument is
+    /// a "fresh" name created with `gensym("iter")`, then the result is hygienic and can't
+    /// interfere with other entities having the same string as a name.
+    pub fn from_name(name: Name) -> Ident {
+        Ident { name: name, unhygienic_name: name }
+    }
+}
+
+impl PartialEq for Ident {
+    fn eq(&self, other: &Ident) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Hash for Ident {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state)
+    }
+}
+
+impl fmt::Debug for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.name, f)
+    }
+}
+
+impl fmt::Display for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.name, f)
+    }
+}
+
+impl Encodable for Ident {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        self.name.encode(s)
+    }
+}
+
+impl Decodable for Ident {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
+        Ok(Ident::from_name(try!(Name::decode(d))))
+    }
+}
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
@@ -105,6 +163,14 @@ impl fmt::Display for Path {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct PathSegment {
     /// The identifier portion of this path segment.
+    ///
+    /// Hygiene properties of this identifier are worth noting.
+    /// Most path segments are not hygienic and they are not renamed during
+    /// lowering from AST to HIR (see comments to `fn lower_path`). However segments from
+    /// unqualified paths with one segment originating from `ExprPath` (local-variable-like paths)
+    /// can be hygienic, so they are renamed. You should not normally care about this peculiarity
+    /// and just use `identifier.name` unless you modify identifier resolution code
+    /// (`fn resolve_identifier` and other functions called by it in `rustc_resolve`).
     pub identifier: Ident,
 
     /// Type/lifetime parameters attached to this path. They come in
