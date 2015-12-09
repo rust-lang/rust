@@ -3,8 +3,8 @@
 A trait is a language feature that tells the Rust compiler about
 functionality a type must provide.
 
-Do you remember the `impl` keyword, used to call a function with [method
-syntax][methodsyntax]?
+Recall the `impl` keyword, used to call a function with [method
+syntax][methodsyntax]:
 
 ```rust
 struct Circle {
@@ -22,8 +22,8 @@ impl Circle {
 
 [methodsyntax]: method-syntax.html
 
-Traits are similar, except that we define a trait with just the method
-signature, then implement the trait for that struct. Like this:
+Traits are similar, except that we first define a trait with a method
+signature, then implement the trait for a type. In this example, we implement the trait `HasArea` for `Circle`:
 
 ```rust
 struct Circle {
@@ -399,15 +399,13 @@ fn inverse<T>() -> T
 ```
 
 This shows off the additional feature of `where` clauses: they allow bounds
-where the left-hand side is an arbitrary type (`i32` in this case), not just a
-plain type parameter (like `T`). In this example, `i32` must implement
+on the left-hand side not only of type parameters `T`, but also of types (`i32` in this case). In this example, `i32` must implement
 `ConvertTo<T>`. Rather than defining what `i32` is (since that's obvious), the
-`where` clause here is a constraint on `T`.
+`where` clause here constrains `T`.
 
 # Default methods
 
-If you already know how a typical implementor will define a method, you can
-let your trait supply a default:
+A default method can be added to a trait definition if it is already known how a typical implementor will define a method. For example, `is_invalid()` is defined as the opposite of `is_valid()`:
 
 ```rust
 trait Foo {
@@ -417,9 +415,7 @@ trait Foo {
 }
 ```
 
-Implementors of the `Foo` trait need to implement `is_valid()`, but they don’t
-need to implement `is_invalid()`. They’ll get this default behavior. They can
-override the default if they so choose:
+Implementors of the `Foo` trait need to implement `is_valid()` but not `is_invalid()` due to the added default behavior. This default behavior can still be overridden as in:
 
 ```rust
 # trait Foo {
@@ -446,7 +442,7 @@ impl Foo for OverrideDefault {
 
     fn is_invalid(&self) -> bool {
         println!("Called OverrideDefault.is_invalid!");
-        true // this implementation is a self-contradiction!
+        true // overrides the expected value of is_invalid()
     }
 }
 
@@ -499,7 +495,7 @@ error: the trait `main::Foo` is not implemented for the type `main::Baz` [E0277]
 
 # Deriving
 
-Implementing traits like `Debug` and `Default` over and over again can become
+Implementing traits like `Debug` and `Default` repeatedly can become
 quite tedious. For that reason, Rust provides an [attribute][attributes] that
 allows you to let Rust automatically implement traits for you:
 
