@@ -24,10 +24,11 @@
 
 use borrow::ToOwned;
 use mem;
+use panic;
 use sys;
 use sys_common::thread_info::{self, NewThread};
 use sys_common;
-use thread::{self, Thread};
+use thread::Thread;
 
 // Reexport some of our utilities which are expected by other crates.
 pub use sys_common::unwind::{begin_unwind, begin_unwind_fmt};
@@ -57,7 +58,7 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
         sys_common::args::init(argc, argv);
 
         // Let's run some code!
-        let res = thread::catch_panic(mem::transmute::<_, fn()>(main));
+        let res = panic::recover(mem::transmute::<_, fn()>(main));
         sys_common::cleanup();
         res.is_err()
     };
