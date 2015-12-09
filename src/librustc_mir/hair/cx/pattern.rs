@@ -19,7 +19,6 @@ use rustc::middle::ty::{self, Ty};
 use rustc::mir::repr::*;
 use rustc_front::hir;
 use syntax::ast;
-use syntax::ext::mtwt;
 use syntax::ptr::P;
 
 /// When there are multiple patterns in a single arm, each one has its
@@ -162,7 +161,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
             {
                 let id = match self.binding_map {
                     None => pat.id,
-                    Some(ref map) => map[&mtwt::resolve(ident.node)],
+                    Some(ref map) => map[&ident.node.name],
                 };
                 let var_ty = self.cx.tcx.node_id_to_type(pat.id);
                 let region = match var_ty.sty {

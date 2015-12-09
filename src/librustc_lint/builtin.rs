@@ -170,9 +170,7 @@ impl LateLintPass for NonShorthandFieldPatterns {
             });
             for fieldpat in field_pats {
                 if let hir::PatIdent(_, ident, None) = fieldpat.node.pat.node {
-                    if ident.node.name == fieldpat.node.name {
-                        // FIXME: should this comparison really be done on the name?
-                        // doing it on the ident will fail during compilation of libcore
+                    if ident.node.unhygienic_name == fieldpat.node.name {
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant and can \
                                               be removed", ident.node))
