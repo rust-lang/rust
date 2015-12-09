@@ -1,5 +1,5 @@
 #![feature(plugin_registrar, box_syntax)]
-#![feature(rustc_private, core, collections)]
+#![feature(rustc_private, collections)]
 #![feature(num_bits_bytes, iter_arith)]
 #![allow(unknown_lints)]
 
@@ -68,7 +68,7 @@ pub mod escape;
 pub mod misc_early;
 
 mod reexport {
-    pub use syntax::ast::{Name, Ident, NodeId};
+    pub use syntax::ast::{Name, NodeId};
 }
 
 #[plugin_registrar]

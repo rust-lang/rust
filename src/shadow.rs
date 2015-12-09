@@ -39,7 +39,7 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, block: &Block) {
     let mut bindings = Vec::new();
     for arg in &decl.inputs {
         if let PatIdent(_, ident, _) = arg.pat.node {
-            bindings.push((ident.node.name, ident.span))
+            bindings.push((ident.node.unhygienic_name, ident.span))
         }
     }
     check_block(cx, block, &mut bindings);
@@ -85,7 +85,7 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span,
     //TODO: match more stuff / destructuring
     match pat.node {
         PatIdent(_, ref ident, ref inner) => {
-            let name = ident.node.name;
+            let name = ident.node.unhygienic_name;
             if is_binding(cx, pat) {
                 let mut new_binding = true;
                 for tup in bindings.iter_mut() {
@@ -266,7 +266,7 @@ fn is_self_shadow(name: Name, expr: &Expr) -> bool {
 
 fn path_eq_name(name: Name, path: &Path) -> bool {
     !path.global && path.segments.len() == 1 &&
-        path.segments[0].identifier.name == name
+        path.segments[0].identifier.unhygienic_name == name
 }
 
 struct ContainsSelf {
@@ -275,8 +275,8 @@ struct ContainsSelf {
 }
 
 impl<'v> Visitor<'v> for ContainsSelf {
-    fn visit_name(&mut self, _: Span, name: Name) {
-        if self.name == name {
+    fn visit_ident(&mut self, _: Span, ident: Ident) {
+        if self.name == ident.unhygienic_name {
             self.result = true;
         }
     }

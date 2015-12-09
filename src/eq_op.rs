@@ -66,7 +66,6 @@ fn is_path_equal(left : &Path, right : &Path) -> bool {
     // we have to be explicit about hygiene
     left.global == right.global && over(&left.segments, &right.segments,
         |l, r| l.identifier.name == r.identifier.name
-              && l.identifier.ctxt == r.identifier.ctxt
                && l.parameters == r.parameters)
 }
 

@@ -50,7 +50,7 @@ impl LateLintPass for LenZero {
     }
 }
 
-fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[P<TraitItem>]) {
+fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItem]) {
     fn is_named_self(item: &TraitItem, name: &str) -> bool {
         item.name.as_str() == name && if let MethodTraitItem(ref sig, _) =
             item.node { is_self_sig(sig) } else { false }
@@ -69,7 +69,7 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[P<TraitItem>]
     }
 }
 
-fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[P<ImplItem>]) {
+fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItem]) {
     fn is_named_self(item: &ImplItem, name: &str) -> bool {
         item.name.as_str() == name && if let ImplItemKind::Method(ref sig, _) =
             item.node { is_self_sig(sig) } else { false }
