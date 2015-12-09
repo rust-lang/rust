@@ -307,6 +307,7 @@ create_config! {
     take_source_hints: bool, true, "Retain some formatting characteristics from the source code";
     hard_tabs: bool, false, "Use tab characters for indentation, spaces for alignment";
     wrap_comments: bool, false, "Break comments to fit on the line";
+    normalise_comments: bool, true, "Convert /* */ comments to // comments where possible";
     wrap_match_arms: bool, true, "Wrap multiline match arms in blocks";
     match_block_trailing_comma: bool, false,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";

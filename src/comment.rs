@@ -27,9 +27,23 @@ pub fn rewrite_comment(orig: &str,
     // Edge case: block comments. Let's not trim their lines (for now).
     let (opener, closer, line_start) = if block_style {
         ("/* ", " */", " * ")
-    } else if orig.starts_with("///") {
+    } else if !config.normalise_comments {
+        if orig.starts_with("/**") {
+            ("/** ", " **/", " ** ")
+        } else if orig.starts_with("/*!") {
+            ("/*! ", " */", " * ")
+        } else if orig.starts_with("/*") {
+            ("/* ", " */", " * ")
+        } else if orig.starts_with("///") {
+            ("/// ", "", "/// ")
+        } else if orig.starts_with("//!") {
+            ("//! ", "", "//! ")
+        } else {
+            ("// ", "", "// ")
+        }
+    } else if orig.starts_with("///") || orig.starts_with("/**") {
         ("/// ", "", "/// ")
-    } else if orig.starts_with("//!") {
+    } else if orig.starts_with("//!") || orig.starts_with("/*!") {
         ("//! ", "", "//! ")
     } else {
         ("// ", "", "// ")
@@ -72,10 +86,12 @@ pub fn rewrite_comment(orig: &str,
                  });
 
     let mut result = opener.to_owned();
-    let mut first = true;
-
     for line in lines {
-        if !first {
+        if result == opener {
+            if line.len() == 0 {
+                continue;
+            }
+        } else {
             result.push('\n');
             result.push_str(&indent_str);
             result.push_str(line_start);
@@ -91,22 +107,27 @@ pub fn rewrite_comment(orig: &str,
             }
             result.push_str(line);
         }
-
-        first = false;
     }
 
     result.push_str(closer);
+    if result == opener {
+        // Trailing space.
+        result.pop();
+    }
 
     Some(result)
 }
 
 fn left_trim_comment_line(line: &str) -> &str {
-    if line.starts_with("//! ") || line.starts_with("/// ") {
+    if line.starts_with("//! ") || line.starts_with("/// ") || line.starts_with("/*! ") ||
+       line.starts_with("/** ") {
         &line[4..]
     } else if line.starts_with("/* ") || line.starts_with("// ") || line.starts_with("//!") ||
-       line.starts_with("///") {
+       line.starts_with("///") || line.starts_with("** ") || line.starts_with("/*!") ||
+       line.starts_with("/**") {
         &line[3..]
-    } else if line.starts_with("/*") || line.starts_with("* ") || line.starts_with("//") {
+    } else if line.starts_with("/*") || line.starts_with("* ") || line.starts_with("//") ||
+       line.starts_with("**") {
         &line[2..]
     } else if line.starts_with("*") {
         &line[1..]
