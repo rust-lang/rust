@@ -515,6 +515,25 @@ fn bar() {
 # fn main() {}
 ```
 
+Additionally keyword `super` may be repeated several times after the first
+`super` or `self` to refer to ancestor modules.
+
+```rust
+mod a {
+    fn foo() {}
+
+    mod b {
+        mod c {
+            fn foo() {
+                super::super::foo(); // call a's foo function
+                self::super::super::foo(); // call a's foo function
+            }
+        }
+    }
+}
+# fn main() {}
+```
+
 # Syntax extensions
 
 A number of minor features of Rust are not central enough to have their own
