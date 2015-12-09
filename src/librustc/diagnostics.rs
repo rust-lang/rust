@@ -989,6 +989,41 @@ enum Method { GET, POST }
 ```
 "##,
 
+E0229: r##"
+An associated type binding was done outside of the type parameter declaration
+and `where` clause. Erroneous code example:
+
+```
+pub trait Foo {
+    type A;
+    fn boo(&self) -> <Self as Foo>::A;
+}
+
+struct Bar;
+
+impl Foo for isize {
+    type A = usize;
+    fn boo(&self) -> usize { 42 }
+}
+
+fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}
+// error: associated type bindings are not allowed here
+```
+
+To solve this error, please move the type bindings in the type parameter
+declaration:
+
+```
+fn baz<I: Foo<A=Bar>>(x: &<I as Foo>::A) {} // ok!
+```
+
+or in the `where` clause:
+
+```
+fn baz<I>(x: &<I as Foo>::A) where I: Foo<A=Bar> {}
+```
+"##,
+
 E0261: r##"
 When using a lifetime like `'a` in a type, it must be declared before being
 used.
@@ -2241,7 +2276,6 @@ register_diagnostics! {
     // E0006 // merged with E0005
 //  E0134,
 //  E0135,
-    E0229, // associated type bindings are not allowed here
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied
