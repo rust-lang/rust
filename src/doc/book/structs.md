@@ -10,7 +10,7 @@ let origin_y = 0;
 ```
 
 A `struct` lets us combine these two into a single, unified datatype with `x`
-and `y` as traits:
+and `y` as field labels:
 
 ```rust
 struct Point {
@@ -19,7 +19,7 @@ struct Point {
 }
 
 fn main() {
-    let origin = Point { x: 0, y: 0 }; // create an instance
+    let origin = Point { x: 0, y: 0 }; // origin: Point
 
     println!("The origin is at ({}, {})", origin.x, origin.y);
 }
