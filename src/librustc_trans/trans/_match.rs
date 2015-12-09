@@ -708,8 +708,10 @@ fn extract_variant_args<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     val: MatchInput)
                                     -> ExtractedBlock<'blk, 'tcx> {
     let _icx = push_ctxt("match::extract_variant_args");
+    // Assume enums are always sized for now.
+    let val = adt::MaybeSizedValue::sized(val.val);
     let args = (0..adt::num_args(repr, disr_val)).map(|i| {
-        adt::trans_field_ptr(bcx, repr, val.val, disr_val, i)
+        adt::trans_field_ptr(bcx, repr, val, disr_val, i)
     }).collect();
 
     ExtractedBlock { vals: args, bcx: bcx }
@@ -1198,7 +1200,8 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             (arg_count - 1, Load(bcx, expr::get_dataptr(bcx, val.val)))
         };
         let mut field_vals: Vec<ValueRef> = (0..arg_count).map(|ix|
-            adt::trans_field_ptr(bcx, &*repr, struct_val, 0, ix)
+            // By definition, these are all sized
+            adt::trans_field_ptr(bcx, &*repr, adt::MaybeSizedValue::sized(struct_val), 0, ix)
         ).collect();
 
         match left_ty.sty {
@@ -1210,10 +1213,13 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     monomorphize::field_ty(bcx.tcx(), substs, field)
                 }).unwrap();
                 let scratch = alloc_ty(bcx, unsized_ty, "__struct_field_fat_ptr");
+
+                let meta = Load(bcx, expr::get_meta(bcx, val.val));
+                let struct_val = adt::MaybeSizedValue::unsized_(struct_val, meta);
+
                 let data = adt::trans_field_ptr(bcx, &*repr, struct_val, 0, arg_count);
-                let len = Load(bcx, expr::get_meta(bcx, val.val));
                 Store(bcx, data, expr::get_dataptr(bcx, scratch));
-                Store(bcx, len, expr::get_meta(bcx, scratch));
+                Store(bcx, meta, expr::get_meta(bcx, scratch));
                 field_vals.push(scratch);
             }
             _ => {}
@@ -1784,9 +1790,10 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     val: MatchInput,
                                     cleanup_scope: cleanup::ScopeId)
                                     -> Block<'blk, 'tcx> {
-    debug!("bind_irrefutable_pat(bcx={}, pat={:?})",
+    debug!("bind_irrefutable_pat(bcx={}, pat={:?}, val={})",
            bcx.to_str(),
-           pat);
+           pat,
+           bcx.val_to_string(val.val));
 
     if bcx.sess().asm_comments() {
         add_comment(bcx, &format!("bind_irrefutable_pat(pat={:?})",
@@ -1865,9 +1872,10 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         Some(ref elems) => {
                             // This is the tuple struct case.
                             let repr = adt::represent_node(bcx, pat.id);
+                            let val = adt::MaybeSizedValue::sized(val.val);
                             for (i, elem) in elems.iter().enumerate() {
                                 let fldptr = adt::trans_field_ptr(bcx, &*repr,
-                                                                  val.val, 0, i);
+                                                                  val, 0, i);
                                 bcx = bind_irrefutable_pat(
                                     bcx,
                                     &**elem,
@@ -1887,14 +1895,35 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let pat_ty = node_id_type(bcx, pat.id);
             let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
             let pat_v = VariantInfo::of_node(tcx, pat_ty, pat.id);
+
+            let val = if type_is_sized(tcx, pat_ty) {
+                adt::MaybeSizedValue::sized(val.val)
+            } else {
+                let data = Load(bcx, expr::get_dataptr(bcx, val.val));
+                let meta = Load(bcx, expr::get_meta(bcx, val.val));
+                adt::MaybeSizedValue::unsized_(data, meta)
+            };
+
             for f in fields {
                 let name = f.node.name;
-                let fldptr = adt::trans_field_ptr(
+                let field_idx = pat_v.field_index(name);
+                let mut fldptr = adt::trans_field_ptr(
                     bcx,
                     &*pat_repr,
-                    val.val,
+                    val,
                     pat_v.discr,
-                    pat_v.field_index(name));
+                    field_idx);
+
+                let fty = pat_v.fields[field_idx].1;
+                // If it's not sized, then construct a fat pointer instead of
+                // a regular one
+                if !type_is_sized(tcx, fty) {
+                    let scratch = alloc_ty(bcx, fty, "__struct_field_fat_ptr");
+                    debug!("Creating fat pointer {}", bcx.val_to_string(scratch));
+                    Store(bcx, fldptr, expr::get_dataptr(bcx, scratch));
+                    Store(bcx, val.meta, expr::get_meta(bcx, scratch));
+                    fldptr = scratch;
+                }
                 bcx = bind_irrefutable_pat(bcx,
                                            &*f.node.pat,
                                            MatchInput::from_val(fldptr),
@@ -1903,8 +1932,9 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         hir::PatTup(ref elems) => {
             let repr = adt::represent_node(bcx, pat.id);
+            let val = adt::MaybeSizedValue::sized(val.val);
             for (i, elem) in elems.iter().enumerate() {
-                let fldptr = adt::trans_field_ptr(bcx, &*repr, val.val, 0, i);
+                let fldptr = adt::trans_field_ptr(bcx, &*repr, val, 0, i);
                 bcx = bind_irrefutable_pat(
                     bcx,
                     &**elem,
@@ -1913,16 +1943,28 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         hir::PatBox(ref inner) => {
-            let llbox = Load(bcx, val.val);
+            let pat_ty = node_id_type(bcx, inner.id);
+            // Don't load DSTs, instead pass along a fat ptr
+            let val = if type_is_sized(tcx, pat_ty) {
+                Load(bcx, val.val)
+            } else {
+                val.val
+            };
             bcx = bind_irrefutable_pat(
-                bcx, &**inner, MatchInput::from_val(llbox), cleanup_scope);
+                bcx, &**inner, MatchInput::from_val(val), cleanup_scope);
         }
         hir::PatRegion(ref inner, _) => {
-            let loaded_val = Load(bcx, val.val);
+            let pat_ty = node_id_type(bcx, inner.id);
+            // Don't load DSTs, instead pass along a fat ptr
+            let val = if type_is_sized(tcx, pat_ty) {
+                Load(bcx, val.val)
+            } else {
+                val.val
+            };
             bcx = bind_irrefutable_pat(
                 bcx,
                 &**inner,
-                MatchInput::from_val(loaded_val),
+                MatchInput::from_val(val),
                 cleanup_scope);
         }
         hir::PatVec(ref before, ref slice, ref after) => {
