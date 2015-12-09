@@ -71,6 +71,30 @@ pub enum OutputType {
     DepInfo,
 }
 
+impl OutputType {
+    fn is_compatible_with_codegen_units_and_single_output_file(&self) -> bool {
+        match *self {
+            OutputType::Exe |
+            OutputType::DepInfo => true,
+            OutputType::Bitcode |
+            OutputType::Assembly |
+            OutputType::LlvmAssembly |
+            OutputType::Object => false,
+        }
+    }
+
+    fn shorthand(&self) -> &'static str {
+        match *self {
+            OutputType::Bitcode => "llvm-bc",
+            OutputType::Assembly => "asm",
+            OutputType::LlvmAssembly => "llvm-ir",
+            OutputType::Object => "obj",
+            OutputType::Exe => "link",
+            OutputType::DepInfo => "dep-info",
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Options {
     // The crate config requested for the session, which may be combined
@@ -933,7 +957,28 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         output_types.insert(OutputType::Exe, None);
     }
 
-    let cg = build_codegen_options(matches, color);
+    let mut cg = build_codegen_options(matches, color);
+
+    // Issue #30063: if user requests llvm-related output to one
+    // particular path, disable codegen-units.
+    if matches.opt_present("o") && cg.codegen_units != 1 {
+        let incompatible: Vec<_> = output_types.iter()
+            .map(|ot_path| ot_path.0)
+            .filter(|ot| {
+                !ot.is_compatible_with_codegen_units_and_single_output_file()
+            }).collect();
+        if !incompatible.is_empty() {
+            for ot in &incompatible {
+                early_warn(color, &format!("--emit={} with -o incompatible with \
+                                            -C codegen-units=N for N > 1",
+                                           ot.shorthand()));
+            }
+            early_warn(color, "resetting to default -C codegen-units=1");
+            cg.codegen_units = 1;
+        }
+    }
+
+    let cg = cg;
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
     let target = matches.opt_str("target").unwrap_or(
