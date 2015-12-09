@@ -68,6 +68,10 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
+    pub fn position(&self) -> usize {
+        self.pos
+    }
+
     fn peek(&self) -> char {
         self.data[self.pos] as char
     }
