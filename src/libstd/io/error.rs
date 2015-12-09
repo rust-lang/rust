@@ -150,12 +150,7 @@ pub enum ErrorKind {
     #[stable(feature = "rust1", since = "1.0.0")]
     Other,
 
-    /// An error returned when an operation could not be completed because an
-    /// "end of file" was reached prematurely.
-    ///
-    /// This typically means that an operation could only succeed if it read a
-    /// particular number of bytes but only a smaller number of bytes could be
-    /// read.
+    #[allow(missing_docs)]
     #[unstable(feature = "read_exact_old", reason = "recently added",
                issue = "0")]
     #[rustc_deprecated(since = "1.6.0", reason = "renamed to UnexpectedEof")]

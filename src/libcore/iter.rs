@@ -1893,21 +1893,7 @@ pub trait Iterator {
             .map(|(_, x)| x)
     }
 
-    /// Returns the element that gives the maximum value from the
-    /// specified function.
-    ///
-    /// Returns the rightmost element if the comparison determines two elements
-    /// to be equally maximum.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(iter_cmp)]
-    /// #![allow(deprecated)]
-    ///
-    /// let a = [-3_i32, 0, 1, 5, -10];
-    /// assert_eq!(*a.iter().max_by(|x| x.abs()).unwrap(), -10);
-    /// ```
+    #[allow(missing_docs)]
     #[inline]
     #[unstable(feature = "iter_cmp",
                reason = "may want to produce an Ordering directly; see #15311",
@@ -1945,22 +1931,8 @@ pub trait Iterator {
             .map(|(_, x)| x)
     }
 
-    /// Returns the element that gives the minimum value from the
-    /// specified function.
-    ///
-    /// Returns the latest element if the comparison determines two elements
-    /// to be equally minimum.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(iter_cmp)]
-    /// #![allow(deprecated)]
-    ///
-    /// let a = [-3_i32, 0, 1, 5, -10];
-    /// assert_eq!(*a.iter().min_by(|x| x.abs()).unwrap(), 0);
-    /// ```
     #[inline]
+    #[allow(missing_docs)]
     #[unstable(feature = "iter_cmp",
                reason = "may want to produce an Ordering directly; see #15311",
                issue = "27724")]
