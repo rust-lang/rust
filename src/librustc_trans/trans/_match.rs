@@ -1944,8 +1944,16 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         hir::PatBox(ref inner) => {
             let pat_ty = node_id_type(bcx, inner.id);
-            // Don't load DSTs, instead pass along a fat ptr
-            let val = if type_is_sized(tcx, pat_ty) {
+            // Pass along DSTs as fat pointers.
+            let val = if type_is_fat_ptr(tcx, pat_ty) {
+                // We need to check for this, as the pattern could be binding
+                // a fat pointer by-value.
+                if let hir::PatIdent(hir::BindByRef(_),_,_) = inner.node {
+                    val.val
+                } else {
+                    Load(bcx, val.val)
+                }
+            } else if type_is_sized(tcx, pat_ty) {
                 Load(bcx, val.val)
             } else {
                 val.val
@@ -1955,8 +1963,16 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         hir::PatRegion(ref inner, _) => {
             let pat_ty = node_id_type(bcx, inner.id);
-            // Don't load DSTs, instead pass along a fat ptr
-            let val = if type_is_sized(tcx, pat_ty) {
+            // Pass along DSTs as fat pointers.
+            let val = if type_is_fat_ptr(tcx, pat_ty) {
+                // We need to check for this, as the pattern could be binding
+                // a fat pointer by-value.
+                if let hir::PatIdent(hir::BindByRef(_),_,_) = inner.node {
+                    val.val
+                } else {
+                    Load(bcx, val.val)
+                }
+            } else if type_is_sized(tcx, pat_ty) {
                 Load(bcx, val.val)
             } else {
                 val.val
