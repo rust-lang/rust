@@ -472,7 +472,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
 
     fn iter_variant<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                                    repr: &adt::Repr<'tcx>,
-                                   av: ValueRef,
+                                   av: adt::MaybeSizedValue,
                                    variant: ty::VariantDef<'tcx>,
                                    substs: &Substs<'tcx>,
                                    f: &mut F)
@@ -492,12 +492,12 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
         return cx;
     }
 
-    let (data_ptr, info) = if common::type_is_sized(cx.tcx(), t) {
-        (av, None)
+    let value = if common::type_is_sized(cx.tcx(), t) {
+        adt::MaybeSizedValue::sized(av)
     } else {
-        let data = expr::get_dataptr(cx, av);
-        let info = expr::get_meta(cx, av);
-        (Load(cx, data), Some(Load(cx, info)))
+        let data = Load(cx, expr::get_dataptr(cx, av));
+        let info = Load(cx, expr::get_meta(cx, av));
+        adt::MaybeSizedValue::unsized_(data, info)
     };
 
     let mut cx = cx;
@@ -506,14 +506,14 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
             let repr = adt::represent_type(cx.ccx(), t);
             let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.tcx(), t, None);
             for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(cx, &*repr, data_ptr, discr, i);
+                let llfld_a = adt::trans_field_ptr(cx, &*repr, value, discr, i);
 
                 let val = if common::type_is_sized(cx.tcx(), field_ty) {
                     llfld_a
                 } else {
                     let scratch = datum::rvalue_scratch_datum(cx, field_ty, "__fat_ptr_iter");
                     Store(cx, llfld_a, expr::get_dataptr(cx, scratch.val));
-                    Store(cx, info.unwrap(), expr::get_meta(cx, scratch.val));
+                    Store(cx, value.meta, expr::get_meta(cx, scratch.val));
                     scratch.val
                 };
                 cx = f(cx, val, field_ty);
@@ -522,23 +522,23 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
         ty::TyClosure(_, ref substs) => {
             let repr = adt::represent_type(cx.ccx(), t);
             for (i, upvar_ty) in substs.upvar_tys.iter().enumerate() {
-                let llupvar = adt::trans_field_ptr(cx, &*repr, data_ptr, 0, i);
+                let llupvar = adt::trans_field_ptr(cx, &*repr, value, 0, i);
                 cx = f(cx, llupvar, upvar_ty);
             }
         }
         ty::TyArray(_, n) => {
-            let (base, len) = tvec::get_fixed_base_and_len(cx, data_ptr, n);
+            let (base, len) = tvec::get_fixed_base_and_len(cx, value.value, n);
             let unit_ty = t.sequence_element_type(cx.tcx());
             cx = tvec::iter_vec_raw(cx, base, unit_ty, len, f);
         }
         ty::TySlice(_) | ty::TyStr => {
             let unit_ty = t.sequence_element_type(cx.tcx());
-            cx = tvec::iter_vec_raw(cx, data_ptr, unit_ty, info.unwrap(), f);
+            cx = tvec::iter_vec_raw(cx, value.value, unit_ty, value.meta, f);
         }
         ty::TyTuple(ref args) => {
             let repr = adt::represent_type(cx.ccx(), t);
             for (i, arg) in args.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(cx, &*repr, data_ptr, 0, i);
+                let llfld_a = adt::trans_field_ptr(cx, &*repr, value, 0, i);
                 cx = f(cx, llfld_a, *arg);
             }
         }
@@ -556,7 +556,8 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                 (_match::Single, None) => {
                     if n_variants != 0 {
                         assert!(n_variants == 1);
-                        cx = iter_variant(cx, &*repr, av, &en.variants[0], substs, &mut f);
+                        cx = iter_variant(cx, &*repr, adt::MaybeSizedValue::sized(av),
+                                          &en.variants[0], substs, &mut f);
                     }
                 }
                 (_match::Switch, Some(lldiscrim_a)) => {
@@ -588,7 +589,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                         AddCase(llswitch, case_val, variant_cx.llbb);
                         let variant_cx = iter_variant(variant_cx,
                                                       &*repr,
-                                                      data_ptr,
+                                                      value,
                                                       variant,
                                                       substs,
                                                       &mut f);
@@ -706,6 +707,9 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 &adt::Repr::Univariant(ref s, _) => &s.fields,
                 _ => bcx.sess().bug("struct has non-univariant repr"),
             };
+
+            let src = adt::MaybeSizedValue::sized(src);
+            let dst = adt::MaybeSizedValue::sized(dst);
 
             let iter = src_fields.iter().zip(dst_fields).enumerate();
             for (i, (src_fty, dst_fty)) in iter {
@@ -2105,10 +2109,11 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
 
     if !type_is_zero_size(fcx.ccx, result_ty.unwrap()) {
         let dest = fcx.get_ret_slot(bcx, result_ty, "eret_slot");
+        let dest_val = adt::MaybeSizedValue::sized(dest); // Can return unsized value
         let repr = adt::represent_type(ccx, result_ty.unwrap());
         let mut llarg_idx = fcx.arg_offset() as c_uint;
         for (i, arg_ty) in arg_tys.into_iter().enumerate() {
-            let lldestptr = adt::trans_field_ptr(bcx, &*repr, dest, disr, i);
+            let lldestptr = adt::trans_field_ptr(bcx, &*repr, dest_val, disr, i);
             if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
                 Store(bcx,
                       get_param(fcx.llfn, llarg_idx),

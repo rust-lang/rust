@@ -845,9 +845,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
                         let repr = adt::represent_type(bcx.ccx(), arg_type);
                         let repr_ptr = &*repr;
+                        let arg = adt::MaybeSizedValue::sized(llarg);
                         (0..contents.len())
                             .map(|i| {
-                                Load(bcx, adt::trans_field_ptr(bcx, repr_ptr, llarg, 0, i))
+                                Load(bcx, adt::trans_field_ptr(bcx, repr_ptr, arg, 0, i))
                             })
                             .collect()
                     }

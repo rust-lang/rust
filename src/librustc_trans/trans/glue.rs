@@ -12,6 +12,7 @@
 //
 // Code relating to drop glue.
 
+use std;
 
 use back::link::*;
 use llvm;
@@ -433,14 +434,21 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
 
             // Choose max of two known alignments (combined value must
             // be aligned according to more restrictive of the two).
-            let align = Select(bcx,
-                               ICmp(bcx,
-                                    llvm::IntUGT,
-                                    sized_align,
-                                    unsized_align,
-                                    dbloc),
-                               sized_align,
-                               unsized_align);
+            let align = match (const_to_opt_uint(sized_align), const_to_opt_uint(unsized_align)) {
+                (Some(sized_align), Some(unsized_align)) => {
+                    // If both alignments are constant, (the sized_align should always be), then
+                    // pick the correct alignment statically.
+                    C_uint(ccx, std::cmp::max(sized_align, unsized_align))
+                }
+                _ => Select(bcx,
+                            ICmp(bcx,
+                                 llvm::IntUGT,
+                                 sized_align,
+                                 unsized_align,
+                                 dbloc),
+                            sized_align,
+                            unsized_align)
+            };
 
             // Issue #27023: must add any necessary padding to `size`
             // (to make it a multiple of `align`) before returning it.
@@ -451,7 +459,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             //
             // emulated via the semi-standard fast bit trick:
             //
-            //   `(size + (align-1)) & !align`
+            //   `(size + (align-1)) & -align`
 
             let addend = Sub(bcx, align, C_uint(bcx.ccx(), 1_u64), dbloc);
             let size = And(

@@ -655,12 +655,16 @@ impl<'tcx> Datum<'tcx, Lvalue> {
     pub fn get_element<'blk, F>(&self, bcx: Block<'blk, 'tcx>, ty: Ty<'tcx>,
                                 gep: F)
                                 -> Datum<'tcx, Lvalue> where
-        F: FnOnce(ValueRef) -> ValueRef,
+        F: FnOnce(adt::MaybeSizedValue) -> ValueRef,
     {
         let val = if type_is_sized(bcx.tcx(), self.ty) {
-            gep(self.val)
+            let val = adt::MaybeSizedValue::sized(self.val);
+            gep(val)
         } else {
-            gep(Load(bcx, expr::get_dataptr(bcx, self.val)))
+            let val = adt::MaybeSizedValue::unsized_(
+                Load(bcx, expr::get_dataptr(bcx, self.val)),
+                Load(bcx, expr::get_meta(bcx, self.val)));
+            gep(val)
         };
         Datum {
             val: val,

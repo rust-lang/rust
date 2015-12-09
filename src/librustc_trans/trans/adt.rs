@@ -43,6 +43,7 @@
 
 pub use self::Repr::*;
 
+use std;
 use std::rc::Rc;
 
 use llvm::{ValueRef, True, IntEQ, IntNE};
@@ -60,6 +61,7 @@ use trans::cleanup::CleanupMethods;
 use trans::common::*;
 use trans::datum;
 use trans::debuginfo::DebugLoc;
+use trans::glue;
 use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
@@ -151,6 +153,32 @@ pub struct Struct<'tcx> {
     pub sized: bool,
     pub packed: bool,
     pub fields: Vec<Ty<'tcx>>,
+}
+
+#[derive(Copy, Clone)]
+pub struct MaybeSizedValue {
+    pub value: ValueRef,
+    pub meta: ValueRef,
+}
+
+impl MaybeSizedValue {
+    pub fn sized(value: ValueRef) -> MaybeSizedValue {
+        MaybeSizedValue {
+            value: value,
+            meta: std::ptr::null_mut()
+        }
+    }
+
+    pub fn unsized_(value: ValueRef, meta: ValueRef) -> MaybeSizedValue {
+        MaybeSizedValue {
+            value: value,
+            meta: meta
+        }
+    }
+
+    pub fn has_meta(&self) -> bool {
+        !self.meta.is_null()
+    }
 }
 
 /// Convenience for `represent_type`.  There should probably be more or
@@ -247,7 +275,11 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 monomorphize::field_ty(cx.tcx(), substs, field)
             }).collect::<Vec<_>>();
             let packed = cx.tcx().lookup_packed(def.did);
-            let dtor = def.dtor_kind().has_drop_flag();
+            // FIXME(16758) don't add a drop flag to unsized structs, as it
+            // won't actually be in the location we say it is because it'll be after
+            // the unsized field. Several other pieces of code assume that the unsized
+            // field is definitely the last one.
+            let dtor = def.dtor_kind().has_drop_flag() && type_is_sized(cx.tcx(), t);
             if dtor {
                 ftys.push(cx.tcx().dtor_type());
             }
@@ -976,7 +1008,7 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
         }
         General(ity, ref cases, dtor) => {
             if dtor_active(dtor) {
-                let ptr = trans_field_ptr(bcx, r, val, discr,
+                let ptr = trans_field_ptr(bcx, r, MaybeSizedValue::sized(val), discr,
                                           cases[discr as usize].fields.len() - 2);
                 Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED), ptr);
             }
@@ -1037,7 +1069,7 @@ pub fn num_args(r: &Repr, discr: Disr) -> usize {
 
 /// Access a field, at a point when the value's case is known.
 pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
-                                   val: ValueRef, discr: Disr, ix: usize) -> ValueRef {
+                                   val: MaybeSizedValue, discr: Disr, ix: usize) -> ValueRef {
     // Note: if this ever needs to generate conditionals (e.g., if we
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it will need to return a possibly-new bcx as well.
@@ -1060,13 +1092,13 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
             assert_eq!(machine::llsize_of_alloc(bcx.ccx(), ty), 0);
             // The contents of memory at this pointer can't matter, but use
             // the value that's "reasonable" in case of pointer comparison.
-            PointerCast(bcx, val, ty.ptr_to())
+            PointerCast(bcx, val.value, ty.ptr_to())
         }
         RawNullablePointer { nndiscr, nnty, .. } => {
             assert_eq!(ix, 0);
             assert_eq!(discr, nndiscr);
             let ty = type_of::type_of(bcx.ccx(), nnty);
-            PointerCast(bcx, val, ty.ptr_to())
+            PointerCast(bcx, val.value, ty.ptr_to())
         }
         StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             assert_eq!(discr, nndiscr);
@@ -1075,18 +1107,100 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
     }
 }
 
-pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, val: ValueRef,
+pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, val: MaybeSizedValue,
                                     ix: usize, needs_cast: bool) -> ValueRef {
-    let val = if needs_cast {
-        let ccx = bcx.ccx();
-        let fields = st.fields.iter().map(|&ty| type_of::type_of(ccx, ty)).collect::<Vec<_>>();
+    let ccx = bcx.ccx();
+    let ptr_val = if needs_cast {
+        let fields = st.fields.iter().map(|&ty| {
+            type_of::in_memory_type_of(ccx, ty)
+        }).collect::<Vec<_>>();
         let real_ty = Type::struct_(ccx, &fields[..], st.packed);
-        PointerCast(bcx, val, real_ty.ptr_to())
+        PointerCast(bcx, val.value, real_ty.ptr_to())
     } else {
-        val
+        val.value
     };
 
-    StructGEP(bcx, val, ix)
+    let fty = st.fields[ix];
+    // Simple case - we can just GEP the field
+    //   * First field - Always aligned properly
+    //   * Packed struct - There is no alignment padding
+    //   * Field is sized - pointer is properly aligned already
+    if ix == 0 || st.packed || type_is_sized(bcx.tcx(), fty) {
+        return StructGEP(bcx, ptr_val, ix);
+    }
+
+    // If the type of the last field is [T] or str, then we don't need to do
+    // any adjusments
+    match fty.sty {
+        ty::TySlice(..) | ty::TyStr => {
+            return StructGEP(bcx, ptr_val, ix);
+        }
+        _ => ()
+    }
+
+    // There's no metadata available, log the case and just do the GEP.
+    if !val.has_meta() {
+        debug!("Unsized field `{}`, of `{}` has no metadata for adjustment",
+               ix,
+               bcx.val_to_string(ptr_val));
+        return StructGEP(bcx, ptr_val, ix);
+    }
+
+    let dbloc = DebugLoc::None;
+
+    // We need to get the pointer manually now.
+    // We do this by casting to a *i8, then offsetting it by the appropriate amount.
+    // We do this instead of, say, simply adjusting the pointer from the result of a GEP
+    // because the field may have an arbitrary alignment in the LLVM representation
+    // anyway.
+    //
+    // To demonstrate:
+    //   struct Foo<T: ?Sized> {
+    //      x: u16,
+    //      y: T
+    //   }
+    //
+    // The type Foo<Foo<Trait>> is represented in LLVM as { u16, { u16, u8 }}, meaning that
+    // the `y` field has 16-bit alignment.
+
+    let meta = val.meta;
+
+    // Calculate the unaligned offset of the the unsized field.
+    let mut offset = 0;
+    for &ty in &st.fields[0..ix] {
+        let llty = type_of::sizing_type_of(ccx, ty);
+        let type_align = type_of::align_of(ccx, ty);
+        offset = roundup(offset, type_align);
+        offset += machine::llsize_of_alloc(ccx, llty);
+    }
+    let unaligned_offset = C_uint(bcx.ccx(), offset);
+
+    // Get the alignment of the field
+    let (_, align) = glue::size_and_align_of_dst(bcx, fty, meta);
+
+    // Bump the unaligned offset up to the appropriate alignment using the
+    // following expression:
+    //
+    //   (unaligned offset + (align - 1)) & -align
+
+    // Calculate offset
+    let align_sub_1 = Sub(bcx, align, C_uint(bcx.ccx(), 1u64), dbloc);
+    let offset = And(bcx,
+                     Add(bcx, unaligned_offset, align_sub_1, dbloc),
+                     Neg(bcx, align, dbloc),
+                     dbloc);
+
+    debug!("struct_field_ptr: DST field offset: {}",
+           bcx.val_to_string(offset));
+
+    // Cast and adjust pointer
+    let byte_ptr = PointerCast(bcx, ptr_val, Type::i8p(bcx.ccx()));
+    let byte_ptr = GEP(bcx, byte_ptr, &[offset]);
+
+    // Finally, cast back to the type expected
+    let ll_fty = type_of::in_memory_type_of(bcx.ccx(), fty);
+    debug!("struct_field_ptr: Field type is {}", ll_fty.to_string());
+    PointerCast(bcx, byte_ptr, ll_fty.ptr_to())
 }
 
 pub fn fold_variants<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
@@ -1168,7 +1282,8 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 cleanup::CustomScope(custom_cleanup_scope), (), |_, bcx, _| bcx
             ));
             bcx = fold_variants(bcx, r, val, |variant_cx, st, value| {
-                let ptr = struct_field_ptr(variant_cx, st, value, (st.fields.len() - 1), false);
+                let ptr = struct_field_ptr(variant_cx, st, MaybeSizedValue::sized(value),
+                                           (st.fields.len() - 1), false);
                 datum::Datum::new(ptr, ptr_ty, datum::Lvalue::new("adt::trans_drop_flag_ptr"))
                     .store_to(variant_cx, scratch.val)
             });
