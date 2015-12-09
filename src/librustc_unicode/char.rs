@@ -386,9 +386,10 @@ impl char {
     /// Returns the number of 16-bit code units this `char` would need if
     /// encoded in UTF-16.
     ///
-    /// See the documentation for [`len_utf8()`][len_utf8] for more explanation
-    /// of this concept. This function is a mirror, but for UTF-16 instead of
-    /// UTF-8.
+    /// See the documentation for [`len_utf8()`] for more explanation of this
+    /// concept. This function is a mirror, but for UTF-16 instead of UTF-8.
+    ///
+    /// [`len_utf8()`]: #method.len_utf8
     ///
     /// # Examples
     ///
