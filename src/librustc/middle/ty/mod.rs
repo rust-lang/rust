@@ -22,7 +22,7 @@ pub use self::LvaluePreference::*;
 use front::map as ast_map;
 use front::map::LinkedPath;
 use middle;
-use middle::cstore::{CrateStore, LOCAL_CRATE};
+use middle::cstore::{self, CrateStore, LOCAL_CRATE};
 use middle::def::{self, ExportMap};
 use middle::def_id::DefId;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
@@ -35,6 +35,7 @@ use util::common::memoized;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap};
 use util::nodemap::FnvHashMap;
 
+use serialize::{Encodable, Encoder, Decodable, Decoder};
 use std::borrow::{Borrow, Cow};
 use std::cell::{Cell, RefCell};
 use std::hash::{Hash, Hasher};
@@ -478,6 +479,24 @@ impl<'tcx> Hash for TyS<'tcx> {
 }
 
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
+
+impl<'tcx> Encodable for Ty<'tcx> {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        cstore::tls::with_encoding_context(s, |ecx, rbml_w| {
+            ecx.encode_ty(rbml_w, *self);
+            Ok(())
+        })
+    }
+}
+
+impl<'tcx> Decodable for Ty<'tcx> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Ty<'tcx>, D::Error> {
+        cstore::tls::with_decoding_context(d, |dcx, rbml_r| {
+            Ok(dcx.decode_ty(rbml_r))
+        })
+    }
+}
+
 
 /// Upvars do not get their own node-id. Instead, we use the pair of
 /// the original var id (that is, the root variable that is referenced
@@ -1526,6 +1545,23 @@ impl<'tcx, 'container> Hash for AdtDefData<'tcx, 'container> {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
         (self as *const AdtDefData).hash(s)
+    }
+}
+
+impl<'tcx> Encodable for AdtDef<'tcx> {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        self.did.encode(s)
+    }
+}
+
+impl<'tcx> Decodable for AdtDef<'tcx> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<AdtDef<'tcx>, D::Error> {
+        let def_id: DefId = try!{ Decodable::decode(d) };
+
+        cstore::tls::with_decoding_context(d, |dcx, _| {
+            let def_id = dcx.translate_def_id(def_id);
+            Ok(dcx.tcx().lookup_adt_def(def_id))
+        })
     }
 }
 

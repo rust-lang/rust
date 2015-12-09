@@ -13,9 +13,11 @@
 pub use self::ParamSpace::*;
 pub use self::RegionSubsts::*;
 
+use middle::cstore;
 use middle::ty::{self, Ty, HasTypeFlags, RegionEscape};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
 
+use serialize::{Encodable, Encoder, Decodable, Decoder};
 use std::fmt;
 use std::iter::IntoIterator;
 use std::slice::Iter;
@@ -150,6 +152,35 @@ impl<'tcx> Substs<'tcx> {
         types.truncate(FnSpace, 0);
         let regions = regions.map(|mut r| { r.truncate(FnSpace, 0); r });
         Substs { types: types, regions: regions }
+    }
+}
+
+impl<'tcx> Encodable for Substs<'tcx> {
+
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        cstore::tls::with_encoding_context(s, |ecx, rbml_w| {
+            ecx.encode_substs(rbml_w, self);
+            Ok(())
+        })
+    }
+}
+
+impl<'tcx> Decodable for Substs<'tcx> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Substs<'tcx>, D::Error> {
+        cstore::tls::with_decoding_context(d, |dcx, rbml_r| {
+            Ok(dcx.decode_substs(rbml_r))
+        })
+    }
+}
+
+impl<'tcx> Decodable for &'tcx Substs<'tcx> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<&'tcx Substs<'tcx>, D::Error> {
+        let substs = cstore::tls::with_decoding_context(d, |dcx, rbml_r| {
+            let substs = dcx.decode_substs(rbml_r);
+            dcx.tcx().mk_substs(substs)
+        });
+
+        Ok(substs)
     }
 }
 

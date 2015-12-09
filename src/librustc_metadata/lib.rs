@@ -58,3 +58,4 @@ pub mod cstore;
 pub mod index;
 pub mod loader;
 pub mod macro_import;
+pub mod tls_context;

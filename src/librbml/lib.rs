@@ -638,6 +638,14 @@ pub mod reader {
             self.pos = old_pos;
             Ok(result)
         }
+
+        pub fn position(&self) -> usize {
+            self.pos
+        }
+
+        pub fn advance(&mut self, bytes: usize) {
+            self.pos += bytes;
+        }
     }
 
     impl<'doc> serialize::Decoder for Decoder<'doc> {
