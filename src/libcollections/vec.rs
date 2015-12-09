@@ -920,21 +920,7 @@ impl<T: Clone> Vec<T> {
         }
     }
 
-    /// Appends all elements in a slice to the `Vec`.
-    ///
-    /// Iterates over the slice `other`, clones each element, and then appends
-    /// it to this `Vec`. The `other` vector is traversed in-order.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(vec_push_all)]
-    /// #![allow(deprecated)]
-    ///
-    /// let mut vec = vec![1];
-    /// vec.push_all(&[2, 3, 4]);
-    /// assert_eq!(vec, [1, 2, 3, 4]);
-    /// ```
+    #[allow(missing_docs)]
     #[inline]
     #[unstable(feature = "vec_push_all",
                reason = "likely to be replaced by a more optimized extend",
