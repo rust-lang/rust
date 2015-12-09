@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(std_misc, binary_heap_extras, catch_panic, rand, sync_poison)]
+#![feature(recover, rand, std_panic)]
 
 use std::__rand::{thread_rng, Rng};
-use std::thread;
+use std::panic::{self, AssertRecoverSafe};
 
 use std::collections::BinaryHeap;
 use std::cmp;
-use std::sync::Arc;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
 static DROP_COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -66,31 +64,24 @@ fn test_integrity() {
 
             // heapify the sane items
             rng.shuffle(&mut panic_ords);
-            let heap = Arc::new(Mutex::new(BinaryHeap::from_vec(panic_ords)));
+            let mut heap = BinaryHeap::from(panic_ords);
             let inner_data;
 
             {
-                let heap_ref = heap.clone();
-
-
                 // push the panicking item to the heap and catch the panic
-                let thread_result = thread::catch_panic(move || {
-                    heap.lock().unwrap().push(panic_item);
-                });
+                let thread_result = {
+                    let mut heap_ref = AssertRecoverSafe::new(&mut heap);
+                    panic::recover(move || {
+                        heap_ref.push(panic_item);
+                    })
+                };
                 assert!(thread_result.is_err());
 
                 // Assert no elements were dropped
                 let drops = DROP_COUNTER.load(Ordering::SeqCst);
-                //assert!(drops == 0, "Must not drop items. drops={}", drops);
-
-                {
-                    // now fetch the binary heap's data vector
-                    let mutex_guard = match heap_ref.lock() {
-                        Ok(x) => x,
-                        Err(poison) => poison.into_inner(),
-                    };
-                    inner_data = mutex_guard.clone().into_vec();
-                }
+                assert!(drops == 0, "Must not drop items. drops={}", drops);
+                inner_data = heap.clone().into_vec();
+                drop(heap);
             }
             let drops = DROP_COUNTER.load(Ordering::SeqCst);
             assert_eq!(drops, DATASZ);
