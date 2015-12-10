@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{self, TokenTree};
-use codemap::Span;
-use ext::base::*;
-use ext::base;
-use feature_gate;
-use parse::token;
-use parse::token::str_to_ident;
-use ptr::P;
+use syntax::ast::{self, TokenTree};
+use syntax::codemap::Span;
+use syntax::ext::base::*;
+use syntax::ext::base;
+use syntax::feature_gate;
+use syntax::parse::token;
+use syntax::parse::token::str_to_ident;
+use syntax::ptr::P;
 
 pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
                               -> Box<base::MacResult+'cx> {

@@ -13,15 +13,15 @@
  */
 use self::State::*;
 
-use ast;
-use codemap;
-use codemap::Span;
-use ext::base;
-use ext::base::*;
-use feature_gate;
-use parse::token::{intern, InternedString};
-use parse::token;
-use ptr::P;
+use syntax::ast;
+use syntax::codemap;
+use syntax::codemap::Span;
+use syntax::ext::base;
+use syntax::ext::base::*;
+use syntax::feature_gate;
+use syntax::parse::token::{intern, InternedString};
+use syntax::parse::token;
+use syntax::ptr::P;
 use syntax::ast::AsmDialect;
 
 enum State {

@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::TokenTree;
-use codemap::Span;
-use ext::base::ExtCtxt;
-use ext::base;
-use feature_gate;
-use parse::token::keywords;
+use syntax::ast::TokenTree;
+use syntax::codemap::Span;
+use syntax::ext::base::ExtCtxt;
+use syntax::ext::base;
+use syntax::feature_gate;
+use syntax::parse::token::keywords;
 
 
 pub fn expand_trace_macros(cx: &mut ExtCtxt,

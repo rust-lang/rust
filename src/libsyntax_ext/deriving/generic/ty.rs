@@ -14,17 +14,18 @@
 pub use self::PtrTy::*;
 pub use self::Ty::*;
 
-use ast;
-use ast::{Expr,Generics,Ident};
-use ext::base::ExtCtxt;
-use ext::build::AstBuilder;
-use codemap::{Span,respan};
-use owned_slice::OwnedSlice;
-use parse::token::special_idents;
-use ptr::P;
+use syntax::ast;
+use syntax::ast::{Expr,Generics,Ident};
+use syntax::ext::base::ExtCtxt;
+use syntax::ext::build::AstBuilder;
+use syntax::codemap::{Span,respan};
+use syntax::owned_slice::OwnedSlice;
+use syntax::parse::token::special_idents;
+use syntax::ptr::P;
 
 /// The types of pointers
 #[derive(Clone, Eq, PartialEq)]
+#[allow(dead_code)]
 pub enum PtrTy<'a> {
     /// &'lifetime mut
     Borrowed(Option<&'a str>, ast::Mutability),
