@@ -2,7 +2,7 @@ use rustc_front::hir::*;
 use reexport::*;
 use rustc::lint::*;
 use syntax::codemap::Span;
-use rustc_front::intravisit::{Visitor, walk_ty, walk_ty_param_bound, walk_fn_decl};
+use rustc_front::intravisit::{Visitor, walk_ty, walk_ty_param_bound, walk_fn_decl, walk_generics};
 use rustc::middle::def::Def::{DefTy, DefTrait, DefStruct};
 use std::collections::{HashSet, HashMap};
 
@@ -64,7 +64,7 @@ fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>,
         span_lint(cx, NEEDLESS_LIFETIMES, span,
                   "explicit lifetimes given in parameter types where they could be elided");
     }
-    report_extra_lifetimes(cx, decl, &generics.lifetimes);
+    report_extra_lifetimes(cx, decl, &generics);
 }
 
 fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>,
@@ -276,12 +276,23 @@ impl<'v> Visitor<'v> for LifetimeChecker {
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         self.0.remove(&lifetime.name);
     }
+
+    fn visit_lifetime_def(&mut self, _: &'v LifetimeDef) {
+        // don't actually visit `<'a>` or `<'a: 'b>`
+        // we've already visited the `'a` declarations and
+        // don't want to spuriously remove them
+        // `'b` in `'a: 'b` is useless unless used elsewhere in
+        // a non-lifetime bound
+    }
 }
 
 fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl,
-                          named_lts: &[LifetimeDef]) {
-    let hs = named_lts.iter().map(|lt| (lt.lifetime.name, lt.lifetime.span)).collect();
+                          generics: &Generics) {
+    let hs = generics.lifetimes.iter()
+                     .map(|lt| (lt.lifetime.name, lt.lifetime.span))
+                     .collect();
     let mut checker = LifetimeChecker(hs);
+    walk_generics(&mut checker, generics);
     walk_fn_decl(&mut checker, func);
     for (_, v) in checker.0 {
         span_lint(cx, UNUSED_LIFETIMES, v,

@@ -43,6 +43,15 @@ impl<'a> Foo<'a> for u8 {
 
     }
 }
+
+// test for #489 (used lifetimes in bounds)
+pub fn parse<'a, I: Iterator<Item=&'a str>>(_it: &mut I) {
+    unimplemented!()
+}
+pub fn parse2<'a, I>(_it: &mut I) where I: Iterator<Item=&'a str>{
+    unimplemented!()
+}
+
 fn main() {
 
 }
