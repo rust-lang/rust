@@ -63,6 +63,13 @@ these platforms are required to have each of the following:
 |  Target                       | std |rustc|cargo| notes                      |
 |-------------------------------|-----|-----|-----|----------------------------|
 | `i686-pc-windows-msvc`        |  ✓  |  ✓  |  ✓  | 32-bit MSVC (Windows 7+)   |
+| `x86_64-unknown-linux-musl`   |  ✓  |     |     | 64-bit Linux with MUSL     |
+| `arm-linux-androideabi`       |  ✓  |     |     | ARM Android                |
+| `arm-unknown-linux-gnueabi`   |  ✓  |  ✓  |     | ARM Linux (2.6.18+)        |
+| `arm-unknown-linux-gnueabihf` |  ✓  |  ✓  |     | ARM Linux (2.6.18+)        |
+| `aarch64-unknown-linux-gnu`   |  ✓  |     |     | ARM64 Linux (2.6.18+)      |
+| `mips-unknown-linux-gnu`      |  ✓  |     |     | MIPS Linux (2.6.18+)       |
+| `mipsel-unknown-linux-gnu`    |  ✓  |     |     | MIPS (LE) Linux (2.6.18+)  |
 
 ### Tier 3
 
@@ -75,15 +82,8 @@ unofficial locations.
 
 |  Target                       | std |rustc|cargo| notes                      |
 |-------------------------------|-----|-----|-----|----------------------------|
-| `x86_64-unknown-linux-musl`   |  ✓  |     |     | 64-bit Linux with MUSL     |
-| `arm-linux-androideabi`       |  ✓  |     |     | ARM Android                |
 | `i686-linux-android`          |  ✓  |     |     | 32-bit x86 Android         |
 | `aarch64-linux-android`       |  ✓  |     |     | ARM64 Android              |
-| `arm-unknown-linux-gnueabi`   |  ✓  |  ✓  |     | ARM Linux (2.6.18+)        |
-| `arm-unknown-linux-gnueabihf` |  ✓  |  ✓  |     | ARM Linux (2.6.18+)        |
-| `aarch64-unknown-linux-gnu`   |  ✓  |     |     | ARM64 Linux (2.6.18+)      |
-| `mips-unknown-linux-gnu`      |  ✓  |     |     | MIPS Linux (2.6.18+)       |
-| `mipsel-unknown-linux-gnu`    |  ✓  |     |     | MIPS (LE) Linux (2.6.18+)  |
 | `powerpc-unknown-linux-gnu`   |  ✓  |     |     | PowerPC Linux (2.6.18+)    |
 | `i386-apple-ios`              |  ✓  |     |     | 32-bit x86 iOS             |
 | `x86_64-apple-ios`            |  ✓  |     |     | 64-bit x86 iOS             |
@@ -127,7 +127,7 @@ not want the script to run ‘sudo’ then pass it the --disable-sudo flag.
 You may uninstall later by running /usr/local/lib/rustlib/uninstall.sh,
 or by running this script again with the --uninstall flag.
 
-Continue? (y/N) 
+Continue? (y/N)
 ```
 
 From here, press `y` for ‘yes’, and then follow the rest of the prompts.
@@ -188,7 +188,7 @@ was installed.
 Now that you have Rust installed, we'll help you write your first Rust program.
 It's traditional when learning a new language to write a little program to
 print the text “Hello, world!” to the screen, and in this section, we'll follow
-that tradition. 
+that tradition.
 
 The nice thing about starting with such a simple program is that you can
 quickly verify that your compiler is installed, and that it's working properly.
@@ -202,7 +202,7 @@ practicing it early on is good.
 > There are a number of extensions in development by the community, and the
 > Rust team ships plugins for [various editors]. Configuring your editor or
 > IDE is out of the scope of this tutorial, so check the documentation for your
-> specific setup. 
+> specific setup.
 
 [SolidOak]: https://github.com/oakes/SolidOak
 [various editors]: https://github.com/rust-lang/rust/blob/master/src/etc/CONFIGS.md
@@ -244,14 +244,14 @@ following commands:
 
 ```bash
 $ rustc main.rs
-$ ./main 
+$ ./main
 Hello, world!
 ```
 
 In Windows, just replace `main` with `main.exe`. Regardless of your operating
 system, you should see the string `Hello, world!` print to the terminal. If you
 did, then congratulations! You've officially written a Rust program. That makes
-you a Rust programmer! Welcome. 
+you a Rust programmer! Welcome.
 
 ## Anatomy of a Rust Program
 
@@ -285,13 +285,13 @@ Inside the `main()` function:
 This line does all of the work in this little program: it prints text to the
 screen. There are a number of details that are important here. The first is
 that it’s indented with four spaces, not tabs.
- 
+
 The second important part is the `println!()` line. This is calling a Rust
 *[macro]*, which is how metaprogramming is done in Rust. If it were calling a
 function instead, it would look like this: `println()` (without the !). We'll
 discuss Rust macros in more detail later, but for now you just need to
 know that when you see a `!` that means that you’re calling a macro instead of
-a normal function. 
+a normal function.
 
 
 [macro]: macros.html
@@ -313,7 +313,7 @@ begin. Most lines of Rust code end with a `;`.
 ## Compiling and Running Are Separate Steps
 
 In "Writing and Running a Rust Program", we showed you how to run a newly
-created program. We'll break that process down and examine each step now. 
+created program. We'll break that process down and examine each step now.
 
 Before running a Rust program, you have to compile it. You can use the Rust
 compiler by entering the `rustc` command and passing it the name of your source
@@ -395,7 +395,7 @@ in which you installed Rust, to determine if Cargo is separate.
 ## Converting to Cargo
 
 Let’s convert the Hello World program to Cargo. To Cargo-fy a project, you need
-to do three things: 
+to do three things:
 
 1. Put your source file in the right directory.
 2. Get rid of the old executable (`main.exe` on Windows, `main` everywhere else)
@@ -419,7 +419,7 @@ Cargo expects your source files to live inside a *src* directory, so do that
 first. This leaves the top-level project directory (in this case,
 *hello_world*) for READMEs, license information, and anything else not related
 to your code. In this way, using Cargo helps you keep your projects nice and
-tidy. There's a place for everything, and everything is in its place. 
+tidy. There's a place for everything, and everything is in its place.
 
 Now, copy *main.rs* to the *src* directory, and delete the compiled file you
 created with `rustc`. As usual, replace `main` with `main.exe` if you're on
@@ -428,7 +428,7 @@ Windows.
 This example retains `main.rs` as the source filename because it's creating an
 executable. If you wanted to make a library instead, you'd name the file
 `lib.rs`. This convention is used by Cargo to successfully compile your
-projects, but it can be overridden if you wish. 
+projects, but it can be overridden if you wish.
 
 ### Creating a Configuration File
 
@@ -436,7 +436,7 @@ Next, create a new file inside your *hello_world* directory, and call it
 `Cargo.toml`.
 
 Make sure to capitalize the `C` in `Cargo.toml`, or Cargo won't know what to do
-with the configuration file. 
+with the configuration file.
 
 This file is in the *[TOML]* (Tom's Obvious, Minimal Language) format. TOML is
 similar to INI, but has some extra goodies, and is used as Cargo’s
@@ -464,7 +464,7 @@ know to compile your program: its name, what version it is, and who wrote it.
 Once you've added this information to the *Cargo.toml* file, save it to finish
 creating the configuration file.
 
-## Building and Running a Cargo Project 
+## Building and Running a Cargo Project
 
 With your *Cargo.toml* file in place in your project's root directory, you
 should be ready to build and run your Hello World program! To do so, enter the
@@ -477,7 +477,7 @@ $ ./target/debug/hello_world
 Hello, world!
 ```
 
-Bam! If all goes well, `Hello, world!` should print to the terminal once more. 
+Bam! If all goes well, `Hello, world!` should print to the terminal once more.
 
 You just built a project with `cargo build` and ran it with
 `./target/debug/hello_world`, but you can actually do both in one step with
@@ -532,7 +532,7 @@ doesn't have dependencies, so the file is a bit sparse. Realistically, you
 won't ever need to touch this file yourself; just let Cargo handle it.
 
 That’s it! If you've been following along, you should have successfully built
-`hello_world` with Cargo. 
+`hello_world` with Cargo.
 
 Even though the project is simple, it now uses much of the real tooling you’ll
 use for the rest of your Rust career. In fact, you can expect to start
@@ -587,7 +587,7 @@ fn main() {
 }
 ```
 
-Cargo has generated a "Hello World!" for you, and you’re ready to start coding! 
+Cargo has generated a "Hello World!" for you, and you’re ready to start coding!
 
 > Note: If you want to look at Cargo in more detail, check out the official [Cargo
 guide], which covers all of its features.
@@ -598,7 +598,7 @@ guide], which covers all of its features.
 
 This chapter covered the basics that will serve you well through the rest of
 this book, and the rest of your time with Rust. Now that you’ve got the tools
-down, we'll cover more about the Rust language itself. 
+down, we'll cover more about the Rust language itself.
 
 You have two options: Dive into a project with ‘[Learn Rust][learnrust]’, or
 start from the bottom and work your way up with ‘[Syntax and
