@@ -3391,6 +3391,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         self.record_candidate_traits_for_expr_if_necessary(expr);
 
+        expr.toto();
         // Next, resolve the node.
         match expr.node {
             ExprPath(ref maybe_qself, ref path) => {
@@ -3509,13 +3510,38 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         format!("to call `{}::{}`", path_str, path_name),
                                 };
 
+                                let mut help_msg = String::new();
                                 if !msg.is_empty() {
                                     msg = format!(". Did you mean {}?", msg)
+                                } else {
+                                    // we check if this a module and if so, we display a help
+                                    // message
+                                    let name_path = path.segments.iter()
+                                                        .map(|seg| seg.identifier.name)
+                                                        .collect::<Vec<_>>();
+                                    let current_module = self.current_module.clone();
+
+                                    match self.resolve_module_path(current_module,
+                                                   &name_path[..],
+                                                   UseLexicalScope,
+                                                   expr.span,
+                                                   PathSearch) {
+                                        Success(_) => {
+                                            help_msg = format!("To reference an item from the \
+                                                                `{module}` module, use \
+                                                                `{module}::the_function_you_want`",
+                                                               module = &*path_name);
+                                        },
+                                        _ => {},
+                                    };
                                 }
 
                                 resolve_error(self,
                                               expr.span,
                                               ResolutionError::UnresolvedName(&*path_name, &*msg));
+                                if !help_msg.is_empty() {
+                                    self.session.fileline_help(expr.span, &help_msg);
+                                }
                             }
                         }
                     }
