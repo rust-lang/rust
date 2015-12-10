@@ -428,7 +428,7 @@ impl<T: Clone> Arc<T> {
         // weak count, there's no chance the ArcInner itself could be
         // deallocated.
         if this.inner().strong.compare_and_swap(1, 0, Acquire) != 1 {
-            // Another srong pointer exists; clone
+            // Another strong pointer exists; clone
             *this = Arc::new((**this).clone());
         } else if this.inner().weak.load(Relaxed) != 1 {
             // Relaxed suffices in the above because this is fundamentally an
