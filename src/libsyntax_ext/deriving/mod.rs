@@ -13,13 +13,14 @@
 //! FIXME (#2810): hygiene. Search for "__" strings (in other files too). We also assume "extra" is
 //! the standard library, and "std" is the core library.
 
-use ast::{MetaItem, MetaWord};
-use attr::AttrMetaMethods;
-use ext::base::{ExtCtxt, SyntaxEnv, MultiDecorator, MultiItemDecorator, MultiModifier, Annotatable};
-use ext::build::AstBuilder;
-use feature_gate;
-use codemap::Span;
-use parse::token::{intern, intern_and_get_ident};
+use syntax::ast::{MetaItem, MetaWord};
+use syntax::attr::AttrMetaMethods;
+use syntax::ext::base::{ExtCtxt, SyntaxEnv, Annotatable};
+use syntax::ext::base::{MultiDecorator, MultiItemDecorator, MultiModifier};
+use syntax::ext::build::AstBuilder;
+use syntax::feature_gate;
+use syntax::codemap::Span;
+use syntax::parse::token::{intern, intern_and_get_ident};
 
 macro_rules! pathvec {
     ($($x:ident)::+) => (
@@ -35,7 +36,7 @@ macro_rules! path {
 
 macro_rules! path_local {
     ($x:ident) => (
-        ::ext::deriving::generic::ty::Path::new_local(stringify!($x))
+        ::deriving::generic::ty::Path::new_local(stringify!($x))
     )
 }
 
@@ -51,7 +52,7 @@ macro_rules! pathvec_std {
 
 macro_rules! path_std {
     ($($x:tt)*) => (
-        ::ext::deriving::generic::ty::Path::new( pathvec_std!( $($x)* ) )
+        ::deriving::generic::ty::Path::new( pathvec_std!( $($x)* ) )
     )
 }
 

@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast;
-use codemap;
-use ext::base;
-use feature_gate;
-use print;
+use syntax::ast;
+use syntax::codemap;
+use syntax::ext::base;
+use syntax::feature_gate;
+use syntax::print;
 
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
                               sp: codemap::Span,

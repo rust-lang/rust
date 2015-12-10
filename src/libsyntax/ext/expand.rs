@@ -21,7 +21,7 @@ use attr::{AttrMetaMethods, WithAttrs};
 use codemap;
 use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use ext::base::*;
-use feature_gate::{self, Features, GatedCfgAttr};
+use feature_gate::{self, Features};
 use fold;
 use fold::*;
 use util::move_map::MoveMap;
@@ -1276,15 +1276,11 @@ impl<'feat> ExpansionConfig<'feat> {
     }
 }
 
-pub fn expand_crate<'feat>(parse_sess: &parse::ParseSess,
-                           cfg: ExpansionConfig<'feat>,
-                           // these are the macros being imported to this crate:
-                           imported_macros: Vec<ast::MacroDef>,
-                           user_exts: Vec<NamedSyntaxExtension>,
-                           feature_gated_cfgs: &mut Vec<GatedCfgAttr>,
-                           c: Crate) -> (Crate, HashSet<Name>) {
-    let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg,
-                              feature_gated_cfgs);
+pub fn expand_crate(mut cx: ExtCtxt,
+                    // these are the macros being imported to this crate:
+                    imported_macros: Vec<ast::MacroDef>,
+                    user_exts: Vec<NamedSyntaxExtension>,
+                    c: Crate) -> (Crate, HashSet<Name>) {
     if std_inject::no_core(&c) {
         cx.crate_root = None;
     } else if std_inject::no_std(&c) {
@@ -1305,7 +1301,7 @@ pub fn expand_crate<'feat>(parse_sess: &parse::ParseSess,
 
         let mut ret = expander.fold_crate(c);
         ret.exported_macros = expander.cx.exported_macros.clone();
-        parse_sess.span_diagnostic.handler().abort_if_errors();
+        cx.parse_sess.span_diagnostic.handler().abort_if_errors();
         ret
     };
     return (ret, cx.syntax_env.names);

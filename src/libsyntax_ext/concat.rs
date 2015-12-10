@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast;
-use codemap;
-use ext::base;
-use ext::build::AstBuilder;
-use parse::token;
+use syntax::ast;
+use syntax::codemap;
+use syntax::ext::base;
+use syntax::ext::build::AstBuilder;
+use syntax::parse::token;
 
 use std::string::String;
 
