@@ -236,6 +236,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // allow using type ascription in expressions
     ("type_ascription", "1.6.0", Some(23416), Active),
+
+    // Allows cfg(target_thread_local)
+    ("cfg_target_thread_local", "1.7.0", Some(26581), Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -414,6 +417,8 @@ const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)]
     // (name in cfg, feature, function to check if the feature is enabled)
     ("target_feature", "cfg_target_feature", cfg_fn!(|x| x.cfg_target_feature)),
     ("target_vendor", "cfg_target_vendor", cfg_fn!(|x| x.cfg_target_vendor)),
+    ("target_thread_local", "cfg_target_thread_local",
+     cfg_fn!(|x| x.cfg_target_thread_local)),
 ];
 
 #[derive(Debug, Eq, PartialEq)]
@@ -541,6 +546,7 @@ pub struct Features {
     pub type_macros: bool,
     pub cfg_target_feature: bool,
     pub cfg_target_vendor: bool,
+    pub cfg_target_thread_local: bool,
     pub augmented_assignments: bool,
     pub braced_empty_structs: bool,
     pub staged_api: bool,
@@ -575,6 +581,7 @@ impl Features {
             type_macros: false,
             cfg_target_feature: false,
             cfg_target_vendor: false,
+            cfg_target_thread_local: false,
             augmented_assignments: false,
             braced_empty_structs: false,
             staged_api: false,
@@ -1157,6 +1164,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
         type_macros: cx.has_feature("type_macros"),
         cfg_target_feature: cx.has_feature("cfg_target_feature"),
         cfg_target_vendor: cx.has_feature("cfg_target_vendor"),
+        cfg_target_thread_local: cx.has_feature("cfg_target_thread_local"),
         augmented_assignments: cx.has_feature("augmented_assignments"),
         braced_empty_structs: cx.has_feature("braced_empty_structs"),
         staged_api: cx.has_feature("staged_api"),
