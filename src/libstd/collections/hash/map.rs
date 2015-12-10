@@ -1681,7 +1681,6 @@ mod test_map {
 
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
-    use iter::range_inclusive;
     use cell::RefCell;
     use rand::{thread_rng, Rng};
 
@@ -1877,42 +1876,42 @@ mod test_map {
         for _ in 0..10 {
             assert!(m.is_empty());
 
-            for i in range_inclusive(1, 1000) {
+            for i in 1..1001 {
                 assert!(m.insert(i, i).is_none());
 
-                for j in range_inclusive(1, i) {
+                for j in 1..i+1 {
                     let r = m.get(&j);
                     assert_eq!(r, Some(&j));
                 }
 
-                for j in range_inclusive(i+1, 1000) {
+                for j in i+1..1001 {
                     let r = m.get(&j);
                     assert_eq!(r, None);
                 }
             }
 
-            for i in range_inclusive(1001, 2000) {
+            for i in 1001..2001 {
                 assert!(!m.contains_key(&i));
             }
 
             // remove forwards
-            for i in range_inclusive(1, 1000) {
+            for i in 1..1001 {
                 assert!(m.remove(&i).is_some());
 
-                for j in range_inclusive(1, i) {
+                for j in 1..i+1 {
                     assert!(!m.contains_key(&j));
                 }
 
-                for j in range_inclusive(i+1, 1000) {
+                for j in i+1..1001 {
                     assert!(m.contains_key(&j));
                 }
             }
 
-            for i in range_inclusive(1, 1000) {
+            for i in 1..1001 {
                 assert!(!m.contains_key(&i));
             }
 
-            for i in range_inclusive(1, 1000) {
+            for i in 1..1001 {
                 assert!(m.insert(i, i).is_none());
             }
 
@@ -1920,11 +1919,11 @@ mod test_map {
             for i in (1..1001).rev() {
                 assert!(m.remove(&i).is_some());
 
-                for j in range_inclusive(i, 1000) {
+                for j in i..1001 {
                     assert!(!m.contains_key(&j));
                 }
 
-                for j in range_inclusive(1, i-1) {
+                for j in 1..i {
                     assert!(m.contains_key(&j));
                 }
             }

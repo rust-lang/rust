@@ -15,12 +15,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use prelude::v1::*;
-
 use intrinsics;
 use mem;
 use num::FpCategory as Fp;
-use num::{Float, ParseFloatError};
+use num::Float;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(missing_docs)]
@@ -162,8 +160,6 @@ impl Float for f64 {
 
     #[inline]
     fn one() -> f64 { 1.0 }
-
-    from_str_radix_float_impl! { f64 }
 
     /// Returns `true` if the number is NaN.
     #[inline]

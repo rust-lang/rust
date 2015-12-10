@@ -1074,17 +1074,6 @@ impl String {
         let slice = self.vec.into_boxed_slice();
         unsafe { mem::transmute::<Box<[u8]>, Box<str>>(slice) }
     }
-
-    /// Converts the string into `Box<str>`.
-    ///
-    /// Note that this will drop any excess capacity.
-    #[unstable(feature = "box_str2",
-               reason = "recently added, matches RFC",
-               issue = "27785")]
-    #[rustc_deprecated(since = "1.4.0", reason = "renamed to `into_boxed_str`")]
-    pub fn into_boxed_slice(self) -> Box<str> {
-        self.into_boxed_str()
-    }
 }
 
 impl FromUtf8Error {

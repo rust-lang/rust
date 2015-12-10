@@ -1380,24 +1380,6 @@ impl<'a, T> ExactSizeIterator for ChunksMut<'a, T> {}
 // Free functions
 //
 
-/// Converts a reference to A into a slice of length 1 (without copying).
-#[unstable(feature = "ref_slice", issue = "27774")]
-#[rustc_deprecated(since = "1.5.0", reason = "unclear whether belongs in libstd")]
-pub fn ref_slice<A>(s: &A) -> &[A] {
-    unsafe {
-        from_raw_parts(s, 1)
-    }
-}
-
-/// Converts a reference to A into a slice of length 1 (without copying).
-#[unstable(feature = "ref_slice", issue = "27774")]
-#[rustc_deprecated(since = "1.5.0", reason = "unclear whether belongs in libstd")]
-pub fn mut_ref_slice<A>(s: &mut A) -> &mut [A] {
-    unsafe {
-        from_raw_parts_mut(s, 1)
-    }
-}
-
 /// Forms a slice from a pointer and a length.
 ///
 /// The `len` argument is the number of **elements**, not the number of bytes.

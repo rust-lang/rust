@@ -43,6 +43,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
+#![feature(clone_from_slice)]
 
 extern crate core;
 extern crate test;
