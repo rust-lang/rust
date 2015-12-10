@@ -555,7 +555,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             let cond = unpack!(block = self.as_operand(block, guard));
             let otherwise = self.cfg.start_new_block();
             self.cfg.terminate(block, Terminator::If { cond: cond,
-                                                       targets: [arm_block, otherwise]});
+                                                       targets: (arm_block, otherwise)});
             Some(otherwise)
         } else {
             self.cfg.terminate(block, Terminator::Goto { target: arm_block });

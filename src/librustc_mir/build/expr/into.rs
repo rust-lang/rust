@@ -53,7 +53,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let mut else_block = this.cfg.start_new_block();
                 this.cfg.terminate(block, Terminator::If {
                     cond: operand,
-                    targets: [then_block, else_block]
+                    targets: (then_block, else_block)
                 });
 
                 unpack!(then_block = this.into(destination, then_block, then_expr));
@@ -84,15 +84,15 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                 let lhs = unpack!(block = this.as_operand(block, lhs));
                 let blocks = match op {
-                    LogicalOp::And => [else_block, false_block],
-                    LogicalOp::Or => [true_block, else_block],
+                    LogicalOp::And => (else_block, false_block),
+                    LogicalOp::Or => (true_block, else_block),
                 };
                 this.cfg.terminate(block, Terminator::If { cond: lhs, targets: blocks });
 
                 let rhs = unpack!(else_block = this.as_operand(else_block, rhs));
                 this.cfg.terminate(else_block, Terminator::If {
                     cond: rhs,
-                    targets: [true_block, false_block]
+                    targets: (true_block, false_block)
                 });
 
                 this.cfg.push_assign_constant(
@@ -149,7 +149,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         this.cfg.terminate(loop_block_end,
                                            Terminator::If {
                                                cond: cond,
-                                               targets: [body_block, exit_block]
+                                               targets: (body_block, exit_block)
                                            });
                     } else {
                         body_block = loop_block;
@@ -225,7 +225,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                            func: fun,
                                            args: args,
                                        },
-                                       targets: [success, panic],
+                                       targets: (success, panic),
                                    });
                 success.unit()
             }

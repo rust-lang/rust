@@ -39,7 +39,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 unimplemented!()
             }
 
-            mir::Terminator::If { ref cond, targets: [true_bb, false_bb] } => {
+            mir::Terminator::If { ref cond, targets: (true_bb, false_bb) } => {
                 let cond = self.trans_operand(bcx, cond);
                 let lltrue = self.llblock(true_bb);
                 let llfalse = self.llblock(false_bb);

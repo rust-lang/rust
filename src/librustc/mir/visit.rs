@@ -10,6 +10,7 @@
 
 use middle::ty::Region;
 use mir::repr::*;
+use rustc_data_structures::tuple_slice::TupleSlice;
 
 pub trait Visitor<'tcx> {
     // Override these, and call `self.super_xxx` to revert back to the
@@ -97,7 +98,7 @@ pub trait Visitor<'tcx> {
 
             Terminator::If { ref cond, ref targets } => {
                 self.visit_operand(cond);
-                for &target in &targets[..] {
+                for &target in targets.as_slice() {
                     self.visit_branch(block, target);
                 }
             }
@@ -126,7 +127,7 @@ pub trait Visitor<'tcx> {
                 for arg in &data.args {
                     self.visit_operand(arg);
                 }
-                for &target in &targets[..] {
+                for &target in targets.as_slice() {
                     self.visit_branch(block, target);
                 }
             }
