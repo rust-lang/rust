@@ -207,9 +207,9 @@ use super::range::RangeArgument;
 /// strategy is used will of course guarantee `O(1)` amortized `push`.
 ///
 /// `vec![x; n]`, `vec![a, b, c, d]`, and `Vec::with_capacity(n)`, will all
-/// produce a Vec with exactly the requested capacity. If `len() == capacity()`,
-/// (as is the case for the `vec!` macro), then a `Vec<T>` can be converted
-/// to and from a `Box<[T]>` without reallocating or moving the elements.
+/// produce a Vec with at least the requested capacity.
+/// If `len() == capacity()`, then a `Vec<T>` can be converted to and from a
+/// `Box<[T]>` without reallocating or moving the elements.
 ///
 /// Vec will not specifically overwrite any data that is removed from it,
 /// but also won't specifically preserve it. Its uninitialized memory is
@@ -273,9 +273,12 @@ impl<T> Vec<T> {
     /// assert_eq!(vec.len(), 0);
     ///
     /// // These are all done without reallocating...
+    /// let cap = vec.capacity();
     /// for i in 0..10 {
     ///     vec.push(i);
     /// }
+    ///
+    /// assert_eq!(vec.capacity(), cap);
     ///
     /// // ...but this may make the vector reallocate
     /// vec.push(11);
@@ -349,7 +352,7 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let vec: Vec<i32> = Vec::with_capacity(10);
-    /// assert_eq!(vec.capacity(), 10);
+    /// assert!(vec.capacity() >= 10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -411,7 +414,7 @@ impl<T> Vec<T> {
     /// ```
     /// let mut vec = Vec::with_capacity(10);
     /// vec.extend([1, 2, 3].iter().cloned());
-    /// assert_eq!(vec.capacity(), 10);
+    /// assert!(vec.capacity() >= 10);
     /// vec.shrink_to_fit();
     /// assert!(vec.capacity() >= 3);
     /// ```

@@ -51,5 +51,5 @@ pub extern fn __rust_reallocate_inplace(ptr: *mut u8, old_size: usize,
 
 #[no_mangle]
 pub extern fn __rust_usable_size(size: usize, align: usize) -> usize {
-    unsafe { core::intrinsics::abort() }
+    size
 }

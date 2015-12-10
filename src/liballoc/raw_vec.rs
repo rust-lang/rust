@@ -99,6 +99,8 @@ impl<T> RawVec<T> {
                 heap::EMPTY as *mut u8
             } else {
                 let align = mem::align_of::<T>();
+                // FIXME: we do not round up the capacity here, pending the
+                // discussion in #29931
                 let ptr = heap::allocate(alloc_size, align);
                 if ptr.is_null() {
                     oom()
@@ -215,14 +217,13 @@ impl<T> RawVec<T> {
                 } else {
                     4
                 };
-                let ptr = heap::allocate(new_cap * elem_size, align);
+                let (alloc_size, new_cap) = round_up_alloc_size::<T>(new_cap);
+                let ptr = heap::allocate(alloc_size, align);
                 (new_cap, ptr)
             } else {
                 // Since we guarantee that we never allocate more than isize::MAX bytes,
                 // `elem_size * self.cap <= isize::MAX` as a precondition, so this can't overflow
-                let new_cap = 2 * self.cap;
-                let new_alloc_size = new_cap * elem_size;
-                alloc_guard(new_alloc_size);
+                let (new_alloc_size, new_cap) = round_up_alloc_size::<T>(2 * self.cap);
                 let ptr = heap::reallocate(self.ptr() as *mut _,
                                            self.cap * elem_size,
                                            new_alloc_size,
@@ -278,8 +279,7 @@ impl<T> RawVec<T> {
 
             // Nothing we can really do about these checks :(
             let new_cap = used_cap.checked_add(needed_extra_cap).expect("capacity overflow");
-            let new_alloc_size = new_cap.checked_mul(elem_size).expect("capacity overflow");
-            alloc_guard(new_alloc_size);
+            let (new_alloc_size, new_cap) = round_up_alloc_size::<T>(new_cap);
 
             let ptr = if self.cap == 0 {
                 heap::allocate(new_alloc_size, align)
@@ -370,9 +370,7 @@ impl<T> RawVec<T> {
             // `double_cap` guarantees exponential growth.
             let new_cap = cmp::max(double_cap, required_cap);
 
-            let new_alloc_size = new_cap.checked_mul(elem_size).expect("capacity overflow");
-            // FIXME: may crash and burn on over-reserve
-            alloc_guard(new_alloc_size);
+            let (new_alloc_size, new_cap) = round_up_alloc_size::<T>(new_cap);
 
             let ptr = if self.cap == 0 {
                 heap::allocate(new_alloc_size, align)
@@ -422,6 +420,9 @@ impl<T> RawVec<T> {
             unsafe {
                 // Overflow check is unnecessary as the vector is already at
                 // least this large.
+                // FIXME: pending the discussion in #29931, we do not round up
+                // the capacity here, since it might break assumptions for
+                // example in Vec::into_boxed_slice
                 let ptr = heap::reallocate(self.ptr() as *mut _,
                                            self.cap * elem_size,
                                            amount * elem_size,
@@ -475,7 +476,24 @@ impl<T> Drop for RawVec<T> {
     }
 }
 
+// The system allocator may actually give us more memory than we requested.
+// The allocator usually gives a power-of-two, so instead of asking the
+// allocator via `heap::usable_size` which would incur some overhead, we rather
+// round up the request ourselves to the nearest power-of-two
 
+#[inline]
+fn round_up_alloc_size<T>(cap: usize) -> (usize, usize) {
+    let elem_size = mem::size_of::<T>();
+
+    let alloc_size = cap.checked_mul(elem_size)
+        .and_then(usize::checked_next_power_of_two).expect("capacity overflow");
+    alloc_guard(alloc_size);
+
+    let cap = alloc_size / elem_size;
+    let alloc_size = cap * elem_size;
+
+    (alloc_size, cap)
+}
 
 // We need to guarantee the following:
 // * We don't ever allocate `> isize::MAX` byte-size objects
@@ -501,27 +519,29 @@ mod tests {
 
     #[test]
     fn reserve_does_not_overallocate() {
+        // NB: when rounding up allocation sizes, the cap is not exact
+        // but uses the whole memory allocated by the system allocator
         {
             let mut v: RawVec<u32> = RawVec::new();
             // First `reserve` allocates like `reserve_exact`
             v.reserve(0, 9);
-            assert_eq!(9, v.cap());
+            assert!(v.cap() >= 9 && v.cap() <= 9 * 2);
         }
 
         {
             let mut v: RawVec<u32> = RawVec::new();
             v.reserve(0, 7);
-            assert_eq!(7, v.cap());
+            assert!(v.cap() >= 7 && v.cap() <= 7 * 2);
             // 97 if more than double of 7, so `reserve` should work
             // like `reserve_exact`.
             v.reserve(7, 90);
-            assert_eq!(97, v.cap());
+            assert!(v.cap() >= 97 && v.cap() <= 97 * 2);
         }
 
         {
             let mut v: RawVec<u32> = RawVec::new();
             v.reserve(0, 12);
-            assert_eq!(12, v.cap());
+            assert!(v.cap() >= 12 && v.cap() <= 12 * 2);
             v.reserve(12, 3);
             // 3 is less than half of 12, so `reserve` must grow
             // exponentially. At the time of writing this test grow
