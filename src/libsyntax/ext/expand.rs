@@ -1397,6 +1397,7 @@ mod tests {
     use ast;
     use ast::Name;
     use codemap;
+    use ext::base::ExtCtxt;
     use ext::mtwt;
     use fold::Folder;
     use parse;
@@ -1467,7 +1468,9 @@ mod tests {
             src,
             Vec::new(), &sess);
         // should fail:
-        expand_crate(&sess,test_ecfg(),vec!(),vec!(), &mut vec![], crate_ast);
+        let mut gated_cfgs = vec![];
+        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs);
+        expand_crate(ecx, vec![], vec![], crate_ast);
     }
 
     // make sure that macros can't escape modules
@@ -1480,7 +1483,9 @@ mod tests {
             "<test>".to_string(),
             src,
             Vec::new(), &sess);
-        expand_crate(&sess,test_ecfg(),vec!(),vec!(), &mut vec![], crate_ast);
+        let mut gated_cfgs = vec![];
+        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs);
+        expand_crate(ecx, vec![], vec![], crate_ast);
     }
 
     // macro_use modules should allow macros to escape
@@ -1492,14 +1497,18 @@ mod tests {
             "<test>".to_string(),
             src,
             Vec::new(), &sess);
-        expand_crate(&sess, test_ecfg(), vec!(), vec!(), &mut vec![], crate_ast);
+        let mut gated_cfgs = vec![];
+        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs);
+        expand_crate(ecx, vec![], vec![], crate_ast);
     }
 
     fn expand_crate_str(crate_str: String) -> ast::Crate {
         let ps = parse::ParseSess::new();
         let crate_ast = panictry!(string_to_parser(&ps, crate_str).parse_crate_mod());
         // the cfg argument actually does matter, here...
-        expand_crate(&ps,test_ecfg(),vec!(),vec!(), &mut vec![], crate_ast).0
+        let mut gated_cfgs = vec![];
+        let ecx = ExtCtxt::new(&ps, vec![], test_ecfg(), &mut gated_cfgs);
+        expand_crate(ecx, vec![], vec![], crate_ast).0
     }
 
     // find the pat_ident paths in a crate
