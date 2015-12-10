@@ -309,7 +309,7 @@ impl<T> Option<T> {
     // Getting to contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Unwraps an option, yielding the content of a `Some`
+    /// Unwraps an option, yielding the content of a `Some`.
     ///
     /// # Panics
     ///
