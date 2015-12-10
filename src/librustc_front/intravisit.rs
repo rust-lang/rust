@@ -10,7 +10,7 @@
 
 //! HIR walker. Each overridden visit method has full control over what
 //! happens with its node, it can do its own traversal of the node's children,
-//! call `visit::walk_*` to apply the default traversal algorithm, or prevent
+//! call `intravisit::walk_*` to apply the default traversal algorithm, or prevent
 //! deeper traversal by doing nothing.
 //!
 //! When visiting the HIR, the contents of nested items are NOT visited
@@ -45,7 +45,7 @@ pub enum FnKind<'a> {
 /// Each method of the Visitor trait is a hook to be potentially
 /// overridden.  Each method's default implementation recursively visits
 /// the substructure of the input via the corresponding `walk` method;
-/// e.g. the `visit_mod` method by default calls `visit::walk_mod`.
+/// e.g. the `visit_mod` method by default calls `intravisit::walk_mod`.
 ///
 /// Note that this visitor does NOT visit nested items by default
 /// (this is why the module is called `intravisit`, to distinguish it
