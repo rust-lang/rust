@@ -744,6 +744,8 @@ impl<T, E: fmt::Debug> Result<T, E> {
 
     /// Unwraps a result, yielding the content of an `Ok`.
     ///
+    /// # Panics
+    ///
     /// Panics if the value is an `Err`, with a panic message including the
     /// passed message, and the content of the `Err`.
     ///
