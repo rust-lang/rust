@@ -13,6 +13,7 @@ use middle::def_id::DefId;
 use middle::subst::Substs;
 use middle::ty::{AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use rustc_back::slice;
+use rustc_data_structures::tuple_slice::TupleSlice;
 use rustc_front::hir::InlineAsm;
 use syntax::ast::Name;
 use syntax::codemap::Span;
@@ -206,7 +207,7 @@ pub enum Terminator<'tcx> {
     /// jump to branch 0 if this lvalue evaluates to true
     If {
         cond: Operand<'tcx>,
-        targets: [BasicBlock; 2],
+        targets: (BasicBlock, BasicBlock),
     },
 
     /// lvalue evaluates to some enum; jump depending on the branch
@@ -254,7 +255,7 @@ pub enum Terminator<'tcx> {
     /// unwinding.
     Call {
         data: CallData<'tcx>,
-        targets: [BasicBlock; 2],
+        targets: (BasicBlock, BasicBlock),
     },
 }
 
@@ -264,12 +265,12 @@ impl<'tcx> Terminator<'tcx> {
         match *self {
             Goto { target: ref b } => slice::ref_slice(b),
             Panic { target: ref b } => slice::ref_slice(b),
-            If { cond: _, targets: ref b } => b,
+            If { cond: _, targets: ref b } => b.as_slice(),
             Switch { targets: ref b, .. } => b,
             SwitchInt { targets: ref b, .. } => b,
             Diverge => &[],
             Return => &[],
-            Call { data: _, targets: ref b } => b,
+            Call { data: _, targets: ref b } => b.as_slice(),
         }
     }
 
@@ -278,12 +279,12 @@ impl<'tcx> Terminator<'tcx> {
         match *self {
             Goto { target: ref mut b } => slice::mut_ref_slice(b),
             Panic { target: ref mut b } => slice::mut_ref_slice(b),
-            If { cond: _, targets: ref mut b } => b,
+            If { cond: _, targets: ref mut b } => b.as_mut_slice(),
             Switch { targets: ref mut b, .. } => b,
             SwitchInt { targets: ref mut b, .. } => b,
             Diverge => &mut [],
             Return => &mut [],
-            Call { data: _, targets: ref mut b } => b,
+            Call { data: _, targets: ref mut b } => b.as_mut_slice(),
         }
     }
 }

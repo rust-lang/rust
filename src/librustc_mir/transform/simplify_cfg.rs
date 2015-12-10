@@ -96,9 +96,9 @@ impl SimplifyCfg {
             mem::swap(&mut terminator, &mut mir.basic_block_data_mut(bb).terminator);
 
             mir.basic_block_data_mut(bb).terminator = match terminator {
-                Terminator::If { ref targets, .. } if targets[0] == targets[1] => {
+                Terminator::If { ref targets, .. } if targets.0 == targets.1 => {
                     changed = true;
-                    Terminator::Goto { target: targets[0] }
+                    Terminator::Goto { target: targets.0 }
                 }
                 Terminator::If { ref targets, cond: Operand::Constant(Constant {
                     literal: Literal::Value {
@@ -106,8 +106,11 @@ impl SimplifyCfg {
                     }, ..
                 }) } => {
                     changed = true;
-                    let target_idx = if cond { 0 } else { 1 };
-                    Terminator::Goto { target: targets[target_idx] }
+                    if cond {
+                        Terminator::Goto { target: targets.0 }
+                    } else {
+                        Terminator::Goto { target: targets.1 }
+                    }
                 }
                 Terminator::SwitchInt { ref targets, .. }  if targets.len() == 1 => {
                     Terminator::Goto { target: targets[0] }
