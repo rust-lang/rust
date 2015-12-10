@@ -584,7 +584,7 @@ pub enum Rvalue<'tcx> {
         from_end: usize,
     },
 
-    InlineAsm(&'tcx InlineAsm),
+    InlineAsm(InlineAsm),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
