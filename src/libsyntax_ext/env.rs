@@ -14,12 +14,12 @@
  * interface.
  */
 
-use ast;
-use codemap::Span;
-use ext::base::*;
-use ext::base;
-use ext::build::AstBuilder;
-use parse::token;
+use syntax::ast;
+use syntax::codemap::Span;
+use syntax::ext::base::*;
+use syntax::ext::base;
+use syntax::ext::build::AstBuilder;
+use syntax::parse::token;
 
 use std::env;
 
