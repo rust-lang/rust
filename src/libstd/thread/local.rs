@@ -13,6 +13,7 @@
 #![unstable(feature = "thread_local_internals", issue = "0")]
 
 use cell::UnsafeCell;
+use mem;
 
 // Sure wish we had macro hygiene, no?
 #[doc(hidden)]
@@ -226,7 +227,21 @@ impl<T: 'static> LocalKey<T> {
         // just in case initialization fails.
         let value = (self.init)();
         let ptr = slot.get();
-        *ptr = Some(value);
+
+        // note that this can in theory just be `*ptr = Some(value)`, but due to
+        // the compiler will currently codegen that pattern with something like:
+        //
+        //      ptr::drop_in_place(ptr)
+        //      ptr::write(ptr, Some(value))
+        //
+        // Due to this pattern it's possible for the destructor of the value in
+        // `ptr` (e.g. if this is being recursively initialized) to re-access
+        // TLS, in which case there will be a `&` and `&mut` pointer to the same
+        // value (an aliasing violation). To avoid setting the "I'm running a
+        // destructor" flag we just use `mem::replace` which should sequence the
+        // operations a little differently and make this safe to call.
+        mem::replace(&mut *ptr, Some(value));
+
         (*ptr).as_ref().unwrap()
     }
 
