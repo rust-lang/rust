@@ -385,13 +385,6 @@ impl<T: ?Sized> Deref for Arc<T> {
 }
 
 impl<T: Clone> Arc<T> {
-    #[unstable(feature = "arc_make_unique", reason = "renamed to Arc::make_mut",
-               issue = "27718")]
-    #[rustc_deprecated(since = "1.4.0", reason = "renamed to Arc::make_mut")]
-    pub fn make_unique(this: &mut Self) -> &mut T {
-        Arc::make_mut(this)
-    }
-
     /// Make a mutable reference into the given `Arc<T>` by cloning the inner
     /// data if the `Arc<T>` doesn't have one strong reference and no weak
     /// references.

@@ -211,38 +211,11 @@ impl CString {
     /// The only appropriate argument is a pointer obtained by calling
     /// `into_raw`. The length of the string will be recalculated
     /// using the pointer.
-    #[unstable(feature = "cstr_memory2", reason = "recently added",
-               issue = "27769")]
-    #[rustc_deprecated(since = "1.4.0", reason = "renamed to from_raw")]
-    pub unsafe fn from_ptr(ptr: *const c_char) -> CString {
-        CString::from_raw(ptr as *mut _)
-    }
-
-    /// Retakes ownership of a CString that was transferred to C.
-    ///
-    /// The only appropriate argument is a pointer obtained by calling
-    /// `into_raw`. The length of the string will be recalculated
-    /// using the pointer.
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte
         let slice = slice::from_raw_parts(ptr, len as usize);
         CString { inner: mem::transmute(slice) }
-    }
-
-    /// Transfers ownership of the string to a C caller.
-    ///
-    /// The pointer must be returned to Rust and reconstituted using
-    /// `from_raw` to be properly deallocated. Specifically, one
-    /// should *not* use the standard C `free` function to deallocate
-    /// this string.
-    ///
-    /// Failure to call `from_raw` will lead to a memory leak.
-    #[unstable(feature = "cstr_memory2", reason = "recently added",
-               issue = "27769")]
-    #[rustc_deprecated(since = "1.4.0", reason = "renamed to into_raw")]
-    pub fn into_ptr(self) -> *const c_char {
-        self.into_raw() as *const _
     }
 
     /// Transfers ownership of the string to a C caller.

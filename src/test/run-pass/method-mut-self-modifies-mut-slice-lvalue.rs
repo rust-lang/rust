@@ -12,8 +12,7 @@
 // type is `&mut [u8]`, passes in a pointer to the lvalue and not a
 // temporary. Issue #19147.
 
-
-#![feature(slice_bytes)]
+#![feature(clone_from_slice)]
 
 use std::slice;
 
@@ -23,7 +22,7 @@ trait MyWriter {
 
 impl<'a> MyWriter for &'a mut [u8] {
     fn my_write(&mut self, buf: &[u8]) -> Result<(), ()> {
-        slice::bytes::copy_memory(buf, *self);
+        self.clone_from_slice(buf);
 
         let write_len = buf.len();
         unsafe {

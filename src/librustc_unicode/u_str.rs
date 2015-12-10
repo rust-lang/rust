@@ -13,10 +13,8 @@
 //! This module provides functionality to `str` that requires the Unicode
 //! methods provided by the unicode parts of the CharExt trait.
 
-use char::{DecodeUtf16, decode_utf16};
 use core::char;
-use core::iter::{Cloned, Filter};
-use core::slice;
+use core::iter::Filter;
 use core::str::Split;
 
 /// An iterator over the non-whitespace substrings of a string,
@@ -125,97 +123,6 @@ pub fn is_utf16(v: &[u16]) -> bool {
             }
         }
     }
-}
-
-/// An iterator that decodes UTF-16 encoded codepoints from a vector
-/// of `u16`s.
-#[rustc_deprecated(since = "1.4.0", reason = "renamed to `char::DecodeUtf16`")]
-#[unstable(feature = "decode_utf16", reason = "not exposed in std", issue = "27830")]
-#[allow(deprecated)]
-#[derive(Clone)]
-pub struct Utf16Items<'a> {
-    decoder: DecodeUtf16<Cloned<slice::Iter<'a, u16>>>,
-}
-
-/// The possibilities for values decoded from a `u16` stream.
-#[rustc_deprecated(since = "1.4.0",
-                   reason = "`char::DecodeUtf16` uses `Result<char, u16>` instead")]
-#[unstable(feature = "decode_utf16", reason = "not exposed in std", issue = "27830")]
-#[allow(deprecated)]
-#[derive(Copy, PartialEq, Eq, Clone, Debug)]
-pub enum Utf16Item {
-    /// A valid codepoint.
-    ScalarValue(char),
-    /// An invalid surrogate without its pair.
-    LoneSurrogate(u16),
-}
-
-#[allow(deprecated)]
-impl Utf16Item {
-    /// Convert `self` to a `char`, taking `LoneSurrogate`s to the
-    /// replacement character (U+FFFD).
-    #[inline]
-    pub fn to_char_lossy(&self) -> char {
-        match *self {
-            Utf16Item::ScalarValue(c) => c,
-            Utf16Item::LoneSurrogate(_) => '\u{FFFD}',
-        }
-    }
-}
-
-#[rustc_deprecated(since = "1.4.0", reason = "use `char::DecodeUtf16` instead")]
-#[unstable(feature = "decode_utf16", reason = "not exposed in std", issue = "27830")]
-#[allow(deprecated)]
-impl<'a> Iterator for Utf16Items<'a> {
-    type Item = Utf16Item;
-
-    fn next(&mut self) -> Option<Utf16Item> {
-        self.decoder.next().map(|result| {
-            match result {
-                Ok(c) => Utf16Item::ScalarValue(c),
-                Err(s) => Utf16Item::LoneSurrogate(s),
-            }
-        })
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.decoder.size_hint()
-    }
-}
-
-/// Create an iterator over the UTF-16 encoded codepoints in `v`,
-/// returning invalid surrogates as `LoneSurrogate`s.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(unicode, decode_utf16)]
-/// # #![allow(deprecated)]
-///
-/// extern crate rustc_unicode;
-///
-/// use rustc_unicode::str::Utf16Item::{ScalarValue, LoneSurrogate};
-///
-/// fn main() {
-///     // 𝄞mus<invalid>ic<invalid>
-///     let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
-///              0x0073, 0xDD1E, 0x0069, 0x0063,
-///              0xD834];
-///
-///     assert_eq!(rustc_unicode::str::utf16_items(&v).collect::<Vec<_>>(),
-///                vec![ScalarValue('𝄞'),
-///                     ScalarValue('m'), ScalarValue('u'), ScalarValue('s'),
-///                     LoneSurrogate(0xDD1E),
-///                     ScalarValue('i'), ScalarValue('c'),
-///                     LoneSurrogate(0xD834)]);
-/// }
-/// ```
-#[rustc_deprecated(since = "1.4.0", reason = "renamed to `char::decode_utf16`")]
-#[unstable(feature = "decode_utf16", reason = "not exposed in std", issue = "27830")]
-#[allow(deprecated)]
-pub fn utf16_items<'a>(v: &'a [u16]) -> Utf16Items<'a> {
-    Utf16Items { decoder: decode_utf16(v.iter().cloned()) }
 }
 
 /// Iterator adaptor for encoding `char`s to UTF-16.

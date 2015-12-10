@@ -1771,12 +1771,6 @@ pub trait Float: Sized {
     #[unstable(feature = "float_extras", reason = "needs removal",
                issue = "27752")]
     fn one() -> Self;
-    /// Parses the string `s` with the radix `r` as a float.
-    #[unstable(feature = "float_from_str_radix", reason = "recently moved API",
-               issue = "27736")]
-    #[rustc_deprecated(since = "1.4.0",
-                 reason = "unclear how useful or correct this is")]
-    fn from_str_radix(s: &str, r: u32) -> Result<Self, ParseFloatError>;
 
     /// Returns true if this value is NaN and false otherwise.
     #[stable(feature = "core", since = "1.6.0")]

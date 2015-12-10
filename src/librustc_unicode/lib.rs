@@ -48,8 +48,8 @@ pub mod char;
 #[allow(deprecated)]
 pub mod str {
     pub use u_str::{UnicodeStr, SplitWhitespace};
-    pub use u_str::{utf8_char_width, is_utf16, Utf16Items, Utf16Item};
-    pub use u_str::{utf16_items, Utf16Encoder};
+    pub use u_str::{utf8_char_width, is_utf16};
+    pub use u_str::{Utf16Encoder};
 }
 
 // For use in libcollections, not re-exported in libstd.

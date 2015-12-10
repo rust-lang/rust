@@ -154,7 +154,6 @@ use mem;
 use ops::FnOnce;
 use result::Result::{Ok, Err};
 use result::Result;
-use slice;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -266,42 +265,6 @@ impl<T> Option<T> {
         match *self {
             Some(ref mut x) => Some(x),
             None => None,
-        }
-    }
-
-    /// Converts from `Option<T>` to `&mut [T]` (without copying)
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(as_slice)]
-    /// # #![allow(deprecated)]
-    ///
-    /// let mut x = Some("Diamonds");
-    /// {
-    ///     let v = x.as_mut_slice();
-    ///     assert!(v == ["Diamonds"]);
-    ///     v[0] = "Dirt";
-    ///     assert!(v == ["Dirt"]);
-    /// }
-    /// assert_eq!(x, Some("Dirt"));
-    /// ```
-    #[inline]
-    #[unstable(feature = "as_slice",
-               reason = "waiting for mut conventions",
-               issue = "27776")]
-    #[rustc_deprecated(since = "1.4.0", reason = "niche API, unclear of usefulness")]
-    #[allow(deprecated)]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
-        match *self {
-            Some(ref mut x) => {
-                let result: &mut [T] = slice::mut_ref_slice(x);
-                result
-            }
-            None => {
-                let result: &mut [T] = &mut [];
-                result
-            }
         }
     }
 
@@ -689,22 +652,6 @@ impl<T> Option<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn take(&mut self) -> Option<T> {
         mem::replace(self, None)
-    }
-
-    /// Converts from `Option<T>` to `&[T]` (without copying)
-    #[inline]
-    #[unstable(feature = "as_slice", reason = "unsure of the utility here",
-               issue = "27776")]
-    #[rustc_deprecated(since = "1.4.0", reason = "niche API, unclear of usefulness")]
-    #[allow(deprecated)]
-    pub fn as_slice(&self) -> &[T] {
-        match *self {
-            Some(ref x) => slice::ref_slice(x),
-            None => {
-                let result: &[_] = &[];
-                result
-            }
-        }
     }
 }
 

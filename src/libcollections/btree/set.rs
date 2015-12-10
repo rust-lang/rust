@@ -98,18 +98,6 @@ impl<T: Ord> BTreeSet<T> {
     pub fn new() -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::new() }
     }
-
-    /// Makes a new BTreeSet with the given B.
-    ///
-    /// B cannot be less than 2.
-    #[unstable(feature = "btree_b",
-               reason = "probably want this to be on the type, eventually",
-               issue = "27795")]
-    #[rustc_deprecated(since = "1.4.0", reason = "niche API")]
-    #[allow(deprecated)]
-    pub fn with_b(b: usize) -> BTreeSet<T> {
-        BTreeSet { map: BTreeMap::with_b(b) }
-    }
 }
 
 impl<T> BTreeSet<T> {

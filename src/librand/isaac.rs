@@ -544,7 +544,6 @@ impl Rand for Isaac64Rng {
 mod tests {
     use std::prelude::v1::*;
 
-    use core::iter::order;
     use {Rng, SeedableRng};
     use super::{IsaacRng, Isaac64Rng};
 
@@ -553,16 +552,16 @@ mod tests {
         let s = ::test::rng().gen_iter::<u32>().take(256).collect::<Vec<u32>>();
         let mut ra: IsaacRng = SeedableRng::from_seed(&s[..]);
         let mut rb: IsaacRng = SeedableRng::from_seed(&s[..]);
-        assert!(order::equals(ra.gen_ascii_chars().take(100),
-                              rb.gen_ascii_chars().take(100)));
+        assert!(ra.gen_ascii_chars().take(100)
+                  .eq(rb.gen_ascii_chars().take(100)));
     }
     #[test]
     fn test_rng_64_rand_seeded() {
         let s = ::test::rng().gen_iter::<u64>().take(256).collect::<Vec<u64>>();
         let mut ra: Isaac64Rng = SeedableRng::from_seed(&s[..]);
         let mut rb: Isaac64Rng = SeedableRng::from_seed(&s[..]);
-        assert!(order::equals(ra.gen_ascii_chars().take(100),
-                              rb.gen_ascii_chars().take(100)));
+        assert!(ra.gen_ascii_chars().take(100)
+                  .eq(rb.gen_ascii_chars().take(100)));
     }
 
     #[test]
@@ -570,16 +569,16 @@ mod tests {
         let seed: &[_] = &[1, 23, 456, 7890, 12345];
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
-        assert!(order::equals(ra.gen_ascii_chars().take(100),
-                              rb.gen_ascii_chars().take(100)));
+        assert!(ra.gen_ascii_chars().take(100)
+                  .eq(rb.gen_ascii_chars().take(100)));
     }
     #[test]
     fn test_rng_64_seeded() {
         let seed: &[_] = &[1, 23, 456, 7890, 12345];
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
-        assert!(order::equals(ra.gen_ascii_chars().take(100),
-                              rb.gen_ascii_chars().take(100)));
+        assert!(ra.gen_ascii_chars().take(100)
+                  .eq(rb.gen_ascii_chars().take(100)));
     }
 
     #[test]
