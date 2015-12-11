@@ -4,6 +4,13 @@ use utils::{walk_ptrs_ty_depth, match_type, span_lint, OPEN_OPTIONS_PATH};
 use syntax::codemap::{Span, Spanned};
 use syntax::ast::Lit_::LitBool;
 
+/// **What it does:** This lint checks for duplicate open options as well as combinations that make no sense. It is `Warn` by default.
+///
+/// **Why is this bad?** In the best case, the code will be harder to read than necessary. I don't know the worst case.
+///
+/// **Known problems:** None
+///
+/// **Example:** `OpenOptions::new().read(true).truncate(true)`
 declare_lint! {
     pub NONSENSICAL_OPEN_OPTIONS,
     Warn,

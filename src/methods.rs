@@ -15,19 +15,95 @@ use self::OutType::*;
 #[derive(Clone)]
 pub struct MethodsPass;
 
+/// **What it does:** This lint checks for `.unwrap()` calls on `Option`s. It is `Allow` by default.
+///
+/// **Why is this bad?** Usually it is better to handle the `None` case, or to at least call `.expect(_)` with a more helpful message. Still, for a lot of quick-and-dirty code, `unwrap` is a good choice, which is why this lint is `Allow` by default.
+///
+/// **Known problems:** None
+///
+/// **Example:** `x.unwrap()`
 declare_lint!(pub OPTION_UNWRAP_USED, Allow,
               "using `Option.unwrap()`, which should at least get a better message using `expect()`");
+/// **What it does:** This lint checks for `.unwrap()` calls on `Result`s. It is `Allow` by default.
+///
+/// **Why is this bad?** `result.unwrap()` will let the thread panic on `Err` values. Normally, you want to implement more sophisticated error handling, and propagate errors upwards with `try!`.
+///
+/// Even if you want to panic on errors, not all `Error`s implement good messages on display. Therefore it may be beneficial to look at the places where they may get displayed. Activate this lint to do just that.
+///
+/// **Known problems:** None
+///
+/// **Example:** `x.unwrap()`
 declare_lint!(pub RESULT_UNWRAP_USED, Allow,
               "using `Result.unwrap()`, which might be better handled");
+/// **What it does:** This lint checks for `.to_string()` method calls on values of type `&str`. It is `Warn` by default.
+///
+/// **Why is this bad?** This uses the whole formatting machinery just to clone a string. Using `.to_owned()` is lighter on resources. You can also consider using a [`Cow<'a, str>`](http://doc.rust-lang.org/std/borrow/enum.Cow.html) instead in some cases.
+///
+/// **Known problems:** None
+///
+/// **Example:** `s.to_string()` where `s: &str`
 declare_lint!(pub STR_TO_STRING, Warn,
               "using `to_string()` on a str, which should be `to_owned()`");
+/// **What it does:** This lint checks for `.to_string()` method calls on values of type `String`. It is `Warn` by default.
+///
+/// **Why is this bad?** As our string is already owned, this whole operation is basically a no-op, but still creates a clone of the string (which, if really wanted, should be done with `.clone()`).
+///
+/// **Known problems:** None
+///
+/// **Example:** `s.to_string()` where `s: String`
 declare_lint!(pub STRING_TO_STRING, Warn,
               "calling `String.to_string()` which is a no-op");
+/// **What it does:** This lint checks for methods that should live in a trait implementation of a `std` trait (see [llogiq's blog post](http://llogiq.github.io/2015/07/30/traits.html) for further information) instead of an inherent implementation. It is `Warn` by default.
+///
+/// **Why is this bad?** Implementing the traits improve ergonomics for users of the code, often with very little cost. Also people seeing a `mul(..)` method may expect `*` to work equally, so you should have good reason to disappoint them.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+/// ```
+/// struct X;
+/// impl X {
+///    fn add(&self, other: &X) -> X { .. }
+/// }
+/// ```
 declare_lint!(pub SHOULD_IMPLEMENT_TRAIT, Warn,
               "defining a method that should be implementing a std trait");
+/// **What it does:** This lint checks for methods with certain name prefixes and `Warn`s (by default) if the prefix doesn't match how self is taken. The actual rules are:
+///
+/// |Prefix |`self` taken        |
+/// |-------|--------------------|
+/// |`as_`  |`&self` or &mut self|
+/// |`from_`| none               |
+/// |`into_`|`self`              |
+/// |`is_`  |`&self` or none     |
+/// |`to_`  |`&self`             |
+///
+/// **Why is this bad?** Consistency breeds readability. If you follow the conventions, your users won't be surprised that they e.g. need to supply a mutable reference to a `as_`.. function.
+///
+/// **Known problems:** None
+///
+/// **Example**
+///
+/// ```
+/// impl X {
+///     fn as_str(self) -> &str { .. }
+/// }
+/// ```
 declare_lint!(pub WRONG_SELF_CONVENTION, Warn,
               "defining a method named with an established prefix (like \"into_\") that takes \
                `self` with the wrong convention");
+/// **What it does:** This is the same as [`wrong_self_convention`](#wrong_self_convention), but for public items. This lint is `Allow` by default.
+///
+/// **Why is this bad?** See [`wrong_self_convention`](#wrong_self_convention).
+///
+/// **Known problems:** Actually *renaming* the function may break clients if the function is part of the public interface. In that case, be mindful of the stability guarantees you've given your users.
+///
+/// **Example:**
+/// ```
+/// impl X {
+///     pub fn as_str(self) -> &str { .. }
+/// }
+/// ```
 declare_lint!(pub WRONG_PUB_SELF_CONVENTION, Allow,
               "defining a public method named with an established prefix (like \"into_\") that takes \
                `self` with the wrong convention");

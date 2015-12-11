@@ -9,11 +9,32 @@ use rustc::middle::def::Def::{DefVariant, DefStruct};
 
 use utils::{is_from_for_desugar, in_external_macro, snippet, span_lint, span_note_and_lint};
 
+/// **What it does:** This lint checks for bindings that shadow other bindings already in scope, while just changing reference level or mutability. It is `Allow` by default.
+///
+/// **Why is this bad?** Not much, in fact it's a very common pattern in Rust code. Still, some may opt to avoid it in their code base, they can set this lint to `Warn`.
+///
+/// **Known problems:** This lint, as the other shadowing related lints, currently only catches very simple patterns.
+///
+/// **Example:** `let x = &x;`
 declare_lint!(pub SHADOW_SAME, Allow,
     "rebinding a name to itself, e.g. `let mut x = &mut x`");
+/// **What it does:** This lint checks for bindings that shadow other bindings already in scope, while reusing the original value. It is `Allow` by default.
+///
+/// **Why is this bad?** Not too much, in fact it's a common pattern in Rust code. Still, some argue that name shadowing like this hurts readability, because a value may be bound to different things depending on position in the code.
+///
+/// **Known problems:** This lint, as the other shadowing related lints, currently only catches very simple patterns.
+///
+/// **Example:** `let x = x + 1;`
 declare_lint!(pub SHADOW_REUSE, Allow,
     "rebinding a name to an expression that re-uses the original value, e.g. \
     `let x = x + 1`");
+/// **What it does:** This lint checks for bindings that shadow other bindings already in scope, either without a initialization or with one that does not even use the original value. This lint is `Warn` by default.
+///
+/// **Why is this bad?** Name shadowing can hurt readability, especially in large code bases, because it is easy to lose track of the active binding at any place in the code. This can be alleviated by either giving more specific names to bindings ore introducing more scopes to contain the bindings.
+///
+/// **Known problems:** This lint, as the other shadowing related lints, currently only catches very simple patterns.
+///
+/// **Example:** `let x = y; let x = z; // shadows the earlier binding`
 declare_lint!(pub SHADOW_UNRELATED, Allow,
     "The name is re-bound without even using the original value");
 

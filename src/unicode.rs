@@ -8,11 +8,32 @@ use unicode_normalization::UnicodeNormalization;
 
 use utils::{snippet, span_help_and_lint};
 
+/// **What it does:** This lint checks for the unicode zero-width space in the code. It is `Warn` by default.
+///
+/// **Why is this bad?** Having an invisible character in the code makes for all sorts of April fools, but otherwise is very much frowned upon.
+///
+/// **Known problems:** None
+///
+/// **Example:** You don't see it, but there may be a zero-width space somewhere in this text.
 declare_lint!{ pub ZERO_WIDTH_SPACE, Deny,
                "using a zero-width space in a string literal, which is confusing" }
+/// **What it does:** This lint checks for non-ascii characters in string literals. It is `Allow` by default.
+///
+/// **Why is this bad?** Yeah, we know, the 90's called and wanted their charset back. Even so, there still are editors and other programs out there that don't work well with unicode. So if the code is meant to be used internationally, on multiple operating systems, or has other portability requirements, activating this lint could be useful.
+///
+/// **Known problems:** None
+///
+/// **Example:** `let x = "Hä?"`
 declare_lint!{ pub NON_ASCII_LITERAL, Allow,
                "using any literal non-ASCII chars in a string literal; suggests \
                 using the \\u escape instead" }
+/// **What it does:** This lint checks for string literals that contain unicode in a form that is not equal to its [NFC-recomposition](http://www.unicode.org/reports/tr15/#Norm_Forms). This lint is `Allow` by default.
+///
+/// **Why is this bad?** If such a string is compared to another, the results may be surprising.
+///
+/// **Known problems** None
+///
+/// **Example:** You may not see it, but "à" and "à" aren't the same string. The former when escaped is actually "a\u{300}" while the latter is "\u{e0}".
 declare_lint!{ pub UNICODE_NOT_NFC, Allow,
                "using a unicode literal not in NFC normal form (see \
                http://www.unicode.org/reports/tr15/ for further information)" }

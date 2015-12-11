@@ -15,28 +15,103 @@ use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type,
             get_enclosing_block};
 use utils::{VEC_PATH, LL_PATH};
 
+/// **What it does:** This lint checks for looping over the range of `0..len` of some collection just to get the values by index. It is `Warn` by default.
+///
+/// **Why is this bad?** Just iterating the collection itself makes the intent more clear and is probably faster.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+/// ```
+/// for i in 0..vec.len() {
+///     println!("{}", vec[i]);
+/// }
+/// ```
 declare_lint!{ pub NEEDLESS_RANGE_LOOP, Warn,
                "for-looping over a range of indices where an iterator over items would do" }
 
+/// **What it does:** This lint checks for loops on `x.iter()` where `&x` will do, and suggest the latter. It is `Warn` by default.
+///
+/// **Why is this bad?** Readability.
+///
+/// **Known problems:** False negatives. We currently only warn on some known types.
+///
+/// **Example:** `for x in y.iter() { .. }` (where y is a `Vec` or slice)
 declare_lint!{ pub EXPLICIT_ITER_LOOP, Warn,
                "for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do" }
 
+/// **What it does:** This lint checks for loops on `x.next()`. It is `Warn` by default.
+///
+/// **Why is this bad?** `next()` returns either `Some(value)` if there was a value, or `None` otherwise. The insidious thing is that `Option<_>` implements `IntoIterator`, so that possibly one value will be iterated, leading to some hard to find bugs. No one will want to write such code [except to win an Underhanded Rust Contest](https://www.reddit.com/r/rust/comments/3hb0wm/underhanded_rust_contest/cu5yuhr).
+///
+/// **Known problems:** None
+///
+/// **Example:** `for x in y.next() { .. }`
 declare_lint!{ pub ITER_NEXT_LOOP, Warn,
                "for-looping over `_.next()` which is probably not intended" }
 
+/// **What it does:** This lint detects `loop + match` combinations that are easier written as a `while let` loop.
+///
+/// **Why is this bad?** The `while let` loop is usually shorter and more readable
+///
+/// **Known problems:** Sometimes the wrong binding is displayed (#383)
+///
+/// **Example:**
+///
+/// ```
+/// loop {
+///     let x = match y {
+///         Some(x) => x,
+///         None => break,
+///     }
+///     // .. do something with x
+/// }
+/// // is easier written as
+/// while let Some(x) = y {
+///     // .. do something with x
+/// }
+/// ```
 declare_lint!{ pub WHILE_LET_LOOP, Warn,
                "`loop { if let { ... } else break }` can be written as a `while let` loop" }
 
+/// **What it does:** This lint checks for using `collect()` on an iterator without using the result. It is `Warn` by default.
+///
+/// **Why is this bad?** It is more idiomatic to use a `for` loop over the iterator instead.
+///
+/// **Known problems:** None
+///
+/// **Example:** `vec.iter().map(|x| /* some operation returning () */).collect::<Vec<_>>();`
 declare_lint!{ pub UNUSED_COLLECT, Warn,
                "`collect()`ing an iterator without using the result; this is usually better \
                 written as a for loop" }
 
+/// **What it does:** This lint checks for loops over ranges `x..y` where both `x` and `y` are constant and `x` is greater or equal to `y`, unless the range is reversed or has a negative `.step_by(_)`.
+///
+/// **Why is it bad?** Such loops will either be skipped or loop until wrap-around (in debug code, this may `panic!()`). Both options are probably not intended.
+///
+/// **Known problems:** The lint cannot catch loops over dynamically defined ranges. Doing this would require simulating all possible inputs and code paths through the program, which would be complex and error-prone.
+///
+/// **Examples**: `for x in 5..10-5 { .. }` (oops, stray `-`)
 declare_lint!{ pub REVERSE_RANGE_LOOP, Warn,
                "Iterating over an empty range, such as `10..0` or `5..5`" }
 
+/// **What it does:** This lint checks `for` loops over slices with an explicit counter and suggests the use of `.enumerate()`. It is `Warn` by default.
+///
+/// **Why is it bad?** Not only is the version using `.enumerate()` more readable, the compiler is able to remove bounds checks which can lead to faster code in some instances.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `for i in 0..v.len() { foo(v[i]); }` or `for i in 0..v.len() { bar(i, v[i]); }`
 declare_lint!{ pub EXPLICIT_COUNTER_LOOP, Warn,
                "for-looping with an explicit counter when `_.enumerate()` would do" }
 
+/// **What it does:** This lint checks for empty `loop` expressions. It is `Warn` by default.
+///
+/// **Why is this bad?** Those busy loops burn CPU cycles without doing anything. Think of the environment and either block on something or at least make the thread sleep for some microseconds.
+///
+/// **Known problems:** None
+///
+/// **Example:** `loop {}`
 declare_lint!{ pub EMPTY_LOOP, Warn, "empty `loop {}` detected" }
 
 declare_lint!{ pub WHILE_LET_ON_ITERATOR, Warn, "using a while-let loop instead of a for loop on an iterator" }

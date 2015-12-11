@@ -9,6 +9,13 @@ use utils::{snippet_opt, span_lint_and_then, is_adjusted};
 pub struct EtaPass;
 
 
+/// **What it does:** This lint checks for closures which just call another function where the function can be called directly. `unsafe` functions or calls where types get adjusted are ignored. It is `Warn` by default.
+///
+/// **Why is this bad?** Needlessly creating a closure just costs heap space and adds code for no benefit.
+///
+/// **Known problems:** None
+///
+/// **Example:** `xs.map(|x| foo(x))` where `foo(_)` is a plain function that takes the exact argument type of `x`.
 declare_lint!(pub REDUNDANT_CLOSURE, Warn,
               "using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)");
 

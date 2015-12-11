@@ -9,6 +9,13 @@ use consts::{Constant, constant_simple, FloatWidth};
 /// 0.0/0.0 with std::f32::NaN or std::f64::NaN, depending on the precision.
 pub struct ZeroDivZeroPass;
 
+/// **What it does:** This lint checks for `0.0 / 0.0`
+///
+/// **Why is this bad?** It's less readable than `std::f32::NAN` or `std::f64::NAN`
+///
+/// **Known problems:** None
+///
+/// **Example** `0.0f32 / 0.0`
 declare_lint!(pub ZERO_DIVIDED_BY_ZERO, Warn,
               "usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN");
 
