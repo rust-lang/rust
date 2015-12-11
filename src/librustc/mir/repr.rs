@@ -13,6 +13,7 @@ use middle::def_id::DefId;
 use middle::subst::Substs;
 use middle::ty::{AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use rustc_back::slice;
+use rustc_data_structures::tuple_slice::TupleSlice;
 use rustc_front::hir::InlineAsm;
 use syntax::ast::Name;
 use syntax::codemap::Span;
@@ -20,6 +21,7 @@ use std::fmt::{Debug, Formatter, Error};
 use std::u32;
 
 /// Lowered representation of a single function.
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct Mir<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
@@ -70,13 +72,13 @@ impl<'tcx> Mir<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Mutability and borrow kinds
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum Mutability {
     Mut,
     Not,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
@@ -127,6 +129,7 @@ pub enum BorrowKind {
 
 // A "variable" is a binding declared by the user as part of the fn
 // decl, a let, etc.
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct VarDecl<'tcx> {
     pub mutability: Mutability,
     pub name: Name,
@@ -135,6 +138,7 @@ pub struct VarDecl<'tcx> {
 
 // A "temp" is a temporary that we place on the stack. They are
 // anonymous, always mutable, and have only a type.
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct TempDecl<'tcx> {
     pub ty: Ty<'tcx>,
 }
@@ -150,6 +154,7 @@ pub struct TempDecl<'tcx> {
 //
 // there is only one argument, of type `(i32, u32)`, but two bindings
 // (`x` and `y`).
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct ArgDecl<'tcx> {
     pub ty: Ty<'tcx>,
 }
@@ -161,7 +166,7 @@ pub struct ArgDecl<'tcx> {
 /// list of the `Mir`.
 ///
 /// (We use a `u32` internally just to save memory.)
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct BasicBlock(u32);
 
 impl BasicBlock {
@@ -185,12 +190,13 @@ impl Debug for BasicBlock {
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlock and Terminator
 
-#[derive(Debug)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct BasicBlockData<'tcx> {
     pub statements: Vec<Statement<'tcx>>,
     pub terminator: Terminator<'tcx>,
 }
 
+#[derive(RustcEncodable, RustcDecodable)]
 pub enum Terminator<'tcx> {
     /// block should have one successor in the graph; we jump there
     Goto {
@@ -206,7 +212,7 @@ pub enum Terminator<'tcx> {
     /// jump to branch 0 if this lvalue evaluates to true
     If {
         cond: Operand<'tcx>,
-        targets: [BasicBlock; 2],
+        targets: (BasicBlock, BasicBlock),
     },
 
     /// lvalue evaluates to some enum; jump depending on the branch
@@ -254,7 +260,7 @@ pub enum Terminator<'tcx> {
     /// unwinding.
     Call {
         data: CallData<'tcx>,
-        targets: [BasicBlock; 2],
+        targets: (BasicBlock, BasicBlock),
     },
 }
 
@@ -264,12 +270,12 @@ impl<'tcx> Terminator<'tcx> {
         match *self {
             Goto { target: ref b } => slice::ref_slice(b),
             Panic { target: ref b } => slice::ref_slice(b),
-            If { cond: _, targets: ref b } => b,
+            If { cond: _, targets: ref b } => b.as_slice(),
             Switch { targets: ref b, .. } => b,
             SwitchInt { targets: ref b, .. } => b,
             Diverge => &[],
             Return => &[],
-            Call { data: _, targets: ref b } => b,
+            Call { data: _, targets: ref b } => b.as_slice(),
         }
     }
 
@@ -278,17 +284,17 @@ impl<'tcx> Terminator<'tcx> {
         match *self {
             Goto { target: ref mut b } => slice::mut_ref_slice(b),
             Panic { target: ref mut b } => slice::mut_ref_slice(b),
-            If { cond: _, targets: ref mut b } => b,
+            If { cond: _, targets: ref mut b } => b.as_mut_slice(),
             Switch { targets: ref mut b, .. } => b,
             SwitchInt { targets: ref mut b, .. } => b,
             Diverge => &mut [],
             Return => &mut [],
-            Call { data: _, targets: ref mut b } => b,
+            Call { data: _, targets: ref mut b } => b.as_mut_slice(),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct CallData<'tcx> {
     /// where the return value is written to
     pub destination: Lvalue<'tcx>,
@@ -345,18 +351,19 @@ impl<'tcx> Debug for Terminator<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Statements
 
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct Statement<'tcx> {
     pub span: Span,
     pub kind: StatementKind<'tcx>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub enum StatementKind<'tcx> {
     Assign(Lvalue<'tcx>, Rvalue<'tcx>),
     Drop(DropKind, Lvalue<'tcx>),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum DropKind {
     Free, // free a partially constructed box, should go away eventually
     Deep
@@ -377,7 +384,7 @@ impl<'tcx> Debug for Statement<'tcx> {
 
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Lvalue<'tcx> {
     /// local variable declared by the user
     Var(u32),
@@ -403,13 +410,13 @@ pub enum Lvalue<'tcx> {
 /// or `*B` or `B[index]`. Note that it is parameterized because it is
 /// shared between `Constant` and `Lvalue`. See the aliases
 /// `LvalueProjection` etc below.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Projection<'tcx, B, V> {
     pub base: B,
     pub elem: ProjectionElem<'tcx, V>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum ProjectionElem<'tcx, V> {
     Deref,
     Field(Field),
@@ -447,7 +454,7 @@ pub type LvalueElem<'tcx> =
     ProjectionElem<'tcx,Operand<'tcx>>;
 
 /// Index into the list of fields found in a `VariantDef`
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct Field(u32);
 
 impl Field {
@@ -523,7 +530,7 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 // lvalue). They are intentionally limited to prevent rvalues from
 // being nested in one another.
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Operand<'tcx> {
     Consume(Lvalue<'tcx>),
     Constant(Constant<'tcx>),
@@ -542,7 +549,7 @@ impl<'tcx> Debug for Operand<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Rvalues
 
-#[derive(Clone)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum Rvalue<'tcx> {
     // x (either a move or copy, depending on type of x)
     Use(Operand<'tcx>),
@@ -583,10 +590,10 @@ pub enum Rvalue<'tcx> {
         from_end: usize,
     },
 
-    InlineAsm(&'tcx InlineAsm),
+    InlineAsm(InlineAsm),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum CastKind {
     Misc,
 
@@ -604,7 +611,7 @@ pub enum CastKind {
     Unsize,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum AggregateKind<'tcx> {
     Vec,
     Tuple,
@@ -612,7 +619,7 @@ pub enum AggregateKind<'tcx> {
     Closure(DefId, &'tcx ClosureSubsts<'tcx>),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum BinOp {
     /// The `+` operator (addition)
     Add,
@@ -648,7 +655,7 @@ pub enum BinOp {
     Gt,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum UnOp {
     /// The `!` operator for logical inversion
     Not,
@@ -684,14 +691,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 // this does not necessarily mean that they are "==" in Rust -- in
 // particular one must be wary of `NaN`!
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Constant<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub literal: Literal<'tcx>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {
     Item {
         def_id: DefId,

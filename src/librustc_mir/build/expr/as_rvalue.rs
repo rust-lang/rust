@@ -40,7 +40,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 this.in_scope(extent, block, |this| this.as_rvalue(block, value))
             }
             ExprKind::InlineAsm { asm } => {
-                block.and(Rvalue::InlineAsm(asm))
+                block.and(Rvalue::InlineAsm(asm.clone()))
             }
             ExprKind::Repeat { value, count } => {
                 let value_operand = unpack!(block = this.as_operand(block, value));

@@ -69,7 +69,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 this.cfg.terminate(block,
                                    Terminator::If {
                                        cond: Operand::Consume(lt),
-                                       targets: [success, failure],
+                                       targets: (success, failure),
                                    });
                 this.panic(failure);
                 success.and(slice.index(idx))
