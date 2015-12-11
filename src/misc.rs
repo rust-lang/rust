@@ -13,6 +13,15 @@ use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 use utils::{get_item_name, match_path, snippet, span_lint, walk_ptrs_ty, is_integer_literal};
 use utils::span_help_and_lint;
 
+/// **What it does:** This lint checks for function arguments and let bindings denoted as `ref`. It is `Warn` by default.
+///
+/// **Why is this bad?** The `ref` declaration makes the function take an owned value, but turns the argument into a reference (which means that the value is destroyed when exiting the function). This adds not much value: either take a reference type, or take an owned value and create references in the body.
+///
+/// For let bindings, `let x = &foo;` is preferred over `let ref x = foo`. The type of `x` is more obvious with the former.
+///
+/// **Known problems:** If the argument is dereferenced within the function, removing the `ref` will lead to errors. This can be fixed by removing the dereferences, e.g. changing `*x` to `x` within the function.
+///
+/// **Example:** `fn foo(ref x: u8) -> bool { .. }`
 declare_lint!(pub TOPLEVEL_REF_ARG, Warn,
               "An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), \
                or a `let` statement (`let ref x = foo()`). In such cases, it is preferred to take \
@@ -68,6 +77,13 @@ impl LateLintPass for TopLevelRefPass {
     }
 }
 
+/// **What it does:** This lint checks for comparisons to NAN. It is `Deny` by default.
+///
+/// **Why is this bad?** NAN does not compare meaningfully to anything – not even itself – so those comparisons are simply wrong.
+///
+/// **Known problems:** None
+///
+/// **Example:** `x == NAN`
 declare_lint!(pub CMP_NAN, Deny,
               "comparisons to NAN (which will always return false, which is probably not intended)");
 
@@ -102,6 +118,13 @@ fn check_nan(cx: &LateContext, path: &Path, span: Span) {
     });
 }
 
+/// **What it does:** This lint checks for (in-)equality comparisons on floating-point values (apart from zero), except in functions called `*eq*` (which probably implement equality for a type involving floats). It is `Warn` by default.
+///
+/// **Why is this bad?** Floating point calculations are usually imprecise, so asking if two values are *exactly* equal is asking for trouble. For a good guide on what to do, see [the floating point guide](http://www.floating-point-gui.de/errors/comparison).
+///
+/// **Known problems:** None
+///
+/// **Example:** `y == 1.23f64`
 declare_lint!(pub FLOAT_CMP, Warn,
               "using `==` or `!=` on float values (as floating-point operations \
                usually involve rounding errors, it is always better to check for approximate \
@@ -155,6 +178,13 @@ fn is_float(cx: &LateContext, expr: &Expr) -> bool {
     }
 }
 
+/// **What it does:** This lint checks for conversions to owned values just for the sake of a comparison. It is `Warn` by default.
+///
+/// **Why is this bad?** The comparison can operate on a reference, so creating an owned value effectively throws it away directly afterwards, which is needlessly consuming code and heap space.
+///
+/// **Known problems:** None
+///
+/// **Example:** `x.to_owned() == y`
 declare_lint!(pub CMP_OWNED, Warn,
               "creating owned instances for comparing with others, e.g. `x == \"foo\".to_string()`");
 
@@ -221,6 +251,13 @@ fn is_str_arg(cx: &LateContext, args: &[P<Expr>]) -> bool {
         walk_ptrs_ty(cx.tcx.expr_ty(&args[0])).sty { true } else { false }
 }
 
+/// **What it does:** This lint checks for getting the remainder of a division by one. It is `Warn` by default.
+///
+/// **Why is this bad?** The result can only ever be zero. No one will write such code deliberately, unless trying to win an Underhanded Rust Contest. Even for that contest, it's probably a bad idea. Use something more underhanded.
+///
+/// **Known problems:** None
+///
+/// **Example:** `x % 1`
 declare_lint!(pub MODULO_ONE, Warn, "taking a number modulo 1, which always returns 0");
 
 #[derive(Copy,Clone)]
@@ -244,6 +281,19 @@ impl LateLintPass for ModuloOne {
     }
 }
 
+/// **What it does:** This lint checks for patterns in the form `name @ _`.
+///
+/// **Why is this bad?** It's almost always more readable to just use direct bindings.
+///
+/// **Known problems:** None
+///
+/// **Example**:
+/// ```
+/// match v {
+///     Some(x) => (),
+///     y @ _   => (), // easier written as `y`,
+/// }
+/// ```
 declare_lint!(pub REDUNDANT_PATTERN, Warn, "using `name @ _` in a pattern");
 
 #[derive(Copy,Clone)]

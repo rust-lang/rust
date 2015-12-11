@@ -18,6 +18,13 @@ use syntax::codemap::Spanned;
 
 use utils::{in_macro, span_help_and_lint, snippet, snippet_block};
 
+/// **What it does:** This lint checks for nested `if`-statements which can be collapsed by `&&`-combining their conditions. It is `Warn` by default.
+///
+/// **Why is this bad?** Each `if`-statement adds one level of nesting, which makes code look more complex than it really is.
+///
+/// **Known problems:** None
+///
+/// **Example:** `if x { if y { .. } }`
 declare_lint! {
     pub COLLAPSIBLE_IF,
     Warn,

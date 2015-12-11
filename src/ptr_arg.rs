@@ -10,6 +10,13 @@ use rustc::front::map::Node;
 use utils::{span_lint, match_type};
 use utils::{STRING_PATH, VEC_PATH};
 
+/// **What it does:** This lint checks for function arguments of type `&String` or `&Vec` unless the references are mutable. It is `Warn` by default.
+///
+/// **Why is this bad?** Requiring the argument to be of the specific size makes the function less useful for no benefit; slices in the form of `&[T]` or `&str` usually suffice and can be obtained from other types, too.
+///
+/// **Known problems:** None
+///
+/// **Example:** `fn foo(&Vec<u32>) { .. }`
 declare_lint! {
     pub PTR_ARG,
     Warn,

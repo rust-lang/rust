@@ -11,12 +11,38 @@ use eq_op::is_exp_equal;
 use utils::{match_type, span_lint, walk_ptrs_ty, get_parent_expr};
 use utils::STRING_PATH;
 
+/// **What it does:** This lint matches code of the form `x = x + y` (without `let`!)
+///
+/// **Why is this bad?** Because this expression needs another copy as opposed to `x.push_str(y)` (in practice LLVM will usually elide it, though). Despite [llogiq](https://github.com/llogiq)'s reservations, this lint also is `allow` by default, as some people opine that it's more readable.
+///
+/// **Known problems:** None. Well apart from the lint being `allow` by default. :smile:
+///
+/// **Example:**
+///
+/// ```
+/// let mut x = "Hello".to_owned();
+/// x = x + ", World";
+/// ```
 declare_lint! {
     pub STRING_ADD_ASSIGN,
     Allow,
     "using `x = x + ..` where x is a `String`; suggests using `push_str()` instead"
 }
 
+/// **What it does:** The `string_add` lint matches all instances of `x + _` where `x` is of type `String`, but only if [`string_add_assign`](#string_add_assign) does *not* match.  It is `Allow` by default.
+///
+/// **Why is this bad?** It's not bad in and of itself. However, this particular `Add` implementation is asymmetric (the other operand need not be `String`, but `x` does), while addition as mathematically defined is symmetric, also the `String::push_str(_)` function is a perfectly good replacement. Therefore some dislike it and wish not to have it in their code.
+///
+/// That said, other people think that String addition, having a long tradition in other languages is actually fine, which is why we decided to make this particular lint `allow` by default.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+///
+/// ```
+/// let x = "Hello".to_owned();
+/// x + ", World"
+/// ```
 declare_lint! {
     pub STRING_ADD,
     Allow,

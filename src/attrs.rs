@@ -8,6 +8,19 @@ use syntax::attr::*;
 use syntax::ast::{Attribute, MetaList, MetaWord};
 use utils::{in_macro, match_path, span_lint};
 
+/// **What it does:** This lint warns on items annotated with `#[inline(always)]`, unless the annotated function is empty or simply panics.
+///
+/// **Why is this bad?** While there are valid uses of this annotation (and once you know when to use it, by all means `allow` this lint), it's a common newbie-mistake to pepper one's code with it.
+///
+/// As a rule of thumb, before slapping `#[inline(always)]` on a function, measure if that additional function call really affects your runtime profile sufficiently to make up for the increase in compile time.
+///
+/// **Known problems:** False positives, big time. This lint is meant to be deactivated by everyone doing serious performance work. This means having done the measurement.
+///
+/// **Example:**
+/// ```
+/// #[inline(always)]
+/// fn not_quite_hot_code(..) { ... }
+/// ```
 declare_lint! { pub INLINE_ALWAYS, Warn,
     "`#[inline(always)]` is a bad idea in most cases" }
 

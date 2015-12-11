@@ -6,12 +6,55 @@ use syntax::codemap::Span;
 
 use utils::{snippet, span_lint, span_help_and_lint, in_external_macro, expr_block};
 
+/// **What it does:** This lint checks for matches with a single arm where an `if let` will usually suffice. It is `Warn` by default.
+///
+/// **Why is this bad?** Just readability – `if let` nests less than a `match`.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+/// ```
+/// match x {
+///     Some(ref foo) -> bar(foo),
+///     _ => ()
+/// }
+/// ```
 declare_lint!(pub SINGLE_MATCH, Warn,
               "a match statement with a single nontrivial arm (i.e, where the other arm \
                is `_ => {}`) is used; recommends `if let` instead");
+/// **What it does:** This lint checks for matches where all arms match a reference, suggesting to remove the reference and deref the matched expression instead. It is `Warn` by default.
+///
+/// **Why is this bad?** It just makes the code less readable. That reference destructuring adds nothing to the code.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+///
+/// ```
+/// match x {
+///     &A(ref y) => foo(y),
+///     &B => bar(),
+///     _ => frob(&x),
+/// }
+/// ```
 declare_lint!(pub MATCH_REF_PATS, Warn,
               "a match has all arms prefixed with `&`; the match expression can be \
                dereferenced instead");
+/// **What it does:** This lint checks for matches where match expression is a `bool`. It suggests to replace the expression with an `if...else` block. It is `Warn` by default.
+///
+/// **Why is this bad?** It makes the code less readable.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+///
+/// ```
+/// let condition: bool = true;
+/// match condition {
+///     true => foo(),
+///     false => bar(),
+/// }
+/// ```
 declare_lint!(pub MATCH_BOOL, Warn,
               "a match on boolean expression; recommends `if..else` block instead");
 

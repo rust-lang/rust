@@ -17,8 +17,26 @@ use utils::{LL_PATH, VEC_PATH};
 #[allow(missing_copy_implementations)]
 pub struct TypePass;
 
+/// **What it does:** This lint checks for use of `Box<Vec<_>>` anywhere in the code.
+///
+/// **Why is this bad?** `Vec` already keeps its contents in a separate area on the heap. So if you `Box` it, you just add another level of indirection without any benefit whatsoever.
+///
+/// **Known problems:** None
+///
+/// **Example:** `struct X { values: Box<Vec<Foo>> }`
 declare_lint!(pub BOX_VEC, Warn,
               "usage of `Box<Vec<T>>`, vector elements are already on the heap");
+/// **What it does:** This lint checks for usage of any `LinkedList`, suggesting to use a `Vec` or `RingBuf`.
+///
+/// **Why is this bad?** Gankro says:
+///
+/// >The TL;DR of `LinkedList` is that it's built on a massive amount of pointers and indirection. It wastes memory, it has terrible cache locality, and is all-around slow. `RingBuf`, while "only" amortized for push/pop, should be faster in the general case for almost every possible workload, and isn't even amortized at all if you can predict the capacity you need.
+/// >
+/// > `LinkedList`s are only really good if you're doing a lot of merging or splitting of lists. This is because they can just mangle some pointers instead of actually copying the data. Even if you're doing a lot of insertion in the middle of the list, `RingBuf` can still be better because of how expensive it is to seek to the middle of a `LinkedList`.
+///
+/// **Known problems:** False positives – the instances where using a `LinkedList` makes sense are few and far between, but they can still happen.
+///
+/// **Example:** `let x = LinkedList::new();`
 declare_lint!(pub LINKEDLIST, Warn,
               "usage of LinkedList, usually a vector is faster, or a more specialized data \
                structure like a VecDeque");
@@ -53,6 +71,13 @@ impl LateLintPass for TypePass {
 #[allow(missing_copy_implementations)]
 pub struct LetPass;
 
+/// **What it does:** This lint checks for binding a unit value. It is `Warn` by default.
+///
+/// **Why is this bad?** A unit value cannot usefully be used anywhere. So binding one is kind of pointless.
+///
+/// **Known problems:** None
+///
+/// **Example:** `let x = { 1; };`
 declare_lint!(pub LET_UNIT_VALUE, Warn,
               "creating a let binding to a value of unit type, which usually can't be used afterwards");
 
@@ -82,6 +107,13 @@ impl LateLintPass for LetPass {
     }
 }
 
+/// **What it does:** This lint checks for comparisons to unit. It is `Warn` by default.
+///
+/// **Why is this bad?** Unit is always equal to itself, and thus is just a clumsily written constant. Mostly this happens when someone accidentally adds semicolons at the end of the operands.
+///
+/// **Known problems:** None
+///
+/// **Example:** `if { foo(); } == { bar(); } { baz(); }` is equal to `{ foo(); bar(); baz(); }`
 declare_lint!(pub UNIT_CMP, Warn,
               "comparing unit values (which is always `true` or `false`, respectively)");
 
@@ -115,12 +147,42 @@ impl LateLintPass for UnitCmp {
 
 pub struct CastPass;
 
+/// **What it does:** This lint checks for casts from any numerical to a float type where the receiving type cannot store all values from the original type without rounding errors. This possible rounding is to be expected, so this lint is `Allow` by default.
+///
+/// Basically, this warns on casting any integer with 32 or more bits to `f32` or any 64-bit integer to `f64`.
+///
+/// **Why is this bad?** It's not bad at all. But in some applications it can be helpful to know where precision loss can take place. This lint can help find those places in the code.
+///
+/// **Known problems:** None
+///
+/// **Example:** `let x = u64::MAX; x as f64`
 declare_lint!(pub CAST_PRECISION_LOSS, Allow,
               "casts that cause loss of precision, e.g `x as f32` where `x: u64`");
+/// **What it does:** This lint checks for casts from a signed to an unsigned numerical type. In this case, negative values wrap around to large positive values, which can be quite surprising in practice. However, as the cast works as defined, this lint is `Allow` by default.
+///
+/// **Why is this bad?** Possibly surprising results. You can activate this lint as a one-time check to see where numerical wrapping can arise.
+///
+/// **Known problems:** None
+///
+/// **Example:** `let y : i8 = -1; y as u64` will return 18446744073709551615
 declare_lint!(pub CAST_SIGN_LOSS, Allow,
               "casts from signed types to unsigned types, e.g `x as u32` where `x: i32`");
+/// **What it does:** This lint checks for on casts between numerical types that may truncate large values. This is expected behavior, so the cast is `Allow` by default.
+///
+/// **Why is this bad?** In some problem domains, it is good practice to avoid truncation. This lint can be activated to help assess where additional checks could be beneficial.
+///
+/// **Known problems:** None
+///
+/// **Example:** `fn as_u8(x: u64) -> u8 { x as u8 }`
 declare_lint!(pub CAST_POSSIBLE_TRUNCATION, Allow,
               "casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`");
+/// **What it does:** This lint checks for casts from an unsigned type to a signed type of the same size. Performing such a cast is a 'no-op' for the compiler, i.e. nothing is changed at the bit level, and the binary representation of the value is reinterpreted. This can cause wrapping if the value is too big for the target signed type. However, the cast works as defined, so this lint is `Allow` by default.
+///
+/// **Why is this bad?** While such a cast is not bad in itself, the results can be surprising when this is not the intended behavior, as demonstrated by the example below.
+///
+/// **Known problems:** None
+///
+/// **Example:** `u32::MAX as i32` will yield a value of `-1`.
 declare_lint!(pub CAST_POSSIBLE_WRAP, Allow,
               "casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`");
 
@@ -262,6 +324,13 @@ impl LateLintPass for CastPass {
     }
 }
 
+/// **What it does:** This lint checks for types used in structs, parameters and `let` declarations above a certain complexity threshold. It is `Warn` by default.
+///
+/// **Why is this bad?** Too complex types make the code less readable. Consider using a `type` definition to simplify them.
+///
+/// **Known problems:** None
+///
+/// **Example:** `struct Foo { inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>> }`
 declare_lint!(pub TYPE_COMPLEXITY, Warn,
               "usage of very complex types; recommends factoring out parts into `type` definitions");
 

@@ -9,6 +9,13 @@ use syntax::ast::Lit_::*;
 
 use utils::{span_lint, snippet};
 
+/// **What it does:** This lint checks for expressions of the form `if c { true } else { false }` (or vice versa) and suggest using the condition directly. It is `Warn` by default.
+///
+/// **Why is this bad?** Redundant code.
+///
+/// **Known problems:** Maybe false positives: Sometimes, the two branches are painstakingly documented (which we of course do not detect), so they *may* have some value. Even then, the documentation can be rewritten to match the shorter code.
+///
+/// **Example:** `if x { false } else { true }`
 declare_lint! {
     pub NEEDLESS_BOOL,
     Warn,
