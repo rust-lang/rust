@@ -122,10 +122,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 } else {
                     let tcx = self.tcx();
 
-                    if let hir::ExprAssignOp(..) = e.node {
+                    if let hir::ExprAssignOp(_, ref lhs, ref rhs) = e.node {
                         if
                             !tcx.sess.features.borrow().augmented_assignments &&
-                            !self.fcx.expr_ty(e).references_error()
+                            !self.fcx.expr_ty(e).references_error() &&
+                            !self.fcx.expr_ty(lhs).references_error() &&
+                            !self.fcx.expr_ty(rhs).references_error()
                         {
                             tcx.sess.span_err(
                                 e.span,
