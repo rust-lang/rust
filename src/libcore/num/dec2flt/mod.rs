@@ -109,7 +109,7 @@ pub mod rawfp;
 pub mod parse;
 
 macro_rules! from_str_float_impl {
-    ($t:ty, $func:ident) => {
+    ($t:ty) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStr for $t {
             type Err = ParseFloatError;
@@ -146,8 +146,8 @@ macro_rules! from_str_float_impl {
         }
     }
 }
-from_str_float_impl!(f32, to_f32);
-from_str_float_impl!(f64, to_f64);
+from_str_float_impl!(f32);
+from_str_float_impl!(f64);
 
 /// An error which can be returned when parsing a float.
 #[derive(Debug, Clone, PartialEq)]
