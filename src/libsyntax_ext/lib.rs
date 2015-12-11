@@ -46,11 +46,13 @@ mod asm;
 mod cfg;
 mod concat;
 mod concat_idents;
-mod deriving;
 mod env;
 mod format;
 mod log_syntax;
 mod trace_macros;
+
+// for custom_derive
+pub mod deriving;
 
 pub fn register_builtins(env: &mut SyntaxEnv) {
     // utility function to simplify creating NormalTT syntax extensions

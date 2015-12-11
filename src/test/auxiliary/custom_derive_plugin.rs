@@ -15,6 +15,7 @@
 #![feature(rustc_private)]
 
 extern crate syntax;
+extern crate syntax_ext;
 extern crate rustc;
 extern crate rustc_plugin;
 
@@ -22,10 +23,10 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::ext::base::{MultiDecorator, ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
-use syntax::ext::deriving::generic::{cs_fold, TraitDef, MethodDef, combine_substructure};
-use syntax::ext::deriving::generic::ty::{Literal, LifetimeBounds, Path, borrowed_explicit_self};
 use syntax::parse::token;
 use syntax::ptr::P;
+use syntax_ext::deriving::generic::{cs_fold, TraitDef, MethodDef, combine_substructure};
+use syntax_ext::deriving::generic::ty::{Literal, LifetimeBounds, Path, borrowed_explicit_self};
 use rustc_plugin::Registry;
 
 #[plugin_registrar]
