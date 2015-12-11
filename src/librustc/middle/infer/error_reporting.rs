@@ -521,7 +521,6 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 }
             },
             TypeError::Traits(ref exp_found) => {
-                self.tcx.sess.note("errrr0");
                 report_path_match(exp_found.expected, exp_found.found);
             },
             _ => () // FIXME(#22750) handle traits and stuff
