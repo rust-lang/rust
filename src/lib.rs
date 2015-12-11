@@ -120,6 +120,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box cyclomatic_complexity::CyclomaticComplexity::new(25));
     reg.register_late_lint_pass(box escape::EscapePass);
     reg.register_early_lint_pass(box misc_early::MiscEarly);
+    reg.register_late_lint_pass(box misc::UsedUnderscoreBinding);
 
     reg.register_lint_group("clippy_pedantic", vec![
         methods::OPTION_UNWRAP_USED,
@@ -184,6 +185,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         misc::MODULO_ONE,
         misc::REDUNDANT_PATTERN,
         misc::TOPLEVEL_REF_ARG,
+        misc::USED_UNDERSCORE_BINDING,
         misc_early::UNNEEDED_FIELD_PATTERN,
         mut_reference::UNNECESSARY_MUT_PASSED,
         mutex_atomic::MUTEX_ATOMIC,
