@@ -12,11 +12,11 @@
 // impls cannot be unsafe.
 
 trait SafeTrait {
-    fn foo(self) { }
+    fn foo(&self) { }
 }
 
 unsafe trait UnsafeTrait {
-    fn foo(self) { }
+    fn foo(&self) { }
 }
 
 unsafe impl UnsafeTrait for u8 { } // OK

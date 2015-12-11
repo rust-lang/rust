@@ -709,7 +709,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             DefUse(..) |
             DefUpvar(..) |
             DefLabel(..) |
-            DefSelfTy(..) => {
+            DefSelfTy(..) |
+            DefErr => {
                 panic!("didn't expect `{:?}`", def);
             }
         }

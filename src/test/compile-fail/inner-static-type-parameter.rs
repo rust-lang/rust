@@ -10,7 +10,7 @@
 
 // see #9186
 
-enum Bar<T> { What }
+enum Bar<T> { What } //~ ERROR parameter `T` is never used
 
 fn foo<T>() {
     static a: Bar<T> = Bar::What;
