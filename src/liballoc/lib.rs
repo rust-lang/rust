@@ -56,11 +56,8 @@
 //! The [`heap`](heap/index.html) module defines the low-level interface to the
 //! default global allocator. It is not compatible with the libc allocator API.
 
-// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
-#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "alloc"]
 #![crate_type = "rlib"]
-#![cfg_attr(stage0, staged_api)]
 #![allow(unused_attributes)]
 #![unstable(feature = "alloc",
             reason = "this library is unlikely to be stabilized in its current \
@@ -72,11 +69,8 @@
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 #![no_std]
-#![cfg_attr(not(stage0), needs_allocator)]
+#![needs_allocator]
 
-#![cfg_attr(stage0, feature(rustc_attrs))]
-#![cfg_attr(stage0, feature(no_std))]
-#![cfg_attr(stage0, allow(unused_attributes))]
 #![feature(allocator)]
 #![feature(box_syntax)]
 #![feature(coerce_unsized)]
@@ -84,7 +78,6 @@
 #![feature(custom_attribute)]
 #![feature(fundamental)]
 #![feature(lang_items)]
-#![feature(nonzero)]
 #![feature(num_bits_bytes)]
 #![feature(optin_builtin_traits)]
 #![feature(placement_in_syntax)]
@@ -95,22 +88,14 @@
 #![feature(unboxed_closures)]
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
-// SNAP 1af31d4
-#![allow(unused_features)]
-// SNAP 1af31d4
-#![allow(unused_attributes)]
 #![feature(dropck_parametricity)]
 #![feature(unsize)]
 #![feature(drop_in_place)]
 #![feature(fn_traits)]
 
-#![cfg_attr(stage0, feature(alloc_system))]
-#![cfg_attr(not(stage0), feature(needs_allocator))]
+#![feature(needs_allocator)]
 
 #![cfg_attr(test, feature(test, rustc_private, box_heap))]
-
-#[cfg(stage0)]
-extern crate alloc_system;
 
 // Allow testing this library
 

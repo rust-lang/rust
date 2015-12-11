@@ -238,8 +238,6 @@ mod imp {
 
 #[cfg(target_os = "ios")]
 mod imp {
-    #[cfg(stage0)] use prelude::v1::*;
-
     use io;
     use mem;
     use ptr;

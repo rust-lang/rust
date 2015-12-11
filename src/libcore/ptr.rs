@@ -499,28 +499,12 @@ unsafe impl<T: Send + ?Sized> Send for Unique<T> { }
 #[unstable(feature = "unique", issue = "27730")]
 unsafe impl<T: Sync + ?Sized> Sync for Unique<T> { }
 
-#[cfg(stage0)]
-macro_rules! unique_new {
-    () => (
-        /// Creates a new `Unique`.
-        pub unsafe fn new(ptr: *mut T) -> Unique<T> {
-            Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
-        }
-    )
-}
-#[cfg(not(stage0))]
-macro_rules! unique_new {
-    () => (
-        /// Creates a new `Unique`.
-        pub const unsafe fn new(ptr: *mut T) -> Unique<T> {
-            Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
-        }
-    )
-}
-
 #[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized> Unique<T> {
-    unique_new!{}
+    /// Creates a new `Unique`.
+    pub const unsafe fn new(ptr: *mut T) -> Unique<T> {
+        Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
+    }
 
     /// Dereferences the content.
     pub unsafe fn get(&self) -> &T {
@@ -533,7 +517,6 @@ impl<T: ?Sized> Unique<T> {
     }
 }
 
-#[cfg(not(stage0))] // remove cfg after new snapshot
 #[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> { }
 
@@ -598,7 +581,6 @@ impl<T: ?Sized> Clone for Shared<T> {
 #[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized> Copy for Shared<T> { }
 
-#[cfg(not(stage0))] // remove cfg after new snapshot
 #[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<Shared<U>> for Shared<T> where T: Unsize<U> { }
 
