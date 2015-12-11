@@ -16,7 +16,7 @@
 use DefModifiers;
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
-use resolve_imports::{ImportResolution, NsImportResolution};
+use resolve_imports::{ImportResolution, ImportResolutionPerNamespace};
 use Module;
 use Namespace::{TypeNS, ValueNS};
 use NameBindings;
@@ -822,23 +822,23 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 let mut import_resolutions = module_.import_resolutions.borrow_mut();
                 match import_resolutions.get_mut(&target) {
-                    Some(resolution) => {
+                    Some(resolution_per_ns) => {
                         debug!("(building import directive) bumping reference");
-                        resolution.outstanding_references += 1;
+                        resolution_per_ns.outstanding_references += 1;
 
                         // the source of this name is different now
-                        let ns_resolution =
-                            NsImportResolution { id: id, is_public: is_public, target: None };
-                        resolution[TypeNS] = ns_resolution.clone();
-                        resolution[ValueNS] = ns_resolution;
+                        let resolution =
+                            ImportResolution { id: id, is_public: is_public, target: None };
+                        resolution_per_ns[TypeNS] = resolution.clone();
+                        resolution_per_ns[ValueNS] = resolution;
                         return;
                     }
                     None => {}
                 }
                 debug!("(building import directive) creating new");
-                let mut resolution = ImportResolution::new(id, is_public);
-                resolution.outstanding_references = 1;
-                import_resolutions.insert(target, resolution);
+                let mut import_resolution_per_ns = ImportResolutionPerNamespace::new(id, is_public);
+                import_resolution_per_ns.outstanding_references = 1;
+                import_resolutions.insert(target, import_resolution_per_ns);
             }
             GlobImport => {
                 // Set the glob flag. This tells us that we don't know the
