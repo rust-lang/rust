@@ -305,7 +305,7 @@ impl str {
     /// satisifed:
     ///
     /// * `begin` must come before `end`.
-    /// * `begin` and `end` must be bye positions within the string slice.
+    /// * `begin` and `end` must be byte positions within the string slice.
     /// * `begin` and `end` must lie on UTF-8 sequence boundaries.
     ///
     /// # Examples
@@ -348,7 +348,7 @@ impl str {
     /// satisifed:
     ///
     /// * `begin` must come before `end`.
-    /// * `begin` and `end` must be bye positions within the string slice.
+    /// * `begin` and `end` must be byte positions within the string slice.
     /// * `begin` and `end` must lie on UTF-8 sequence boundaries.
     #[stable(feature = "str_slice_mut", since = "1.5.0")]
     #[inline]
