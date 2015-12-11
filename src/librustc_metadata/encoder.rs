@@ -30,6 +30,7 @@ use middle::ty::{self, Ty};
 use rustc::back::svh::Svh;
 use rustc::front::map::{LinkedPath, PathElem, PathElems};
 use rustc::front::map as ast_map;
+use rustc::mir::repr::Mir;
 use rustc::session::config;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
@@ -64,6 +65,7 @@ pub struct EncodeParams<'a, 'tcx: 'a> {
     pub cstore: &'a cstore::CStore,
     pub encode_inlined_item: EncodeInlinedItem<'a>,
     pub reachable: &'a NodeSet,
+    pub mir_map: &'a NodeMap<Mir<'tcx>>,
 }
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
@@ -76,6 +78,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     pub encode_inlined_item: RefCell<EncodeInlinedItem<'a>>,
     pub type_abbrevs: tyencode::abbrev_map<'tcx>,
     pub reachable: &'a NodeSet,
+    pub mir_map: &'a NodeMap<Mir<'tcx>>,
 }
 
 impl<'a, 'tcx> EncodeContext<'a,'tcx> {
@@ -840,7 +843,24 @@ fn encode_inlined_item(ecx: &EncodeContext,
                        ii: InlinedItemRef) {
     let mut eii = ecx.encode_inlined_item.borrow_mut();
     let eii: &mut EncodeInlinedItem = &mut *eii;
-    eii(ecx, rbml_w, ii)
+    eii(ecx, rbml_w, ii);
+
+    encode_mir(ecx, rbml_w, ii);
+}
+
+fn encode_mir(ecx: &EncodeContext, rbml_w: &mut Encoder, ii: InlinedItemRef) {
+    let id = match ii {
+        InlinedItemRef::Item(item) => item.id,
+        InlinedItemRef::TraitItem(_, trait_item) => trait_item.id,
+        InlinedItemRef::ImplItem(_, impl_item) => impl_item.id,
+        InlinedItemRef::Foreign(foreign_item) => foreign_item.id
+    };
+
+    if let Some(mir) = ecx.mir_map.get(&id) {
+        rbml_w.start_tag(tag_mir as usize);
+        Encodable::encode(mir, rbml_w).unwrap();
+        rbml_w.end_tag();
+    }
 }
 
 const FN_FAMILY: char = 'f';
@@ -1884,6 +1904,7 @@ pub fn encode_metadata(parms: EncodeParams, krate: &hir::Crate) -> Vec<u8> {
         encode_inlined_item,
         link_meta,
         reachable,
+        mir_map,
         ..
     } = parms;
     let ecx = EncodeContext {
@@ -1896,6 +1917,7 @@ pub fn encode_metadata(parms: EncodeParams, krate: &hir::Crate) -> Vec<u8> {
         encode_inlined_item: RefCell::new(encode_inlined_item),
         type_abbrevs: RefCell::new(FnvHashMap()),
         reachable: reachable,
+        mir_map: mir_map,
     };
 
     let mut wr = Cursor::new(Vec::new());

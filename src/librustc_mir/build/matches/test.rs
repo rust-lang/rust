@@ -232,7 +232,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                                  self.cfg.start_new_block()];
                 self.cfg.terminate(block, Terminator::If {
                     cond: Operand::Consume(result),
-                    targets: [target_blocks[0], target_blocks[1]]
+                    targets: (target_blocks[0], target_blocks[1])
                 });
 
                 target_blocks
@@ -252,7 +252,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let bool_ty = self.hir.bool_ty();
         let eq_result = self.temp(bool_ty);
         let func = self.item_ref_operand(span, item_ref);
-        let call_blocks = [self.cfg.start_new_block(), self.diverge_cleanup()];
+        let call_blocks = (self.cfg.start_new_block(), self.diverge_cleanup());
         self.cfg.terminate(block,
                            Terminator::Call {
                                data: CallData {
@@ -264,10 +264,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                            });
 
         // check the result
-        self.cfg.terminate(call_blocks[0],
+        self.cfg.terminate(call_blocks.0,
                            Terminator::If {
                                cond: Operand::Consume(eq_result),
-                               targets: [target_blocks[0], target_blocks[1]],
+                               targets: (target_blocks[0], target_blocks[1]),
                            });
 
         target_blocks

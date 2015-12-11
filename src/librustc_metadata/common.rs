@@ -120,7 +120,8 @@ enum_from_u32! {
 
         tag_tree = 0x51,
 
-        // GAP 0x52
+        tag_mir = 0x52,
+
         tag_table = 0x53,
         // GAP 0x54, 0x55
         tag_table_def = 0x56,

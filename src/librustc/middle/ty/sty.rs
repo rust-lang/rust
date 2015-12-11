@@ -10,6 +10,7 @@
 
 //! This module contains TypeVariants and its major components
 
+use middle::cstore;
 use middle::def_id::DefId;
 use middle::region;
 use middle::subst::{self, Substs};
@@ -25,6 +26,8 @@ use std::mem;
 use syntax::abi;
 use syntax::ast::{self, Name};
 use syntax::parse::token::special_idents;
+
+use serialize::{Decodable, Decoder};
 
 use rustc_front::hir;
 
@@ -233,7 +236,7 @@ pub enum TypeVariants<'tcx> {
 /// closure C wind up influencing the decisions we ought to make for
 /// closure C (which would then require fixed point iteration to
 /// handle). Plus it fixes an ICE. :P
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function.
     /// These are separated out because trans wants to pass them around
@@ -244,6 +247,23 @@ pub struct ClosureSubsts<'tcx> {
     /// `upvar_borrows` lists. These are kept distinct so that we can
     /// easily index into them.
     pub upvar_tys: Vec<Ty<'tcx>>
+}
+
+impl<'tcx> Decodable for &'tcx ClosureSubsts<'tcx> {
+    fn decode<S: Decoder>(s: &mut S) -> Result<&'tcx ClosureSubsts<'tcx>, S::Error> {
+        let closure_substs = try! { Decodable::decode(s) };
+        let dummy_def_id: DefId = unsafe { mem::zeroed() };
+
+        cstore::tls::with_decoding_context(s, |dcx, _| {
+            // Intern the value
+            let ty = dcx.tcx().mk_closure_from_closure_substs(dummy_def_id,
+                                                              Box::new(closure_substs));
+            match ty.sty {
+                TyClosure(_, ref closure_substs) => Ok(&**closure_substs),
+                _ => unreachable!()
+            }
+        })
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -434,7 +454,7 @@ pub struct ClosureTy<'tcx> {
     pub sig: PolyFnSig<'tcx>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum FnOutput<'tcx> {
     FnConverging(Ty<'tcx>),
     FnDiverging
@@ -632,7 +652,7 @@ pub struct DebruijnIndex {
 ///
 /// [1] http://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2] http://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
-#[derive(Clone, PartialEq, Eq, Hash, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, Copy, RustcEncodable, RustcDecodable)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -701,7 +721,7 @@ pub struct RegionVid {
     pub index: u32
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct SkolemizedRegionVid {
     pub index: u32
 }

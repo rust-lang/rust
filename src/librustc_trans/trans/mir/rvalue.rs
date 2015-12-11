@@ -120,7 +120,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 bcx
             }
 
-            mir::Rvalue::InlineAsm(inline_asm) => {
+            mir::Rvalue::InlineAsm(ref inline_asm) => {
                 asm::trans_inline_asm(bcx, inline_asm)
             }
 

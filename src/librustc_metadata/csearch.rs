@@ -22,6 +22,7 @@ use middle::ty::{self, Ty};
 use middle::def_id::{DefId, DefIndex};
 
 use rustc::front::map as hir_map;
+use rustc::mir::repr::Mir;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use std::cell::RefCell;
@@ -421,6 +422,12 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::maybe_get_item_ast(&*cdata, tcx, def.index, decode_inlined_item)
     }
 
+    fn maybe_get_item_mir(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+                          -> Option<Mir<'tcx>> {
+        let cdata = self.get_crate_data(def.krate);
+        decoder::maybe_get_item_mir(&*cdata, tcx, def.index)
+    }
+
     fn crates(&self) -> Vec<ast::CrateNum>
     {
         let mut result = vec![];
@@ -473,6 +480,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                        item_symbols: &RefCell<NodeMap<String>>,
                        link_meta: &LinkMeta,
                        reachable: &NodeSet,
+                       mir_map: &NodeMap<Mir<'tcx>>,
                        krate: &hir::Crate) -> Vec<u8>
     {
         let encode_inlined_item: encoder::EncodeInlinedItem =
@@ -486,7 +494,8 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
             link_meta: link_meta,
             cstore: self,
             encode_inlined_item: encode_inlined_item,
-            reachable: reachable
+            reachable: reachable,
+            mir_map: mir_map,
         };
         encoder::encode_metadata(encode_params, krate)
 

@@ -42,6 +42,7 @@ pub mod snapshot_vec;
 pub mod transitive_relation;
 pub mod unify;
 pub mod fnv;
+pub mod tuple_slice;
 
 // See comments in src/librustc/lib.rs
 #[doc(hidden)]
