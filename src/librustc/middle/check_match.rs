@@ -250,14 +250,15 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                             variant.name == ident.node.unhygienic_name
                                 && variant.kind() == VariantKind::Unit
                         ) {
+                            let ty_path = cx.tcx.item_path_str(edef.did);
                             span_warn!(cx.tcx.sess, p.span, E0170,
                                 "pattern binding `{}` is named the same as one \
                                  of the variants of the type `{}`",
-                                ident.node, pat_ty);
+                                ident.node, ty_path);
                             fileline_help!(cx.tcx.sess, p.span,
                                 "if you meant to match on a variant, \
                                  consider making the path in the pattern qualified: `{}::{}`",
-                                pat_ty, ident.node);
+                                ty_path, ident.node);
                         }
                     }
                 }
