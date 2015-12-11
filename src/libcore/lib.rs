@@ -43,11 +43,8 @@
 // Since libcore defines many fundamental lang items, all tests live in a
 // separate crate, libcoretest, to avoid bizarre issues.
 
-// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
-#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "core"]
 #![stable(feature = "core", since = "1.6.0")]
-#![cfg_attr(stage0, staged_api)]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
@@ -60,8 +57,6 @@
 #![no_core]
 #![deny(missing_docs)]
 
-#![cfg_attr(stage0, feature(rustc_attrs))]
-#![cfg_attr(stage0, allow(unused_attributes))]
 #![feature(allow_internal_unstable)]
 #![feature(associated_type_defaults)]
 #![feature(concat_idents)]
@@ -75,8 +70,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(reflect)]
 #![feature(unwind_attributes)]
-#![cfg_attr(stage0, feature(simd))]
-#![cfg_attr(not(stage0), feature(repr_simd, platform_intrinsics))]
+#![feature(repr_simd, platform_intrinsics)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 

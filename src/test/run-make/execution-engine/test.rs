@@ -215,9 +215,8 @@ fn compile_program(input: &str, sysroot: PathBuf)
     let handle = thread.spawn(move || {
         let opts = build_exec_options(sysroot);
         let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-        let cstore_ = ::rustc_driver::cstore_to_cratestore(cstore.clone());
         let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS),
-                                 cstore_);
+                                 cstore.clone());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let cfg = build_configuration(&sess);

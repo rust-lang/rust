@@ -17,7 +17,7 @@ use os::raw::{c_char, c_short, c_ulonglong};
 use libc::{wchar_t, size_t, c_void};
 use ptr;
 
-#[cfg_attr(not(stage0), repr(simd))]
+#[repr(simd)]
 #[repr(C)]
 struct u64x2(u64, u64);
 

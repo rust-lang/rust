@@ -125,8 +125,8 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
                                                   codemap.clone());
 
     let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-    let cstore_ = ::rustc_driver::cstore_to_cratestore(cstore.clone());
-    let sess = session::build_session_(sessopts, cpath, diagnostic_handler, codemap, cstore_);
+    let sess = session::build_session_(sessopts, cpath, diagnostic_handler,
+                                       codemap, cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess);

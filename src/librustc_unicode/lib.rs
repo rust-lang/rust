@@ -20,11 +20,8 @@
 //! provide for basic string-related manipulations. This crate does not
 //! (yet) aim to provide a full set of Unicode tables.
 
-// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
-#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "rustc_unicode"]
 #![unstable(feature = "unicode", issue = "27783")]
-#![cfg_attr(stage0, staged_api)]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
@@ -34,9 +31,6 @@
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 #![no_std]
 
-#![cfg_attr(stage0, feature(rustc_attrs))]
-#![cfg_attr(stage0, feature(no_std))]
-#![cfg_attr(stage0, allow(unused_attributes))]
 #![feature(core_char_ext)]
 #![feature(lang_items)]
 #![feature(staged_api)]

@@ -90,7 +90,6 @@ fn get_resident() -> Option<usize> {
 }
 
 #[cfg(windows)]
-#[cfg_attr(stage0, allow(improper_ctypes))]
 fn get_resident() -> Option<usize> {
     type BOOL = i32;
     type DWORD = u32;

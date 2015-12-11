@@ -50,10 +50,8 @@
 //! See the [Plugins Chapter](../../book/compiler-plugins.html) of the book
 //! for more examples.
 
-#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "rustc_plugin"]
 #![unstable(feature = "rustc_private", issue = "27812")]
-#![cfg_attr(stage0, staged_api)]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",

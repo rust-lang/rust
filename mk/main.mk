@@ -131,11 +131,7 @@ endif
 
 ifdef CFG_ENABLE_DEBUGINFO
   $(info cfg: enabling debuginfo (CFG_ENABLE_DEBUGINFO))
-  # FIXME: Re-enable -g in stage0 after new snapshot
-  #CFG_RUSTC_FLAGS += -g
-  RUSTFLAGS_STAGE1 += -g
-  RUSTFLAGS_STAGE2 += -g
-  RUSTFLAGS_STAGE3 += -g
+  CFG_RUSTC_FLAGS += -g
 endif
 
 ifdef SAVE_TEMPS

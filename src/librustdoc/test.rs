@@ -80,12 +80,11 @@ pub fn run(input: &str,
                                                   codemap.clone());
 
     let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-    let cstore_ = ::rustc_driver::cstore_to_cratestore(cstore.clone());
     let sess = session::build_session_(sessopts,
                                        Some(input_path.clone()),
                                        diagnostic_handler,
                                        codemap,
-                                       cstore_);
+                                       cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess);
@@ -235,12 +234,11 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
     let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-    let cstore_ = ::rustc_driver::cstore_to_cratestore(cstore.clone());
     let sess = session::build_session_(sessopts,
                                        None,
                                        diagnostic_handler,
                                        codemap,
-                                       cstore_);
+                                       cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let outdir = TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir");
