@@ -8,19 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
-#![cfg_attr(stage0, feature(custom_attribute))]
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 #![allow(trivial_casts)]
 
-#![cfg_attr(stage0, allow(improper_ctypes))]
-
 #![crate_name = "rustc_llvm"]
 #![unstable(feature = "rustc_private", issue = "27812")]
-#![cfg_attr(stage0, staged_api)]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
