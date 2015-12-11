@@ -9,6 +9,7 @@ use rustc::middle::ty;
 use rustc::middle::const_eval::ConstVal::Float;
 use rustc::middle::const_eval::eval_const_expr_partial;
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
+use rustc::middle::def::Def;
 
 use utils::{get_item_name, match_path, snippet, span_lint, walk_ptrs_ty, is_integer_literal};
 use utils::span_help_and_lint;
@@ -313,6 +314,39 @@ impl LateLintPass for PatternPass {
                     "the `{} @ _` pattern can be written as just `{}`",
                     ident.node.name, ident.node.name));
             }
+        }
+    }
+}
+
+declare_lint!(pub USED_UNDERSCORE_BINDING, Warn,
+              "using a binding which is prefixed with an underscore");
+
+#[derive(Copy, Clone)]
+pub struct UsedUnderscoreBinding;
+
+impl LintPass for UsedUnderscoreBinding {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(USED_UNDERSCORE_BINDING)
+    }
+}
+
+impl LateLintPass for UsedUnderscoreBinding {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+        let needs_lint = match expr.node {
+            ExprPath(_, ref path) => {
+                path.segments.last().unwrap().identifier.name.as_str().chars().next() == Some('_') &&
+                (cx.tcx.def_map.borrow()).values().any(|res| match res.base_def {
+                                                  Def::DefLocal(_, _) => true,
+                                                  _ => false
+                                            })
+            },
+            ExprField(_, spanned) => spanned.node.as_str().chars().next() == Some('_'),
+            _ => false
+        };
+        if needs_lint {
+            cx.span_lint(USED_UNDERSCORE_BINDING, expr.span, &format!(
+                "Used binding which is prefixed with an underscore. A leading underscore signals\
+                 that a binding will not be used."));
         }
     }
 }
