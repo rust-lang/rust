@@ -200,7 +200,7 @@ use std::cell::Cell;
 
 struct Foo<'a, 'b, A: 'a, B: 'b, C, D, E, F, G, H> {
     a: &'a A,     // variant over 'a and A
-    b: &'b mut B, // invariant over 'b and B
+    b: &'b mut B, // variant over 'b and invariant over B
     c: *const C,  // variant over C
     d: *mut D,    // invariant over D
     e: Vec<E>,    // variant over E
