@@ -276,7 +276,8 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             def::DefTyParam(..) |
             def::DefUse(_) |
             def::DefMethod(..) |
-            def::DefPrimTy(_) => {
+            def::DefPrimTy(_) |
+            def::DefErr => {
                 self.sess.span_bug(span,
                                    &format!("lookup_def_kind for unexpected item: {:?}", def));
             }

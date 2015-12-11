@@ -12,7 +12,7 @@ trait SipHash {
     fn reset(&self);
 }
 
-fn siphash(k0 : u64) -> SipHash {
+fn siphash(k0 : u64) {
     struct SipState {
         v0: u64,
     }

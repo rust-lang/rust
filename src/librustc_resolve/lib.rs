@@ -566,6 +566,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
             Ok(def) => self.record_def(tref.trait_ref.ref_id, def),
             Err(_) => {
                 // error already reported
+                self.record_def(tref.trait_ref.ref_id, err_path_resolution())
             }
         }
         intravisit::walk_poly_trait_ref(self, tref, m);
@@ -2005,6 +2006,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                   prefix.span,
                                                   ResolutionError::FailedToResolve(
                                                       &path_names_to_string(prefix, 0)));
+                                    self.record_def(item.id, err_path_resolution());
                                 }
                             }
                         }
@@ -2164,6 +2166,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         resolve_error(self,
                                       eq_pred.span,
                                       ResolutionError::UndeclaredAssociatedType);
+                        self.record_def(eq_pred.id, err_path_resolution());
                     }
                 }
             }
@@ -2194,6 +2197,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.record_def(trait_ref.ref_id, path_res);
                 new_val = Some((path_res.base_def.def_id(), trait_ref.clone()));
                 new_id = Some(path_res.base_def.def_id());
+            } else {
+                self.record_def(trait_ref.ref_id, err_path_resolution());
             }
             intravisit::walk_trait_ref(self, trait_ref);
         }
@@ -2463,6 +2468,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         self.record_def(ty.id, def);
                     }
                     None => {
+                        self.record_def(ty.id, err_path_resolution());
+
                         // Keep reporting some errors even if they're ignored above.
                         self.resolve_path(ty.id, path, 0, TypeNS, true);
 
@@ -2545,6 +2552,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 ResolutionError::DeclarationShadowsEnumVariantOrUnitLikeStruct(
                                     renamed)
                             );
+                            self.record_def(pattern.id, err_path_resolution());
                         }
                         FoundConst(def, lp, _) if const_ok => {
                             debug!("(resolving pattern) resolving `{}` to constant", renamed);
@@ -2564,6 +2572,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 ResolutionError::OnlyIrrefutablePatternsAllowedHere(def.def_id(),
                                                                                     name)
                             );
+                            self.record_def(pattern.id, err_path_resolution());
                         }
                         BareIdentifierPatternUnresolved => {
                             debug!("(resolving pattern) binding `{}`", renamed);
@@ -2647,6 +2656,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 resolve_error(&self,
                                               path.span,
                                               ResolutionError::StaticVariableReference);
+                                self.record_def(pattern.id, err_path_resolution());
                             }
                             _ => {
                                 // If anything ends up here entirely resolved,
@@ -2665,6 +2675,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                  .name
                                                  .as_str())
                                     );
+                                    self.record_def(pattern.id, err_path_resolution());
                                 } else {
                                     let const_name = path.segments
                                                          .last()
@@ -2684,6 +2695,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             ResolutionError::UnresolvedEnumVariantStructOrConst(
                                 &path.segments.last().unwrap().identifier.name.as_str())
                         );
+                        self.record_def(pattern.id, err_path_resolution());
                     }
                     intravisit::walk_path(self, path);
                 }
@@ -2726,6 +2738,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         &path.segments.last().unwrap().identifier.name.as_str()
                                     )
                                 );
+                                self.record_def(pattern.id, err_path_resolution());
                             }
                         }
                     } else {
@@ -2737,6 +2750,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                                       .identifier
                                                                                       .name
                                                                                       .as_str()));
+                        self.record_def(pattern.id, err_path_resolution());
                     }
                     intravisit::walk_pat(self, pattern);
                 }
@@ -2754,6 +2768,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 ResolutionError::DoesNotNameAStruct(
                                     &*path_names_to_string(path, 0))
                             );
+                            self.record_def(pattern.id, err_path_resolution());
                         }
                     }
                     intravisit::walk_path(self, path);
@@ -3430,6 +3445,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         } else {
                             self.session.span_help(expr.span, &msg);
                         }
+                        self.record_def(expr.id, err_path_resolution());
                     } else {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `{}`",
@@ -3454,6 +3470,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let type_res = self.with_no_errors(|this| {
                         this.resolve_path(expr.id, path, 0, TypeNS, false)
                     });
+
+                    self.record_def(expr.id, err_path_resolution());
                     match type_res.map(|r| r.base_def) {
                         Some(DefTy(struct_id, _)) if self.structs.contains_key(&struct_id) => {
                             resolve_error(
@@ -3540,6 +3558,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                       ResolutionError::DoesNotNameAStruct(
                                                                 &*path_names_to_string(path, 0))
                                      );
+                        self.record_def(expr.id, err_path_resolution());
                     }
                 }
 
@@ -3562,6 +3581,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 match self.search_label(label.node.name) {
                     None => {
+                        self.record_def(expr.id, err_path_resolution());
                         resolve_error(self,
                                       label.span,
                                       ResolutionError::UndeclaredLabel(&label.node.name.as_str()))
@@ -3811,6 +3831,14 @@ fn module_to_string(module: &Module) -> String {
     names_to_string(&names.into_iter().rev().collect::<Vec<ast::Name>>())
 }
 
+fn err_path_resolution() -> PathResolution {
+    PathResolution {
+        base_def: DefErr,
+        last_private: LastMod(AllPublic),
+        depth: 0,
+    }
+}
+
 
 pub struct CrateMap {
     pub def_map: RefCell<DefMap>,
@@ -3836,7 +3864,6 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
     let mut resolver = create_resolver(session, ast_map, krate, make_glob_map, None);
 
     resolver.resolve_crate(krate);
-    session.abort_if_errors();
 
     check_unused::check_crate(&mut resolver, krate);
 
