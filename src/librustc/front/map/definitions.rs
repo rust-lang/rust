@@ -73,7 +73,7 @@ pub enum DefPathData {
     Misc,
 
     // Different kinds of items and item-like things:
-    Impl,
+    Impl(ast::Name),
     Type(ast::Name),
     Mod(ast::Name),
     Value(ast::Name),
@@ -177,6 +177,7 @@ impl DefPathData {
     pub fn as_interned_str(&self) -> InternedString {
         use self::DefPathData::*;
         match *self {
+            Impl(name) |
             Type(name) |
             Mod(name) |
             Value(name) |
@@ -210,10 +211,6 @@ impl DefPathData {
 
             Misc => {
                 InternedString::new("?")
-            }
-
-            Impl => {
-                InternedString::new("<impl>")
             }
 
             ClosureExpr => {
