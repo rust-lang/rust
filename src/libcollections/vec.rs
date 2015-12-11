@@ -467,6 +467,8 @@ impl<T> Vec<T> {
     #[unstable(feature = "convert",
                reason = "waiting on RFC revision",
                issue = "27729")]
+    #[rustc_deprecated(reason = "use &s[..] syntax",
+                       since = "1.7.0")]
     pub fn as_slice(&self) -> &[T] {
         self
     }
