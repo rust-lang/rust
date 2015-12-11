@@ -292,7 +292,9 @@ Section: Iterators
 
 /// Iterator for the char (representing *Unicode Scalar Values*) of a string
 ///
-/// Created with the method `.chars()`.
+/// Created with the method [`chars()`].
+///
+/// [`chars()`]: ../primitive.str.html#method.chars
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
@@ -499,7 +501,9 @@ impl<'a> CharIndices<'a> {
 /// External iterator for a string's bytes.
 /// Use with the `std::iter` module.
 ///
-/// Created with the method `.bytes()`.
+/// Created with the method [`bytes()`].
+///
+/// [`bytes()`]: ../primitive.str.html#method.bytes
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Bytes<'a>(Cloned<slice::Iter<'a, u8>>);
@@ -782,10 +786,14 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the method `.split()`.
+        /// Created with the method [`split()`].
+        ///
+        /// [`split()`]: ../primitive.str.html#method.split
         struct Split;
     reverse:
-        /// Created with the method `.rsplit()`.
+        /// Created with the method [`rsplit()`].
+        ///
+        /// [`rsplit()`]: ../primitive.str.html#method.rsplit
         struct RSplit;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -796,10 +804,14 @@ generate_pattern_iterators! {
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the method `.split_terminator()`.
+        /// Created with the method [`split_terminator()`].
+        ///
+        /// [`split_terminator()`]: ../primitive.str.html#method.split_terminator
         struct SplitTerminator;
     reverse:
-        /// Created with the method `.rsplit_terminator()`.
+        /// Created with the method [`rsplit_terminator()`].
+        ///
+        /// [`rsplit_terminator()`]: ../primitive.str.html#method.rsplit_terminator
         struct RSplitTerminator;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -842,10 +854,14 @@ impl<'a, P: Pattern<'a>> SplitNInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the method `.splitn()`.
+        /// Created with the method [`splitn()`].
+        ///
+        /// [`splitn()`]: ../primitive.str.html#method.splitn
         struct SplitN;
     reverse:
-        /// Created with the method `.rsplitn()`.
+        /// Created with the method [`rsplitn()`].
+        ///
+        /// [`rsplitn()`]: ../primitive.str.html#method.rsplitn
         struct RSplitN;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -880,10 +896,14 @@ impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the method `.match_indices()`.
+        /// Created with the method [`match_indices()`].
+        ///
+        /// [`match_indices()`]: ../primitive.str.html#method.match_indices
         struct MatchIndices;
     reverse:
-        /// Created with the method `.rmatch_indices()`.
+        /// Created with the method [`rmatch_indices()`].
+        ///
+        /// [`rmatch_indices()`]: ../primitive.str.html#method.rmatch_indices
         struct RMatchIndices;
     stability:
         #[stable(feature = "str_match_indices", since = "1.5.0")]
@@ -920,10 +940,14 @@ impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the method `.matches()`.
+        /// Created with the method [`matches()`].
+        ///
+        /// [`matches()`]: ../primitive.str.html#method.matches
         struct Matches;
     reverse:
-        /// Created with the method `.rmatches()`.
+        /// Created with the method [`rmatches()`].
+        ///
+        /// [`rmatches()`]: ../primitive.str.html#method.rmatches
         struct RMatches;
     stability:
         #[stable(feature = "str_matches", since = "1.2.0")]
@@ -932,7 +956,9 @@ generate_pattern_iterators! {
     delegate double ended;
 }
 
-/// Created with the method `.lines()`.
+/// Created with the method [`lines()`].
+///
+/// [`lines()`]: ../primitive.str.html#method.lines
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Lines<'a>(Map<SplitTerminator<'a, char>, LinesAnyMap>);
@@ -960,7 +986,9 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
     }
 }
 
-/// Created with the method `.lines_any()`.
+/// Created with the method [`lines_any()`].
+///
+/// [`lines_any()`]: ../primitive.str.html#method.lines_any
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(since = "1.4.0", reason = "use lines()/Lines instead now")]
 #[derive(Clone)]
