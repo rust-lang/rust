@@ -16,12 +16,13 @@
 //! `downcast_ref` methods, to test if the contained value is of a given type,
 //! and to get a reference to the inner value as a type. As `&mut Any`, there
 //! is also the `downcast_mut` method, for getting a mutable reference to the
-//! inner value. `Box<Any>` adds the `move` method, which will unwrap a
-//! `Box<T>` from the object. See the extension traits (`*Ext`) for the full
-//! details.
+//! inner value. `Box<Any>` adds the `downcast` method, which attempts to
+//! convert to a `Box<T>`. See the [`Box`] documentation for the full details.
 //!
 //! Note that &Any is limited to testing whether a value is of a specified
 //! concrete type, and cannot be used to test whether a type implements a trait.
+//!
+//! [`Box`]: ../boxed/struct.Box.html
 //!
 //! # Examples
 //!
