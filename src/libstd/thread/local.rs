@@ -15,10 +15,6 @@
 use cell::UnsafeCell;
 use mem;
 
-// Sure wish we had macro hygiene, no?
-#[doc(hidden)]
-pub use self::imp::Key as __KeyInner;
-
 /// A thread local storage key which owns its contents.
 ///
 /// This key uses the fastest possible implementation available to it for the
@@ -61,40 +57,26 @@ pub use self::imp::Key as __KeyInner;
 /// });
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct LocalKey<T:'static> {
-    // The key itself may be tagged with #[thread_local], and this `Key` is
-    // stored as a `static`, and it's not valid for a static to reference the
-    // address of another thread_local static. For this reason we kinda wonkily
-    // work around this by generating a shim function which will give us the
-    // address of the inner TLS key at runtime.
+pub struct LocalKey<T: 'static> {
+    // This outer `LocalKey<T>` type is what's going to be stored in statics,
+    // but actual data inside will sometimes be tagged with #[thread_local].
+    // It's not valid for a true static to reference a #[thread_local] static,
+    // so we get around that by exposing an accessor through a layer of function
+    // indirection (this thunk).
     //
-    // This is trivially devirtualizable by LLVM because we never store anything
-    // to this field and rustc can declare the `static` as constant as well.
-    inner: fn() -> &'static __KeyInner<T>,
+    // Note that the thunk is itself unsafe because the returned lifetime of the
+    // slot where data lives, `'static`, is not actually valid. The lifetime
+    // here is actually `'thread`!
+    //
+    // Although this is an extra layer of indirection, it should in theory be
+    // trivially devirtualizable by LLVM because the value of `inner` never
+    // changes and the constant should be readonly within a crate. This mainly
+    // only runs into problems when TLS statics are exported across crates.
+    inner: unsafe fn() -> Option<&'static UnsafeCell<Option<T>>>,
 
     // initialization routine to invoke to create a value
     init: fn() -> T,
 }
-
-// Macro pain #4586:
-//
-// When cross compiling, rustc will load plugins and macros from the *host*
-// platform before search for macros from the target platform. This is primarily
-// done to detect, for example, plugins. Ideally the macro below would be
-// defined once per module below, but unfortunately this means we have the
-// following situation:
-//
-// 1. We compile libstd for x86_64-unknown-linux-gnu, this thread_local!() macro
-//    will inject #[thread_local] statics.
-// 2. We then try to compile a program for arm-linux-androideabi
-// 3. The compiler has a host of linux and a target of android, so it loads
-//    macros from the *linux* libstd.
-// 4. The macro generates a #[thread_local] field, but the android libstd does
-//    not use #[thread_local]
-// 5. Compile error about structs with wrong fields.
-//
-// To get around this, we're forced to inject the #[cfg] logic into the macro
-// itself. Woohoo.
 
 /// Declare a new thread local storage key of type `std::thread::LocalKey`.
 ///
@@ -103,36 +85,14 @@ pub struct LocalKey<T:'static> {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
-#[cfg(not(no_elf_tls))]
 macro_rules! thread_local {
     (static $name:ident: $t:ty = $init:expr) => (
         static $name: $crate::thread::LocalKey<$t> =
-            __thread_local_inner!($t, $init,
-                #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
-                               not(target_arch = "aarch64")),
-                           thread_local)]);
+            __thread_local_inner!($t, $init);
     );
     (pub static $name:ident: $t:ty = $init:expr) => (
         pub static $name: $crate::thread::LocalKey<$t> =
-            __thread_local_inner!($t, $init,
-                #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
-                               not(target_arch = "aarch64")),
-                           thread_local)]);
-    );
-}
-
-#[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable]
-#[cfg(no_elf_tls)]
-macro_rules! thread_local {
-    (static $name:ident: $t:ty = $init:expr) => (
-        static $name: $crate::thread::LocalKey<$t> =
-            __thread_local_inner!($t, $init, #[]);
-    );
-    (pub static $name:ident: $t:ty = $init:expr) => (
-        pub static $name: $crate::thread::LocalKey<$t> =
-            __thread_local_inner!($t, $init, #[]);
+            __thread_local_inner!($t, $init);
     );
 }
 
@@ -143,12 +103,25 @@ macro_rules! thread_local {
 #[macro_export]
 #[allow_internal_unstable]
 macro_rules! __thread_local_inner {
-    ($t:ty, $init:expr, #[$($attr:meta),*]) => {{
-        $(#[$attr])*
-        static __KEY: $crate::thread::__LocalKeyInner<$t> =
-            $crate::thread::__LocalKeyInner::new();
+    ($t:ty, $init:expr) => {{
         fn __init() -> $t { $init }
-        fn __getit() -> &'static $crate::thread::__LocalKeyInner<$t> { &__KEY }
+
+        unsafe fn __getit() -> $crate::option::Option<
+            &'static $crate::cell::UnsafeCell<
+                $crate::option::Option<$t>>>
+        {
+            #[thread_local]
+            #[cfg(target_thread_local)]
+            static __KEY: $crate::thread::__ElfLocalKeyInner<$t> =
+                $crate::thread::__ElfLocalKeyInner::new();
+
+            #[cfg(not(target_thread_local))]
+            static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
+                $crate::thread::__OsLocalKeyInner::new();
+
+            __KEY.get()
+        }
+
         $crate::thread::LocalKey::new(__getit, __init)
     }}
 }
@@ -190,11 +163,11 @@ impl<T: 'static> LocalKey<T> {
     #[unstable(feature = "thread_local_internals",
                reason = "recently added to create a key",
                issue = "0")]
-    pub const fn new(inner: fn() -> &'static __KeyInner<T>,
+    pub const fn new(inner: unsafe fn() -> Option<&'static UnsafeCell<Option<T>>>,
                      init: fn() -> T) -> LocalKey<T> {
         LocalKey {
             inner: inner,
-            init: init
+            init: init,
         }
     }
 
@@ -211,10 +184,10 @@ impl<T: 'static> LocalKey<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with<F, R>(&'static self, f: F) -> R
                       where F: FnOnce(&T) -> R {
-        let slot = (self.inner)();
         unsafe {
-            let slot = slot.get().expect("cannot access a TLS value during or \
-                                          after it is destroyed");
+            let slot = (self.inner)();
+            let slot = slot.expect("cannot access a TLS value during or \
+                                    after it is destroyed");
             f(match *slot.get() {
                 Some(ref inner) => inner,
                 None => self.init(slot),
@@ -270,7 +243,7 @@ impl<T: 'static> LocalKey<T> {
                issue = "27716")]
     pub fn state(&'static self) -> LocalKeyState {
         unsafe {
-            match (self.inner)().get() {
+            match (self.inner)() {
                 Some(cell) => {
                     match *cell.get() {
                         Some(..) => LocalKeyState::Valid,
@@ -283,11 +256,9 @@ impl<T: 'static> LocalKey<T> {
     }
 }
 
-#[cfg(all(any(target_os = "macos", target_os = "linux"),
-          not(target_arch = "aarch64"),
-          not(no_elf_tls)))]
+#[cfg(target_thread_local)]
 #[doc(hidden)]
-mod imp {
+pub mod elf {
     use cell::{Cell, UnsafeCell};
     use intrinsics;
     use ptr;
@@ -431,11 +402,8 @@ mod imp {
     }
 }
 
-#[cfg(any(not(any(target_os = "macos", target_os = "linux")),
-          target_arch = "aarch64",
-          no_elf_tls))]
 #[doc(hidden)]
-mod imp {
+pub mod os {
     use prelude::v1::*;
 
     use cell::{Cell, UnsafeCell};

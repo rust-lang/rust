@@ -191,7 +191,10 @@ pub use self::local::{LocalKey, LocalKeyState};
 pub use self::scoped_tls::ScopedKey;
 
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
-#[doc(hidden)] pub use self::local::__KeyInner as __LocalKeyInner;
+#[cfg(target_thread_local)]
+#[doc(hidden)] pub use self::local::elf::Key as __ElfLocalKeyInner;
+#[unstable(feature = "libstd_thread_internals", issue = "0")]
+#[doc(hidden)] pub use self::local::os::Key as __OsLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[doc(hidden)] pub use self::scoped_tls::__KeyInner as __ScopedKeyInner;
 

@@ -238,7 +238,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     ("type_ascription", "1.6.0", Some(23416), Active),
 
     // Allows cfg(target_thread_local)
-    ("cfg_target_thread_local", "1.7.0", Some(26581), Active),
+    ("cfg_target_thread_local", "1.7.0", Some(29594), Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
