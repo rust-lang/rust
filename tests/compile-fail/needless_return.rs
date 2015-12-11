@@ -8,11 +8,17 @@ fn test_end_of_fn() -> bool {
         // no error!
         return true;
     }
-    return true;           //~ERROR unneeded return statement
+    return true;
+    //~^ ERROR unneeded return statement
+    //~| HELP remove `return` as shown
+    //~| SUGGESTION true
 }
 
 fn test_no_semicolon() -> bool {
-    return true            //~ERROR unneeded return statement
+    return true
+    //~^ ERROR unneeded return statement
+    //~| HELP remove `return` as shown
+    //~| SUGGESTION true
 }
 
 fn test_if_block() -> bool {
@@ -29,7 +35,7 @@ fn test_match(x: bool) -> bool {
             return false;  //~ERROR unneeded return statement
         }
         false => {
-            return true    //~ERROR unneeded return statement
+            return true;   //~ERROR unneeded return statement
         }
     }
 }
