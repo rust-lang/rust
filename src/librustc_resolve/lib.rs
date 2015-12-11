@@ -96,7 +96,7 @@ use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::usize;
 
-use resolve_imports::{Target, ImportDirective, ImportResolution};
+use resolve_imports::{Target, ImportDirective, ImportResolutionPerNamespace};
 use resolve_imports::Shadowable;
 
 // NB: This module needs to be declared first so diagnostics are
@@ -793,7 +793,7 @@ pub struct Module {
     anonymous_children: RefCell<NodeMap<Rc<Module>>>,
 
     // The status of resolving each import in this module.
-    import_resolutions: RefCell<HashMap<Name, ImportResolution>>,
+    import_resolutions: RefCell<HashMap<Name, ImportResolutionPerNamespace>>,
 
     // The number of unresolved globs that this module exports.
     glob_count: Cell<usize>,
@@ -912,7 +912,7 @@ bitflags! {
 // Records a possibly-private value, type, or module definition.
 #[derive(Debug)]
 struct NsDef {
-    modifiers: DefModifiers, // see note in ImportResolution about how to use this
+    modifiers: DefModifiers, // see note in ImportResolutionPerNamespace about how to use this
     def_or_module: DefOrModule,
     span: Option<Span>,
 }
