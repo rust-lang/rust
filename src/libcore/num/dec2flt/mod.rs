@@ -97,7 +97,7 @@ use fmt;
 use str::FromStr;
 
 use self::parse::{parse_decimal, Decimal, Sign};
-use self::parse::ParseResult::{self, Valid, ShortcutToInf, ShortcutToZero};
+use self::parse::ParseResult::{Valid, Invalid, ShortcutToInf, ShortcutToZero};
 use self::num::digits_to_big;
 use self::rawfp::RawFloat;
 
@@ -183,11 +183,11 @@ impl fmt::Display for ParseFloatError {
     }
 }
 
-pub fn pfe_empty() -> ParseFloatError {
+fn pfe_empty() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Empty }
 }
 
-pub fn pfe_invalid() -> ParseFloatError {
+fn pfe_invalid() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Invalid }
 }
 
@@ -211,7 +211,7 @@ fn dec2flt<T: RawFloat>(s: &str) -> Result<T, ParseFloatError> {
         Valid(decimal) => try!(convert(decimal)),
         ShortcutToInf => T::infinity(),
         ShortcutToZero => T::zero(),
-        ParseResult::Invalid => match s {
+        Invalid => match s {
             "inf" => T::infinity(),
             "NaN" => T::nan(),
             _ => { return Err(pfe_invalid()); }
