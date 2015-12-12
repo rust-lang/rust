@@ -1057,9 +1057,8 @@ fn rewrite_fn_base(context: &RewriteContext,
 
     // Note that if the width and indent really matter, we'll re-layout the
     // return type later anyway.
-    let ret_str = fd.output
-                    .rewrite(&context, context.config.max_width - indent.width(), indent)
-                    .unwrap();
+    let ret_str = try_opt!(fd.output
+                             .rewrite(&context, context.config.max_width - indent.width(), indent));
 
     let multi_line_ret_str = ret_str.contains('\n');
     let ret_str_len = if multi_line_ret_str {
@@ -1158,9 +1157,8 @@ fn rewrite_fn_base(context: &RewriteContext,
             // re-layout the return type.
 
             let budget = try_opt!(context.config.max_width.checked_sub(ret_indent.width()));
-            let ret_str = fd.output
-                            .rewrite(context, budget, ret_indent)
-                            .unwrap();
+            let ret_str = try_opt!(fd.output
+                                     .rewrite(context, budget, ret_indent));
             result.push_str(&ret_str);
         } else {
             result.push_str(&ret_str);

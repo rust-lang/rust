@@ -91,3 +91,11 @@ fn foo(a: i32) -> i32 {
     // comment
     if a > 0 { 1 } else { 2 }
 }
+
+fn ______________________baz(a: i32)
+    ->
+        *mut ::std::option::Option<extern "C" fn(arg1: i32,
+                                                _____________________a: i32,
+                                                arg3: i32)
+                                    -> ()> {
+}
