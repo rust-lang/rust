@@ -227,8 +227,9 @@ mod cross_crate {
     struct S;
 
     impl UnstableTrait for S { } //~ ERROR use of unstable library feature
-
+    impl DeprecatedTrait for S {} //~ ERROR use of deprecated item: text
     trait LocalTrait : UnstableTrait { } //~ ERROR use of unstable library feature
+    trait LocalTrait2 : DeprecatedTrait { } //~ ERROR use of deprecated item: text
 
     impl Trait for S {
         fn trait_stable(&self) {}
