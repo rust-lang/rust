@@ -78,6 +78,11 @@ mod cross_crate {
         foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
     }
 
+    struct S;
+
+    impl DeprecatedTrait for S {} //~ ERROR use of deprecated item: text
+    trait LocalTrait : DeprecatedTrait { } //~ ERROR use of deprecated item: text
+
     pub fn foo() {
         let x = Stable {
             override2: 3,

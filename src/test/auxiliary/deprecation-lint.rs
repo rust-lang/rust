@@ -31,6 +31,9 @@ pub trait Trait {
     fn trait_deprecated_text(&self) {}
 }
 
+#[deprecated(since = "1.0.0", note = "text")]
+pub trait DeprecatedTrait { fn dummy(&self) { } }
+
 impl Trait for MethodTester {}
 
 #[deprecated(since = "1.0.0", note = "text")]

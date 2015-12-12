@@ -171,13 +171,6 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                     attr::mark_used(attr);
                     self.tcx.sess.span_err(attr.span(), "stability attributes may not be used \
                                                          outside of the standard library");
-                } else if tag == "deprecated" {
-                    if !self.tcx.sess.features.borrow().deprecated {
-                        self.tcx.sess.span_err(attr.span(),
-                                               "`#[deprecated]` attribute is unstable");
-                        fileline_help!(self.tcx.sess, attr.span(), "add #![feature(deprecated)] to \
-                                                                    the crate features to enable");
-                    }
                 }
             }
 
@@ -687,68 +680,20 @@ pub fn lookup_deprecation<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<Depre
 
 fn lookup_stability_uncached<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<&'tcx Stability> {
     debug!("lookup(id={:?})", id);
-
-    // is this definition the implementation of a trait method?
-    match tcx.trait_item_of_item(id) {
-        Some(ty::MethodTraitItemId(trait_method_id)) if trait_method_id != id => {
-            debug!("lookup: trait_method_id={:?}", trait_method_id);
-            return lookup_stability(tcx, trait_method_id)
-        }
-        _ => {}
-    }
-
-    let item_stab = if id.is_local() {
+    if id.is_local() {
         None // The stability cache is filled partially lazily
     } else {
         tcx.sess.cstore.stability(id).map(|st| tcx.intern_stability(st))
-    };
-
-    item_stab.or_else(|| {
-        if tcx.is_impl(id) {
-            if let Some(trait_id) = tcx.trait_id_of_impl(id) {
-                // FIXME (#18969): for the time being, simply use the
-                // stability of the trait to determine the stability of any
-                // unmarked impls for it. See FIXME above for more details.
-
-                debug!("lookup: trait_id={:?}", trait_id);
-                return lookup_stability(tcx, trait_id);
-            }
-        }
-        None
-    })
+    }
 }
 
 fn lookup_deprecation_uncached<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<Deprecation> {
     debug!("lookup(id={:?})", id);
-
-    // is this definition the implementation of a trait method?
-    match tcx.trait_item_of_item(id) {
-        Some(ty::MethodTraitItemId(trait_method_id)) if trait_method_id != id => {
-            debug!("lookup: trait_method_id={:?}", trait_method_id);
-            return lookup_deprecation(tcx, trait_method_id)
-        }
-        _ => {}
-    }
-
-    let item_depr = if id.is_local() {
+    if id.is_local() {
         None // The stability cache is filled partially lazily
     } else {
         tcx.sess.cstore.deprecation(id)
-    };
-
-    item_depr.or_else(|| {
-        if tcx.is_impl(id) {
-            if let Some(trait_id) = tcx.trait_id_of_impl(id) {
-                // FIXME (#18969): for the time being, simply use the
-                // stability of the trait to determine the stability of any
-                // unmarked impls for it. See FIXME above for more details.
-
-                debug!("lookup: trait_id={:?}", trait_id);
-                return lookup_deprecation(tcx, trait_id);
-            }
-        }
-        None
-    })
+    }
 }
 
 /// Given the list of enabled features that were not language features (i.e. that

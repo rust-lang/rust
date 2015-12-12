@@ -380,7 +380,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("must_use", Whitelisted, Ungated),
     ("stable", Whitelisted, Ungated),
     ("unstable", Whitelisted, Ungated),
-    ("deprecated", Whitelisted, Ungated),
+    ("deprecated", Normal, Gated("deprecated", "`#[deprecated]` attribute is unstable")),
 
     ("rustc_paren_sugar", Normal, Gated("unboxed_closures",
                                         "unboxed_closures are still evolving")),

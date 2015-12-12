@@ -575,7 +575,7 @@ impl LateLintPass for MissingDebugImplementations {
 declare_lint! {
     DEPRECATED,
     Warn,
-    "detects use of `#[deprecated]` or `#[rustc_deprecated]` items"
+    "detects use of deprecated items"
 }
 
 /// Checks for use of items with `#[deprecated]` or `#[rustc_deprecated]` attributes
