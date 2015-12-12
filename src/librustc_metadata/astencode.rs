@@ -399,7 +399,6 @@ impl tr for def::Def {
               def::DefAssociatedTy(trait_did.tr(dcx), did.tr(dcx)),
           def::DefPrimTy(p) => def::DefPrimTy(p),
           def::DefTyParam(s, index, def_id, n) => def::DefTyParam(s, index, def_id.tr(dcx), n),
-          def::DefUse(did) => def::DefUse(did.tr(dcx)),
           def::DefUpvar(_, nid1, index, nid2) => {
               let nid1 = dcx.tr_id(nid1);
               let nid2 = dcx.tr_id(nid2);
