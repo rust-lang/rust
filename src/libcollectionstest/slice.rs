@@ -867,6 +867,17 @@ fn test_vec_default() {
 }
 
 #[test]
+fn test_bytes_set_memory() {
+    use std::slice::bytes::MutableByteVector;
+
+    let mut values = [1,2,3,4,5];
+    values[0..5].set_memory(0xAB);
+    assert!(values == [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
+    values[2..4].set_memory(0xFF);
+    assert!(values == [0xAB, 0xAB, 0xFF, 0xFF, 0xAB]);
+}
+
+#[test]
 #[should_panic]
 fn test_overflow_does_not_cause_segfault() {
     let mut v = vec![];
