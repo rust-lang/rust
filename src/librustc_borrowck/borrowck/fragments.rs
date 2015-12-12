@@ -379,7 +379,7 @@ fn add_fragment_siblings<'tcx>(this: &MoveData<'tcx>,
         // bind.
         //
         // Anyway, for now: LV[j] is not tracked precisely
-        LpExtend(_, _, LpInterior(InteriorElement(..))) => {
+        LpExtend(_, _, LpInterior(_, InteriorElement(..))) => {
             let mp = this.move_path(tcx, lp.clone());
             gathered_fragments.push(AllButOneFrom(mp));
         }
@@ -387,7 +387,7 @@ fn add_fragment_siblings<'tcx>(this: &MoveData<'tcx>,
         // field access LV.x and tuple access LV#k are the cases
         // we are interested in
         LpExtend(ref loan_parent, mc,
-                 LpInterior(InteriorField(ref field_name))) => {
+                 LpInterior(_, InteriorField(ref field_name))) => {
             let enum_variant_info = match loan_parent.kind {
                 LpDowncast(ref loan_parent_2, variant_def_id) =>
                     Some((variant_def_id, loan_parent_2.clone())),
@@ -516,7 +516,7 @@ fn add_fragment_sibling_core<'tcx>(this: &MoveData<'tcx>,
         LpVar(..) | LpUpvar(..) | LpExtend(..) => enum_variant_did,
     };
 
-    let loan_path_elem = LpInterior(InteriorField(new_field_name));
+    let loan_path_elem = LpInterior(opt_variant_did, InteriorField(new_field_name));
     let new_lp_type = match new_field_name {
         mc::NamedField(ast_name) =>
             tcx.named_element_ty(parent.to_type(), ast_name, opt_variant_did),
