@@ -1801,7 +1801,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 }
 
 fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Option<String> {
-    item.stability.as_ref().and_then(|stab| {
+    let mut result = item.stability.as_ref().and_then(|stab| {
         let reason = if show_reason && !stab.reason.is_empty() {
             format!(": {}", stab.reason)
         } else {
@@ -1836,7 +1836,27 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Optio
         };
         Some(format!("<em class='stab {}'>{}</em>",
                      item.stability_class(), text))
-    })
+    });
+
+    if result.is_none() {
+        result = item.deprecation.as_ref().and_then(|depr| {
+            let note = if show_reason && !depr.note.is_empty() {
+                format!(": {}", depr.note)
+            } else {
+                String::new()
+            };
+            let since = if show_reason && !depr.since.is_empty() {
+                format!(" since {}", Escape(&depr.since))
+            } else {
+                String::new()
+            };
+
+            let text = format!("Deprecated{}{}", since, Markdown(&note));
+            Some(format!("<em class='stab deprecated'>{}</em>", text))
+        });
+    }
+
+    result
 }
 
 struct Initializer<'a>(&'a str);

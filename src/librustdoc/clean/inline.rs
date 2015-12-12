@@ -121,6 +121,7 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
         inner: inner,
         visibility: Some(hir::Public),
         stability: stability::lookup_stability(tcx, did).clean(cx),
+        deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
         def_id: did,
     });
     Some(ret)
@@ -304,6 +305,7 @@ pub fn build_impl(cx: &DocContext,
             attrs: attrs,
             visibility: Some(hir::Inherited),
             stability: stability::lookup_stability(tcx, did).clean(cx),
+            deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
             def_id: did,
         });
     }
@@ -334,6 +336,7 @@ pub fn build_impl(cx: &DocContext,
                     attrs: vec![],
                     visibility: None,
                     stability: stability::lookup_stability(tcx, did).clean(cx),
+                    deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
                     def_id: did
                 })
             }
@@ -382,6 +385,7 @@ pub fn build_impl(cx: &DocContext,
                     attrs: vec![],
                     visibility: None,
                     stability: stability::lookup_stability(tcx, did).clean(cx),
+                    deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
                     def_id: did
                 })
             }
@@ -415,6 +419,7 @@ pub fn build_impl(cx: &DocContext,
         attrs: attrs,
         visibility: Some(hir::Inherited),
         stability: stability::lookup_stability(tcx, did).clean(cx),
+        deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
         def_id: did,
     });
 
