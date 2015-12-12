@@ -14,7 +14,7 @@ use os::unix::prelude::*;
 use ffi::{CString, CStr, OsString, OsStr};
 use fmt;
 use io::{self, Error, ErrorKind, SeekFrom};
-use libc::{self, c_int, size_t, off_t, c_char, mode_t};
+use libc::{self, c_int, off_t, c_char, mode_t};
 use mem;
 use path::{Path, PathBuf};
 use ptr;

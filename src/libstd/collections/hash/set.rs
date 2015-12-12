@@ -13,7 +13,6 @@ use clone::Clone;
 use cmp::{Eq, PartialEq};
 use core::marker::Sized;
 use default::Default;
-use fmt::Debug;
 use fmt;
 use hash::Hash;
 use iter::{Iterator, IntoIterator, ExactSizeIterator, FromIterator, Map, Chain, Extend};

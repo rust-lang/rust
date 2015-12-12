@@ -14,7 +14,7 @@ use ast::{TokenTree, Ident, Name};
 use codemap::{Span, DUMMY_SP};
 use diagnostic::SpanHandler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
-use parse::token::{Eof, DocComment, Interpolated, MatchNt, SubstNt};
+use parse::token::{DocComment, MatchNt, SubstNt};
 use parse::token::{Token, NtIdent, SpecialMacroVar};
 use parse::token;
 use parse::lexer::TokenAndSpan;

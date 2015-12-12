@@ -29,7 +29,7 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::ast::NodeId;
 use rustc_front::hir;
-use rustc_front::hir::{Expr, FnDecl, Block, Pat};
+use rustc_front::hir::Expr;
 use rustc_front::intravisit;
 use rustc_front::intravisit::Visitor;
 
