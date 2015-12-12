@@ -11,7 +11,6 @@
 // .debug_gdb_scripts binary section.
 
 use llvm;
-use llvm::ValueRef;
 
 use trans::common::{C_bytes, CrateContext, C_i32};
 use trans::declare;

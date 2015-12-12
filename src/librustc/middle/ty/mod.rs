@@ -27,7 +27,7 @@ use middle::def::{self, ExportMap};
 use middle::def_id::DefId;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::region::{CodeExtent};
-use middle::subst::{self, ParamSpace, Subst, Substs, VecPerParamSpace};
+use middle::subst::{self, Subst, Substs, VecPerParamSpace};
 use middle::traits;
 use middle::ty;
 use middle::ty::fold::TypeFolder;
@@ -52,7 +52,6 @@ use syntax::parse::token::{InternedString, special_idents};
 
 use rustc_front::hir;
 use rustc_front::hir::{ItemImpl, ItemTrait};
-use rustc_front::hir::{MutImmutable, MutMutable, Visibility};
 
 pub use self::sty::{Binder, DebruijnIndex};
 pub use self::sty::{BuiltinBound, BuiltinBounds, ExistentialBounds};
