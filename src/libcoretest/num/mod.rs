@@ -55,6 +55,14 @@ mod tests {
     use core::num::Float;
 
     #[test]
+    fn from_str_issue7588() {
+        let u : Option<u8> = u8::from_str_radix("1000", 10).ok();
+        assert_eq!(u, None);
+        let s : Option<i16> = i16::from_str_radix("80000", 10).ok();
+        assert_eq!(s, None);
+    }
+
+    #[test]
     fn test_int_from_str_overflow() {
         let mut i8_val: i8 = 127;
         assert_eq!("127".parse::<i8>().ok(), Some(i8_val));
