@@ -19,7 +19,7 @@ pub trait DocFolder : Sized {
 
     /// don't override!
     fn fold_item_recur(&mut self, item: Item) -> Option<Item> {
-        let Item { attrs, name, source, visibility, def_id, inner, stability } = item;
+        let Item { attrs, name, source, visibility, def_id, inner, stability, deprecation } = item;
         let inner = inner;
         let inner = match inner {
             StructItem(mut i) => {
@@ -66,7 +66,8 @@ pub trait DocFolder : Sized {
         };
 
         Some(Item { attrs: attrs, name: name, source: source, inner: inner,
-                    visibility: visibility, stability: stability, def_id: def_id })
+                    visibility: visibility, stability: stability, deprecation: deprecation,
+                    def_id: def_id })
     }
 
     fn fold_mod(&mut self, m: Module) -> Module {
