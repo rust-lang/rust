@@ -161,7 +161,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 mir::Terminator::Return => break,
                 mir::Terminator::Goto { target } => block = target,
 
-                mir::Terminator::Call { ref data, targets } => {
+                mir::Terminator::Call { ref data, targets: (success_target, _panic_target) } => {
                     let mir::CallData { ref destination, ref func, ref args } = *data;
 
                     let ptr = self.eval_lvalue(destination);
@@ -174,16 +174,16 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                             args.iter().map(|arg| self.eval_operand(arg)).collect();
 
                         self.call(mir, &arg_vals, ptr);
-                        block = targets[0];
+                        block = success_target
                     } else {
                         panic!("tried to call a non-function value: {:?}", func_val);
                     }
                 }
 
-                mir::Terminator::If { ref cond, targets } => {
+                mir::Terminator::If { ref cond, targets: (then_target, else_target) } => {
                     match self.eval_operand(cond) {
-                        Value::Bool(true) => block = targets[0],
-                        Value::Bool(false) => block = targets[1],
+                        Value::Bool(true) => block = then_target,
+                        Value::Bool(false) => block = else_target,
                         cond_val => panic!("Non-boolean `if` condition value: {:?}", cond_val),
                     }
                 }
