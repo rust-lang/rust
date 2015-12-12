@@ -97,8 +97,12 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 // Overwriting the base would not change the type of
                 // the memory, so no additional restrictions are
                 // needed.
+                let opt_variant_id = match cmt_base.cat {
+                    Categorization::Downcast(_, variant_id) => Some(variant_id),
+                    _ => None
+                };
                 let result = self.restrict(cmt_base);
-                self.extend(result, &cmt, LpInterior(i.cleaned()))
+                self.extend(result, &cmt, LpInterior(opt_variant_id, i.cleaned()))
             }
 
             Categorization::StaticItem => {
