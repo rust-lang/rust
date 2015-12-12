@@ -4327,7 +4327,6 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefTyParam(..) |
         def::DefMod(..) |
         def::DefForeignMod(..) |
-        def::DefUse(..) |
         def::DefLabel(..) |
         def::DefSelfTy(..) |
         def::DefErr => {
@@ -4498,7 +4497,6 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefMod(..) |
         def::DefForeignMod(..) |
         def::DefLocal(..) |
-        def::DefUse(..) |
         def::DefLabel(..) |
         def::DefUpvar(..) |
         def::DefErr => {

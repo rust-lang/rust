@@ -35,7 +35,6 @@ pub enum Def {
     DefTrait(DefId),
     DefPrimTy(hir::PrimTy),
     DefTyParam(ParamSpace, u32, DefId, ast::Name),
-    DefUse(DefId),
     DefUpvar(DefId,        // def id of closed over local
              ast::NodeId,  // node id of closed over local
              usize,        // index in the freevars list of the closure
@@ -123,7 +122,7 @@ impl Def {
 
             DefFn(..) | DefMod(..) | DefForeignMod(..) | DefStatic(..) |
             DefVariant(..) | DefTy(..) | DefAssociatedTy(..) |
-            DefTyParam(..) | DefUse(..) | DefStruct(..) | DefTrait(..) |
+            DefTyParam(..) | DefStruct(..) | DefTrait(..) |
             DefMethod(..) | DefConst(..) | DefAssociatedConst(..) |
             DefPrimTy(..) | DefLabel(..) | DefSelfTy(..) | DefErr => {
                 panic!("attempted .def_id() on invalid {:?}", self)
@@ -135,7 +134,7 @@ impl Def {
         match *self {
             DefFn(id, _) | DefMod(id) | DefForeignMod(id) | DefStatic(id, _) |
             DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(_, id) |
-            DefTyParam(_, _, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
+            DefTyParam(_, _, id, _) | DefStruct(id) | DefTrait(id) |
             DefMethod(id) | DefConst(id) | DefAssociatedConst(id) |
             DefLocal(id, _) | DefUpvar(id, _, _, _) => {
                 id
