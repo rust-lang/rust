@@ -34,10 +34,9 @@ use session::Session;
 
 use middle::def;
 use middle::def_id::DefId;
-use middle::ty::{self, Ty};
+use middle::ty;
 
 use std::fs::File;
-use std::path::Path;
 
 use syntax::ast::{self, NodeId};
 use syntax::codemap::*;

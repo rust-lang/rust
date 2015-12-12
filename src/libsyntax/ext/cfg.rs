@@ -18,7 +18,6 @@ use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 use attr;
-use attr::*;
 use parse::token;
 use config::CfgDiagReal;
 

@@ -38,7 +38,7 @@ use rustc::middle::ty::{self, Ty};
 use std::fmt;
 use std::mem;
 use std::rc::Rc;
-use syntax::ast::{self, NodeId};
+use syntax::ast;
 use syntax::codemap::Span;
 
 use rustc_front::hir;

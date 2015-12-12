@@ -110,7 +110,6 @@ use util::common::time;
 use rustc_front::hir;
 
 use syntax::codemap::Span;
-use syntax::print::pprust::*;
 use syntax::{ast, abi};
 
 use std::cell::RefCell;

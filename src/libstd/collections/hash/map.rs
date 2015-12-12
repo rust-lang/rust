@@ -24,7 +24,6 @@ use mem::{self, replace};
 use ops::{Deref, FnMut, FnOnce, Index};
 use option::Option::{self, Some, None};
 use rand::{self, Rng};
-use result::Result;
 
 use super::table::{
     self,
