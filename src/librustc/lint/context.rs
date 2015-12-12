@@ -26,7 +26,7 @@
 use self::TargetLint::*;
 
 use middle::privacy::AccessLevels;
-use middle::ty::{self, Ty};
+use middle::ty;
 use session::{early_error, Session};
 use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass};
 use lint::{EarlyLintPass, EarlyLintPassObject, LateLintPass, LateLintPassObject};

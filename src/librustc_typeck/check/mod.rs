@@ -93,7 +93,7 @@ use middle::pat_util::{self, pat_id_map};
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace};
 use middle::traits::{self, report_fulfillment_errors};
-use middle::ty::{FnSig, GenericPredicates, TypeScheme};
+use middle::ty::{GenericPredicates, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use middle::ty::{self, HasTypeFlags, RegionEscape, ToPolyTraitRef, Ty};
@@ -127,7 +127,6 @@ use syntax::util::lev_distance::lev_distance;
 use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
 use rustc_front::hir::Visibility;
-use rustc_front::hir::{Item, ItemImpl};
 use rustc_front::print::pprust;
 use rustc_back::slice;
 

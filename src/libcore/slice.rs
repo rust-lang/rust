@@ -48,7 +48,6 @@ use result::Result;
 use result::Result::{Ok, Err};
 use ptr;
 use mem;
-use mem::size_of;
 use marker::{Send, Sync, self};
 use num::wrapping::OverflowingOps;
 use raw::Repr;

@@ -24,7 +24,7 @@ use config::CfgDiag;
 use diagnostic::SpanHandler;
 use feature_gate::{GatedCfg, GatedCfgAttr};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
-use parse::token::{InternedString, intern_and_get_ident};
+use parse::token::InternedString;
 use parse::token;
 use ptr::P;
 

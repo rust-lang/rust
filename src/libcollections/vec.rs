@@ -68,7 +68,7 @@ use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume, needs_drop};
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::{Index, IndexMut, Deref};
+use core::ops::{Index, IndexMut};
 use core::ops;
 use core::ptr;
 use core::slice;

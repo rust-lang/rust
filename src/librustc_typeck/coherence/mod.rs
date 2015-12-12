@@ -40,7 +40,6 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use util::nodemap::{DefIdMap, FnvHashMap};
 use rustc::front::map as hir_map;
-use rustc::front::map::NodeItem;
 use rustc_front::intravisit;
 use rustc_front::hir::{Item, ItemImpl,Crate};
 use rustc_front::hir;

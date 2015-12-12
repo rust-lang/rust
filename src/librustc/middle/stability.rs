@@ -29,7 +29,7 @@ use syntax::attr::{self, Stability, Deprecation, AttrMetaMethods};
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
 use rustc_front::hir;
-use rustc_front::hir::{Block, Crate, Item, Generics, StructField, Variant};
+use rustc_front::hir::{Crate, Item, Generics, StructField, Variant};
 use rustc_front::intravisit::{self, Visitor};
 
 use std::mem::replace;
