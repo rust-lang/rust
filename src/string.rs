@@ -30,11 +30,10 @@ pub struct StringFormat<'a> {
     pub config: &'a Config,
 }
 
-// TODO: simplify this!
+// FIXME: simplify this!
 pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> Option<String> {
-    // TODO if lo.col > IDEAL - 10, start a new line (need cur indent for that)
     // Strip line breaks.
-    let re = Regex::new(r"(\\[:space:]+)").unwrap();
+    let re = Regex::new(r"(\\[\n\r][:space:]*)").unwrap();
     let stripped_str = re.replace_all(s, "");
 
     let graphemes = UnicodeSegmentation::graphemes(&*stripped_str, false).collect::<Vec<&str>>();
@@ -87,7 +86,7 @@ pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> Option<String> {
         let line = if fmt.trim_end {
             raw_line.trim()
         } else {
-            // TODO: use as_str once it's stable.
+            // FIXME: use as_str once it's stable.
             &*raw_line
         };
 
