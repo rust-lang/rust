@@ -288,7 +288,7 @@ pub fn encode_normal<T: RawFloat>(x: Unpacked) -> T {
 /// Construct the subnormal. A mantissa of 0 is allowed and constructs zero.
 pub fn encode_subnormal<T: RawFloat>(significand: u64) -> T {
     assert!(significand < T::min_sig(), "encode_subnormal: not actually subnormal");
-    // Êncoded exponent is 0, the sign bit is 0, so we just have to reinterpret the bits.
+    // Encoded exponent is 0, the sign bit is 0, so we just have to reinterpret the bits.
     T::from_bits(significand)
 }
 
