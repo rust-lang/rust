@@ -110,6 +110,9 @@ pub use core::slice::{Iter, IterMut};
 pub use core::slice::{SplitMut, ChunksMut, Split};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
+#[unstable(feature = "slice_bytes", issue = "27740")]
+#[allow(deprecated)]
+pub use core::slice::bytes;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
 
