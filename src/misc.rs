@@ -318,6 +318,29 @@ impl LateLintPass for PatternPass {
     }
 }
 
+
+/// **What it does:** This lint checks for the use of bindings with a single leading underscore
+///
+/// **Why is this bad?** A single leading underscore is usually used to indicate that a binding
+/// will not be used. Using such a binding breaks this expectation.
+///
+/// **Known problems:** This lint's idea of a "used" variable is not quite the same as in the
+/// built-in `unused_variables` lint. For example, in the following code
+/// ```
+/// fn foo(_y: u32) -> u32) {
+///     let _x = 1;
+///     _x +=1;
+///     y
+/// }
+/// ```
+/// _x will trigger both the `unused_variables` lint and the `used_underscore_binding` lint.
+///
+/// **Example**:
+/// ```
+/// let _x = 0;
+/// let y = _x + 1; // Here we are using `_x`, even though it has a leading underscore.
+///                 // We should rename `_x` to `x`
+/// ```
 declare_lint!(pub USED_UNDERSCORE_BINDING, Warn,
               "using a binding which is prefixed with an underscore");
 
