@@ -14,6 +14,20 @@ use utils::span_lint;
 
 pub struct EscapePass;
 
+/// **What it does:** This lint checks for usage of `Box<T>` where an unboxed `T` would work fine
+///
+/// **Why is this bad?** This is an unnecessary allocation, and bad for performance
+///
+/// It is only necessary to allocate if you wish to move the box into something.
+///
+/// **Example:**
+///
+/// ```rust
+/// fn main() {
+///     let x = Box::new(1);
+///     foo(*x);
+///     println!("{}", *x);
+/// }
 declare_lint!(pub BOXED_LOCAL, Warn, "using Box<T> where unnecessary");
 
 struct EscapeDelegate<'a, 'tcx: 'a> {
