@@ -368,7 +368,11 @@ impl LateLintPass for UsedUnderscoreBinding {
                                                   _ => false
                                             }) //local variable
             },
-            ExprField(_, spanned) => spanned.node.as_str().chars().next() == Some('_'),
+            ExprField(_, spanned) => {
+                let name = spanned.node.as_str();
+                name.chars().next() == Some('_')
+                && name.chars().skip(1).next() != Some('_')
+            },
             _ => false
         };
         if needs_lint {
