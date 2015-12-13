@@ -334,19 +334,24 @@ impl LateLintPass for UsedUnderscoreBinding {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         let needs_lint = match expr.node {
             ExprPath(_, ref path) => {
-                path.segments.last().unwrap().identifier.name.as_str().chars().next() == Some('_') &&
-                (cx.tcx.def_map.borrow()).values().any(|res| match res.base_def {
+                let ident = path.segments.last()
+                                .expect("path should always have at least one segment")
+                                .identifier;
+                ident.name.as_str().chars().next() == Some('_') //starts with '_'
+                && ident.name.as_str().chars().skip(1).next() != Some('_') //doesn't start with "__"
+                && ident.name != ident.unhygienic_name //not in macro
+                && cx.tcx.def_map.borrow().values().any(|res| match res.base_def {
                                                   Def::DefLocal(_, _) => true,
                                                   _ => false
-                                            })
+                                            }) //local variable
             },
             ExprField(_, spanned) => spanned.node.as_str().chars().next() == Some('_'),
             _ => false
         };
         if needs_lint {
-            cx.span_lint(USED_UNDERSCORE_BINDING, expr.span, &format!(
-                "used binding which is prefixed with an underscore. A leading underscore signals\
-                 that a binding will not be used."));
+            cx.span_lint(USED_UNDERSCORE_BINDING, expr.span,
+                         "used binding which is prefixed with an underscore. A leading underscore\
+                          signals that a binding will not be used.");
         }
     }
 }
