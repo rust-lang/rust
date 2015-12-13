@@ -345,7 +345,7 @@ impl LateLintPass for UsedUnderscoreBinding {
         };
         if needs_lint {
             cx.span_lint(USED_UNDERSCORE_BINDING, expr.span, &format!(
-                "Used binding which is prefixed with an underscore. A leading underscore signals\
+                "used binding which is prefixed with an underscore. A leading underscore signals\
                  that a binding will not be used."));
         }
     }
