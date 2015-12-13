@@ -26,12 +26,17 @@ use Bound;
 
 /// A set based on a B-Tree.
 ///
-/// See BTreeMap's documentation for a detailed discussion of this collection's performance
+/// See [`BTreeMap`]'s documentation for a detailed discussion of this collection's performance
 /// benefits and drawbacks.
 ///
 /// It is a logic error for an item to be modified in such a way that the item's ordering relative
-/// to any other item, as determined by the `Ord` trait, changes while it is in the set. This is
-/// normally only possible through `Cell`, `RefCell`, global state, I/O, or unsafe code.
+/// to any other item, as determined by the [`Ord`] trait, changes while it is in the set. This is
+/// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
+///
+/// [`BTreeMap`]: ../struct.BTreeMap.html
+/// [`Ord`]: ../../core/cmp/trait.Ord.html
+/// [`Cell`]: ../../std/cell/struct.Cell.html
+/// [`RefCell`]: ../../std/cell/struct.RefCell.html
 #[derive(Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BTreeSet<T> {
