@@ -101,7 +101,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                 if !llvm::LLVMRustLinkInExternalBitcode(llmod,
                                                         ptr as *const libc::c_char,
                                                         bc_decoded.len() as libc::size_t) {
-                    write::llvm_err(sess.diagnostic().handler(),
+                    write::llvm_err(sess.diagnostic(),
                                     format!("failed to load bc of `{}`",
                                             &name[..]));
                 }

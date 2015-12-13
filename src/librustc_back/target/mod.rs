@@ -48,7 +48,7 @@
 use serialize::json::Json;
 use std::default::Default;
 use std::io::prelude::*;
-use syntax::{diagnostic, abi};
+use syntax::abi;
 
 mod android_base;
 mod apple_base;
@@ -263,17 +263,13 @@ impl Target {
     pub fn from_json(obj: Json) -> Target {
         // this is 1. ugly, 2. error prone.
 
-
-        let handler = diagnostic::Handler::new(diagnostic::Auto, None, true);
-
         let get_req_field = |name: &str| {
             match obj.find(name)
                      .map(|s| s.as_string())
                      .and_then(|os| os.map(|s| s.to_string())) {
                 Some(val) => val,
                 None => {
-                    panic!(handler.fatal(&format!("Field {} in target specification is required",
-                                                  name)))
+                    panic!("Field {} in target specification is required", name)
                 }
             }
         };

@@ -16,7 +16,8 @@ use util::nodemap::{NodeMap, FnvHashMap};
 
 use syntax::ast::{NodeId, NodeIdAssigner, Name};
 use syntax::codemap::Span;
-use syntax::diagnostic::{self, Emitter};
+use syntax::errors;
+use syntax::errors::emitter::{Emitter, BasicEmitter};
 use syntax::diagnostics;
 use syntax::feature_gate;
 use syntax::parse;
@@ -99,7 +100,7 @@ impl Session {
         if self.opts.treat_err_as_bug {
             self.bug(msg);
         }
-        panic!(self.diagnostic().handler().fatal(msg))
+        panic!(self.diagnostic().fatal(msg))
     }
     pub fn span_err_or_warn(&self, is_warning: bool, sp: Span, msg: &str) {
         if is_warning {
@@ -137,16 +138,16 @@ impl Session {
         if self.opts.treat_err_as_bug {
             self.bug(msg);
         }
-        self.diagnostic().handler().err(msg)
+        self.diagnostic().err(msg)
     }
     pub fn err_count(&self) -> usize {
-        self.diagnostic().handler().err_count()
+        self.diagnostic().err_count()
     }
     pub fn has_errors(&self) -> bool {
-        self.diagnostic().handler().has_errors()
+        self.diagnostic().has_errors()
     }
     pub fn abort_if_errors(&self) {
-        self.diagnostic().handler().abort_if_errors();
+        self.diagnostic().abort_if_errors();
 
         let delayed_bug = self.delayed_span_bug.borrow();
         match *delayed_bug {
@@ -177,7 +178,7 @@ impl Session {
     }
     pub fn warn(&self, msg: &str) {
         if self.can_print_warnings {
-            self.diagnostic().handler().warn(msg)
+            self.diagnostic().warn(msg)
         }
     }
     pub fn opt_span_warn(&self, opt_sp: Option<Span>, msg: &str) {
@@ -195,7 +196,7 @@ impl Session {
 
     /// Prints out a message with a suggested edit of the code.
     ///
-    /// See `diagnostic::RenderSpan::Suggestion` for more information.
+    /// See `errors::RenderSpan::Suggestion` for more information.
     pub fn span_suggestion(&self, sp: Span, msg: &str, suggestion: String) {
         self.diagnostic().span_suggestion(sp, msg, suggestion)
     }
@@ -209,10 +210,10 @@ impl Session {
         self.diagnostic().fileline_help(sp, msg)
     }
     pub fn note(&self, msg: &str) {
-        self.diagnostic().handler().note(msg)
+        self.diagnostic().note(msg)
     }
     pub fn help(&self, msg: &str) {
-        self.diagnostic().handler().help(msg)
+        self.diagnostic().help(msg)
     }
     pub fn opt_span_bug(&self, opt_sp: Option<Span>, msg: &str) -> ! {
         match opt_sp {
@@ -229,13 +230,13 @@ impl Session {
         self.diagnostic().span_bug(sp, msg)
     }
     pub fn bug(&self, msg: &str) -> ! {
-        self.diagnostic().handler().bug(msg)
+        self.diagnostic().bug(msg)
     }
     pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
         self.diagnostic().span_unimpl(sp, msg)
     }
     pub fn unimpl(&self, msg: &str) -> ! {
-        self.diagnostic().handler().unimpl(msg)
+        self.diagnostic().unimpl(msg)
     }
     pub fn add_lint(&self,
                     lint: &'static lint::Lint,
@@ -260,7 +261,7 @@ impl Session {
 
         id
     }
-    pub fn diagnostic<'a>(&'a self) -> &'a diagnostic::SpanHandler {
+    pub fn diagnostic<'a>(&'a self) -> &'a errors::Handler {
         &self.parse_sess.span_diagnostic
     }
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
@@ -414,29 +415,27 @@ pub fn build_session(sopts: config::Options,
         .last()
         .unwrap_or(true);
 
-    let codemap = codemap::CodeMap::new();
+    let codemap = Rc::new(codemap::CodeMap::new());
     let diagnostic_handler =
-        diagnostic::Handler::new(sopts.color, Some(registry), can_print_warnings);
-    let span_diagnostic_handler =
-        diagnostic::SpanHandler::new(diagnostic_handler, codemap);
+        errors::Handler::new(sopts.color, Some(registry), can_print_warnings, codemap.clone());
 
-    build_session_(sopts, local_crate_source_file, span_diagnostic_handler, cstore)
+    build_session_(sopts, local_crate_source_file, diagnostic_handler, codemap, cstore)
 }
 
 pub fn build_session_(sopts: config::Options,
                       local_crate_source_file: Option<PathBuf>,
-                      span_diagnostic: diagnostic::SpanHandler,
+                      span_diagnostic: errors::Handler,
+                      codemap: Rc<codemap::CodeMap>,
                       cstore: Rc<for<'a> CrateStore<'a>>)
                       -> Session {
     let host = match Target::search(config::host_triple()) {
         Ok(t) => t,
         Err(e) => {
-            panic!(span_diagnostic.handler()
-                                  .fatal(&format!("Error loading host specification: {}", e)));
+            panic!(span_diagnostic.fatal(&format!("Error loading host specification: {}", e)));
     }
     };
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
-    let p_s = parse::ParseSess::with_span_handler(span_diagnostic);
+    let p_s = parse::ParseSess::with_span_handler(span_diagnostic, codemap);
     let default_sysroot = match sopts.maybe_sysroot {
         Some(_) => None,
         None => Some(filesearch::get_or_default_sysroot())
@@ -494,16 +493,16 @@ pub fn build_session_(sopts: config::Options,
 pub fn expect<T, M>(sess: &Session, opt: Option<T>, msg: M) -> T where
     M: FnOnce() -> String,
 {
-    diagnostic::expect(sess.diagnostic(), opt, msg)
+    errors::expect(sess.diagnostic(), opt, msg)
 }
 
-pub fn early_error(color: diagnostic::ColorConfig, msg: &str) -> ! {
-    let mut emitter = diagnostic::EmitterWriter::stderr(color, None);
-    emitter.emit(None, msg, None, diagnostic::Fatal);
-    panic!(diagnostic::FatalError);
+pub fn early_error(color: errors::ColorConfig, msg: &str) -> ! {
+    let mut emitter = BasicEmitter::stderr(color);
+    emitter.emit(None, msg, None, errors::Level::Fatal);
+    panic!(errors::FatalError);
 }
 
-pub fn early_warn(color: diagnostic::ColorConfig, msg: &str) {
-    let mut emitter = diagnostic::EmitterWriter::stderr(color, None);
-    emitter.emit(None, msg, None, diagnostic::Warning);
+pub fn early_warn(color: errors::ColorConfig, msg: &str) {
+    let mut emitter = BasicEmitter::stderr(color);
+    emitter.emit(None, msg, None, errors::Level::Warning);
 }

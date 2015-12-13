@@ -22,7 +22,8 @@ use rustc_resolve as resolve;
 use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_metadata::cstore::CStore;
 
-use syntax::{ast, codemap, diagnostic};
+use syntax::{ast, codemap, errors};
+use syntax::errors::emitter::ColorConfig;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::parse::token;
 
@@ -116,15 +117,16 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
         ..config::basic_options().clone()
     };
 
-    let codemap = codemap::CodeMap::new();
-    let diagnostic_handler = diagnostic::Handler::new(diagnostic::Auto, None, true);
-    let span_diagnostic_handler =
-        diagnostic::SpanHandler::new(diagnostic_handler, codemap);
+    let codemap = Rc::new(codemap::CodeMap::new());
+    let diagnostic_handler = errors::Handler::new(ColorConfig::Auto,
+                                                  None,
+                                                  true,
+                                                  false,
+                                                  codemap.clone());
 
     let cstore = Rc::new(CStore::new(token::get_ident_interner()));
     let cstore_ = ::rustc_driver::cstore_to_cratestore(cstore.clone());
-    let sess = session::build_session_(sessopts, cpath,
-                                       span_diagnostic_handler, cstore_);
+    let sess = session::build_session_(sessopts, cpath, diagnostic_handler, codemap, cstore_);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess);
