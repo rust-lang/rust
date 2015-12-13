@@ -1,15 +1,15 @@
 [root]
 name = "rustfmt"
-version = "0.0.2"
+version = "0.1.0"
 dependencies = [
- "diff 0.1.7 (git+https://github.com/utkarshkukreti/diff.rs.git)",
+ "diff 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
- "strings 0.0.1 (git+https://github.com/nrc/strings.rs.git)",
- "syntex_syntax 0.23.0 (git+https://github.com/serde-rs/syntex)",
+ "strings 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syntex_syntax 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "term 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.1.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-segmentation 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -31,7 +31,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "diff"
 version = "0.1.7"
-source = "git+https://github.com/utkarshkukreti/diff.rs.git#05c701a379f7eaa9b386af79f0a17b87d814f9bd"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "env_logger"
@@ -100,7 +100,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "strings"
 version = "0.0.1"
-source = "git+https://github.com/nrc/strings.rs.git#d33d75a7c22522c76f2306b16b238e363de45af4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "log 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -108,7 +108,7 @@ dependencies = [
 [[package]]
 name = "syntex_syntax"
 version = "0.23.0"
-source = "git+https://github.com/serde-rs/syntex#f1e67d25ae320d6c7707bf0aef1ac072f63cf9c4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
