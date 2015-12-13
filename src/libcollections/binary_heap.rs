@@ -66,7 +66,7 @@
 //! // to each node. This implementation isn't memory-efficient as it may leave duplicate
 //! // nodes in the queue. It also uses `usize::MAX` as a sentinel value,
 //! // for a simpler implementation.
-//! fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> usize {
+//! fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Option<usize> {
 //!     // dist[node] = current shortest distance from `start` to `node`
 //!     let mut dist: Vec<_> = (0..adj_list.len()).map(|_| usize::MAX).collect();
 //!
@@ -79,7 +79,7 @@
 //!     // Examine the frontier with lower cost nodes first (min-heap)
 //!     while let Some(State { cost, position }) = heap.pop() {
 //!         // Alternatively we could have continued to find all shortest paths
-//!         if position == goal { return cost; }
+//!         if position == goal { return Some(cost); }
 //!
 //!         // Important as we may have already found a better way
 //!         if cost > dist[position] { continue; }
@@ -99,7 +99,7 @@
 //!     }
 //!
 //!     // Goal not reachable
-//!     usize::MAX
+//!     None
 //! }
 //!
 //! fn main() {
@@ -140,11 +140,11 @@
 //!         // Node 4
 //!         vec![]];
 //!
-//!     assert_eq!(shortest_path(&graph, 0, 1), 1);
-//!     assert_eq!(shortest_path(&graph, 0, 3), 3);
-//!     assert_eq!(shortest_path(&graph, 3, 0), 7);
-//!     assert_eq!(shortest_path(&graph, 0, 4), 5);
-//!     assert_eq!(shortest_path(&graph, 4, 0), usize::MAX);
+//!     assert_eq!(shortest_path(&graph, 0, 1), Some(1));
+//!     assert_eq!(shortest_path(&graph, 0, 3), Some(3));
+//!     assert_eq!(shortest_path(&graph, 3, 0), Some(7));
+//!     assert_eq!(shortest_path(&graph, 0, 4), Some(5));
+//!     assert_eq!(shortest_path(&graph, 4, 0), None);
 //! }
 //! ```
 
