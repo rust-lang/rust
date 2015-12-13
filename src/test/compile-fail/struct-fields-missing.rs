@@ -15,7 +15,7 @@ struct BuildData {
 }
 
 fn main() {
-    let foo = BuildData { //~ ERROR missing field: `bar`
+    let foo = BuildData { //~ ERROR missing field `bar` in initializer of `BuildData`
         foo: 0
     };
 }
