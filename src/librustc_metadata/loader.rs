@@ -226,7 +226,7 @@ use rustc_llvm as llvm;
 use rustc_llvm::{False, ObjectFile, mk_section_iter};
 use rustc_llvm::archive_ro::ArchiveRO;
 use syntax::codemap::Span;
-use syntax::diagnostic::SpanHandler;
+use syntax::errors::Handler;
 use rustc_back::target::Target;
 
 use std::cmp;
@@ -697,8 +697,8 @@ impl<'a> Context<'a> {
     }
 }
 
-pub fn note_crate_name(diag: &SpanHandler, name: &str) {
-    diag.handler().note(&format!("crate name: {}", name));
+pub fn note_crate_name(diag: &Handler, name: &str) {
+    diag.note(&format!("crate name: {}", name));
 }
 
 impl ArchiveMetadata {

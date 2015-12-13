@@ -11,7 +11,7 @@
 use std::slice;
 use std::path::{Path, PathBuf};
 use session::early_error;
-use syntax::diagnostic;
+use syntax::errors;
 
 #[derive(Clone, Debug)]
 pub struct SearchPaths {
@@ -38,7 +38,7 @@ impl SearchPaths {
         SearchPaths { paths: Vec::new() }
     }
 
-    pub fn add_path(&mut self, path: &str, color: diagnostic::ColorConfig) {
+    pub fn add_path(&mut self, path: &str, color: errors::ColorConfig) {
         let (kind, path) = if path.starts_with("native=") {
             (PathKind::Native, &path["native=".len()..])
         } else if path.starts_with("crate=") {

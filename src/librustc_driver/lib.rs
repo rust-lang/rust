@@ -59,8 +59,6 @@ extern crate log;
 extern crate syntax;
 extern crate syntax_ext;
 
-pub use syntax::diagnostic;
-
 use driver::CompileController;
 use pretty::{PpMode, UserIdentifiedItem};
 
@@ -91,7 +89,8 @@ use rustc::session::early_error;
 
 use syntax::ast;
 use syntax::parse;
-use syntax::diagnostic::Emitter;
+use syntax::errors;
+use syntax::errors::emitter::Emitter;
 use syntax::diagnostics;
 use syntax::parse::token;
 
@@ -239,7 +238,7 @@ pub trait CompilerCalls<'a> {
     fn early_callback(&mut self,
                       _: &getopts::Matches,
                       _: &diagnostics::registry::Registry,
-                      _: diagnostic::ColorConfig)
+                      _: errors::ColorConfig)
                       -> Compilation {
         Compilation::Continue
     }
@@ -315,7 +314,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn early_callback(&mut self,
                       matches: &getopts::Matches,
                       descriptions: &diagnostics::registry::Registry,
-                      color: diagnostic::ColorConfig)
+                      color: errors::ColorConfig)
                       -> Compilation {
         match matches.opt_str("explain") {
             Some(ref code) => {
@@ -774,7 +773,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
                             &opt.opt_group.short_name
                         };
                         if m.opt_present(opt_name) {
-                            early_error(diagnostic::Auto,
+                            early_error(errors::ColorConfig::Auto,
                                         &format!("use of unstable option '{}' requires -Z \
                                                   unstable-options",
                                                  opt_name));
@@ -783,7 +782,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
                 }
                 m
             }
-            Err(f) => early_error(diagnostic::Auto, &f.to_string()),
+            Err(f) => early_error(errors::ColorConfig::Auto, &f.to_string()),
         }
     }
 
@@ -895,25 +894,25 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
         }
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic
-            if !value.is::<diagnostic::FatalError>() {
-                let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
+            if !value.is::<errors::FatalError>() {
+                let mut emitter = errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
 
                 // a .span_bug or .bug call has already printed what
                 // it wants to print.
-                if !value.is::<diagnostic::ExplicitBug>() {
-                    emitter.emit(None, "unexpected panic", None, diagnostic::Bug);
+                if !value.is::<errors::ExplicitBug>() {
+                    emitter.emit(None, "unexpected panic", None, errors::Level::Bug);
                 }
 
                 let xs = ["the compiler unexpectedly panicked. this is a bug.".to_string(),
                           format!("we would appreciate a bug report: {}", BUG_REPORT_URL)];
                 for note in &xs {
-                    emitter.emit(None, &note[..], None, diagnostic::Note)
+                    emitter.emit(None, &note[..], None, errors::Level::Note)
                 }
                 if let None = env::var_os("RUST_BACKTRACE") {
                     emitter.emit(None,
                                  "run with `RUST_BACKTRACE=1` for a backtrace",
                                  None,
-                                 diagnostic::Note);
+                                 errors::Level::Note);
                 }
 
                 println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());

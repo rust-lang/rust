@@ -20,7 +20,7 @@ use attr;
 use owned_slice::OwnedSlice;
 use attr::{AttrMetaMethods, AttributeMethods};
 use codemap::{self, CodeMap, BytePos};
-use diagnostic;
+use errors;
 use parse::token::{self, BinOpToken, Token, InternedString};
 use parse::lexer::comments;
 use parse;
@@ -99,7 +99,7 @@ pub const DEFAULT_COLUMNS: usize = 78;
 /// it can scan the input text for comments and literals to
 /// copy forward.
 pub fn print_crate<'a>(cm: &'a CodeMap,
-                       span_diagnostic: &diagnostic::SpanHandler,
+                       span_diagnostic: &errors::Handler,
                        krate: &ast::Crate,
                        filename: String,
                        input: &mut Read,
@@ -139,7 +139,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
 
 impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a CodeMap,
-                          span_diagnostic: &diagnostic::SpanHandler,
+                          span_diagnostic: &errors::Handler,
                           filename: String,
                           input: &mut Read,
                           out: Box<Write+'a>,

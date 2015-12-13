@@ -52,7 +52,7 @@ extern crate serialize as rustc_serialize; // used by deriving
 macro_rules! panictry {
     ($e:expr) => ({
         use std::result::Result::{Ok, Err};
-        use diagnostic::FatalError;
+        use errors::FatalError;
         match $e {
             Ok(e) => e,
             Err(FatalError) => panic!(FatalError)
@@ -78,6 +78,8 @@ pub mod diagnostics {
     pub mod metadata;
 }
 
+pub mod errors;
+
 pub mod syntax {
     pub use ext;
     pub use parse;
@@ -90,7 +92,6 @@ pub mod ast_util;
 pub mod attr;
 pub mod codemap;
 pub mod config;
-pub mod diagnostic;
 pub mod entry;
 pub mod feature_gate;
 pub mod fold;

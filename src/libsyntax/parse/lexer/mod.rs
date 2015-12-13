@@ -11,8 +11,7 @@
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos, Span};
 use codemap;
-use diagnostic::FatalError;
-use diagnostic::SpanHandler;
+use errors::{FatalError, Handler};
 use ext::tt::transcribe::tt_next_token;
 use parse::token::str_to_ident;
 use parse::token;
@@ -58,7 +57,7 @@ pub struct TokenAndSpan {
 }
 
 pub struct StringReader<'a> {
-    pub span_diagnostic: &'a SpanHandler,
+    pub span_diagnostic: &'a Handler,
     /// The absolute offset within the codemap of the next character to read
     pub pos: BytePos,
     /// The absolute offset within the codemap of the last character read(curr)
@@ -128,10 +127,10 @@ impl<'a> Reader for TtReader<'a> {
 
 impl<'a> StringReader<'a> {
     /// For comments.rs, which hackily pokes into pos and curr
-    pub fn new_raw<'b>(span_diagnostic: &'b SpanHandler,
+    pub fn new_raw<'b>(span_diagnostic: &'b Handler,
                        filemap: Rc<codemap::FileMap>) -> StringReader<'b> {
         if filemap.src.is_none() {
-            span_diagnostic.handler.bug(&format!("Cannot lex filemap without source: {}",
+            span_diagnostic.bug(&format!("Cannot lex filemap without source: {}",
                                                  filemap.name)[..]);
         }
 
@@ -153,7 +152,7 @@ impl<'a> StringReader<'a> {
         sr
     }
 
-    pub fn new<'b>(span_diagnostic: &'b SpanHandler,
+    pub fn new<'b>(span_diagnostic: &'b Handler,
                    filemap: Rc<codemap::FileMap>) -> StringReader<'b> {
         let mut sr = StringReader::new_raw(span_diagnostic, filemap);
         sr.advance_token();
@@ -1428,15 +1427,15 @@ mod tests {
     use parse::token::{str_to_ident};
     use std::io;
 
-    fn mk_sh() -> diagnostic::SpanHandler {
+    fn mk_sh() -> diagnostic::Handler {
         // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         let emitter = diagnostic::EmitterWriter::new(Box::new(io::sink()), None);
         let handler = diagnostic::Handler::with_emitter(true, Box::new(emitter));
-        diagnostic::SpanHandler::new(handler, CodeMap::new())
+        diagnostic::Handler::new(handler, CodeMap::new())
     }
 
     // open a string reader for the given string
-    fn setup<'a>(span_handler: &'a diagnostic::SpanHandler,
+    fn setup<'a>(span_handler: &'a diagnostic::Handler,
                  teststr: String) -> StringReader<'a> {
         let fm = span_handler.cm.new_filemap("zebra.rs".to_string(), teststr);
         StringReader::new(span_handler, fm)
