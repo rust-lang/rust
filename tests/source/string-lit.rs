@@ -34,3 +34,8 @@ formatting"#;
 
     "stuffin'"
 }
+
+fn issue682() {
+    let a = "hello \\ o/";
+    let b = a.replace("\\ ", "\\");
+}
