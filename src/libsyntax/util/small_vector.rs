@@ -127,13 +127,6 @@ impl<T> SmallVector<T> {
         }
     }
 
-    /// Deprecated: use `into_iter`.
-    #[unstable(feature = "rustc_private", issue = "0")]
-    #[rustc_deprecated(since = "1.0.0", reason = "use into_iter")]
-    pub fn move_iter(self) -> IntoIter<T> {
-        self.into_iter()
-    }
-
     pub fn len(&self) -> usize {
         match self.repr {
             Zero => 0,
