@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-macos this needs valgrind 3.11 or higher; see
+// https://github.com/rust-lang/rust/pull/30365#issuecomment-165763679
+
 use std::env;
 use std::process::{exit, Command};
 
