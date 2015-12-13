@@ -644,7 +644,7 @@ macro_rules! int_impl {
             self.overflowing_shl(rhs).0
         }
 
-        /// Panic-free bitwise shift-left; yields `self >> mask(rhs)`,
+        /// Panic-free bitwise shift-right; yields `self >> mask(rhs)`,
         /// where `mask` removes any high-order bits of `rhs` that
         /// would cause the shift to exceed the bitwidth of the type.
         ///
@@ -1446,7 +1446,7 @@ macro_rules! uint_impl {
             self.overflowing_shl(rhs).0
         }
 
-        /// Panic-free bitwise shift-left; yields `self >> mask(rhs)`,
+        /// Panic-free bitwise shift-right; yields `self >> mask(rhs)`,
         /// where `mask` removes any high-order bits of `rhs` that
         /// would cause the shift to exceed the bitwidth of the type.
         ///
