@@ -17,10 +17,6 @@ mod foo {
 
 mod bar {
     use foo::bar::f as g; //~ ERROR unresolved import
-
-    use foo as f;
-    pub use foo::*;
 }
 
-use bar::f::f; //~ ERROR unresolved import
 fn main() {}
