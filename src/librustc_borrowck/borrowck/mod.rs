@@ -991,7 +991,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                              &format!("to force the closure to take ownership of {} \
                                        (and any other referenced variables), \
                                        use the `move` keyword, as shown:",
-                                      cmt_path_or_string),
+                                       cmt_path_or_string),
                              suggestion)
             .emit();
     }

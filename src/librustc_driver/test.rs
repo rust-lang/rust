@@ -32,7 +32,7 @@ use rustc::front::map as hir_map;
 use rustc::session::{self, config};
 use std::rc::Rc;
 use syntax::{abi, ast};
-use syntax::codemap::{Span, CodeMap, DUMMY_SP};
+use syntax::codemap::{MultiSpan, CodeMap, DUMMY_SP};
 use syntax::errors;
 use syntax::errors::emitter::Emitter;
 use syntax::errors::{Level, RenderSpan};
@@ -78,14 +78,14 @@ fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
 
 impl Emitter for ExpectErrorEmitter {
     fn emit(&mut self,
-            _sp: Option<Span>,
+            _sp: Option<&MultiSpan>,
             msg: &str,
             _: Option<&str>,
             lvl: Level) {
         remove_message(self, msg, lvl);
     }
 
-    fn custom_emit(&mut self, _sp: RenderSpan, msg: &str, lvl: Level) {
+    fn custom_emit(&mut self, _sp: &RenderSpan, msg: &str, lvl: Level) {
         remove_message(self, msg, lvl);
     }
 }

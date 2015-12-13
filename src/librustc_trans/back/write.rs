@@ -109,7 +109,7 @@ impl SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit(&mut self, sp: Option<codemap::Span>,
+    fn emit(&mut self, sp: Option<&codemap::MultiSpan>,
             msg: &str, code: Option<&str>, lvl: Level) {
         assert!(sp.is_none(), "SharedEmitter doesn't support spans");
 
@@ -120,7 +120,7 @@ impl Emitter for SharedEmitter {
         });
     }
 
-    fn custom_emit(&mut self, _sp: errors::RenderSpan, _msg: &str, _lvl: Level) {
+    fn custom_emit(&mut self, _sp: &errors::RenderSpan, _msg: &str, _lvl: Level) {
         panic!("SharedEmitter doesn't support custom_emit");
     }
 }
