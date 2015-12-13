@@ -64,14 +64,18 @@ define DEF_GOOD_VALGRIND
   ifeq ($(OSTYPE_$(1)),unknown-linux-gnu)
     GOOD_VALGRIND_$(1) = 1
   endif
-  ifneq (,$(filter $(OSTYPE_$(1)),darwin freebsd))
-    ifeq (HOST_$(1),x86_64)
+  ifneq (,$(filter $(OSTYPE_$(1)),apple-darwin freebsd))
+    ifeq ($(HOST_$(1)),x86_64)
       GOOD_VALGRIND_$(1) = 1
     endif
   endif
+  ifdef GOOD_VALGRIND_$(t)
+    $$(info cfg: have good valgrind for $(t))
+  else
+    $$(info cfg: no good valgrind for $(t))
+  endif
 endef
 $(foreach t,$(CFG_TARGET),$(eval $(call DEF_GOOD_VALGRIND,$(t))))
-$(foreach t,$(CFG_TARGET),$(info cfg: good valgrind for $(t) is $(GOOD_VALGRIND_$(t))))
 
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   ifdef CFG_PERF
