@@ -26,7 +26,7 @@ pub struct TypePass;
 /// **Example:** `struct X { values: Box<Vec<Foo>> }`
 declare_lint!(pub BOX_VEC, Warn,
               "usage of `Box<Vec<T>>`, vector elements are already on the heap");
-/// **What it does:** This lint checks for usage of any `LinkedList`, suggesting to use a `Vec` or `RingBuf`.
+/// **What it does:** This lint checks for usage of any `LinkedList`, suggesting to use a `Vec` or a `VecDeque` (formerly called `RingBuf`).
 ///
 /// **Why is this bad?** Gankro says:
 ///
