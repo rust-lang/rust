@@ -22,6 +22,27 @@ multirust run nightly cargo install --git https://github.com/rust-lang-nursery/r
 ```
 
 
+## Running
+
+You can run Rustfmt by just typing `rustfmt filename` if you used `Cargo
+install`. This runs rustfmt on the given file, if the file includes out of line
+modules, then we reformat those too. So to run on a whole module or crate, you
+just need to run on the root file (usually mod.rs or lib.rs). Rustfmt can also
+read data from stdin.
+
+You'll probably want to specify the write mode. Currently, there are modes for
+replace, overwrite, display, and coverage. The replace mode is the default
+and overwrites the original files after renaming them. In overwrite mode,
+rustfmt does not backup the source files. To print the output to stdout, use the
+display mode. The write mode can be set by passing the `--write-mode` flag on
+the command line.
+
+`rustfmt filename --write-mode=display` prints the output of rustfmt to the
+screen, for example.
+
+You can run `rustfmt --help` for more information.
+
+
 ## Running Rustfmt from your editor
 
 * [Vim](http://johannh.me/blog/rustfmt-vim.html)
@@ -38,19 +59,8 @@ First make sure you've got Rust **1.4.0** or greater available, then:
 
 `cargo test` to run all tests.
 
-`cargo run -- filename` to run on a file, if the file includes out of line
-modules, then we reformat those too. So to run on a whole module or crate, you
-just need to run on the top file.
-
-You'll probably want to specify the write mode. Currently, there are the
-replace, overwrite, display and coverage modes. The replace mode is the default
-and overwrites the original files after renaming them. In overwrite mode,
-rustfmt does not backup the source files. To print the output to stdout, use the
-display mode. The write mode can be set by passing the `--write-mode` flag on
-the command line.
-
-`cargo run -- filename --write-mode=display` prints the output of rustfmt to the
-screen, for example.
+To run rustfmt after this, use `cargo run -- filename`. See the notes above on
+running rustfmt.
 
 
 ## What style does Rustfmt use?
