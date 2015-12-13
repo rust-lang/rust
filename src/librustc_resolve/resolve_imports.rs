@@ -871,6 +871,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                             is_public: is_public
                         };
                     }
+                } else {
+                    // FIXME #30159: This is required for backwards compatability.
+                    dest_import_resolution[namespace].is_public |= is_public;
                 }
             };
             merge_child_item(ValueNS);
