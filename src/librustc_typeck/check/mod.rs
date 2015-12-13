@@ -3156,12 +3156,13 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             !remaining_fields.is_empty()
         {
             span_err!(tcx.sess, span, E0063,
-                      "missing field{}: {}",
+                      "missing field{} {} in initializer of `{}`",
                       if remaining_fields.len() == 1 {""} else {"s"},
                       remaining_fields.keys()
                                       .map(|n| format!("`{}`", n))
                                       .collect::<Vec<_>>()
-                                      .join(", "));
+                                      .join(", "),
+                      adt_ty);
         }
 
     }
