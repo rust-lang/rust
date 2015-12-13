@@ -1072,8 +1072,8 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
                 Ok(s) => {
                     err.span_suggestion(t_span,
-                                                          "try casting to a `Box` instead:",
-                                                           format!("Box<{}>", s));
+                                        "try casting to a `Box` instead:",
+                                        format!("Box<{}>", s));
                 },
                 Err(_) =>
                     span_help!(err, t_span, "did you mean `Box<{}>`?", tstr),
