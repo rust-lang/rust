@@ -1012,11 +1012,6 @@ impl NameBinding {
         self.defined_with(DefModifiers::PUBLIC)
     }
 
-    fn is_reexportable(&self) -> bool {
-        self.defined_with(DefModifiers::PUBLIC) &&
-        !self.defined_with(DefModifiers::PRIVATE_VARIANT)
-    }
-
     fn def_and_lp(&self) -> (Def, LastPrivate) {
         let def = self.def().unwrap();
         (def, LastMod(if self.is_public() { AllPublic } else { DependsOn(def.def_id()) }))

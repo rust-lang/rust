@@ -8,8 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use E::V; //~ERROR `V` is private, and cannot be reexported
+#![feature(rustc_attrs)]
+#![allow(dead_code)]
+
+mod m1 {
+    pub use ::E::V; //~ WARN variant `V` is private, and cannot be reexported
+}
+
+mod m2 {
+    pub use ::E::{V}; //~ WARN variant `V` is private, and cannot be reexported
+}
+
+mod m3 {
+    pub use ::E::V::{self}; //~ WARN variant `V` is private, and cannot be reexported
+}
+
+mod m4 {
+    pub use ::E::*; //~ WARN variant `V` is private, and cannot be reexported
+}
 
 enum E { V }
 
-fn main() {}
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful

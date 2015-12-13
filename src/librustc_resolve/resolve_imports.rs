@@ -25,6 +25,7 @@ use {resolve_error, ResolutionError};
 
 use build_reduced_graph;
 
+use rustc::lint;
 use rustc::middle::def::*;
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::*;
@@ -443,7 +444,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     debug!("(resolving single import) found value binding");
                     value_result = BoundResult(target_module.clone(),
                                                child_name_bindings.value_ns.clone());
-                    if directive.is_public && !child_name_bindings.value_ns.is_reexportable() {
+                    if directive.is_public && !child_name_bindings.value_ns.is_public() {
                         let msg = format!("`{}` is private, and cannot be reexported", source);
                         let note_msg = format!("Consider marking `{}` as `pub` in the imported \
                                                 module",
@@ -452,18 +453,39 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         self.resolver.session.span_note(directive.span, &note_msg);
                         pub_err = true;
                     }
+                    if directive.is_public && child_name_bindings.value_ns.
+                                              defined_with(DefModifiers::PRIVATE_VARIANT) {
+                        let msg = format!("variant `{}` is private, and cannot be reexported ( \
+                                           error E0364), consider declaring its enum as `pub`",
+                                           source);
+                        self.resolver.session.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
+                                                       directive.id,
+                                                       directive.span,
+                                                       msg);
+                        pub_err = true;
+                    }
                 }
                 if child_name_bindings.type_ns.defined() {
                     debug!("(resolving single import) found type binding");
                     type_result = BoundResult(target_module.clone(),
                                               child_name_bindings.type_ns.clone());
                     if !pub_err && directive.is_public &&
-                       !child_name_bindings.type_ns.is_reexportable() {
+                       !child_name_bindings.type_ns.is_public() {
                         let msg = format!("`{}` is private, and cannot be reexported", source);
                         let note_msg = format!("Consider declaring module `{}` as a `pub mod`",
                                                source);
                         span_err!(self.resolver.session, directive.span, E0365, "{}", &msg);
                         self.resolver.session.span_note(directive.span, &note_msg);
+                    }
+                    if !pub_err && directive.is_public && child_name_bindings.type_ns.
+                                                    defined_with(DefModifiers::PRIVATE_VARIANT) {
+                        let msg = format!("variant `{}` is private, and cannot be reexported ( \
+                                           error E0365), consider declaring its enum as `pub`",
+                                           source);
+                        self.resolver.session.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
+                                                       directive.id,
+                                                       directive.span,
+                                                       msg);
                     }
                 }
             }
@@ -842,10 +864,22 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                module_to_string(module_));
 
         // Merge the child item into the import resolution.
+        // pub_err makes sure we don't give the same error twice.
+        let mut pub_err = false;
         {
             let mut merge_child_item = |namespace| {
-                let modifier = DefModifiers::IMPORTABLE | DefModifiers::PUBLIC;
+                if !pub_err && is_public &&
+                        name_bindings[namespace].defined_with(DefModifiers::PRIVATE_VARIANT) {
+                    let msg = format!("variant `{}` is private, and cannot be reexported (error \
+                                       E0364), consider declaring its enum as `pub`", name);
+                    self.resolver.session.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
+                                                   import_directive.id,
+                                                   import_directive.span,
+                                                   msg);
+                    pub_err = true;
+                }
 
+                let modifier = DefModifiers::IMPORTABLE | DefModifiers::PUBLIC;
                 if name_bindings[namespace].defined_with(modifier) {
                     let namespace_name = match namespace {
                         TypeNS => "type",
