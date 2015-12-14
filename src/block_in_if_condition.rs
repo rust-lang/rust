@@ -3,11 +3,25 @@ use rustc::lint::{LateLintPass, LateContext, LintArray, LintPass};
 use rustc_front::intravisit::{Visitor, walk_expr};
 use utils::*;
 
+/// **What it does:** This lint checks for `if` conditions that use blocks to contain an expression.
+///
+/// **Why is this bad?** It isn't really rust style, same as using parentheses to contain expressions.
+///
+/// **Known problems:** None
+///
+/// **Example:** `if { true } ..`
 declare_lint! {
     pub BLOCK_IN_IF_CONDITION_EXPR, Warn,
     "braces can be eliminated in conditions that are expressions, e.g `if { true } ...`"
 }
 
+/// **What it does:** This lint checks for `if` conditions that use blocks containing statements, or conditions that use closures with blocks.
+///
+/// **Why is this bad?** Using blocks in the condition makes it hard to read.
+///
+/// **Known problems:** None
+///
+/// **Example:** `if { let x = somefunc(); x } ..` or `if somefunc(|x| { x == 47 }) ..`
 declare_lint! {
     pub BLOCK_IN_IF_CONDITION_STMT, Warn,
     "avoid complex blocks in conditions, instead move the block higher and bind it \
