@@ -64,13 +64,9 @@ pub struct Session {
     pub crate_metadata: RefCell<Vec<String>>,
     pub features: RefCell<feature_gate::Features>,
 
-    pub delayed_span_bug: RefCell<Option<(codemap::Span, String)>>,
-
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
     pub recursion_limit: Cell<usize>,
-
-    pub can_print_warnings: bool,
 
     /// The metadata::creader module may inject an allocator dependency if it
     /// didn't already find one, and this tracks what was injected.
@@ -85,21 +81,12 @@ pub struct Session {
 
 impl Session {
     pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
-        if self.opts.treat_err_as_bug {
-            self.span_bug(sp, msg);
-        }
         panic!(self.diagnostic().span_fatal(sp, msg))
     }
     pub fn span_fatal_with_code(&self, sp: Span, msg: &str, code: &str) -> ! {
-        if self.opts.treat_err_as_bug {
-            self.span_bug(sp, msg);
-        }
         panic!(self.diagnostic().span_fatal_with_code(sp, msg, code))
     }
     pub fn fatal(&self, msg: &str) -> ! {
-        if self.opts.treat_err_as_bug {
-            self.bug(msg);
-        }
         panic!(self.diagnostic().fatal(msg))
     }
     pub fn span_err_or_warn(&self, is_warning: bool, sp: Span, msg: &str) {
@@ -110,9 +97,6 @@ impl Session {
         }
     }
     pub fn span_err(&self, sp: Span, msg: &str) {
-        if self.opts.treat_err_as_bug {
-            self.span_bug(sp, msg);
-        }
         match split_msg_into_multilines(msg) {
             Some(msg) => self.diagnostic().span_err(sp, &msg[..]),
             None => self.diagnostic().span_err(sp, msg)
@@ -126,18 +110,12 @@ impl Session {
                       See RFC 1214 for details."));
     }
     pub fn span_err_with_code(&self, sp: Span, msg: &str, code: &str) {
-        if self.opts.treat_err_as_bug {
-            self.span_bug(sp, msg);
-        }
         match split_msg_into_multilines(msg) {
             Some(msg) => self.diagnostic().span_err_with_code(sp, &msg[..], code),
             None => self.diagnostic().span_err_with_code(sp, msg, code)
         }
     }
     pub fn err(&self, msg: &str) {
-        if self.opts.treat_err_as_bug {
-            self.bug(msg);
-        }
         self.diagnostic().err(msg)
     }
     pub fn err_count(&self) -> usize {
@@ -148,14 +126,6 @@ impl Session {
     }
     pub fn abort_if_errors(&self) {
         self.diagnostic().abort_if_errors();
-
-        let delayed_bug = self.delayed_span_bug.borrow();
-        match *delayed_bug {
-            Some((span, ref errmsg)) => {
-                self.diagnostic().span_bug(span, errmsg);
-            },
-            _ => {}
-        }
     }
     pub fn abort_if_new_errors<F>(&self, mut f: F)
         where F: FnMut()
@@ -167,19 +137,13 @@ impl Session {
         }
     }
     pub fn span_warn(&self, sp: Span, msg: &str) {
-        if self.can_print_warnings {
-            self.diagnostic().span_warn(sp, msg)
-        }
+        self.diagnostic().span_warn(sp, msg)
     }
     pub fn span_warn_with_code(&self, sp: Span, msg: &str, code: &str) {
-        if self.can_print_warnings {
-            self.diagnostic().span_warn_with_code(sp, msg, code)
-        }
+        self.diagnostic().span_warn_with_code(sp, msg, code)
     }
     pub fn warn(&self, msg: &str) {
-        if self.can_print_warnings {
-            self.diagnostic().warn(msg)
-        }
+        self.diagnostic().warn(msg)
     }
     pub fn opt_span_warn(&self, opt_sp: Option<Span>, msg: &str) {
         match opt_sp {
@@ -223,8 +187,7 @@ impl Session {
     }
     /// Delay a span_bug() call until abort_if_errors()
     pub fn delay_span_bug(&self, sp: Span, msg: &str) {
-        let mut delayed = self.delayed_span_bug.borrow_mut();
-        *delayed = Some((sp, msg.to_string()));
+        self.diagnostic().delay_span_bug(sp, msg)
     }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.diagnostic().span_bug(sp, msg)
@@ -270,8 +233,7 @@ impl Session {
     // This exists to help with refactoring to eliminate impossible
     // cases later on
     pub fn impossible_case(&self, sp: Span, msg: &str) -> ! {
-        self.span_bug(sp,
-                      &format!("impossible case reached: {}", msg));
+        self.span_bug(sp, &format!("impossible case reached: {}", msg));
     }
     pub fn verbose(&self) -> bool { self.opts.debugging_opts.verbose }
     pub fn time_passes(&self) -> bool { self.opts.debugging_opts.time_passes }
@@ -414,10 +376,15 @@ pub fn build_session(sopts: config::Options,
         .map(|&(_, ref level)| *level != lint::Allow)
         .last()
         .unwrap_or(true);
+    let treat_err_as_bug = sopts.treat_err_as_bug;
 
     let codemap = Rc::new(codemap::CodeMap::new());
     let diagnostic_handler =
-        errors::Handler::new(sopts.color, Some(registry), can_print_warnings, codemap.clone());
+        errors::Handler::new(sopts.color,
+                             Some(registry),
+                             can_print_warnings,
+                             treat_err_as_bug,
+                             codemap.clone());
 
     build_session_(sopts, local_crate_source_file, diagnostic_handler, codemap, cstore)
 }
@@ -450,13 +417,6 @@ pub fn build_session_(sopts: config::Options,
         }
     );
 
-    let can_print_warnings = sopts.lint_opts
-        .iter()
-        .filter(|&&(ref key, _)| *key == "warnings")
-        .map(|&(_, ref level)| *level != lint::Allow)
-        .last()
-        .unwrap_or(true);
-
     let sess = Session {
         target: target_cfg,
         host: host,
@@ -477,23 +437,14 @@ pub fn build_session_(sopts: config::Options,
         crate_types: RefCell::new(Vec::new()),
         dependency_formats: RefCell::new(FnvHashMap()),
         crate_metadata: RefCell::new(Vec::new()),
-        delayed_span_bug: RefCell::new(None),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
-        can_print_warnings: can_print_warnings,
         next_node_id: Cell::new(1),
         injected_allocator: Cell::new(None),
         available_macros: RefCell::new(HashSet::new()),
     };
 
     sess
-}
-
-// Seems out of place, but it uses session, so I'm putting it here
-pub fn expect<T, M>(sess: &Session, opt: Option<T>, msg: M) -> T where
-    M: FnOnce() -> String,
-{
-    errors::expect(sess.diagnostic(), opt, msg)
 }
 
 pub fn early_error(color: errors::ColorConfig, msg: &str) -> ! {
