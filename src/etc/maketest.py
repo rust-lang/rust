@@ -53,6 +53,8 @@ putenv('HOST_RPATH_DIR', os.path.abspath(sys.argv[10]))
 putenv('TARGET_RPATH_DIR', os.path.abspath(sys.argv[11]))
 putenv('RUST_BUILD_STAGE', sys.argv[12])
 putenv('S', os.path.abspath(sys.argv[13]))
+putenv('RUSTFLAGS', sys.argv[15])
+putenv('LLVM_COMPONENTS', sys.argv[16])
 putenv('PYTHON', sys.executable)
 os.putenv('TARGET', target_triple)
 

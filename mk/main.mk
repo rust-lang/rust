@@ -276,8 +276,17 @@ endif
 # LLVM macros
 ######################################################################
 
-LLVM_COMPONENTS=x86 arm aarch64 mips powerpc ipo bitreader bitwriter linker asmparser mcjit \
+LLVM_OPTIONAL_COMPONENTS=x86 arm aarch64 mips powerpc
+LLVM_REQUIRED_COMPONENTS=ipo bitreader bitwriter linker asmparser mcjit \
                 interpreter instrumentation
+
+ifneq ($(CFG_LLVM_ROOT),)
+# Ensure we only try to link targets that the installed LLVM actually has:
+LLVM_COMPONENTS := $(filter $(shell $(CFG_LLVM_ROOT)/bin/llvm-config$(X_$(CFG_BUILD)) --components),\
+			$(LLVM_OPTIONAL_COMPONENTS)) $(LLVM_REQUIRED_COMPONENTS)
+else
+LLVM_COMPONENTS := $(LLVM_OPTIONAL_COMPONENTS) $(LLVM_REQUIRED_COMPONENTS)
+endif
 
 # Only build these LLVM tools
 LLVM_TOOLS=bugpoint llc llvm-ar llvm-as llvm-dis llvm-mc opt llvm-extract
@@ -313,6 +322,8 @@ LLVM_HOST_TRIPLE_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --host-target)
 
 LLVM_AS_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-as$$(X_$(1))
 LLC_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/llc$$(X_$(1))
+
+LLVM_ALL_COMPONENTS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --components)
 
 endef
 
@@ -476,7 +487,7 @@ endif
 endif
 
 LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3) := \
-    $$(CURDIR)/$$(HLIB$(1)_H_$(3))
+    $$(CURDIR)/$$(HLIB$(1)_H_$(3)):$$(CFG_LLVM_INST_DIR_$(3))/lib
 LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3) := \
     $$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))
 
