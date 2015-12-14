@@ -147,14 +147,8 @@ impl LateLintPass for LoopsPass {
 
             // extract the expression from the first statement (if any) in a block
             let inner_stmt_expr = extract_expr_from_first_stmt(block);
-            // extract the first expression (if any) from the block
-            let inner_expr = extract_first_expr(block);
-            let (extracted, collect_expr) = match inner_stmt_expr {
-                Some(_) => (inner_stmt_expr, true),     // check if an expression exists in the first statement
-                None => (inner_expr, false),    // if not, let's go for the first expression in the block
-            };
-
-            if let Some(inner) = extracted {
+            // or extract the first expression (if any) from the block
+            if let Some(inner) = inner_stmt_expr.or_else(|| extract_first_expr(block)) {
                 if let ExprMatch(ref matchexpr, ref arms, ref source) = inner.node {
                     // collect the remaining statements below the match
                     let mut other_stuff = block.stmts
@@ -163,10 +157,11 @@ impl LateLintPass for LoopsPass {
                                   .map(|stmt| {
                                       format!("{}", snippet(cx, stmt.span, ".."))
                                   }).collect::<Vec<String>>();
-                    if collect_expr {           // if we have a statement which has a match,
-                        match block.expr {      // then collect the expression (without semicolon) below it
-                            Some(ref expr) => other_stuff.push(format!("{}", snippet(cx, expr.span, ".."))),
-                            None => (),
+                    if inner_stmt_expr.is_some() {
+                        // if we have a statement which has a match,
+                        if let Some(ref expr) = block.expr {
+                            // then collect the expression (without semicolon) below it
+                            other_stuff.push(format!("{}", snippet(cx, expr.span, "..")));
                         }
                     }
 
@@ -180,12 +175,12 @@ impl LateLintPass for LoopsPass {
                             is_break_expr(&arms[1].body)
                         {
                             if in_external_macro(cx, expr.span) { return; }
-                            let loop_body = match inner_stmt_expr {
+                            let loop_body = if inner_stmt_expr.is_some() {
                                 // FIXME: should probably be an ellipsis
                                 // tabbing and newline is probably a bad idea, especially for large blocks
-                                Some(_) => Cow::Owned(format!("{{\n    {}\n}}", other_stuff.join("\n    "))),
-                                None => expr_block(cx, &arms[0].body,
-                                                   Some(other_stuff.join("\n    ")), ".."),
+                                Cow::Owned(format!("{{\n    {}\n}}", other_stuff.join("\n    ")))
+                            } else {
+                                expr_block(cx, &arms[0].body, Some(other_stuff.join("\n    ")), "..")
                             };
                             span_help_and_lint(cx, WHILE_LET_LOOP, expr.span,
                                                "this loop could be written as a `while let` loop",

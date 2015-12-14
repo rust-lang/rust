@@ -102,13 +102,11 @@ impl LateLintPass for MatchPass {
                 if arms.len() == 2 && arms[0].pats.len() == 1 { // no guards
                     let exprs = if let PatLit(ref arm_bool) = arms[0].pats[0].node {
                         if let ExprLit(ref lit) = arm_bool.node {
-                            if let LitBool(val) = lit.node {
-                                if val {
-                                    Some((&*arms[0].body, &*arms[1].body))
-                                } else {
-                                    Some((&*arms[1].body, &*arms[0].body))
-                                }
-                            } else { None }
+                            match lit.node {
+                                LitBool(true) => Some((&*arms[0].body, &*arms[1].body)),
+                                LitBool(false) => Some((&*arms[1].body, &*arms[0].body)),
+                                _ => None,
+                            }
                         } else { None }
                     } else { None };
                     if let Some((ref true_expr, ref false_expr)) = exprs {
