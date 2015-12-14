@@ -218,14 +218,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         .collect();
                 let success = this.cfg.start_new_block();
                 let panic = this.diverge_cleanup();
+                let targets = CallTargets::WithCleanup((success, panic));
                 this.cfg.terminate(block,
                                    Terminator::Call {
-                                       data: CallData {
-                                           destination: destination.clone(),
-                                           func: fun,
-                                           args: args,
-                                       },
-                                       targets: (success, panic),
+                                       func: fun,
+                                       args: args,
+                                       destination: destination.clone(),
+                                       targets: targets
                                    });
                 success.unit()
             }

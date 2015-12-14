@@ -90,23 +90,18 @@ impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
             Terminator::Switch { ref mut discr, .. } => {
                 self.erase_regions_lvalue(discr);
             }
-            Terminator::SwitchInt {
-                ref mut discr,
-                ref mut switch_ty,
-                ..
-            } => {
+            Terminator::SwitchInt { ref mut discr, ref mut switch_ty, .. } => {
                 self.erase_regions_lvalue(discr);
                 *switch_ty = self.tcx.erase_regions(switch_ty);
             },
-            Terminator::Call {
-                data: CallData {
-                    ref mut destination,
-                    ref mut func,
-                    ref mut args
-                },
-                ..
-            } => {
+            Terminator::Call { ref mut destination, ref mut func, ref mut args, .. } => {
                 self.erase_regions_lvalue(destination);
+                self.erase_regions_operand(func);
+                for arg in &mut *args {
+                    self.erase_regions_operand(arg);
+                }
+            }
+            Terminator::DivergingCall { ref mut func, ref mut args, .. } => {
                 self.erase_regions_operand(func);
                 for arg in &mut *args {
                     self.erase_regions_operand(arg);
