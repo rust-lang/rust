@@ -939,6 +939,13 @@ then
     putvar CFG_ENABLE_CLANG
 fi
 
+if [ -z "$CFG_DISABLE_LIBCPP" -a -n "$CFG_ENABLE_CLANG" ]
+then
+    CFG_USING_LIBCPP="1"
+else
+    CFG_USING_LIBCPP="0"
+fi
+
 # Same with jemalloc.  save the setting here.
 if [ -n "$CFG_DISABLE_JEMALLOC" ]
 then
@@ -1682,7 +1689,7 @@ do
         CXXFLAGS="$CXXFLAGS $LLVM_CXXFLAGS"
         LDFLAGS="$LDFLAGS $LLVM_LDFLAGS"
 
-        if [ -z "$CFG_DISABLE_LIBCPP" ] && [ -n "$CFG_USING_CLANG" ]; then
+        if [ "$CFG_USING_LIBCPP" != "0" ]; then
             LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
         fi
 
@@ -1743,6 +1750,7 @@ putvar CFG_AARCH64_LINUX_ANDROID_NDK
 putvar CFG_ARM_LINUX_ANDROIDEABI_NDK
 putvar CFG_I686_LINUX_ANDROID_NDK
 putvar CFG_MANDIR
+putvar CFG_USING_LIBCPP
 
 # Avoid spurious warnings from clang by feeding it original source on
 # ccache-miss rather than preprocessed input.
