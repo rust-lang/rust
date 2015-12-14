@@ -6,6 +6,13 @@ use syntax::ast::*;
 
 use utils::span_lint;
 
+/// **What it does:** This lint `Warn`s on struct field patterns bound to wildcards.
+///
+/// **Why is this bad?** Using `..` instead is shorter and leaves the focus on the fields that are actually bound.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `let { a: _, b: ref b, c: _ } = ..`
 declare_lint!(pub UNNEEDED_FIELD_PATTERN, Warn,
               "Struct fields are bound to a wildcard instead of using `..`");
 

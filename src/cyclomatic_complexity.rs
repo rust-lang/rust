@@ -11,6 +11,13 @@ use rustc_front::intravisit::{Visitor, walk_expr};
 
 use utils::{in_macro, LimitStack};
 
+/// **What it does:** It `Warn`s on methods with high cyclomatic complexity
+///
+/// **Why is this bad?** Methods of high cyclomatic complexity tend to be badly readable. Also LLVM will usually optimize small methods better.
+///
+/// **Known problems:** Sometimes it's hard to find a way to reduce the complexity
+///
+/// **Example:** No. You'll see it when you get the warning.
 declare_lint! { pub CYCLOMATIC_COMPLEXITY, Warn,
     "finds functions that should be split up into multiple functions" }
 

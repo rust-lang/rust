@@ -8,6 +8,13 @@ use rustc_front::hir::*;
 use utils::span_lint;
 use utils;
 
+/// **What it does:** This lint `Warn`s on use of the `as_slice(..)` function, which is unstable.
+///
+/// **Why is this bad?** Using this function doesn't make your code better, but it will preclude it from building with stable Rust.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `x.as_slice(..)`
 declare_lint! {
     pub UNSTABLE_AS_SLICE,
     Warn,
@@ -15,6 +22,13 @@ declare_lint! {
 see https://github.com/rust-lang/rust/issues/27729"
 }
 
+/// **What it does:** This lint `Warn`s on use of the `as_mut_slice(..)` function, which is unstable.
+///
+/// **Why is this bad?** Using this function doesn't make your code better, but it will preclude it from building with stable Rust.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `x.as_mut_slice(..)`
 declare_lint! {
     pub UNSTABLE_AS_MUT_SLICE,
     Warn,

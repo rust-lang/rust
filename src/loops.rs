@@ -114,6 +114,13 @@ declare_lint!{ pub EXPLICIT_COUNTER_LOOP, Warn,
 /// **Example:** `loop {}`
 declare_lint!{ pub EMPTY_LOOP, Warn, "empty `loop {}` detected" }
 
+/// **What it does:** This lint checks for `while let` expressions on iterators. It is `Warn` by default.
+///
+/// **Why is this bad?** Readability. A simple `for` loop is shorter and conveys the intent better.
+///
+/// **Known problems:** None
+///
+/// **Example:** `while let Some(val) = iter() { .. }`
 declare_lint!{ pub WHILE_LET_ON_ITERATOR, Warn, "using a while-let loop instead of a for loop on an iterator" }
 
 #[derive(Copy, Clone)]
