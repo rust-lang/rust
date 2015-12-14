@@ -746,14 +746,23 @@ impl<W: Write> LineWriter<W> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write> Write for LineWriter<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match buf.iter().rposition(|b| *b == b'\n') {
-            Some(i) => {
-                let n = try!(self.inner.write(&buf[..i + 1]));
-                if n != i + 1 { return Ok(n) }
-                try!(self.inner.flush());
-                self.inner.write(&buf[i + 1..]).map(|i| n + i)
-            }
-            None => self.inner.write(buf),
+        use libc; 
+
+        let p = unsafe {
+            libc::memchr(
+                buf.as_ptr() as *const libc::c_void,
+                b'\n' as libc::c_int,
+                buf.len() as libc::size_t)
+        };
+
+        if p.is_null() {
+            self.inner.write(buf)
+        } else {
+            let i = p as usize - (buf.as_ptr() as usize);
+            let n = try!(self.inner.write(&buf[..i + 1]));
+            if n != i + 1 { return Ok(n) }
+            try!(self.inner.flush());
+            self.inner.write(&buf[i + 1..]).map(|i| n + i)
         }
     }
 
