@@ -2,6 +2,13 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use utils;
 
+/// **What it does:** This lint checks for transmutes to the original type of the object. It is `Warn` by default.
+///
+/// **Why is this bad?** Readability. The code tricks people into thinking that the original value was of some other type.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `core::intrinsics::transmute(t)` where the result type is the same as `t`'s.
 declare_lint! {
     pub USELESS_TRANSMUTE,
     Warn,

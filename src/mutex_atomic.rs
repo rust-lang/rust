@@ -11,12 +11,26 @@ use rustc::middle::subst::ParamSpace;
 
 use utils::{span_lint, MUTEX_PATH, match_type};
 
+/// **What it does:** It `Warn`s on usages of `Mutex<X>` where an atomic will do
+///
+/// **Why is this bad?** Using a Mutex just to make access to a plain bool or reference sequential is shooting flies with cannons. `std::atomic::AtomicBool` and `std::atomic::AtomicPtr` are leaner and faster.
+///
+/// **Known problems:** This lint cannot detect if the Mutex is actually used for waiting before a critical section.
+///
+/// **Example:** `let x = Mutex::new(&y);`
 declare_lint! {
     pub MUTEX_ATOMIC,
     Warn,
     "using a Mutex where an atomic value could be used instead"
 }
 
+/// **What it does:** It `Warn`s on usages of `Mutex<X>` where `X` is an integral type.
+///
+/// **Why is this bad?** Using a Mutex just to make access to a plain integer sequential is shooting flies with cannons. `std::atomic::usize` is leaner and faster.
+///
+/// **Known problems:** This lint cannot detect if the Mutex is actually used for waiting before a critical section.
+///
+/// **Example:** `let x = Mutex::new(0usize);`
 declare_lint! {
     pub MUTEX_INTEGER,
     Allow,
