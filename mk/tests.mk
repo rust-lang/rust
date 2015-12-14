@@ -1030,6 +1030,8 @@ $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 	export LIB := $$(CFG_MSVC_LIB_PATH_$$(HOST_$(3)))
 $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
+	export MSVC_LIB := "$$(CFG_MSVC_LIB_$$(HOST_$(3)))"
+$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 		$(S)src/test/run-make/%/Makefile \
 		$$(CSREQ$(1)_T_$(2)_H_$(3))
 	@rm -rf $(3)/test/run-make/$$*
