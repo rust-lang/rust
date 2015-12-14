@@ -49,7 +49,7 @@ pub struct ParseSess {
 impl ParseSess {
     pub fn new() -> ParseSess {
         let cm = Rc::new(CodeMap::new());
-        let handler = Handler::new(ColorConfig::Auto, None, true, cm.clone());
+        let handler = Handler::new(ColorConfig::Auto, None, true, false, cm.clone());
         ParseSess::with_span_handler(handler, cm)
     }
 
