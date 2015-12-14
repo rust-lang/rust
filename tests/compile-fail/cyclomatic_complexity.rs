@@ -89,7 +89,7 @@ fn main() { //~ ERROR: The function has a cyclomatic complexity of 28.
 }
 
 #[cyclomatic_complexity = "0"]
-fn kaboom() {  //~ ERROR: The function has a cyclomatic complexity of 6
+fn kaboom() {  //~ ERROR: The function has a cyclomatic complexity of 8
     let n = 0;
     'a: for i in 0..20 {
         'b: for j in i..20 {
@@ -167,6 +167,114 @@ fn barr() { //~ ERROR: The function has a cyclomatic complexity of 2
         1 => println!("bla"),
         2 | 3 => println!("blub"),
         _ => println!("bye"),
+    }
+}
+
+#[cyclomatic_complexity = "0"]
+fn barr2() { //~ ERROR: The function has a cyclomatic complexity of 3
+    match 99 {
+        0 => println!("hi"),
+        1 => println!("bla"),
+        2 | 3 => println!("blub"),
+        _ => println!("bye"),
+    }
+    match 99 {
+        0 => println!("hi"),
+        1 => println!("bla"),
+        2 | 3 => println!("blub"),
+        _ => println!("bye"),
+    }
+}
+
+#[cyclomatic_complexity = "0"]
+fn barrr() { //~ ERROR: The function has a cyclomatic complexity of 2
+    match 99 {
+        0 => println!("hi"),
+        1 => panic!("bla"),
+        2 | 3 => println!("blub"),
+        _ => println!("bye"),
+    }
+}
+
+#[cyclomatic_complexity = "0"]
+fn barrr2() { //~ ERROR: The function has a cyclomatic complexity of 3
+    match 99 {
+        0 => println!("hi"),
+        1 => panic!("bla"),
+        2 | 3 => println!("blub"),
+        _ => println!("bye"),
+    }
+    match 99 {
+        0 => println!("hi"),
+        1 => panic!("bla"),
+        2 | 3 => println!("blub"),
+        _ => println!("bye"),
+    }
+}
+
+#[cyclomatic_complexity = "0"]
+fn barrrr() { //~ ERROR: The function has a cyclomatic complexity of 2
+    match 99 {
+        0 => println!("hi"),
+        1 => println!("bla"),
+        2 | 3 => panic!("blub"),
+        _ => println!("bye"),
+    }
+}
+
+#[cyclomatic_complexity = "0"]
+fn barrrr2() { //~ ERROR: The function has a cyclomatic complexity of 3
+    match 99 {
+        0 => println!("hi"),
+        1 => println!("bla"),
+        2 | 3 => panic!("blub"),
+        _ => println!("bye"),
+    }
+    match 99 {
+        0 => println!("hi"),
+        1 => println!("bla"),
+        2 | 3 => panic!("blub"),
+        _ => println!("bye"),
+    }
+}
+
+#[cyclomatic_complexity = "0"]
+fn cake() { //~ ERROR: The function has a cyclomatic complexity of 2
+    if 4 == 5 {
+        println!("yea");
+    } else {
+        panic!("meh");
+    }
+    println!("whee");
+}
+
+
+#[cyclomatic_complexity = "0"]
+pub fn read_file(input_path: &str) -> String { //~ ERROR: The function has a cyclomatic complexity of 4
+    use std::fs::File;
+    use std::io::{Read, Write};
+    use std::path::Path;
+    let mut file = match File::open(&Path::new(input_path)) {
+        Ok(f) => f,
+        Err(err) => {
+            panic!("Can't open {}: {}", input_path, err);
+        }
+    };
+
+    let mut bytes = Vec::new();
+
+    match file.read_to_end(&mut bytes) {
+        Ok(..) => {},
+        Err(_) => {
+            panic!("Can't read {}", input_path);
+        }
+    };
+
+    match String::from_utf8(bytes) {
+        Ok(contents) => contents,
+        Err(_) => {
+            panic!("{} is not UTF-8 encoded", input_path);
+        }
     }
 }
 
