@@ -122,7 +122,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into
         let def_data = match i.node {
-            ItemDefaultImpl(..) | ItemImpl(..) => DefPathData::Impl,
+            ItemDefaultImpl(..) | ItemImpl(..) => DefPathData::Impl(i.name),
             ItemEnum(..) | ItemStruct(..) | ItemTrait(..) => DefPathData::Type(i.name),
             ItemExternCrate(..) | ItemMod(..) => DefPathData::Mod(i.name),
             ItemStatic(..) | ItemConst(..) | ItemFn(..) => DefPathData::Value(i.name),
