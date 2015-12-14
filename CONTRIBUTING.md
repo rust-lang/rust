@@ -40,6 +40,19 @@ contains some questionable code itself! Also before making a pull request, pleas
 `util/update_lints.py`, which will update `lib.rs` and `README.md` with the lint declarations. Our
 travis build actually checks for this.
 
+Also please document your lint with a doc comment akin to the following:
+```
+/// **What it does:** Describe what the lint matches.
+///
+/// **Why is this bad?** Write the reason for linting the code.
+///
+/// **Known problems:** Hopefully none.
+///
+/// **Example:** Insert a short example if you have one
+```
+
+Our `util/update_wiki.py` script can then add your ilnt docs to the wiki.
+
 ## Contributions
 
 Clippy welcomes contributions from everyone.
