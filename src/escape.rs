@@ -28,6 +28,7 @@ pub struct EscapePass;
 ///     foo(*x);
 ///     println!("{}", *x);
 /// }
+/// ```
 declare_lint!(pub BOXED_LOCAL, Warn, "using Box<T> where unnecessary");
 
 struct EscapeDelegate<'a, 'tcx: 'a> {
