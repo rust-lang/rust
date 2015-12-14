@@ -480,8 +480,8 @@ fn walk_expr(cx: &CrateContext,
                 walk_expr(cx, &**exp, scope_stack, scope_map);
             }
 
-            for &(_, ref exp, _) in outputs {
-                walk_expr(cx, &**exp, scope_stack, scope_map);
+            for out in outputs {
+                walk_expr(cx, &*out.expr, scope_stack, scope_map);
             }
         }
     }

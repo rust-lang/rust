@@ -368,8 +368,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 }), pred);
                 let post_outputs = self.exprs(outputs.map(|a| {
                     debug!("cfg::construct InlineAsm id:{} output:{:?}", expr.id, a);
-                    let &(_, ref expr, _) = a;
-                    &**expr
+                    &*a.expr
                 }), post_inputs);
                 self.add_ast_node(expr.id, &[post_outputs])
             }
