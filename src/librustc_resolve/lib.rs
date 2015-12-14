@@ -33,7 +33,6 @@ extern crate syntax;
 #[no_link]
 extern crate rustc_bitflags;
 extern crate rustc_front;
-
 extern crate rustc;
 
 use self::PatternBindingMode::*;
@@ -69,7 +68,7 @@ use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64, TyF64, TyF32};
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::{self, special_names, special_idents};
 use syntax::codemap::{self, Span, Pos};
-use syntax::util::lev_distance::{lev_distance, max_suggestion_distance};
+use syntax::util::lev_distance::find_best_match_for_name;
 
 use rustc_front::intravisit::{self, FnKind, Visitor};
 use rustc_front::hir;
@@ -94,7 +93,6 @@ use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::mem::replace;
 use std::rc::{Rc, Weak};
-use std::usize;
 
 use resolve_imports::{Target, ImportDirective, ImportResolutionPerNamespace};
 use resolve_imports::Shadowable;
@@ -121,7 +119,7 @@ macro_rules! execute_callback {
 
 enum SuggestionType {
     Macro(String),
-    Function(String),
+    Function(token::InternedString),
     NotFound,
 }
 
@@ -3352,39 +3350,22 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         NoSuggestion
     }
 
-    fn find_best_match_for_name(&mut self, name: &str) -> SuggestionType {
-        let mut maybes: Vec<token::InternedString> = Vec::new();
-        let mut values: Vec<usize> = Vec::new();
-
+    fn find_best_match(&mut self, name: &str) -> SuggestionType {
         if let Some(macro_name) = self.session.available_macros
-                                 .borrow().iter().find(|n| n.as_str() == name) {
+                                  .borrow().iter().find(|n| n.as_str() == name) {
             return SuggestionType::Macro(format!("{}!", macro_name));
         }
 
-        for rib in self.value_ribs.iter().rev() {
-            for (&k, _) in &rib.bindings {
-                maybes.push(k.as_str());
-                values.push(usize::MAX);
+        let names = self.value_ribs
+                    .iter()
+                    .rev()
+                    .flat_map(|rib| rib.bindings.keys());
+
+        if let Some(found) = find_best_match_for_name(names, name, None) {
+            if name != &*found {
+                return SuggestionType::Function(found);
             }
-        }
-
-        let mut smallest = 0;
-        for (i, other) in maybes.iter().enumerate() {
-            values[i] = lev_distance(name, &other);
-
-            if values[i] <= values[smallest] {
-                smallest = i;
-            }
-        }
-
-        let max_distance = max_suggestion_distance(name);
-        if !values.is_empty() && values[smallest] <= max_distance && name != &maybes[smallest][..] {
-
-            SuggestionType::Function(maybes[smallest].to_string())
-
-        } else {
-            SuggestionType::NotFound
-        }
+        } SuggestionType::NotFound
     }
 
     fn resolve_expr(&mut self, expr: &Expr) {
@@ -3495,7 +3476,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     NoSuggestion => {
                                         // limit search to 5 to reduce the number
                                         // of stupid suggestions
-                                        match self.find_best_match_for_name(&path_name) {
+                                        match self.find_best_match(&path_name) {
                                             SuggestionType::Macro(s) => {
                                                 format!("the macro `{}`", s)
                                             }
