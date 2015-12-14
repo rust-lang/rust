@@ -256,13 +256,51 @@ pub enum Terminator<'tcx> {
     /// `END_BLOCK`.
     Return,
 
-    /// block ends with a call; it should have two successors. The
-    /// first successor indicates normal return. The second indicates
-    /// unwinding.
+    /// Block ends with a call of a converging function
     Call {
-        data: CallData<'tcx>,
-        targets: (BasicBlock, BasicBlock),
+        /// The function that’s being called
+        func: Operand<'tcx>,
+        /// Arguments the function is called with
+        args: Vec<Operand<'tcx>>,
+        /// Location to write the return value into
+        destination: Lvalue<'tcx>,
+        targets: CallTargets,
     },
+
+    /// Block ends with a call of a diverging function.
+    DivergingCall {
+        /// The function that’s being called
+        func: Operand<'tcx>,
+        /// Arguments the function is called with
+        args: Vec<Operand<'tcx>>,
+        /// Some, if there’s any cleanup to be done when function unwinds
+        cleanup: Option<BasicBlock>,
+    }
+}
+
+#[derive(RustcEncodable, RustcDecodable)]
+pub enum CallTargets {
+    /// The only target that should be entered when function returns normally.
+    Return(BasicBlock),
+    /// In addition to the normal-return block, function has associated cleanup that should be done
+    /// when function unwinds.
+    WithCleanup((BasicBlock, BasicBlock))
+}
+
+impl CallTargets {
+    pub fn as_slice(&self) -> &[BasicBlock] {
+        match *self {
+            CallTargets::Return(ref b) => slice::ref_slice(b),
+            CallTargets::WithCleanup(ref bs) => bs.as_slice()
+        }
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [BasicBlock] {
+        match *self {
+            CallTargets::Return(ref mut b) => slice::mut_ref_slice(b),
+            CallTargets::WithCleanup(ref mut bs) => bs.as_mut_slice()
+        }
+    }
 }
 
 impl<'tcx> Terminator<'tcx> {
@@ -271,12 +309,17 @@ impl<'tcx> Terminator<'tcx> {
         match *self {
             Goto { target: ref b } => slice::ref_slice(b),
             Panic { target: ref b } => slice::ref_slice(b),
-            If { cond: _, targets: ref b } => b.as_slice(),
+            If { targets: ref b, .. } => b.as_slice(),
             Switch { targets: ref b, .. } => b,
             SwitchInt { targets: ref b, .. } => b,
             Diverge => &[],
             Return => &[],
-            Call { data: _, targets: ref b } => b.as_slice(),
+            Call { targets: ref b, .. } => b.as_slice(),
+            DivergingCall { cleanup: ref b, .. } => if let Some(b) = b.as_ref() {
+                slice::ref_slice(b)
+            } else {
+                &mut []
+            },
         }
     }
 
@@ -285,26 +328,19 @@ impl<'tcx> Terminator<'tcx> {
         match *self {
             Goto { target: ref mut b } => slice::mut_ref_slice(b),
             Panic { target: ref mut b } => slice::mut_ref_slice(b),
-            If { cond: _, targets: ref mut b } => b.as_mut_slice(),
+            If { targets: ref mut b, .. } => b.as_mut_slice(),
             Switch { targets: ref mut b, .. } => b,
             SwitchInt { targets: ref mut b, .. } => b,
             Diverge => &mut [],
             Return => &mut [],
-            Call { data: _, targets: ref mut b } => b.as_mut_slice(),
+            Call { targets: ref mut b, .. } => b.as_mut_slice(),
+            DivergingCall { cleanup: ref mut b, .. } => if let Some(b) = b.as_mut() {
+                slice::mut_ref_slice(b)
+            } else {
+                &mut []
+            },
         }
     }
-}
-
-#[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct CallData<'tcx> {
-    /// where the return value is written to
-    pub destination: Lvalue<'tcx>,
-
-    /// the fn being called
-    pub func: Operand<'tcx>,
-
-    /// the arguments
-    pub args: Vec<Operand<'tcx>>,
 }
 
 impl<'tcx> BasicBlockData<'tcx> {
@@ -357,15 +393,13 @@ impl<'tcx> Terminator<'tcx> {
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
             Diverge => write!(fmt, "diverge"),
             Return => write!(fmt, "return"),
-            Call { data: ref c, .. } => {
-                try!(write!(fmt, "{:?} = {:?}(", c.destination, c.func));
-                for (index, arg) in c.args.iter().enumerate() {
-                    if index > 0 {
-                        try!(write!(fmt, ", "));
-                    }
-                    try!(write!(fmt, "{:?}", arg));
-                }
-                write!(fmt, ")")
+            Call { .. } => {
+                // the author didn’t bother rebasing this
+                unimplemented!()
+            },
+            DivergingCall { .. } => {
+                // the author didn’t bother rebasing this
+                unimplemented!()
             }
         }
     }
@@ -378,6 +412,7 @@ impl<'tcx> Terminator<'tcx> {
             Goto { .. } | Panic { .. } => vec!["".into_cow()],
             If { .. } => vec!["true".into_cow(), "false".into_cow()],
             Call { .. } => vec!["return".into_cow(), "unwind".into_cow()],
+            DivergingCall { .. } => vec!["unwind".into_cow()],
             Switch { ref adt_def, .. } => {
                 adt_def.variants
                        .iter()

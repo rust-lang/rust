@@ -164,6 +164,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 }
 
                 build::Br(bcx, self.llblock(targets.0), DebugLoc::None)
+            },
+
+            mir::Terminator::DivergingCall { .. } => {
+                unimplemented!()
             }
         }
     }

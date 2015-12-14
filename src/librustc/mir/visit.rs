@@ -137,13 +137,23 @@ pub trait Visitor<'tcx> {
             Terminator::Return => {
             }
 
-            Terminator::Call { ref data, ref targets } => {
-                self.visit_lvalue(&data.destination, LvalueContext::Store);
-                self.visit_operand(&data.func);
-                for arg in &data.args {
+            Terminator::Call { ref func, ref args, ref destination, ref targets } => {
+                self.visit_lvalue(destination, LvalueContext::Store);
+                self.visit_operand(func);
+                for arg in args {
                     self.visit_operand(arg);
                 }
                 for &target in targets.as_slice() {
+                    self.visit_branch(block, target);
+                }
+            }
+
+            Terminator::DivergingCall { ref func, ref args, ref cleanup } => {
+                self.visit_operand(func);
+                for arg in args {
+                    self.visit_operand(arg);
+                }
+                for &target in cleanup.as_ref() {
                     self.visit_branch(block, target);
                 }
             }
@@ -424,13 +434,26 @@ pub trait MutVisitor<'tcx> {
             Terminator::Return => {
             }
 
-            Terminator::Call { ref mut data, ref mut targets } => {
-                self.visit_lvalue(&mut data.destination, LvalueContext::Store);
-                self.visit_operand(&mut data.func);
-                for arg in &mut data.args {
+            Terminator::Call { ref mut func,
+                               ref mut args,
+                               ref mut destination,
+                               ref mut targets } => {
+                self.visit_lvalue(destination, LvalueContext::Store);
+                self.visit_operand(func);
+                for arg in args {
                     self.visit_operand(arg);
                 }
                 for &target in targets.as_slice() {
+                    self.visit_branch(block, target);
+                }
+            }
+
+            Terminator::DivergingCall { ref mut func, ref mut args, ref mut cleanup } => {
+                self.visit_operand(func);
+                for arg in args {
+                    self.visit_operand(arg);
+                }
+                for &target in cleanup.as_ref() {
                     self.visit_branch(block, target);
                 }
             }
