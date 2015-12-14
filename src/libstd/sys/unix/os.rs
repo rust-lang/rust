@@ -22,6 +22,7 @@ use io;
 use iter;
 use libc::{self, c_int, c_char, c_void};
 use mem;
+use memchr;
 use path::{self, PathBuf};
 use ptr;
 use slice;
@@ -406,7 +407,7 @@ pub fn env() -> Env {
         if input.is_empty() {
             return None;
         }
-        let pos = input[1..].iter().position(|&b| b == b'=').map(|p| p + 1);
+        let pos = memchr::memchr(b'=', &input[1..]).map(|p| p + 1);
         pos.map(|p| (
             OsStringExt::from_vec(input[..p].to_vec()),
             OsStringExt::from_vec(input[p+1..].to_vec()),
