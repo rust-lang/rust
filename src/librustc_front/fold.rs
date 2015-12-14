@@ -1117,7 +1117,14 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span, attrs }: Expr, folder: &
                 expn_id,
             }) => ExprInlineAsm(InlineAsm {
                 inputs: inputs.move_map(|(c, input)| (c, folder.fold_expr(input))),
-                outputs: outputs.move_map(|(c, out, is_rw)| (c, folder.fold_expr(out), is_rw)),
+                outputs: outputs.move_map(|out| {
+                    InlineAsmOutput {
+                        constraint: out.constraint,
+                        expr: folder.fold_expr(out.expr),
+                        is_rw: out.is_rw,
+                        is_indirect: out.is_indirect,
+                    }
+                }),
                 asm: asm,
                 asm_str_style: asm_str_style,
                 clobbers: clobbers,

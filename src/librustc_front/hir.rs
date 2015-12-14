@@ -954,10 +954,18 @@ pub enum Ty_ {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct InlineAsmOutput {
+    pub constraint: InternedString,
+    pub expr: P<Expr>,
+    pub is_rw: bool,
+    pub is_indirect: bool,
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsm {
     pub asm: InternedString,
     pub asm_str_style: StrStyle,
-    pub outputs: Vec<(InternedString, P<Expr>, bool)>,
+    pub outputs: Vec<InlineAsmOutput>,
     pub inputs: Vec<(InternedString, P<Expr>)>,
     pub clobbers: Vec<InternedString>,
     pub volatile: bool,
