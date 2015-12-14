@@ -1499,8 +1499,9 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                                 hir::MatchSource::ForLoopDesugar,
                                                 None);
 
-                    // `{ let result = ...; result }`
-                    let result_ident = lctx.str_to_ident("result");
+                    // `{ let _result = ...; _result }`
+                    // underscore prevents an unused_variables lint if the head diverges
+                    let result_ident = lctx.str_to_ident("_result");
                     let let_stmt = stmt_let(lctx, e.span, false, result_ident, match_expr, None);
                     let result = expr_ident(lctx, e.span, result_ident, None);
                     let block = block_all(lctx, e.span, vec![let_stmt], Some(result));
