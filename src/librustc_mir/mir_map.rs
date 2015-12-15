@@ -23,6 +23,7 @@ extern crate rustc_front;
 use build;
 use dot;
 use transform::*;
+use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
 use hair::cx::Cx;
 use std::fs::File;
@@ -47,7 +48,7 @@ pub fn build_mir_for_crate<'tcx>(tcx: &ty::ctxt<'tcx>) -> MirMap<'tcx> {
             tcx: tcx,
             map: &mut map,
         };
-        tcx.map.krate().visit_all_items(&mut dump);
+        tcx.visit_all_items_in_krate(DepNode::MirMapConstruction, &mut dump);
     }
     map
 }

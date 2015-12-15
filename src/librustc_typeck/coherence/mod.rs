@@ -39,6 +39,7 @@ use std::rc::Rc;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use util::nodemap::{DefIdMap, FnvHashMap};
+use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
 use rustc::front::map::NodeItem;
 use rustc_front::intravisit;
@@ -509,9 +510,11 @@ fn enforce_trait_manually_implementable(tcx: &ty::ctxt, sp: Span, trait_def_id: 
 }
 
 pub fn check_coherence(crate_context: &CrateCtxt) {
+    let _task = crate_context.tcx.dep_graph.in_task(DepNode::Coherence);
+    let infcx = new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None, true);
     CoherenceChecker {
         crate_context: crate_context,
-        inference_context: new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None, true),
+        inference_context: infcx,
         inherent_impls: RefCell::new(FnvHashMap()),
     }.check(crate_context.tcx.map.krate());
     unsafety::check(crate_context.tcx);

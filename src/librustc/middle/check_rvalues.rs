@@ -11,21 +11,21 @@
 // Checks that all rvalues in a crate have statically known size. check_crate
 // is the public starting point.
 
+use dep_graph::DepNode;
 use middle::expr_use_visitor as euv;
 use middle::infer;
 use middle::mem_categorization as mc;
 use middle::ty::ParameterEnvironment;
 use middle::ty;
 
-use syntax::ast;
 use rustc_front::hir;
-use syntax::codemap::Span;
 use rustc_front::intravisit;
+use syntax::ast;
+use syntax::codemap::Span;
 
-pub fn check_crate(tcx: &ty::ctxt,
-                   krate: &hir::Crate) {
+pub fn check_crate(tcx: &ty::ctxt) {
     let mut rvcx = RvalueContext { tcx: tcx };
-    krate.visit_all_items(&mut rvcx);
+    tcx.visit_all_items_in_krate(DepNode::RvalueCheck, &mut rvcx);
 }
 
 struct RvalueContext<'a, 'tcx: 'a> {

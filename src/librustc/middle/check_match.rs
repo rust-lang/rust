@@ -12,6 +12,7 @@ pub use self::Constructor::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
+use dep_graph::DepNode;
 use middle::const_eval::{compare_const_vals, ConstVal};
 use middle::const_eval::{eval_const_expr, eval_const_expr_partial};
 use middle::const_eval::{const_expr_to_pat, lookup_const_by_id};
@@ -155,7 +156,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt) {
-    tcx.map.krate().visit_all_items(&mut MatchCheckCtxt {
+    tcx.visit_all_items_in_krate(DepNode::MatchCheck, &mut MatchCheckCtxt {
         tcx: tcx,
         param_env: tcx.empty_parameter_environment(),
     });

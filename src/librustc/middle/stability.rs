@@ -13,6 +13,7 @@
 
 pub use self::StabilityLevel::*;
 
+use dep_graph::DepNode;
 use session::Session;
 use lint;
 use middle::cstore::{CrateStore, LOCAL_CRATE};
@@ -301,6 +302,7 @@ impl<'tcx> Index<'tcx> {
 /// features used.
 pub fn check_unstable_api_usage(tcx: &ty::ctxt)
                                 -> FnvHashMap<InternedString, StabilityLevel> {
+    let _task = tcx.dep_graph.in_task(DepNode::StabilityCheck);
     let ref active_lib_features = tcx.sess.features.borrow().declared_lib_features;
 
     // Put the active features into a map for quick lookup
@@ -314,8 +316,7 @@ pub fn check_unstable_api_usage(tcx: &ty::ctxt)
     };
     intravisit::walk_crate(&mut checker, tcx.map.krate());
 
-    let used_features = checker.used_features;
-    return used_features;
+    checker.used_features
 }
 
 struct Checker<'a, 'tcx: 'a> {

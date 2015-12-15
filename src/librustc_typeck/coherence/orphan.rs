@@ -17,13 +17,14 @@ use middle::traits;
 use middle::ty;
 use syntax::ast;
 use syntax::codemap::Span;
+use rustc::dep_graph::DepNode;
 use rustc_front::intravisit;
 use rustc_front::hir;
 use rustc_front::hir::{Item, ItemImpl};
 
 pub fn check(tcx: &ty::ctxt) {
     let mut orphan = OrphanChecker { tcx: tcx };
-    tcx.map.krate().visit_all_items(&mut orphan);
+    tcx.visit_all_items_in_krate(DepNode::CoherenceOrphanCheck, &mut orphan);
 }
 
 struct OrphanChecker<'cx, 'tcx:'cx> {
@@ -232,10 +233,10 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                     }
                     Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {
                         span_err!(self.tcx.sess, item.span, E0210,
-                                "type parameter `{}` must be used as the type parameter for \
-                                 some local type (e.g. `MyStruct<T>`); only traits defined in \
-                                 the current crate can be implemented for a type parameter",
-                                param_ty);
+                                  "type parameter `{}` must be used as the type parameter for \
+                                   some local type (e.g. `MyStruct<T>`); only traits defined in \
+                                   the current crate can be implemented for a type parameter",
+                                  param_ty);
                         return;
                     }
                 }

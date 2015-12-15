@@ -76,6 +76,7 @@ use middle::ty::fold::{TypeFolder, TypeFoldable};
 use middle::ty::util::IntTypeExt;
 use middle::infer;
 use rscope::*;
+use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
 use util::common::{ErrorReported, memoized};
 use util::nodemap::{FnvHashMap, FnvHashSet};
@@ -146,13 +147,11 @@ struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &hir::Item) {
-        convert_item(self.ccx, i);
-        intravisit::walk_item(self, i);
-    }
-    fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
-        convert_foreign_item(self.ccx, i);
-        intravisit::walk_foreign_item(self, i);
+    fn visit_item(&mut self, item: &hir::Item) {
+        let tcx = self.ccx.tcx;
+        let item_def_id = tcx.map.local_def_id(item.id);
+        let _task = tcx.dep_graph.in_task(DepNode::CollectItem(item_def_id));
+        convert_item(self.ccx, item);
     }
 }
 
@@ -711,8 +710,12 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
     debug!("convert: item {} with id {}", it.name, it.id);
     match it.node {
         // These don't define types.
-        hir::ItemExternCrate(_) | hir::ItemUse(_) |
-        hir::ItemForeignMod(_) | hir::ItemMod(_) => {
+        hir::ItemExternCrate(_) | hir::ItemUse(_) | hir::ItemMod(_) => {
+        }
+        hir::ItemForeignMod(ref foreign_mod) => {
+            for item in &foreign_mod.items {
+                convert_foreign_item(ccx, item);
+            }
         }
         hir::ItemEnum(ref enum_definition, _) => {
             let (scheme, predicates) = convert_typed_item(ccx, it);
@@ -1501,6 +1504,11 @@ fn type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                 it: &hir::Item)
                                 -> ty::TypeScheme<'tcx>
 {
+    // Computing the type scheme of an item is a discrete task:
+    let item_def_id = ccx.tcx.map.local_def_id(it.id);
+    let _task = ccx.tcx.dep_graph.in_task(DepNode::TypeScheme(item_def_id));
+    ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id)); // we have access to `it`
+
     memoized(&ccx.tcx.tcache,
              ccx.tcx.map.local_def_id(it.id),
              |_| compute_type_scheme_of_item(ccx, it))
@@ -1617,13 +1625,18 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 fn type_scheme_of_foreign_item<'a, 'tcx>(
     ccx: &CrateCtxt<'a, 'tcx>,
-    it: &hir::ForeignItem,
+    item: &hir::ForeignItem,
     abi: abi::Abi)
     -> ty::TypeScheme<'tcx>
 {
+    // Computing the type scheme of a foreign item is a discrete task:
+    let item_def_id = ccx.tcx.map.local_def_id(item.id);
+    let _task = ccx.tcx.dep_graph.in_task(DepNode::TypeScheme(item_def_id));
+    ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id)); // we have access to `item`
+
     memoized(&ccx.tcx.tcache,
-             ccx.tcx.map.local_def_id(it.id),
-             |_| compute_type_scheme_of_foreign_item(ccx, it, abi))
+             ccx.tcx.map.local_def_id(item.id),
+             |_| compute_type_scheme_of_foreign_item(ccx, item, abi))
 }
 
 fn compute_type_scheme_of_foreign_item<'a, 'tcx>(

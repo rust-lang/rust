@@ -266,6 +266,7 @@ use self::ParamKind::*;
 
 use arena;
 use arena::TypedArena;
+use dep_graph::DepNode;
 use middle::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use middle::subst;
@@ -280,6 +281,7 @@ use rustc_front::intravisit::Visitor;
 use util::nodemap::NodeMap;
 
 pub fn infer_variance(tcx: &ty::ctxt) {
+    let _task = tcx.dep_graph.in_task(DepNode::Variance);
     let krate = tcx.map.krate();
     let mut arena = arena::TypedArena::new();
     let terms_cx = determine_parameters_to_be_inferred(tcx, &mut arena, krate);
