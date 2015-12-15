@@ -261,7 +261,7 @@ pub fn main_args(args: &[String]) -> isize {
 
     match (should_test, markdown_input) {
         (true, true) => {
-            return markdown::test(input, libs, externs, test_args)
+            return markdown::test(input, cfgs, libs, externs, test_args)
         }
         (true, false) => {
             return test::run(input, cfgs, libs, externs, test_args, crate_name)
