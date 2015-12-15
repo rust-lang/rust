@@ -30,6 +30,7 @@
 #![feature(const_fn)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
+#![feature(into_cow)]
 #![feature(iter_arith)]
 #![feature(libc)]
 #![feature(path_relative_from)]

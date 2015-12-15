@@ -3135,6 +3135,8 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
         llmod: shared_ccx.metadata_llmod(),
     };
 
+    assert_dep_graph::assert_dep_graph(tcx);
+
     CrateTranslation {
         modules: modules,
         metadata_module: metadata_module,
