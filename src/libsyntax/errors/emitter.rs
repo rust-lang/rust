@@ -39,6 +39,16 @@ pub enum ColorConfig {
     Never,
 }
 
+impl ColorConfig {
+    fn use_color(&self) -> bool {
+        match *self {
+            ColorConfig::Always => true,
+            ColorConfig::Never  => false,
+            ColorConfig::Auto   => stderr_isatty(),
+        }        
+    }
+}
+
 // A basic emitter for when we don't have access to a codemap or registry. Used
 // for reporting very early errors, etc.
 pub struct BasicEmitter {
@@ -64,24 +74,12 @@ impl Emitter for BasicEmitter {
 }
 
 impl BasicEmitter {
-    // TODO refactor
     pub fn stderr(color_config: ColorConfig) -> BasicEmitter {
-        let stderr = io::stderr();
-
-        let use_color = match color_config {
-            ColorConfig::Always => true,
-            ColorConfig::Never  => false,
-            ColorConfig::Auto   => stderr_isatty(),
-        };
-
-        if use_color {
-            let dst = match term::stderr() {
-                Some(t) => Terminal(t),
-                None    => Raw(Box::new(stderr)),
-            };
+        if color_config.use_color() {
+            let dst = Destination::from_stderr();
             BasicEmitter { dst: dst }
         } else {
-            BasicEmitter { dst: Raw(Box::new(stderr)) }
+            BasicEmitter { dst: Raw(Box::new(io::stderr())) }
         }
     }
 }
@@ -139,22 +137,11 @@ impl EmitterWriter {
                   registry: Option<diagnostics::registry::Registry>,
                   code_map: Rc<codemap::CodeMap>)
                   -> EmitterWriter {
-        let stderr = io::stderr();
-
-        let use_color = match color_config {
-            ColorConfig::Always => true,
-            ColorConfig::Never  => false,
-            ColorConfig::Auto   => stderr_isatty(),
-        };
-
-        if use_color {
-            let dst = match term::stderr() {
-                Some(t) => Terminal(t),
-                None    => Raw(Box::new(stderr)),
-            };
+        if color_config.use_color() {
+            let dst = Destination::from_stderr();
             EmitterWriter { dst: dst, registry: registry, cm: code_map }
         } else {
-            EmitterWriter { dst: Raw(Box::new(stderr)), registry: registry, cm: code_map }
+            EmitterWriter { dst: Raw(Box::new(io::stderr())), registry: registry, cm: code_map }
         }
     }
 
@@ -476,22 +463,18 @@ impl EmitterWriter {
 
         loop {
             let span_name_span = self.cm.with_expn_info(span.expn_id, |expn_info| {
-                match expn_info {
-                    Some(ei) => {
-                        let (pre, post) = match ei.callee.format {
-                            codemap::MacroAttribute(..) => ("#[", "]"),
-                            codemap::MacroBang(..) => ("", "!"),
-                        };
-                        let macro_decl_name = format!("in this expansion of {}{}{}",
-                                                      pre,
-                                                      ei.callee.name(),
-                                                      post);
-                        let def_site_span = ei.callee.span;
-                        Some((ei.call_site, macro_decl_name, def_site_span))
-                    }
-                    // TODO map
-                    None => None,
-                }
+                expn_info.map(|ei| {
+                    let (pre, post) = match ei.callee.format {
+                        codemap::MacroAttribute(..) => ("#[", "]"),
+                        codemap::MacroBang(..) => ("", "!"),
+                    };
+                    let macro_decl_name = format!("in this expansion of {}{}{}",
+                                                  pre,
+                                                  ei.callee.name(),
+                                                  post);
+                    let def_site_span = ei.callee.span;
+                    (ei.call_site, macro_decl_name, def_site_span)
+                })
             });
             let (macro_decl_name, def_site_span) = match span_name_span {
                 None => break,
@@ -573,6 +556,13 @@ enum Destination {
 }
 
 impl Destination {
+    fn from_stderr() -> Destination {
+        match term::stderr() {
+            Some(t) => Terminal(t),
+            None    => Raw(Box::new(io::stderr())),
+        }
+    }
+
     fn print_maybe_styled(&mut self,
                           args: fmt::Arguments,
                           color: term::Attr,
