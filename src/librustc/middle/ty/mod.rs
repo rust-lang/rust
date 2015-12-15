@@ -19,6 +19,7 @@ pub use self::ImplOrTraitItem::*;
 pub use self::IntVarValue::*;
 pub use self::LvaluePreference::*;
 
+use dep_graph::{self, DepGraph, DepNode};
 use front::map as ast_map;
 use front::map::LinkedPath;
 use middle;
@@ -31,8 +32,8 @@ use middle::traits;
 use middle::ty;
 use middle::ty::fold::TypeFolder;
 use middle::ty::walk::TypeWalker;
-use util::common::memoized;
-use util::nodemap::{NodeMap, NodeSet, DefIdMap};
+use util::common::{memoized, MemoizationMap};
+use util::nodemap::{NodeMap, NodeSet};
 use util::nodemap::FnvHashMap;
 
 use serialize::{Encodable, Encoder, Decodable, Decoder};
@@ -1926,12 +1927,14 @@ impl LvaluePreference {
 /// into the map by the `typeck::collect` phase.  If the def-id is external,
 /// then we have to go consult the crate loading code (and cache the result for
 /// the future).
-fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
+fn lookup_locally_or_in_crate_store<M, F>(descr: &str,
                                           def_id: DefId,
-                                          map: &RefCell<DefIdMap<V>>,
-                                          load_external: F) -> V where
-    V: Clone,
-    F: FnOnce() -> V,
+                                          dep_graph: &DepGraph,
+                                          map: &RefCell<M>,
+                                          load_external: F)
+                                          -> M::Value where
+    M: MemoizationMap<Key=DefId>,
+    F: FnOnce() -> M::Value,
 {
     match map.borrow().get(&def_id).cloned() {
         Some(v) => { return v; }
@@ -1942,7 +1945,14 @@ fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
         panic!("No def'n found for {:?} in tcx.{}", def_id, descr);
     }
     let v = load_external();
-    map.borrow_mut().insert(def_id, v.clone());
+
+    // Don't consider this a write from the current task, since we are
+    // loading from another crate. (Note that the current task will
+    // already have registered a read in the call to `get` above.)
+    dep_graph.with_ignore(|| {
+        map.borrow_mut().insert(def_id, v.clone());
+    });
+
     v
 }
 
@@ -2269,13 +2279,13 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn impl_or_trait_item(&self, id: DefId) -> ImplOrTraitItem<'tcx> {
         lookup_locally_or_in_crate_store(
-            "impl_or_trait_items", id, &self.impl_or_trait_items,
+            "impl_or_trait_items", id, &self.dep_graph, &self.impl_or_trait_items,
             || self.sess.cstore.impl_or_trait_item(self, id))
     }
 
     pub fn trait_item_def_ids(&self, id: DefId) -> Rc<Vec<ImplOrTraitItemId>> {
         lookup_locally_or_in_crate_store(
-            "trait_item_def_ids", id, &self.trait_item_def_ids,
+            "trait_item_def_ids", id, &self.dep_graph, &self.trait_item_def_ids,
             || Rc::new(self.sess.cstore.trait_item_def_ids(id)))
     }
 
@@ -2283,7 +2293,7 @@ impl<'tcx> ctxt<'tcx> {
     /// an inherent impl.
     pub fn impl_trait_ref(&self, id: DefId) -> Option<TraitRef<'tcx>> {
         lookup_locally_or_in_crate_store(
-            "impl_trait_refs", id, &self.impl_trait_refs,
+            "impl_trait_refs", id, &self.dep_graph, &self.impl_trait_refs,
             || self.sess.cstore.impl_trait_ref(self, id))
     }
 
@@ -2344,14 +2354,14 @@ impl<'tcx> ctxt<'tcx> {
     // the type cache. Returns the type parameters and type.
     pub fn lookup_item_type(&self, did: DefId) -> TypeScheme<'tcx> {
         lookup_locally_or_in_crate_store(
-            "tcache", did, &self.tcache,
+            "tcache", did, &self.dep_graph, &self.tcache,
             || self.sess.cstore.item_type(self, did))
     }
 
     /// Given the did of a trait, returns its canonical trait ref.
     pub fn lookup_trait_def(&self, did: DefId) -> &'tcx TraitDef<'tcx> {
         lookup_locally_or_in_crate_store(
-            "trait_defs", did, &self.trait_defs,
+            "trait_defs", did, &self.dep_graph, &self.trait_defs,
             || self.alloc_trait_def(self.sess.cstore.trait_def(self, did))
         )
     }
@@ -2361,7 +2371,7 @@ impl<'tcx> ctxt<'tcx> {
     /// use lookup_adt_def instead.
     pub fn lookup_adt_def_master(&self, did: DefId) -> AdtDefMaster<'tcx> {
         lookup_locally_or_in_crate_store(
-            "adt_defs", did, &self.adt_defs,
+            "adt_defs", did, &self.dep_graph, &self.adt_defs,
             || self.sess.cstore.adt_def(self, did)
         )
     }
@@ -2376,14 +2386,14 @@ impl<'tcx> ctxt<'tcx> {
     /// Given the did of an item, returns its full set of predicates.
     pub fn lookup_predicates(&self, did: DefId) -> GenericPredicates<'tcx> {
         lookup_locally_or_in_crate_store(
-            "predicates", did, &self.predicates,
+            "predicates", did, &self.dep_graph, &self.predicates,
             || self.sess.cstore.item_predicates(self, did))
     }
 
     /// Given the did of a trait, returns its superpredicates.
     pub fn lookup_super_predicates(&self, did: DefId) -> GenericPredicates<'tcx> {
         lookup_locally_or_in_crate_store(
-            "super_predicates", did, &self.super_predicates,
+            "super_predicates", did, &self.dep_graph, &self.super_predicates,
             || self.sess.cstore.item_super_predicates(self, did))
     }
 
@@ -2427,7 +2437,7 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn item_variances(&self, item_id: DefId) -> Rc<ItemVariances> {
         lookup_locally_or_in_crate_store(
-            "item_variance_map", item_id, &self.item_variance_map,
+            "item_variance_map", item_id, &self.dep_graph, &self.item_variance_map,
             || Rc::new(self.sess.cstore.item_variances(item_id)))
     }
 
