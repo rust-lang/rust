@@ -52,6 +52,7 @@ use syntax::parse::token::{InternedString, special_idents};
 use rustc_front::hir;
 use rustc_front::hir::{ItemImpl, ItemTrait};
 use rustc_front::hir::{MutImmutable, MutMutable, Visibility};
+use rustc_front::intravisit::Visitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
 pub use self::sty::{BuiltinBound, BuiltinBounds, ExistentialBounds};
@@ -2726,6 +2727,15 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
         Some(self.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
+    }
+
+
+    pub fn visit_all_items_in_krate<V,F>(&self,
+                                         dep_node_fn: F,
+                                         visitor: &mut V)
+        where F: FnMut(DefId) -> DepNode, V: Visitor<'tcx>
+    {
+        dep_graph::visit_all_items_in_krate(self, dep_node_fn, visitor);
     }
 }
 
