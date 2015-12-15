@@ -19,7 +19,7 @@ use rustc::middle::const_eval::ConstVal;
 use rustc::middle::def_id::DefId;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::subst::Substs;
-use rustc::middle::ty::{AdtDef, ClosureSubsts, Region, Ty};
+use rustc::middle::ty::{self, AdtDef, ClosureSubsts, Region, Ty};
 use rustc_front::hir;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -124,6 +124,7 @@ pub enum ExprKind<'tcx> {
         value: ExprRef<'tcx>,
     },
     Call {
+        ty: ty::Ty<'tcx>,
         fun: ExprRef<'tcx>,
         args: Vec<ExprRef<'tcx>>,
     },

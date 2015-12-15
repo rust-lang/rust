@@ -15,6 +15,7 @@ use build::expr::category::{Category, RvalueFunc};
 use build::scope::LoopScope;
 use hair::*;
 use rustc::middle::region::CodeExtent;
+use rustc::middle::ty;
 use rustc::mir::repr::*;
 use syntax::codemap::Span;
 
@@ -210,22 +211,30 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 this.exit_scope(expr_span, extent, block, END_BLOCK);
                 this.cfg.start_new_block().unit()
             }
-            ExprKind::Call { fun, args } => {
+            ExprKind::Call { ty, fun, args } => {
+                let diverges = match ty.sty {
+                    ty::TyBareFn(_, ref f) => f.sig.0.output.diverges(),
+                    _ => false
+                };
                 let fun = unpack!(block = this.as_operand(block, fun));
                 let args: Vec<_> =
                     args.into_iter()
                         .map(|arg| unpack!(block = this.as_operand(block, arg)))
                         .collect();
+
                 let success = this.cfg.start_new_block();
-                let panic = this.diverge_cleanup();
-                let targets = CallTargets::WithCleanup((success, panic));
-                this.cfg.terminate(block,
-                                   Terminator::Call {
-                                       func: fun,
-                                       args: args,
-                                       destination: destination.clone(),
-                                       targets: targets
-                                   });
+                let cleanup = this.diverge_cleanup();
+                let term = if diverges {
+                    Terminator::DivergingCall { func: fun, args: args, cleanup: Some(cleanup) }
+                } else {
+                    Terminator::Call {
+                        func: fun,
+                        args: args,
+                        destination: destination.clone(),
+                        targets: CallTargets::WithCleanup((success, cleanup))
+                    }
+                };
+                this.cfg.terminate(block, term);
                 success.unit()
             }
 
