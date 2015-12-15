@@ -616,6 +616,7 @@ valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path (de
 valopt i686-linux-android-ndk "" "i686-linux-android NDK standalone path"
 valopt arm-linux-androideabi-ndk "" "arm-linux-androideabi NDK standalone path"
 valopt aarch64-linux-android-ndk "" "aarch64-linux-android NDK standalone path"
+valopt nacl-cross-path  "" "NaCl SDK path (Pepper Canary is recommended). Must be absolute!"
 valopt release-channel "dev" "the name of the release channel to build"
 valopt musl-root "/usr/local" "MUSL root installation directory"
 
@@ -1147,7 +1148,12 @@ do
                 fi
             done
             ;;
-
+        *-unknown-nacl)
+	    if [ -z "$CFG_NACL_CROSS_PATH" ]
+	    then
+		err "I need the NaCl SDK path! (use --nacl-cross-path)"
+	    fi
+	    ;;
         arm-apple-darwin)
             if [ $CFG_OSTYPE != apple-darwin ]
             then
@@ -1749,6 +1755,7 @@ putvar CFG_DISABLE_MANAGE_SUBMODULES
 putvar CFG_AARCH64_LINUX_ANDROID_NDK
 putvar CFG_ARM_LINUX_ANDROIDEABI_NDK
 putvar CFG_I686_LINUX_ANDROID_NDK
+putvar CFG_NACL_CROSS_PATH
 putvar CFG_MANDIR
 putvar CFG_USING_LIBCPP
 
