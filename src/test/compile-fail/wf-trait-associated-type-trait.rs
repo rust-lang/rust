@@ -19,8 +19,8 @@ struct IsCopy<T:Copy> { x: T }
 trait SomeTrait {
     type Type1;
     type Type2 = IsCopy<Self::Type1>;
-    //~^ WARN E0277
+    //~^ ERROR E0277
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }

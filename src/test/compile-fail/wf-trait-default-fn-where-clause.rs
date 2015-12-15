@@ -19,11 +19,11 @@ trait Bar<T:Eq+?Sized> { }
 
 trait Foo {
     fn bar<A>(&self) where A: Bar<Self> {
-        //~^ WARN E0277
+        //~^ ERROR E0277
         //
         // Here, Eq ought to be implemented.
     }
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }

@@ -14,8 +14,8 @@
 #![allow(dead_code)]
 
 struct Foo {
-    foo: [[u8]], //~ WARN E0277
+    foo: [[u8]], //~ ERROR E0277
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }

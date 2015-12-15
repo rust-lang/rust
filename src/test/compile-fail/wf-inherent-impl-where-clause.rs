@@ -18,9 +18,9 @@ trait ExtraCopy<T:Copy> { }
 
 struct Foo<T,U>(T,U);
 
-impl<T,U> Foo<T,U> where T: ExtraCopy<U> //~ WARN E0277
+impl<T,U> Foo<T,U> where T: ExtraCopy<U> //~ ERROR E0277
 {
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }

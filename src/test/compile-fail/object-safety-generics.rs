@@ -22,16 +22,13 @@ trait Quux {
 }
 
 fn make_bar<T:Bar>(t: &T) -> &Bar {
-    t
         //~^ ERROR E0038
         //~| NOTE method `bar` has generic type parameters
+    t
 }
 
 fn make_bar_explicit<T:Bar>(t: &T) -> &Bar {
     t as &Bar
-        //~^ ERROR E0038
-        //~| NOTE method `bar` has generic type parameters
-        //~| ERROR E0038
 }
 
 fn make_quux<T:Quux>(t: &T) -> &Quux {

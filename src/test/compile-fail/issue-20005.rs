@@ -15,13 +15,10 @@ trait From<Src> {
 }
 
 trait To {
-    fn to<Dst>(
-        self //~ error: the trait `core::marker::Sized` is not implemented
+    fn to<Dst>(  //~ ERROR the trait `core::marker::Sized` is not implemented
+        self
     ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
-        From::from( //~ error: the trait `core::marker::Sized` is not implemented
-            //~^ ERROR E0277
-            self
-        )
+        From::from(self)
     }
 }
 

@@ -16,9 +16,9 @@
 
 trait ExtraCopy<T:Copy> { }
 
-trait SomeTrait<T> { //~ WARN E0277
+trait SomeTrait<T> { //~ ERROR E0277
     type Type1: ExtraCopy<T>;
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }

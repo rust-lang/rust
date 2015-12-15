@@ -19,10 +19,10 @@ impl Qiz for Foo {
 
 struct Bar {
   foos: &'static [&'static (Qiz + 'static)]
+//~^ ERROR E0038
 }
 
 const FOO : Foo = Foo;
 const BAR : Bar = Bar { foos: &[&FOO]};
-//~^ ERROR E0038
 
 fn main() { }

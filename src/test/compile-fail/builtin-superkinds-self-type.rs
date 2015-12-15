@@ -13,7 +13,7 @@
 
 use std::sync::mpsc::{channel, Sender};
 
-trait Foo : Sync+'static {
+trait Foo : Sized+Sync+'static {
     fn foo(self, mut chan: Sender<Self>) { }
 }
 

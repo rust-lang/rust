@@ -21,7 +21,6 @@ use middle::ty::fold::{TypeFolder};
 
 use std::cell::RefCell;
 use std::collections::HashSet;
-use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::{Span};
 use syntax::parse::token::{special_idents};
@@ -38,8 +37,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                -> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         CheckTypeWellFormedVisitor {
             ccx: ccx,
-            code: traits::ObligationCauseCode::RFC1214(
-                Rc::new(traits::ObligationCauseCode::MiscObligation))
+            code: traits::ObligationCauseCode::MiscObligation
         }
     }
 
@@ -311,8 +309,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                         ty::wf::trait_obligations(fcx.infcx(),
                                                   fcx.body_id,
                                                   &trait_ref,
-                                                  ast_trait_ref.path.span,
-                                                  true);
+                                                  ast_trait_ref.path.span);
                     for obligation in obligations {
                         fcx.register_predicate(obligation);
                     }
@@ -343,8 +340,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                       .flat_map(|p| ty::wf::predicate_obligations(fcx.infcx(),
                                                                   fcx.body_id,
                                                                   p,
-                                                                  span,
-                                                                  true));
+                                                                  span));
 
         for obligation in obligations {
             fcx.register_predicate(obligation);

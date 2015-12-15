@@ -106,9 +106,6 @@ pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from span.
     MiscObligation,
 
-    /// Obligation that triggers warning until RFC 1214 is fully in place.
-    RFC1214(Rc<ObligationCauseCode<'tcx>>),
-
     /// This is the trait reference from the given projection
     SliceOrArrayElem,
 
@@ -551,24 +548,6 @@ impl<'tcx> ObligationCause<'tcx> {
 
     pub fn dummy() -> ObligationCause<'tcx> {
         ObligationCause { span: DUMMY_SP, body_id: 0, code: MiscObligation }
-    }
-}
-
-/// This marker is used in some caches to record whether the
-/// predicate, if it is found to be false, will yield a warning (due
-/// to RFC1214) or an error. We separate these two cases in the cache
-/// so that if we see the same predicate twice, first resulting in a
-/// warning, and next resulting in an error, we still report the
-/// error, rather than considering it a duplicate.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct RFC1214Warning(bool);
-
-impl<'tcx> ObligationCauseCode<'tcx> {
-    pub fn is_rfc1214(&self) -> bool {
-        match *self {
-            ObligationCauseCode::RFC1214(..) => true,
-            _ => false,
-        }
     }
 }
 

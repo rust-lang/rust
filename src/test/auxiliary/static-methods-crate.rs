@@ -11,7 +11,7 @@
 #![crate_name="static_methods_crate"]
 #![crate_type = "lib"]
 
-pub trait read {
+pub trait read: Sized {
     fn readMaybe(s: String) -> Option<Self>;
 }
 

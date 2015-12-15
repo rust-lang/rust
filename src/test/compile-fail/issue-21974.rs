@@ -17,11 +17,11 @@ trait Foo {
     fn foo(self);
 }
 
-fn foo<'a,'b,T>(x: &'a T, y: &'b T)
+fn foo<'a,'b,T>(x: &'a T, y: &'b T) //~ ERROR type annotations required
     where &'a T : Foo,
           &'b T : Foo
 {
-    x.foo(); //~ ERROR type annotations required
+    x.foo();
     y.foo();
 }
 
