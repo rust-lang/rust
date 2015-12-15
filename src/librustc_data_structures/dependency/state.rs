@@ -38,9 +38,13 @@ impl<ID: DepNodeId> DepGraphState<ID> {
 
     /// Creates an entry for `node` in the graph.
     fn make_node(&mut self, node: ID) -> NodeIndex {
-        let graph = &mut self.graph;
-        *self.nodes.entry(node.clone())
-                   .or_insert_with(|| graph.add_node(node))
+        if let Some(&i) = self.nodes.get(&node) {
+            return i;
+        }
+
+        let index = self.graph.add_node(node.clone());
+        self.nodes.insert(node, index);
+        index
     }
 
     /// Top of the stack of open nodes.
