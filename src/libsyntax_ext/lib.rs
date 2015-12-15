@@ -17,7 +17,12 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![cfg_attr(stage0, feature(custom_attribute))]
+#![cfg_attr(stage0, staged_api)]
+#![unstable(feature = "rustc_private", issue = "27812")]
+
 #![feature(rustc_private)]
+#![feature(staged_api)]
 #![feature(str_char)]
 
 extern crate fmt_macros;
