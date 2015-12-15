@@ -22,7 +22,7 @@ pub fn size_of_val<T>(val: &T) -> usize {
     val.size_of_val()
 }
 
-pub trait TypeInfo {
+pub trait TypeInfo: Sized {
     fn size_of(_lame_type_hint: Option<Self>) -> usize;
     fn size_of_val(&self) -> usize;
 }

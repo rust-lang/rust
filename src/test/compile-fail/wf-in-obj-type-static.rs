@@ -21,8 +21,8 @@ struct MustBeCopy<T:Copy> {
 
 struct Foo<T> {
     // needs T: 'static
-    x: Object<&'static T> //~ WARN E0310
+    x: Object<&'static T> //~ ERROR E0310
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait NumCast {
+pub trait NumCast: Sized {
     fn from(i: i32) -> Option<Self>;
 }
 

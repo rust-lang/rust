@@ -25,12 +25,12 @@ impl NotImplemented for i32 {}
 
 impl MyTrait for .. {}
 
-fn foo<T:MyTrait>() {
-    //~^ ERROR the trait `NotImplemented` is not implemented for the type `core::option::Option<T>`
-    // This should probably typecheck. This is #20671.
-}
-
 fn bar<T:NotImplemented>() { }
+
+fn test() {
+    bar::<Option<i32>>();
+    //~^ ERROR the trait `NotImplemented` is not implemented for the type `core::option::Option<i32>`
+}
 
 fn main() {
 }

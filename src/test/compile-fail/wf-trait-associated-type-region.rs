@@ -17,8 +17,8 @@
 trait SomeTrait<'a> {
     type Type1;
     type Type2 = &'a Self::Type1;
-    //~^ WARN E0309
+    //~^ ERROR E0309
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }

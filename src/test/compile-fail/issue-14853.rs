@@ -12,7 +12,7 @@ use std::fmt::Debug;
 
 trait Str {}
 
-trait Something {
+trait Something: Sized {
     fn yay<T: Debug>(_: Option<Self>, thing: &[T]);
 }
 

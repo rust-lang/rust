@@ -16,11 +16,11 @@
 
 trait ExtraCopy<T:Copy> { }
 
-struct SomeStruct<T,U> //~ WARN E0277
+struct SomeStruct<T,U> //~ ERROR E0277
     where T: ExtraCopy<U>
 {
     data: (T,U)
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }

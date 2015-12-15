@@ -16,16 +16,8 @@ trait Foo {
 }
 
 fn foo_implicit<T:Foo+'static>(b: Box<T>) -> Box<Foo+'static> {
-    b
-        //~^ ERROR E0038
-        //~| NOTE method `foo` has no receiver
-}
-
-fn foo_explicit<T:Foo+'static>(b: Box<T>) -> Box<Foo+'static> {
-    b as Box<Foo>
-        //~^ ERROR E0038
-        //~| NOTE method `foo` has no receiver
-        //~| ERROR E0038
+    //~^ ERROR E0038
+    loop { }
 }
 
 fn main() {

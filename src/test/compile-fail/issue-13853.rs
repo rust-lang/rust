@@ -13,11 +13,14 @@ trait Node {
 }
 
 trait Graph<N: Node> {
-    fn nodes<'a, I: Iterator<Item=&'a N>>(&'a self) -> I;
+    fn nodes<'a, I: Iterator<Item=&'a N>>(&'a self) -> I
+        where N: 'a;
 }
 
 impl<N: Node> Graph<N> for Vec<N> {
-    fn nodes<'a, I: Iterator<Item=&'a N>>(&self) -> I {
+    fn nodes<'a, I: Iterator<Item=&'a N>>(&self) -> I
+        where N: 'a
+    {
         self.iter() //~ ERROR mismatched types
     }
 }

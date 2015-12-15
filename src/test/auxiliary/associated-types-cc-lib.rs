@@ -13,7 +13,7 @@
 
 #![crate_type="lib"]
 
-pub trait Bar {
+pub trait Bar: Sized {
     type T;
 
     fn get(x: Option<Self>) -> <Self as Bar>::T;

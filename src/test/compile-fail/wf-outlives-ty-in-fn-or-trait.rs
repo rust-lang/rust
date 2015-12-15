@@ -19,14 +19,14 @@ trait Trait<T> { }
 
 struct Foo<'a,T> {
     f: &'a fn(T),
-    //~^ WARN E0309
+    //~^ ERROR E0309
 }
 
 struct Bar<'a,T> {
     f: &'a Trait<T>,
-    //~^ WARN E0309
+    //~^ ERROR E0309
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }
 

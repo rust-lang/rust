@@ -26,10 +26,10 @@ fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
     // oh dear!
     box B(&*v) as Box<X>
         //~^ ERROR the parameter type `T` may not live long enough
-        //~| WARNING the parameter type `T` may not live long enough
-        //~| WARNING the parameter type `T` may not live long enough
         //~| ERROR the parameter type `T` may not live long enough
-        //~| WARNING the parameter type `T` may not live long enough
+        //~| ERROR the parameter type `T` may not live long enough
+        //~| ERROR the parameter type `T` may not live long enough
+        //~| ERROR the parameter type `T` may not live long enough
         //~| ERROR the parameter type `T` may not live long enough
         //~| ERROR the parameter type `T` may not live long enough
 }

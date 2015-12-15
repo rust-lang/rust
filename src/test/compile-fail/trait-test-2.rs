@@ -22,5 +22,4 @@ fn main() {
     //~^ ERROR E0038
     //~| ERROR E0038
     //~| ERROR E0277
-    //~| WARNING E0038
 }

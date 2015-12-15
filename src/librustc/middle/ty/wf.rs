@@ -15,8 +15,6 @@ use middle::subst::Substs;
 use middle::traits;
 use middle::ty::{self, RegionEscape, ToPredicate, Ty};
 use std::iter::once;
-use std::mem;
-use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;
 use util::common::ErrorReported;
@@ -30,15 +28,13 @@ use util::common::ErrorReported;
 pub fn obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             body_id: ast::NodeId,
                             ty: Ty<'tcx>,
-                            span: Span,
-                            rfc1214: bool)
+                            span: Span)
                             -> Option<Vec<traits::PredicateObligation<'tcx>>>
 {
     let mut wf = WfPredicates { infcx: infcx,
                                 body_id: body_id,
                                 span: span,
-                                out: vec![],
-                                rfc1214: rfc1214 };
+                                out: vec![] };
     if wf.compute(ty) {
         debug!("wf::obligations({:?}, body_id={:?}) = {:?}", ty, body_id, wf.out);
         let result = wf.normalize();
@@ -56,12 +52,10 @@ pub fn obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 pub fn trait_obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                   body_id: ast::NodeId,
                                   trait_ref: &ty::TraitRef<'tcx>,
-                                  span: Span,
-                                  rfc1214: bool)
+                                  span: Span)
                                   -> Vec<traits::PredicateObligation<'tcx>>
 {
-    let mut wf = WfPredicates { infcx: infcx, body_id: body_id, span: span,
-                                out: vec![], rfc1214: rfc1214 };
+    let mut wf = WfPredicates { infcx: infcx, body_id: body_id, span: span, out: vec![] };
     wf.compute_trait_ref(trait_ref);
     wf.normalize()
 }
@@ -69,12 +63,10 @@ pub fn trait_obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 pub fn predicate_obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                       body_id: ast::NodeId,
                                       predicate: &ty::Predicate<'tcx>,
-                                      span: Span,
-                                      rfc1214: bool)
+                                      span: Span)
                                       -> Vec<traits::PredicateObligation<'tcx>>
 {
-    let mut wf = WfPredicates { infcx: infcx, body_id: body_id, span: span,
-                                out: vec![], rfc1214: rfc1214 };
+    let mut wf = WfPredicates { infcx: infcx, body_id: body_id, span: span, out: vec![] };
 
     // (*) ok to skip binders, because wf code is prepared for it
     match *predicate {
@@ -150,7 +142,7 @@ pub fn implied_bounds<'a,'tcx>(
         // than the ultimate set. (Note: normally there won't be
         // unresolved inference variables here anyway, but there might be
         // during typeck under some circumstances.)
-        let obligations = obligations(infcx, body_id, ty, span, false).unwrap_or(vec![]);
+        let obligations = obligations(infcx, body_id, ty, span).unwrap_or(vec![]);
 
         // From the full set of obligations, just filter down to the
         // region relationships.
@@ -223,8 +215,6 @@ fn implied_bounds_from_components<'tcx>(sub_region: ty::Region,
                     vec!(),
                 Component::UnresolvedInferenceVariable(..) =>
                     vec!(),
-                Component::RFC1214(components) =>
-                    implied_bounds_from_components(sub_region, components),
             }
         })
         .collect()
@@ -235,24 +225,11 @@ struct WfPredicates<'a,'tcx:'a> {
     body_id: ast::NodeId,
     span: Span,
     out: Vec<traits::PredicateObligation<'tcx>>,
-    rfc1214: bool
 }
 
 impl<'a,'tcx> WfPredicates<'a,'tcx> {
-    fn rfc1214<R,F:FnOnce(&mut WfPredicates<'a,'tcx>) -> R>(&mut self, f: F) -> R {
-        let b = mem::replace(&mut self.rfc1214, true);
-        let r = f(self);
-        self.rfc1214 = b;
-        r
-    }
-
     fn cause(&mut self, code: traits::ObligationCauseCode<'tcx>) -> traits::ObligationCause<'tcx> {
-        if !self.rfc1214 {
-            traits::ObligationCause::new(self.span, self.body_id, code)
-        } else {
-            let code = traits::ObligationCauseCode::RFC1214(Rc::new(code));
-            traits::ObligationCause::new(self.span, self.body_id, code)
-        }
+        traits::ObligationCause::new(self.span, self.body_id, code)
     }
 
     fn normalize(&mut self) -> Vec<traits::PredicateObligation<'tcx>> {
@@ -266,14 +243,6 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
                     once(pred.value).chain(pred.obligations)
                 })
                 .collect()
-    }
-
-    fn compute_rfc1214(&mut self, ty: Ty<'tcx>) {
-        let b = mem::replace(&mut self.rfc1214, true);
-        for subty in ty.walk().skip(1) {
-            self.compute(subty);
-        }
-        self.rfc1214 = b;
     }
 
     /// Pushes the obligations required for `trait_ref` to be WF into
@@ -329,21 +298,19 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
 
                 ty::TySlice(subty) |
                 ty::TyArray(subty, _) => {
-                    self.rfc1214(|this| {
-                        if !subty.has_escaping_regions() {
-                            let cause = this.cause(traits::SliceOrArrayElem);
-                            match traits::trait_ref_for_builtin_bound(this.infcx.tcx,
-                                                                      ty::BoundSized,
-                                                                      subty) {
-                                Ok(trait_ref) => {
-                                    this.out.push(
-                                        traits::Obligation::new(cause,
-                                                                trait_ref.to_predicate()));
-                                }
-                                Err(ErrorReported) => { }
+                    if !subty.has_escaping_regions() {
+                        let cause = self.cause(traits::SliceOrArrayElem);
+                        match traits::trait_ref_for_builtin_bound(self.infcx.tcx,
+                                                                  ty::BoundSized,
+                                                                  subty) {
+                            Ok(trait_ref) => {
+                                self.out.push(
+                                    traits::Obligation::new(cause,
+                                                            trait_ref.to_predicate()));
                             }
+                            Err(ErrorReported) => { }
                         }
-                    })
+                    }
                 }
 
                 ty::TyBox(_) |
@@ -380,15 +347,16 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
                 ty::TyClosure(..) => {
                     // the types in a closure are always the types of
                     // local variables (or possibly references to local
-                    // variables), which are separately checked w/r/t
-                    // WFedness.
+                    // variables), we'll walk those.
+                    //
+                    // (Though, local variables are probably not
+                    // needed, as they are separately checked w/r/t
+                    // WFedness.)
                 }
 
                 ty::TyBareFn(..) => {
-                    // process the bound types; because the old implicator
-                    // did not do this, go into RFC1214 mode.
-                    subtys.skip_current_subtree();
-                    self.compute_rfc1214(ty);
+                    // let the loop iterator into the argument/return
+                    // types appearing in the fn signature
                 }
 
                 ty::TyTrait(ref data) => {
@@ -407,11 +375,6 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
                         traits::Obligation::new(
                             cause,
                             ty::Predicate::ObjectSafe(data.principal_def_id())));
-
-                    // process the bound types; because the old implicator
-                    // did not do this, go into RFC1214 mode.
-                    subtys.skip_current_subtree();
-                    self.compute_rfc1214(ty);
                 }
 
                 // Inference variables are the complicated case, since we don't

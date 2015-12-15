@@ -24,16 +24,13 @@ trait Trait2<'a, 'b> {
     type Foo;
 }
 
-fn wf<T>() { }
-
-// As a side-effect of the conservative process above, this argument
-// is not automatically considered well-formed, since for it to be WF,
-// we would need to know that `'y: 'x`, but we do not infer that.
-fn callee<'x, 'y, T>(
-    t: &'x for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
-{
-    wf::<&'x &'y i32>();
+// As a side-effect of the conservative process above, the type of
+// this argument `t` is not automatically considered well-formed,
+// since for it to be WF, we would need to know that `'y: 'x`, but we
+// do not infer that.
+fn callee<'x, 'y, T>(t: &'x for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
     //~^ ERROR reference has a longer lifetime than the data it references
+{
 }
 
 fn main() { }

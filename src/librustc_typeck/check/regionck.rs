@@ -99,7 +99,6 @@ use middle::ty::adjustment;
 use middle::ty::wf::ImpliedBound;
 
 use std::mem;
-use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;
 use rustc_front::intravisit::{self, Visitor};
@@ -426,8 +425,6 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                       code: &traits::ObligationCauseCode<'tcx>)
                       -> SubregionOrigin<'tcx> {
         match *code {
-            traits::ObligationCauseCode::RFC1214(ref code) =>
-                infer::RFC1214Subregion(Rc::new(self.code_to_origin(span, sup_type, code))),
             traits::ObligationCauseCode::ReferenceOutlivesReferent(ref_type) =>
                 infer::ReferenceOutlivesReferent(ref_type, span),
             _ =>
@@ -1605,10 +1602,6 @@ fn components_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                 rcx.tcx().sess.delay_span_bug(
                     origin.span(),
                     &format!("unresolved inference variable in outlives: {:?}", v));
-            }
-            ty::outlives::Component::RFC1214(subcomponents) => {
-                let suborigin = infer::RFC1214Subregion(Rc::new(origin));
-                components_must_outlive(rcx, suborigin, subcomponents, region);
             }
         }
     }

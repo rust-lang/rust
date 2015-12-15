@@ -139,7 +139,6 @@ pub mod coercion;
 pub mod demand;
 pub mod method;
 mod upvar;
-mod wf;
 mod wfcheck;
 mod cast;
 mod closure;
@@ -381,21 +380,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &'tcx hir::Item) {
         check_item_body(self.ccx, i);
     }
-}
-
-pub fn check_wf_old(ccx: &CrateCtxt) {
-    // If types are not well-formed, it leads to all manner of errors
-    // downstream, so stop reporting errors at this point.
-    ccx.tcx.sess.abort_if_new_errors(|| {
-        // FIXME(#25759). The new code below is much more reliable but (for now)
-        // only generates warnings. So as to ensure that we continue
-        // getting errors where we used to get errors, we run the old wf
-        // code first and abort if it encounters any errors. If no abort
-        // comes, we run the new code and issue warnings.
-        let krate = ccx.tcx.map.krate();
-        let mut visit = wf::CheckTypeWellFormedVisitor::new(ccx);
-        krate.visit_all_items(&mut visit);
-    });
 }
 
 pub fn check_wf_new(ccx: &CrateCtxt) {
