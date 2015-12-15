@@ -92,6 +92,7 @@ use syntax::abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap::Span;
+use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::parse::token::special_idents;
 use syntax::ptr::P;
 use rustc_front::hir;
@@ -1932,6 +1933,18 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                         &param.bounds, &ast_generics.where_clause);
 
     let parent = tcx.map.get_parent(param.id);
+
+    if space != TypeSpace && default.is_some() {
+        if !tcx.sess.features.borrow().default_type_parameter_fallback {
+            emit_feature_err(&tcx.sess.parse_sess.span_diagnostic,
+                             "default_type_parameter_fallback",
+                             param.span,
+                             GateIssue::Language,
+                             "other than on a `struct` or `enum` definition, \
+                              defaults for type parameters are experimental \
+                              and known to be buggy");
+        }
+    }
 
     let def = ty::TypeParameterDef {
         space: space,
