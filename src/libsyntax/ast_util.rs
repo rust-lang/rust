@@ -10,7 +10,6 @@
 
 use ast::*;
 use ast;
-use ast_util;
 use codemap;
 use codemap::Span;
 use owned_slice::OwnedSlice;
@@ -28,144 +27,10 @@ pub fn path_name_i(idents: &[Ident]) -> String {
     idents.iter().map(|i| i.to_string()).collect::<Vec<String>>().join("::")
 }
 
-pub fn stmt_id(s: &Stmt) -> Option<NodeId> {
-    match s.node {
-      StmtDecl(_, id) => Some(id),
-      StmtExpr(_, id) => Some(id),
-      StmtSemi(_, id) => Some(id),
-      StmtMac(..) => None,
-    }
-}
-
-pub fn binop_to_string(op: BinOp_) -> &'static str {
-    match op {
-        BiAdd => "+",
-        BiSub => "-",
-        BiMul => "*",
-        BiDiv => "/",
-        BiRem => "%",
-        BiAnd => "&&",
-        BiOr => "||",
-        BiBitXor => "^",
-        BiBitAnd => "&",
-        BiBitOr => "|",
-        BiShl => "<<",
-        BiShr => ">>",
-        BiEq => "==",
-        BiLt => "<",
-        BiLe => "<=",
-        BiNe => "!=",
-        BiGe => ">=",
-        BiGt => ">"
-    }
-}
-
-pub fn lazy_binop(b: BinOp_) -> bool {
-    match b {
-      BiAnd => true,
-      BiOr => true,
-      _ => false
-    }
-}
-
-pub fn is_shift_binop(b: BinOp_) -> bool {
-    match b {
-      BiShl => true,
-      BiShr => true,
-      _ => false
-    }
-}
-
-pub fn is_comparison_binop(b: BinOp_) -> bool {
-    match b {
-        BiEq | BiLt | BiLe | BiNe | BiGt | BiGe =>
-            true,
-        BiAnd | BiOr | BiAdd | BiSub | BiMul | BiDiv | BiRem |
-        BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr =>
-            false,
-    }
-}
-
-/// Returns `true` if the binary operator takes its arguments by value
-pub fn is_by_value_binop(b: BinOp_) -> bool {
-    !is_comparison_binop(b)
-}
-
-/// Returns `true` if the unary operator takes its argument by value
-pub fn is_by_value_unop(u: UnOp) -> bool {
-    match u {
-        UnNeg | UnNot => true,
-        _ => false,
-    }
-}
-
-pub fn unop_to_string(op: UnOp) -> &'static str {
-    match op {
-        UnDeref => "*",
-        UnNot => "!",
-        UnNeg => "-",
-    }
-}
-
 pub fn is_path(e: P<Expr>) -> bool {
     match e.node { ExprPath(..) => true, _ => false }
 }
 
-pub fn int_ty_to_string(t: IntTy) -> &'static str {
-    match t {
-        TyIs => "isize",
-        TyI8 => "i8",
-        TyI16 => "i16",
-        TyI32 => "i32",
-        TyI64 => "i64"
-    }
-}
-
-pub fn int_val_to_string(t: IntTy, val: i64) -> String {
-    // cast to a u64 so we can correctly print INT64_MIN. All integral types
-    // are parsed as u64, so we wouldn't want to print an extra negative
-    // sign.
-    format!("{}{}", val as u64, int_ty_to_string(t))
-}
-
-pub fn int_ty_max(t: IntTy) -> u64 {
-    match t {
-        TyI8 => 0x80,
-        TyI16 => 0x8000,
-        TyIs | TyI32 => 0x80000000, // actually ni about TyIs
-        TyI64 => 0x8000000000000000
-    }
-}
-
-pub fn uint_ty_to_string(t: UintTy) -> &'static str {
-    match t {
-        TyUs => "usize",
-        TyU8 => "u8",
-        TyU16 => "u16",
-        TyU32 => "u32",
-        TyU64 => "u64"
-    }
-}
-
-pub fn uint_val_to_string(t: UintTy, val: u64) -> String {
-    format!("{}{}", val, uint_ty_to_string(t))
-}
-
-pub fn uint_ty_max(t: UintTy) -> u64 {
-    match t {
-        TyU8 => 0xff,
-        TyU16 => 0xffff,
-        TyUs | TyU32 => 0xffffffff, // actually ni about TyUs
-        TyU64 => 0xffffffffffffffff
-    }
-}
-
-pub fn float_ty_to_string(t: FloatTy) -> &'static str {
-    match t {
-        TyF32 => "f32",
-        TyF64 => "f64",
-    }
-}
 
 // convert a span and an identifier to the corresponding
 // 1-segment path
@@ -233,17 +98,6 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: Option<&Ty>) -> Ident 
 pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
     match field.node.kind {
         ast::NamedField(_, v) | ast::UnnamedField(v) => v
-    }
-}
-
-pub fn empty_generics() -> Generics {
-    Generics {
-        lifetimes: Vec::new(),
-        ty_params: OwnedSlice::empty(),
-        where_clause: WhereClause {
-            id: DUMMY_NODE_ID,
-            predicates: Vec::new(),
-        }
     }
 }
 
@@ -351,7 +205,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
 
     fn visit_stmt(&mut self, statement: &Stmt) {
         self.operation
-            .visit_id(ast_util::stmt_id(statement).expect("attempted to visit unexpanded stmt"));
+            .visit_id(statement.node.id().expect("attempted to visit unexpanded stmt"));
         visit::walk_stmt(self, statement)
     }
 
@@ -517,14 +371,6 @@ pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> boo
         // can types contain idents?
         s.parameters == t.parameters
     })
-}
-
-/// Returns true if this literal is a string and false otherwise.
-pub fn lit_is_str(lit: &Lit) -> bool {
-    match lit.node {
-        LitStr(..) => true,
-        _ => false,
-    }
 }
 
 #[cfg(test)]

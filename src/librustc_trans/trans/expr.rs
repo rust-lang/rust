@@ -83,7 +83,7 @@ use trans::type_::Type;
 use rustc_front;
 use rustc_front::hir;
 
-use syntax::{ast, ast_util, codemap};
+use syntax::{ast, codemap};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::parse::token;
@@ -2622,7 +2622,7 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
             ExprKind::RvalueDps
         }
 
-        hir::ExprLit(ref lit) if ast_util::lit_is_str(&**lit) => {
+        hir::ExprLit(ref lit) if lit.node.is_str() => {
             ExprKind::RvalueDps
         }
 

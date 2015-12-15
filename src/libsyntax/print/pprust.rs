@@ -15,7 +15,6 @@ use ast::{self, TokenTree};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;
 use attr::ThinAttributesExt;
-use ast_util;
 use util::parser::AssocOp;
 use attr;
 use owned_slice::OwnedSlice;
@@ -649,15 +648,15 @@ pub trait PrintState<'a> {
                 match t {
                     ast::SignedIntLit(st, ast::Plus) => {
                         word(self.writer(),
-                             &ast_util::int_val_to_string(st, i as i64))
+                             &st.val_to_string(i as i64))
                     }
                     ast::SignedIntLit(st, ast::Minus) => {
-                        let istr = ast_util::int_val_to_string(st, -(i as i64));
+                        let istr = st.val_to_string(-(i as i64));
                         word(self.writer(),
                              &format!("-{}", istr))
                     }
                     ast::UnsignedIntLit(ut) => {
-                        word(self.writer(), &ast_util::uint_val_to_string(ut, i))
+                        word(self.writer(), &ut.val_to_string(i))
                     }
                     ast::UnsuffixedIntLit(ast::Plus) => {
                         word(self.writer(), &format!("{}", i))
@@ -672,7 +671,7 @@ pub trait PrintState<'a> {
                      &format!(
                          "{}{}",
                          &f,
-                         &ast_util::float_ty_to_string(t)))
+                         t.ty_to_string()))
             }
             ast::LitFloatUnsuffixed(ref f) => word(self.writer(), &f[..]),
             ast::LitBool(val) => {
@@ -1528,7 +1527,7 @@ impl<'a> State<'a> {
 
     pub fn print_variant(&mut self, v: &ast::Variant) -> io::Result<()> {
         try!(self.head(""));
-        let generics = ast_util::empty_generics();
+        let generics = ast::Generics::default();
         try!(self.print_struct(&v.node.data, &generics, v.node.name, v.span, false));
         match v.node.disr_expr {
             Some(ref d) => {
@@ -1948,7 +1947,7 @@ impl<'a> State<'a> {
             try!(self.print_expr(lhs));
         }
         try!(space(&mut self.s));
-        try!(self.word_space(ast_util::binop_to_string(op.node)));
+        try!(self.word_space(op.node.to_string()));
         if self.check_expr_bin_needs_paren(rhs, op) {
             self.print_expr_maybe_paren(rhs)
         } else {
@@ -1959,7 +1958,7 @@ impl<'a> State<'a> {
     fn print_expr_unary(&mut self,
                         op: ast::UnOp,
                         expr: &ast::Expr) -> io::Result<()> {
-        try!(word(&mut self.s, ast_util::unop_to_string(op)));
+        try!(word(&mut self.s, ast::UnOp::to_string(op)));
         self.print_expr_maybe_paren(expr)
     }
 
@@ -2151,7 +2150,7 @@ impl<'a> State<'a> {
             ast::ExprAssignOp(op, ref lhs, ref rhs) => {
                 try!(self.print_expr(&**lhs));
                 try!(space(&mut self.s));
-                try!(word(&mut self.s, ast_util::binop_to_string(op.node)));
+                try!(word(&mut self.s, op.node.to_string()));
                 try!(self.word_space("="));
                 try!(self.print_expr(&**rhs));
             }
@@ -3159,7 +3158,7 @@ mod tests {
             output: ast::DefaultReturn(codemap::DUMMY_SP),
             variadic: false
         };
-        let generics = ast_util::empty_generics();
+        let generics = ast::Generics::default();
         assert_eq!(fun_to_string(&decl, ast::Unsafety::Normal,
                                  ast::Constness::NotConst,
                                  abba_ident,

@@ -2872,7 +2872,7 @@ impl<'a> Parser<'a> {
     fn check_no_chained_comparison(&mut self, lhs: &Expr, outer_op: &AssocOp) {
         debug_assert!(outer_op.is_comparison());
         match lhs.node {
-            ExprBinary(op, _, _) if ast_util::is_comparison_binop(op.node) => {
+            ExprBinary(op, _, _) if op.node.is_comparison() => {
                 // respan to include both operators
                 let op_span = mk_sp(op.span.lo, self.span.hi);
                 self.span_err(op_span,
@@ -4000,7 +4000,7 @@ impl<'a> Parser<'a> {
                 }
             })
         } else {
-            Ok(ast_util::empty_generics())
+            Ok(ast::Generics::default())
         }
     }
 

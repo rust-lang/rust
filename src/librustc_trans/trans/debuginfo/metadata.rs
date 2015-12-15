@@ -46,7 +46,7 @@ use std::rc::Rc;
 use syntax;
 use syntax::util::interner::Interner;
 use syntax::codemap::Span;
-use syntax::{ast, ast_util, codemap};
+use syntax::{ast, codemap};
 use syntax::parse::token;
 
 
@@ -936,13 +936,13 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyBool => ("bool", DW_ATE_boolean),
         ty::TyChar => ("char", DW_ATE_unsigned_char),
         ty::TyInt(int_ty) => {
-            (ast_util::int_ty_to_string(int_ty), DW_ATE_signed)
+            (int_ty.ty_to_string(), DW_ATE_signed)
         },
         ty::TyUint(uint_ty) => {
-            (ast_util::uint_ty_to_string(uint_ty), DW_ATE_unsigned)
+            (uint_ty.ty_to_string(), DW_ATE_unsigned)
         },
         ty::TyFloat(float_ty) => {
-            (ast_util::float_ty_to_string(float_ty), DW_ATE_float)
+            (float_ty.ty_to_string(), DW_ATE_float)
         },
         _ => cx.sess().bug("debuginfo::basic_type_metadata - t is invalid type")
     };
