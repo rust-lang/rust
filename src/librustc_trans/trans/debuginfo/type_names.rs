@@ -19,7 +19,6 @@ use middle::subst::{self, Substs};
 use middle::ty::{self, Ty};
 
 use rustc_front::hir;
-use syntax::ast_util;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e. calling the function twice with the same type will also do
@@ -44,9 +43,9 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyBool => output.push_str("bool"),
         ty::TyChar => output.push_str("char"),
         ty::TyStr => output.push_str("str"),
-        ty::TyInt(int_ty) => output.push_str(ast_util::int_ty_to_string(int_ty)),
-        ty::TyUint(uint_ty) => output.push_str(ast_util::uint_ty_to_string(uint_ty)),
-        ty::TyFloat(float_ty) => output.push_str(ast_util::float_ty_to_string(float_ty)),
+        ty::TyInt(int_ty) => output.push_str(int_ty.ty_to_string()),
+        ty::TyUint(uint_ty) => output.push_str(uint_ty.ty_to_string()),
+        ty::TyFloat(float_ty) => output.push_str(float_ty.ty_to_string()),
         ty::TyStruct(def, substs) |
         ty::TyEnum(def, substs) => {
             push_item_name(cx, def.did, qualified, output);
