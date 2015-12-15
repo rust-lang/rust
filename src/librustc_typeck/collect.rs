@@ -34,13 +34,12 @@ lazilly and on demand, and include logic that checks for cycles.
 Demand is driven by calls to `AstConv::get_item_type_scheme` or
 `AstConv::lookup_trait_def`.
 
-Currently, we "convert" types and traits in three phases (note that
+Currently, we "convert" types and traits in two phases (note that
 conversion only affects the types of items / enum variants / methods;
 it does not e.g. compute the types of individual expressions):
 
 0. Intrinsics
-1. Trait definitions
-2. Type definitions
+1. Trait/Type definitions
 
 Conversion itself is done by simply walking each of the items in turn
 and invoking an appropriate function (e.g., `trait_def_of_item` or
@@ -56,11 +55,6 @@ There are some shortcomings in this design:
 - Because the type scheme includes defaults, cycles through type
   parameter defaults are illegal even if those defaults are never
   employed. This is not necessarily a bug.
-- The phasing of trait definitions before type definitions does not
-  seem to be necessary, sufficient, or particularly helpful, given that
-  processing a trait definition can trigger processing a type def and
-  vice versa. However, if I remove it, I get ICEs, so some more work is
-  needed in that area. -nmatsakis
 
 */
 
@@ -107,9 +101,6 @@ use rustc_front::print::pprust;
 pub fn collect_item_types(tcx: &ty::ctxt) {
     let ccx = &CrateCtxt { tcx: tcx, stack: RefCell::new(Vec::new()) };
 
-    let mut visitor = CollectTraitDefVisitor{ ccx: ccx };
-    ccx.tcx.map.krate().visit_all_items(&mut visitor);
-
     let mut visitor = CollectItemTypesVisitor{ ccx: ccx };
     ccx.tcx.map.krate().visit_all_items(&mut visitor);
 }
@@ -149,28 +140,6 @@ enum AstConvRequest {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// First phase: just collect *trait definitions* -- basically, the set
-// of type parameters and supertraits. This is information we need to
-// know later when parsing field defs.
-
-struct CollectTraitDefVisitor<'a, 'tcx: 'a> {
-    ccx: &'a CrateCtxt<'a, 'tcx>
-}
-
-impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CollectTraitDefVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &hir::Item) {
-        match i.node {
-            hir::ItemTrait(..) => {
-                // computing the trait def also fills in the table
-                let _ = trait_def_of_item(self.ccx, i);
-            }
-            _ => { }
-        }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Second phase: collection proper.
 
 struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
