@@ -1113,8 +1113,8 @@ pub trait Iterator {
         Take{iter: self, n: n}
     }
 
-    /// An iterator adaptor similar to [`fold()`] but different because it holds
-    /// internal state and produces a new iterator.
+    /// An iterator adaptor similar to [`fold()`] that holds internal state and
+    /// produces a new iterator.
     ///
     /// [`fold()`]: #method.fold
     ///
