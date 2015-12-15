@@ -87,16 +87,16 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::Terminator::Diverge => {
+                build::Unreachable(bcx);
+            }
+
+            mir::Terminator::Resume => {
                 if let Some(llpersonalityslot) = self.llpersonalityslot {
                     let lp = build::Load(bcx, llpersonalityslot);
                     // FIXME(lifetime) base::call_lifetime_end(bcx, self.personality);
                     build::Resume(bcx, lp);
                 } else {
-                    // This fn never encountered anything fallible, so
-                    // a Diverge cannot actually happen. Note that we
-                    // do a total hack to ensure that we visit the
-                    // DIVERGE block last.
-                    build::Unreachable(bcx);
+                    panic!("resume terminator without personality slot")
                 }
             }
 

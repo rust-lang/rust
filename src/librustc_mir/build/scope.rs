@@ -86,7 +86,7 @@ should go to.
 
 */
 
-use build::{BlockAnd, BlockAndExtension, Builder, CFG};
+use build::{BlockAnd, BlockAndExtension, Builder};
 use rustc::middle::region::CodeExtent;
 use rustc::middle::ty::Ty;
 use rustc::mir::repr::*;
@@ -227,16 +227,44 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.cfg.terminate(block, Terminator::Goto { target: target });
     }
 
-    /// Creates a path that performs all required cleanup for
-    /// unwinding. This path terminates in DIVERGE. Returns the start
-    /// of the path. See module comment for more details.
-    pub fn diverge_cleanup(&mut self) -> BasicBlock {
-        diverge_cleanup_helper(&mut self.cfg, &mut self.scopes)
+    /// Creates a path that performs all required cleanup for unwinding.
+    ///
+    /// This path terminates in Resume. Returns the start of the path.
+    /// See module comment for more details. None indicates there’s no
+    /// cleanup to do at this point.
+    pub fn diverge_cleanup(&mut self) -> Option<BasicBlock> {
+        if self.scopes.is_empty() {
+            return None;
+        }
+
+        let mut terminator = Terminator::Resume;
+        // Given an array of scopes, we generate these from the outermost scope to the innermost
+        // one. Thus for array [S0, S1, S2] with corresponding cleanup blocks [B0, B1, B2], we will
+        // generate B0 <- B1 <- B2 in left-to-right order. The outermost scope (B0) will always
+        // terminate with a Resume terminator.
+        for scope in self.scopes.iter_mut().filter(|s| !s.drops.is_empty()) {
+            if let Some(b) = scope.cached_block {
+                terminator = Terminator::Goto { target: b };
+                continue;
+            } else {
+                let new_block = self.cfg.start_new_block();
+                self.cfg.terminate(new_block, terminator);
+                terminator = Terminator::Goto { target: new_block };
+                for &(kind, span, ref lvalue) in scope.drops.iter().rev() {
+                    self.cfg.push_drop(new_block, span, kind, lvalue);
+                }
+                scope.cached_block = Some(new_block);
+            }
+        }
+        // Return the innermost cached block, most likely the one we just generated.
+        // Note that if there are no cleanups in scope we return None.
+        self.scopes.iter().rev().flat_map(|b| b.cached_block).next()
     }
 
     /// Create diverge cleanup and branch to it from `block`.
     pub fn panic(&mut self, block: BasicBlock) {
-        let cleanup = self.diverge_cleanup();
+        // FIXME: panic terminator should also have conditional cleanup?
+        let cleanup = self.diverge_cleanup().unwrap_or(DIVERGE_BLOCK);
         self.cfg.terminate(block, Terminator::Panic { target: cleanup });
     }
 
@@ -249,14 +277,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                          lvalue: &Lvalue<'tcx>,
                          lvalue_ty: Ty<'tcx>) {
         if self.hir.needs_drop(lvalue_ty) {
-            match self.scopes.iter_mut().rev().find(|s| s.extent == extent) {
-                Some(scope) => {
+            for scope in self.scopes.iter_mut().rev() {
+                // We must invalidate all the cached_blocks leading up to the scope we’re looking
+                // for, because otherwise some/most of the blocks in the chain might become
+                // incorrect (i.e. they still are pointing at old cached_block).
+                scope.cached_block = None;
+                if scope.extent == extent {
                     scope.drops.push((kind, span, lvalue.clone()));
-                    scope.cached_block = None;
+                    return;
                 }
-                None => self.hir.span_bug(span, &format!("extent {:?} not in scope to drop {:?}",
-                                                         extent, lvalue)),
             }
+            self.hir.span_bug(span,
+                              &format!("extent {:?} not in scope to drop {:?}", extent, lvalue));
         }
     }
 
@@ -267,29 +299,4 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn extent_of_outermost_scope(&self) -> CodeExtent {
         self.scopes.first().map(|scope| scope.extent).unwrap()
     }
-}
-
-fn diverge_cleanup_helper<'tcx>(cfg: &mut CFG<'tcx>, scopes: &mut [Scope<'tcx>]) -> BasicBlock {
-    let len = scopes.len();
-
-    if len == 0 {
-        return DIVERGE_BLOCK;
-    }
-
-    let (remaining, scope) = scopes.split_at_mut(len - 1);
-    let scope = &mut scope[0];
-
-    if let Some(b) = scope.cached_block {
-        return b;
-    }
-
-    let block = cfg.start_new_block();
-    for &(kind, span, ref lvalue) in &scope.drops {
-        cfg.push_drop(block, span, kind, lvalue);
-    }
-    scope.cached_block = Some(block);
-
-    let remaining_cleanup_block = diverge_cleanup_helper(cfg, remaining);
-    cfg.terminate(block, Terminator::Goto { target: remaining_cleanup_block });
-    block
 }

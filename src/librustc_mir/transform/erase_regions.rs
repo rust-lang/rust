@@ -80,6 +80,7 @@ impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
         match *terminator {
             Terminator::Goto { .. } |
             Terminator::Diverge |
+            Terminator::Resume |
             Terminator::Return |
             Terminator::Panic { .. } => {
                 /* nothing to do */
