@@ -3060,8 +3060,9 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
     let reachable_symbol_ids = filter_reachable_ids(&shared_ccx);
 
     // Translate the metadata.
-    let metadata = tcx.dep_graph.with_ignore(|| {
-        write_metadata(&shared_ccx, krate, &reachable_symbol_ids, mir_map);
+    let metadata = tcx.dep_graph.with_task(DepNode::TransWriteMetadata, || {
+        let krate = tcx.map.krate();
+        write_metadata(&shared_ccx, krate, &reachable_symbol_ids, mir_map)
     });
 
     if shared_ccx.sess().trans_stats() {

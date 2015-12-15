@@ -65,6 +65,7 @@ pub enum DepNode {
     TransLinkMeta,
     TransCrateItem(DefId),
     TransInlinedItem(DefId),
+    TransWriteMetadata,
 
     // Nodes representing bits of computed IR in the tcx. Each of
     // these corresponds to a particular table in the tcx.
