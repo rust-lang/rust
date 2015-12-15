@@ -45,7 +45,7 @@ impl ColorConfig {
             ColorConfig::Always => true,
             ColorConfig::Never  => false,
             ColorConfig::Auto   => stderr_isatty(),
-        }        
+        }
     }
 }
 
@@ -619,3 +619,62 @@ impl Write for Destination {
     }
 }
 
+
+#[cfg(test)]
+mod test {
+    use errors::Level;
+    use super::EmitterWriter;
+    use codemap::{mk_sp, CodeMap};
+    use std::sync::{Arc, Mutex};
+    use std::io::{self, Write};
+    use std::str::from_utf8;
+    use std::rc::Rc;
+
+    // Diagnostic doesn't align properly in span where line number increases by one digit
+    #[test]
+    fn test_hilight_suggestion_issue_11715() {
+        struct Sink(Arc<Mutex<Vec<u8>>>);
+        impl Write for Sink {
+            fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+                Write::write(&mut *self.0.lock().unwrap(), data)
+            }
+            fn flush(&mut self) -> io::Result<()> { Ok(()) }
+        }
+        let data = Arc::new(Mutex::new(Vec::new()));
+        let cm = Rc::new(CodeMap::new());
+        let mut ew = EmitterWriter::new(Box::new(Sink(data.clone())), None, cm.clone());
+        let content = "abcdefg
+        koksi
+        line3
+        line4
+        cinq
+        line6
+        line7
+        line8
+        line9
+        line10
+        e-lä-vän
+        tolv
+        dreizehn
+        ";
+        let file = cm.new_filemap_and_lines("dummy.txt", content);
+        let start = file.lines.borrow()[7];
+        let end = file.lines.borrow()[11];
+        let sp = mk_sp(start, end);
+        let lvl = Level::Error;
+        println!("span_to_lines");
+        let lines = cm.span_to_lines(sp);
+        println!("highlight_lines");
+        ew.highlight_lines(sp, lvl, lines).unwrap();
+        println!("done");
+        let vec = data.lock().unwrap().clone();
+        let vec: &[u8] = &vec;
+        let str = from_utf8(vec).unwrap();
+        println!("{}", str);
+        assert_eq!(str, "dummy.txt: 8         line8\n\
+                         dummy.txt: 9         line9\n\
+                         dummy.txt:10         line10\n\
+                         dummy.txt:11         e-lä-vän\n\
+                         dummy.txt:12         tolv\n");
+    }
+}

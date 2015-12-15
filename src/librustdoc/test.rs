@@ -225,7 +225,9 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     }
     let data = Arc::new(Mutex::new(Vec::new()));
     let codemap = Rc::new(CodeMap::new());
-    let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()), None, codemap.clone());
+    let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
+                                                      None,
+                                                      codemap.clone());
     let old = io::set_panic(box Sink(data.clone()));
     let _bomb = Bomb(data, old.unwrap_or(box io::stdout()));
 

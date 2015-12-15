@@ -1224,7 +1224,7 @@ mod tests {
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, None, registry,
                                      Rc::new(DummyCrateStore));
-            assert!(!sess.can_print_warnings);
+            assert!(!sess.diagnostic().can_emit_warnings);
         }
 
         {
@@ -1236,7 +1236,7 @@ mod tests {
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, None, registry,
                                      Rc::new(DummyCrateStore));
-            assert!(sess.can_print_warnings);
+            assert!(sess.diagnostic().can_emit_warnings);
         }
 
         {
@@ -1247,7 +1247,7 @@ mod tests {
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, None, registry,
                                      Rc::new(DummyCrateStore));
-            assert!(sess.can_print_warnings);
+            assert!(sess.diagnostic().can_emit_warnings);
         }
     }
 }
