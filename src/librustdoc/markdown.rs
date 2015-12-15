@@ -142,13 +142,13 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 }
 
 /// Run any tests/code examples in the markdown file `input`.
-pub fn test(input: &str, libs: SearchPaths, externs: core::Externs,
+pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: core::Externs,
             mut test_args: Vec<String>) -> isize {
     let input_str = load_or_return!(input, 1, 2);
 
     let mut opts = TestOptions::default();
     opts.no_crate_inject = true;
-    let mut collector = Collector::new(input.to_string(), libs, externs,
+    let mut collector = Collector::new(input.to_string(), cfgs, libs, externs,
                                        true, opts);
     find_testable_code(&input_str, &mut collector);
     test_args.insert(0, "rustdoctest".to_string());

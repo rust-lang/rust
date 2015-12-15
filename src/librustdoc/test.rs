@@ -85,7 +85,7 @@ pub fn run(input: &str,
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess);
-    cfg.extend(config::parse_cfgspecs(cfgs));
+    cfg.extend(config::parse_cfgspecs(cfgs.clone()));
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
     let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate,
                                                      "rustdoc-test", None)
@@ -122,6 +122,7 @@ pub fn run(input: &str,
     let (krate, _) = passes::unindent_comments(krate);
 
     let mut collector = Collector::new(krate.name.to_string(),
+                                       cfgs,
                                        libs,
                                        externs,
                                        false,
@@ -168,7 +169,7 @@ fn scrape_test_config(krate: &::rustc_front::hir::Crate) -> TestOptions {
     return opts;
 }
 
-fn runtest(test: &str, cratename: &str, libs: SearchPaths,
+fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
            externs: core::Externs,
            should_panic: bool, no_run: bool, as_test_harness: bool,
            opts: &TestOptions) {
@@ -239,7 +240,8 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
 
     let outdir = TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir");
     let out = Some(outdir.path().to_path_buf());
-    let cfg = config::build_configuration(&sess);
+    let mut cfg = config::build_configuration(&sess);
+    cfg.extend(config::parse_cfgspecs(cfgs));
     let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
     let mut control = driver::CompileController::basic();
     if no_run {
@@ -349,6 +351,7 @@ fn partition_source(s: &str) -> (String, String) {
 pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
     names: Vec<String>,
+    cfgs: Vec<String>,
     libs: SearchPaths,
     externs: core::Externs,
     cnt: usize,
@@ -359,11 +362,12 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn new(cratename: String, libs: SearchPaths, externs: core::Externs,
+    pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: core::Externs,
                use_headers: bool, opts: TestOptions) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
+            cfgs: cfgs,
             libs: libs,
             externs: externs,
             cnt: 0,
@@ -384,6 +388,7 @@ impl Collector {
             format!("{}_{}", self.names.join("::"), self.cnt)
         };
         self.cnt += 1;
+        let cfgs = self.cfgs.clone();
         let libs = self.libs.clone();
         let externs = self.externs.clone();
         let cratename = self.cratename.to_string();
@@ -399,6 +404,7 @@ impl Collector {
             testfn: testing::DynTestFn(Box::new(move|| {
                 runtest(&test,
                         &cratename,
+                        cfgs,
                         libs,
                         externs,
                         should_panic,
