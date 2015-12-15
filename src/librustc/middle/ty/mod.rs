@@ -84,6 +84,7 @@ pub mod error;
 pub mod fast_reject;
 pub mod fold;
 pub mod _match;
+pub mod maps;
 pub mod outlives;
 pub mod relate;
 pub mod walk;
@@ -1365,6 +1366,10 @@ pub struct TraitDef<'tcx> {
 }
 
 impl<'tcx> TraitDef<'tcx> {
+    pub fn def_id(&self) -> DefId {
+        self.trait_ref.def_id
+    }
+
     // returns None if not yet calculated
     pub fn object_safety(&self) -> Option<bool> {
         if self.flags.get().intersects(TraitFlags::OBJECT_SAFETY_VALID) {

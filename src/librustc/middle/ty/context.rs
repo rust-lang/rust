@@ -34,6 +34,7 @@ use middle::ty::{FreevarMap, GenericPredicates};
 use middle::ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, TraitTy};
 use middle::ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use middle::ty::TypeVariants::*;
+use middle::ty::maps;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::FnvHashMap;
 
@@ -248,7 +249,7 @@ pub struct ctxt<'tcx> {
     pub tables: RefCell<Tables<'tcx>>,
 
     /// Maps from a trait item to the trait item "descriptor"
-    pub impl_or_trait_items: RefCell<DefIdMap<ty::ImplOrTraitItem<'tcx>>>,
+    pub impl_or_trait_items: RefCell<DepTrackingMap<maps::ImplOrTraitItems<'tcx>>>,
 
     /// Maps from a trait def-id to a list of the def-ids of its trait items
     pub trait_item_def_ids: RefCell<DefIdMap<Rc<Vec<ty::ImplOrTraitItemId>>>>,
@@ -274,7 +275,7 @@ pub struct ctxt<'tcx> {
 
     pub map: ast_map::Map<'tcx>,
     pub freevars: RefCell<FreevarMap>,
-    pub tcache: RefCell<DefIdMap<ty::TypeScheme<'tcx>>>,
+    pub tcache: RefCell<DepTrackingMap<maps::Tcache<'tcx>>>,
     pub rcache: RefCell<FnvHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
     pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, ty::contents::TypeContents>>,
     pub ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
@@ -512,11 +513,11 @@ impl<'tcx> ctxt<'tcx> {
             fulfilled_predicates: RefCell::new(traits::FulfilledPredicates::new()),
             map: map,
             freevars: RefCell::new(freevars),
-            tcache: RefCell::new(DefIdMap()),
+            tcache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             rcache: RefCell::new(FnvHashMap()),
             tc_cache: RefCell::new(FnvHashMap()),
             ast_ty_to_ty_cache: RefCell::new(NodeMap()),
-            impl_or_trait_items: RefCell::new(DefIdMap()),
+            impl_or_trait_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             trait_item_def_ids: RefCell::new(DefIdMap()),
             trait_items_cache: RefCell::new(DefIdMap()),
             ty_param_defs: RefCell::new(NodeMap()),
