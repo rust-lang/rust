@@ -225,13 +225,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let success = this.cfg.start_new_block();
                 let cleanup = this.diverge_cleanup();
                 let term = if diverges {
-                    Terminator::DivergingCall { func: fun, args: args, cleanup: Some(cleanup) }
+                    Terminator::DivergingCall { func: fun, args: args, cleanup: cleanup }
                 } else {
                     Terminator::Call {
                         func: fun,
                         args: args,
                         destination: destination.clone(),
-                        targets: CallTargets::WithCleanup((success, cleanup))
+                        targets: CallTargets::new(success, cleanup)
                     }
                 };
                 this.cfg.terminate(block, term);

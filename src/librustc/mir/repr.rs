@@ -251,6 +251,10 @@ pub enum Terminator<'tcx> {
     /// well-known diverging block actually diverges.
     Diverge,
 
+    /// Indicates that the landing pad is finished and unwinding should
+    /// continue. Emitted by build::scope::diverge_cleanup.
+    Resume,
+
     /// Indicates a normal return. The ReturnPointer lvalue should
     /// have been filled in by now. This should only occur in the
     /// `END_BLOCK`.
@@ -288,6 +292,14 @@ pub enum CallTargets {
 }
 
 impl CallTargets {
+    pub fn new(ret: BasicBlock, cleanup: Option<BasicBlock>) -> CallTargets {
+        if let Some(c) = cleanup {
+            CallTargets::WithCleanup((ret, c))
+        } else {
+            CallTargets::Return(ret)
+        }
+    }
+
     pub fn as_slice(&self) -> &[BasicBlock] {
         match *self {
             CallTargets::Return(ref b) => slice::ref_slice(b),
@@ -313,6 +325,7 @@ impl<'tcx> Terminator<'tcx> {
             Switch { targets: ref b, .. } => b,
             SwitchInt { targets: ref b, .. } => b,
             Diverge => &[],
+            Resume => &[],
             Return => &[],
             Call { targets: ref b, .. } => b.as_slice(),
             DivergingCall { cleanup: ref b, .. } => if let Some(b) = b.as_ref() {
@@ -332,6 +345,7 @@ impl<'tcx> Terminator<'tcx> {
             Switch { targets: ref mut b, .. } => b,
             SwitchInt { targets: ref mut b, .. } => b,
             Diverge => &mut [],
+            Resume => &mut [],
             Return => &mut [],
             Call { targets: ref mut b, .. } => b.as_mut_slice(),
             DivergingCall { cleanup: ref mut b, .. } => if let Some(b) = b.as_mut() {
@@ -393,6 +407,7 @@ impl<'tcx> Terminator<'tcx> {
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
             Diverge => write!(fmt, "diverge"),
             Return => write!(fmt, "return"),
+            Resume => write!(fmt, "resume"),
             Call { .. } => {
                 // the author didn’t bother rebasing this
                 unimplemented!()
@@ -408,7 +423,7 @@ impl<'tcx> Terminator<'tcx> {
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::Terminator::*;
         match *self {
-            Diverge | Return => vec![],
+            Diverge | Return | Resume => vec![],
             Goto { .. } | Panic { .. } => vec!["".into_cow()],
             If { .. } => vec!["true".into_cow(), "false".into_cow()],
             Call { .. } => vec!["return".into_cow(), "unwind".into_cow()],

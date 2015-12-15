@@ -134,6 +134,7 @@ pub trait Visitor<'tcx> {
             }
 
             Terminator::Diverge |
+            Terminator::Resume |
             Terminator::Return => {
             }
 
@@ -431,6 +432,7 @@ pub trait MutVisitor<'tcx> {
             }
 
             Terminator::Diverge |
+            Terminator::Resume |
             Terminator::Return => {
             }
 
