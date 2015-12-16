@@ -2814,22 +2814,22 @@ impl<'a> Parser<'a> {
 
             let rhs = try!(match op.fixity() {
                 Fixity::Right => self.with_res(
-                    restrictions & !Restrictions::RESTRICTION_STMT_EXPR,
-                    |this|{
+                    restrictions - Restrictions::RESTRICTION_STMT_EXPR,
+                    |this| {
                         this.parse_assoc_expr_with(op.precedence(),
-                        LhsExpr::NotYetParsed)
+                            LhsExpr::NotYetParsed)
                 }),
                 Fixity::Left => self.with_res(
-                    restrictions & !Restrictions::RESTRICTION_STMT_EXPR,
-                    |this|{
+                    restrictions - Restrictions::RESTRICTION_STMT_EXPR,
+                    |this| {
                         this.parse_assoc_expr_with(op.precedence() + 1,
                             LhsExpr::NotYetParsed)
                 }),
                 // We currently have no non-associative operators that are not handled above by
                 // the special cases. The code is here only for future convenience.
                 Fixity::None => self.with_res(
-                    restrictions & !Restrictions::RESTRICTION_STMT_EXPR,
-                    |this|{
+                    restrictions - Restrictions::RESTRICTION_STMT_EXPR,
+                    |this| {
                         this.parse_assoc_expr_with(op.precedence() + 1,
                             LhsExpr::NotYetParsed)
                 }),
