@@ -27,11 +27,12 @@ use syntax::codemap::{DUMMY_SP, Span};
 #[derive(Copy, Clone)]
 struct InferIsLocal(bool);
 
-/// True if there exist types that satisfy both of the two given impls.
-pub fn overlapping_impls(infcx: &InferCtxt,
-                         impl1_def_id: DefId,
-                         impl2_def_id: DefId)
-                         -> bool
+/// If there are types that satisfy both impls, returns a `TraitRef`
+/// with those types substituted (by updating the given `infcx`)
+pub fn overlapping_impls<'cx, 'tcx>(infcx: &InferCtxt<'cx, 'tcx>,
+                                    impl1_def_id: DefId,
+                                    impl2_def_id: DefId)
+                                    -> Option<ty::TraitRef<'tcx>>
 {
     debug!("impl_can_satisfy(\
            impl1_def_id={:?}, \
@@ -40,16 +41,15 @@ pub fn overlapping_impls(infcx: &InferCtxt,
            impl2_def_id);
 
     let selcx = &mut SelectionContext::intercrate(infcx);
-    infcx.probe(|_| {
-        overlap(selcx, impl1_def_id, impl2_def_id)
-    })
+    overlap(selcx, impl1_def_id, impl2_def_id)
 }
 
-/// Can both impl `a` and impl `b` be satisfied by a common type (including `where` clauses)?
-fn overlap(selcx: &mut SelectionContext,
-           a_def_id: DefId,
-           b_def_id: DefId)
-           -> bool
+/// Can both impl `a` and impl `b` be satisfied by a common type (including
+/// `where` clauses)? If so, returns a `TraitRef` that unifies the two impls.
+fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
+                      a_def_id: DefId,
+                      b_def_id: DefId)
+                      -> Option<ty::TraitRef<'tcx>>
 {
     debug!("overlap(a_def_id={:?}, b_def_id={:?})",
            a_def_id,
@@ -73,7 +73,7 @@ fn overlap(selcx: &mut SelectionContext,
                                             TypeOrigin::Misc(DUMMY_SP),
                                             a_trait_ref,
                                             b_trait_ref) {
-        return false;
+        return None;
     }
 
     debug!("overlap: unification check succeeded");
@@ -88,10 +88,10 @@ fn overlap(selcx: &mut SelectionContext,
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
-        return false
+        return None
     }
 
-    true
+    Some(selcx.infcx().resolve_type_vars_if_possible(&a_trait_ref))
 }
 
 pub fn trait_ref_is_knowable<'tcx>(tcx: &ty::ctxt<'tcx>, trait_ref: &ty::TraitRef<'tcx>) -> bool
