@@ -611,8 +611,7 @@ to define a single macro that works both inside and outside our library. The
 function name will expand to either `::increment` or `::mylib::increment`.
 
 To keep this system simple and correct, `#[macro_use] extern crate ...` may
-only appear at the root of your crate, not inside `mod`. This ensures that
-`$crate` is a single identifier.
+only appear at the root of your crate, not inside `mod`.
 
 # The deep end
 
