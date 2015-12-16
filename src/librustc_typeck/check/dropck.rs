@@ -17,6 +17,7 @@ use middle::region;
 use middle::subst::{self, Subst};
 use middle::traits;
 use middle::ty::{self, Ty};
+use util::nodemap::FnvHashSet;
 
 use syntax::ast;
 use syntax::codemap::{self, Span};
@@ -279,7 +280,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
             rcx: rcx,
             span: span,
             parent_scope: parent_scope,
-            breadcrumbs: Vec::new(),
+            breadcrumbs: FnvHashSet()
         },
         TypeContext::Root,
         typ,
@@ -340,7 +341,7 @@ enum TypeContext {
 struct DropckContext<'a, 'b: 'a, 'tcx: 'b> {
     rcx: &'a mut Rcx<'b, 'tcx>,
     /// types that have already been traversed
-    breadcrumbs: Vec<Ty<'tcx>>,
+    breadcrumbs: FnvHashSet<Ty<'tcx>>,
     /// span for error reporting
     span: Span,
     /// the scope reachable dtorck types must outlive
@@ -355,8 +356,6 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
     depth: usize) -> Result<(), Error<'tcx>>
 {
     let tcx = cx.rcx.tcx();
-    let ty = cx.rcx.infcx().resolve_type_and_region_vars_if_possible(&ty);
-
     // Issue #22443: Watch out for overflow. While we are careful to
     // handle regular types properly, non-regular ones cause problems.
     let recursion_limit = tcx.sess.recursion_limit.get();
@@ -367,19 +366,17 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
         return Err(Error::Overflow(context, ty))
     }
 
-    for breadcrumb in &mut cx.breadcrumbs {
-        *breadcrumb =
-            cx.rcx.infcx().resolve_type_and_region_vars_if_possible(breadcrumb);
-        if *breadcrumb == ty {
-            debug!("iterate_over_potentially_unsafe_regions_in_type \
-                   {}ty: {} scope: {:?} - cached",
-                   (0..depth).map(|_| ' ').collect::<String>(),
-                   ty, cx.parent_scope);
-            return Ok(()); // we already visited this type
-        }
-    }
-    cx.breadcrumbs.push(ty);
+    // canoncialize the regions in `ty` before inserting - infinitely many
+    // region variables can refer to the same region.
+    let ty = cx.rcx.infcx().resolve_type_and_region_vars_if_possible(&ty);
 
+    if !cx.breadcrumbs.insert(ty) {
+        debug!("iterate_over_potentially_unsafe_regions_in_type \
+               {}ty: {} scope: {:?} - cached",
+               (0..depth).map(|_| ' ').collect::<String>(),
+               ty, cx.parent_scope);
+        return Ok(()); // we already visited this type
+    }
     debug!("iterate_over_potentially_unsafe_regions_in_type \
            {}ty: {} scope: {:?}",
            (0..depth).map(|_| ' ').collect::<String>(),
