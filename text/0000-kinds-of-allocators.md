@@ -292,17 +292,23 @@ will expose:
  3. there could be *interference* between two threads.
     This latter scenario means that this allocator failed
     on this memory request, but the client might
-    quite reasonably just *retry* the request.
+    quite reasonably just *retry* the request. This is
+    an error condition specific to this allocator, so we
+    will identify it via a separate `fn is_transient` inherent
+    method.
 
 ```rust
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum BumpAllocError { Invalid, MemoryExhausted, Interference }
 
+impl BumpAllocError {
+    fn is_transient(&self) { *self == BumpAllocError::Interference }
+}
+
 impl alloc::AllocError for BumpAllocError {
     fn invalid_input() -> Self { BumpAllocError::MemoryExhausted }
     fn is_memory_exhausted(&self) -> bool { *self == BumpAllocError::MemoryExhausted  }
     fn is_request_unsupported(&self) -> bool { false }
-    fn is_transient(&self) { *self == BumpAllocError::Interference }
 }
 ```
 
@@ -989,8 +995,9 @@ few motivating examples that *are* clearly feasible and useful.
  * Should `dealloc` return a `Result` or not? (Under what
    circumstances would we expect `dealloc` to fail in a manner worth
    signalling? The main one I can think of is a transient failure,
-   which is why the documentation for that method spends so much time
-   discussing it.)
+   which was in a previous version of the API but has since been removed.
+   Still, if errors *can* happen, maybe its best to provide *some* way
+   for a client to catch them and report them in context.)
 
  * Are the type definitions for `Size`, `Capacity`, `Alignment`, and
    `Address` an abuse of the `NonZero` type? (Or do we just need some
@@ -1000,25 +1007,13 @@ few motivating examples that *are* clearly feasible and useful.
    client to provide more contextual information about the OOM
    condition)?
 
- * Does `AllocError::is_transient` belong in this version of the API,
-   or should we wait to add it later? (I originally suspected that
-   libstd data types would want to make use of it, which would means
-   we should add it.  However, in the absence of a concrete example
-   stdlib type that would use it, we may be better off removing `fn
-   is_transient` from this API (instead specifying that allocators
-   with such transient failures will block (i.e. loop and retry
-   internally), with the expectation that if a need for such an
-   allocator does arise, we will then represent the API extension
-   via a different trait (perhaps an extension trait of `Allocator`).
-
- * On that note, if we remove the `fn is_transient` method, should
-   we get rid of the `AllocError` bound entirely? Is the given set
+ * Should we get rid of the `AllocError` bound entirely? Is the given set
    of methods actually worth providing to all generic clients?
 
    (Keeping it seems very low cost to me; implementors can always opt
    to use the `MemoryExhausted` error type, which is cheap. But my
    intuition may be wrong.)
-   
+
  * Do we need `Allocator::max_size` and `Allocator::max_align` ?
  
  * Should default impl of `Allocator::max_align` return `None`, or is
@@ -1033,6 +1028,12 @@ few motivating examples that *are* clearly feasible and useful.
    low-level allocators will behave well for large alignments.
    See https://github.com/rust-lang/rust/issues/30170
 
+# Change History
+
+* Changed `fn usable_size` to return `(l, m)` rathern than just `m`.
+
+* Removed `fn is_transient` from `trait AllocError`, and removed discussion
+  of transient errors from the API.
 
 # Appendices
 
@@ -1559,17 +1560,6 @@ pub trait AllocError {
     /// supports satisfying memory requests where each allocated block
     /// is at most `K` bytes in size.
     fn is_request_unsupported(&self) -> bool;
-
-    /// Returns true only if the error is transient. "Transient" is
-    /// meant here in the sense that there is a reasonable chance that
-    /// re-issuing the same allocation request in the future *could*
-    /// succeed, even if nothing else changes about the overall
-    /// context of the request.
-    ///
-    /// An example where this might arise: An allocator shared across
-    /// threads that fails upon detecting interference (rather than
-    /// e.g. blocking).
-    fn is_transient(&self) -> bool { false } // most errors are not transient
 }
 
 /// The `MemoryExhausted` error represents a blanket condition
@@ -1683,11 +1673,9 @@ pub unsafe trait Allocator {
     /// and `kind` must *fit* the provided block (see above);
     /// otherwise yields undefined behavior.
     ///
-    /// Returns `Err` only if deallocation fails in some fashion. If
-    /// the returned error is *transient*, then ownership of the
-    /// memory block is transferred back to the caller (see
-    /// `AllocError::is_transient`). Otherwise, callers must assume
-    /// that ownership of the block has been unrecoverably lost.
+    /// Returns `Err` only if deallocation fails in some fashion.
+    /// In this case callers must assume that ownership of the block has
+    /// been unrecoverably lost (memory may have been leaked).
     ///
     /// Note: Implementors are encouraged to avoid `Err`-failure from
     /// `dealloc`; most memory allocation APIs do not support
@@ -1825,21 +1813,21 @@ pub unsafe trait Allocator {
             let result = self.alloc(new_kind);
             if let Ok(new_ptr) = result {
                 ptr::copy(*ptr as *const u8, *new_ptr, cmp::min(*kind.size(), *new_kind.size()));
-                loop {
-                    if let Err(err) = self.dealloc(ptr, kind) {
-                        // all we can do from the realloc abstraction
-                        // is either:
-                        //
-                        // 1. free the block we just finished copying
-                        //    into and pass the error up,
-                        // 2. ignore the dealloc error, or
-                        // 3. try again.
-                        //
-                        // They are all terrible; 1 seems unjustifiable.
-                        // So we choose 2, unless the error is transient.
-                        if err.is_transient() { continue; }
-                    }
-                    break;
+                if let Err(_) = self.dealloc(ptr, kind) {
+                    // all we can do from the realloc abstraction
+                    // is either:
+                    //
+                    // 1. free the block we just finished copying
+                    //    into and pass the error up,
+                    // 2. panic (same as if we had called `unwrap`),
+                    // 3. try to dealloc again, or
+                    // 4. ignore the dealloc error.
+                    //
+                    // They are all terrible; (1.) and (2.) seem unjustifiable,
+                    // and (3.) seems likely to yield an infinite loop (unless
+                    // we add back in some notion of a transient error
+                    // into the API).
+                    // So we choose (4.): ignore the dealloc error.
                 }
             }
             result
