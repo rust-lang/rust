@@ -1528,7 +1528,7 @@ pub trait AllocError {
 
     /// Returns true if the error is due to hitting some resource
     /// limit or otherwise running out of memory. This condition
-    /// strongly implies that *some* series of deallocations would
+    /// serves as a hint that some series of deallocations *might*
     /// allow a subsequent reissuing of the original allocation
     /// request to succeed.
     ///
