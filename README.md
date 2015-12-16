@@ -10,7 +10,7 @@ If you'd like to help out (and you should, it's a fun project!), see
 To install:
 
 ```
-cargo install --git https://github.com/rust-lang-nursery/rustfmt
+cargo install rustfmt
 ```
 
 to run on a cargo project in the current working directory:
@@ -25,20 +25,20 @@ cargo fmt
 > newer.
 
 ```
-cargo install --git https://github.com/rust-lang-nursery/rustfmt
+cargo install rustfmt
 ```
 
 or if you're using [`multirust`](https://github.com/brson/multirust)
 
 ```
-multirust run nightly cargo install --git https://github.com/rust-lang-nursery/rustfmt
+multirust run nightly cargo install rustfmt
 ```
 
 Usually cargo-fmt, which enables usage of Cargo subcommand `cargo fmt`, is
 installed alongside rustfmt. To only install rustfmt run
 
 ```
-cargo install --no-default-features --git https://github.com/rust-lang-nursery/rustfmt
+cargo install --no-default-features rustfmt
 ```
 
 ## Running
