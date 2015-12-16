@@ -194,6 +194,14 @@ case, dropping the allocator has no effect on the memory pool.
    handle will not drop the pool as long as at least one other handle
    remains, but dropping the last handle will drop the pool itself.
 
+   FIXME: `RefCell<Pool>` is not going to work with the allocator API
+   envisaged here; see [comment from gankro][]. We will need to
+   address this (perhaps just by pointing out that it is illegal and
+   suggesting a standard pattern to work around it) before this RFC
+   can be accepted.
+
+[comment from gankro]: https://github.com/rust-lang/rfcs/pull/1398#issuecomment-162681096
+
 A client that is generic over all possible `A:Allocator` instances
 cannot know which of the above cases it falls in. This has consequences
 in terms of the restrictions that must be met by client code
@@ -1000,6 +1008,9 @@ few motivating examples that *are* clearly feasible and useful.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
+
+ * Since we cannot do `RefCell<Pool>` (see FIXME above), what is
+   our standard recommendation for what to do instead?
 
  * Should `Kind` be an associated type of `Allocator` (see
    [alternatives][] section for discussion).
