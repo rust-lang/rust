@@ -454,10 +454,13 @@ impl PartialOrd for GatedCfgAttr {
 }
 
 impl GatedCfgAttr {
-    pub fn check_and_emit(&self, diagnostic: &Handler, features: &Features) {
+    pub fn check_and_emit(&self,
+                          diagnostic: &Handler,
+                          features: &Features,
+                          codemap: &CodeMap) {
         match *self {
             GatedCfgAttr::GatedCfg(ref cfg) => {
-                cfg.check_and_emit(diagnostic, features);
+                cfg.check_and_emit(diagnostic, features, codemap);
             }
             GatedCfgAttr::GatedAttr(span) => {
                 if !features.stmt_expr_attributes {
@@ -484,9 +487,12 @@ impl GatedCfg {
                       }
                   })
     }
-    fn check_and_emit(&self, diagnostic: &Handler, features: &Features) {
+    fn check_and_emit(&self,
+                      diagnostic: &Handler,
+                      features: &Features,
+                      codemap: &CodeMap) {
         let (cfg, feature, has_feature) = GATED_CFGS[self.index];
-        if !has_feature(features) {
+        if !has_feature(features) && !codemap.span_allows_unstable(self.span) {
             let explain = format!("`cfg({})` is experimental and subject to change", cfg);
             emit_feature_err(diagnostic, feature, self.span, GateIssue::Language, &explain);
         }

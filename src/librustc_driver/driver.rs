@@ -606,7 +606,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         feature_gated_cfgs.sort();
         feature_gated_cfgs.dedup();
         for cfg in &feature_gated_cfgs {
-            cfg.check_and_emit(sess.diagnostic(), &features);
+            cfg.check_and_emit(sess.diagnostic(), &features, sess.codemap());
         }
     });
 
