@@ -21,14 +21,21 @@ or if you're using [`multirust`](https://github.com/brson/multirust)
 multirust run nightly cargo install --git https://github.com/rust-lang-nursery/rustfmt
 ```
 
+Usually cargo-fmt, which enables usage of Cargo subcommand `cargo fmt`, is
+installed alongside rustfmt. To only install rustfmt run
+
+```
+cargo install --no-default-features --git https://github.com/rust-lang-nursery/rustfmt
+```
 
 ## Running
 
-You can run Rustfmt by just typing `rustfmt filename` if you used `Cargo
+You can run Rustfmt by just typing `rustfmt filename` if you used `cargo
 install`. This runs rustfmt on the given file, if the file includes out of line
 modules, then we reformat those too. So to run on a whole module or crate, you
 just need to run on the root file (usually mod.rs or lib.rs). Rustfmt can also
-read data from stdin.
+read data from stdin. Alternatively, you can use `cargo fmt` to format all
+binary and library targets of your crate.
 
 You'll probably want to specify the write mode. Currently, there are modes for
 replace, overwrite, display, and coverage. The replace mode is the default
@@ -42,6 +49,7 @@ screen, for example.
 
 You can run `rustfmt --help` for more information.
 
+`cargo fmt` uses `--write-mode=overwrite` by default.
 
 ## Running Rustfmt from your editor
 
@@ -59,8 +67,8 @@ First make sure you've got Rust **1.4.0** or greater available, then:
 
 `cargo test` to run all tests.
 
-To run rustfmt after this, use `cargo run -- filename`. See the notes above on
-running rustfmt.
+To run rustfmt after this, use `cargo run --bin rustfmt -- filename`. See the
+notes above on running rustfmt.
 
 
 ## What style does Rustfmt use?

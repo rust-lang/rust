@@ -9,6 +9,10 @@ readme = "README.md"
 license = "Apache-2.0/MIT"
 include = ["src/*.rs", "Cargo.toml"]
 
+[features]
+default = ["cargo-fmt"]
+cargo-fmt = []
+
 [dependencies]
 toml = "0.1.20"
 rustc-serialize = "0.3.14"
