@@ -12,7 +12,6 @@ pub use self::AnnNode::*;
 
 use syntax::abi;
 use syntax::ast;
-use syntax::owned_slice::OwnedSlice;
 use syntax::codemap::{self, CodeMap, BytePos, Spanned};
 use syntax::diagnostic;
 use syntax::parse::token::{self, BinOpToken};
@@ -519,7 +518,7 @@ impl<'a> State<'a> {
             hir::TyBareFn(ref f) => {
                 let generics = hir::Generics {
                     lifetimes: f.lifetimes.clone(),
-                    ty_params: OwnedSlice::empty(),
+                    ty_params: P::empty(),
                     where_clause: hir::WhereClause {
                         id: ast::DUMMY_NODE_ID,
                         predicates: Vec::new(),
@@ -2258,7 +2257,7 @@ impl<'a> State<'a> {
         }
         let generics = hir::Generics {
             lifetimes: Vec::new(),
-            ty_params: OwnedSlice::empty(),
+            ty_params: P::empty(),
             where_clause: hir::WhereClause {
                 id: ast::DUMMY_NODE_ID,
                 predicates: Vec::new(),
