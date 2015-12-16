@@ -860,7 +860,7 @@ ensuring e.g. that allocated blocks of memory can be scanned
 (i.e. "parsed") by the GC (if that in fact ends up being necessary).
 
 This way, we can deploy an `Allocator` trait API today that does not
-provide the necessary reflective hooks that a GC wuold need to access.
+provide the necessary reflective hooks that a GC would need to access.
 
 Crates that define their own `Allocator` implementations without also
 claiming them to be GC-compatible will be forbidden from linking with
