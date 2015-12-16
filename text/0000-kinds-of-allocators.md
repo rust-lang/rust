@@ -493,7 +493,11 @@ blocks and the allocator(s), but the generic code we expect the
 standard library to provide cannot make such assumptions.
 
 To satisfy the above scenarios in a sane, consistent, general fashion,
-the `Allocator` trait assumes/requires all of the following:
+the `Allocator` trait assumes/requires all of the following conditions.
+(Note: this list of conditions uses the phrases "should", "must", and "must not"
+in a formal manner, in the style of [IETF RFC 2119][].)
+
+[IETF RFC 2119]: https://www.ietf.org/rfc/rfc2119.txta
 
  1. (for allocator impls and clients): in the absence of other
     information (e.g. specific allocator implementations), all blocks
@@ -550,15 +554,25 @@ the `Allocator` trait assumes/requires all of the following:
      E.g. this is *not* a legal allocator:
      ```rust
      struct MegaEmbedded { pool: [u8; 1024*1024], cursor: usize, ... }
-     impl Allocator for MegaEmbedded { ... }
+     impl Allocator for MegaEmbedded { ... } // INVALID IMPL
      ```
      The latter impl is simply unreasonable (at least if one is
      intending to satisfy requests by returning pointers into
      `self.bytes`).
 
-     (Note of course, `impl Allocator for &mut MegaEmbedded` is in
-     principle *fine*; that would then be an allocator that is an
-     indirect handle to an unembedded pool.)
+     Note that an allocator that owns its pool *indirectly*
+     (i.e. does not have the pool's state embedded in the allocator) is fine:
+     ```rust
+     struct MegaIndirect { pool: *mut [u8; 1024*1024], cursor: usize, ... }
+     impl Allocator for MegaIndirect { ... } // OKAY
+     ```
+
+     (I originally claimed that `impl Allocator for &mut MegaEmbedded`
+     would also be a legal example of an allocator that is an indirect handle
+     to an unembedded pool, but others pointed out that handing out the
+     addresses pointing into that embedded pool could end up violating our
+     aliasing rules for `&mut`. I obviously did not expect that outcome; I
+     would be curious to see what the actual design space is here.)
 
  5. (for allocator impls and clients) if an allocator is cloneable, the 
     client *can assume* that all clones
