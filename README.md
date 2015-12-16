@@ -95,6 +95,10 @@ Read ["Installing Rust"] from [The Book].
 
 [Mingw-Builds]: http://sourceforge.net/projects/mingw-w64/
 
+## Building on OSX
+Easiest to get dependencies by installing xcode-cli tools, e.g. `xcode-select --install`
+XCode can be installed from the App store, or older versions, from developer.apple.com/resources, but requiring an Apple developer account (free as in beer).
+
 ## Building Documentation
 
 If you’d like to build the documentation, it’s almost the same:
