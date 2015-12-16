@@ -12,15 +12,15 @@
 /// a literal `true` or `false` based on whether the given cfg matches the
 /// current compilation environment.
 
-use ast;
-use codemap::Span;
-use ext::base::*;
-use ext::base;
-use ext::build::AstBuilder;
-use attr;
-use attr::*;
-use parse::token;
-use config::CfgDiagReal;
+use syntax::ast;
+use syntax::codemap::Span;
+use syntax::ext::base::*;
+use syntax::ext::base;
+use syntax::ext::build::AstBuilder;
+use syntax::attr;
+use syntax::attr::*;
+use syntax::parse::token;
+use syntax::config::CfgDiagReal;
 
 pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
                        sp: Span,

@@ -88,14 +88,15 @@
 //! }
 //! ```
 
-use ast::{MetaItem, Expr, ExprRet, MutMutable};
-use codemap::Span;
-use ext::base::{ExtCtxt,Annotatable};
-use ext::build::AstBuilder;
-use ext::deriving::generic::*;
-use ext::deriving::generic::ty::*;
-use parse::token;
-use ptr::P;
+use deriving::generic::*;
+use deriving::generic::ty::*;
+
+use syntax::ast::{MetaItem, Expr, ExprRet, MutMutable};
+use syntax::codemap::Span;
+use syntax::ext::base::{ExtCtxt,Annotatable};
+use syntax::ext::build::AstBuilder;
+use syntax::parse::token;
+use syntax::ptr::P;
 
 pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt,
                                        span: Span,

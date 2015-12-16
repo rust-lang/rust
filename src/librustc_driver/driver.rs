@@ -54,6 +54,7 @@ use syntax::parse::token;
 use syntax::util::node_count::NodeCounter;
 use syntax::visit;
 use syntax;
+use syntax_ext;
 
 pub fn compile_input(sess: Session,
                      cstore: &CStore,
@@ -563,12 +564,15 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             recursion_limit: sess.recursion_limit.get(),
             trace_mac: sess.opts.debugging_opts.trace_macros,
         };
-        let (ret, macro_names) = syntax::ext::expand::expand_crate(&sess.parse_sess,
-                                                                    cfg,
-                                                                    macros,
-                                                                    syntax_exts,
-                                                                    &mut feature_gated_cfgs,
-                                                                    krate);
+        let mut ecx = syntax::ext::base::ExtCtxt::new(&sess.parse_sess,
+                                                      krate.config.clone(),
+                                                      cfg,
+                                                      &mut feature_gated_cfgs);
+        syntax_ext::register_builtins(&mut ecx.syntax_env);
+        let (ret, macro_names) = syntax::ext::expand::expand_crate(ecx,
+                                                                   macros,
+                                                                   syntax_exts,
+                                                                   krate);
         if cfg!(windows) {
             env::set_var("PATH", &_old_path);
         }

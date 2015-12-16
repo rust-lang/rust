@@ -11,16 +11,17 @@
 use self::ArgumentType::*;
 use self::Position::*;
 
-use ast;
-use codemap::{Span, respan};
-use ext::base::*;
-use ext::base;
-use ext::build::AstBuilder;
 use fmt_macros as parse;
-use fold::Folder;
-use parse::token::special_idents;
-use parse::token;
-use ptr::P;
+
+use syntax::ast;
+use syntax::codemap::{Span, respan};
+use syntax::ext::base::*;
+use syntax::ext::base;
+use syntax::ext::build::AstBuilder;
+use syntax::fold::Folder;
+use syntax::parse::token::special_idents;
+use syntax::parse::token;
+use syntax::ptr::P;
 
 use std::collections::HashMap;
 

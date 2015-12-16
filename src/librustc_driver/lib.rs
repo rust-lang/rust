@@ -57,6 +57,7 @@ extern crate rustc_llvm as llvm;
 extern crate log;
 #[macro_use]
 extern crate syntax;
+extern crate syntax_ext;
 
 pub use syntax::diagnostic;
 
