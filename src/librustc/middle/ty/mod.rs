@@ -2100,9 +2100,8 @@ impl<'tcx> ctxt<'tcx> {
                     }) => {
                         true
                     }
-
+                    Some(&def::PathResolution { base_def: def::DefErr, .. })=> true,
                     Some(..) => false,
-
                     None => self.sess.span_bug(expr.span, &format!(
                         "no def for path {}", expr.id))
                 }

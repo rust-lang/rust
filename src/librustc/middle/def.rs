@@ -52,6 +52,7 @@ pub enum Def {
     DefStruct(DefId),
     DefLabel(ast::NodeId),
     DefMethod(DefId),
+    DefErr,
 }
 
 /// The result of resolving a path.
@@ -124,7 +125,7 @@ impl Def {
             DefVariant(..) | DefTy(..) | DefAssociatedTy(..) |
             DefTyParam(..) | DefUse(..) | DefStruct(..) | DefTrait(..) |
             DefMethod(..) | DefConst(..) | DefAssociatedConst(..) |
-            DefPrimTy(..) | DefLabel(..) | DefSelfTy(..) => {
+            DefPrimTy(..) | DefLabel(..) | DefSelfTy(..) | DefErr => {
                 panic!("attempted .def_id() on invalid {:?}", self)
             }
         }
@@ -142,7 +143,8 @@ impl Def {
 
             DefLabel(..)  |
             DefPrimTy(..) |
-            DefSelfTy(..) => {
+            DefSelfTy(..) |
+            DefErr => {
                 panic!("attempted .def_id() on invalid def: {:?}", self)
             }
         }

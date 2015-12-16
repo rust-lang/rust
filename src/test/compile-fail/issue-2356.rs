@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait Groom {
-    fn shave();
+    fn shave(other: usize);
 }
 
 pub struct cat {
@@ -30,7 +30,7 @@ impl MaybeDog {
 }
 
 impl Groom for cat {
-  fn shave(&self, other: usize) {
+  fn shave(other: usize) {
     whiskers -= other;
     //~^ ERROR: unresolved name `whiskers`. Did you mean `self.whiskers`?
     shave(4);
