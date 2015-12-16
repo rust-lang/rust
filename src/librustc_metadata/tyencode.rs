@@ -286,6 +286,8 @@ pub fn enc_region(w: &mut Encoder, cx: &ctxt, r: ty::Region) {
 
 fn enc_scope(w: &mut Encoder, cx: &ctxt, scope: region::CodeExtent) {
     match cx.tcx.region_maps.code_extent_data(scope) {
+        region::CodeExtentData::CallSiteScope {
+            fn_id, body_id } => mywrite!(w, "C[{}|{}]", fn_id, body_id),
         region::CodeExtentData::ParameterScope {
             fn_id, body_id } => mywrite!(w, "P[{}|{}]", fn_id, body_id),
         region::CodeExtentData::Misc(node_id) => mywrite!(w, "M{}", node_id),

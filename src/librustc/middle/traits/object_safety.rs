@@ -192,7 +192,8 @@ fn generics_require_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
     };
 
     // Search for a predicate like `Self : Sized` amongst the trait bounds.
-    let free_substs = tcx.construct_free_substs(generics, ast::DUMMY_NODE_ID);
+    let free_substs = tcx.construct_free_substs(generics,
+                                                tcx.region_maps.node_extent(ast::DUMMY_NODE_ID));
     let predicates = predicates.instantiate(tcx, &free_substs).predicates.into_vec();
     elaborate_predicates(tcx, predicates)
         .any(|predicate| {
