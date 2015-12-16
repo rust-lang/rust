@@ -5,6 +5,19 @@ A tool for formatting Rust code according to style guidelines.
 If you'd like to help out (and you should, it's a fun project!), see
 [Contributing.md](Contributing.md).
 
+## Quick start
+
+To install:
+
+```
+cargo install --git https://github.com/rust-lang-nursery/rustfmt
+```
+
+to run on a cargo project in the current working directory:
+
+```
+cargo fmt
+```
 
 ## Installation
 

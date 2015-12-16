@@ -1,6 +1,6 @@
 [root]
 name = "rustfmt"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "diff 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -11,7 +11,7 @@ dependencies = [
  "strings 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntex_syntax 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "term 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "toml 0.1.23 (registry+https://github.com/rust-lang/crates.io-index)",
+ "toml 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-segmentation 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -129,7 +129,7 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.1.23"
+version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
