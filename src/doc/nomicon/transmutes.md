@@ -16,6 +16,9 @@ same size. The ways to cause Undefined Behavior with this are mind boggling.
   it may produce a surprising type to satisfy inference.
 * Making a primitive with an invalid value is UB
 * Transmuting between non-repr(C) types is UB
+    * However, a transmute to a type and back is defined for all T and U, as
+      long as there are no undefined representations for U.
+    * This is useful for transmuting to a `[u8; std::mem::size_of<T>]`, and back
 * Transmuting an & to &mut is UB
     * Transmuting an & to &mut is *always* UB
     * No you can't do it
@@ -29,7 +32,7 @@ The size check that `mem::transmute` has is gone (as it may be valid to copy
 out a prefix), though it is Undefined Behavior for `U` to be larger than `T`.
 
 Also of course you can get most of the functionality of these functions using
-pointer casts.
+pointer casts and `std::ptr::copy_nonoverlapping`.
 
 
 [unbounded lifetime]: unbounded-lifetimes.html
