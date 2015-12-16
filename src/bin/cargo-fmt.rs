@@ -69,7 +69,7 @@ fn format_crate(opts: &Options) {
 }
 
 fn get_fmt_args() -> Vec<String> {
-    let mut args = vec!["--write-mode=overwrite".to_string()];
+    let mut args = vec!["--write-mode=replace".to_string()];
     // All arguments after -- are passed to rustfmt
     args.extend(env::args().skip_while(|a| a != "--").skip(1));
 

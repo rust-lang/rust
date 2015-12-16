@@ -189,7 +189,7 @@ impl Sub<usize> for Indent {
 
 #[derive(Copy, Clone)]
 pub enum WriteMode {
-    // Backups the original file and overwrites the orignal.
+    // Backsup the original file and overwrites the orignal.
     Replace,
     // Overwrites original file without backup.
     Overwrite,

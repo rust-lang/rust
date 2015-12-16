@@ -62,7 +62,8 @@ screen, for example.
 
 You can run `rustfmt --help` for more information.
 
-`cargo fmt` uses `--write-mode=overwrite` by default.
+`cargo fmt` uses `--write-mode=replace` by default.
+
 
 ## Running Rustfmt from your editor
 
