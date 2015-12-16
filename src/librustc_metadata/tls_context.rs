@@ -16,7 +16,7 @@ use rbml::reader::Decoder as RbmlDecoder;
 use rustc::middle::cstore::tls;
 use rustc::middle::def_id::DefId;
 use rustc::middle::subst::Substs;
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty;
 
 use decoder::{self, Cmd};
 use encoder;

@@ -85,7 +85,7 @@ use codemap;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
 use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
-use parse::token::{Eof, DocComment, MatchNt, SubstNt};
+use parse::token::{DocComment, MatchNt, SubstNt};
 use parse::token::{Token, Nonterminal};
 use parse::token;
 use print::pprust;

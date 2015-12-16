@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{self, Arg, Arm, Block, Expr, Item, Pat, Path, Stmt, TokenTree, Ty};
+use ast::{self, Arg, Arm, Block, Expr, Item, Pat, Stmt, TokenTree, Ty};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::base;
@@ -33,7 +33,7 @@ pub mod rt {
     use ptr::P;
     use std::rc::Rc;
 
-    use ast::{TokenTree, Expr};
+    use ast::TokenTree;
 
     pub use parse::new_parser_from_tts;
     pub use codemap::{BytePos, Span, dummy_spanned, DUMMY_SP};

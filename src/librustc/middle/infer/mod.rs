@@ -27,10 +27,9 @@ use middle::region::CodeExtent;
 use middle::subst;
 use middle::subst::Substs;
 use middle::subst::Subst;
-use middle::traits::{self, FulfillmentContext, Normalized,
-                     SelectionContext, ObligationCause};
+use middle::traits;
 use middle::ty::adjustment;
-use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
+use middle::ty::{TyVid, IntVid, FloatVid};
 use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use middle::ty::fold::{TypeFolder, TypeFoldable};

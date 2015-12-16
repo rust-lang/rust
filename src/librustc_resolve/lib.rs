@@ -64,7 +64,7 @@ use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 
 use syntax::ast;
-use syntax::ast::{CRATE_NODE_ID, Ident, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
+use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
 use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64, TyF64, TyF32};
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::{self, special_names, special_idents};
@@ -1463,7 +1463,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn resolve_item_in_lexical_scope(&mut self,
                                      module_: Rc<Module>,
                                      name: Name,
-                                     namespace: Namespace)
+                                     namespace: Namespace,
+                                     record_used: bool)
                                      -> ResolveResult<(Target, bool)> {
         debug!("(resolving item in lexical scope) resolving `{}` in namespace {:?} in `{}`",
                name,
@@ -1503,10 +1504,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     debug!("(resolving item in lexical scope) using import resolution");
                     // track used imports and extern crates as well
                     let id = import_resolution[namespace].id;
-                    self.used_imports.insert((id, namespace));
-                    self.record_import_use(id, name);
-                    if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
-                        self.used_crates.insert(kid);
+                    if record_used {
+                        self.used_imports.insert((id, namespace));
+                        self.record_import_use(id, name);
+                        if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
+                            self.used_crates.insert(kid);
+                        }
                     }
                     return Success((target, false));
                 }
@@ -1583,7 +1586,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                        -> ResolveResult<Rc<Module>> {
         // If this module is an anonymous module, resolve the item in the
         // lexical scope. Otherwise, resolve the item from the crate root.
-        let resolve_result = self.resolve_item_in_lexical_scope(module_, name, TypeNS);
+        let resolve_result = self.resolve_item_in_lexical_scope(module_, name, TypeNS, true);
         match resolve_result {
             Success((target, _)) => {
                 if let Some(module_def) = target.binding.module() {
@@ -2791,7 +2794,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                        span: Span)
                                        -> BareIdentifierPatternResolution {
         let module = self.current_module.clone();
-        match self.resolve_item_in_lexical_scope(module, name, ValueNS) {
+        match self.resolve_item_in_lexical_scope(module, name, ValueNS, true) {
             Success((target, _)) => {
                 debug!("(resolve bare identifier pattern) succeeded in finding {} at {:?}",
                        name,
@@ -2899,17 +2902,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // Try to find a path to an item in a module.
-        let unqualified_def = self.resolve_identifier(segments.last().unwrap().identifier,
-                                                      namespace,
-                                                      check_ribs);
-
+        let last_ident = segments.last().unwrap().identifier;
         if segments.len() <= 1 {
+            let unqualified_def = self.resolve_identifier(last_ident, namespace, check_ribs, true);
             return unqualified_def.and_then(|def| self.adjust_local_def(def, span))
                                   .map(|def| {
                                       PathResolution::new(def, LastMod(AllPublic), path_depth)
                                   });
         }
 
+        let unqualified_def = self.resolve_identifier(last_ident, namespace, check_ribs, false);
         let def = self.resolve_module_relative_path(span, segments, namespace);
         match (def, unqualified_def) {
             (Some((ref d, _)), Some(ref ud)) if *d == ud.def => {
@@ -2929,7 +2931,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn resolve_identifier(&mut self,
                           identifier: hir::Ident,
                           namespace: Namespace,
-                          check_ribs: bool)
+                          check_ribs: bool,
+                          record_used: bool)
                           -> Option<LocalDef> {
         // First, check to see whether the name is a primitive type.
         if namespace == TypeNS {
@@ -2946,7 +2949,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        self.resolve_item_by_name_in_lexical_scope(identifier.unhygienic_name, namespace)
+        let name = identifier.unhygienic_name;
+        self.resolve_item_by_name_in_lexical_scope(name, namespace, record_used)
             .map(LocalDef::from_def)
     }
 
@@ -3197,11 +3201,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_item_by_name_in_lexical_scope(&mut self,
                                              name: Name,
-                                             namespace: Namespace)
+                                             namespace: Namespace,
+                                             record_used: bool)
                                              -> Option<Def> {
         // Check the items.
         let module = self.current_module.clone();
-        match self.resolve_item_in_lexical_scope(module, name, namespace) {
+        match self.resolve_item_in_lexical_scope(module, name, namespace, record_used) {
             Success((target, _)) => {
                 match target.binding.def() {
                     None => {
