@@ -2390,6 +2390,8 @@ The currently implemented features of the reference compiler are:
 * - `stmt_expr_attributes` - Allows attributes on expressions and
                              non-item statements.
 
+* - `deprecated` - Allows using the `#[deprecated]` attribute.
+
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about `#![feature]` directives which enabled
 the new feature (because the directive is no longer necessary). However, if a

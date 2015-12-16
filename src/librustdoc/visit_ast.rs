@@ -64,8 +64,15 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     fn stability(&self, id: ast::NodeId) -> Option<attr::Stability> {
         self.cx.tcx_opt().and_then(|tcx| {
             self.cx.map.opt_local_def_id(id)
-                       .and_then(|def_id| stability::lookup(tcx, def_id))
+                       .and_then(|def_id| stability::lookup_stability(tcx, def_id))
                        .cloned()
+        })
+    }
+
+    fn deprecation(&self, id: ast::NodeId) -> Option<attr::Deprecation> {
+        self.cx.tcx_opt().and_then(|tcx| {
+            self.cx.map.opt_local_def_id(id)
+                       .and_then(|def_id| stability::lookup_deprecation(tcx, def_id))
         })
     }
 
@@ -95,6 +102,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             name: name,
             vis: item.vis,
             stab: self.stability(item.id),
+            depr: self.deprecation(item.id),
             attrs: item.attrs.clone(),
             generics: generics.clone(),
             fields: sd.fields().iter().cloned().collect(),
@@ -112,11 +120,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 name: v.node.name,
                 attrs: v.node.attrs.clone(),
                 stab: self.stability(v.node.data.id()),
+                depr: self.deprecation(v.node.data.id()),
                 def: v.node.data.clone(),
                 whence: v.span,
             }).collect(),
             vis: it.vis,
             stab: self.stability(it.id),
+            depr: self.deprecation(it.id),
             generics: params.clone(),
             attrs: it.attrs.clone(),
             id: it.id,
@@ -135,6 +145,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             id: item.id,
             vis: item.vis,
             stab: self.stability(item.id),
+            depr: self.deprecation(item.id),
             attrs: item.attrs.clone(),
             decl: fd.clone(),
             name: name,
@@ -156,6 +167,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om.attrs = attrs;
         om.vis = vis;
         om.stab = self.stability(id);
+        om.depr = self.deprecation(id);
         om.id = id;
         for i in &m.item_ids {
             let item = self.cx.map.expect_item(i.id);
@@ -314,6 +326,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     whence: item.span,
                     vis: item.vis,
                     stab: self.stability(item.id),
+                    depr: self.deprecation(item.id),
                 };
                 om.typedefs.push(t);
             },
@@ -328,6 +341,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     whence: item.span,
                     vis: item.vis,
                     stab: self.stability(item.id),
+                    depr: self.deprecation(item.id),
                 };
                 om.statics.push(s);
             },
@@ -341,6 +355,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     whence: item.span,
                     vis: item.vis,
                     stab: self.stability(item.id),
+                    depr: self.deprecation(item.id),
                 };
                 om.constants.push(s);
             },
@@ -356,6 +371,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     whence: item.span,
                     vis: item.vis,
                     stab: self.stability(item.id),
+                    depr: self.deprecation(item.id),
                 };
                 om.traits.push(t);
             },
@@ -372,6 +388,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     whence: item.span,
                     vis: item.vis,
                     stab: self.stability(item.id),
+                    depr: self.deprecation(item.id),
                 };
                 // Don't duplicate impls when inlining glob imports, we'll pick
                 // them up regardless of where they're located.
@@ -410,6 +427,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             whence: def.span,
             matchers: matchers,
             stab: self.stability(def.id),
+            depr: self.deprecation(def.id),
             imported_from: def.imported_from,
         }
     }
