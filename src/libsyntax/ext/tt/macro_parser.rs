@@ -79,8 +79,8 @@ pub use self::ParseResult::*;
 use self::TokenTreeOrTokenTreeVec::*;
 
 use ast;
-use ast::{TokenTree, Name};
-use codemap::{BytePos, mk_sp, Span};
+use ast::{TokenTree, Name, Ident};
+use codemap::{BytePos, mk_sp, Span, Spanned};
 use codemap;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
@@ -526,7 +526,10 @@ pub fn parse_nt(p: &mut Parser, sp: Span, name: &str) -> Nonterminal {
         "ty" => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
         "ident" => match p.token {
-            token::Ident(sn,b) => { panictry!(p.bump()); token::NtIdent(Box::new(sn),b) }
+            token::Ident(sn,b) => {
+                panictry!(p.bump());
+                token::NtIdent(Box::new(Spanned::<Ident>{node: sn, span: p.span}),b)
+            }
             _ => {
                 let token_str = pprust::token_to_string(&p.token);
                 panic!(p.fatal(&format!("expected ident, found {}",
