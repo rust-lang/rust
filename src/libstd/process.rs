@@ -20,6 +20,7 @@ use ffi::OsStr;
 use fmt;
 use io::{self, Error, ErrorKind};
 use path;
+use str;
 use sys::pipe::{self, AnonPipe};
 use sys::process as imp;
 use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -398,6 +399,32 @@ pub struct Output {
     /// The data that the process wrote to stderr.
     #[stable(feature = "process", since = "1.0.0")]
     pub stderr: Vec<u8>,
+}
+
+// If either stderr or stdout are valid utf8 strings it prints the valid
+// strings, otherwise it prints the byte sequence instead
+#[stable(feature = "process_output_debug", since = "1.7.0")]
+impl fmt::Debug for Output {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+
+        let stdout_utf8 = str::from_utf8(&self.stdout);
+        let stdout_debug: &fmt::Debug = match stdout_utf8 {
+            Ok(ref str) => str,
+            Err(_) => &self.stdout
+        };
+
+        let stderr_utf8 = str::from_utf8(&self.stderr);
+        let stderr_debug: &fmt::Debug = match stderr_utf8 {
+            Ok(ref str) => str,
+            Err(_) => &self.stderr
+        };
+
+        fmt.debug_struct("Output")
+            .field("status", &self.status)
+            .field("stdout", stdout_debug)
+            .field("stderr", stderr_debug)
+            .finish()
+    }
 }
 
 /// Describes what to do with a standard I/O stream for a child process.
