@@ -14,7 +14,6 @@
 #![cfg(feature="cargo-fmt")]
 
 extern crate getopts;
-extern crate walkdir;
 extern crate rustc_serialize;
 
 use std::path::PathBuf;
@@ -23,7 +22,6 @@ use std::env;
 use std::str;
 
 use getopts::Options;
-use walkdir::{WalkDir, DirEntry};
 use rustc_serialize::json::Json;
 
 fn main() {
@@ -47,45 +45,71 @@ fn main() {
 
 fn print_usage(opts: &Options, reason: &str) {
     let msg = format!("{}\nusage: cargo fmt [options]", reason);
-    println!("{}\nThis utility formats all readable .rs files in the src directory of the \
-              current crate using rustfmt.",
+    println!("{}\nThis utility formats all bin and lib files of the current crate using rustfmt.",
              opts.usage(&msg));
 }
 
 fn format_crate(opts: &Options) {
-    let mut root = match locate_root() {
-        Ok(r) => r,
+    let targets = match get_targets() {
+        Ok(t) => t,
         Err(e) => {
             print_usage(opts, &e.to_string());
             return;
         }
     };
 
-    // Currently only files in [root]/src can be formatted
-    root.push("src");
-    // All unreadable or non .rs files are skipped
-    let files: Vec<_> = WalkDir::new(root)
-                            .into_iter()
-                            .filter(is_rs_file)
-                            .filter_map(|f| f.ok())
-                            .map(|e| e.path().to_owned())
-                            .collect();
+    // Currently only bin and lib files get formatted
+    let files: Vec<_> = targets.into_iter()
+                               .filter(|t| t.kind.is_lib() | t.kind.is_bin())
+                               .map(|t| t.path)
+                               .collect();
 
     format_files(&files).unwrap_or_else(|e| print_usage(opts, &e.to_string()));
 }
 
-fn locate_root() -> Result<PathBuf, std::io::Error> {
-    // This seems adequate, as cargo-fmt can only be used systems that have Cargo installed
-    let output = try!(Command::new("cargo").arg("locate-project").output());
+#[derive(Debug)]
+enum TargetKind {
+    Lib, // dylib, staticlib, lib
+    Bin, // bin
+    Other, // test, plugin,...
+}
+
+impl TargetKind {
+    fn is_lib(&self) -> bool {
+        match self {
+            &TargetKind::Lib => true,
+            _ => false,
+        }
+    }
+
+    fn is_bin(&self) -> bool {
+        match self {
+            &TargetKind::Bin => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Target {
+    path: PathBuf,
+    kind: TargetKind,
+}
+
+// Returns a vector of all compile targets of a crate
+fn get_targets() -> Result<Vec<Target>, std::io::Error> {
+    let mut targets: Vec<Target> = vec![];
+    let output = try!(Command::new("cargo").arg("read-manifest").output());
     if output.status.success() {
-        // We assume cargo locate-project is not broken and
-        // it will output a valid json document
+        // None of the unwraps should fail if output of `cargo read-manifest` is correct
         let data = &String::from_utf8(output.stdout).unwrap();
         let json = Json::from_str(data).unwrap();
-        let root = PathBuf::from(json.find("root").unwrap().as_string().unwrap());
+        let jtargets = json.find("targets").unwrap().as_array().unwrap();
+        for jtarget in jtargets {
+            targets.push(target_from_json(jtarget));
+        }
 
-        // root.parent() should never fail if locate-project's output is correct
-        Ok(root.parent().unwrap().to_owned())
+        Ok(targets)
     } else {
         // This happens when cargo-fmt is not used inside a crate
         Err(std::io::Error::new(std::io::ErrorKind::NotFound,
@@ -93,15 +117,19 @@ fn locate_root() -> Result<PathBuf, std::io::Error> {
     }
 }
 
-fn is_rs_file(entry: &Result<walkdir::DirEntry, walkdir::Error>) -> bool {
-    match *entry {
-        Ok(ref file) => {
-            match file.path().extension() {
-                Some(ext) => ext == "rs",
-                None => false,
-            }
-        }
-        Err(_) => false,
+fn target_from_json(jtarget: &Json) -> Target {
+    let jtarget = jtarget.as_object().unwrap();
+    let path = PathBuf::from(jtarget.get("src_path").unwrap().as_string().unwrap());
+    let kinds = jtarget.get("kind").unwrap().as_array().unwrap();
+    let kind = match kinds[0].as_string().unwrap() {
+        "bin" => TargetKind::Bin,
+        "lib" | "dylib" | "staticlib" => TargetKind::Lib,
+        _ => TargetKind::Other,
+    };
+
+    Target {
+        path: path,
+        kind: kind,
     }
 }
 
