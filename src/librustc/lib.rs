@@ -55,6 +55,7 @@ extern crate rustc_front;
 extern crate rustc_data_structures;
 extern crate serialize;
 extern crate collections;
+extern crate rustc_const_eval;
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 #[macro_use] #[no_link] extern crate rustc_bitflags;

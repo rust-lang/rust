@@ -17,7 +17,7 @@
 // self-hosted and a cross-compiled setup; therefore resorting to
 // error-pattern for now.
 
-// error-pattern: expected constant integer for repeat count, but attempted to add with overflow
+// error-pattern: expected constant integer for repeat count, but tried to add two integrals of
 
 #![allow(unused_imports)]
 
@@ -36,4 +36,3 @@ fn main() {
 fn foo<T:fmt::Debug>(x: T) {
     println!("{:?}", x);
 }
-

@@ -269,7 +269,7 @@ enum TestKind<'tcx> {
 
     // test length of the slice is equal to len
     Len {
-        len: usize,
+        len: u64,
         op: BinOp,
     },
 }

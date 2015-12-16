@@ -143,8 +143,11 @@ impl LateLintPass for TypeLimits {
                             else { false }
                         } else {
                             match eval_const_expr_partial(cx.tcx, &r, ExprTypeChecked, None) {
-                                Ok(ConstVal::Int(shift)) => { shift as u64 >= bits },
-                                Ok(ConstVal::Uint(shift)) => { shift >= bits },
+                                Ok(ConstVal::Integral(i)) => {
+                                    i.is_negative() || i.to_u64()
+                                                        .map(|i| i >= bits)
+                                                        .unwrap_or(true)
+                                },
                                 _ => { false }
                             }
                         };

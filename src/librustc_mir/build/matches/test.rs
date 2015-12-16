@@ -84,7 +84,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 };
                 Test {
                     span: match_pair.pattern.span,
-                    kind: TestKind::Len { len: len, op: op },
+                    kind: TestKind::Len { len: len as u64, op: op },
                 }
             }
 

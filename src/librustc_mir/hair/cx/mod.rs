@@ -24,6 +24,7 @@ use rustc::middle::ty::{self, Ty, TyCtxt};
 use syntax::codemap::Span;
 use syntax::parse::token;
 use rustc_front::hir;
+use rustc_const_eval::{ConstInt, ConstUsize};
 
 #[derive(Copy, Clone)]
 pub struct Cx<'a, 'tcx: 'a> {
@@ -50,8 +51,11 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
         self.tcx.types.usize
     }
 
-    pub fn usize_literal(&mut self, value: usize) -> Literal<'tcx> {
-        Literal::Value { value: ConstVal::Uint(value as u64) }
+    pub fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
+        match ConstUsize::new(value, self.tcx.sess.target.uint_type) {
+            Ok(val) => Literal::Value { value: ConstVal::Integral(ConstInt::Usize(val))},
+            Err(_) => panic!("usize literal out of range for target"),
+        }
     }
 
     pub fn bool_ty(&mut self) -> Ty<'tcx> {

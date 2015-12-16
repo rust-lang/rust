@@ -94,6 +94,8 @@ use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::mir::repr::*;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token::intern_and_get_ident;
+use rustc::middle::const_eval::ConstVal;
+use rustc_const_eval::ConstInt;
 
 pub struct Scope<'tcx> {
     extent: CodeExtent,
@@ -517,7 +519,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         }, Constant {
             span: span,
             ty: self.hir.tcx().types.u32,
-            literal: self.hir.usize_literal(span_lines.line)
+            literal: Literal::Value {
+                value: ConstVal::Integral(ConstInt::U32(span_lines.line as u32)),
+            },
         })
     }
 
