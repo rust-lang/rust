@@ -8,33 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#[repr(u8)]
-enum Eu8 {
-    Au8 = 23,
-    Bu8 = 223,
-    Cu8 = -23, //~ ERROR unary negation of unsigned integer
+#[repr(i8)]
+enum Ei8 {
+    Ai8 = 23,
+    Bi8 = -23,
+    Ci8 = 223, //~ ERROR literal out of range for i8 [E0080]
 }
 
-#[repr(u16)]
-enum Eu16 {
-    Au16 = 23,
-    Bu16 = 55555,
-    Cu16 = -22333, //~ ERROR unary negation of unsigned integer
+#[repr(i16)]
+enum Ei16 {
+    Ai16 = 23,
+    Bi16 = -22333,
+    Ci16 = 55555, //~ ERROR literal out of range for i16 [E0080]
 }
 
-#[repr(u32)]
-enum Eu32 {
-    Au32 = 23,
-    Bu32 = 3_000_000_000,
-    Cu32 = -2_000_000_000, //~ ERROR unary negation of unsigned integer
+#[repr(i32)]
+enum Ei32 {
+    Ai32 = 23,
+    Bi32 = -2_000_000_000,
+    Ci32 = 3_000_000_000, //~ ERROR literal out of range for i32 [E0080]
 }
 
-#[repr(u64)]
-enum Eu64 {
-    Au32 = 23,
-    Bu32 = 3_000_000_000,
-    Cu32 = -2_000_000_000, //~ ERROR unary negation of unsigned integer
+#[repr(i64)]
+enum Ei64 {
+    Ai64 = 23,
+    Bi64 = -9223372036854775808,
+    Ci64 = 9223372036854775809, //~ ERROR literal out of range for i64 [E0080]
 }
 
 // u64 currently allows negative numbers, and i64 allows numbers greater than `1<<63`.  This is a

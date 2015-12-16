@@ -45,7 +45,7 @@ fn test_expr() {
     let v4 = 4 as isize;
     let v2 = 2 as isize;
     assert_eq!(v10 >> v2 as usize, v2 as i8);
-    assert_eq!(v10 << v4 as usize, 160 as i8);
+    assert_eq!(v10 << v2 as usize, 40 as i8);
 
     let v10 = 10 as usize;
     let v4 = 4 as isize;
@@ -71,9 +71,9 @@ fn test_const() {
     assert_eq!(r2_3, 160 as isize);
 
     static r1_4: i8 = 10i8 >> 2_usize;
-    static r2_4: i8 = 10i8 << 4_usize;
+    static r2_4: i8 = 10i8 << 2_usize;
     assert_eq!(r1_4, 2 as i8);
-    assert_eq!(r2_4, 160 as i8);
+    assert_eq!(r2_4, 40 as i8);
 
     static r1_5: usize = 10_usize >> 2_usize;
     static r2_5: usize = 10_usize << 4_usize;

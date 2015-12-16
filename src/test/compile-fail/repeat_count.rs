@@ -44,12 +44,12 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected `usize`
     //~| found `isize`
-    //~| ERROR expected positive integer for repeat count, found negative integer [E0306]
+    //~| ERROR expected positive integer for repeat count, found isize [E0306]
     let f = [0_usize; -1_isize];
     //~^ ERROR mismatched types
     //~| expected `usize`
     //~| found `isize`
-    //~| ERROR expected positive integer for repeat count, found negative integer [E0306]
+    //~| ERROR expected positive integer for repeat count, found isize [E0306]
     struct G {
         g: (),
     }

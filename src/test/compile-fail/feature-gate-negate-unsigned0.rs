@@ -16,12 +16,16 @@ impl std::ops::Neg for S {
     fn neg(self) -> u32 { 0 }
 }
 
-const _MAX: usize = -1;
-//~^ ERROR unary negation of unsigned integer
-//~| HELP use a cast or the `!` operator
-
 fn main() {
-    let x = 5u8;
-    let _y = -x; //~ ERROR unary negation of unsigned integer
+    let a = -1;
+    //~^ ERROR unary negation of unsigned integer
+    let _b : u8 = a; // for infering variable a to u8.
+
+    let _d = -1u8;
+    //~^ ERROR unary negation of unsigned integer
+
+    for _ in -10..10u8 {}
+    //~^ ERROR unary negation of unsigned integer
+
     -S; // should not trigger the gate; issue 26840
 }

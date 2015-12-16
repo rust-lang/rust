@@ -1597,7 +1597,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 llvm::LLVMDIBuilderCreateEnumerator(
                     DIB(cx),
                     name.as_ptr(),
-                    v.disr_val as u64)
+                    v.disr_val.to_u64_unchecked())
             }
         })
         .collect();
