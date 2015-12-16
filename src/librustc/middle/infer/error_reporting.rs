@@ -90,7 +90,6 @@ use std::cell::{Cell, RefCell};
 use std::char::from_u32;
 use std::fmt;
 use syntax::ast;
-use syntax::owned_slice::OwnedSlice;
 use syntax::codemap::{self, Pos, Span};
 use syntax::parse::token;
 use syntax::ptr::P;
@@ -1151,10 +1150,10 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
     }
 
     fn rebuild_ty_params(&self,
-                         ty_params: OwnedSlice<hir::TyParam>,
+                         ty_params: P<[hir::TyParam]>,
                          lifetime: hir::Lifetime,
                          region_names: &HashSet<ast::Name>)
-                         -> OwnedSlice<hir::TyParam> {
+                         -> P<[hir::TyParam]> {
         ty_params.map(|ty_param| {
             let bounds = self.rebuild_ty_param_bounds(ty_param.bounds.clone(),
                                                       lifetime,
@@ -1170,10 +1169,10 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
     }
 
     fn rebuild_ty_param_bounds(&self,
-                               ty_param_bounds: OwnedSlice<hir::TyParamBound>,
+                               ty_param_bounds: hir::TyParamBounds,
                                lifetime: hir::Lifetime,
                                region_names: &HashSet<ast::Name>)
-                               -> OwnedSlice<hir::TyParamBound> {
+                               -> hir::TyParamBounds {
         ty_param_bounds.map(|tpb| {
             match tpb {
                 &hir::RegionTyParamBound(lt) => {
@@ -1246,7 +1245,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         add: &Vec<hir::Lifetime>,
                         keep: &HashSet<ast::Name>,
                         remove: &HashSet<ast::Name>,
-                        ty_params: OwnedSlice<hir::TyParam>,
+                        ty_params: P<[hir::TyParam]>,
                         where_clause: hir::WhereClause)
                         -> hir::Generics {
         let mut lifetimes = Vec::new();

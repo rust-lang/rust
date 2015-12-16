@@ -15,7 +15,6 @@ use syntax::ast_util;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID};
 use syntax::codemap::Span;
 use syntax::ptr::P;
-use syntax::owned_slice::OwnedSlice;
 
 pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool
     where F: FnMut(&Pat) -> bool
@@ -336,7 +335,7 @@ pub fn is_path(e: P<Expr>) -> bool {
 pub fn empty_generics() -> Generics {
     Generics {
         lifetimes: Vec::new(),
-        ty_params: OwnedSlice::empty(),
+        ty_params: P::empty(),
         where_clause: WhereClause {
             id: DUMMY_NODE_ID,
             predicates: Vec::new(),
@@ -354,8 +353,8 @@ pub fn ident_to_path(s: Span, ident: Ident) -> Path {
             identifier: ident,
             parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
                 lifetimes: Vec::new(),
-                types: OwnedSlice::empty(),
-                bindings: OwnedSlice::empty(),
+                types: P::empty(),
+                bindings: P::empty(),
             }),
         }),
     }
