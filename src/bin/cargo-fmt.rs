@@ -46,7 +46,7 @@ fn main() {
 fn print_usage(opts: &Options, reason: &str) {
     let msg = format!("{}\nusage: cargo fmt [options]", reason);
     println!("{}\nThis utility formats all bin and lib files of the current crate using rustfmt. \
-              Arguments after `--` are passes to rustfmt.",
+              Arguments after `--` are passed to rustfmt.",
              opts.usage(&msg));
 }
 
