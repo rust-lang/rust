@@ -332,6 +332,11 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
             let path = match def.full_def() {
                 def::DefStruct(def_id) => def_to_path(tcx, def_id),
                 def::DefVariant(_, variant_did, _) => def_to_path(tcx, variant_did),
+                def::DefFn(..) => return P(hir::Pat {
+                    id: expr.id,
+                    node: hir::PatLit(P(expr.clone())),
+                    span: span,
+                }),
                 _ => unreachable!()
             };
             let pats = args.iter().map(|expr| const_expr_to_pat(tcx, &**expr, span)).collect();
@@ -1440,6 +1445,6 @@ fn get_fn_def<'a>(tcx: &'a ty::ctxt,
             _ => signal!(e, NonConstPath),
         },
         Some(ast_map::NodeTraitItem(..)) => signal!(e, NonConstPath),
-        Some(_) => unimplemented!(),
+        Some(_) => signal!(e, UnimplementedConstVal("calling struct, tuple or variant")),
     }
 }
