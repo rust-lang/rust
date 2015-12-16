@@ -1636,17 +1636,22 @@ impl AllocError for AllocErr {
 ///
 /// 1. The block's starting address must be aligned to `kind.align()`.
 ///
-/// 2. The block's size must fall in the range `[orig, usable]`, where:
+/// 2. The block's size must fall in the range `[use_min, use_max]`, where:
 ///
-///    * `orig` is the size last used to allocate the block, and
+///    * `use_min` is `self.usable_size(kind).0`, and
 ///
-///    * `usable` is the capacity that was (or would have been)
+///    * `use_max` is the capacity that was (or would have been)
 ///      returned when (if) the block was allocated via a call to
 ///      `alloc_excess` or `realloc_excess`.
 ///
-/// Note that due to the constraints in the methods below, a
-/// lower-bound on `usable` can be safely approximated by a call to
-/// `usable_size`.
+/// Note that:
+///
+///  * the size of the kind most recently used to allocate the block
+///    is guaranteed to be in the range `[use_min, use_max]`, and
+///
+///  * a lower-bound on `use_max` can be safely approximated by a call to
+///    `usable_size`.
+///
 pub unsafe trait Allocator {
     /// When allocation requests cannot be satisified, an instance of
     /// this error is returned.
@@ -1732,8 +1737,20 @@ pub unsafe trait Allocator {
     /// always fail.)
     fn max_align(&self) -> Option<Alignment> { None }
 
-    /// Returns the minimum guaranteed usable size of a successful
+    /// Returns bounds on the guaranteed usable size of a successful
     /// allocation created with the specified `kind`.
+    ///
+    /// In particular, for a given kind `k`, if `usable_size(k)` returns
+    /// `(l, m)`, then one can use a block of kind `k` as if it has any
+    /// size in the range `[l, m]` (inclusive).
+    ///
+    /// (All implementors of `fn usable_size` must ensure that
+    /// `l <= k.size() <= m`)
+    ///
+    /// Both the lower- and upper-bounds (`l` and `m` respectively) are
+    /// provided: An allocator based on size classes could misbehave
+    /// if one attempts to deallocate a block without providing a
+    /// correct value for its size (i.e., one within the range `[l, m]`).
     ///
     /// Clients who wish to make use of excess capacity are encouraged
     /// to use the `alloc_excess` and `realloc_excess` instead, as
@@ -1744,7 +1761,9 @@ pub unsafe trait Allocator {
     /// However, for clients that do not wish to track the capacity
     /// returned by `alloc_excess` locally, this method is likely to
     /// produce useful results.
-    unsafe fn usable_size(&self, kind: Kind) -> Capacity { kind.size() }
+    unsafe fn usable_size(&self, kind: Kind) -> (Capacity, Capacity) {
+        (kind.size(), kind.size())
+    }
 
 ```
 
@@ -1796,9 +1815,11 @@ pub unsafe trait Allocator {
                       ptr: Address,
                       kind: Kind,
                       new_kind: Kind) -> Result<Address, Self::Error> {
+        let (min, max) = self.usable_size(kind);
+        let s = new_kind.size();
         // All Kind alignments are powers of two, so a comparison
         // suffices here (rather than resorting to a `%` operation).
-        if new_kind.size() <= self.usable_size(kind) && new_kind.align() <= kind.align() {
+        if min <= s && s <= max && new_kind.align() <= kind.align() {
             return Ok(ptr);
         } else {
             let result = self.alloc(new_kind);
@@ -1829,7 +1850,7 @@ pub unsafe trait Allocator {
     /// the returned block. For some `kind` inputs, like arrays, this
     /// may include extra storage usable for additional data.
     unsafe fn alloc_excess(&mut self, kind: Kind) -> Result<Excess, Self::Error> {
-        self.alloc(kind).map(|p| Excess(p, self.usable_size(kind)))
+        self.alloc(kind).map(|p| Excess(p, self.usable_size(kind).1))
     }
 
     /// Behaves like `fn realloc`, but also returns the whole size of
@@ -1840,7 +1861,7 @@ pub unsafe trait Allocator {
                              kind: Kind,
                              new_kind: Kind) -> Result<Excess, Self::Error> {
         self.realloc(ptr, kind, new_kind)
-            .map(|p| Excess(p, self.usable_size(new_kind)))
+            .map(|p| Excess(p, self.usable_size(new_kind).1))
     }
 
 ```
