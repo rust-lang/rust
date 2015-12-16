@@ -1,4 +1,4 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Make sure that label for continue and break is spanned correctly
+// compile-flags:--test --cfg feature="bar"
 
-fn main() {
-    loop {
-        continue
-        'b //~ ERROR use of undeclared label
-        ;
-        break
-        'c //~ ERROR use of undeclared label
-        ;
-    }
-}
+/// ```rust
+/// assert_eq!(cfg!(feature = "bar"), true);
+/// ```
+pub fn foo() {}

@@ -293,8 +293,8 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                             // (a) idents can be in lots of places, so it'd be a pain
                             // (b) we actually can, since it's a token.
                             MatchedNonterminal(NtIdent(ref sn, b)) => {
-                                r.cur_span = sp;
-                                r.cur_tok = token::Ident(**sn, b);
+                                r.cur_span = sn.span;
+                                r.cur_tok = token::Ident(sn.node, b);
                                 return ret_val;
                             }
                             MatchedNonterminal(ref other_whole_nt) => {
