@@ -13,13 +13,13 @@ trait siphash {
     fn reset(&self);
 }
 
-fn siphash(k0 : u64, k1 : u64) -> siphash {
+fn siphash(k0 : u64, k1 : u64) {
     struct SipState {
         v0: u64,
         v1: u64,
     }
 
-    fn mk_result(st : SipState) -> u64 {
+    fn mk_result(st : &SipState) -> u64 {
 
         let v0 = st.v0;
         let v1 = st.v1;

@@ -331,18 +331,21 @@ pub fn check_crate(tcx: &ty::ctxt, trait_map: ty::TraitMap) {
         tcx: tcx
     };
 
-    time(time_passes, "type collecting", ||
-         collect::collect_item_types(tcx));
-
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
-    tcx.sess.abort_if_errors();
+    tcx.sess.abort_if_new_errors(|| {
+        time(time_passes, "type collecting", ||
+             collect::collect_item_types(tcx));
+
+    });
 
     time(time_passes, "variance inference", ||
          variance::infer_variance(tcx));
 
-    time(time_passes, "coherence checking", ||
-        coherence::check_coherence(&ccx));
+    tcx.sess.abort_if_new_errors(|| {
+      time(time_passes, "coherence checking", ||
+          coherence::check_coherence(&ccx));
+    });
 
     time(time_passes, "wf checking (old)", ||
         check::check_wf_old(&ccx));

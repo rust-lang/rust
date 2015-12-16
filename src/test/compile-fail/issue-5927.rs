@@ -9,12 +9,10 @@
 // except according to those terms.
 
 
-
-// error-pattern:unresolved enum variant
-
 fn main() {
     let z = match 3 {
-        x(1) => x(1)
+        x(1) => x(1) //~ ERROR unresolved enum variant
+        //~^ ERROR unresolved name `x`
     };
-    assert_eq!(z,3);
+    assert!(z == 3);
 }

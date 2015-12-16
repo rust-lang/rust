@@ -95,15 +95,16 @@ static ROOT_SCOPE: ScopeChain<'static> = RootScope;
 
 pub fn krate(sess: &Session, krate: &hir::Crate, def_map: &DefMap) -> NamedRegionMap {
     let mut named_region_map = NodeMap();
-    krate.visit_all_items(&mut LifetimeContext {
-        sess: sess,
-        named_region_map: &mut named_region_map,
-        scope: &ROOT_SCOPE,
-        def_map: def_map,
-        trait_ref_hack: false,
-        labels_in_fn: vec![],
+    sess.abort_if_new_errors(|| {
+        krate.visit_all_items(&mut LifetimeContext {
+            sess: sess,
+            named_region_map: &mut named_region_map,
+            scope: &ROOT_SCOPE,
+            def_map: def_map,
+            trait_ref_hack: false,
+            labels_in_fn: vec![],
+        });
     });
-    sess.abort_if_errors();
     named_region_map
 }
 
