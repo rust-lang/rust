@@ -9,7 +9,6 @@ use rustc::middle::ty;
 use rustc::middle::const_eval::ConstVal::Float;
 use rustc::middle::const_eval::eval_const_expr_partial;
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
-use rustc::middle::def::Def;
 
 use utils::{get_item_name, match_path, snippet, span_lint, walk_ptrs_ty, is_integer_literal};
 use utils::span_help_and_lint;
@@ -327,7 +326,7 @@ impl LateLintPass for PatternPass {
 /// **Known problems:** This lint's idea of a "used" variable is not quite the same as in the
 /// built-in `unused_variables` lint. For example, in the following code
 /// ```
-/// fn foo(_y: u32) -> u32) {
+/// fn foo(y: u32) -> u32) {
 ///     let _x = 1;
 ///     _x +=1;
 ///     y
@@ -363,10 +362,7 @@ impl LateLintPass for UsedUnderscoreBinding {
                 ident.name.as_str().chars().next() == Some('_') //starts with '_'
                 && ident.name.as_str().chars().skip(1).next() != Some('_') //doesn't start with "__"
                 && ident.name != ident.unhygienic_name //not in macro
-                && cx.tcx.def_map.borrow().values().any(|res| match res.base_def {
-                                                  Def::DefLocal(_, _) => true,
-                                                  _ => false
-                                            }) //local variable
+                && cx.tcx.def_map.borrow().contains_key(&expr.id) //local variable
             },
             ExprField(_, spanned) => {
                 let name = spanned.node.as_str();

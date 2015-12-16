@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 #![deny(clippy)]
 
-fn prefix_underscore(_x: u32) -> u32{
+fn prefix_underscore(_x: u32) -> u32 {
     _x + 1 //~ ERROR used binding which is prefixed with an underscore
 }
 
