@@ -10,15 +10,16 @@
 
 pub use self::OrderingOp::*;
 
-use ast;
-use ast::{MetaItem, Expr};
-use codemap::Span;
-use ext::base::{ExtCtxt, Annotatable};
-use ext::build::AstBuilder;
-use ext::deriving::generic::*;
-use ext::deriving::generic::ty::*;
-use parse::token::InternedString;
-use ptr::P;
+use deriving::generic::*;
+use deriving::generic::ty::*;
+
+use syntax::ast;
+use syntax::ast::{MetaItem, Expr};
+use syntax::codemap::Span;
+use syntax::ext::base::{ExtCtxt, Annotatable};
+use syntax::ext::build::AstBuilder;
+use syntax::parse::token::InternedString;
+use syntax::ptr::P;
 
 pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
                                    span: Span,

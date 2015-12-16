@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast;
-use ast::{MetaItem, Expr};
-use codemap::{Span, respan};
-use ext::base::{ExtCtxt, Annotatable};
-use ext::build::AstBuilder;
-use ext::deriving::generic::*;
-use ext::deriving::generic::ty::*;
-use parse::token;
-use ptr::P;
+use deriving::generic::*;
+use deriving::generic::ty::*;
+
+use syntax::ast;
+use syntax::ast::{MetaItem, Expr};
+use syntax::codemap::{Span, respan};
+use syntax::ext::base::{ExtCtxt, Annotatable};
+use syntax::ext::build::AstBuilder;
+use syntax::parse::token;
+use syntax::ptr::P;
 
 pub fn expand_deriving_debug(cx: &mut ExtCtxt,
                             span: Span,

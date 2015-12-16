@@ -37,7 +37,6 @@
 #![feature(str_escape)]
 #![feature(unicode)]
 
-extern crate fmt_macros;
 extern crate serialize;
 extern crate term;
 extern crate libc;
@@ -110,21 +109,12 @@ pub mod print {
 }
 
 pub mod ext {
-    pub mod asm;
     pub mod base;
     pub mod build;
-    pub mod cfg;
-    pub mod concat;
-    pub mod concat_idents;
-    pub mod deriving;
-    pub mod env;
     pub mod expand;
-    pub mod format;
-    pub mod log_syntax;
     pub mod mtwt;
     pub mod quote;
     pub mod source_util;
-    pub mod trace_macros;
 
     pub mod tt {
         pub mod transcribe;

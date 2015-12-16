@@ -10,16 +10,17 @@
 
 //! The compiler code necessary for `#[derive(Decodable)]`. See encodable.rs for more.
 
-use ast;
-use ast::{MetaItem, Expr, MutMutable};
-use codemap::Span;
-use ext::base::{ExtCtxt, Annotatable};
-use ext::build::AstBuilder;
-use ext::deriving::generic::*;
-use ext::deriving::generic::ty::*;
-use parse::token::InternedString;
-use parse::token;
-use ptr::P;
+use deriving::generic::*;
+use deriving::generic::ty::*;
+
+use syntax::ast;
+use syntax::ast::{MetaItem, Expr, MutMutable};
+use syntax::codemap::Span;
+use syntax::ext::base::{ExtCtxt, Annotatable};
+use syntax::ext::build::AstBuilder;
+use syntax::parse::token::InternedString;
+use syntax::parse::token;
+use syntax::ptr::P;
 
 pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt,
                                        span: Span,

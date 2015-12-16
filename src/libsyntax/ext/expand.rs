@@ -21,7 +21,7 @@ use attr::{AttrMetaMethods, WithAttrs};
 use codemap;
 use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use ext::base::*;
-use feature_gate::{self, Features, GatedCfgAttr};
+use feature_gate::{self, Features};
 use fold;
 use fold::*;
 use util::move_map::MoveMap;
@@ -1276,15 +1276,11 @@ impl<'feat> ExpansionConfig<'feat> {
     }
 }
 
-pub fn expand_crate<'feat>(parse_sess: &parse::ParseSess,
-                           cfg: ExpansionConfig<'feat>,
-                           // these are the macros being imported to this crate:
-                           imported_macros: Vec<ast::MacroDef>,
-                           user_exts: Vec<NamedSyntaxExtension>,
-                           feature_gated_cfgs: &mut Vec<GatedCfgAttr>,
-                           c: Crate) -> (Crate, HashSet<Name>) {
-    let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg,
-                              feature_gated_cfgs);
+pub fn expand_crate(mut cx: ExtCtxt,
+                    // these are the macros being imported to this crate:
+                    imported_macros: Vec<ast::MacroDef>,
+                    user_exts: Vec<NamedSyntaxExtension>,
+                    c: Crate) -> (Crate, HashSet<Name>) {
     if std_inject::no_core(&c) {
         cx.crate_root = None;
     } else if std_inject::no_std(&c) {
@@ -1305,7 +1301,7 @@ pub fn expand_crate<'feat>(parse_sess: &parse::ParseSess,
 
         let mut ret = expander.fold_crate(c);
         ret.exported_macros = expander.cx.exported_macros.clone();
-        parse_sess.span_diagnostic.handler().abort_if_errors();
+        cx.parse_sess.span_diagnostic.handler().abort_if_errors();
         ret
     };
     return (ret, cx.syntax_env.names);
@@ -1401,6 +1397,7 @@ mod tests {
     use ast;
     use ast::Name;
     use codemap;
+    use ext::base::ExtCtxt;
     use ext::mtwt;
     use fold::Folder;
     use parse;
@@ -1471,7 +1468,9 @@ mod tests {
             src,
             Vec::new(), &sess);
         // should fail:
-        expand_crate(&sess,test_ecfg(),vec!(),vec!(), &mut vec![], crate_ast);
+        let mut gated_cfgs = vec![];
+        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs);
+        expand_crate(ecx, vec![], vec![], crate_ast);
     }
 
     // make sure that macros can't escape modules
@@ -1484,7 +1483,9 @@ mod tests {
             "<test>".to_string(),
             src,
             Vec::new(), &sess);
-        expand_crate(&sess,test_ecfg(),vec!(),vec!(), &mut vec![], crate_ast);
+        let mut gated_cfgs = vec![];
+        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs);
+        expand_crate(ecx, vec![], vec![], crate_ast);
     }
 
     // macro_use modules should allow macros to escape
@@ -1496,14 +1497,18 @@ mod tests {
             "<test>".to_string(),
             src,
             Vec::new(), &sess);
-        expand_crate(&sess, test_ecfg(), vec!(), vec!(), &mut vec![], crate_ast);
+        let mut gated_cfgs = vec![];
+        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs);
+        expand_crate(ecx, vec![], vec![], crate_ast);
     }
 
     fn expand_crate_str(crate_str: String) -> ast::Crate {
         let ps = parse::ParseSess::new();
         let crate_ast = panictry!(string_to_parser(&ps, crate_str).parse_crate_mod());
         // the cfg argument actually does matter, here...
-        expand_crate(&ps,test_ecfg(),vec!(),vec!(), &mut vec![], crate_ast).0
+        let mut gated_cfgs = vec![];
+        let ecx = ExtCtxt::new(&ps, vec![], test_ecfg(), &mut gated_cfgs);
+        expand_crate(ecx, vec![], vec![], crate_ast).0
     }
 
     // find the pat_ident paths in a crate

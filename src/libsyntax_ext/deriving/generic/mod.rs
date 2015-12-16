@@ -192,23 +192,23 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::vec;
 
-use abi::Abi;
-use abi;
-use ast;
-use ast::{EnumDef, Expr, Ident, Generics, VariantData};
-use ast_util;
-use attr;
-use attr::AttrMetaMethods;
-use ext::base::{ExtCtxt, Annotatable};
-use ext::build::AstBuilder;
-use codemap::{self, DUMMY_SP};
-use codemap::Span;
-use diagnostic::SpanHandler;
-use util::move_map::MoveMap;
-use owned_slice::OwnedSlice;
-use parse::token::{intern, InternedString};
-use parse::token::special_idents;
-use ptr::P;
+use syntax::abi::Abi;
+use syntax::abi;
+use syntax::ast;
+use syntax::ast::{EnumDef, Expr, Ident, Generics, VariantData};
+use syntax::ast_util;
+use syntax::attr;
+use syntax::attr::AttrMetaMethods;
+use syntax::ext::base::{ExtCtxt, Annotatable};
+use syntax::ext::build::AstBuilder;
+use syntax::codemap::{self, DUMMY_SP};
+use syntax::codemap::Span;
+use syntax::diagnostic::SpanHandler;
+use syntax::util::move_map::MoveMap;
+use syntax::owned_slice::OwnedSlice;
+use syntax::parse::token::{intern, InternedString};
+use syntax::parse::token::special_idents;
+use syntax::ptr::P;
 
 use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 
@@ -347,7 +347,7 @@ pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
 /// type. For a type parameter `<T>`, it looks for either a `TyPath` that
 /// is not global and starts with `T`, or a `TyQPath`.
 fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name]) -> Vec<P<ast::Ty>> {
-    use visit;
+    use syntax::visit;
 
     struct Visitor<'a> {
         ty_param_names: &'a [ast::Name],
@@ -1631,74 +1631,4 @@ pub fn cs_same_method<F>(f: F,
             cx.span_bug(trait_span, "static function in `derive`")
         }
     }
-}
-
-/// Fold together the results of calling the derived method on all the
-/// fields. `use_foldl` controls whether this is done left-to-right
-/// (`true`) or right-to-left (`false`).
-#[inline]
-pub fn cs_same_method_fold<F>(use_foldl: bool,
-                              mut f: F,
-                              base: P<Expr>,
-                              enum_nonmatch_f: EnumNonMatchCollapsedFunc,
-                              cx: &mut ExtCtxt,
-                              trait_span: Span,
-                              substructure: &Substructure)
-                              -> P<Expr> where
-    F: FnMut(&mut ExtCtxt, Span, P<Expr>, P<Expr>) -> P<Expr>,
-{
-    cs_same_method(
-        |cx, span, vals| {
-            if use_foldl {
-                vals.into_iter().fold(base.clone(), |old, new| {
-                    f(cx, span, old, new)
-                })
-            } else {
-                vals.into_iter().rev().fold(base.clone(), |old, new| {
-                    f(cx, span, old, new)
-                })
-            }
-        },
-        enum_nonmatch_f,
-        cx, trait_span, substructure)
-}
-
-/// Use a given binop to combine the result of calling the derived method
-/// on all the fields.
-#[inline]
-pub fn cs_binop(binop: ast::BinOp_, base: P<Expr>,
-                enum_nonmatch_f: EnumNonMatchCollapsedFunc,
-                cx: &mut ExtCtxt, trait_span: Span,
-                substructure: &Substructure) -> P<Expr> {
-    cs_same_method_fold(
-        true, // foldl is good enough
-        |cx, span, old, new| {
-            cx.expr_binary(span,
-                           binop,
-                           old, new)
-
-        },
-        base,
-        enum_nonmatch_f,
-        cx, trait_span, substructure)
-}
-
-/// cs_binop with binop == or
-#[inline]
-pub fn cs_or(enum_nonmatch_f: EnumNonMatchCollapsedFunc,
-             cx: &mut ExtCtxt, span: Span,
-             substructure: &Substructure) -> P<Expr> {
-    cs_binop(ast::BiOr, cx.expr_bool(span, false),
-             enum_nonmatch_f,
-             cx, span, substructure)
-}
-
-/// cs_binop with binop == and
-#[inline]
-pub fn cs_and(enum_nonmatch_f: EnumNonMatchCollapsedFunc,
-              cx: &mut ExtCtxt, span: Span,
-              substructure: &Substructure) -> P<Expr> {
-    cs_binop(ast::BiAnd, cx.expr_bool(span, true),
-             enum_nonmatch_f,
-             cx, span, substructure)
 }
