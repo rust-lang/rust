@@ -230,6 +230,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // Allow attributes on expressions and non-item statements
     ("stmt_expr_attributes", "1.6.0", Some(15701), Active),
+
+    // Allows `#[deprecated]` attribute
+    ("deprecated", "1.6.0", Some(29935), Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -377,6 +380,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("must_use", Whitelisted, Ungated),
     ("stable", Whitelisted, Ungated),
     ("unstable", Whitelisted, Ungated),
+    ("deprecated", Normal, Gated("deprecated", "`#[deprecated]` attribute is unstable")),
 
     ("rustc_paren_sugar", Normal, Gated("unboxed_closures",
                                         "unboxed_closures are still evolving")),
@@ -539,6 +543,7 @@ pub struct Features {
     pub braced_empty_structs: bool,
     pub staged_api: bool,
     pub stmt_expr_attributes: bool,
+    pub deprecated: bool,
 }
 
 impl Features {
@@ -573,6 +578,7 @@ impl Features {
             braced_empty_structs: false,
             staged_api: false,
             stmt_expr_attributes: false,
+            deprecated: false,
         }
     }
 }
@@ -1151,6 +1157,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         braced_empty_structs: cx.has_feature("braced_empty_structs"),
         staged_api: cx.has_feature("staged_api"),
         stmt_expr_attributes: cx.has_feature("stmt_expr_attributes"),
+        deprecated: cx.has_feature("deprecated"),
     }
 }
 

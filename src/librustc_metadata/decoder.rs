@@ -526,6 +526,14 @@ pub fn get_stability(cdata: Cmd, id: DefIndex) -> Option<attr::Stability> {
     })
 }
 
+pub fn get_deprecation(cdata: Cmd, id: DefIndex) -> Option<attr::Deprecation> {
+    let item = cdata.lookup_item(id);
+    reader::maybe_get_doc(item, tag_items_data_item_deprecation).map(|doc| {
+        let mut decoder = reader::Decoder::new(doc);
+        Decodable::decode(&mut decoder).unwrap()
+    })
+}
+
 pub fn get_repr_attrs(cdata: Cmd, id: DefIndex) -> Vec<attr::ReprAttr> {
     let item = cdata.lookup_item(id);
     match reader::maybe_get_doc(item, tag_items_data_item_repr).map(|doc| {

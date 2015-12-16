@@ -100,6 +100,12 @@ pub trait UnstableTrait { fn dummy(&self) { } }
 
 #[stable(feature = "test_feature", since = "1.0.0")]
 #[rustc_deprecated(since = "1.0.0", reason = "text")]
+pub trait DeprecatedTrait {
+    #[stable(feature = "test_feature", since = "1.0.0")] fn dummy(&self) { }
+}
+
+#[stable(feature = "test_feature", since = "1.0.0")]
+#[rustc_deprecated(since = "1.0.0", reason = "text")]
 pub struct DeprecatedStruct {
     #[stable(feature = "test_feature", since = "1.0.0")] pub i: isize
 }
