@@ -485,10 +485,10 @@ These rules provide some flexibility for Rust’s syntax to evolve without
 breaking existing macros.
 
 The macro system does not deal with parse ambiguity at all. For example, the
-grammar `$($t:ty)* $e:expr` will always fail to parse, because the parser would
-be forced to choose between parsing `$t` and parsing `$e`. Changing the
+grammar `$($i:ident)* $e:expr` will always fail to parse, because the parser would
+be forced to choose between parsing `$i` and parsing `$e`. Changing the
 invocation syntax to put a distinctive token in front can solve the problem. In
-this case, you can write `$(T $t:ty)* E $e:exp`.
+this case, you can write `$(I $i:ident)* E $e:expr`.
 
 [item]: ../reference.html#items
 
