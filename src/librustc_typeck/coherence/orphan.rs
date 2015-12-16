@@ -205,6 +205,9 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                                   "f64",
                                                   item.span);
                     }
+                    ty::TyError => {
+                        return;
+                    }
                     _ => {
                         span_err!(self.tcx.sess, item.span, E0118,
                                   "no base type found for inherent implementation; \

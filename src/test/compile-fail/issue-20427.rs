@@ -62,7 +62,7 @@ fn usize<'usize>(usize: &'usize usize) -> &'usize usize { usize }
 fn main() {
     let bool = true;
     match bool {
-        str @ true => if str { i32 as i64 } else { 0 },
+        str @ true => if str { i32 as i64 } else { i64 },
         false => i64,
-    }
+    };
 }

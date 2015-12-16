@@ -14,7 +14,7 @@ trait From<Src> {
     fn from(src: Src) -> <Self as From<Src>>::Output;
 }
 
-trait To {
+trait To: Sized {
     fn to<Dst: From<Self>>(self) ->
         <Dst as From<Self>>::Dst
         //~^ ERROR use of undeclared associated type `From::Dst`

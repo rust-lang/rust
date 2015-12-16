@@ -11,7 +11,7 @@
 trait Foo {
     fn bar(&self);
     fn baz(&self) { }
-    fn bah(_: Option<Self>) { }
+    fn bah(_: Option<&Self>) { }
 }
 
 struct BarTy {
