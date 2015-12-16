@@ -156,6 +156,15 @@ impl Session {
             _ => {}
         }
     }
+    pub fn abort_if_new_errors<F>(&self, mut f: F)
+        where F: FnMut()
+    {
+        let count = self.err_count();
+        f();
+        if self.err_count() > count {
+            self.abort_if_errors();
+        }
+    }
     pub fn span_warn(&self, sp: Span, msg: &str) {
         if self.can_print_warnings {
             self.diagnostic().span_warn(sp, msg)

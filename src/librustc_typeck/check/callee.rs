@@ -26,6 +26,7 @@ use super::write_call;
 
 use CrateCtxt;
 use middle::cstore::LOCAL_CRATE;
+use middle::def;
 use middle::def_id::DefId;
 use middle::infer;
 use middle::ty::{self, LvaluePreference, Ty};
@@ -234,7 +235,7 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             if let hir::ExprCall(ref expr, _) = call_expr.node {
                 let tcx = fcx.tcx();
                 if let Some(pr) = tcx.def_map.borrow().get(&expr.id) {
-                    if pr.depth == 0 {
+                    if pr.depth == 0 && pr.base_def != def::DefErr {
                         if let Some(span) = tcx.map.span_if_local(pr.def_id()) {
                             tcx.sess.span_note(span, "defined here")
                         }

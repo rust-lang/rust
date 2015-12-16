@@ -407,7 +407,8 @@ impl tr for def::Def {
               def::DefUpvar(did1, nid1, index, nid2)
           }
           def::DefStruct(did) => def::DefStruct(did.tr(dcx)),
-          def::DefLabel(nid) => def::DefLabel(dcx.tr_id(nid))
+          def::DefLabel(nid) => def::DefLabel(dcx.tr_id(nid)),
+          def::DefErr => def::DefErr,
         }
     }
 }
