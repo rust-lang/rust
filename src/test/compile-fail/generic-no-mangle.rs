@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test this should fail to compile (#15844)
+#![deny(no_mangle_generic_items)]
 
 #[no_mangle]
-fn foo<T>() {} //~ ERROR generic functions must be mangled
+pub fn foo<T>() {} //~ ERROR generic functions must be mangled
 
 #[no_mangle]
-extern fn foo<T>() {} //~ ERROR generic functions must be mangled
+pub extern fn bar<T>() {} //~ ERROR generic functions must be mangled
+
+fn main() {}
