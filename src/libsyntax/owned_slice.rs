@@ -9,4 +9,6 @@
 // except according to those terms.
 
 /// A non-growable owned slice.
+#[unstable(feature = "rustc_private", issue = "0")]
+#[rustc_deprecated(since = "1.7.0", reason = "use `ptr::P<[T]>` instead")]
 pub type OwnedSlice<T> = ::ptr::P<[T]>;

@@ -17,7 +17,6 @@ use syntax::ast::{MetaWord, MetaList, MetaNameValue};
 use syntax::attr::ThinAttributesExt;
 use hir;
 use syntax::codemap::{respan, Span, Spanned};
-use syntax::owned_slice::OwnedSlice;
 use syntax::ptr::P;
 use syntax::parse::token;
 use syntax::util::move_map::MoveMap;
@@ -211,7 +210,7 @@ pub trait Folder : Sized {
         noop_fold_ty_param(tp, self)
     }
 
-    fn fold_ty_params(&mut self, tps: OwnedSlice<TyParam>) -> OwnedSlice<TyParam> {
+    fn fold_ty_params(&mut self, tps: P<[TyParam]>) -> P<[TyParam]> {
         noop_fold_ty_params(tps, self)
     }
 
@@ -220,12 +219,12 @@ pub trait Folder : Sized {
     }
 
     fn fold_opt_bounds(&mut self,
-                       b: Option<OwnedSlice<TyParamBound>>)
-                       -> Option<OwnedSlice<TyParamBound>> {
+                       b: Option<TyParamBounds>)
+                       -> Option<TyParamBounds> {
         noop_fold_opt_bounds(b, self)
     }
 
-    fn fold_bounds(&mut self, b: OwnedSlice<TyParamBound>) -> OwnedSlice<TyParamBound> {
+    fn fold_bounds(&mut self, b: TyParamBounds) -> TyParamBounds {
         noop_fold_bounds(b, self)
     }
 
@@ -576,9 +575,9 @@ pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
     }
 }
 
-pub fn noop_fold_ty_params<T: Folder>(tps: OwnedSlice<TyParam>,
+pub fn noop_fold_ty_params<T: Folder>(tps: P<[TyParam]>,
                                       fld: &mut T)
-                                      -> OwnedSlice<TyParam> {
+                                      -> P<[TyParam]> {
     tps.move_map(|tp| fld.fold_ty_param(tp))
 }
 
@@ -726,9 +725,9 @@ pub fn noop_fold_mt<T: Folder>(MutTy { ty, mutbl }: MutTy, folder: &mut T) -> Mu
     }
 }
 
-pub fn noop_fold_opt_bounds<T: Folder>(b: Option<OwnedSlice<TyParamBound>>,
+pub fn noop_fold_opt_bounds<T: Folder>(b: Option<TyParamBounds>,
                                        folder: &mut T)
-                                       -> Option<OwnedSlice<TyParamBound>> {
+                                       -> Option<TyParamBounds> {
     b.map(|bounds| folder.fold_bounds(bounds))
 }
 
