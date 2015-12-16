@@ -28,8 +28,6 @@ impl Copy for MyType {}
 
 impl Copy for &'static mut MyType {}
 //~^ ERROR E0206
-//~| ERROR E0277
-//~| ERROR E0277
 impl Clone for MyType { fn clone(&self) -> Self { *self } }
 
 impl Copy for (MyType, MyType) {}
@@ -42,8 +40,6 @@ impl Copy for &'static NotSync {}
 impl Copy for [MyType] {}
 //~^ ERROR E0206
 //~| ERROR E0117
-//~| ERROR E0277
-//~| ERROR E0277
 
 impl Copy for &'static [NotSync] {}
 //~^ ERROR E0206

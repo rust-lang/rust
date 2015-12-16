@@ -29,9 +29,11 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::ast::NodeId;
 use rustc_front::hir;
-use rustc_front::hir::{Expr, FnDecl, Block, Pat};
+use rustc_front::hir::Expr;
 use rustc_front::intravisit;
 use rustc_front::intravisit::Visitor;
+
+use self::restrictions::RestrictionResult;
 
 mod lifetime;
 mod restrictions;
@@ -354,12 +356,12 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 
         // Create the loan record (if needed).
         let loan = match restr {
-            restrictions::Safe => {
+            RestrictionResult::Safe => {
                 // No restrictions---no loan record necessary
                 return;
             }
 
-            restrictions::SafeIf(loan_path, restricted_paths) => {
+            RestrictionResult::SafeIf(loan_path, restricted_paths) => {
                 let loan_scope = match loan_region {
                     ty::ReScope(scope) => scope,
 

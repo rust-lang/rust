@@ -9,14 +9,12 @@
 // except according to those terms.
 
 
-// error-pattern: unresolved
-
 enum color { rgb(isize, isize, isize), rgba(isize, isize, isize, isize), }
 
 fn main() {
-    let red: color = rgb(255, 0, 0);
+    let red: color = color::rgb(255, 0, 0);
     match red {
-      rgb(r, g, b) => { println!("rgb"); }
-      hsl(h, s, l) => { println!("hsl"); }
+      color::rgb(r, g, b) => { println!("rgb"); }
+      color::hsl(h, s, l) => { println!("hsl"); }  //~ ERROR no associated
     }
 }

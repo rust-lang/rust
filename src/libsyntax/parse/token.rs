@@ -377,7 +377,7 @@ pub enum Nonterminal {
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
-    NtIdent(Box<ast::Ident>, IdentStyle),
+    NtIdent(Box<ast::SpannedIdent>, IdentStyle),
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::MetaItem>),
     NtPath(Box<ast::Path>),

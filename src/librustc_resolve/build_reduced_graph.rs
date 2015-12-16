@@ -38,12 +38,12 @@ use syntax::parse::token::special_idents;
 use syntax::codemap::{Span, DUMMY_SP};
 
 use rustc_front::hir;
-use rustc_front::hir::{Block, Crate, DeclItem};
+use rustc_front::hir::{Block, DeclItem};
 use rustc_front::hir::{ForeignItem, ForeignItemFn, ForeignItemStatic};
 use rustc_front::hir::{Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn};
 use rustc_front::hir::{ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaultImpl};
 use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
-use rustc_front::hir::{NamedField, PathListIdent, PathListMod, Public};
+use rustc_front::hir::{NamedField, PathListIdent, PathListMod};
 use rustc_front::hir::StmtDecl;
 use rustc_front::hir::UnnamedField;
 use rustc_front::hir::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
@@ -709,7 +709,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             DefUse(..) |
             DefUpvar(..) |
             DefLabel(..) |
-            DefSelfTy(..) => {
+            DefSelfTy(..) |
+            DefErr => {
                 panic!("didn't expect `{:?}`", def);
             }
         }

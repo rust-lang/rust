@@ -37,6 +37,16 @@ pub trait UnifyKey : Copy + Clone + Debug + PartialEq {
     fn tag(k: Option<Self>) -> &'static str;
 }
 
+/// This trait is implemented for unify values that can be
+/// combined. This relation should be a monoid.
+pub trait Combine {
+    fn combine(&self, other: &Self) -> Self;
+}
+
+impl Combine for () {
+    fn combine(&self, _other: &()) {}
+}
+
 /// Value of a unification key. We implement Tarjan's union-find
 /// algorithm: when two keys are unified, one of them is converted
 /// into a "redirect" pointing at the other. These redirects form a
@@ -243,8 +253,8 @@ impl<K:UnifyKey> sv::SnapshotVecDelegate for Delegate<K> {
 ///////////////////////////////////////////////////////////////////////////
 // Base union-find algorithm, where we are just making sets
 
-impl<'tcx,K> UnificationTable<K>
-    where K : UnifyKey<Value=()>,
+impl<'tcx,K:UnifyKey> UnificationTable<K>
+    where K::Value: Combine
 {
     pub fn union(&mut self, a_id: K, b_id: K) {
         let node_a = self.get(a_id);
@@ -252,12 +262,17 @@ impl<'tcx,K> UnificationTable<K>
         let a_id = node_a.key();
         let b_id = node_b.key();
         if a_id != b_id {
-            self.unify(node_a, node_b, ());
+            let new_value = node_a.value.combine(&node_b.value);
+            self.unify(node_a, node_b, new_value);
         }
     }
 
     pub fn find(&mut self, id: K) -> K {
         self.get(id).key()
+    }
+
+    pub fn find_value(&mut self, id: K) -> K::Value {
+        self.get(id).value
     }
 
     pub fn unioned(&mut self, a_id: K, b_id: K) -> bool {

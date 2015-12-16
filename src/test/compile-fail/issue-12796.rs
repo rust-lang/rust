@@ -9,8 +9,8 @@
 // except according to those terms.
 
 trait Trait {
-    fn outer(self) {
-        fn inner(_: Self) {
+    fn outer(&self) {
+        fn inner(_: &Self) {
             //~^ ERROR can't use type parameters from outer function
             //~^^ ERROR use of `Self` outside of an impl or trait
         }

@@ -14,7 +14,7 @@ use ast::{TokenTree, Ident, Name};
 use codemap::{Span, DUMMY_SP};
 use diagnostic::SpanHandler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
-use parse::token::{Eof, DocComment, Interpolated, MatchNt, SubstNt};
+use parse::token::{DocComment, MatchNt, SubstNt};
 use parse::token::{Token, NtIdent, SpecialMacroVar};
 use parse::token;
 use parse::lexer::TokenAndSpan;
@@ -293,8 +293,8 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                             // (a) idents can be in lots of places, so it'd be a pain
                             // (b) we actually can, since it's a token.
                             MatchedNonterminal(NtIdent(ref sn, b)) => {
-                                r.cur_span = sp;
-                                r.cur_tok = token::Ident(**sn, b);
+                                r.cur_span = sn.span;
+                                r.cur_tok = token::Ident(sn.node, b);
                                 return ret_val;
                             }
                             MatchedNonterminal(ref other_whole_nt) => {

@@ -30,7 +30,6 @@ impl Sized for (MyType, MyType) {} //~ ERROR E0117
 impl Sized for &'static NotSync {} //~ ERROR E0322
 
 impl Sized for [MyType] {} //~ ERROR E0117
-//~^ ERROR E0277
 
 impl Sized for &'static [NotSync] {} //~ ERROR E0117
 

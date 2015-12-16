@@ -45,7 +45,7 @@ use rustc::middle::privacy::ImportUse::*;
 use rustc::middle::privacy::LastPrivate::*;
 use rustc::middle::privacy::PrivateDep::*;
 use rustc::middle::privacy::ExternalExports;
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty;
 use rustc::util::nodemap::NodeMap;
 use rustc::front::map as ast_map;
 
