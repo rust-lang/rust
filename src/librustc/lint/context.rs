@@ -25,6 +25,7 @@
 //! for all lint attributes.
 use self::TargetLint::*;
 
+use dep_graph::DepNode;
 use middle::privacy::AccessLevels;
 use middle::ty::{self, Ty};
 use session::{early_error, Session};
@@ -1025,6 +1026,8 @@ impl LateLintPass for GatherNodeLevels {
 ///
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate(tcx: &ty::ctxt, access_levels: &AccessLevels) {
+    let _task = tcx.dep_graph.in_task(DepNode::LateLintCheck);
+
     let krate = tcx.map.krate();
     let mut cx = LateContext::new(tcx, krate, access_levels);
 

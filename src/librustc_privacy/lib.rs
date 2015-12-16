@@ -38,6 +38,7 @@ use std::mem::replace;
 use rustc_front::hir;
 use rustc_front::intravisit::{self, Visitor};
 
+use rustc::dep_graph::DepNode;
 use rustc::middle::def;
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
@@ -1443,6 +1444,8 @@ pub fn check_crate(tcx: &ty::ctxt,
                    export_map: &def::ExportMap,
                    external_exports: ExternalExports)
                    -> AccessLevels {
+    let _task = tcx.dep_graph.in_task(DepNode::Privacy);
+
     let krate = tcx.map.krate();
 
     // Sanity check to make sure that all privacy usage and controls are

@@ -20,6 +20,7 @@ mod macros;
 
 mod adt;
 mod asm;
+mod assert_dep_graph;
 mod attributes;
 mod base;
 mod basic_block;

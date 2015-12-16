@@ -228,11 +228,9 @@ pub fn block_query<P>(b: &hir::Block, p: P) -> bool where P: FnMut(&hir::Expr) -
 /// }
 /// ```
 #[inline(always)]
-pub fn memoized<T, U, S, F>(cache: &RefCell<HashMap<T, U, S>>, arg: T, f: F) -> U
-    where T: Clone + Hash + Eq,
-          U: Clone,
-          S: HashState,
-          F: FnOnce(T) -> U,
+pub fn memoized<M, F>(cache: &RefCell<M>, arg: M::Key, f: F) -> M::Value
+    where M: MemoizationMap,
+          F: FnOnce(M::Key) -> M::Value,
 {
     let key = arg.clone();
     let result = cache.borrow().get(&key).cloned();
@@ -243,6 +241,26 @@ pub fn memoized<T, U, S, F>(cache: &RefCell<HashMap<T, U, S>>, arg: T, f: F) -> 
             cache.borrow_mut().insert(key, result.clone());
             result
         }
+    }
+}
+
+pub trait MemoizationMap {
+    type Key: Clone;
+    type Value: Clone;
+    fn get(&self, key: &Self::Key) -> Option<&Self::Value>;
+    fn insert(&mut self, key: Self::Key, value: Self::Value) -> Option<Self::Value>;
+}
+
+impl<K, V, S> MemoizationMap for HashMap<K,V,S>
+    where K: Hash+Eq+Clone, V: Clone, S: HashState
+{
+    type Key = K;
+    type Value = V;
+    fn get(&self, key: &K) -> Option<&V> {
+        self.get(key)
+    }
+    fn insert(&mut self, key: K, value: V) -> Option<V> {
+        self.insert(key, value)
     }
 }
 

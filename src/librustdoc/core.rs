@@ -152,6 +152,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
                                         &name,
                                         resolve::MakeGlobMap::No,
                                         |tcx, _, analysis| {
+        let _ignore = tcx.dep_graph.in_ignore();
         let ty::CrateAnalysis { access_levels, .. } = analysis;
 
         // Convert from a NodeId set to a DefId set since we don't always have easy access

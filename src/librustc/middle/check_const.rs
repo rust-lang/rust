@@ -24,6 +24,7 @@
 // - It's not possible to take the address of a static item with unsafe interior. This is enforced
 // by borrowck::gather_loans
 
+use dep_graph::DepNode;
 use middle::ty::cast::{CastKind};
 use middle::const_eval::{self, ConstEvalErr};
 use middle::const_eval::ErrKind::IndexOpFeatureGated;
@@ -840,13 +841,12 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
 }
 
 pub fn check_crate(tcx: &ty::ctxt) {
-    tcx.map.krate().visit_all_items(&mut CheckCrateVisitor {
+    tcx.visit_all_items_in_krate(DepNode::CheckConst, &mut CheckCrateVisitor {
         tcx: tcx,
         mode: Mode::Var,
         qualif: ConstQualif::NOT_CONST,
         rvalue_borrows: NodeMap()
     });
-
     tcx.sess.abort_if_errors();
 }
 

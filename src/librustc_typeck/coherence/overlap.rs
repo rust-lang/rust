@@ -18,6 +18,7 @@ use middle::ty;
 use middle::infer::{self, new_infer_ctxt};
 use syntax::ast;
 use syntax::codemap::Span;
+use rustc::dep_graph::DepNode;
 use rustc_front::hir;
 use rustc_front::intravisit;
 use util::nodemap::DefIdMap;
@@ -28,7 +29,7 @@ pub fn check(tcx: &ty::ctxt) {
 
     // this secondary walk specifically checks for some other cases,
     // like defaulted traits, for which additional overlap rules exist
-    tcx.map.krate().visit_all_items(&mut overlap);
+    tcx.visit_all_items_in_krate(DepNode::CoherenceOverlapCheckSpecial, &mut overlap);
 }
 
 struct OverlapChecker<'cx, 'tcx:'cx> {
@@ -50,7 +51,10 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         let trait_defs: Vec<_> = self.tcx.trait_defs.borrow().values().cloned().collect();
 
         for trait_def in trait_defs {
-            self.tcx.populate_implementations_for_trait_if_necessary(trait_def.trait_ref.def_id);
+            let _task =
+                self.tcx.dep_graph.in_task(DepNode::CoherenceOverlapCheck(trait_def.def_id()));
+            self.tcx.populate_implementations_for_trait_if_necessary(
+                trait_def.trait_ref.def_id);
             self.check_for_overlapping_impls_of_trait(trait_def);
         }
     }

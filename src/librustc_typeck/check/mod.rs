@@ -82,6 +82,7 @@ use self::TupleArgumentsFlag::*;
 
 use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv, PathParamMode};
 use check::_match::pat_ctxt;
+use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
 use middle::astconv_util::prohibit_type_params;
 use middle::cstore::LOCAL_CRATE;
@@ -385,6 +386,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
 }
 
 pub fn check_wf_old(ccx: &CrateCtxt) {
+    let _ignore = ccx.tcx.dep_graph.in_ignore(); // ignore since this code is going away
+
     // FIXME(#25759). The new code below is much more reliable but (for now)
     // only generates warnings. So as to ensure that we continue
     // getting errors where we used to get errors, we run the old wf
@@ -400,9 +403,8 @@ pub fn check_wf_old(ccx: &CrateCtxt) {
 }
 
 pub fn check_wf_new(ccx: &CrateCtxt) {
-    let krate = ccx.tcx.map.krate();
     let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(ccx);
-    krate.visit_all_items(&mut visit);
+    ccx.tcx.visit_all_items_in_krate(DepNode::WfCheck, &mut visit);
 
     // If types are not well-formed, it leads to all manner of errors
     // downstream, so stop reporting errors at this point.
@@ -410,16 +412,14 @@ pub fn check_wf_new(ccx: &CrateCtxt) {
 }
 
 pub fn check_item_types(ccx: &CrateCtxt) {
-    let krate = ccx.tcx.map.krate();
     let mut visit = CheckItemTypesVisitor { ccx: ccx };
-    krate.visit_all_items(&mut visit);
+    ccx.tcx.visit_all_items_in_krate(DepNode::TypeckItemType, &mut visit);
     ccx.tcx.sess.abort_if_errors();
 }
 
 pub fn check_item_bodies(ccx: &CrateCtxt) {
-    let krate = ccx.tcx.map.krate();
     let mut visit = CheckItemBodiesVisitor { ccx: ccx };
-    krate.visit_all_items(&mut visit);
+    ccx.tcx.visit_all_items_in_krate(DepNode::TypeckItemBody, &mut visit);
 
     ccx.tcx.sess.abort_if_errors();
 }
@@ -429,6 +429,7 @@ pub fn check_drop_impls(ccx: &CrateCtxt) {
         Some(id) => ccx.tcx.lookup_trait_def(id), None => { return }
     };
     drop_trait.for_each_impl(ccx.tcx, |drop_impl_did| {
+        let _task = ccx.tcx.dep_graph.in_task(DepNode::Dropck(drop_impl_did));
         if drop_impl_did.is_local() {
             match dropck::check_drop_impl(ccx.tcx, drop_impl_did) {
                 Ok(()) => {}

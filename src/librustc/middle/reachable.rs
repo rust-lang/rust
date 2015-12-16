@@ -15,6 +15,7 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
+use dep_graph::DepNode;
 use front::map as ast_map;
 use middle::def;
 use middle::def_id::DefId;
@@ -349,6 +350,7 @@ impl<'a, 'v> Visitor<'v> for CollectPrivateImplItemsVisitor<'a> {
 pub fn find_reachable(tcx: &ty::ctxt,
                       access_levels: &privacy::AccessLevels)
                       -> NodeSet {
+    let _task = tcx.dep_graph.in_task(DepNode::Reachability);
 
     let mut reachable_context = ReachableContext::new(tcx);
 

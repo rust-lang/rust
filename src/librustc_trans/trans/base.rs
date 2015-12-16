@@ -43,12 +43,14 @@ use middle::weak_lang_items;
 use middle::pat_util::simple_name;
 use middle::subst::Substs;
 use middle::ty::{self, Ty, HasTypeFlags};
+use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
 use rustc_mir::mir_map::MirMap;
 use session::config::{self, NoDebugInfo, FullDebugInfo};
 use session::Session;
 use trans::_match;
 use trans::adt;
+use trans::assert_dep_graph;
 use trans::attributes;
 use trans::build::*;
 use trans::builder::{Builder, noname};
@@ -2974,7 +2976,6 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
                          analysis: ty::CrateAnalysis)
                          -> CrateTranslation {
     let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
-    let krate = tcx.map.krate();
 
     let check_overflow = if let Some(v) = tcx.sess.opts.debugging_opts.force_overflow_checks {
         v
@@ -3008,7 +3009,12 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
     }
 
-    let link_meta = link::build_link_meta(&tcx.sess, krate, name);
+    let (link_meta, no_builtins) = tcx.dep_graph.with_task(DepNode::TransLinkMeta, || {
+        let krate = tcx.map.krate();
+        let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
+        let link_meta = link::build_link_meta(&tcx.sess, krate, name);
+        (link_meta, no_builtins)
+    });
 
     let codegen_units = tcx.sess.opts.cg.codegen_units;
     let shared_ccx = SharedCrateContext::new(&link_meta.crate_name,
@@ -3032,6 +3038,7 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
         // details on why we walk in this particular way.
         {
             let _icx = push_ctxt("text");
+            let krate = tcx.dep_graph.with_ignore(|| tcx.map.krate());
             intravisit::walk_mod(&mut TransItemsWithinModVisitor { ccx: &ccx }, &krate.module);
             krate.visit_all_items(&mut TransModVisitor { ccx: &ccx });
         }
@@ -3053,7 +3060,10 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
     let reachable_symbol_ids = filter_reachable_ids(&shared_ccx);
 
     // Translate the metadata.
-    let metadata = write_metadata(&shared_ccx, krate, &reachable_symbol_ids, mir_map);
+    let metadata = tcx.dep_graph.with_task(DepNode::TransWriteMetadata, || {
+        let krate = tcx.map.krate();
+        write_metadata(&shared_ccx, krate, &reachable_symbol_ids, mir_map)
+    });
 
     if shared_ccx.sess().trans_stats() {
         let stats = shared_ccx.stats();
@@ -3125,7 +3135,8 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
         llcx: shared_ccx.metadata_llcx(),
         llmod: shared_ccx.metadata_llmod(),
     };
-    let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
+
+    assert_dep_graph::assert_dep_graph(tcx);
 
     CrateTranslation {
         modules: modules,
@@ -3146,6 +3157,10 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
 /// ensures that the immediate contents of each module is processed
 /// entirely before we proceed to find more modules, helping to ensure
 /// an equitable distribution amongst codegen-units.
+///
+/// When it comes to dependency tracking, TransModVisitor runs with
+/// nothing on the dep stack. We push the task onto the dep stack in
+/// `TransItemsWithinModVisitor`.
 pub struct TransModVisitor<'a, 'tcx: 'a> {
     pub ccx: &'a CrateContext<'a, 'tcx>,
 }
@@ -3179,7 +3194,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TransItemsWithinModVisitor<'a, 'tcx> {
                 // skip modules, they will be uncovered by the TransModVisitor
             }
             _ => {
-                trans_item(self.ccx, i);
+                // we are responsible for managing dependencies here,
+                // so push the current task
+                let def_id = self.ccx.tcx().map.local_def_id(i.id);
+                self.ccx.tcx().dep_graph.with_task(DepNode::TransCrateItem(def_id), || {
+                    trans_item(self.ccx, i);
+                });
                 intravisit::walk_item(self, i);
             }
         }
