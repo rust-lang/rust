@@ -28,7 +28,7 @@ fn main() {
     let mut opts = getopts::Options::new();
     opts.optflag("h", "help", "show this message");
 
-    let matches = match opts.parse(env::args().skip(1)) {
+    let matches = match opts.parse(env::args().skip(1).take_while(|a| a != "--")) {
         Ok(m) => m,
         Err(e) => {
             print_usage(&opts, &e.to_string());
@@ -45,7 +45,8 @@ fn main() {
 
 fn print_usage(opts: &Options, reason: &str) {
     let msg = format!("{}\nusage: cargo fmt [options]", reason);
-    println!("{}\nThis utility formats all bin and lib files of the current crate using rustfmt.",
+    println!("{}\nThis utility formats all bin and lib files of the current crate using rustfmt. \
+              Arguments after `--` are passes to rustfmt.",
              opts.usage(&msg));
 }
 
@@ -64,7 +65,15 @@ fn format_crate(opts: &Options) {
                                .map(|t| t.path)
                                .collect();
 
-    format_files(&files).unwrap_or_else(|e| print_usage(opts, &e.to_string()));
+    format_files(&files, &get_fmt_args()).unwrap_or_else(|e| print_usage(opts, &e.to_string()));
+}
+
+fn get_fmt_args() -> Vec<String> {
+    let mut args = vec!["--write-mode=overwrite".to_string()];
+    // All arguments after -- are passed to rustfmt
+    args.extend(env::args().skip_while(|a| a != "--").skip(1));
+
+    args
 }
 
 #[derive(Debug)]
@@ -133,10 +142,10 @@ fn target_from_json(jtarget: &Json) -> Target {
     }
 }
 
-fn format_files(files: &Vec<PathBuf>) -> Result<(), std::io::Error> {
+fn format_files(files: &Vec<PathBuf>, fmt_args: &Vec<String>) -> Result<(), std::io::Error> {
     let mut command = try!(Command::new("rustfmt")
-                               .arg("--write-mode=overwrite")
                                .args(files)
+                               .args(fmt_args)
                                .spawn());
     try!(command.wait());
 
