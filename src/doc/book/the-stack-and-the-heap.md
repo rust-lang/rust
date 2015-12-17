@@ -130,24 +130,26 @@ on the stack is the first one you retrieve from it.
 Let’s try a three-deep example:
 
 ```rust
-fn bar() {
+fn italic() {
     let i = 6;
 }
 
-fn foo() {
+fn bold() {
     let a = 5;
     let b = 100;
     let c = 1;
 
-    bar();
+    italic();
 }
 
 fn main() {
     let x = 42;
 
-    foo();
+    bold();
 }
 ```
+
+We have some kooky function names to make the diagrams clearer.
 
 Okay, first, we call `main()`:
 
@@ -155,38 +157,37 @@ Okay, first, we call `main()`:
 |---------|------|-------|
 | 0       | x    | 42    |
 
-Next up, `main()` calls `foo()`:
+Next up, `main()` calls `bold()`:
 
 | Address | Name | Value |
 |---------|------|-------|
-| 3       | c    | 1     |
-| 2       | b    | 100   |
-| 1       | a    | 5     |
+| **3**   | **c**|**1**  |
+| **2**   | **b**|**100**|
+| **1**   | **a**| **5** |
 | 0       | x    | 42    |
 
-And then `foo()` calls `bar()`:
+And then `bold()` calls `italic()`:
 
 | Address | Name | Value |
 |---------|------|-------|
-| 4       | i    | 6     |
-| 3       | c    | 1     |
-| 2       | b    | 100   |
-| 1       | a    | 5     |
+| *4*     | *i*  | *6*   |
+| **3**   | **c**|**1**  |
+| **2**   | **b**|**100**|
+| **1**   | **a**| **5** |
 | 0       | x    | 42    |
-
 Whew! Our stack is growing tall.
 
-After `bar()` is over, its frame is deallocated, leaving just `foo()` and
+After `italic()` is over, its frame is deallocated, leaving just `bold()` and
 `main()`:
 
 | Address | Name | Value |
 |---------|------|-------|
-| 3       | c    | 1     |
-| 2       | b    | 100   |
-| 1       | a    | 5     |
-| 0       | x    | 42    |
+| **3**   | **c**|**1**  |
+| **2**   | **b**|**100**|
+| **1**   | **a**| **5** |
+| 0       | x    | 42    | 
 
-And then `foo()` ends, leaving just `main()`:
+And then `bold()` ends, leaving just `main()`:
 
 | Address | Name | Value |
 |---------|------|-------|
@@ -578,3 +579,4 @@ comes at the cost of either significant runtime support (e.g. in the form of a
 garbage collector) or significant programmer effort (in the form of explicit
 memory management calls that require verification not provided by the Rust
 compiler).
+
