@@ -23,12 +23,6 @@
 //! nor does it provide concurrency or I/O. These things require
 //! platform integration, and this library is platform-agnostic.
 //!
-//! *It is not recommended to use the core library*. The stable
-//! functionality of libcore is reexported from the
-//! [standard library](../std/index.html). The composition of this library is
-//! subject to change over time; only the interface exposed through libstd is
-//! intended to be stable.
-//!
 //! # How to use the core library
 //!
 // FIXME: Fill me in with more detail when the interface settles
