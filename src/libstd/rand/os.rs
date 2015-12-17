@@ -233,7 +233,7 @@ mod imp {
             for s in v.chunks_mut(256) {
                 unsafe { ret = syscall(7, s.as_mut_ptr(), s.len()); }
                 if ret == -1 {
-                    panic!("unexpected getrandom error: {}", errno());
+                    panic!("unexpected getentropy error: {}", errno());
                 }
             }
         }
