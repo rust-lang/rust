@@ -274,7 +274,6 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             def::DefSelfTy(..) |
             def::DefLabel(_) |
             def::DefTyParam(..) |
-            def::DefUse(_) |
             def::DefMethod(..) |
             def::DefPrimTy(_) |
             def::DefErr => {
