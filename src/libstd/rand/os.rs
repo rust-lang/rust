@@ -208,6 +208,8 @@ mod imp {
         fn syscall(number: c_long, ...) -> c_long;
     }
 
+    const NR_GETENTROPY: libc::c_long = 7;
+
     impl OsRng {
         /// Create a new `OsRng`.
         pub fn new() -> io::Result<OsRng> {
@@ -231,7 +233,9 @@ mod imp {
 
             // getentropy(2) permits a maximum buffer size of 256 bytes
             for s in v.chunks_mut(256) {
-                unsafe { ret = syscall(7, s.as_mut_ptr(), s.len()); }
+                unsafe {
+                    ret = syscall(NR_GETENTROPY, s.as_mut_ptr(), s.len());
+                }
                 if ret == -1 {
                     panic!("unexpected getentropy error: {}", errno());
                 }
