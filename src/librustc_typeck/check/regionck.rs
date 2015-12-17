@@ -92,7 +92,7 @@ use middle::mem_categorization::Categorization;
 use middle::region::{self, CodeExtent};
 use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, RegionEscape, ReScope, Ty, MethodCall, HasTypeFlags};
+use middle::ty::{self, RegionEscape, Ty, MethodCall, HasTypeFlags};
 use middle::infer::{self, GenericKind, InferCtxt, SubregionOrigin, TypeOrigin, VerifyBound};
 use middle::pat_util;
 use middle::ty::adjustment;

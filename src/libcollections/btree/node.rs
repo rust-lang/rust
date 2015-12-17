@@ -23,7 +23,7 @@ use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 use core::ptr::Unique;
 use core::{slice, mem, ptr, cmp};
-use alloc::heap::{self, EMPTY};
+use alloc::heap;
 
 use borrow::Borrow;
 

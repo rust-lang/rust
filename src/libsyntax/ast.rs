@@ -51,7 +51,7 @@ use abi::Abi;
 use ext::base;
 use ext::tt::macro_parser;
 use owned_slice::OwnedSlice;
-use parse::token::{InternedString, str_to_ident};
+use parse::token::InternedString;
 use parse::token;
 use parse::lexer;
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};

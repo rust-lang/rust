@@ -41,7 +41,6 @@ use super::{InferCtxt};
 use super::{MiscVariable, TypeTrace};
 use super::type_variable::{RelationDir, BiTo, EqTo, SubtypeOf, SupertypeOf};
 
-use middle::ty::{TyVar};
 use middle::ty::{IntType, UintType};
 use middle::ty::{self, Ty};
 use middle::ty::error::TypeError;

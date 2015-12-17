@@ -19,7 +19,6 @@ use syntax::ast;
 use syntax::codemap::Span;
 use rustc_front::intravisit;
 use rustc_front::hir;
-use rustc_front::hir::{Item, ItemImpl};
 
 pub fn check(tcx: &ty::ctxt) {
     let mut orphan = OrphanChecker { tcx: tcx };
