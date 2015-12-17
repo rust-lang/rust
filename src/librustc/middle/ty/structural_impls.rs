@@ -16,7 +16,7 @@ use middle::ty::fold::{TypeFoldable, TypeFolder};
 
 use std::rc::Rc;
 use syntax::abi;
-use syntax::owned_slice::OwnedSlice;
+use syntax::ptr::P;
 
 use rustc_front::hir;
 
@@ -555,8 +555,8 @@ impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for OwnedSlice<T> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> OwnedSlice<T> {
+impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for P<[T]> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> P<[T]> {
         self.iter().map(|t| t.fold_with(folder)).collect()
     }
 }
