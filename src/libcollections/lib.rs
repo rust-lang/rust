@@ -49,6 +49,7 @@
 #![feature(iter_arith)]
 #![feature(iter_arith)]
 #![feature(lang_items)]
+#![feature(nonzero)]
 #![feature(num_bits_bytes)]
 #![feature(oom)]
 #![feature(pattern)]
