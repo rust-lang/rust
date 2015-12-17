@@ -4,7 +4,7 @@ use syntax::ast::*;
 use syntax::codemap::{Span, Spanned};
 use syntax::visit::FnKind;
 
-use utils::{span_lint, snippet, match_path_ast, in_external_macro};
+use utils::{span_lint, span_lint_and_then, snippet_opt, match_path_ast, in_external_macro};
 
 /// **What it does:** This lint checks for return statements at the end of a block. It is `Warn` by default.
 ///
@@ -37,7 +37,7 @@ impl ReturnPass {
         } else if let Some(stmt) = block.stmts.last() {
             if let StmtSemi(ref expr, _) = stmt.node {
                 if let ExprRet(Some(ref inner)) = expr.node {
-                    self.emit_return_lint(cx, (expr.span, inner.span));
+                    self.emit_return_lint(cx, (stmt.span, inner.span));
                 }
             }
         }
@@ -73,10 +73,15 @@ impl ReturnPass {
 
     fn emit_return_lint(&mut self, cx: &EarlyContext, spans: (Span, Span)) {
         if in_external_macro(cx, spans.1) {return;}
-        span_lint(cx, NEEDLESS_RETURN, spans.0, &format!(
-            "unneeded return statement. Consider using `{}` \
-             without the return and trailing semicolon",
-            snippet(cx, spans.1, "..")))
+        span_lint_and_then(cx, NEEDLESS_RETURN, spans.0,
+                           "unneeded return statement",
+                           || {
+            if let Some(snippet) = snippet_opt(cx, spans.1) {
+                cx.sess().span_suggestion(spans.0,
+                                          "remove `return` as shown:",
+                                          snippet);
+            }
+        });
     }
 
     // Check for "let x = EXPR; x"
