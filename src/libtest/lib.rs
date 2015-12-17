@@ -328,8 +328,8 @@ fn usage(binary: &str) {
     let message = format!("Usage: {} [OPTIONS] [FILTER]", binary);
     println!(r#"{usage}
 
-The FILTER regex is tested against the name of all tests to run, and
-only those tests that match are run.
+The FILTER string is tested against the name of all tests, and only those
+tests whose names contain the filter are run.
 
 By default, all tests are run in parallel. This can be altered with the
 RUST_TEST_THREADS environment variable when running tests (set it to 1).
