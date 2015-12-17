@@ -47,6 +47,7 @@
 //!     if the entropy pool is very small, such as immediately after first booting.
 //!     Linux 3.17 added the `getrandom(2)` system call which solves the issue: it blocks if entropy
 //!     pool is not initialized yet, but it does not block once initialized.
+//!     `getrandom(2)` was based on `getentropy(2)`, an existing system call in OpenBSD.
 //!     `OsRng` tries to use `getrandom(2)` if available, and use `/dev/urandom` fallback if not.
 //!     If an application does not have `getrandom` and likely to be run soon after first booting,
 //!     or on a system with very few entropy sources, one should consider using `/dev/random` via
