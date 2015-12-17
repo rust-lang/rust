@@ -78,7 +78,7 @@ use middle::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerPar
 use middle::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty, TypeScheme};
 use middle::ty::{VariantKind};
-use middle::ty::fold::{TypeFolder, TypeFoldable};
+use middle::ty::fold::TypeFoldable;
 use middle::ty::util::IntTypeExt;
 use middle::infer;
 use rscope::*;

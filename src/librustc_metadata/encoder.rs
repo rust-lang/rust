@@ -43,7 +43,6 @@ use std::u32;
 use syntax::abi;
 use syntax::ast::{self, NodeId, Name, CRATE_NODE_ID, CrateNum};
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::special_idents;
 use syntax;

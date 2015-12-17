@@ -19,7 +19,6 @@ use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 
 use char::{self, CharExt};
 use clone::Clone;
-use cmp::Eq;
 use convert::AsRef;
 use default::Default;
 use fmt;
@@ -1208,7 +1207,6 @@ Section: Trait implementations
 mod traits {
     use cmp::{self, Ordering, Ord, PartialEq, PartialOrd, Eq};
     use cmp::Ordering::{Less, Greater};
-    use iter::Iterator;
     use option::Option;
     use option::Option::Some;
     use ops;

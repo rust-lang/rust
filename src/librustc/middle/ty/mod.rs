@@ -30,14 +30,13 @@ use middle::region::{CodeExtent};
 use middle::subst::{self, ParamSpace, Subst, Substs, VecPerParamSpace};
 use middle::traits;
 use middle::ty;
-use middle::ty::fold::TypeFolder;
 use middle::ty::walk::TypeWalker;
 use util::common::memoized;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap};
 use util::nodemap::FnvHashMap;
 
 use serialize::{Encodable, Encoder, Decodable, Decoder};
-use std::borrow::{Borrow, Cow};
+use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::hash::{Hash, Hasher};
 use std::iter;
@@ -2751,8 +2750,13 @@ pub type FreevarMap = NodeMap<Vec<Freevar>>;
 
 pub type CaptureModeMap = NodeMap<hir::CaptureClause>;
 
+pub struct TraitCandidate {
+    pub def_id: DefId,
+    pub import_id: Option<NodeId>,
+}
+
 // Trait method resolution
-pub type TraitMap = NodeMap<Vec<DefId>>;
+pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
 
 // Map from the NodeId of a glob import to a list of items which are actually
 // imported.

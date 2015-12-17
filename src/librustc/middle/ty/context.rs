@@ -271,6 +271,7 @@ pub struct ctxt<'tcx> {
 
     pub map: ast_map::Map<'tcx>,
     pub freevars: RefCell<FreevarMap>,
+    pub maybe_unused_trait_imports: NodeSet,
     pub tcache: RefCell<DefIdMap<ty::TypeScheme<'tcx>>>,
     pub rcache: RefCell<FnvHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
     pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, ty::contents::TypeContents>>,
@@ -305,6 +306,10 @@ pub struct ctxt<'tcx> {
     /// some point. Local variable definitions not in this set can be warned
     /// about.
     pub used_mut_nodes: RefCell<NodeSet>,
+
+    /// Set of trait imports actually used in method resolution.
+    /// This is used for warning unused imports.
+    pub used_trait_imports: RefCell<NodeSet>,
 
     /// The set of external nominal types whose implementations have been read.
     /// This is used for lazy resolution of methods.
@@ -475,6 +480,7 @@ impl<'tcx> ctxt<'tcx> {
                                  named_region_map: resolve_lifetime::NamedRegionMap,
                                  map: ast_map::Map<'tcx>,
                                  freevars: FreevarMap,
+                                 maybe_unused_trait_imports: NodeSet,
                                  region_maps: RegionMaps,
                                  lang_items: middle::lang_items::LanguageItems,
                                  stability: stability::Index<'tcx>,
@@ -508,6 +514,7 @@ impl<'tcx> ctxt<'tcx> {
             fulfilled_predicates: RefCell::new(traits::FulfilledPredicates::new()),
             map: map,
             freevars: RefCell::new(freevars),
+            maybe_unused_trait_imports: maybe_unused_trait_imports,
             tcache: RefCell::new(DefIdMap()),
             rcache: RefCell::new(FnvHashMap()),
             tc_cache: RefCell::new(FnvHashMap()),
@@ -522,6 +529,7 @@ impl<'tcx> ctxt<'tcx> {
             impl_items: RefCell::new(DefIdMap()),
             used_unsafe: RefCell::new(NodeSet()),
             used_mut_nodes: RefCell::new(NodeSet()),
+            used_trait_imports: RefCell::new(NodeSet()),
             populated_external_types: RefCell::new(DefIdSet()),
             populated_external_primitive_impls: RefCell::new(DefIdSet()),
             extern_const_statics: RefCell::new(DefIdMap()),

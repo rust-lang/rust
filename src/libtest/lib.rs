@@ -58,9 +58,7 @@ use self::TestEvent::*;
 use self::NamePadding::*;
 use self::OutputLocation::*;
 
-use stats::Stats;
 use getopts::{OptGroup, optflag, optopt};
-use serialize::Encodable;
 use std::boxed::FnBox;
 use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};

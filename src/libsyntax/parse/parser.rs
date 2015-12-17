@@ -78,7 +78,6 @@ use parse::PResult;
 use diagnostic::FatalError;
 
 use std::collections::HashSet;
-use std::io::prelude::*;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;

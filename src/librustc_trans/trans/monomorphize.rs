@@ -16,7 +16,7 @@ use middle::def_id::DefId;
 use middle::infer::normalize_associated_type;
 use middle::subst;
 use middle::subst::{Subst, Substs};
-use middle::ty::fold::{TypeFolder, TypeFoldable};
+use middle::ty::fold::TypeFoldable;
 use trans::attributes;
 use trans::base::{trans_enum_variant, push_ctxt, get_item_val};
 use trans::base::trans_fn;

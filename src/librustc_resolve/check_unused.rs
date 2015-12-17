@@ -16,6 +16,8 @@
 // resolve data structures and because it finalises the privacy information for
 // `use` directives.
 //
+// Unused trait imports can't be checked until the method resolution. We save
+// candidates here, and do the actual check in librustc_typeck/check_unused.rs.
 
 use std::ops::{Deref, DerefMut};
 
@@ -62,13 +64,7 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
         debug!("finalizing import uses for {:?}",
                self.session.codemap().span_to_snippet(span));
 
-        if !self.used_imports.contains(&(id, TypeNS)) &&
-           !self.used_imports.contains(&(id, ValueNS)) {
-            self.session.add_lint(lint::builtin::UNUSED_IMPORTS,
-                                  id,
-                                  span,
-                                  "unused import".to_string());
-        }
+        self.check_import(id, span);
 
         let mut def_map = self.def_map.borrow_mut();
         let path_res = if let Some(r) = def_map.get_mut(&id) {
@@ -109,6 +105,24 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             type_used: t_used,
         };
     }
+
+    fn check_import(&mut self, id: ast::NodeId, span: Span) {
+        if !self.used_imports.contains(&(id, TypeNS)) &&
+           !self.used_imports.contains(&(id, ValueNS)) {
+            if self.maybe_unused_trait_imports.contains(&id) {
+                // Check later.
+                return;
+            }
+            self.session.add_lint(lint::builtin::UNUSED_IMPORTS,
+                                  id,
+                                  span,
+                                  "unused import".to_string());
+        } else {
+            // This trait import is definitely used, in a way other than
+            // method resolution.
+            self.maybe_unused_trait_imports.remove(&id);
+        }
+    }
 }
 
 impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
@@ -144,14 +158,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                         }
                     }
                     ViewPathGlob(_) => {
-                        if !self.used_imports.contains(&(item.id, TypeNS)) &&
-                           !self.used_imports.contains(&(item.id, ValueNS)) {
-                            self.session
-                                .add_lint(lint::builtin::UNUSED_IMPORTS,
-                                          item.id,
-                                          p.span,
-                                          "unused import".to_string());
-                        }
+                        self.check_import(item.id, p.span);
                     }
                 }
             }

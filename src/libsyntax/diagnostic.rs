@@ -289,8 +289,6 @@ pub enum Level {
 
 impl fmt::Display for Level {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use std::fmt::Display;
-
         match *self {
             Bug => "error: internal compiler error".fmt(f),
             Fatal | Error => "error".fmt(f),

@@ -13,7 +13,6 @@
 use std::collections::HashSet;
 
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 use rustc_front::hir;
 
 use rustc::middle::cstore::{self, CrateStore};

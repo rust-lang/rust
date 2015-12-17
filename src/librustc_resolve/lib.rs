@@ -60,13 +60,12 @@ use rustc::middle::def_id::DefId;
 use rustc::middle::pat_util::pat_bindings;
 use rustc::middle::privacy::*;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
-use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
-use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
+use rustc::middle::ty::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
+use rustc::util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 
 use syntax::ast;
 use syntax::ast::{CRATE_NODE_ID, Ident, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
 use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64, TyF64, TyF32};
-use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::{self, special_names, special_idents};
 use syntax::codemap::{self, Span, Pos};
 use syntax::util::lev_distance::{lev_distance, max_suggestion_distance};
@@ -1143,6 +1142,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
 
     used_imports: HashSet<(NodeId, Namespace)>,
     used_crates: HashSet<CrateNum>,
+    maybe_unused_trait_imports: NodeSet,
 
     // Callback function for intercepting walks
     callback: Option<Box<Fn(hir_map::Node, &mut bool) -> bool>>,
@@ -1194,13 +1194,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             freevars_seen: NodeMap(),
             export_map: NodeMap(),
             trait_map: NodeMap(),
-            used_imports: HashSet::new(),
-            used_crates: HashSet::new(),
             external_exports: DefIdSet(),
 
             emit_errors: true,
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
             glob_map: HashMap::new(),
+
+            used_imports: HashSet::new(),
+            used_crates: HashSet::new(),
+            maybe_unused_trait_imports: NodeSet(),
 
             callback: None,
             resolved: false,
@@ -3629,14 +3631,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn get_traits_containing_item(&mut self, name: Name) -> Vec<DefId> {
+    fn get_traits_containing_item(&mut self, name: Name) -> Vec<TraitCandidate> {
         debug!("(getting traits containing item) looking for '{}'", name);
 
-        fn add_trait_info(found_traits: &mut Vec<DefId>, trait_def_id: DefId, name: Name) {
+        fn add_trait_info(found_traits: &mut Vec<TraitCandidate>,
+                          trait_def_id: DefId,
+                          import_id: Option<NodeId>,
+                          name: Name) {
             debug!("(adding trait info) found trait {:?} for method '{}'",
                    trait_def_id,
                    name);
-            found_traits.push(trait_def_id);
+            found_traits.push(TraitCandidate {
+                def_id: trait_def_id,
+                import_id: import_id,
+            });
         }
 
         let mut found_traits = Vec::new();
@@ -3646,7 +3654,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             match self.current_trait_ref {
                 Some((trait_def_id, _)) => {
                     if self.trait_item_map.contains_key(&(name, trait_def_id)) {
-                        add_trait_info(&mut found_traits, trait_def_id, name);
+                        add_trait_info(&mut found_traits, trait_def_id, None, name);
                     }
                 }
                 None => {} // Nothing to do.
@@ -3666,7 +3674,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         _ => continue,
                     };
                     if self.trait_item_map.contains_key(&(name, trait_def_id)) {
-                        add_trait_info(&mut found_traits, trait_def_id, name);
+                        add_trait_info(&mut found_traits, trait_def_id, None, name);
                     }
                 }
             }
@@ -3682,9 +3690,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some(..) | None => continue,
                 };
                 if self.trait_item_map.contains_key(&(name, did)) {
-                    add_trait_info(&mut found_traits, did, name);
                     let id = import.type_ns.id;
-                    self.used_imports.insert((id, TypeNS));
+                    add_trait_info(&mut found_traits, did, Some(id), name);
+                    self.maybe_unused_trait_imports.insert(id);
                     let trait_name = self.get_trait_name(did);
                     self.record_import_use(id, trait_name);
                     if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
@@ -3843,6 +3851,7 @@ fn err_path_resolution() -> PathResolution {
 pub struct CrateMap {
     pub def_map: RefCell<DefMap>,
     pub freevars: FreevarMap,
+    pub maybe_unused_trait_imports: NodeSet,
     pub export_map: ExportMap,
     pub trait_map: TraitMap,
     pub external_exports: ExternalExports,
@@ -3870,6 +3879,7 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
     CrateMap {
         def_map: resolver.def_map,
         freevars: resolver.freevars,
+        maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
         export_map: resolver.export_map,
         trait_map: resolver.trait_map,
         external_exports: resolver.external_exports,
