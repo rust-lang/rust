@@ -77,14 +77,37 @@ impl IsaacRng {
 
         macro_rules! mix {
             () => {{
-                a=a^(b<<11); d=d+a; b=b+c;
-                b=b^(c>>2);  e=e+b; c=c+d;
-                c=c^(d<<8);  f=f+c; d=d+e;
-                d=d^(e>>16); g=g+d; e=e+f;
-                e=e^(f<<10); h=h+e; f=f+g;
-                f=f^(g>>4);  a=a+f; g=g+h;
-                g=g^(h<<8);  b=b+g; h=h+a;
-                h=h^(a>>9);  c=c+h; a=a+b;
+                a ^= b << 11;
+                d += a;
+                b += c;
+
+                b ^= c >> 2;
+                e += b;
+                c += d;
+
+                c ^= d << 8;
+                f += c;
+                d += e;
+
+                d ^= e >> 16;
+                g += d;
+                e += f;
+
+                e ^= f << 10;
+                h += e;
+                f += g;
+
+                f ^= g >> 4;
+                a += f;
+                g += h;
+
+                g ^= h << 8;
+                b += g;
+                h += a;
+
+                h ^= a >> 9;
+                c += h;
+                a += b;
             }}
         }
 
@@ -337,14 +360,37 @@ impl Isaac64Rng {
 
         macro_rules! mix {
             () => {{
-                a=a-e; f=f^(h>>9);  h=h+a;
-                b=b-f; g=g^(a<<9);  a=a+b;
-                c=c-g; h=h^(b>>23); b=b+c;
-                d=d-h; a=a^(c<<15); c=c+d;
-                e=e-a; b=b^(d>>14); d=d+e;
-                f=f-b; c=c^(e<<20); e=e+f;
-                g=g-c; d=d^(f>>17); f=f+g;
-                h=h-d; e=e^(g<<14); g=g+h;
+                a -= e;
+                f ^= h >> 9;
+                h += a;
+
+                b -= f;
+                g ^= a << 9;
+                a += b;
+
+                c -= g;
+                h ^= b >> 23;
+                b += c;
+
+                d -= h;
+                a ^= c << 15;
+                c += d;
+
+                e -= a;
+                b ^= d >> 14;
+                d += e;
+
+                f -= b;
+                c ^= e << 20;
+                e += f;
+
+                g -= c;
+                d ^= f >> 17;
+                f += g;
+
+                h -= d;
+                e ^= g << 14;
+                g += h;
             }}
         }
 
