@@ -27,6 +27,7 @@ use fmt_macros::{Parser, Piece, Position};
 use middle::def_id::DefId;
 use middle::infer::InferCtxt;
 use middle::ty::{self, ToPredicate, HasTypeFlags, ToPolyTraitRef, TraitRef, Ty};
+use middle::ty::fast_reject;
 use middle::ty::fold::TypeFoldable;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
@@ -233,20 +234,38 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             if let Some(s) = custom_note {
                                 err.fileline_note(obligation.cause.span, &s);
                             } else {
-                                let mut impl_candidates = Vec::new();
-                                infcx.tcx.lookup_trait_def(trait_ref.def_id())
-                                         .for_each_relevant_impl(
-                                    infcx.tcx,
-                                    trait_ref.self_ty(),
-                                    |impl_def_id| {
-                                        match infcx.tcx.impl_trait_ref(impl_def_id) {
-                                            Some(ref imp) => {
-                                                impl_candidates.push(format!("  {}", imp));
-                                            },
-                                            None => (),
+                                infcx.tcx.populate_implementations_for_trait_if_necessary(
+                                    trait_ref.def_id());
+
+                                let trait_def = infcx.tcx.lookup_trait_def(trait_ref.def_id());
+                                let blanket_impls = trait_def.blanket_impls.borrow();
+                                let impl_iter = blanket_impls.iter()
+                                                             .filter_map(|&id|
+                                                                     infcx.tcx.impl_trait_ref(id));
+
+                                let nonblanket = trait_def.nonblanket_impls.borrow();
+                                let nonblanket_iter = nonblanket.values()
+                                                            .flat_map(|ids|
+                                                                ids.iter().filter_map(|&id|
+                                                                    infcx.tcx.impl_trait_ref(id)));
+
+                                let simp = fast_reject::simplify_type(infcx.tcx, trait_ref.self_ty(), true);
+                                let nonblanket_iter = nonblanket_iter.filter(|def| {
+                                    if let Some(simp) = simp {
+                                        let imp_simp = fast_reject::simplify_type(infcx.tcx, def.self_ty(), true);
+                                        if let Some(imp_simp) = imp_simp {
+                                            simp == imp_simp
+                                        } else {
+                                            false
                                         }
+                                    } else {
+                                        true
                                     }
-                                );
+                                });
+
+                                let impl_candidates = impl_iter.chain(nonblanket_iter)
+                                                               .map(|imp| format!("  {}", imp))
+                                                               .take(5).collect::<Vec<_>>();
 
                                 if impl_candidates.len() > 0 {
                                     err.fileline_help(
