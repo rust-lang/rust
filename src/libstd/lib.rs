@@ -25,7 +25,7 @@
 //!
 //! # How to read this documentation
 //!
-//! If you already know the name of what you are looking for the fastest way to
+//! If you already know the name of what you are looking for, the fastest way to
 //! find it is to use the <a href="#" onclick="focusSearchBar();">search
 //! bar</a> at the top of the page.
 //!
