@@ -1,7 +1,7 @@
-- Feature Name: panic_handler
+- Feature Name: `panic_handler`
 - Start Date: 2015-10-08
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1328](https://github.com/rust-lang/rfcs/pull/1328)
+- Rust Issue: [rust-lang/rust#30449](https://github.com/rust-lang/rust/issues/30449)
 
 # Summary
 
