@@ -1337,7 +1337,7 @@ explanatory comments for the same example:
 
     // `for`-loops use a protocol based on the `Iterator`
     // trait. Each item yielded in a `for` loop has the
-    // type `Iterator::Item` -- that is,I `Item` is the
+    // type `Iterator::Item` -- that is, `Item` is the
     // associated type of the concrete iterator impl.
     for v in &vs {
 //      ~    ~~~

@@ -43,7 +43,7 @@
 //!
 //! [`std::io::prelude`]: ../io/prelude/index.html
 //!
-//! The differece between 'the prelude' and these other preludes is that they
+//! The difference between 'the prelude' and these other preludes is that they
 //! are not automatically `use`'d, and must be imported manually. This is still
 //! easier than importing all of their consitutent components.
 //!
