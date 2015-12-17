@@ -114,13 +114,20 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
                                 Ok(parent) => parent,
                                 Err(_) => break 'main
                             };
-                            internal_out_node = internal_out_node.ascend().ok().unwrap().into_node();
+                            internal_out_node = internal_out_node.ascend()
+                                                                 .ok()
+                                                                 .unwrap()
+                                                                 .into_node();
                         }
                     }
                 }
 
                 let (k, v) = internal_kv.into_kv();
-                internal_out_node.push(k.clone(), v.clone(), create_chain(internal_kv.into_node().height() - 1));
+                internal_out_node.push(
+                    k.clone(),
+                    v.clone(),
+                    create_chain(internal_kv.into_node().height() - 1)
+                );
 
                 in_node = first_leaf_edge(internal_kv.right_edge().descend()).into_node();
                 out_node = first_leaf_edge(internal_out_node.last_edge().descend()).into_node();
@@ -236,7 +243,13 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 /// An occupied Entry.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
-    handle: Handle<NodeRef<marker::Borrowed<'a>, K, V, marker::Mut, marker::LeafOrInternal>, marker::KV>,
+    handle: Handle<NodeRef<
+        marker::Borrowed<'a>,
+        K, V,
+        marker::Mut,
+        marker::LeafOrInternal
+    >, marker::KV>,
+
     length: &'a mut usize
 }
 
@@ -681,7 +694,7 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
         let root2 = unsafe { ptr::read(&self.root).into_ref() };
         let len = self.length;
         mem::forget(self);
-    
+
         IntoIter {
             front: first_leaf_edge(root1),
             back: last_leaf_edge(root2),
@@ -724,7 +737,9 @@ impl<K, V> Iterator for IntoIter<K, V> {
                 self.front = kv.right_edge();
                 return Some((k, v));
             },
-            Err(last_edge) => unsafe { unwrap_unchecked(last_edge.into_node().deallocate_and_ascend()) }
+            Err(last_edge) => unsafe {
+                unwrap_unchecked(last_edge.into_node().deallocate_and_ascend())
+            }
         };
 
         loop {
@@ -764,7 +779,9 @@ impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
                 self.back = kv.left_edge();
                 return Some((k, v));
             },
-            Err(last_edge) => unsafe { unwrap_unchecked(last_edge.into_node().deallocate_and_ascend()) }
+            Err(last_edge) => unsafe {
+                unwrap_unchecked(last_edge.into_node().deallocate_and_ascend())
+            }
         };
 
         loop {
@@ -1109,7 +1126,12 @@ impl<'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for BTreeMap<K, V>
     }
 }
 
-fn first_leaf_edge<Lifetime, K, V, Mutability>(mut node: NodeRef<Lifetime, K, V, Mutability, marker::LeafOrInternal>) -> Handle<NodeRef<Lifetime, K, V, Mutability, marker::Leaf>, marker::Edge> {
+fn first_leaf_edge<Lifetime, K, V, Mutability>(
+        mut node: NodeRef<Lifetime,
+                          K, V,
+                          Mutability,
+                          marker::LeafOrInternal>
+        ) -> Handle<NodeRef<Lifetime, K, V, Mutability, marker::Leaf>, marker::Edge> {
     loop {
         match node.force() {
             Leaf(leaf) => return leaf.first_edge(),
@@ -1120,7 +1142,12 @@ fn first_leaf_edge<Lifetime, K, V, Mutability>(mut node: NodeRef<Lifetime, K, V,
     }
 }
 
-fn last_leaf_edge<Lifetime, K, V, Mutability>(mut node: NodeRef<Lifetime, K, V, Mutability, marker::LeafOrInternal>) -> Handle<NodeRef<Lifetime, K, V, Mutability, marker::Leaf>, marker::Edge> {
+fn last_leaf_edge<Lifetime, K, V, Mutability>(
+        mut node: NodeRef<Lifetime,
+                          K, V,
+                          Mutability,
+                          marker::LeafOrInternal>
+        ) -> Handle<NodeRef<Lifetime, K, V, Mutability, marker::Leaf>, marker::Edge> {
     loop {
         match node.force() {
             Leaf(leaf) => return leaf.last_edge(),
@@ -1434,7 +1461,11 @@ enum UnderflowResult<'a, K, V> {
     Stole(NodeRef<marker::Borrowed<'a>, K, V, marker::Mut, marker::Internal>)
 }
 
-fn handle_underfull_node<'a, K, V>(node: NodeRef<marker::Borrowed<'a>, K, V, marker::Mut, marker::LeafOrInternal>) -> UnderflowResult<'a, K, V> {
+fn handle_underfull_node<'a, K, V>(node: NodeRef<marker::Borrowed<'a>,
+                                                 K, V,
+                                                 marker::Mut,
+                                                 marker::LeafOrInternal>)
+                                                 -> UnderflowResult<'a, K, V> {
     let parent = if let Ok(parent) = node.ascend() {
         parent
     } else {
@@ -1464,7 +1495,7 @@ fn handle_underfull_node<'a, K, V>(node: NodeRef<marker::Borrowed<'a>, K, V, mar
             let k = mem::replace(handle.reborrow_mut().into_kv_mut().0, k);
             let v = mem::replace(handle.reborrow_mut().into_kv_mut().1, v);
 
-            // TODO: reuse cur_node?
+            // FIXME: reuse cur_node?
             if is_left {
                 match handle.reborrow_mut().right_edge().descend().force() {
                     Leaf(mut leaf) => leaf.push_front(k, v),
