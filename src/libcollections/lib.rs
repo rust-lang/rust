@@ -43,8 +43,8 @@
 #![feature(iter_arith)]
 #![feature(iter_arith)]
 #![feature(lang_items)]
+#![feature(nonzero)]
 #![feature(num_bits_bytes)]
-#![feature(oom)]
 #![feature(pattern)]
 #![feature(shared)]
 #![feature(slice_bytes)]
@@ -55,7 +55,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
-#![feature(unsafe_no_drop_flag, filling_drop)]
+#![feature(unsafe_no_drop_flag)]
 #![cfg_attr(test, feature(clone_from_slice, rand, test))]
 
 #![no_std]
