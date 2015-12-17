@@ -208,7 +208,7 @@ mod imp {
         fn syscall(number: c_long, ...) -> c_long;
     }
 
-    const NR_GETENTROPY: libc::c_long = 7;
+    const NR_GETENTROPY: c_long = 7;
 
     impl OsRng {
         /// Create a new `OsRng`.
