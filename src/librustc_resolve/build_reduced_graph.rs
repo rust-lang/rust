@@ -706,7 +706,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             DefLocal(..) |
             DefPrimTy(..) |
             DefTyParam(..) |
-            DefUse(..) |
             DefUpvar(..) |
             DefLabel(..) |
             DefSelfTy(..) |
