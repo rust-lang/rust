@@ -28,7 +28,6 @@ use trans::consts;
 use trans::datum::*;
 use trans::debuginfo::DebugLoc;
 use trans::declare;
-use trans::expr::SaveIn;
 use trans::expr;
 use trans::glue;
 use trans::machine;

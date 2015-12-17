@@ -50,11 +50,14 @@ mod foo {
 mod bar {
     // Don't ignore on 'pub use' because we're not sure if it's used or not
     pub use std::cmp::PartialEq;
+    pub struct Square;
 
     pub mod c {
         use foo::Point;
         use foo::Square; //~ ERROR unused import
-        pub fn cc(p: Point) -> isize { return 2 * (p.x + p.y); }
+        pub fn cc(_p: Point) -> super::Square {
+            super::Square
+        }
     }
 
     #[allow(unused_imports)]

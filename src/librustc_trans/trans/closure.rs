@@ -20,7 +20,7 @@ use trans::build::*;
 use trans::callee::{self, ArgVals, Callee, TraitItem, MethodData};
 use trans::cleanup::{CleanupMethods, CustomScope, ScopeId};
 use trans::common::*;
-use trans::datum::{self, Datum, rvalue_scratch_datum, Rvalue, ByValue};
+use trans::datum::{self, Datum, rvalue_scratch_datum, Rvalue};
 use trans::debuginfo::{self, DebugLoc};
 use trans::declare;
 use trans::expr;

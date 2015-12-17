@@ -23,7 +23,7 @@ use core::fmt;
 use core::hash;
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::{self, Deref, Add, Index};
+use core::ops::{self, Add};
 use core::ptr;
 use core::slice;
 use core::str::pattern::Pattern;

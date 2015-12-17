@@ -15,7 +15,7 @@ use middle::cstore::{CrateStore, LOCAL_CRATE};
 use middle::def_id::DefId;
 use middle::traits;
 use middle::ty;
-use middle::infer::{self, new_infer_ctxt};
+use middle::infer;
 use syntax::ast;
 use syntax::codemap::Span;
 use rustc_front::hir;

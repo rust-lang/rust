@@ -18,7 +18,6 @@ use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
 use syntax::attr;
-use syntax::attr::*;
 use syntax::parse::token;
 use syntax::config::CfgDiagReal;
 
