@@ -229,13 +229,11 @@ mod imp {
             unsafe { mem::transmute(v) }
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
-            let mut ret: c_long;
-
             // getentropy(2) permits a maximum buffer size of 256 bytes
             for s in v.chunks_mut(256) {
-                unsafe {
-                    ret = syscall(NR_GETENTROPY, s.as_mut_ptr(), s.len());
-                }
+                let ret = unsafe {
+                    syscall(NR_GETENTROPY, s.as_mut_ptr(), s.len())
+                };
                 if ret == -1 {
                     panic!("unexpected getentropy error: {}", errno());
                 }
