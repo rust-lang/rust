@@ -70,7 +70,6 @@ use syntax::attr::{ThinAttributes, ThinAttributesExt};
 use syntax::ext::mtwt;
 use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned, Span};
-use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::std_inject;
 use syntax::visit::{self, Visitor};
@@ -430,8 +429,8 @@ pub fn lower_ty_param(lctx: &LoweringContext, tp: &TyParam) -> hir::TyParam {
 }
 
 pub fn lower_ty_params(lctx: &LoweringContext,
-                       tps: &OwnedSlice<TyParam>)
-                       -> OwnedSlice<hir::TyParam> {
+                       tps: &P<[TyParam]>)
+                       -> P<[hir::TyParam]> {
     tps.iter().map(|tp| lower_ty_param(lctx, tp)).collect()
 }
 
@@ -583,8 +582,8 @@ pub fn lower_mt(lctx: &LoweringContext, mt: &MutTy) -> hir::MutTy {
 }
 
 pub fn lower_opt_bounds(lctx: &LoweringContext,
-                        b: &Option<OwnedSlice<TyParamBound>>)
-                        -> Option<OwnedSlice<hir::TyParamBound>> {
+                        b: &Option<TyParamBounds>)
+                        -> Option<hir::TyParamBounds> {
     b.as_ref().map(|ref bounds| lower_bounds(lctx, bounds))
 }
 
@@ -1795,8 +1794,8 @@ fn path_all(sp: Span,
         identifier: last_identifier,
         parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
             lifetimes: lifetimes,
-            types: OwnedSlice::from_vec(types),
-            bindings: OwnedSlice::from_vec(bindings),
+            types: P::from_vec(types),
+            bindings: P::from_vec(bindings),
         }),
     });
     hir::Path {

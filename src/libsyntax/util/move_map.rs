@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use owned_slice::OwnedSlice;
-
 use std::ptr;
 
 pub trait MoveMap<T>: Sized {
@@ -69,11 +67,11 @@ impl<T> MoveMap<T> for Vec<T> {
     }
 }
 
-impl<T> MoveMap<T> for OwnedSlice<T> {
+impl<T> MoveMap<T> for ::ptr::P<[T]> {
     fn move_flat_map<F, I>(self, f: F) -> Self
         where F: FnMut(T) -> I,
               I: IntoIterator<Item=T>
     {
-        OwnedSlice::from_vec(self.into_vec().move_flat_map(f))
+        ::ptr::P::from_vec(self.into_vec().move_flat_map(f))
     }
 }
