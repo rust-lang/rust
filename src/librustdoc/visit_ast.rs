@@ -38,7 +38,7 @@ use doctree::*;
 
 pub struct RustdocVisitor<'a, 'tcx: 'a> {
     pub module: Module,
-    pub attrs: Vec<ast::Attribute>,
+    pub attrs: hir::HirVec<ast::Attribute>,
     pub cx: &'a core::DocContext<'a, 'tcx>,
     pub analysis: Option<&'a core::CrateAnalysis>,
     view_item_stack: HashSet<ast::NodeId>,
@@ -53,7 +53,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         stack.insert(ast::CRATE_NODE_ID);
         RustdocVisitor {
             module: Module::new(None),
-            attrs: Vec::new(),
+            attrs: hir::HirVec::new(),
             cx: cx,
             analysis: analysis,
             view_item_stack: stack,
@@ -157,7 +157,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
     }
 
-    pub fn visit_mod_contents(&mut self, span: Span, attrs: Vec<ast::Attribute> ,
+    pub fn visit_mod_contents(&mut self, span: Span, attrs: hir::HirVec<ast::Attribute>,
                               vis: hir::Visibility, id: ast::NodeId,
                               m: &hir::Mod,
                               name: Option<ast::Name>) -> Module {
@@ -192,7 +192,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let mine = paths.into_iter().filter(|path| {
                     !self.resolve_id(path.node.id(), None, false, om,
                                      please_inline)
-                }).collect::<Vec<hir::PathListItem>>();
+                }).collect::<hir::HirVec<hir::PathListItem>>();
 
                 if mine.is_empty() {
                     None
