@@ -130,4 +130,10 @@ fn match_opt_some() -> i32 {
 //     }
 // }
 
+/// Test calling a very simple function from the standard library.
+#[miri_run(expected = "Int(1)")]
+fn cross_crate_fn_call() -> i32 {
+    if 1i32.is_positive() { 1 } else { 0 }
+}
+
 fn main() {}

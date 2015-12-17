@@ -1,4 +1,5 @@
 use rustc::middle::{const_eval, def_id, ty};
+use rustc::middle::cstore::CrateStore;
 use rustc::mir::repr::{self as mir, Mir};
 use rustc_mir::mir_map::MirMap;
 use syntax::ast::Attribute;
@@ -168,8 +169,16 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     let func_val = self.eval_operand(func);
 
                     if let Value::Func(def_id) = func_val {
-                        let node_id = self.tcx.map.as_local_node_id(def_id).unwrap();
-                        let mir = &self.mir_map[&node_id];
+                        let mir_data;
+                        let mir = match self.tcx.map.as_local_node_id(def_id) {
+                            Some(node_id) => self.mir_map.get(&node_id).unwrap(),
+                            None => {
+                                let cstore = &self.tcx.sess.cstore;
+                                mir_data = cstore.maybe_get_item_mir(self.tcx, def_id).unwrap();
+                                &mir_data
+                            }
+                        };
+
                         let arg_vals: Vec<Value> =
                             args.iter().map(|arg| self.eval_operand(arg)).collect();
 
