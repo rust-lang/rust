@@ -34,24 +34,24 @@ impl<'a,'tcx> dot::Labeller<'a, BasicBlock, EdgeIndex> for Mir<'tcx> {
 
     fn node_label(&'a self, &n: &BasicBlock) -> dot::LabelText<'a> {
         let mut buffer = String::new();
-        buffer.push_str("<TABLE ALIGN=\"LEFT\">");
+        buffer.push_str("<table border=\"0\" cellborder=\"1\" cellspacing=\"0\">");
 
-        buffer.push_str("<TR><TD>");
-        buffer.push_str(&format!("{:?}", n));
-        buffer.push_str("</TD></TR>");
+        buffer.push_str("<tr><td><b>");
+        buffer.push_str(&escape(format!("{:?}", n)));
+        buffer.push_str("</b></td></tr>");
 
         let data = self.basic_block_data(n);
         for statement in &data.statements {
-            buffer.push_str("<TR><TD>");
+            buffer.push_str("<tr><td align=\"left\">");
             buffer.push_str(&escape(format!("{:?}", statement)));
-            buffer.push_str("</TD></TR>");
+            buffer.push_str("</td></tr>");
         }
 
-        buffer.push_str("<TR><TD>");
+        buffer.push_str("<tr><td align=\"left\" bgcolor=\"cornsilk\">");
         buffer.push_str(&escape(format!("{:?}", &data.terminator)));
-        buffer.push_str("</TD></TR>");
+        buffer.push_str("</td></tr>");
 
-        buffer.push_str("</TABLE>");
+        buffer.push_str("</table>");
 
         dot::LabelText::html(buffer)
     }
