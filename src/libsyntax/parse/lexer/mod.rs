@@ -46,8 +46,7 @@ pub trait Reader {
                 },
                 _ => break
             }
-        }
-        t
+        } t
     }
 }
 

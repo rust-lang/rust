@@ -280,6 +280,10 @@ pub struct Parser<'a> {
     /// into modules, and sub-parsers have new values for this name.
     pub root_module_name: Option<String>,
     pub expected_tokens: Vec<TokenType>,
+    /// Global flag to check or ignore the doc comments while parsing. Since the
+    /// doc comments are checked by rustc's built-in lint, we can switch the flag
+    /// whenever we want to check.
+    pub ignore_doc_comment: bool,
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -381,6 +385,7 @@ impl<'a> Parser<'a> {
             owns_directory: true,
             root_module_name: None,
             expected_tokens: Vec::new(),
+            ignore_doc_comment: false,
         }
     }
 
@@ -930,7 +935,14 @@ impl<'a> Parser<'a> {
             None
         };
         let next = if self.buffer_start == self.buffer_end {
-            self.reader.real_token()
+            if self.ignore_doc_comment {
+                let mut t = self.reader.real_token();
+                while let token::DocComment(_) = t.tok {
+                    t = self.reader.real_token();
+                } t
+            } else {
+                self.reader.real_token()
+            }
         } else {
             // Avoid token copies with `replace`.
             let buffer_start = self.buffer_start as usize;
@@ -1220,24 +1232,22 @@ impl<'a> Parser<'a> {
                 };
 
                 let body = match p.token {
-                  token::Semi => {
-                    try!(p.bump());
-                    debug!("parse_trait_methods(): parsing required method");
-                    None
-                  }
-                  token::OpenDelim(token::Brace) => {
-                    debug!("parse_trait_methods(): parsing provided method");
-                    let (inner_attrs, body) =
-                        try!(p.parse_inner_attrs_and_block());
-                    attrs.extend(inner_attrs.iter().cloned());
-                    Some(body)
-                  }
-
-                  _ => {
+                    token::Semi => {
+                        try!(p.bump());
+                        debug!("parse_trait_methods(): parsing required method");
+                        None
+                    }
+                    token::OpenDelim(token::Brace) => {
+                        debug!("parse_trait_methods(): parsing provided method");
+                        let (inner_attrs, body) = try!(p.parse_inner_attrs_and_block());
+                        attrs.extend(inner_attrs.iter().cloned());
+                        Some(body)
+                    }
+                    _ => {
                       let token_str = p.this_token_to_string();
                       return Err(p.fatal(&format!("expected `;` or `{{`, found `{}`",
-                                       token_str)[..]))
-                  }
+                                                  token_str)[..]))
+                    }
                 };
                 (ident, ast::MethodTraitItem(sig, body))
             };
@@ -4638,12 +4648,11 @@ impl<'a> Parser<'a> {
             // eat a matched-delimiter token tree:
             let delim = try!(self.expect_open_delim());
             let tts = try!(self.parse_seq_to_end(&token::CloseDelim(delim),
-                                            seq_sep_none(),
-                                            |p| p.parse_token_tree()));
+                                                 seq_sep_none(),
+                                                 |p| p.parse_token_tree()));
             let m_ = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m_,
-                                                span: mk_sp(lo,
-                                                            self.last_span.hi) };
+                                                span: mk_sp(lo, self.last_span.hi) };
             if delim != token::Brace {
                 try!(self.expect(&token::Semi))
             }
@@ -4849,7 +4858,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse_record_struct_body(&mut self, parse_pub: ParsePub) -> PResult<Vec<StructField>> {
         let mut fields = Vec::new();
-        if try!(self.eat(&token::OpenDelim(token::Brace)) ){
+        if try!(self.eat(&token::OpenDelim(token::Brace))) {
             while self.token != token::CloseDelim(token::Brace) {
                 fields.push(try!(self.parse_struct_decl_field(parse_pub)));
             }
@@ -4902,15 +4911,18 @@ impl<'a> Parser<'a> {
         match self.token {
             token::Comma => {
                 try!(self.bump());
-            }
-            token::CloseDelim(token::Brace) => {}
+            },
+            token::DocComment(_) =>
+                return Err(self.fatal(&format!("unexpected doc comment in struct"))),
+            token::CloseDelim(token::Brace) => (),
             _ => {
                 let span = self.span;
                 let token_str = self.this_token_to_string();
                 return Err(self.span_fatal_help(span,
-                                     &format!("expected `,`, or `}}`, found `{}`",
-                                             token_str),
-                                     "struct fields should be separated by commas"))
+                                                &format!("expected `,`, or `}}`, found `{}`",
+                                                         token_str),
+                                                "struct fields should be separated by commas")
+                          );
             }
         }
         Ok(a_var)
@@ -5296,7 +5308,7 @@ impl<'a> Parser<'a> {
                 all_nullary = false;
                 struct_def = VariantData::Tuple(try!(self.parse_tuple_struct_body(ParsePub::No)),
                                                 ast::DUMMY_NODE_ID);
-            } else if try!(self.eat(&token::Eq) ){
+            } else if try!(self.eat(&token::Eq)) {
                 disr_expr = Some(try!(self.parse_expr()));
                 any_disr = disr_expr.as_ref().map(|expr| expr.span);
                 struct_def = VariantData::Unit(ast::DUMMY_NODE_ID);
