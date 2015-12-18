@@ -544,10 +544,22 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
         if config.emit_asm {
             let path = output_names.with_extension(&format!("{}.s", name_extra));
+
+            // We can't use the same module for asm and binary output, because that triggers
+            // various errors like invalid IR or broken binaries, so we might have to clone the
+            // module to produce the asm output
+            let llmod = if config.emit_obj {
+                llvm::LLVMCloneModule(llmod)
+            } else {
+                llmod
+            };
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(cgcx.handler, tm, cpm, llmod, &path,
                                   llvm::AssemblyFileType);
             });
+            if config.emit_obj {
+                llvm::LLVMDisposeModule(llmod);
+            }
         }
 
         if config.emit_obj {

@@ -616,6 +616,7 @@ extern {
                                              C: ContextRef)
                                              -> ModuleRef;
     pub fn LLVMGetModuleContext(M: ModuleRef) -> ContextRef;
+    pub fn LLVMCloneModule(M: ModuleRef) -> ModuleRef;
     pub fn LLVMDisposeModule(M: ModuleRef);
 
     /// Data layout. See Module::getDataLayout.
