@@ -35,6 +35,16 @@ fn return_binop() -> &'static Fn(u32, u32) -> u32 {
 }
 ```
 
+This workaround also has the limitation of not being able to refer to
+type parameters of a containing generic functions, eg you can't do this:
+
+```rust
+fn generic<T>() -> &'static Option<T> {
+    const X: &'static Option<T> = &None::<T>;
+    X
+}
+```
+
 Additionally, despite it being memory safe, it is not currently possible to
 create a `&'static mut` to a zero-sized type without involving unsafe code:
 
@@ -111,6 +121,12 @@ let c: &'static Fn() -> u32 = &|| 42;
 
 let d: &'static mut () = &mut ();
 let e: &'static mut Fn() -> u32 = &mut || 42;
+
+let h: &'static u32 = &(32 + 64);
+
+fn generic<T>() -> &'static Option<T> {
+    &None::<T>
+}
 
 // BAD:
 let f: &'static Option<UnsafeCell<u32>> = &Some(UnsafeCell { data: 32 });
