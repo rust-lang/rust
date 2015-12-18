@@ -510,15 +510,15 @@ mod tests {
         static M: StaticMutex = StaticMutex::new();
 
         let g = M.lock().unwrap();
-        let (g, _no_timeout) = C.wait_timeout_ms(g, 1).unwrap();
+        let (g, _no_timeout) = C.wait_timeout(g, Duration::from_millis(1)).unwrap();
         // spurious wakeups mean this isn't necessarily true
         // assert!(!no_timeout);
         let _t = thread::spawn(move || {
             let _g = M.lock().unwrap();
             C.notify_one();
         });
-        let (g, no_timeout) = C.wait_timeout_ms(g, u32::MAX).unwrap();
-        assert!(no_timeout);
+        let (g, timeout_res) = C.wait_timeout(g, Duration::from_millis(u32::MAX as u64)).unwrap();
+        assert!(!timeout_res.timed_out());
         drop(g);
         unsafe { C.destroy(); M.destroy(); }
     }

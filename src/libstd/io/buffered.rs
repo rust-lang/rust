@@ -791,7 +791,7 @@ impl<W: Read + Write> Read for InternalBufWriter<W> {
 mod tests {
     use prelude::v1::*;
     use io::prelude::*;
-    use io::{self, BufReader, BufWriter, Cursor, LineWriter, SeekFrom};
+    use io::{self, BufReader, BufWriter, LineWriter, SeekFrom};
     use test;
 
     /// A dummy reader intended at testing short-reads propagation.

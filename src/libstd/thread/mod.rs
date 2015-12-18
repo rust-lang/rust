@@ -830,14 +830,14 @@ mod tests {
     fn test_park_timeout_unpark_before() {
         for _ in 0..10 {
             thread::current().unpark();
-            thread::park_timeout_ms(u32::MAX);
+            thread::park_timeout(Duration::from_millis(u32::MAX as u64));
         }
     }
 
     #[test]
     fn test_park_timeout_unpark_not_called() {
         for _ in 0..10 {
-            thread::park_timeout_ms(10);
+            thread::park_timeout(Duration::from_millis(10));
         }
     }
 
@@ -847,17 +847,17 @@ mod tests {
             let th = thread::current();
 
             let _guard = thread::spawn(move || {
-                super::sleep_ms(50);
+                super::sleep(Duration::from_millis(50));
                 th.unpark();
             });
 
-            thread::park_timeout_ms(u32::MAX);
+            thread::park_timeout(Duration::from_millis(u32::MAX as u64));
         }
     }
 
     #[test]
     fn sleep_ms_smoke() {
-        thread::sleep_ms(2);
+        thread::sleep(Duration::from_millis(2));
     }
 
     // NOTE: the corresponding test for stderr is in run-pass/thread-stderr, due

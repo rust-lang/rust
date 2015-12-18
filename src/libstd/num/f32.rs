@@ -15,10 +15,15 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
+#[cfg(not(test))]
 use core::num;
+#[cfg(not(test))]
 use intrinsics;
+#[cfg(not(test))]
 use libc::c_int;
+#[cfg(not(test))]
 use num::FpCategory;
+
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f32::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
