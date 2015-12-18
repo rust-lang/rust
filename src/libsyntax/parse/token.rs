@@ -545,66 +545,67 @@ declare_special_idents_and_keywords! {
         (9,                          __unused1,              "<__unused1>");
         (super::SELF_TYPE_KEYWORD_NAME_NUM, type_self,       "Self");
         (11,                         prelude_import,         "prelude_import");
+        (12,                         DEFAULT,                "default");
     }
 
     pub mod keywords {
         // These ones are variants of the Keyword enum
 
         'strict:
-        (12,                         As,         "as");
-        (13,                         Break,      "break");
-        (14,                         Crate,      "crate");
-        (15,                         Else,       "else");
-        (16,                         Enum,       "enum");
-        (17,                         Extern,     "extern");
-        (18,                         False,      "false");
-        (19,                         Fn,         "fn");
-        (20,                         For,        "for");
-        (21,                         If,         "if");
-        (22,                         Impl,       "impl");
-        (23,                         In,         "in");
-        (24,                         Let,        "let");
-        (25,                         Loop,       "loop");
-        (26,                         Match,      "match");
-        (27,                         Mod,        "mod");
-        (28,                         Move,       "move");
-        (29,                         Mut,        "mut");
-        (30,                         Pub,        "pub");
-        (31,                         Ref,        "ref");
-        (32,                         Return,     "return");
+        (13,                         As,         "as");
+        (14,                         Break,      "break");
+        (15,                         Crate,      "crate");
+        (16,                         Else,       "else");
+        (17,                         Enum,       "enum");
+        (18,                         Extern,     "extern");
+        (19,                         False,      "false");
+        (20,                         Fn,         "fn");
+        (21,                         For,        "for");
+        (22,                         If,         "if");
+        (23,                         Impl,       "impl");
+        (24,                         In,         "in");
+        (25,                         Let,        "let");
+        (26,                         Loop,       "loop");
+        (27,                         Match,      "match");
+        (28,                         Mod,        "mod");
+        (29,                         Move,       "move");
+        (30,                         Mut,        "mut");
+        (31,                         Pub,        "pub");
+        (32,                         Ref,        "ref");
+        (33,                         Return,     "return");
         // Static and Self are also special idents (prefill de-dupes)
         (super::STATIC_KEYWORD_NAME_NUM, Static, "static");
         (super::SELF_KEYWORD_NAME_NUM, SelfValue, "self");
         (super::SELF_TYPE_KEYWORD_NAME_NUM, SelfType, "Self");
-        (33,                         Struct,     "struct");
+        (34,                         Struct,     "struct");
         (super::SUPER_KEYWORD_NAME_NUM, Super,   "super");
-        (34,                         True,       "true");
-        (35,                         Trait,      "trait");
-        (36,                         Type,       "type");
-        (37,                         Unsafe,     "unsafe");
-        (38,                         Use,        "use");
-        (39,                         While,      "while");
-        (40,                         Continue,   "continue");
-        (41,                         Box,        "box");
-        (42,                         Const,      "const");
-        (43,                         Where,      "where");
+        (35,                         True,       "true");
+        (36,                         Trait,      "trait");
+        (37,                         Type,       "type");
+        (38,                         Unsafe,     "unsafe");
+        (39,                         Use,        "use");
+        (40,                         While,      "while");
+        (41,                         Continue,   "continue");
+        (42,                         Box,        "box");
+        (43,                         Const,      "const");
+        (44,                         Where,      "where");
         'reserved:
-        (44,                         Virtual,    "virtual");
-        (45,                         Proc,       "proc");
-        (46,                         Alignof,    "alignof");
-        (47,                         Become,     "become");
-        (48,                         Offsetof,   "offsetof");
-        (49,                         Priv,       "priv");
-        (50,                         Pure,       "pure");
-        (51,                         Sizeof,     "sizeof");
-        (52,                         Typeof,     "typeof");
-        (53,                         Unsized,    "unsized");
-        (54,                         Yield,      "yield");
-        (55,                         Do,         "do");
-        (56,                         Abstract,   "abstract");
-        (57,                         Final,      "final");
-        (58,                         Override,   "override");
-        (59,                         Macro,      "macro");
+        (45,                         Virtual,    "virtual");
+        (46,                         Proc,       "proc");
+        (47,                         Alignof,    "alignof");
+        (48,                         Become,     "become");
+        (49,                         Offsetof,   "offsetof");
+        (50,                         Priv,       "priv");
+        (51,                         Pure,       "pure");
+        (52,                         Sizeof,     "sizeof");
+        (53,                         Typeof,     "typeof");
+        (54,                         Unsized,    "unsized");
+        (55,                         Yield,      "yield");
+        (56,                         Do,         "do");
+        (57,                         Abstract,   "abstract");
+        (58,                         Final,      "final");
+        (59,                         Override,   "override");
+        (60,                         Macro,      "macro");
     }
 }
 
