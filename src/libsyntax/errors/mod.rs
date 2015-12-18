@@ -98,6 +98,164 @@ impl error::Error for ExplicitBug {
     }
 }
 
+// Used for emitting structured error messages and other diagnostic information.
+#[must_use]
+pub struct DiagnosticBuilder<'a> {
+    emitter: &'a RefCell<Box<Emitter>>,
+    level: Level,
+    message: String,
+    code: Option<String>,
+    span: Option<Span>,
+    children: Vec<SubDiagnostic>,
+    cancelled: bool,
+}
+
+// For example a note attached to an error.
+struct SubDiagnostic {
+    level: Level,
+    message: String,
+    span: Option<Span>,
+    render_span: Option<RenderSpan>,
+}
+
+impl<'a> DiagnosticBuilder<'a> {
+    // Emit the diagnostic.
+    pub fn emit(&mut self) {
+        if self.cancelled {
+            return;
+        }
+
+        self.cancel();
+        self.emitter.borrow_mut().emit_struct(&self);
+
+        // if self.is_fatal() {
+        //     panic!(FatalError);
+        // }
+    }
+
+    // Cancel the diagnostic (a structured diagnostic must either be emitted or
+    // cancelled or it will panic when dropped).
+    pub fn cancel(&mut self) {
+        self.cancelled = true;
+    }
+
+    pub fn is_fatal(&self) -> bool {
+        self.level == Level::Fatal
+    }
+
+    pub fn note(&mut self , msg: &str) -> &mut DiagnosticBuilder<'a>  {
+        self.sub(Level::Note, msg, None, None);
+        self
+    }
+    pub fn span_note(&mut self ,
+                     sp: Span,
+                     msg: &str)
+                     -> &mut DiagnosticBuilder<'a> {
+        self.sub(Level::Note, msg, Some(sp), None);
+        self
+    }
+    pub fn note_rfc_1214(&mut self , span: Span) -> &mut DiagnosticBuilder<'a>  {
+        self.span_note(span,
+                       "this warning results from recent bug fixes and clarifications; \
+                        it will become a HARD ERROR in the next release. \
+                        See RFC 1214 for details.")
+    }
+    pub fn help(&mut self , msg: &str) -> &mut DiagnosticBuilder<'a>  {
+        self.sub(Level::Help, msg, None, None);
+        self
+    }
+    pub fn span_help(&mut self ,
+                     sp: Span,
+                     msg: &str)
+                     -> &mut DiagnosticBuilder<'a>  {
+        self.sub(Level::Help, msg, Some(sp), None);
+        self
+    }
+    /// Prints out a message with a suggested edit of the code.
+    ///
+    /// See `diagnostic::RenderSpan::Suggestion` for more information.
+    pub fn span_suggestion(&mut self ,
+                           sp: Span,
+                           msg: &str,
+                           suggestion: String)
+                           -> &mut DiagnosticBuilder<'a>  {
+        self.sub(Level::Help, msg, Some(sp), Some(Suggestion(sp, suggestion)));
+        self
+    }
+    pub fn span_end_note(&mut self ,
+                         sp: Span,
+                         msg: &str)
+                         -> &mut DiagnosticBuilder<'a>  {
+        self.sub(Level::Note, msg, Some(sp), Some(EndSpan(sp)));
+        self
+    }
+    pub fn fileline_note(&mut self ,
+                         sp: Span,
+                         msg: &str)
+                         -> &mut DiagnosticBuilder<'a>  {
+        self.sub(Level::Note, msg, Some(sp), Some(FileLine(sp)));
+        self
+    }
+    pub fn fileline_help(&mut self ,
+                         sp: Span,
+                         msg: &str)
+                         -> &mut DiagnosticBuilder<'a>  {
+        self.sub(Level::Help, msg, Some(sp), Some(FileLine(sp)));
+        self
+    }
+
+    // Convenience function for internal use, clients should use one of the
+    // struct_* methods on Handler.
+    fn new(emitter: &'a RefCell<Box<Emitter>>,
+           level: Level,
+           message: &str,
+           code: Option<String>,
+           span: Option<Span>) -> DiagnosticBuilder<'a>  {
+        DiagnosticBuilder {
+            emitter: emitter,
+            level: level,
+            message: message.to_owned(),
+            code: code,
+            span: span,
+            children: vec![],
+            cancelled: false,
+        }
+    }
+
+    // Convenience function for internal use, clients should use one of the
+    // public methods above.
+    fn sub(&mut self,
+           level: Level,
+           message: &str,
+           span: Option<Span>,
+           render_span: Option<RenderSpan>) {
+        let sub = SubDiagnostic {
+            level: level,
+            message: message.to_owned(),
+            span: span,
+            render_span: render_span,
+        };
+        self.children.push(sub);
+    }
+}
+
+impl<'a> fmt::Debug for DiagnosticBuilder<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.message.fmt(f)
+    }
+}
+
+// Destructor bomb - a DiagnosticBuilder must be either emitted or cancelled or
+// we emit a bug.
+impl<'a> Drop for DiagnosticBuilder<'a> {
+    fn drop(&mut self) {
+        if !self.cancelled {
+            self.emitter.borrow_mut().emit(None, "Error constructed but not emitted", None, Bug);
+            panic!();
+        }
+    }
+}
+
 /// A handler deals with errors; certain errors
 /// (fatal, bug, unimpl) may cause immediate exit,
 /// others log errors for later reporting.
@@ -132,11 +290,85 @@ impl Handler {
         }
     }
 
+    pub fn struct_span_warn<'a>(&'a self,
+                                sp: Span,
+                                msg: &str)
+                                -> DiagnosticBuilder<'a>  {
+        let mut result = DiagnosticBuilder::new(&self.emit, Level::Warning, msg, None, Some(sp));
+        if !self.can_emit_warnings {
+            result.cancel();
+        }
+        result
+    }
+    pub fn struct_span_warn_with_code<'a>(&'a self,
+                                          sp: Span,
+                                          msg: &str,
+                                          code: &str)
+                                          -> DiagnosticBuilder<'a>  {
+        let mut result = DiagnosticBuilder::new(&self.emit,
+                                                Level::Warning,
+                                                msg,
+                                                Some(code.to_owned()),
+                                                Some(sp));
+        if !self.can_emit_warnings {
+            result.cancel();
+        }
+        result
+    }
+    pub fn struct_warn<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a>  {
+        let mut result = DiagnosticBuilder::new(&self.emit, Level::Warning, msg, None, None);
+        if !self.can_emit_warnings {
+            result.cancel();
+        }
+        result
+    }
+    pub fn struct_span_err<'a>(&'a self,
+                               sp: Span,
+                               msg: &str)
+                               -> DiagnosticBuilder<'a>  {
+        self.bump_err_count();
+        DiagnosticBuilder::new(&self.emit, Level::Error, msg, None, Some(sp))
+    }
+    pub fn struct_span_err_with_code<'a>(&'a self,
+                                         sp: Span,
+                                         msg: &str,
+                                         code: &str)
+                                         -> DiagnosticBuilder<'a>  {
+        // FIXME (and below) this is potentially inaccurate, since the DiagnosticBuilder
+        // might be cancelled.
+        self.bump_err_count();
+        DiagnosticBuilder::new(&self.emit, Level::Error, msg, Some(code.to_owned()), Some(sp))
+    }
+    pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a>  {
+        self.bump_err_count();
+        DiagnosticBuilder::new(&self.emit, Level::Error, msg, None, None)
+    }
+    pub fn struct_span_fatal<'a>(&'a self,
+                                 sp: Span,
+                                 msg: &str)
+                                 -> DiagnosticBuilder<'a>  {
+        self.bump_err_count();
+        DiagnosticBuilder::new(&self.emit, Level::Fatal, msg, None, Some(sp))
+    }
+    pub fn struct_span_fatal_with_code<'a>(&'a self,
+                                           sp: Span,
+                                           msg: &str,
+                                           code: &str)
+                                           -> DiagnosticBuilder<'a>  {
+        self.bump_err_count();
+        DiagnosticBuilder::new(&self.emit, Level::Fatal, msg, Some(code.to_owned()), Some(sp))
+    }
+    pub fn struct_fatal<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a>  {
+        self.bump_err_count();
+        DiagnosticBuilder::new(&self.emit, Level::Fatal, msg, None, None)
+    }
+
     pub fn span_fatal(&self, sp: Span, msg: &str) -> FatalError {
         if self.treat_err_as_bug {
             self.span_bug(sp, msg);
         }
         self.emit(Some(sp), msg, Fatal);
+        self.bump_err_count();
         return FatalError;
     }
     pub fn span_fatal_with_code(&self, sp: Span, msg: &str, code: &str) -> FatalError {
@@ -144,6 +376,7 @@ impl Handler {
             self.span_bug(sp, msg);
         }
         self.emit_with_code(Some(sp), msg, code, Fatal);
+        self.bump_err_count();
         return FatalError;
     }
     pub fn span_err(&self, sp: Span, msg: &str) {
@@ -166,27 +399,6 @@ impl Handler {
     pub fn span_warn_with_code(&self, sp: Span, msg: &str, code: &str) {
         self.emit_with_code(Some(sp), msg, code, Warning);
     }
-    pub fn span_note(&self, sp: Span, msg: &str) {
-        self.emit(Some(sp), msg, Note);
-    }
-    pub fn span_end_note(&self, sp: Span, msg: &str) {
-        self.custom_emit(EndSpan(sp), msg, Note);
-    }
-    pub fn span_help(&self, sp: Span, msg: &str) {
-        self.emit(Some(sp), msg, Help);
-    }
-    /// Prints out a message with a suggested edit of the code.
-    ///
-    /// See `diagnostic::RenderSpan::Suggestion` for more information.
-    pub fn span_suggestion(&self, sp: Span, msg: &str, suggestion: String) {
-        self.custom_emit(Suggestion(sp, suggestion), msg, Help);
-    }
-    pub fn fileline_note(&self, sp: Span, msg: &str) {
-        self.custom_emit(FileLine(sp), msg, Note);
-    }
-    pub fn fileline_help(&self, sp: Span, msg: &str) {
-        self.custom_emit(FileLine(sp), msg, Help);
-    }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.emit(Some(sp), msg, Bug);
         panic!(ExplicitBug);
@@ -199,6 +411,9 @@ impl Handler {
         self.emit(Some(sp), msg, Bug);
         self.bump_err_count();
     }
+    pub fn span_note_without_error(&self, sp: Span, msg: &str) {
+        self.emit.borrow_mut().emit(Some(sp), msg, None, Note);
+    }
     pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, &format!("unimplemented {}", msg));
     }
@@ -207,6 +422,7 @@ impl Handler {
             self.bug(msg);
         }
         self.emit.borrow_mut().emit(None, msg, None, Fatal);
+        self.bump_err_count();
         FatalError
     }
     pub fn err(&self, msg: &str) {
@@ -219,11 +435,8 @@ impl Handler {
     pub fn warn(&self, msg: &str) {
         self.emit.borrow_mut().emit(None, msg, None, Warning);
     }
-    pub fn note(&self, msg: &str) {
+    pub fn note_without_error(&self, msg: &str) {
         self.emit.borrow_mut().emit(None, msg, None, Note);
-    }
-    pub fn help(&self, msg: &str) {
-        self.emit.borrow_mut().emit(None, msg, None, Help);
     }
     pub fn bug(&self, msg: &str) -> ! {
         self.emit.borrow_mut().emit(None, msg, None, Bug);
@@ -266,7 +479,7 @@ impl Handler {
             }
         }
 
-        panic!(self.fatal(&s[..]));
+        panic!(self.fatal(&s));
     }
 
     pub fn emit(&self,

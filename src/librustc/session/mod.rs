@@ -16,7 +16,7 @@ use util::nodemap::{NodeMap, FnvHashMap};
 
 use syntax::ast::{NodeId, NodeIdAssigner, Name};
 use syntax::codemap::Span;
-use syntax::errors;
+use syntax::errors::{self, DiagnosticBuilder};
 use syntax::errors::emitter::{Emitter, BasicEmitter};
 use syntax::diagnostics;
 use syntax::feature_gate;
@@ -80,6 +80,55 @@ pub struct Session {
 }
 
 impl Session {
+    pub fn struct_span_warn<'a, 'b>(&'a self,
+                                    sp: Span,
+                                    msg: &'b str)
+                                    -> Box<DiagnosticBuilder<'a, 'b>> {
+        self.diagnostic().struct_span_warn(sp, msg)
+    }
+    pub fn struct_span_warn_with_code<'a, 'b>(&'a self,
+                                              sp: Span,
+                                              msg: &'b str,
+                                              code: &str)
+                                              -> Box<DiagnosticBuilder<'a, 'b>> {
+        self.diagnostic().struct_span_warn_with_code(sp, msg, code)
+    }
+    pub fn struct_warn<'a, 'b>(&'a self, msg: &'b str) -> Box<DiagnosticBuilder<'a, 'b>> {
+        self.diagnostic().struct_warn(msg)
+    }
+    pub fn struct_span_err<'a, 'b>(&'a self,
+                                   sp: Span,
+                                   msg: &'b str)
+                                   -> Box<DiagnosticBuilder<'a, 'b>> {
+        self.diagnostic().struct_span_err(sp, msg)
+    }
+    pub fn struct_span_err_with_code<'a, 'b>(&'a self,
+                                             sp: Span,
+                                             msg: &'b str,
+                                             code: &str)
+                                             -> Box<DiagnosticBuilder<'a, 'b>> {
+        self.diagnostic().struct_span_err_with_code(sp, msg, code)
+    }
+    pub fn struct_err<'a, 'b>(&'a self, msg: &'b str) -> Box<DiagnosticBuilder<'a, 'b>> {
+        self.diagnostic().struct_err(msg)
+    }
+    pub fn struct_span_fatal<'a, 'b>(&'a self,
+                                     sp: Span,
+                                     msg: &'b str)
+                                     -> Box<DiagnosticBuilder<'a, 'b>> {
+        self.diagnostic().struct_span_fatal(sp, msg)
+    }
+    pub fn struct_span_fatal_with_code<'a, 'b>(&'a self,
+                                               sp: Span,
+                                               msg: &'b str,
+                                               code: &str)
+                                               -> Box<DiagnosticBuilder<'a, 'b>> {
+        self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
+    }
+    pub fn struct_fatal<'a, 'b>(&'a self, msg: &'b str) -> Box<DiagnosticBuilder<'a, 'b>> {
+        self.diagnostic().struct_fatal(msg)
+    }
+
     pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
         panic!(self.diagnostic().span_fatal(sp, msg))
     }
@@ -143,34 +192,6 @@ impl Session {
             Some(sp) => self.span_warn(sp, msg),
             None => self.warn(msg),
         }
-    }
-    pub fn span_note(&self, sp: Span, msg: &str) {
-        self.diagnostic().span_note(sp, msg)
-    }
-    pub fn span_end_note(&self, sp: Span, msg: &str) {
-        self.diagnostic().span_end_note(sp, msg)
-    }
-
-    /// Prints out a message with a suggested edit of the code.
-    ///
-    /// See `errors::RenderSpan::Suggestion` for more information.
-    pub fn span_suggestion(&self, sp: Span, msg: &str, suggestion: String) {
-        self.diagnostic().span_suggestion(sp, msg, suggestion)
-    }
-    pub fn span_help(&self, sp: Span, msg: &str) {
-        self.diagnostic().span_help(sp, msg)
-    }
-    pub fn fileline_note(&self, sp: Span, msg: &str) {
-        self.diagnostic().fileline_note(sp, msg)
-    }
-    pub fn fileline_help(&self, sp: Span, msg: &str) {
-        self.diagnostic().fileline_help(sp, msg)
-    }
-    pub fn note(&self, msg: &str) {
-        self.diagnostic().note(msg)
-    }
-    pub fn help(&self, msg: &str) {
-        self.diagnostic().help(msg)
     }
     pub fn opt_span_bug(&self, opt_sp: Option<Span>, msg: &str) -> ! {
         match opt_sp {
