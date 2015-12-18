@@ -27,7 +27,7 @@ There’s one pitfall with patterns: like anything that introduces a new binding
 they introduce shadowing. For example:
 
 ```rust
-let x = 'x';
+let x = 1;
 let c = 'c';
 
 match c {
@@ -41,12 +41,14 @@ This prints:
 
 ```text
 x: c c: c
-x: x
+x: 1
 ```
 
 In other words, `x =>` matches the pattern and introduces a new binding named
-`x` that’s in scope for the match arm. Because we already have a binding named
-`x`, this new `x` shadows it.
+`x`. This new binding is in scope for the match arm and takes on the value of
+`c`. Notice that the value of `x` outside the scope of the match has no bearing
+on the value of `x` within it. Because we already have a binding named `x`, this
+new `x` shadows it.
 
 # Multiple patterns
 
