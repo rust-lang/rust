@@ -32,7 +32,6 @@ use ext::expand::ExpansionConfig;
 use fold::Folder;
 use util::move_map::MoveMap;
 use fold;
-use owned_slice::OwnedSlice;
 use parse::token::{intern, InternedString};
 use parse::{token, ParseSess};
 use print::pprust;
