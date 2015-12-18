@@ -8,10 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn dummy(&self) { }
+mod m1 {
+    #![deny(private_in_public)]
+
+    pub struct Pub;
+    struct Priv;
+
+    impl Pub {
+        pub fn f() -> Priv {} //~ ERROR private type in public interface
+    }
 }
 
-pub trait Bar : Foo {} //~ ERROR private trait in exported type
+mod m2 {
+    #![deny(future_incompatible)]
+
+    pub struct Pub;
+    struct Priv;
+
+    impl Pub {
+        pub fn f() -> Priv {} //~ ERROR private type in public interface
+    }
+}
 
 fn main() {}

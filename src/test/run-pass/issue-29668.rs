@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+// Functions can return unnameable types
 
-#![feature(visible_private_types)]
+mod m1 {
+    mod m2 {
+        #[derive(Debug)]
+        pub struct A;
+    }
+    use self::m2::A;
+    pub fn x() -> A { A }
+}
 
-trait Foo { fn dummy(&self) { } }
-
-pub trait Bar : Foo {}
-
-struct Baz;
-
-pub fn f(_: Baz) {}
-
-fn main() {}
+fn main() {
+    let x = m1::x();
+    println!("{:?}", x);
+}

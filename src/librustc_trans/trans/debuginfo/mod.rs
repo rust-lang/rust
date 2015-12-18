@@ -145,7 +145,7 @@ impl FunctionDebugContext {
     }
 }
 
-struct FunctionDebugContextData {
+pub struct FunctionDebugContextData {
     scope_map: RefCell<NodeMap<DIScope>>,
     fn_metadata: DISubprogram,
     argument_counter: Cell<usize>,
