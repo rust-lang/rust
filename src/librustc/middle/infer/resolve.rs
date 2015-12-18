@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use super::{InferCtxt, FixupError, FixupResult};
-use middle::ty::{self, Ty, HasTypeFlags};
-use middle::ty::fold::{TypeFoldable};
+use middle::ty::{self, Ty, TypeFoldable};
 
 ///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC TYPE RESOLVER

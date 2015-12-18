@@ -17,8 +17,7 @@ use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyBareFn};
 use middle::ty::{TyParam, TyRawPtr, TyRef, TyTuple};
 use middle::ty::TyClosure;
 use middle::ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
-use middle::ty::{self, Ty, HasTypeFlags};
-use middle::ty::fold::TypeFoldable;
+use middle::ty::{self, Ty, TypeFoldable};
 
 use std::fmt;
 use syntax::{abi};

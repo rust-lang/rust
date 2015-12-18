@@ -42,7 +42,7 @@ use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::pat_util::simple_name;
 use middle::subst::Substs;
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, TypeFoldable};
 use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
 use rustc::util::common::time;

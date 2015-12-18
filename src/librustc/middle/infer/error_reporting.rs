@@ -82,7 +82,7 @@ use middle::def_id::DefId;
 use middle::infer::{self, TypeOrigin};
 use middle::region;
 use middle::subst;
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, TypeFoldable};
 use middle::ty::{Region, ReFree};
 use middle::ty::error::TypeError;
 
@@ -250,7 +250,7 @@ pub trait ErrorReporting<'tcx> {
 
     fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<String>;
 
-    fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + HasTypeFlags>(
+    fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + TypeFoldable<'tcx>>(
         &self,
         exp_found: &ty::error::ExpectedFound<T>)
         -> Option<String>;
@@ -575,7 +575,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + HasTypeFlags>(
+    fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + TypeFoldable<'tcx>>(
         &self,
         exp_found: &ty::error::ExpectedFound<T>)
         -> Option<String>

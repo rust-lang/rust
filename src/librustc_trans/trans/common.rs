@@ -37,7 +37,7 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
 use middle::traits;
-use middle::ty::{self, HasTypeFlags, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use rustc_front::hir;
 use rustc::mir::repr::Mir;

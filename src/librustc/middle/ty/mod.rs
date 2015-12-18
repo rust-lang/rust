@@ -17,6 +17,7 @@ pub use self::BorrowKind::*;
 pub use self::ImplOrTraitItem::*;
 pub use self::IntVarValue::*;
 pub use self::LvaluePreference::*;
+pub use self::fold::TypeFoldable;
 
 use dep_graph::{self, DepNode};
 use front::map as ast_map;
@@ -2665,75 +2666,5 @@ impl<'tcx> ctxt<'tcx> {
                   .map(|def| def.to_early_bound_region())
                   .collect();
         trait_ref.substs.clone().with_method(meth_tps, meth_regions)
-    }
-}
-
-/// An "escaping region" is a bound region whose binder is not part of `t`.
-///
-/// So, for example, consider a type like the following, which has two binders:
-///
-///    for<'a> fn(x: for<'b> fn(&'a isize, &'b isize))
-///    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ outer scope
-///                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~  inner scope
-///
-/// This type has *bound regions* (`'a`, `'b`), but it does not have escaping regions, because the
-/// binders of both `'a` and `'b` are part of the type itself. However, if we consider the *inner
-/// fn type*, that type has an escaping region: `'a`.
-///
-/// Note that what I'm calling an "escaping region" is often just called a "free region". However,
-/// we already use the term "free region". It refers to the regions that we use to represent bound
-/// regions on a fn definition while we are typechecking its body.
-///
-/// To clarify, conceptually there is no particular difference between an "escaping" region and a
-/// "free" region. However, there is a big difference in practice. Basically, when "entering" a
-/// binding level, one is generally required to do some sort of processing to a bound region, such
-/// as replacing it with a fresh/skolemized region, or making an entry in the environment to
-/// represent the scope to which it is attached, etc. An escaping region represents a bound region
-/// for which this processing has not yet been done.
-pub trait RegionEscape {
-    fn has_escaping_regions(&self) -> bool {
-        self.has_regions_escaping_depth(0)
-    }
-
-    fn has_regions_escaping_depth(&self, depth: u32) -> bool;
-}
-
-pub trait HasTypeFlags {
-    fn has_type_flags(&self, flags: TypeFlags) -> bool;
-    fn has_projection_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_PROJECTION)
-    }
-    fn references_error(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_ERR)
-    }
-    fn has_param_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_PARAMS)
-    }
-    fn has_self_ty(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_SELF)
-    }
-    fn has_infer_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_INFER)
-    }
-    fn needs_infer(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
-    }
-    fn needs_subst(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_SUBST)
-    }
-    fn has_closure_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_CLOSURE)
-    }
-    fn has_erasable_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_EARLY_BOUND |
-                            TypeFlags::HAS_RE_INFER |
-                            TypeFlags::HAS_FREE_REGIONS)
-    }
-    /// Indicates whether this value references only 'global'
-    /// types/lifetimes that are the same regardless of what fn we are
-    /// in. This is used for caching. Errs on the side of returning
-    /// false.
-    fn is_global(&self) -> bool {
-        !self.has_type_flags(TypeFlags::HAS_LOCAL_NAMES)
     }
 }

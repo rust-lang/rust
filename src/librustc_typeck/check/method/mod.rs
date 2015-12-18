@@ -17,7 +17,7 @@ use middle::def_id::DefId;
 use middle::privacy::{AllPublic, DependsOn, LastPrivate, LastMod};
 use middle::subst;
 use middle::traits;
-use middle::ty::{self, RegionEscape, ToPredicate, ToPolyTraitRef, TraitRef};
+use middle::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
 use middle::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
 use middle::infer;
 

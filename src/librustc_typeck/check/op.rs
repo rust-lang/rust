@@ -19,7 +19,7 @@ use super::{
     FnCtxt,
 };
 use middle::def_id::DefId;
-use middle::ty::{Ty, HasTypeFlags, PreferMutLvalue};
+use middle::ty::{Ty, TypeFoldable, PreferMutLvalue};
 use syntax::ast;
 use syntax::parse::token;
 use rustc_front::hir;

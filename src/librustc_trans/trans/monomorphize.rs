@@ -23,7 +23,7 @@ use trans::base;
 use trans::common::*;
 use trans::declare;
 use trans::foreign;
-use middle::ty::{self, HasTypeFlags, Ty};
+use middle::ty::{self, Ty};
 use rustc::front::map as hir_map;
 
 use rustc_front::hir;

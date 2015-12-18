@@ -18,9 +18,8 @@ use middle::subst::{self, Subst, Substs};
 use middle::infer;
 use middle::pat_util;
 use middle::traits;
-use middle::ty::{self, Ty, TypeAndMut, TypeFlags};
+use middle::ty::{self, Ty, TypeAndMut, TypeFlags, TypeFoldable};
 use middle::ty::{Disr, ParameterEnvironment};
-use middle::ty::{HasTypeFlags, RegionEscape};
 use middle::ty::TypeVariants::*;
 use util::num::ToPrimitive;
 

@@ -97,7 +97,7 @@ use middle::traits::{self, report_fulfillment_errors};
 use middle::ty::{GenericPredicates, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
-use middle::ty::{self, HasTypeFlags, RegionEscape, ToPolyTraitRef, Ty};
+use middle::ty::{self, ToPolyTraitRef, Ty};
 use middle::ty::{MethodCall, MethodCallee};
 use middle::ty::adjustment;
 use middle::ty::error::TypeError;

@@ -30,7 +30,7 @@ use middle::subst::Subst;
 use middle::traits;
 use middle::ty::adjustment;
 use middle::ty::{TyVid, IntVid, FloatVid};
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty};
 use middle::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use middle::ty::relate::{Relate, RelateResult, TypeRelation};

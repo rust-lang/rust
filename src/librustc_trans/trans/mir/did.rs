@@ -12,7 +12,7 @@
 
 use syntax::codemap::DUMMY_SP;
 use rustc::front::map;
-use rustc::middle::ty::{self, Ty, HasTypeFlags};
+use rustc::middle::ty::{self, Ty, TypeFoldable};
 use rustc::middle::subst::Substs;
 use rustc::middle::const_eval;
 use rustc::middle::def_id::DefId;
