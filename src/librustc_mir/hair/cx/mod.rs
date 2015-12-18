@@ -22,6 +22,7 @@ use rustc::middle::const_eval::{self, ConstVal};
 use rustc::middle::infer::InferCtxt;
 use rustc::middle::ty::{self, Ty};
 use syntax::codemap::Span;
+use syntax::parse::token;
 use rustc_front::hir;
 
 #[derive(Copy, Clone)]
@@ -59,6 +60,10 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
 
     pub fn bool_ty(&mut self) -> Ty<'tcx> {
         self.tcx.types.bool
+    }
+
+    pub fn str_literal(&mut self, value: token::InternedString) -> Literal<'tcx> {
+        Literal::Value { value: ConstVal::Str(value) }
     }
 
     pub fn true_literal(&mut self) -> Literal<'tcx> {

@@ -63,7 +63,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 this.cfg.push_assign(block, expr_span, // lt = idx < len
                                      &lt, Rvalue::BinaryOp(BinOp::Lt,
                                                            idx.clone(),
-                                                           Operand::Consume(len)));
+                                                           Operand::Consume(len.clone())));
 
                 let (success, failure) = (this.cfg.start_new_block(), this.cfg.start_new_block());
                 this.cfg.terminate(block,
@@ -71,7 +71,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                        cond: Operand::Consume(lt),
                                        targets: (success, failure),
                                    });
-                this.panic(failure);
+                this.panic_bound_check(failure, idx.clone(), Operand::Consume(len), expr_span);
                 success.and(slice.index(idx))
             }
             ExprKind::SelfRef => {

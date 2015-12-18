@@ -88,9 +88,12 @@ should go to.
 
 use build::{BlockAnd, BlockAndExtension, Builder};
 use rustc::middle::region::CodeExtent;
-use rustc::middle::ty::Ty;
+use rustc::middle::lang_items;
+use rustc::middle::subst::Substs;
+use rustc::middle::ty::{Ty, Region};
 use rustc::mir::repr::*;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, DUMMY_SP};
+use syntax::parse::token::intern_and_get_ident;
 
 pub struct Scope<'tcx> {
     extent: CodeExtent,
@@ -261,13 +264,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.scopes.iter().rev().flat_map(|b| b.cached_block).next()
     }
 
-    /// Create diverge cleanup and branch to it from `block`.
-    pub fn panic(&mut self, block: BasicBlock) {
-        // FIXME: panic terminator should also have conditional cleanup?
-        let cleanup = self.diverge_cleanup().unwrap_or(DIVERGE_BLOCK);
-        self.cfg.terminate(block, Terminator::Panic { target: cleanup });
-    }
-
     /// Indicates that `lvalue` should be dropped on exit from
     /// `extent`.
     pub fn schedule_drop(&mut self,
@@ -298,5 +294,95 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
     pub fn extent_of_outermost_scope(&self) -> CodeExtent {
         self.scopes.first().map(|scope| scope.extent).unwrap()
+    }
+
+    pub fn panic_bound_check(&mut self,
+                             block: BasicBlock,
+                             index: Operand<'tcx>,
+                             len: Operand<'tcx>,
+                             span: Span) {
+        let cleanup = self.diverge_cleanup();
+        let func = self.lang_function(lang_items::PanicBoundsCheckFnLangItem);
+        let str_ty = self.hir.tcx().mk_static_str();
+        let tup_ty = self.hir.tcx().mk_tup(vec![str_ty, self.hir.tcx().types.u32]);
+        // FIXME: ReStatic might be wrong here?
+        let ref_region = self.hir.tcx().mk_region(Region::ReStatic);
+        let ref_ty = self.hir.tcx().mk_imm_ref(ref_region, tup_ty.clone());
+        let (file_arg, line_arg) = self.span_to_fileline_args(span);
+        let (tuple, tuple_ref) = (self.temp(tup_ty), self.temp(ref_ty));
+        self.cfg.push_assign(block, DUMMY_SP, &tuple, // tuple = (message_arg, file_arg, line_arg);
+                             Rvalue::Aggregate(AggregateKind::Tuple, vec![file_arg, line_arg]));
+        // FIXME: ReStatic might be wrong here?
+        self.cfg.push_assign(block, DUMMY_SP, &tuple_ref, // tuple_ref = &tuple;
+                             Rvalue::Ref(*ref_region, BorrowKind::Unique, tuple));
+        self.cfg.terminate(block, Terminator::DivergingCall {
+            func: func,
+            args: vec![Operand::Consume(tuple_ref), index, len],
+            cleanup: cleanup,
+        });
+    }
+
+    /// Create diverge cleanup and branch to it from `block`.
+    pub fn panic(&mut self, block: BasicBlock, msg: &'static str, span: Span) {
+        let cleanup = self.diverge_cleanup();
+        let func = self.lang_function(lang_items::PanicFnLangItem);
+
+        let str_ty = self.hir.tcx().mk_static_str();
+        let tup_ty = self.hir.tcx().mk_tup(vec![str_ty, str_ty, self.hir.tcx().types.u32]);
+        // FIXME: ReStatic might be wrong here?
+        let ref_region = self.hir.tcx().mk_region(Region::ReStatic);
+        let ref_ty = self.hir.tcx().mk_imm_ref(ref_region, tup_ty.clone());
+        let message_arg = Operand::Constant(Constant {
+            span: DUMMY_SP,
+            ty: str_ty,
+            literal: self.hir.str_literal(intern_and_get_ident(msg))
+        });
+        let (file_arg, line_arg) = self.span_to_fileline_args(span);
+        let tuple = self.temp(tup_ty);
+        let tuple_ref = self.temp(ref_ty);
+        self.cfg.push_assign(block, DUMMY_SP, &tuple, // tuple = (message_arg, file_arg, line_arg);
+                             Rvalue::Aggregate(AggregateKind::Tuple,
+                                               vec![message_arg, file_arg, line_arg])
+        );
+        // FIXME: ReStatic might be wrong here?
+        self.cfg.push_assign(block, DUMMY_SP, &tuple_ref, // tuple_ref = &tuple;
+                             Rvalue::Ref(*ref_region, BorrowKind::Unique, tuple));
+
+        self.cfg.terminate(block, Terminator::DivergingCall {
+            func: func,
+            args: vec![Operand::Consume(tuple_ref)],
+            cleanup: cleanup,
+        });
+    }
+
+    fn lang_function(&mut self, lang_item: lang_items::LangItem) -> Operand<'tcx> {
+        let funcdid = match self.hir.tcx().lang_items.require(lang_item) {
+            Ok(d) => d,
+            Err(m) => {
+                self.hir.tcx().sess.fatal(&*m)
+            }
+        };
+        Operand::Constant(Constant {
+            span: DUMMY_SP,
+            ty: self.hir.tcx().lookup_item_type(funcdid).ty,
+            literal: Literal::Item {
+                def_id: funcdid,
+                kind: ItemKind::Function,
+                substs: self.hir.tcx().mk_substs(Substs::empty())
+            }
+        })
+    }
+
+    fn span_to_fileline_args(&mut self, span: Span) -> (Operand<'tcx>, Operand<'tcx>) {
+        let span_lines = self.hir.tcx().sess.codemap().lookup_char_pos(span.lo);
+        (Operand::Constant(Constant {
+            span: DUMMY_SP,
+            ty: self.hir.tcx().mk_static_str(),
+            literal: self.hir.str_literal(intern_and_get_ident(&span_lines.file.name))
+        }), Operand::Constant(Constant {
+            span: DUMMY_SP,
+            ty: self.hir.tcx().types.u32,
+            literal: self.hir.usize_literal(span_lines.line)
+        }))
     }
 }

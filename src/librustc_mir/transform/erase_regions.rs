@@ -81,8 +81,7 @@ impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
             Terminator::Goto { .. } |
             Terminator::Diverge |
             Terminator::Resume |
-            Terminator::Return |
-            Terminator::Panic { .. } => {
+            Terminator::Return => {
                 /* nothing to do */
             }
             Terminator::If { ref mut cond, .. } => {

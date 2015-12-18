@@ -40,10 +40,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 build::Br(bcx, self.llblock(target), DebugLoc::None)
             }
 
-            mir::Terminator::Panic { .. } => {
-                unimplemented!()
-            }
-
             mir::Terminator::If { ref cond, targets: (true_bb, false_bb) } => {
                 let cond = self.trans_operand(bcx, cond);
                 let lltrue = self.llblock(true_bb);
