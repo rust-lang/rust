@@ -839,9 +839,11 @@ impl<T> Weak<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(downgraded_weak)]
+    ///
     /// use std::rc::Weak;
     ///
-    /// let five = Weak::new_downgraded();
+    /// let empty:Weak<i64> = Weak::new_downgraded();
     /// ```
 
     #[unstable(feature = "downgraded_weak",
