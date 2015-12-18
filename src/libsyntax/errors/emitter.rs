@@ -13,7 +13,7 @@ use self::Destination::*;
 use codemap::{self, COMMAND_LINE_SP, COMMAND_LINE_EXPN, Pos, Span};
 use diagnostics;
 
-use errors::{Level, RenderSpan};
+use errors::{Level, RenderSpan, DiagnosticBuilder};
 use errors::RenderSpan::*;
 use errors::Level::*;
 
@@ -27,6 +27,17 @@ use term;
 pub trait Emitter {
     fn emit(&mut self, span: Option<Span>, msg: &str, code: Option<&str>, lvl: Level);
     fn custom_emit(&mut self, sp: RenderSpan, msg: &str, lvl: Level);
+
+    // Emit a structured diagnostic.
+    fn emit_struct(&mut self, db: &DiagnosticBuilder) {
+        self.emit(db.span, db.message, db.code.as_ref().map(|s| &**s), db.level);
+        for child in &db.children {
+            match child.render_span {
+                Some(ref sp) => self.custom_emit(sp.clone(), &child.message, child.level),
+                None => self.emit(child.span, &child.message, None, child.level),
+            }
+        }
+    }
 }
 
 /// maximum number of lines we will print for each error; arbitrary.
@@ -111,9 +122,8 @@ impl Emitter for EmitterWriter {
                    sp: RenderSpan,
                    msg: &str,
                    lvl: Level) {
-        match self.emit_(sp, msg, None, lvl) {
-            Ok(()) => {}
-            Err(e) => panic!("failed to print diagnostics: {:?}", e),
+        if let Err(e) = self.emit_(sp, msg, None, lvl) {
+            panic!("failed to print diagnostics: {:?}", e);
         }
     }
 }
