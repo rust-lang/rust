@@ -69,8 +69,8 @@ pub trait AstBuilder {
     fn ty_option(&self, ty: P<ast::Ty>) -> P<ast::Ty>;
     fn ty_infer(&self, sp: Span) -> P<ast::Ty>;
 
-    fn ty_vars(&self, ty_params: &P<[ast::TyParam]>) -> Vec<P<ast::Ty>> ;
-    fn ty_vars_global(&self, ty_params: &P<[ast::TyParam]>) -> Vec<P<ast::Ty>> ;
+    fn ty_vars(&self, ty_params: &[ast::TyParam]) -> Vec<P<ast::Ty>> ;
+    fn ty_vars_global(&self, ty_params: &[ast::TyParam]) -> Vec<P<ast::Ty>> ;
 
     fn typaram(&self,
                span: Span,
@@ -330,8 +330,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             identifier: last_identifier,
             parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                 lifetimes: lifetimes,
-                types: P::from_vec(types),
-                bindings: P::from_vec(bindings),
+                types: P::from(types),
+                bindings: P::from(bindings),
             })
         });
         ast::Path {
@@ -368,8 +368,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             identifier: ident,
             parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                 lifetimes: lifetimes,
-                types: P::from_vec(types),
-                bindings: P::from_vec(bindings),
+                types: P::from(types),
+                bindings: P::from(bindings),
             })
         });
 
@@ -461,11 +461,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     // these are strange, and probably shouldn't be used outside of
     // pipes. Specifically, the global version possible generates
     // incorrect code.
-    fn ty_vars(&self, ty_params: &P<[ast::TyParam]>) -> Vec<P<ast::Ty>> {
+    fn ty_vars(&self, ty_params: &[ast::TyParam]) -> Vec<P<ast::Ty>> {
         ty_params.iter().map(|p| self.ty_ident(DUMMY_SP, p.ident)).collect()
     }
 
-    fn ty_vars_global(&self, ty_params: &P<[ast::TyParam]>) -> Vec<P<ast::Ty>> {
+    fn ty_vars_global(&self, ty_params: &[ast::TyParam]) -> Vec<P<ast::Ty>> {
         ty_params
             .iter()
             .map(|p| self.ty_path(self.path_global(DUMMY_SP, vec!(p.ident))))

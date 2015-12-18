@@ -260,8 +260,8 @@ impl PathParameters {
     pub fn none() -> PathParameters {
         AngleBracketedParameters(AngleBracketedParameterData {
             lifetimes: Vec::new(),
-            types: P::empty(),
-            bindings: P::empty(),
+            types: P::new(),
+            bindings: P::new(),
         })
     }
 
@@ -429,7 +429,7 @@ impl Default for Generics {
     fn default() ->  Generics {
         Generics {
             lifetimes: Vec::new(),
-            ty_params: P::empty(),
+            ty_params: P::new(),
             where_clause: WhereClause {
                 id: DUMMY_NODE_ID,
                 predicates: Vec::new(),

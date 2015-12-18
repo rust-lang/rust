@@ -30,7 +30,6 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::expand::ExpansionConfig;
 use fold::Folder;
-use util::move_map::MoveMap;
 use fold;
 use parse::token::{intern, InternedString};
 use parse::{token, ParseSess};

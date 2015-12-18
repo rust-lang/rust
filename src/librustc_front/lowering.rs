@@ -433,8 +433,8 @@ pub fn lower_ty_param(lctx: &LoweringContext, tp: &TyParam) -> hir::TyParam {
 }
 
 pub fn lower_ty_params(lctx: &LoweringContext,
-                       tps: &P<[TyParam]>)
-                       -> P<[hir::TyParam]> {
+                       tps: &[TyParam])
+                       -> hir::HirVec<hir::TyParam> {
     tps.iter().map(|tp| lower_ty_param(lctx, tp)).collect()
 }
 
@@ -1771,19 +1771,19 @@ fn path_ident(span: Span, id: hir::Ident) -> hir::Path {
 }
 
 fn path(span: Span, strs: Vec<hir::Ident>) -> hir::Path {
-    path_all(span, false, strs, hir::HirVec::new(), Vec::new(), Vec::new())
+    path_all(span, false, strs, hir::HirVec::new(), hir::HirVec::new(), hir::HirVec::new())
 }
 
 fn path_global(span: Span, strs: Vec<hir::Ident>) -> hir::Path {
-    path_all(span, true, strs, hir::HirVec::new(), Vec::new(), Vec::new())
+    path_all(span, true, strs, hir::HirVec::new(), hir::HirVec::new(), hir::HirVec::new())
 }
 
 fn path_all(sp: Span,
             global: bool,
             mut idents: Vec<hir::Ident>,
             lifetimes: hir::HirVec<hir::Lifetime>,
-            types: Vec<P<hir::Ty>>,
-            bindings: Vec<hir::TypeBinding>)
+            types: hir::HirVec<P<hir::Ty>>,
+            bindings: hir::HirVec<hir::TypeBinding>)
             -> hir::Path {
     let last_identifier = idents.pop().unwrap();
     let mut segments: Vec<hir::PathSegment> = idents.into_iter()
@@ -1798,8 +1798,8 @@ fn path_all(sp: Span,
         identifier: last_identifier,
         parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
             lifetimes: lifetimes,
-            types: P::from_vec(types),
-            bindings: P::from_vec(bindings),
+            types: types.into(),
+            bindings: bindings.into(),
         }),
     });
     hir::Path {

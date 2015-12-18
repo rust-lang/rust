@@ -208,8 +208,8 @@ impl PathParameters {
     pub fn none() -> PathParameters {
         AngleBracketedParameters(AngleBracketedParameterData {
             lifetimes: HirVec::new(),
-            types: P::empty(),
-            bindings: P::empty(),
+            types: HirVec::new(),
+            bindings: HirVec::new(),
         })
     }
 
@@ -282,10 +282,10 @@ pub struct AngleBracketedParameterData {
     /// The lifetime parameters for this path segment.
     pub lifetimes: HirVec<Lifetime>,
     /// The type parameters for this path segment, if present.
-    pub types: P<[P<Ty>]>,
+    pub types: HirVec<P<Ty>>,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
-    pub bindings: P<[TypeBinding]>,
+    pub bindings: HirVec<TypeBinding>,
 }
 
 impl AngleBracketedParameterData {
@@ -325,7 +325,7 @@ pub enum TraitBoundModifier {
     Maybe,
 }
 
-pub type TyParamBounds = P<[TyParamBound]>;
+pub type TyParamBounds = HirVec<TyParamBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TyParam {
@@ -341,7 +341,7 @@ pub struct TyParam {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Generics {
     pub lifetimes: HirVec<LifetimeDef>,
-    pub ty_params: P<[TyParam]>,
+    pub ty_params: HirVec<TyParam>,
     pub where_clause: WhereClause,
 }
 
