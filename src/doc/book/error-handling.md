@@ -182,7 +182,7 @@ analysis is the only way to get at the value stored inside an `Option<T>`. This
 means that you, as the programmer, must handle the case when an `Option<T>` is
 `None` instead of `Some(t)`.
 
-But wait, what about `unwrap`,which we used [`previously`](#code-unwrap-double)?
+But wait, what about `unwrap`, which we used [previously](#code-unwrap-double)?
 There was no case analysis there! Instead, the case analysis was put inside the
 `unwrap` method for you. You could define it yourself if you want:
 
