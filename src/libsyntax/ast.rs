@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::BindingMode::*;
 pub use self::BinOp_::*;
 pub use self::BlockCheckMode::*;
 pub use self::CaptureClause::*;
@@ -575,8 +574,8 @@ pub struct FieldPat {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BindingMode {
-    BindByRef(Mutability),
-    BindByValue(Mutability),
+    ByRef(Mutability),
+    ByValue(Mutability),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1655,7 +1654,7 @@ impl Arg {
             }),
             pat: P(Pat {
                 id: DUMMY_NODE_ID,
-                node: PatIdent(BindByValue(mutability), path, None),
+                node: PatIdent(BindingMode::ByValue(mutability), path, None),
                 span: span
             }),
             id: DUMMY_NODE_ID

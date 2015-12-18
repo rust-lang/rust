@@ -1471,7 +1471,7 @@ impl<'a> TraitDef<'a> {
                           -> Vec<P<ast::Pat>> {
         field_paths.iter().map(|path| {
             cx.pat(path.span,
-                        ast::PatIdent(ast::BindByRef(mutbl), (*path).clone(), None))
+                        ast::PatIdent(ast::BindingMode::ByRef(mutbl), (*path).clone(), None))
         }).collect()
     }
 

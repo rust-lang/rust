@@ -514,7 +514,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident,
                 ex: P<ast::Expr>) -> P<ast::Stmt> {
         let pat = if mutbl {
-            self.pat_ident_binding_mode(sp, ident, ast::BindByValue(ast::MutMutable))
+            self.pat_ident_binding_mode(sp, ident, ast::BindingMode::ByValue(ast::MutMutable))
         } else {
             self.pat_ident(sp, ident)
         };
@@ -538,7 +538,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                       ex: P<ast::Expr>)
                       -> P<ast::Stmt> {
         let pat = if mutbl {
-            self.pat_ident_binding_mode(sp, ident, ast::BindByValue(ast::MutMutable))
+            self.pat_ident_binding_mode(sp, ident, ast::BindingMode::ByValue(ast::MutMutable))
         } else {
             self.pat_ident(sp, ident)
         };
@@ -809,7 +809,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.pat(span, ast::PatLit(expr))
     }
     fn pat_ident(&self, span: Span, ident: ast::Ident) -> P<ast::Pat> {
-        self.pat_ident_binding_mode(span, ident, ast::BindByValue(ast::MutImmutable))
+        self.pat_ident_binding_mode(span, ident, ast::BindingMode::ByValue(ast::MutImmutable))
     }
 
     fn pat_ident_binding_mode(&self,

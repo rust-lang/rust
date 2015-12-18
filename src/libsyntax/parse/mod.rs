@@ -890,7 +890,7 @@ mod tests {
         assert!(panictry!(parser.parse_pat())
                 == P(ast::Pat{
                 id: ast::DUMMY_NODE_ID,
-                node: ast::PatIdent(ast::BindByValue(ast::MutImmutable),
+                node: ast::PatIdent(ast::BindingMode::ByValue(ast::MutImmutable),
                                     Spanned{ span:sp(0, 1),
                                              node: str_to_ident("b")
                     },
@@ -926,7 +926,7 @@ mod tests {
                                     pat: P(ast::Pat {
                                         id: ast::DUMMY_NODE_ID,
                                         node: ast::PatIdent(
-                                            ast::BindByValue(ast::MutImmutable),
+                                            ast::BindingMode::ByValue(ast::MutImmutable),
                                                 Spanned{
                                                     span: sp(6,7),
                                                     node: str_to_ident("b")},
