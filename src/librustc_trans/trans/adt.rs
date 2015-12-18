@@ -1165,7 +1165,7 @@ pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, v
 
     let meta = val.meta;
 
-    // Calculate the unaligned offset of the the unsized field.
+    // Calculate the unaligned offset of the unsized field.
     let mut offset = 0;
     for &ty in &st.fields[0..ix] {
         let llty = type_of::sizing_type_of(ccx, ty);
