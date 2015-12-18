@@ -51,9 +51,6 @@ pub const START_BLOCK: BasicBlock = BasicBlock(0);
 /// where execution ends, on normal return
 pub const END_BLOCK: BasicBlock = BasicBlock(1);
 
-/// where execution ends, on panic
-pub const DIVERGE_BLOCK: BasicBlock = BasicBlock(2);
-
 impl<'tcx> Mir<'tcx> {
     pub fn all_basic_blocks(&self) -> Vec<BasicBlock> {
         (0..self.basic_blocks.len())
@@ -194,7 +191,7 @@ impl Debug for BasicBlock {
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct BasicBlockData<'tcx> {
     pub statements: Vec<Statement<'tcx>>,
-    pub terminator: Terminator<'tcx>,
+    pub terminator: Option<Terminator<'tcx>>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -236,14 +233,6 @@ pub enum Terminator<'tcx> {
         /// fit.
         targets: Vec<BasicBlock>,
     },
-
-    /// Indicates that the last statement in the block panics, aborts,
-    /// etc. No successors. This terminator appears on exactly one
-    /// basic block which we create in advance. However, during
-    /// construction, we use this value as a sentinel for "terminator
-    /// not yet assigned", and assert at the end that only the
-    /// well-known diverging block actually diverges.
-    Diverge,
 
     /// Indicates that the landing pad is finished and unwinding should
     /// continue. Emitted by build::scope::diverge_cleanup.
@@ -317,7 +306,6 @@ impl<'tcx> Terminator<'tcx> {
             If { targets: ref b, .. } => b.as_slice(),
             Switch { targets: ref b, .. } => b,
             SwitchInt { targets: ref b, .. } => b,
-            Diverge => &[],
             Resume => &[],
             Return => &[],
             Call { targets: ref b, .. } => b.as_slice(),
@@ -336,7 +324,6 @@ impl<'tcx> Terminator<'tcx> {
             If { targets: ref mut b, .. } => b.as_mut_slice(),
             Switch { targets: ref mut b, .. } => b,
             SwitchInt { targets: ref mut b, .. } => b,
-            Diverge => &mut [],
             Resume => &mut [],
             Return => &mut [],
             Call { targets: ref mut b, .. } => b.as_mut_slice(),
@@ -350,11 +337,23 @@ impl<'tcx> Terminator<'tcx> {
 }
 
 impl<'tcx> BasicBlockData<'tcx> {
-    pub fn new(terminator: Terminator<'tcx>) -> BasicBlockData<'tcx> {
+    pub fn new(terminator: Option<Terminator<'tcx>>) -> BasicBlockData<'tcx> {
         BasicBlockData {
             statements: vec![],
             terminator: terminator,
         }
+    }
+
+    /// Accessor for terminator.
+    ///
+    /// Terminator may not be None after construction of the basic block is complete. This accessor
+    /// provides a convenience way to reach the terminator.
+    pub fn terminator(&self) -> &Terminator<'tcx> {
+        self.terminator.as_ref().expect("invalid terminator state")
+    }
+
+    pub fn terminator_mut(&mut self) -> &mut Terminator<'tcx> {
+        self.terminator.as_mut().expect("invalid terminator state")
     }
 }
 
@@ -396,7 +395,6 @@ impl<'tcx> Terminator<'tcx> {
             If { cond: ref lv, .. } => write!(fmt, "if({:?})", lv),
             Switch { discr: ref lv, .. } => write!(fmt, "switch({:?})", lv),
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
-            Diverge => write!(fmt, "diverge"),
             Return => write!(fmt, "return"),
             Resume => write!(fmt, "resume"),
             Call { .. } => {
@@ -414,7 +412,7 @@ impl<'tcx> Terminator<'tcx> {
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::Terminator::*;
         match *self {
-            Diverge | Return | Resume => vec![],
+            Return | Resume => vec![],
             Goto { .. } => vec!["".into_cow()],
             If { .. } => vec!["true".into_cow(), "false".into_cow()],
             Call { .. } => vec!["return".into_cow(), "unwind".into_cow()],

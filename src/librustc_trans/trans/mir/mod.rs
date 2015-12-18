@@ -125,16 +125,11 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>) {
 
     // Translate the body of each block
     for &bb in &mir_blocks {
-        if bb != mir::DIVERGE_BLOCK {
-            mircx.trans_block(bb);
-        }
+        // NB that we do not handle the Resume terminator specially, because a block containing
+        // that terminator will have a higher block number than a function call which should take
+        // care of filling in that information.
+        mircx.trans_block(bb);
     }
-
-    // Total hack: translate DIVERGE_BLOCK last. This is so that any
-    // panics which the fn may do can initialize the
-    // `llpersonalityslot` cell. We don't do this up front because the
-    // LLVM type of it is (frankly) annoying to compute.
-    mircx.trans_block(mir::DIVERGE_BLOCK);
 }
 
 /// Produce, for each argument, a `ValueRef` pointing at the

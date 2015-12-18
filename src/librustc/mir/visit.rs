@@ -84,7 +84,7 @@ pub trait Visitor<'tcx> {
         for statement in &data.statements {
             self.visit_statement(block, statement);
         }
-        self.visit_terminator(block, &data.terminator);
+        data.terminator.as_ref().map(|r| self.visit_terminator(block, r));
     }
 
     fn super_statement(&mut self, block: BasicBlock, statement: &Statement<'tcx>) {
@@ -132,7 +132,6 @@ pub trait Visitor<'tcx> {
                 }
             }
 
-            Terminator::Diverge |
             Terminator::Resume |
             Terminator::Return => {
             }
@@ -374,7 +373,7 @@ pub trait MutVisitor<'tcx> {
         for statement in &mut data.statements {
             self.visit_statement(block, statement);
         }
-        self.visit_terminator(block, &mut data.terminator);
+        data.terminator.as_mut().map(|r| self.visit_terminator(block, r));
     }
 
     fn super_statement(&mut self,
@@ -429,7 +428,6 @@ pub trait MutVisitor<'tcx> {
                 }
             }
 
-            Terminator::Diverge |
             Terminator::Resume |
             Terminator::Return => {
             }
