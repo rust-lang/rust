@@ -32,7 +32,7 @@ use ast;
 use attr;
 use attr::AttrMetaMethods;
 use codemap::{CodeMap, Span};
-use diagnostic::SpanHandler;
+use errors::Handler;
 use visit;
 use visit::{FnKind, Visitor};
 use parse::token::InternedString;
@@ -446,7 +446,7 @@ impl PartialOrd for GatedCfgAttr {
 }
 
 impl GatedCfgAttr {
-    pub fn check_and_emit(&self, diagnostic: &SpanHandler, features: &Features) {
+    pub fn check_and_emit(&self, diagnostic: &Handler, features: &Features) {
         match *self {
             GatedCfgAttr::GatedCfg(ref cfg) => {
                 cfg.check_and_emit(diagnostic, features);
@@ -476,7 +476,7 @@ impl GatedCfg {
                       }
                   })
     }
-    fn check_and_emit(&self, diagnostic: &SpanHandler, features: &Features) {
+    fn check_and_emit(&self, diagnostic: &Handler, features: &Features) {
         let (cfg, feature, has_feature) = GATED_CFGS[self.index];
         if !has_feature(features) {
             let explain = format!("`cfg({})` is experimental and subject to change", cfg);
@@ -595,21 +595,21 @@ const EXPLAIN_PUSHPOP_UNSAFE: &'static str =
 const EXPLAIN_STMT_ATTR_SYNTAX: &'static str =
     "attributes on non-item statements and expressions are experimental.";
 
-pub fn check_for_box_syntax(f: Option<&Features>, diag: &SpanHandler, span: Span) {
+pub fn check_for_box_syntax(f: Option<&Features>, diag: &Handler, span: Span) {
     if let Some(&Features { allow_box: true, .. }) = f {
         return;
     }
     emit_feature_err(diag, "box_syntax", span, GateIssue::Language, EXPLAIN_BOX_SYNTAX);
 }
 
-pub fn check_for_placement_in(f: Option<&Features>, diag: &SpanHandler, span: Span) {
+pub fn check_for_placement_in(f: Option<&Features>, diag: &Handler, span: Span) {
     if let Some(&Features { allow_placement_in: true, .. }) = f {
         return;
     }
     emit_feature_err(diag, "placement_in_syntax", span, GateIssue::Language, EXPLAIN_PLACEMENT_IN);
 }
 
-pub fn check_for_pushpop_syntax(f: Option<&Features>, diag: &SpanHandler, span: Span) {
+pub fn check_for_pushpop_syntax(f: Option<&Features>, diag: &Handler, span: Span) {
     if let Some(&Features { allow_pushpop_unsafe: true, .. }) = f {
         return;
     }
@@ -618,7 +618,7 @@ pub fn check_for_pushpop_syntax(f: Option<&Features>, diag: &SpanHandler, span: 
 
 struct Context<'a> {
     features: Vec<&'static str>,
-    span_handler: &'a SpanHandler,
+    span_handler: &'a Handler,
     cm: &'a CodeMap,
     plugin_attributes: &'a [(String, AttributeType)],
 }
@@ -704,7 +704,7 @@ pub enum GateIssue {
     Library(Option<u32>)
 }
 
-pub fn emit_feature_err(diag: &SpanHandler, feature: &str, span: Span, issue: GateIssue,
+pub fn emit_feature_err(diag: &Handler, feature: &str, span: Span, issue: GateIssue,
                         explain: &str) {
     let issue = match issue {
         GateIssue::Language => find_lang_feature_issue(feature),
@@ -1064,7 +1064,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 }
 
-fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
+fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
                         krate: &ast::Crate,
                         plugin_attributes: &[(String, AttributeType)],
                         check: F)
@@ -1161,13 +1161,13 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
     }
 }
 
-pub fn check_crate_macros(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
+pub fn check_crate_macros(cm: &CodeMap, span_handler: &Handler, krate: &ast::Crate)
 -> Features {
     check_crate_inner(cm, span_handler, krate, &[] as &'static [_],
                       |ctx, krate| visit::walk_crate(&mut MacroVisitor { context: ctx }, krate))
 }
 
-pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate,
+pub fn check_crate(cm: &CodeMap, span_handler: &Handler, krate: &ast::Crate,
                    plugin_attributes: &[(String, AttributeType)],
                    unstable: UnstableFeatures) -> Features
 {
@@ -1192,7 +1192,7 @@ pub enum UnstableFeatures {
     Cheat
 }
 
-fn maybe_stage_features(span_handler: &SpanHandler, krate: &ast::Crate,
+fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate,
                         unstable: UnstableFeatures) {
     let allow_features = match unstable {
         UnstableFeatures::Allow => true,

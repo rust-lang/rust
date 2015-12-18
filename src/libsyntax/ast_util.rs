@@ -12,7 +12,6 @@ use ast::*;
 use ast;
 use codemap;
 use codemap::Span;
-use owned_slice::OwnedSlice;
 use parse::token;
 use print::pprust;
 use ptr::P;
@@ -43,8 +42,8 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
                 identifier: identifier,
                 parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                     lifetimes: Vec::new(),
-                    types: OwnedSlice::empty(),
-                    bindings: OwnedSlice::empty(),
+                    types: P::empty(),
+                    bindings: P::empty(),
                 })
             }
         ),

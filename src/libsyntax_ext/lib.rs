@@ -39,7 +39,7 @@ use syntax::parse::token::intern;
 macro_rules! panictry {
     ($e:expr) => ({
         use std::result::Result::{Ok, Err};
-        use syntax::diagnostic::FatalError;
+        use syntax::errors::FatalError;
         match $e {
             Ok(e) => e,
             Err(FatalError) => panic!(FatalError)

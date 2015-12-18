@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use attr::AttrMetaMethods;
-use diagnostic::SpanHandler;
+use errors::Handler;
 use feature_gate::GatedCfgAttr;
 use fold::Folder;
 use {ast, fold, attr};
@@ -23,12 +23,12 @@ use util::small_vector::SmallVector;
 /// configuration.
 struct Context<'a, F> where F: FnMut(&[ast::Attribute]) -> bool {
     in_cfg: F,
-    diagnostic: &'a SpanHandler,
+    diagnostic: &'a Handler,
 }
 
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
-pub fn strip_unconfigured_items(diagnostic: &SpanHandler, krate: ast::Crate,
+pub fn strip_unconfigured_items(diagnostic: &Handler, krate: ast::Crate,
                                 feature_gated_cfgs: &mut Vec<GatedCfgAttr>)
                                 -> ast::Crate
 {
@@ -83,7 +83,7 @@ impl<'a, F> fold::Folder for Context<'a, F> where F: FnMut(&[ast::Attribute]) ->
     }
 }
 
-pub fn strip_items<'a, F>(diagnostic: &'a SpanHandler,
+pub fn strip_items<'a, F>(diagnostic: &'a Handler,
                           krate: ast::Crate, in_cfg: F) -> ast::Crate where
     F: FnMut(&[ast::Attribute]) -> bool,
 {
@@ -291,7 +291,7 @@ struct CfgAttrFolder<'a, T> {
 }
 
 // Process `#[cfg_attr]`.
-fn process_cfg_attr(diagnostic: &SpanHandler, krate: ast::Crate,
+fn process_cfg_attr(diagnostic: &Handler, krate: ast::Crate,
                     feature_gated_cfgs: &mut Vec<GatedCfgAttr>) -> ast::Crate {
     let mut fld = CfgAttrFolder {
         diag: CfgDiagReal {
@@ -463,17 +463,17 @@ impl<'v, 'a, 'b> visit::Visitor<'v> for StmtExprAttrFeatureVisitor<'a, 'b> {
 }
 
 pub trait CfgDiag {
-    fn emit_error<F>(&mut self, f: F) where F: FnMut(&SpanHandler);
+    fn emit_error<F>(&mut self, f: F) where F: FnMut(&Handler);
     fn flag_gated<F>(&mut self, f: F) where F: FnMut(&mut Vec<GatedCfgAttr>);
 }
 
 pub struct CfgDiagReal<'a, 'b> {
-    pub diag: &'a SpanHandler,
+    pub diag: &'a Handler,
     pub feature_gated_cfgs: &'b mut Vec<GatedCfgAttr>,
 }
 
 impl<'a, 'b> CfgDiag for CfgDiagReal<'a, 'b> {
-    fn emit_error<F>(&mut self, mut f: F) where F: FnMut(&SpanHandler) {
+    fn emit_error<F>(&mut self, mut f: F) where F: FnMut(&Handler) {
         f(self.diag)
     }
     fn flag_gated<F>(&mut self, mut f: F) where F: FnMut(&mut Vec<GatedCfgAttr>) {
@@ -486,7 +486,7 @@ struct CfgDiagSilent {
 }
 
 impl CfgDiag for CfgDiagSilent {
-    fn emit_error<F>(&mut self, _: F) where F: FnMut(&SpanHandler) {
+    fn emit_error<F>(&mut self, _: F) where F: FnMut(&Handler) {
         self.error = true;
     }
     fn flag_gated<F>(&mut self, _: F) where F: FnMut(&mut Vec<GatedCfgAttr>) {}

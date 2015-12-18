@@ -21,7 +21,7 @@ use ast::{Expr, Item, Local, Decl};
 use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
 use config::CfgDiag;
-use diagnostic::SpanHandler;
+use errors::Handler;
 use feature_gate::{GatedCfg, GatedCfgAttr};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::token::InternedString;
@@ -299,14 +299,14 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<InternedString> {
 }
 
 /// Find the value of #[export_name=*] attribute and check its validity.
-pub fn find_export_name_attr(diag: &SpanHandler, attrs: &[Attribute]) -> Option<InternedString> {
+pub fn find_export_name_attr(diag: &Handler, attrs: &[Attribute]) -> Option<InternedString> {
     attrs.iter().fold(None, |ia,attr| {
         if attr.check_name("export_name") {
             if let s@Some(_) = attr.value_str() {
                 s
             } else {
                 diag.span_err(attr.span, "export_name attribute has invalid format");
-                diag.handler.help("use #[export_name=\"*\"]");
+                diag.help("use #[export_name=\"*\"]");
                 None
             }
         } else {
@@ -324,7 +324,7 @@ pub enum InlineAttr {
 }
 
 /// Determine what `#[inline]` attribute is present in `attrs`, if any.
-pub fn find_inline_attr(diagnostic: Option<&SpanHandler>, attrs: &[Attribute]) -> InlineAttr {
+pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> InlineAttr {
     attrs.iter().fold(InlineAttr::None, |ia,attr| {
         match attr.node.value.node {
             MetaWord(ref n) if *n == "inline" => {
@@ -426,7 +426,7 @@ impl StabilityLevel {
     pub fn is_stable(&self) -> bool { if let Stable {..} = *self { true } else { false }}
 }
 
-fn find_stability_generic<'a, I>(diagnostic: &SpanHandler,
+fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                  attrs_iter: I,
                                  item_sp: Span)
                                  -> Option<Stability>
@@ -612,10 +612,10 @@ fn find_stability_generic<'a, I>(diagnostic: &SpanHandler,
     stab
 }
 
-fn find_deprecation_generic<'a, I>(diagnostic: &SpanHandler,
-                                 attrs_iter: I,
-                                 item_sp: Span)
-                                 -> Option<Deprecation>
+fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
+                                   attrs_iter: I,
+                                   item_sp: Span)
+                                   -> Option<Deprecation>
     where I: Iterator<Item = &'a Attribute>
 {
     let mut depr: Option<Deprecation> = None;
@@ -672,18 +672,18 @@ fn find_deprecation_generic<'a, I>(diagnostic: &SpanHandler,
 }
 
 /// Find the first stability attribute. `None` if none exists.
-pub fn find_stability(diagnostic: &SpanHandler, attrs: &[Attribute],
+pub fn find_stability(diagnostic: &Handler, attrs: &[Attribute],
                       item_sp: Span) -> Option<Stability> {
     find_stability_generic(diagnostic, attrs.iter(), item_sp)
 }
 
 /// Find the deprecation attribute. `None` if none exists.
-pub fn find_deprecation(diagnostic: &SpanHandler, attrs: &[Attribute],
-                      item_sp: Span) -> Option<Deprecation> {
+pub fn find_deprecation(diagnostic: &Handler, attrs: &[Attribute],
+                        item_sp: Span) -> Option<Deprecation> {
     find_deprecation_generic(diagnostic, attrs.iter(), item_sp)
 }
 
-pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[P<MetaItem>]) {
+pub fn require_unique_names(diagnostic: &Handler, metas: &[P<MetaItem>]) {
     let mut set = HashSet::new();
     for meta in metas {
         let name = meta.name();
@@ -702,7 +702,7 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[P<MetaItem>]) {
 /// `int_type_of_word`, below) to specify enum discriminant type; `C`, to use
 /// the same discriminant size that the corresponding C enum would or C
 /// structure layout, and `packed` to remove padding.
-pub fn find_repr_attrs(diagnostic: &SpanHandler, attr: &Attribute) -> Vec<ReprAttr> {
+pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> {
     let mut acc = Vec::new();
     match attr.node.value.node {
         ast::MetaList(ref s, ref items) if *s == "repr" => {

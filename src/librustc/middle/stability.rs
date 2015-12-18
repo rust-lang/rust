@@ -82,7 +82,7 @@ struct Annotator<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
     // Determine the stability for a node based on its attributes and inherited
     // stability. The stability is recorded in the index and used as the parent.
-    fn annotate<F>(&mut self, id: NodeId, attrs: &Vec<Attribute>,
+    fn annotate<F>(&mut self, id: NodeId, attrs: &[Attribute],
                    item_sp: Span, kind: AnnotationKind, visit_children: F)
         where F: FnOnce(&mut Annotator)
     {

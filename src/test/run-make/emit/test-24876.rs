@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// A non-growable owned slice.
-#[unstable(feature = "rustc_private", issue = "0")]
-#[rustc_deprecated(since = "1.7.0", reason = "use `ptr::P<[T]>` instead")]
-pub type OwnedSlice<T> = ::ptr::P<[T]>;
+// Checks for issue #24876
+
+fn main() {
+    let mut v = 0;
+    for i in 0..0 {
+        v += i;
+    }
+    println!("{}", v)
+}

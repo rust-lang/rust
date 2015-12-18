@@ -324,7 +324,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         self.delegate.consume(consume_id, consume_span, cmt, mode);
     }
 
-    fn consume_exprs(&mut self, exprs: &Vec<P<hir::Expr>>) {
+    fn consume_exprs(&mut self, exprs: &[P<hir::Expr>]) {
         for expr in exprs {
             self.consume_expr(&**expr);
         }
@@ -651,7 +651,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
 
     fn walk_struct_expr(&mut self,
                         _expr: &hir::Expr,
-                        fields: &Vec<hir::Field>,
+                        fields: &[hir::Field],
                         opt_with: &Option<P<hir::Expr>>) {
         // Consume the expressions supplying values for each field.
         for field in fields {
@@ -697,7 +697,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         self.walk_expr(with_expr);
 
         fn contains_field_named(field: ty::FieldDef,
-                                fields: &Vec<hir::Field>)
+                                fields: &[hir::Field])
                                 -> bool
         {
             fields.iter().any(

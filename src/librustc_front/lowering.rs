@@ -70,7 +70,6 @@ use syntax::attr::{ThinAttributes, ThinAttributesExt};
 use syntax::ext::mtwt;
 use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned, Span};
-use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::std_inject;
 use syntax::visit::{self, Visitor};
@@ -148,6 +147,10 @@ pub fn lower_ident(_lctx: &LoweringContext, ident: Ident) -> hir::Ident {
     }
 }
 
+pub fn lower_attrs(_lctx: &LoweringContext, attrs: &Vec<Attribute>) -> hir::HirVec<Attribute> {
+    attrs.clone().into()
+}
+
 pub fn lower_view_path(lctx: &LoweringContext, view_path: &ViewPath) -> P<hir::ViewPath> {
     P(Spanned {
         node: match view_path.node {
@@ -187,7 +190,7 @@ pub fn lower_view_path(lctx: &LoweringContext, view_path: &ViewPath) -> P<hir::V
 
 pub fn lower_arm(lctx: &LoweringContext, arm: &Arm) -> hir::Arm {
     hir::Arm {
-        attrs: arm.attrs.clone(),
+        attrs: lower_attrs(lctx, &arm.attrs),
         pats: arm.pats.iter().map(|x| lower_pat(lctx, x)).collect(),
         guard: arm.guard.as_ref().map(|ref x| lower_expr(lctx, x)),
         body: lower_expr(lctx, &arm.body),
@@ -276,7 +279,7 @@ pub fn lower_variant(lctx: &LoweringContext, v: &Variant) -> hir::Variant {
     Spanned {
         node: hir::Variant_ {
             name: v.node.name.name,
-            attrs: v.node.attrs.clone(),
+            attrs: lower_attrs(lctx, &v.node.attrs),
             data: lower_variant_data(lctx, &v.node.data),
             disr_expr: v.node.disr_expr.as_ref().map(|e| lower_expr(lctx, e)),
         },
@@ -430,8 +433,8 @@ pub fn lower_ty_param(lctx: &LoweringContext, tp: &TyParam) -> hir::TyParam {
 }
 
 pub fn lower_ty_params(lctx: &LoweringContext,
-                       tps: &OwnedSlice<TyParam>)
-                       -> OwnedSlice<hir::TyParam> {
+                       tps: &P<[TyParam]>)
+                       -> P<[hir::TyParam]> {
     tps.iter().map(|tp| lower_ty_param(lctx, tp)).collect()
 }
 
@@ -450,13 +453,13 @@ pub fn lower_lifetime_def(lctx: &LoweringContext, l: &LifetimeDef) -> hir::Lifet
     }
 }
 
-pub fn lower_lifetimes(lctx: &LoweringContext, lts: &Vec<Lifetime>) -> Vec<hir::Lifetime> {
+pub fn lower_lifetimes(lctx: &LoweringContext, lts: &Vec<Lifetime>) -> hir::HirVec<hir::Lifetime> {
     lts.iter().map(|l| lower_lifetime(lctx, l)).collect()
 }
 
 pub fn lower_lifetime_defs(lctx: &LoweringContext,
                            lts: &Vec<LifetimeDef>)
-                           -> Vec<hir::LifetimeDef> {
+                           -> hir::HirVec<hir::LifetimeDef> {
     lts.iter().map(|l| lower_lifetime_def(lctx, l)).collect()
 }
 
@@ -561,7 +564,7 @@ pub fn lower_struct_field(lctx: &LoweringContext, f: &StructField) -> hir::Struc
             id: f.node.id,
             kind: lower_struct_field_kind(lctx, &f.node.kind),
             ty: lower_ty(lctx, &f.node.ty),
-            attrs: f.node.attrs.clone(),
+            attrs: lower_attrs(lctx, &f.node.attrs),
         },
         span: f.span,
     }
@@ -583,8 +586,8 @@ pub fn lower_mt(lctx: &LoweringContext, mt: &MutTy) -> hir::MutTy {
 }
 
 pub fn lower_opt_bounds(lctx: &LoweringContext,
-                        b: &Option<OwnedSlice<TyParamBound>>)
-                        -> Option<OwnedSlice<hir::TyParamBound>> {
+                        b: &Option<TyParamBounds>)
+                        -> Option<hir::TyParamBounds> {
     b.as_ref().map(|ref bounds| lower_bounds(lctx, bounds))
 }
 
@@ -674,7 +677,7 @@ pub fn lower_trait_item(lctx: &LoweringContext, i: &TraitItem) -> hir::TraitItem
     hir::TraitItem {
         id: i.id,
         name: i.ident.name,
-        attrs: i.attrs.clone(),
+        attrs: lower_attrs(lctx, &i.attrs),
         node: match i.node {
             ConstTraitItem(ref ty, ref default) => {
                 hir::ConstTraitItem(lower_ty(lctx, ty),
@@ -697,7 +700,7 @@ pub fn lower_impl_item(lctx: &LoweringContext, i: &ImplItem) -> hir::ImplItem {
     hir::ImplItem {
         id: i.id,
         name: i.ident.name,
-        attrs: i.attrs.clone(),
+        attrs: lower_attrs(lctx, &i.attrs),
         vis: lower_visibility(lctx, i.vis),
         node: match i.node {
             ImplItemKind::Const(ref ty, ref expr) => {
@@ -741,25 +744,25 @@ pub fn lower_crate(lctx: &LoweringContext, c: &Crate) -> hir::Crate {
 
     hir::Crate {
         module: lower_mod(lctx, &c.module),
-        attrs: c.attrs.clone(),
-        config: c.config.clone(),
+        attrs: lower_attrs(lctx, &c.attrs),
+        config: c.config.clone().into(),
         span: c.span,
         exported_macros: c.exported_macros.iter().map(|m| lower_macro_def(lctx, m)).collect(),
         items: items,
     }
 }
 
-pub fn lower_macro_def(_lctx: &LoweringContext, m: &MacroDef) -> hir::MacroDef {
+pub fn lower_macro_def(lctx: &LoweringContext, m: &MacroDef) -> hir::MacroDef {
     hir::MacroDef {
         name: m.ident.name,
-        attrs: m.attrs.clone(),
+        attrs: lower_attrs(lctx, &m.attrs),
         id: m.id,
         span: m.span,
         imported_from: m.imported_from.map(|x| x.name),
         export: m.export,
         use_locally: m.use_locally,
         allow_internal_unstable: m.allow_internal_unstable,
-        body: m.body.clone(),
+        body: m.body.clone().into(),
     }
 }
 
@@ -773,7 +776,7 @@ pub fn lower_item(lctx: &LoweringContext, i: &Item) -> hir::Item {
     hir::Item {
         id: i.id,
         name: i.ident.name,
-        attrs: i.attrs.clone(),
+        attrs: lower_attrs(lctx, &i.attrs),
         node: node,
         vis: lower_visibility(lctx, i.vis),
         span: i.span,
@@ -784,7 +787,7 @@ pub fn lower_foreign_item(lctx: &LoweringContext, i: &ForeignItem) -> hir::Forei
     hir::ForeignItem {
         id: i.id,
         name: i.ident.name,
-        attrs: i.attrs.clone(),
+        attrs: lower_attrs(lctx, &i.attrs),
         node: match i.node {
             ForeignItemFn(ref fdec, ref generics) => {
                 hir::ForeignItemFn(lower_fn_decl(lctx, fdec), lower_generics(lctx, generics))
@@ -1021,7 +1024,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     // let placer = <placer_expr> ;
                     let s1 = {
                         let placer_expr = signal_block_expr(lctx,
-                                                            vec![],
+                                                            hir_vec![],
                                                             placer_expr,
                                                             e.span,
                                                             hir::PopUnstableBlock,
@@ -1032,14 +1035,14 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     // let mut place = Placer::make_place(placer);
                     let s2 = {
                         let placer = expr_ident(lctx, e.span, placer_ident, None);
-                        let call = make_call(lctx, &make_place, vec![placer]);
+                        let call = make_call(lctx, &make_place, hir_vec![placer]);
                         mk_stmt_let_mut(lctx, place_ident, call)
                     };
 
                     // let p_ptr = Place::pointer(&mut place);
                     let s3 = {
                         let agent = expr_ident(lctx, e.span, place_ident, None);
-                        let args = vec![expr_mut_addr_of(lctx, e.span, agent, None)];
+                        let args = hir_vec![expr_mut_addr_of(lctx, e.span, agent, None)];
                         let call = make_call(lctx, &place_pointer, args);
                         mk_stmt_let(lctx, p_ptr_ident, call)
                     };
@@ -1047,13 +1050,13 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     // pop_unsafe!(EXPR));
                     let pop_unsafe_expr = {
                         let value_expr = signal_block_expr(lctx,
-                                                           vec![],
+                                                           hir_vec![],
                                                            value_expr,
                                                            e.span,
                                                            hir::PopUnstableBlock,
                                                            None);
                         signal_block_expr(lctx,
-                                          vec![],
+                                          hir_vec![],
                                           value_expr,
                                           e.span,
                                           hir::PopUnsafeBlock(hir::CompilerGenerated), None)
@@ -1067,21 +1070,21 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                         let ptr = expr_ident(lctx, e.span, p_ptr_ident, None);
                         let call_move_val_init =
                             hir::StmtSemi(
-                                make_call(lctx, &move_val_init, vec![ptr, pop_unsafe_expr]),
+                                make_call(lctx, &move_val_init, hir_vec![ptr, pop_unsafe_expr]),
                                 lctx.next_id());
                         let call_move_val_init = respan(e.span, call_move_val_init);
 
                         let place = expr_ident(lctx, e.span, place_ident, None);
-                        let call = make_call(lctx, &inplace_finalize, vec![place]);
+                        let call = make_call(lctx, &inplace_finalize, hir_vec![place]);
                         signal_block_expr(lctx,
-                                          vec![call_move_val_init],
+                                          hir_vec![call_move_val_init],
                                           call,
                                           e.span,
                                           hir::PushUnsafeBlock(hir::CompilerGenerated), None)
                     };
 
                     signal_block_expr(lctx,
-                                      vec![s1, s2, s3],
+                                      hir_vec![s1, s2, s3],
                                       expr,
                                       e.span,
                                       hir::PushUnstableBlock,
@@ -1142,7 +1145,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                 let els = lower_expr(lctx, els);
                                 let id = lctx.next_id();
                                 let blk = P(hir::Block {
-                                    stmts: vec![],
+                                    stmts: hir_vec![],
                                     expr: Some(els),
                                     id: id,
                                     rules: hir::DefaultBlock,
@@ -1239,7 +1242,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                 .collect(),
                 asm: asm.clone(),
                 asm_str_style: asm_str_style,
-                clobbers: clobbers.clone(),
+                clobbers: clobbers.clone().into(),
                 volatile: volatile,
                 alignstack: alignstack,
                 dialect: dialect,
@@ -1276,7 +1279,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     let pat_arm = {
                         let body = lower_block(lctx, body);
                         let body_expr = expr_block(lctx, body, None);
-                        arm(vec![lower_pat(lctx, pat)], body_expr)
+                        arm(hir_vec![lower_pat(lctx, pat)], body_expr)
                     };
 
                     // `[_ if <else_opt_if_cond> => <else_opt_if_body>,]`
@@ -1291,8 +1294,8 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                         hir::ExprIf(cond, then, else_opt) => {
                                             let pat_under = pat_wild(lctx, e.span);
                                             arms.push(hir::Arm {
-                                                attrs: vec![],
-                                                pats: vec![pat_under],
+                                                attrs: hir_vec![],
+                                                pats: hir_vec![pat_under],
                                                 guard: Some(cond),
                                                 body: expr_block(lctx, then, None),
                                             });
@@ -1326,8 +1329,8 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                         let pat_under = pat_wild(lctx, e.span);
                         let else_expr =
                             else_opt.unwrap_or_else(
-                                || expr_tuple(lctx, e.span, vec![], None));
-                        arm(vec![pat_under], else_expr)
+                                || expr_tuple(lctx, e.span, hir_vec![], None));
+                        arm(hir_vec![pat_under], else_expr)
                     };
 
                     let mut arms = Vec::with_capacity(else_if_arms.len() + 2);
@@ -1340,7 +1343,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     expr(lctx,
                          e.span,
                          hir::ExprMatch(sub_expr,
-                                        arms,
+                                        arms.into(),
                                         hir::MatchSource::IfLetDesugar {
                                             contains_else_clause: contains_else_clause,
                                         }),
@@ -1365,18 +1368,18 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     let pat_arm = {
                         let body = lower_block(lctx, body);
                         let body_expr = expr_block(lctx, body, None);
-                        arm(vec![lower_pat(lctx, pat)], body_expr)
+                        arm(hir_vec![lower_pat(lctx, pat)], body_expr)
                     };
 
                     // `_ => break`
                     let break_arm = {
                         let pat_under = pat_wild(lctx, e.span);
                         let break_expr = expr_break(lctx, e.span, None);
-                        arm(vec![pat_under], break_expr)
+                        arm(hir_vec![pat_under], break_expr)
                     };
 
                     // `match <sub_expr> { ... }`
-                    let arms = vec![pat_arm, break_arm];
+                    let arms = hir_vec![pat_arm, break_arm];
                     let sub_expr = lower_expr(lctx, sub_expr);
                     let match_expr = expr(lctx,
                                           e.span,
@@ -1432,14 +1435,14 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                         let pat = lower_pat(lctx, pat);
                         let some_pat = pat_some(lctx, e.span, pat);
 
-                        arm(vec![some_pat], body_expr)
+                        arm(hir_vec![some_pat], body_expr)
                     };
 
                     // `::std::option::Option::None => break`
                     let break_arm = {
                         let break_expr = expr_break(lctx, e.span, None);
 
-                        arm(vec![pat_none(lctx, e.span)], break_expr)
+                        arm(hir_vec![pat_none(lctx, e.span)], break_expr)
                     };
 
                     // `match ::std::iter::Iterator::next(&mut iter) { ... }`
@@ -1455,9 +1458,9 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                         let next_expr = expr_call(lctx,
                                                   e.span,
                                                   next_path,
-                                                  vec![ref_mut_iter],
+                                                  hir_vec![ref_mut_iter],
                                                   None);
-                        let arms = vec![pat_arm, break_arm];
+                        let arms = hir_vec![pat_arm, break_arm];
 
                         expr(lctx,
                              e.span,
@@ -1477,7 +1480,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                                               e.span,
                                                               iter,
                                                               hir::BindByValue(hir::MutMutable));
-                        arm(vec![iter_pat], loop_expr)
+                        arm(hir_vec![iter_pat], loop_expr)
                     };
 
                     // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
@@ -1489,13 +1492,13 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                         };
 
                         let into_iter = expr_path(lctx, into_iter_path, None);
-                        expr_call(lctx, e.span, into_iter, vec![head], None)
+                        expr_call(lctx, e.span, into_iter, hir_vec![head], None)
                     };
 
                     let match_expr = expr_match(lctx,
                                                 e.span,
                                                 into_iter_expr,
-                                                vec![iter_arm],
+                                                hir_vec![iter_arm],
                                                 hir::MatchSource::ForLoopDesugar,
                                                 None);
 
@@ -1503,7 +1506,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     let result_ident = lctx.str_to_ident("result");
                     let let_stmt = stmt_let(lctx, e.span, false, result_ident, match_expr, None);
                     let result = expr_ident(lctx, e.span, result_ident, None);
-                    let block = block_all(lctx, e.span, vec![let_stmt], Some(result));
+                    let block = block_all(lctx, e.span, hir_vec![let_stmt], Some(result));
                     // add the attributes to the outer returned expr node
                     expr_block(lctx, block, e.attrs.clone())
                 });
@@ -1602,9 +1605,9 @@ pub fn lower_trait_bound_modifier(_lctx: &LoweringContext,
 
 // Helper methods for building HIR.
 
-fn arm(pats: Vec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
+fn arm(pats: hir::HirVec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
     hir::Arm {
-        attrs: vec![],
+        attrs: hir_vec![],
         pats: pats,
         guard: None,
         body: expr,
@@ -1619,7 +1622,7 @@ fn expr_break(lctx: &LoweringContext, span: Span,
 fn expr_call(lctx: &LoweringContext,
              span: Span,
              e: P<hir::Expr>,
-             args: Vec<P<hir::Expr>>,
+             args: hir::HirVec<P<hir::Expr>>,
              attrs: ThinAttributes)
              -> P<hir::Expr> {
     expr(lctx, span, hir::ExprCall(e, args), attrs)
@@ -1643,7 +1646,7 @@ fn expr_path(lctx: &LoweringContext, path: hir::Path,
 fn expr_match(lctx: &LoweringContext,
               span: Span,
               arg: P<hir::Expr>,
-              arms: Vec<hir::Arm>,
+              arms: hir::HirVec<hir::Arm>,
               source: hir::MatchSource,
               attrs: ThinAttributes)
               -> P<hir::Expr> {
@@ -1655,7 +1658,7 @@ fn expr_block(lctx: &LoweringContext, b: P<hir::Block>,
     expr(lctx, b.span, hir::ExprBlock(b), attrs)
 }
 
-fn expr_tuple(lctx: &LoweringContext, sp: Span, exprs: Vec<P<hir::Expr>>,
+fn expr_tuple(lctx: &LoweringContext, sp: Span, exprs: hir::HirVec<P<hir::Expr>>,
               attrs: ThinAttributes) -> P<hir::Expr> {
     expr(lctx, sp, hir::ExprTup(exprs), attrs)
 }
@@ -1695,12 +1698,12 @@ fn stmt_let(lctx: &LoweringContext,
 }
 
 fn block_expr(lctx: &LoweringContext, expr: P<hir::Expr>) -> P<hir::Block> {
-    block_all(lctx, expr.span, Vec::new(), Some(expr))
+    block_all(lctx, expr.span, hir::HirVec::new(), Some(expr))
 }
 
 fn block_all(lctx: &LoweringContext,
              span: Span,
-             stmts: Vec<hir::Stmt>,
+             stmts: hir::HirVec<hir::Stmt>,
              expr: Option<P<hir::Expr>>)
              -> P<hir::Block> {
     P(hir::Block {
@@ -1715,19 +1718,19 @@ fn block_all(lctx: &LoweringContext,
 fn pat_some(lctx: &LoweringContext, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
     let some = std_path(lctx, &["option", "Option", "Some"]);
     let path = path_global(span, some);
-    pat_enum(lctx, span, path, vec![pat])
+    pat_enum(lctx, span, path, hir_vec![pat])
 }
 
 fn pat_none(lctx: &LoweringContext, span: Span) -> P<hir::Pat> {
     let none = std_path(lctx, &["option", "Option", "None"]);
     let path = path_global(span, none);
-    pat_enum(lctx, span, path, vec![])
+    pat_enum(lctx, span, path, hir_vec![])
 }
 
 fn pat_enum(lctx: &LoweringContext,
             span: Span,
             path: hir::Path,
-            subpats: Vec<P<hir::Pat>>)
+            subpats: hir::HirVec<P<hir::Pat>>)
             -> P<hir::Pat> {
     let pt = hir::PatEnum(path, Some(subpats));
     pat(lctx, span, pt)
@@ -1768,17 +1771,17 @@ fn path_ident(span: Span, id: hir::Ident) -> hir::Path {
 }
 
 fn path(span: Span, strs: Vec<hir::Ident>) -> hir::Path {
-    path_all(span, false, strs, Vec::new(), Vec::new(), Vec::new())
+    path_all(span, false, strs, hir::HirVec::new(), Vec::new(), Vec::new())
 }
 
 fn path_global(span: Span, strs: Vec<hir::Ident>) -> hir::Path {
-    path_all(span, true, strs, Vec::new(), Vec::new(), Vec::new())
+    path_all(span, true, strs, hir::HirVec::new(), Vec::new(), Vec::new())
 }
 
 fn path_all(sp: Span,
             global: bool,
             mut idents: Vec<hir::Ident>,
-            lifetimes: Vec<hir::Lifetime>,
+            lifetimes: hir::HirVec<hir::Lifetime>,
             types: Vec<P<hir::Ty>>,
             bindings: Vec<hir::TypeBinding>)
             -> hir::Path {
@@ -1795,14 +1798,14 @@ fn path_all(sp: Span,
         identifier: last_identifier,
         parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
             lifetimes: lifetimes,
-            types: OwnedSlice::from_vec(types),
-            bindings: OwnedSlice::from_vec(bindings),
+            types: P::from_vec(types),
+            bindings: P::from_vec(bindings),
         }),
     });
     hir::Path {
         span: sp,
         global: global,
-        segments: segments,
+        segments: segments.into(),
     }
 }
 
@@ -1823,7 +1826,7 @@ fn core_path(lctx: &LoweringContext, span: Span, components: &[&str]) -> hir::Pa
 }
 
 fn signal_block_expr(lctx: &LoweringContext,
-                     stmts: Vec<hir::Stmt>,
+                     stmts: hir::HirVec<hir::Stmt>,
                      expr: P<hir::Expr>,
                      span: Span,
                      rule: hir::BlockCheckMode,
