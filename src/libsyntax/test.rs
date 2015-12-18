@@ -23,7 +23,7 @@ use attr::AttrMetaMethods;
 use attr;
 use codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
 use codemap;
-use diagnostic;
+use errors;
 use config;
 use entry::{self, EntryPointType};
 use ext::base::ExtCtxt;
@@ -32,7 +32,6 @@ use ext::expand::ExpansionConfig;
 use fold::Folder;
 use util::move_map::MoveMap;
 use fold;
-use owned_slice::OwnedSlice;
 use parse::token::{intern, InternedString};
 use parse::{token, ParseSess};
 use print::pprust;
@@ -55,7 +54,7 @@ struct Test {
 
 struct TestCtxt<'a> {
     sess: &'a ParseSess,
-    span_diagnostic: &'a diagnostic::SpanHandler,
+    span_diagnostic: &'a errors::Handler,
     path: Vec<ast::Ident>,
     ext_cx: ExtCtxt<'a>,
     testfns: Vec<Test>,
@@ -72,7 +71,7 @@ struct TestCtxt<'a> {
 pub fn modify_for_testing(sess: &ParseSess,
                           cfg: &ast::CrateConfig,
                           krate: ast::Crate,
-                          span_diagnostic: &diagnostic::SpanHandler) -> ast::Crate {
+                          span_diagnostic: &errors::Handler) -> ast::Crate {
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
@@ -275,7 +274,7 @@ fn generate_test_harness(sess: &ParseSess,
                          reexport_test_harness_main: Option<InternedString>,
                          krate: ast::Crate,
                          cfg: &ast::CrateConfig,
-                         sd: &diagnostic::SpanHandler) -> ast::Crate {
+                         sd: &errors::Handler) -> ast::Crate {
     // Remove the entry points
     let mut cleaner = EntryPointCleaner { depth: 0 };
     let krate = cleaner.fold_crate(krate);
@@ -315,7 +314,7 @@ fn generate_test_harness(sess: &ParseSess,
     return res;
 }
 
-fn strip_test_functions(diagnostic: &diagnostic::SpanHandler, krate: ast::Crate)
+fn strip_test_functions(diagnostic: &errors::Handler, krate: ast::Crate)
                         -> ast::Crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
@@ -688,7 +687,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
         Some(id) => vec![id],
         None => {
             let diag = cx.span_diagnostic;
-            diag.handler.bug("expected to find top-level re-export name, but found None");
+            diag.bug("expected to find top-level re-export name, but found None");
         }
     };
     visible_path.extend(path);

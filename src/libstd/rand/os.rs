@@ -42,7 +42,7 @@ mod imp {
         const NR_GETRANDOM: libc::c_long = 355;
         #[cfg(any(target_arch = "arm", target_arch = "powerpc"))]
         const NR_GETRANDOM: libc::c_long = 384;
-        #[cfg(any(target_arch = "aarch64"))]
+        #[cfg(target_arch = "aarch64")]
         const NR_GETRANDOM: libc::c_long = 278;
 
         unsafe {
@@ -60,8 +60,7 @@ mod imp {
 
     fn getrandom_fill_bytes(v: &mut [u8]) {
         let mut read = 0;
-        let len = v.len();
-        while read < len {
+        while read < v.len() {
             let result = getrandom(&mut v[read..]);
             if result == -1 {
                 let err = errno() as libc::c_int;

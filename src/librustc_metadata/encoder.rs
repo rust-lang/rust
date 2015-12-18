@@ -44,7 +44,7 @@ use syntax::abi;
 use syntax::ast::{self, NodeId, Name, CRATE_NODE_ID, CrateNum};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::diagnostic::SpanHandler;
+use syntax::errors::Handler;
 use syntax::parse::token::special_idents;
 use syntax;
 use rbml::writer::Encoder;
@@ -57,7 +57,7 @@ pub type EncodeInlinedItem<'a> =
     Box<FnMut(&EncodeContext, &mut Encoder, InlinedItemRef) + 'a>;
 
 pub struct EncodeParams<'a, 'tcx: 'a> {
-    pub diag: &'a SpanHandler,
+    pub diag: &'a Handler,
     pub tcx: &'a ty::ctxt<'tcx>,
     pub reexports: &'a def::ExportMap,
     pub item_symbols: &'a RefCell<NodeMap<String>>,
@@ -69,7 +69,7 @@ pub struct EncodeParams<'a, 'tcx: 'a> {
 }
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
-    pub diag: &'a SpanHandler,
+    pub diag: &'a Handler,
     pub tcx: &'a ty::ctxt<'tcx>,
     pub reexports: &'a def::ExportMap,
     pub item_symbols: &'a RefCell<NodeMap<String>>,
@@ -275,8 +275,7 @@ fn encode_symbol(ecx: &EncodeContext,
             rbml_w.wr_tagged_str(tag_items_data_item_symbol, x);
         }
         None => {
-            ecx.diag.handler().bug(
-                &format!("encode_symbol: id not found {}", id));
+            ecx.diag.bug(&format!("encode_symbol: id not found {}", id));
         }
     }
 }

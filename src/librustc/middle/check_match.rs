@@ -517,7 +517,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
         ty::TyEnum(adt, _) | ty::TyStruct(adt, _)  => {
             let v = adt.variant_of_ctor(ctor);
             if let VariantKind::Struct = v.kind() {
-                let field_pats: Vec<_> = v.fields.iter()
+                let field_pats: hir::HirVec<_> = v.fields.iter()
                     .zip(pats)
                     .filter(|&(_, ref pat)| pat.node != hir::PatWild)
                     .map(|(field, pat)| Spanned {
@@ -540,14 +540,14 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
                ty::TyArray(_, n) => match ctor {
                     &Single => {
                         assert_eq!(pats_len, n);
-                        hir::PatVec(pats.collect(), None, vec!())
+                        hir::PatVec(pats.collect(), None, hir::HirVec::new())
                     },
                     _ => unreachable!()
                 },
                 ty::TySlice(_) => match ctor {
                     &Slice(n) => {
                         assert_eq!(pats_len, n);
-                        hir::PatVec(pats.collect(), None, vec!())
+                        hir::PatVec(pats.collect(), None, hir::HirVec::new())
                     },
                     _ => unreachable!()
                 },
@@ -562,7 +562,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
 
         ty::TyArray(_, len) => {
             assert_eq!(pats_len, len);
-            hir::PatVec(pats.collect(), None, vec![])
+            hir::PatVec(pats.collect(), None, hir::HirVec::new())
         }
 
         _ => {

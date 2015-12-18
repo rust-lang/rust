@@ -119,7 +119,6 @@ use syntax::ast;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Span, Spanned};
-use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::{self, InternedString};
 use syntax::ptr::P;
 use syntax::util::lev_distance::lev_distance;
@@ -4907,7 +4906,7 @@ pub fn may_break(cx: &ty::ctxt, id: ast::NodeId, b: &hir::Block) -> bool {
 }
 
 pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                       tps: &OwnedSlice<hir::TyParam>,
+                                       tps: &P<[hir::TyParam]>,
                                        ty: Ty<'tcx>) {
     debug!("check_bounds_are_used(n_tps={}, ty={:?})",
            tps.len(),  ty);

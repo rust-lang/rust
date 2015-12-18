@@ -41,7 +41,6 @@ use std::fs::File;
 use syntax::ast::{self, NodeId};
 use syntax::codemap::*;
 use syntax::parse::token::{self, keywords};
-use syntax::owned_slice::OwnedSlice;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{path_to_string, ty_to_string};
 use syntax::ptr::P;
@@ -572,7 +571,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     fn process_trait(&mut self,
                      item: &ast::Item,
                      generics: &ast::Generics,
-                     trait_refs: &OwnedSlice<ast::TyParamBound>,
+                     trait_refs: &ast::TyParamBounds,
                      methods: &[P<ast::TraitItem>]) {
         let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
         let val = self.span.snippet(item.span);

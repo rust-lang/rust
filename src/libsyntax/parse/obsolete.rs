@@ -66,10 +66,9 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
         }
 
         if !self.obsolete_set.contains(&kind) &&
-            (error || self.sess.span_diagnostic.handler().can_emit_warnings) {
+            (error || self.sess.span_diagnostic.can_emit_warnings) {
             self.sess
                 .span_diagnostic
-                .handler()
                 .note(&format!("{}", desc));
             self.obsolete_set.insert(kind);
         }

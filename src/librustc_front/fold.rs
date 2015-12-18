@@ -17,7 +17,6 @@ use syntax::ast::{MetaWord, MetaList, MetaNameValue};
 use syntax::attr::ThinAttributesExt;
 use hir;
 use syntax::codemap::{respan, Span, Spanned};
-use syntax::owned_slice::OwnedSlice;
 use syntax::ptr::P;
 use syntax::parse::token;
 use syntax::util::move_map::MoveMap;
@@ -35,7 +34,7 @@ pub trait Folder : Sized {
         noop_fold_crate(c, self)
     }
 
-    fn fold_meta_items(&mut self, meta_items: Vec<P<MetaItem>>) -> Vec<P<MetaItem>> {
+    fn fold_meta_items(&mut self, meta_items: HirVec<P<MetaItem>>) -> HirVec<P<MetaItem>> {
         noop_fold_meta_items(meta_items, self)
     }
 
@@ -199,11 +198,11 @@ pub trait Folder : Sized {
         noop_fold_variant_data(vdata, self)
     }
 
-    fn fold_lifetimes(&mut self, lts: Vec<Lifetime>) -> Vec<Lifetime> {
+    fn fold_lifetimes(&mut self, lts: HirVec<Lifetime>) -> HirVec<Lifetime> {
         noop_fold_lifetimes(lts, self)
     }
 
-    fn fold_lifetime_defs(&mut self, lts: Vec<LifetimeDef>) -> Vec<LifetimeDef> {
+    fn fold_lifetime_defs(&mut self, lts: HirVec<LifetimeDef>) -> HirVec<LifetimeDef> {
         noop_fold_lifetime_defs(lts, self)
     }
 
@@ -211,7 +210,7 @@ pub trait Folder : Sized {
         noop_fold_ty_param(tp, self)
     }
 
-    fn fold_ty_params(&mut self, tps: OwnedSlice<TyParam>) -> OwnedSlice<TyParam> {
+    fn fold_ty_params(&mut self, tps: P<[TyParam]>) -> P<[TyParam]> {
         noop_fold_ty_params(tps, self)
     }
 
@@ -220,12 +219,12 @@ pub trait Folder : Sized {
     }
 
     fn fold_opt_bounds(&mut self,
-                       b: Option<OwnedSlice<TyParamBound>>)
-                       -> Option<OwnedSlice<TyParamBound>> {
+                       b: Option<TyParamBounds>)
+                       -> Option<TyParamBounds> {
         noop_fold_opt_bounds(b, self)
     }
 
-    fn fold_bounds(&mut self, b: OwnedSlice<TyParamBound>) -> OwnedSlice<TyParamBound> {
+    fn fold_bounds(&mut self, b: TyParamBounds) -> TyParamBounds {
         noop_fold_bounds(b, self)
     }
 
@@ -264,9 +263,9 @@ pub trait Folder : Sized {
     }
 }
 
-pub fn noop_fold_meta_items<T: Folder>(meta_items: Vec<P<MetaItem>>,
+pub fn noop_fold_meta_items<T: Folder>(meta_items: HirVec<P<MetaItem>>,
                                        fld: &mut T)
-                                       -> Vec<P<MetaItem>> {
+                                       -> HirVec<P<MetaItem>> {
     meta_items.move_map(|x| fld.fold_meta_item(x))
 }
 
@@ -305,7 +304,7 @@ pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<
     })
 }
 
-pub fn fold_attrs<T: Folder>(attrs: Vec<Attribute>, fld: &mut T) -> Vec<Attribute> {
+pub fn fold_attrs<T: Folder>(attrs: HirVec<Attribute>, fld: &mut T) -> HirVec<Attribute> {
     attrs.move_flat_map(|x| fld.fold_attribute(x))
 }
 
@@ -478,7 +477,7 @@ pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
             pat: fld.fold_pat(pat),
             init: init.map(|e| fld.fold_expr(e)),
             span: fld.new_span(span),
-            attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs, fld)),
+            attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs.into(), fld).into()),
         }
     })
 }
@@ -576,9 +575,9 @@ pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
     }
 }
 
-pub fn noop_fold_ty_params<T: Folder>(tps: OwnedSlice<TyParam>,
+pub fn noop_fold_ty_params<T: Folder>(tps: P<[TyParam]>,
                                       fld: &mut T)
-                                      -> OwnedSlice<TyParam> {
+                                      -> P<[TyParam]> {
     tps.move_map(|tp| fld.fold_ty_param(tp))
 }
 
@@ -597,11 +596,13 @@ pub fn noop_fold_lifetime_def<T: Folder>(l: LifetimeDef, fld: &mut T) -> Lifetim
     }
 }
 
-pub fn noop_fold_lifetimes<T: Folder>(lts: Vec<Lifetime>, fld: &mut T) -> Vec<Lifetime> {
+pub fn noop_fold_lifetimes<T: Folder>(lts: HirVec<Lifetime>, fld: &mut T) -> HirVec<Lifetime> {
     lts.move_map(|l| fld.fold_lifetime(l))
 }
 
-pub fn noop_fold_lifetime_defs<T: Folder>(lts: Vec<LifetimeDef>, fld: &mut T) -> Vec<LifetimeDef> {
+pub fn noop_fold_lifetime_defs<T: Folder>(lts: HirVec<LifetimeDef>,
+                                          fld: &mut T)
+                                          -> HirVec<LifetimeDef> {
     lts.move_map(|l| fld.fold_lifetime_def(l))
 }
 
@@ -726,9 +727,9 @@ pub fn noop_fold_mt<T: Folder>(MutTy { ty, mutbl }: MutTy, folder: &mut T) -> Mu
     }
 }
 
-pub fn noop_fold_opt_bounds<T: Folder>(b: Option<OwnedSlice<TyParamBound>>,
+pub fn noop_fold_opt_bounds<T: Folder>(b: Option<TyParamBounds>,
                                        folder: &mut T)
-                                       -> Option<OwnedSlice<TyParamBound>> {
+                                       -> Option<TyParamBounds> {
     b.map(|bounds| folder.fold_bounds(bounds))
 }
 
@@ -1140,7 +1141,7 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span, attrs }: Expr, folder: &
             }
         },
         span: folder.new_span(span),
-        attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs, folder)),
+        attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs.into(), folder).into()),
     }
 }
 

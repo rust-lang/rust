@@ -10,8 +10,6 @@
 
 //! # Standalone Tests for the Inference Module
 
-use diagnostic;
-use diagnostic::Emitter;
 use driver;
 use rustc_lint;
 use rustc_resolve as resolve;
@@ -34,9 +32,10 @@ use rustc::front::map as hir_map;
 use rustc::session::{self, config};
 use std::rc::Rc;
 use syntax::{abi, ast};
-use syntax::codemap;
 use syntax::codemap::{Span, CodeMap, DUMMY_SP};
-use syntax::diagnostic::{Level, RenderSpan, Bug, Fatal, Error, Warning, Note, Help};
+use syntax::errors;
+use syntax::errors::emitter::Emitter;
+use syntax::errors::{Level, RenderSpan};
 use syntax::parse::token;
 use syntax::feature_gate::UnstableFeatures;
 
@@ -60,8 +59,8 @@ struct ExpectErrorEmitter {
 
 fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
     match lvl {
-        Bug | Fatal | Error => {}
-        Warning | Note | Help => {
+        Level::Bug | Level::Fatal | Level::Error => {}
+        Level::Warning | Level::Note | Level::Help => {
             return;
         }
     }
@@ -79,14 +78,14 @@ fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
 
 impl Emitter for ExpectErrorEmitter {
     fn emit(&mut self,
-            _cmsp: Option<(&codemap::CodeMap, Span)>,
+            _sp: Option<Span>,
             msg: &str,
             _: Option<&str>,
             lvl: Level) {
         remove_message(self, msg, lvl);
     }
 
-    fn custom_emit(&mut self, _cm: &codemap::CodeMap, _sp: RenderSpan, msg: &str, lvl: Level) {
+    fn custom_emit(&mut self, _sp: RenderSpan, msg: &str, lvl: Level) {
         remove_message(self, msg, lvl);
     }
 }
@@ -105,13 +104,11 @@ fn test_env<F>(source_string: &str,
     let mut options = config::basic_options();
     options.debugging_opts.verbose = true;
     options.unstable_features = UnstableFeatures::Allow;
-    let codemap = CodeMap::new();
-    let diagnostic_handler = diagnostic::Handler::with_emitter(true, emitter);
-    let span_diagnostic_handler = diagnostic::SpanHandler::new(diagnostic_handler, codemap);
+    let diagnostic_handler = errors::Handler::with_emitter(true, false, emitter);
 
     let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-    let sess = session::build_session_(options, None, span_diagnostic_handler,
-                                       cstore.clone());
+    let sess = session::build_session_(options, None, diagnostic_handler,
+                                       Rc::new(CodeMap::new()), cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let krate_config = Vec::new();
     let input = config::Input::Str(source_string.to_string());
@@ -364,13 +361,6 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn glb(&self) -> Glb<'a, 'tcx> {
         let trace = self.dummy_type_trace();
         self.infcx.glb(true, trace)
-    }
-
-    pub fn make_lub_ty(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> Ty<'tcx> {
-        match self.lub().relate(&t1, &t2) {
-            Ok(t) => t,
-            Err(ref e) => panic!("unexpected error computing LUB: {}", e),
-        }
     }
 
     /// Checks that `t1 <: t2` is true (this may register additional

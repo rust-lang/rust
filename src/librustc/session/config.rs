@@ -27,7 +27,7 @@ use middle::cstore;
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::diagnostic::{ColorConfig, Auto, Always, Never, SpanHandler};
+use syntax::errors::{ColorConfig, Handler};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
@@ -238,7 +238,7 @@ pub fn basic_options() -> Options {
         debugging_opts: basic_debugging_options(),
         prints: Vec::new(),
         cg: basic_codegen_options(),
-        color: Auto,
+        color: ColorConfig::Auto,
         show_span: None,
         externs: HashMap::new(),
         crate_name: None,
@@ -687,19 +687,19 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
     v
 }
 
-pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
+pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
     let target = match Target::search(&opts.target_triple) {
         Ok(t) => t,
         Err(e) => {
-            panic!(sp.handler().fatal(&format!("Error loading target specification: {}", e)));
+            panic!(sp.fatal(&format!("Error loading target specification: {}", e)));
         }
     };
 
     let (int_type, uint_type) = match &target.target_pointer_width[..] {
         "32" => (ast::TyI32, ast::TyU32),
         "64" => (ast::TyI64, ast::TyU64),
-        w    => panic!(sp.handler().fatal(&format!("target specification was invalid: \
-                                                    unrecognized target-pointer-width {}", w))),
+        w    => panic!(sp.fatal(&format!("target specification was invalid: \
+                                          unrecognized target-pointer-width {}", w))),
     };
 
     Config {
@@ -884,16 +884,16 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
 
 pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
-        Some("auto")   => Auto,
-        Some("always") => Always,
-        Some("never")  => Never,
+        Some("auto")   => ColorConfig::Auto,
+        Some("always") => ColorConfig::Always,
+        Some("never")  => ColorConfig::Never,
 
-        None => Auto,
+        None => ColorConfig::Auto,
 
         Some(arg) => {
-            early_error(Auto, &format!("argument for --color must be auto, always \
-                                        or never (instead was `{}`)",
-                                       arg))
+            early_error(ColorConfig::Auto, &format!("argument for --color must be auto, always \
+                                                     or never (instead was `{}`)",
+                                                    arg))
         }
     };
 
@@ -1224,7 +1224,7 @@ mod tests {
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, None, registry,
                                      Rc::new(DummyCrateStore));
-            assert!(!sess.can_print_warnings);
+            assert!(!sess.diagnostic().can_emit_warnings);
         }
 
         {
@@ -1236,7 +1236,7 @@ mod tests {
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, None, registry,
                                      Rc::new(DummyCrateStore));
-            assert!(sess.can_print_warnings);
+            assert!(sess.diagnostic().can_emit_warnings);
         }
 
         {
@@ -1247,7 +1247,7 @@ mod tests {
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, None, registry,
                                      Rc::new(DummyCrateStore));
-            assert!(sess.can_print_warnings);
+            assert!(sess.diagnostic().can_emit_warnings);
         }
     }
 }

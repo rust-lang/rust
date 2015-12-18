@@ -112,7 +112,7 @@ impl<T, U> Clean<U> for ty::Binder<T> where T: Clean<U> {
     }
 }
 
-impl<T: Clean<U>, U> Clean<Vec<U>> for syntax::owned_slice::OwnedSlice<T> {
+impl<T: Clean<U>, U> Clean<Vec<U>> for P<[T]> {
     fn clean(&self, cx: &DocContext) -> Vec<U> {
         self.iter().map(|x| x.clean(cx)).collect()
     }
@@ -1584,8 +1584,13 @@ impl Clean<Type> for hir::Ty {
                 resolve_type(cx, p.clean(cx), self.id)
             }
             TyPath(Some(ref qself), ref p) => {
-                let mut trait_path = p.clone();
-                trait_path.segments.pop();
+                let mut segments: Vec<_> = p.segments.clone().into();
+                segments.pop();
+                let trait_path = hir::Path {
+                    span: p.span,
+                    global: p.global,
+                    segments: segments.into(),
+                };
                 Type::QPath {
                     name: p.segments.last().unwrap().identifier.name.clean(cx),
                     self_type: box qself.ty.clean(cx),
