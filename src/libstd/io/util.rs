@@ -199,6 +199,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn tee() {
         let mut buf = [0; 10];
         {
@@ -209,6 +210,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn broadcast() {
         let mut buf1 = [0; 10];
         let mut buf2 = [0; 10];

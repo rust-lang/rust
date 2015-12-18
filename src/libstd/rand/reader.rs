@@ -63,8 +63,6 @@ impl<R: Read> Rng for ReaderRng<R> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use super::ReaderRng;
     use rand::Rng;
 

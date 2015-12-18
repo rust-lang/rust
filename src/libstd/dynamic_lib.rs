@@ -132,6 +132,7 @@ mod tests {
     #[cfg_attr(any(windows,
                    target_os = "android",  // FIXME #10379
                    target_env = "musl"), ignore)]
+    #[allow(deprecated)]
     fn test_loading_cosine() {
         // The math library does not need to be loaded since it is already
         // statically linked in
@@ -164,6 +165,7 @@ mod tests {
               target_os = "bitrig",
               target_os = "netbsd",
               target_os = "openbsd"))]
+    #[allow(deprecated)]
     fn test_errors_do_not_crash() {
         // Open /dev/null as a library to get an error, and make sure
         // that only causes an error, and not a crash.

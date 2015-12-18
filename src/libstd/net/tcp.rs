@@ -319,7 +319,7 @@ mod tests {
     use net::test::{next_test_ip4, next_test_ip6};
     use sync::mpsc::channel;
     use sys_common::AsInner;
-    use time::Duration;
+    use time::{Instant, Duration};
     use thread;
 
     fn each_ip(f: &mut FnMut(SocketAddr)) {
@@ -929,6 +929,7 @@ mod tests {
 
         t!(stream.set_write_timeout(None));
         assert_eq!(None, t!(stream.write_timeout()));
+        drop(listener);
     }
 
     #[test]
@@ -940,11 +941,11 @@ mod tests {
         t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
 
         let mut buf = [0; 10];
-        let wait = Duration::span(|| {
-            let kind = stream.read(&mut buf).err().expect("expected error").kind();
-            assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
-        });
-        assert!(wait > Duration::from_millis(400));
+        let start = Instant::now();
+        let kind = stream.read(&mut buf).err().expect("expected error").kind();
+        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
+        assert!(start.elapsed() > Duration::from_millis(400));
+        drop(listener);
     }
 
     #[test]
@@ -962,10 +963,10 @@ mod tests {
         t!(stream.read(&mut buf));
         assert_eq!(b"hello world", &buf[..]);
 
-        let wait = Duration::span(|| {
-            let kind = stream.read(&mut buf).err().expect("expected error").kind();
-            assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
-        });
-        assert!(wait > Duration::from_millis(400));
+        let start = Instant::now();
+        let kind = stream.read(&mut buf).err().expect("expected error").kind();
+        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
+        assert!(start.elapsed() > Duration::from_millis(400));
+        drop(listener);
     }
 }

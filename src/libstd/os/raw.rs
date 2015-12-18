@@ -88,7 +88,8 @@ mod tests {
             c_longlong c_ulonglong c_float c_double);
     }
 
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "android")))]
+    #[test]
     fn unix() {
         {
             use os::unix::raw;
@@ -101,6 +102,7 @@ mod tests {
     }
 
     #[cfg(windows)]
+    #[test]
     fn windows() {
         use os::windows::raw;
     }

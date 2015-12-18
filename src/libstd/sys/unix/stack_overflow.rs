@@ -7,11 +7,13 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#![cfg_attr(test, allow(dead_code))]
 
 use libc;
 use self::imp::{make_handler, drop_handler};
 
-pub use self::imp::{init, cleanup};
+pub use self::imp::cleanup;
+pub use self::imp::init;
 
 pub struct Handler {
     _data: *mut libc::c_void
@@ -40,12 +42,11 @@ impl Drop for Handler {
           target_os = "openbsd"))]
 mod imp {
     use super::Handler;
-    use sys_common::util::report_overflow;
     use mem;
     use ptr;
+    use libc::{sigaltstack, SIGSTKSZ};
     use libc::{sigaction, SIGBUS, SIG_DFL,
-               SA_SIGINFO, SA_ONSTACK, sigaltstack,
-               SIGSTKSZ, sighandler_t};
+               SA_SIGINFO, SA_ONSTACK, sighandler_t};
     use libc;
     use libc::{mmap, munmap};
     use libc::{SIGSEGV, PROT_READ, PROT_WRITE, MAP_PRIVATE, MAP_ANON};
@@ -94,6 +95,8 @@ mod imp {
     unsafe extern fn signal_handler(signum: libc::c_int,
                                     info: *mut libc::siginfo_t,
                                     _data: *mut libc::c_void) {
+        use sys_common::util::report_overflow;
+
         let guard = thread_info::stack_guard().unwrap_or(0);
         let addr = siginfo_si_addr(info) as usize;
 
