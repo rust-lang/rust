@@ -3114,14 +3114,6 @@ impl Baz for Bar { } // Note: This is OK
 ```
 "##,
 
-E0372: r##"
-Trying to implement a trait for a trait object (as in `impl Trait1 for
-Trait2 { ... }`) does not work if the trait is not object-safe. Please see the
-[RFC 255] for more details on object safety rules.
-
-[RFC 255]: https://github.com/rust-lang/rfcs/pull/255
-"##,
-
 E0379: r##"
 Trait methods cannot be declared `const` by design. For more information, see
 [RFC 911].
@@ -3486,6 +3478,7 @@ register_diagnostics! {
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0328, // cannot implement Unsize explicitly
+//  E0372, // coherence not object safe
     E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with one field being coerced, none found
     E0375, // the trait `CoerceUnsized` may only be implemented for a coercion

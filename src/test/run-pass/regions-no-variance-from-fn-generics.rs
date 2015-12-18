@@ -22,7 +22,7 @@ trait UseLife01 {
 }
 
 trait UseLife02 {
-    fn refs<'a, T, H: HasType<&'a T>>(&'a self) -> H;
+    fn refs<'a, T: 'a, H: HasType<&'a T>>(&'a self) -> H;
 }
 
 
@@ -33,7 +33,7 @@ pub trait HasType<T>
 
 
 trait UseLife03<T> {
-    fn refs<'a, H: HasType<&'a T>>(&'a self) -> H;
+    fn refs<'a, H: HasType<&'a T>>(&'a self) -> H where T: 'a;
 }
 
 
@@ -45,7 +45,7 @@ pub fn top_refs_1<'a, H: HasLife<'a>>(_s: &'a ()) -> H {
     unimplemented!()
 }
 
-pub fn top_refs_2<'a, T, H: HasType<&'a T>>(_s: &'a ()) -> H {
+pub fn top_refs_2<'a, T: 'a, H: HasType<&'a T>>(_s: &'a ()) -> H {
     unimplemented!()
 }
 

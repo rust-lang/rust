@@ -16,9 +16,9 @@
 
 trait ExtraCopy<T:Copy> { }
 
-fn foo<T,U>() where T: ExtraCopy<U> //~ WARN E0277
+fn foo<T,U>() where T: ExtraCopy<U> //~ ERROR E0277
 {
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }

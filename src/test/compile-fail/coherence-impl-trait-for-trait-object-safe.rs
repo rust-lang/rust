@@ -13,9 +13,7 @@
 
 // If the trait is not object-safe, we give a more tailored message
 // because we're such schnuckels:
-trait NotObjectSafe { fn eq(&self, other: &Self); }
-impl NotObjectSafe for NotObjectSafe {  //~ ERROR E0372
-    fn eq(&self, other: &Self) { panic!(); }
-}
+trait NotObjectSafe { fn eq(&self, other: Self); }
+impl NotObjectSafe for NotObjectSafe { } //~ ERROR E0038
 
 fn main() { }

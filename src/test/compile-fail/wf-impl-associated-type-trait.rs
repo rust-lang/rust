@@ -25,9 +25,9 @@ pub trait Foo {
 
 impl<T> Foo for T {
     type Bar = MySet<T>;
-    //~^ WARN the trait `MyHash` is not implemented for the type `T`
+    //~^ ERROR the trait `MyHash` is not implemented for the type `T`
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }
 

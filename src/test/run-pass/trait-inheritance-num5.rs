@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-pub trait NumCast {
+pub trait NumCast: Sized {
     fn from(i: i32) -> Option<Self>;
 }
 

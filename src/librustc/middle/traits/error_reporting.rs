@@ -36,7 +36,6 @@ use syntax::attr::{AttributeMethods, AttrMetaMethods};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct TraitErrorKey<'tcx> {
-    is_warning: bool,
     span: Span,
     predicate: ty::Predicate<'tcx>
 }
@@ -47,7 +46,6 @@ impl<'tcx> TraitErrorKey<'tcx> {
         let predicate =
             infcx.resolve_type_vars_if_possible(&e.obligation.predicate);
         TraitErrorKey {
-            is_warning: is_warning(&e.obligation),
             span: e.obligation.cause.span,
             predicate: infcx.tcx.erase_regions(&predicate)
         }
@@ -83,10 +81,6 @@ fn report_fulfillment_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     }
 }
 
-fn is_warning<T>(obligation: &Obligation<T>) -> bool {
-    obligation.cause.code.is_rfc1214()
-}
-
 pub fn report_projection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                          obligation: &PredicateObligation<'tcx>,
                                          error: &MismatchedProjectionTypes<'tcx>)
@@ -100,8 +94,8 @@ pub fn report_projection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     // then $X will be unified with TyError, but the error still needs to be
     // reported.
     if !infcx.tcx.sess.has_errors() || !predicate.references_error() {
-        span_err_or_warn!(
-            is_warning(obligation), infcx.tcx.sess, obligation.cause.span, E0271,
+        span_err!(
+            infcx.tcx.sess, obligation.cause.span, E0271,
             "type mismatch resolving `{}`: {}",
             predicate,
             error.err);
@@ -208,12 +202,11 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                         obligation: &PredicateObligation<'tcx>,
                                         error: &SelectionError<'tcx>)
 {
-    let is_warning = is_warning(obligation);
     match *error {
         SelectionError::Unimplemented => {
             if let ObligationCauseCode::CompareImplMethodObligation = obligation.cause.code {
-                span_err_or_warn!(
-                    is_warning, infcx.tcx.sess, obligation.cause.span, E0276,
+                span_err!(
+                    infcx.tcx.sess, obligation.cause.span, E0276,
                     "the requirement `{}` appears on the impl \
                      method but not on the corresponding trait method",
                     obligation.predicate);
@@ -225,8 +218,8 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 
                         if !infcx.tcx.sess.has_errors() || !trait_predicate.references_error() {
                             let trait_ref = trait_predicate.to_poly_trait_ref();
-                            span_err_or_warn!(
-                                is_warning, infcx.tcx.sess, obligation.cause.span, E0277,
+                            span_err!(
+                                infcx.tcx.sess, obligation.cause.span, E0277,
                                 "the trait `{}` is not implemented for the type `{}`",
                                 trait_ref, trait_ref.self_ty());
 
@@ -245,8 +238,8 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         let predicate = infcx.resolve_type_vars_if_possible(predicate);
                         let err = infcx.equality_predicate(obligation.cause.span,
                                                            &predicate).err().unwrap();
-                        span_err_or_warn!(
-                            is_warning, infcx.tcx.sess, obligation.cause.span, E0278,
+                        span_err!(
+                            infcx.tcx.sess, obligation.cause.span, E0278,
                             "the requirement `{}` is not satisfied (`{}`)",
                             predicate,
                             err);
@@ -257,8 +250,8 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         let predicate = infcx.resolve_type_vars_if_possible(predicate);
                         let err = infcx.region_outlives_predicate(obligation.cause.span,
                                                                   &predicate).err().unwrap();
-                        span_err_or_warn!(
-                            is_warning, infcx.tcx.sess, obligation.cause.span, E0279,
+                        span_err!(
+                            infcx.tcx.sess, obligation.cause.span, E0279,
                             "the requirement `{}` is not satisfied (`{}`)",
                             predicate,
                             err);
@@ -268,8 +261,8 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                     ty::Predicate::Projection(..) | ty::Predicate::TypeOutlives(..) => {
                         let predicate =
                             infcx.resolve_type_vars_if_possible(&obligation.predicate);
-                        span_err_or_warn!(
-                            is_warning, infcx.tcx.sess, obligation.cause.span, E0280,
+                        span_err!(
+                            infcx.tcx.sess, obligation.cause.span, E0280,
                             "the requirement `{}` is not satisfied",
                             predicate);
                         note_obligation_cause(infcx, obligation);
@@ -281,8 +274,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         report_object_safety_error(infcx.tcx,
                                                    obligation.cause.span,
                                                    trait_def_id,
-                                                   violations,
-                                                   is_warning);
+                                                   violations);
                         note_obligation_cause(infcx, obligation);
                     }
 
@@ -304,8 +296,8 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
             let expected_trait_ref = infcx.resolve_type_vars_if_possible(&*expected_trait_ref);
             let actual_trait_ref = infcx.resolve_type_vars_if_possible(&*actual_trait_ref);
             if !actual_trait_ref.self_ty().references_error() {
-                span_err_or_warn!(
-                    is_warning, infcx.tcx.sess, obligation.cause.span, E0281,
+                span_err!(
+                    infcx.tcx.sess, obligation.cause.span, E0281,
                     "type mismatch: the type `{}` implements the trait `{}`, \
                      but the trait `{}` is required ({})",
                     expected_trait_ref.self_ty(),
@@ -318,8 +310,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 
         TraitNotObjectSafe(did) => {
             let violations = object_safety_violations(infcx.tcx, did);
-            report_object_safety_error(infcx.tcx, obligation.cause.span, did,
-                                       violations, is_warning);
+            report_object_safety_error(infcx.tcx, obligation.cause.span, did, violations);
             note_obligation_cause(infcx, obligation);
         }
     }
@@ -328,11 +319,10 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 pub fn report_object_safety_error<'tcx>(tcx: &ty::ctxt<'tcx>,
                                         span: Span,
                                         trait_def_id: DefId,
-                                        violations: Vec<ObjectSafetyViolation>,
-                                        is_warning: bool)
+                                        violations: Vec<ObjectSafetyViolation>)
 {
-    span_err_or_warn!(
-        is_warning, tcx.sess, span, E0038,
+    span_err!(
+        tcx.sess, span, E0038,
         "the trait `{}` cannot be made into an object",
         tcx.item_path_str(trait_def_id));
 
@@ -402,7 +392,17 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
             let self_ty = trait_ref.self_ty();
             let all_types = &trait_ref.substs().types;
             if all_types.references_error() {
-            } else if all_types.needs_infer() {
+            } else {
+                // Typically, this ambiguity should only happen if
+                // there are unresolved type inference variables
+                // (otherwise it would suggest a coherence
+                // failure). But given #21974 that is not necessarily
+                // the case -- we can have multiple where clauses that
+                // are only distinguished by a region, which results
+                // in an ambiguity even when all types are fully
+                // known, since we don't dispatch based on region
+                // relationships.
+
                 // This is kind of a hack: it frequently happens that some earlier
                 // error prevents types from being fully inferred, and then we get
                 // a bunch of uninteresting errors saying something like "<generic
@@ -430,16 +430,6 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         note_obligation_cause(infcx, obligation);
                     }
                 }
-            } else if !infcx.tcx.sess.has_errors() {
-                // Ambiguity. Coherence should have reported an error.
-                infcx.tcx.sess.span_bug(
-                    obligation.cause.span,
-                    &format!(
-                        "coherence failed to report ambiguity: \
-                         cannot locate the impl of the trait `{}` for \
-                         the type `{}`",
-                        trait_ref,
-                        self_ty));
             }
         }
 
@@ -491,10 +481,6 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
     let tcx = infcx.tcx;
     match *cause_code {
         ObligationCauseCode::MiscObligation => { }
-        ObligationCauseCode::RFC1214(ref subcode) => {
-            tcx.sess.note_rfc_1214(cause_span);
-            note_obligation_cause_code(infcx, predicate, cause_span, subcode);
-        }
         ObligationCauseCode::SliceOrArrayElem => {
             tcx.sess.fileline_note(
                 cause_span,

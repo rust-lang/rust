@@ -17,8 +17,8 @@ pub trait Foo<'a> {
 }
 
 impl<'a, T> Foo<'a> for T {
-    type Bar = &'a T; //~ WARN E0309
+    type Bar = &'a T; //~ ERROR E0309
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation
+fn main() { }

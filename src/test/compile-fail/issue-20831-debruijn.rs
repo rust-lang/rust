@@ -38,6 +38,8 @@ impl<'a> Publisher<'a> for MyStruct<'a> {
     fn subscribe(&mut self, t : Box<Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
         // Not obvious, but there is an implicit lifetime here -------^
         //~^^ ERROR cannot infer
+        //~|  ERROR cannot infer
+        //~|  ERROR cannot infer
         //
         // The fact that `Publisher` is using an implicit lifetime is
         // what was causing the debruijn accounting to be off, so
