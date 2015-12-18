@@ -202,9 +202,18 @@ pub enum ResolutionError<'a> {
     AttemptToUseNonConstantValueInConstant,
 }
 
+/// Context of where `ResolutionError::UnresolvedName` arose.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum UnresolvedNameContext {
+    /// `PathIsMod(id)` indicates that a given path, used in
+    /// expression context, actually resolved to a module rather than
+    /// a value. The `id` attached to the variant is the node id of
+    /// the erroneous path expression.
     PathIsMod(ast::NodeId),
+
+    /// `Other` means we have no extra information about the context
+    /// of the unresolved name error. (Maybe we could eliminate all
+    /// such cases; but for now, this is an information-free default.)
     Other,
 }
 
