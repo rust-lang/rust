@@ -33,9 +33,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             bcx = self.trans_statement(bcx, statement);
         }
 
-        debug!("trans_block: terminator: {:?}", data.terminator);
+        debug!("trans_block: terminator: {:?}", data.terminator());
 
-        match data.terminator {
+        match *data.terminator() {
             mir::Terminator::Goto { target } => {
                 build::Br(bcx, self.llblock(target), DebugLoc::None)
             }
@@ -80,10 +80,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     let llbb = self.llblock(*target);
                     build::AddCase(switch, llval, llbb)
                 }
-            }
-
-            mir::Terminator::Diverge => {
-                build::Unreachable(bcx);
             }
 
             mir::Terminator::Resume => {

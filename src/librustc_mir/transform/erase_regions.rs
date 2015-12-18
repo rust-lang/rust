@@ -59,7 +59,7 @@ impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
             self.erase_regions_statement(statement);
         }
 
-        self.erase_regions_terminator(&mut basic_block.terminator);
+        self.erase_regions_terminator(basic_block.terminator_mut());
     }
 
     fn erase_regions_statement(&mut self,
@@ -79,7 +79,6 @@ impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
                                 terminator: &mut Terminator<'tcx>) {
         match *terminator {
             Terminator::Goto { .. } |
-            Terminator::Diverge |
             Terminator::Resume |
             Terminator::Return => {
                 /* nothing to do */

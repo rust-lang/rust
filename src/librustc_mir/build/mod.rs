@@ -107,7 +107,6 @@ pub fn construct<'a,'tcx>(mut hir: Cx<'a,'tcx>,
 
     assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
     assert_eq!(builder.cfg.start_new_block(), END_BLOCK);
-    assert_eq!(builder.cfg.start_new_block(), DIVERGE_BLOCK);
 
     let mut block = START_BLOCK;
     let arg_decls = unpack!(block = builder.args_and_body(block,
