@@ -2791,7 +2791,8 @@ impl<'a> Parser<'a> {
                 continue
             } else if op == AssocOp::Colon {
                 let rhs = try!(self.parse_ty());
-                lhs = self.mk_expr(lhs.span.lo, rhs.span.hi, ExprType(lhs, rhs));
+                lhs = self.mk_expr(lhs.span.lo, rhs.span.hi,
+                                   ExprType(lhs, rhs), None);
                 continue
             } else if op == AssocOp::DotDot {
                     // If we didn’t have to handle `x..`, it would be pretty easy to generalise
