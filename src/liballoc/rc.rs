@@ -843,13 +843,13 @@ impl<T> Weak<T> {
     ///
     /// use std::rc::Weak;
     ///
-    /// let empty:Weak<i64> = Weak::new_downgraded();
+    /// let empty:Weak<i64> = Weak::new();
     /// ```
 
     #[unstable(feature = "downgraded_weak",
                reason = "recently added",
                issue="30425")]
-    pub fn new_downgraded() -> Weak<T> {
+    pub fn new() -> Weak<T> {
         unsafe {
             Weak {
                 _ptr: Shared::new(Box::into_raw(box RcBox {
@@ -1156,8 +1156,8 @@ mod tests {
     }
 
     #[test]
-    fn test_new_downgraded() {
-        let foo: Weak<usize> = Weak::new_downgraded();
+    fn test_new_weak() {
+        let foo: Weak<usize> = Weak::new();
         assert!(foo.upgrade().is_none());
     }
 }
