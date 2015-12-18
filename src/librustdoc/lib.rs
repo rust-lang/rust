@@ -65,7 +65,7 @@ use externalfiles::ExternalHtml;
 use serialize::Decodable;
 use serialize::json::{self, Json};
 use rustc::session::search_paths::SearchPaths;
-use syntax::diagnostic;
+use syntax::errors::emitter::ColorConfig;
 
 // reexported from `clean` so it can be easily updated with the mod itself
 pub use clean::SCHEMA_VERSION;
@@ -228,7 +228,7 @@ pub fn main_args(args: &[String]) -> isize {
 
     let mut libs = SearchPaths::new();
     for s in &matches.opt_strs("L") {
-        libs.add_path(s, diagnostic::Auto);
+        libs.add_path(s, ColorConfig::Auto);
     }
     let externs = match parse_externs(&matches) {
         Ok(ex) => ex,
@@ -363,7 +363,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     // First, parse the crate and extract all relevant information.
     let mut paths = SearchPaths::new();
     for s in &matches.opt_strs("L") {
-        paths.add_path(s, diagnostic::Auto);
+        paths.add_path(s, ColorConfig::Auto);
     }
     let cfgs = matches.opt_strs("cfg");
     let triple = matches.opt_str("target");

@@ -720,7 +720,7 @@ impl<'a> ExtCtxt<'a> {
         self.parse_sess.span_diagnostic.fileline_help(sp, msg);
     }
     pub fn bug(&self, msg: &str) -> ! {
-        self.parse_sess.span_diagnostic.handler().bug(msg);
+        self.parse_sess.span_diagnostic.bug(msg);
     }
     pub fn trace_macros(&self) -> bool {
         self.ecfg.trace_mac

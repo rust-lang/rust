@@ -12,7 +12,7 @@ use self::LockstepIterSize::*;
 use ast;
 use ast::{TokenTree, Ident, Name};
 use codemap::{Span, DUMMY_SP};
-use diagnostic::SpanHandler;
+use errors::Handler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use parse::token::{DocComment, MatchNt, SubstNt};
 use parse::token::{Token, NtIdent, SpecialMacroVar};
@@ -34,7 +34,7 @@ struct TtFrame {
 
 #[derive(Clone)]
 pub struct TtReader<'a> {
-    pub sp_diag: &'a SpanHandler,
+    pub sp_diag: &'a Handler,
     /// the unzipped tree:
     stack: Vec<TtFrame>,
     /* for MBE-style macro transcription */
@@ -55,7 +55,7 @@ pub struct TtReader<'a> {
 /// This can do Macro-By-Example transcription. On the other hand, if
 /// `src` contains no `TokenTree::Sequence`s, `MatchNt`s or `SubstNt`s, `interp` can
 /// (and should) be None.
-pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
+pub fn new_tt_reader<'a>(sp_diag: &'a Handler,
                          interp: Option<HashMap<Name, Rc<NamedMatch>>>,
                          imported_from: Option<Ident>,
                          src: Vec<ast::TokenTree>)
@@ -69,7 +69,7 @@ pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
 /// This can do Macro-By-Example transcription. On the other hand, if
 /// `src` contains no `TokenTree::Sequence`s, `MatchNt`s or `SubstNt`s, `interp` can
 /// (and should) be None.
-pub fn new_tt_reader_with_doc_flag<'a>(sp_diag: &'a SpanHandler,
+pub fn new_tt_reader_with_doc_flag<'a>(sp_diag: &'a Handler,
                                        interp: Option<HashMap<Name, Rc<NamedMatch>>>,
                                        imported_from: Option<Ident>,
                                        src: Vec<ast::TokenTree>,

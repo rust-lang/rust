@@ -12,7 +12,7 @@
 
 use ast;
 use codemap::{self, Span, CodeMap, FileMap};
-use diagnostic::{SpanHandler, Handler, Auto, FatalError};
+use errors::{Handler, ColorConfig, FatalError};
 use parse::parser::Parser;
 use parse::token::InternedString;
 use ptr::P;
@@ -40,26 +40,29 @@ pub mod obsolete;
 
 /// Info about a parsing session.
 pub struct ParseSess {
-    pub span_diagnostic: SpanHandler, // better be the same as the one in the reader!
+    pub span_diagnostic: Handler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<Vec<PathBuf>>,
+    code_map: Rc<CodeMap>,
 }
 
 impl ParseSess {
     pub fn new() -> ParseSess {
-        let handler = SpanHandler::new(Handler::new(Auto, None, true), CodeMap::new());
-        ParseSess::with_span_handler(handler)
+        let cm = Rc::new(CodeMap::new());
+        let handler = Handler::new(ColorConfig::Auto, None, true, false, cm.clone());
+        ParseSess::with_span_handler(handler, cm)
     }
 
-    pub fn with_span_handler(sh: SpanHandler) -> ParseSess {
+    pub fn with_span_handler(handler: Handler, code_map: Rc<CodeMap>) -> ParseSess {
         ParseSess {
-            span_diagnostic: sh,
-            included_mod_stack: RefCell::new(vec![])
+            span_diagnostic: handler,
+            included_mod_stack: RefCell::new(vec![]),
+            code_map: code_map
         }
     }
 
     pub fn codemap(&self) -> &CodeMap {
-        &self.span_diagnostic.cm
+        &self.code_map
     }
 }
 
@@ -235,7 +238,7 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
             let msg = format!("couldn't read {:?}: {}", path.display(), e);
             match spanopt {
                 Some(sp) => panic!(sess.span_diagnostic.span_fatal(sp, &msg)),
-                None => panic!(sess.span_diagnostic.handler().fatal(&msg))
+                None => panic!(sess.span_diagnostic.fatal(&msg))
             }
         }
     }
@@ -438,7 +441,7 @@ fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
 }
 
 fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
-                      sd: &SpanHandler, sp: Span) -> ast::Lit_ {
+                      sd: &Handler, sp: Span) -> ast::Lit_ {
     debug!("filtered_float_lit: {}, {:?}", data, suffix);
     match suffix.as_ref().map(|s| &**s) {
         Some("f32") => ast::LitFloat(data, ast::TyF32),
@@ -459,7 +462,7 @@ fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
     }
 }
 pub fn float_lit(s: &str, suffix: Option<InternedString>,
-                 sd: &SpanHandler, sp: Span) -> ast::Lit_ {
+                 sd: &Handler, sp: Span) -> ast::Lit_ {
     debug!("float_lit: {:?}, {:?}", s, suffix);
     // FIXME #2252: bounds checking float literals is deferred until trans
     let s = s.chars().filter(|&c| c != '_').collect::<String>();
@@ -561,7 +564,7 @@ pub fn byte_str_lit(lit: &str) -> Rc<Vec<u8>> {
 
 pub fn integer_lit(s: &str,
                    suffix: Option<InternedString>,
-                   sd: &SpanHandler,
+                   sd: &Handler,
                    sp: Span)
                    -> ast::Lit_ {
     // s can only be ascii, byte indexing is fine

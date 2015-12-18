@@ -203,7 +203,7 @@ use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::codemap::{self, DUMMY_SP};
 use syntax::codemap::Span;
-use syntax::diagnostic::SpanHandler;
+use syntax::errors::Handler;
 use syntax::util::move_map::MoveMap;
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::{intern, InternedString};
@@ -742,7 +742,7 @@ impl<'a> TraitDef<'a> {
     }
 }
 
-fn find_repr_type_name(diagnostic: &SpanHandler,
+fn find_repr_type_name(diagnostic: &Handler,
                        type_attrs: &[ast::Attribute]) -> &'static str {
     let mut repr_type_name = "i32";
     for a in type_attrs {

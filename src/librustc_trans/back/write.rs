@@ -20,8 +20,8 @@ use trans::{CrateTranslation, ModuleTranslation};
 use util::common::time;
 use util::common::path2cstr;
 use syntax::codemap;
-use syntax::diagnostic;
-use syntax::diagnostic::{Emitter, Handler, Level};
+use syntax::errors::{self, Handler, Level};
+use syntax::errors::emitter::Emitter;
 
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
@@ -34,7 +34,7 @@ use std::sync::mpsc::channel;
 use std::thread;
 use libc::{self, c_uint, c_int, c_void};
 
-pub fn llvm_err(handler: &diagnostic::Handler, msg: String) -> ! {
+pub fn llvm_err(handler: &errors::Handler, msg: String) -> ! {
     unsafe {
         let cstr = llvm::LLVMRustGetLastError();
         if cstr == ptr::null() {
@@ -49,7 +49,7 @@ pub fn llvm_err(handler: &diagnostic::Handler, msg: String) -> ! {
 }
 
 pub fn write_output_file(
-        handler: &diagnostic::Handler,
+        handler: &errors::Handler,
         target: llvm::TargetMachineRef,
         pm: llvm::PassManagerRef,
         m: ModuleRef,
@@ -109,9 +109,9 @@ impl SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit(&mut self, cmsp: Option<(&codemap::CodeMap, codemap::Span)>,
+    fn emit(&mut self, sp: Option<codemap::Span>,
             msg: &str, code: Option<&str>, lvl: Level) {
-        assert!(cmsp.is_none(), "SharedEmitter doesn't support spans");
+        assert!(sp.is_none(), "SharedEmitter doesn't support spans");
 
         self.buffer.lock().unwrap().push(Diagnostic {
             msg: msg.to_string(),
@@ -120,8 +120,7 @@ impl Emitter for SharedEmitter {
         });
     }
 
-    fn custom_emit(&mut self, _cm: &codemap::CodeMap,
-                   _sp: diagnostic::RenderSpan, _msg: &str, _lvl: Level) {
+    fn custom_emit(&mut self, _sp: errors::RenderSpan, _msg: &str, _lvl: Level) {
         panic!("SharedEmitter doesn't support custom_emit");
     }
 }
@@ -226,7 +225,7 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
     };
 
     if tm.is_null() {
-        llvm_err(sess.diagnostic().handler(),
+        llvm_err(sess.diagnostic(),
                  format!("Could not create LLVM TargetMachine for triple: {}",
                          triple).to_string());
     } else {
@@ -333,7 +332,7 @@ impl<'a> CodegenContext<'a> {
     fn new_with_session(sess: &'a Session, reachable: &'a [String]) -> CodegenContext<'a> {
         CodegenContext {
             lto_ctxt: Some((sess, reachable)),
-            handler: sess.diagnostic().handler(),
+            handler: sess.diagnostic(),
             plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
             remark: sess.opts.cg.remark.clone(),
             worker: 0,
@@ -863,7 +862,7 @@ fn run_work_multithreaded(sess: &Session,
         futures.push(rx);
 
         thread::Builder::new().name(format!("codegen-{}", i)).spawn(move || {
-            let diag_handler = Handler::with_emitter(true, box diag_emitter);
+            let diag_handler = Handler::with_emitter(true, false, box diag_emitter);
 
             // Must construct cgcx inside the proc because it has non-Send
             // fields.
@@ -903,7 +902,7 @@ fn run_work_multithreaded(sess: &Session,
             },
         }
         // Display any new diagnostics.
-        diag_emitter.dump(sess.diagnostic().handler());
+        diag_emitter.dump(sess.diagnostic());
     }
     if panicked {
         sess.fatal("aborting due to worker thread panic");

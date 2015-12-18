@@ -44,7 +44,7 @@ fn with_error_checking_parse<T, F>(s: String, f: F) -> PResult<T> where
     let mut p = string_to_parser(&ps, s);
     let x = f(&mut p);
 
-    if ps.span_diagnostic.handler().has_errors() || p.token != token::Eof {
+    if ps.span_diagnostic.has_errors() || p.token != token::Eof {
         return Err(p.fatal("parse error"));
     }
 

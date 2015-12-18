@@ -29,14 +29,14 @@ use rustc_front::hir;
 
 use syntax::abi::Abi;
 use syntax::ast;
-use syntax::diagnostic::SpanHandler;
+use syntax::errors::Handler;
 
 use rbml::writer::{self, Encoder};
 
 macro_rules! mywrite { ($w:expr, $($arg:tt)*) => ({ write!($w.writer, $($arg)*); }) }
 
 pub struct ctxt<'a, 'tcx: 'a> {
-    pub diag: &'a SpanHandler,
+    pub diag: &'a Handler,
     // Def -> str Callback:
     pub ds: fn(DefId) -> String,
     // The type context.
@@ -136,7 +136,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
             enc_bare_fn_ty(w, cx, f);
         }
         ty::TyInfer(_) => {
-            cx.diag.handler().bug("cannot encode inference variable types");
+            cx.diag.bug("cannot encode inference variable types");
         }
         ty::TyParam(ParamTy {space, idx, name}) => {
             mywrite!(w, "p[{}|{}|{}]", idx, space.to_uint(), name)
@@ -279,7 +279,7 @@ pub fn enc_region(w: &mut Encoder, cx: &ctxt, r: ty::Region) {
         }
         ty::ReVar(_) | ty::ReSkolemized(..) => {
             // these should not crop up after typeck
-            cx.diag.handler().bug("cannot encode region variables");
+            cx.diag.bug("cannot encode region variables");
         }
     }
 }
