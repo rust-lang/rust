@@ -79,6 +79,7 @@ use core::cmp::Ordering;
 use core::mem::{align_of_val, size_of_val};
 use core::intrinsics::abort;
 use core::mem;
+use core::mem::uninitialized;
 use core::ops::Deref;
 #[cfg(not(stage0))]
 use core::ops::CoerceUnsized;
@@ -910,6 +911,36 @@ impl<T> From<T> for Arc<T> {
     }
 }
 
+impl<T> Weak<T> {
+    /// Constructs a new `Weak<T>` without an accompanying instance of T.
+    ///
+    /// This allocates memory for T, but does not initialize it. Calling
+    /// Weak<T>::upgrade() on the return value always gives None.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(downgraded_weak)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let five = Arc::new(5);
+    /// ```
+    #[unstable(feature = "downgraded_weak",
+               reason = "recently added",
+               issue = "30425")]
+    pub fn new() -> Weak<T> {
+        unsafe {
+            let x: Box<_> = box ArcInner {
+                strong: atomic::AtomicUsize::new(0),
+                weak: atomic::AtomicUsize::new(1),
+                data: uninitialized(),
+            };
+            Weak { _ptr: Shared::new(Box::into_raw(x)) }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::clone::Clone;
@@ -1159,6 +1190,12 @@ mod tests {
         let foo = 123;
         let foo_arc = Arc::from(foo);
         assert!(123 == *foo_arc);
+    }
+
+    #[test]
+    fn test_new_weak() {
+        let foo: Weak<usize> = Weak::new();
+        assert!(foo.upgrade().is_none());
     }
 }
 
