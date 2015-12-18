@@ -362,7 +362,6 @@ impl LateLintPass for UsedUnderscoreBinding {
                 ident.name.as_str().chars().next() == Some('_') //starts with '_'
                 && ident.name.as_str().chars().skip(1).next() != Some('_') //doesn't start with "__"
                 && ident.name != ident.unhygienic_name //not in macro
-                && cx.tcx.def_map.borrow().contains_key(&expr.id) //local variable
             },
             ExprField(_, spanned) => {
                 let name = spanned.node.as_str();
