@@ -175,9 +175,11 @@ However, they might complicated reasoning about the rules more,
 especially with the last one also being possibly confusing in regards to
 side-effects.
 
-Not doing this mostly means relying on `static` and `const` items to create
-`'static` references, while empty-array expressions would remain special cased.
-It would also not be possible to safely create `&'static mut` references to zero-sized
+Not doing this means:
+
+- Relying on `static` and `const` items to create `'static` references, which won't work in generics.
+- Empty-array expressions would remain special cased.
+- It would also not be possible to safely create `&'static mut` references to zero-sized
 types, though that part could also be achieved by allowing mutable references to
 zero-sized types in constants.
 
