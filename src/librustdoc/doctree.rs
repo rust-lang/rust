@@ -40,6 +40,7 @@ pub struct Module {
     pub traits: Vec<Trait>,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
     pub impls: Vec<Impl>,
     pub def_traits: Vec<DefaultImpl>,
     pub foreigns: Vec<hir::ForeignMod>,
@@ -54,6 +55,7 @@ impl Module {
             id: 0,
             vis: hir::Inherited,
             stab: None,
+            depr: None,
             where_outer: syntax::codemap::DUMMY_SP,
             where_inner: syntax::codemap::DUMMY_SP,
             attrs      : Vec::new(),
@@ -96,6 +98,7 @@ pub enum TypeBound {
 pub struct Struct {
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
     pub id: NodeId,
     pub struct_type: StructType,
     pub name: Name,
@@ -108,6 +111,7 @@ pub struct Struct {
 pub struct Enum {
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
     pub variants: Vec<Variant>,
     pub generics: hir::Generics,
     pub attrs: Vec<ast::Attribute>,
@@ -121,6 +125,7 @@ pub struct Variant {
     pub attrs: Vec<ast::Attribute>,
     pub def: hir::VariantData,
     pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
     pub whence: Span,
 }
 
@@ -131,6 +136,7 @@ pub struct Function {
     pub name: Name,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
     pub unsafety: hir::Unsafety,
     pub constness: hir::Constness,
     pub whence: Span,
@@ -147,6 +153,7 @@ pub struct Typedef {
     pub whence: Span,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
 }
 
 #[derive(Debug)]
@@ -158,6 +165,7 @@ pub struct Static {
     pub attrs: Vec<ast::Attribute>,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
     pub id: ast::NodeId,
     pub whence: Span,
 }
@@ -169,6 +177,7 @@ pub struct Constant {
     pub attrs: Vec<ast::Attribute>,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
     pub id: ast::NodeId,
     pub whence: Span,
 }
@@ -184,6 +193,7 @@ pub struct Trait {
     pub whence: Span,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
 }
 
 pub struct Impl {
@@ -197,6 +207,7 @@ pub struct Impl {
     pub whence: Span,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
     pub id: ast::NodeId,
 }
 
@@ -215,6 +226,7 @@ pub struct Macro {
     pub whence: Span,
     pub matchers: Vec<Span>,
     pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
     pub imported_from: Option<Name>,
 }
 

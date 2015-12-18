@@ -548,7 +548,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
           def::DefAssociatedConst(..) | def::DefFn(..) | def::DefMethod(..) => {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
-          def::DefMod(_) | def::DefForeignMod(_) | def::DefUse(_) |
+          def::DefMod(_) | def::DefForeignMod(_) |
           def::DefTrait(_) | def::DefTy(..) | def::DefPrimTy(_) |
           def::DefTyParam(..) |
           def::DefLabel(_) | def::DefSelfTy(..) |
@@ -609,6 +609,8 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                 note: NoteNone
             }))
           }
+
+          def::DefErr => panic!("DefErr in memory categorization")
         }
     }
 
@@ -1196,7 +1198,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         (*op)(self, cmt.clone(), pat);
 
         let opt_def = if let Some(path_res) = self.tcx().def_map.borrow().get(&pat.id) {
-            if path_res.depth != 0 {
+            if path_res.depth != 0 || path_res.base_def == def::DefErr {
                 // Since patterns can be associated constants
                 // which are resolved during typeck, we might have
                 // some unresolved patterns reaching this stage
@@ -1261,7 +1263,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                 _ => {
                     self.tcx().sess.span_bug(
                         pat.span,
-                        "enum pattern didn't resolve to enum or struct");
+                        &format!("enum pattern didn't resolve to enum or struct {:?}", opt_def));
                 }
             }
           }

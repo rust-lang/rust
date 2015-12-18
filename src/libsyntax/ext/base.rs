@@ -464,26 +464,6 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
 
     let mut syntax_expanders = SyntaxEnv::new();
     syntax_expanders.insert(intern("macro_rules"), MacroRulesTT);
-    syntax_expanders.insert(intern("format_args"),
-                            // format_args uses `unstable` things internally.
-                            NormalTT(Box::new(ext::format::expand_format_args), None, true));
-    syntax_expanders.insert(intern("env"),
-                            builtin_normal_expander(
-                                    ext::env::expand_env));
-    syntax_expanders.insert(intern("option_env"),
-                            builtin_normal_expander(
-                                    ext::env::expand_option_env));
-    syntax_expanders.insert(intern("concat_idents"),
-                            builtin_normal_expander(
-                                    ext::concat_idents::expand_syntax_ext));
-    syntax_expanders.insert(intern("concat"),
-                            builtin_normal_expander(
-                                    ext::concat::expand_syntax_ext));
-    syntax_expanders.insert(intern("log_syntax"),
-                            builtin_normal_expander(
-                                    ext::log_syntax::expand_syntax_ext));
-
-    ext::deriving::register_all(&mut syntax_expanders);
 
     if ecfg.enable_quotes() {
         // Quasi-quoting expanders
@@ -552,15 +532,6 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
     syntax_expanders.insert(intern("module_path"),
                             builtin_normal_expander(
                                     ext::source_util::expand_mod));
-    syntax_expanders.insert(intern("asm"),
-                            builtin_normal_expander(
-                                    ext::asm::expand_asm));
-    syntax_expanders.insert(intern("cfg"),
-                            builtin_normal_expander(
-                                    ext::cfg::expand_cfg));
-    syntax_expanders.insert(intern("trace_macros"),
-                            builtin_normal_expander(
-                                    ext::trace_macros::expand_trace_macros));
     syntax_expanders
 }
 

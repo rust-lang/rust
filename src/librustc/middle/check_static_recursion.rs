@@ -99,8 +99,9 @@ pub fn check_crate<'ast>(sess: &Session,
         ast_map: ast_map,
         discriminant_map: RefCell::new(NodeMap()),
     };
-    krate.visit_all_items(&mut visitor);
-    sess.abort_if_errors();
+    sess.abort_if_new_errors(|| {
+        krate.visit_all_items(&mut visitor);
+    });
 }
 
 struct CheckItemRecursionVisitor<'a, 'ast: 'a> {

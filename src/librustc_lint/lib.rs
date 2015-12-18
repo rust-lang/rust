@@ -124,7 +124,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  UnusedAllocation,
                  MissingCopyImplementations,
                  UnstableFeatures,
-                 Stability,
+                 Deprecated,
                  UnconditionalRecursion,
                  InvalidNoMangleItems,
                  PluginAsLibrary,

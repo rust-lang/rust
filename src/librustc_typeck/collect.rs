@@ -889,11 +889,13 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             for impl_item in impl_items {
                 if let hir::ImplItemKind::Method(ref sig, ref body) = impl_item.node {
                     let body_id = body.id;
+                    let body_scope = ccx.tcx.region_maps.call_site_extent(impl_item.id, body_id);
                     check_method_self_type(ccx,
                                            &BindingRscope::new(),
                                            ccx.method_ty(impl_item.id),
                                            selfty,
                                            &sig.explicit_self,
+                                           body_scope,
                                            body_id);
                 }
             }
@@ -988,8 +990,16 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             // This must be done after `collect_trait_methods` so that
             // we have a method type stored for every method.
             for trait_item in trait_items {
-                let sig = match trait_item.node {
-                    hir::MethodTraitItem(ref sig, _) => sig,
+                let (sig, the_scope, the_id) = match trait_item.node {
+                    hir::MethodTraitItem(ref sig, Some(ref body)) => {
+                        let body_scope =
+                            ccx.tcx.region_maps.call_site_extent(trait_item.id, body.id);
+                        (sig, body_scope, body.id)
+                    }
+                    hir::MethodTraitItem(ref sig, None) => {
+                        let item_scope = ccx.tcx.region_maps.item_extent(trait_item.id);
+                        (sig, item_scope, it.id)
+                    }
                     _ => continue
                 };
                 check_method_self_type(ccx,
@@ -997,7 +1007,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                        ccx.method_ty(trait_item.id),
                                        tcx.mk_self_type(),
                                        &sig.explicit_self,
-                                       it.id)
+                                       the_scope,
+                                       the_id)
             }
         },
         hir::ItemStruct(ref struct_def, _) => {
@@ -2282,6 +2293,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
     method_type: Rc<ty::Method<'tcx>>,
     required_type: Ty<'tcx>,
     explicit_self: &hir::ExplicitSelf,
+    body_scope: region::CodeExtent,
     body_id: ast::NodeId)
 {
     let tcx = ccx.tcx;
@@ -2292,8 +2304,6 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
             ty::TyBox(typ) => typ,
             _ => typ,
         };
-
-        let body_scope = tcx.region_maps.item_extent(body_id);
 
         // "Required type" comes from the trait definition. It may
         // contain late-bound regions from the method, but not the

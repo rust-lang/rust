@@ -17,4 +17,5 @@ mod foo {
 fn main() {
     use foo::bar;
     foo::bar(); //~ ERROR: unnecessary qualification
+    bar();
 }

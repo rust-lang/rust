@@ -342,8 +342,10 @@ fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_attributes(rbml_w, &attrs);
         encode_repr_attrs(rbml_w, ecx, &attrs);
 
-        let stab = stability::lookup(ecx.tcx, vid);
+        let stab = stability::lookup_stability(ecx.tcx, vid);
+        let depr = stability::lookup_deprecation(ecx.tcx, vid);
         encode_stability(rbml_w, stab);
+        encode_deprecation(rbml_w, depr);
 
         encode_struct_fields(rbml_w, variant);
 
@@ -450,8 +452,10 @@ fn encode_info_for_mod(ecx: &EncodeContext,
     encode_path(rbml_w, path.clone());
     encode_visibility(rbml_w, vis);
 
-    let stab = stability::lookup(ecx.tcx, ecx.tcx.map.local_def_id(id));
+    let stab = stability::lookup_stability(ecx.tcx, ecx.tcx.map.local_def_id(id));
+    let depr = stability::lookup_deprecation(ecx.tcx, ecx.tcx.map.local_def_id(id));
     encode_stability(rbml_w, stab);
+    encode_deprecation(rbml_w, depr);
 
     // Encode the reexports of this module, if this module is public.
     if vis == hir::Public {
@@ -538,8 +542,10 @@ fn encode_field<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_bounds_and_type_for_item(rbml_w, ecx, index, id);
     encode_def_id_and_key(ecx, rbml_w, field.did);
 
-    let stab = stability::lookup(ecx.tcx, field.did);
+    let stab = stability::lookup_stability(ecx.tcx, field.did);
+    let depr = stability::lookup_deprecation(ecx.tcx, field.did);
     encode_stability(rbml_w, stab);
+    encode_deprecation(rbml_w, depr);
 
     rbml_w.end_tag();
 }
@@ -565,8 +571,10 @@ fn encode_info_for_struct_ctor<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_symbol(ecx, rbml_w, ctor_id);
     }
 
-    let stab = stability::lookup(ecx.tcx, ecx.tcx.map.local_def_id(ctor_id));
+    let stab = stability::lookup_stability(ecx.tcx, ecx.tcx.map.local_def_id(ctor_id));
+    let depr= stability::lookup_deprecation(ecx.tcx, ecx.tcx.map.local_def_id(ctor_id));
     encode_stability(rbml_w, stab);
+    encode_deprecation(rbml_w, depr);
 
     // indicate that this is a tuple struct ctor, because downstream users will normally want
     // the tuple struct definition, but without this there is no way for them to tell that
@@ -700,8 +708,10 @@ fn encode_info_for_associated_const<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_bounds_and_type_for_item(rbml_w, ecx, index,
                                     ecx.local_id(associated_const.def_id));
 
-    let stab = stability::lookup(ecx.tcx, associated_const.def_id);
+    let stab = stability::lookup_stability(ecx.tcx, associated_const.def_id);
+    let depr = stability::lookup_deprecation(ecx.tcx, associated_const.def_id);
     encode_stability(rbml_w, stab);
+    encode_deprecation(rbml_w, depr);
 
     let elem = ast_map::PathName(associated_const.name);
     encode_path(rbml_w, impl_path.chain(Some(elem)));
@@ -735,8 +745,10 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
     encode_item_sort(rbml_w, 'r');
 
-    let stab = stability::lookup(ecx.tcx, m.def_id);
+    let stab = stability::lookup_stability(ecx.tcx, m.def_id);
+    let depr = stability::lookup_deprecation(ecx.tcx, m.def_id);
     encode_stability(rbml_w, stab);
+    encode_deprecation(rbml_w, depr);
 
     let m_node_id = ecx.local_id(m.def_id);
     encode_bounds_and_type_for_item(rbml_w, ecx, index, m_node_id);
@@ -789,8 +801,10 @@ fn encode_info_for_associated_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
     encode_item_sort(rbml_w, 't');
 
-    let stab = stability::lookup(ecx.tcx, associated_type.def_id);
+    let stab = stability::lookup_stability(ecx.tcx, associated_type.def_id);
+    let depr = stability::lookup_deprecation(ecx.tcx, associated_type.def_id);
     encode_stability(rbml_w, stab);
+    encode_deprecation(rbml_w, depr);
 
     let elem = ast_map::PathName(associated_type.name);
     encode_path(rbml_w, impl_path.chain(Some(elem)));
@@ -891,6 +905,14 @@ fn encode_stability(rbml_w: &mut Encoder, stab_opt: Option<&attr::Stability>) {
     });
 }
 
+fn encode_deprecation(rbml_w: &mut Encoder, depr_opt: Option<attr::Deprecation>) {
+    depr_opt.map(|depr| {
+        rbml_w.start_tag(tag_items_data_item_deprecation);
+        depr.encode(rbml_w).unwrap();
+        rbml_w.end_tag();
+    });
+}
+
 fn encode_xrefs<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                           rbml_w: &mut Encoder,
                           xrefs: FnvHashMap<XRef<'tcx>, u32>)
@@ -931,7 +953,8 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
            tcx.sess.codemap().span_to_string(item.span));
 
     let def_id = ecx.tcx.map.local_def_id(item.id);
-    let stab = stability::lookup(tcx, ecx.tcx.map.local_def_id(item.id));
+    let stab = stability::lookup_stability(tcx, ecx.tcx.map.local_def_id(item.id));
+    let depr = stability::lookup_deprecation(tcx, ecx.tcx.map.local_def_id(item.id));
 
     match item.node {
       hir::ItemStatic(_, m, _) => {
@@ -949,6 +972,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_path(rbml_w, path);
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
+        encode_deprecation(rbml_w, depr);
         encode_attributes(rbml_w, &item.attrs);
         rbml_w.end_tag();
       }
@@ -964,6 +988,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
+        encode_deprecation(rbml_w, depr);
         rbml_w.end_tag();
       }
       hir::ItemFn(ref decl, _, constness, _, ref generics, _) => {
@@ -986,6 +1011,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_constness(rbml_w, constness);
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
+        encode_deprecation(rbml_w, depr);
         encode_method_argument_names(rbml_w, &**decl);
         rbml_w.end_tag();
       }
@@ -1015,6 +1041,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         }
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
+        encode_deprecation(rbml_w, depr);
         rbml_w.end_tag();
       }
       hir::ItemTy(..) => {
@@ -1027,6 +1054,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_path(rbml_w, path);
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
+        encode_deprecation(rbml_w, depr);
         rbml_w.end_tag();
       }
       hir::ItemEnum(ref enum_definition, _) => {
@@ -1051,6 +1079,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
+        encode_deprecation(rbml_w, depr);
         rbml_w.end_tag();
 
         encode_enum_variant_info(ecx,
@@ -1077,6 +1106,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_attributes(rbml_w, &item.attrs);
         encode_path(rbml_w, path.clone());
         encode_stability(rbml_w, stab);
+        encode_deprecation(rbml_w, depr);
         encode_visibility(rbml_w, vis);
         encode_repr_attrs(rbml_w, ecx, &item.attrs);
 
@@ -1167,6 +1197,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         }
         encode_path(rbml_w, path.clone());
         encode_stability(rbml_w, stab);
+        encode_deprecation(rbml_w, depr);
         rbml_w.end_tag();
 
         // Iterate down the trait items, emitting them. We rely on the
@@ -1236,6 +1267,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_attributes(rbml_w, &item.attrs);
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
+        encode_deprecation(rbml_w, depr);
         for &method_def_id in tcx.trait_item_def_ids(def_id).iter() {
             rbml_w.start_tag(tag_item_trait_item);
             match method_def_id {
@@ -1274,8 +1306,10 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
             encode_parent_item(rbml_w, def_id);
 
-            let stab = stability::lookup(tcx, item_def_id.def_id());
+            let stab = stability::lookup_stability(tcx, item_def_id.def_id());
+            let depr = stability::lookup_deprecation(tcx, item_def_id.def_id());
             encode_stability(rbml_w, stab);
+            encode_deprecation(rbml_w, depr);
 
             let trait_item_type =
                 tcx.impl_or_trait_item(item_def_id.def_id());
@@ -1407,8 +1441,10 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             encode_inlined_item(ecx, rbml_w, InlinedItemRef::Foreign(nitem));
         }
         encode_attributes(rbml_w, &*nitem.attrs);
-        let stab = stability::lookup(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
+        let stab = stability::lookup_stability(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
+        let depr = stability::lookup_deprecation(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
         encode_stability(rbml_w, stab);
+        encode_deprecation(rbml_w, depr);
         encode_symbol(ecx, rbml_w, nitem.id);
         encode_method_argument_names(rbml_w, &*fndecl);
       }
@@ -1420,8 +1456,10 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         }
         encode_bounds_and_type_for_item(rbml_w, ecx, index, nitem.id);
         encode_attributes(rbml_w, &*nitem.attrs);
-        let stab = stability::lookup(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
+        let stab = stability::lookup_stability(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
+        let depr = stability::lookup_deprecation(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
         encode_stability(rbml_w, stab);
+        encode_deprecation(rbml_w, depr);
         encode_symbol(ecx, rbml_w, nitem.id);
         encode_name(rbml_w, nitem.name);
       }

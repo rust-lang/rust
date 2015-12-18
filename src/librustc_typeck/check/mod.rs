@@ -93,7 +93,7 @@ use middle::pat_util::{self, pat_id_map};
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace};
 use middle::traits::{self, report_fulfillment_errors};
-use middle::ty::{FnSig, GenericPredicates, TypeScheme};
+use middle::ty::{GenericPredicates, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use middle::ty::{self, HasTypeFlags, RegionEscape, ToPolyTraitRef, Ty};
@@ -127,7 +127,6 @@ use syntax::util::lev_distance::lev_distance;
 use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
 use rustc_front::hir::Visibility;
-use rustc_front::hir::{Item, ItemImpl};
 use rustc_front::print::pprust;
 use rustc_back::slice;
 
@@ -385,61 +384,60 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
 }
 
 pub fn check_wf_old(ccx: &CrateCtxt) {
-    // FIXME(#25759). The new code below is much more reliable but (for now)
-    // only generates warnings. So as to ensure that we continue
-    // getting errors where we used to get errors, we run the old wf
-    // code first and abort if it encounters any errors. If no abort
-    // comes, we run the new code and issue warnings.
-    let krate = ccx.tcx.map.krate();
-    let mut visit = wf::CheckTypeWellFormedVisitor::new(ccx);
-    krate.visit_all_items(&mut visit);
-
     // If types are not well-formed, it leads to all manner of errors
     // downstream, so stop reporting errors at this point.
-    ccx.tcx.sess.abort_if_errors();
+    ccx.tcx.sess.abort_if_new_errors(|| {
+        // FIXME(#25759). The new code below is much more reliable but (for now)
+        // only generates warnings. So as to ensure that we continue
+        // getting errors where we used to get errors, we run the old wf
+        // code first and abort if it encounters any errors. If no abort
+        // comes, we run the new code and issue warnings.
+        let krate = ccx.tcx.map.krate();
+        let mut visit = wf::CheckTypeWellFormedVisitor::new(ccx);
+        krate.visit_all_items(&mut visit);
+    });
 }
 
 pub fn check_wf_new(ccx: &CrateCtxt) {
-    let krate = ccx.tcx.map.krate();
-    let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(ccx);
-    krate.visit_all_items(&mut visit);
-
-    // If types are not well-formed, it leads to all manner of errors
-    // downstream, so stop reporting errors at this point.
-    ccx.tcx.sess.abort_if_errors();
+    ccx.tcx.sess.abort_if_new_errors(|| {
+        let krate = ccx.tcx.map.krate();
+        let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(ccx);
+        krate.visit_all_items(&mut visit);
+    });
 }
 
 pub fn check_item_types(ccx: &CrateCtxt) {
-    let krate = ccx.tcx.map.krate();
-    let mut visit = CheckItemTypesVisitor { ccx: ccx };
-    krate.visit_all_items(&mut visit);
-    ccx.tcx.sess.abort_if_errors();
+    ccx.tcx.sess.abort_if_new_errors(|| {
+        let krate = ccx.tcx.map.krate();
+        let mut visit = CheckItemTypesVisitor { ccx: ccx };
+        krate.visit_all_items(&mut visit);
+    });
 }
 
 pub fn check_item_bodies(ccx: &CrateCtxt) {
-    let krate = ccx.tcx.map.krate();
-    let mut visit = CheckItemBodiesVisitor { ccx: ccx };
-    krate.visit_all_items(&mut visit);
-
-    ccx.tcx.sess.abort_if_errors();
+    ccx.tcx.sess.abort_if_new_errors(|| {
+        let krate = ccx.tcx.map.krate();
+        let mut visit = CheckItemBodiesVisitor { ccx: ccx };
+        krate.visit_all_items(&mut visit);
+    });
 }
 
 pub fn check_drop_impls(ccx: &CrateCtxt) {
-    let drop_trait = match ccx.tcx.lang_items.drop_trait() {
-        Some(id) => ccx.tcx.lookup_trait_def(id), None => { return }
-    };
-    drop_trait.for_each_impl(ccx.tcx, |drop_impl_did| {
-        if drop_impl_did.is_local() {
-            match dropck::check_drop_impl(ccx.tcx, drop_impl_did) {
-                Ok(()) => {}
-                Err(()) => {
-                    assert!(ccx.tcx.sess.has_errors());
+    ccx.tcx.sess.abort_if_new_errors(|| {
+        let drop_trait = match ccx.tcx.lang_items.drop_trait() {
+            Some(id) => ccx.tcx.lookup_trait_def(id), None => { return }
+        };
+        drop_trait.for_each_impl(ccx.tcx, |drop_impl_did| {
+            if drop_impl_did.is_local() {
+                match dropck::check_drop_impl(ccx.tcx, drop_impl_did) {
+                    Ok(()) => {}
+                    Err(()) => {
+                        assert!(ccx.tcx.sess.has_errors());
+                    }
                 }
             }
-        }
+        });
     });
-
-    ccx.tcx.sess.abort_if_errors();
 }
 
 fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -456,7 +454,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let inh = Inherited::new(ccx.tcx, &tables, param_env);
 
             // Compute the fty from point of view of inside fn.
-            let fn_scope = ccx.tcx.region_maps.item_extent(body.id);
+            let fn_scope = ccx.tcx.region_maps.call_site_extent(fn_id, body.id);
             let fn_sig =
                 fn_ty.sig.subst(ccx.tcx, &inh.infcx.parameter_environment.free_substs);
             let fn_sig =
@@ -891,75 +889,71 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     for impl_item in impl_items {
         let ty_impl_item = ccx.tcx.impl_or_trait_item(ccx.tcx.map.local_def_id(impl_item.id));
         let ty_trait_item = trait_items.iter()
-            .find(|ac| ac.name() == ty_impl_item.name())
-            .unwrap_or_else(|| {
-                // This is checked by resolve
-                tcx.sess.span_bug(impl_item.span,
-                                  &format!("impl-item `{}` is not a member of `{:?}`",
-                                           ty_impl_item.name(),
-                                           impl_trait_ref));
-            });
-        match impl_item.node {
-            hir::ImplItemKind::Const(..) => {
-                let impl_const = match ty_impl_item {
-                    ty::ConstTraitItem(ref cti) => cti,
-                    _ => tcx.sess.span_bug(impl_item.span, "non-const impl-item for const")
-                };
+            .find(|ac| ac.name() == ty_impl_item.name());
 
-                // Find associated const definition.
-                if let &ty::ConstTraitItem(ref trait_const) = ty_trait_item {
-                    compare_const_impl(ccx.tcx,
-                                       &impl_const,
-                                       impl_item.span,
-                                       trait_const,
-                                       &*impl_trait_ref);
-                } else {
-                    span_err!(tcx.sess, impl_item.span, E0323,
-                              "item `{}` is an associated const, \
-                              which doesn't match its trait `{:?}`",
-                              impl_const.name,
-                              impl_trait_ref)
-                }
-            }
-            hir::ImplItemKind::Method(ref sig, ref body) => {
-                check_trait_fn_not_const(ccx, impl_item.span, sig.constness);
+        if let Some(ty_trait_item) = ty_trait_item {
+            match impl_item.node {
+                hir::ImplItemKind::Const(..) => {
+                    let impl_const = match ty_impl_item {
+                        ty::ConstTraitItem(ref cti) => cti,
+                        _ => tcx.sess.span_bug(impl_item.span, "non-const impl-item for const")
+                    };
 
-                let impl_method = match ty_impl_item {
-                    ty::MethodTraitItem(ref mti) => mti,
-                    _ => tcx.sess.span_bug(impl_item.span, "non-method impl-item for method")
-                };
-
-                if let &ty::MethodTraitItem(ref trait_method) = ty_trait_item {
-                    compare_impl_method(ccx.tcx,
-                                        &impl_method,
-                                        impl_item.span,
-                                        body.id,
-                                        &trait_method,
-                                        &impl_trait_ref);
-                } else {
-                    span_err!(tcx.sess, impl_item.span, E0324,
-                              "item `{}` is an associated method, \
-                              which doesn't match its trait `{:?}`",
-                              impl_method.name,
-                              impl_trait_ref)
-                }
-            }
-            hir::ImplItemKind::Type(_) => {
-                let impl_type = match ty_impl_item {
-                    ty::TypeTraitItem(ref tti) => tti,
-                    _ => tcx.sess.span_bug(impl_item.span, "non-type impl-item for type")
-                };
-
-                if let &ty::TypeTraitItem(ref at) = ty_trait_item {
-                    if let Some(_) = at.ty {
-                        overridden_associated_type = Some(impl_item);
+                    // Find associated const definition.
+                    if let &ty::ConstTraitItem(ref trait_const) = ty_trait_item {
+                        compare_const_impl(ccx.tcx,
+                                           &impl_const,
+                                           impl_item.span,
+                                           trait_const,
+                                           &*impl_trait_ref);
+                    } else {
+                        span_err!(tcx.sess, impl_item.span, E0323,
+                                  "item `{}` is an associated const, \
+                                  which doesn't match its trait `{:?}`",
+                                  impl_const.name,
+                                  impl_trait_ref)
                     }
-                } else {
-                    span_err!(tcx.sess, impl_item.span, E0325,
-                              "item `{}` is an associated type, \
-                              which doesn't match its trait `{:?}`",
-                              impl_type.name,
-                              impl_trait_ref)
+                }
+                hir::ImplItemKind::Method(ref sig, ref body) => {
+                    check_trait_fn_not_const(ccx, impl_item.span, sig.constness);
+
+                    let impl_method = match ty_impl_item {
+                        ty::MethodTraitItem(ref mti) => mti,
+                        _ => tcx.sess.span_bug(impl_item.span, "non-method impl-item for method")
+                    };
+
+                    if let &ty::MethodTraitItem(ref trait_method) = ty_trait_item {
+                        compare_impl_method(ccx.tcx,
+                                            &impl_method,
+                                            impl_item.span,
+                                            body.id,
+                                            &trait_method,
+                                            &impl_trait_ref);
+                    } else {
+                        span_err!(tcx.sess, impl_item.span, E0324,
+                                  "item `{}` is an associated method, \
+                                  which doesn't match its trait `{:?}`",
+                                  impl_method.name,
+                                  impl_trait_ref)
+                    }
+                }
+                hir::ImplItemKind::Type(_) => {
+                    let impl_type = match ty_impl_item {
+                        ty::TypeTraitItem(ref tti) => tti,
+                        _ => tcx.sess.span_bug(impl_item.span, "non-type impl-item for type")
+                    };
+
+                    if let &ty::TypeTraitItem(ref at) = ty_trait_item {
+                        if let Some(_) = at.ty {
+                            overridden_associated_type = Some(impl_item);
+                        }
+                    } else {
+                        span_err!(tcx.sess, impl_item.span, E0325,
+                                  "item `{}` is an associated type, \
+                                  which doesn't match its trait `{:?}`",
+                                  impl_type.name,
+                                  impl_trait_ref)
+                    }
                 }
             }
         }
@@ -3193,6 +3187,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         // Find the relevant variant
         let def = lookup_full_def(tcx, path.span, expr.id);
+        if def == def::DefErr {
+            check_struct_fields_on_error(fcx, expr.id, fields, base_expr);
+            return;
+        }
         let (adt, variant) = match fcx.def_struct_variant(def, path.span) {
             Some((adt, variant)) => (adt, variant),
             None => {
@@ -3371,17 +3369,21 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           if let Some((opt_ty, segments, def)) =
                   resolve_ty_and_def_ufcs(fcx, path_res, opt_self_ty, path,
                                           expr.span, expr.id) {
-              let (scheme, predicates) = type_scheme_and_predicates_for_def(fcx,
-                                                                            expr.span,
-                                                                            def);
-              instantiate_path(fcx,
-                               segments,
-                               scheme,
-                               &predicates,
-                               opt_ty,
-                               def,
-                               expr.span,
-                               id);
+              if def != def::DefErr {
+                  let (scheme, predicates) = type_scheme_and_predicates_for_def(fcx,
+                                                                                expr.span,
+                                                                                def);
+                  instantiate_path(fcx,
+                                   segments,
+                                   scheme,
+                                   &predicates,
+                                   opt_ty,
+                                   def,
+                                   expr.span,
+                                   id);
+              } else {
+                  fcx.write_ty(id, fcx.tcx().types.err);
+              }
           }
 
           // We always require that the type provided as the value for
@@ -4324,9 +4326,9 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefTyParam(..) |
         def::DefMod(..) |
         def::DefForeignMod(..) |
-        def::DefUse(..) |
         def::DefLabel(..) |
-        def::DefSelfTy(..) => {
+        def::DefSelfTy(..) |
+        def::DefErr => {
             fcx.ccx.tcx.sess.span_bug(sp, &format!("expected value, found {:?}", defn));
         }
     }
@@ -4494,9 +4496,9 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefMod(..) |
         def::DefForeignMod(..) |
         def::DefLocal(..) |
-        def::DefUse(..) |
         def::DefLabel(..) |
-        def::DefUpvar(..) => {
+        def::DefUpvar(..) |
+        def::DefErr => {
             segment_spaces = vec![None; segments.len()];
         }
     }

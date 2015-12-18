@@ -24,7 +24,7 @@ use config::CfgDiag;
 use diagnostic::SpanHandler;
 use feature_gate::{GatedCfg, GatedCfgAttr};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
-use parse::token::{InternedString, intern_and_get_ident};
+use parse::token::InternedString;
 use parse::token;
 use ptr::P;
 
@@ -398,7 +398,7 @@ pub fn cfg_matches<T: CfgDiag>(cfgs: &[P<MetaItem>],
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: InternedString,
-    pub depr: Option<Deprecation>,
+    pub rustc_depr: Option<RustcDeprecation>,
 }
 
 /// The available stability levels.
@@ -410,9 +410,15 @@ pub enum StabilityLevel {
 }
 
 #[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
-pub struct Deprecation {
+pub struct RustcDeprecation {
     pub since: InternedString,
     pub reason: InternedString,
+}
+
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
+pub struct Deprecation {
+    pub since: Option<InternedString>,
+    pub note: Option<InternedString>,
 }
 
 impl StabilityLevel {
@@ -427,7 +433,7 @@ fn find_stability_generic<'a, I>(diagnostic: &SpanHandler,
     where I: Iterator<Item = &'a Attribute>
 {
     let mut stab: Option<Stability> = None;
-    let mut depr: Option<Deprecation> = None;
+    let mut rustc_depr: Option<RustcDeprecation> = None;
 
     'outer: for attr in attrs_iter {
         let tag = attr.name();
@@ -456,7 +462,7 @@ fn find_stability_generic<'a, I>(diagnostic: &SpanHandler,
 
             match tag {
                 "rustc_deprecated" => {
-                    if depr.is_some() {
+                    if rustc_depr.is_some() {
                         diagnostic.span_err(item_sp, "multiple rustc_deprecated attributes");
                         break
                     }
@@ -477,7 +483,7 @@ fn find_stability_generic<'a, I>(diagnostic: &SpanHandler,
 
                     match (since, reason) {
                         (Some(since), Some(reason)) => {
-                            depr = Some(Deprecation {
+                            rustc_depr = Some(RustcDeprecation {
                                 since: since,
                                 reason: reason,
                             })
@@ -529,7 +535,7 @@ fn find_stability_generic<'a, I>(diagnostic: &SpanHandler,
                                     }
                                 },
                                 feature: feature,
-                                depr: None,
+                                rustc_depr: None,
                             })
                         }
                         (None, _, _) => {
@@ -569,7 +575,7 @@ fn find_stability_generic<'a, I>(diagnostic: &SpanHandler,
                                     since: since,
                                 },
                                 feature: feature,
-                                depr: None,
+                                rustc_depr: None,
                             })
                         }
                         (None, _) => {
@@ -591,12 +597,12 @@ fn find_stability_generic<'a, I>(diagnostic: &SpanHandler,
     }
 
     // Merge the deprecation info into the stability info
-    if let Some(depr) = depr {
+    if let Some(rustc_depr) = rustc_depr {
         if let Some(ref mut stab) = stab {
             if let Unstable {reason: ref mut reason @ None, ..} = stab.level {
-                *reason = Some(depr.reason.clone())
+                *reason = Some(rustc_depr.reason.clone())
             }
-            stab.depr = Some(depr);
+            stab.rustc_depr = Some(rustc_depr);
         } else {
             diagnostic.span_err(item_sp, "rustc_deprecated attribute must be paired with \
                                           either stable or unstable attribute");
@@ -606,10 +612,75 @@ fn find_stability_generic<'a, I>(diagnostic: &SpanHandler,
     stab
 }
 
+fn find_deprecation_generic<'a, I>(diagnostic: &SpanHandler,
+                                 attrs_iter: I,
+                                 item_sp: Span)
+                                 -> Option<Deprecation>
+    where I: Iterator<Item = &'a Attribute>
+{
+    let mut depr: Option<Deprecation> = None;
+
+    'outer: for attr in attrs_iter {
+        if attr.name() != "deprecated" {
+            continue
+        }
+
+        mark_used(attr);
+
+        if depr.is_some() {
+            diagnostic.span_err(item_sp, "multiple deprecated attributes");
+            break
+        }
+
+        depr = if let Some(metas) = attr.meta_item_list() {
+            let get = |meta: &MetaItem, item: &mut Option<InternedString>| {
+                if item.is_some() {
+                    diagnostic.span_err(meta.span, &format!("multiple '{}' items",
+                                                             meta.name()));
+                    return false
+                }
+                if let Some(v) = meta.value_str() {
+                    *item = Some(v);
+                    true
+                } else {
+                    diagnostic.span_err(meta.span, "incorrect meta item");
+                    false
+                }
+            };
+
+            let mut since = None;
+            let mut note = None;
+            for meta in metas {
+                match &*meta.name() {
+                    "since" => if !get(meta, &mut since) { continue 'outer },
+                    "note" => if !get(meta, &mut note) { continue 'outer },
+                    _ => {
+                        diagnostic.span_err(meta.span, &format!("unknown meta item '{}'",
+                                                                meta.name()));
+                        continue 'outer
+                    }
+                }
+            }
+
+            Some(Deprecation {since: since, note: note})
+        } else {
+            Some(Deprecation{since: None, note: None})
+        }
+    }
+
+    depr
+}
+
 /// Find the first stability attribute. `None` if none exists.
 pub fn find_stability(diagnostic: &SpanHandler, attrs: &[Attribute],
                       item_sp: Span) -> Option<Stability> {
     find_stability_generic(diagnostic, attrs.iter(), item_sp)
+}
+
+/// Find the deprecation attribute. `None` if none exists.
+pub fn find_deprecation(diagnostic: &SpanHandler, attrs: &[Attribute],
+                      item_sp: Span) -> Option<Deprecation> {
+    find_deprecation_generic(diagnostic, attrs.iter(), item_sp)
 }
 
 pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[P<MetaItem>]) {

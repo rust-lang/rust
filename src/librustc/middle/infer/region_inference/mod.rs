@@ -18,12 +18,13 @@ pub use self::RegionResolutionError::*;
 pub use self::VarValue::*;
 
 use super::{RegionVariableOrigin, SubregionOrigin, TypeTrace, MiscVariable};
+use super::unify_key;
 
 use rustc_data_structures::graph::{self, Direction, NodeIndex};
 use rustc_data_structures::unify::{self, UnificationTable};
 use middle::free_region::FreeRegionMap;
 use middle::ty::{self, Ty};
-use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
+use middle::ty::{BoundRegion, Region, RegionVid};
 use middle::ty::{ReEmpty, ReStatic, ReFree, ReEarlyBound};
 use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
 use middle::ty::error::TypeError;
@@ -345,10 +346,13 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     pub fn new_region_var(&self, origin: RegionVariableOrigin) -> RegionVid {
-        let id = self.num_vars();
+        let vid = RegionVid { index: self.num_vars() };
         self.var_origins.borrow_mut().push(origin.clone());
-        let vid = self.unification_table.borrow_mut().new_key(());
-        assert_eq!(vid.index, id);
+
+        let u_vid = self.unification_table.borrow_mut().new_key(
+            unify_key::RegionVidKey { min_vid: vid }
+            );
+        assert_eq!(vid, u_vid);
         if self.in_snapshot() {
             self.undo_log.borrow_mut().push(AddVar(vid));
         }
@@ -581,7 +585,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     pub fn opportunistic_resolve_var(&self, rid: RegionVid) -> ty::Region {
-        ty::ReVar(self.unification_table.borrow_mut().find(rid))
+        ty::ReVar(self.unification_table.borrow_mut().find_value(rid).min_vid)
     }
 
     fn combine_map(&self, t: CombineMapType) -> &RefCell<CombineMap> {

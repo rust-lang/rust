@@ -215,8 +215,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
             }
             def::DefMod(..) | def::DefForeignMod(..) | def::DefTrait(..) |
             def::DefTy(..) | def::DefPrimTy(..) | def::DefAssociatedTy(..) |
-            def::DefUse(..) | def::DefLabel(..) | def::DefTyParam(..) |
-            def::DefSelfTy(..) => {
+            def::DefLabel(..) | def::DefTyParam(..) |
+            def::DefSelfTy(..) | def::DefErr => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     &format!("cannot translate def {:?} \

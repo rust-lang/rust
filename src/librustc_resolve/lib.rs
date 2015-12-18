@@ -64,7 +64,7 @@ use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 
 use syntax::ast;
-use syntax::ast::{CRATE_NODE_ID, Ident, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
+use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
 use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64, TyF64, TyF32};
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::{self, special_names, special_idents};
@@ -566,6 +566,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
             Ok(def) => self.record_def(tref.trait_ref.ref_id, def),
             Err(_) => {
                 // error already reported
+                self.record_def(tref.trait_ref.ref_id, err_path_resolution())
             }
         }
         intravisit::walk_poly_trait_ref(self, tref, m);
@@ -1462,7 +1463,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn resolve_item_in_lexical_scope(&mut self,
                                      module_: Rc<Module>,
                                      name: Name,
-                                     namespace: Namespace)
+                                     namespace: Namespace,
+                                     record_used: bool)
                                      -> ResolveResult<(Target, bool)> {
         debug!("(resolving item in lexical scope) resolving `{}` in namespace {:?} in `{}`",
                name,
@@ -1502,10 +1504,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     debug!("(resolving item in lexical scope) using import resolution");
                     // track used imports and extern crates as well
                     let id = import_resolution[namespace].id;
-                    self.used_imports.insert((id, namespace));
-                    self.record_import_use(id, name);
-                    if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
-                        self.used_crates.insert(kid);
+                    if record_used {
+                        self.used_imports.insert((id, namespace));
+                        self.record_import_use(id, name);
+                        if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
+                            self.used_crates.insert(kid);
+                        }
                     }
                     return Success((target, false));
                 }
@@ -1582,7 +1586,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                        -> ResolveResult<Rc<Module>> {
         // If this module is an anonymous module, resolve the item in the
         // lexical scope. Otherwise, resolve the item from the crate root.
-        let resolve_result = self.resolve_item_in_lexical_scope(module_, name, TypeNS);
+        let resolve_result = self.resolve_item_in_lexical_scope(module_, name, TypeNS, true);
         match resolve_result {
             Success((target, _)) => {
                 if let Some(module_def) = target.binding.module() {
@@ -2005,6 +2009,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                   prefix.span,
                                                   ResolutionError::FailedToResolve(
                                                       &path_names_to_string(prefix, 0)));
+                                    self.record_def(item.id, err_path_resolution());
                                 }
                             }
                         }
@@ -2164,6 +2169,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         resolve_error(self,
                                       eq_pred.span,
                                       ResolutionError::UndeclaredAssociatedType);
+                        self.record_def(eq_pred.id, err_path_resolution());
                     }
                 }
             }
@@ -2194,6 +2200,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.record_def(trait_ref.ref_id, path_res);
                 new_val = Some((path_res.base_def.def_id(), trait_ref.clone()));
                 new_id = Some(path_res.base_def.def_id());
+            } else {
+                self.record_def(trait_ref.ref_id, err_path_resolution());
             }
             intravisit::walk_trait_ref(self, trait_ref);
         }
@@ -2463,6 +2471,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         self.record_def(ty.id, def);
                     }
                     None => {
+                        self.record_def(ty.id, err_path_resolution());
+
                         // Keep reporting some errors even if they're ignored above.
                         self.resolve_path(ty.id, path, 0, TypeNS, true);
 
@@ -2545,6 +2555,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 ResolutionError::DeclarationShadowsEnumVariantOrUnitLikeStruct(
                                     renamed)
                             );
+                            self.record_def(pattern.id, err_path_resolution());
                         }
                         FoundConst(def, lp, _) if const_ok => {
                             debug!("(resolving pattern) resolving `{}` to constant", renamed);
@@ -2564,6 +2575,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 ResolutionError::OnlyIrrefutablePatternsAllowedHere(def.def_id(),
                                                                                     name)
                             );
+                            self.record_def(pattern.id, err_path_resolution());
                         }
                         BareIdentifierPatternUnresolved => {
                             debug!("(resolving pattern) binding `{}`", renamed);
@@ -2647,6 +2659,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 resolve_error(&self,
                                               path.span,
                                               ResolutionError::StaticVariableReference);
+                                self.record_def(pattern.id, err_path_resolution());
                             }
                             _ => {
                                 // If anything ends up here entirely resolved,
@@ -2665,6 +2678,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                  .name
                                                  .as_str())
                                     );
+                                    self.record_def(pattern.id, err_path_resolution());
                                 } else {
                                     let const_name = path.segments
                                                          .last()
@@ -2684,6 +2698,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             ResolutionError::UnresolvedEnumVariantStructOrConst(
                                 &path.segments.last().unwrap().identifier.name.as_str())
                         );
+                        self.record_def(pattern.id, err_path_resolution());
                     }
                     intravisit::walk_path(self, path);
                 }
@@ -2726,6 +2741,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         &path.segments.last().unwrap().identifier.name.as_str()
                                     )
                                 );
+                                self.record_def(pattern.id, err_path_resolution());
                             }
                         }
                     } else {
@@ -2737,6 +2753,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                                       .identifier
                                                                                       .name
                                                                                       .as_str()));
+                        self.record_def(pattern.id, err_path_resolution());
                     }
                     intravisit::walk_pat(self, pattern);
                 }
@@ -2754,6 +2771,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 ResolutionError::DoesNotNameAStruct(
                                     &*path_names_to_string(path, 0))
                             );
+                            self.record_def(pattern.id, err_path_resolution());
                         }
                     }
                     intravisit::walk_path(self, path);
@@ -2776,7 +2794,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                        span: Span)
                                        -> BareIdentifierPatternResolution {
         let module = self.current_module.clone();
-        match self.resolve_item_in_lexical_scope(module, name, ValueNS) {
+        match self.resolve_item_in_lexical_scope(module, name, ValueNS, true) {
             Success((target, _)) => {
                 debug!("(resolve bare identifier pattern) succeeded in finding {} at {:?}",
                        name,
@@ -2884,17 +2902,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // Try to find a path to an item in a module.
-        let unqualified_def = self.resolve_identifier(segments.last().unwrap().identifier,
-                                                      namespace,
-                                                      check_ribs);
-
+        let last_ident = segments.last().unwrap().identifier;
         if segments.len() <= 1 {
+            let unqualified_def = self.resolve_identifier(last_ident, namespace, check_ribs, true);
             return unqualified_def.and_then(|def| self.adjust_local_def(def, span))
                                   .map(|def| {
                                       PathResolution::new(def, LastMod(AllPublic), path_depth)
                                   });
         }
 
+        let unqualified_def = self.resolve_identifier(last_ident, namespace, check_ribs, false);
         let def = self.resolve_module_relative_path(span, segments, namespace);
         match (def, unqualified_def) {
             (Some((ref d, _)), Some(ref ud)) if *d == ud.def => {
@@ -2914,7 +2931,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn resolve_identifier(&mut self,
                           identifier: hir::Ident,
                           namespace: Namespace,
-                          check_ribs: bool)
+                          check_ribs: bool,
+                          record_used: bool)
                           -> Option<LocalDef> {
         // First, check to see whether the name is a primitive type.
         if namespace == TypeNS {
@@ -2931,7 +2949,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        self.resolve_item_by_name_in_lexical_scope(identifier.unhygienic_name, namespace)
+        let name = identifier.unhygienic_name;
+        self.resolve_item_by_name_in_lexical_scope(name, namespace, record_used)
             .map(LocalDef::from_def)
     }
 
@@ -3182,11 +3201,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_item_by_name_in_lexical_scope(&mut self,
                                              name: Name,
-                                             namespace: Namespace)
+                                             namespace: Namespace,
+                                             record_used: bool)
                                              -> Option<Def> {
         // Check the items.
         let module = self.current_module.clone();
-        match self.resolve_item_in_lexical_scope(module, name, namespace) {
+        match self.resolve_item_in_lexical_scope(module, name, namespace, record_used) {
             Success((target, _)) => {
                 match target.binding.def() {
                     None => {
@@ -3430,6 +3450,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         } else {
                             self.session.span_help(expr.span, &msg);
                         }
+                        self.record_def(expr.id, err_path_resolution());
                     } else {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `{}`",
@@ -3454,6 +3475,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let type_res = self.with_no_errors(|this| {
                         this.resolve_path(expr.id, path, 0, TypeNS, false)
                     });
+
+                    self.record_def(expr.id, err_path_resolution());
                     match type_res.map(|r| r.base_def) {
                         Some(DefTy(struct_id, _)) if self.structs.contains_key(&struct_id) => {
                             resolve_error(
@@ -3540,6 +3563,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                       ResolutionError::DoesNotNameAStruct(
                                                                 &*path_names_to_string(path, 0))
                                      );
+                        self.record_def(expr.id, err_path_resolution());
                     }
                 }
 
@@ -3562,6 +3586,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 match self.search_label(label.node.name) {
                     None => {
+                        self.record_def(expr.id, err_path_resolution());
                         resolve_error(self,
                                       label.span,
                                       ResolutionError::UndeclaredLabel(&label.node.name.as_str()))
@@ -3811,6 +3836,14 @@ fn module_to_string(module: &Module) -> String {
     names_to_string(&names.into_iter().rev().collect::<Vec<ast::Name>>())
 }
 
+fn err_path_resolution() -> PathResolution {
+    PathResolution {
+        base_def: DefErr,
+        last_private: LastMod(AllPublic),
+        depth: 0,
+    }
+}
+
 
 pub struct CrateMap {
     pub def_map: RefCell<DefMap>,
@@ -3836,7 +3869,6 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
     let mut resolver = create_resolver(session, ast_map, krate, make_glob_map, None);
 
     resolver.resolve_crate(krate);
-    session.abort_if_errors();
 
     check_unused::check_crate(&mut resolver, krate);
 

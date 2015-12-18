@@ -181,7 +181,7 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &hir::Lifetime)
 
         Some(&rl::DefFreeRegion(scope, id)) => {
             ty::ReFree(ty::FreeRegion {
-                    scope: tcx.region_maps.item_extent(scope.node_id),
+                    scope: scope.to_code_extent(&tcx.region_maps),
                     bound_region: ty::BrNamed(tcx.map.local_def_id(id),
                                               lifetime.name)
                 })
@@ -719,6 +719,9 @@ fn trait_def_id<'tcx>(this: &AstConv<'tcx>, trait_ref: &hir::TraitRef) -> DefId 
     let path = &trait_ref.path;
     match ::lookup_full_def(this.tcx(), path.span, trait_ref.ref_id) {
         def::DefTrait(trait_def_id) => trait_def_id,
+        def::DefErr => {
+            this.tcx().sess.fatal("cannot continue compilation due to previous error");
+        }
         _ => {
             span_fatal!(this.tcx().sess, path.span, E0245, "`{}` is not a trait",
                         path);
@@ -1532,6 +1535,9 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
         def::DefPrimTy(prim_ty) => {
             prim_ty_to_ty(tcx, base_segments, prim_ty)
+        }
+        def::DefErr => {
+            return this.tcx().types.err;
         }
         _ => {
             let id_node = tcx.map.as_local_node_id(def.def_id()).unwrap();

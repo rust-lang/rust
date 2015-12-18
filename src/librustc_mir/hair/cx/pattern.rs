@@ -97,7 +97,11 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                                     Literal::Value { value: value }
                                 } else {
                                     let substs = self.cx.tcx.mk_substs(Substs::empty());
-                                    Literal::Item { def_id: def_id, substs: substs }
+                                    Literal::Item {
+                                        def_id: def_id,
+                                        kind: ItemKind::Constant,
+                                        substs: substs
+                                    }
                                 };
                                 PatternKind::Constant { value: literal }
                             }

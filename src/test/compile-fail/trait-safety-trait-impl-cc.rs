@@ -18,7 +18,7 @@ extern crate trait_safety_lib as lib;
 struct Bar;
 impl lib::Foo for Bar { //~ ERROR requires an `unsafe impl` declaration
     fn foo(&self) -> isize {
-        *self as isize
+        panic!();
     }
 }
 

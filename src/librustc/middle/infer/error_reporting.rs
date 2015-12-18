@@ -148,6 +148,9 @@ impl<'tcx> ty::ctxt<'tcx> {
                 };
                 let scope_decorated_tag = match self.region_maps.code_extent_data(scope) {
                     region::CodeExtentData::Misc(_) => tag,
+                    region::CodeExtentData::CallSiteScope { .. } => {
+                        "scope of call-site for function"
+                    }
                     region::CodeExtentData::ParameterScope { .. } => {
                         "scope of parameters for function"
                     }
