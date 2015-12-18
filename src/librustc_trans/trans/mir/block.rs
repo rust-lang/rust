@@ -9,14 +9,18 @@
 // except according to those terms.
 
 use llvm::BasicBlockRef;
+use middle::infer;
+use middle::ty;
 use rustc::mir::repr as mir;
 use trans::adt;
 use trans::base;
 use trans::build;
-use trans::common::Block;
+use trans::common::{self, Block};
 use trans::debuginfo::DebugLoc;
+use trans::type_of;
 
 use super::MirContext;
+use super::operand::OperandValue::{FatPtr, Immediate, Ref};
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock) {
@@ -101,29 +105,65 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 base::build_return_block(bcx.fcx, bcx, return_ty, DebugLoc::None);
             }
 
-            mir::Terminator::Call { .. } => {
-                unimplemented!()
-                //let llbb = unimplemented!(); // self.make_landing_pad(panic_bb);
-                //
-                //let tr_dest = self.trans_lvalue(bcx, &data.destination);
-                //
-                //// Create the callee. This will always be a fn
-                //// ptr and hence a kind of scalar.
-                //let callee = self.trans_operand(bcx, &data.func);
-                //
-                //// Process the arguments.
-                //
-                //let args = unimplemented!();
-                //
-                //callee::trans_call_inner(bcx,
-                //                         DebugLoc::None,
-                //                         |bcx, _| Callee {
-                //                             bcx: bcx,
-                //                             data: CalleeData::Fn(callee.llval),
-                //                             ty: callee.ty,
-                //                         },
-                //                         args,
-                //                         Some(Dest::SaveIn(tr_dest.llval)));
+            mir::Terminator::Call { ref data, targets } => {
+                // The location we'll write the result of the call into.
+                let call_dest = self.trans_lvalue(bcx, &data.destination);
+
+                // Create the callee. This will always be a fn
+                // ptr and hence a kind of scalar.
+                let callee = self.trans_operand(bcx, &data.func);
+                let ret_ty = if let ty::TyBareFn(_, ref f) = callee.ty.sty {
+                    let sig = bcx.tcx().erase_late_bound_regions(&f.sig);
+                    let sig = infer::normalize_associated_type(bcx.tcx(), &sig);
+                    sig.output
+                } else {
+                    panic!("trans_block: expected TyBareFn as callee");
+                };
+
+                // The arguments we'll be passing
+                let mut llargs = vec![];
+
+                // Does the fn use an outptr? If so, that's the first arg.
+                if let ty::FnConverging(ret_ty) = ret_ty {
+                    if type_of::return_uses_outptr(bcx.ccx(), ret_ty) {
+                        llargs.push(call_dest.llval);
+                    }
+                }
+
+                // Process the rest of the args.
+                for arg in &data.args {
+                    let arg_op = self.trans_operand(bcx, arg);
+                    match arg_op.val {
+                        Ref(llval) | Immediate(llval) => llargs.push(llval),
+                        FatPtr(base, extra) => {
+                            // The two words in a fat ptr are passed separately
+                            llargs.push(base);
+                            llargs.push(extra);
+                        }
+                    }
+                }
+
+                // FIXME: Handle panics
+                //let panic_bb = self.llblock(targets.1);
+                //self.make_landing_pad(panic_bb);
+
+                // Do the actual call.
+                let (llret, b) = base::invoke(bcx,
+                                              callee.immediate(),
+                                              &llargs[..],
+                                              callee.ty,
+                                              DebugLoc::None);
+                bcx = b;
+
+                // Copy the return value into the destination.
+                if let ty::FnConverging(ret_ty) = ret_ty {
+                    if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
+                       !common::type_is_zero_size(bcx.ccx(), ret_ty) {
+                        base::store_ty(bcx, llret, call_dest.llval, ret_ty);
+                    }
+                }
+
+                build::Br(bcx, self.llblock(targets.0), DebugLoc::None)
             }
         }
     }
