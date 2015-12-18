@@ -697,8 +697,8 @@ impl<'v> Visitor<'v> for PathCollector {
                     // Even if the ref is mut, you can't change the ref, only
                     // the data pointed at, so showing the initialising expression
                     // is still worthwhile.
-                    ast::BindByRef(_) => ast::MutImmutable,
-                    ast::BindByValue(mt) => mt,
+                    ast::BindingMode::ByRef(_) => ast::MutImmutable,
+                    ast::BindingMode::ByValue(mt) => mt,
                 };
                 // collect path for either visit_local or visit_arm
                 let path = ast_util::ident_to_path(path1.span, path1.node);
