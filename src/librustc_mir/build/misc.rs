@@ -66,6 +66,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                             -> Operand<'tcx> {
         let literal = Literal::Item {
             def_id: item_ref.def_id,
+            kind: item_ref.kind,
             substs: item_ref.substs,
         };
         self.literal_operand(span, item_ref.ty, literal)
