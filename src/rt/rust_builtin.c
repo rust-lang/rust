@@ -77,7 +77,7 @@ rust_readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result) {
     return readdir_r(dirp, entry, result);
 }
 
-int
+size_t
 rust_dirent_t_size() {
     return sizeof(struct dirent);
 }
