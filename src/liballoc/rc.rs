@@ -160,11 +160,11 @@ use core::cell::Cell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hasher, Hash};
-use core::intrinsics::{assume, abort, uninit};
+use core::intrinsics::{assume, abort};
 use core::marker;
 #[cfg(not(stage0))]
 use core::marker::Unsize;
-use core::mem::{self, align_of_val, size_of_val, forget};
+use core::mem::{self, align_of_val, size_of_val, forget, uninitialized};
 use core::ops::Deref;
 #[cfg(not(stage0))]
 use core::ops::CoerceUnsized;
@@ -855,7 +855,7 @@ impl<T> Weak<T> {
                 _ptr: Shared::new(Box::into_raw(box RcBox {
                     strong: Cell::new(0),
                     weak: Cell::new(1),
-                    value: uninit(),
+                    value: uninitialized(),
                 })),
             }
         }
