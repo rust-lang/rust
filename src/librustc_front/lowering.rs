@@ -756,6 +756,7 @@ pub fn lower_impl_item(lctx: &LoweringContext, i: &ImplItem) -> hir::ImplItem {
         name: i.ident.name,
         attrs: lower_attrs(lctx, &i.attrs),
         vis: lower_visibility(lctx, i.vis),
+        defaultness: lower_defaultness(lctx, i.defaultness),
         node: match i.node {
             ImplItemKind::Const(ref ty, ref expr) => {
                 hir::ImplItemKind::Const(lower_ty(lctx, ty), lower_expr(lctx, expr))
@@ -1704,6 +1705,13 @@ pub fn lower_visibility(_lctx: &LoweringContext, v: Visibility) -> hir::Visibili
     match v {
         Visibility::Public => hir::Public,
         Visibility::Inherited => hir::Inherited,
+    }
+}
+
+pub fn lower_defaultness(_lctx: &LoweringContext, d: Defaultness) -> hir::Defaultness {
+    match d {
+        Defaultness::Default => hir::Defaultness::Default,
+        Defaultness::Final => hir::Defaultness::Final,
     }
 }
 
