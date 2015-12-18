@@ -799,7 +799,7 @@ impl CodeMap {
 
         let lo = self.lookup_char_pos_adj(sp.lo);
         let hi = self.lookup_char_pos_adj(sp.hi);
-        return (format!("{}:{}:{}: {}:{}",
+        return (format!("{}: {}:{} -> {}:{}",
                         lo.filename,
                         lo.line,
                         lo.col.to_usize() + 1,

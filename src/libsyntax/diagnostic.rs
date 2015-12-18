@@ -293,8 +293,8 @@ impl fmt::Display for Level {
 
         match *self {
             Bug => "error: internal compiler error".fmt(f),
-            Fatal | Error => "error".fmt(f),
-            Warning => "warning".fmt(f),
+            Fatal | Error => "\n  error".fmt(f),
+            Warning => "\n  warning".fmt(f),
             Note => "note".fmt(f),
             Help => "help".fmt(f),
         }
@@ -550,32 +550,17 @@ impl EmitterWriter {
         // Display only the first MAX_LINES lines.
         let all_lines = lines.lines.len();
         let display_lines = cmp::min(all_lines, MAX_LINES);
-        let display_line_infos = &lines.lines[..display_lines];
         let display_line_strings = &line_strings[..display_lines];
 
-        // Calculate the widest number to format evenly and fix #11715
-        assert!(display_line_infos.len() > 0);
-        let mut max_line_num = display_line_infos[display_line_infos.len() - 1].line_index + 1;
-        let mut digits = 0;
-        while max_line_num > 0 {
-            max_line_num /= 10;
-            digits += 1;
-        }
-
+        assert!(display_line_strings.len() > 0);
         // Print the offending lines
-        for (line_info, line) in display_line_infos.iter().zip(display_line_strings) {
-            try!(write!(&mut self.dst, "{}:{:>width$} {}\n",
-                        fm.name,
-                        line_info.line_index + 1,
-                        line,
-                        width=digits));
+        for line in display_line_strings {
+            try!(write!(&mut self.dst, "    {}\n", line));
         }
 
         // If we elided something, put an ellipsis.
         if display_lines < all_lines {
-            let last_line_index = display_line_infos.last().unwrap().line_index;
-            let s = format!("{}:{} ", fm.name, last_line_index + 1);
-            try!(write!(&mut self.dst, "{0:1$}...\n", "", s.len()));
+            try!(write!(&mut self.dst, "    ...\n"));
         }
 
         // FIXME (#3260)
@@ -591,7 +576,7 @@ impl EmitterWriter {
             let mut s = String::new();
             // Skip is the number of characters we need to skip because they are
             // part of the 'filename:line ' part of the previous line.
-            let skip = fm.name.chars().count() + digits + 3;
+            let skip = digits + 4;
             for _ in 0..skip {
                 s.push(' ');
             }
@@ -608,7 +593,7 @@ impl EmitterWriter {
                     // position.
                     match ch {
                         '\t' => {
-                            col += 8 - col%8;
+                            col += 8 - col % 8;
                             s.push('\t');
                         },
                         _ => {
@@ -622,7 +607,7 @@ impl EmitterWriter {
                 let mut s = String::from("^");
                 let count = match lastc {
                     // Most terminals have a tab stop every eight columns by default
-                    '\t' => 8 - col%8,
+                    '\t' => 8 - col % 8,
                     _ => 1,
                 };
                 col += count;
