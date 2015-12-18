@@ -18,7 +18,7 @@ use rustc_front::hir;
 use syntax::ast;
 use syntax::codemap::Span;
 
-struct Builder<'a, 'tcx: 'a> {
+pub struct Builder<'a, 'tcx: 'a> {
     hir: Cx<'a, 'tcx>,
     cfg: CFG<'tcx>,
     scopes: Vec<scope::Scope<'tcx>>,
@@ -40,7 +40,7 @@ struct CFG<'tcx> {
 // convenient.
 
 #[must_use] // if you don't use one of these results, you're leaving a dangling edge
-struct BlockAnd<T>(BasicBlock, T);
+pub struct BlockAnd<T>(BasicBlock, T);
 
 trait BlockAndExtension {
     fn and<T>(self, v: T) -> BlockAnd<T>;

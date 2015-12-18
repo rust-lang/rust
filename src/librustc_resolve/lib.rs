@@ -905,8 +905,13 @@ impl fmt::Debug for Module {
 bitflags! {
     #[derive(Debug)]
     flags DefModifiers: u8 {
+        // Enum variants are always considered `PUBLIC`, this is needed for `use Enum::Variant`
+        // or `use Enum::*` to work on private enums.
         const PUBLIC     = 1 << 0,
         const IMPORTABLE = 1 << 1,
+        // Variants are considered `PUBLIC`, but some of them live in private enums.
+        // We need to track them to prohibit reexports like `pub use PrivEnum::Variant`.
+        const PRIVATE_VARIANT = 1 << 2,
     }
 }
 

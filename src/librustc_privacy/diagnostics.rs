@@ -21,13 +21,14 @@ trait Foo {
     fn dummy(&self) { }
 }
 
-pub trait Bar : Foo {} // error: private trait in exported type parameter bound
+pub trait Bar : Foo {} // error: private trait in public interface
 pub struct Bar<T: Foo>(pub T); // same error
 pub fn foo<T: Foo> (t: T) {} // same error
 ```
 
-To solve this error, please ensure that the trait is also public and accessible
-at the same level of the public functions or types which are bound on it.
+To solve this error, please ensure that the trait is also public. The trait
+can be made inaccessible if necessary by placing it into a private inner module,
+but it still has to be marked with `pub`.
 Example:
 
 ```
@@ -42,20 +43,22 @@ pub fn foo<T: Foo> (t: T) {} // ok!
 "##,
 
 E0446: r##"
-A private type was used in an exported type signature. Erroneous code example:
+A private type was used in a public type signature. Erroneous code example:
 
 ```
 mod Foo {
     struct Bar(u32);
 
-    pub fn bar() -> Bar { // error: private type in exported type signature
+    pub fn bar() -> Bar { // error: private type in public interface
         Bar(0)
     }
 }
 ```
 
-To solve this error, please ensure that the type is also public and accessible
-at the same level of the public functions or types which use it. Example:
+To solve this error, please ensure that the type is also public. The type
+can be made inaccessible if necessary by placing it into a private inner module,
+but it still has to be marked with `pub`.
+Example:
 
 ```
 mod Foo {

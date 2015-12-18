@@ -38,6 +38,7 @@ use std::mem::replace;
 use rustc_front::hir;
 use rustc_front::intravisit::{self, Visitor};
 
+use rustc::lint;
 use rustc::middle::def;
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
@@ -46,7 +47,7 @@ use rustc::middle::privacy::LastPrivate::*;
 use rustc::middle::privacy::PrivateDep::*;
 use rustc::middle::privacy::ExternalExports;
 use rustc::middle::ty;
-use rustc::util::nodemap::NodeMap;
+use rustc::util::nodemap::{NodeMap, NodeSet};
 use rustc::front::map as ast_map;
 
 use syntax::ast;
@@ -1101,14 +1102,23 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
     }
 }
 
-struct VisiblePrivateTypesVisitor<'a, 'tcx: 'a> {
+///////////////////////////////////////////////////////////////////////////////
+/// Obsolete visitors for checking for private items in public interfaces.
+/// These visitors are supposed to be kept in frozen state and produce an
+/// "old error node set". For backward compatibility the new visitor reports
+/// warnings instead of hard errors when the erroneous node is not in this old set.
+///////////////////////////////////////////////////////////////////////////////
+
+struct ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     access_levels: &'a AccessLevels,
     in_variant: bool,
+    // set of errors produced by this obsolete visitor
+    old_error_set: NodeSet,
 }
 
-struct CheckTypeForPrivatenessVisitor<'a, 'b: 'a, 'tcx: 'b> {
-    inner: &'a VisiblePrivateTypesVisitor<'b, 'tcx>,
+struct ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b: 'a, 'tcx: 'b> {
+    inner: &'a ObsoleteVisiblePrivateTypesVisitor<'b, 'tcx>,
     /// whether the type refers to private types.
     contains_private: bool,
     /// whether we've recurred at all (i.e. if we're pointing at the
@@ -1118,7 +1128,7 @@ struct CheckTypeForPrivatenessVisitor<'a, 'b: 'a, 'tcx: 'b> {
     outer_type_is_public_path: bool,
 }
 
-impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
+impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn path_is_private_type(&self, path_id: ast::NodeId) -> bool {
         let did = match self.tcx.def_map.borrow().get(&path_id).map(|d| d.full_def()) {
             // `int` etc. (None doesn't seem to occur.)
@@ -1146,14 +1156,11 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
         self.access_levels.is_public(trait_id)
     }
 
-    fn check_ty_param_bound(&self,
+    fn check_ty_param_bound(&mut self,
                             ty_param_bound: &hir::TyParamBound) {
         if let hir::TraitTyParamBound(ref trait_ref, _) = *ty_param_bound {
-            if !self.tcx.sess.features.borrow().visible_private_types &&
-                self.path_is_private_type(trait_ref.trait_ref.ref_id) {
-                    let span = trait_ref.trait_ref.path.span;
-                    span_err!(self.tcx.sess, span, E0445,
-                              "private trait in exported type parameter bound");
+            if self.path_is_private_type(trait_ref.trait_ref.ref_id) {
+                self.old_error_set.insert(trait_ref.trait_ref.ref_id);
             }
         }
     }
@@ -1163,7 +1170,7 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx, 'v> Visitor<'v> for CheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
     fn visit_ty(&mut self, ty: &hir::Ty) {
         if let hir::TyPath(..) = ty.node {
             if self.inner.path_is_private_type(ty.id) {
@@ -1183,7 +1190,7 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for CheckTypeForPrivatenessVisitor<'a, 'b, 't
     fn visit_expr(&mut self, _: &hir::Expr) {}
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
     fn visit_nested_item(&mut self, item: hir::ItemId) {
@@ -1224,7 +1231,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 
                 // check the properties of the Self type:
                 {
-                    let mut visitor = CheckTypeForPrivatenessVisitor {
+                    let mut visitor = ObsoleteCheckTypeForPrivatenessVisitor {
                         inner: self,
                         contains_private: false,
                         at_outer_type: true,
@@ -1401,11 +1408,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 
     fn visit_ty(&mut self, t: &hir::Ty) {
         debug!("VisiblePrivateTypesVisitor checking ty {:?}", t);
-        if let hir::TyPath(_, ref p) = t.node {
-            if !self.tcx.sess.features.borrow().visible_private_types &&
-                self.path_is_private_type(t.id) {
-                span_err!(self.tcx.sess, p.span, E0446,
-                          "private type in exported type signature");
+        if let hir::TyPath(..) = t.node {
+            if self.path_is_private_type(t.id) {
+                self.old_error_set.insert(t.id);
             }
         }
         intravisit::walk_ty(self, t)
@@ -1437,6 +1442,235 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     // if we don't traverse blocks in `EmbargoVisitor`
     fn visit_block(&mut self, _: &hir::Block) {}
     fn visit_expr(&mut self, _: &hir::Expr) {}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// SearchInterfaceForPrivateItemsVisitor traverses an item's interface and
+/// finds any private components in it.
+/// PrivateItemsInPublicInterfacesVisitor ensures there are no private types
+/// and traits in public interfaces.
+///////////////////////////////////////////////////////////////////////////////
+
+struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
+    // Do not report an error when a private type is found
+    is_quiet: bool,
+    // Is private component found?
+    is_public: bool,
+    old_error_set: &'a NodeSet,
+}
+
+impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
+    // Check if the type alias contain private types when substituted
+    fn is_public_type_alias(&self, item: &hir::Item, path: &hir::Path) -> bool {
+        // We substitute type aliases only when determining impl publicity
+        // FIXME: This will probably change and all type aliases will be substituted,
+        // requires an amendment to RFC 136.
+        if !self.is_quiet {
+            return false
+        }
+        // Type alias is considered public if the aliased type is
+        // public, even if the type alias itself is private. So, something
+        // like `type A = u8; pub fn f() -> A {...}` doesn't cause an error.
+        if let hir::ItemTy(ref ty, ref generics) = item.node {
+            let mut check = SearchInterfaceForPrivateItemsVisitor { is_public: true, ..*self };
+            check.visit_ty(ty);
+            // If a private type alias with default type parameters is used in public
+            // interface we must ensure, that the defaults are public if they are actually used.
+            // ```
+            // type Alias<T = Private> = T;
+            // pub fn f() -> Alias {...} // `Private` is implicitly used here, so it must be public
+            // ```
+            let provided_params = path.segments.last().unwrap().parameters.types().len();
+            for ty_param in &generics.ty_params[provided_params..] {
+                if let Some(ref default_ty) = ty_param.default {
+                    check.visit_ty(default_ty);
+                }
+            }
+            check.is_public
+        } else {
+            false
+        }
+    }
+}
+
+impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
+    fn visit_ty(&mut self, ty: &hir::Ty) {
+        if self.is_quiet && !self.is_public {
+            // We are in quiet mode and a private type is already found, no need to proceed
+            return
+        }
+        if let hir::TyPath(_, ref path) = ty.node {
+            let def = self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def();
+            match def {
+                def::DefPrimTy(..) | def::DefSelfTy(..) | def::DefTyParam(..) => {
+                    // Public
+                }
+                def::DefAssociatedTy(..) if self.is_quiet => {
+                    // Conservatively approximate the whole type alias as public without
+                    // recursing into its components when determining impl publicity.
+                    // For example, `impl <Type as Trait>::Alias {...}` may be a public impl
+                    // even if both `Type` and `Trait` are private.
+                    // Ideally, associated types should be substituted in the same way as
+                    // free type aliases, but this isn't done yet.
+                    return
+                }
+                def::DefStruct(def_id) | def::DefTy(def_id, _) |
+                def::DefTrait(def_id) | def::DefAssociatedTy(def_id, _) => {
+                    // Non-local means public (private items can't leave their crate, modulo bugs)
+                    if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
+                        let item = self.tcx.map.expect_item(node_id);
+                        if item.vis != hir::Public && !self.is_public_type_alias(item, path) {
+                            if !self.is_quiet {
+                                if self.old_error_set.contains(&ty.id) {
+                                    span_err!(self.tcx.sess, ty.span, E0446,
+                                              "private type in public interface");
+                                } else {
+                                    self.tcx.sess.add_lint (
+                                        lint::builtin::PRIVATE_IN_PUBLIC,
+                                        node_id,
+                                        ty.span,
+                                        "private type in public interface (error E0446)".to_string()
+                                    );
+                                }
+                            }
+                            self.is_public = false;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        intravisit::walk_ty(self, ty);
+    }
+
+    fn visit_trait_ref(&mut self, trait_ref: &hir::TraitRef) {
+        if self.is_quiet && !self.is_public {
+            // We are in quiet mode and a private type is already found, no need to proceed
+            return
+        }
+        // Non-local means public (private items can't leave their crate, modulo bugs)
+        let def_id = self.tcx.trait_ref_to_def_id(trait_ref);
+        if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
+            let item = self.tcx.map.expect_item(node_id);
+            if item.vis != hir::Public {
+                if !self.is_quiet {
+                    if self.old_error_set.contains(&trait_ref.ref_id) {
+                        span_err!(self.tcx.sess, trait_ref.path.span, E0445,
+                                  "private trait in public interface");
+                    } else {
+                        self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
+                                               node_id,
+                                               trait_ref.path.span,
+                                               "private trait in public interface (error E0445)"
+                                                    .to_string());
+                    }
+                }
+                self.is_public = false;
+            }
+        }
+
+        intravisit::walk_trait_ref(self, trait_ref);
+    }
+
+    // Don't recurse into function bodies
+    fn visit_block(&mut self, _: &hir::Block) {}
+    // Don't recurse into expressions in array sizes or const initializers
+    fn visit_expr(&mut self, _: &hir::Expr) {}
+    // Don't recurse into patterns in function arguments
+    fn visit_pat(&mut self, _: &hir::Pat) {}
+}
+
+struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
+    old_error_set: &'a NodeSet,
+}
+
+impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
+    // A type is considered public if it doesn't contain any private components
+    fn is_public_ty(&self, ty: &hir::Ty) -> bool {
+        let mut check = SearchInterfaceForPrivateItemsVisitor {
+            tcx: self.tcx, is_quiet: true, is_public: true, old_error_set: self.old_error_set
+        };
+        check.visit_ty(ty);
+        check.is_public
+    }
+
+    // A trait reference is considered public if it doesn't contain any private components
+    fn is_public_trait_ref(&self, trait_ref: &hir::TraitRef) -> bool {
+        let mut check = SearchInterfaceForPrivateItemsVisitor {
+            tcx: self.tcx, is_quiet: true, is_public: true, old_error_set: self.old_error_set
+        };
+        check.visit_trait_ref(trait_ref);
+        check.is_public
+    }
+}
+
+impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, item: &hir::Item) {
+        let mut check = SearchInterfaceForPrivateItemsVisitor {
+            tcx: self.tcx, is_quiet: false, is_public: true, old_error_set: self.old_error_set
+        };
+        match item.node {
+            // Crates are always public
+            hir::ItemExternCrate(..) => {}
+            // All nested items are checked by visit_item
+            hir::ItemMod(..) => {}
+            // Checked in resolve
+            hir::ItemUse(..) => {}
+            // Subitems of these items have inherited publicity
+            hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
+            hir::ItemEnum(..) | hir::ItemTrait(..) | hir::ItemTy(..) => {
+                if item.vis == hir::Public {
+                    check.visit_item(item);
+                }
+            }
+            // Subitems of foreign modules have their own publicity
+            hir::ItemForeignMod(ref foreign_mod) => {
+                for foreign_item in &foreign_mod.items {
+                    if foreign_item.vis == hir::Public {
+                        check.visit_foreign_item(foreign_item);
+                    }
+                }
+            }
+            // Subitems of structs have their own publicity
+            hir::ItemStruct(ref struct_def, ref generics) => {
+                if item.vis == hir::Public {
+                    check.visit_generics(generics);
+                    for field in struct_def.fields() {
+                        if field.node.kind.visibility() == hir::Public {
+                            check.visit_struct_field(field);
+                        }
+                    }
+                }
+            }
+            // The interface is empty
+            hir::ItemDefaultImpl(..) => {}
+            // An inherent impl is public when its type is public
+            // Subitems of inherent impls have their own publicity
+            hir::ItemImpl(_, _, ref generics, None, ref ty, ref impl_items) => {
+                if self.is_public_ty(ty) {
+                    check.visit_generics(generics);
+                    for impl_item in impl_items {
+                        if impl_item.vis == hir::Public {
+                            check.visit_impl_item(impl_item);
+                        }
+                    }
+                }
+            }
+            // A trait impl is public when both its type and its trait are public
+            // Subitems of trait impls have inherited publicity
+            hir::ItemImpl(_, _, ref generics, Some(ref trait_ref), ref ty, ref impl_items) => {
+                if self.is_public_ty(ty) && self.is_public_trait_ref(trait_ref) {
+                    check.visit_generics(generics);
+                    for impl_item in impl_items {
+                        check.visit_impl_item(impl_item);
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
@@ -1492,18 +1726,24 @@ pub fn check_crate(tcx: &ty::ctxt,
     }
     visitor.update(ast::CRATE_NODE_ID, Some(AccessLevel::Public));
 
-    let EmbargoVisitor { access_levels, .. } = visitor;
-
     {
-        let mut visitor = VisiblePrivateTypesVisitor {
+        let mut visitor = ObsoleteVisiblePrivateTypesVisitor {
             tcx: tcx,
-            access_levels: &access_levels,
+            access_levels: &visitor.access_levels,
             in_variant: false,
+            old_error_set: NodeSet(),
         };
         intravisit::walk_crate(&mut visitor, krate);
+
+        // Check for private types and traits in public interfaces
+        let mut visitor = PrivateItemsInPublicInterfacesVisitor {
+            tcx: tcx,
+            old_error_set: &visitor.old_error_set,
+        };
+        krate.visit_all_items(&mut visitor);
     }
 
-    access_levels
+    visitor.access_levels
 }
 
 __build_diagnostic_array! { librustc_privacy, DIAGNOSTICS }

@@ -13,11 +13,11 @@
 
 use std::marker::PhantomData;
 
-struct DeterministicHasher;
-struct RandomHasher;
+pub struct DeterministicHasher;
+pub struct RandomHasher;
 
 
-struct MyHashMap<K, V, H=DeterministicHasher> {
+pub struct MyHashMap<K, V, H=DeterministicHasher> {
     data: PhantomData<(K, V, H)>
 }
 

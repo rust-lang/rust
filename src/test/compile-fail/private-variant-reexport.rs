@@ -8,34 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub struct PublicType;
-struct PrivateType;
+#![feature(rustc_attrs)]
+#![allow(dead_code)]
 
-pub trait PublicTrait {
-    type Item;
+mod m1 {
+    pub use ::E::V; //~ WARN variant `V` is private, and cannot be reexported
 }
 
-trait PrivateTrait {
-    type Item;
+mod m2 {
+    pub use ::E::{V}; //~ WARN variant `V` is private, and cannot be reexported
 }
 
-impl PublicTrait for PublicType {
-    type Item = PrivateType;  //~ ERROR private type in exported type signature
+mod m3 {
+    pub use ::E::V::{self}; //~ WARN variant `V` is private, and cannot be reexported
 }
 
-// OK
-impl PublicTrait for PrivateType {
-    type Item = PrivateType;
+mod m4 {
+    pub use ::E::*; //~ WARN variant `V` is private, and cannot be reexported
 }
 
-// OK
-impl PrivateTrait for PublicType {
-    type Item = PrivateType;
-}
+enum E { V }
 
-// OK
-impl PrivateTrait for PrivateType {
-    type Item = PrivateType;
-}
-
-fn main() {}
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful

@@ -390,9 +390,15 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let module = Module::new(parent_link, Some(def), false, is_public);
                 name_bindings.define_module(module.clone(), sp);
 
+                let variant_modifiers = if is_public {
+                    DefModifiers::empty()
+                } else {
+                    DefModifiers::PRIVATE_VARIANT
+                };
                 for variant in &(*enum_definition).variants {
                     let item_def_id = self.ast_map.local_def_id(item.id);
-                    self.build_reduced_graph_for_variant(variant, item_def_id, &module);
+                    self.build_reduced_graph_for_variant(variant, item_def_id,
+                                                         &module, variant_modifiers);
                 }
                 parent.clone()
             }
@@ -494,7 +500,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     fn build_reduced_graph_for_variant(&mut self,
                                        variant: &Variant,
                                        item_id: DefId,
-                                       parent: &Rc<Module>) {
+                                       parent: &Rc<Module>,
+                                       variant_modifiers: DefModifiers) {
         let name = variant.node.name;
         let is_exported = if variant.node.data.is_struct() {
             // Not adding fields for variants as they are not accessed with a self receiver
@@ -512,12 +519,12 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                       self.ast_map.local_def_id(variant.node.data.id()),
                                       is_exported),
                            variant.span,
-                           DefModifiers::PUBLIC | DefModifiers::IMPORTABLE);
+                           DefModifiers::PUBLIC | DefModifiers::IMPORTABLE | variant_modifiers);
         child.define_type(DefVariant(item_id,
                                      self.ast_map.local_def_id(variant.node.data.id()),
                                      is_exported),
                           variant.span,
-                          DefModifiers::PUBLIC | DefModifiers::IMPORTABLE);
+                          DefModifiers::PUBLIC | DefModifiers::IMPORTABLE | variant_modifiers);
     }
 
     /// Constructs the reduced graph for one foreign item.
