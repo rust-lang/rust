@@ -37,14 +37,15 @@
 //!   Moreover, a switch to, e.g. `P<'a, T>` would be easy and mostly automated.
 
 use std::fmt::{self, Display, Debug};
-use std::hash::{Hash, Hasher};
+use std::iter::FromIterator;
 use std::ops::Deref;
-use std::ptr;
+use std::{ptr, slice, vec};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// An owned smart pointer.
-pub struct P<T> {
+#[derive(Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct P<T: ?Sized> {
     ptr: Box<T>
 }
 
@@ -92,14 +93,6 @@ impl<T: 'static + Clone> Clone for P<T> {
     }
 }
 
-impl<T: PartialEq> PartialEq for P<T> {
-    fn eq(&self, other: &P<T>) -> bool {
-        **self == **other
-    }
-}
-
-impl<T: Eq> Eq for P<T> {}
-
 impl<T: Debug> Debug for P<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Debug::fmt(&**self, f)
@@ -111,16 +104,9 @@ impl<T: Display> Display for P<T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Pointer for P<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&self.ptr, f)
-    }
-}
-
-impl<T: Hash> Hash for P<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        (**self).hash(state);
     }
 }
 
@@ -133,5 +119,89 @@ impl<T: 'static + Decodable> Decodable for P<T> {
 impl<T: Encodable> Encodable for P<T> {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         (**self).encode(s)
+    }
+}
+
+
+impl<T:fmt::Debug> fmt::Debug for P<[T]> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.ptr.fmt(fmt)
+    }
+}
+
+impl<T> P<[T]> {
+    pub fn empty() -> P<[T]> {
+        P { ptr: Default::default() }
+    }
+
+    #[inline(never)]
+    pub fn from_vec(v: Vec<T>) -> P<[T]> {
+        P { ptr: v.into_boxed_slice() }
+    }
+
+    #[inline(never)]
+    pub fn into_vec(self) -> Vec<T> {
+        self.ptr.into_vec()
+    }
+
+    pub fn as_slice<'a>(&'a self) -> &'a [T] {
+        &*self.ptr
+    }
+
+    pub fn move_iter(self) -> vec::IntoIter<T> {
+        self.into_vec().into_iter()
+    }
+
+    pub fn map<U, F: FnMut(&T) -> U>(&self, f: F) -> P<[U]> {
+        self.iter().map(f).collect()
+    }
+}
+
+impl<T> Deref for P<[T]> {
+    type Target = [T];
+
+    fn deref(&self) -> &[T] {
+        self.as_slice()
+    }
+}
+
+impl<T> Default for P<[T]> {
+    fn default() -> P<[T]> {
+        P::empty()
+    }
+}
+
+impl<T: Clone> Clone for P<[T]> {
+    fn clone(&self) -> P<[T]> {
+        P::from_vec(self.to_vec())
+    }
+}
+
+impl<T> FromIterator<T> for P<[T]> {
+    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> P<[T]> {
+        P::from_vec(iter.into_iter().collect())
+    }
+}
+
+impl<'a, T> IntoIterator for &'a P<[T]> {
+    type Item = &'a T;
+    type IntoIter = slice::Iter<'a, T>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.ptr.into_iter()
+    }
+}
+
+impl<T: Encodable> Encodable for P<[T]> {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        Encodable::encode(&**self, s)
+    }
+}
+
+impl<T: Decodable> Decodable for P<[T]> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<P<[T]>, D::Error> {
+        Ok(P::from_vec(match Decodable::decode(d) {
+            Ok(t) => t,
+            Err(e) => return Err(e)
+        }))
     }
 }

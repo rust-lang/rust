@@ -205,7 +205,6 @@ use syntax::codemap::{self, DUMMY_SP};
 use syntax::codemap::Span;
 use syntax::errors::Handler;
 use syntax::util::move_map::MoveMap;
-use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::{intern, InternedString};
 use syntax::parse::token::special_idents;
 use syntax::ptr::P;
@@ -516,7 +515,7 @@ impl<'a> TraitDef<'a> {
 
             cx.typaram(self.span,
                        ty_param.ident,
-                       OwnedSlice::from_vec(bounds),
+                       P::from_vec(bounds),
                        None)
         }));
 
@@ -528,7 +527,7 @@ impl<'a> TraitDef<'a> {
                         span: self.span,
                         bound_lifetimes: wb.bound_lifetimes.clone(),
                         bounded_ty: wb.bounded_ty.clone(),
-                        bounds: OwnedSlice::from_vec(wb.bounds.iter().cloned().collect())
+                        bounds: P::from_vec(wb.bounds.iter().cloned().collect())
                     })
                 }
                 ast::WherePredicate::RegionPredicate(ref rb) => {
@@ -579,7 +578,7 @@ impl<'a> TraitDef<'a> {
                         span: self.span,
                         bound_lifetimes: vec![],
                         bounded_ty: ty,
-                        bounds: OwnedSlice::from_vec(bounds),
+                        bounds: P::from_vec(bounds),
                     };
 
                     let predicate = ast::WherePredicate::BoundPredicate(predicate);
@@ -590,7 +589,7 @@ impl<'a> TraitDef<'a> {
 
         let trait_generics = Generics {
             lifetimes: lifetimes,
-            ty_params: OwnedSlice::from_vec(ty_params),
+            ty_params: P::from_vec(ty_params),
             where_clause: where_clause
         };
 

@@ -79,10 +79,10 @@ struct LifetimeContext<'a> {
 enum ScopeChain<'a> {
     /// EarlyScope(i, ['a, 'b, ...], s) extends s with early-bound
     /// lifetimes, assigning indexes 'a => i, 'b => i+1, ... etc.
-    EarlyScope(subst::ParamSpace, &'a Vec<hir::LifetimeDef>, Scope<'a>),
+    EarlyScope(subst::ParamSpace, &'a [hir::LifetimeDef], Scope<'a>),
     /// LateScope(['a, 'b, ...], s) extends s with late-bound
     /// lifetimes introduced by the declaration binder_id.
-    LateScope(&'a Vec<hir::LifetimeDef>, Scope<'a>),
+    LateScope(&'a [hir::LifetimeDef], Scope<'a>),
 
     /// lifetimes introduced by a fn are scoped to the call-site for that fn.
     FnScope { fn_id: ast::NodeId, body_id: ast::NodeId, s: Scope<'a> },
@@ -206,7 +206,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                 // a trait ref, which introduces a binding scope.
                 match self.def_map.get(&ty.id).map(|d| (d.base_def, d.depth)) {
                     Some((def::DefTrait(..), 0)) => {
-                        self.with(LateScope(&Vec::new(), self.scope), |_, this| {
+                        self.with(LateScope(&[], self.scope), |_, this| {
                             this.visit_path(path, ty.id);
                         });
                     }
@@ -661,7 +661,7 @@ impl<'a> LifetimeContext<'a> {
                     lifetime_ref.name);
     }
 
-    fn check_lifetime_defs(&mut self, old_scope: Scope, lifetimes: &Vec<hir::LifetimeDef>) {
+    fn check_lifetime_defs(&mut self, old_scope: Scope, lifetimes: &[hir::LifetimeDef]) {
         for i in 0..lifetimes.len() {
             let lifetime_i = &lifetimes[i];
 
@@ -753,7 +753,7 @@ impl<'a> LifetimeContext<'a> {
     }
 }
 
-fn search_lifetimes<'a>(lifetimes: &'a Vec<hir::LifetimeDef>,
+fn search_lifetimes<'a>(lifetimes: &'a [hir::LifetimeDef],
                     lifetime_ref: &hir::Lifetime)
                     -> Option<(u32, &'a hir::Lifetime)> {
     for (i, lifetime_decl) in lifetimes.iter().enumerate() {
