@@ -160,7 +160,7 @@ use core::cell::Cell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hasher, Hash};
-use core::intrinsics::{assume, abort};
+use core::intrinsics::{assume, abort, uninit};
 use core::marker;
 #[cfg(not(stage0))]
 use core::marker::Unsize;
@@ -830,6 +830,36 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
     }
 }
 
+impl<T> Weak<T> {
+    /// Constructs a new `Weak<T>` without an accompanying instance of T.
+    ///
+    /// This allocates memory for T, but does not initialize it. Calling
+    /// Weak<T>::upgrade() on the return value always gives None.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::rc::Weak;
+    ///
+    /// let five = Weak::new_downgraded();
+    /// ```
+
+    #[unstable(feature = "downgraded_weak",
+               reason = "recently added",
+               issue="30425")]
+    pub fn new_downgraded() -> Weak<T> {
+        unsafe {
+            Weak {
+                _ptr: Shared::new(Box::into_raw(box RcBox {
+                    strong: Cell::new(0),
+                    weak: Cell::new(1),
+                    value: uninit(),
+                })),
+            }
+        }
+    }
+}
+
 // NOTE: We checked_add here to deal with mem::forget safety. In particular
 // if you mem::forget Rcs (or Weaks), the ref-count can overflow, and then
 // you can free the allocation while outstanding Rcs (or Weaks) exist.
@@ -1121,6 +1151,12 @@ mod tests {
         let foo = 123;
         let foo_rc = Rc::from(foo);
         assert!(123 == *foo_rc);
+    }
+
+    #[test]
+    fn test_new_downgraded() {
+        let foo: Weak<usize> = Weak::new_downgraded();
+        assert!(foo.upgrade().is_none());
     }
 }
 
