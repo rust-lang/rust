@@ -2671,6 +2671,14 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
+fn check_expr_eq_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                expr: &'tcx hir::Expr,
+                                expected: Ty<'tcx>) {
+    check_expr_with_unifier(
+        fcx, expr, ExpectHasType(expected), NoPreference,
+        || demand::eqtype(fcx, expr.span, expected, fcx.expr_ty(expr)));
+}
+
 pub fn check_expr_has_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                      expr: &'tcx hir::Expr,
                                      expected: Ty<'tcx>) {
@@ -3527,7 +3535,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       }
       hir::ExprType(ref e, ref t) => {
         let typ = fcx.to_ty(&**t);
-        check_expr_coercable_to_type(fcx, &**e, typ);
+        check_expr_eq_type(fcx, &**e, typ);
         fcx.write_ty(id, typ);
       }
       hir::ExprVec(ref args) => {

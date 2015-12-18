@@ -19,7 +19,7 @@ use syntax::codemap::Span;
 use syntax::ext::base;
 use syntax::ext::base::*;
 use syntax::feature_gate;
-use syntax::parse::token::{intern, InternedString};
+use syntax::parse::token::intern;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
 use syntax::ast::AsmDialect;
