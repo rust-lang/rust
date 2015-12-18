@@ -1463,6 +1463,12 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     // Check if the type alias contain private types when substituted
     fn is_public_type_alias(&self, item: &hir::Item, path: &hir::Path) -> bool {
+        // We substitute type aliases only when determining impl publicity
+        // FIXME: This will probably change and all type aliases will be substituted,
+        // requires an amendment to RFC 136.
+        if !self.is_quiet {
+            return false
+        }
         // Type alias is considered public if the aliased type is
         // public, even if the type alias itself is private. So, something
         // like `type A = u8; pub fn f() -> A {...}` doesn't cause an error.

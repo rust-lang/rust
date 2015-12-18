@@ -105,6 +105,8 @@ mod aliases_pub {
     }
     impl PrivTr for Priv {}
 
+    // This should be OK, if type aliases are substituted
+    pub fn f2(arg: PrivAlias) {} //~ ERROR private type in public interface
     // This should be OK, but associated type aliases are not substituted yet
     pub fn f3(arg: <Priv as PrivTr>::AssocAlias) {} //~ ERROR private type in public interface
 
@@ -141,6 +143,8 @@ mod aliases_params {
     type PrivAliasGeneric<T = Priv> = T;
     type Result<T> = ::std::result::Result<T, Priv>;
 
+    // This should be OK, if type aliases are substituted
+    pub fn f1(arg: PrivAliasGeneric<u8>) {} //~ ERROR private type in public interface
     pub fn f2(arg: PrivAliasGeneric) {} //~ ERROR private type in public interface
     pub fn f3(arg: Result<u8>) {} //~ ERROR private type in public interface
 }

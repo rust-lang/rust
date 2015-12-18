@@ -14,7 +14,7 @@ use std::os::windows::prelude::*;
 use std::ptr;
 use libc::{c_void, c_long};
 
-type DWORD = u32;
+pub type DWORD = u32;
 type LPCWSTR = *const u16;
 type LONG = c_long;
 type LPDWORD = *mut DWORD;
