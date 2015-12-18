@@ -26,9 +26,8 @@ use super::{
 use fmt_macros::{Parser, Piece, Position};
 use middle::def_id::DefId;
 use middle::infer::InferCtxt;
-use middle::ty::{self, ToPredicate, HasTypeFlags, ToPolyTraitRef, TraitRef, Ty};
+use middle::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, Ty, TypeFoldable};
 use middle::ty::fast_reject;
-use middle::ty::fold::TypeFoldable;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cmp;

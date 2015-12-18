@@ -45,7 +45,7 @@ use super::structurally_resolved_type;
 
 use lint;
 use middle::def_id::DefId;
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, TypeFoldable};
 use middle::ty::cast::{CastKind, CastTy};
 use syntax::codemap::Span;
 use rustc_front::hir;

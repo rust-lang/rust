@@ -14,7 +14,7 @@ pub use self::ParamSpace::*;
 pub use self::RegionSubsts::*;
 
 use middle::cstore;
-use middle::ty::{self, Ty, HasTypeFlags, RegionEscape};
+use middle::ty::{self, Ty};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
 
 use serialize::{Encodable, Encoder, Decodable, Decoder};

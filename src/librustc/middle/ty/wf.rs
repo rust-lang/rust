@@ -13,7 +13,7 @@ use middle::infer::InferCtxt;
 use middle::ty::outlives::{self, Component};
 use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, RegionEscape, ToPredicate, Ty};
+use middle::ty::{self, ToPredicate, Ty, TypeFoldable};
 use std::iter::once;
 use syntax::ast;
 use syntax::codemap::Span;

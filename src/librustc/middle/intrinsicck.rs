@@ -13,7 +13,7 @@ use middle::def::DefFn;
 use middle::def_id::DefId;
 use middle::subst::{Subst, Substs, EnumeratedItems};
 use middle::ty::{TransmuteRestriction, ctxt, TyBareFn};
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, TypeFoldable};
 
 use std::fmt;
 

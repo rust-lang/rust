@@ -11,7 +11,7 @@
 use back::abi;
 use llvm::ValueRef;
 use middle::subst::Substs;
-use middle::ty::{Ty, HasTypeFlags};
+use middle::ty::{Ty, TypeFoldable};
 use rustc::middle::const_eval::ConstVal;
 use rustc::mir::repr as mir;
 use trans::common::{self, Block, C_bool, C_bytes, C_floating_f64, C_integral, C_str_slice};

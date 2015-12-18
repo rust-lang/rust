@@ -39,9 +39,8 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener, TypeOrigin};
 use middle::subst::{Subst, Substs, TypeSpace};
-use middle::ty::{self, ToPredicate, RegionEscape, ToPolyTraitRef, Ty, HasTypeFlags};
+use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TypeFoldable};
 use middle::ty::fast_reject;
-use middle::ty::fold::TypeFoldable;
 use middle::ty::relate::TypeRelation;
 
 use std::cell::RefCell;

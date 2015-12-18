@@ -17,7 +17,7 @@ use trans::adt;
 use trans::common::*;
 use trans::foreign;
 use trans::machine;
-use middle::ty::{self, RegionEscape, Ty};
+use middle::ty::{self, Ty, TypeFoldable};
 
 use trans::type_::Type;
 

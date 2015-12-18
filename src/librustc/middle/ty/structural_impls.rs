@@ -10,8 +10,7 @@
 
 use middle::subst::{self, VecPerParamSpace};
 use middle::traits;
-use middle::ty::{self, TraitRef, Ty, TypeAndMut};
-use middle::ty::Lift;
+use middle::ty::{self, Lift, TraitRef, Ty};
 use middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use std::rc::Rc;

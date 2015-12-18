@@ -35,7 +35,7 @@ use trans::glue;
 use trans::type_of;
 use trans::machine;
 use trans::type_::Type;
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, TypeFoldable};
 use middle::subst::Substs;
 use rustc::dep_graph::DepNode;
 use rustc_front::hir;

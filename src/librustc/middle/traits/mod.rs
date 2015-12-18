@@ -19,9 +19,8 @@ use dep_graph::DepNode;
 use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use middle::subst;
-use middle::ty::{self, HasTypeFlags, Ty};
+use middle::ty::{self, Ty, TypeFoldable};
 use middle::ty::fast_reject;
-use middle::ty::fold::TypeFoldable;
 use middle::infer::{self, fixup_err_to_string, InferCtxt};
 
 use std::rc::Rc;
