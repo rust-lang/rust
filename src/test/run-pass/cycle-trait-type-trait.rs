@@ -22,4 +22,12 @@ trait Get<A> {
 
 struct Struct<C:Chromosome> { c: C }
 
+impl Chromosome for i32 { }
+
+impl Get<Struct<i32>> for i32 {
+    fn get(&self) -> Struct<i32> {
+        Struct { c: *self }
+    }
+}
+
 fn main() { }

@@ -21,16 +21,14 @@ use super::CodeSelectionError;
 use super::is_object_safe;
 use super::FulfillmentError;
 use super::ObligationCause;
-use super::ObligationCauseCode;
 use super::PredicateObligation;
 use super::project;
-use super::RFC1214Warning;
 use super::select::SelectionContext;
 use super::Unimplemented;
 use super::util::predicate_for_builtin_bound;
 
 pub struct FulfilledPredicates<'tcx> {
-    set: FnvHashSet<(RFC1214Warning, ty::Predicate<'tcx>)>
+    set: FnvHashSet<ty::Predicate<'tcx>>
 }
 
 /// The fulfillment context is used to drive trait resolution.  It
@@ -194,9 +192,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
         assert!(!obligation.has_escaping_regions());
 
-        let w = RFC1214Warning(obligation.cause.code.is_rfc1214());
-
-        if self.is_duplicate_or_add(infcx.tcx, w, &obligation.predicate) {
+        if self.is_duplicate_or_add(infcx.tcx, &obligation.predicate) {
             debug!("register_predicate({:?}) -- already seen, skip", obligation);
             return;
         }
@@ -261,7 +257,6 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
     fn is_duplicate_or_add(&mut self,
                            tcx: &ty::ctxt<'tcx>,
-                           w: RFC1214Warning,
                            predicate: &ty::Predicate<'tcx>)
                            -> bool {
         // This is a kind of dirty hack to allow us to avoid "rederiving"
@@ -276,12 +271,10 @@ impl<'tcx> FulfillmentContext<'tcx> {
         // evaluating the 'nested obligations'.  This cache lets us
         // skip those.
 
-        let will_warn_due_to_rfc1214 = w.0;
-        let errors_will_be_reported = self.errors_will_be_reported && !will_warn_due_to_rfc1214;
-        if errors_will_be_reported && predicate.is_global() {
-            tcx.fulfilled_predicates.borrow_mut().is_duplicate_or_add(w, predicate)
+        if self.errors_will_be_reported && predicate.is_global() {
+            tcx.fulfilled_predicates.borrow_mut().is_duplicate_or_add(predicate)
         } else {
-            self.duplicate_set.is_duplicate_or_add(w, predicate)
+            self.duplicate_set.is_duplicate_or_add(predicate)
         }
     }
 
@@ -496,12 +489,8 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         }
 
         ty::Predicate::WellFormed(ty) => {
-            let rfc1214 = match obligation.cause.code {
-                ObligationCauseCode::RFC1214(_) => true,
-                _ => false,
-            };
             match ty::wf::obligations(selcx.infcx(), obligation.cause.body_id,
-                                      ty, obligation.cause.span, rfc1214) {
+                                      ty, obligation.cause.span) {
                 Some(obligations) => {
                     new_obligations.extend(obligations);
                     true
@@ -539,13 +528,11 @@ impl<'tcx> FulfilledPredicates<'tcx> {
         }
     }
 
-    pub fn is_duplicate(&self, w: RFC1214Warning, p: &ty::Predicate<'tcx>) -> bool {
-        let key = (w, p.clone());
-        self.set.contains(&key)
+    pub fn is_duplicate(&self, key: &ty::Predicate<'tcx>) -> bool {
+        self.set.contains(key)
     }
 
-    fn is_duplicate_or_add(&mut self, w: RFC1214Warning, p: &ty::Predicate<'tcx>) -> bool {
-        let key = (w, p.clone());
-        !self.set.insert(key)
+    fn is_duplicate_or_add(&mut self, key: &ty::Predicate<'tcx>) -> bool {
+        !self.set.insert(key.clone())
     }
 }

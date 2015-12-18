@@ -19,12 +19,11 @@ struct Bar<T:Eq+?Sized> { value: Box<T> }
 
 trait Foo {
     fn bar(&self) -> Bar<Self> {
-        //~^ WARN E0277
+        //~^ ERROR E0277
         //
         // Here, Eq ought to be implemented.
         loop { }
     }
 }
 
-#[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }

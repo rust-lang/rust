@@ -17,7 +17,7 @@
 
 use std::ops::Deref;
 
-pub trait ToOwned {
+pub trait ToOwned: Sized {
     type Owned: Borrow<Self>;
     fn to_owned(&self) -> Self::Owned;
 }

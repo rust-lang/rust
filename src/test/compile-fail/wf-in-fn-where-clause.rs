@@ -16,10 +16,10 @@
 trait MustBeCopy<T:Copy> {
 }
 
-fn bar<T,U>() //~ WARN E0277
+fn bar<T,U>() //~ ERROR E0277
     where T: MustBeCopy<U>
 {
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }

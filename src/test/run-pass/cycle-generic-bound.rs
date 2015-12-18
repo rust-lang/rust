@@ -15,4 +15,6 @@
 trait Chromosome<X: Chromosome<i32>> {
 }
 
+impl Chromosome<i32> for i32 { }
+
 fn main() { }

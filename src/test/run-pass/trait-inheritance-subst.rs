@@ -13,7 +13,7 @@ pub trait Add<RHS,Result> {
     fn add(&self, rhs: &RHS) -> Result;
 }
 
-trait MyNum : Add<Self,Self> { }
+trait MyNum : Sized + Add<Self,Self> { }
 
 struct MyInt { val: isize }
 

@@ -53,12 +53,6 @@ pub enum Component<'tcx> {
     // them. This gives us room to improve the regionck reasoning in
     // the future without breaking backwards compat.
     EscapingProjection(Vec<Component<'tcx>>),
-
-    // This is a temporary marker indicating "outlives components"
-    // that are due to the new rules introduced by RFC 1214.  For the
-    // time being, violations of these requirements generally induce
-    // warnings, not errors.
-    RFC1214(Vec<Component<'tcx>>),
 }
 
 /// Returns all the things that must outlive `'a` for the condition
@@ -122,20 +116,6 @@ fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
             for &upvar_ty in &substs.upvar_tys {
                 compute_components(infcx, upvar_ty, out);
             }
-        }
-
-        // Bare functions and traits are both binders. In the RFC,
-        // this means we would add the bound regions to the "bound
-        // regions list".  In our representation, no such list is
-        // maintained explicitly, because bound regions themselves can
-        // be readily identified. However, because the outlives
-        // relation did not used to be applied to fn/trait-object
-        // arguments, we wrap the resulting components in an RFC1214
-        // wrapper so we can issue warnings.
-        ty::TyBareFn(..) | ty::TyTrait(..) => {
-            // OutlivesFunction, OutlivesObject, OutlivesFragment
-            let subcomponents = capture_components(infcx, ty);
-            out.push(Component::RFC1214(subcomponents));
         }
 
         // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
@@ -202,7 +182,15 @@ fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
         ty::TyRawPtr(..) |      // ...
         ty::TyRef(..) |         // OutlivesReference
         ty::TyTuple(..) |       // ...
+        ty::TyBareFn(..) |      // OutlivesFunction (*)
+        ty::TyTrait(..) |       // OutlivesObject, OutlivesFragment (*)
         ty::TyError => {
+            // (*) Bare functions and traits are both binders. In the
+            // RFC, this means we would add the bound regions to the
+            // "bound regions list".  In our representation, no such
+            // list is maintained explicitly, because bound regions
+            // themselves can be readily identified.
+
             push_region_constraints(out, ty.regions());
             for subty in ty.walk_shallow() {
                 compute_components(infcx, subty, out);

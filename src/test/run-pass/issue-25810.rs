@@ -14,7 +14,9 @@ fn main() {
     println!("{:?}",y);
 }
 
-trait Foo {
+trait Foo
+    where for<'a> &'a Self: Bar
+{
     fn foo<'a>(&'a self) -> <&'a Self as Bar>::Output;
 }
 

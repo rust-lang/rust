@@ -102,13 +102,6 @@ impl Session {
             None => self.diagnostic().span_err(sp, msg)
         }
     }
-    pub fn note_rfc_1214(&self, span: Span) {
-        self.span_note(
-            span,
-            &format!("this warning results from recent bug fixes and clarifications; \
-                      it will become a HARD ERROR in the next release. \
-                      See RFC 1214 for details."));
-    }
     pub fn span_err_with_code(&self, sp: Span, msg: &str, code: &str) {
         match split_msg_into_multilines(msg) {
             Some(msg) => self.diagnostic().span_err_with_code(sp, &msg[..], code),

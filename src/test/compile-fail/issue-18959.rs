@@ -19,14 +19,12 @@ impl Foo for Thing {
 
 #[inline(never)]
 fn foo(b: &Bar) {
+    //~^ ERROR E0038
     b.foo(&0)
-    //~^ ERROR the trait `Foo` is not implemented for the type `Bar`
-    //~| ERROR E0038
-    //~| WARNING E0038
 }
 
 fn main() {
     let mut thing = Thing;
-    let test: &Bar = &mut thing; //~ ERROR E0038
+    let test: &Bar = &mut thing;
     foo(test);
 }

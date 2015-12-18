@@ -20,13 +20,13 @@ struct MustBeCopy<T:Copy> {
 
 struct Foo<T> {
     // needs T: 'static
-    x: fn() -> &'static T //~ WARN E0310
+    x: fn() -> &'static T //~ ERROR E0310
 }
 
 struct Bar<T> {
     // needs T: Copy
-    x: fn(&'static T) //~ WARN E0310
+    x: fn(&'static T) //~ ERROR E0310
 }
 
 #[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }
