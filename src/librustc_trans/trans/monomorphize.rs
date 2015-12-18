@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use back::link::exported_name;
-use session;
 use llvm::ValueRef;
 use llvm;
 use middle::def_id::DefId;
@@ -32,6 +31,7 @@ use rustc_front::hir;
 use syntax::abi;
 use syntax::ast;
 use syntax::attr;
+use syntax::errors;
 use std::hash::{Hasher, Hash, SipHasher};
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -83,8 +83,8 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            hash_id);
 
 
-    let map_node = session::expect(
-        ccx.sess(),
+    let map_node = errors::expect(
+        ccx.sess().diagnostic(),
         ccx.tcx().map.find(fn_node_id),
         || {
             format!("while monomorphizing {:?}, couldn't find it in \

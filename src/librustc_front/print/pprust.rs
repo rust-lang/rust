@@ -14,7 +14,7 @@ use syntax::abi;
 use syntax::ast;
 use syntax::owned_slice::OwnedSlice;
 use syntax::codemap::{self, CodeMap, BytePos, Spanned};
-use syntax::diagnostic;
+use syntax::errors;
 use syntax::parse::token::{self, BinOpToken};
 use syntax::parse::lexer::comments;
 use syntax::parse;
@@ -121,7 +121,7 @@ pub const default_columns: usize = 78;
 /// it can scan the input text for comments and literals to
 /// copy forward.
 pub fn print_crate<'a>(cm: &'a CodeMap,
-                       span_diagnostic: &diagnostic::SpanHandler,
+                       span_diagnostic: &errors::Handler,
                        krate: &hir::Crate,
                        filename: String,
                        input: &mut Read,
@@ -142,7 +142,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
 
 impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a CodeMap,
-                          span_diagnostic: &diagnostic::SpanHandler,
+                          span_diagnostic: &errors::Handler,
                           filename: String,
                           input: &mut Read,
                           out: Box<Write + 'a>,

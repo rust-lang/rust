@@ -20,7 +20,6 @@ pub use self::CallArgs::*;
 
 use arena::TypedArena;
 use back::link;
-use session;
 use llvm::{self, ValueRef, get_params};
 use middle::cstore::LOCAL_CRATE;
 use middle::def;
@@ -57,6 +56,7 @@ use rustc_front::hir;
 
 use syntax::abi as synabi;
 use syntax::ast;
+use syntax::errors;
 use syntax::ptr::P;
 
 #[derive(Copy, Clone)]
@@ -412,8 +412,8 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
             Some(n) => n,
             None => { return false; }
         };
-        let map_node = session::expect(
-            &tcx.sess,
+        let map_node = errors::expect(
+            &tcx.sess.diagnostic(),
             tcx.map.find(node_id),
             || "local item should be in ast map".to_string());
 

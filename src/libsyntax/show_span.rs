@@ -16,7 +16,7 @@
 use std::str::FromStr;
 
 use ast;
-use diagnostic;
+use errors;
 use visit;
 use visit::Visitor;
 
@@ -40,7 +40,7 @@ impl FromStr for Mode {
 }
 
 struct ShowSpanVisitor<'a> {
-    span_diagnostic: &'a diagnostic::SpanHandler,
+    span_diagnostic: &'a errors::Handler,
     mode: Mode,
 }
 
@@ -71,7 +71,7 @@ impl<'a, 'v> Visitor<'v> for ShowSpanVisitor<'a> {
     }
 }
 
-pub fn run(span_diagnostic: &diagnostic::SpanHandler,
+pub fn run(span_diagnostic: &errors::Handler,
            mode: &str,
            krate: &ast::Crate) {
     let mode = match mode.parse().ok() {

@@ -12,7 +12,7 @@ pub use self::CommentStyle::*;
 
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos};
-use diagnostic;
+use errors;
 use parse::lexer::is_block_doc_comment;
 use parse::lexer::{StringReader, TokenAndSpan};
 use parse::lexer::{is_whitespace, Reader};
@@ -334,7 +334,7 @@ pub struct Literal {
 
 // it appears this function is called only from pprust... that's
 // probably not a good thing.
-pub fn gather_comments_and_literals(span_diagnostic: &diagnostic::SpanHandler,
+pub fn gather_comments_and_literals(span_diagnostic: &errors::Handler,
                                     path: String,
                                     srdr: &mut Read)
                                  -> (Vec<Comment>, Vec<Literal>) {

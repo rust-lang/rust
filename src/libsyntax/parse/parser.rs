@@ -60,7 +60,7 @@ use attr::{ThinAttributes, ThinAttributesExt, AttributesExt};
 use ast;
 use ast_util::{self, ident_to_path};
 use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp, CodeMap};
-use diagnostic;
+use errors::{self, FatalError};
 use ext::tt::macro_parser;
 use parse;
 use parse::classify;
@@ -75,7 +75,6 @@ use print::pprust;
 use ptr::P;
 use owned_slice::OwnedSlice;
 use parse::PResult;
-use diagnostic::FatalError;
 
 use std::collections::HashSet;
 use std::io::prelude::*;
@@ -983,16 +982,16 @@ impl<'a> Parser<'a> {
         }
         f(&self.buffer[((self.buffer_start + dist - 1) & 3) as usize].tok)
     }
-    pub fn fatal(&self, m: &str) -> diagnostic::FatalError {
+    pub fn fatal(&self, m: &str) -> errors::FatalError {
         self.sess.span_diagnostic.span_fatal(self.span, m)
     }
-    pub fn span_fatal(&self, sp: Span, m: &str) -> diagnostic::FatalError {
+    pub fn span_fatal(&self, sp: Span, m: &str) -> errors::FatalError {
         self.sess.span_diagnostic.span_fatal(sp, m)
     }
-    pub fn span_fatal_help(&self, sp: Span, m: &str, help: &str) -> diagnostic::FatalError {
+    pub fn span_fatal_help(&self, sp: Span, m: &str, help: &str) -> errors::FatalError {
         self.span_err(sp, m);
         self.fileline_help(sp, help);
-        diagnostic::FatalError
+        errors::FatalError
     }
     pub fn span_note(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_note(sp, m)
@@ -1022,7 +1021,7 @@ impl<'a> Parser<'a> {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
     pub fn abort_if_errors(&self) {
-        self.sess.span_diagnostic.handler().abort_if_errors();
+        self.sess.span_diagnostic.abort_if_errors();
     }
 
     pub fn id_to_interned_str(&mut self, id: Ident) -> InternedString {
