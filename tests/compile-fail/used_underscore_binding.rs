@@ -22,6 +22,11 @@ fn unused_underscore(_foo: u32) -> u32 {
     1
 }
 
+///Test that we do not lint for multiple underscores
+fn multiple_underscores(__x: u32) -> u32 {
+    __x + 1
+}
+
 // Non-variable bindings with preceding underscore
 fn _fn_test() {}
 struct _StructTest;
@@ -50,6 +55,7 @@ fn main() {
     // possible false positives
     let _ = non_prefix_underscore(foo);
     let _ = unused_underscore(foo);
+    let _ = multiple_underscores(foo);
     non_variables();
 }
 
