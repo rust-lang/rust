@@ -204,12 +204,6 @@ pub enum Terminator<'tcx> {
         target: BasicBlock,
     },
 
-    /// block should initiate unwinding; should be one successor
-    /// that does cleanup and branches to DIVERGE_BLOCK
-    Panic {
-        target: BasicBlock,
-    },
-
     /// jump to branch 0 if this lvalue evaluates to true
     If {
         cond: Operand<'tcx>,
@@ -320,7 +314,6 @@ impl<'tcx> Terminator<'tcx> {
         use self::Terminator::*;
         match *self {
             Goto { target: ref b } => slice::ref_slice(b),
-            Panic { target: ref b } => slice::ref_slice(b),
             If { targets: ref b, .. } => b.as_slice(),
             Switch { targets: ref b, .. } => b,
             SwitchInt { targets: ref b, .. } => b,
@@ -340,7 +333,6 @@ impl<'tcx> Terminator<'tcx> {
         use self::Terminator::*;
         match *self {
             Goto { target: ref mut b } => slice::mut_ref_slice(b),
-            Panic { target: ref mut b } => slice::mut_ref_slice(b),
             If { targets: ref mut b, .. } => b.as_mut_slice(),
             Switch { targets: ref mut b, .. } => b,
             SwitchInt { targets: ref mut b, .. } => b,
@@ -401,7 +393,6 @@ impl<'tcx> Terminator<'tcx> {
         use self::Terminator::*;
         match *self {
             Goto { .. } => write!(fmt, "goto"),
-            Panic { .. } => write!(fmt, "panic"),
             If { cond: ref lv, .. } => write!(fmt, "if({:?})", lv),
             Switch { discr: ref lv, .. } => write!(fmt, "switch({:?})", lv),
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
@@ -424,7 +415,7 @@ impl<'tcx> Terminator<'tcx> {
         use self::Terminator::*;
         match *self {
             Diverge | Return | Resume => vec![],
-            Goto { .. } | Panic { .. } => vec!["".into_cow()],
+            Goto { .. } => vec!["".into_cow()],
             If { .. } => vec!["true".into_cow(), "false".into_cow()],
             Call { .. } => vec!["return".into_cow(), "unwind".into_cow()],
             DivergingCall { .. } => vec!["unwind".into_cow()],

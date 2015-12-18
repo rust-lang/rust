@@ -107,8 +107,7 @@ pub trait Visitor<'tcx> {
 
     fn super_terminator(&mut self, block: BasicBlock, terminator: &Terminator<'tcx>) {
         match *terminator {
-            Terminator::Goto { target } |
-            Terminator::Panic { target } => {
+            Terminator::Goto { target } => {
                 self.visit_branch(block, target);
             }
 
@@ -405,8 +404,7 @@ pub trait MutVisitor<'tcx> {
                         block: BasicBlock,
                         terminator: &mut Terminator<'tcx>) {
         match *terminator {
-            Terminator::Goto { target } |
-            Terminator::Panic { target } => {
+            Terminator::Goto { target } => {
                 self.visit_branch(block, target);
             }
 

@@ -89,7 +89,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // not entirely precise
         if !otherwise.is_empty() {
             let join_block = self.join_otherwise_blocks(otherwise);
-            self.panic(join_block);
+            self.panic(join_block, "something about matches algorithm not being precise", span);
         }
 
         // all the arm blocks will rejoin here
