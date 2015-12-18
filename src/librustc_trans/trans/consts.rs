@@ -108,12 +108,13 @@ pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &ast::Lit)
     }
 }
 
-pub fn trans_constval<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn trans_constval<'blk, 'tcx>(bcx: common::Block<'blk, 'tcx>,
                                 cv: &ConstVal,
                                 ty: Ty<'tcx>,
                                 param_substs: &'tcx Substs<'tcx>)
                                 -> ValueRef
 {
+    let ccx = bcx.ccx();
     let llty = type_of::type_of(ccx, ty);
     match *cv {
         ConstVal::Float(v) => C_floating_f64(v, llty),
@@ -123,19 +124,17 @@ pub fn trans_constval<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
         ConstVal::ByteStr(ref v) => addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
         ConstVal::Struct(id) | ConstVal::Tuple(id) => {
-            let expr = ccx.tcx().map.expect_expr(id);
+            let expr = bcx.tcx().map.expect_expr(id);
             match const_expr(ccx, expr, param_substs, None, TrueConst::Yes) {
                 Ok((val, _)) => val,
                 Err(e) => panic!("const eval failure: {}", e.description()),
             }
         },
+        ConstVal::Array(id, _) | ConstVal::Repeat(id, _) => {
+            let expr = bcx.tcx().map.expect_expr(id);
+            expr::trans(bcx, expr).datum.val
+        },
         ConstVal::Function(_) => {
-            unimplemented!()
-        },
-        ConstVal::Array(..) => {
-            unimplemented!()
-        },
-        ConstVal::Repeat(..) => {
             unimplemented!()
         },
     }
