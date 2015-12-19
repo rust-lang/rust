@@ -922,7 +922,7 @@ impl<T> Weak<T> {
     /// ```
     /// #![feature(downgraded_weak)]
     ///
-    /// use std::sync::Arc;
+    /// use std::sync::Weak;
     ///
     /// let empty: Weak<i64> = Weak::new();
     /// ```
