@@ -80,12 +80,12 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::Terminator::Resume => {
-                if let Some(llpersonalityslot) = self.llpersonalityslot {
-                    let lp = build::Load(bcx, llpersonalityslot);
-                    // FIXME(lifetime) base::call_lifetime_end(bcx, self.personality);
+                if let Some(personalityslot) = self.llpersonalityslot {
+                    let lp = build::Load(bcx, personalityslot);
+                    base::call_lifetime_end(bcx, personalityslot);
                     build::Resume(bcx, lp);
                 } else {
-                    panic!("resume terminator without personality slot")
+                    panic!("resume terminator without personality slot set")
                 }
             }
 
@@ -94,33 +94,27 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 base::build_return_block(bcx.fcx, bcx, return_ty, DebugLoc::None);
             }
 
-            mir::Terminator::Call { ref data, targets } => {
+            mir::Terminator::Call { ref func, ref args, ref destination, ref targets } => {
                 // The location we'll write the result of the call into.
-                let call_dest = self.trans_lvalue(bcx, &data.destination);
-
+                let call_dest = self.trans_lvalue(bcx, destination);
+                let ret_ty = call_dest.ty.to_ty(bcx.tcx());
                 // Create the callee. This will always be a fn
                 // ptr and hence a kind of scalar.
-                let callee = self.trans_operand(bcx, &data.func);
-                let ret_ty = if let ty::TyBareFn(_, ref f) = callee.ty.sty {
-                    let sig = bcx.tcx().erase_late_bound_regions(&f.sig);
-                    let sig = infer::normalize_associated_type(bcx.tcx(), &sig);
-                    sig.output
+                let callee = self.trans_operand(bcx, func);
+
+                // Does the fn use an outptr? If so, we have an extra first argument.
+                let return_outptr = type_of::return_uses_outptr(bcx.ccx(), ret_ty);
+                // The arguments we'll be passing.
+                let mut llargs = if return_outptr {
+                    let mut vec = Vec::with_capacity(args.len() + 1);
+                    vec.push(call_dest.llval);
+                    vec
                 } else {
-                    panic!("trans_block: expected TyBareFn as callee");
+                    Vec::with_capacity(args.len())
                 };
 
-                // The arguments we'll be passing
-                let mut llargs = vec![];
-
-                // Does the fn use an outptr? If so, that's the first arg.
-                if let ty::FnConverging(ret_ty) = ret_ty {
-                    if type_of::return_uses_outptr(bcx.ccx(), ret_ty) {
-                        llargs.push(call_dest.llval);
-                    }
-                }
-
                 // Process the rest of the args.
-                for arg in &data.args {
+                for arg in args {
                     let arg_op = self.trans_operand(bcx, arg);
                     match arg_op.val {
                         Ref(llval) | Immediate(llval) => llargs.push(llval),
@@ -132,33 +126,90 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                 }
 
-                // FIXME: Handle panics
-                //let panic_bb = self.llblock(targets.1);
-                //self.make_landing_pad(panic_bb);
-
-                // Do the actual call.
-                let (llret, b) = base::invoke(bcx,
-                                              callee.immediate(),
-                                              &llargs[..],
-                                              callee.ty,
-                                              DebugLoc::None);
-                bcx = b;
-
-                // Copy the return value into the destination.
-                if let ty::FnConverging(ret_ty) = ret_ty {
-                    if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
-                       !common::type_is_zero_size(bcx.ccx(), ret_ty) {
-                        base::store_ty(bcx, llret, call_dest.llval, ret_ty);
+                let debugloc = DebugLoc::None;
+                let attrs = attributes::from_fn_type(bcx.ccx(), callee.ty);
+                match *targets {
+                    mir::CallTargets::Return(ret) => {
+                        let llret = build::Call(bcx,
+                                                callee.immediate(),
+                                                &llargs[..],
+                                                Some(attrs),
+                                                debugloc);
+                        if !return_outptr && !common::type_is_zero_size(bcx.ccx(), ret_ty) {
+                            base::store_ty(bcx, llret, call_dest.llval, ret_ty);
+                        }
+                        build::Br(bcx, self.llblock(ret), debugloc)
+                    }
+                    mir::CallTargets::WithCleanup((ret, cleanup)) => {
+                        let landingpad = self.make_landing_pad(cleanup);
+                        build::Invoke(bcx,
+                                      callee.immediate(),
+                                      &llargs[..],
+                                      self.llblock(ret),
+                                      landingpad.llbb,
+                                      Some(attrs),
+                                      debugloc);
+                        if !return_outptr && !common::type_is_zero_size(bcx.ccx(), ret_ty) {
+                            // FIXME: What do we do here?
+                            unimplemented!()
+                        }
                     }
                 }
-
-                build::Br(bcx, self.llblock(targets.0), DebugLoc::None)
             },
 
-            mir::Terminator::DivergingCall { .. } => {
-                unimplemented!()
+            mir::Terminator::DivergingCall { ref func, ref args, ref cleanup } => {
+                let callee = self.trans_operand(bcx, func);
+                let mut llargs = Vec::with_capacity(args.len());
+                for arg in args {
+                    match self.trans_operand(bcx, arg).val {
+                        Ref(llval) | Immediate(llval) => llargs.push(llval),
+                        FatPtr(b, e) => {
+                            llargs.push(b);
+                            llargs.push(e);
+                        }
+                    }
+                }
+                let debugloc = DebugLoc::None;
+                let attrs = attributes::from_fn_type(bcx.ccx(), callee.ty);
+                match *cleanup {
+                    None => {
+                        build::Call(bcx, callee.immediate(), &llargs[..], Some(attrs), debugloc);
+                        build::Unreachable(bcx);
+                    }
+                    Some(cleanup) => {
+                        let landingpad = self.make_landing_pad(cleanup);
+                        let unreachable = self.unreachable_block();
+                        build::Invoke(bcx,
+                                      callee.immediate(),
+                                      &llargs[..],
+                                      unreachable.llbb,
+                                      landingpad.llbb,
+                                      Some(attrs),
+                                      debugloc);
+                    }
+                }
             }
         }
+    }
+
+    fn make_landing_pad(&mut self, cleanup: mir::BasicBlock) -> Block<'bcx, 'tcx> {
+        let bcx = self.bcx(cleanup).fcx.new_block(true, "cleanup", None);
+        let ccx = bcx.ccx();
+        let llpersonality = bcx.fcx.eh_personality();
+        let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
+        let llretval = build::LandingPad(bcx, llretty, llpersonality, 1);
+        build::SetCleanup(bcx, llretval);
+        match self.llpersonalityslot {
+            Some(slot) => build::Store(bcx, llretval, slot),
+            None => {
+                let personalityslot = base::alloca(bcx, llretty, "personalityslot");
+                self.llpersonalityslot = Some(personalityslot);
+                base::call_lifetime_start(bcx, personalityslot);
+                build::Store(bcx, llretval, personalityslot)
+            }
+        };
+        build::Br(bcx, self.llblock(cleanup), DebugLoc::None);
+        bcx
     }
 
     fn unreachable_block(&mut self) -> Block<'bcx, 'tcx> {
