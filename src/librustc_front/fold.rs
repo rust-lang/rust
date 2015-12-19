@@ -210,7 +210,7 @@ pub trait Folder : Sized {
         noop_fold_ty_param(tp, self)
     }
 
-    fn fold_ty_params(&mut self, tps: P<[TyParam]>) -> P<[TyParam]> {
+    fn fold_ty_params(&mut self, tps: HirVec<TyParam>) -> HirVec<TyParam> {
         noop_fold_ty_params(tps, self)
     }
 
@@ -575,9 +575,9 @@ pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
     }
 }
 
-pub fn noop_fold_ty_params<T: Folder>(tps: P<[TyParam]>,
+pub fn noop_fold_ty_params<T: Folder>(tps: HirVec<TyParam>,
                                       fld: &mut T)
-                                      -> P<[TyParam]> {
+                                      -> HirVec<TyParam> {
     tps.move_map(|tp| fld.fold_ty_param(tp))
 }
 
