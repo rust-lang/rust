@@ -18,6 +18,7 @@ use cmp;
 use error;
 use fmt;
 use io::{self, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom};
+use memchr;
 
 /// The `BufReader` struct adds buffering to any reader.
 ///
@@ -746,7 +747,7 @@ impl<W: Write> LineWriter<W> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write> Write for LineWriter<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match buf.iter().rposition(|b| *b == b'\n') {
+        match memchr::memrchr(b'\n', buf) {
             Some(i) => {
                 let n = try!(self.inner.write(&buf[..i + 1]));
                 if n != i + 1 { return Ok(n) }
