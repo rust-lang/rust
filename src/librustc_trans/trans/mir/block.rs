@@ -9,15 +9,15 @@
 // except according to those terms.
 
 use llvm::BasicBlockRef;
-use middle::infer;
-use middle::ty;
 use rustc::mir::repr as mir;
 use trans::adt;
 use trans::base;
 use trans::build;
+use trans::attributes;
 use trans::common::{self, Block};
 use trans::debuginfo::DebugLoc;
 use trans::type_of;
+use trans::type_::Type;
 
 use super::MirContext;
 use super::operand::OperandValue::{FatPtr, Immediate, Ref};
@@ -56,10 +56,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 // The else branch of the Switch can't be hit, so branch to an unreachable
                 // instruction so LLVM knows that
-                // FIXME it might be nice to have just one such block (created lazilly), we could
-                // store it in the "MIR trans" state.
-                let unreachable_blk = bcx.fcx.new_temp_block("enum-variant-unreachable");
-                build::Unreachable(unreachable_blk);
+                let unreachable_blk = self.unreachable_block();
 
                 let switch = build::Switch(bcx, discr, unreachable_blk.llbb, targets.len());
                 assert_eq!(adt_def.variants.len(), targets.len());
@@ -160,6 +157,18 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::Terminator::DivergingCall { .. } => {
                 unimplemented!()
+            }
+        }
+    }
+
+    fn unreachable_block(&mut self) -> Block<'bcx, 'tcx> {
+        match self.unreachable_block {
+            Some(b) => b,
+            None => {
+                let bl = self.fcx.new_block(false, "unreachable", None);
+                build::Unreachable(bl);
+                self.unreachable_block = Some(bl);
+                bl
             }
         }
     }
