@@ -28,6 +28,9 @@ use self::operand::OperandRef;
 pub struct MirContext<'bcx, 'tcx:'bcx> {
     mir: &'bcx mir::Mir<'tcx>,
 
+    /// Function context
+    fcx: &'bcx common::FunctionContext<'bcx, 'tcx>,
+
     /// When unwinding is initiated, we have to store this personality
     /// value somewhere so that we can load it and re-use it in the
     /// resume instruction. The personality is (afaik) some kind of
@@ -39,6 +42,9 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
 
     /// A `Block` for each MIR `BasicBlock`
     blocks: Vec<Block<'bcx, 'tcx>>,
+
+    /// Cached unreachable block
+    unreachable_block: Option<Block<'bcx, 'tcx>>,
 
     /// An LLVM alloca for each MIR `VarDecl`
     vars: Vec<LvalueRef<'tcx>>,
@@ -116,8 +122,10 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>) {
 
     let mut mircx = MirContext {
         mir: mir,
+        fcx: fcx,
         llpersonalityslot: None,
         blocks: block_bcxs,
+        unreachable_block: None,
         vars: vars,
         temps: temps,
         args: args,

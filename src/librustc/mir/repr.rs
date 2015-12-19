@@ -265,7 +265,7 @@ pub enum Terminator<'tcx> {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable)]
 pub enum CallTargets {
     /// The only target that should be entered when function returns normally.
     Return(BasicBlock),
