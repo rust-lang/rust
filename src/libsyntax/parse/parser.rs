@@ -26,7 +26,7 @@ use ast::{ExprBreak, ExprCall, ExprCast, ExprInPlace};
 use ast::{ExprField, ExprTupField, ExprClosure, ExprIf, ExprIfLet, ExprIndex};
 use ast::{ExprLit, ExprLoop, ExprMac, ExprRange};
 use ast::{ExprMethodCall, ExprParen, ExprPath};
-use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
+use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprType, ExprUnary};
 use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, FunctionRetTy};
 use ast::{Ident, Inherited, ImplItem, Item, Item_, ItemStatic};
@@ -2787,6 +2787,11 @@ impl<'a> Parser<'a> {
                 lhs = self.mk_expr(lhs.span.lo, rhs.span.hi,
                                    ExprCast(lhs, rhs), None);
                 continue
+            } else if op == AssocOp::Colon {
+                let rhs = try!(self.parse_ty());
+                lhs = self.mk_expr(lhs.span.lo, rhs.span.hi,
+                                   ExprType(lhs, rhs), None);
+                continue
             } else if op == AssocOp::DotDot {
                     // If we didn’t have to handle `x..`, it would be pretty easy to generalise
                     // it to the Fixity::None code.
@@ -2808,7 +2813,6 @@ impl<'a> Parser<'a> {
                     lhs = self.mk_expr(lhs_span.lo, rhs_span.hi, r, None);
                     break
             }
-
 
             let rhs = try!(match op.fixity() {
                 Fixity::Right => self.with_res(restrictions, |this|{
@@ -2856,7 +2860,9 @@ impl<'a> Parser<'a> {
                     let aopexpr = self.mk_assign_op(codemap::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(lhs_span.lo, rhs_span.hi, aopexpr, None)
                 }
-                AssocOp::As | AssocOp::DotDot => self.bug("As or DotDot branch reached")
+                AssocOp::As | AssocOp::Colon | AssocOp::DotDot => {
+                    self.bug("As, Colon or DotDot branch reached")
+                }
             };
 
             if op.fixity() == Fixity::None { break }

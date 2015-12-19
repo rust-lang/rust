@@ -2114,6 +2114,10 @@ impl<'tcx> ctxt<'tcx> {
                 }
             }
 
+            hir::ExprType(ref e, _) => {
+                self.expr_is_lval(e)
+            }
+
             hir::ExprUnary(hir::UnDeref, _) |
             hir::ExprField(..) |
             hir::ExprTupField(..) |

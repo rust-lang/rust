@@ -444,7 +444,7 @@ fn needs_parentheses(expr: &ast::Expr) -> bool {
         ast::ExprAssign(..) | ast::ExprBinary(..) |
         ast::ExprClosure(..) |
         ast::ExprAssignOp(..) | ast::ExprCast(..) |
-        ast::ExprInPlace(..) => true,
+        ast::ExprInPlace(..) | ast::ExprType(..) => true,
         _ => false,
     }
 }
@@ -2033,6 +2033,11 @@ impl<'a> State<'a> {
                 }
                 try!(space(&mut self.s));
                 try!(self.word_space("as"));
+                try!(self.print_type(&**ty));
+            }
+            ast::ExprType(ref expr, ref ty) => {
+                try!(self.print_expr(&**expr));
+                try!(self.word_space(":"));
                 try!(self.print_type(&**ty));
             }
             ast::ExprIf(ref test, ref blk, ref elseopt) => {
