@@ -11,14 +11,15 @@
 use middle::const_eval::ConstVal;
 use middle::def_id::DefId;
 use middle::subst::Substs;
-use middle::ty::{AdtDef, ClosureSubsts, FnOutput, Region, Ty};
+use middle::ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use rustc_back::slice;
 use rustc_data_structures::tuple_slice::TupleSlice;
 use rustc_front::hir::InlineAsm;
 use syntax::ast::Name;
 use syntax::codemap::Span;
-use std::fmt::{Debug, Formatter, Error};
-use std::u32;
+use std::borrow::{Cow, IntoCow};
+use std::fmt::{Debug, Formatter, Error, Write};
+use std::{iter, u32};
 
 /// Lowered representation of a single function.
 #[derive(RustcEncodable, RustcDecodable)]
@@ -317,23 +318,43 @@ impl<'tcx> BasicBlockData<'tcx> {
 
 impl<'tcx> Debug for Terminator<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        try!(self.fmt_head(fmt));
+        let successors = self.successors();
+        let labels = self.fmt_successor_labels();
+        assert_eq!(successors.len(), labels.len());
+
+        match successors.len() {
+            0 => Ok(()),
+
+            1 => write!(fmt, " -> {:?}", successors[0]),
+
+            _ => {
+                try!(write!(fmt, " -> ["));
+                for (i, target) in successors.iter().enumerate() {
+                    if i > 0 {
+                        try!(write!(fmt, ", "));
+                    }
+                    try!(write!(fmt, "{}: {:?}", labels[i], target));
+                }
+                write!(fmt, "]")
+            }
+
+        }
+    }
+}
+
+impl<'tcx> Terminator<'tcx> {
+    pub fn fmt_head<W: Write>(&self, fmt: &mut W) -> Result<(), Error> {
         use self::Terminator::*;
         match *self {
-            Goto { target } =>
-                write!(fmt, "goto -> {:?}", target),
-            Panic { target } =>
-                write!(fmt, "panic -> {:?}", target),
-            If { cond: ref lv, ref targets } =>
-                write!(fmt, "if({:?}) -> {:?}", lv, targets),
-            Switch { discr: ref lv, adt_def: _, ref targets } =>
-                write!(fmt, "switch({:?}) -> {:?}", lv, targets),
-            SwitchInt { discr: ref lv, switch_ty: _, ref values, ref targets } =>
-                write!(fmt, "switchInt({:?}, {:?}) -> {:?}", lv, values, targets),
-            Diverge =>
-                write!(fmt, "diverge"),
-            Return =>
-                write!(fmt, "return"),
-            Call { data: ref c, targets } => {
+            Goto { .. } => write!(fmt, "goto"),
+            Panic { .. } => write!(fmt, "panic"),
+            If { cond: ref lv, .. } => write!(fmt, "if({:?})", lv),
+            Switch { discr: ref lv, .. } => write!(fmt, "switch({:?})", lv),
+            SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
+            Diverge => write!(fmt, "diverge"),
+            Return => write!(fmt, "return"),
+            Call { data: ref c, .. } => {
                 try!(write!(fmt, "{:?} = {:?}(", c.destination, c.func));
                 for (index, arg) in c.args.iter().enumerate() {
                     if index > 0 {
@@ -341,7 +362,33 @@ impl<'tcx> Debug for Terminator<'tcx> {
                     }
                     try!(write!(fmt, "{:?}", arg));
                 }
-                write!(fmt, ") -> {:?}", targets)
+                write!(fmt, ")")
+            }
+        }
+    }
+
+    pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
+        use self::Terminator::*;
+        match *self {
+            Diverge | Return => vec![],
+            Goto { .. } | Panic { .. } => vec!["".into_cow()],
+            If { .. } => vec!["true".into_cow(), "false".into_cow()],
+            Call { .. } => vec!["return".into_cow(), "unwind".into_cow()],
+            Switch { ref adt_def, .. } => {
+                adt_def.variants
+                       .iter()
+                       .map(|variant| variant.name.to_string().into_cow())
+                       .collect()
+            }
+            SwitchInt { ref values, .. } => {
+                values.iter()
+                      .map(|const_val| {
+                          let mut buf = String::new();
+                          fmt_const_val(&mut buf, const_val).unwrap();
+                          buf.into_cow()
+                      })
+                      .chain(iter::once(String::from("otherwise").into_cow()))
+                      .collect()
             }
         }
     }
@@ -495,19 +542,19 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 
         match *self {
             Var(id) =>
-                write!(fmt,"Var({:?})", id),
+                write!(fmt,"v{:?}", id),
             Arg(id) =>
-                write!(fmt,"Arg({:?})", id),
+                write!(fmt,"a{:?}", id),
             Temp(id) =>
-                write!(fmt,"Temp({:?})", id),
+                write!(fmt,"t{:?}", id),
             Static(id) =>
                 write!(fmt,"Static({:?})", id),
             ReturnPointer =>
                 write!(fmt,"ReturnPointer"),
             Projection(ref data) =>
                 match data.elem {
-                    ProjectionElem::Downcast(_, variant_index) =>
-                        write!(fmt,"({:?} as {:?})", data.base, variant_index),
+                    ProjectionElem::Downcast(ref adt_def, index) =>
+                        write!(fmt,"({:?} as {})", data.base, adt_def.variants[index].name),
                     ProjectionElem::Deref =>
                         write!(fmt,"(*{:?})", data.base),
                     ProjectionElem::Field(field) =>
@@ -671,12 +718,12 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Use(ref lvalue) => write!(fmt, "{:?}", lvalue),
             Repeat(ref a, ref b) => write!(fmt, "[{:?}; {:?}]", a, b),
             Ref(ref a, bk, ref b) => write!(fmt, "&{:?} {:?} {:?}", a, bk, b),
-            Len(ref a) => write!(fmt, "LEN({:?})", a),
-            Cast(ref kind, ref lv, ref ty) => write!(fmt, "{:?} as {:?} ({:?}", lv, ty, kind),
-            BinaryOp(ref op, ref a, ref b) => write!(fmt, "{:?}({:?},{:?})", op, a, b),
+            Len(ref a) => write!(fmt, "Len({:?})", a),
+            Cast(ref kind, ref lv, ref ty) => write!(fmt, "{:?} as {:?} ({:?})", lv, ty, kind),
+            BinaryOp(ref op, ref a, ref b) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
-            Box(ref t) => write!(fmt, "Box {:?}", t),
-            Aggregate(ref kind, ref lvs) => write!(fmt, "Aggregate<{:?}>({:?})", kind, lvs),
+            Box(ref t) => write!(fmt, "Box({:?})", t),
+            Aggregate(ref kind, ref lvs) => write!(fmt, "Aggregate<{:?}>{:?}", kind, lvs),
             InlineAsm(ref asm) => write!(fmt, "InlineAsm({:?})", asm),
             Slice { ref input, from_start, from_end } =>
                 write!(fmt, "{:?}[{:?}..-{:?}]", input, from_start, from_end),
@@ -691,7 +738,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 // this does not necessarily mean that they are "==" in Rust -- in
 // particular one must be wary of `NaN`!
 
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Constant<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
@@ -707,7 +754,7 @@ pub enum ItemKind {
     Method,
 }
 
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {
     Item {
         def_id: DefId,
@@ -717,4 +764,38 @@ pub enum Literal<'tcx> {
     Value {
         value: ConstVal,
     },
+}
+
+impl<'tcx> Debug for Constant<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "{:?}", self.literal)
+    }
+}
+
+impl<'tcx> Debug for Literal<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        use self::Literal::*;
+        match *self {
+            Item { def_id, .. } =>
+                write!(fmt, "{}", ty::tls::with(|tcx| tcx.item_path_str(def_id))),
+            Value { ref value } => fmt_const_val(fmt, value),
+        }
+    }
+}
+
+pub fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> Result<(), Error> {
+    use middle::const_eval::ConstVal::*;
+    match *const_val {
+        Float(f) => write!(fmt, "{:?}", f),
+        Int(n) => write!(fmt, "{:?}", n),
+        Uint(n) => write!(fmt, "{:?}", n),
+        Str(ref s) => write!(fmt, "Str({:?})", s),
+        ByteStr(ref bytes) => write!(fmt, "ByteStr{:?}", bytes),
+        Bool(b) => write!(fmt, "{:?}", b),
+        Struct(id) => write!(fmt, "Struct({:?})", id),
+        Tuple(id) => write!(fmt, "Tuple({:?})", id),
+        Function(def_id) => write!(fmt, "Function({:?})", def_id),
+        Array(id, n) => write!(fmt, "Array({:?}, {:?})", id, n),
+        Repeat(id, n) => write!(fmt, "Repeat({:?}, {:?})", id, n),
+    }
 }
