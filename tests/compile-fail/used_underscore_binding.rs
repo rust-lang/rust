@@ -9,7 +9,7 @@ fn prefix_underscore(_foo: u32) -> u32 {
 
 /// Test that we lint even if the use is within a macro expansion
 fn in_macro(_foo: u32) {
-    println!("{}", _foo); //~ ERROR used binding which is prefixed with an underscore
+    println!("{}", _foo); // doesn't warn, nut should #507
 }
 
 // Struct for testing use of fields prefixed with an underscore

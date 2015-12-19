@@ -10,9 +10,8 @@ use rustc::middle::const_eval::ConstVal::Float;
 use rustc::middle::const_eval::eval_const_expr_partial;
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 
-use utils::{get_item_name, match_path, snippet, get_parent_expr, span_lint, walk_ptrs_ty,
-            is_integer_literal};
-use utils::span_help_and_lint;
+use utils::{get_item_name, match_path, snippet, get_parent_expr, span_lint};
+use utils::{span_help_and_lint, in_external_macro, walk_ptrs_ty, is_integer_literal};
 
 /// **What it does:** This lint checks for function arguments and let bindings denoted as `ref`. It is `Warn` by default.
 ///
@@ -363,6 +362,9 @@ impl LateLintPass for UsedUnderscoreBinding {
             },
             _ => false
         };
+        if in_external_macro(cx, expr.span) {
+            return
+        }
         if needs_lint {
             cx.span_lint(USED_UNDERSCORE_BINDING, expr.span,
                          "used binding which is prefixed with an underscore. A leading underscore \
