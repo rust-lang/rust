@@ -10,7 +10,8 @@ use rustc::middle::const_eval::ConstVal::Float;
 use rustc::middle::const_eval::eval_const_expr_partial;
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 
-use utils::{get_item_name, match_path, snippet, span_lint, walk_ptrs_ty, is_integer_literal};
+use utils::{get_item_name, match_path, snippet, get_parent_expr, span_lint, walk_ptrs_ty,
+            is_integer_literal};
 use utils::span_help_and_lint;
 
 /// **What it does:** This lint checks for function arguments and let bindings denoted as `ref`. It is `Warn` by default.
@@ -323,16 +324,7 @@ impl LateLintPass for PatternPass {
 /// **Why is this bad?** A single leading underscore is usually used to indicate that a binding
 /// will not be used. Using such a binding breaks this expectation.
 ///
-/// **Known problems:** This lint's idea of a "used" variable is not quite the same as in the
-/// built-in `unused_variables` lint. For example, in the following code
-/// ```
-/// fn foo(y: u32) -> u32) {
-///     let _x = 1;
-///     _x +=1;
-///     y
-/// }
-/// ```
-/// _x will trigger both the `unused_variables` lint and the `used_underscore_binding` lint.
+/// **Known problems:** None
 ///
 /// **Example**:
 /// ```
@@ -362,6 +354,7 @@ impl LateLintPass for UsedUnderscoreBinding {
                 ident.name.as_str().chars().next() == Some('_') //starts with '_'
                 && ident.name.as_str().chars().skip(1).next() != Some('_') //doesn't start with "__"
                 && ident.name != ident.unhygienic_name //not in macro
+                && is_used(cx, expr)
             },
             ExprField(_, spanned) => {
                 let name = spanned.node.as_str();
@@ -372,8 +365,21 @@ impl LateLintPass for UsedUnderscoreBinding {
         };
         if needs_lint {
             cx.span_lint(USED_UNDERSCORE_BINDING, expr.span,
-                         "used binding which is prefixed with an underscore. A leading underscore\
+                         "used binding which is prefixed with an underscore. A leading underscore \
                           signals that a binding will not be used.");
         }
+    }
+}
+
+fn is_used(cx: &LateContext, expr: &Expr) -> bool {
+    if let Some(ref parent) = get_parent_expr(cx, expr) {
+        match parent.node {
+            ExprAssign(_, ref rhs) => **rhs == *expr,
+            ExprAssignOp(_, _, ref rhs) => **rhs == *expr,
+            _ => is_used(cx, &parent)
+        }
+    }
+    else {
+        true
     }
 }

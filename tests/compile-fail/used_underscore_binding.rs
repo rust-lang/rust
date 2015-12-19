@@ -3,13 +3,13 @@
 #![deny(clippy)]
 
 /// Test that we lint if we use a binding with a single leading underscore
-fn prefix_underscore(_x: u32) -> u32 {
-    _x + 1 //~ ERROR used binding which is prefixed with an underscore
+fn prefix_underscore(_foo: u32) -> u32 {
+    _foo + 1 //~ ERROR used binding which is prefixed with an underscore
 }
 
 /// Test that we lint even if the use is within a macro expansion
-fn in_macro(_x: u32) {
-    println!("{}", _x); //~ ERROR used binding which is prefixed with an underscore
+fn in_macro(_foo: u32) {
+    println!("{}", _foo); //~ ERROR used binding which is prefixed with an underscore
 }
 
 /// Test that we do not lint if the underscore is not a prefix
@@ -17,14 +17,23 @@ fn non_prefix_underscore(some_foo: u32) -> u32 {
     some_foo + 1
 }
 
-/// Test that we do not lint if we do not use the binding
-fn unused_underscore(_foo: u32) -> u32 {
+/// Test that we do not lint if we do not use the binding (simple case)
+fn unused_underscore_simple(_foo: u32) -> u32 {
+    1
+}
+
+#[deny(unused_variables)]
+/// Test that we do not lint if we do not use the binding (complex case). This checks for
+/// compatibility with the built-in `unused_variables` lint.
+fn unused_underscore_complex(mut _foo: u32) -> u32 {
+    _foo += 1;
+    _foo = 2;
     1
 }
 
 ///Test that we do not lint for multiple underscores
-fn multiple_underscores(__x: u32) -> u32 {
-    __x + 1
+fn multiple_underscores(__foo: u32) -> u32 {
+    __foo + 1
 }
 
 // Non-variable bindings with preceding underscore
@@ -54,8 +63,8 @@ fn main() {
     in_macro(foo);
     // possible false positives
     let _ = non_prefix_underscore(foo);
-    let _ = unused_underscore(foo);
+    let _ = unused_underscore_simple(foo);
+    let _ = unused_underscore_complex(foo);
     let _ = multiple_underscores(foo);
     non_variables();
 }
-

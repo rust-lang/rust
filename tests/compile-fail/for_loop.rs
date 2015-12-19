@@ -16,8 +16,7 @@ impl Unrelated {
 
 #[deny(needless_range_loop, explicit_iter_loop, iter_next_loop, reverse_range_loop, explicit_counter_loop)]
 #[deny(unused_collect)]
-#[allow(linkedlist,shadow_unrelated,unnecessary_mut_passed, cyclomatic_complexity,
-        used_underscore_binding)]
+#[allow(linkedlist,shadow_unrelated,unnecessary_mut_passed, cyclomatic_complexity)]
 fn main() {
     let mut vec = vec![1, 2, 3, 4];
     let vec2 = vec![1, 2, 3, 4];
@@ -180,8 +179,8 @@ fn main() {
     if false { _index = 0 };
     for _v in &vec { _index += 1 }
 
-    let mut _index = 0;
-    { let mut _x = &mut _index; }
+    let mut index = 0;
+    { let mut _x = &mut index; }
     for _v in &vec { _index += 1 }
 
     let mut index = 0;
