@@ -233,6 +233,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // Allows `#[deprecated]` attribute
     ("deprecated", "1.6.0", Some(29935), Active),
+
+    // allow using type ascription in expressions
+    ("type_ascription", "1.6.0", Some(23416), Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -957,6 +960,10 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   e.span,
                                   "box expression syntax is experimental; \
                                    you can call `Box::new` instead.");
+            }
+            ast::ExprType(..) => {
+                self.gate_feature("type_ascription", e.span,
+                                  "type ascription is experimental");
             }
             _ => {}
         }

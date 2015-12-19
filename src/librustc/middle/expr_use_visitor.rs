@@ -373,6 +373,10 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         match expr.node {
             hir::ExprPath(..) => { }
 
+            hir::ExprType(ref subexpr, _) => {
+                self.walk_expr(&**subexpr)
+            }
+
             hir::ExprUnary(hir::UnDeref, ref base) => {      // *base
                 if !self.walk_overloaded_operator(expr, &**base, Vec::new(), PassArgs::ByRef) {
                     self.select_from_expr(&**base);

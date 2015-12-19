@@ -1043,6 +1043,9 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span, attrs }: Expr, folder: &
             ExprCast(expr, ty) => {
                 ExprCast(folder.fold_expr(expr), folder.fold_ty(ty))
             }
+            ExprType(expr, ty) => {
+                ExprType(folder.fold_expr(expr), folder.fold_ty(ty))
+            }
             ExprAddrOf(m, ohs) => ExprAddrOf(m, folder.fold_expr(ohs)),
             ExprIf(cond, tr, fl) => {
                 ExprIf(folder.fold_expr(cond),

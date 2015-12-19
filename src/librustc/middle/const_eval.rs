@@ -1126,6 +1126,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             None => unreachable!(),
         }
       }
+      hir::ExprType(ref e, _) => try!(eval_const_expr_partial(tcx, &**e, ty_hint, fn_args)),
       hir::ExprTup(_) => Tuple(e.id),
       hir::ExprStruct(..) => Struct(e.id),
       hir::ExprIndex(ref arr, ref idx) => {

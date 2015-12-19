@@ -60,7 +60,9 @@ pub enum AssocOp {
     /// `as`
     As,
     /// `..` range
-    DotDot
+    DotDot,
+    /// `:`
+    Colon,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -100,6 +102,7 @@ impl AssocOp {
             Token::AndAnd => Some(LAnd),
             Token::OrOr => Some(LOr),
             Token::DotDot => Some(DotDot),
+            Token::Colon => Some(Colon),
             _ if t.is_keyword(keywords::As) => Some(As),
             _ => None
         }
@@ -134,7 +137,7 @@ impl AssocOp {
     pub fn precedence(&self) -> usize {
         use self::AssocOp::*;
         match *self {
-            As => 14,
+            As | Colon => 14,
             Multiply | Divide | Modulus => 13,
             Add | Subtract => 12,
             ShiftLeft | ShiftRight => 11,
@@ -158,7 +161,7 @@ impl AssocOp {
             Inplace | Assign | AssignOp(_) => Fixity::Right,
             As | Multiply | Divide | Modulus | Add | Subtract | ShiftLeft | ShiftRight | BitAnd |
             BitXor | BitOr | Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual |
-            LAnd | LOr => Fixity::Left,
+            LAnd | LOr | Colon => Fixity::Left,
             DotDot => Fixity::None
         }
     }
@@ -168,7 +171,7 @@ impl AssocOp {
         match *self {
             Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual => true,
             Inplace | Assign | AssignOp(_) | As | Multiply | Divide | Modulus | Add | Subtract |
-            ShiftLeft | ShiftRight | BitAnd | BitXor | BitOr | LAnd | LOr | DotDot => false
+            ShiftLeft | ShiftRight | BitAnd | BitXor | BitOr | LAnd | LOr | DotDot | Colon => false
         }
     }
 
@@ -178,7 +181,7 @@ impl AssocOp {
             Assign | AssignOp(_) | Inplace => true,
             Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual | As | Multiply | Divide |
             Modulus | Add | Subtract | ShiftLeft | ShiftRight | BitAnd | BitXor | BitOr | LAnd |
-            LOr | DotDot => false
+            LOr | DotDot | Colon => false
         }
     }
 
@@ -203,8 +206,7 @@ impl AssocOp {
             BitOr => Some(ast::BiBitOr),
             LAnd => Some(ast::BiAnd),
             LOr => Some(ast::BiOr),
-            Inplace | Assign | AssignOp(_) | As | DotDot => None
+            Inplace | Assign | AssignOp(_) | As | DotDot | Colon => None
         }
     }
-
 }

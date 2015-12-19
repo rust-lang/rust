@@ -320,6 +320,8 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                                   name: Field::new(index.node as usize) },
             hir::ExprCast(ref source, _) =>
                 ExprKind::Cast { source: source.to_ref() },
+            hir::ExprType(ref source, _) =>
+                return source.make_mirror(cx),
             hir::ExprBox(ref value) =>
                 ExprKind::Box { value: value.to_ref() },
             hir::ExprVec(ref fields) =>

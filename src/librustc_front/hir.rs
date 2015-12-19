@@ -737,6 +737,7 @@ pub enum Expr_ {
     ExprLit(P<Lit>),
     /// A cast (`foo as f64`)
     ExprCast(P<Expr>, P<Ty>),
+    ExprType(P<Expr>, P<Ty>),
     /// An `if` block, with an optional else block
     ///
     /// `if expr { block } else { expr }`

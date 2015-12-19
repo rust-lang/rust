@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,22 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// Type ascription doesn't lead to unsoundness
 
-struct Foo {
-    x: isize,
-}
-
-impl Foo {
-    fn hi(&self) -> bool {
-        true
-    }
-}
+#![feature(type_ascription)]
 
 fn main() {
-    for x in Foo {
-        x: 3    //~ ERROR expected type, found `3`
-    }.hi() {
-        println!("yo");
+    let arr = &[1u8, 2, 3];
+    let ref x = arr: &[u8]; //~ ERROR mismatched types
+    let ref mut x = arr: &[u8]; //~ ERROR mismatched types
+    match arr: &[u8] { //~ ERROR mismatched types
+        ref x => {}
     }
+    let _len = (arr: &[u8]).len(); //~ ERROR mismatched types
 }
