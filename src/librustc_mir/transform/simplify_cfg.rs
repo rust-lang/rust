@@ -54,22 +54,6 @@ impl SimplifyCfg {
             let mut terminator = mem::replace(&mut mir.basic_block_data_mut(bb).terminator,
                                           Terminator::Diverge);
 
-            // Shortcut chains of empty blocks that just jump from one to the next
-            for target in terminator.successors_mut() {
-                let new_target = match final_target(mir, *target) {
-                    Some(new_target) => new_target,
-                    None if mir.basic_block_data(bb).statements.is_empty() => bb,
-                    None => continue
-                };
-
-                if *target != new_target {
-                    changed = true;
-                    predecessor_map.remove_predecessor(*target);
-                    predecessor_map.add_predecessor(new_target);
-                    *target = new_target;
-                }
-            }
-
             // See if we can merge the target block into this one
             while let Terminator::Goto { target } = terminator {
                 if target.index() <= DIVERGE_BLOCK.index() || predecessor_map.num_predecessors(target) > 1 {
@@ -90,6 +74,22 @@ impl SimplifyCfg {
                 let data = mir.basic_block_data_mut(bb);
                 data.statements.append(&mut other_data.statements);
                 terminator = other_data.terminator;
+            }
+
+            // Shortcut chains of empty blocks that just jump from one to the next
+            for target in terminator.successors_mut() {
+                let new_target = match final_target(mir, *target) {
+                    Some(new_target) => new_target,
+                    None if mir.basic_block_data(bb).statements.is_empty() => bb,
+                    None => continue
+                };
+
+                if *target != new_target {
+                    changed = true;
+                    predecessor_map.remove_predecessor(*target);
+                    predecessor_map.add_predecessor(new_target);
+                    *target = new_target;
+                }
             }
 
             // Restore the terminator we swapped out for Diverge
