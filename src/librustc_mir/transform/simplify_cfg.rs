@@ -51,8 +51,8 @@ impl SimplifyCfg {
         let mut worklist = vec![START_BLOCK];
         while let Some(bb) = worklist.pop() {
             // Temporarily swap out the terminator we're modifying to keep borrowck happy
-            let mut terminator = Terminator::Diverge;
-            mem::swap(&mut terminator, &mut mir.basic_block_data_mut(bb).terminator);
+            let mut terminator = mem::replace(&mut mir.basic_block_data_mut(bb).terminator,
+                                          Terminator::Diverge);
 
             // Shortcut chains of empty blocks that just jump from one to the next
             for target in terminator.successors_mut() {
@@ -71,26 +71,29 @@ impl SimplifyCfg {
             }
 
             // See if we can merge the target block into this one
-            match terminator {
-                Terminator::Goto { target } if target.index() > DIVERGE_BLOCK.index() &&
-                        predecessor_map.num_predecessors(target) == 1 => {
-                    changed = true;
-                    let mut other_data = BasicBlockData {
-                        statements: Vec::new(),
-                        terminator: Terminator::Goto { target: target}
-                    };
-                    mem::swap(&mut other_data, mir.basic_block_data_mut(target));
-
-                    // target used to have 1 predecessor (bb), and still has only one (itself)
-                    // All the successors of target have had target replaced by bb in their
-                    // list of predecessors, keeping the number the same.
-
-                    let data = mir.basic_block_data_mut(bb);
-                    data.statements.append(&mut other_data.statements);
-                    mem::swap(&mut data.terminator, &mut other_data.terminator);
+            while let Terminator::Goto { target } = terminator {
+                if target.index() <= DIVERGE_BLOCK.index() || predecessor_map.num_predecessors(target) > 1 {
+                    break;
                 }
-                _ => mir.basic_block_data_mut(bb).terminator = terminator
+
+                changed = true;
+
+                let mut other_data = mem::replace(mir.basic_block_data_mut(target), BasicBlockData {
+                    statements: Vec::new(),
+                    terminator: Terminator::Goto { target: target }
+                });
+
+                // target used to have 1 predecessor (bb), and still has only one (itself)
+                // All the successors of target have had target replaced by bb in their
+                // list of predecessors, keeping the number the same.
+
+                let data = mir.basic_block_data_mut(bb);
+                data.statements.append(&mut other_data.statements);
+                terminator = other_data.terminator;
             }
+
+            // Restore the terminator we swapped out for Diverge
+            mir.basic_block_data_mut(bb).terminator = terminator;
 
             for succ in mir.basic_block_data(bb).terminator.successors() {
                 if !seen[succ.index()] {
