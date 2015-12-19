@@ -331,7 +331,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 Value::Adt { variant: variant, data_ptr: ptr }
             }
 
-            _ => unimplemented!(),
+            ref r => panic!("can't handle rvalue: {:?}", r),
         }
     }
 
@@ -343,12 +343,10 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 match constant.literal {
                     mir::Literal::Value { ref value } => self.eval_constant(value),
 
-                    mir::Literal::Item { def_id, substs: _ } => {
-                        // FIXME(tsion): Only items of function type should be wrapped into Func
-                        // values. One test currently fails because a unit-like enum variant gets
-                        // wrapped into Func here instead of a Value::Adt.
-                        Value::Func(def_id)
-                    }
+                    mir::Literal::Item { def_id, kind, .. } => match kind {
+                        mir::ItemKind::Function | mir::ItemKind::Method => Value::Func(def_id),
+                        _ => panic!("can't handle item literal: {:?}", constant.literal),
+                    },
                 }
             }
         }
