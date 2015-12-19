@@ -61,3 +61,13 @@ impl<'a,'tcx:'a,T,U> ToRef for &'tcx Vec<T>
         self.iter().map(|expr| expr.to_ref()).collect()
     }
 }
+
+impl<'a,'tcx:'a,T,U> ToRef for &'tcx P<[T]>
+    where &'tcx T: ToRef<Output=U>
+{
+    type Output = Vec<U>;
+
+    fn to_ref(self) -> Vec<U> {
+        self.iter().map(|expr| expr.to_ref()).collect()
+    }
+}

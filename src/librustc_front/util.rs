@@ -335,7 +335,7 @@ pub fn is_path(e: P<Expr>) -> bool {
 pub fn empty_generics() -> Generics {
     Generics {
         lifetimes: HirVec::new(),
-        ty_params: P::empty(),
+        ty_params: HirVec::new(),
         where_clause: WhereClause {
             id: DUMMY_NODE_ID,
             predicates: HirVec::new(),
@@ -353,8 +353,8 @@ pub fn ident_to_path(s: Span, ident: Ident) -> Path {
             identifier: ident,
             parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
                 lifetimes: HirVec::new(),
-                types: P::empty(),
-                bindings: P::empty(),
+                types: HirVec::new(),
+                bindings: HirVec::new(),
             }),
         }],
     }

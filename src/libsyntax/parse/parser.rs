@@ -771,7 +771,7 @@ impl<'a> Parser<'a> {
             if i % 2 == 0 {
                 match try!(f(self)) {
                     Some(result) => v.push(result),
-                    None => return Ok((P::from_vec(v), true))
+                    None => return Ok((P::from(v), true))
                 }
             } else {
                 if let Some(t) = sep.as_ref() {
@@ -780,7 +780,7 @@ impl<'a> Parser<'a> {
 
             }
         }
-        return Ok((P::from_vec(v), false));
+        return Ok((P::from(v), false));
     }
 
     /// Parse a sequence bracketed by '<' and '>', stopping
@@ -1075,11 +1075,11 @@ impl<'a> Parser<'a> {
             let other_bounds = if try!(self.eat(&token::BinOp(token::Plus)) ){
                 try!(self.parse_ty_param_bounds(BoundParsingMode::Bare))
             } else {
-                P::empty()
+                P::new()
             };
             let all_bounds =
                 Some(TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)).into_iter()
-                .chain(other_bounds.into_vec())
+                .chain(other_bounds.into_iter())
                 .collect();
             Ok(ast::TyPolyTraitRef(all_bounds))
         }
@@ -1708,8 +1708,8 @@ impl<'a> Parser<'a> {
 
                 ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                     lifetimes: lifetimes,
-                    types: P::from_vec(types),
-                    bindings: P::from_vec(bindings),
+                    types: P::from(types),
+                    bindings: P::from(bindings),
                 })
             } else if try!(self.eat(&token::OpenDelim(token::Paren)) ){
                 let lo = self.last_span.lo;
@@ -1772,8 +1772,8 @@ impl<'a> Parser<'a> {
                     identifier: identifier,
                     parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                         lifetimes: lifetimes,
-                        types: P::from_vec(types),
-                        bindings: P::from_vec(bindings),
+                        types: P::from(types),
+                        bindings: P::from(bindings),
                     }),
                 });
 
@@ -3890,7 +3890,7 @@ impl<'a> Parser<'a> {
                                         -> PResult<TyParamBounds>
     {
         if !try!(self.eat(&token::Colon) ){
-            Ok(P::empty())
+            Ok(P::new())
         } else {
             self.parse_ty_param_bounds(mode)
         }
@@ -3944,7 +3944,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        return Ok(P::from_vec(result));
+        return Ok(P::from(result));
     }
 
     /// Matches typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?
@@ -4057,7 +4057,7 @@ impl<'a> Parser<'a> {
 
         // If we found the `>`, don't continue.
         if !returned {
-            return Ok((lifetimes, types.into_vec(), Vec::new()));
+            return Ok((lifetimes, types.into(), Vec::new()));
         }
 
         // Then parse type bindings.
@@ -4082,7 +4082,7 @@ impl<'a> Parser<'a> {
                 }));
             }
         ));
-        Ok((lifetimes, types.into_vec(), bindings.into_vec()))
+        Ok((lifetimes, types.into(), bindings.into()))
     }
 
     fn forbid_lifetime(&mut self) -> PResult<()> {

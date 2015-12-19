@@ -489,7 +489,7 @@ impl<'a> TraitDef<'a> {
 
         let Generics { mut lifetimes, ty_params, mut where_clause } =
             self.generics.to_generics(cx, self.span, type_ident, generics);
-        let mut ty_params = ty_params.into_vec();
+        let mut ty_params: Vec<_> = ty_params.into();
 
         // Copy the lifetimes
         lifetimes.extend(generics.lifetimes.iter().cloned());
@@ -515,7 +515,7 @@ impl<'a> TraitDef<'a> {
 
             cx.typaram(self.span,
                        ty_param.ident,
-                       P::from_vec(bounds),
+                       P::from(bounds),
                        None)
         }));
 
@@ -527,7 +527,7 @@ impl<'a> TraitDef<'a> {
                         span: self.span,
                         bound_lifetimes: wb.bound_lifetimes.clone(),
                         bounded_ty: wb.bounded_ty.clone(),
-                        bounds: P::from_vec(wb.bounds.iter().cloned().collect())
+                        bounds: wb.bounds.iter().cloned().collect()
                     })
                 }
                 ast::WherePredicate::RegionPredicate(ref rb) => {
@@ -578,7 +578,7 @@ impl<'a> TraitDef<'a> {
                         span: self.span,
                         bound_lifetimes: vec![],
                         bounded_ty: ty,
-                        bounds: P::from_vec(bounds),
+                        bounds: P::from(bounds),
                     };
 
                     let predicate = ast::WherePredicate::BoundPredicate(predicate);
@@ -589,7 +589,7 @@ impl<'a> TraitDef<'a> {
 
         let trait_generics = Generics {
             lifetimes: lifetimes,
-            ty_params: P::from_vec(ty_params),
+            ty_params: P::from(ty_params),
             where_clause: where_clause
         };
 
@@ -597,9 +597,9 @@ impl<'a> TraitDef<'a> {
         let trait_ref = cx.trait_ref(trait_path);
 
         // Create the type parameters on the `self` path.
-        let self_ty_params = generics.ty_params.map(|ty_param| {
+        let self_ty_params = generics.ty_params.iter().map(|ty_param| {
             cx.ty_ident(self.span, ty_param.ident)
-        });
+        }).collect();
 
         let self_lifetimes: Vec<ast::Lifetime> =
             generics.lifetimes
@@ -610,7 +610,7 @@ impl<'a> TraitDef<'a> {
         // Create the type of `self`.
         let self_type = cx.ty_path(
             cx.path_all(self.span, false, vec!( type_ident ), self_lifetimes,
-                        self_ty_params.into_vec(), Vec::new()));
+                        self_ty_params, Vec::new()));
 
         let attr = cx.attribute(
             self.span,
