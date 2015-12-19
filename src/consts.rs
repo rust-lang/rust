@@ -20,10 +20,8 @@ use syntax::ast::Lit_;
 use syntax::ast::LitIntType::*;
 use syntax::ast::LitIntType;
 use syntax::ast::{UintTy, FloatTy, StrStyle};
-use syntax::ast::UintTy::*;
 use syntax::ast::FloatTy::*;
 use syntax::ast::Sign::{self, Plus, Minus};
-use syntax::ast_util;
 
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
@@ -195,9 +193,9 @@ impl fmt::Display for Constant {
                 let (sign, suffix) = match *ity {
                     LitIntType::SignedIntLit(ref sity, ref sign) =>
                         (if let Sign::Minus = *sign { "-" } else { "" },
-                         ast_util::int_ty_to_string(*sity)),
+                         sity.ty_to_string()),
                     LitIntType::UnsignedIntLit(ref uity) =>
-                        ("", ast_util::uint_ty_to_string(*uity)),
+                        ("", uity.ty_to_string()),
                     LitIntType::UnsuffixedIntLit(ref sign) =>
                         (if let Sign::Minus = *sign { "-" } else { "" },
                          "".into()),
