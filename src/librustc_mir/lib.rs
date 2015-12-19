@@ -19,7 +19,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![crate_type = "dylib"]
 
 #![feature(rustc_private)]
-#![feature(into_cow)]
 
 #[macro_use] extern crate log;
 extern crate graphviz as dot;
