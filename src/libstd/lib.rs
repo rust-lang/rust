@@ -248,6 +248,7 @@
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(macro_reexport)]
+#![feature(num_bits_bytes)]
 #![feature(on_unimplemented)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
@@ -429,6 +430,7 @@ pub mod path;
 pub mod process;
 pub mod sync;
 pub mod time;
+mod memchr;
 
 #[macro_use]
 #[path = "sys/common/mod.rs"] mod sys_common;

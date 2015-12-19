@@ -19,6 +19,7 @@ use io;
 use iter::Iterator;
 use libc;
 use mem;
+use memchr;
 use ops::Deref;
 use option::Option::{self, Some, None};
 use os::raw::c_char;
@@ -188,7 +189,7 @@ impl CString {
     }
 
     fn _new(bytes: Vec<u8>) -> Result<CString, NulError> {
-        match bytes.iter().position(|x| *x == 0) {
+        match memchr::memchr(0, &bytes) {
             Some(i) => Err(NulError(i, bytes)),
             None => Ok(unsafe { CString::from_vec_unchecked(bytes) }),
         }

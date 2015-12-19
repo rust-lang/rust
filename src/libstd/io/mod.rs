@@ -254,6 +254,7 @@ use result;
 use string::String;
 use str;
 use vec::Vec;
+use memchr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::{BufReader, BufWriter, LineWriter};
@@ -1194,7 +1195,7 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
                 Err(e) => return Err(e)
             };
-            match available.iter().position(|x| *x == delim) {
+            match memchr::memchr(delim, available) {
                 Some(i) => {
                     buf.extend_from_slice(&available[..i + 1]);
                     (true, i + 1)
