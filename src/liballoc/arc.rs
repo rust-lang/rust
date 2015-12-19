@@ -924,19 +924,18 @@ impl<T> Weak<T> {
     ///
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5);
+    /// let empty: Weak<i64> = Weak::new();
     /// ```
     #[unstable(feature = "downgraded_weak",
                reason = "recently added",
                issue = "30425")]
     pub fn new() -> Weak<T> {
         unsafe {
-            let x: Box<_> = box ArcInner {
+            Weak { _ptr: Shared::new(Box::into_raw(box ArcInner {
                 strong: atomic::AtomicUsize::new(0),
                 weak: atomic::AtomicUsize::new(1),
                 data: uninitialized(),
-            };
-            Weak { _ptr: Shared::new(Box::into_raw(x)) }
+            }))}
         }
     }
 }
