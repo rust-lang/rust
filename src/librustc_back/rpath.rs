@@ -19,6 +19,7 @@ pub struct RPathConfig<'a> {
     pub out_filename: PathBuf,
     pub is_like_osx: bool,
     pub has_rpath: bool,
+    pub linker_is_gnu: bool,
     pub get_install_prefix_lib_path: &'a mut FnMut() -> PathBuf,
 }
 
@@ -36,6 +37,12 @@ pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
     let libs = libs.into_iter().filter_map(|(_, l)| l).collect::<Vec<_>>();
     let rpaths = get_rpaths(config, &libs[..]);
     flags.extend_from_slice(&rpaths_to_flags(&rpaths[..]));
+
+    // Use DT_RUNPATH instead of DT_RPATH if available
+    if config.linker_is_gnu {
+        flags.push("-Wl,--enable-new-dtags".to_string());
+    }
+
     flags
 }
 
@@ -228,6 +235,7 @@ mod tests {
                 used_crates: Vec::new(),
                 has_rpath: true,
                 is_like_osx: true,
+                linker_is_gnu: false,
                 out_filename: PathBuf::from("bin/rustc"),
                 get_install_prefix_lib_path: &mut || panic!(),
             };
@@ -241,6 +249,7 @@ mod tests {
                 get_install_prefix_lib_path: &mut || panic!(),
                 has_rpath: true,
                 is_like_osx: false,
+                linker_is_gnu: true,
             };
             let res = get_rpath_relative_to_output(config,
                                                    Path::new("lib/libstd.so"));
