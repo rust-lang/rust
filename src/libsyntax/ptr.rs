@@ -130,6 +130,10 @@ impl<T:fmt::Debug> fmt::Debug for P<[T]> {
 }
 
 impl<T> P<[T]> {
+    pub fn new() -> P<[T]> {
+        P::empty()
+    }
+
     pub fn empty() -> P<[T]> {
         P { ptr: Default::default() }
     }
@@ -177,9 +181,30 @@ impl<T: Clone> Clone for P<[T]> {
     }
 }
 
+impl<T> From<Vec<T>> for P<[T]> {
+    fn from(v: Vec<T>) -> Self {
+        P::from_vec(v)
+    }
+}
+
+impl<T> Into<Vec<T>> for P<[T]> {
+    fn into(self) -> Vec<T> {
+        self.into_vec()
+    }
+}
+
 impl<T> FromIterator<T> for P<[T]> {
     fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> P<[T]> {
         P::from_vec(iter.into_iter().collect())
+    }
+}
+
+impl<T> IntoIterator for P<[T]> {
+    type Item = T;
+    type IntoIter = vec::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.into_vec().into_iter()
     }
 }
 

@@ -1153,11 +1153,11 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
     }
 
     fn rebuild_ty_params(&self,
-                         ty_params: P<[hir::TyParam]>,
+                         ty_params: hir::HirVec<hir::TyParam>,
                          lifetime: hir::Lifetime,
                          region_names: &HashSet<ast::Name>)
-                         -> P<[hir::TyParam]> {
-        ty_params.map(|ty_param| {
+                         -> hir::HirVec<hir::TyParam> {
+        ty_params.iter().map(|ty_param| {
             let bounds = self.rebuild_ty_param_bounds(ty_param.bounds.clone(),
                                                       lifetime,
                                                       region_names);
@@ -1168,7 +1168,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                 default: ty_param.default.clone(),
                 span: ty_param.span,
             }
-        })
+        }).collect()
     }
 
     fn rebuild_ty_param_bounds(&self,
@@ -1176,7 +1176,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                                lifetime: hir::Lifetime,
                                region_names: &HashSet<ast::Name>)
                                -> hir::TyParamBounds {
-        ty_param_bounds.map(|tpb| {
+        ty_param_bounds.iter().map(|tpb| {
             match tpb {
                 &hir::RegionTyParamBound(lt) => {
                     // FIXME -- it's unclear whether I'm supposed to
@@ -1212,7 +1212,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     }, modifier)
                 }
             }
-        })
+        }).collect()
     }
 
     fn rebuild_expl_self(&self,
@@ -1248,7 +1248,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         add: &Vec<hir::Lifetime>,
                         keep: &HashSet<ast::Name>,
                         remove: &HashSet<ast::Name>,
-                        ty_params: P<[hir::TyParam]>,
+                        ty_params: hir::HirVec<hir::TyParam>,
                         where_clause: hir::WhereClause)
                         -> hir::Generics {
         let mut lifetimes = Vec::new();
@@ -1498,10 +1498,10 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         }
                     }
                 }
-                let new_types = data.types.map(|t| {
+                let new_types = data.types.iter().map(|t| {
                     self.rebuild_arg_ty_or_output(&**t, lifetime, anon_nums, region_names)
-                });
-                let new_bindings = data.bindings.map(|b| {
+                }).collect();
+                let new_bindings = data.bindings.iter().map(|b| {
                     hir::TypeBinding {
                         id: b.id,
                         name: b.name,
@@ -1511,7 +1511,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                                                           region_names),
                         span: b.span
                     }
-                });
+                }).collect();
                 hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
                     lifetimes: new_lts.into(),
                     types: new_types,
