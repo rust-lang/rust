@@ -96,8 +96,7 @@ use prelude::v1::*;
 use fmt;
 use str::FromStr;
 
-use self::parse::{parse_decimal, Decimal, Sign};
-use self::parse::ParseResult::{Valid, Invalid, ShortcutToInf, ShortcutToZero};
+use self::parse::{parse_decimal, Decimal, Sign, ParseResult};
 use self::num::digits_to_big;
 use self::rawfp::RawFloat;
 
@@ -208,10 +207,10 @@ fn dec2flt<T: RawFloat>(s: &str) -> Result<T, ParseFloatError> {
     }
     let (sign, s) = extract_sign(s);
     let flt = match parse_decimal(s) {
-        Valid(decimal) => try!(convert(decimal)),
-        ShortcutToInf => T::infinity(),
-        ShortcutToZero => T::zero(),
-        Invalid => match s {
+        ParseResult::Valid(decimal) => try!(convert(decimal)),
+        ParseResult::ShortcutToInf => T::infinity(),
+        ParseResult::ShortcutToZero => T::zero(),
+        ParseResult::Invalid => match s {
             "inf" => T::infinity(),
             "NaN" => T::nan(),
             _ => { return Err(pfe_invalid()); }
