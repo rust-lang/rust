@@ -179,8 +179,8 @@ fn main() {
     if false { _index = 0 };
     for _v in &vec { _index += 1 }
 
-    let mut _index = 0;
-    { let mut _x = &mut _index; }
+    let mut index = 0;
+    { let mut _x = &mut index; }
     for _v in &vec { _index += 1 }
 
     let mut index = 0;

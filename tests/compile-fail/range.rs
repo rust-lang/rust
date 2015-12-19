@@ -22,8 +22,8 @@ fn main() {
     let y = NotARange;
     y.step_by(0);
 
-    let _v1 = vec![1,2,3];
-    let _v2 = vec![4,5];
-    let _x = _v1.iter().zip(0.._v1.len()); //~ERROR It is more idiomatic to use _v1.iter().enumerate()
-    let _y = _v1.iter().zip(0.._v2.len()); // No error
+    let v1 = vec![1,2,3];
+    let v2 = vec![4,5];
+    let _x = v1.iter().zip(0..v1.len()); //~ERROR It is more idiomatic to use v1.iter().enumerate()
+    let _y = v1.iter().zip(0..v2.len()); // No error
 }

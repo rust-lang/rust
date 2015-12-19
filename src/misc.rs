@@ -10,7 +10,8 @@ use rustc::middle::const_eval::ConstVal::Float;
 use rustc::middle::const_eval::eval_const_expr_partial;
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 
-use utils::{get_item_name, match_path, snippet, span_lint, walk_ptrs_ty, is_integer_literal};
+use utils::{get_item_name, match_path, snippet, get_parent_expr, span_lint, walk_ptrs_ty,
+            is_integer_literal};
 use utils::span_help_and_lint;
 
 /// **What it does:** This lint checks for function arguments and let bindings denoted as `ref`. It is `Warn` by default.
@@ -314,5 +315,71 @@ impl LateLintPass for PatternPass {
                     ident.node.name, ident.node.name));
             }
         }
+    }
+}
+
+
+/// **What it does:** This lint checks for the use of bindings with a single leading underscore
+///
+/// **Why is this bad?** A single leading underscore is usually used to indicate that a binding
+/// will not be used. Using such a binding breaks this expectation.
+///
+/// **Known problems:** None
+///
+/// **Example**:
+/// ```
+/// let _x = 0;
+/// let y = _x + 1; // Here we are using `_x`, even though it has a leading underscore.
+///                 // We should rename `_x` to `x`
+/// ```
+declare_lint!(pub USED_UNDERSCORE_BINDING, Warn,
+              "using a binding which is prefixed with an underscore");
+
+#[derive(Copy, Clone)]
+pub struct UsedUnderscoreBinding;
+
+impl LintPass for UsedUnderscoreBinding {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(USED_UNDERSCORE_BINDING)
+    }
+}
+
+impl LateLintPass for UsedUnderscoreBinding {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+        let needs_lint = match expr.node {
+            ExprPath(_, ref path) => {
+                let ident = path.segments.last()
+                                .expect("path should always have at least one segment")
+                                .identifier;
+                ident.name.as_str().chars().next() == Some('_') //starts with '_'
+                && ident.name.as_str().chars().skip(1).next() != Some('_') //doesn't start with "__"
+                && ident.name != ident.unhygienic_name //not in macro
+                && is_used(cx, expr)
+            },
+            ExprField(_, spanned) => {
+                let name = spanned.node.as_str();
+                name.chars().next() == Some('_')
+                && name.chars().skip(1).next() != Some('_')
+            },
+            _ => false
+        };
+        if needs_lint {
+            cx.span_lint(USED_UNDERSCORE_BINDING, expr.span,
+                         "used binding which is prefixed with an underscore. A leading underscore \
+                          signals that a binding will not be used.");
+        }
+    }
+}
+
+fn is_used(cx: &LateContext, expr: &Expr) -> bool {
+    if let Some(ref parent) = get_parent_expr(cx, expr) {
+        match parent.node {
+            ExprAssign(_, ref rhs) => **rhs == *expr,
+            ExprAssignOp(_, _, ref rhs) => **rhs == *expr,
+            _ => is_used(cx, &parent)
+        }
+    }
+    else {
+        true
     }
 }
