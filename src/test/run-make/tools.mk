@@ -85,6 +85,7 @@ ifeq ($(UNAME),Bitrig)
 else
 ifeq ($(UNAME),OpenBSD)
 	EXTRACFLAGS := -lm -lpthread
+	RUSTC := $(RUSTC) -C linker="$(word 1,$(CC:ccache=))"
 else
 	EXTRACFLAGS := -lm -lrt -ldl -lpthread
 	EXTRACXXFLAGS := -lstdc++
