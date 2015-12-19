@@ -344,6 +344,9 @@ impl<'tcx> Debug for Terminator<'tcx> {
 }
 
 impl<'tcx> Terminator<'tcx> {
+    /// Write the "head" part of the terminator; that is, its name and the data it uses to pick the
+    /// successor basic block, if any. The only information not inlcuded is the list of possible
+    /// successors, which may be rendered differently between the text and the graphviz format.
     pub fn fmt_head<W: Write>(&self, fmt: &mut W) -> Result<(), Error> {
         use self::Terminator::*;
         match *self {
@@ -367,6 +370,7 @@ impl<'tcx> Terminator<'tcx> {
         }
     }
 
+    /// Return the list of labels for the edges to the successor basic blocks.
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::Terminator::*;
         match *self {
@@ -783,6 +787,7 @@ impl<'tcx> Debug for Literal<'tcx> {
     }
 }
 
+/// Write a `ConstVal` in a way closer to the original source code than the `Debug` output.
 pub fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> Result<(), Error> {
     use middle::const_eval::ConstVal::*;
     match *const_val {
