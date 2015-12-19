@@ -33,6 +33,7 @@
 // * The `raw` and `bytes` submodules.
 // * Boilerplate trait implementations.
 
+use marker::Copy;
 use clone::Clone;
 use cmp::{Ordering, PartialEq, PartialOrd, Eq, Ord};
 use cmp::Ordering::{Less, Equal, Greater};
@@ -1427,6 +1428,29 @@ pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: usize) -> &'a [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
     mem::transmute(RawSlice { data: p, len: len })
+}
+
+/// Sets all elements of a slice to the given value
+#[inline]
+#[unstable(feature = "slice_copy_set", reason = "very new", issue = "0")]
+pub fn set<T: Copy>(slice: &mut [T], value: T) {
+    for member in slice {
+        *member = value;
+    }
+}
+
+/// Copies all elements of the slice `src` to the slice `dst`. The safe
+/// equivalent of `std::ptr::copy_nonoverlapping`.
+///
+/// Panics if the lengths of `src` and `dst` are not equal
+#[inline]
+#[unstable(feature = "slice_copy_set", reason = "very new", issue = "0")]
+pub fn copy<T: Copy>(src: &[T], dst: &mut [T]) {
+    use ptr;
+    assert!(src.len() == dst.len());
+    unsafe {
+        ptr::copy_nonoverlapping(src.as_ptr(), dst.as_mut_ptr(), src.len());
+    }
 }
 
 //
