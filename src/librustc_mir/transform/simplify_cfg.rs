@@ -56,7 +56,8 @@ impl SimplifyCfg {
 
             // See if we can merge the target block into this one
             while let Terminator::Goto { target } = terminator {
-                if target.index() <= DIVERGE_BLOCK.index() || predecessor_map.num_predecessors(target) > 1 {
+                if target.index() <= DIVERGE_BLOCK.index() ||
+                        predecessor_map.num_predecessors(target) > 1 {
                     break;
                 }
 
