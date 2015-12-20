@@ -9,7 +9,7 @@ document your project.
 The Rust distribution includes a tool, `rustdoc`, that generates documentation.
 `rustdoc` is also used by Cargo through `cargo doc`.
 
-Documentation can be generated in two ways: from source code, and from
+Documentation can be generated in two ways; from source code, and from
 standalone Markdown files.
 
 ## Documenting source code
@@ -73,7 +73,7 @@ hello.rs:4 }
 ```
 
 This [unfortunate error](https://github.com/rust-lang/rust/issues/22547) is
-correct: documentation comments apply to the thing after them, and there's
+correct; documentation comments apply to the thing after them, and there's
 nothing after that last comment.
 
 [rc-new]: https://doc.rust-lang.org/nightly/std/rc/struct.Rc.html#method.new
@@ -385,7 +385,7 @@ error handling. Lets say you want the following,
 
 ```rust,ignore
 /// use std::io;
-/// let mut input = String::new(); 
+/// let mut input = String::new();
 /// try!(io::stdin().read_line(&mut input));
 ```
 
@@ -398,7 +398,7 @@ don't return anything so this will give a mismatched types error.
 /// ```
 /// use std::io;
 /// # fn foo() -> io::Result<()> {
-/// let mut input = String::new(); 
+/// let mut input = String::new();
 /// try!(io::stdin().read_line(&mut input));
 /// # Ok(())
 /// # }
