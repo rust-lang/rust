@@ -11,24 +11,28 @@
 #![deny(improper_ctypes)]
 #![feature(libc)]
 
+use types::*;
+
 extern crate libc;
 
-trait Mirror { type It; }
-impl<T> Mirror for T { type It = Self; }
-#[repr(C)]
-pub struct StructWithProjection(*mut <StructWithProjection as Mirror>::It);
-#[repr(C)]
-pub struct StructWithProjectionAndLifetime<'a>(
-    &'a mut <StructWithProjectionAndLifetime<'a> as Mirror>::It
-);
-pub type I32Pair = (i32, i32);
-#[repr(C)]
-pub struct ZeroSize;
-pub type RustFn = fn();
-pub type RustBadRet = extern fn() -> Box<u32>;
-pub type CVoidRet = ();
-pub struct Foo;
-pub trait Bar {}
+pub mod types {
+    pub trait Mirror { type It; }
+    impl<T> Mirror for T { type It = Self; }
+    #[repr(C)]
+    pub struct StructWithProjection(*mut <StructWithProjection as Mirror>::It);
+    #[repr(C)]
+    pub struct StructWithProjectionAndLifetime<'a>(
+        &'a mut <StructWithProjectionAndLifetime<'a> as Mirror>::It
+    );
+    pub type I32Pair = (i32, i32);
+    #[repr(C)]
+    pub struct ZeroSize;
+    pub type RustFn = fn();
+    pub type RustBadRet = extern fn() -> Box<u32>;
+    pub type CVoidRet = ();
+    pub struct Foo;
+    pub trait Bar {}
+}
 
 extern {
     pub fn ptr_type1(size: *const Foo); //~ ERROR: found struct without
