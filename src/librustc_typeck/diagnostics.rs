@@ -795,7 +795,7 @@ optional namespacing), a dereference, an indexing expression or a field
 reference.
 
 More details can be found here:
-https://doc.rust-lang.org/reference.html#lvalues,-rvalues-and-temporaries
+https://doc.rust-lang.org/reference.html#lvalues-rvalues-and-temporaries
 
 Now, we can go further. Here are some bad examples:
 
