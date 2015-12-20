@@ -30,7 +30,7 @@ pub trait Emitter {
 
     // Emit a structured diagnostic.
     fn emit_struct(&mut self, db: &DiagnosticBuilder) {
-        self.emit(db.span, db.message, db.code.as_ref().map(|s| &**s), db.level);
+        self.emit(db.span, &db.message, db.code.as_ref().map(|s| &**s), db.level);
         for child in &db.children {
             match child.render_span {
                 Some(ref sp) => self.custom_emit(sp.clone(), &child.message, child.level),

@@ -24,26 +24,13 @@
 #![feature(str_char)]
 
 extern crate fmt_macros;
+#[macro_use]
 extern crate syntax;
 
 use syntax::ext::base::{MacroExpanderFn, NormalTT};
 use syntax::ext::base::{SyntaxEnv, SyntaxExtension};
 use syntax::parse::token::intern;
 
-// A variant of 'try!' that panics on Err(FatalError). This is used as a
-// crutch on the way towards a non-panic!-prone parser. It should be used
-// for fatal parsing errors; eventually we plan to convert all code using
-// panictry to just use normal try
-macro_rules! panictry {
-    ($e:expr) => ({
-        use std::result::Result::{Ok, Err};
-        use syntax::errors::FatalError;
-        match $e {
-            Ok(e) => e,
-            Err(FatalError) => panic!(FatalError)
-        }
-    })
-}
 
 mod asm;
 mod cfg;

@@ -1001,8 +1001,9 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                              None
                          }
                          _ => {
-                             session.span_err(a.span, "`crate_type` requires a value");
-                             session.note("for example: `#![crate_type=\"lib\"]`");
+                             session.struct_span_err(a.span, "`crate_type` requires a value")
+                                 .note("for example: `#![crate_type=\"lib\"]`")
+                                 .emit();
                              None
                          }
                      }

@@ -68,6 +68,7 @@ use util::nodemap::FnvHashSet;
 
 use syntax::{abi, ast};
 use syntax::codemap::{Span, Pos};
+use syntax::errors::DiagnosticBuilder;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::parse::token;
 
@@ -195,7 +196,7 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &hir::Lifetime)
 }
 
 fn report_elision_failure(
-    tcx: &ty::ctxt,
+    db: &mut DiagnosticBuilder,
     default_span: Span,
     params: Vec<ElisionFailureInfo>)
 {
@@ -233,26 +234,26 @@ fn report_elision_failure(
     }
 
     if len == 0 {
-        fileline_help!(tcx.sess, default_span,
+        fileline_help!(db, default_span,
                        "this function's return type contains a borrowed value, but \
                         there is no value for it to be borrowed from");
-        fileline_help!(tcx.sess, default_span,
+        fileline_help!(db, default_span,
                        "consider giving it a 'static lifetime");
     } else if !any_lifetimes {
-        fileline_help!(tcx.sess, default_span,
+        fileline_help!(db, default_span,
                        "this function's return type contains a borrowed value with \
                         an elided lifetime, but the lifetime cannot be derived from \
                         the arguments");
-        fileline_help!(tcx.sess, default_span,
+        fileline_help!(db, default_span,
                        "consider giving it an explicit bounded or 'static \
                         lifetime");
     } else if len == 1 {
-        fileline_help!(tcx.sess, default_span,
+        fileline_help!(db, default_span,
                        "this function's return type contains a borrowed value, but \
                         the signature does not say which {} it is borrowed from",
                        m);
     } else {
-        fileline_help!(tcx.sess, default_span,
+        fileline_help!(db, default_span,
                        "this function's return type contains a borrowed value, but \
                         the signature does not say whether it is borrowed from {}",
                        m);
@@ -273,11 +274,12 @@ pub fn opt_ast_region_to_region<'tcx>(
         None => match rscope.anon_regions(default_span, 1) {
             Ok(rs) => rs[0],
             Err(params) => {
-                span_err!(this.tcx().sess, default_span, E0106,
-                          "missing lifetime specifier");
+                let mut err = struct_span_err!(this.tcx().sess, default_span, E0106,
+                                               "missing lifetime specifier");
                 if let Some(params) = params {
-                    report_elision_failure(this.tcx(), default_span, params);
+                    report_elision_failure(&mut err, default_span, params);
                 }
+                err.emit();
                 ty::ReStatic
             }
         }
@@ -1044,9 +1046,9 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
             }
         }
         _ => {
-            span_err!(this.tcx().sess, ty.span, E0178,
-                      "expected a path on the left-hand side of `+`, not `{}`",
-                      pprust::ty_to_string(ty));
+            let mut err = struct_span_err!(this.tcx().sess, ty.span, E0178,
+                                           "expected a path on the left-hand side of `+`, not `{}`",
+                                           pprust::ty_to_string(ty));
             let hi = bounds.iter().map(|x| match *x {
                 hir::TraitTyParamBound(ref tr, _) => tr.span.hi,
                 hir::RegionTyParamBound(ref r) => r.span.hi,
@@ -1059,29 +1061,28 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
             match (&ty.node, full_span) {
                 (&hir::TyRptr(None, ref mut_ty), Some(full_span)) => {
                     let mutbl_str = if mut_ty.mutbl == hir::MutMutable { "mut " } else { "" };
-                    this.tcx().sess
-                        .span_suggestion(full_span, "try adding parentheses (per RFC 438):",
-                                         format!("&{}({} +{})",
-                                                 mutbl_str,
-                                                 pprust::ty_to_string(&*mut_ty.ty),
-                                                 pprust::bounds_to_string(bounds)));
+                    err.span_suggestion(full_span, "try adding parentheses (per RFC 438):",
+                                        format!("&{}({} +{})",
+                                                mutbl_str,
+                                                pprust::ty_to_string(&*mut_ty.ty),
+                                                pprust::bounds_to_string(bounds)));
                 }
                 (&hir::TyRptr(Some(ref lt), ref mut_ty), Some(full_span)) => {
                     let mutbl_str = if mut_ty.mutbl == hir::MutMutable { "mut " } else { "" };
-                    this.tcx().sess
-                        .span_suggestion(full_span, "try adding parentheses (per RFC 438):",
-                                         format!("&{} {}({} +{})",
-                                                 pprust::lifetime_to_string(lt),
-                                                 mutbl_str,
-                                                 pprust::ty_to_string(&*mut_ty.ty),
-                                                 pprust::bounds_to_string(bounds)));
+                    err.span_suggestion(full_span, "try adding parentheses (per RFC 438):",
+                                        format!("&{} {}({} +{})",
+                                                pprust::lifetime_to_string(lt),
+                                                mutbl_str,
+                                                pprust::ty_to_string(&*mut_ty.ty),
+                                                pprust::bounds_to_string(bounds)));
                 }
 
                 _ => {
-                    fileline_help!(this.tcx().sess, ty.span,
+                    fileline_help!(&mut err, ty.span,
                                "perhaps you forgot parentheses? (per RFC 438)");
                 }
             }
+            err.emit();
             Err(ErrorReported)
         }
     }
@@ -1134,7 +1135,8 @@ fn make_object_type<'tcx>(this: &AstConv<'tcx>,
         traits::astconv_object_safety_violations(tcx, principal.def_id());
     if !object_safety_violations.is_empty() {
         traits::report_object_safety_error(
-            tcx, span, principal.def_id(), object_safety_violations);
+            tcx, span, principal.def_id(), object_safety_violations)
+            .emit();
         return tcx.types.err;
     }
 
@@ -1235,17 +1237,18 @@ fn one_bound_for_assoc_type<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 
     if bounds.len() > 1 {
-        span_err!(tcx.sess, span, E0221,
-                  "ambiguous associated type `{}` in bounds of `{}`",
-                  assoc_name,
-                  ty_param_name);
+        let mut err = struct_span_err!(tcx.sess, span, E0221,
+                                       "ambiguous associated type `{}` in bounds of `{}`",
+                                       assoc_name,
+                                       ty_param_name);
 
         for bound in &bounds {
-            span_note!(tcx.sess, span,
+            span_note!(&mut err, span,
                        "associated type `{}` could derive from `{}`",
                        ty_param_name,
                        bound);
         }
+        err.emit();
     }
 
     Ok(bounds[0].clone())
@@ -1707,12 +1710,13 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                     }
                 }
                 Err(ref r) => {
-                    span_err!(tcx.sess, r.span, E0250,
-                              "array length constant evaluation error: {}",
-                              r.description());
+                    let mut err = struct_span_err!(tcx.sess, r.span, E0250,
+                                                   "array length constant evaluation error: {}",
+                                                   r.description());
                     if !ast_ty.span.contains(r.span) {
-                        span_note!(tcx.sess, ast_ty.span, "for array length here")
+                        span_note!(&mut err, ast_ty.span, "for array length here")
                     }
+                    err.emit();
                     this.tcx().types.err
                 }
             }

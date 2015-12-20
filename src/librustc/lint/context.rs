@@ -40,6 +40,7 @@ use std::mem;
 use syntax::ast_util::{self, IdVisitingOperation};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
+use syntax::errors::{self, DiagnosticBuilder};
 use syntax::parse::token::InternedString;
 use syntax::ast;
 use syntax::attr::ThinAttributesExt;
@@ -47,7 +48,6 @@ use rustc_front::hir;
 use rustc_front::util;
 use rustc_front::intravisit as hir_visit;
 use syntax::visit as ast_visit;
-use syntax::errors;
 
 /// Information about the registered lints.
 ///
@@ -363,10 +363,24 @@ pub fn gather_attrs(attrs: &[ast::Attribute])
 /// in trans that run after the main lint pass is finished. Most
 /// lints elsewhere in the compiler should call
 /// `Session::add_lint()` instead.
-pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
-                     lvlsrc: LevelSource, span: Option<Span>, msg: &str) {
+pub fn raw_emit_lint(sess: &Session,
+                     lint: &'static Lint,
+                     lvlsrc: LevelSource,
+                     span: Option<Span>,
+                     msg: &str) {
+    raw_struct_lint(sess, lint, lvlsrc, span, msg).map(|mut e| e.emit());
+}
+
+pub fn raw_struct_lint<'a>(sess: &'a Session,
+                           lint: &'static Lint,
+                           lvlsrc: LevelSource,
+                           span: Option<Span>,
+                           msg: &str)
+                           -> Option<DiagnosticBuilder<'a>> {
     let (mut level, source) = lvlsrc;
-    if level == Allow { return }
+    if level == Allow {
+        return None;
+    }
 
     let name = lint.name_lower();
     let mut def = None;
@@ -391,17 +405,18 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
     // For purposes of printing, we can treat forbid as deny.
     if level == Forbid { level = Deny; }
 
-    match (level, span) {
-        (Warn, Some(sp)) => sess.span_warn(sp, &msg[..]),
-        (Warn, None)     => sess.warn(&msg[..]),
-        (Deny, Some(sp)) => sess.span_err(sp, &msg[..]),
-        (Deny, None)     => sess.err(&msg[..]),
+    let mut err = match (level, span) {
+        (Warn, Some(sp)) => sess.struct_span_warn(sp, &msg[..]),
+        (Warn, None)     => sess.struct_warn(&msg[..]),
+        (Deny, Some(sp)) => sess.struct_span_err(sp, &msg[..]),
+        (Deny, None)     => sess.struct_err(&msg[..]),
         _ => sess.bug("impossible level in raw_emit_lint"),
-    }
+    };
 
     if let Some(span) = def {
-        sess.span_note(span, "lint level defined here");
+        err.span_note(span, "lint level defined here");
     }
+    Some(err)
 }
 
 pub trait LintContext: Sized {
@@ -418,17 +433,36 @@ pub trait LintContext: Sized {
         self.lints().levels.get(&LintId::of(lint)).map_or(Allow, |&(lvl, _)| lvl)
     }
 
-    fn lookup_and_emit(&self, lint: &'static Lint, span: Option<Span>, msg: &str) {
-        let (level, src) = match self.lints().levels.get(&LintId::of(lint)) {
-            None => return,
-            Some(&(Warn, src)) => {
+    fn level_src(&self, lint: &'static Lint) -> Option<LevelSource> {
+        self.lints().levels.get(&LintId::of(lint)).map(|ls| match ls {
+            &(Warn, src) => {
                 let lint_id = LintId::of(builtin::WARNINGS);
                 (self.lints().get_level_source(lint_id).0, src)
             }
-            Some(&pair) => pair,
+            _ => *ls
+        })
+    }
+
+    fn lookup_and_emit(&self, lint: &'static Lint, span: Option<Span>, msg: &str) {
+        let (level, src) = match self.level_src(lint) {
+            None => return,
+            Some(pair) => pair,
         };
 
         raw_emit_lint(&self.sess(), lint, (level, src), span, msg);
+    }
+
+    fn lookup(&self,
+              lint: &'static Lint,
+              span: Option<Span>,
+              msg: &str)
+              -> Option<DiagnosticBuilder> {
+        let (level, src) = match self.level_src(lint) {
+            None => return None,
+            Some(pair) => pair,
+        };
+
+        raw_struct_lint(&self.sess(), lint, (level, src), span, msg)
     }
 
     /// Emit a lint at the appropriate level, for a particular span.
@@ -436,26 +470,43 @@ pub trait LintContext: Sized {
         self.lookup_and_emit(lint, Some(span), msg);
     }
 
+    fn struct_span_lint(&self,
+                        lint: &'static Lint,
+                        span: Span,
+                        msg: &str)
+                        -> Option<DiagnosticBuilder> {
+        self.lookup(lint, Some(span), msg)
+    }
+
     /// Emit a lint and note at the appropriate level, for a particular span.
     fn span_lint_note(&self, lint: &'static Lint, span: Span, msg: &str,
                       note_span: Span, note: &str) {
-        self.span_lint(lint, span, msg);
+        let mut err = match self.lookup(lint, Some(span), msg) {
+            Some(e) => e,
+            None => return
+        };
         if self.current_level(lint) != Level::Allow {
             if note_span == span {
-                self.sess().fileline_note(note_span, note)
+                err.fileline_note(note_span, note);
             } else {
-                self.sess().span_note(note_span, note)
+                err.span_note(note_span, note);
             }
         }
+        err.emit();
     }
 
     /// Emit a lint and help at the appropriate level, for a particular span.
     fn span_lint_help(&self, lint: &'static Lint, span: Span,
                       msg: &str, help: &str) {
+        let mut err = match self.lookup(lint, Some(span), msg) {
+            Some(e) => e,
+            None => return
+        };
         self.span_lint(lint, span, msg);
         if self.current_level(lint) != Level::Allow {
-            self.sess().span_help(span, help)
+            err.span_help(span, help);
         }
+        err.emit();
     }
 
     /// Emit a lint at the appropriate level, with no associated span.

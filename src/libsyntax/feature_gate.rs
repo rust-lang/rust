@@ -725,17 +725,21 @@ pub fn emit_feature_err(diag: &Handler, feature: &str, span: Span, issue: GateIs
         GateIssue::Library(lib) => lib,
     };
 
-    if let Some(n) = issue {
-        diag.span_err(span, &format!("{} (see issue #{})", explain, n));
+    let mut err = if let Some(n) = issue {
+        diag.struct_span_err(span, &format!("{} (see issue #{})", explain, n))
     } else {
-        diag.span_err(span, explain);
-    }
+        diag.struct_span_err(span, explain)
+    };
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
-    if option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some() { return; }
-    diag.fileline_help(span, &format!("add #![feature({})] to the \
-                                   crate attributes to enable",
-                                  feature));
+    if option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some() {
+        err.emit();
+        return;
+    }
+    err.fileline_help(span, &format!("add #![feature({})] to the \
+                                      crate attributes to enable",
+                                     feature));
+    err.emit();
 }
 
 pub const EXPLAIN_ASM: &'static str =
@@ -942,11 +946,13 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 self.gate_feature("braced_empty_structs", span,
                                   "empty structs and enum variants with braces are unstable");
             } else if s.is_tuple() {
-                self.context.span_handler.span_err(span, "empty tuple structs and enum variants \
-                                                          are not allowed, use unit structs and \
-                                                          enum variants instead");
-                self.context.span_handler.span_help(span, "remove trailing `()` to make a unit \
-                                                           struct or unit enum variant");
+                self.context.span_handler.struct_span_err(span, "empty tuple structs and enum \
+                                                                 variants are not allowed, use \
+                                                                 unit structs and enum variants \
+                                                                 instead")
+                                         .span_help(span, "remove trailing `()` to make a unit \
+                                                           struct or unit enum variant")
+                                         .emit();
             }
         }
         visit::walk_struct_def(self, s)

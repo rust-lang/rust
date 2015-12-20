@@ -37,34 +37,36 @@ pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a>
                                source_str)
 }
 
-fn with_error_checking_parse<T, F>(s: String, f: F) -> PResult<T> where
-    F: FnOnce(&mut Parser) -> PResult<T>,
+fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> PResult<'a, T> where
+    F: FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
 {
-    let ps = ParseSess::new();
     let mut p = string_to_parser(&ps, s);
     let x = f(&mut p);
 
     if ps.span_diagnostic.has_errors() || p.token != token::Eof {
+        if let Err(mut e) = x {
+            e.cancel();
+        }
         return Err(p.fatal("parse error"));
     }
 
     x
 }
 
-fn expr(s: &str) -> PResult<P<ast::Expr>> {
-    with_error_checking_parse(s.to_string(), |p| {
+fn expr<'a>(s: &str, ps: &'a ParseSess) -> PResult<'a, P<ast::Expr>> {
+    with_error_checking_parse(s.to_string(), ps, |p| {
         p.parse_expr()
     })
 }
 
-fn stmt(s: &str) -> PResult<P<ast::Stmt>> {
-    with_error_checking_parse(s.to_string(), |p| {
+fn stmt<'a>(s: &str, ps: &'a ParseSess) -> PResult<'a, P<ast::Stmt>> {
+    with_error_checking_parse(s.to_string(), ps, |p| {
         p.parse_stmt().map(|s| s.unwrap())
     })
 }
 
-fn attr(s: &str) -> PResult<ast::Attribute> {
-    with_error_checking_parse(s.to_string(), |p| {
+fn attr<'a>(s: &str, ps: &'a ParseSess) -> PResult<'a, ast::Attribute> {
+    with_error_checking_parse(s.to_string(), ps, |p| {
         p.parse_attribute(true)
     })
 }
@@ -79,29 +81,39 @@ fn str_compare<T, F: Fn(&T) -> String>(e: &str, expected: &[T], actual: &[T], f:
 }
 
 fn check_expr_attrs(es: &str, expected: &[&str]) {
-    let e = expr(es).expect("parse error");
+    let ps = ParseSess::new();
+    let e = expr(es, &ps).expect("parse error");
     let actual = &e.attrs;
     str_compare(es,
-                &expected.iter().map(|r| attr(r).unwrap()).collect::<Vec<_>>(),
+                &expected.iter().map(|r| attr(r, &ps).unwrap()).collect::<Vec<_>>(),
                 actual.as_attr_slice(),
                 pprust::attribute_to_string);
 }
 
 fn check_stmt_attrs(es: &str, expected: &[&str]) {
-    let e = stmt(es).expect("parse error");
+    let ps = ParseSess::new();
+    let e = stmt(es, &ps).expect("parse error");
     let actual = e.node.attrs();
     str_compare(es,
-                &expected.iter().map(|r| attr(r).unwrap()).collect::<Vec<_>>(),
+                &expected.iter().map(|r| attr(r, &ps).unwrap()).collect::<Vec<_>>(),
                 actual,
                 pprust::attribute_to_string);
 }
 
 fn reject_expr_parse(es: &str) {
-    assert!(expr(es).is_err(), "parser did not reject `{}`", es);
+    let ps = ParseSess::new();
+    match expr(es, &ps) {
+        Ok(_) => panic!("parser did not reject `{}`", es),
+        Err(mut e) => e.cancel(),
+    };
 }
 
 fn reject_stmt_parse(es: &str) {
-    assert!(stmt(es).is_err(), "parser did not reject `{}`", es);
+    let ps = ParseSess::new();
+    match stmt(es, &ps) {
+        Ok(_) => panic!("parser did not reject `{}`", es),
+        Err(mut e) => e.cancel(),
+    };
 }
 
 fn main() {

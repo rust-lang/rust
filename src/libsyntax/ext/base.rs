@@ -14,6 +14,7 @@ use ast;
 use ast::Name;
 use codemap;
 use codemap::{CodeMap, Span, ExpnId, ExpnInfo, NO_EXPANSION};
+use errors::DiagnosticBuilder;
 use ext;
 use ext::expand;
 use ext::tt::macro_rules;
@@ -678,6 +679,25 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
+    pub fn struct_span_warn(&self,
+                            sp: Span,
+                            msg: &str)
+                            -> DiagnosticBuilder<'a> {
+        self.parse_sess.span_diagnostic.struct_span_warn(sp, msg)
+    }
+    pub fn struct_span_err(&self,
+                           sp: Span,
+                           msg: &str)
+                           -> DiagnosticBuilder<'a> {
+        self.parse_sess.span_diagnostic.struct_span_err(sp, msg)
+    }
+    pub fn struct_span_fatal(&self,
+                             sp: Span,
+                             msg: &str)
+                             -> DiagnosticBuilder<'a> {
+        self.parse_sess.span_diagnostic.struct_span_fatal(sp, msg)
+    }
+
     /// Emit `msg` attached to `sp`, and stop compilation immediately.
     ///
     /// `span_err` should be strongly preferred where-ever possible:
@@ -710,15 +730,6 @@ impl<'a> ExtCtxt<'a> {
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.span_bug(sp, msg);
     }
-    pub fn span_note(&self, sp: Span, msg: &str) {
-        self.parse_sess.span_diagnostic.span_note(sp, msg);
-    }
-    pub fn span_help(&self, sp: Span, msg: &str) {
-        self.parse_sess.span_diagnostic.span_help(sp, msg);
-    }
-    pub fn fileline_help(&self, sp: Span, msg: &str) {
-        self.parse_sess.span_diagnostic.fileline_help(sp, msg);
-    }
     pub fn bug(&self, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.bug(msg);
     }
@@ -743,10 +754,13 @@ impl<'a> ExtCtxt<'a> {
         token::intern(st)
     }
 
-    pub fn suggest_macro_name(&mut self, name: &str, span: Span) {
+    pub fn suggest_macro_name(&mut self,
+                              name: &str,
+                              span: Span,
+                              err: &mut DiagnosticBuilder<'a>) {
         let names = &self.syntax_env.names;
         if let Some(suggestion) = find_best_match_for_name(names.iter(), name, None) {
-            self.fileline_help(span, &format!("did you mean `{}!`?", suggestion));
+            err.fileline_help(span, &format!("did you mean `{}!`?", suggestion));
         }
     }
 }

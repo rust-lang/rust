@@ -502,9 +502,14 @@ fn enforce_trait_manually_implementable(tcx: &ty::ctxt, sp: Span, trait_def_id: 
     } else {
         return // everything OK
     };
-    span_err!(tcx.sess, sp, E0183, "manual implementations of `{}` are experimental", trait_name);
-    fileline_help!(tcx.sess, sp,
-               "add `#![feature(unboxed_closures)]` to the crate attributes to enable");
+    let mut err = struct_span_err!(tcx.sess,
+                                   sp,
+                                   E0183,
+                                   "manual implementations of `{}` are experimental",
+                                   trait_name);
+    fileline_help!(&mut err, sp,
+                   "add `#![feature(unboxed_closures)]` to the crate attributes to enable");
+    err.emit();
 }
 
 pub fn check_coherence(crate_context: &CrateCtxt) {

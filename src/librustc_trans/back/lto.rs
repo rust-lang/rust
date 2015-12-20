@@ -29,8 +29,9 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
            name_extra: &str,
            output_names: &config::OutputFilenames) {
     if sess.opts.cg.prefer_dynamic {
-        sess.err("cannot prefer dynamic linking when performing LTO");
-        sess.note("only 'staticlib' and 'bin' outputs are supported with LTO");
+        sess.struct_err("cannot prefer dynamic linking when performing LTO")
+            .note("only 'staticlib' and 'bin' outputs are supported with LTO")
+            .emit();
         sess.abort_if_errors();
     }
 

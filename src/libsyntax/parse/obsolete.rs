@@ -59,18 +59,17 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
               kind_str: &str,
               desc: &str,
               error: bool) {
-        if error {
-            self.span_err(sp, &format!("obsolete syntax: {}", kind_str));
+        let mut err = if error {
+            self.diagnostic().struct_span_err(sp, &format!("obsolete syntax: {}", kind_str))
         } else {
-            self.span_warn(sp, &format!("obsolete syntax: {}", kind_str));
-        }
+            self.diagnostic().struct_span_warn(sp, &format!("obsolete syntax: {}", kind_str))
+        };
 
         if !self.obsolete_set.contains(&kind) &&
             (error || self.sess.span_diagnostic.can_emit_warnings) {
-            self.sess
-                .span_diagnostic
-                .note(&format!("{}", desc));
+            err.note(&format!("{}", desc));
             self.obsolete_set.insert(kind);
         }
+        err.emit();
     }
 }
