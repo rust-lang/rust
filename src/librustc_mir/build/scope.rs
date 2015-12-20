@@ -251,6 +251,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 continue;
             } else {
                 let new_block = self.cfg.start_new_block();
+                self.cfg.block_data_mut(new_block).is_cleanup = true;
                 self.cfg.terminate(new_block, terminator);
                 terminator = Terminator::Goto { target: new_block };
                 for &(kind, span, ref lvalue) in scope.drops.iter().rev() {

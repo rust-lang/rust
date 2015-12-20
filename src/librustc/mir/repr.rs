@@ -192,6 +192,7 @@ impl Debug for BasicBlock {
 pub struct BasicBlockData<'tcx> {
     pub statements: Vec<Statement<'tcx>>,
     pub terminator: Option<Terminator<'tcx>>,
+    pub is_cleanup: bool,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -341,6 +342,7 @@ impl<'tcx> BasicBlockData<'tcx> {
         BasicBlockData {
             statements: vec![],
             terminator: terminator,
+            is_cleanup: false,
         }
     }
 
