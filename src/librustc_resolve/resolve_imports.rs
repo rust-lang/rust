@@ -454,8 +454,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         let note_msg = format!("Consider marking `{}` as `pub` in the imported \
                                                 module",
                                                source);
-                        span_err!(self.resolver.session, directive.span, E0364, "{}", &msg);
-                        self.resolver.session.span_note(directive.span, &note_msg);
+                        struct_span_err!(self.resolver.session, directive.span, E0364, "{}", &msg)
+                            .span_note(directive.span, &note_msg)
+                            .emit();
                         pub_err = true;
                     }
                     if directive.is_public && child_name_bindings.value_ns.
@@ -479,8 +480,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         let msg = format!("`{}` is private, and cannot be reexported", source);
                         let note_msg = format!("Consider declaring module `{}` as a `pub mod`",
                                                source);
-                        span_err!(self.resolver.session, directive.span, E0365, "{}", &msg);
-                        self.resolver.session.span_note(directive.span, &note_msg);
+                        struct_span_err!(self.resolver.session, directive.span, E0365, "{}", &msg)
+                            .span_note(directive.span, &note_msg)
+                            .emit();
                     }
                     if !pub_err && directive.is_public && child_name_bindings.type_ns.
                                                     defined_with(DefModifiers::PRIVATE_VARIANT) {
@@ -959,19 +961,20 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     }
                     ValueNS => "value",
                 };
-                span_err!(self.resolver.session,
-                          import_span,
-                          E0252,
-                          "a {} named `{}` has already been imported in this module",
-                          ns_word,
-                          name);
                 let use_id = import_resolution[namespace].id;
                 let item = self.resolver.ast_map.expect_item(use_id);
-                // item is syntax::ast::Item;
-                span_note!(self.resolver.session,
+                let mut err = struct_span_err!(self.resolver.session,
+                                               import_span,
+                                               E0252,
+                                               "a {} named `{}` has already been imported \
+                                                in this module",
+                                               ns_word,
+                                               name);
+                span_note!(&mut err,
                            item.span,
                            "previous import of `{}` here",
                            name);
+                err.emit();
             }
             Some(_) | None => {}
         }
@@ -1022,14 +1025,16 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         match import.value_ns.target {
             Some(ref target) if target.shadowable != Shadowable::Always => {
                 if let Some(ref value) = *name_bindings.value_ns.borrow() {
-                    span_err!(self.resolver.session,
-                              import_span,
-                              E0255,
-                              "import `{}` conflicts with value in this module",
-                              name);
+                    let mut err = struct_span_err!(self.resolver.session,
+                                                   import_span,
+                                                   E0255,
+                                                   "import `{}` conflicts with \
+                                                    value in this module",
+                                                   name);
                     if let Some(span) = value.span {
-                        self.resolver.session.span_note(span, "conflicting value here");
+                        err.span_note(span, "conflicting value here");
                     }
+                    err.emit();
                 }
             }
             Some(_) | None => {}
@@ -1045,15 +1050,16 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                             ("trait in this module", "note conflicting trait here"),
                         _ => ("type in this module", "note conflicting type here"),
                     };
-                    span_err!(self.resolver.session,
-                              import_span,
-                              E0256,
-                              "import `{}` conflicts with {}",
-                              name,
-                              what);
+                    let mut err = struct_span_err!(self.resolver.session,
+                                                   import_span,
+                                                   E0256,
+                                                   "import `{}` conflicts with {}",
+                                                   name,
+                                                   what);
                     if let Some(span) = ty.span {
-                        self.resolver.session.span_note(span, note);
+                        err.span_note(span, note);
                     }
+                    err.emit();
                 }
             }
             Some(_) | None => {}

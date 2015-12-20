@@ -48,11 +48,11 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
         match lang_def_id {
             Some(lang_def_id) if lang_def_id == impl_def_id => { /* OK */ },
             _ => {
-                span_err!(self.tcx.sess, span, E0390,
+                struct_span_err!(self.tcx.sess, span, E0390,
                           "only a single inherent implementation marked with `#[lang = \"{}\"]` \
-                           is allowed for the `{}` primitive", lang, ty);
-                span_help!(self.tcx.sess, span,
-                           "consider using a trait to implement these methods");
+                           is allowed for the `{}` primitive", lang, ty)
+                    .span_help(span, "consider using a trait to implement these methods")
+                    .emit();
             }
         }
     }

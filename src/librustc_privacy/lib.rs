@@ -597,13 +597,11 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         match result {
             None => true,
             Some((span, msg, note)) => {
-                self.tcx.sess.span_err(span, &msg[..]);
-                match note {
-                    Some((span, msg)) => {
-                        self.tcx.sess.span_note(span, &msg[..])
-                    }
-                    None => {},
+                let mut err = self.tcx.sess.struct_span_err(span, &msg[..]);
+                if let Some((span, msg)) = note {
+                    err.span_note(span, &msg[..]);
                 }
+                err.emit();
                 false
             },
         }
@@ -1028,10 +1026,12 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
     fn check_sane_privacy(&self, item: &hir::Item) {
         let check_inherited = |sp, vis, note: &str| {
             if vis != hir::Inherited {
-                span_err!(self.tcx.sess, sp, E0449, "unnecessary visibility qualifier");
+                let mut err = struct_span_err!(self.tcx.sess, sp, E0449,
+                                               "unnecessary visibility qualifier");
                 if !note.is_empty() {
-                    self.tcx.sess.span_note(sp, note);
+                    err.span_note(sp, note);
                 }
+                err.emit();
             }
         };
 

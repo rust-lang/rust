@@ -1500,7 +1500,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             },
                         _ => false
                     };
-                    span_err!(self.ir.tcx.sess, sp, E0269, "not all control paths return a value");
+                    let mut err = struct_span_err!(self.ir.tcx.sess,
+                                                   sp,
+                                                   E0269,
+                                                   "not all control paths return a value");
                     if ends_with_stmt {
                         let last_stmt = body.stmts.first().unwrap();
                         let original_span = original_sp(self.ir.tcx.sess.codemap(),
@@ -1510,9 +1513,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             hi: original_span.hi,
                             expn_id: original_span.expn_id
                         };
-                        self.ir.tcx.sess.span_help(
-                            span_semicolon, "consider removing this semicolon:");
+                        err.span_help(span_semicolon, "consider removing this semicolon:");
                     }
+                    err.emit();
                 }
             }
             ty::FnDiverging

@@ -12,6 +12,7 @@
 // http://www.unicode.org/Public/security/revision-06/confusables.txt
 
 use codemap::mk_sp as make_span;
+use errors::DiagnosticBuilder;
 use super::StringReader;
 
 const UNICODE_ARRAY: &'static [(char, &'static str, char)] = &[
@@ -179,7 +180,9 @@ const ASCII_ARRAY: &'static [(char, &'static str)] = &[
     ('=', "Equals Sign"),
     ('>', "Greater-Than Sign"), ];
 
-pub fn check_for_substitution(reader: &StringReader, ch: char) {
+pub fn check_for_substitution<'a>(reader: &StringReader<'a>,
+                                  ch: char,
+                                  err: &mut DiagnosticBuilder<'a>) {
     UNICODE_ARRAY
     .iter()
     .find(|&&(c, _, _)| c == ch)
@@ -190,7 +193,7 @@ pub fn check_for_substitution(reader: &StringReader, ch: char) {
                 let msg =
                     format!("unicode character '{}' ({}) looks much like '{}' ({}), but it's not",
                             ch, u_name, ascii_char, ascii_name);
-                reader.help_span(span, &msg);
+                err.span_help(span, &msg);
             },
             None => {
                 reader

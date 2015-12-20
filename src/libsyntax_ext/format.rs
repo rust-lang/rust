@@ -130,10 +130,11 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             match names.get(name) {
                 None => {}
                 Some(prev) => {
-                    ecx.span_err(e.span,
-                                 &format!("duplicate argument named `{}`",
-                                         name));
-                    ecx.parse_sess.span_diagnostic.span_note(prev.span, "previously here");
+                    ecx.struct_span_err(e.span,
+                                        &format!("duplicate argument named `{}`",
+                                                 name))
+                       .span_note(prev.span, "previously here")
+                       .emit();
                     continue
                 }
             }

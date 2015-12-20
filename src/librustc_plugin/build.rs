@@ -46,10 +46,11 @@ pub fn find_plugin_registrar(diagnostic: &errors::Handler,
             Some(node_id)
         },
         _ => {
-            diagnostic.err("multiple plugin registration functions found");
+            let mut e = diagnostic.struct_err("multiple plugin registration functions found");
             for &(_, span) in &finder.registrars {
-                diagnostic.span_note(span, "one is here");
+                e.span_note(span, "one is here");
             }
+            e.emit();
             diagnostic.abort_if_errors();
             unreachable!();
         }

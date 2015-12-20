@@ -226,7 +226,7 @@ use rustc_llvm as llvm;
 use rustc_llvm::{False, ObjectFile, mk_section_iter};
 use rustc_llvm::archive_ro::ArchiveRO;
 use syntax::codemap::Span;
-use syntax::errors::Handler;
+use syntax::errors::DiagnosticBuilder;
 use rustc_back::target::Target;
 
 use std::cmp;
@@ -315,38 +315,38 @@ impl<'a> Context<'a> {
             &Some(ref r) => format!(" which `{}` depends on",
                                     r.ident)
         };
-        if !self.rejected_via_hash.is_empty() {
-            span_err!(self.sess, self.span, E0460,
-                      "found possibly newer version of crate `{}`{}",
-                      self.ident, add);
+        let mut err = if !self.rejected_via_hash.is_empty() {
+            struct_span_err!(self.sess, self.span, E0460,
+                             "found possibly newer version of crate `{}`{}",
+                             self.ident, add)
         } else if !self.rejected_via_triple.is_empty() {
-            span_err!(self.sess, self.span, E0461,
-                      "couldn't find crate `{}` with expected target triple {}{}",
-                      self.ident, self.triple, add);
+            struct_span_err!(self.sess, self.span, E0461,
+                             "couldn't find crate `{}` with expected target triple {}{}",
+                             self.ident, self.triple, add)
         } else if !self.rejected_via_kind.is_empty() {
-            span_err!(self.sess, self.span, E0462,
-                      "found staticlib `{}` instead of rlib or dylib{}",
-                      self.ident, add);
+            struct_span_err!(self.sess, self.span, E0462,
+                             "found staticlib `{}` instead of rlib or dylib{}",
+                             self.ident, add)
         } else {
-            span_err!(self.sess, self.span, E0463,
-                      "can't find crate for `{}`{}",
-                      self.ident, add);
-        }
+            struct_span_err!(self.sess, self.span, E0463,
+                             "can't find crate for `{}`{}",
+                             self.ident, add)
+        };
 
         if !self.rejected_via_triple.is_empty() {
             let mismatches = self.rejected_via_triple.iter();
             for (i, &CrateMismatch{ ref path, ref got }) in mismatches.enumerate() {
-                self.sess.fileline_note(self.span,
+                err.fileline_note(self.span,
                     &format!("crate `{}`, path #{}, triple {}: {}",
                             self.ident, i+1, got, path.display()));
             }
         }
         if !self.rejected_via_hash.is_empty() {
-            self.sess.span_note(self.span, "perhaps this crate needs \
+            err.span_note(self.span, "perhaps this crate needs \
                                             to be recompiled?");
             let mismatches = self.rejected_via_hash.iter();
             for (i, &CrateMismatch{ ref path, .. }) in mismatches.enumerate() {
-                self.sess.fileline_note(self.span,
+                err.fileline_note(self.span,
                     &format!("crate `{}` path #{}: {}",
                             self.ident, i+1, path.display()));
             }
@@ -354,7 +354,7 @@ impl<'a> Context<'a> {
                 &None => {}
                 &Some(ref r) => {
                     for (i, path) in r.paths().iter().enumerate() {
-                        self.sess.fileline_note(self.span,
+                        err.fileline_note(self.span,
                             &format!("crate `{}` path #{}: {}",
                                     r.ident, i+1, path.display()));
                     }
@@ -362,15 +362,17 @@ impl<'a> Context<'a> {
             }
         }
         if !self.rejected_via_kind.is_empty() {
-            self.sess.fileline_help(self.span, "please recompile this crate using \
-                                            --crate-type lib");
+            err.fileline_help(self.span, "please recompile this crate using \
+                                          --crate-type lib");
             let mismatches = self.rejected_via_kind.iter();
             for (i, &CrateMismatch { ref path, .. }) in mismatches.enumerate() {
-                self.sess.fileline_note(self.span,
-                                        &format!("crate `{}` path #{}: {}",
-                                                 self.ident, i+1, path.display()));
+                err.fileline_note(self.span,
+                                  &format!("crate `{}` path #{}: {}",
+                                           self.ident, i+1, path.display()));
             }
         }
+
+        err.emit();
         self.sess.abort_if_errors();
     }
 
@@ -480,29 +482,30 @@ impl<'a> Context<'a> {
             0 => None,
             1 => Some(libraries.into_iter().next().unwrap()),
             _ => {
-                span_err!(self.sess, self.span, E0464,
-                          "multiple matching crates for `{}`",
-                          self.crate_name);
-                self.sess.note("candidates:");
+                let mut err = struct_span_err!(self.sess, self.span, E0464,
+                                               "multiple matching crates for `{}`",
+                                               self.crate_name);
+                err.note("candidates:");
                 for lib in &libraries {
                     match lib.dylib {
                         Some((ref p, _)) => {
-                            self.sess.note(&format!("path: {}",
-                                                   p.display()));
+                            err.note(&format!("path: {}",
+                                              p.display()));
                         }
                         None => {}
                     }
                     match lib.rlib {
                         Some((ref p, _)) => {
-                            self.sess.note(&format!("path: {}",
-                                                    p.display()));
+                            err.note(&format!("path: {}",
+                                              p.display()));
                         }
                         None => {}
                     }
                     let data = lib.metadata.as_slice();
                     let name = decoder::get_crate_name(data);
-                    note_crate_name(self.sess.diagnostic(), &name);
+                    note_crate_name(&mut err, &name);
                 }
+                err.emit();
                 None
             }
         }
@@ -533,6 +536,7 @@ impl<'a> Context<'a> {
             }
         }
 
+        let mut err: Option<DiagnosticBuilder> = None;
         for (lib, kind) in m {
             info!("{} reading metadata from: {}", flavor, lib.display());
             let metadata = match get_metadata_section(self.target, &lib) {
@@ -555,27 +559,37 @@ impl<'a> Context<'a> {
             // candidates have the same hash, so they're not actually
             // duplicates that we should warn about.
             if ret.is_some() && self.hash.is_none() {
-                span_err!(self.sess, self.span, E0465,
-                          "multiple {} candidates for `{}` found",
-                          flavor, self.crate_name);
-                self.sess.span_note(self.span,
-                                    &format!(r"candidate #1: {}",
-                                            ret.as_ref().unwrap().0
-                                               .display()));
+                let mut e = struct_span_err!(self.sess, self.span, E0465,
+                                             "multiple {} candidates for `{}` found",
+                                             flavor, self.crate_name);
+                e.span_note(self.span,
+                            &format!(r"candidate #1: {}",
+                                     ret.as_ref().unwrap().0
+                                        .display()));
+                if let Some(ref mut e) = err {
+                    e.emit();
+                }
+                err = Some(e);
                 error = 1;
                 ret = None;
             }
             if error > 0 {
                 error += 1;
-                self.sess.span_note(self.span,
-                                    &format!(r"candidate #{}: {}", error,
-                                            lib.display()));
+                err.as_mut().unwrap().span_note(self.span,
+                                                &format!(r"candidate #{}: {}", error,
+                                                         lib.display()));
                 continue
             }
             *slot = Some(metadata);
             ret = Some((lib, kind));
         }
-        return if error > 0 {None} else {ret}
+
+        if error > 0 {
+            err.unwrap().emit();
+            None
+        } else {
+            ret
+        }
     }
 
     fn crate_matches(&mut self, crate_data: &[u8], libpath: &Path) -> bool {
@@ -699,8 +713,8 @@ impl<'a> Context<'a> {
     }
 }
 
-pub fn note_crate_name(diag: &Handler, name: &str) {
-    diag.note(&format!("crate name: {}", name));
+pub fn note_crate_name(err: &mut DiagnosticBuilder, name: &str) {
+    err.note(&format!("crate name: {}", name));
 }
 
 impl ArchiveMetadata {

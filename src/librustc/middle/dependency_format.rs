@@ -243,10 +243,11 @@ fn add_library(sess: &session::Session,
             // This error is probably a little obscure, but I imagine that it
             // can be refined over time.
             if link2 != link || link == RequireStatic {
-                sess.err(&format!("cannot satisfy dependencies so `{}` only \
-                                   shows up once", sess.cstore.crate_name(cnum)));
-                sess.help("having upstream crates all available in one format \
-                           will likely make this go away");
+                sess.struct_err(&format!("cannot satisfy dependencies so `{}` only \
+                                          shows up once", sess.cstore.crate_name(cnum)))
+                    .help("having upstream crates all available in one format \
+                           will likely make this go away")
+                    .emit();
             }
         }
         None => { m.insert(cnum, link); }

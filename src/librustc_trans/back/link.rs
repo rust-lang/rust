@@ -817,10 +817,10 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
     ab.build();
 
     if !all_native_libs.is_empty() {
-        sess.note("link against the following native artifacts when linking against \
-                  this static library");
-        sess.note("the order and any duplication can be significant on some platforms, \
-                  and so may need to be preserved");
+        sess.note_without_error("link against the following native artifacts when linking against \
+                                 this static library");
+        sess.note_without_error("the order and any duplication can be significant on some \
+                                 platforms, and so may need to be preserved");
     }
 
     for &(kind, ref lib) in &all_native_libs {
@@ -829,7 +829,7 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
             NativeLibraryKind::NativeUnknown => "library",
             NativeLibraryKind::NativeFramework => "framework",
         };
-        sess.note(&format!("{}: {}", name, *lib));
+        sess.note_without_error(&format!("{}: {}", name, *lib));
     }
 }
 
@@ -902,13 +902,14 @@ fn link_natively(sess: &Session, dylib: bool,
                     })
             }
             if !prog.status.success() {
-                sess.err(&format!("linking with `{}` failed: {}",
-                                 pname,
-                                 prog.status));
-                sess.note(&format!("{:?}", &cmd));
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
-                sess.note(&*escape_string(&output[..]));
+                sess.struct_err(&format!("linking with `{}` failed: {}",
+                                         pname,
+                                         prog.status))
+                    .note(&format!("{:?}", &cmd))
+                    .note(&*escape_string(&output[..]))
+                    .emit();
                 sess.abort_if_errors();
             }
             info!("linker stderr:\n{}", escape_string(&prog.stderr[..]));

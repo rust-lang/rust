@@ -80,52 +80,58 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn struct_span_warn<'a, 'b>(&'a self,
-                                    sp: Span,
-                                    msg: &'b str)
-                                    -> Box<DiagnosticBuilder<'a, 'b>> {
+    pub fn struct_span_warn<'a>(&'a self,
+                                sp: Span,
+                                msg: &str)
+                                -> DiagnosticBuilder<'a>  {
         self.diagnostic().struct_span_warn(sp, msg)
     }
-    pub fn struct_span_warn_with_code<'a, 'b>(&'a self,
-                                              sp: Span,
-                                              msg: &'b str,
-                                              code: &str)
-                                              -> Box<DiagnosticBuilder<'a, 'b>> {
+    pub fn struct_span_warn_with_code<'a>(&'a self,
+                                          sp: Span,
+                                          msg: &str,
+                                          code: &str)
+                                          -> DiagnosticBuilder<'a>  {
         self.diagnostic().struct_span_warn_with_code(sp, msg, code)
     }
-    pub fn struct_warn<'a, 'b>(&'a self, msg: &'b str) -> Box<DiagnosticBuilder<'a, 'b>> {
+    pub fn struct_warn<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a>  {
         self.diagnostic().struct_warn(msg)
     }
-    pub fn struct_span_err<'a, 'b>(&'a self,
-                                   sp: Span,
-                                   msg: &'b str)
-                                   -> Box<DiagnosticBuilder<'a, 'b>> {
-        self.diagnostic().struct_span_err(sp, msg)
+    pub fn struct_span_err<'a>(&'a self,
+                               sp: Span,
+                               msg: &str)
+                               -> DiagnosticBuilder<'a>  {
+        match split_msg_into_multilines(msg) {
+            Some(ref msg) => self.diagnostic().struct_span_err(sp, msg),
+            None => self.diagnostic().struct_span_err(sp, msg),
+        }
     }
-    pub fn struct_span_err_with_code<'a, 'b>(&'a self,
-                                             sp: Span,
-                                             msg: &'b str,
-                                             code: &str)
-                                             -> Box<DiagnosticBuilder<'a, 'b>> {
-        self.diagnostic().struct_span_err_with_code(sp, msg, code)
+    pub fn struct_span_err_with_code<'a>(&'a self,
+                                         sp: Span,
+                                         msg: &str,
+                                         code: &str)
+                                         -> DiagnosticBuilder<'a>  {
+        match split_msg_into_multilines(msg) {
+            Some(ref msg) => self.diagnostic().struct_span_err_with_code(sp, msg, code),
+            None => self.diagnostic().struct_span_err_with_code(sp, msg, code),
+        }
     }
-    pub fn struct_err<'a, 'b>(&'a self, msg: &'b str) -> Box<DiagnosticBuilder<'a, 'b>> {
+    pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a>  {
         self.diagnostic().struct_err(msg)
     }
-    pub fn struct_span_fatal<'a, 'b>(&'a self,
-                                     sp: Span,
-                                     msg: &'b str)
-                                     -> Box<DiagnosticBuilder<'a, 'b>> {
+    pub fn struct_span_fatal<'a>(&'a self,
+                                 sp: Span,
+                                 msg: &str)
+                                 -> DiagnosticBuilder<'a>  {
         self.diagnostic().struct_span_fatal(sp, msg)
     }
-    pub fn struct_span_fatal_with_code<'a, 'b>(&'a self,
-                                               sp: Span,
-                                               msg: &'b str,
-                                               code: &str)
-                                               -> Box<DiagnosticBuilder<'a, 'b>> {
+    pub fn struct_span_fatal_with_code<'a>(&'a self,
+                                           sp: Span,
+                                           msg: &str,
+                                           code: &str)
+                                           -> DiagnosticBuilder<'a>  {
         self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
     }
-    pub fn struct_fatal<'a, 'b>(&'a self, msg: &'b str) -> Box<DiagnosticBuilder<'a, 'b>> {
+    pub fn struct_fatal<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a>  {
         self.diagnostic().struct_fatal(msg)
     }
 
@@ -147,13 +153,13 @@ impl Session {
     }
     pub fn span_err(&self, sp: Span, msg: &str) {
         match split_msg_into_multilines(msg) {
-            Some(msg) => self.diagnostic().span_err(sp, &msg[..]),
+            Some(msg) => self.diagnostic().span_err(sp, &msg),
             None => self.diagnostic().span_err(sp, msg)
         }
     }
     pub fn span_err_with_code(&self, sp: Span, msg: &str, code: &str) {
         match split_msg_into_multilines(msg) {
-            Some(msg) => self.diagnostic().span_err_with_code(sp, &msg[..], code),
+            Some(msg) => self.diagnostic().span_err_with_code(sp, &msg, code),
             None => self.diagnostic().span_err_with_code(sp, msg, code)
         }
     }
@@ -208,6 +214,12 @@ impl Session {
     }
     pub fn bug(&self, msg: &str) -> ! {
         self.diagnostic().bug(msg)
+    }
+    pub fn note_without_error(&self, msg: &str) {
+        self.diagnostic().note_without_error(msg)
+    }
+    pub fn span_note_without_error(&self, sp: Span, msg: &str) {
+        self.diagnostic().span_note_without_error(sp, msg)
     }
     pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
         self.diagnostic().span_unimpl(sp, msg)

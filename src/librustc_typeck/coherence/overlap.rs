@@ -150,18 +150,19 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
             }).unwrap_or(String::new())
         };
 
-        span_err!(self.tcx.sess, self.span_of_impl(impl1), E0119,
-                  "conflicting implementations of trait `{}`{}:",
-                  trait_ref,
-                  self_type);
+        let mut err = struct_span_err!(self.tcx.sess, self.span_of_impl(impl1), E0119,
+                                       "conflicting implementations of trait `{}`{}:",
+                                       trait_ref,
+                                       self_type);
 
         if impl2.is_local() {
-            span_note!(self.tcx.sess, self.span_of_impl(impl2),
+            span_note!(&mut err, self.span_of_impl(impl2),
                        "conflicting implementation is here:");
         } else {
             let cname = self.tcx.sess.cstore.crate_name(impl2.krate);
-            self.tcx.sess.note(&format!("conflicting implementation in crate `{}`", cname));
+            err.note(&format!("conflicting implementation in crate `{}`", cname));
         }
+        err.emit();
     }
 
     fn span_of_impl(&self, impl_did: DefId) -> Span {

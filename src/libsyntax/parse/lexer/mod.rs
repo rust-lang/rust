@@ -11,7 +11,7 @@
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos, Span};
 use codemap;
-use errors::{FatalError, Handler};
+use errors::{FatalError, Handler, DiagnosticBuilder};
 use ext::tt::transcribe::tt_next_token;
 use parse::token::str_to_ident;
 use parse::token;
@@ -173,10 +173,6 @@ impl<'a> StringReader<'a> {
         self.span_diagnostic.span_err(sp, m)
     }
 
-    /// Suggest some help with a given span.
-    pub fn help_span(&self, sp: Span, m: &str) {
-        self.span_diagnostic.span_help(sp, m)
-    }
 
     /// Report a fatal error spanning [`from_pos`, `to_pos`).
     fn fatal_span_(&self, from_pos: BytePos, to_pos: BytePos, m: &str) -> FatalError {
@@ -188,11 +184,6 @@ impl<'a> StringReader<'a> {
         self.err_span(codemap::mk_sp(from_pos, to_pos), m)
     }
 
-    /// Suggest some help spanning [`from_pos`, `to_pos`).
-    fn help_span_(&self, from_pos: BytePos, to_pos: BytePos, m: &str) {
-        self.help_span(codemap::mk_sp(from_pos, to_pos), m)
-    }
-
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
     /// escaped character to the error message
     fn fatal_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) -> FatalError {
@@ -200,6 +191,17 @@ impl<'a> StringReader<'a> {
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
         self.fatal_span_(from_pos, to_pos, &m[..])
+    }
+    fn struct_fatal_span_char(&self,
+                              from_pos: BytePos,
+                              to_pos: BytePos,
+                              m: &str,
+                              c: char)
+                              -> DiagnosticBuilder<'a>  {
+        let mut m = m.to_string();
+        m.push_str(": ");
+        for c in c.escape_default() { m.push(c) }
+        self.span_diagnostic.struct_span_fatal(codemap::mk_sp(from_pos, to_pos), &m[..])
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
@@ -209,6 +211,17 @@ impl<'a> StringReader<'a> {
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
         self.err_span_(from_pos, to_pos, &m[..]);
+    }
+    fn struct_err_span_char(&self,
+                            from_pos: BytePos,
+                            to_pos: BytePos,
+                            m: &str,
+                            c: char)
+                            -> DiagnosticBuilder<'a>  {
+        let mut m = m.to_string();
+        m.push_str(": ");
+        for c in c.escape_default() { m.push(c) }
+        self.span_diagnostic.struct_span_err(codemap::mk_sp(from_pos, to_pos), &m[..])
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending the
@@ -746,10 +759,12 @@ impl<'a> StringReader<'a> {
                                 let valid = if self.curr_is('{') {
                                     self.scan_unicode_escape(delim) && !ascii_only
                                 } else {
-                                    self.err_span_(start, self.last_pos,
-                                        "incorrect unicode escape sequence");
-                                    self.help_span_(start, self.last_pos,
-                                        "format of unicode escape sequences is `\\u{…}`");
+                                    let span = codemap::mk_sp(start, self.last_pos);
+                                    self.span_diagnostic.struct_span_err(span,
+                                        "incorrect unicode escape sequence")
+                                        .span_help(span,
+                                        "format of unicode escape sequences is `\\u{…}`")
+                                        .emit();
                                     false
                                 };
                                 if ascii_only {
@@ -771,21 +786,22 @@ impl<'a> StringReader<'a> {
                             }
                             c => {
                                 let last_pos = self.last_pos;
-                                self.err_span_char(
+                                let mut err = self.struct_err_span_char(
                                     escaped_pos, last_pos,
                                     if ascii_only { "unknown byte escape" }
                                     else { "unknown character escape" },
                                     c);
                                 if e == '\r' {
-                                    self.help_span_(escaped_pos, last_pos,
+                                    err.span_help(codemap::mk_sp(escaped_pos, last_pos),
                                         "this is an isolated carriage return; consider checking \
-                                         your editor and version control settings")
+                                         your editor and version control settings");
                                 }
                                 if (e == '{' || e == '}') && !ascii_only {
-                                    self.help_span_(escaped_pos, last_pos,
+                                    err.span_help(codemap::mk_sp(escaped_pos, last_pos),
                                         "if used in a formatting string, \
-                                        curly braces are escaped with `{{` and `}}`")
+                                        curly braces are escaped with `{{` and `}}`");
                                 }
+                                err.emit();
                                 false
                             }
                         }
@@ -1224,8 +1240,13 @@ impl<'a> StringReader<'a> {
           c => {
               let last_bpos = self.last_pos;
               let bpos = self.pos;
-              unicode_chars::check_for_substitution(&self, c);
-              panic!(self.fatal_span_char(last_bpos, bpos, "unknown start of token", c))
+              let mut err = self.struct_fatal_span_char(last_bpos,
+                                                        bpos,
+                                                        "unknown start of token",
+                                                        c);
+              unicode_chars::check_for_substitution(&self, c, &mut err);
+              err.emit();
+              panic!(FatalError);
           }
         }
     }

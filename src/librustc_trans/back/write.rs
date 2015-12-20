@@ -359,8 +359,9 @@ unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext<'a>,
         }
 
         None => {
-            cgcx.handler.err(msg);
-            cgcx.handler.note("build without -C codegen-units for more exact errors");
+            cgcx.handler.struct_err(msg)
+                        .note("build without -C codegen-units for more exact errors")
+                        .emit();
         }
     }
 }
@@ -397,11 +398,11 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 
             if enabled {
                 let loc = llvm::debug_loc_to_string(llcx, opt.debug_loc);
-                cgcx.handler.note(&format!("optimization {} for {} at {}: {}",
-                                           opt.kind.describe(),
-                                           pass_name,
-                                           if loc.is_empty() { "[unknown]" } else { &*loc },
-                                           llvm::twine_to_string(opt.message)));
+                cgcx.handler.note_without_error(&format!("optimization {} for {} at {}: {}",
+                                                opt.kind.describe(),
+                                                pass_name,
+                                                if loc.is_empty() { "[unknown]" } else { &*loc },
+                                                llvm::twine_to_string(opt.message)));
             }
         }
 
@@ -931,13 +932,15 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
     match cmd.output() {
         Ok(prog) => {
             if !prog.status.success() {
-                sess.err(&format!("linking with `{}` failed: {}",
-                                 pname,
-                                 prog.status));
-                sess.note(&format!("{:?}", &cmd));
                 let mut note = prog.stderr.clone();
                 note.extend_from_slice(&prog.stdout);
-                sess.note(str::from_utf8(&note[..]).unwrap());
+
+                sess.struct_err(&format!("linking with `{}` failed: {}",
+                                         pname,
+                                         prog.status))
+                    .note(&format!("{:?}", &cmd))
+                    .note(str::from_utf8(&note[..]).unwrap())
+                    .emit();
                 sess.abort_if_errors();
             }
         },
