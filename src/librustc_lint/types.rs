@@ -25,10 +25,10 @@ use syntax::{abi, ast};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 use syntax::feature_gate::{emit_feature_err, GateIssue};
-use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
+use syntax::ast::{NodeId, TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 
 use rustc_front::hir;
-use rustc_front::intravisit::{self, Visitor};
+use rustc_front::intravisit::{self, FnKind, Visitor};
 use rustc_front::util::is_shift_binop;
 
 declare_lint! {
@@ -672,6 +672,23 @@ impl LateLintPass for ImproperCTypes {
                     }
                 }
             }
+        }
+    }
+
+    fn check_fn(&mut self, cx: &LateContext,
+                kind: FnKind,
+                decl: &hir::FnDecl,
+                _: &hir::Block,
+                _: Span,
+                _: NodeId) {
+        let abi = match kind {
+            FnKind::ItemFn(_, _, _, _, abi, _) => abi,
+            FnKind::Method(_, sig, _) => sig.abi,
+            FnKind::Closure => return,
+        };
+
+        if should_check_abi(abi) {
+            check_foreign_fn(cx, decl);
         }
     }
 }
