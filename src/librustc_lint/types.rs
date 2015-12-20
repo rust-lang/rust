@@ -658,7 +658,7 @@ fn check_foreign_fn(cx: &LateContext, decl: &hir::FnDecl) {
 }
 
 fn should_check_abi(abi: abi::Abi) -> bool {
-    ![abi::RustIntrinsic, abi::PlatformIntrinsic].contains(&abi)
+    ![abi::RustIntrinsic, abi::PlatformIntrinsic, abi::Rust, abi::RustCall].contains(&abi)
 }
 
 impl LateLintPass for ImproperCTypes {
