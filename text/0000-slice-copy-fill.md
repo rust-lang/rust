@@ -23,33 +23,40 @@ module.
 # Detailed design
 [design]: #detailed-design
 
-Add one function to `std::slice`.
-
-```rust
-pub fn copy<T: Copy>(src: &[T], dst: &mut [T]);
-```
-
-and one function to Primitive Type `slice`.
+Add two methods to Primitive Type `slice`.
 
 ```rust
 impl<T> [T] where T: Copy {
     pub fn fill(&mut self, value: T);
+    pub fn copy_from(&mut self, src: &[T]);
 }
 ```
 
 `fill` loops through slice, setting each member to value. This will lower to a
-memset in all possible cases. It is defined to call `fill` on a slice which has
-uninitialized members.
+memset in all possible cases. It is defined behavior to call `fill` on a slice
+which has uninitialized members, and `dst` is guaranteed to be fully filled
+afterwards.
 
-`copy` panics if `src.len() != dst.len()`, then `memcpy`s the members from
-`src` to `dst`.
+`copy` panics if `src.len() != dst.len()`, then `memcpy`s the members into 
+`dst` from `src`. Calling `copy_from` is semantically equivalent to a `memcpy`,
+`dst` can have uninitialized members, and `dst` is guaranteed to be fully filled
+afterwards. This means, for example, that the following is fully defined:
+
+```rust
+let s1: [u8; 16] = unsafe { std::mem::uninitialized() };
+let s2: [u8; 16] = unsafe { std::mem::uninitialized() };
+s1.fill(42);
+s2.copy_from(s1);
+println!("{}", s2);
+```
+
+And the program will print 16 '8's.
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-One new function in `std::slice`, and one new method on `slice`. `[T]::fill`
-*will not* be lowered to a `memset` in any case where the bytes of `value` are
-not all the same, as in
+Two new methods on `slice`. `[T]::fill` *will not* be lowered to a `memset` in
+any case where the bytes of `value` are not all the same, as in
 
 ```rust
 // let points: [f32; 16];
@@ -57,11 +64,21 @@ points.fill(1.0); // This is not lowered to a memset (However, it is lowered to
                   // a simd loop, which is what a memset is, in reality)
 ```
 
+Also, `copy_from` has it's arguments in a different order from it's most similar
+`unsafe` alternative, `std::ptr::copy_nonoverlapping`. This is due to an
+unfortunate error that cannot be solved with the now stable
+`copy_nonoverlapping`, and the design decision should not be extended to
+`copy_from`.
+
 # Alternatives
 [alternatives]: #alternatives
 
 We could name these functions something else. `fill`, for example, could be
 called `set`.
+
+`copy_from` could be called `copy_to`, and have the order of the arguments
+switched around. This is a bad idea, as `copy_from` has a natural connection to
+`dst = src` syntax.
 
 `memcpy` is also pretty weird, here. Panicking if the lengths differ is
 different from what came before; I believe it to be the safest path, because I
@@ -69,12 +86,12 @@ think I'd want to know, personally, if I'm passing the wrong lengths to copy.
 However, `std::slice::bytes::copy_memory`, the function I'm basing this on, only
 panics if `dst.len() < src.len()`. So... room for discussion, here.
 
-`fill` could be a free function, and `copy` could be a method. It is the
-opinion of the author that `copy` is best as a free function, as it is
-non-obvious which should be the "owner", `dst` or `src`. `fill` is more
-obviously a method.
+`fill` and `copy_from` could both be free functions, and were in the original
+draft of this document. However, overwhelming support for these as methods has
+meant that these have become methods.
 
-These are necessary functions, in the opinion of the author.
+These are necessary, in the opinion of the author. Much unsafe code has been
+written because these do not exist.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
