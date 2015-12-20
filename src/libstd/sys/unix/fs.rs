@@ -127,11 +127,11 @@ impl Iterator for ReadDir {
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         extern {
-            fn rust_dirent_t_size() -> c_int;
+            fn rust_dirent_t_size() -> libc::size_t;
         }
 
         let mut buf: Vec<u8> = Vec::with_capacity(unsafe {
-            rust_dirent_t_size() as usize
+            rust_dirent_t_size()
         });
         let ptr = buf.as_mut_ptr() as *mut libc::dirent;
 
