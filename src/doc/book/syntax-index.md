@@ -234,5 +234,5 @@
 [Traits (Multiple Trait Bounds)]: traits.html#multiple-trait-bounds
 [Traits]: traits.html
 [Unsafe]: unsafe.html
-[Unsized Types (`?Sized`)]: unsized-types.html#?sized
+[Unsized Types (`?Sized`)]: unsized-types.html#sized
 [Variable Bindings]: variable-bindings.html
