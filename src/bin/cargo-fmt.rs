@@ -27,6 +27,8 @@ use rustc_serialize::json::Json;
 fn main() {
     let mut opts = getopts::Options::new();
     opts.optflag("h", "help", "show this message");
+    opts.optflag("q", "quiet", "no output printed to stdout");
+    opts.optflag("v", "verbose", "use verbose output");
 
     let matches = match opts.parse(env::args().skip(1).take_while(|a| a != "--")) {
         Ok(m) => m,
@@ -36,10 +38,17 @@ fn main() {
         }
     };
 
+    let (verbose, quiet) = (matches.opt_present("v"), matches.opt_present("q"));
+
+    if verbose && quiet {
+        print_usage(&opts, "quiet mode and verbose mode are not compatible");
+        return;
+    }
+
     if matches.opt_present("h") {
         print_usage(&opts, "");
     } else {
-        format_crate(&opts);
+        format_crate(&opts, verbose, quiet);
     }
 }
 
@@ -50,7 +59,7 @@ fn print_usage(opts: &Options, reason: &str) {
              opts.usage(&msg));
 }
 
-fn format_crate(opts: &Options) {
+fn format_crate(opts: &Options, verbose: bool, quiet: bool) {
     let targets = match get_targets() {
         Ok(t) => t,
         Err(e) => {
@@ -62,10 +71,16 @@ fn format_crate(opts: &Options) {
     // Currently only bin and lib files get formatted
     let files: Vec<_> = targets.into_iter()
                                .filter(|t| t.kind.is_lib() | t.kind.is_bin())
+                               .inspect(|t| {
+                                   if verbose {
+                                       println!("[{:?}] {:?}", t.kind, t.path)
+                                   }
+                               })
                                .map(|t| t.path)
                                .collect();
 
-    format_files(&files, &get_fmt_args()).unwrap_or_else(|e| print_usage(opts, &e.to_string()));
+    format_files(&files, &get_fmt_args(), verbose, quiet)
+        .unwrap_or_else(|e| print_usage(opts, &e.to_string()));
 }
 
 fn get_fmt_args() -> Vec<String> {
@@ -97,7 +112,7 @@ impl TargetKind {
 }
 
 #[derive(Debug)]
-struct Target {
+pub struct Target {
     path: PathBuf,
     kind: TargetKind,
 }
@@ -139,8 +154,28 @@ fn target_from_json(jtarget: &Json) -> Target {
     }
 }
 
-fn format_files(files: &Vec<PathBuf>, fmt_args: &Vec<String>) -> Result<(), std::io::Error> {
+fn format_files(files: &Vec<PathBuf>,
+                fmt_args: &Vec<String>,
+                verbose: bool,
+                quiet: bool)
+                -> Result<(), std::io::Error> {
+    let stdout = if quiet {
+        std::process::Stdio::null()
+    } else {
+        std::process::Stdio::inherit()
+    };
+    if verbose {
+        print!("rustfmt");
+        for a in fmt_args.iter() {
+            print!(" {}", a);
+        }
+        for f in files.iter() {
+            print!(" {}", f.display());
+        }
+        println!("");
+    }
     let mut command = try!(Command::new("rustfmt")
+                               .stdout(stdout)
                                .args(files)
                                .args(fmt_args)
                                .spawn());
