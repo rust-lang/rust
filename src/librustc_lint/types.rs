@@ -640,27 +640,31 @@ impl LintPass for ImproperCTypes {
     }
 }
 
+fn check_ty(cx: &LateContext, ty: &hir::Ty) {
+    let mut vis = ImproperCTypesVisitor { cx: cx };
+    vis.visit_ty(ty);
+}
+
+fn check_foreign_fn(cx: &LateContext, decl: &hir::FnDecl) {
+    for input in &decl.inputs {
+        check_ty(cx, &*input.ty);
+    }
+    if let hir::Return(ref ret_ty) = decl.output {
+        let tty = ast_ty_to_normalized(cx.tcx, ret_ty.id);
+        if !tty.is_nil() {
+            check_ty(cx, &ret_ty);
+        }
+    }
+}
+
+fn should_check_abi(abi: abi::Abi) -> bool {
+    ![abi::RustIntrinsic, abi::PlatformIntrinsic].contains(&abi)
+}
+
 impl LateLintPass for ImproperCTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        fn check_ty(cx: &LateContext, ty: &hir::Ty) {
-            let mut vis = ImproperCTypesVisitor { cx: cx };
-            vis.visit_ty(ty);
-        }
-
-        fn check_foreign_fn(cx: &LateContext, decl: &hir::FnDecl) {
-            for input in &decl.inputs {
-                check_ty(cx, &*input.ty);
-            }
-            if let hir::Return(ref ret_ty) = decl.output {
-                let tty = ast_ty_to_normalized(cx.tcx, ret_ty.id);
-                if !tty.is_nil() {
-                    check_ty(cx, &ret_ty);
-                }
-            }
-        }
-
         if let hir::ItemForeignMod(ref nmod) = it.node {
-            if nmod.abi != abi::RustIntrinsic && nmod.abi != abi::PlatformIntrinsic {
+            if should_check_abi(nmod.abi) {
                 for ni in &nmod.items {
                     match ni.node {
                         hir::ForeignItemFn(ref decl, _) => check_foreign_fn(cx, &**decl),
