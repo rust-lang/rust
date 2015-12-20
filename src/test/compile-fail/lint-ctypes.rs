@@ -28,6 +28,7 @@ pub type RustFn = fn();
 pub type RustBadRet = extern fn() -> Box<u32>;
 pub type CVoidRet = ();
 pub struct Foo;
+pub trait Bar {}
 
 extern {
     pub fn ptr_type1(size: *const Foo); //~ ERROR: found struct without
@@ -36,7 +37,7 @@ extern {
     pub fn str_type(p: &str); //~ ERROR: found Rust type
     pub fn box_type(p: Box<u32>); //~ ERROR found Rust type
     pub fn char_type(p: char); //~ ERROR found Rust type
-    pub fn trait_type(p: &Clone); //~ ERROR found Rust trait type
+    pub fn trait_type(p: &Bar); //~ ERROR found Rust trait type
     pub fn tuple_type(p: (i32, i32)); //~ ERROR found Rust tuple type
     pub fn tuple_type2(p: I32Pair); //~ ERROR found Rust tuple type
     pub fn zero_size(p: ZeroSize); //~ ERROR found zero-size struct
