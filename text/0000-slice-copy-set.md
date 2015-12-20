@@ -31,7 +31,7 @@ pub fn copy<T: Copy>(src: &[T], dst: &mut [T]);
 ```
 
 `set` loops through slice, setting each member to value. This will lower to a
-memset in all cases possible.
+memset in all possible cases.
 
 `copy` panics if `src.len() != dst.len()`, then `memcpy`s the members from
 `src` to `dst`.
@@ -39,7 +39,15 @@ memset in all cases possible.
 # Drawbacks
 [drawbacks]: #drawbacks
 
-Two new functions in `std::slice`.
+Two new functions in `std::slice`. `std::slice::set` *will not* be lowered to a
+`memset` in any case where the bytes of `value` are not all the same, as in
+
+```rust
+// let points: [f32; 16];
+std::slice::set(&mut points, 1.0); // This is not lowered to a memset
+                                   // (However, it is lowered to a simd loop,
+                                   //  which is what a memset is, in reality)
+```
 
 # Alternatives
 [alternatives]: #alternatives
@@ -52,7 +60,7 @@ think I'd want to know, personally, if I'm passing the wrong lengths to copy.
 However, `std::slice::bytes::copy_memory`, the function I'm basing this on, only
 panics if `dst.len() < src.len()`. So... room for discussion, here.
 
-However, these are necessary functions.
+These are necessary functions, in the opinion of the author.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
