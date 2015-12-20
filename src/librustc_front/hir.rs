@@ -56,7 +56,7 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 /// It can be `Vec`, `P<[T]>` or potentially `Box<[T]>`, or some other container with similar
 /// behavior. Unlike AST, HIR is mostly a static structure, so we can use an owned slice instead
 /// of `Vec` to avoid keeping extra capacity.
-pub type HirVec<T> = Vec<T>;
+pub type HirVec<T> = P<[T]>;
 
 macro_rules! hir_vec {
     ($elem:expr; $n:expr) => (
@@ -208,8 +208,8 @@ impl PathParameters {
     pub fn none() -> PathParameters {
         AngleBracketedParameters(AngleBracketedParameterData {
             lifetimes: HirVec::new(),
-            types: P::empty(),
-            bindings: P::empty(),
+            types: HirVec::new(),
+            bindings: HirVec::new(),
         })
     }
 
@@ -282,10 +282,10 @@ pub struct AngleBracketedParameterData {
     /// The lifetime parameters for this path segment.
     pub lifetimes: HirVec<Lifetime>,
     /// The type parameters for this path segment, if present.
-    pub types: P<[P<Ty>]>,
+    pub types: HirVec<P<Ty>>,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
-    pub bindings: P<[TypeBinding]>,
+    pub bindings: HirVec<TypeBinding>,
 }
 
 impl AngleBracketedParameterData {
@@ -325,7 +325,7 @@ pub enum TraitBoundModifier {
     Maybe,
 }
 
-pub type TyParamBounds = P<[TyParamBound]>;
+pub type TyParamBounds = HirVec<TyParamBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TyParam {
@@ -341,7 +341,7 @@ pub struct TyParam {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Generics {
     pub lifetimes: HirVec<LifetimeDef>,
-    pub ty_params: P<[TyParam]>,
+    pub ty_params: HirVec<TyParam>,
     pub where_clause: WhereClause,
 }
 
