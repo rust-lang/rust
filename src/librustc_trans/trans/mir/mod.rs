@@ -113,7 +113,10 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>) {
     // Allocate a `Block` for every basic block
     let block_bcxs: Vec<Block<'bcx,'tcx>> =
         mir_blocks.iter()
-                  .map(|&bb| fcx.new_block(false, &format!("{:?}", bb), None))
+                  .map(|&bb|{
+                      let is_cleanup = mir.basic_block_data(bb).is_cleanup;
+                      fcx.new_block(is_cleanup, &format!("{:?}", bb), None)
+                  })
                   .collect();
 
     // Branch to the START block

@@ -128,19 +128,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 let debugloc = DebugLoc::None;
                 let attrs = attributes::from_fn_type(bcx.ccx(), callee.ty);
-                match *targets {
-                    mir::CallTargets::Return(ret) => {
-                        let llret = build::Call(bcx,
-                                                callee.immediate(),
-                                                &llargs[..],
-                                                Some(attrs),
-                                                debugloc);
-                        if !return_outptr && !common::type_is_zero_size(bcx.ccx(), ret_ty) {
-                            base::store_ty(bcx, llret, call_dest.llval, ret_ty);
-                        }
-                        build::Br(bcx, self.llblock(ret), debugloc)
-                    }
-                    mir::CallTargets::WithCleanup((ret, cleanup)) => {
+                match (*targets, base::avoid_invoke(bcx)) {
+                    (mir::CallTargets::WithCleanup((ret, cleanup)), false) => {
+                        let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         build::Invoke(bcx,
                                       callee.immediate(),
@@ -153,6 +143,26 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             // FIXME: What do we do here?
                             unimplemented!()
                         }
+                    },
+                    (t, _) => {
+                        let ret = match t {
+                            mir::CallTargets::Return(ret) => ret,
+                            mir::CallTargets::WithCleanup((ret, _)) => {
+                                // make a landing pad regardless (so it sets the personality slot.
+                                let block = self.unreachable_block();
+                                self.make_landing_pad(block);
+                                ret
+                            }
+                        };
+                        let llret = build::Call(bcx,
+                                                callee.immediate(),
+                                                &llargs[..],
+                                                Some(attrs),
+                                                debugloc);
+                        if !return_outptr && !common::type_is_zero_size(bcx.ccx(), ret_ty) {
+                            base::store_ty(bcx, llret, call_dest.llval, ret_ty);
+                        }
+                        build::Br(bcx, self.llblock(ret), debugloc)
                     }
                 }
             },
@@ -171,12 +181,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 }
                 let debugloc = DebugLoc::None;
                 let attrs = attributes::from_fn_type(bcx.ccx(), callee.ty);
-                match *cleanup {
-                    None => {
-                        build::Call(bcx, callee.immediate(), &llargs[..], Some(attrs), debugloc);
-                        build::Unreachable(bcx);
-                    }
-                    Some(cleanup) => {
+                match (*cleanup, base::avoid_invoke(bcx)) {
+                    (Some(cleanup), false) => {
+                        let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let unreachable = self.unreachable_block();
                         build::Invoke(bcx,
@@ -187,13 +194,22 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                       Some(attrs),
                                       debugloc);
                     }
+                    (t, _) => {
+                        if t.is_some() {
+                            // make a landing pad regardless, so it sets the personality slot.
+                            let block = self.unreachable_block();
+                            self.make_landing_pad(block);
+                        }
+                        build::Call(bcx, callee.immediate(), &llargs[..], Some(attrs), debugloc);
+                        build::Unreachable(bcx);
+                    }
                 }
             }
         }
     }
 
-    fn make_landing_pad(&mut self, cleanup: mir::BasicBlock) -> Block<'bcx, 'tcx> {
-        let bcx = self.bcx(cleanup).fcx.new_block(true, "cleanup", None);
+    fn make_landing_pad(&mut self, cleanup: Block<'bcx, 'tcx>) -> Block<'bcx, 'tcx> {
+        let bcx = cleanup.fcx.new_block(true, "cleanup", None);
         let ccx = bcx.ccx();
         let llpersonality = bcx.fcx.eh_personality();
         let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
@@ -208,7 +224,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 build::Store(bcx, llretval, personalityslot)
             }
         };
-        build::Br(bcx, self.llblock(cleanup), DebugLoc::None);
+        build::Br(bcx, cleanup.llbb, DebugLoc::None);
         bcx
     }
 
