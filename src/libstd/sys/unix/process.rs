@@ -288,6 +288,32 @@ impl Process {
             unsafe { libc::_exit(1) }
         }
 
+        // Make sure that the source descriptors are not an stdio descriptor,
+        // otherwise the order which we set the child's descriptors may blow
+        // away a descriptor which we are hoping to save. For example,
+        // suppose we want the child's stderr to be the parent's stdout, and
+        // the child's stdout to be the parent's stderr. No matter which we
+        // dup first, the second will get overwritten prematurely.
+        let maybe_migrate = |src: Stdio, output: &mut AnonPipe| {
+            match src {
+                Stdio::Raw(fd @ libc::STDIN_FILENO) |
+                Stdio::Raw(fd @ libc::STDOUT_FILENO) |
+                Stdio::Raw(fd @ libc::STDERR_FILENO) => {
+                    let fd = match cvt_r(|| libc::dup(fd)) {
+                        Ok(fd) => fd,
+                        Err(_) => fail(output),
+                    };
+                    let fd = FileDesc::new(fd);
+                    fd.set_cloexec();
+                    Stdio::Raw(fd.into_raw())
+                },
+
+                s @ Stdio::None |
+                s @ Stdio::Inherit |
+                s @ Stdio::Raw(_) => s,
+            }
+        };
+
         let setup = |src: Stdio, dst: c_int| {
             match src {
                 Stdio::Inherit => true,
@@ -312,6 +338,12 @@ impl Process {
                 }
             }
         };
+
+        // Make sure we migrate all source descriptors before
+        // we start overwriting them
+        let in_fd = maybe_migrate(in_fd, &mut output);
+        let out_fd = maybe_migrate(out_fd, &mut output);
+        let err_fd = maybe_migrate(err_fd, &mut output);
 
         if !setup(in_fd, libc::STDIN_FILENO) { fail(&mut output) }
         if !setup(out_fd, libc::STDOUT_FILENO) { fail(&mut output) }
