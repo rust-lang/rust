@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_variables)]
 #![deny(improper_ctypes)]
 #![feature(libc)]
 
@@ -61,6 +62,38 @@ extern {
     pub fn good10() -> CVoidRet;
     pub fn good11(size: isize);
     pub fn good12(size: usize);
+}
+
+pub mod extern_fn {
+    use libc;
+    use types::*;
+
+    pub extern fn ptr_type1(size: *const Foo) {} //~ ERROR: found struct without
+    pub extern fn ptr_type2(size: *const Foo) {} //~ ERROR: found struct without
+    pub extern fn slice_type(p: &[u32]) {} //~ ERROR: found Rust slice type
+    pub extern fn str_type(p: &str) {} //~ ERROR: found Rust type
+    pub extern fn box_type(p: Box<u32>) {} //~ ERROR found Rust type
+    pub extern fn char_type(p: char) {} //~ ERROR found Rust type
+    pub extern fn trait_type(p: &Bar) {} //~ ERROR found Rust trait type
+    pub extern fn tuple_type(p: (i32, i32)) {} //~ ERROR found Rust tuple type
+    pub extern fn tuple_type2(p: I32Pair) {} //~ ERROR found Rust tuple type
+    pub extern fn zero_size(p: ZeroSize) {} //~ ERROR found zero-size struct
+    pub extern fn fn_type(p: RustFn) {} //~ ERROR found function pointer with Rust
+    pub extern fn fn_type2(p: fn()) {} //~ ERROR found function pointer with Rust
+    pub extern fn fn_contained(p: RustBadRet) {} //~ ERROR: found Rust type
+
+    pub extern fn good1(size: *const libc::c_int) {}
+    pub extern fn good2(size: *const libc::c_uint) {}
+    pub extern fn good3(fptr: Option<extern fn()>) {}
+    pub extern fn good4(aptr: &[u8; 4 as usize]) {}
+    pub extern fn good5(s: StructWithProjection) {}
+    pub extern fn good6(s: StructWithProjectionAndLifetime) {}
+    pub extern fn good7(fptr: extern fn() -> ()) {}
+    pub extern fn good8(fptr: extern fn() -> !) {}
+    pub extern fn good9() -> () {}
+    pub extern fn good10() -> CVoidRet {}
+    pub extern fn good11(size: isize) {}
+    pub extern fn good12(size: usize) {}
 }
 
 fn main() {
