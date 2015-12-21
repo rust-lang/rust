@@ -435,9 +435,9 @@ impl OutType {
     fn matches(&self, ty: &FunctionRetTy) -> bool {
         match (self, ty) {
             (&UnitType, &DefaultReturn(_)) => true,
-            (&UnitType, &Return(ref ty)) if ty.node == TyTup(vec![]) => true,
+            (&UnitType, &Return(ref ty)) if ty.node == TyTup(vec![].into()) => true,
             (&BoolType, &Return(ref ty)) if is_bool(ty) => true,
-            (&AnyType, &Return(ref ty)) if ty.node != TyTup(vec![])  => true,
+            (&AnyType, &Return(ref ty)) if ty.node != TyTup(vec![].into())  => true,
             (&RefType, &Return(ref ty)) => {
                 if let TyRptr(_, _) = ty.node { true } else { false }
             }
