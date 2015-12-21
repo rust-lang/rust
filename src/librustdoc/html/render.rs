@@ -1058,14 +1058,16 @@ impl DocFolder for Cache {
                         }
                     });
 
-                    self.search_index.push(IndexItem {
-                        ty: shortty(&item),
-                        name: s.to_string(),
-                        path: path.join("::").to_string(),
-                        desc: shorter(item.doc_value()),
-                        parent: parent,
-                        search_type: get_index_search_type(&item, parent_basename),
-                    });
+                    if item.def_id.index != CRATE_DEF_INDEX {
+                        self.search_index.push(IndexItem {
+                            ty: shortty(&item),
+                            name: s.to_string(),
+                            path: path.join("::").to_string(),
+                            desc: shorter(item.doc_value()),
+                            parent: parent,
+                            search_type: get_index_search_type(&item, parent_basename),
+                        });
+                    }
                 }
                 (Some(parent), None) if is_method || (!self.privmod && !hidden_field)=> {
                     if parent.is_local() {
