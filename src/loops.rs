@@ -13,7 +13,7 @@ use syntax::ast::Lit_::*;
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type,
             in_external_macro, expr_block, span_help_and_lint, is_integer_literal,
             get_enclosing_block};
-use utils::{VEC_PATH, LL_PATH};
+use utils::{HASHMAP_PATH, VEC_PATH, LL_PATH};
 
 /// **What it does:** This lint checks for looping over the range of `0..len` of some collection just to get the values by index. It is `Warn` by default.
 ///
@@ -457,7 +457,7 @@ fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     is_iterable_array(ty) ||
         match_type(cx, ty, &VEC_PATH) ||
         match_type(cx, ty, &LL_PATH) ||
-        match_type(cx, ty, &["std", "collections", "hash", "map", "HashMap"]) ||
+        match_type(cx, ty, &HASHMAP_PATH) ||
         match_type(cx, ty, &["std", "collections", "hash", "set", "HashSet"]) ||
         match_type(cx, ty, &["collections", "vec_deque", "VecDeque"]) ||
         match_type(cx, ty, &["collections", "binary_heap", "BinaryHeap"]) ||
