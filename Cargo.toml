@@ -24,6 +24,7 @@ compiletest_rs = "0.0.11"
 regex = "*"
 regex_macros = "*"
 lazy_static = "*"
+rustc-serialize = "0.3"
 
 [features]
 
