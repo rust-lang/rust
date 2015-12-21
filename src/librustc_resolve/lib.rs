@@ -179,7 +179,7 @@ pub enum ResolutionError<'a> {
     /// error E0424: `self` is not available in a static method
     SelfNotAvailableInStaticMethod,
     /// error E0425: unresolved name
-    UnresolvedName(&'a str, &'a str),
+    UnresolvedName(&'a str, &'a str, UnresolvedNameContext),
     /// error E0426: use of undeclared label
     UndeclaredLabel(&'a str),
     /// error E0427: cannot use `ref` binding mode with ...
@@ -200,6 +200,21 @@ pub enum ResolutionError<'a> {
     CannotCaptureDynamicEnvironmentInFnItem,
     /// error E0435: attempt to use a non-constant value in a constant
     AttemptToUseNonConstantValueInConstant,
+}
+
+/// Context of where `ResolutionError::UnresolvedName` arose.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum UnresolvedNameContext {
+    /// `PathIsMod(id)` indicates that a given path, used in
+    /// expression context, actually resolved to a module rather than
+    /// a value. The `id` attached to the variant is the node id of
+    /// the erroneous path expression.
+    PathIsMod(ast::NodeId),
+
+    /// `Other` means we have no extra information about the context
+    /// of the unresolved name error. (Maybe we could eliminate all
+    /// such cases; but for now, this is an information-free default.)
+    Other,
 }
 
 fn resolve_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
@@ -402,13 +417,46 @@ fn resolve_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                       "`self` is not available in a static method. Maybe a `self` argument is \
                        missing?");
         }
-        ResolutionError::UnresolvedName(path, name) => {
+        ResolutionError::UnresolvedName(path, msg, context) => {
             span_err!(resolver.session,
                       span,
                       E0425,
                       "unresolved name `{}`{}",
                       path,
-                      name);
+                      msg);
+
+            match context {
+                UnresolvedNameContext::Other => {} // no help available
+                UnresolvedNameContext::PathIsMod(id) => {
+                    let mut help_msg = String::new();
+                    let parent_id = resolver.ast_map.get_parent_node(id);
+                    if let Some(hir_map::Node::NodeExpr(e)) = resolver.ast_map.find(parent_id) {
+                        match e.node {
+                            ExprField(_, ident) => {
+                                help_msg = format!("To reference an item from the \
+                                                    `{module}` module, use \
+                                                    `{module}::{ident}`",
+                                                   module = &*path,
+                                                   ident = ident.node);
+                            }
+
+                            ExprMethodCall(ident, _, _) => {
+                                help_msg = format!("To call a function from the \
+                                                    `{module}` module, use \
+                                                    `{module}::{ident}(..)`",
+                                                   module = &*path,
+                                                   ident = ident.node);
+                            }
+
+                            _ => {} // no help available
+                        }
+                    }
+
+                    if !help_msg.is_empty() {
+                        resolver.session.fileline_help(span, &help_msg);
+                    }
+                }
+            }
         }
         ResolutionError::UndeclaredLabel(name) => {
             span_err!(resolver.session,
@@ -3539,13 +3587,33 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         format!("to call `{}::{}`", path_str, path_name),
                                 };
 
+                                let mut context =  UnresolvedNameContext::Other;
                                 if !msg.is_empty() {
-                                    msg = format!(". Did you mean {}?", msg)
+                                    msg = format!(". Did you mean {}?", msg);
+                                } else {
+                                    // we check if this a module and if so, we display a help
+                                    // message
+                                    let name_path = path.segments.iter()
+                                                        .map(|seg| seg.identifier.name)
+                                                        .collect::<Vec<_>>();
+                                    let current_module = self.current_module.clone();
+
+                                    match self.resolve_module_path(current_module,
+                                                   &name_path[..],
+                                                   UseLexicalScope,
+                                                   expr.span,
+                                                   PathSearch) {
+                                        Success(_) => {
+                                            context = UnresolvedNameContext::PathIsMod(expr.id);
+                                        },
+                                        _ => {},
+                                    };
                                 }
 
                                 resolve_error(self,
                                               expr.span,
-                                              ResolutionError::UnresolvedName(&*path_name, &*msg));
+                                              ResolutionError::UnresolvedName(
+                                                  &*path_name, &*msg, context));
                             }
                         }
                     }
