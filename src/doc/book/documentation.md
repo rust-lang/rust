@@ -9,7 +9,7 @@ document your project.
 The Rust distribution includes a tool, `rustdoc`, that generates documentation.
 `rustdoc` is also used by Cargo through `cargo doc`.
 
-Documentation can be generated in two ways; from source code, and from
+Documentation can be generated in two ways: from source code, and from
 standalone Markdown files.
 
 ## Documenting source code
