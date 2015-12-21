@@ -66,6 +66,7 @@ pub mod transmute;
 pub mod cyclomatic_complexity;
 pub mod escape;
 pub mod misc_early;
+pub mod array_indexing;
 
 mod reexport {
     pub use syntax::ast::{Name, NodeId};
@@ -121,6 +122,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box escape::EscapePass);
     reg.register_early_lint_pass(box misc_early::MiscEarly);
     reg.register_late_lint_pass(box misc::UsedUnderscoreBinding);
+    reg.register_late_lint_pass(box array_indexing::ArrayIndexing);
 
     reg.register_lint_group("clippy_pedantic", vec![
         methods::OPTION_UNWRAP_USED,
@@ -143,6 +145,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
     reg.register_lint_group("clippy", vec![
         approx_const::APPROX_CONSTANT,
+        array_indexing::OUT_OF_BOUNDS_INDEXING,
         attrs::INLINE_ALWAYS,
         bit_mask::BAD_BIT_MASK,
         bit_mask::INEFFECTIVE_BIT_MASK,
