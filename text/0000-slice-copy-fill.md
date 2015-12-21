@@ -46,7 +46,7 @@ afterwards. This means, for example, that the following is fully defined:
 let s1: [u8; 16] = unsafe { std::mem::uninitialized() };
 let s2: [u8; 16] = unsafe { std::mem::uninitialized() };
 s1.fill(42);
-s2.copy_from(s1);
+s2.copy_from(&s1);
 println!("{}", s2);
 ```
 
