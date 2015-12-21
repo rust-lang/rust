@@ -10,7 +10,7 @@ use utils::span_lint;
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `Point { x: 1, y: 0, ..zero_point }``
+/// **Example:** `Point { x: 1, y: 0, ..zero_point }`
 declare_lint! {
     pub NEEDLESS_UPDATE,
     Warn,

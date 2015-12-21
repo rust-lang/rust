@@ -51,7 +51,7 @@ Also please document your lint with a doc comment akin to the following:
 /// **Example:** Insert a short example if you have one
 ```
 
-Our `util/update_wiki.py` script can then add your ilnt docs to the wiki.
+Our `util/update_wiki.py` script can then add your lint docs to the wiki.
 
 ## Contributions
 
