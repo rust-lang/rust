@@ -27,18 +27,19 @@ use time::Duration;
 /// use std::net::UdpSocket;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// let mut socket = try!(UdpSocket::bind("127.0.0.1:34254"));
+/// {
+///     let mut socket = try!(UdpSocket::bind("127.0.0.1:34254"));
 ///
-/// let mut buf = [0; 10];
-/// let (amt, src) = try!(socket.recv_from(&mut buf));
+///     // read from the socket
+///     let mut buf = [0; 10];
+///     let (amt, src) = try!(socket.recv_from(&mut buf));
 ///
-/// // Send a reply to the socket we received data from
-/// let buf = &mut buf[..amt];
-/// buf.reverse();
-/// try!(socket.send_to(buf, &src));
-///
-/// drop(socket); // close the socket
-/// # Ok(())
+///     // send a reply to the socket we received data from
+///     let buf = &mut buf[..amt];
+///     buf.reverse();
+///     try!(socket.send_to(buf, &src));
+///     # Ok(())
+/// } // the socket is closed here
 /// # }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
