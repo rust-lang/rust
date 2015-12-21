@@ -302,7 +302,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                              index: Operand<'tcx>,
                              len: Operand<'tcx>,
                              span: Span) {
-        let cleanup = self.diverge_cleanup();
         let func = self.lang_function(lang_items::PanicBoundsCheckFnLangItem);
         let str_ty = self.hir.tcx().mk_static_str();
         let tup_ty = self.hir.tcx().mk_tup(vec![str_ty, self.hir.tcx().types.u32]);
@@ -316,16 +315,19 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // FIXME: ReStatic might be wrong here?
         self.cfg.push_assign(block, DUMMY_SP, &tuple_ref, // tuple_ref = &tuple;
                              Rvalue::Ref(*ref_region, BorrowKind::Unique, tuple));
-        self.cfg.terminate(block, Terminator::DivergingCall {
+        let cleanup = self.diverge_cleanup();
+        self.cfg.terminate(block, Terminator::Call {
             func: func,
             args: vec![Operand::Consume(tuple_ref), index, len],
-            cleanup: cleanup,
+            kind: match cleanup {
+                None => CallKind::Diverging,
+                Some(c) => CallKind::DivergingCleanup(c)
+            }
         });
     }
 
     /// Create diverge cleanup and branch to it from `block`.
     pub fn panic(&mut self, block: BasicBlock, msg: &'static str, span: Span) {
-        let cleanup = self.diverge_cleanup();
         let func = self.lang_function(lang_items::PanicFnLangItem);
 
         let str_ty = self.hir.tcx().mk_static_str();
@@ -348,11 +350,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // FIXME: ReStatic might be wrong here?
         self.cfg.push_assign(block, DUMMY_SP, &tuple_ref, // tuple_ref = &tuple;
                              Rvalue::Ref(*ref_region, BorrowKind::Unique, tuple));
-
-        self.cfg.terminate(block, Terminator::DivergingCall {
+        let cleanup = self.diverge_cleanup();
+        self.cfg.terminate(block, Terminator::Call {
             func: func,
             args: vec![Operand::Consume(tuple_ref)],
-            cleanup: cleanup,
+            kind: match cleanup {
+                None => CallKind::Diverging,
+                Some(c) => CallKind::DivergingCleanup(c)
+            }
         });
     }
 

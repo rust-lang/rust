@@ -224,17 +224,22 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                 let success = this.cfg.start_new_block();
                 let cleanup = this.diverge_cleanup();
-                let term = if diverges {
-                    Terminator::DivergingCall { func: fun, args: args, cleanup: cleanup }
-                } else {
-                    Terminator::Call {
-                        func: fun,
-                        args: args,
-                        destination: destination.clone(),
-                        targets: CallTargets::new(success, cleanup)
+                this.cfg.terminate(block, Terminator::Call {
+                    func: fun,
+                    args: args,
+                    kind: match (cleanup, diverges) {
+                        (None, true) => CallKind::Diverging,
+                        (Some(c), true) => CallKind::DivergingCleanup(c),
+                        (None, false) => CallKind::Converging {
+                            destination: destination.clone(),
+                            target: success
+                        },
+                        (Some(c), false) => CallKind::ConvergingCleanup {
+                            destination: destination.clone(),
+                            targets: (success, c)
+                        }
                     }
-                };
-                this.cfg.terminate(block, term);
+                });
                 success.unit()
             }
 
