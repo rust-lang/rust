@@ -67,6 +67,15 @@ impl Svh {
     }
 
     pub fn calculate(metadata: &Vec<String>, krate: &hir::Crate) -> Svh {
+        fn hex(b: u64) -> char {
+            let b = (b & 0xf) as u8;
+            let b = match b {
+                0 ... 9 => '0' as u8 + b,
+                _ => 'a' as u8 + b - 10,
+            };
+            b as char
+        }
+
         // FIXME (#14132): This is better than it used to be, but it still not
         // ideal. We now attempt to hash only the relevant portions of the
         // Crate AST as well as the top-level crate attributes. (However,
@@ -101,17 +110,8 @@ impl Svh {
         }
 
         let hash = state.finish();
-        return Svh {
+        Svh {
             hash: (0..64).step_by(4).map(|i| hex(hash >> i)).collect()
-        };
-
-        fn hex(b: u64) -> char {
-            let b = (b & 0xf) as u8;
-            let b = match b {
-                0 ... 9 => '0' as u8 + b,
-                _ => 'a' as u8 + b - 10,
-            };
-            b as char
         }
     }
 }
