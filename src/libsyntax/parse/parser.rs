@@ -14,7 +14,7 @@ use abi;
 use ast::BareFnTy;
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::{Public, Unsafety};
-use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
+use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindingMode};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, BiRem, BiLt, Block};
 use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
 use ast::{Constness, ConstTraitItem, Crate, CrateConfig};
@@ -3278,10 +3278,10 @@ impl<'a> Parser<'a> {
                 hi = self.last_span.hi;
 
                 let bind_type = match (is_ref, is_mut) {
-                    (true, true) => BindByRef(MutMutable),
-                    (true, false) => BindByRef(MutImmutable),
-                    (false, true) => BindByValue(MutMutable),
-                    (false, false) => BindByValue(MutImmutable),
+                    (true, true) => BindingMode::ByRef(MutMutable),
+                    (true, false) => BindingMode::ByRef(MutImmutable),
+                    (false, true) => BindingMode::ByValue(MutMutable),
+                    (false, false) => BindingMode::ByValue(MutImmutable),
                 };
                 let fieldpath = codemap::Spanned{span:self.last_span, node:fieldname};
                 let fieldpat = P(ast::Pat{
@@ -3376,11 +3376,11 @@ impl<'a> Parser<'a> {
             // At this point, token != _, &, &&, (, [
             if try!(self.eat_keyword(keywords::Mut)) {
                 // Parse mut ident @ pat
-                pat = try!(self.parse_pat_ident(BindByValue(MutMutable)));
+                pat = try!(self.parse_pat_ident(BindingMode::ByValue(MutMutable)));
             } else if try!(self.eat_keyword(keywords::Ref)) {
                 // Parse ref ident @ pat / ref mut ident @ pat
                 let mutbl = try!(self.parse_mutability());
-                pat = try!(self.parse_pat_ident(BindByRef(mutbl)));
+                pat = try!(self.parse_pat_ident(BindingMode::ByRef(mutbl)));
             } else if try!(self.eat_keyword(keywords::Box)) {
                 // Parse box pat
                 let subpat = try!(self.parse_pat());
@@ -3409,7 +3409,7 @@ impl<'a> Parser<'a> {
                         // Parse ident @ pat
                         // This can give false positives and parse nullary enums,
                         // they are dealt with later in resolve
-                        pat = try!(self.parse_pat_ident(BindByValue(MutImmutable)));
+                        pat = try!(self.parse_pat_ident(BindingMode::ByValue(MutImmutable)));
                     }
                 } else {
                     let (qself, path) = if try!(self.eat_lt()) {
