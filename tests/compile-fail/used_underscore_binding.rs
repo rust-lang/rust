@@ -9,7 +9,15 @@ fn prefix_underscore(_foo: u32) -> u32 {
 
 /// Test that we lint even if the use is within a macro expansion
 fn in_macro(_foo: u32) {
-    println!("{}", _foo); // doesn't warn, nut should #507
+    println!("{}", _foo); //~ ERROR used binding which is prefixed with an underscore
+}
+
+// TODO: This doesn't actually correctly test this. Need to find a #[derive(...)] which sets off
+// the lint if the `in_attributes_expansion` test isn't there
+/// Test that we do not lint for unused underscores in a MacroAttribute expansion
+#[derive(Clone)]
+struct MacroAttributesTest {
+    _foo: u32,
 }
 
 // Struct for testing use of fields prefixed with an underscore
@@ -68,6 +76,7 @@ fn non_variables() {
 
 fn main() {
     let foo = 0u32;
+    let _ = MacroAttributesTest{_foo: 0};
     // tests of unused_underscore lint
     let _ = prefix_underscore(foo);
     in_macro(foo);
