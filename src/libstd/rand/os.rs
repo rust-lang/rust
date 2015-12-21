@@ -182,8 +182,8 @@ mod imp {
 #[cfg(target_os = "openbsd")]
 mod imp {
     use io;
+    use libc;
     use mem;
-    use libc::c_long;
     use sys::os::errno;
     use rand::Rng;
 
