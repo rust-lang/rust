@@ -115,11 +115,6 @@ macro_rules! zero_one_impl_float {
 }
 zero_one_impl_float! { f32 f64 }
 
-// Just for stage0; a byte swap on a byte is a no-op
-// Delete this once it becomes unused
-#[cfg(stage0)]
-unsafe fn bswap8(x: u8) -> u8 { x }
-
 macro_rules! checked_op {
     ($U:ty, $op:path, $x:expr, $y:expr) => {{
         let (result, overflowed) = unsafe { $op($x as $U, $y as $U) };
@@ -785,15 +780,6 @@ macro_rules! int_impl {
 }
 
 #[lang = "i8"]
-#[cfg(stage0)]
-impl i8 {
-    int_impl! { i8, u8, 8,
-        intrinsics::i8_add_with_overflow,
-        intrinsics::i8_sub_with_overflow,
-        intrinsics::i8_mul_with_overflow }
-}
-#[lang = "i8"]
-#[cfg(not(stage0))]
 impl i8 {
     int_impl! { i8, u8, 8,
         intrinsics::add_with_overflow,
@@ -802,15 +788,6 @@ impl i8 {
 }
 
 #[lang = "i16"]
-#[cfg(stage0)]
-impl i16 {
-    int_impl! { i16, u16, 16,
-        intrinsics::i16_add_with_overflow,
-        intrinsics::i16_sub_with_overflow,
-        intrinsics::i16_mul_with_overflow }
-}
-#[lang = "i16"]
-#[cfg(not(stage0))]
 impl i16 {
     int_impl! { i16, u16, 16,
         intrinsics::add_with_overflow,
@@ -819,15 +796,6 @@ impl i16 {
 }
 
 #[lang = "i32"]
-#[cfg(stage0)]
-impl i32 {
-    int_impl! { i32, u32, 32,
-        intrinsics::i32_add_with_overflow,
-        intrinsics::i32_sub_with_overflow,
-        intrinsics::i32_mul_with_overflow }
-}
-#[lang = "i32"]
-#[cfg(not(stage0))]
 impl i32 {
     int_impl! { i32, u32, 32,
         intrinsics::add_with_overflow,
@@ -836,15 +804,6 @@ impl i32 {
 }
 
 #[lang = "i64"]
-#[cfg(stage0)]
-impl i64 {
-    int_impl! { i64, u64, 64,
-        intrinsics::i64_add_with_overflow,
-        intrinsics::i64_sub_with_overflow,
-        intrinsics::i64_mul_with_overflow }
-}
-#[lang = "i64"]
-#[cfg(not(stage0))]
 impl i64 {
     int_impl! { i64, u64, 64,
         intrinsics::add_with_overflow,
@@ -854,16 +813,6 @@ impl i64 {
 
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
-#[cfg(stage0)]
-impl isize {
-    int_impl! { i32, u32, 32,
-        intrinsics::i32_add_with_overflow,
-        intrinsics::i32_sub_with_overflow,
-        intrinsics::i32_mul_with_overflow }
-}
-#[cfg(target_pointer_width = "32")]
-#[lang = "isize"]
-#[cfg(not(stage0))]
 impl isize {
     int_impl! { i32, u32, 32,
         intrinsics::add_with_overflow,
@@ -873,16 +822,6 @@ impl isize {
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "isize"]
-#[cfg(stage0)]
-impl isize {
-    int_impl! { i64, u64, 64,
-        intrinsics::i64_add_with_overflow,
-        intrinsics::i64_sub_with_overflow,
-        intrinsics::i64_mul_with_overflow }
-}
-#[cfg(target_pointer_width = "64")]
-#[lang = "isize"]
-#[cfg(not(stage0))]
 impl isize {
     int_impl! { i64, u64, 64,
         intrinsics::add_with_overflow,
@@ -980,25 +919,6 @@ macro_rules! uint_impl {
             unsafe { $ctlz(self as $ActualT) as u32 }
         }
 
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[cfg(stage0)]
-        #[inline]
-        pub fn trailing_zeros(self) -> u32 {
-            // As of LLVM 3.6 the codegen for the zero-safe cttz8 intrinsic
-            // emits two conditional moves on x86_64. By promoting the value to
-            // u16 and setting bit 8, we get better code without any conditional
-            // operations.
-            // FIXME: There's a LLVM patch (http://reviews.llvm.org/D9284)
-            // pending, remove this workaround once LLVM generates better code
-            // for cttz8.
-            unsafe {
-                if $BITS == 8 {
-                    intrinsics::cttz16(self as u16 | 0x100) as u32
-                } else {
-                    $cttz(self as $ActualT) as u32
-                }
-            }
-        }
         /// Returns the number of trailing zeros in the binary representation
         /// of `self`.
         ///
@@ -1012,7 +932,6 @@ macro_rules! uint_impl {
         /// assert_eq!(n.trailing_zeros(), 3);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[cfg(not(stage0))]
         #[inline]
         pub fn trailing_zeros(self) -> u32 {
             // As of LLVM 3.6 the codegen for the zero-safe cttz8 intrinsic
@@ -1563,19 +1482,6 @@ macro_rules! uint_impl {
 }
 
 #[lang = "u8"]
-#[cfg(stage0)]
-impl u8 {
-    uint_impl! { u8, 8,
-        intrinsics::ctpop8,
-        intrinsics::ctlz8,
-        intrinsics::cttz8,
-        bswap8,
-        intrinsics::u8_add_with_overflow,
-        intrinsics::u8_sub_with_overflow,
-        intrinsics::u8_mul_with_overflow }
-}
-#[lang = "u8"]
-#[cfg(not(stage0))]
 impl u8 {
     uint_impl! { u8, 8,
         intrinsics::ctpop,
@@ -1588,19 +1494,6 @@ impl u8 {
 }
 
 #[lang = "u16"]
-#[cfg(stage0)]
-impl u16 {
-    uint_impl! { u16, 16,
-        intrinsics::ctpop16,
-        intrinsics::ctlz16,
-        intrinsics::cttz16,
-        intrinsics::bswap16,
-        intrinsics::u16_add_with_overflow,
-        intrinsics::u16_sub_with_overflow,
-        intrinsics::u16_mul_with_overflow }
-}
-#[lang = "u16"]
-#[cfg(not(stage0))]
 impl u16 {
     uint_impl! { u16, 16,
         intrinsics::ctpop,
@@ -1613,19 +1506,6 @@ impl u16 {
 }
 
 #[lang = "u32"]
-#[cfg(stage0)]
-impl u32 {
-    uint_impl! { u32, 32,
-        intrinsics::ctpop32,
-        intrinsics::ctlz32,
-        intrinsics::cttz32,
-        intrinsics::bswap32,
-        intrinsics::u32_add_with_overflow,
-        intrinsics::u32_sub_with_overflow,
-        intrinsics::u32_mul_with_overflow }
-}
-#[lang = "u32"]
-#[cfg(not(stage0))]
 impl u32 {
     uint_impl! { u32, 32,
         intrinsics::ctpop,
@@ -1638,19 +1518,6 @@ impl u32 {
 }
 
 #[lang = "u64"]
-#[cfg(stage0)]
-impl u64 {
-    uint_impl! { u64, 64,
-        intrinsics::ctpop64,
-        intrinsics::ctlz64,
-        intrinsics::cttz64,
-        intrinsics::bswap64,
-        intrinsics::u64_add_with_overflow,
-        intrinsics::u64_sub_with_overflow,
-        intrinsics::u64_mul_with_overflow }
-}
-#[lang = "u64"]
-#[cfg(not(stage0))]
 impl u64 {
     uint_impl! { u64, 64,
         intrinsics::ctpop,
@@ -1664,20 +1531,6 @@ impl u64 {
 
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
-#[cfg(stage0)]
-impl usize {
-    uint_impl! { u32, 32,
-        intrinsics::ctpop32,
-        intrinsics::ctlz32,
-        intrinsics::cttz32,
-        intrinsics::bswap32,
-        intrinsics::u32_add_with_overflow,
-        intrinsics::u32_sub_with_overflow,
-        intrinsics::u32_mul_with_overflow }
-}
-#[cfg(target_pointer_width = "32")]
-#[lang = "usize"]
-#[cfg(not(stage0))]
 impl usize {
     uint_impl! { u32, 32,
         intrinsics::ctpop,
@@ -1691,20 +1544,6 @@ impl usize {
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "usize"]
-#[cfg(stage0)]
-impl usize {
-    uint_impl! { u64, 64,
-        intrinsics::ctpop64,
-        intrinsics::ctlz64,
-        intrinsics::cttz64,
-        intrinsics::bswap64,
-        intrinsics::u64_add_with_overflow,
-        intrinsics::u64_sub_with_overflow,
-        intrinsics::u64_mul_with_overflow }
-}
-#[cfg(target_pointer_width = "64")]
-#[lang = "usize"]
-#[cfg(not(stage0))]
 impl usize {
     uint_impl! { u64, 64,
         intrinsics::ctpop,

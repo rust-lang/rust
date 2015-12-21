@@ -19,11 +19,8 @@
 //! arena but can only hold objects of a single type, and `Arena`, which is a
 //! more complex, slower arena which can hold objects of any type.
 
-// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
-#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "arena"]
 #![unstable(feature = "rustc_private", issue = "27812")]
-#![cfg_attr(stage0, staged_api)]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -41,11 +38,6 @@
 #![feature(staged_api)]
 #![feature(dropck_parametricity)]
 #![cfg_attr(test, feature(test))]
-
-// SNAP 1af31d4
-#![allow(unused_features)]
-// SNAP 1af31d4
-#![allow(unused_attributes)]
 
 extern crate alloc;
 

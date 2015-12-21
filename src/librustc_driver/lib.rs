@@ -14,11 +14,8 @@
 //!
 //! This API is completely unstable and subject to change.
 
-// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
-#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "rustc_driver"]
 #![unstable(feature = "rustc_private", issue = "27812")]
-#![cfg_attr(stage0, staged_api)]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -32,7 +29,6 @@
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
-#![feature(raw)] // remove after snapshot
 
 extern crate arena;
 extern crate flate;
@@ -105,24 +101,6 @@ pub mod target_features;
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
 
-// SNAP 1af31d4
-// This is a terrible hack. Our stage0 is older than 1.4 and does not
-// support DST coercions, so this function performs the corecion
-// manually. This should go away.
-pub fn cstore_to_cratestore(a: Rc<CStore>) -> Rc<for<'s> CrateStore<'s>>
-{
-    use std::mem;
-    use std::raw::TraitObject;
-    unsafe {
-        let TraitObject { vtable, .. } =
-            mem::transmute::<&for<'s> CrateStore<'s>, TraitObject>(&*a);
-        mem::transmute(TraitObject {
-            data: mem::transmute(a),
-            vtable: vtable
-        })
-    }
-}
-
 pub fn run(args: Vec<String>) -> isize {
     monitor(move || run_compiler(&args, &mut RustcDefaultCalls));
     0
@@ -159,8 +137,8 @@ pub fn run_compiler<'a>(args: &[String], callbacks: &mut CompilerCalls<'a>) {
     };
 
     let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-    let cstore_ = cstore_to_cratestore(cstore.clone());
-    let mut sess = build_session(sopts, input_file_path, descriptions, cstore_);
+    let mut sess = build_session(sopts, input_file_path, descriptions,
+                                 cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     if sess.unstable_options() {
         sess.opts.show_span = matches.opt_str("show-span");
@@ -356,8 +334,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     return None;
                 }
                 let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-                let cstore_ = cstore_to_cratestore(cstore.clone());
-                let sess = build_session(sopts.clone(), None, descriptions.clone(), cstore_);
+                let sess = build_session(sopts.clone(), None, descriptions.clone(),
+                                         cstore.clone());
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let should_stop = RustcDefaultCalls::print_crate_info(&sess, None, odir, ofile);
                 if should_stop == Compilation::Stop {

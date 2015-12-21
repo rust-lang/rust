@@ -156,13 +156,10 @@
 //! they're turned off (just a load and an integer comparison). This also means that
 //! if logging is disabled, none of the components of the log will be executed.
 
-// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
-#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "log"]
 #![unstable(feature = "rustc_private",
             reason = "use the crates.io `log` library instead",
             issue = "27812")]
-#![cfg_attr(stage0, staged_api)]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",

@@ -16,8 +16,6 @@
 //! is not recommended to use this library directly, but rather the official
 //! interface through `std::rand`.
 
-// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
-#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "rand"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
@@ -26,7 +24,6 @@
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
 #![no_std]
-#![cfg_attr(stage0, staged_api)]
 #![unstable(feature = "rand",
             reason = "use `rand` from crates.io",
             issue = "27703")]
@@ -37,7 +34,6 @@
 #![feature(step_by)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
-#![cfg_attr(stage0, feature(no_std))]
 
 #![cfg_attr(test, feature(test, rand, rustc_private, iter_order_deprecated))]
 

@@ -162,11 +162,9 @@ use core::fmt;
 use core::hash::{Hasher, Hash};
 use core::intrinsics::{assume, abort};
 use core::marker;
-#[cfg(not(stage0))]
 use core::marker::Unsize;
 use core::mem::{self, align_of_val, size_of_val, forget};
 use core::ops::Deref;
-#[cfg(not(stage0))]
 use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
 use core::convert::From;
@@ -196,8 +194,6 @@ impl<T: ?Sized> !marker::Send for Rc<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !marker::Sync for Rc<T> {}
 
-// remove cfg after new snapshot
-#[cfg(not(stage0))]
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 
@@ -723,8 +719,6 @@ impl<T: ?Sized> !marker::Send for Weak<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !marker::Sync for Weak<T> {}
 
-// remove cfg after new snapshot
-#[cfg(not(stage0))]
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
