@@ -22,9 +22,13 @@ use syntax::codemap::Span;
 /// A Visitor that walks over an AST and collects Node's into an AST
 /// Map.
 pub struct NodeCollector<'ast> {
+    /// The crate
     pub krate: &'ast Crate,
+    /// The node map
     pub map: Vec<MapEntry<'ast>>,
+    /// The definitions, used for name resolution
     pub definitions: Definitions,
+    /// The parrent of this node
     pub parent_node: NodeId,
 }
 
