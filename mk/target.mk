@@ -95,7 +95,6 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
 		$$(RUSTFLAGS_$(4)) \
 		$$(RUSTFLAGS$(1)_$(4)) \
 		$$(RUSTFLAGS$(1)_$(4)_T_$(2)) \
-		$$(STDCPP_LIBDIR_RUSTFLAGS_$(2)) \
 		--out-dir $$(@D) \
 		-C extra-filename=-$$(CFG_FILENAME_EXTRA) \
 		$$<
@@ -130,7 +129,6 @@ $$(TBIN$(1)_T_$(2)_H_$(3))/$(4)$$(X_$(2)): \
 		| $$(TBIN$(1)_T_$(2)_H_$(3))/
 	@$$(call E, rustc: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) \
-		$$(STDCPP_LIBDIR_RUSTFLAGS_$(2)) \
 		$$(LLVM_LIBDIR_RUSTFLAGS_$(2)) \
 		-o $$@ $$< --cfg $(4)
 

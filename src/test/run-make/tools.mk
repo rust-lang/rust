@@ -85,11 +85,7 @@ ifeq ($(UNAME),Bitrig)
 else
 ifeq ($(UNAME),OpenBSD)
 	EXTRACFLAGS := -lm -lpthread
-	# extend search lib for found estdc++ if build using gcc from
-	# ports under OpenBSD. This is needed for:
-	#  - run-make/execution-engine
-	#  - run-make/issue-19371
-	RUSTC := $(RUSTC) -L/usr/local/lib
+	RUSTC := $(RUSTC) -C linker="$(word 1,$(CC:ccache=))"
 else
 	EXTRACFLAGS := -lm -lrt -ldl -lpthread
 	EXTRACXXFLAGS := -lstdc++
