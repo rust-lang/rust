@@ -99,8 +99,11 @@ use thread::Result;
                             across a recover boundary"]
 pub trait RecoverSafe {}
 
-/// A marker trait representing types which do not contain an `UnsafeCell` by
-/// value internally.
+/// A marker trait representing types where a shared reference is considered
+/// recover safe.
+///
+/// This trait is namely not implemented by `UnsafeCell`, the root of all
+/// interior mutability.
 ///
 /// This is a "helper marker trait" used to provide impl blocks for the
 /// `RecoverSafe` trait, for more information see that documentation.
@@ -108,7 +111,7 @@ pub trait RecoverSafe {}
 #[rustc_on_unimplemented = "the type {Self} contains interior mutability \
                             and a reference may not be safely transferrable \
                             across a recover boundary"]
-pub trait NoUnsafeCell {}
+pub trait RefRecoverSafe {}
 
 /// A simple wrapper around a type to assert that it is panic safe.
 ///
@@ -157,11 +160,11 @@ pub struct AssertRecoverSafe<T>(T);
 // * Our custom AssertRecoverSafe wrapper is indeed recover safe
 impl RecoverSafe for .. {}
 impl<'a, T: ?Sized> !RecoverSafe for &'a mut T {}
-impl<'a, T: NoUnsafeCell + ?Sized> RecoverSafe for &'a T {}
-impl<T: NoUnsafeCell + ?Sized> RecoverSafe for *const T {}
-impl<T: NoUnsafeCell + ?Sized> RecoverSafe for *mut T {}
+impl<'a, T: RefRecoverSafe + ?Sized> RecoverSafe for &'a T {}
+impl<T: RefRecoverSafe + ?Sized> RecoverSafe for *const T {}
+impl<T: RefRecoverSafe + ?Sized> RecoverSafe for *mut T {}
 impl<T: RecoverSafe> RecoverSafe for Unique<T> {}
-impl<T: NoUnsafeCell + ?Sized> RecoverSafe for Shared<T> {}
+impl<T: RefRecoverSafe + ?Sized> RecoverSafe for Shared<T> {}
 impl<T: ?Sized> RecoverSafe for Mutex<T> {}
 impl<T: ?Sized> RecoverSafe for RwLock<T> {}
 impl<T> RecoverSafe for AssertRecoverSafe<T> {}
@@ -169,15 +172,16 @@ impl<T> RecoverSafe for AssertRecoverSafe<T> {}
 // not covered via the Shared impl above b/c the inner contents use
 // Cell/AtomicUsize, but the usage here is recover safe so we can lift the
 // impl up one level to Arc/Rc itself
-impl<T: NoUnsafeCell + ?Sized> RecoverSafe for Rc<T> {}
-impl<T: NoUnsafeCell + ?Sized> RecoverSafe for Arc<T> {}
+impl<T: RefRecoverSafe + ?Sized> RecoverSafe for Rc<T> {}
+impl<T: RefRecoverSafe + ?Sized> RecoverSafe for Arc<T> {}
 
-// Pretty simple implementations for the `NoUnsafeCell` marker trait, basically
-// just saying that this is a marker trait and `UnsafeCell` is the only thing
-// which doesn't implement it (which then transitively applies to everything
-// else.
-impl NoUnsafeCell for .. {}
-impl<T: ?Sized> !NoUnsafeCell for UnsafeCell<T> {}
+// Pretty simple implementations for the `RefRecoverSafe` marker trait,
+// basically just saying that this is a marker trait and `UnsafeCell` is the
+// only thing which doesn't implement it (which then transitively applies to
+// everything else.
+impl RefRecoverSafe for .. {}
+impl<T: ?Sized> !RefRecoverSafe for UnsafeCell<T> {}
+impl<T> RefRecoverSafe for AssertRecoverSafe<T> {}
 
 impl<T> AssertRecoverSafe<T> {
     /// Creates a new `AssertRecoverSafe` wrapper around the provided type.
