@@ -2471,12 +2471,12 @@ impl<'a> State<'a> {
             ast::PatWild => try!(word(&mut self.s, "_")),
             ast::PatIdent(binding_mode, ref path1, ref sub) => {
                 match binding_mode {
-                    ast::BindByRef(mutbl) => {
+                    ast::BindingMode::ByRef(mutbl) => {
                         try!(self.word_nbsp("ref"));
                         try!(self.print_mutability(mutbl));
                     }
-                    ast::BindByValue(ast::MutImmutable) => {}
-                    ast::BindByValue(ast::MutMutable) => {
+                    ast::BindingMode::ByValue(ast::MutImmutable) => {}
+                    ast::BindingMode::ByValue(ast::MutMutable) => {
                         try!(self.word_nbsp("mut"));
                     }
                 }
@@ -2682,7 +2682,7 @@ impl<'a> State<'a> {
             let m = match *explicit_self {
                 ast::SelfStatic => ast::MutImmutable,
                 _ => match decl.inputs[0].pat.node {
-                    ast::PatIdent(ast::BindByValue(m), _, _) => m,
+                    ast::PatIdent(ast::BindingMode::ByValue(m), _, _) => m,
                     _ => ast::MutImmutable
                 }
             };
