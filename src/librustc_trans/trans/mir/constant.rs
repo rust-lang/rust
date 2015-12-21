@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use back::abi;
 use middle::ty::{Ty, HasTypeFlags};
 use rustc::middle::const_eval::ConstVal;
 use rustc::mir::repr as mir;
@@ -29,6 +30,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let val = consts::trans_constval(bcx, cv, ty, bcx.fcx.param_substs);
         let val = if common::type_is_immediate(ccx, ty) {
             OperandValue::Immediate(val)
+        } else if common::type_is_fat_ptr(bcx.tcx(), ty) {
+            let data = common::const_get_elt(ccx, val, &[abi::FAT_PTR_ADDR as u32]);
+            let extra = common::const_get_elt(ccx, val, &[abi::FAT_PTR_EXTRA as u32]);
+            OperandValue::FatPtr(data, extra)
         } else {
             OperandValue::Ref(val)
         };
