@@ -33,7 +33,7 @@ define these dependencies.
 # Detailed design
 [design]: #detailed-design
 
-The target-specific dependency syntax in Cargo will be expanded to to include
+The target-specific dependency syntax in Cargo will be expanded to include
 not only full target strings but also `#[cfg]` expressions:
 
 ```toml
@@ -160,7 +160,7 @@ may not always quite get there.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-* This is no the only change that's known to Cargo which is known to not be
+* This is not the only change that's known to Cargo which is known to not be
   forwards-compatible, so it may be best to lump them all together into one
   Cargo release instead of releasing them over time, but should this be blocked
   on those ideas? (note they have not been formed into an RFC yet)
