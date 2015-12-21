@@ -11,7 +11,7 @@ use utils::span_lint;
 /// **What it does:** This lint checks for incompatible bit masks in comparisons. It is `Warn` by default.
 ///
 /// The formula for detecting if an expression of the type  `_ <bit_op> m <cmp_op> c` (where `<bit_op>`
-/// is one of {`&`, '|'} and `<cmp_op>` is one of {`!=`, `>=`, `>`, `!=`, `>=`, `>`}) can be determined from the following table:
+/// is one of {`&`, `|`} and `<cmp_op>` is one of {`!=`, `>=`, `>`, `!=`, `>=`, `>`}) can be determined from the following table:
 ///
 /// |Comparison  |Bit-Op|Example     |is always|Formula               |
 /// |------------|------|------------|---------|----------------------|
