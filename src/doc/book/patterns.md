@@ -7,7 +7,7 @@ on a whirlwind tour of all of the things patterns can do!
 [bindings]: variable-bindings.html
 [match]: match.html
 
-A quick refresher; you can match against literals directly, and `_` acts as an
+A quick refresher: you can match against literals directly, and `_` acts as an
 ‘any’ case:
 
 ```rust
