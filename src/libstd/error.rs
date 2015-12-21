@@ -119,6 +119,15 @@ impl From<String> for Box<Error + Send + Sync> {
     }
 }
 
+#[stable(feature = "string_box_error", since = "1.7.0")]
+impl From<String> for Box<Error> {
+    fn from(str_err: String) -> Box<Error> {
+        let err1: Box<Error + Send + Sync> = From::from(str_err);
+        let err2: Box<Error> = err1;
+        err2
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, 'b> From<&'b str> for Box<Error + Send + Sync + 'a> {
     fn from(err: &'b str) -> Box<Error + Send + Sync + 'a> {
