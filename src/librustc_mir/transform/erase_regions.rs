@@ -93,14 +93,10 @@ impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
                 self.erase_regions_lvalue(discr);
                 *switch_ty = self.tcx.erase_regions(switch_ty);
             },
-            Terminator::Call { ref mut destination, ref mut func, ref mut args, .. } => {
-                self.erase_regions_lvalue(destination);
-                self.erase_regions_operand(func);
-                for arg in &mut *args {
-                    self.erase_regions_operand(arg);
+            Terminator::Call { ref mut func, ref mut args, ref mut kind } => {
+                if let Some(ref mut destination) = kind.destination() {
+                    self.erase_regions_lvalue(destination);
                 }
-            }
-            Terminator::DivergingCall { ref mut func, ref mut args, .. } => {
                 self.erase_regions_operand(func);
                 for arg in &mut *args {
                     self.erase_regions_operand(arg);

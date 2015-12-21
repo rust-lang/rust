@@ -94,82 +94,29 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 base::build_return_block(bcx.fcx, bcx, return_ty, DebugLoc::None);
             }
 
-            mir::Terminator::Call { ref func, ref args, ref destination, ref targets } => {
-                // The location we'll write the result of the call into.
-                let call_dest = self.trans_lvalue(bcx, destination);
-                let ret_ty = call_dest.ty.to_ty(bcx.tcx());
-                // Create the callee. This will always be a fn
-                // ptr and hence a kind of scalar.
+            mir::Terminator::Call { ref func, ref args, ref kind } => {
+                // Create the callee. This will always be a fn ptr and hence a kind of scalar.
                 let callee = self.trans_operand(bcx, func);
+                let attrs = attributes::from_fn_type(bcx.ccx(), callee.ty);
+                let debugloc = DebugLoc::None;
+                // The arguments we'll be passing. Plus one to account for outptr, if used.
+                let mut llargs = Vec::with_capacity(args.len() + 1);
 
-                // Does the fn use an outptr? If so, we have an extra first argument.
-                let return_outptr = type_of::return_uses_outptr(bcx.ccx(), ret_ty);
-                // The arguments we'll be passing.
-                let mut llargs = if return_outptr {
-                    let mut vec = Vec::with_capacity(args.len() + 1);
-                    vec.push(call_dest.llval);
-                    vec
+                // Prepare the return value destination
+                let (ret_dest_ty, must_copy_dest) = if let Some(ref d) = kind.destination() {
+                    let dest = self.trans_lvalue(bcx, d);
+                    let ret_ty = dest.ty.to_ty(bcx.tcx());
+                    if type_of::return_uses_outptr(bcx.ccx(), ret_ty) {
+                        llargs.push(dest.llval);
+                        (Some((dest, ret_ty)), false)
+                    } else {
+                        (Some((dest, ret_ty)), !common::type_is_zero_size(bcx.ccx(), ret_ty))
+                    }
                 } else {
-                    Vec::with_capacity(args.len())
+                    (None, false)
                 };
 
                 // Process the rest of the args.
-                for arg in args {
-                    let arg_op = self.trans_operand(bcx, arg);
-                    match arg_op.val {
-                        Ref(llval) | Immediate(llval) => llargs.push(llval),
-                        FatPtr(base, extra) => {
-                            // The two words in a fat ptr are passed separately
-                            llargs.push(base);
-                            llargs.push(extra);
-                        }
-                    }
-                }
-
-                let debugloc = DebugLoc::None;
-                let attrs = attributes::from_fn_type(bcx.ccx(), callee.ty);
-                match (*targets, base::avoid_invoke(bcx)) {
-                    (mir::CallTargets::WithCleanup((ret, cleanup)), false) => {
-                        let cleanup = self.bcx(cleanup);
-                        let landingpad = self.make_landing_pad(cleanup);
-                        build::Invoke(bcx,
-                                      callee.immediate(),
-                                      &llargs[..],
-                                      self.llblock(ret),
-                                      landingpad.llbb,
-                                      Some(attrs),
-                                      debugloc);
-                        if !return_outptr && !common::type_is_zero_size(bcx.ccx(), ret_ty) {
-                            // FIXME: What do we do here?
-                            unimplemented!()
-                        }
-                    },
-                    (t, _) => {
-                        let ret = match t {
-                            mir::CallTargets::Return(ret) => ret,
-                            mir::CallTargets::WithCleanup((ret, _)) => {
-                                // make a landing pad regardless (so it sets the personality slot.
-                                let block = self.unreachable_block();
-                                self.make_landing_pad(block);
-                                ret
-                            }
-                        };
-                        let llret = build::Call(bcx,
-                                                callee.immediate(),
-                                                &llargs[..],
-                                                Some(attrs),
-                                                debugloc);
-                        if !return_outptr && !common::type_is_zero_size(bcx.ccx(), ret_ty) {
-                            base::store_ty(bcx, llret, call_dest.llval, ret_ty);
-                        }
-                        build::Br(bcx, self.llblock(ret), debugloc)
-                    }
-                }
-            },
-
-            mir::Terminator::DivergingCall { ref func, ref args, ref cleanup } => {
-                let callee = self.trans_operand(bcx, func);
-                let mut llargs = Vec::with_capacity(args.len());
                 for arg in args {
                     match self.trans_operand(bcx, arg).val {
                         Ref(llval) | Immediate(llval) => llargs.push(llval),
@@ -179,29 +126,103 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                     }
                 }
-                let debugloc = DebugLoc::None;
-                let attrs = attributes::from_fn_type(bcx.ccx(), callee.ty);
-                match (*cleanup, base::avoid_invoke(bcx)) {
-                    (Some(cleanup), false) => {
+
+                // Many different ways to call a function handled here
+                match (base::avoid_invoke(bcx), kind) {
+                    // The two cases below are the only ones to use LLVM’s `invoke`.
+                    (false, &mir::CallKind::DivergingCleanup(cleanup)) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
-                        let unreachable = self.unreachable_block();
                         build::Invoke(bcx,
                                       callee.immediate(),
                                       &llargs[..],
-                                      unreachable.llbb,
+                                      self.unreachable_block().llbb,
                                       landingpad.llbb,
                                       Some(attrs),
                                       debugloc);
-                    }
-                    (t, _) => {
-                        if t.is_some() {
+                    },
+                    (false, &mir::CallKind::ConvergingCleanup { ref targets, .. }) => {
+                        let cleanup = self.bcx(targets.1);
+                        let landingpad = self.make_landing_pad(cleanup);
+                        let (target, postinvoke) = if must_copy_dest {
+                            (bcx.fcx.new_block(false, "", None), Some(self.bcx(targets.0)))
+                        } else {
+                            (self.bcx(targets.0), None)
+                        };
+                        let invokeret = build::Invoke(bcx,
+                                                      callee.immediate(),
+                                                      &llargs[..],
+                                                      target.llbb,
+                                                      landingpad.llbb,
+                                                      Some(attrs),
+                                                      debugloc);
+                        if let Some(postinvoketarget) = postinvoke {
+                            // We translate the copy into a temoprary block. The temporary block is
+                            // necessary because the current block has already been terminated (by
+                            // `invoke`) and we cannot really translate into the target block
+                            // because:
+                            //  * The target block may have more than a single precedesor;
+                            //  * Some LLVM insns cannot have a preceeding store insn (phi,
+                            //    cleanuppad), and adding/prepending the store now may render
+                            //    those other instructions invalid.
+                            //
+                            // NB: This approach still may break some LLVM code. For example if the
+                            // target block starts with a `phi` (which may only match on immediate
+                            // precedesors), it cannot know about this temporary block thus
+                            // resulting in an invalid code:
+                            //
+                            // this:
+                            //     …
+                            //     %0 = …
+                            //     %1 = invoke to label %temp …
+                            // temp:
+                            //     store ty %1, ty* %dest
+                            //     br label %actualtargetblock
+                            // actualtargetblock:            ; preds: %temp, …
+                            //     phi … [%this, …], [%0, …] ; ERROR: phi requires to match only on
+                            //                               ; immediate precedesors
+                            let (ret_dest, ret_ty) = ret_dest_ty
+                                .expect("return destination and type not set");
+                            base::store_ty(target, invokeret, ret_dest.llval, ret_ty);
+                            build::Br(target, postinvoketarget.llbb, debugloc);
+                        }
+                    },
+                    // Everything else uses the regular `Call`, but we have to be careful to
+                    // generate landing pads for later, even if we do not use it.
+                    // FIXME: maybe just change Resume to not panic in that case?
+                    (_, k@&mir::CallKind::DivergingCleanup(_)) |
+                    (_, k@&mir::CallKind::Diverging) => {
+                        if let mir::CallKind::DivergingCleanup(_) = *k {
                             // make a landing pad regardless, so it sets the personality slot.
                             let block = self.unreachable_block();
                             self.make_landing_pad(block);
                         }
                         build::Call(bcx, callee.immediate(), &llargs[..], Some(attrs), debugloc);
                         build::Unreachable(bcx);
+                    }
+                    (_, k@&mir::CallKind::ConvergingCleanup { .. }) |
+                    (_, k@&mir::CallKind::Converging { .. }) => {
+                        let ret = match *k {
+                            mir::CallKind::Converging { target, .. } => target,
+                            mir::CallKind::ConvergingCleanup { targets, .. } => {
+                                // make a landing pad regardless (so it sets the personality slot.
+                                let block = self.unreachable_block();
+                                self.make_landing_pad(block);
+                                targets.0
+                            },
+                            _ => unreachable!()
+                        };
+                        let llret = build::Call(bcx,
+                                                callee.immediate(),
+                                                &llargs[..],
+                                                Some(attrs),
+                                                debugloc);
+                        if must_copy_dest {
+                            let (ret_dest, ret_ty) = ret_dest_ty
+                                .expect("return destination and type not set");
+                            base::store_ty(bcx, llret, ret_dest.llval, ret_ty);
+                        }
+                        build::Br(bcx, self.llblock(ret), debugloc)
                     }
                 }
             }
