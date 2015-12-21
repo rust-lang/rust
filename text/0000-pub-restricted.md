@@ -471,7 +471,7 @@ to provide motivation for the feature (i.e. I am not claiming that the
 feature is making this code cleaner or easier to reason about).
 
 ### Impl item example
-[impl-item-example]: #impl-item-example
+[impl item example]: #impl-item-example
 
 ```rust
 pub struct S;
