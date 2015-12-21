@@ -132,7 +132,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     mir::ProjectionElem::Index(ref index) => {
                         let index = self.trans_operand(bcx, index);
                         let llindex = self.prepare_index(bcx, index.immediate());
-                        (build::InBoundsGEP(bcx, tr_base.llval, &[llindex]),
+                        let zero = common::C_uint(bcx.ccx(), 0u64);
+                        (build::InBoundsGEP(bcx, tr_base.llval, &[zero, llindex]),
                          ptr::null_mut())
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
@@ -140,7 +141,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                          min_length: _ } => {
                         let lloffset = common::C_u32(bcx.ccx(), offset);
                         let llindex = self.prepare_index(bcx, lloffset);
-                        (build::InBoundsGEP(bcx, tr_base.llval, &[llindex]),
+                        let zero = common::C_uint(bcx.ccx(), 0u64);
+                        (build::InBoundsGEP(bcx, tr_base.llval, &[zero, llindex]),
                          ptr::null_mut())
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
@@ -150,7 +152,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         let lllen = self.lvalue_len(bcx, tr_base);
                         let llindex = build::Sub(bcx, lllen, lloffset, DebugLoc::None);
                         let llindex = self.prepare_index(bcx, llindex);
-                        (build::InBoundsGEP(bcx, tr_base.llval, &[llindex]),
+                        let zero = common::C_uint(bcx.ccx(), 0u64);
+                        (build::InBoundsGEP(bcx, tr_base.llval, &[zero, llindex]),
                          ptr::null_mut())
                     }
                     mir::ProjectionElem::Downcast(..) => {
