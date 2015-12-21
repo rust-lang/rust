@@ -28,7 +28,7 @@ how this syntax structure is encoded in the AST, it is recommended to run `rustc
 example of the structure and compare with the
 [nodes in the AST docs](http://manishearth.github.io/rust-internals-docs/syntax/ast/). Usually
 the lint will end up to be a nested series of matches and ifs,
-[like so](https://github.com/Manishearth/rust-clippy/blob/de5ccdfab68a5e37689f3c950ed1532ba9d652a0/src/misc.rs#L34)
+[like so](https://github.com/Manishearth/rust-clippy/blob/de5ccdfab68a5e37689f3c950ed1532ba9d652a0/src/misc.rs#L34).
 
 T-middle issues can be more involved and require verifying types. The
 [`middle::ty`](http://manishearth.github.io/rust-internals-docs/rustc/middle/ty) module contains a
