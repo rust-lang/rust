@@ -14,11 +14,8 @@
 //! [def]: https://en.wikipedia.org/wiki/DEFLATE
 //! [mz]: https://code.google.com/p/miniz/
 
-// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
-#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "flate"]
 #![unstable(feature = "rustc_private", issue = "27812")]
-#![cfg_attr(stage0, staged_api)]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -30,7 +27,6 @@
 #![feature(staged_api)]
 #![feature(unique)]
 #![cfg_attr(test, feature(rustc_private, rand, vec_push_all))]
-#![cfg_attr(stage0, allow(improper_ctypes))]
 
 #[cfg(test)]
 #[macro_use]
