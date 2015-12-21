@@ -49,6 +49,11 @@ fn fat_ptr_store_to<'a>(a: &'a [u8], b: &mut &'a [u8]) {
     *b = a;
 }
 
+#[rustc_mir]
+fn fat_ptr_constant() -> &'static str {
+    "HELLO"
+}
+
 fn main() {
     let a = Wrapper(4, [7,6,5]);
 
@@ -60,4 +65,6 @@ fn main() {
     let mut target : &[u8] = &[42];
     fat_ptr_store_to(p, &mut target);
     assert_eq!(target, &a.1);
+
+    assert_eq!(fat_ptr_constant(), "HELLO");
 }
