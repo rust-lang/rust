@@ -268,6 +268,10 @@
 #![feature(vec_push_all)]
 #![feature(wrapping)]
 #![feature(zero_one)]
+// Snapshots are configured to link jemalloc by default, which makes
+// CFG_DISABLE_JEMALLOC break in stage0 because alloc_jemalloc doesn't exist.
+// This forces stage0 to always use the system allocator.
+#![cfg_attr(stage0, feature(alloc_system))]
 
 // Don't link to std. We are std.
 #![no_std]
@@ -284,6 +288,11 @@
 #[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
                  unreachable, unimplemented, write, writeln, try)]
 extern crate core as __core;
+
+// Snapshots are configured to link jemalloc by default, which makes
+// CFG_DISABLE_JEMALLOC break in stage0 because alloc_jemalloc doesn't exist.
+// This forces stage0 to always use the system allocator.
+#[cfg(stage0)] extern crate alloc_system;
 
 #[macro_use]
 #[macro_reexport(vec, format)]
