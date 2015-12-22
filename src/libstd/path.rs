@@ -1863,6 +1863,16 @@ impl Path {
 
     /// Checks if the path buffer is empty. On Windows, it will return false if the inner string is
     /// invalid unicode. On Unix, this is a no-op.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("/tmp/foo.rs");
+    ///
+    /// assert!(!path.is_empty());
+    /// ```
     #[unstable(feature = "path_extras", reason = "recently added", issue = "30259")]
     pub fn is_empty(&self) -> bool {
         if let Some(b) = self.inner.to_bytes() {
@@ -3198,6 +3208,17 @@ mod tests {
             tfn!(r"foo\..", "bar", r"foo\..\bar");
             tfn!(r"\", "foo", r"\foo");
         }
+    }
+
+    #[test]
+    pub fn is_empty() {
+        let path = Path::new("/tmp/foo.rs");
+        let mut path_buf = PathBuf::new();
+
+        assert!(!path.is_empty());
+        assert!(path_buf.is_empty());
+        path_buf.push("catsarecute");
+        assert!(!path_buf.is_empty());
     }
 
     #[test]
