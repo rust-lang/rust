@@ -75,11 +75,11 @@ use middle::ty::util::IntTypeExt;
 use rscope::*;
 use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
-use util::common::{ErrorReported, memoized};
+use util::common::{ErrorReported, MemoizationMap};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use write_ty_to_tcx;
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -1419,17 +1419,17 @@ fn type_scheme_of_def_id<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 }
 
 fn type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
-                                it: &hir::Item)
+                                item: &hir::Item)
                                 -> ty::TypeScheme<'tcx>
 {
-    // Computing the type scheme of an item is a discrete task:
-    let item_def_id = ccx.tcx.map.local_def_id(it.id);
-    let _task = ccx.tcx.dep_graph.in_task(DepNode::TypeScheme(item_def_id));
-    ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id)); // we have access to `it`
-
-    memoized(&ccx.tcx.tcache,
-             ccx.tcx.map.local_def_id(it.id),
-             |_| compute_type_scheme_of_item(ccx, it))
+    let item_def_id = ccx.tcx.map.local_def_id(item.id);
+    ccx.tcx.tcache.memoize(item_def_id, || {
+        // NB. Since the `memoized` function enters a new task, and we
+        // are giving this task access to the item `item`, we must
+        // register a read.
+        ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id));
+        compute_type_scheme_of_item(ccx, item)
+    })
 }
 
 fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
@@ -1547,14 +1547,14 @@ fn type_scheme_of_foreign_item<'a, 'tcx>(
     abi: abi::Abi)
     -> ty::TypeScheme<'tcx>
 {
-    // Computing the type scheme of a foreign item is a discrete task:
     let item_def_id = ccx.tcx.map.local_def_id(item.id);
-    let _task = ccx.tcx.dep_graph.in_task(DepNode::TypeScheme(item_def_id));
-    ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id)); // we have access to `item`
-
-    memoized(&ccx.tcx.tcache,
-             ccx.tcx.map.local_def_id(item.id),
-             |_| compute_type_scheme_of_foreign_item(ccx, item, abi))
+    ccx.tcx.tcache.memoize(item_def_id, || {
+        // NB. Since the `memoized` function enters a new task, and we
+        // are giving this task access to the item `item`, we must
+        // register a read.
+        ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id));
+        compute_type_scheme_of_foreign_item(ccx, item, abi)
+    })
 }
 
 fn compute_type_scheme_of_foreign_item<'a, 'tcx>(
