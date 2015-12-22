@@ -16,7 +16,7 @@ use syntax::ast;
 use syntax::parse::token::InternedString;
 use util::nodemap::NodeMap;
 
-/// A definition, that defines are 
+/// A definition
 #[derive(Clone)]
 pub struct Definitions {
     data: Vec<DefData>,
@@ -101,7 +101,7 @@ pub enum DefPathData {
     /// A struct field
     Field(hir::StructFieldKind),
     /// Implicit ctor for a tuple-like struct
-    StructCtor, 
+    StructCtor,
     /// Initializer for a constant
     Initializer,
     /// A pattern binding

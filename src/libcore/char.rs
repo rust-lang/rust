@@ -538,8 +538,8 @@ impl Iterator for EscapeDefault {
         }
     }
 
-	fn count(self) -> usize {
-		match self.state {
+    fn count(self) -> usize {
+        match self.state {
             EscapeDefaultState::Char(_)       => 1,
             EscapeDefaultState::Unicode(iter) => iter.count(),
             EscapeDefaultState::Done          => 0,
