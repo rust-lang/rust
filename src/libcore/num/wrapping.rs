@@ -111,6 +111,15 @@ macro_rules! wrapping_impl {
             }
         }
 
+        #[cfg(not(stage0))]
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl AddAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn add_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self + other;
+            }
+        }
+
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Sub for Wrapping<$t> {
             type Output = Wrapping<$t>;
@@ -118,6 +127,15 @@ macro_rules! wrapping_impl {
             #[inline(always)]
             fn sub(self, other: Wrapping<$t>) -> Wrapping<$t> {
                 Wrapping(self.0.wrapping_sub(other.0))
+            }
+        }
+
+        #[cfg(not(stage0))]
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl SubAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn sub_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self - other;
             }
         }
 
@@ -131,6 +149,15 @@ macro_rules! wrapping_impl {
             }
         }
 
+        #[cfg(not(stage0))]
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl MulAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn mul_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self * other;
+            }
+        }
+
         #[stable(feature = "wrapping_div", since = "1.3.0")]
         impl Div for Wrapping<$t> {
             type Output = Wrapping<$t>;
@@ -138,6 +165,15 @@ macro_rules! wrapping_impl {
             #[inline(always)]
             fn div(self, other: Wrapping<$t>) -> Wrapping<$t> {
                 Wrapping(self.0.wrapping_div(other.0))
+            }
+        }
+
+        #[cfg(not(stage0))]
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl DivAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn div_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self / other;
             }
         }
 
@@ -161,6 +197,15 @@ macro_rules! wrapping_impl {
             }
         }
 
+        #[cfg(not(stage0))]
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl BitXorAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn bitxor_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self ^ other;
+            }
+        }
+
         #[stable(feature = "rust1", since = "1.0.0")]
         impl BitOr for Wrapping<$t> {
             type Output = Wrapping<$t>;
@@ -171,6 +216,15 @@ macro_rules! wrapping_impl {
             }
         }
 
+        #[cfg(not(stage0))]
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl BitOrAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn bitor_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self | other;
+            }
+        }
+
         #[stable(feature = "rust1", since = "1.0.0")]
         impl BitAnd for Wrapping<$t> {
             type Output = Wrapping<$t>;
@@ -178,6 +232,15 @@ macro_rules! wrapping_impl {
             #[inline(always)]
             fn bitand(self, other: Wrapping<$t>) -> Wrapping<$t> {
                 Wrapping(self.0 & other.0)
+            }
+        }
+
+        #[cfg(not(stage0))]
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl BitAndAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn bitand_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self & other;
             }
         }
     )*)
