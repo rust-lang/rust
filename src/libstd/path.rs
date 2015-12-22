@@ -1861,8 +1861,7 @@ impl Path {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
     }
 
-    /// Checks if the path buffer is empty. On Windows, it will return false if the inner string is
-    /// invalid unicode. On Unix, this is a no-op.
+    /// Checks if the path buffer is empty.
     ///
     /// # Examples
     ///
