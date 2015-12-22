@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 84 lints included in this crate:
+There are 85 lints included in this crate:
 
 name                                                                                                     | default | meaning
 ---------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -58,6 +58,7 @@ name                                                                            
 [option_map_unwrap_or](https://github.com/Manishearth/rust-clippy/wiki#option_map_unwrap_or)             | warn    | using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as `map_or(a, f)`)
 [option_map_unwrap_or_else](https://github.com/Manishearth/rust-clippy/wiki#option_map_unwrap_or_else)   | warn    | using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `map_or_else(g, f)`)
 [option_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#option_unwrap_used)                 | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`
+[out_of_bounds_indexing](https://github.com/Manishearth/rust-clippy/wiki#out_of_bounds_indexing)         | deny    | out of bound constant indexing
 [precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                                 | warn    | catches operations where precedence may be unclear. See the wiki for a list of cases caught
 [ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                       | warn    | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
 [range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)                 | warn    | using Range::step_by(0), which produces an infinite iterator
