@@ -621,8 +621,8 @@ fn ed_iterator_specializations() {
 impl EscapeDefault {
     fn get_offset(&self) -> Option<usize> {
         match self.state {
-            EscapeDefaultState::Backslash(c) => Some(0),
-            EscapeDefaultState::Char(c)      => Some(1),
+            EscapeDefaultState::Backslash(_) => Some(0),
+            EscapeDefaultState::Char(_)      => Some(1),
             EscapeDefaultState::Done         => None,
             EscapeDefaultState::Unicode(_)   => None,
         }
