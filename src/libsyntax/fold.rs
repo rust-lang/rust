@@ -469,10 +469,10 @@ pub fn noop_fold_path_parameters<T: Folder>(path_parameters: PathParameters, fld
                                             -> PathParameters
 {
     match path_parameters {
-        AngleBracketedParameters(data) =>
-            AngleBracketedParameters(fld.fold_angle_bracketed_parameter_data(data)),
-        ParenthesizedParameters(data) =>
-            ParenthesizedParameters(fld.fold_parenthesized_parameter_data(data)),
+        PathParameters::AngleBracketed(data) =>
+            PathParameters::AngleBracketed(fld.fold_angle_bracketed_parameter_data(data)),
+        PathParameters::Parenthesized(data) =>
+            PathParameters::Parenthesized(fld.fold_parenthesized_parameter_data(data)),
     }
 }
 

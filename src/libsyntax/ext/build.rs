@@ -328,7 +328,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }).collect();
         segments.push(ast::PathSegment {
             identifier: last_identifier,
-            parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
+            parameters: ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
                 lifetimes: lifetimes,
                 types: P::from_vec(types),
                 bindings: P::from_vec(bindings),
@@ -366,7 +366,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let mut path = trait_path;
         path.segments.push(ast::PathSegment {
             identifier: ident,
-            parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
+            parameters: ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
                 lifetimes: lifetimes,
                 types: P::from_vec(types),
                 bindings: P::from_vec(bindings),

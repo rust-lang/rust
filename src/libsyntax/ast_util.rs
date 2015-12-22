@@ -40,7 +40,7 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
         segments: vec!(
             ast::PathSegment {
                 identifier: identifier,
-                parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
+                parameters: ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
                     lifetimes: Vec::new(),
                     types: P::empty(),
                     bindings: P::empty(),

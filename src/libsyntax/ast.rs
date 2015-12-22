@@ -250,14 +250,14 @@ pub struct PathSegment {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum PathParameters {
     /// The `<'a, A,B,C>` in `foo::bar::baz::<'a, A,B,C>`
-    AngleBracketedParameters(AngleBracketedParameterData),
+    AngleBracketed(AngleBracketedParameterData),
     /// The `(A,B)` and `C` in `Foo(A,B) -> C`
-    ParenthesizedParameters(ParenthesizedParameterData),
+    Parenthesized(ParenthesizedParameterData),
 }
 
 impl PathParameters {
     pub fn none() -> PathParameters {
-        AngleBracketedParameters(AngleBracketedParameterData {
+        PathParameters::AngleBracketed(AngleBracketedParameterData {
             lifetimes: Vec::new(),
             types: P::empty(),
             bindings: P::empty(),
@@ -266,25 +266,25 @@ impl PathParameters {
 
     pub fn is_empty(&self) -> bool {
         match *self {
-            AngleBracketedParameters(ref data) => data.is_empty(),
+            PathParameters::AngleBracketed(ref data) => data.is_empty(),
 
             // Even if the user supplied no types, something like
             // `X()` is equivalent to `X<(),()>`.
-            ParenthesizedParameters(..) => false,
+            PathParameters::Parenthesized(..) => false,
         }
     }
 
     pub fn has_lifetimes(&self) -> bool {
         match *self {
-            AngleBracketedParameters(ref data) => !data.lifetimes.is_empty(),
-            ParenthesizedParameters(_) => false,
+            PathParameters::AngleBracketed(ref data) => !data.lifetimes.is_empty(),
+            PathParameters::Parenthesized(_) => false,
         }
     }
 
     pub fn has_types(&self) -> bool {
         match *self {
-            AngleBracketedParameters(ref data) => !data.types.is_empty(),
-            ParenthesizedParameters(..) => true,
+            PathParameters::AngleBracketed(ref data) => !data.types.is_empty(),
+            PathParameters::Parenthesized(..) => true,
         }
     }
 
@@ -292,10 +292,10 @@ impl PathParameters {
     /// parameters in the parenthesized case.
     pub fn types(&self) -> Vec<&P<Ty>> {
         match *self {
-            AngleBracketedParameters(ref data) => {
+            PathParameters::AngleBracketed(ref data) => {
                 data.types.iter().collect()
             }
-            ParenthesizedParameters(ref data) => {
+            PathParameters::Parenthesized(ref data) => {
                 data.inputs.iter()
                     .chain(data.output.iter())
                     .collect()
@@ -305,10 +305,10 @@ impl PathParameters {
 
     pub fn lifetimes(&self) -> Vec<&Lifetime> {
         match *self {
-            AngleBracketedParameters(ref data) => {
+            PathParameters::AngleBracketed(ref data) => {
                 data.lifetimes.iter().collect()
             }
-            ParenthesizedParameters(_) => {
+            PathParameters::Parenthesized(_) => {
                 Vec::new()
             }
         }
@@ -316,10 +316,10 @@ impl PathParameters {
 
     pub fn bindings(&self) -> Vec<&P<TypeBinding>> {
         match *self {
-            AngleBracketedParameters(ref data) => {
+            PathParameters::AngleBracketed(ref data) => {
                 data.bindings.iter().collect()
             }
-            ParenthesizedParameters(_) => {
+            PathParameters::Parenthesized(_) => {
                 Vec::new()
             }
         }
