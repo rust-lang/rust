@@ -933,7 +933,7 @@ fn get_concurrency() -> usize {
                          0 as *mut _, 0);
         }
         if cpus < 1 {
-            mib[1] = HW_NCPU;
+            mib[1] = libc::HW_NCPU;
             unsafe {
                 libc::sysctl(mib.as_mut_ptr(), 2,
                              &mut cpus as *mut _ as *mut _,
