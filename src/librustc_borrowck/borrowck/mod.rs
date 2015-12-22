@@ -20,6 +20,7 @@ pub use self::MovedValueUseKind::*;
 
 use self::InteriorKind::*;
 
+use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
 use rustc::front::map::blocks::FnParts;
 use rustc::middle::cfg;
@@ -109,7 +110,7 @@ pub fn check_crate(tcx: &ty::ctxt) {
         }
     };
 
-    tcx.map.krate().visit_all_items(&mut bccx);
+    tcx.visit_all_items_in_krate(DepNode::BorrowCheck, &mut bccx);
 
     if tcx.sess.borrowck_stats() {
         println!("--- borrowck stats ---");

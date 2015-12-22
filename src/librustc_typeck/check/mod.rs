@@ -82,6 +82,7 @@ use self::TupleArgumentsFlag::*;
 
 use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv, PathParamMode};
 use check::_match::pat_ctxt;
+use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
 use middle::astconv_util::prohibit_type_params;
 use middle::cstore::LOCAL_CRATE;
@@ -384,34 +385,33 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
 
 pub fn check_wf_new(ccx: &CrateCtxt) {
     ccx.tcx.sess.abort_if_new_errors(|| {
-        let krate = ccx.tcx.map.krate();
         let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(ccx);
-        krate.visit_all_items(&mut visit);
+        ccx.tcx.visit_all_items_in_krate(DepNode::WfCheck, &mut visit);
     });
 }
 
 pub fn check_item_types(ccx: &CrateCtxt) {
     ccx.tcx.sess.abort_if_new_errors(|| {
-        let krate = ccx.tcx.map.krate();
         let mut visit = CheckItemTypesVisitor { ccx: ccx };
-        krate.visit_all_items(&mut visit);
+        ccx.tcx.visit_all_items_in_krate(DepNode::TypeckItemType, &mut visit);
     });
 }
 
 pub fn check_item_bodies(ccx: &CrateCtxt) {
     ccx.tcx.sess.abort_if_new_errors(|| {
-        let krate = ccx.tcx.map.krate();
         let mut visit = CheckItemBodiesVisitor { ccx: ccx };
-        krate.visit_all_items(&mut visit);
+        ccx.tcx.visit_all_items_in_krate(DepNode::TypeckItemBody, &mut visit);
     });
 }
 
 pub fn check_drop_impls(ccx: &CrateCtxt) {
     ccx.tcx.sess.abort_if_new_errors(|| {
+        let _task = ccx.tcx.dep_graph.in_task(DepNode::Dropck);
         let drop_trait = match ccx.tcx.lang_items.drop_trait() {
             Some(id) => ccx.tcx.lookup_trait_def(id), None => { return }
         };
         drop_trait.for_each_impl(ccx.tcx, |drop_impl_did| {
+            let _task = ccx.tcx.dep_graph.in_task(DepNode::DropckImpl(drop_impl_did));
             if drop_impl_did.is_local() {
                 match dropck::check_drop_impl(ccx.tcx, drop_impl_did) {
                     Ok(()) => {}

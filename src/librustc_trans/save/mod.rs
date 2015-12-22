@@ -716,6 +716,8 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l ty::ctxt<'tcx>,
                                analysis: &ty::CrateAnalysis,
                                cratename: &str,
                                odir: Option<&Path>) {
+    let _ignore = tcx.dep_graph.in_ignore();
+
     if generated_code(krate.span) {
         return;
     }
