@@ -43,6 +43,7 @@ use middle::weak_lang_items;
 use middle::pat_util::simple_name;
 use middle::subst::Substs;
 use middle::ty::{self, Ty, HasTypeFlags};
+use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
 use rustc::util::common::time;
 use rustc_mir::mir_map::MirMap;
@@ -2978,8 +2979,15 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
                          mir_map: &MirMap<'tcx>,
                          analysis: ty::CrateAnalysis)
                          -> CrateTranslation {
-    let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
+    let _task = tcx.dep_graph.in_task(DepNode::TransCrate);
+
+    // Be careful with this krate: obviously it gives access to the
+    // entire contents of the krate. So if you push any subtasks of
+    // `TransCrate`, you need to be careful to register "reads" of the
+    // particular items that will be processed.
     let krate = tcx.map.krate();
+
+    let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
 
     let check_overflow = if let Some(v) = tcx.sess.opts.debugging_opts.force_overflow_checks {
         v
@@ -3186,7 +3194,16 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TransItemsWithinModVisitor<'a, 'tcx> {
                 // skip modules, they will be uncovered by the TransModVisitor
             }
             _ => {
-                trans_item(self.ccx, i);
+                let def_id = self.ccx.tcx().map.local_def_id(i.id);
+                let tcx = self.ccx.tcx();
+
+                // Create a subtask for trans'ing a particular item. We are
+                // giving `trans_item` access to this item, so also record a read.
+                tcx.dep_graph.with_task(DepNode::TransCrateItem(def_id), || {
+                    tcx.dep_graph.read(DepNode::Hir(def_id));
+                    trans_item(self.ccx, i);
+                });
+
                 intravisit::walk_item(self, i);
             }
         }

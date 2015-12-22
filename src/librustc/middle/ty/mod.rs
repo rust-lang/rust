@@ -51,6 +51,7 @@ use syntax::parse::token::{InternedString, special_idents};
 
 use rustc_front::hir;
 use rustc_front::hir::{ItemImpl, ItemTrait};
+use rustc_front::intravisit::Visitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
 pub use self::sty::{BuiltinBound, BuiltinBounds, ExistentialBounds};
@@ -1946,7 +1947,14 @@ fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
         panic!("No def'n found for {:?} in tcx.{}", def_id, descr);
     }
     let v = load_external();
-    map.borrow_mut().insert(def_id, v.clone());
+
+    // Don't consider this a write from the current task, since we are
+    // loading from another crate. (Note that the current task will
+    // already have registered a read in the call to `get` above.)
+    dep_graph.with_ignore(|| {
+        map.borrow_mut().insert(def_id, v.clone());
+    });
+
     v
 }
 
@@ -2458,6 +2466,10 @@ impl<'tcx> ctxt<'tcx> {
             return
         }
 
+        // The primitive is not local, hence we are reading this out
+        // of metadata.
+        let _ignore = self.dep_graph.in_ignore();
+
         if self.populated_external_primitive_impls.borrow().contains(&primitive_def_id) {
             return
         }
@@ -2479,6 +2491,10 @@ impl<'tcx> ctxt<'tcx> {
         if type_id.is_local() {
             return
         }
+
+        // The type is not local, hence we are reading this out of
+        // metadata and don't need to track edges.
+        let _ignore = self.dep_graph.in_ignore();
 
         if self.populated_external_types.borrow().contains(&type_id) {
             return
@@ -2504,6 +2520,10 @@ impl<'tcx> ctxt<'tcx> {
         if trait_id.is_local() {
             return
         }
+
+        // The type is not local, hence we are reading this out of
+        // metadata and don't need to track edges.
+        let _ignore = self.dep_graph.in_ignore();
 
         let def = self.lookup_trait_def(trait_id);
         if def.flags.get().intersects(TraitFlags::IMPLS_VALID) {
@@ -2726,6 +2746,15 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
         Some(self.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
+    }
+
+
+    pub fn visit_all_items_in_krate<V,F>(&self,
+                                         dep_node_fn: F,
+                                         visitor: &mut V)
+        where F: FnMut(DefId) -> DepNode, V: Visitor<'tcx>
+    {
+        dep_graph::visit_all_items_in_krate(self, dep_node_fn, visitor);
     }
 }
 
