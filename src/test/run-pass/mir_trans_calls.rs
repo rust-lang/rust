@@ -88,6 +88,19 @@ fn test8() -> isize {
     Two::two()
 }
 
+#[link(name = "c")]
+extern {
+    fn printf(format: *const u8, ...) -> i32;
+}
+
+#[rustc_mir]
+fn native_test() -> i32 {
+    unsafe {
+        let format = b"Hello World! There are %d days in a year. Mmmm %.5f\n\0";
+        printf(format.as_ptr(), 365, 3.14159)
+    }
+}
+
 fn main() {
     assert_eq!(test1(1, (2, 3), &[4, 5, 6]), (1, (2, 3), &[4, 5, 6][..]));
     assert_eq!(test2(98), 98);
@@ -97,4 +110,6 @@ fn main() {
     assert_eq!(test6(&Foo, 12367), 12367);
     assert_eq!(test7(), 1);
     assert_eq!(test8(), 2);
+
+    assert_eq!(native_test(), 56);
 }

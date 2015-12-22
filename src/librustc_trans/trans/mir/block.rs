@@ -17,7 +17,10 @@ use trans::base;
 use trans::build;
 use trans::common::{self, Block};
 use trans::debuginfo::DebugLoc;
+use trans::foreign;
 use trans::type_of;
+
+use syntax::abi as synabi;
 
 use super::MirContext;
 use super::operand::OperandValue::{FatPtr, Immediate, Ref};
@@ -112,19 +115,24 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // Create the callee. This will always be a fn
                 // ptr and hence a kind of scalar.
                 let callee = self.trans_operand(bcx, &data.func);
-                let ret_ty = if let ty::TyBareFn(_, ref f) = callee.ty.sty {
+                let (abi, ret_ty) = if let ty::TyBareFn(_, ref f) = callee.ty.sty {
                     let sig = bcx.tcx().erase_late_bound_regions(&f.sig);
                     let sig = infer::normalize_associated_type(bcx.tcx(), &sig);
-                    sig.output
+                    (f.abi, sig.output)
                 } else {
                     panic!("trans_block: expected TyBareFn as callee");
                 };
 
+                // Have we got a 'Rust' function?
+                let is_rust_fn = abi == synabi::Rust || abi == synabi::RustCall;
+
                 // The arguments we'll be passing
-                let mut llargs = vec![];
+                let mut llargs = Vec::with_capacity(data.args.len() + 1);
+                // and their Rust types (formal args only so not outptr)
+                let mut arg_tys = Vec::with_capacity(data.args.len());
 
                 // Does the fn use an outptr? If so, that's the first arg.
-                if let ty::FnConverging(ret_ty) = ret_ty {
+                if let (true, ty::FnConverging(ret_ty)) = (is_rust_fn, ret_ty) {
                     if type_of::return_uses_outptr(bcx.ccx(), ret_ty) {
                         llargs.push(call_dest.llval);
                     }
@@ -133,6 +141,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // Process the rest of the args.
                 for arg in &data.args {
                     let arg_op = self.trans_operand(bcx, arg);
+                    arg_tys.push(arg_op.ty);
                     match arg_op.val {
                         Ref(llval) | Immediate(llval) => llargs.push(llval),
                         FatPtr(base, extra) => {
@@ -148,19 +157,29 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 //self.make_landing_pad(panic_bb);
 
                 // Do the actual call.
-                let (llret, b) = base::invoke(bcx,
-                                              callee.immediate(),
-                                              &llargs[..],
-                                              callee.ty,
-                                              DebugLoc::None);
-                bcx = b;
+                if is_rust_fn {
+                    let (llret, b) = base::invoke(bcx,
+                                                  callee.immediate(),
+                                                  &llargs,
+                                                  callee.ty,
+                                                  DebugLoc::None);
+                    bcx = b;
 
-                // Copy the return value into the destination.
-                if let ty::FnConverging(ret_ty) = ret_ty {
-                    if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
-                       !common::type_is_zero_size(bcx.ccx(), ret_ty) {
-                        base::store_ty(bcx, llret, call_dest.llval, ret_ty);
+                    // Copy the return value into the destination.
+                    if let ty::FnConverging(ret_ty) = ret_ty {
+                        if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
+                           !common::type_is_zero_size(bcx.ccx(), ret_ty) {
+                            base::store_ty(bcx, llret, call_dest.llval, ret_ty);
+                        }
                     }
+                } else {
+                    bcx = foreign::trans_native_call(bcx,
+                                                     callee.ty,
+                                                     callee.immediate(),
+                                                     call_dest.llval,
+                                                     &llargs,
+                                                     arg_tys,
+                                                     DebugLoc::None);
                 }
 
                 build::Br(bcx, self.llblock(targets.0), DebugLoc::None)
