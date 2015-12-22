@@ -82,7 +82,7 @@ fn expr_eq_ident(expr: &Expr, id: Ident) -> bool {
     match expr.node {
         ExprPath(None, ref path) => {
             let arg_segment = [PathSegment { identifier: id, parameters: PathParameters::none() }];
-            !path.global && path.segments == arg_segment
+            !path.global && path.segments[..] == arg_segment
         }
         _ => false,
     }
