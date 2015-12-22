@@ -90,7 +90,7 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use rustc::middle::region::CodeExtent;
 use rustc::middle::lang_items;
 use rustc::middle::subst::Substs;
-use rustc::middle::ty::{Ty, Region};
+use rustc::middle::ty::{self, Ty};
 use rustc::mir::repr::*;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token::intern_and_get_ident;
@@ -297,27 +297,34 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.scopes.first().map(|scope| scope.extent).unwrap()
     }
 
-    pub fn panic_bound_check(&mut self,
+    pub fn panic_bounds_check(&mut self,
                              block: BasicBlock,
                              index: Operand<'tcx>,
                              len: Operand<'tcx>,
                              span: Span) {
+        // fn(&(filename: &'static str, line: u32), index: usize, length: usize) -> !
         let func = self.lang_function(lang_items::PanicBoundsCheckFnLangItem);
-        let str_ty = self.hir.tcx().mk_static_str();
-        let tup_ty = self.hir.tcx().mk_tup(vec![str_ty, self.hir.tcx().types.u32]);
-        // FIXME: ReStatic might be wrong here?
-        let ref_region = self.hir.tcx().mk_region(Region::ReStatic);
-        let ref_ty = self.hir.tcx().mk_imm_ref(ref_region, tup_ty.clone());
-        let (file_arg, line_arg) = self.span_to_fileline_args(span);
+        let args = func.ty.fn_args();
+        let ref_ty = args.skip_binder()[0];
+        let (region, tup_ty) = if let ty::TyRef(region, tyandmut) = ref_ty.sty {
+            (region, tyandmut.ty)
+        } else {
+            self.hir.span_bug(span, &format!("unexpected panic_bound_check type: {:?}", func.ty));
+        };
         let (tuple, tuple_ref) = (self.temp(tup_ty), self.temp(ref_ty));
-        self.cfg.push_assign(block, DUMMY_SP, &tuple, // tuple = (message_arg, file_arg, line_arg);
-                             Rvalue::Aggregate(AggregateKind::Tuple, vec![file_arg, line_arg]));
-        // FIXME: ReStatic might be wrong here?
+        let (file, line) = self.span_to_fileline_args(span);
+        let elems = vec![Operand::Constant(file), Operand::Constant(line)];
+        // FIXME: We should have this as a constant, rather than a stack variable (to not pollute
+        // icache with cold branch code), however to achieve that we either have to rely on rvalue
+        // promotion or have some way, in MIR, to create constants.
+        self.cfg.push_assign(block, DUMMY_SP, &tuple, // tuple = (file_arg, line_arg);
+                             Rvalue::Aggregate(AggregateKind::Tuple, elems));
+        // FIXME: is this region really correct here?
         self.cfg.push_assign(block, DUMMY_SP, &tuple_ref, // tuple_ref = &tuple;
-                             Rvalue::Ref(*ref_region, BorrowKind::Unique, tuple));
+                             Rvalue::Ref(*region, BorrowKind::Unique, tuple));
         let cleanup = self.diverge_cleanup();
         self.cfg.terminate(block, Terminator::Call {
-            func: func,
+            func: Operand::Constant(func),
             args: vec![Operand::Consume(tuple_ref), index, len],
             kind: match cleanup {
                 None => CallKind::Diverging,
@@ -328,31 +335,36 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
     /// Create diverge cleanup and branch to it from `block`.
     pub fn panic(&mut self, block: BasicBlock, msg: &'static str, span: Span) {
+        // fn(&(msg: &'static str filename: &'static str, line: u32)) -> !
         let func = self.lang_function(lang_items::PanicFnLangItem);
-
-        let str_ty = self.hir.tcx().mk_static_str();
-        let tup_ty = self.hir.tcx().mk_tup(vec![str_ty, str_ty, self.hir.tcx().types.u32]);
-        // FIXME: ReStatic might be wrong here?
-        let ref_region = self.hir.tcx().mk_region(Region::ReStatic);
-        let ref_ty = self.hir.tcx().mk_imm_ref(ref_region, tup_ty.clone());
-        let message_arg = Operand::Constant(Constant {
+        let args = func.ty.fn_args();
+        let ref_ty = args.skip_binder()[0];
+        let (region, tup_ty) = if let ty::TyRef(region, tyandmut) = ref_ty.sty {
+            (region, tyandmut.ty)
+        } else {
+            self.hir.span_bug(span, &format!("unexpected panic type: {:?}", func.ty));
+        };
+        let (tuple, tuple_ref) = (self.temp(tup_ty), self.temp(ref_ty));
+        let (file, line) = self.span_to_fileline_args(span);
+        let message = Constant {
             span: DUMMY_SP,
-            ty: str_ty,
+            ty: self.hir.tcx().mk_static_str(),
             literal: self.hir.str_literal(intern_and_get_ident(msg))
-        });
-        let (file_arg, line_arg) = self.span_to_fileline_args(span);
-        let tuple = self.temp(tup_ty);
-        let tuple_ref = self.temp(ref_ty);
+        };
+        let elems = vec![Operand::Constant(message),
+                         Operand::Constant(file),
+                         Operand::Constant(line)];
+        // FIXME: We should have this as a constant, rather than a stack variable (to not pollute
+        // icache with cold branch code), however to achieve that we either have to rely on rvalue
+        // promotion or have some way, in MIR, to create constants.
         self.cfg.push_assign(block, DUMMY_SP, &tuple, // tuple = (message_arg, file_arg, line_arg);
-                             Rvalue::Aggregate(AggregateKind::Tuple,
-                                               vec![message_arg, file_arg, line_arg])
-        );
-        // FIXME: ReStatic might be wrong here?
+                             Rvalue::Aggregate(AggregateKind::Tuple, elems));
+        // FIXME: is this region really correct here?
         self.cfg.push_assign(block, DUMMY_SP, &tuple_ref, // tuple_ref = &tuple;
-                             Rvalue::Ref(*ref_region, BorrowKind::Unique, tuple));
+                             Rvalue::Ref(*region, BorrowKind::Unique, tuple));
         let cleanup = self.diverge_cleanup();
         self.cfg.terminate(block, Terminator::Call {
-            func: func,
+            func: Operand::Constant(func),
             args: vec![Operand::Consume(tuple_ref)],
             kind: match cleanup {
                 None => CallKind::Diverging,
@@ -361,14 +373,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         });
     }
 
-    fn lang_function(&mut self, lang_item: lang_items::LangItem) -> Operand<'tcx> {
+    fn lang_function(&mut self, lang_item: lang_items::LangItem) -> Constant<'tcx> {
         let funcdid = match self.hir.tcx().lang_items.require(lang_item) {
             Ok(d) => d,
             Err(m) => {
                 self.hir.tcx().sess.fatal(&*m)
             }
         };
-        Operand::Constant(Constant {
+        Constant {
             span: DUMMY_SP,
             ty: self.hir.tcx().lookup_item_type(funcdid).ty,
             literal: Literal::Item {
@@ -376,19 +388,19 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 kind: ItemKind::Function,
                 substs: self.hir.tcx().mk_substs(Substs::empty())
             }
-        })
+        }
     }
 
-    fn span_to_fileline_args(&mut self, span: Span) -> (Operand<'tcx>, Operand<'tcx>) {
+    fn span_to_fileline_args(&mut self, span: Span) -> (Constant<'tcx>, Constant<'tcx>) {
         let span_lines = self.hir.tcx().sess.codemap().lookup_char_pos(span.lo);
-        (Operand::Constant(Constant {
+        (Constant {
             span: DUMMY_SP,
             ty: self.hir.tcx().mk_static_str(),
             literal: self.hir.str_literal(intern_and_get_ident(&span_lines.file.name))
-        }), Operand::Constant(Constant {
+        }, Constant {
             span: DUMMY_SP,
             ty: self.hir.tcx().types.u32,
             literal: self.hir.usize_literal(span_lines.line)
-        }))
+        })
     }
 }

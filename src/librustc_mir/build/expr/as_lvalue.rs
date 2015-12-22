@@ -71,7 +71,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                        cond: Operand::Consume(lt),
                                        targets: (success, failure),
                                    });
-                this.panic_bound_check(failure, idx.clone(), Operand::Consume(len), expr_span);
+                this.panic_bounds_check(failure, idx.clone(), Operand::Consume(len), expr_span);
                 success.and(slice.index(idx))
             }
             ExprKind::SelfRef => {
