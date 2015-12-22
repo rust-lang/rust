@@ -555,7 +555,11 @@ impl Iterator for EscapeDefault {
             EscapeDefaultState::Unicode(ref mut i) => return iter.nth(n),
         };
 
-        let start = self.get_offset();
+        let start = if let Some(x) = self.get_offset() {
+            x
+        } else {
+            return None;
+        };
         let idx = start + n;
 
         // Update state
