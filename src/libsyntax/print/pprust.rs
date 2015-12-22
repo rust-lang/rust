@@ -2403,7 +2403,7 @@ impl<'a> State<'a> {
         }
 
         match *parameters {
-            ast::AngleBracketedParameters(ref data) => {
+            ast::PathParameters::AngleBracketed(ref data) => {
                 try!(word(&mut self.s, "<"));
 
                 let mut comma = false;
@@ -2440,7 +2440,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, ">"))
             }
 
-            ast::ParenthesizedParameters(ref data) => {
+            ast::PathParameters::Parenthesized(ref data) => {
                 try!(word(&mut self.s, "("));
                 try!(self.commasep(
                     Inconsistent,
