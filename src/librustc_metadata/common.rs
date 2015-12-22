@@ -243,6 +243,8 @@ pub const tag_items_data_item_deprecation: usize = 0xa7;
 
 pub const tag_items_data_item_defaultness: usize = 0xa8;
 
+pub const tag_items_data_parent_impl: usize = 0xa9;
+
 pub const tag_rustc_version: usize = 0x10f;
 pub fn rustc_version() -> String {
     format!(

@@ -1106,6 +1106,13 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn has_concrete_skeleton(&self) -> bool {
+        match self.sty {
+            TyParam(_) | TyInfer(_) | TyError => false,
+            _ => true,
+        }
+    }
+
     // Returns the type and mutability of *ty.
     //
     // The parameter `explicit` indicates if this is an *explicit* dereference.

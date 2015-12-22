@@ -15,7 +15,6 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
-
 use middle::def_id::DefId;
 use middle::lang_items::UnsizeTraitLangItem;
 use middle::subst::{self, Subst};
@@ -197,7 +196,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         debug!("add_trait_impl: impl_trait_ref={:?} impl_def_id={:?}",
                impl_trait_ref, impl_def_id);
         let trait_def = self.crate_context.tcx.lookup_trait_def(impl_trait_ref.def_id);
-        trait_def.record_impl(self.crate_context.tcx, impl_def_id, impl_trait_ref);
+        trait_def.record_local_impl(self.crate_context.tcx, impl_def_id, impl_trait_ref);
     }
 
     // Converts an implementation in the AST to a vector of items.

@@ -40,6 +40,7 @@ use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener, TypeOrigin};
 use middle::subst::{Subst, Substs, TypeSpace};
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
+use middle::traits;
 use middle::ty::fast_reject;
 use middle::ty::relate::TypeRelation;
 
@@ -222,6 +223,12 @@ struct SelectionCandidateSet<'tcx> {
     // of the input types are type variables, in which case there are
     // various "builtin" rules that might or might not trigger.
     ambiguous: bool,
+}
+
+#[derive(PartialEq,Eq,Debug,Clone)]
+struct EvaluatedCandidate<'tcx> {
+    candidate: SelectionCandidate<'tcx>,
+    evaluation: EvaluationResult,
 }
 
 enum BuiltinBoundConditions<'tcx> {
@@ -746,6 +753,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidate
     }
 
+    // Treat negative impls as unimplemented
+    fn filter_negative_impls(&self, candidate: SelectionCandidate<'tcx>)
+                             -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
+        if let ImplCandidate(def_id) = candidate {
+            if self.tcx().trait_impl_polarity(def_id) == Some(hir::ImplPolarity::Negative) {
+                return Err(Unimplemented)
+            }
+        }
+        Ok(Some(candidate))
+    }
+
     fn candidate_from_obligation_no_cache<'o>(&mut self,
                                               stack: &TraitObligationStack<'o, 'tcx>)
                                               -> SelectionResult<'tcx, SelectionCandidate<'tcx>>
@@ -803,12 +821,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // we were to winnow, we'd wind up with zero candidates.
         // Instead, we select the right impl now but report `Bar does
         // not implement Clone`.
-        if candidates.len() > 1 {
-            candidates.retain(|c| self.evaluate_candidate(stack, c).may_apply())
+        if candidates.len() == 1 {
+            return self.filter_negative_impls(candidates.pop().unwrap());
         }
 
-        // If there are STILL multiple candidate, we can further reduce
-        // the list by dropping duplicates.
+        // Winnow, but record the exact outcome of evaluation, which
+        // is needed for specialization.
+        let mut candidates: Vec<_> = candidates.into_iter().filter_map(|c| {
+            let eval = self.evaluate_candidate(stack, &c);
+            if eval.may_apply() {
+                Some(EvaluatedCandidate {
+                    candidate: c,
+                    evaluation: eval,
+                })
+            } else {
+                None
+            }
+        }).collect();
+
+        // If there are STILL multiple candidate, we can further
+        // reduce the list by dropping duplicates -- including
+        // resolving specializations.
         if candidates.len() > 1 {
             let mut i = 0;
             while i < candidates.len() {
@@ -850,19 +883,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // Just one candidate left.
-        let candidate = candidates.pop().unwrap();
-
-        match candidate {
-            ImplCandidate(def_id) => {
-                match self.tcx().trait_impl_polarity(def_id) {
-                    Some(hir::ImplPolarity::Negative) => return Err(Unimplemented),
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-
-        Ok(Some(candidate))
+        self.filter_negative_impls(candidates.pop().unwrap().candidate)
     }
 
     fn is_knowable<'o>(&mut self,
@@ -1564,41 +1585,55 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// candidates and prefer where-clause candidates.
     ///
     /// See the comment for "SelectionCandidate" for more details.
-    fn candidate_should_be_dropped_in_favor_of<'o>(&mut self,
-                                                   victim: &SelectionCandidate<'tcx>,
-                                                   other: &SelectionCandidate<'tcx>)
-                                                   -> bool
+    fn candidate_should_be_dropped_in_favor_of<'o>(
+        &mut self,
+        victim: &EvaluatedCandidate<'tcx>,
+        other: &EvaluatedCandidate<'tcx>)
+        -> bool
     {
-        if victim == other {
+        if victim.candidate == other.candidate {
             return true;
         }
 
-        match other {
-            &ObjectCandidate |
-            &ParamCandidate(_) | &ProjectionCandidate => match victim {
-                &DefaultImplCandidate(..) => {
+        match other.candidate {
+            ObjectCandidate |
+            ParamCandidate(_) | ProjectionCandidate => match victim.candidate {
+                DefaultImplCandidate(..) => {
                     self.tcx().sess.bug(
                         "default implementations shouldn't be recorded \
                          when there are other valid candidates");
                 }
-                &ImplCandidate(..) |
-                &ClosureCandidate(..) |
-                &FnPointerCandidate |
-                &BuiltinObjectCandidate |
-                &BuiltinUnsizeCandidate |
-                &DefaultImplObjectCandidate(..) |
-                &BuiltinCandidate(..) => {
+                ImplCandidate(..) |
+                ClosureCandidate(..) |
+                FnPointerCandidate |
+                BuiltinObjectCandidate |
+                BuiltinUnsizeCandidate |
+                DefaultImplObjectCandidate(..) |
+                BuiltinCandidate(..) => {
                     // We have a where-clause so don't go around looking
                     // for impls.
                     true
                 }
-                &ObjectCandidate |
-                &ProjectionCandidate => {
+                ObjectCandidate |
+                ProjectionCandidate => {
                     // Arbitrarily give param candidates priority
                     // over projection and object candidates.
                     true
                 },
-                &ParamCandidate(..) => false,
+                ParamCandidate(..) => false,
+                ErrorCandidate => false // propagate errors
+            },
+            ImplCandidate(other_def) => {
+                // See if we can toss out `victim` based on specialization.
+                // This requires us to know *for sure* that the `other` impl applies
+                // i.e. EvaluatedToOk:
+                if other.evaluation == EvaluatedToOk {
+                    if let ImplCandidate(victim_def) = victim.candidate {
+                        return traits::specializes(self.infcx(), other_def, victim_def);
+                    }
+                }
+
+                false
             },
             _ => false
         }

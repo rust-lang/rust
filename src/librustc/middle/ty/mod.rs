@@ -2456,8 +2456,13 @@ impl<'tcx> TyCtxt<'tcx> {
         for impl_def_id in self.sess.cstore.implementations_of_trait(trait_id) {
             let impl_items = self.sess.cstore.impl_items(impl_def_id);
             let trait_ref = self.impl_trait_ref(impl_def_id).unwrap();
+
             // Record the trait->implementation mapping.
-            def.record_impl(self, impl_def_id, trait_ref);
+            if let Some(parent) = self.sess.cstore.impl_parent(impl_def_id) {
+                def.record_remote_impl(self, impl_def_id, trait_ref, parent);
+            } else {
+                def.record_remote_impl(self, impl_def_id, trait_ref, trait_id);
+            }
 
             // For any methods that use a default implementation, add them to
             // the map. This is a bit unfortunate.

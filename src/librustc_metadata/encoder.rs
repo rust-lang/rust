@@ -884,6 +884,12 @@ fn encode_deprecation(rbml_w: &mut Encoder, depr_opt: Option<attr::Deprecation>)
     });
 }
 
+fn encode_parent_impl(rbml_w: &mut Encoder, parent_opt: Option<DefId>) {
+    parent_opt.map(|parent| {
+        rbml_w.wr_tagged_u64(tag_items_data_parent_impl, def_to_u64(parent));
+    });
+}
+
 fn encode_xrefs<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                           rbml_w: &mut Encoder,
                           xrefs: FnvHashMap<XRef<'tcx>, u32>)
@@ -1161,8 +1167,12 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             }
             rbml_w.end_tag();
         }
-        if let Some(trait_ref) = tcx.impl_trait_ref(ecx.tcx.map.local_def_id(item.id)) {
+        let did = ecx.tcx.map.local_def_id(item.id);
+        if let Some(trait_ref) = tcx.impl_trait_ref(did) {
             encode_trait_ref(rbml_w, ecx, trait_ref, tag_item_trait_ref);
+
+            let parent = tcx.lookup_trait_def(trait_ref.def_id).parent_of_impl(did);
+            encode_parent_impl(rbml_w, parent);
         }
         encode_path(rbml_w, path.clone());
         encode_stability(rbml_w, stab);

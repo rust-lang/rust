@@ -381,7 +381,6 @@ pub fn trait_ref_for_builtin_bound<'tcx>(
     }
 }
 
-
 pub fn predicate_for_trait_ref<'tcx>(
     cause: ObligationCause<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,

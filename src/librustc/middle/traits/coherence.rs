@@ -23,8 +23,8 @@ use syntax::codemap::DUMMY_SP;
 #[derive(Copy, Clone)]
 struct InferIsLocal(bool);
 
-/// If there are types that satisfy both impls, returns an `ImplTy`
-/// with those types substituted (by updating the given `infcx`)
+/// If there are types that satisfy both impls, returns a suitably-freshened
+/// `ImplHeader` with those types substituted
 pub fn overlapping_impls<'cx, 'tcx>(infcx: &InferCtxt<'cx, 'tcx>,
                                     impl1_def_id: DefId,
                                     impl2_def_id: DefId)
@@ -85,7 +85,10 @@ fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
         return None
     }
 
-    Some(selcx.infcx().resolve_type_vars_if_possible(&a_impl_header))
+    let substituted = selcx.infcx().resolve_type_vars_if_possible(&a_impl_header);
+    let freshened = selcx.infcx().freshen(substituted);
+
+    Some(freshened)
 }
 
 pub fn trait_ref_is_knowable<'tcx>(tcx: &TyCtxt<'tcx>, trait_ref: &ty::TraitRef<'tcx>) -> bool
