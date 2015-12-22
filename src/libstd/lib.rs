@@ -245,6 +245,7 @@
 #![feature(on_unimplemented)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
+#![feature(os_extras)]
 #![feature(placement_in_syntax)]
 #![feature(rand)]
 #![feature(range_inclusive)]
