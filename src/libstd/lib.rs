@@ -218,6 +218,7 @@
 #![feature(borrow_state)]
 #![feature(box_syntax)]
 #![feature(cfg_target_vendor)]
+#![feature(cfg_target_thread_local)]
 #![feature(char_internals)]
 #![feature(clone_from_slice)]
 #![feature(collections)]
