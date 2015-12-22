@@ -537,4 +537,56 @@ impl Iterator for EscapeDefault {
             EscapeDefaultState::Done => (0, Some(0)),
         }
     }
+
+	fn count(self) -> usize {
+		match self.state {
+            EscapeDefaultState::Char(_)       => 1,
+            EscapeDefaultState::Unicode(iter) => iter.count(),
+            EscapeDefaultState::Done          => 0,
+            EscapeDefaultState::Backslash(_)  => 2,
+        }
+    }
+
+    fn nth(&mut self, n: usize) -> Option<char> {
+        let ch = match self.state {
+            EscapeDefaultState::Backslash(c)       => c,
+            EscapeDefaultState::Char(c)            => c,
+            EscapeDefaultState::Done               => return None,
+            EscapeDefaultState::Unicode(ref mut i) => return iter.nth(n),
+        };
+
+        let start = self.get_offset();
+        let idx = start + n;
+
+        // Update state
+        self.state = match idx {
+            0 => EscapeDefaultState::Char(c),
+            _ => EscapeDefaultState::Done,
+        };
+
+        match idx {
+            0 => Some('\\'),
+            1 => Some(c),
+            _ => None,
+        }
+    }
+
+    fn last(self) -> Option<char> {
+        match self.state {
+            EscapeDefaultState::Unicode(iter)                              => iter.last(),
+            EscapeDefaultState::Done                                       => None,
+            EscapeDefaultState::Backslash(c) | EscapeDefaultState::Char(c) => Some(c),
+        }
+    }
+}
+
+impl EscapeDefault {
+    fn get_offset(&self) -> Option<usize> {
+        match self.state {
+            EscapeDefaultState::Backslash(c)          => Some(0),
+            EscapeDefaultState::Char(c)               => Some(1),
+            EscapeDefaultState::Done                  => None,
+            EscapeDefaultState::Unicode(ref mut iter) => None,
+        }
+    }
 }
