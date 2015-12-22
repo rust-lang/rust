@@ -552,21 +552,25 @@ impl Iterator for EscapeDefault {
             EscapeDefaultState::Backslash(c)       => c,
             EscapeDefaultState::Char(c)            => c,
             EscapeDefaultState::Done               => return None,
-            EscapeDefaultState::Unicode(ref mut i) => return iter.nth(n),
+            EscapeDefaultState::Unicode(ref mut i) => return i.nth(n),
         };
 
-        let start = self.get_offset();
+        let start = if let Some(x) = self.get_offset() {
+            x
+        } else {
+            return None;
+        };
         let idx = start + n;
 
         // Update state
         self.state = match idx {
-            0 => EscapeDefaultState::Char(c),
+            0 => EscapeDefaultState::Char(ch),
             _ => EscapeDefaultState::Done,
         };
 
         match idx {
             0 => Some('\\'),
-            1 => Some(c),
+            1 => Some(ch),
             _ => None,
         }
     }
@@ -579,6 +583,18 @@ impl Iterator for EscapeDefault {
         }
     }
 }
+
+#[test]
+fn ed_iterator_specializations() {
+    use super::EscapeDefault;
+
+    /// Check counting
+    assert_eq!('\n'.escape_default().count(), 2);
+    assert_eq!('c'.escape_default().count(), 1);
+    assert_eq!(' '.escape_default().count(), 1);
+    assert_eq!('\\'.escape_default().count(), 2);
+}
+
 
 impl EscapeDefault {
     fn get_offset(&self) -> Option<usize> {
