@@ -234,6 +234,7 @@
 #![feature(const_fn)]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
+#![feature(convert)]
 #![feature(decode_utf16)]
 #![feature(drop_in_place)]
 #![feature(dropck_parametricity)]

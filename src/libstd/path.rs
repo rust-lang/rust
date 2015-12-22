@@ -1147,15 +1147,6 @@ impl PathBuf {
         self.inner
     }
 
-    /// Checks if the path buffer is empty. On Windows, it will return false if the inner string is
-    /// invalid unicode. On Unix, this is a no-op.
-    pub fn is_empty(&self) -> bool {
-        if let Some(b) = self.inner.to_bytes() {
-            b.is_empty()
-        } else {
-            true
-        }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1868,6 +1859,17 @@ impl Path {
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn is_dir(&self) -> bool {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
+    }
+
+    /// Checks if the path buffer is empty. On Windows, it will return false if the inner string is
+    /// invalid unicode. On Unix, this is a no-op.
+    #[unstable(feature = "path_extras", reason = "recently added", issue = "30259")]
+    pub fn is_empty(&self) -> bool {
+        if let Some(b) = self.inner.to_bytes() {
+            b.is_empty()
+        } else {
+            true
+        }
     }
 }
 
