@@ -906,10 +906,45 @@ fn get_concurrency() -> usize {
         }
     }
 
-    #[cfg(unix)]
+    #[cfg(any(target_os = "linux",
+              target_os = "macos",
+              target_os = "ios",
+              target_os = "android"))]
     fn num_cpus() -> usize {
-        extern { fn rust_get_num_cpus() -> libc::uintptr_t; }
-        unsafe { rust_get_num_cpus() as usize }
+        unsafe {
+            libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as usize
+        }
+    }
+
+    #[cfg(any(target_os = "freebsd",
+              target_os = "dragonfly",
+              target_os = "bitrig",
+              target_os = "openbsd",
+              target_os = "netbsd"))]
+    fn num_cpus() -> usize {
+        let mut cpus: libc::c_uint = 0;
+        let mut CPUS_SIZE = std::mem::size_of_val(&cpus);
+        let mut mib = [libc::CTL_HW, libc::HW_AVAILCPU, 0, 0];
+
+        unsafe {
+            libc::sysctl(mib.as_mut_ptr(), 2,
+                         &mut cpus as *mut _ as *mut _,
+                         &mut CPUS_SIZE as *mut _ as *mut _,
+                         0 as *mut _, 0);
+        }
+        if cpus < 1 {
+            mib[1] = HW_NCPU;
+            unsafe {
+                libc::sysctl(mib.as_mut_ptr(), 2,
+                             &mut cpus as *mut _ as *mut _,
+                             &mut CPUS_SIZE as *mut _ as *mut _,
+                             0 as *mut _, 0);
+            }
+            if cpus < 1 {
+                cpus = 1;
+            }
+        }
+        cpus as usize
     }
 }
 
