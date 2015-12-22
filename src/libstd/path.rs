@@ -1873,13 +1873,9 @@ impl Path {
     ///
     /// assert!(!path.is_empty());
     /// ```
-    #[unstable(feature = "path_extras", reason = "recently added", issue = "30259")]
+    #[unstable(feature = "os_extras", reason = "recently added", issue = "30259")]
     pub fn is_empty(&self) -> bool {
-        if let Some(b) = self.inner.to_bytes() {
-            b.is_empty()
-        } else {
-            true
-        }
+        self.inner.is_empty()
     }
 }
 
