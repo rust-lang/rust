@@ -34,6 +34,7 @@ use middle::lang_items;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable, VariantKind};
+use middle::traits;
 
 use rustc_const_eval::ConstInt;
 
@@ -562,6 +563,13 @@ pub fn get_deprecation(cdata: Cmd, id: DefIndex) -> Option<attr::Deprecation> {
 
 pub fn get_visibility(cdata: Cmd, id: DefIndex) -> hir::Visibility {
     item_visibility(cdata.lookup_item(id))
+}
+
+pub fn get_parent_impl(cdata: Cmd, id: DefIndex) -> Option<DefId> {
+    let item = cdata.lookup_item(id);
+    reader::maybe_get_doc(item, tag_items_data_parent_impl).map(|doc| {
+        translated_def_id(cdata, doc)
+    })
 }
 
 pub fn get_repr_attrs(cdata: Cmd, id: DefIndex) -> Vec<attr::ReprAttr> {

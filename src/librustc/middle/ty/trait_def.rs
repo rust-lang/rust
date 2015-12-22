@@ -59,6 +59,9 @@ pub struct TraitDef<'tcx> {
     /// Blanket impls associated with the trait.
     blanket_impls: RefCell<Vec<DefId>>,
 
+    /// The specialization order for impls of this trait.
+    pub specialization_graph: RefCell<traits::SpecializationGraph>,
+
     /// Various flags
     pub flags: Cell<TraitFlags>
 }
@@ -78,7 +81,8 @@ impl<'tcx> TraitDef<'tcx> {
             associated_type_names: associated_type_names,
             nonblanket_impls: RefCell::new(FnvHashMap()),
             blanket_impls: RefCell::new(vec![]),
-            flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS)
+            flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS),
+            specialization_graph: RefCell::new(traits::SpecializationGraph::new()),
         }
     }
 
@@ -114,19 +118,15 @@ impl<'tcx> TraitDef<'tcx> {
         tcx.dep_graph.read(DepNode::TraitImpls(self.trait_ref.def_id));
     }
 
-    /// Records a trait-to-implementation mapping.
-    pub fn record_impl(&self,
-                       tcx: &TyCtxt<'tcx>,
-                       impl_def_id: DefId,
-                       impl_trait_ref: ty::TraitRef<'tcx>) {
+    /// Records a basic trait-to-implementation mapping.
+    ///
+    /// Returns `true` iff the impl has not previously been recorded.
+    fn record_impl(&self,
+                   tcx: &TyCtxt<'tcx>,
+                   impl_def_id: DefId,
+                   impl_trait_ref: TraitRef<'tcx>) -> bool {
         debug!("TraitDef::record_impl for {:?}, from {:?}",
                self, impl_trait_ref);
-
-        // Record the write into the impl set, but only for local
-        // impls: external impls are handled differently.
-        if impl_def_id.is_local() {
-            self.write_trait_impls(tcx);
-        }
 
         // We don't want to borrow_mut after we already populated all impls,
         // so check if an impl is present with an immutable borrow first.
@@ -134,22 +134,64 @@ impl<'tcx> TraitDef<'tcx> {
                                                       impl_trait_ref.self_ty(), false) {
             if let Some(is) = self.nonblanket_impls.borrow().get(&sty) {
                 if is.contains(&impl_def_id) {
-                    return // duplicate - skip
+                    return false; // duplicate - skip
                 }
             }
 
             self.nonblanket_impls.borrow_mut().entry(sty).or_insert(vec![]).push(impl_def_id)
         } else {
             if self.blanket_impls.borrow().contains(&impl_def_id) {
-                return // duplicate - skip
+                return false; // duplicate - skip
             }
             self.blanket_impls.borrow_mut().push(impl_def_id)
         }
+
+        true
+    }
+
+    /// Records a trait-to-implementation mapping for a crate-local impl.
+    pub fn record_local_impl(&self,
+                             tcx: &TyCtxt<'tcx>,
+                             impl_def_id: DefId,
+                             impl_trait_ref: TraitRef<'tcx>) {
+        self.record_impl(tcx, impl_def_id, impl_trait_ref);
+    }
+
+    /// Records a trait-to-implementation mapping for a non-local impl.
+    ///
+    /// The `parent_impl` is the immediately-less-specialized impl, or the
+    /// trait's def ID if the impl is maximally-specialized -- information that
+    /// should be pulled from the metadata.
+    pub fn record_remote_impl(&self,
+                              tcx: &TyCtxt<'tcx>,
+                              impl_def_id: DefId,
+                              impl_trait_ref: TraitRef<'tcx>,
+                              parent_impl: DefId) {
+        // if the impl has not previously been recorded
+        if self.record_impl(tcx, impl_def_id, impl_trait_ref) {
+            // if the impl is non-local, it's placed directly into the
+            // specialization graph using parent information drawn from metadata.
+            self.specialization_graph.borrow_mut()
+                .record_impl_from_cstore(parent_impl, impl_def_id)
+        }
+    }
+
+    /// Adds a local impl into the specialization graph, returning an error with
+    /// overlap information if the impl overlaps but does not specialize an
+    /// existing impl.
+    pub fn add_impl_for_specialization(&self,
+                                       tcx: &ctxt<'tcx>,
+                                       impl_def_id: DefId,
+                                       impl_trait_ref: TraitRef<'tcx>)
+                                       -> Result<(), traits::Overlap<'tcx>> {
+        assert!(impl_def_id.is_local());
+
+        self.specialization_graph.borrow_mut()
+            .insert(tcx, impl_def_id, impl_trait_ref)
     }
 
     pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: &TyCtxt<'tcx>, mut f: F)  {
         self.read_trait_impls(tcx);
-
         tcx.populate_implementations_for_trait_if_necessary(self.trait_ref.def_id);
 
         for &impl_def_id in self.blanket_impls.borrow().iter() {
@@ -223,4 +265,3 @@ bitflags! {
         const IMPLS_VALID           = 1 << 3,
     }
 }
-

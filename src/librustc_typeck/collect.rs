@@ -69,6 +69,7 @@ use middle::resolve_lifetime;
 use middle::const_eval::{self, ConstVal};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
+use middle::traits;
 use middle::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use middle::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
 use middle::ty::{VariantKind};
