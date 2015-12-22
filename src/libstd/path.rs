@@ -1146,6 +1146,16 @@ impl PathBuf {
     pub fn into_os_string(self) -> OsString {
         self.inner
     }
+
+    /// Checks if the path buffer is empty. On Windows, it will return false if the inner string is
+    /// invalid unicode. On Unix, this is a no-op.
+    pub fn is_empty(&self) -> bool {
+        if let Some(b) = self.inner.to_bytes() {
+            b.is_empty()
+        } else {
+            true
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
