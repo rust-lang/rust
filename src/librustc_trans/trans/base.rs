@@ -51,6 +51,7 @@ use session::config::{self, NoDebugInfo, FullDebugInfo};
 use session::Session;
 use trans::_match;
 use trans::adt;
+use trans::assert_dep_graph;
 use trans::attributes;
 use trans::build::*;
 use trans::builder::{Builder, noname};
@@ -3141,6 +3142,8 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
         llmod: shared_ccx.metadata_llmod(),
     };
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
+
+    assert_dep_graph::assert_dep_graph(tcx);
 
     CrateTranslation {
         modules: modules,
