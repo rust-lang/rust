@@ -923,13 +923,13 @@ fn get_concurrency() -> usize {
               target_os = "netbsd"))]
     fn num_cpus() -> usize {
         let mut cpus: libc::c_uint = 0;
-        let mut CPUS_SIZE = std::mem::size_of_val(&cpus);
+        let mut cpus_size = std::mem::size_of_val(&cpus);
         let mut mib = [libc::CTL_HW, libc::HW_AVAILCPU, 0, 0];
 
         unsafe {
             libc::sysctl(mib.as_mut_ptr(), 2,
                          &mut cpus as *mut _ as *mut _,
-                         &mut CPUS_SIZE as *mut _ as *mut _,
+                         &mut cpus_size as *mut _ as *mut _,
                          0 as *mut _, 0);
         }
         if cpus < 1 {
@@ -937,7 +937,7 @@ fn get_concurrency() -> usize {
             unsafe {
                 libc::sysctl(mib.as_mut_ptr(), 2,
                              &mut cpus as *mut _ as *mut _,
-                             &mut CPUS_SIZE as *mut _ as *mut _,
+                             &mut cpus_size as *mut _ as *mut _,
                              0 as *mut _, 0);
             }
             if cpus < 1 {
