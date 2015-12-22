@@ -1571,8 +1571,8 @@ pub fn lower_block_check_mode(lctx: &LoweringContext, b: &BlockCheckMode) -> hir
 
 pub fn lower_binding_mode(lctx: &LoweringContext, b: &BindingMode) -> hir::BindingMode {
     match *b {
-        BindByRef(m) => hir::BindByRef(lower_mutability(lctx, m)),
-        BindByValue(m) => hir::BindByValue(lower_mutability(lctx, m)),
+        BindingMode::ByRef(m) => hir::BindByRef(lower_mutability(lctx, m)),
+        BindingMode::ByValue(m) => hir::BindByValue(lower_mutability(lctx, m)),
     }
 }
 

@@ -68,7 +68,7 @@ pub fn path_to_ident(path: &Path) -> Option<Ident> {
 pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> P<Pat> {
     P(Pat {
         id: id,
-        node: PatIdent(BindByValue(MutImmutable), codemap::Spanned{span:s, node:i}, None),
+        node: PatIdent(BindingMode::ByValue(MutImmutable), codemap::Spanned{span:s, node:i}, None),
         span: s
     })
 }

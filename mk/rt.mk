@@ -35,7 +35,7 @@
 # that's per-target so you're allowed to conditionally add files based on the
 # target.
 ################################################################################
-NATIVE_LIBS := rust_builtin hoedown miniz rust_test_helpers
+NATIVE_LIBS := hoedown miniz rust_test_helpers
 
 # $(1) is the target triple
 define NATIVE_LIBRARIES
@@ -50,8 +50,6 @@ NATIVE_DEPS_hoedown_$(1) := hoedown/src/autolink.c \
 			hoedown/src/stack.c \
 			hoedown/src/version.c
 NATIVE_DEPS_miniz_$(1) = miniz.c
-NATIVE_DEPS_rust_builtin_$(1) := rust_builtin.c \
-			rust_android_dummy.c
 NATIVE_DEPS_rust_test_helpers_$(1) := rust_test_helpers.c
 
 ################################################################################
@@ -128,12 +126,25 @@ define DEF_THIRD_PARTY_TARGETS
 
 # $(1) is the target triple
 
-ifeq ($$(CFG_WINDOWSY_$(1)), 1)
-  # This isn't necessarily a desired option, but it's harmless and works around
-  # what appears to be a mingw-w64 bug.
+ifeq ($$(CFG_WINDOWSY_$(1)),1)
+  # A bit of history here, this used to be --enable-lazy-lock added in #14006
+  # which was filed with jemalloc in jemalloc/jemalloc#83 which was also
+  # reported to MinGW: http://sourceforge.net/p/mingw-w64/bugs/395/
   #
-  # https://sourceforge.net/p/mingw-w64/bugs/395/
-  JEMALLOC_ARGS_$(1) := --enable-lazy-lock
+  # When updating jemalloc to 4.0, however, it was found that binaries would
+  # exit with the status code STATUS_RESOURCE_NOT_OWNED indicating that a thread
+  # was unlocking a mutex it never locked. Disabling this "lazy lock" option
+  # seems to fix the issue, but it was enabled by default for MinGW targets in
+  # 13473c7 for jemalloc.
+  #
+  # As a result of all that, force disabling lazy lock on Windows, and after
+  # reading some code it at least *appears* that the initialization of mutexes
+  # is otherwise ok in jemalloc, so shouldn't cause problems hopefully...
+  #
+  # tl;dr: make windows behave like other platforms by disabling lazy locking,
+  #        but requires passing an option due to a historical default with
+  #        jemalloc.
+  JEMALLOC_ARGS_$(1) := --disable-lazy-lock
 else ifeq ($(OSTYPE_$(1)), apple-ios)
   JEMALLOC_ARGS_$(1) := --disable-tls
 else ifeq ($(findstring android, $(OSTYPE_$(1))), android)

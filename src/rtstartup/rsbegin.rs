@@ -22,8 +22,6 @@
 // object (usually called `crtX.o), which then invokes initialization callbacks
 // of other runtime components (registered via yet another special image section).
 
-#![cfg_attr(stage0, feature(no_std))]
-
 #![crate_type="rlib"]
 #![no_std]
 #![allow(non_camel_case_types)]

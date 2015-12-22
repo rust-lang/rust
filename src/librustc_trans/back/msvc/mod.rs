@@ -152,8 +152,15 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
         }).and_then(|root| {
             fs::read_dir(Path::new(&root).join("Lib")).ok()
         }).and_then(|readdir| {
-            let mut dirs: Vec<_> = readdir.filter_map(|dir| dir.ok())
-                .map(|dir| dir.path()).collect();
+            let mut dirs: Vec<_> = readdir.filter_map(|dir| {
+                dir.ok()
+            }).map(|dir| {
+                dir.path()
+            }).filter(|dir| {
+                dir.components().last().and_then(|c| {
+                    c.as_os_str().to_str()
+                }).map(|c| c.starts_with("10.")).unwrap_or(false)
+            }).collect();
             dirs.sort();
             dirs.pop()
         })

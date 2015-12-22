@@ -38,12 +38,17 @@ static ENV_LOCK: StaticMutex = StaticMutex::new();
 /// Returns the platform-specific value of errno
 pub fn errno() -> i32 {
     extern {
-        #[cfg_attr(any(target_os = "linux", target_os = "android"), link_name = "__errno_location")]
-        #[cfg_attr(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd",
+        #[cfg_attr(any(target_os = "linux"), link_name = "__errno_location")]
+        #[cfg_attr(any(target_os = "bitrig",
+                       target_os = "netbsd",
+                       target_os = "openbsd",
+                       target_os = "android",
                        target_env = "newlib"),
                    link_name = "__errno")]
         #[cfg_attr(target_os = "dragonfly", link_name = "__dfly_error")]
-        #[cfg_attr(any(target_os = "macos", target_os = "ios", target_os = "freebsd"),
+        #[cfg_attr(any(target_os = "macos",
+                       target_os = "ios",
+                       target_os = "freebsd"),
                    link_name = "__error")]
         fn errno_location() -> *const c_int;
     }
@@ -173,17 +178,19 @@ pub fn current_exe() -> io::Result<PathBuf> {
                        libc::KERN_PROC_PATHNAME as c_int,
                        -1 as c_int];
         let mut sz: libc::size_t = 0;
-        let err = libc::sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
-                               ptr::null_mut(), &mut sz, ptr::null_mut(),
-                               0 as libc::size_t);
-        if err != 0 { return Err(io::Error::last_os_error()); }
-        if sz == 0 { return Err(io::Error::last_os_error()); }
+        try!(cvt(libc::sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
+                              ptr::null_mut(), &mut sz, ptr::null_mut(),
+                              0 as libc::size_t)));
+        if sz == 0 {
+            return Err(io::Error::last_os_error())
+        }
         let mut v: Vec<u8> = Vec::with_capacity(sz as usize);
-        let err = libc::sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
-                               v.as_mut_ptr() as *mut libc::c_void, &mut sz,
-                               ptr::null_mut(), 0 as libc::size_t);
-        if err != 0 { return Err(io::Error::last_os_error()); }
-        if sz == 0 { return Err(io::Error::last_os_error()); }
+        try!(cvt(libc::sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
+                              v.as_mut_ptr() as *mut libc::c_void, &mut sz,
+                              ptr::null_mut(), 0 as libc::size_t)));
+        if sz == 0 {
+            return Err(io::Error::last_os_error());
+        }
         v.set_len(sz as usize - 1); // chop off trailing NUL
         Ok(PathBuf::from(OsString::from_vec(v)))
     }
@@ -201,22 +208,28 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
 pub fn current_exe() -> io::Result<PathBuf> {
-    use sync::StaticMutex;
-    static LOCK: StaticMutex = StaticMutex::new();
-
-    extern {
-        fn rust_current_exe() -> *const c_char;
-    }
-
-    let _guard = LOCK.lock();
-
     unsafe {
-        let v = rust_current_exe();
-        if v.is_null() {
-            Err(io::Error::last_os_error())
+        let mut mib = [libc::CTL_KERN,
+                       libc::KERN_PROC_ARGS,
+                       libc::getpid(),
+                       libc::KERN_PROC_ARGV];
+        let mib = mib.as_mut_ptr();
+        let mut argv_len = 0;
+        try!(cvt(libc::sysctl(mib, 4, 0 as *mut _, &mut argv_len,
+                              0 as *mut _, 0)));
+        let mut argv = Vec::<*const libc::c_char>::with_capacity(argv_len as usize);
+        try!(cvt(libc::sysctl(mib, 4, argv.as_mut_ptr() as *mut _,
+                              &mut argv_len, 0 as *mut _, 0)));
+        argv.set_len(argv_len as usize);
+        if argv[0].is_null() {
+            return Err(io::Error::new(io::ErrorKind::Other,
+                                      "no current exe available"))
+        }
+        let argv0 = CStr::from_ptr(argv[0]).to_bytes();
+        if argv0[0] == b'.' || argv0.iter().any(|b| *b == b'/') {
+            ::fs::canonicalize(OsStr::from_bytes(argv0))
         } else {
-            let vec = CStr::from_ptr(v).to_bytes().to_vec();
-            Ok(PathBuf::from(OsString::from_vec(vec)))
+            Ok(PathBuf::from(OsStr::from_bytes(argv0)))
         }
     }
 }

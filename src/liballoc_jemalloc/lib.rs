@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "alloc_jemalloc"]
 #![crate_type = "rlib"]
-#![cfg_attr(stage0, staged_api)]
 #![no_std]
-#![cfg_attr(not(stage0), allocator)]
-#![cfg_attr(stage0, allow(improper_ctypes))]
+#![allocator]
 #![unstable(feature = "alloc_jemalloc",
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
@@ -22,7 +19,6 @@
 #![feature(allocator)]
 #![feature(libc)]
 #![feature(staged_api)]
-#![cfg_attr(stage0, feature(no_std))]
 
 extern crate libc;
 
@@ -111,4 +107,15 @@ pub extern "C" fn __rust_deallocate(ptr: *mut u8, old_size: usize, align: usize)
 pub extern "C" fn __rust_usable_size(size: usize, align: usize) -> usize {
     let flags = align_to_flags(align);
     unsafe { je_nallocx(size as size_t, flags) as usize }
+}
+
+// These symbols are used by jemalloc on android but the really old android
+// we're building on doesn't have them defined, so just make sure the symbols
+// are available.
+#[no_mangle]
+#[cfg(target_os = "android")]
+pub extern fn pthread_atfork(_prefork: *mut u8,
+                             _postfork_parent: *mut u8,
+                             _postfork_child: *mut u8) -> i32 {
+    0
 }

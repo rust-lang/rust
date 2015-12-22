@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "alloc_system"]
 #![crate_type = "rlib"]
-#![cfg_attr(stage0, staged_api)]
 #![no_std]
-#![cfg_attr(not(stage0), allocator)]
-#![cfg_attr(stage0, allow(improper_ctypes))]
+#![allocator]
 #![unstable(feature = "alloc_system",
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
@@ -22,7 +19,6 @@
 #![feature(allocator)]
 #![feature(libc)]
 #![feature(staged_api)]
-#![cfg_attr(stage0, feature(no_std))]
 
 extern crate libc;
 
