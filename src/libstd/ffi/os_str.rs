@@ -283,7 +283,7 @@ impl OsStr {
         self.to_bytes().and_then(|b| CString::new(b).ok())
     }
 
-    #[unstable(feature = "os_extras", reason = "recently added")]
+    #[unstable(feature = "os_extras", reason = "recently added", issue = "30259")]
     pub fn is_empty(&self) -> bool {
         self.inner.inner.is_empty()
     }
