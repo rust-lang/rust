@@ -14,7 +14,8 @@ use os::unix::prelude::*;
 use ffi::{CString, CStr, OsString, OsStr};
 use fmt;
 use io::{self, Error, ErrorKind, SeekFrom};
-use libc::{self, c_int, off_t, c_char, mode_t};
+use libc::{dirent, readdir_r};
+use libc::{self, c_int, off_t, mode_t};
 use mem;
 use path::{Path, PathBuf};
 use ptr;
@@ -43,7 +44,7 @@ unsafe impl Send for Dir {}
 unsafe impl Sync for Dir {}
 
 pub struct DirEntry {
-    buf: Vec<u8>, // actually *mut libc::dirent
+    entry: dirent,
     root: Arc<PathBuf>,
 }
 
@@ -126,32 +127,22 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        extern {
-            fn rust_dirent_t_size() -> libc::size_t;
-        }
-
-        let mut buf: Vec<u8> = Vec::with_capacity(unsafe {
-            rust_dirent_t_size()
-        });
-        let ptr = buf.as_mut_ptr() as *mut libc::dirent;
-
-        let mut entry_ptr = ptr::null_mut();
-        loop {
-            if unsafe { libc::readdir_r(self.dirp.0, ptr, &mut entry_ptr) != 0 } {
-                return Some(Err(Error::last_os_error()))
-            }
-            if entry_ptr.is_null() {
-                return None
-            }
-
-            let entry = DirEntry {
-                buf: buf,
+        unsafe {
+            let mut ret = DirEntry {
+                entry: mem::zeroed(),
                 root: self.root.clone()
             };
-            if entry.name_bytes() == b"." || entry.name_bytes() == b".." {
-                buf = entry.buf;
-            } else {
-                return Some(Ok(entry))
+            let mut entry_ptr = ptr::null_mut();
+            loop {
+                if readdir_r(self.dirp.0, &mut ret.entry, &mut entry_ptr) != 0 {
+                    return Some(Err(Error::last_os_error()))
+                }
+                if entry_ptr.is_null() {
+                    return None
+                }
+                if ret.name_bytes() != b"." && ret.name_bytes() != b".." {
+                    return Some(Ok(ret))
+                }
             }
         }
     }
@@ -166,7 +157,7 @@ impl Drop for Dir {
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.root.join(<OsStr as OsStrExt>::from_bytes(self.name_bytes()))
+        self.root.join(OsStr::from_bytes(self.name_bytes()))
     }
 
     pub fn file_name(&self) -> OsString {
@@ -178,35 +169,64 @@ impl DirEntry {
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        extern {
-            fn rust_dir_get_mode(ptr: *mut libc::dirent) -> c_int;
-        }
-        unsafe {
-            match rust_dir_get_mode(self.dirent()) {
-                -1 => lstat(&self.path()).map(|m| m.file_type()),
-                n => Ok(FileType { mode: n as mode_t }),
-            }
+        match self.entry.d_type {
+            libc::DT_CHR => Ok(FileType { mode: libc::S_IFCHR }),
+            libc::DT_FIFO => Ok(FileType { mode: libc::S_IFIFO }),
+            libc::DT_LNK => Ok(FileType { mode: libc::S_IFLNK }),
+            libc::DT_REG => Ok(FileType { mode: libc::S_IFREG }),
+            libc::DT_SOCK => Ok(FileType { mode: libc::S_IFSOCK }),
+            libc::DT_DIR => Ok(FileType { mode: libc::S_IFDIR }),
+            libc::DT_BLK => Ok(FileType { mode: libc::S_IFBLK }),
+            _ => lstat(&self.path()).map(|m| m.file_type()),
         }
     }
 
+    #[cfg(any(target_os = "macos",
+              target_os = "ios",
+              target_os = "linux"))]
     pub fn ino(&self) -> raw::ino_t {
-        extern {
-            fn rust_dir_get_ino(ptr: *mut libc::dirent) -> raw::ino_t;
-        }
-        unsafe { rust_dir_get_ino(self.dirent()) }
+        self.entry.d_ino
     }
 
+    #[cfg(target_os = "android")]
+    pub fn ino(&self) -> raw::ino_t {
+        self.entry.d_ino as raw::ino_t
+    }
+
+    #[cfg(any(target_os = "freebsd",
+              target_os = "openbsd",
+              target_os = "bitrig",
+              target_os = "netbsd",
+              target_os = "dragonfly"))]
+    pub fn ino(&self) -> raw::ino_t {
+        self.entry.d_fileno
+    }
+
+    #[cfg(any(target_os = "macos",
+              target_os = "ios",
+              target_os = "netbsd"))]
     fn name_bytes(&self) -> &[u8] {
-        extern {
-            fn rust_list_dir_val(ptr: *mut libc::dirent) -> *const c_char;
-        }
         unsafe {
-            CStr::from_ptr(rust_list_dir_val(self.dirent())).to_bytes()
+            ::slice::from_raw_parts(self.entry.d_name.as_ptr() as *const u8,
+                                    self.entry.d_namlen as usize)
         }
     }
-
-    fn dirent(&self) -> *mut libc::dirent {
-        self.buf.as_ptr() as *mut _
+    #[cfg(any(target_os = "freebsd",
+              target_os = "dragonfly",
+              target_os = "bitrig",
+              target_os = "openbsd"))]
+    fn name_bytes(&self) -> &[u8] {
+        unsafe {
+            ::slice::from_raw_parts(self.entry.d_name.as_ptr() as *const u8,
+                                    self.entry.d_namelen as usize)
+        }
+    }
+    #[cfg(any(target_os = "android",
+              target_os = "linux"))]
+    fn name_bytes(&self) -> &[u8] {
+        unsafe {
+            CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes()
+        }
     }
 }
 

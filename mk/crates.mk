@@ -71,7 +71,7 @@ DEPS_rustc_bitflags := core
 DEPS_rustc_unicode := core
 
 DEPS_std := core libc rand alloc collections rustc_unicode \
-	native:rust_builtin native:backtrace \
+	native:backtrace \
 	alloc_system
 DEPS_arena := std
 DEPS_glob := std
