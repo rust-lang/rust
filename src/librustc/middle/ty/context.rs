@@ -30,10 +30,12 @@ use middle::traits;
 use middle::ty::{self, TraitRef, Ty, TypeAndMut};
 use middle::ty::{TyS, TypeVariants};
 use middle::ty::{AdtDef, ClosureSubsts, ExistentialBounds, Region};
-use middle::ty::{FreevarMap, GenericPredicates};
+use middle::ty::{FreevarMap};
 use middle::ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, TraitTy};
 use middle::ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use middle::ty::TypeVariants::*;
+use middle::ty::maps;
+use util::common::MemoizationMap;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::FnvHashMap;
 
@@ -248,21 +250,23 @@ pub struct ctxt<'tcx> {
     pub tables: RefCell<Tables<'tcx>>,
 
     /// Maps from a trait item to the trait item "descriptor"
-    pub impl_or_trait_items: RefCell<DefIdMap<ty::ImplOrTraitItem<'tcx>>>,
+    pub impl_or_trait_items: RefCell<DepTrackingMap<maps::ImplOrTraitItems<'tcx>>>,
 
     /// Maps from a trait def-id to a list of the def-ids of its trait items
-    pub trait_item_def_ids: RefCell<DefIdMap<Rc<Vec<ty::ImplOrTraitItemId>>>>,
+    pub trait_item_def_ids: RefCell<DepTrackingMap<maps::TraitItemDefIds<'tcx>>>,
 
-    /// A cache for the trait_items() routine
-    pub trait_items_cache: RefCell<DefIdMap<Rc<Vec<ty::ImplOrTraitItem<'tcx>>>>>,
+    /// A cache for the trait_items() routine; note that the routine
+    /// itself pushes the `TraitItems` dependency node. This cache is
+    /// "encapsulated" and thus does not need to be itself tracked.
+    trait_items_cache: RefCell<DefIdMap<Rc<Vec<ty::ImplOrTraitItem<'tcx>>>>>,
 
-    pub impl_trait_refs: RefCell<DefIdMap<Option<TraitRef<'tcx>>>>,
-    pub trait_defs: RefCell<DefIdMap<&'tcx ty::TraitDef<'tcx>>>,
-    pub adt_defs: RefCell<DefIdMap<ty::AdtDefMaster<'tcx>>>,
+    pub impl_trait_refs: RefCell<DepTrackingMap<maps::ImplTraitRefs<'tcx>>>,
+    pub trait_defs: RefCell<DepTrackingMap<maps::TraitDefs<'tcx>>>,
+    pub adt_defs: RefCell<DepTrackingMap<maps::AdtDefs<'tcx>>>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated predicates.
-    pub predicates: RefCell<DefIdMap<GenericPredicates<'tcx>>>,
+    pub predicates: RefCell<DepTrackingMap<maps::Predicates<'tcx>>>,
 
     /// Maps from the def-id of a trait to the list of
     /// super-predicates. This is a subset of the full list of
@@ -270,21 +274,40 @@ pub struct ctxt<'tcx> {
     /// evaluate them even during type conversion, often before the
     /// full predicates are available (note that supertraits have
     /// additional acyclicity requirements).
-    pub super_predicates: RefCell<DefIdMap<GenericPredicates<'tcx>>>,
+    pub super_predicates: RefCell<DepTrackingMap<maps::Predicates<'tcx>>>,
 
     pub map: ast_map::Map<'tcx>,
+
+    // Records the free variables refrenced by every closure
+    // expression. Do not track deps for this, just recompute it from
+    // scratch every time.
     pub freevars: RefCell<FreevarMap>,
-    pub tcache: RefCell<DefIdMap<ty::TypeScheme<'tcx>>>,
+
+    // Records the type of every item.
+    pub tcache: RefCell<DepTrackingMap<maps::Tcache<'tcx>>>,
+
+    // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: RefCell<FnvHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
+
+    // Cache for the type-contents routine. FIXME -- track deps?
     pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, ty::contents::TypeContents>>,
+
+    // Cache for various types within a method body and so forth.
+    //
+    // FIXME this should be made local to typeck, but it is currently used by one lint
     pub ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
+
+    // FIXME no dep tracking, but we should be able to remove this
     pub ty_param_defs: RefCell<NodeMap<ty::TypeParameterDef<'tcx>>>,
+
+    // FIXME dep tracking -- should be harmless enough
     pub normalized_cache: RefCell<FnvHashMap<Ty<'tcx>, Ty<'tcx>>>,
+
     pub lang_items: middle::lang_items::LanguageItems,
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
-    pub item_variance_map: RefCell<DefIdMap<Rc<ty::ItemVariances>>>,
+    pub item_variance_map: RefCell<DepTrackingMap<maps::ItemVariances<'tcx>>>,
 
     /// True if the variance has been computed yet; false otherwise.
     pub variance_computed: Cell<bool>,
@@ -292,13 +315,13 @@ pub struct ctxt<'tcx> {
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
-    pub inherent_impls: RefCell<DefIdMap<Rc<Vec<DefId>>>>,
+    pub inherent_impls: RefCell<DepTrackingMap<maps::InherentImpls<'tcx>>>,
 
     /// Maps a DefId of an impl to a list of its items.
     /// Note that this contains all of the impls that we know about,
     /// including ones in other crates. It's not clear that this is the best
     /// way to do it.
-    pub impl_items: RefCell<DefIdMap<Vec<ty::ImplOrTraitItemId>>>,
+    pub impl_items: RefCell<DepTrackingMap<maps::ImplItems<'tcx>>>,
 
     /// Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     /// present in this set can be warned about.
@@ -312,6 +335,7 @@ pub struct ctxt<'tcx> {
     /// The set of external nominal types whose implementations have been read.
     /// This is used for lazy resolution of methods.
     pub populated_external_types: RefCell<DefIdSet>,
+
     /// The set of external primitive types whose implementations have been read.
     /// FIXME(arielb1): why is this separate from populated_external_types?
     pub populated_external_primitive_impls: RefCell<DefIdSet>,
@@ -347,7 +371,9 @@ pub struct ctxt<'tcx> {
     pub fulfilled_predicates: RefCell<traits::FulfilledPredicates<'tcx>>,
 
     /// Caches the representation hints for struct definitions.
-    pub repr_hint_cache: RefCell<DefIdMap<Rc<Vec<attr::ReprAttr>>>>,
+    ///
+    /// This is encapsulated by the `ReprHints` task and hence is not tracked.
+    repr_hint_cache: RefCell<DefIdMap<Rc<Vec<attr::ReprAttr>>>>,
 
     /// Maps Expr NodeId's to their constant qualification.
     pub const_qualif_map: RefCell<NodeMap<middle::check_const::ConstQualif>>,
@@ -499,31 +525,31 @@ impl<'tcx> ctxt<'tcx> {
             named_region_map: named_region_map,
             region_maps: region_maps,
             free_region_maps: RefCell::new(FnvHashMap()),
-            item_variance_map: RefCell::new(DefIdMap()),
+            item_variance_map: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             variance_computed: Cell::new(false),
             sess: s,
             def_map: def_map,
             tables: RefCell::new(Tables::empty()),
-            impl_trait_refs: RefCell::new(DefIdMap()),
-            trait_defs: RefCell::new(DefIdMap()),
-            adt_defs: RefCell::new(DefIdMap()),
-            predicates: RefCell::new(DefIdMap()),
-            super_predicates: RefCell::new(DefIdMap()),
+            impl_trait_refs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            trait_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            adt_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            super_predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             fulfilled_predicates: RefCell::new(traits::FulfilledPredicates::new()),
             map: map,
             freevars: RefCell::new(freevars),
-            tcache: RefCell::new(DefIdMap()),
+            tcache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             rcache: RefCell::new(FnvHashMap()),
             tc_cache: RefCell::new(FnvHashMap()),
             ast_ty_to_ty_cache: RefCell::new(NodeMap()),
-            impl_or_trait_items: RefCell::new(DefIdMap()),
-            trait_item_def_ids: RefCell::new(DefIdMap()),
+            impl_or_trait_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            trait_item_def_ids: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             trait_items_cache: RefCell::new(DefIdMap()),
             ty_param_defs: RefCell::new(NodeMap()),
             normalized_cache: RefCell::new(FnvHashMap()),
             lang_items: lang_items,
-            inherent_impls: RefCell::new(DefIdMap()),
-            impl_items: RefCell::new(DefIdMap()),
+            inherent_impls: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            impl_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             used_unsafe: RefCell::new(NodeSet()),
             used_mut_nodes: RefCell::new(NodeSet()),
             populated_external_types: RefCell::new(DefIdSet()),
@@ -1003,5 +1029,39 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn mk_param_from_def(&self, def: &ty::TypeParameterDef) -> Ty<'tcx> {
         self.mk_param(def.space, def.index, def.name)
+    }
+
+    pub fn trait_items(&self, trait_did: DefId) -> Rc<Vec<ty::ImplOrTraitItem<'tcx>>> {
+        // since this is cached, pushing a dep-node for the
+        // computation yields the correct dependencies.
+        let _task = self.dep_graph.in_task(DepNode::TraitItems(trait_did));
+
+        let mut trait_items = self.trait_items_cache.borrow_mut();
+        match trait_items.get(&trait_did).cloned() {
+            Some(trait_items) => trait_items,
+            None => {
+                let def_ids = self.trait_item_def_ids(trait_did);
+                let items: Rc<Vec<_>> =
+                    Rc::new(def_ids.iter()
+                                   .map(|d| self.impl_or_trait_item(d.def_id()))
+                                   .collect());
+                trait_items.insert(trait_did, items.clone());
+                items
+            }
+        }
+    }
+
+    /// Obtain the representation annotation for a struct definition.
+    pub fn lookup_repr_hints(&self, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
+        let _task = self.dep_graph.in_task(DepNode::ReprHints(did));
+        self.repr_hint_cache.memoize(did, || {
+            Rc::new(if did.is_local() {
+                self.get_attrs(did).iter().flat_map(|meta| {
+                    attr::find_repr_attrs(self.sess.diagnostic(), meta).into_iter()
+                }).collect()
+            } else {
+                self.sess.cstore.repr_attrs(did)
+            })
+        })
     }
 }

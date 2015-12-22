@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use dep_graph::DepNode;
 use middle::ty::{Ty, TyS};
+use middle::ty::tls;
 
 use rustc_data_structures::ivar;
 
@@ -27,6 +29,10 @@ use core::nonzero::NonZero;
 ///     (B) no aliases to this value with a 'tcx longer than this
 ///         value's 'lt exist
 ///
+/// Dependency tracking: each ivar does not know what node in the
+/// dependency graph it is associated with, so when you get/fulfill
+/// you must supply a `DepNode` id. This should always be the same id!
+///
 /// NonZero is used rather than Unique because Unique isn't Copy.
 pub struct TyIVar<'tcx, 'lt: 'tcx>(ivar::Ivar<NonZero<*const TyS<'static>>>,
                                    PhantomData<fn(TyS<'lt>)->TyS<'tcx>>);
@@ -40,19 +46,28 @@ impl<'tcx, 'lt> TyIVar<'tcx, 'lt> {
     }
 
     #[inline]
-    pub fn get(&self) -> Option<Ty<'tcx>> {
+    pub fn get(&self, dep_node: DepNode) -> Option<Ty<'tcx>> {
+        tls::with(|tcx| tcx.dep_graph.read(dep_node));
+        self.untracked_get()
+    }
+
+    #[inline]
+    fn untracked_get(&self) -> Option<Ty<'tcx>> {
         match self.0.get() {
             None => None,
             // valid because of invariant (A)
             Some(v) => Some(unsafe { &*(*v as *const TyS<'tcx>) })
         }
     }
+
     #[inline]
-    pub fn unwrap(&self) -> Ty<'tcx> {
-        self.get().unwrap()
+    pub fn unwrap(&self, dep_node: DepNode) -> Ty<'tcx> {
+        self.get(dep_node).unwrap()
     }
 
-    pub fn fulfill(&self, value: Ty<'lt>) {
+    pub fn fulfill(&self, dep_node: DepNode, value: Ty<'lt>) {
+        tls::with(|tcx| tcx.dep_graph.write(dep_node));
+
         // Invariant (A) is fulfilled, because by (B), every alias
         // of this has a 'tcx longer than 'lt.
         let value: *const TyS<'lt> = value;
@@ -64,7 +79,7 @@ impl<'tcx, 'lt> TyIVar<'tcx, 'lt> {
 
 impl<'tcx, 'lt> fmt::Debug for TyIVar<'tcx, 'lt> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.get() {
+        match self.untracked_get() {
             Some(val) => write!(f, "TyIVar({:?})", val),
             None => f.write_str("TyIVar(<unfulfilled>)")
         }

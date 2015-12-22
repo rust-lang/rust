@@ -13,6 +13,7 @@ use std::cell::RefCell;
 use std::ops::Index;
 use std::hash::Hash;
 use std::marker::PhantomData;
+use util::common::MemoizationMap;
 
 use super::{DepNode, DepGraph};
 
@@ -67,6 +68,61 @@ impl<M: DepTrackingMapId> DepTrackingMap<M> {
     pub fn contains_key(&self, k: &M::Key) -> bool {
         self.read(k);
         self.map.contains_key(k)
+    }
+}
+
+impl<M: DepTrackingMapId> MemoizationMap for RefCell<DepTrackingMap<M>> {
+    type Key = M::Key;
+    type Value = M::Value;
+
+    /// Memoizes an entry in the dep-tracking-map. If the entry is not
+    /// already present, then `op` will be executed to compute its value.
+    /// The resulting dependency graph looks like this:
+    ///
+    ///     [op] -> Map(key) -> CurrentTask
+    ///
+    /// Here, `[op]` represents whatever nodes `op` reads in the
+    /// course of execution; `Map(key)` represents the node for this
+    /// map; and `CurrentTask` represents the current task when
+    /// `memoize` is invoked.
+    ///
+    /// **Important:* when `op` is invoked, the current task will be
+    /// switched to `Map(key)`. Therefore, if `op` makes use of any
+    /// HIR nodes or shared state accessed through its closure
+    /// environment, it must explicitly read that state. As an
+    /// example, see `type_scheme_of_item` in `collect`, which looks
+    /// something like this:
+    ///
+    /// ```
+    /// fn type_scheme_of_item(..., item: &hir::Item) -> ty::TypeScheme<'tcx> {
+    ///     let item_def_id = ccx.tcx.map.local_def_id(it.id);
+    ///     ccx.tcx.tcache.memoized(item_def_id, || {
+    ///         ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id)); // (*)
+    ///         compute_type_scheme_of_item(ccx, item)
+    ///     });
+    /// }
+    /// ```
+    ///
+    /// The key is the line marked `(*)`: the closure implicitly
+    /// accesses the body of the item `item`, so we register a read
+    /// from `Hir(item_def_id)`.
+    fn memoize<OP>(&self, key: M::Key, op: OP) -> M::Value
+        where OP: FnOnce() -> M::Value
+    {
+        let graph;
+        {
+            let this = self.borrow();
+            if let Some(result) = this.map.get(&key) {
+                this.read(&key);
+                return result.clone();
+            }
+            graph = this.graph.clone();
+        }
+
+        let _task = graph.in_task(M::to_dep_node(&key));
+        let result = op();
+        self.borrow_mut().map.insert(key, result.clone());
+        result
     }
 }
 
