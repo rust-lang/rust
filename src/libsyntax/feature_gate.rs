@@ -236,6 +236,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // allow using type ascription in expressions
     ("type_ascription", "1.6.0", Some(23416), Active),
+
+    // Allows cfg(target_thread_local)
+    ("cfg_target_thread_local", "1.7.0", Some(29594), Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -414,6 +417,8 @@ const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)]
     // (name in cfg, feature, function to check if the feature is enabled)
     ("target_feature", "cfg_target_feature", cfg_fn!(|x| x.cfg_target_feature)),
     ("target_vendor", "cfg_target_vendor", cfg_fn!(|x| x.cfg_target_vendor)),
+    ("target_thread_local", "cfg_target_thread_local",
+     cfg_fn!(|x| x.cfg_target_thread_local)),
 ];
 
 #[derive(Debug, Eq, PartialEq)]
@@ -449,10 +454,13 @@ impl PartialOrd for GatedCfgAttr {
 }
 
 impl GatedCfgAttr {
-    pub fn check_and_emit(&self, diagnostic: &Handler, features: &Features) {
+    pub fn check_and_emit(&self,
+                          diagnostic: &Handler,
+                          features: &Features,
+                          codemap: &CodeMap) {
         match *self {
             GatedCfgAttr::GatedCfg(ref cfg) => {
-                cfg.check_and_emit(diagnostic, features);
+                cfg.check_and_emit(diagnostic, features, codemap);
             }
             GatedCfgAttr::GatedAttr(span) => {
                 if !features.stmt_expr_attributes {
@@ -479,9 +487,12 @@ impl GatedCfg {
                       }
                   })
     }
-    fn check_and_emit(&self, diagnostic: &Handler, features: &Features) {
+    fn check_and_emit(&self,
+                      diagnostic: &Handler,
+                      features: &Features,
+                      codemap: &CodeMap) {
         let (cfg, feature, has_feature) = GATED_CFGS[self.index];
-        if !has_feature(features) {
+        if !has_feature(features) && !codemap.span_allows_unstable(self.span) {
             let explain = format!("`cfg({})` is experimental and subject to change", cfg);
             emit_feature_err(diagnostic, feature, self.span, GateIssue::Language, &explain);
         }
@@ -541,6 +552,7 @@ pub struct Features {
     pub type_macros: bool,
     pub cfg_target_feature: bool,
     pub cfg_target_vendor: bool,
+    pub cfg_target_thread_local: bool,
     pub augmented_assignments: bool,
     pub braced_empty_structs: bool,
     pub staged_api: bool,
@@ -575,6 +587,7 @@ impl Features {
             type_macros: false,
             cfg_target_feature: false,
             cfg_target_vendor: false,
+            cfg_target_thread_local: false,
             augmented_assignments: false,
             braced_empty_structs: false,
             staged_api: false,
@@ -1157,6 +1170,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
         type_macros: cx.has_feature("type_macros"),
         cfg_target_feature: cx.has_feature("cfg_target_feature"),
         cfg_target_vendor: cx.has_feature("cfg_target_vendor"),
+        cfg_target_thread_local: cx.has_feature("cfg_target_thread_local"),
         augmented_assignments: cx.has_feature("augmented_assignments"),
         braced_empty_structs: cx.has_feature("braced_empty_structs"),
         staged_api: cx.has_feature("staged_api"),

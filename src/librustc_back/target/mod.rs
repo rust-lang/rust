@@ -195,6 +195,10 @@ pub struct TargetOptions {
     /// Default crate for allocation symbols to link against
     pub lib_allocation_crate: String,
     pub exe_allocation_crate: String,
+
+    /// Flag indicating whether ELF TLS (e.g. #[thread_local]) is available for
+    /// this target.
+    pub has_elf_tls: bool,
 }
 
 impl Default for TargetOptions {
@@ -240,6 +244,7 @@ impl Default for TargetOptions {
             lib_allocation_crate: "alloc_system".to_string(),
             exe_allocation_crate: "alloc_system".to_string(),
             allow_asm: true,
+            has_elf_tls: false,
         }
     }
 }
