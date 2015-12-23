@@ -98,7 +98,7 @@ impl error::Error for ExplicitBug {
     }
 }
 
-// Used for emitting structured error messages and other diagnostic information.
+/// Used for emitting structured error messages and other diagnostic information.
 #[must_use]
 pub struct DiagnosticBuilder<'a> {
     emitter: &'a RefCell<Box<Emitter>>,
@@ -109,7 +109,7 @@ pub struct DiagnosticBuilder<'a> {
     children: Vec<SubDiagnostic>,
 }
 
-// For example a note attached to an error.
+/// For example a note attached to an error.
 struct SubDiagnostic {
     level: Level,
     message: String,
@@ -118,7 +118,7 @@ struct SubDiagnostic {
 }
 
 impl<'a> DiagnosticBuilder<'a> {
-    // Emit the diagnostic.
+    /// Emit the diagnostic.
     pub fn emit(&mut self) {
         if self.cancelled() {
             return;
@@ -132,11 +132,11 @@ impl<'a> DiagnosticBuilder<'a> {
         // }
     }
 
-    // Cancel the diagnostic (a structured diagnostic must either be emitted or
-    // cancelled or it will panic when dropped).
-    // BEWARE: if this DiagnosticBuilder is an error, then creating it will
-    // bump the error count on the Handler and cancelling it won't undo that.
-    // If you want to decrement the error count you should use `Handler::cancel`.
+    /// Cancel the diagnostic (a structured diagnostic must either be emitted or
+    /// cancelled or it will panic when dropped).
+    /// BEWARE: if this DiagnosticBuilder is an error, then creating it will
+    /// bump the error count on the Handler and cancelling it won't undo that.
+    /// If you want to decrement the error count you should use `Handler::cancel`.
     pub fn cancel(&mut self) {
         self.level = Level::Cancelled;
     }
@@ -159,12 +159,6 @@ impl<'a> DiagnosticBuilder<'a> {
                      -> &mut DiagnosticBuilder<'a> {
         self.sub(Level::Note, msg, Some(sp), None);
         self
-    }
-    pub fn note_rfc_1214(&mut self , span: Span) -> &mut DiagnosticBuilder<'a>  {
-        self.span_note(span,
-                       "this warning results from recent bug fixes and clarifications; \
-                        it will become a HARD ERROR in the next release. \
-                        See RFC 1214 for details.")
     }
     pub fn help(&mut self , msg: &str) -> &mut DiagnosticBuilder<'a>  {
         self.sub(Level::Help, msg, None, None);
@@ -220,8 +214,8 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
-    // Convenience function for internal use, clients should use one of the
-    // struct_* methods on Handler.
+    /// Convenience function for internal use, clients should use one of the
+    /// struct_* methods on Handler.
     fn new(emitter: &'a RefCell<Box<Emitter>>,
            level: Level,
            message: &str) -> DiagnosticBuilder<'a>  {
@@ -235,8 +229,8 @@ impl<'a> DiagnosticBuilder<'a> {
         }
     }
 
-    // Convenience function for internal use, clients should use one of the
-    // public methods above.
+    /// Convenience function for internal use, clients should use one of the
+    /// public methods above.
     fn sub(&mut self,
            level: Level,
            message: &str,
@@ -258,8 +252,8 @@ impl<'a> fmt::Debug for DiagnosticBuilder<'a> {
     }
 }
 
-// Destructor bomb - a DiagnosticBuilder must be either emitted or cancelled or
-// we emit a bug.
+/// Destructor bomb - a DiagnosticBuilder must be either emitted or cancelled or
+/// we emit a bug.
 impl<'a> Drop for DiagnosticBuilder<'a> {
     fn drop(&mut self) {
         if !self.cancelled() {

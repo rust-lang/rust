@@ -749,7 +749,7 @@ impl<'a> Parser<'a> {
     pub fn parse_seq_to_before_gt_or_return<T, F>(&mut self,
                                                   sep: Option<token::Token>,
                                                   mut f: F)
-                                                  -> PResult<'a, (P<[T]>, bool)> where
+                                                  -> PResult<'a, (P<[T]>, bool)>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a, Option<T>>,
     {
         let mut v = Vec::new();

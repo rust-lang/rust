@@ -425,12 +425,12 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                              argument is missing?")
         }
         ResolutionError::UnresolvedName(path, msg, context) => {
-            let err = struct_span_err!(resolver.session,
-                                       span,
-                                       E0425,
-                                       "unresolved name `{}`{}",
-                                       path,
-                                       msg);
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0425,
+                                           "unresolved name `{}`{}",
+                                           path,
+                                           msg);
 
             match context {
                 UnresolvedNameContext::Other => {} // no help available

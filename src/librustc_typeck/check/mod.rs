@@ -3011,7 +3011,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         // only find fits with at least one matching letter
         if let Some(name) = find_best_match_for_name(names, &name, Some(name.len())) {
             err.span_help(field.span,
-                          &format!("did you mean `{}`?", n));
+                          &format!("did you mean `{}`?", name));
         }
     }
 
