@@ -1247,7 +1247,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                                               substs: trait_substs });
 
     tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
 
     let mut selcx = traits::SelectionContext::new(&infcx);
     let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
