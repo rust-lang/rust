@@ -10,6 +10,7 @@
 
 use middle::infer::InferCtxt;
 use middle::ty::{self, Ty, TypeFoldable};
+use rustc_data_structures::obligation_forest::{Backtrace, ObligationForest, Error};
 
 use syntax::ast;
 use util::common::ErrorReported;
@@ -20,6 +21,7 @@ use super::CodeProjectionError;
 use super::CodeSelectionError;
 use super::is_object_safe;
 use super::FulfillmentError;
+use super::FulfillmentErrorCode;
 use super::ObligationCause;
 use super::PredicateObligation;
 use super::project;
@@ -57,7 +59,7 @@ pub struct FulfillmentContext<'tcx> {
 
     // A list of all obligations that have been registered with this
     // fulfillment context.
-    predicates: Vec<PendingPredicateObligation<'tcx>>,
+    predicates: ObligationForest<PendingPredicateObligation<'tcx>>,
 
     // A set of constraints that regionck must validate. Each
     // constraint has the form `T:'a`, meaning "some type `T` must
@@ -122,7 +124,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
     pub fn new(errors_will_be_reported: bool) -> FulfillmentContext<'tcx> {
         FulfillmentContext {
             duplicate_set: FulfilledPredicates::new(),
-            predicates: Vec::new(),
+            predicates: ObligationForest::new(),
             region_obligations: NodeMap(),
             errors_will_be_reported: errors_will_be_reported,
         }
@@ -202,7 +204,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
             obligation: obligation,
             stalled_on: vec![]
         };
-        self.predicates.push(obligation);
+        self.predicates.push_root(obligation);
     }
 
     pub fn region_obligations(&self,
@@ -220,14 +222,11 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                    -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
         try!(self.select_where_possible(infcx));
-
-        // Anything left is ambiguous.
-        let errors: Vec<FulfillmentError> =
-            self.predicates
-            .iter()
-            .map(|o| FulfillmentError::new(o.obligation.clone(), CodeAmbiguity))
-            .collect();
-
+        let errors: Vec<_> =
+            self.predicates.to_errors(CodeAmbiguity)
+                           .into_iter()
+                           .map(|e| to_fulfillment_error(e))
+                           .collect();
         if errors.is_empty() {
             Ok(())
         } else {
@@ -240,11 +239,11 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                      -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
         let mut selcx = SelectionContext::new(infcx);
-        self.select(&mut selcx, false)
+        self.select(&mut selcx)
     }
 
-    pub fn pending_obligations(&self) -> &[PendingPredicateObligation<'tcx>] {
-        &self.predicates
+    pub fn pending_obligations(&self) -> Vec<PendingPredicateObligation<'tcx>> {
+        self.predicates.pending_obligations()
     }
 
     fn is_duplicate_or_add(&mut self,
@@ -273,58 +272,43 @@ impl<'tcx> FulfillmentContext<'tcx> {
     /// Attempts to select obligations using `selcx`. If `only_new_obligations` is true, then it
     /// only attempts to select obligations that haven't been seen before.
     fn select<'a>(&mut self,
-                  selcx: &mut SelectionContext<'a, 'tcx>,
-                  only_new_obligations: bool)
+                  selcx: &mut SelectionContext<'a, 'tcx>)
                   -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
-        debug!("select({} obligations, only_new_obligations={}) start",
-               self.predicates.len(),
-               only_new_obligations);
+        debug!("select(obligation-forest-size={})", self.predicates.len());
 
         let mut errors = Vec::new();
 
         loop {
-            let count = self.predicates.len();
+            debug!("select_where_possible: starting another iteration");
 
-            debug!("select_where_possible({} obligations) iteration",
-                   count);
-
-            let mut new_obligations = Vec::new();
-
-            // First pass: walk each obligation, retaining
-            // only those that we cannot yet process.
-            {
+            // Process pending obligations.
+            let outcome = {
                 let region_obligations = &mut self.region_obligations;
-                let mut i = 0;
-                while i < self.predicates.len() {
-                    let processed = process_predicate(selcx,
-                                                      &mut self.predicates[i],
-                                                      &mut new_obligations,
-                                                      &mut errors,
-                                                      region_obligations);
-                    if processed {
-                        self.predicates.swap_remove(i);
-                    } else {
-                        i += 1;
-                    }
+                self.predicates.process_obligations(
+                    |obligation, backtrace| process_predicate(selcx,
+                                                              obligation,
+                                                              backtrace,
+                                                              region_obligations))
+            };
+
+            debug!("select_where_possible: outcome={:?}", outcome);
+
                 }
             }
 
-            if self.predicates.len() == count {
-                // Nothing changed.
-                break;
-            }
+            errors.extend(
+                outcome.errors.into_iter()
+                              .map(|e| to_fulfillment_error(e)));
 
-            // Now go through all the successful ones,
-            // registering any nested obligations for the future.
-            for new_obligation in new_obligations {
-                self.register_predicate_obligation(selcx.infcx(), new_obligation);
+            // If nothing new was added, no need to keep looping.
+            if outcome.stalled {
+                break;
             }
         }
 
-        debug!("select({} obligations, {} errors) done",
-               self.predicates.len(),
-               errors.len());
+        debug!("select({} predicates remaining, {} errors) done",
+               self.predicates.len(), errors.len());
 
         if errors.is_empty() {
             Ok(())
@@ -334,20 +318,37 @@ impl<'tcx> FulfillmentContext<'tcx> {
     }
 }
 
+/// Like `process_predicate1`, but wrap result into a pending predicate.
 fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                               pending_obligation: &mut PendingPredicateObligation<'tcx>,
-                              new_obligations: &mut Vec<PredicateObligation<'tcx>>,
-                              errors: &mut Vec<FulfillmentError<'tcx>>,
+                              backtrace: Backtrace<PendingPredicateObligation<'tcx>>,
                               region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
-                              -> bool
+                              -> Result<Option<Vec<PendingPredicateObligation<'tcx>>>,
+                                        FulfillmentErrorCode<'tcx>>
 {
-    /*!
-     * Processes a predicate obligation and modifies the appropriate
-     * output array with the successful/error result.  Returns `false`
-     * if the predicate could not be processed due to insufficient
-     * type inference.
-     */
+    match process_predicate1(selcx, pending_obligation, backtrace, region_obligations) {
+        Ok(Some(v)) => Ok(Some(v.into_iter()
+                                .map(|o| PendingPredicateObligation {
+                                    obligation: o,
+                                    stalled_on: vec![]
+                                })
+                               .collect())),
+        Ok(None) => Ok(None),
+        Err(e) => Err(e)
+    }
+}
 
+/// Processes a predicate obligation and returns either:
+/// - `Ok(Some(v))` if the predicate is true, presuming that `v` are also true
+/// - `Ok(None)` if we don't have enough info to be sure
+/// - `Err` if the predicate does not hold
+fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
+                               pending_obligation: &mut PendingPredicateObligation<'tcx>,
+                               backtrace: Backtrace<PendingPredicateObligation<'tcx>>,
+                               region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
+                               -> Result<Option<Vec<PredicateObligation<'tcx>>>,
+                                         FulfillmentErrorCode<'tcx>>
+{
     // if we were stalled on some unresolved variables, first check
     // whether any of them have been resolved; if not, don't bother
     // doing more work yet
@@ -359,16 +360,19 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
             debug!("process_predicate: pending obligation {:?} still stalled on {:?}",
                    selcx.infcx().resolve_type_vars_if_possible(&pending_obligation.obligation),
                    pending_obligation.stalled_on);
-            return false;
+            return Ok(None);
         }
         pending_obligation.stalled_on = vec![];
     }
 
-    let obligation = &mut pending_obligation.obligation;
+    let obligation = &pending_obligation.obligation;
     match obligation.predicate {
         ty::Predicate::Trait(ref data) => {
             let trait_obligation = obligation.with(data.clone());
             match selcx.select(&trait_obligation) {
+                Ok(Some(vtable)) => {
+                    Ok(Some(vtable.nested_obligations()))
+                }
                 Ok(None) => {
                     // This is a bit subtle: for the most part, the
                     // only reason we can fail to make progress on
@@ -395,50 +399,26 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                            selcx.infcx().resolve_type_vars_if_possible(obligation),
                            pending_obligation.stalled_on);
 
-                    false
-                }
-                Ok(Some(s)) => {
-                    new_obligations.append(&mut s.nested_obligations());
-                    true
+                    Ok(None)
                 }
                 Err(selection_err) => {
-                    debug!("predicate: {:?} error: {:?}",
-                           obligation,
-                           selection_err);
-                    errors.push(
-                        FulfillmentError::new(
-                            obligation.clone(),
-                            CodeSelectionError(selection_err)));
-                    true
+                    Err(CodeSelectionError(selection_err))
                 }
             }
         }
 
         ty::Predicate::Equate(ref binder) => {
             match selcx.infcx().equality_predicate(obligation.cause.span, binder) {
-                Ok(()) => { }
-                Err(_) => {
-                    errors.push(
-                        FulfillmentError::new(
-                            obligation.clone(),
-                            CodeSelectionError(Unimplemented)));
-                }
+                Ok(()) => Ok(Some(Vec::new())),
+                Err(_) => Err(CodeSelectionError(Unimplemented)),
             }
-            true
         }
 
         ty::Predicate::RegionOutlives(ref binder) => {
             match selcx.infcx().region_outlives_predicate(obligation.cause.span, binder) {
-                Ok(()) => { }
-                Err(_) => {
-                    errors.push(
-                        FulfillmentError::new(
-                            obligation.clone(),
-                            CodeSelectionError(Unimplemented)));
-                }
+                Ok(()) => Ok(Some(Vec::new())),
+                Err(_) => Err(CodeSelectionError(Unimplemented)),
             }
-
-            true
         }
 
         ty::Predicate::TypeOutlives(ref binder) => {
@@ -454,10 +434,7 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                         // If so, this obligation is an error (for now). Eventually we should be
                         // able to support additional cases here, like `for<'a> &'a str: 'a`.
                         None => {
-                            errors.push(
-                                FulfillmentError::new(
-                                    obligation.clone(),
-                                    CodeSelectionError(Unimplemented)))
+                            Err(CodeSelectionError(Unimplemented))
                         }
                         // Otherwise, we have something of the form
                         // `for<'a> T: 'a where 'a not in T`, which we can treat as `T: 'static`.
@@ -465,6 +442,7 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                             register_region_obligation(t_a, ty::ReStatic,
                                                        obligation.cause.clone(),
                                                        region_obligations);
+                            Ok(Some(vec![]))
                         }
                     }
                 }
@@ -473,55 +451,30 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                     register_region_obligation(t_a, r_b,
                                                obligation.cause.clone(),
                                                region_obligations);
+                    Ok(Some(vec![]))
                 }
             }
-            true
         }
 
         ty::Predicate::Projection(ref data) => {
             let project_obligation = obligation.with(data.clone());
-            let result = project::poly_project_and_unify_type(selcx, &project_obligation);
-            debug!("process_predicate: poly_project_and_unify_type({:?}) returned {:?}",
-                   project_obligation,
-                   result);
-            match result {
-                Ok(Some(obligations)) => {
-                    new_obligations.extend(obligations);
-                    true
-                }
-                Ok(None) => {
-                    false
-                }
-                Err(err) => {
-                    errors.push(
-                        FulfillmentError::new(
-                            obligation.clone(),
-                            CodeProjectionError(err)));
-                    true
-                }
+            match project::poly_project_and_unify_type(selcx, &project_obligation) {
+                Ok(v) => Ok(v),
+                Err(e) => Err(CodeProjectionError(e))
             }
         }
 
         ty::Predicate::ObjectSafe(trait_def_id) => {
             if !is_object_safe(selcx.tcx(), trait_def_id) {
-                errors.push(FulfillmentError::new(
-                    obligation.clone(),
-                    CodeSelectionError(Unimplemented)));
+                Err(CodeSelectionError(Unimplemented))
+            } else {
+                Ok(Some(Vec::new()))
             }
-            true
         }
 
         ty::Predicate::WellFormed(ty) => {
-            match ty::wf::obligations(selcx.infcx(), obligation.cause.body_id,
-                                      ty, obligation.cause.span) {
-                Some(obligations) => {
-                    new_obligations.extend(obligations);
-                    true
-                }
-                None => {
-                    false
-                }
-            }
+            Ok(ty::wf::obligations(selcx.infcx(), obligation.cause.body_id,
+                                   ty, obligation.cause.span))
         }
     }
 }
@@ -558,4 +511,12 @@ impl<'tcx> FulfilledPredicates<'tcx> {
     fn is_duplicate_or_add(&mut self, key: &ty::Predicate<'tcx>) -> bool {
         !self.set.insert(key.clone())
     }
+}
+
+fn to_fulfillment_error<'tcx>(
+    error: Error<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>>)
+    -> FulfillmentError<'tcx>
+{
+    let obligation = error.backtrace.into_iter().next().unwrap().obligation;
+    FulfillmentError::new(obligation, error.error)
 }
