@@ -46,15 +46,6 @@ beyond the standard one, and its website contains lots of good documentation.
 [`rustdoc`](book/documentation.html) is the Rust's documentation generator, a tool converting
 annotated source code into HTML docs.
 
-# FAQs
-
-There are questions that are asked quite often, so we've made FAQs for them:
-
-* [Language Design FAQ](complement-design-faq.html)
-* [Language FAQ](complement-lang-faq.html)
-* [Project FAQ](complement-project-faq.html)
-* [How to submit a bug report](https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports)
-
 # The Error Index
 
 If you encounter an error while compiling your code you may be able to look it
