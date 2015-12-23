@@ -28,7 +28,7 @@ pub trait Emitter {
     fn emit(&mut self, span: Option<Span>, msg: &str, code: Option<&str>, lvl: Level);
     fn custom_emit(&mut self, sp: RenderSpan, msg: &str, lvl: Level);
 
-    // Emit a structured diagnostic.
+    /// Emit a structured diagnostic.
     fn emit_struct(&mut self, db: &DiagnosticBuilder) {
         self.emit(db.span, &db.message, db.code.as_ref().map(|s| &**s), db.level);
         for child in &db.children {
@@ -60,8 +60,8 @@ impl ColorConfig {
     }
 }
 
-// A basic emitter for when we don't have access to a codemap or registry. Used
-// for reporting very early errors, etc.
+/// A basic emitter for when we don't have access to a codemap or registry. Used
+/// for reporting very early errors, etc.
 pub struct BasicEmitter {
     dst: Destination,
 }

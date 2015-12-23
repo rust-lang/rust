@@ -676,10 +676,11 @@ impl<'a> Context<'a> {
                         return true
                     }
                 }
-                sess.err(&format!("extern location for {} is of an unknown type: {}",
-                                 self.crate_name, loc.display()));
-                sess.help(&format!("file name should be lib*.rlib or {}*.{}",
-                                   dylibname.0, dylibname.1));
+                sess.struct_err(&format!("extern location for {} is of an unknown type: {}",
+                                         self.crate_name, loc.display()))
+                    .help(&format!("file name should be lib*.rlib or {}*.{}",
+                                   dylibname.0, dylibname.1))
+                    .emit();
                 false
             });
 
