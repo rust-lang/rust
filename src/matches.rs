@@ -254,9 +254,9 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-struct SpannedRange<T> {
-    span: Span,
-    node: (T, T),
+pub struct SpannedRange<T> {
+    pub span: Span,
+    pub node: (T, T),
 }
 
 #[derive(Debug)]
@@ -339,7 +339,7 @@ fn match_template(cx: &LateContext,
     }
 }
 
-fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &SpannedRange<T>)>
+pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &SpannedRange<T>)>
     where T: Copy + Ord {
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     enum Kind<'a, T: 'a> {
@@ -391,18 +391,4 @@ fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &Span
     }
 
     None
-}
-
-#[test]
-fn test_overlapping() {
-    use syntax::codemap::DUMMY_SP;
-
-    let sp = |s, e| SpannedRange { span: DUMMY_SP, node: (s, e) };
-
-    assert_eq!(None, overlapping::<u8>(&[]));
-    assert_eq!(None, overlapping(&[sp(1, 4)]));
-    assert_eq!(None, overlapping(&[sp(1, 4), sp(5, 6)]));
-    assert_eq!(None, overlapping(&[sp(1, 4), sp(5, 6), sp(10, 11)]));
-    assert_eq!(Some((&sp(1, 4), &sp(3, 6))), overlapping(&[sp(1, 4), sp(3, 6)]));
-    assert_eq!(Some((&sp(5, 6), &sp(6, 11))), overlapping(&[sp(1, 4), sp(5, 6), sp(6, 11)]));
 }
