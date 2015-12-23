@@ -81,7 +81,7 @@ declare_lint!(pub MATCH_BOOL, Warn,
 /// }
 /// ```
 declare_lint!(pub MATCH_OVERLAPPING_ARM, Warn,
-              "overlapping match arms");
+              "a match has overlapping arms");
 
 #[allow(missing_copy_implementations)]
 pub struct MatchPass;
