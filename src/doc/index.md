@@ -14,11 +14,6 @@ concepts. Upon completing the book, you'll be an intermediate Rust
 developer, and will have a good grasp of the fundamental ideas behind
 Rust.
 
-[Rust By Example][rbe] teaches you Rust through a series of small
-examples.
-
-[rbe]: http://rustbyexample.com/
-
 # Language Reference
 
 Rust does not have an exact specification yet, but an effort to describe as much of
@@ -38,26 +33,7 @@ how to write `unsafe` Rust code. It is for advanced Rust programmers.
 
 [The Rustonomicon]: nomicon/index.html
 
-# Tools
-
-[Cargo](http://doc.crates.io/index.html) is the Rust package manager providing access to libraries
-beyond the standard one, and its website contains lots of good documentation.
-
-[`rustdoc`](book/documentation.html) is the Rust's documentation generator, a tool converting
-annotated source code into HTML docs.
-
 # The Error Index
 
 If you encounter an error while compiling your code you may be able to look it
 up in the [Rust Compiler Error Index](error-index.html).
-
-# Community Translations
-
-Several projects have been started to translate the documentation into other
-languages:
-
-- [Russian](https://github.com/kgv/rust_book_ru)
-- [Korean](https://github.com/rust-kr/doc.rust-kr.org)
-- [Chinese](https://github.com/KaiserY/rust-book-chinese)
-- [Spanish](https://goyox86.github.io/elpr)
-- [German](https://panicbit.github.io/rustbook-de)
