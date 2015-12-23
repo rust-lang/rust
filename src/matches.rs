@@ -191,8 +191,8 @@ fn check_overlapping_arms(cx: &LateContext, arms: &[Arm]) {
     if arms.len() >= 2 {
         let ranges = all_ranges(cx, arms);
         let overlap = match type_ranges(&ranges) {
-            TypedRanges::IntRanges(ranges) => overlaping(&ranges).map(|(start, end)| (start.span, end.span)),
-            TypedRanges::UintRanges(ranges) => overlaping(&ranges).map(|(start, end)| (start.span, end.span)),
+            TypedRanges::IntRanges(ranges) => overlapping(&ranges).map(|(start, end)| (start.span, end.span)),
+            TypedRanges::UintRanges(ranges) => overlapping(&ranges).map(|(start, end)| (start.span, end.span)),
             TypedRanges::None => None,
         };
 
@@ -338,7 +338,7 @@ fn match_template(cx: &LateContext,
     }
 }
 
-fn overlaping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &SpannedRange<T>)>
+fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &SpannedRange<T>)>
     where T: Copy + Ord {
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     enum Kind<'a, T: 'a> {
@@ -398,10 +398,10 @@ fn test_overlapping() {
 
     let sp = |s, e| SpannedRange { span: DUMMY_SP, node: (s, e) };
 
-    assert_eq!(None, overlaping::<u8>(&[]));
-    assert_eq!(None, overlaping(&[sp(1, 4)]));
-    assert_eq!(None, overlaping(&[sp(1, 4), sp(5, 6)]));
-    assert_eq!(None, overlaping(&[sp(1, 4), sp(5, 6), sp(10, 11)]));
-    assert_eq!(Some((&sp(1, 4), &sp(3, 6))), overlaping(&[sp(1, 4), sp(3, 6)]));
-    assert_eq!(Some((&sp(5, 6), &sp(6, 11))), overlaping(&[sp(1, 4), sp(5, 6), sp(6, 11)]));
+    assert_eq!(None, overlapping::<u8>(&[]));
+    assert_eq!(None, overlapping(&[sp(1, 4)]));
+    assert_eq!(None, overlapping(&[sp(1, 4), sp(5, 6)]));
+    assert_eq!(None, overlapping(&[sp(1, 4), sp(5, 6), sp(10, 11)]));
+    assert_eq!(Some((&sp(1, 4), &sp(3, 6))), overlapping(&[sp(1, 4), sp(3, 6)]));
+    assert_eq!(Some((&sp(5, 6), &sp(6, 11))), overlapping(&[sp(1, 4), sp(5, 6), sp(6, 11)]));
 }
