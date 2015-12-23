@@ -592,7 +592,7 @@ pub fn integer_lit(s: &str,
 
     let mut base = 10;
     let orig = s;
-    let mut ty = ast::UnsuffixedIntLit(ast::Plus);
+    let mut ty = ast::UnsuffixedIntLit;
 
     if char_at(s, 0) == '0' && s.len() > 1 {
         match char_at(s, 1) {
@@ -624,11 +624,11 @@ pub fn integer_lit(s: &str,
     if let Some(ref suf) = suffix {
         if suf.is_empty() { sd.span_bug(sp, "found empty literal suffix in Some")}
         ty = match &**suf {
-            "isize" => ast::SignedIntLit(ast::TyIs, ast::Plus),
-            "i8"  => ast::SignedIntLit(ast::TyI8, ast::Plus),
-            "i16" => ast::SignedIntLit(ast::TyI16, ast::Plus),
-            "i32" => ast::SignedIntLit(ast::TyI32, ast::Plus),
-            "i64" => ast::SignedIntLit(ast::TyI64, ast::Plus),
+            "isize" => ast::SignedIntLit(ast::TyIs),
+            "i8"  => ast::SignedIntLit(ast::TyI8),
+            "i16" => ast::SignedIntLit(ast::TyI16),
+            "i32" => ast::SignedIntLit(ast::TyI32),
+            "i64" => ast::SignedIntLit(ast::TyI64),
             "usize" => ast::UnsignedIntLit(ast::TyUs),
             "u8"  => ast::UnsignedIntLit(ast::TyU8),
             "u16" => ast::UnsignedIntLit(ast::TyU16),
@@ -657,9 +657,9 @@ pub fn integer_lit(s: &str,
     debug!("integer_lit: the type is {:?}, base {:?}, the new string is {:?}, the original \
            string was {:?}, the original suffix was {:?}", ty, base, s, orig, suffix);
 
-    let res = match u64::from_str_radix(s, base).ok() {
-        Some(r) => r,
-        None => {
+    match u64::from_str_radix(s, base) {
+        Ok(r) => ast::LitInt(r, ty),
+        Err(_) => {
             // small bases are lexed as if they were base 10, e.g, the string
             // might be `0b10201`. This will cause the conversion above to fail,
             // but these cases have errors in the lexer: we don't want to emit
@@ -671,16 +671,8 @@ pub fn integer_lit(s: &str,
             if !already_errored {
                 sd.span_err(sp, "int literal is too large");
             }
-            0
+            ast::LitInt(0, ty)
         }
-    };
-
-    // adjust the sign
-    let sign = ast::Sign::new(res);
-    match ty {
-        ast::SignedIntLit(t, _) => ast::LitInt(res, ast::SignedIntLit(t, sign)),
-        ast::UnsuffixedIntLit(_) => ast::LitInt(res, ast::UnsuffixedIntLit(sign)),
-        us@ast::UnsignedIntLit(_) => ast::LitInt(res, us)
     }
 }
 
