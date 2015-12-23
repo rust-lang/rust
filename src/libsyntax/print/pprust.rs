@@ -3173,12 +3173,4 @@ mod tests {
         let varstr = variant_to_string(&var);
         assert_eq!(varstr, "principal_skinner");
     }
-
-    #[test]
-    fn test_signed_int_to_string() {
-        let pos_int = ast::LitInt(42, ast::SignedIntLit(ast::IntTy::I32, ast::Plus));
-        let neg_int = ast::LitInt((!42 + 1) as u64, ast::SignedIntLit(ast::IntTy::I32, ast::Minus));
-        assert_eq!(format!("-{}", lit_to_string(&codemap::dummy_spanned(pos_int))),
-                   lit_to_string(&codemap::dummy_spanned(neg_int)));
-    }
 }
