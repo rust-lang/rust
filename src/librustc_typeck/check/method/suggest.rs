@@ -69,103 +69,101 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 rcvr_ty,
                 None);
 
-            if let Some(ref mut err) = err {
-                // If the item has the name of a field, give a help note
-                if let (&ty::TyStruct(def, substs), Some(expr)) = (&rcvr_ty.sty, rcvr_expr) {
-                    if let Some(field) = def.struct_variant().find_field_named(item_name) {
-                        let expr_string = match cx.sess.codemap().span_to_snippet(expr.span) {
-                            Ok(expr_string) => expr_string,
-                            _ => "s".into() // Default to a generic placeholder for the
-                                            // expression when we can't generate a string
-                                            // snippet
-                        };
+            // If the item has the name of a field, give a help note
+            if let (&ty::TyStruct(def, substs), Some(expr)) = (&rcvr_ty.sty, rcvr_expr) {
+                if let Some(field) = def.struct_variant().find_field_named(item_name) {
+                    let expr_string = match cx.sess.codemap().span_to_snippet(expr.span) {
+                        Ok(expr_string) => expr_string,
+                        _ => "s".into() // Default to a generic placeholder for the
+                                        // expression when we can't generate a string
+                                        // snippet
+                    };
 
-                        macro_rules! span_stored_function {
-                            () => {
-                                err.span_note(span,
-                                              &format!("use `({0}.{1})(...)` if you meant to call \
-                                                        the function stored in the `{1}` field",
-                                                       expr_string, item_name));
-                            }
+                    macro_rules! span_stored_function {
+                        () => {
+                            err.span_note(span,
+                                          &format!("use `({0}.{1})(...)` if you meant to call \
+                                                    the function stored in the `{1}` field",
+                                                   expr_string, item_name));
                         }
+                    }
 
-                        macro_rules! span_did_you_mean {
-                            () => {
-                                err.span_note(span, &format!("did you mean to write `{0}.{1}`?",
-                                                             expr_string, item_name));
-                            }
+                    macro_rules! span_did_you_mean {
+                        () => {
+                            err.span_note(span, &format!("did you mean to write `{0}.{1}`?",
+                                                         expr_string, item_name));
                         }
+                    }
 
-                        // Determine if the field can be used as a function in some way
-                        let field_ty = field.ty(cx, substs);
+                    // Determine if the field can be used as a function in some way
+                    let field_ty = field.ty(cx, substs);
 
-                        match field_ty.sty {
-                            // Not all of these (e.g. unsafe fns) implement FnOnce
-                            // so we look for these beforehand
-                            ty::TyClosure(..) | ty::TyBareFn(..) => {
-                                span_stored_function!();
-                            }
-                            // If it's not a simple function, look for things which implement FnOnce
-                            _ => {
-                                if let Ok(fn_once_trait_did) =
-                                        cx.lang_items.require(FnOnceTraitLangItem) {
-                                    let infcx = fcx.infcx();
-                                    infcx.probe(|_| {
-                                        let fn_once_substs =
-                                            Substs::new_trait(vec![infcx.next_ty_var()],
-                                                              Vec::new(),
-                                                              field_ty);
-                                        let trait_ref =
-                                          ty::TraitRef::new(fn_once_trait_did,
-                                                            cx.mk_substs(fn_once_substs));
-                                        let poly_trait_ref = trait_ref.to_poly_trait_ref();
-                                        let obligation = Obligation::misc(span,
-                                                                          fcx.body_id,
-                                                                          poly_trait_ref
-                                                                             .to_predicate());
-                                        let mut selcx = SelectionContext::new(infcx);
+                    match field_ty.sty {
+                        // Not all of these (e.g. unsafe fns) implement FnOnce
+                        // so we look for these beforehand
+                        ty::TyClosure(..) | ty::TyBareFn(..) => {
+                            span_stored_function!();
+                        }
+                        // If it's not a simple function, look for things which implement FnOnce
+                        _ => {
+                            if let Ok(fn_once_trait_did) =
+                                    cx.lang_items.require(FnOnceTraitLangItem) {
+                                let infcx = fcx.infcx();
+                                infcx.probe(|_| {
+                                    let fn_once_substs =
+                                        Substs::new_trait(vec![infcx.next_ty_var()],
+                                                          Vec::new(),
+                                                          field_ty);
+                                    let trait_ref =
+                                      ty::TraitRef::new(fn_once_trait_did,
+                                                        cx.mk_substs(fn_once_substs));
+                                    let poly_trait_ref = trait_ref.to_poly_trait_ref();
+                                    let obligation = Obligation::misc(span,
+                                                                      fcx.body_id,
+                                                                      poly_trait_ref
+                                                                         .to_predicate());
+                                    let mut selcx = SelectionContext::new(infcx);
 
-                                        if selcx.evaluate_obligation(&obligation) {
-                                            span_stored_function!();
-                                        } else {
-                                            span_did_you_mean!();
-                                        }
-                                    });
-                                } else {
-                                    span_did_you_mean!();
-                                }
+                                    if selcx.evaluate_obligation(&obligation) {
+                                        span_stored_function!();
+                                    } else {
+                                        span_did_you_mean!();
+                                    }
+                                });
+                            } else {
+                                span_did_you_mean!();
                             }
                         }
                     }
                 }
-
-                if !static_sources.is_empty() {
-                    err.fileline_note(
-                        span,
-                        "found defined static methods, maybe a `self` is missing?");
-
-                    report_candidates(fcx, err, span, item_name, static_sources);
-                }
-
-                if !unsatisfied_predicates.is_empty() {
-                    let bound_list = unsatisfied_predicates.iter()
-                        .map(|p| format!("`{} : {}`",
-                                         p.self_ty(),
-                                         p))
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    err.fileline_note(
-                        span,
-                        &format!("the method `{}` exists but the \
-                                 following trait bounds were not satisfied: {}",
-                                 item_name,
-                                 bound_list));
-                }
-
-                suggest_traits_to_import(fcx, err, span, rcvr_ty, item_name,
-                                         rcvr_expr, out_of_scope_traits);
-                err.emit();
             }
+
+            if !static_sources.is_empty() {
+                err.fileline_note(
+                    span,
+                    "found defined static methods, maybe a `self` is missing?");
+
+                report_candidates(fcx, &mut err, span, item_name, static_sources);
+            }
+
+            if !unsatisfied_predicates.is_empty() {
+                let bound_list = unsatisfied_predicates.iter()
+                    .map(|p| format!("`{} : {}`",
+                                     p.self_ty(),
+                                     p))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                err.fileline_note(
+                    span,
+                    &format!("the method `{}` exists but the \
+                             following trait bounds were not satisfied: {}",
+                             item_name,
+                             bound_list));
+            }
+
+            suggest_traits_to_import(fcx, &mut err, span, rcvr_ty, item_name,
+                                     rcvr_expr, out_of_scope_traits);
+            err.emit();
         }
 
         MethodError::Ambiguity(sources) => {

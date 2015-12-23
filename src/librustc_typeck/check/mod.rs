@@ -1051,16 +1051,16 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             if t_cast.is_trait() {
                 match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
                     Ok(s) => {
-                        err.as_mut().unwrap().span_suggestion(t_span,
-                                                              "try casting to a reference instead:",
-                                                              format!("&{}{}", mtstr, s));
+                        err.span_suggestion(t_span,
+                                            "try casting to a reference instead:",
+                                            format!("&{}{}", mtstr, s));
                     },
                     Err(_) =>
-                        span_help!(err.as_mut().unwrap(), t_span,
+                        span_help!(err, t_span,
                                    "did you mean `&{}{}`?", mtstr, tstr),
                 }
             } else {
-                span_help!(err.as_mut().unwrap(), span,
+                span_help!(err, span,
                            "consider using an implicit coercion to `&{}{}` instead",
                            mtstr, tstr);
             }
@@ -1068,20 +1068,20 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         ty::TyBox(..) => {
             match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
                 Ok(s) => {
-                    err.as_mut().unwrap().span_suggestion(t_span,
+                    err.span_suggestion(t_span,
                                                           "try casting to a `Box` instead:",
                                                            format!("Box<{}>", s));
                 },
                 Err(_) =>
-                    span_help!(err.as_mut().unwrap(), t_span, "did you mean `Box<{}>`?", tstr),
+                    span_help!(err, t_span, "did you mean `Box<{}>`?", tstr),
             }
         }
         _ => {
-            span_help!(err.as_mut().unwrap(), e_span,
+            span_help!(err, e_span,
                        "consider using a box or reference as appropriate");
         }
     }
-    err.map(|mut e| e.emit());
+    err.emit();
     fcx.write_error(id);
 }
 
@@ -1630,7 +1630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 mk_msg: M,
                                 actual_ty: Ty<'tcx>,
                                 err: Option<&TypeError<'tcx>>)
-                                -> Option<DiagnosticBuilder<'tcx>>
+                                -> DiagnosticBuilder<'tcx>
         where M: FnOnce(String) -> String,
     {
         self.infcx().type_error_struct(sp, mk_msg, actual_ty, err)
@@ -2966,13 +2966,12 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                `{}`", field.node, actual)
                                    },
                                    expr_t, None)
-                .unwrap()
                 .fileline_help(field.span,
                                "maybe a `()` to call it is missing? \
                                If not, try an anonymous function")
                 .emit();
         } else {
-            fcx.type_error_struct(
+            let mut err = fcx.type_error_struct(
                 expr.span,
                 |actual| {
                     format!("attempted access of field `{}` on \
@@ -2981,13 +2980,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                             field.node,
                             actual)
                 },
-                expr_t, None)
-            .map(|mut e| {
-                if let ty::TyStruct(def, _) = expr_t.sty {
-                    suggest_field_names(&mut e, def.struct_variant(), field, vec![]);
-                }
-                e.emit();
-            });
+                expr_t, None);
+            if let ty::TyStruct(def, _) = expr_t.sty {
+                suggest_field_names(&mut err, def.struct_variant(), field, vec![]);
+            }
+            err.emit();
         }
 
         fcx.write_error(expr.id);
@@ -3089,7 +3086,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                       variant: ty::VariantDef<'tcx>,
                                       field: &hir::Field,
                                       skip_fields: &[hir::Field]) {
-        fcx.type_error_struct(
+        let mut err = fcx.type_error_struct(
             field.name.span,
             |actual| if let ty::TyEnum(..) = ty.sty {
                 format!("struct variant `{}::{}` has no field named `{}`",
@@ -3099,13 +3096,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                         actual, field.name.node)
             },
             ty,
-            None)
-        .map(|mut e| {
-            // prevent all specified fields from being suggested
-            let skip_fields = skip_fields.iter().map(|ref x| x.name.node.as_str());
-            suggest_field_names(&mut e, variant, &field.name, skip_fields.collect());
-            e.emit();
-        });
+            None);
+        // prevent all specified fields from being suggested
+        let skip_fields = skip_fields.iter().map(|ref x| x.name.node.as_str());
+        suggest_field_names(&mut err, variant, &field.name, skip_fields.collect());
+        err.emit();
     }
 
     fn check_expr_struct_fields<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,

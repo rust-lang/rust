@@ -1281,7 +1281,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                     mk_msg: M,
                                     actual_ty: String,
                                     err: Option<&TypeError<'tcx>>)
-                                    -> Option<DiagnosticBuilder<'tcx>>
+                                    -> DiagnosticBuilder<'tcx>
         where M: FnOnce(Option<String>, String) -> String,
     {
         self.type_error_struct_str_with_expected(sp, mk_msg, None, actual_ty, err)
@@ -1296,7 +1296,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         where M: FnOnce(Option<String>, String) -> String,
     {
         self.type_error_struct_str_with_expected(sp, mk_msg, expected_ty, actual_ty, err)
-            .map(|mut e| e.emit());
+            .emit();
     }
 
     pub fn type_error_struct_str_with_expected<M>(&self,
@@ -1305,7 +1305,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                   expected_ty: Option<Ty<'tcx>>,
                                                   actual_ty: String,
                                                   err: Option<&TypeError<'tcx>>)
-                                                  -> Option<DiagnosticBuilder<'tcx>>
+                                                  -> DiagnosticBuilder<'tcx>
         where M: FnOnce(Option<String>, String) -> String,
     {
         debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
@@ -1324,9 +1324,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             if let Some(err) = err {
                 self.tcx.note_and_explain_type_err(&mut db, err, sp);
             }
-            Some(db)
+            db
         } else {
-            None
+            self.tcx.sess.diagnostic().struct_dummy()
         }
     }
 
@@ -1337,7 +1337,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                  err: Option<&TypeError<'tcx>>)
         where M: FnOnce(String) -> String,
     {
-        self.type_error_struct(sp, mk_msg, actual_ty, err).map(|mut e| e.emit());
+        self.type_error_struct(sp, mk_msg, actual_ty, err).emit();
     }
 
     pub fn type_error_struct<M>(&self,
@@ -1345,14 +1345,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 mk_msg: M,
                                 actual_ty: Ty<'tcx>,
                                 err: Option<&TypeError<'tcx>>)
-                                -> Option<DiagnosticBuilder<'tcx>>
+                                -> DiagnosticBuilder<'tcx>
         where M: FnOnce(String) -> String,
     {
         let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
 
         // Don't report an error if actual type is TyError.
         if actual_ty.references_error() {
-            return None;
+            return self.tcx.sess.diagnostic().struct_dummy();
         }
 
         self.type_error_struct_str(sp,

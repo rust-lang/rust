@@ -754,18 +754,17 @@ impl LateLintPass for UnconditionalRecursion {
         if !reached_exit_without_self_call && !self_call_spans.is_empty() {
             let mut db = cx.struct_span_lint(UNCONDITIONAL_RECURSION, sp,
                                              "function cannot return without recurring");
-            let mut db = db.as_mut();
 
             // FIXME #19668: these could be span_lint_note's instead of this manual guard.
             if cx.current_level(UNCONDITIONAL_RECURSION) != Level::Allow {
                 // offer some help to the programmer.
                 for call in &self_call_spans {
-                    db = db.map(|db| db.span_note(*call, "recursive call site"));
+                    db.span_note(*call, "recursive call site");
                 }
-                db = db.map(|db| db.fileline_help(sp, "a `loop` may express intention \
-                                                       better if this is on purpose"));
+                db.fileline_help(sp, "a `loop` may express intention \
+                                      better if this is on purpose");
             }
-            db.map(|db| db.emit());
+            db.emit();
         }
 
         // all done

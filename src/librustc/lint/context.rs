@@ -368,7 +368,7 @@ pub fn raw_emit_lint(sess: &Session,
                      lvlsrc: LevelSource,
                      span: Option<Span>,
                      msg: &str) {
-    raw_struct_lint(sess, lint, lvlsrc, span, msg).map(|mut e| e.emit());
+    raw_struct_lint(sess, lint, lvlsrc, span, msg).emit();
 }
 
 pub fn raw_struct_lint<'a>(sess: &'a Session,
@@ -376,10 +376,10 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
                            lvlsrc: LevelSource,
                            span: Option<Span>,
                            msg: &str)
-                           -> Option<DiagnosticBuilder<'a>> {
+                           -> DiagnosticBuilder<'a> {
     let (mut level, source) = lvlsrc;
     if level == Allow {
-        return None;
+        return sess.diagnostic().struct_dummy();
     }
 
     let name = lint.name_lower();
@@ -416,7 +416,8 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
     if let Some(span) = def {
         err.span_note(span, "lint level defined here");
     }
-    Some(err)
+
+    err
 }
 
 pub trait LintContext: Sized {
@@ -456,9 +457,9 @@ pub trait LintContext: Sized {
               lint: &'static Lint,
               span: Option<Span>,
               msg: &str)
-              -> Option<DiagnosticBuilder> {
+              -> DiagnosticBuilder {
         let (level, src) = match self.level_src(lint) {
-            None => return None,
+            None => return self.sess().diagnostic().struct_dummy(),
             Some(pair) => pair,
         };
 
@@ -474,17 +475,14 @@ pub trait LintContext: Sized {
                         lint: &'static Lint,
                         span: Span,
                         msg: &str)
-                        -> Option<DiagnosticBuilder> {
+                        -> DiagnosticBuilder {
         self.lookup(lint, Some(span), msg)
     }
 
     /// Emit a lint and note at the appropriate level, for a particular span.
     fn span_lint_note(&self, lint: &'static Lint, span: Span, msg: &str,
                       note_span: Span, note: &str) {
-        let mut err = match self.lookup(lint, Some(span), msg) {
-            Some(e) => e,
-            None => return
-        };
+        let mut err = self.lookup(lint, Some(span), msg);
         if self.current_level(lint) != Level::Allow {
             if note_span == span {
                 err.fileline_note(note_span, note);
@@ -498,10 +496,7 @@ pub trait LintContext: Sized {
     /// Emit a lint and help at the appropriate level, for a particular span.
     fn span_lint_help(&self, lint: &'static Lint, span: Span,
                       msg: &str, help: &str) {
-        let mut err = match self.lookup(lint, Some(span), msg) {
-            Some(e) => e,
-            None => return
-        };
+        let mut err = self.lookup(lint, Some(span), msg);
         self.span_lint(lint, span, msg);
         if self.current_level(lint) != Level::Allow {
             err.span_help(span, help);

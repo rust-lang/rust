@@ -232,20 +232,19 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             let mut err = fcx.type_error_struct(call_expr.span, |actual| {
                 format!("expected function, found `{}`", actual)
             }, callee_ty, None);
-            let mut err = err.as_mut();
 
             if let hir::ExprCall(ref expr, _) = call_expr.node {
                 let tcx = fcx.tcx();
                 if let Some(pr) = tcx.def_map.borrow().get(&expr.id) {
                     if pr.depth == 0 && pr.base_def != def::DefErr {
                         if let Some(span) = tcx.map.span_if_local(pr.def_id()) {
-                            err = err.map(|e| e.span_note(span, "defined here"));
+                            err.span_note(span, "defined here");
                         }
                     }
                 }
             }
 
-            err.map(|e| e.emit());
+            err.emit();
 
             // This is the "default" function signature, used in case of error.
             // In that case, we check each argument against "error" in order to

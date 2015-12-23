@@ -2213,11 +2213,9 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &hir::EnumDef, sp: Span,
                               &format!("enum variant is more than three times larger ({} bytes) \
                                         than the next largest (ignoring padding)",
                                        largest))
-            .map(|mut e| {
-                e.span_note(enum_def.variants[largest_index].span,
+            .span_note(enum_def.variants[largest_index].span,
                        "this variant is the largest")
-                 .emit();
-            });
+            .emit();
     }
 }
 

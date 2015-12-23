@@ -216,18 +216,18 @@ pub enum UnresolvedNameContext {
 fn resolve_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                                        span: syntax::codemap::Span,
                                        resolution_error: ResolutionError<'b>) {
-    resolve_struct_error(resolver, span, resolution_error).map(|mut e| e.emit());
+    resolve_struct_error(resolver, span, resolution_error).emit();
 }
 
 fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                                               span: syntax::codemap::Span,
                                               resolution_error: ResolutionError<'b>)
-                                              -> Option<DiagnosticBuilder<'a>> {
+                                              -> DiagnosticBuilder<'a> {
     if !resolver.emit_errors {
-        return None;
+        return resolver.session.diagnostic().struct_dummy();
     }
 
-    Some(match resolution_error {
+    match resolution_error {
         ResolutionError::TypeParametersFromOuterFunction => {
             struct_span_err!(resolver.session,
                              span,
@@ -532,7 +532,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                              E0435,
                              "attempt to use a non-constant value in a constant")
         }
-    })
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -2202,10 +2202,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 // If it's a typedef, give a note
                 if let DefTy(..) = path_res.base_def {
-                    err.as_mut().map(|mut e| e.span_note(trait_path.span,
-                                                      "`type` aliases cannot be used for traits"));
+                    err.span_note(trait_path.span,
+                                  "`type` aliases cannot be used for traits");
                 }
-                err.as_mut().map(|mut e| e.emit());
+                err.emit();
                 Err(())
             }
         } else {
@@ -3493,11 +3493,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let msg = format!("did you mean to write: `{} {{ /* fields */ }}`?",
                                           path_name);
                         if self.emit_errors {
-                            err.as_mut().map(|mut e| e.fileline_help(expr.span, &msg));
+                            err.fileline_help(expr.span, &msg);
                         } else {
-                            err.as_mut().map(|mut e| e.span_help(expr.span, &msg));
+                            err.span_help(expr.span, &msg);
                         }
-                        err.as_mut().map(|mut e| e.emit());
+                        err.emit();
                         self.record_def(expr.id, err_path_resolution());
                     } else {
                         // Write the result into the def map.
@@ -3534,11 +3534,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             let msg = format!("did you mean to write: `{} {{ /* fields */ }}`?",
                                               path_name);
                             if self.emit_errors {
-                                err.as_mut().map(|mut e| e.fileline_help(expr.span, &msg));
+                                err.fileline_help(expr.span, &msg);
                             } else {
-                                err.as_mut().map(|mut e| e.span_help(expr.span, &msg));
+                                err.span_help(expr.span, &msg);
                             }
-                            err.as_mut().map(|mut e| e.emit());
+                            err.emit();
                         }
                         _ => {
                             // Keep reporting some errors even if they're ignored above.

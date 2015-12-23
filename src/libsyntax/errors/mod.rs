@@ -107,7 +107,6 @@ pub struct DiagnosticBuilder<'a> {
     code: Option<String>,
     span: Option<Span>,
     children: Vec<SubDiagnostic>,
-    cancelled: bool,
 }
 
 // For example a note attached to an error.
@@ -121,12 +120,12 @@ struct SubDiagnostic {
 impl<'a> DiagnosticBuilder<'a> {
     // Emit the diagnostic.
     pub fn emit(&mut self) {
-        if self.cancelled {
+        if self.cancelled() {
             return;
         }
 
-        self.cancel();
         self.emitter.borrow_mut().emit_struct(&self);
+        self.cancel();
 
         // if self.is_fatal() {
         //     panic!(FatalError);
@@ -135,8 +134,15 @@ impl<'a> DiagnosticBuilder<'a> {
 
     // Cancel the diagnostic (a structured diagnostic must either be emitted or
     // cancelled or it will panic when dropped).
+    // BEWARE: if this DiagnosticBuilder is an error, then creating it will
+    // bump the error count on the Handler and cancelling it won't undo that.
+    // If you want to decrement the error count you should use `Handler::cancel`.
     pub fn cancel(&mut self) {
-        self.cancelled = true;
+        self.level = Level::Cancelled;
+    }
+
+    pub fn cancelled(&self) -> bool {
+        self.level == Level::Cancelled
     }
 
     pub fn is_fatal(&self) -> bool {
@@ -204,21 +210,28 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    pub fn span(&mut self, sp: Span) -> &mut Self {
+        self.span = Some(sp);
+        self
+    }
+
+    pub fn code(&mut self, s: String) -> &mut Self {
+        self.code = Some(s);
+        self
+    }
+
     // Convenience function for internal use, clients should use one of the
     // struct_* methods on Handler.
     fn new(emitter: &'a RefCell<Box<Emitter>>,
            level: Level,
-           message: &str,
-           code: Option<String>,
-           span: Option<Span>) -> DiagnosticBuilder<'a>  {
+           message: &str) -> DiagnosticBuilder<'a>  {
         DiagnosticBuilder {
             emitter: emitter,
             level: level,
             message: message.to_owned(),
-            code: code,
-            span: span,
+            code: None,
+            span: None,
             children: vec![],
-            cancelled: false,
         }
     }
 
@@ -249,7 +262,7 @@ impl<'a> fmt::Debug for DiagnosticBuilder<'a> {
 // we emit a bug.
 impl<'a> Drop for DiagnosticBuilder<'a> {
     fn drop(&mut self) {
-        if !self.cancelled {
+        if !self.cancelled() {
             self.emitter.borrow_mut().emit(None, "Error constructed but not emitted", None, Bug);
             panic!();
         }
@@ -290,11 +303,16 @@ impl Handler {
         }
     }
 
+    pub fn struct_dummy<'a>(&'a self) -> DiagnosticBuilder<'a> {
+        DiagnosticBuilder::new(&self.emit, Level::Cancelled, "")
+    }
+
     pub fn struct_span_warn<'a>(&'a self,
                                 sp: Span,
                                 msg: &str)
-                                -> DiagnosticBuilder<'a>  {
-        let mut result = DiagnosticBuilder::new(&self.emit, Level::Warning, msg, None, Some(sp));
+                                -> DiagnosticBuilder<'a> {
+        let mut result = DiagnosticBuilder::new(&self.emit, Level::Warning, msg);
+        result.span(sp);
         if !self.can_emit_warnings {
             result.cancel();
         }
@@ -304,19 +322,17 @@ impl Handler {
                                           sp: Span,
                                           msg: &str,
                                           code: &str)
-                                          -> DiagnosticBuilder<'a>  {
-        let mut result = DiagnosticBuilder::new(&self.emit,
-                                                Level::Warning,
-                                                msg,
-                                                Some(code.to_owned()),
-                                                Some(sp));
+                                          -> DiagnosticBuilder<'a> {
+        let mut result = DiagnosticBuilder::new(&self.emit, Level::Warning, msg);
+        result.span(sp);
+        result.code(code.to_owned());
         if !self.can_emit_warnings {
             result.cancel();
         }
         result
     }
-    pub fn struct_warn<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a>  {
-        let mut result = DiagnosticBuilder::new(&self.emit, Level::Warning, msg, None, None);
+    pub fn struct_warn<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
+        let mut result = DiagnosticBuilder::new(&self.emit, Level::Warning, msg);
         if !self.can_emit_warnings {
             result.cancel();
         }
@@ -325,42 +341,58 @@ impl Handler {
     pub fn struct_span_err<'a>(&'a self,
                                sp: Span,
                                msg: &str)
-                               -> DiagnosticBuilder<'a>  {
+                               -> DiagnosticBuilder<'a> {
         self.bump_err_count();
-        DiagnosticBuilder::new(&self.emit, Level::Error, msg, None, Some(sp))
+        let mut result = DiagnosticBuilder::new(&self.emit, Level::Error, msg);
+        result.span(sp);
+        result
     }
     pub fn struct_span_err_with_code<'a>(&'a self,
                                          sp: Span,
                                          msg: &str,
                                          code: &str)
-                                         -> DiagnosticBuilder<'a>  {
-        // FIXME (and below) this is potentially inaccurate, since the DiagnosticBuilder
-        // might be cancelled.
+                                         -> DiagnosticBuilder<'a> {
         self.bump_err_count();
-        DiagnosticBuilder::new(&self.emit, Level::Error, msg, Some(code.to_owned()), Some(sp))
+        let mut result = DiagnosticBuilder::new(&self.emit, Level::Error, msg);
+        result.span(sp);
+        result.code(code.to_owned());
+        result
     }
-    pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a>  {
+    pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
         self.bump_err_count();
-        DiagnosticBuilder::new(&self.emit, Level::Error, msg, None, None)
+        DiagnosticBuilder::new(&self.emit, Level::Error, msg)
     }
     pub fn struct_span_fatal<'a>(&'a self,
                                  sp: Span,
                                  msg: &str)
-                                 -> DiagnosticBuilder<'a>  {
+                                 -> DiagnosticBuilder<'a> {
         self.bump_err_count();
-        DiagnosticBuilder::new(&self.emit, Level::Fatal, msg, None, Some(sp))
+        let mut result = DiagnosticBuilder::new(&self.emit, Level::Fatal, msg);
+        result.span(sp);
+        result
     }
     pub fn struct_span_fatal_with_code<'a>(&'a self,
                                            sp: Span,
                                            msg: &str,
                                            code: &str)
-                                           -> DiagnosticBuilder<'a>  {
+                                           -> DiagnosticBuilder<'a> {
         self.bump_err_count();
-        DiagnosticBuilder::new(&self.emit, Level::Fatal, msg, Some(code.to_owned()), Some(sp))
+        let mut result = DiagnosticBuilder::new(&self.emit, Level::Fatal, msg);
+        result.span(sp);
+        result.code(code.to_owned());
+        result
     }
-    pub fn struct_fatal<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a>  {
+    pub fn struct_fatal<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
         self.bump_err_count();
-        DiagnosticBuilder::new(&self.emit, Level::Fatal, msg, None, None)
+        DiagnosticBuilder::new(&self.emit, Level::Fatal, msg)
+    }
+
+    pub fn cancel(&mut self, err: &mut DiagnosticBuilder) {
+        if err.level == Level::Error || err.level == Level::Fatal {
+            assert!(self.has_errors());
+            self.err_count.set(self.err_count.get() + 1);
+        }
+        err.cancel();
     }
 
     pub fn span_fatal(&self, sp: Span, msg: &str) -> FatalError {
@@ -514,6 +546,7 @@ pub enum Level {
     Warning,
     Note,
     Help,
+    Cancelled,
 }
 
 impl fmt::Display for Level {
@@ -526,6 +559,7 @@ impl fmt::Display for Level {
             Warning => "warning".fmt(f),
             Note => "note".fmt(f),
             Help => "help".fmt(f),
+            Cancelled => unreachable!(),
         }
     }
 }
@@ -537,6 +571,7 @@ impl Level {
             Warning => term::color::BRIGHT_YELLOW,
             Note => term::color::BRIGHT_GREEN,
             Help => term::color::BRIGHT_CYAN,
+            Cancelled => unreachable!(),
         }
     }
 }
