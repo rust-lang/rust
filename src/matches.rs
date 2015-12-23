@@ -98,7 +98,7 @@ impl LateLintPass for MatchPass {
         if let ExprMatch(ref ex, ref arms, MatchSource::Normal) = expr.node {
             check_single_match(cx, ex, arms, expr);
             check_match_bool(cx, ex, arms, expr);
-            check_overlapping_arms(cx, arms);
+            check_overlapping_arms(cx, ex, arms);
         }
         if let ExprMatch(ref ex, ref arms, source) = expr.node {
             check_match_ref_pats(cx, ex, arms, source, expr);
@@ -187,8 +187,9 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     }
 }
 
-fn check_overlapping_arms(cx: &LateContext, arms: &[Arm]) {
-    if arms.len() >= 2 {
+fn check_overlapping_arms(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
+    if arms.len() >= 2 &&
+       cx.tcx.expr_ty(ex).is_integral() {
         let ranges = all_ranges(cx, arms);
         let overlap = match type_ranges(&ranges) {
             TypedRanges::IntRanges(ranges) => overlapping(&ranges).map(|(start, end)| (start.span, end.span)),
