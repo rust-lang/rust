@@ -96,117 +96,126 @@ impl LateLintPass for MatchPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if in_external_macro(cx, expr.span) { return; }
         if let ExprMatch(ref ex, ref arms, MatchSource::Normal) = expr.node {
-            // check preconditions for SINGLE_MATCH
-                // only two arms
-            if arms.len() == 2 &&
-                // both of the arms have a single pattern and no guard
-                arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
-                arms[1].pats.len() == 1 && arms[1].guard.is_none() &&
-                // and the second pattern is a `_` wildcard: this is not strictly necessary,
-                // since the exhaustiveness check will ensure the last one is a catch-all,
-                // but in some cases, an explicit match is preferred to catch situations
-                // when an enum is extended, so we don't consider these cases
-                arms[1].pats[0].node == PatWild &&
-                // we don't want any content in the second arm (unit or empty block)
-                is_unit_expr(&arms[1].body) &&
-                // finally, MATCH_BOOL doesn't apply here
-                (cx.tcx.expr_ty(ex).sty != ty::TyBool || cx.current_level(MATCH_BOOL) == Allow)
-            {
-                span_help_and_lint(cx, SINGLE_MATCH, expr.span,
-                                   "you seem to be trying to use match for destructuring a \
-                                    single pattern. Consider using `if let`",
-                                   &format!("try\nif let {} = {} {}",
-                                            snippet(cx, arms[0].pats[0].span, ".."),
-                                            snippet(cx, ex.span, ".."),
-                                            expr_block(cx, &arms[0].body, None, "..")));
-            }
-
-            // check preconditions for MATCH_BOOL
-            // type of expression == bool
-            if cx.tcx.expr_ty(ex).sty == ty::TyBool {
-                if arms.len() == 2 && arms[0].pats.len() == 1 { // no guards
-                    let exprs = if let PatLit(ref arm_bool) = arms[0].pats[0].node {
-                        if let ExprLit(ref lit) = arm_bool.node {
-                            match lit.node {
-                                LitBool(true) => Some((&*arms[0].body, &*arms[1].body)),
-                                LitBool(false) => Some((&*arms[1].body, &*arms[0].body)),
-                                _ => None,
-                            }
-                        } else { None }
-                    } else { None };
-                    if let Some((ref true_expr, ref false_expr)) = exprs {
-                        if !is_unit_expr(true_expr) {
-                            if !is_unit_expr(false_expr) {
-                                span_help_and_lint(cx, MATCH_BOOL, expr.span,
-                                    "you seem to be trying to match on a boolean expression. \
-                                   Consider using an if..else block:",
-                                   &format!("try\nif {} {} else {}",
-                                        snippet(cx, ex.span, "b"),
-                                        expr_block(cx, true_expr, None, ".."),
-                                        expr_block(cx, false_expr, None, "..")));
-                            } else {
-                                span_help_and_lint(cx, MATCH_BOOL, expr.span,
-                                    "you seem to be trying to match on a boolean expression. \
-                                   Consider using an if..else block:",
-                                   &format!("try\nif {} {}",
-                                        snippet(cx, ex.span, "b"),
-                                        expr_block(cx, true_expr, None, "..")));
-                            }
-                        } else if !is_unit_expr(false_expr) {
-                            span_help_and_lint(cx, MATCH_BOOL, expr.span,
-                                "you seem to be trying to match on a boolean expression. \
-                               Consider using an if..else block:",
-                               &format!("try\nif !{} {}",
-                                    snippet(cx, ex.span, "b"),
-                                    expr_block(cx, false_expr, None, "..")));
-                        } else {
-                            span_lint(cx, MATCH_BOOL, expr.span,
-                                   "you seem to be trying to match on a boolean expression. \
-                                   Consider using an if..else block");
-                        }
-                    } else {
-                        span_lint(cx, MATCH_BOOL, expr.span,
-                            "you seem to be trying to match on a boolean expression. \
-                            Consider using an if..else block");
-                    }
-                } else {
-                    span_lint(cx, MATCH_BOOL, expr.span,
-                        "you seem to be trying to match on a boolean expression. \
-                        Consider using an if..else block");
-                }
-            }
-
-            // MATCH_OVERLAPPING_ARM
-            if arms.len() >= 2 {
-                let ranges = all_ranges(cx, arms);
-                let overlap = match type_ranges(&ranges) {
-                    TypedRanges::IntRanges(ranges) => overlaping(&ranges).map(|(start, end)| (start.span, end.span)),
-                    TypedRanges::UintRanges(ranges) => overlaping(&ranges).map(|(start, end)| (start.span, end.span)),
-                    TypedRanges::None => None,
-                };
-
-                if let Some((start, end)) = overlap {
-                    span_note_and_lint(cx, MATCH_OVERLAPPING_ARM, start,
-                                       "some ranges overlap",
-                                       end, "overlaps with this");
-                }
-            }
+            check_single_match(cx, ex, arms, expr);
+            check_match_bool(cx, ex, arms, expr);
+            check_overlapping_arms(cx, arms);
         }
         if let ExprMatch(ref ex, ref arms, source) = expr.node {
-            // check preconditions for MATCH_REF_PATS
-            if has_only_ref_pats(arms) {
-                if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
-                    let template = match_template(cx, expr.span, source, "", inner);
-                    span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
-                        "you don't need to add `&` to both the expression \
-                         and the patterns: use `{}`", template));
+            check_match_ref_pats(cx, ex, arms, source, expr);
+        }
+    }
+}
+
+fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
+    if arms.len() == 2 &&
+        // both of the arms have a single pattern and no guard
+        arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
+        arms[1].pats.len() == 1 && arms[1].guard.is_none() &&
+        // and the second pattern is a `_` wildcard: this is not strictly necessary,
+        // since the exhaustiveness check will ensure the last one is a catch-all,
+        // but in some cases, an explicit match is preferred to catch situations
+        // when an enum is extended, so we don't consider these cases
+        arms[1].pats[0].node == PatWild &&
+        // we don't want any content in the second arm (unit or empty block)
+        is_unit_expr(&arms[1].body) &&
+        // finally, MATCH_BOOL doesn't apply here
+        (cx.tcx.expr_ty(ex).sty != ty::TyBool || cx.current_level(MATCH_BOOL) == Allow)
+    {
+        span_help_and_lint(cx, SINGLE_MATCH, expr.span,
+                           "you seem to be trying to use match for destructuring a \
+                            single pattern. Consider using `if let`",
+                           &format!("try\nif let {} = {} {}",
+                                    snippet(cx, arms[0].pats[0].span, ".."),
+                                    snippet(cx, ex.span, ".."),
+                                    expr_block(cx, &arms[0].body, None, "..")));
+    }
+}
+
+fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
+    // type of expression == bool
+    if cx.tcx.expr_ty(ex).sty == ty::TyBool {
+        if arms.len() == 2 && arms[0].pats.len() == 1 { // no guards
+            let exprs = if let PatLit(ref arm_bool) = arms[0].pats[0].node {
+                if let ExprLit(ref lit) = arm_bool.node {
+                    match lit.node {
+                        LitBool(true) => Some((&*arms[0].body, &*arms[1].body)),
+                        LitBool(false) => Some((&*arms[1].body, &*arms[0].body)),
+                        _ => None,
+                    }
+                } else { None }
+            } else { None };
+            if let Some((ref true_expr, ref false_expr)) = exprs {
+                if !is_unit_expr(true_expr) {
+                    if !is_unit_expr(false_expr) {
+                        span_help_and_lint(cx, MATCH_BOOL, expr.span,
+                            "you seem to be trying to match on a boolean expression. \
+                           Consider using an if..else block:",
+                           &format!("try\nif {} {} else {}",
+                                snippet(cx, ex.span, "b"),
+                                expr_block(cx, true_expr, None, ".."),
+                                expr_block(cx, false_expr, None, "..")));
+                    } else {
+                        span_help_and_lint(cx, MATCH_BOOL, expr.span,
+                            "you seem to be trying to match on a boolean expression. \
+                           Consider using an if..else block:",
+                           &format!("try\nif {} {}",
+                                snippet(cx, ex.span, "b"),
+                                expr_block(cx, true_expr, None, "..")));
+                    }
+                } else if !is_unit_expr(false_expr) {
+                    span_help_and_lint(cx, MATCH_BOOL, expr.span,
+                        "you seem to be trying to match on a boolean expression. \
+                       Consider using an if..else block:",
+                       &format!("try\nif !{} {}",
+                            snippet(cx, ex.span, "b"),
+                            expr_block(cx, false_expr, None, "..")));
                 } else {
-                    let template = match_template(cx, expr.span, source, "*", ex);
-                    span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
-                        "instead of prefixing all patterns with `&`, you can dereference the \
-                         expression: `{}`", template));
+                    span_lint(cx, MATCH_BOOL, expr.span,
+                           "you seem to be trying to match on a boolean expression. \
+                           Consider using an if..else block");
                 }
+            } else {
+                span_lint(cx, MATCH_BOOL, expr.span,
+                    "you seem to be trying to match on a boolean expression. \
+                    Consider using an if..else block");
             }
+        } else {
+            span_lint(cx, MATCH_BOOL, expr.span,
+                "you seem to be trying to match on a boolean expression. \
+                Consider using an if..else block");
+        }
+    }
+}
+
+fn check_overlapping_arms(cx: &LateContext, arms: &[Arm]) {
+    if arms.len() >= 2 {
+        let ranges = all_ranges(cx, arms);
+        let overlap = match type_ranges(&ranges) {
+            TypedRanges::IntRanges(ranges) => overlaping(&ranges).map(|(start, end)| (start.span, end.span)),
+            TypedRanges::UintRanges(ranges) => overlaping(&ranges).map(|(start, end)| (start.span, end.span)),
+            TypedRanges::None => None,
+        };
+
+        if let Some((start, end)) = overlap {
+            span_note_and_lint(cx, MATCH_OVERLAPPING_ARM, start,
+                               "some ranges overlap",
+                               end, "overlaps with this");
+        }
+    }
+}
+
+fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: MatchSource, expr: &Expr) {
+    if has_only_ref_pats(arms) {
+        if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
+            let template = match_template(cx, expr.span, source, "", inner);
+            span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
+                "you don't need to add `&` to both the expression \
+                 and the patterns: use `{}`", template));
+        } else {
+            let template = match_template(cx, expr.span, source, "*", ex);
+            span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
+                "instead of prefixing all patterns with `&`, you can dereference the \
+                 expression: `{}`", template));
         }
     }
 }
