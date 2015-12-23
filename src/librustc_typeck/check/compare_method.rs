@@ -42,7 +42,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("compare_impl_method: impl_trait_ref (liberated) = {:?}",
            impl_trait_ref);
 
-    let mut infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, true);
+    let mut infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
     let mut fulfillment_cx = infcx.fulfillment_cx.borrow_mut();
 
     let trait_to_impl_substs = &impl_trait_ref.substs;
@@ -416,7 +416,7 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("compare_const_impl(impl_trait_ref={:?})",
            impl_trait_ref);
 
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, true);
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
     let mut fulfillment_cx = infcx.fulfillment_cx.borrow_mut();
 
     // The below is for the most part highly similar to the procedure
