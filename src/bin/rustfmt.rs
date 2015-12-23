@@ -79,6 +79,7 @@ fn lookup_and_read_project_file(input_file: &Path) -> io::Result<(PathBuf, Strin
 
 fn update_config(config: &mut Config, matches: &Matches) {
     config.verbose = matches.opt_present("verbose");
+    config.skip_children = matches.opt_present("skip-children");
 }
 
 fn execute() -> i32 {
@@ -90,6 +91,7 @@ fn execute() -> i32 {
                 "write-mode",
                 "mode to write in (not usable when piping from stdin)",
                 "[replace|overwrite|display|diff|coverage]");
+    opts.optflag("", "skip-children", "don't reformat child modules");
 
     opts.optflag("",
                  "config-help",

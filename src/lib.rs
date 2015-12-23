@@ -298,11 +298,15 @@ impl fmt::Display for FormatReport {
 // Formatting which depends on the AST.
 fn fmt_ast(krate: &ast::Crate,
            parse_session: &ParseSess,
+           main_file: &Path,
            config: &Config,
            mode: WriteMode)
            -> FileMap {
     let mut file_map = FileMap::new();
     for (path, module) in modules::list_files(krate, parse_session.codemap()) {
+        if config.skip_children && path.as_path() != main_file {
+            continue;
+        }
         let path = path.to_str().unwrap();
         if config.verbose {
             println!("Formatting {}", path);
@@ -431,7 +435,7 @@ pub fn format(file: &Path, config: &Config, mode: WriteMode) -> FileMap {
     let emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None));
     parse_session.span_diagnostic.handler = Handler::with_emitter(false, emitter);
 
-    let mut file_map = fmt_ast(&krate, &parse_session, config, mode);
+    let mut file_map = fmt_ast(&krate, &parse_session, file, config, mode);
 
     // For some reason, the codemap does not include terminating
     // newlines so we must add one on for each file. This is sad.
