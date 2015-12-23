@@ -119,13 +119,13 @@ fn overlapping() {
     const FOO : u64 = 2;
 
     match 42 {
-        0 ... 10 => println!("0 ... 10"), //~ERROR
+        0 ... 10 => println!("0 ... 10"), //~ERROR: some ranges overlap
         0 ... 11 => println!("0 ... 10"),
         _ => (),
     }
 
     match 42 {
-        0 ... 5 => println!("0 ... 5"), //~ERROR
+        0 ... 5 => println!("0 ... 5"), //~ERROR: some ranges overlap
         6 ... 7 => println!("6 ... 7"),
         FOO ... 11 => println!("0 ... 10"),
         _ => (),
@@ -133,7 +133,7 @@ fn overlapping() {
 
     match 42 {
         2 => println!("2"),
-        0 ... 5 => println!("0 ... 5"), //~ERROR
+        0 ... 5 => println!("0 ... 5"), //~ERROR: some ranges overlap
         _ => (),
     }
 
