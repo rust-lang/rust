@@ -139,7 +139,7 @@ fn test_env<F>(source_string: &str,
                                lang_items,
                                stability::Index::new(krate),
                                |tcx| {
-                                   let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
+                                   let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
                                    body(Env { infcx: &infcx });
                                    let free_regions = FreeRegionMap::new();
                                    infcx.resolve_regions_and_report_errors(&free_regions,
