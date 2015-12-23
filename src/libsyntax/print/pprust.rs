@@ -856,8 +856,8 @@ impl<'a> State<'a> {
                    indented: usize) -> io::Result<()> {
         self.bclose_maybe_open(span, indented, true)
     }
-    pub fn bclose_maybe_open (&mut self, span: codemap::Span,
-                              indented: usize, close_box: bool) -> io::Result<()> {
+    pub fn bclose_maybe_open(&mut self, span: codemap::Span,
+                             indented: usize, close_box: bool) -> io::Result<()> {
         try!(self.maybe_print_comment(span.hi));
         try!(self.break_offset_if_not_bol(1, -(indented as isize)));
         try!(word(&mut self.s, "}"));
