@@ -1,10 +1,14 @@
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::middle::const_eval::ConstVal::{Int, Uint};
+use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
+use rustc::middle::const_eval::{eval_const_expr_partial, ConstVal};
 use rustc::middle::ty;
+use rustc_front::hir::*;
+use std::cmp::Ordering;
 use syntax::ast::Lit_::LitBool;
 use syntax::codemap::Span;
 
-use utils::{snippet, span_lint, span_help_and_lint, in_external_macro, expr_block};
+use utils::{snippet, span_lint, span_note_and_lint, span_help_and_lint, in_external_macro, expr_block};
 
 /// **What it does:** This lint checks for matches with a single arm where an `if let` will usually suffice. It is `Warn` by default.
 ///
@@ -22,6 +26,7 @@ use utils::{snippet, span_lint, span_help_and_lint, in_external_macro, expr_bloc
 declare_lint!(pub SINGLE_MATCH, Warn,
               "a match statement with a single nontrivial arm (i.e, where the other arm \
                is `_ => {}`) is used; recommends `if let` instead");
+
 /// **What it does:** This lint checks for matches where all arms match a reference, suggesting to remove the reference and deref the matched expression instead. It is `Warn` by default.
 ///
 /// **Why is this bad?** It just makes the code less readable. That reference destructuring adds nothing to the code.
@@ -40,6 +45,7 @@ declare_lint!(pub SINGLE_MATCH, Warn,
 declare_lint!(pub MATCH_REF_PATS, Warn,
               "a match has all arms prefixed with `&`; the match expression can be \
                dereferenced instead");
+
 /// **What it does:** This lint checks for matches where match expression is a `bool`. It suggests to replace the expression with an `if...else` block. It is `Warn` by default.
 ///
 /// **Why is this bad?** It makes the code less readable.
@@ -57,6 +63,25 @@ declare_lint!(pub MATCH_REF_PATS, Warn,
 /// ```
 declare_lint!(pub MATCH_BOOL, Warn,
               "a match on boolean expression; recommends `if..else` block instead");
+
+/// **What it does:** This lint checks for overlapping match arms. It is `Warn` by default.
+///
+/// **Why is this bad?** It is likely to be an error and if not, makes the code less obvious.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+///
+/// ```
+/// let x = 5;
+/// match x {
+///     1 ... 10 => println!("1 ... 10"),
+///     5 ... 15 => println!("5 ... 15"),
+///     _ => (),
+/// }
+/// ```
+declare_lint!(pub MATCH_OVERLAPPING_ARM, Warn,
+              "overlapping match arms");
 
 #[allow(missing_copy_implementations)]
 pub struct MatchPass;
@@ -150,6 +175,22 @@ impl LateLintPass for MatchPass {
                         Consider using an if..else block");
                 }
             }
+
+            // MATCH_OVERLAPPING_ARM
+            if arms.len() >= 2 {
+                let ranges = all_ranges(cx, arms);
+                let overlap = match type_ranges(&ranges) {
+                    TypedRanges::IntRanges(ranges) => overlaping(&ranges).map(|(start, end)| (start.span, end.span)),
+                    TypedRanges::UintRanges(ranges) => overlaping(&ranges).map(|(start, end)| (start.span, end.span)),
+                    TypedRanges::None => None,
+                };
+
+                if let Some((start, end)) = overlap {
+                    span_note_and_lint(cx, MATCH_OVERLAPPING_ARM, start,
+                                       "some ranges overlap",
+                                       end, "overlaps with this");
+                }
+            }
         }
         if let ExprMatch(ref ex, ref arms, source) = expr.node {
             // check preconditions for MATCH_REF_PATS
@@ -166,6 +207,77 @@ impl LateLintPass for MatchPass {
                          expression: `{}`", template));
                 }
             }
+        }
+    }
+}
+
+/// Get all arms that are unbounded PatRange-s.
+fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
+    arms.iter()
+        .filter_map(|arm| {
+            if let Arm { ref pats, guard: None, .. } = *arm {
+                Some(pats.iter().filter_map(|pat| {
+                    if_let_chain! {[
+                        let PatRange(ref lhs, ref rhs) = pat.node,
+                        let Ok(lhs) = eval_const_expr_partial(cx.tcx, &lhs, ExprTypeChecked, None),
+                        let Ok(rhs) = eval_const_expr_partial(cx.tcx, &rhs, ExprTypeChecked, None)
+                    ], {
+                        return Some(SpannedRange { span: pat.span, node: (lhs, rhs) });
+                    }}
+
+                    None
+                }))
+            }
+            else {
+                None
+            }
+        })
+        .flat_map(IntoIterator::into_iter)
+        .collect()
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct SpannedRange<T> {
+    span: Span,
+    node: (T, T),
+}
+
+#[derive(Debug)]
+enum TypedRanges {
+    IntRanges(Vec<SpannedRange<i64>>),
+    UintRanges(Vec<SpannedRange<u64>>),
+    None,
+}
+
+/// Get all `Int` ranges or all `Uint` ranges. Mixed types are an error anyway and other types than
+/// `Uint` and `Int` probably don't make sense.
+fn type_ranges(ranges: &[SpannedRange<ConstVal>]) -> TypedRanges {
+    if ranges.is_empty() {
+        TypedRanges::None
+    }
+    else {
+        match ranges[0].node {
+            (Int(_), Int(_)) => {
+                TypedRanges::IntRanges(ranges.iter().filter_map(|range| {
+                    if let (Int(start), Int(end)) = range.node {
+                        Some(SpannedRange { span: range.span, node: (start, end) })
+                    }
+                    else {
+                        None
+                    }
+                }).collect())
+            },
+            (Uint(_), Uint(_)) => {
+                TypedRanges::UintRanges(ranges.iter().filter_map(|range| {
+                    if let (Uint(start), Uint(end)) = range.node {
+                        Some(SpannedRange { span: range.span, node: (start, end) })
+                    }
+                    else {
+                        None
+                    }
+                }).collect())
+            },
+            _ => TypedRanges::None,
         }
     }
 }
@@ -208,4 +320,72 @@ fn match_template(cx: &LateContext,
             cx.sess().span_bug(span, "for loop desugared to match with &-patterns!")
         }
     }
+}
+
+fn overlaping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &SpannedRange<T>)>
+    where T: Copy + Ord {
+    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+    enum Kind<'a, T: 'a> {
+        Start(T, &'a SpannedRange<T>),
+        End(T, &'a SpannedRange<T>),
+    }
+
+    impl<'a, T: Copy> Kind<'a, T> {
+        fn range(&self) -> &'a SpannedRange<T> {
+            match *self {
+                Kind::Start(_, r) | Kind::End(_, r) => r
+            }
+        }
+
+        fn value(self) -> T {
+            match self {
+                Kind::Start(t, _) | Kind::End(t, _) => t
+            }
+        }
+    }
+
+    impl<'a, T: Copy + Ord> PartialOrd for Kind<'a, T> {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+
+    impl<'a, T: Copy + Ord> Ord for Kind<'a, T> {
+        fn cmp(&self, other: &Self) -> Ordering {
+            self.value().cmp(&other.value())
+        }
+    }
+
+    let mut values = Vec::with_capacity(2*ranges.len());
+
+    for r in ranges {
+        values.push(Kind::Start(r.node.0, &r));
+        values.push(Kind::End(r.node.1, &r));
+    }
+
+    values.sort();
+
+    for (a, b) in values.iter().zip(values.iter().skip(1)) {
+        match (a, b) {
+            (&Kind::Start(_, ra), &Kind::End(_, rb)) => if ra.node != rb.node { return Some((ra, rb)) },
+            (&Kind::End(a, _), &Kind::Start(b, _)) if a != b => (),
+            _ => return Some((&a.range(), &b.range())),
+        }
+    }
+
+    None
+}
+
+#[test]
+fn test_overlapping() {
+    use syntax::codemap::DUMMY_SP;
+
+    let sp = |s, e| SpannedRange { span: DUMMY_SP, node: (s, e) };
+
+    assert_eq!(None, overlaping::<u8>(&[]));
+    assert_eq!(None, overlaping(&[sp(1, 4)]));
+    assert_eq!(None, overlaping(&[sp(1, 4), sp(5, 6)]));
+    assert_eq!(None, overlaping(&[sp(1, 4), sp(5, 6), sp(10, 11)]));
+    assert_eq!(Some((&sp(1, 4), &sp(3, 6))), overlaping(&[sp(1, 4), sp(3, 6)]));
+    assert_eq!(Some((&sp(5, 6), &sp(6, 11))), overlaping(&[sp(1, 4), sp(5, 6), sp(6, 11)]));
 }
