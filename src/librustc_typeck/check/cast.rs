@@ -132,17 +132,15 @@ impl<'tcx> CastCheck<'tcx> {
                             actual,
                             fcx.infcx().ty_to_string(self.cast_ty))
                 }, self.expr_ty, None)
-                    .map(|mut err| {
-                        err.fileline_help(self.span,
-                            &format!("cast through {} first", match e {
-                                CastError::NeedViaPtr => "a raw pointer",
-                                CastError::NeedViaThinPtr => "a thin pointer",
-                                CastError::NeedViaInt => "an integer",
-                                CastError::NeedViaUsize => "a usize",
-                                _ => unreachable!()
-                            }));
-                        err.emit();
-                    });
+                    .fileline_help(self.span,
+                        &format!("cast through {} first", match e {
+                            CastError::NeedViaPtr => "a raw pointer",
+                            CastError::NeedViaThinPtr => "a thin pointer",
+                            CastError::NeedViaInt => "an integer",
+                            CastError::NeedViaUsize => "a usize",
+                            _ => unreachable!()
+                        }))
+                    .emit();
             }
             CastError::CastToBool => {
                 struct_span_err!(fcx.tcx().sess, self.span, E0054, "cannot cast as `bool`")
@@ -174,10 +172,8 @@ impl<'tcx> CastCheck<'tcx> {
                             actual,
                             fcx.infcx().ty_to_string(self.cast_ty))
                 }, self.expr_ty, None)
-                    .map(|mut err| {
-                        err.fileline_note(self.span, "vtable kinds may not match");
-                        err.emit();
-                    });
+                    .fileline_note(self.span, "vtable kinds may not match")
+                    .emit();
             }
         }
     }

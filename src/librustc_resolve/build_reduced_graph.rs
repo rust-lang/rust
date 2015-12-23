@@ -144,9 +144,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 if let Some(sp) = child[ns].span() {
                     let note = format!("first definition of {} `{}` here", ns_str, name);
-                    err.as_mut().map(|mut e| e.span_note(sp, &note));
+                    err.span_note(sp, &note);
                 }
-                err.as_mut().map(|mut e| e.emit());
+                err.emit();
                 child
             }
         }
@@ -261,10 +261,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                           mod_spans[0],
                                           ResolutionError::SelfImportCanOnlyAppearOnceInTheList);
                             for other_span in mod_spans.iter().skip(1) {
-                                e.as_mut().map(|mut e| e.span_note(*other_span,
-                                                          "another `self` import appears here"));
+                                e.span_note(*other_span, "another `self` import appears here");
                             }
-                            e.as_mut().map(|mut e| e.emit());
+                            e.emit();
                         }
 
                         for source_item in source_items {

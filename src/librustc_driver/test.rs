@@ -60,7 +60,7 @@ struct ExpectErrorEmitter {
 fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
     match lvl {
         Level::Bug | Level::Fatal | Level::Error => {}
-        Level::Warning | Level::Note | Level::Help => {
+        _ => {
             return;
         }
     }

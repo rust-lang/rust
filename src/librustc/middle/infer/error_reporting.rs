@@ -237,7 +237,7 @@ pub trait ErrorReporting<'tcx> {
     fn report_type_error(&self,
                          trace: TypeTrace<'tcx>,
                          terr: &TypeError<'tcx>)
-                         -> Option<DiagnosticBuilder<'tcx>>;
+                         -> DiagnosticBuilder<'tcx>;
 
     fn check_and_note_conflicting_crates(&self,
                                          err: &mut DiagnosticBuilder,
@@ -478,11 +478,11 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
     fn report_type_error(&self,
                          trace: TypeTrace<'tcx>,
                          terr: &TypeError<'tcx>)
-                         -> Option<DiagnosticBuilder<'tcx>> {
+                         -> DiagnosticBuilder<'tcx> {
         let expected_found_str = match self.values_str(&trace.values) {
             Some(v) => v,
             None => {
-                return None; /* derived error */
+                return self.tcx.sess.diagnostic().struct_dummy(); /* derived error */
             }
         };
 
@@ -507,7 +507,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             },
             _ => ()
         }
-        Some(err)
+        err
     }
 
     /// Adds a note if the types come from similarly named crates
@@ -560,11 +560,9 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                      trace: TypeTrace<'tcx>,
                                      terr: &TypeError<'tcx>) {
         let span = trace.origin.span();
-        let err = self.report_type_error(trace, terr);
-        err.map(|mut err| {
-            self.tcx.note_and_explain_type_err(&mut err, terr, span);
-            err.emit();
-        });
+        let mut err = self.report_type_error(trace, terr);
+        self.tcx.note_and_explain_type_err(&mut err, terr, span);
+        err.emit();
     }
 
     /// Returns a string of the form "expected `{}`, found `{}`", or None if this is a derived
