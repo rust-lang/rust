@@ -225,6 +225,13 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
                         return Some(SpannedRange { span: pat.span, node: (lhs, rhs) });
                     }}
 
+                    if_let_chain! {[
+                        let PatLit(ref value) = pat.node,
+                        let Ok(value) = eval_const_expr_partial(cx.tcx, &value, ExprTypeChecked, None)
+                    ], {
+                        return Some(SpannedRange { span: pat.span, node: (value.clone(), value) });
+                    }}
+
                     None
                 }))
             }
