@@ -16,7 +16,7 @@
             reason = "API has not been scrutinized and is highly likely to \
                       either disappear or change",
             issue = "27810")]
-#![rustc_deprecated(since = "1.5.0", reason = "replaced with crates.io crates")]
+#![rustc_deprecated(since = "1.5.0", reason = "replaced with 'dylib' on crates.io")]
 #![allow(missing_docs)]
 #![allow(deprecated)]
 
