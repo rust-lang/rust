@@ -368,6 +368,19 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
     let obligation = &pending_obligation.obligation;
     match obligation.predicate {
         ty::Predicate::Trait(ref data) => {
+            // For defaulted traits, we use a co-inductive strategy to
+            // solve, so that recursion is ok.
+            if selcx.tcx().trait_has_default_impl(data.def_id()) {
+                debug!("process_predicate: trait has default impl");
+                for bt_obligation in backtrace {
+                    debug!("process_predicate: bt_obligation = {:?}", bt_obligation.obligation);
+                    if bt_obligation.obligation.predicate == obligation.predicate {
+                        debug!("process_predicate: found a match!");
+                        return Ok(Some(vec![]));
+                    }
+                }
+            }
+
             let trait_obligation = obligation.with(data.clone());
             match selcx.select(&trait_obligation) {
                 Ok(Some(vtable)) => {
