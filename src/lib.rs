@@ -67,6 +67,7 @@ pub mod cyclomatic_complexity;
 pub mod escape;
 pub mod misc_early;
 pub mod array_indexing;
+pub mod panic;
 
 mod reexport {
     pub use syntax::ast::{Name, NodeId};
@@ -123,6 +124,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_early_lint_pass(box misc_early::MiscEarly);
     reg.register_late_lint_pass(box misc::UsedUnderscoreBinding);
     reg.register_late_lint_pass(box array_indexing::ArrayIndexing);
+    reg.register_late_lint_pass(box panic::PanicPass);
 
     reg.register_lint_group("clippy_pedantic", vec![
         methods::OPTION_UNWRAP_USED,
@@ -198,6 +200,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         needless_update::NEEDLESS_UPDATE,
         no_effect::NO_EFFECT,
         open_options::NONSENSICAL_OPEN_OPTIONS,
+        panic::PANIC_PARAMS,
         precedence::PRECEDENCE,
         ptr_arg::PTR_ARG,
         ranges::RANGE_STEP_BY_ZERO,

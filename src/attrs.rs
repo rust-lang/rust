@@ -6,7 +6,7 @@ use reexport::*;
 use syntax::codemap::Span;
 use syntax::attr::*;
 use syntax::ast::{Attribute, MetaList, MetaWord};
-use utils::{in_macro, match_path, span_lint};
+use utils::{in_macro, match_path, span_lint, BEGIN_UNWIND};
 
 /// **What it does:** This lint warns on items annotated with `#[inline(always)]`, unless the annotated function is empty or simply panics.
 ///
@@ -94,7 +94,7 @@ fn is_relevant_expr(expr: &Expr) -> bool {
         ExprRet(None) | ExprBreak(_) => false,
         ExprCall(ref path_expr, _) => {
             if let ExprPath(_, ref path) = path_expr.node {
-                !match_path(path, &["std", "rt", "begin_unwind"])
+                !match_path(path, &BEGIN_UNWIND)
             } else { true }
         }
         _ => true

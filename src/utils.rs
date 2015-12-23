@@ -21,6 +21,7 @@ pub const LL_PATH:     [&'static str; 3] = ["collections", "linked_list", "Linke
 pub const OPEN_OPTIONS_PATH: [&'static str; 3] = ["std", "fs", "OpenOptions"];
 pub const MUTEX_PATH:  [&'static str; 4] = ["std", "sync", "mutex", "Mutex"];
 pub const CLONE_PATH:  [&'static str; 2] = ["Clone", "clone"];
+pub const BEGIN_UNWIND:[&'static str; 3] = ["std", "rt", "begin_unwind"];
 
 /// Produce a nested chain of if-lets and ifs from the patterns:
 ///
