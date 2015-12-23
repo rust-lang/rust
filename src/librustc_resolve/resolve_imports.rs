@@ -33,10 +33,10 @@ use rustc::middle::privacy::*;
 use syntax::ast::{NodeId, Name};
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
+use syntax::util::lev_distance::find_best_match_for_name;
 
 use std::mem::replace;
 use std::rc::Rc;
-
 
 /// Contains data for specific types of import directives.
 #[derive(Copy, Clone,Debug)]
@@ -425,17 +425,22 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         };
 
         // We need to resolve both namespaces for this to succeed.
-        //
 
         let mut value_result = UnknownResult;
         let mut type_result = UnknownResult;
+        let mut lev_suggestion = "".to_owned();
 
         // Search for direct children of the containing module.
         build_reduced_graph::populate_module_if_necessary(self.resolver, &target_module);
 
         match target_module.children.borrow().get(&source) {
             None => {
-                // Continue.
+                let names = target_module.children.borrow();
+                if let Some(name) = find_best_match_for_name(names.keys(),
+                                                             &source.as_str(),
+                                                             None) {
+                    lev_suggestion = format!(". Did you mean to use `{}`?", name);
+                }
             }
             Some(ref child_name_bindings) => {
                 // pub_err makes sure we don't give the same error twice.
@@ -515,6 +520,17 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         // exported import with the name in question. We can
                         // therefore accurately report that the names are
                         // unbound.
+
+                        if lev_suggestion.is_empty() {  // skip if we already have a suggestion
+                            let names = target_module.import_resolutions.borrow();
+                            if let Some(name) = find_best_match_for_name(names.keys(),
+                                                                         &source.as_str(),
+                                                                         None) {
+                                lev_suggestion =
+                                    format!(". Did you mean to use the re-exported import `{}`?",
+                                            name);
+                            }
+                        }
 
                         if value_result.is_unknown() {
                             value_result = UnboundResult;
@@ -693,9 +709,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                            target);
 
         if value_result.is_unbound() && type_result.is_unbound() {
-            let msg = format!("There is no `{}` in `{}`",
+            let msg = format!("There is no `{}` in `{}`{}",
                               source,
-                              module_to_string(&target_module));
+                              module_to_string(&target_module), lev_suggestion);
             return ResolveResult::Failed(Some((directive.span, msg)));
         }
         let value_used_public = value_used_reexport || value_used_public;

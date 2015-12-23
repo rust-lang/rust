@@ -121,7 +121,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Span, Spanned};
 use syntax::parse::token::{self, InternedString};
 use syntax::ptr::P;
-use syntax::util::lev_distance::lev_distance;
+use syntax::util::lev_distance::find_best_match_for_name;
 
 use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
@@ -2981,28 +2981,22 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                  tcx: &ty::ctxt<'tcx>,
                                  skip : Vec<InternedString>) {
         let name = field.node.as_str();
+        let names = variant.fields
+                    .iter()
+                    .filter_map(|ref field| {
+                        // ignore already set fields and private fields from non-local crates
+                        if skip.iter().any(|x| *x == field.name.as_str()) ||
+                           (variant.did.krate != LOCAL_CRATE && field.vis != Visibility::Public) {
+                               None
+                        } else {
+                            Some(&field.name)
+                        }
+                    });
+
         // only find fits with at least one matching letter
-        let mut best_dist = name.len();
-        let mut best = None;
-        for elem in &variant.fields {
-            let n = elem.name.as_str();
-            // ignore already set fields
-            if skip.iter().any(|x| *x == n) {
-                continue;
-            }
-            // ignore private fields from non-local crates
-            if variant.did.krate != LOCAL_CRATE && elem.vis != Visibility::Public {
-                continue;
-            }
-            let dist = lev_distance(&n, &name);
-            if dist < best_dist {
-                best = Some(n);
-                best_dist = dist;
-            }
-        }
-        if let Some(n) = best {
+        if let Some(name) = find_best_match_for_name(names, &name, Some(name.len())) {
             tcx.sess.span_help(field.span,
-                &format!("did you mean `{}`?", n));
+                &format!("did you mean `{}`?", name));
         }
     }
 

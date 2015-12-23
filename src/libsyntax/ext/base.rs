@@ -24,7 +24,7 @@ use parse::token;
 use parse::token::{InternedString, intern, str_to_ident};
 use ptr::P;
 use util::small_vector::SmallVector;
-use util::lev_distance::{lev_distance, max_suggestion_distance};
+use util::lev_distance::find_best_match_for_name;
 use ext::mtwt;
 use fold::Folder;
 
@@ -744,15 +744,8 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn suggest_macro_name(&mut self, name: &str, span: Span) {
-        let mut min: Option<(Name, usize)> = None;
-        let max_dist = max_suggestion_distance(name);
-        for macro_name in self.syntax_env.names.iter() {
-            let dist = lev_distance(name, &macro_name.as_str());
-            if dist <= max_dist && (min.is_none() || min.unwrap().1 > dist) {
-                min = Some((*macro_name, dist));
-            }
-        }
-        if let Some((suggestion, _)) = min {
+        let names = &self.syntax_env.names;
+        if let Some(suggestion) = find_best_match_for_name(names.iter(), name, None) {
             self.fileline_help(span, &format!("did you mean `{}!`?", suggestion));
         }
     }

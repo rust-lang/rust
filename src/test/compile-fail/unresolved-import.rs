@@ -8,24 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 use foo::bar; //~ ERROR unresolved import `foo::bar`. Maybe a missing `extern crate foo`?
 
-use bar::baz as x; //~ ERROR unresolved import `bar::baz`. There is no `baz` in `bar`
+use bar::Baz as x; //~ ERROR unresolved import `bar::Baz`. There is no `Baz` in `bar`. Did you mean to use `Bar`?
 
-use food::baz; //~ ERROR unresolved import `food::baz`. There is no `baz` in `food`
+use food::baz; //~ ERROR unresolved import `food::baz`. There is no `baz` in `food`. Did you mean to use the re-exported import `bag`?
 
-use food::{quux as beans}; //~ ERROR unresolved import `food::quux`. There is no `quux` in `food`
+use food::{beens as Foo}; //~ ERROR unresolved import `food::beens`. There is no `beens` in `food`. Did you mean to use the re-exported import `beans`?
 
 mod bar {
-    struct bar;
+    pub struct Bar;
 }
 
 mod food {
-    pub use self::zug::baz::{self as bag, quux as beans};
+    pub use self::zug::baz::{self as bag, foobar as beans};
 
     mod zug {
         pub mod baz {
-            pub struct quux;
+            pub struct foobar;
         }
     }
 }
