@@ -39,9 +39,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                           did: DefId)
                           -> OperandRef<'tcx> {
         match kind {
-            ItemKind::Function |
-            ItemKind::Struct |
-            ItemKind::Variant => self.trans_fn_ref(bcx, ty, substs, did),
+            ItemKind::Function => self.trans_fn_ref(bcx, ty, substs, did),
             ItemKind::Method => match bcx.tcx().impl_or_trait_item(did).container() {
                 ty::ImplContainer(_) => self.trans_fn_ref(bcx, ty, substs, did),
                 ty::TraitContainer(tdid) => self.trans_static_method(bcx, ty, did, tdid, substs)
