@@ -121,7 +121,7 @@ pub fn compile_input(sess: Session,
         }
 
         let arenas = ty::CtxtArenas::new();
-        let ast_map = make_map(&sess, &mut hir_forest);
+        let hir_map = make_map(&sess, &mut hir_forest);
 
         write_out_deps(&sess, &outputs, &id);
 
@@ -130,9 +130,9 @@ pub fn compile_input(sess: Session,
                                 CompileState::state_after_write_deps(input,
                                                                      &sess,
                                                                      outdir,
-                                                                     &ast_map,
+                                                                     &hir_map,
                                                                      &expanded_crate,
-                                                                     &ast_map.krate(),
+                                                                     &hir_map.krate(),
                                                                      &id[..],
                                                                      &lcx));
 
@@ -146,7 +146,7 @@ pub fn compile_input(sess: Session,
 
         phase_3_run_analysis_passes(&sess,
                                     &cstore,
-                                    ast_map,
+                                    hir_map,
                                     &arenas,
                                     &id,
                                     control.make_glob_map,
@@ -341,7 +341,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     fn state_after_write_deps(input: &'a Input,
                               session: &'a Session,
                               out_dir: &'a Option<PathBuf>,
-                              ast_map: &'a hir_map::Map<'ast>,
+                              hir_map: &'a hir_map::Map<'ast>,
                               krate: &'a ast::Crate,
                               hir_crate: &'a hir::Crate,
                               crate_name: &'a str,
@@ -349,7 +349,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                               -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
-            ast_map: Some(ast_map),
+            ast_map: Some(hir_map),
             krate: Some(krate),
             hir_crate: Some(hir_crate),
             lcx: Some(lcx),
@@ -670,14 +670,12 @@ pub fn assign_node_ids(sess: &Session, krate: ast::Crate) -> ast::Crate {
 }
 
 pub fn make_map<'ast>(sess: &Session,
-                      forest: &'ast mut front::map::Forest)
-                      -> front::map::Map<'ast> {
-    // Construct the 'ast'-map
-    let map = time(sess.time_passes(),
-                   "indexing hir",
-                   move || front::map::map_crate(forest));
-
-    map
+                      forest: &'ast mut hir_map::Forest)
+                      -> hir_map::Map<'ast> {
+    // Construct the HIR map
+    time(sess.time_passes(),
+         "indexing hir",
+         move || hir_map::map_crate(forest))
 }
 
 /// Run the resolution, typechecking, region checking and other
@@ -685,7 +683,7 @@ pub fn make_map<'ast>(sess: &Session,
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                cstore: &CStore,
-                                               ast_map: front::map::Map<'tcx>,
+                                               hir_map: hir_map::Map<'tcx>,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                name: &str,
                                                make_glob_map: resolve::MakeGlobMap,
@@ -694,15 +692,15 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     where F: for<'a> FnOnce(&'a ty::ctxt<'tcx>, MirMap<'tcx>, ty::CrateAnalysis) -> R
 {
     let time_passes = sess.time_passes();
-    let krate = ast_map.krate();
+    let krate = hir_map.krate();
 
     time(time_passes,
          "external crate/lib resolution",
-         || LocalCrateReader::new(sess, cstore, &ast_map).read_crates(krate));
+         || LocalCrateReader::new(sess, cstore, &hir_map).read_crates(krate));
 
     let lang_items = time(time_passes,
                           "language item collection",
-                          || middle::lang_items::collect_language_items(&sess, &ast_map));
+                          || middle::lang_items::collect_language_items(&sess, &hir_map));
 
     let resolve::CrateMap {
         def_map,
@@ -713,7 +711,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         glob_map,
     } = time(time_passes,
              "resolution",
-             || resolve::resolve_crate(sess, &ast_map, make_glob_map));
+             || resolve::resolve_crate(sess, &hir_map, make_glob_map));
 
     let named_region_map = time(time_passes,
                                 "lifetime resolution",
@@ -721,7 +719,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     time(time_passes,
          "looking for entry point",
-         || middle::entry::find_entry_point(sess, &ast_map));
+         || middle::entry::find_entry_point(sess, &hir_map));
 
     sess.plugin_registrar_fn.set(time(time_passes, "looking for plugin registrar", || {
         plugin::build::find_plugin_registrar(sess.diagnostic(), krate)
@@ -737,13 +735,13 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     time(time_passes,
          "static item recursion checking",
-         || middle::check_static_recursion::check_crate(sess, krate, &def_map.borrow(), &ast_map));
+         || middle::check_static_recursion::check_crate(sess, krate, &def_map.borrow(), &hir_map));
 
     ty::ctxt::create_and_enter(sess,
                                arenas,
                                def_map,
                                named_region_map,
-                               ast_map,
+                               hir_map,
                                freevars,
                                region_map,
                                lang_items,
