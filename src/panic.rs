@@ -28,15 +28,22 @@ impl LateLintPass for PanicPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if_let_chain! {[
             in_external_macro(cx, expr.span),
-            let ExprCall(ref fun, ref params) = expr.node,
+            let ExprBlock(ref block) = expr.node,
+            let Some(ref ex) = block.expr,
+            let ExprCall(ref fun, ref params) = ex.node,
             params.len() == 2,
             let ExprPath(None, ref path) = fun.node,
             match_path(path, &BEGIN_UNWIND),
             let ExprLit(ref lit) = params[0].node,
             let LitStr(ref string, _) = lit.node,
-            string.contains('{')
+            string.contains('{'),
+            let Some(sp) = cx.sess().codemap()
+                             .with_expn_info(expr.span.expn_id,
+                                             |info| info.map(|i| i.call_site))
         ], {
-            span_lint(cx, PANIC_PARAMS, expr.span, "You probably are missing some parameter in your `panic!` call");
+
+            span_lint(cx, PANIC_PARAMS, sp,
+                      "You probably are missing some parameter in your `panic!` call");
         }}
     }
 }
