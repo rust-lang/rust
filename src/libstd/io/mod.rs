@@ -237,7 +237,7 @@
 //! to read the line and print it, so we use `()`.
 //!
 //! [result]: type.Result.html
-//! [try]: macro.try!.html
+//! [try]: ../macro.try!.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -992,8 +992,8 @@ pub trait Write {
     /// explicitly be called. The [`write!`][write] macro should be favored to
     /// invoke this method instead.
     ///
-    /// [formatargs]: ../std/macro.format_args!.html
-    /// [write]: ../std/macro.write!.html
+    /// [formatargs]: ../macro.format_args!.html
+    /// [write]: ../macro.write!.html
     ///
     /// This function internally uses the [`write_all`][writeall] method on
     /// this trait and hence will continuously write data so long as no errors
@@ -1126,7 +1126,7 @@ pub trait Write {
 ///
 /// [`File`][file]s implement `Seek`:
 ///
-/// [file]: ../std/fs/struct.File.html
+/// [file]: ../fs/struct.File.html
 ///
 /// ```
 /// use std::io;
