@@ -124,20 +124,20 @@ impl<'a, 'b, 'c, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'c, 'tcx> {
 /// ast-map.
 pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
                                  tcx: &ty::ctxt<'tcx>,
-                                 path: Vec<ast_map::PathElem>,
-                                 def_path: ast_map::DefPath,
+                                 parent_path: Vec<ast_map::PathElem>,
+                                 parent_def_path: ast_map::DefPath,
                                  par_doc: rbml::Doc,
                                  orig_did: DefId)
                                  -> Result<&'tcx InlinedItem, (Vec<ast_map::PathElem>,
                                                                ast_map::DefPath)> {
     match par_doc.opt_child(c::tag_ast) {
-      None => Err((path, def_path)),
+      None => Err((parent_path, parent_def_path)),
       Some(ast_doc) => {
         let mut path_as_str = None;
         debug!("> Decoding inlined fn: {:?}::?",
         {
             // Do an Option dance to use the path after it is moved below.
-            let s = ast_map::path_to_string(path.iter().cloned());
+            let s = ast_map::path_to_string(parent_path.iter().cloned());
             path_as_str = Some(s);
             path_as_str.as_ref().map(|x| &x[..])
         });
@@ -152,8 +152,11 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
             last_filemap_index: Cell::new(0)
         };
         let raw_ii = decode_ast(ast_doc);
-        let ii = ast_map::map_decoded_item(&dcx.tcx.map, path, def_path, raw_ii, dcx);
-
+        let ii = ast_map::map_decoded_item(&dcx.tcx.map,
+                                           parent_path,
+                                           parent_def_path,
+                                           raw_ii,
+                                           dcx);
         let name = match *ii {
             InlinedItem::Item(ref i) => i.name,
             InlinedItem::Foreign(ref i) => i.name,
