@@ -212,9 +212,8 @@ macro_rules! wrapping_impl {
 
 wrapping_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
-
-macro_rules! wrapping_impl_all {
-    ($($t:ty)*) => ($(
+macro_rules! wrapping_sh_impl {
+    ($($t:ty, $f:ty)*) => ($(
         impl ShlAssign<$f> for Wrapping<$t> {
             fn shl_assign(&mut self, other: $f) {
                 *self = *self << other;
@@ -230,21 +229,23 @@ macro_rules! wrapping_impl_all {
 }
 
 // FIXME (#23545): uncomment the remaining impls
-macro_rules! sh_impl_all {
+macro_rules! wrapping_sh_impl_all {
     ($($t:ty)*) => ($(
-        // sh_impl! { $t, u8 }
-        // sh_impl! { $t, u16 }
-        // sh_impl! { $t, u32 }
-        // sh_impl! { $t, u64 }
-        sh_impl! { $t, usize }
+        // wrapping_sh_impl! { $t, u8 }
+        // wrapping_sh_impl! { $t, u16 }
+        // wrapping_sh_impl! { $t, u32 }
+        // wrapping_sh_impl! { $t, u64 }
+        wrapping_sh_impl! { $t, usize }
 
-        // sh_impl! { $t, i8 }
-        // sh_impl! { $t, i16 }
-        // sh_impl! { $t, i32 }
-        // sh_impl! { $t, i64 }
-        // sh_impl! { $t, isize }
+        // wrapping_sh_impl! { $t, i8 }
+        // wrapping_sh_impl! { $t, i16 }
+        // wrapping_sh_impl! { $t, i32 }
+        // wrapping_sh_impl! { $t, i64 }
+        // wrapping_sh_impl! { $t, isize }
     )*)
 }
+
+wrapping_sh_impl_all! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
 mod shift_max {
     #![allow(non_upper_case_globals)]
