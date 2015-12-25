@@ -839,11 +839,10 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
 }
 
 /// Used for items loaded from external crate that are being inlined into this
-/// crate.  The `path` should be the path to the item but should not include
-/// the item itself.
+/// crate.
 pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
-                                          path: Vec<PathElem>,
-                                          def_path: DefPath,
+                                          parent_path: Vec<PathElem>,
+                                          parent_def_path: DefPath,
                                           ii: InlinedItem,
                                           fold_ops: F)
                                           -> &'ast InlinedItem {
@@ -862,7 +861,7 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
     };
 
     let ii_parent = map.forest.inlined_items.alloc(InlinedParent {
-        path: path,
+        path: parent_path,
         ii: ii
     });
 
@@ -872,7 +871,7 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
             map.krate(),
             ii_parent,
             ii_parent_id,
-            def_path,
+            parent_def_path,
             mem::replace(&mut *map.map.borrow_mut(), vec![]),
             mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new()));
     ii_parent.ii.visit(&mut collector);
