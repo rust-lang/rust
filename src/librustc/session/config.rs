@@ -622,6 +622,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "force nonzeroing move optimization on"),
     keep_mtwt_tables: bool = (false, parse_bool,
           "don't clear the resolution tables after analysis"),
+    keep_ast: bool = (false, parse_bool,
+          "keep the AST after lowering it to HIR"),
 }
 
 pub fn default_lib_output() -> CrateType {
