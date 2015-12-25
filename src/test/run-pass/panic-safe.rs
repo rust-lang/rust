@@ -11,7 +11,7 @@
 #![allow(dead_code)]
 #![feature(recover)]
 
-use std::panic::RecoverSafe;
+use std::panic::{RecoverSafe, AssertRecoverSafe};
 use std::cell::RefCell;
 use std::sync::{Mutex, RwLock, Arc};
 use std::rc::Rc;
@@ -47,5 +47,9 @@ fn main() {
         assert::<Box<T>>();
         assert::<Vec<T>>();
         assert::<RefCell<T>>();
+        assert::<AssertRecoverSafe<T>>();
+        assert::<&AssertRecoverSafe<T>>();
+        assert::<Rc<AssertRecoverSafe<T>>>();
+        assert::<Arc<AssertRecoverSafe<T>>>();
     }
 }
