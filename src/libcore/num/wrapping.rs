@@ -157,10 +157,94 @@ macro_rules! wrapping_impl {
                 Wrapping(self.0 & other.0)
             }
         }
+
+        impl AddAssign for Wrapping<$t> {
+            fn add_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self + other;
+            }
+        }
+
+        impl SubAssign for Wrapping<$t> {
+            fn sub_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self - other;
+            }
+        }
+
+        impl MulAssign for Wrapping<$t> {
+            fn mul_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self * other;
+            }
+        }
+
+        impl DivAssign for Wrapping<$t> {
+            fn div_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self / other;
+            }
+        }
+
+        /*
+        impl RemAssign for Wrapping<$t> {
+            fn rem_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self % other;
+            }
+        }
+        */
+
+        impl BitAndAssign for Wrapping<$t> {
+            fn bitand_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self & other;
+            }
+        }
+
+        impl BitOrAssign for Wrapping<$t> {
+            fn bitor_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self | other;
+            }
+        }
+
+        impl BitXorAssign for Wrapping<$t> {
+            fn bitxor_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self ^ other;
+            }
+        }
     )*)
 }
 
 wrapping_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+
+
+macro_rules! wrapping_impl_all {
+    ($($t:ty)*) => ($(
+        impl ShlAssign<$f> for Wrapping<$t> {
+            fn shl_assign(&mut self, other: $f) {
+                *self = *self << other;
+            }
+        }
+
+        impl ShrAssign<$f> for Wrapping<$t> {
+            fn shr_assign(&mut self, other: $f) {
+                *self = *self >> other;
+            }
+        }
+    )*)
+}
+
+// FIXME (#23545): uncomment the remaining impls
+macro_rules! sh_impl_all {
+    ($($t:ty)*) => ($(
+        // sh_impl! { $t, u8 }
+        // sh_impl! { $t, u16 }
+        // sh_impl! { $t, u32 }
+        // sh_impl! { $t, u64 }
+        sh_impl! { $t, usize }
+
+        // sh_impl! { $t, i8 }
+        // sh_impl! { $t, i16 }
+        // sh_impl! { $t, i32 }
+        // sh_impl! { $t, i64 }
+        // sh_impl! { $t, isize }
+    )*)
+}
 
 mod shift_max {
     #![allow(non_upper_case_globals)]
