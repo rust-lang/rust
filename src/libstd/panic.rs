@@ -13,6 +13,8 @@
 #![unstable(feature = "std_panic", reason = "awaiting feedback",
             issue = "27719")]
 
+use any::Any;
+use boxed::Box;
 use cell::UnsafeCell;
 use ops::{Deref, DerefMut};
 use ptr::{Unique, Shared};
@@ -258,4 +260,29 @@ pub fn recover<F: FnOnce() -> R + RecoverSafe, R>(f: F) -> Result<R> {
         try!(unwind::try(move || *result = Some(f())))
     }
     Ok(result.unwrap())
+}
+
+/// Triggers a panic without invoking the panic handler.
+///
+/// This is designed to be used in conjunction with `recover` to, for example,
+/// carry a panic across a layer of C code.
+///
+/// # Examples
+///
+/// ```should_panic
+/// #![feature(std_panic, recover, panic_propagate)]
+///
+/// use std::panic;
+///
+/// let result = panic::recover(|| {
+///     panic!("oh no!");
+/// });
+///
+/// if let Err(err) = result {
+///     panic::propagate(err);
+/// }
+/// ```
+#[unstable(feature = "panic_propagate", reason = "awaiting feedback", issue = "30752")]
+pub fn propagate(payload: Box<Any + Send>) -> ! {
+    unwind::rust_panic(payload)
 }
