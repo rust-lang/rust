@@ -512,7 +512,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let otherwise: Vec<_> =
             target_blocks.into_iter()
                          .zip(target_candidates)
-                         .flat_map(|(target_block, target_candidates)| {
+                         .flat_map(|(target_block, mut target_candidates)| {
+                             // We need to preserve the fact that the candidates
+                             // are in the reversed order compared to the source.
+                             target_candidates.reverse();
                              self.match_candidates(span,
                                                    arm_blocks,
                                                    target_candidates,
