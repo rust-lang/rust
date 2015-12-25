@@ -21,6 +21,8 @@ use sync::{Arc, Mutex, RwLock};
 use sys_common::unwind;
 use thread::Result;
 
+pub use panicking::{take_handler, set_handler, PanicInfo, Location};
+
 /// A marker trait which represents "panic safe" types in Rust.
 ///
 /// This trait is implemented by default for many types and behaves similarly in
