@@ -930,24 +930,32 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf, args: &[ast::Arg]) -
             }
         }
         ast::ExplicitSelf_::SelfExplicit(ref ty, _) => {
-            Some(format!("self: {}", pprust::ty_to_string(ty)))
+            assert!(!args.is_empty(), "&[ast::Arg] shouldn't be empty.");
+
+            let mutability = explicit_self_mutability(&args[0]);
+
+            Some(format!("{}self: {}",
+                         format_mutability(mutability),
+                         pprust::ty_to_string(ty)))
         }
         ast::ExplicitSelf_::SelfValue(_) => {
-            assert!(args.len() >= 1, "&[ast::Arg] shouldn't be empty.");
+            assert!(!args.is_empty(), "&[ast::Arg] shouldn't be empty.");
 
-            // this hacky solution caused by absence of `Mutability` in `SelfValue`.
-            let mut_str = {
-                if let ast::Pat_::PatIdent(ast::BindingMode::BindByValue(mutability), _, _) =
-                       args[0].pat.node {
-                    format_mutability(mutability)
-                } else {
-                    panic!("there is a bug or change in structure of AST, aborting.");
-                }
-            };
+            let mutability = explicit_self_mutability(&args[0]);
 
-            Some(format!("{}self", mut_str))
+            Some(format!("{}self", format_mutability(mutability)))
         }
         _ => None,
+    }
+}
+
+// Hacky solution caused by absence of `Mutability` in `SelfValue` and
+// `SelfExplicit` variants of `ast::ExplicitSelf_`.
+fn explicit_self_mutability(arg: &ast::Arg) -> ast::Mutability {
+    if let ast::Pat_::PatIdent(ast::BindingMode::BindByValue(mutability), _, _) = arg.pat.node {
+        mutability
+    } else {
+        unreachable!()
     }
 }
 
