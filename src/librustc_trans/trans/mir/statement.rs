@@ -31,7 +31,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         let index = index as usize;
                         match self.temps[index as usize] {
                             TempRef::Lvalue(tr_dest) => {
-                                self.trans_rvalue(bcx, tr_dest.llval, rvalue)
+                                self.trans_rvalue(bcx, tr_dest, rvalue)
                             }
                             TempRef::Operand(None) => {
                                 let (bcx, operand) = self.trans_rvalue_operand(bcx, rvalue);
@@ -47,7 +47,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                     _ => {
                         let tr_dest = self.trans_lvalue(bcx, lvalue);
-                        self.trans_rvalue(bcx, tr_dest.llval, rvalue)
+                        self.trans_rvalue(bcx, tr_dest, rvalue)
                     }
                 }
             }

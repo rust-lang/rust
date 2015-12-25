@@ -1822,8 +1822,8 @@ unpaired_token
 | LIT_FLOAT                  { $$ = mk_atom(yytext); }
 | LIT_STR                    { $$ = mk_atom(yytext); }
 | LIT_STR_RAW                { $$ = mk_atom(yytext); }
-| LIT_BYTE_STR                 { $$ = mk_atom(yytext); }
-| LIT_BYTE_STR_RAW             { $$ = mk_atom(yytext); }
+| LIT_BYTE_STR               { $$ = mk_atom(yytext); }
+| LIT_BYTE_STR_RAW           { $$ = mk_atom(yytext); }
 | IDENT                      { $$ = mk_atom(yytext); }
 | UNDERSCORE                 { $$ = mk_atom(yytext); }
 | LIFETIME                   { $$ = mk_atom(yytext); }
