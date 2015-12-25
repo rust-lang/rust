@@ -23,7 +23,6 @@ use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, Struct
 
 use syntax::{ast, abi};
 use syntax::codemap::{Span, BytePos, mk_sp};
-use syntax::print::pprust;
 use syntax::parse::token;
 
 // Statements of the form
@@ -901,31 +900,36 @@ impl Rewrite for ast::FunctionRetTy {
 impl Rewrite for ast::Arg {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         if is_named_arg(self) {
-            if let ast::Ty_::TyInfer = self.ty.node {
-                wrap_str(pprust::pat_to_string(&self.pat),
-                         context.config.max_width,
-                         width,
-                         offset)
-            } else {
-                let mut result = pprust::pat_to_string(&self.pat);
+            let mut result = try_opt!(self.pat.rewrite(context, width, offset));
+
+            if self.ty.node != ast::Ty_::TyInfer {
                 result.push_str(": ");
                 let max_width = try_opt!(width.checked_sub(result.len()));
                 let ty_str = try_opt!(self.ty.rewrite(context, max_width, offset + result.len()));
                 result.push_str(&ty_str);
-                Some(result)
             }
+
+            Some(result)
         } else {
             self.ty.rewrite(context, width, offset)
         }
     }
 }
 
-fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf, args: &[ast::Arg]) -> Option<String> {
+fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
+                         args: &[ast::Arg],
+                         context: &RewriteContext)
+                         -> Option<String> {
     match explicit_self.node {
         ast::ExplicitSelf_::SelfRegion(lt, m, _) => {
             let mut_str = format_mutability(m);
             match lt {
-                Some(ref l) => Some(format!("&{} {}self", pprust::lifetime_to_string(l), mut_str)),
+                Some(ref l) => {
+                    let lifetime_str = try_opt!(l.rewrite(context,
+                                                          usize::max_value(),
+                                                          Indent::empty()));
+                    Some(format!("&{} {}self", lifetime_str, mut_str))
+                }
                 None => Some(format!("&{}self", mut_str)),
             }
         }
@@ -933,10 +937,9 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf, args: &[ast::Arg]) -
             assert!(!args.is_empty(), "&[ast::Arg] shouldn't be empty.");
 
             let mutability = explicit_self_mutability(&args[0]);
+            let type_str = try_opt!(ty.rewrite(context, usize::max_value(), Indent::empty()));
 
-            Some(format!("{}self: {}",
-                         format_mutability(mutability),
-                         pprust::ty_to_string(ty)))
+            Some(format!("{}self: {}", format_mutability(mutability), type_str))
         }
         ast::ExplicitSelf_::SelfValue(_) => {
             assert!(!args.is_empty(), "&[ast::Arg] shouldn't be empty.");
@@ -1237,7 +1240,7 @@ fn rewrite_args(context: &RewriteContext,
     // FIXME: the comment for the self argument is dropped. This is blocked
     // on rust issue #27522.
     let min_args = explicit_self.and_then(|explicit_self| {
-                                    rewrite_explicit_self(explicit_self, args)
+                                    rewrite_explicit_self(explicit_self, args, context)
                                 })
                                 .map(|self_str| {
                                     arg_item_strs[0] = self_str;

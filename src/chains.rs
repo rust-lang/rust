@@ -27,7 +27,6 @@ use config::BlockIndentStyle;
 
 use syntax::{ast, ptr};
 use syntax::codemap::{mk_sp, Span};
-use syntax::print::pprust;
 
 pub fn rewrite_chain(mut expr: &ast::Expr,
                      context: &RewriteContext,
@@ -233,7 +232,9 @@ fn rewrite_method_call(method_name: ast::Ident,
     let (lo, type_str) = if types.is_empty() {
         (args[0].span.hi, String::new())
     } else {
-        let type_list = types.iter().map(|ty| pprust::ty_to_string(ty)).collect::<Vec<_>>();
+        let type_list: Vec<_> = try_opt!(types.iter()
+                                              .map(|ty| ty.rewrite(context, width, offset))
+                                              .collect());
 
         (types.last().unwrap().span.hi,
          format!("::<{}>", type_list.join(", ")))
