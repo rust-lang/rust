@@ -763,29 +763,54 @@ pub fn get_item_name(intr: &IdentInterner, cdata: Cmd, id: DefIndex) -> ast::Nam
 pub type DecodeInlinedItem<'a> =
     Box<for<'tcx> FnMut(Cmd,
                         &ty::ctxt<'tcx>,
-                        Vec<hir_map::PathElem>,
-                        hir_map::DefPath,
+                        Vec<hir_map::PathElem>, // parent_path
+                        hir_map::DefPath,       // parent_def_path
                         rbml::Doc,
                         DefId)
                         -> Result<&'tcx InlinedItem, (Vec<hir_map::PathElem>,
                                                       hir_map::DefPath)> + 'a>;
 
-pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: DefIndex,
+pub fn maybe_get_item_ast<'tcx>(cdata: Cmd,
+                                tcx: &ty::ctxt<'tcx>,
+                                id: DefIndex,
                                 mut decode_inlined_item: DecodeInlinedItem)
                                 -> FoundAst<'tcx> {
     debug!("Looking up item: {:?}", id);
     let item_doc = cdata.lookup_item(id);
     let item_did = item_def_id(item_doc, cdata);
-    let path = item_path(item_doc).split_last().unwrap().1.to_vec();
-    let def_path = def_path(cdata, id);
-    match decode_inlined_item(cdata, tcx, path, def_path, item_doc, item_did) {
+    let parent_path = {
+        let mut path = item_path(item_doc);
+        path.pop();
+        path
+    };
+    let parent_def_path = {
+        let mut def_path = def_path(cdata, id);
+        def_path.pop();
+        def_path
+    };
+    match decode_inlined_item(cdata,
+                              tcx,
+                              parent_path,
+                              parent_def_path,
+                              item_doc,
+                              item_did) {
         Ok(ii) => FoundAst::Found(ii),
-        Err((path, def_path)) => {
+        Err((mut parent_path, mut parent_def_path)) => {
             match item_parent_item(cdata, item_doc) {
-                Some(did) => {
-                    let parent_item = cdata.lookup_item(did.index);
-                    match decode_inlined_item(cdata, tcx, path, def_path, parent_item, did) {
-                        Ok(ii) => FoundAst::FoundParent(did, ii),
+                Some(parent_did) => {
+                    // Remove the last element from the paths, since we are now
+                    // trying to inline the parent.
+                    parent_path.pop();
+                    parent_def_path.pop();
+
+                    let parent_item = cdata.lookup_item(parent_did.index);
+                    match decode_inlined_item(cdata,
+                                              tcx,
+                                              parent_path,
+                                              parent_def_path,
+                                              parent_item,
+                                              parent_did) {
+                        Ok(ii) => FoundAst::FoundParent(parent_did, ii),
                         Err(_) => FoundAst::NotFound
                     }
                 }

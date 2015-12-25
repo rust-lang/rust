@@ -14,6 +14,8 @@
 extern crate mir_external_refs as ext;
 
 struct S(u8);
+#[derive(Debug, PartialEq, Eq)]
+struct Unit;
 
 impl S {
     fn hey() -> u8 { 42 }
@@ -175,6 +177,11 @@ fn t20() -> fn(u64, u32)->(u64, u32) {
     <u32 as T<_, _>>::staticmeth
 }
 
+#[rustc_mir]
+fn t21() -> Unit {
+    Unit
+}
+
 fn main(){
     unsafe {
         assert_eq!(t1()(), regular());
@@ -214,5 +221,6 @@ fn main(){
         assert_eq!(t18()(50u64, 5u64), F::f(50u64, 5u64));
         assert_eq!(t19()(322u64, 2u32), F::f(322u64, 2u32));
         assert_eq!(t20()(123u64, 38u32), <u32 as T<_, _>>::staticmeth(123, 38));
+        assert_eq!(t21(), Unit);
     }
 }

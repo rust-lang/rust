@@ -519,51 +519,51 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
     let substs = cx.tcx.mk_substs(cx.tcx.node_id_item_substs(expr.id).substs);
     // Otherwise there may be def_map borrow conflicts
     let def = cx.tcx.def_map.borrow()[&expr.id].full_def();
-    match def {
-        def::DefVariant(_, def_id, false) |
-        def::DefStruct(def_id) |
-        def::DefFn(def_id, _) |
-        def::DefMethod(def_id) => {
-            let kind = match def {
-                def::DefVariant(..) => ItemKind::Variant,
-                def::DefStruct(..) => ItemKind::Struct,
-                def::DefFn(..) => ItemKind::Function,
-                def::DefMethod(..) => ItemKind::Method,
-                _ => panic!()
-            };
-            ExprKind::Literal {
-                literal: Literal::Item { def_id: def_id, kind: kind, substs: substs }
+    let (def_id, kind) = match def {
+        // A variant constructor.
+        def::DefVariant(_, def_id, false) => (def_id, ItemKind::Function),
+        // A regular function.
+        def::DefFn(def_id, _) => (def_id, ItemKind::Function),
+        def::DefMethod(def_id) => (def_id, ItemKind::Method),
+        def::DefStruct(def_id) => {
+            match cx.tcx.node_id_to_type(expr.id).sty {
+                // A tuple-struct constructor.
+                ty::TyBareFn(..) => (def_id, ItemKind::Function),
+                // This is a special case: a unit struct which is used as a value. We return a
+                // completely different ExprKind here to account for this special case.
+                ty::TyStruct(adt_def, substs) => return ExprKind::Adt {
+                    adt_def: adt_def,
+                    variant_index: 0,
+                    substs: substs,
+                    fields: vec![],
+                    base: None
+                },
+                ref sty => panic!("unexpected sty: {:?}", sty)
             }
         },
         def::DefConst(def_id) |
         def::DefAssociatedConst(def_id) => {
             if let Some(v) = cx.try_const_eval_literal(expr) {
-                ExprKind::Literal { literal: v }
+                return ExprKind::Literal { literal: v };
             } else {
-                ExprKind::Literal {
-                    literal: Literal::Item {
-                        def_id: def_id,
-                        kind: ItemKind::Constant,
-                        substs: substs
-                    }
-                }
+                (def_id, ItemKind::Constant)
             }
         }
 
-
-        def::DefStatic(node_id, _) =>
-            ExprKind::StaticRef {
-                id: node_id,
-            },
+        def::DefStatic(node_id, _) => return ExprKind::StaticRef {
+            id: node_id,
+        },
 
         def @ def::DefLocal(..) |
-        def @ def::DefUpvar(..) =>
-            convert_var(cx, expr, def),
+        def @ def::DefUpvar(..) => return convert_var(cx, expr, def),
 
         def =>
             cx.tcx.sess.span_bug(
                 expr.span,
                 &format!("def `{:?}` not yet implemented", def)),
+    };
+    ExprKind::Literal {
+        literal: Literal::Item { def_id: def_id, kind: kind, substs: substs }
     }
 }
 

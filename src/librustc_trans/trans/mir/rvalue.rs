@@ -19,6 +19,7 @@ use trans::common::{self, Block, Result};
 use trans::debuginfo::DebugLoc;
 use trans::declare;
 use trans::expr;
+use trans::adt;
 use trans::machine;
 use trans::type_::Type;
 use trans::type_of;
@@ -26,21 +27,22 @@ use trans::tvec;
 
 use super::MirContext;
 use super::operand::{OperandRef, OperandValue};
+use super::lvalue::LvalueRef;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_rvalue(&mut self,
                         bcx: Block<'bcx, 'tcx>,
-                        lldest: ValueRef,
+                        dest: LvalueRef<'tcx>,
                         rvalue: &mir::Rvalue<'tcx>)
                         -> Block<'bcx, 'tcx>
     {
-        debug!("trans_rvalue(lldest={}, rvalue={:?})",
-               bcx.val_to_string(lldest),
+        debug!("trans_rvalue(dest.llval={}, rvalue={:?})",
+               bcx.val_to_string(dest.llval),
                rvalue);
 
         match *rvalue {
             mir::Rvalue::Use(ref operand) => {
-                self.trans_operand_into(bcx, lldest, operand);
+                self.trans_operand_into(bcx, dest.llval, operand);
                 bcx
             }
 
@@ -49,7 +51,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     // into-coerce of a thin pointer to a fat pointer - just
                     // use the operand path.
                     let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
-                    self.store_operand(bcx, lldest, temp);
+                    self.store_operand(bcx, dest.llval, temp);
                     return bcx;
                 }
 
@@ -72,12 +74,12 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         base::store_ty(bcx, llval, lltemp, operand.ty);
                         base::coerce_unsized_into(bcx,
                                                   lltemp, operand.ty,
-                                                  lldest, cast_ty);
+                                                  dest.llval, cast_ty);
                     }
                     OperandValue::Ref(llref) => {
                         base::coerce_unsized_into(bcx,
                                                   llref, operand.ty,
-                                                  lldest, cast_ty);
+                                                  dest.llval, cast_ty);
                     }
                 }
                 bcx
@@ -86,20 +88,31 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Rvalue::Repeat(ref elem, ref count) => {
                 let elem = self.trans_operand(bcx, elem);
                 let size = self.trans_constant(bcx, count).immediate();
-                let base = expr::get_dataptr(bcx, lldest);
+                let base = expr::get_dataptr(bcx, dest.llval);
                 tvec::iter_vec_raw(bcx, base, elem.ty, size, |bcx, llslot, _| {
                     self.store_operand(bcx, llslot, elem);
                     bcx
                 })
             }
 
-            mir::Rvalue::Aggregate(_, ref operands) => {
-                for (i, operand) in operands.iter().enumerate() {
-                    // Note: perhaps this should be StructGep, but
-                    // note that in some cases the values here will
-                    // not be structs but arrays.
-                    let lldest_i = build::GEPi(bcx, lldest, &[0, i]);
-                    self.trans_operand_into(bcx, lldest_i, operand);
+            mir::Rvalue::Aggregate(ref kind, ref operands) => {
+                match *kind {
+                    // Unit struct, which is translated very differently compared to any other
+                    // aggregate
+                    mir::AggregateKind::Adt(adt_def, 0, _)
+                    if adt_def.struct_variant().kind() == ty::VariantKind::Unit => {
+                        let repr = adt::represent_type(bcx.ccx(), dest.ty.to_ty(bcx.tcx()));
+                        adt::trans_set_discr(bcx, &*repr, dest.llval, 0);
+                    },
+                    _ => {
+                        for (i, operand) in operands.iter().enumerate() {
+                            // Note: perhaps this should be StructGep, but
+                            // note that in some cases the values here will
+                            // not be structs but arrays.
+                            let lldest_i = build::GEPi(bcx, dest.llval, &[0, i]);
+                            self.trans_operand_into(bcx, lldest_i, operand);
+                        }
+                    }
                 }
                 bcx
             }
@@ -113,9 +126,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let llbase1 = build::GEPi(bcx, llbase, &[from_start]);
                 let adj = common::C_uint(ccx, from_start + from_end);
                 let lllen1 = build::Sub(bcx, lllen, adj, DebugLoc::None);
-                let lladdrdest = expr::get_dataptr(bcx, lldest);
+                let lladdrdest = expr::get_dataptr(bcx, dest.llval);
                 build::Store(bcx, llbase1, lladdrdest);
-                let llmetadest = expr::get_meta(bcx, lldest);
+                let llmetadest = expr::get_meta(bcx, dest.llval);
                 build::Store(bcx, lllen1, llmetadest);
                 bcx
             }
@@ -127,7 +140,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             _ => {
                 assert!(rvalue_creates_operand(rvalue));
                 let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
-                self.store_operand(bcx, lldest, temp);
+                self.store_operand(bcx, dest.llval, temp);
                 bcx
             }
         }
