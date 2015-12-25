@@ -140,15 +140,9 @@ fn encode_trait_ref<'a, 'tcx>(rbml_w: &mut Encoder,
                               ecx: &EncodeContext<'a, 'tcx>,
                               trait_ref: ty::TraitRef<'tcx>,
                               tag: usize) {
-    let ty_str_ctxt = &tyencode::ctxt {
-        diag: ecx.diag,
-        ds: def_to_string,
-        tcx: ecx.tcx,
-        abbrevs: &ecx.type_abbrevs
-    };
-
     rbml_w.start_tag(tag);
-    tyencode::enc_trait_ref(rbml_w, ty_str_ctxt, trait_ref);
+    tyencode::enc_trait_ref(rbml_w.writer, &ecx.ty_str_ctxt(), trait_ref);
+    rbml_w.mark_stable_position();
     rbml_w.end_tag();
 }
 
@@ -202,59 +196,19 @@ fn encode_variant_id(rbml_w: &mut Encoder, vid: DefId) {
     rbml_w.wr_tagged_u64(tag_mod_child, id);
 }
 
-pub fn write_closure_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
-                                    rbml_w: &mut Encoder,
-                                    closure_type: &ty::ClosureTy<'tcx>) {
-    let ty_str_ctxt = &tyencode::ctxt {
-        diag: ecx.diag,
-        ds: def_to_string,
-        tcx: ecx.tcx,
-        abbrevs: &ecx.type_abbrevs
-    };
-    tyencode::enc_closure_ty(rbml_w, ty_str_ctxt, closure_type);
-}
-
-pub fn write_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+fn write_closure_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                             rbml_w: &mut Encoder,
-                            typ: Ty<'tcx>) {
-    let ty_str_ctxt = &tyencode::ctxt {
-        diag: ecx.diag,
-        ds: def_to_string,
-        tcx: ecx.tcx,
-        abbrevs: &ecx.type_abbrevs
-    };
-    tyencode::enc_ty(rbml_w, ty_str_ctxt, typ);
-}
-
-pub fn write_trait_ref<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
-                                 rbml_w: &mut Encoder,
-                                trait_ref: &ty::TraitRef<'tcx>) {
-    let ty_str_ctxt = &tyencode::ctxt {
-        diag: ecx.diag,
-        ds: def_to_string,
-        tcx: ecx.tcx,
-        abbrevs: &ecx.type_abbrevs
-    };
-    tyencode::enc_trait_ref(rbml_w, ty_str_ctxt, *trait_ref);
-}
-
-pub fn write_region(ecx: &EncodeContext,
-                    rbml_w: &mut Encoder,
-                    r: ty::Region) {
-    let ty_str_ctxt = &tyencode::ctxt {
-        diag: ecx.diag,
-        ds: def_to_string,
-        tcx: ecx.tcx,
-        abbrevs: &ecx.type_abbrevs
-    };
-    tyencode::enc_region(rbml_w, ty_str_ctxt, r);
+                            closure_type: &ty::ClosureTy<'tcx>) {
+    tyencode::enc_closure_ty(rbml_w.writer, &ecx.ty_str_ctxt(), closure_type);
+    rbml_w.mark_stable_position();
 }
 
 fn encode_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                          rbml_w: &mut Encoder,
                          typ: Ty<'tcx>) {
     rbml_w.start_tag(tag_items_data_item_type);
-    write_type(ecx, rbml_w, typ);
+    tyencode::enc_ty(rbml_w.writer, &ecx.ty_str_ctxt(), typ);
+    rbml_w.mark_stable_position();
     rbml_w.end_tag();
 }
 
@@ -262,7 +216,8 @@ fn encode_region(ecx: &EncodeContext,
                  rbml_w: &mut Encoder,
                  r: ty::Region) {
     rbml_w.start_tag(tag_items_data_region);
-    write_region(ecx, rbml_w, r);
+    tyencode::enc_region(rbml_w.writer, &ecx.ty_str_ctxt(), r);
+    rbml_w.mark_stable_position();
     rbml_w.end_tag();
 }
 
@@ -592,17 +547,10 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
 {
     rbml_w.start_tag(tag);
 
-    // Type parameters
-    let ty_str_ctxt = &tyencode::ctxt {
-        diag: ecx.diag,
-        ds: def_to_string,
-        tcx: ecx.tcx,
-        abbrevs: &ecx.type_abbrevs
-    };
-
     for param in &generics.types {
         rbml_w.start_tag(tag_type_param_def);
-        tyencode::enc_type_param_def(rbml_w, ty_str_ctxt, param);
+        tyencode::enc_type_param_def(rbml_w.writer, &ecx.ty_str_ctxt(), param);
+        rbml_w.mark_stable_position();
         rbml_w.end_tag();
     }
 
@@ -871,7 +819,11 @@ fn encode_mir(ecx: &EncodeContext, rbml_w: &mut Encoder, ii: InlinedItemRef) {
 
     if let Some(mir) = ecx.mir_map.get(&id) {
         rbml_w.start_tag(tag_mir as usize);
-        Encodable::encode(mir, rbml_w).unwrap();
+        rbml_w.emit_opaque(|opaque_encoder| {
+            tls::enter_encoding_context(ecx, opaque_encoder, |_, opaque_encoder| {
+                Encodable::encode(mir, opaque_encoder)
+            })
+        }).unwrap();
         rbml_w.end_tag();
     }
 }
@@ -916,23 +868,17 @@ fn encode_xrefs<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                           rbml_w: &mut Encoder,
                           xrefs: FnvHashMap<XRef<'tcx>, u32>)
 {
-    let ty_str_ctxt = &tyencode::ctxt {
-        diag: ecx.diag,
-        ds: def_to_string,
-        tcx: ecx.tcx,
-        abbrevs: &ecx.type_abbrevs
-    };
-
     let mut xref_positions = vec![0; xrefs.len()];
     rbml_w.start_tag(tag_xref_data);
     for (xref, id) in xrefs.into_iter() {
         xref_positions[id as usize] = rbml_w.mark_stable_position() as u32;
         match xref {
             XRef::Predicate(p) => {
-                tyencode::enc_predicate(rbml_w, ty_str_ctxt, &p)
+                tyencode::enc_predicate(rbml_w.writer, &ecx.ty_str_ctxt(), &p)
             }
         }
     }
+    rbml_w.mark_stable_position();
     rbml_w.end_tag();
 
     rbml_w.start_tag(tag_xref_index);
@@ -1750,7 +1696,9 @@ fn encode_codemap(ecx: &EncodeContext, rbml_w: &mut Encoder) {
         }
 
         rbml_w.start_tag(tag_codemap_filemap);
-        filemap.encode(rbml_w);
+        rbml_w.emit_opaque(|opaque_encoder| {
+            filemap.encode(opaque_encoder)
+        }).unwrap();
         rbml_w.end_tag();
     }
 
@@ -1961,9 +1909,7 @@ pub fn encode_metadata(parms: EncodeParams, krate: &hir::Crate) -> Vec<u8> {
 
     {
         let mut rbml_w = Encoder::new(&mut wr);
-        tls::enter_encoding_context(&ecx, &mut rbml_w, |_, rbml_w| {
-            encode_metadata_inner(rbml_w, &ecx, krate)
-        });
+        encode_metadata_inner(&mut rbml_w, &ecx, krate)
     }
 
     // RBML compacts the encoded bytes whenever appropriate,
@@ -2132,7 +2078,7 @@ fn encode_metadata_inner(rbml_w: &mut Encoder,
 // Get the encoded string for a type
 pub fn encoded_ty<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> Vec<u8> {
     let mut wr = Cursor::new(Vec::new());
-    tyencode::enc_ty(&mut Encoder::new(&mut wr), &tyencode::ctxt {
+    tyencode::enc_ty(&mut wr, &tyencode::ctxt {
         diag: tcx.sess.diagnostic(),
         ds: def_to_string,
         tcx: tcx,
