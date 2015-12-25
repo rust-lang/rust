@@ -151,7 +151,7 @@ extern fn panic_fmt(args: &core::fmt::Arguments,
 # fn main() {}
 ```
 
-Note that there is one extra lang item here which differs from the examples
+Note that there is one lang item here whose signature differs from the examples
 above, `panic_fmt`. This must be defined by consumers of libcore because the
 core library declares panics, but it does not define it. The `panic_fmt`
 lang item is this crate's definition of panic, and it must be guaranteed to
