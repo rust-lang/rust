@@ -25,6 +25,7 @@ use middle::subst::VecPerParamSpace;
 use middle::ty::{self, ToPredicate, Ty, HasTypeFlags};
 
 use rbml;
+use rbml::leb128;
 use std::str;
 use syntax::abi;
 use syntax::ast;
@@ -103,9 +104,10 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     }
 
     fn parse_vuint(&mut self) -> usize {
-        let res = rbml::reader::vuint_at(self.data, self.pos).unwrap();
-        self.pos = res.next;
-        res.val
+        let (value, bytes_read) = leb128::read_unsigned_leb128(self.data,
+                                                               self.pos);
+        self.pos += bytes_read;
+        value as usize
     }
 
     fn parse_name(&mut self, last: char) -> ast::Name {

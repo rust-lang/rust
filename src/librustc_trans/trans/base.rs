@@ -44,6 +44,7 @@ use middle::pat_util::simple_name;
 use middle::subst::Substs;
 use middle::ty::{self, Ty, HasTypeFlags};
 use rustc::front::map as hir_map;
+use rustc::util::common::time;
 use rustc_mir::mir_map::MirMap;
 use session::config::{self, NoDebugInfo, FullDebugInfo};
 use session::Session;
@@ -3053,7 +3054,9 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
     let reachable_symbol_ids = filter_reachable_ids(&shared_ccx);
 
     // Translate the metadata.
-    let metadata = write_metadata(&shared_ccx, krate, &reachable_symbol_ids, mir_map);
+    let metadata = time(tcx.sess.time_passes(), "write metadata", || {
+        write_metadata(&shared_ccx, krate, &reachable_symbol_ids, mir_map)
+    });
 
     if shared_ccx.sess().trans_stats() {
         let stats = shared_ccx.stats();
