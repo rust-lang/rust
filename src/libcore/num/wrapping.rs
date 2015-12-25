@@ -159,24 +159,28 @@ macro_rules! wrapping_impl {
         }
 
         impl AddAssign for Wrapping<$t> {
+            #[inline(always)]
             fn add_assign(&mut self, other: Wrapping<$t>) {
                 *self = *self + other;
             }
         }
 
         impl SubAssign for Wrapping<$t> {
+            #[inline(always)]
             fn sub_assign(&mut self, other: Wrapping<$t>) {
                 *self = *self - other;
             }
         }
 
         impl MulAssign for Wrapping<$t> {
+            #[inline(always)]
             fn mul_assign(&mut self, other: Wrapping<$t>) {
                 *self = *self * other;
             }
         }
 
         impl DivAssign for Wrapping<$t> {
+            #[inline(always)]
             fn div_assign(&mut self, other: Wrapping<$t>) {
                 *self = *self / other;
             }
@@ -184,6 +188,7 @@ macro_rules! wrapping_impl {
 
         /*
         impl RemAssign for Wrapping<$t> {
+            #[inline(always)]
             fn rem_assign(&mut self, other: Wrapping<$t>) {
                 *self = *self % other;
             }
@@ -191,18 +196,21 @@ macro_rules! wrapping_impl {
         */
 
         impl BitAndAssign for Wrapping<$t> {
+            #[inline(always)]
             fn bitand_assign(&mut self, other: Wrapping<$t>) {
                 *self = *self & other;
             }
         }
 
         impl BitOrAssign for Wrapping<$t> {
+            #[inline(always)]
             fn bitor_assign(&mut self, other: Wrapping<$t>) {
                 *self = *self | other;
             }
         }
 
         impl BitXorAssign for Wrapping<$t> {
+            #[inline(always)]
             fn bitxor_assign(&mut self, other: Wrapping<$t>) {
                 *self = *self ^ other;
             }
@@ -215,12 +223,14 @@ wrapping_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 macro_rules! wrapping_sh_impl {
     ($($t:ty, $f:ty)*) => ($(
         impl ShlAssign<$f> for Wrapping<$t> {
+            #[inline(always)]
             fn shl_assign(&mut self, other: $f) {
                 *self = *self << other;
             }
         }
 
         impl ShrAssign<$f> for Wrapping<$t> {
+            #[inline(always)]
             fn shr_assign(&mut self, other: $f) {
                 *self = *self >> other;
             }
