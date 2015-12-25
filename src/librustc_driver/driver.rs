@@ -144,6 +144,14 @@ pub fn compile_input(sess: Session,
              "early lint checks",
              || lint::check_ast_crate(&sess, &expanded_crate));
 
+        let opt_crate = if sess.opts.debugging_opts.keep_ast ||
+                           sess.opts.debugging_opts.save_analysis {
+            Some(&expanded_crate)
+        } else {
+            drop(expanded_crate);
+            None
+        };
+
         phase_3_run_analysis_passes(&sess,
                                     &cstore,
                                     hir_map,
@@ -157,7 +165,7 @@ pub fn compile_input(sess: Session,
                                                 CompileState::state_after_analysis(input,
                                                                                    &tcx.sess,
                                                                                    outdir,
-                                                                                   &expanded_crate,
+                                                                                   opt_crate,
                                                                                    tcx.map.krate(),
                                                                                    &analysis,
                                                                                    &mir_map,
@@ -360,7 +368,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     fn state_after_analysis(input: &'a Input,
                             session: &'a Session,
                             out_dir: &'a Option<PathBuf>,
-                            krate: &'a ast::Crate,
+                            krate: Option<&'a ast::Crate>,
                             hir_crate: &'a hir::Crate,
                             analysis: &'a ty::CrateAnalysis,
                             mir_map: &'a MirMap<'tcx>,
@@ -372,7 +380,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
             analysis: Some(analysis),
             mir_map: Some(mir_map),
             tcx: Some(tcx),
-            krate: Some(krate),
+            krate: krate,
             hir_crate: Some(hir_crate),
             lcx: Some(lcx),
             crate_name: Some(crate_name),
