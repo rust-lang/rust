@@ -25,10 +25,10 @@ use syntax::{abi, ast};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 use syntax::feature_gate::{emit_feature_err, GateIssue};
-use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
+use syntax::ast::{NodeId, TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 
 use rustc_front::hir;
-use rustc_front::intravisit::{self, Visitor};
+use rustc_front::intravisit::{self, FnKind, Visitor};
 use rustc_front::util::is_shift_binop;
 
 declare_lint! {
@@ -640,27 +640,31 @@ impl LintPass for ImproperCTypes {
     }
 }
 
+fn check_ty(cx: &LateContext, ty: &hir::Ty) {
+    let mut vis = ImproperCTypesVisitor { cx: cx };
+    vis.visit_ty(ty);
+}
+
+fn check_foreign_fn(cx: &LateContext, decl: &hir::FnDecl) {
+    for input in &decl.inputs {
+        check_ty(cx, &*input.ty);
+    }
+    if let hir::Return(ref ret_ty) = decl.output {
+        let tty = ast_ty_to_normalized(cx.tcx, ret_ty.id);
+        if !tty.is_nil() {
+            check_ty(cx, &ret_ty);
+        }
+    }
+}
+
+fn should_check_abi(abi: abi::Abi) -> bool {
+    ![abi::RustIntrinsic, abi::PlatformIntrinsic, abi::Rust, abi::RustCall].contains(&abi)
+}
+
 impl LateLintPass for ImproperCTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        fn check_ty(cx: &LateContext, ty: &hir::Ty) {
-            let mut vis = ImproperCTypesVisitor { cx: cx };
-            vis.visit_ty(ty);
-        }
-
-        fn check_foreign_fn(cx: &LateContext, decl: &hir::FnDecl) {
-            for input in &decl.inputs {
-                check_ty(cx, &*input.ty);
-            }
-            if let hir::Return(ref ret_ty) = decl.output {
-                let tty = ast_ty_to_normalized(cx.tcx, ret_ty.id);
-                if !tty.is_nil() {
-                    check_ty(cx, &ret_ty);
-                }
-            }
-        }
-
         if let hir::ItemForeignMod(ref nmod) = it.node {
-            if nmod.abi != abi::RustIntrinsic && nmod.abi != abi::PlatformIntrinsic {
+            if should_check_abi(nmod.abi) {
                 for ni in &nmod.items {
                     match ni.node {
                         hir::ForeignItemFn(ref decl, _) => check_foreign_fn(cx, &**decl),
@@ -668,6 +672,23 @@ impl LateLintPass for ImproperCTypes {
                     }
                 }
             }
+        }
+    }
+
+    fn check_fn(&mut self, cx: &LateContext,
+                kind: FnKind,
+                decl: &hir::FnDecl,
+                _: &hir::Block,
+                _: Span,
+                _: NodeId) {
+        let abi = match kind {
+            FnKind::ItemFn(_, _, _, _, abi, _) => abi,
+            FnKind::Method(_, sig, _) => sig.abi,
+            FnKind::Closure => return,
+        };
+
+        if should_check_abi(abi) {
+            check_foreign_fn(cx, decl);
         }
     }
 }

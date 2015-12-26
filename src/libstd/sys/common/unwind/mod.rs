@@ -182,6 +182,7 @@ fn rust_panic(cause: Box<Any + Send + 'static>) -> ! {
 /// Entry point of panic from the libcore crate.
 #[lang = "panic_fmt"]
 #[unwind]
+#[allow(improper_ctypes)]
 pub extern fn rust_begin_unwind(msg: fmt::Arguments,
                                 file: &'static str, line: u32) -> ! {
     begin_unwind_fmt(msg, &(file, line))
