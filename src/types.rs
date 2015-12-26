@@ -135,12 +135,7 @@ impl<'a> SegmentParam<'a> {
 impl<'a> Rewrite for SegmentParam<'a> {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match *self {
-            SegmentParam::LifeTime(ref lt) => {
-                wrap_str(pprust::lifetime_to_string(lt),
-                         context.config.max_width,
-                         width,
-                         offset)
-            }
+            SegmentParam::LifeTime(ref lt) => lt.rewrite(context, width, offset),
             SegmentParam::Type(ref ty) => ty.rewrite(context, width, offset),
             SegmentParam::Binding(ref binding) => {
                 let mut result = format!("{} = ", binding.ident);
@@ -332,12 +327,7 @@ impl Rewrite for ast::WherePredicate {
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate { ref lifetime,
                                                                              ref bounds,
                                                                              .. }) => {
-                format!("{}: {}",
-                        pprust::lifetime_to_string(lifetime),
-                        bounds.iter()
-                              .map(pprust::lifetime_to_string)
-                              .collect::<Vec<_>>()
-                              .join(" + "))
+                try_opt!(rewrite_bounded_lifetime(lifetime, bounds.iter(), context, width, offset))
             }
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { ref path, ref ty, .. }) => {
                 let ty_str = try_opt!(ty.rewrite(context, width, offset));
@@ -360,18 +350,27 @@ impl Rewrite for ast::WherePredicate {
 
 impl Rewrite for ast::LifetimeDef {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
-        let result = if self.bounds.is_empty() {
-            pprust::lifetime_to_string(&self.lifetime)
-        } else {
-            format!("{}: {}",
-                    pprust::lifetime_to_string(&self.lifetime),
-                    self.bounds
-                        .iter()
-                        .map(pprust::lifetime_to_string)
-                        .collect::<Vec<_>>()
-                        .join(" + "))
-        };
+        rewrite_bounded_lifetime(&self.lifetime, self.bounds.iter(), context, width, offset)
+    }
+}
 
+fn rewrite_bounded_lifetime<'b, I>(lt: &ast::Lifetime,
+                                   bounds: I,
+                                   context: &RewriteContext,
+                                   width: usize,
+                                   offset: Indent)
+                                   -> Option<String>
+    where I: ExactSizeIterator<Item = &'b ast::Lifetime>
+{
+    let result = try_opt!(lt.rewrite(context, width, offset));
+
+    if bounds.len() == 0 {
+        Some(result)
+    } else {
+        let appendix: Vec<_> = try_opt!(bounds.into_iter()
+                                              .map(|b| b.rewrite(context, width, offset))
+                                              .collect());
+        let result = format!("{}: {}", result, appendix.join(" + "));
         wrap_str(result, context.config.max_width, width, offset)
     }
 }
@@ -386,13 +385,17 @@ impl Rewrite for ast::TyParamBound {
                 let budget = try_opt!(width.checked_sub(1));
                 Some(format!("?{}", try_opt!(tref.rewrite(context, budget, offset + 1))))
             }
-            ast::TyParamBound::RegionTyParamBound(ref l) => {
-                wrap_str(pprust::lifetime_to_string(l),
-                         context.config.max_width,
-                         width,
-                         offset)
-            }
+            ast::TyParamBound::RegionTyParamBound(ref l) => l.rewrite(context, width, offset),
         }
+    }
+}
+
+impl Rewrite for ast::Lifetime {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+        wrap_str(pprust::lifetime_to_string(self),
+                 context.config.max_width,
+                 width,
+                 offset)
     }
 }
 
@@ -483,7 +486,10 @@ impl Rewrite for ast::Ty {
                 let mut_len = mut_str.len();
                 Some(match *lifetime {
                     Some(ref lifetime) => {
-                        let lt_str = pprust::lifetime_to_string(lifetime);
+                        let lt_budget = try_opt!(width.checked_sub(2 + mut_len));
+                        let lt_str = try_opt!(lifetime.rewrite(context,
+                                                               lt_budget,
+                                                               offset + 2 + mut_len));
                         let lt_len = lt_str.len();
                         let budget = try_opt!(width.checked_sub(2 + mut_len + lt_len));
                         format!("&{} {}{}",

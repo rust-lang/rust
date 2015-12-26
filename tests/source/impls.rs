@@ -58,3 +58,5 @@ impl Blah {
     fn boop() {}
     add_fun!();
 }
+
+impl X { fn do_parse(  mut  self : X ) {} }
