@@ -85,6 +85,7 @@ pub enum CallConv {
     X86StdcallCallConv = 64,
     X86FastcallCallConv = 65,
     X86_64_Win64 = 79,
+    X86_VectorCall = 80
 }
 
 #[derive(Copy, Clone)]

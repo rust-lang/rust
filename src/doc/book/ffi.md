@@ -478,6 +478,7 @@ are:
 * `aapcs`
 * `cdecl`
 * `fastcall`
+* `vectorcall`
 * `Rust`
 * `rust-intrinsic`
 * `system`
