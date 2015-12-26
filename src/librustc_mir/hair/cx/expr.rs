@@ -520,26 +520,39 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
     // Otherwise there may be def_map borrow conflicts
     let def = cx.tcx.def_map.borrow()[&expr.id].full_def();
     let (def_id, kind) = match def {
-        // A variant constructor.
-        def::DefVariant(_, def_id, false) => (def_id, ItemKind::Function),
         // A regular function.
         def::DefFn(def_id, _) => (def_id, ItemKind::Function),
         def::DefMethod(def_id) => (def_id, ItemKind::Method),
-        def::DefStruct(def_id) => {
-            match cx.tcx.node_id_to_type(expr.id).sty {
-                // A tuple-struct constructor.
-                ty::TyBareFn(..) => (def_id, ItemKind::Function),
-                // This is a special case: a unit struct which is used as a value. We return a
-                // completely different ExprKind here to account for this special case.
-                ty::TyStruct(adt_def, substs) => return ExprKind::Adt {
+        def::DefStruct(def_id) => match cx.tcx.node_id_to_type(expr.id).sty {
+            // A tuple-struct constructor.
+            ty::TyBareFn(..) => (def_id, ItemKind::Function),
+            // This is a special case: a unit struct which is used as a value. We return a
+            // completely different ExprKind here to account for this special case.
+            ty::TyStruct(adt_def, substs) => return ExprKind::Adt {
+                adt_def: adt_def,
+                variant_index: 0,
+                substs: substs,
+                fields: vec![],
+                base: None
+            },
+            ref sty => panic!("unexpected sty: {:?}", sty)
+        },
+        def::DefVariant(enum_id, variant_id, false) => match cx.tcx.node_id_to_type(expr.id).sty {
+            // A variant constructor.
+            ty::TyBareFn(..) => (variant_id, ItemKind::Function),
+            // A unit variant, similar special case to the struct case above.
+            ty::TyEnum(adt_def, substs) => {
+                debug_assert!(adt_def.did == enum_id);
+                let index = adt_def.variant_index_with_id(variant_id);
+                return ExprKind::Adt {
                     adt_def: adt_def,
-                    variant_index: 0,
                     substs: substs,
+                    variant_index: index,
                     fields: vec![],
                     base: None
-                },
-                ref sty => panic!("unexpected sty: {:?}", sty)
-            }
+                };
+            },
+            ref sty => panic!("unexpected sty: {:?}", sty)
         },
         def::DefConst(def_id) |
         def::DefAssociatedConst(def_id) => {

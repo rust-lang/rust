@@ -97,10 +97,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
                 match *kind {
-                    // Unit struct, which is translated very differently compared to any other
-                    // aggregate
-                    mir::AggregateKind::Adt(adt_def, 0, _)
-                    if adt_def.struct_variant().kind() == ty::VariantKind::Unit => {
+                    // Unit struct or variant; both are translated very differently compared to any
+                    // other aggregate
+                    mir::AggregateKind::Adt(adt_def, index, _)
+                    if adt_def.variants[index].kind() == ty::VariantKind::Unit => {
                         let repr = adt::represent_type(bcx.ccx(), dest.ty.to_ty(bcx.tcx()));
                         adt::trans_set_discr(bcx, &*repr, dest.llval, 0);
                     },
