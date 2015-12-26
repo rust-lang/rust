@@ -182,6 +182,11 @@ fn t21() -> Unit {
     Unit
 }
 
+#[rustc_mir]
+fn t22() -> Option<u8> {
+    None
+}
+
 fn main(){
     unsafe {
         assert_eq!(t1()(), regular());
@@ -222,5 +227,6 @@ fn main(){
         assert_eq!(t19()(322u64, 2u32), F::f(322u64, 2u32));
         assert_eq!(t20()(123u64, 38u32), <u32 as T<_, _>>::staticmeth(123, 38));
         assert_eq!(t21(), Unit);
+        assert_eq!(t22(), None);
     }
 }
