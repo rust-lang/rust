@@ -39,3 +39,8 @@ fn issue682() {
     let a = "hello \\ o/";
     let b = a.replace("\\ ", "\\");
 }
+
+fn issue716() {
+    println!("forall x. mult(e(), x) = x /\\
+              forall x. mult(x, x) = e()");
+}

@@ -31,17 +31,17 @@ pub struct StringFormat<'a> {
 }
 
 // FIXME: simplify this!
-pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> Option<String> {
+pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> {
     // Strip line breaks.
-    let re = Regex::new(r"(\\[\n\r][:space:]*)").unwrap();
-    let stripped_str = re.replace_all(s, "");
+    let re = Regex::new(r"([^\\](\\\\)*)\\[\n\r][:space:]*").unwrap();
+    let stripped_str = re.replace_all(orig, "$1");
 
     let graphemes = UnicodeSegmentation::graphemes(&*stripped_str, false).collect::<Vec<&str>>();
     let indent = fmt.offset.to_string(fmt.config);
     let punctuation = ":,;.";
 
     let mut cur_start = 0;
-    let mut result = String::with_capacity(round_up_to_power_of_two(s.len()));
+    let mut result = String::with_capacity(round_up_to_power_of_two(stripped_str.len()));
     result.push_str(fmt.opener);
 
     let ender_length = fmt.line_end.len();
@@ -79,7 +79,7 @@ pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> Option<String> {
             }
         }
         // Make sure there is no whitespace to the right of the break.
-        while cur_end < s.len() && graphemes[cur_end].trim().is_empty() {
+        while cur_end < stripped_str.len() && graphemes[cur_end].trim().is_empty() {
             cur_end += 1;
         }
         let raw_line = graphemes[cur_start..cur_end].join("");
