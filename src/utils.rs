@@ -136,6 +136,7 @@ pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
         false
     }
 }
+
 /// check if method call given in "expr" belongs to given trait
 pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
     let method_call = ty::MethodCall::expr(expr.id);
@@ -162,6 +163,27 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
     path.segments.iter().rev().zip(segments.iter().rev()).all(
         |(a, b)| a.identifier.name.as_str() == *b)
 }
+
+/// match an Expr against a chain of methods. For example, if `expr` represents the `.baz()` in
+/// `foo.bar().baz()`, `matched_method_chain(expr, &["bar", "baz"])` will return true.
+pub fn match_method_chain(expr: &Expr, methods: &[&str]) -> bool {
+    let mut current = &expr.node ;
+    for method_name in methods.iter().rev() { // method chains are stored last -> first
+        if let ExprMethodCall(ref name, _, ref args) = *current {
+            if name.node.as_str() == *method_name {
+                current = &args[0].node
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
+    }
+    true
+}
+
 
 /// get the name of the item the expression is in, if available
 pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
