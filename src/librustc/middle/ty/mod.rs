@@ -633,7 +633,6 @@ pub struct RegionParameterDef {
 impl RegionParameterDef {
     pub fn to_early_bound_region(&self) -> ty::Region {
         ty::ReEarlyBound(ty::EarlyBoundRegion {
-            def_id: self.def_id,
             space: self.space,
             index: self.index,
             name: self.name,
