@@ -57,7 +57,7 @@ use middle::resolve_lifetime as rl;
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
 use middle::traits;
-use middle::ty::{self, RegionEscape, Ty, ToPredicate, HasTypeFlags};
+use middle::ty::{self, Ty, ToPredicate, HasTypeFlags};
 use middle::ty::wf::object_region_bounds;
 use require_c_abi_if_variadic;
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
@@ -169,10 +169,8 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &hir::Lifetime)
             ty::ReLateBound(debruijn, ty::BrNamed(tcx.map.local_def_id(id), lifetime.name))
         }
 
-        Some(&rl::DefEarlyBoundRegion(space, index, id)) => {
-            let def_id = tcx.map.local_def_id(id);
+        Some(&rl::DefEarlyBoundRegion(space, index, _)) => {
             ty::ReEarlyBound(ty::EarlyBoundRegion {
-                def_id: def_id,
                 space: space,
                 index: index,
                 name: lifetime.name
@@ -1797,75 +1795,31 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
     // lifetime elision, we can determine it in two ways. First (determined
     // here), if self is by-reference, then the implied output region is the
     // region of the self parameter.
-    let mut explicit_self_category_result = None;
-    let (self_ty, implied_output_region) = match opt_self_info {
+    let (self_ty, explicit_self_category) = match opt_self_info {
         None => (None, None),
-        Some(self_info) => {
-            // This type comes from an impl or trait; no late-bound
-            // regions should be present.
-            assert!(!self_info.untransformed_self_ty.has_escaping_regions());
-
-            // Figure out and record the explicit self category.
-            let explicit_self_category =
-                determine_explicit_self_category(this, &rb, &self_info);
-            explicit_self_category_result = Some(explicit_self_category);
-            match explicit_self_category {
-                ty::StaticExplicitSelfCategory => {
-                    (None, None)
-                }
-                ty::ByValueExplicitSelfCategory => {
-                    (Some(self_info.untransformed_self_ty), None)
-                }
-                ty::ByReferenceExplicitSelfCategory(region, mutability) => {
-                    (Some(this.tcx().mk_ref(
-                                      this.tcx().mk_region(region),
-                                      ty::TypeAndMut {
-                                        ty: self_info.untransformed_self_ty,
-                                        mutbl: mutability
-                                      })),
-                     Some(region))
-                }
-                ty::ByBoxExplicitSelfCategory => {
-                    (Some(this.tcx().mk_box(self_info.untransformed_self_ty)), None)
-                }
-            }
-        }
+        Some(self_info) => determine_self_type(this, &rb, self_info)
     };
 
     // HACK(eddyb) replace the fake self type in the AST with the actual type.
-    let input_params = if self_ty.is_some() {
+    let arg_params = if self_ty.is_some() {
         &decl.inputs[1..]
     } else {
         &decl.inputs[..]
     };
-    let input_tys = input_params.iter().map(|a| ty_of_arg(this, &rb, a, None));
-    let input_pats: Vec<String> = input_params.iter()
-                                              .map(|a| pprust::pat_to_string(&*a.pat))
-                                              .collect();
-    let self_and_input_tys: Vec<Ty> =
-        self_ty.into_iter().chain(input_tys).collect();
-
+    let arg_tys: Vec<Ty> =
+        arg_params.iter().map(|a| ty_of_arg(this, &rb, a, None)).collect();
+    let arg_pats: Vec<String> =
+        arg_params.iter().map(|a| pprust::pat_to_string(&*a.pat)).collect();
 
     // Second, if there was exactly one lifetime (either a substitution or a
     // reference) in the arguments, then any anonymous regions in the output
     // have that lifetime.
-    let implied_output_region = match implied_output_region {
-        Some(r) => Ok(r),
-        None => {
-            let input_tys = if self_ty.is_some() {
-                // Skip the first argument if `self` is present.
-                &self_and_input_tys[1..]
-            } else {
-                &self_and_input_tys[..]
-            };
-
-            find_implied_output_region(this.tcx(), input_tys, input_pats)
-        }
+    let implied_output_region = match explicit_self_category {
+        Some(ty::ByReferenceExplicitSelfCategory(region, _)) => Ok(region),
+        _ => find_implied_output_region(this.tcx(), &arg_tys, arg_pats)
     };
 
     let output_ty = match decl.output {
-        hir::Return(ref output) if output.node == hir::TyInfer =>
-            ty::FnConverging(this.ty_infer(None, None, None, output.span)),
         hir::Return(ref output) =>
             ty::FnConverging(convert_ty_with_lifetime_elision(this,
                                                               implied_output_region,
@@ -1878,28 +1832,37 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
         unsafety: unsafety,
         abi: abi,
         sig: ty::Binder(ty::FnSig {
-            inputs: self_and_input_tys,
+            inputs: self_ty.into_iter().chain(arg_tys).collect(),
             output: output_ty,
             variadic: decl.variadic
         }),
-    }, explicit_self_category_result)
+    }, explicit_self_category)
 }
 
-fn determine_explicit_self_category<'a, 'tcx>(this: &AstConv<'tcx>,
-                                              rscope: &RegionScope,
-                                              self_info: &SelfInfo<'a, 'tcx>)
-                                              -> ty::ExplicitSelfCategory
+fn determine_self_type<'a, 'tcx>(this: &AstConv<'tcx>,
+                                 rscope: &RegionScope,
+                                 self_info: SelfInfo<'a, 'tcx>)
+                                 -> (Option<Ty<'tcx>>, Option<ty::ExplicitSelfCategory>)
 {
+    let self_ty = self_info.untransformed_self_ty;
     return match self_info.explicit_self.node {
-        hir::SelfStatic => ty::StaticExplicitSelfCategory,
-        hir::SelfValue(_) => ty::ByValueExplicitSelfCategory,
+        hir::SelfStatic => (None, Some(ty::StaticExplicitSelfCategory)),
+        hir::SelfValue(_) => {
+            (Some(self_ty), Some(ty::ByValueExplicitSelfCategory))
+        }
         hir::SelfRegion(ref lifetime, mutability, _) => {
             let region =
                 opt_ast_region_to_region(this,
                                          rscope,
                                          self_info.explicit_self.span,
                                          lifetime);
-            ty::ByReferenceExplicitSelfCategory(region, mutability)
+            (Some(this.tcx().mk_ref(
+                this.tcx().mk_region(region),
+                ty::TypeAndMut {
+                    ty: self_ty,
+                    mutbl: mutability
+                })),
+             Some(ty::ByReferenceExplicitSelfCategory(region, mutability)))
         }
         hir::SelfExplicit(ref ast_type, _) => {
             let explicit_type = ast_ty_to_ty(this, rscope, &**ast_type);
@@ -1944,7 +1907,7 @@ fn determine_explicit_self_category<'a, 'tcx>(this: &AstConv<'tcx>,
                    impl_modifiers,
                    method_modifiers);
 
-            if impl_modifiers >= method_modifiers {
+            let category = if impl_modifiers >= method_modifiers {
                 ty::ByValueExplicitSelfCategory
             } else {
                 match explicit_type.sty {
@@ -1952,7 +1915,9 @@ fn determine_explicit_self_category<'a, 'tcx>(this: &AstConv<'tcx>,
                     ty::TyBox(_) => ty::ByBoxExplicitSelfCategory,
                     _ => ty::ByValueExplicitSelfCategory,
                 }
-            }
+            };
+
+            (Some(explicit_type), Some(category))
         }
     };
 

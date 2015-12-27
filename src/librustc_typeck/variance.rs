@@ -1002,12 +1002,14 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// Adds constraints appropriate for a region appearing in a
     /// context with ambient variance `variance`
     fn add_constraints_from_region(&mut self,
-                                   _generics: &ty::Generics<'tcx>,
+                                   generics: &ty::Generics<'tcx>,
                                    region: ty::Region,
                                    variance: VarianceTermPtr<'a>) {
         match region {
             ty::ReEarlyBound(ref data) => {
-                let node_id = self.tcx().map.as_local_node_id(data.def_id).unwrap();
+                let def_id =
+                    generics.regions.get(data.space, data.index as usize).def_id;
+                let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
                 if self.is_to_be_inferred(node_id) {
                     let index = self.inferred_index(node_id);
                     self.add_constraint(index, variance);
