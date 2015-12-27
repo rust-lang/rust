@@ -1546,7 +1546,7 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     /// Asserts this is a struct and returns the struct's unique
     /// variant.
     pub fn struct_variant(&self) -> &VariantDefData<'tcx, 'container> {
-        assert!(self.adt_kind() == AdtKind::Struct);
+        assert_eq!(self.adt_kind(), AdtKind::Struct);
         &self.variants[0]
     }
 
