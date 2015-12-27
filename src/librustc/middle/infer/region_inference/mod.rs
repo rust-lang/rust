@@ -489,13 +489,6 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                origin);
 
         match (sub, sup) {
-            (ReEarlyBound(..), ReEarlyBound(..)) => {
-                // This case is used only to make sure that explicitly-specified
-                // `Self` types match the real self type in implementations.
-                //
-                // FIXME(NDM) -- we really shouldn't be comparing bound things
-                self.add_verify(VerifyRegSubReg(origin, sub, sup));
-            }
             (ReEarlyBound(..), _) |
             (ReLateBound(..), _) |
             (_, ReEarlyBound(..)) |
