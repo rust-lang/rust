@@ -93,6 +93,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 })
             },
             ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
+            ConstVal::Dummy => unreachable!(),
             ConstVal::Function(_) => C_nil(ccx)
         }
     }

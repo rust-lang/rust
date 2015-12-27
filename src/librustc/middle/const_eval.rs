@@ -267,6 +267,10 @@ pub enum ConstVal {
     Array(ast::NodeId, u64),
     Repeat(ast::NodeId, u64),
     Char(char),
+    /// A value that only occurs in case `eval_const_expr` reported an error. You should never
+    /// handle this case. Its sole purpose is to allow more errors to be reported instead of
+    /// causing a fatal error.
+    Dummy,
 }
 
 impl hash::Hash for ConstVal {
@@ -283,6 +287,7 @@ impl hash::Hash for ConstVal {
             Array(a, n) => { a.hash(state); n.hash(state) },
             Repeat(a, n) => { a.hash(state); n.hash(state) },
             Char(c) => c.hash(state),
+            Dummy => ().hash(state),
         }
     }
 }
@@ -305,6 +310,7 @@ impl PartialEq for ConstVal {
             (&Array(a, an), &Array(b, bn)) => (a == b) && (an == bn),
             (&Repeat(a, an), &Repeat(b, bn)) => (a == b) && (an == bn),
             (&Char(a), &Char(b)) => a == b,
+            (&Dummy, &Dummy) => true, // FIXME: should this be false?
             _ => false,
         }
     }
@@ -326,6 +332,7 @@ impl ConstVal {
             Array(..) => "array",
             Repeat(..) => "repeat",
             Char(..) => "char",
+            Dummy => "dummy value",
         }
     }
 }
@@ -393,7 +400,12 @@ pub fn const_expr_to_pat(tcx: &TyCtxt, expr: &Expr, span: Span) -> P<hir::Pat> {
 pub fn eval_const_expr(tcx: &TyCtxt, e: &Expr) -> ConstVal {
     match eval_const_expr_partial(tcx, e, ExprTypeChecked, None) {
         Ok(r) => r,
-        Err(s) => tcx.sess.span_fatal(s.span, &s.description())
+        // non-const path still needs to be a fatal error, because enums are funky
+        Err(ref s) if s.kind == NonConstPath => tcx.sess.span_fatal(s.span, &s.description()),
+        Err(s) => {
+            tcx.sess.span_err(s.span, &s.description());
+            Dummy
+        },
     }
 }
 
@@ -405,7 +417,7 @@ pub struct ConstEvalErr {
     pub kind: ErrKind,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum ErrKind {
     CannotCast,
     CannotCastTo(&'static str),
