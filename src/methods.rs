@@ -5,9 +5,10 @@ use rustc::middle::subst::{Subst, TypeSpace};
 use std::iter;
 use std::borrow::Cow;
 
-use utils::{snippet, span_lint, span_note_and_lint, match_path, match_type, match_method_chain,
+use utils::{snippet, span_lint, span_note_and_lint, match_path, match_type, method_chain_args,
             walk_ptrs_ty_depth, walk_ptrs_ty};
 use utils::{OPTION_PATH, RESULT_PATH, STRING_PATH};
+use utils::MethodArgs;
 
 use self::SelfKind::*;
 use self::OutType::*;
@@ -158,20 +159,20 @@ impl LintPass for MethodsPass {
 impl LateLintPass for MethodsPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprMethodCall(_, _, _) = expr.node {
-            if match_method_chain(expr, &["unwrap"]) {
-                lint_unwrap(cx, expr);
+            if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
+                lint_unwrap(cx, expr, arglists[0]);
             }
-            else if match_method_chain(expr, &["to_string"]) {
-                lint_to_string(cx, expr);
+            else if let Some(arglists) = method_chain_args(expr, &["to_string"]) {
+                lint_to_string(cx, expr, arglists[0]);
             }
-            else if match_method_chain(expr, &["ok", "expect"]) {
-                lint_ok_expect(cx, expr);
+            else if let Some(arglists) = method_chain_args(expr, &["ok", "expect"]) {
+                lint_ok_expect(cx, expr, arglists[0]);
             }
-            else if match_method_chain(expr, &["map", "unwrap_or"]) {
-                lint_map_unwrap_or(cx, expr);
+            else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or"]) {
+                lint_map_unwrap_or(cx, expr, arglists[0], arglists[1]);
             }
-            else if match_method_chain(expr, &["map", "unwrap_or_else"]) {
-                lint_map_unwrap_or_else(cx, expr);
+            else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or_else"]) {
+                lint_map_unwrap_or_else(cx, expr, arglists[0], arglists[1]);
             }
         }
     }
@@ -218,15 +219,10 @@ impl LateLintPass for MethodsPass {
     }
 }
 
+#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
 /// lint use of `unwrap()` for `Option`s and `Result`s
-fn lint_unwrap(cx: &LateContext, expr: &Expr) {
-    let args = match expr.node {
-        ExprMethodCall(_, _, ref args) => args,
-        _ => panic!("clippy methods.rs: should not have called `lint_unwrap()` on a non-matching \
-                     expression!"),
-    };
-
-    let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&args[0]));
+fn lint_unwrap(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs) {
+    let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&unwrap_args[0]));
 
     if match_type(cx, obj_ty, &OPTION_PATH) {
         span_lint(cx, OPTION_UNWRAP_USED, expr.span,
@@ -239,18 +235,13 @@ fn lint_unwrap(cx: &LateContext, expr: &Expr) {
     }
 }
 
+#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
 /// lint use of `to_string()` for `&str`s and `String`s
-fn lint_to_string(cx: &LateContext, expr: &Expr) {
-    let args = match expr.node {
-        ExprMethodCall(_, _, ref args) => args,
-        _ => panic!("clippy methods.rs: should not have called `lint_to_string()` on a \
-                     non-matching expression!"),
-    };
-
-    let (obj_ty, ptr_depth) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&args[0]));
+fn lint_to_string(cx: &LateContext, expr: &Expr, to_string_args: &MethodArgs) {
+    let (obj_ty, ptr_depth) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&to_string_args[0]));
 
     if obj_ty.sty == ty::TyStr {
-        let mut arg_str = snippet(cx, args[0].span, "_");
+        let mut arg_str = snippet(cx, to_string_args[0].span, "_");
         if ptr_depth > 1 {
             arg_str = Cow::Owned(format!(
                 "({}{})",
@@ -266,19 +257,9 @@ fn lint_to_string(cx: &LateContext, expr: &Expr) {
     }
 }
 
+#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
 /// lint use of `ok().expect()` for `Result`s
-fn lint_ok_expect(cx: &LateContext, expr: &Expr) {
-    let expect_args = match expr.node {
-        ExprMethodCall(_, _, ref expect_args) => expect_args,
-        _ => panic!("clippy methods.rs: Should not have called `lint_ok_expect()` on a \
-                     non-matching expression!")
-    };
-    let ok_args = match expect_args[0].node {
-        ExprMethodCall(_, _, ref ok_args) => ok_args,
-        _ => panic!("clippy methods.rs: Should not have called `lint_ok_expect()` on a \
-                     non-matching expression!")
-    };
-
+fn lint_ok_expect(cx: &LateContext, expr: &Expr, ok_args: &MethodArgs) {
     // lint if the caller of `ok()` is a `Result`
     if match_type(cx, cx.tcx.expr_ty(&ok_args[0]), &RESULT_PATH) {
         let result_type = cx.tcx.expr_ty(&ok_args[0]);
@@ -292,19 +273,10 @@ fn lint_ok_expect(cx: &LateContext, expr: &Expr) {
     }
 }
 
+#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
 /// lint use of `map().unwrap_or()` for `Option`s
-fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr) {
-    let unwrap_args = match expr.node {
-        ExprMethodCall(_, _, ref unwrap_args) => unwrap_args,
-        _ => panic!("clippy methods.rs: Should not have called `lint_map_unwrap_or()` on a \
-                     non-matching expression!")
-    };
-    let map_args = match unwrap_args[0].node {
-        ExprMethodCall(_, _, ref map_args) => map_args,
-        _ => panic!("clippy methods.rs: Should not have called `lint_map_unwrap_or()` on a \
-                     non-matching expression!")
-    };
-
+fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs,
+                      map_args: &MethodArgs) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tcx.expr_ty(&map_args[0]), &OPTION_PATH) {
         // lint message
@@ -330,19 +302,11 @@ fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr) {
     }
 }
 
+#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
 /// lint use of `map().unwrap_or_else()` for `Option`s
-fn lint_map_unwrap_or_else(cx: &LateContext, expr: &Expr) {
-    let unwrap_args = match expr.node {
-        ExprMethodCall(_, _, ref unwrap_args) => unwrap_args,
-        _ => panic!("clippy methods.rs: Should not have called `lint_map_unwrap_or_else()` on a \
-                     non-matching expression!")
-    };
-    let map_args = match unwrap_args[0].node {
-        ExprMethodCall(_, _, ref map_args) => map_args,
-        _ => panic!("clippy methods.rs: Should not have called `lint_map_unwrap_or_else()` on a \
-                     non-matching expression!")
-    };
-
+fn lint_map_unwrap_or_else(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs,
+                           map_args: &MethodArgs) {
+    // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tcx.expr_ty(&map_args[0]), &OPTION_PATH) {
         // lint message
         let msg = "called `map(f).unwrap_or_else(g)` on an Option value. This can be done more \
