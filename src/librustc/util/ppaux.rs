@@ -462,8 +462,7 @@ impl fmt::Debug for ty::Region {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ty::ReEarlyBound(ref data) => {
-                write!(f, "ReEarlyBound({:?}, {:?}, {}, {})",
-                       data.def_id,
+                write!(f, "ReEarlyBound({:?}, {}, {})",
                        data.space,
                        data.index,
                        data.name)

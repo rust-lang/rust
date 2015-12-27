@@ -69,18 +69,15 @@ use middle::def;
 use middle::def_id::DefId;
 use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
-use middle::free_region::FreeRegionMap;
-use middle::region;
 use middle::resolve_lifetime;
 use middle::const_eval::{self, ConstVal};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
 use middle::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
-use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty, TypeScheme};
+use middle::ty::{self, ToPolyTraitRef, Ty, TypeScheme};
 use middle::ty::{VariantKind};
-use middle::ty::fold::{TypeFolder, TypeFoldable};
+use middle::ty::fold::{TypeFolder};
 use middle::ty::util::IntTypeExt;
-use middle::infer;
 use rscope::*;
 use rustc::front::map as hir_map;
 use util::common::{ErrorReported, memoized};
@@ -193,16 +190,6 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx>
 impl<'a,'tcx> CrateCtxt<'a,'tcx> {
     fn icx(&'a self, param_bounds: &'a GetTypeParameterBounds<'tcx>) -> ItemCtxt<'a,'tcx> {
         ItemCtxt { ccx: self, param_bounds: param_bounds }
-    }
-
-    fn method_ty(&self, method_id: ast::NodeId) -> Rc<ty::Method<'tcx>> {
-        let def_id = self.tcx.map.local_def_id(method_id);
-        match *self.tcx.impl_or_trait_items.borrow().get(&def_id).unwrap() {
-            ty::MethodTraitItem(ref mty) => mty.clone(),
-            _ => {
-                self.tcx.sess.bug(&format!("method with id {} has the wrong type", method_id));
-            }
-        }
     }
 
     fn cycle_check<F,R>(&self,
@@ -573,10 +560,10 @@ fn is_param<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                             container: ImplOrTraitItemContainer,
-                            sig: &hir::MethodSig,
-                            id: ast::NodeId,
                             name: ast::Name,
+                            id: ast::NodeId,
                             vis: hir::Visibility,
+                            sig: &hir::MethodSig,
                             untransformed_rcvr_ty: Ty<'tcx>,
                             rcvr_ty_generics: &ty::Generics<'tcx>,
                             rcvr_ty_predicates: &ty::GenericPredicates<'tcx>) {
@@ -679,33 +666,6 @@ fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     });
     ccx.tcx.impl_or_trait_items.borrow_mut()
        .insert(ccx.tcx.map.local_def_id(id), ty::TypeTraitItem(associated_type));
-}
-
-fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
-                                 container: ImplOrTraitItemContainer,
-                                 methods: I,
-                                 untransformed_rcvr_ty: Ty<'tcx>,
-                                 rcvr_ty_generics: &ty::Generics<'tcx>,
-                                 rcvr_ty_predicates: &ty::GenericPredicates<'tcx>)
-    where I: Iterator<Item=(&'i hir::MethodSig, ast::NodeId, ast::Name, hir::Visibility, Span)>
-{
-    debug!("convert_methods(untransformed_rcvr_ty={:?}, rcvr_ty_generics={:?}, \
-                            rcvr_ty_predicates={:?})",
-           untransformed_rcvr_ty,
-           rcvr_ty_generics,
-           rcvr_ty_predicates);
-
-    for (sig, id, name, vis, _span) in methods {
-        convert_method(ccx,
-                       container,
-                       sig,
-                       id,
-                       name,
-                       vis,
-                       untransformed_rcvr_ty,
-                       rcvr_ty_generics,
-                       rcvr_ty_predicates);
-    }
 }
 
 fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
@@ -867,36 +827,17 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                 }
             }
 
-            let methods = impl_items.iter().filter_map(|ii| {
-                if let hir::ImplItemKind::Method(ref sig, _) = ii.node {
+            for impl_item in impl_items {
+                if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
                     // if the method specifies a visibility, use that, otherwise
                     // inherit the visibility from the impl (so `foo` in `pub impl
                     // { fn foo(); }` is public, but private in `impl { fn
                     // foo(); }`).
-                    let method_vis = ii.vis.inherit_from(parent_visibility);
-                    Some((sig, ii.id, ii.name, method_vis, ii.span))
-                } else {
-                    None
-                }
-            });
-            convert_methods(ccx,
-                            ImplContainer(def_id),
-                            methods,
-                            selfty,
-                            &ty_generics,
-                            &ty_predicates);
+                    let method_vis = impl_item.vis.inherit_from(parent_visibility);
 
-            for impl_item in impl_items {
-                if let hir::ImplItemKind::Method(ref sig, ref body) = impl_item.node {
-                    let body_id = body.id;
-                    let body_scope = ccx.tcx.region_maps.call_site_extent(impl_item.id, body_id);
-                    check_method_self_type(ccx,
-                                           &BindingRscope::new(),
-                                           ccx.method_ty(impl_item.id),
-                                           selfty,
-                                           &sig.explicit_self,
-                                           body_scope,
-                                           body_id);
+                    convert_method(ccx, ImplContainer(def_id),
+                                   impl_item.name, impl_item.id, method_vis,
+                                   sig, selfty, &ty_generics, &ty_predicates);
                 }
             }
 
@@ -904,112 +845,80 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
         },
         hir::ItemTrait(_, _, _, ref trait_items) => {
             let trait_def = trait_def_of_item(ccx, it);
+            let def_id = trait_def.trait_ref.def_id;
             let _: Result<(), ErrorReported> = // any error is already reported, can ignore
-                ccx.ensure_super_predicates(it.span, ccx.tcx.map.local_def_id(it.id));
+                ccx.ensure_super_predicates(it.span, def_id);
             convert_trait_predicates(ccx, it);
-            let trait_predicates = tcx.lookup_predicates(ccx.tcx.map.local_def_id(it.id));
+            let trait_predicates = tcx.lookup_predicates(def_id);
 
             debug!("convert: trait_bounds={:?}", trait_predicates);
 
+            // FIXME: is the ordering here important? I think it is.
+            let container = TraitContainer(def_id);
+
+            // Convert all the associated constants.
+            for trait_item in trait_items {
+                if let hir::ConstTraitItem(ref ty, ref default) = trait_item.node {
+                    let ty = ccx.icx(&trait_predicates)
+                        .to_ty(&ExplicitRscope, ty);
+                    tcx.register_item_type(ccx.tcx.map.local_def_id(trait_item.id),
+                                           TypeScheme {
+                                               generics: trait_def.generics.clone(),
+                                               ty: ty,
+                                           });
+                    convert_associated_const(ccx,
+                                             container,
+                                             trait_item.name,
+                                             trait_item.id,
+                                             hir::Public,
+                                             ty,
+                                             default.is_some())
+                }
+            }
+
             // Convert all the associated types.
             for trait_item in trait_items {
-                match trait_item.node {
-                    hir::ConstTraitItem(ref ty, ref default) => {
-                        let ty = ccx.icx(&trait_predicates)
-                                    .to_ty(&ExplicitRscope, ty);
-                        tcx.register_item_type(ccx.tcx.map.local_def_id(trait_item.id),
-                                               TypeScheme {
-                                                   generics: trait_def.generics.clone(),
-                                                   ty: ty,
-                                               });
-                        convert_associated_const(ccx,
-                                                 TraitContainer(ccx.tcx.map.local_def_id(it.id)),
-                                                 trait_item.name,
-                                                 trait_item.id,
-                                                 hir::Public,
-                                                 ty,
-                                                 default.is_some())
-                    }
-                    _ => {}
-                }
-            };
+                if let hir::TypeTraitItem(_, ref opt_ty) = trait_item.node {
+                    let typ = opt_ty.as_ref().map({
+                        |ty| ccx.icx(&trait_predicates).to_ty(&ExplicitRscope, &ty)
+                    });
 
-            // Convert all the associated types.
+                    convert_associated_type(ccx,
+                                            container,
+                                            trait_item.name,
+                                            trait_item.id,
+                                            hir::Public,
+                                            typ);
+                }
+            }
+
+            // Convert all the methods
             for trait_item in trait_items {
-                match trait_item.node {
-                    hir::TypeTraitItem(_, ref opt_ty) => {
-                        let typ = opt_ty.as_ref().map({
-                            |ty| ccx.icx(&trait_predicates).to_ty(&ExplicitRscope, &ty)
-                        });
+                if let hir::MethodTraitItem(ref sig, _) = trait_item.node {
+                    convert_method(ccx,
+                                   container,
+                                   trait_item.name,
+                                   trait_item.id,
+                                   hir::Inherited,
+                                   sig,
+                                   tcx.mk_self_type(),
+                                   &trait_def.generics,
+                                   &trait_predicates);
 
-                        convert_associated_type(ccx,
-                                                TraitContainer(ccx.tcx.map.local_def_id(it.id)),
-                                                trait_item.name,
-                                                trait_item.id,
-                                                hir::Public,
-                                                typ);
-                    }
-                    _ => {}
                 }
-            };
-
-            let methods = trait_items.iter().filter_map(|ti| {
-                let sig = match ti.node {
-                    hir::MethodTraitItem(ref sig, _) => sig,
-                    _ => return None,
-                };
-                Some((sig, ti.id, ti.name, hir::Inherited, ti.span))
-            });
-
-            // Run convert_methods on the trait methods.
-            convert_methods(ccx,
-                            TraitContainer(ccx.tcx.map.local_def_id(it.id)),
-                            methods,
-                            tcx.mk_self_type(),
-                            &trait_def.generics,
-                            &trait_predicates);
+            }
 
             // Add an entry mapping
             let trait_item_def_ids = Rc::new(trait_items.iter().map(|trait_item| {
                 let def_id = ccx.tcx.map.local_def_id(trait_item.id);
                 match trait_item.node {
-                    hir::ConstTraitItem(..) => {
-                        ty::ConstTraitItemId(def_id)
-                    }
-                    hir::MethodTraitItem(..) => {
-                        ty::MethodTraitItemId(def_id)
-                    }
-                    hir::TypeTraitItem(..) => {
-                        ty::TypeTraitItemId(def_id)
-                    }
+                    hir::ConstTraitItem(..) => ty::ConstTraitItemId(def_id),
+                    hir::MethodTraitItem(..) => ty::MethodTraitItemId(def_id),
+                    hir::TypeTraitItem(..) => ty::TypeTraitItemId(def_id)
                 }
             }).collect());
             tcx.trait_item_def_ids.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id),
                                                        trait_item_def_ids);
-
-            // This must be done after `collect_trait_methods` so that
-            // we have a method type stored for every method.
-            for trait_item in trait_items {
-                let (sig, the_scope, the_id) = match trait_item.node {
-                    hir::MethodTraitItem(ref sig, Some(ref body)) => {
-                        let body_scope =
-                            ccx.tcx.region_maps.call_site_extent(trait_item.id, body.id);
-                        (sig, body_scope, body.id)
-                    }
-                    hir::MethodTraitItem(ref sig, None) => {
-                        let item_scope = ccx.tcx.region_maps.item_extent(trait_item.id);
-                        (sig, item_scope, it.id)
-                    }
-                    _ => continue
-                };
-                check_method_self_type(ccx,
-                                       &BindingRscope::new(),
-                                       ccx.method_ty(trait_item.id),
-                                       tcx.mk_self_type(),
-                                       &sig.explicit_self,
-                                       the_scope,
-                                       the_id)
-            }
         },
         hir::ItemStruct(ref struct_def, _) => {
             let (scheme, predicates) = convert_typed_item(ccx, it);
@@ -1395,7 +1304,6 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     .iter()
                     .enumerate()
                     .map(|(i, def)| ty::ReEarlyBound(ty::EarlyBoundRegion {
-                        def_id: tcx.map.local_def_id(def.lifetime.id),
                         space: TypeSpace,
                         index: i as u32,
                         name: def.lifetime.name
@@ -1870,10 +1778,8 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let early_lifetimes = early_bound_lifetimes_from_generics(space, ast_generics);
     for (index, param) in early_lifetimes.iter().enumerate() {
         let index = index as u32;
-        let def_id = tcx.map.local_def_id(param.lifetime.id);
         let region =
             ty::ReEarlyBound(ty::EarlyBoundRegion {
-                def_id: def_id,
                 space: space,
                 index: index,
                 name: param.lifetime.name
@@ -2281,106 +2187,6 @@ fn mk_item_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     Substs::new(types, regions)
 }
 
-/// Verifies that the explicit self type of a method matches the impl
-/// or trait. This is a bit weird but basically because right now we
-/// don't handle the general case, but instead map it to one of
-/// several pre-defined options using various heuristics, this method
-/// comes back to check after the fact that explicit type the user
-/// wrote actually matches what the pre-defined option said.
-fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
-    ccx: &CrateCtxt<'a, 'tcx>,
-    rs: &RS,
-    method_type: Rc<ty::Method<'tcx>>,
-    required_type: Ty<'tcx>,
-    explicit_self: &hir::ExplicitSelf,
-    body_scope: region::CodeExtent,
-    body_id: ast::NodeId)
-{
-    let tcx = ccx.tcx;
-    if let hir::SelfExplicit(ref ast_type, _) = explicit_self.node {
-        let typ = ccx.icx(&method_type.predicates).to_ty(rs, &**ast_type);
-        let base_type = match typ.sty {
-            ty::TyRef(_, tm) => tm.ty,
-            ty::TyBox(typ) => typ,
-            _ => typ,
-        };
-
-        // "Required type" comes from the trait definition. It may
-        // contain late-bound regions from the method, but not the
-        // trait (since traits only have early-bound region
-        // parameters).
-        assert!(!base_type.has_regions_escaping_depth(1));
-        let required_type_free =
-            liberate_early_bound_regions(
-                tcx, body_scope,
-                &tcx.liberate_late_bound_regions(body_scope, &ty::Binder(required_type)));
-
-        // The "base type" comes from the impl. It too may have late-bound
-        // regions from the method.
-        assert!(!base_type.has_regions_escaping_depth(1));
-        let base_type_free =
-            liberate_early_bound_regions(
-                tcx, body_scope,
-                &tcx.liberate_late_bound_regions(body_scope, &ty::Binder(base_type)));
-
-        debug!("required_type={:?} required_type_free={:?} \
-                base_type={:?} base_type_free={:?}",
-               required_type,
-               required_type_free,
-               base_type,
-               base_type_free);
-
-        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
-        drop(::require_same_types(tcx,
-                                  Some(&infcx),
-                                  false,
-                                  explicit_self.span,
-                                  base_type_free,
-                                  required_type_free,
-                                  || {
-                format!("mismatched self type: expected `{}`",
-                         required_type)
-        }));
-
-        // We could conceviably add more free-region relations here,
-        // but since this code is just concerned with checking that
-        // the `&Self` types etc match up, it's not really necessary.
-        // It would just allow people to be more approximate in some
-        // cases. In any case, we can do it later as we feel the need;
-        // I'd like this function to go away eventually.
-        let free_regions = FreeRegionMap::new();
-
-        infcx.resolve_regions_and_report_errors(&free_regions, body_id);
-    }
-
-    fn liberate_early_bound_regions<'tcx,T>(
-        tcx: &ty::ctxt<'tcx>,
-        scope: region::CodeExtent,
-        value: &T)
-        -> T
-        where T : TypeFoldable<'tcx>
-    {
-        /*!
-         * Convert early-bound regions into free regions; normally this is done by
-         * applying the `free_substs` from the `ParameterEnvironment`, but this particular
-         * method-self-type check is kind of hacky and done very early in the process,
-         * before we really have a `ParameterEnvironment` to check.
-         */
-
-        tcx.fold_regions(value, &mut false, |region, _| {
-            match region {
-                ty::ReEarlyBound(data) => {
-                    ty::ReFree(ty::FreeRegion {
-                        scope: scope,
-                        bound_region: ty::BrNamed(data.def_id, data.name)
-                    })
-                }
-                _ => region
-            }
-        })
-    }
-}
-
 /// Checks that all the type parameters on an impl
 fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
                                              ast_generics: &hir::Generics,
@@ -2450,9 +2256,7 @@ fn enforce_impl_lifetimes_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
                   .collect();
 
     for (index, lifetime_def) in ast_generics.lifetimes.iter().enumerate() {
-        let def_id = tcx.map.local_def_id(lifetime_def.lifetime.id);
-        let region = ty::EarlyBoundRegion { def_id: def_id,
-                                            space: TypeSpace,
+        let region = ty::EarlyBoundRegion { space: TypeSpace,
                                             index: index as u32,
                                             name: lifetime_def.lifetime.name };
         if

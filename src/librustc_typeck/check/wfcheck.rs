@@ -136,9 +136,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
             let item = fcx.tcx().impl_or_trait_item(fcx.tcx().map.local_def_id(item_id));
 
-            let mut implied_bounds = match item.container() {
-                ty::TraitContainer(_) => vec![],
-                ty::ImplContainer(def_id) => impl_implied_bounds(fcx, def_id, span)
+            let (mut implied_bounds, self_ty) = match item.container() {
+                ty::TraitContainer(_) => (vec![], fcx.tcx().mk_self_type()),
+                ty::ImplContainer(def_id) => (impl_implied_bounds(fcx, def_id, span),
+                                              fcx.tcx().lookup_item_type(def_id).ty)
             };
 
             match item {
@@ -152,6 +153,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                     let predicates = fcx.instantiate_bounds(span, free_substs, &method.predicates);
                     this.check_fn_or_method(fcx, span, &method_ty, &predicates,
                                             free_id_outlive, &mut implied_bounds);
+                    this.check_method_receiver(fcx, span, &method,
+                                               free_id_outlive, self_ty);
                 }
                 ty::TypeTraitItem(assoc_type) => {
                     if let Some(ref ty) = assoc_type.ty {
@@ -375,6 +378,47 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         }
 
         self.check_where_clauses(fcx, span, predicates);
+    }
+
+    fn check_method_receiver<'fcx>(&mut self,
+                                   fcx: &FnCtxt<'fcx,'tcx>,
+                                   span: Span,
+                                   method: &ty::Method<'tcx>,
+                                   free_id_outlive: CodeExtent,
+                                   self_ty: ty::Ty<'tcx>)
+    {
+        // check that the type of the method's receiver matches the
+        // method's first parameter.
+
+        let free_substs = &fcx.inh.infcx.parameter_environment.free_substs;
+        let fty = fcx.instantiate_type_scheme(span, free_substs, &method.fty);
+        let sig = fcx.tcx().liberate_late_bound_regions(free_id_outlive, &fty.sig);
+
+        debug!("check_method_receiver({:?},cat={:?},self_ty={:?},sig={:?})",
+               method.name, method.explicit_self, self_ty, sig);
+
+        let rcvr_ty = match method.explicit_self {
+            ty::StaticExplicitSelfCategory => return,
+            ty::ByValueExplicitSelfCategory => self_ty,
+            ty::ByReferenceExplicitSelfCategory(region, mutability) => {
+                fcx.tcx().mk_ref(fcx.tcx().mk_region(region), ty::TypeAndMut {
+                    ty: self_ty,
+                    mutbl: mutability
+                })
+            }
+            ty::ByBoxExplicitSelfCategory => fcx.tcx().mk_box(self_ty)
+        };
+        let rcvr_ty = fcx.instantiate_type_scheme(span, free_substs, &rcvr_ty);
+        let rcvr_ty = fcx.tcx().liberate_late_bound_regions(free_id_outlive,
+                                                            &ty::Binder(rcvr_ty));
+
+        debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);
+
+        let _ = ::require_same_types(
+            fcx.tcx(), Some(fcx.infcx()), false, span,
+            sig.inputs[0], rcvr_ty,
+            || "mismatched method receiver".to_owned()
+        );
     }
 
     fn check_variances_for_type_defn(&self,

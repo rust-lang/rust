@@ -192,14 +192,12 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'B' => {
                 assert_eq!(self.next(), '[');
-                let def_id = self.parse_def();
                 let space = self.parse_param_space();
                 assert_eq!(self.next(), '|');
                 let index = self.parse_u32();
                 assert_eq!(self.next(), '|');
                 let name = token::intern(&self.parse_str(']'));
                 ty::ReEarlyBound(ty::EarlyBoundRegion {
-                    def_id: def_id,
                     space: space,
                     index: index,
                     name: name
