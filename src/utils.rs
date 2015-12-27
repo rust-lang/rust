@@ -39,6 +39,18 @@ pub fn span_after(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
 }
 
 #[inline]
+pub fn span_after_last(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
+    let snippet = codemap.span_to_snippet(original).unwrap();
+    let mut offset = 0;
+
+    while let Some(additional_offset) = snippet[offset..].find_uncommented(needle) {
+        offset += additional_offset + needle.len();
+    }
+
+    original.lo + BytePos(offset as u32)
+}
+
+#[inline]
 pub fn format_visibility(vis: Visibility) -> &'static str {
     match vis {
         Visibility::Public => "pub ",

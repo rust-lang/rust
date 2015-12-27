@@ -12,7 +12,8 @@
 
 use Indent;
 use utils::{format_mutability, format_visibility, contains_skip, span_after, end_typaram,
-            wrap_str, last_line_width, semicolon_for_expr, format_unsafety, trim_newlines};
+            wrap_str, last_line_width, semicolon_for_expr, format_unsafety, trim_newlines,
+            span_after_last};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
             DefinitiveListTactic, definitive_tactic, format_item_list};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
@@ -1260,7 +1261,8 @@ fn rewrite_args(context: &RewriteContext,
     // it is explicit.
     if args.len() >= min_args || variadic {
         let comment_span_start = if min_args == 2 {
-            span_after(span, ",", context.codemap)
+            let reduced_span = mk_sp(span.lo, args[1].ty.span.lo);
+            span_after_last(reduced_span, ",", context.codemap)
         } else {
             span.lo
         };
