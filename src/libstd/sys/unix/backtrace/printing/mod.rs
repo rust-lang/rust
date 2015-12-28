@@ -10,10 +10,12 @@
 
 pub use self::imp::print;
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(any(target_os = "macos", target_os = "ios",
+          target_os = "emscripten"))]
 #[path = "dladdr.rs"]
 mod imp;
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+#[cfg(not(any(target_os = "macos", target_os = "ios",
+              target_os = "emscripten")))]
 #[path = "gnu.rs"]
 mod imp;

@@ -832,6 +832,17 @@ mod os {
     pub const EXE_EXTENSION: &'static str = "pexe";
 }
 
+#[cfg(target_os = "emscripten")]
+mod os {
+    pub const FAMILY: &'static str = "unix";
+    pub const OS: &'static str = "emscripten";
+    pub const DLL_PREFIX: &'static str = "lib";
+    pub const DLL_SUFFIX: &'static str = ".so";
+    pub const DLL_EXTENSION: &'static str = "so";
+    pub const EXE_SUFFIX: &'static str = ".js";
+    pub const EXE_EXTENSION: &'static str = "js";
+}
+
 #[cfg(target_arch = "x86")]
 mod arch {
     pub const ARCH: &'static str = "x86";
@@ -870,6 +881,11 @@ mod arch {
 #[cfg(target_arch = "le32")]
 mod arch {
     pub const ARCH: &'static str = "le32";
+}
+
+#[cfg(target_arch = "asmjs")]
+mod arch {
+    pub const ARCH: &'static str = "asmjs";
 }
 
 #[cfg(test)]

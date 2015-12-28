@@ -26,7 +26,8 @@ pub use self::arch::{off_t, ino_t, nlink_t, blksize_t, blkcnt_t, stat, time_t};
 #[cfg(any(target_arch = "x86",
           target_arch = "le32",
           target_arch = "powerpc",
-          target_arch = "arm"))]
+          target_arch = "arm",
+          target_arch = "asmjs"))]
 mod arch {
     use super::{dev_t, mode_t};
     use os::raw::{c_long, c_short};

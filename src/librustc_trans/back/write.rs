@@ -252,7 +252,6 @@ pub struct ModuleConfig {
     emit_ir: bool,
     emit_asm: bool,
     emit_obj: bool,
-
     // Miscellaneous flags.  These are mostly copied from command-line
     // options.
     no_verify: bool,
@@ -262,7 +261,11 @@ pub struct ModuleConfig {
     vectorize_loop: bool,
     vectorize_slp: bool,
     merge_functions: bool,
-    inline_threshold: Option<usize>
+    inline_threshold: Option<usize>,
+    // Instead of creating an object file by doing LLVM codegen, just
+    // make the object file bitcode. Provides easy compatibility with
+    // emscripten's ecc compiler, when used as the linker.
+    obj_is_bitcode: bool,
 }
 
 unsafe impl Send for ModuleConfig { }
@@ -280,6 +283,7 @@ impl ModuleConfig {
             emit_ir: false,
             emit_asm: false,
             emit_obj: false,
+            obj_is_bitcode: false,
 
             no_verify: false,
             no_prepopulate_passes: false,
@@ -298,6 +302,7 @@ impl ModuleConfig {
         self.no_builtins = trans.no_builtins;
         self.time_passes = sess.time_passes();
         self.inline_threshold = sess.opts.cg.inline_threshold;
+        self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode;
 
         // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3. Otherwise configure other optimization aspects
@@ -524,11 +529,21 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         f(cpm);
     }
 
-    if config.emit_bc {
-        let ext = format!("{}.bc", name_extra);
-        let out = output_names.with_extension(&ext);
-        let out = path2cstr(&out);
-        llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
+    // Change what we write and cleanup based on whether obj files are
+    // just llvm bitcode. In that case write bitcode, and possibly
+    // delete the bitcode if it wasn't requisted. Don't generate the
+    // machine code, instead copy the .o file from the .bc
+    let write_bc = config.emit_bc || config.obj_is_bitcode;
+    let rm_bc = !config.emit_bc && config.obj_is_bitcode;
+    let write_obj = config.emit_obj && !config.obj_is_bitcode;
+    let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode;
+
+    let bc_out = output_names.with_extension(&format!("{}.bc", name_extra));
+    let obj_out = output_names.with_extension(&format!("{}.o", name_extra));
+
+    if write_bc {
+        let bc_out_c = path2cstr(&bc_out);
+        llvm::LLVMWriteBitcodeToFile(llmod, bc_out_c.as_ptr());
     }
 
     time(config.time_passes, &format!("codegen passes [{}]", cgcx.worker), || {
@@ -562,13 +577,26 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
             }
         }
 
-        if config.emit_obj {
-            let path = output_names.with_extension(&format!("{}.o", name_extra));
+        if write_obj {
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::ObjectFileType);
+                write_output_file(cgcx.handler, tm, cpm, llmod, &obj_out, llvm::ObjectFileType);
             });
         }
     });
+
+    if copy_bc_to_obj {
+        debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
+        if let Err(e) = fs::copy(&bc_out, &obj_out) {
+            cgcx.handler.err(&format!("failed to copy bitcode to object file: {}", e));
+        }
+    }
+
+    if rm_bc {
+        debug!("removing_bitcode {:?}", bc_out);
+        if let Err(e) = fs::remove_file(&bc_out) {
+            cgcx.handler.err(&format!("failed to remove bitcode: {}", e));
+        }
+    }
 
     llvm::LLVMDisposeModule(llmod);
     llvm::LLVMContextDispose(llcx);
