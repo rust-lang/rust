@@ -18,9 +18,7 @@ use ops::{Add, Sub};
 use sys::time;
 
 #[stable(feature = "time", since = "1.3.0")]
-pub use self::duration::Duration;
-
-mod duration;
+pub use core::time::Duration;
 
 /// A measurement of a monotonically increasing clock.
 ///
