@@ -190,8 +190,14 @@ impl<'tcx> TraitDef<'tcx> {
             .insert(tcx, impl_def_id, impl_trait_ref)
     }
 
-    pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: &TyCtxt<'tcx>, mut f: F)  {
-        self.read_trait_impls(tcx);
+    /// Returns the immediately less specialized impl, if any.
+    pub fn parent_of_impl(&self, impl_def_id: DefId) -> Option<DefId> {
+        let parent = self.specialization_graph.borrow().parent(impl_def_id);
+        if parent == self.trait_ref.def_id { None } else { Some(parent) }
+    }
+
+        pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: &TyCtxt<'tcx>, mut f: F)  {
+            self.read_trait_impls(tcx);
         tcx.populate_implementations_for_trait_if_necessary(self.trait_ref.def_id);
 
         for &impl_def_id in self.blanket_impls.borrow().iter() {

@@ -2719,28 +2719,4 @@ impl<'tcx> TyCtxt<'tcx> {
             Some(d) => f(&d[..])
         }
     }
-
-    pub fn make_substs_for_receiver_types(&self,
-                                          trait_ref: &ty::TraitRef<'tcx>,
-                                          method: &ty::Method<'tcx>)
-                                          -> subst::Substs<'tcx>
-    {
-        /*!
-         * Substitutes the values for the receiver's type parameters
-         * that are found in method, leaving the method's type parameters
-         * intact.
-         */
-
-        let meth_tps: Vec<Ty> =
-            method.generics.types.get_slice(subst::FnSpace)
-                  .iter()
-                  .map(|def| self.mk_param_from_def(def))
-                  .collect();
-        let meth_regions: Vec<ty::Region> =
-            method.generics.regions.get_slice(subst::FnSpace)
-                  .iter()
-                  .map(|def| def.to_early_bound_region())
-                  .collect();
-        trait_ref.substs.clone().with_method(meth_tps, meth_regions)
-    }
 }

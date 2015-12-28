@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::rc::Rc;
+
 use arena::TypedArena;
 use back::link;
 use llvm::{ValueRef, get_params};
@@ -33,7 +35,7 @@ use trans::type_::Type;
 use trans::type_of::*;
 use middle::ty::{self, Ty, TyCtxt};
 
-use syntax::ast;
+use syntax::ast::{self, Name};
 use syntax::attr;
 use syntax::codemap::DUMMY_SP;
 
@@ -107,7 +109,7 @@ pub fn callee_for_trait_impl<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // those from the impl and those from the method:
             let impl_substs = vtable_impl.substs.with_method_from(&substs);
             let substs = ccx.tcx().mk_substs(impl_substs);
-            let mth = ccx.tcx().get_impl_method(impl_did, substs, mname);
+            let mth = get_impl_method(ccx.tcx(), impl_did, impl_substs, mname);
 
             // Translate the function, bypassing Callee::def.
             // That is because default methods have the same ID as the
@@ -428,7 +430,7 @@ pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
             // The substitutions we have are on the impl, so we grab
             // the method type from the impl to substitute into.
-            let mth = tcx.get_impl_method(impl_id, substs, name);
+            let mth = get_impl_method(tcx, impl_id, substs.clone(), name);
 
             debug!("get_vtable_methods: mth={:?}", mth);
 
@@ -464,5 +466,40 @@ fn opaque_method_ty<'tcx>(tcx: &TyCtxt<'tcx>, method_ty: &ty::BareFnTy<'tcx>)
             output: method_ty.sig.0.output,
             variadic: method_ty.sig.0.variadic,
         }),
+    })
+}
+
+#[derive(Debug)]
+pub struct ImplMethod<'tcx> {
+    pub method: Rc<ty::Method<'tcx>>,
+    pub substs: Substs<'tcx>,
+    pub is_provided: bool
+}
+
+/// Locates the applicable definition of a method, given its name.
+pub fn get_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+                             impl_def_id: DefId,
+                             substs: Substs<'tcx>,
+                             name: Name)
+                             -> ImplMethod<'tcx>
+{
+    assert!(!substs.types.needs_infer());
+
+    traits::get_impl_item_or_default(tcx, impl_def_id, |cand| {
+        if let &ty::MethodTraitItem(ref meth) = cand {
+            if meth.name == name {
+                return Some(meth.clone())
+            }
+        }
+        None
+    }).map(|(meth, source)| {
+        ImplMethod {
+            method: meth,
+            substs: source.translate_substs(tcx, substs),
+            is_provided: source.is_from_trait(),
+        }
+    }).unwrap_or_else(|| {
+        tcx.sess.bug(&format!("method {:?} not found in {:?}",
+                              name, impl_def_id))
     })
 }

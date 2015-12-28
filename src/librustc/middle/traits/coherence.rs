@@ -85,10 +85,7 @@ fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
         return None
     }
 
-    let substituted = selcx.infcx().resolve_type_vars_if_possible(&a_impl_header);
-    let freshened = selcx.infcx().freshen(substituted);
-
-    Some(freshened)
+    Some(selcx.infcx().resolve_type_vars_if_possible(&a_impl_header))
 }
 
 pub fn trait_ref_is_knowable<'tcx>(tcx: &TyCtxt<'tcx>, trait_ref: &ty::TraitRef<'tcx>) -> bool

@@ -672,10 +672,12 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       hir::ItemFn(..) => {} // entirely within check_item_body
       hir::ItemImpl(_, _, _, _, _, ref impl_items) => {
           debug!("ItemImpl {} with id {}", it.name, it.id);
-          match ccx.tcx.impl_trait_ref(ccx.tcx.map.local_def_id(it.id)) {
+          let impl_def_id = ccx.tcx.map.local_def_id(it.id);
+          match ccx.tcx.impl_trait_ref(impl_def_id) {
               Some(impl_trait_ref) => {
                 check_impl_items_against_trait(ccx,
                                                it.span,
+                                               impl_def_id,
                                                &impl_trait_ref,
                                                impl_items);
               }
@@ -864,6 +866,7 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             impl_span: Span,
+                                            impl_id: DefId,
                                             impl_trait_ref: &ty::TraitRef<'tcx>,
                                             impl_items: &[hir::ImplItem]) {
     // Locate trait methods
@@ -973,23 +976,27 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 }
             }
             ty::MethodTraitItem(ref trait_method) => {
-                let is_implemented =
-                    impl_items.iter().any(|ii| {
-                        match ii.node {
-                            hir::ImplItemKind::Method(..) => {
-                                ii.name == trait_method.name
-                            }
-                            _ => false,
+                let search_result = traits::get_impl_item_or_default(tcx, impl_id, |cand| {
+                    if let &ty::MethodTraitItem(ref meth) = cand {
+                        if meth.name == trait_method.name {
+                            return Some(());
                         }
-                    });
-                let is_provided =
-                    provided_methods.iter().any(|m| m.name == trait_method.name);
-                if !is_implemented {
-                    if !is_provided {
-                        missing_items.push(trait_method.name);
-                    } else if associated_type_overridden {
-                        invalidated_items.push(trait_method.name);
                     }
+                    None
+                });
+
+                if let Some((_, source)) = search_result {
+                    if source.is_from_trait() {
+                        let is_provided =
+                            provided_methods.iter().any(|m| m.name == trait_method.name);
+                        if !is_provided {
+                            missing_items.push(trait_method.name);
+                        } else if associated_type_overridden {
+                            invalidated_items.push(trait_method.name);
+                        }
+                    }
+                } else {
+                    missing_items.push(trait_method.name);
                 }
             }
             ty::TypeTraitItem(ref associated_type) => {
