@@ -31,7 +31,6 @@ use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
 use trans::common::{self, type_is_sized, ExprOrMethodCall, node_id_substs, C_nil, const_get_elt};
 use trans::common::{CrateContext, C_integral, C_floating, C_bool, C_str_slice, C_bytes, val_ty};
-use trans::common::C_floating_f64;
 use trans::common::{C_struct, C_undef, const_to_opt_int, const_to_opt_uint, VariantInfo, C_uint};
 use trans::common::{type_is_fat_ptr, Field, C_vector, C_array, C_null, ExprId, MethodCallKey};
 use trans::declare;
@@ -105,38 +104,6 @@ pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &ast::Lit)
         ast::LitByteStr(ref data) => {
             addr_of(cx, C_bytes(cx, &data[..]), 1, "byte_str")
         }
-    }
-}
-
-pub fn trans_constval<'blk, 'tcx>(bcx: common::Block<'blk, 'tcx>,
-                                cv: &ConstVal,
-                                ty: Ty<'tcx>,
-                                param_substs: &'tcx Substs<'tcx>)
-                                -> ValueRef
-{
-    let ccx = bcx.ccx();
-    let llty = type_of::type_of(ccx, ty);
-    match *cv {
-        ConstVal::Float(v) => C_floating_f64(v, llty),
-        ConstVal::Bool(v) => C_bool(ccx, v),
-        ConstVal::Int(v) => C_integral(llty, v as u64, true),
-        ConstVal::Uint(v) => C_integral(llty, v, false),
-        ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
-        ConstVal::ByteStr(ref v) => addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
-        ConstVal::Struct(id) | ConstVal::Tuple(id) => {
-            let expr = bcx.tcx().map.expect_expr(id);
-            match const_expr(ccx, expr, param_substs, None, TrueConst::Yes) {
-                Ok((val, _)) => val,
-                Err(e) => panic!("const eval failure: {}", e.description()),
-            }
-        },
-        ConstVal::Array(id, _) | ConstVal::Repeat(id, _) => {
-            let expr = bcx.tcx().map.expect_expr(id);
-            expr::trans(bcx, expr).datum.val
-        },
-        ConstVal::Function(_) => {
-            unimplemented!()
-        },
     }
 }
 
