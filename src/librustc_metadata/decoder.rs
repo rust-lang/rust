@@ -884,12 +884,12 @@ fn get_explicit_self(item: rbml::Doc) -> ty::ExplicitSelfCategory {
 
     let explicit_self_kind = string.as_bytes()[0];
     match explicit_self_kind as char {
-        's' => ty::StaticExplicitSelfCategory,
-        'v' => ty::ByValueExplicitSelfCategory,
-        '~' => ty::ByBoxExplicitSelfCategory,
+        's' => ty::ExplicitSelfCategory::Static,
+        'v' => ty::ExplicitSelfCategory::ByValue,
+        '~' => ty::ExplicitSelfCategory::ByBox,
         // FIXME(#4846) expl. region
         '&' => {
-            ty::ByReferenceExplicitSelfCategory(
+            ty::ExplicitSelfCategory::ByReference(
                 ty::ReEmpty,
                 get_mutability(string.as_bytes()[1]))
         }
@@ -923,7 +923,7 @@ pub fn is_static_method(cdata: Cmd, id: DefIndex) -> bool {
     let doc = cdata.lookup_item(id);
     match item_sort(doc) {
         Some('r') | Some('p') => {
-            get_explicit_self(doc) == ty::StaticExplicitSelfCategory
+            get_explicit_self(doc) == ty::ExplicitSelfCategory::Static
         }
         _ => false
     }
