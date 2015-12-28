@@ -23,7 +23,8 @@ impl Drop for Kitty {
     fn drop(&mut self) {}
 }
 
-#[cfg(any(target_arch = "x86_64", target_arch="aarch64"))]
+#[cfg(any(target_arch = "x86_64", target_arch="aarch64",
+          target_arch="powerpc64", target_arch="powerpc64le"))]
 pub fn main() {
     assert_eq!(mem::size_of::<Cat>(), 8 as usize);
     assert_eq!(mem::size_of::<Kitty>(), 16 as usize);

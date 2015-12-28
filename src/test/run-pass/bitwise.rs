@@ -13,7 +13,8 @@ fn target() {
     assert_eq!(-1000isize as usize >> 3_usize, 536870787_usize);
 }
 
-#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+#[cfg(any(target_arch = "x86_64", target_arch = "aarch64",
+          target_arch = "powerpc64", target_arch = "powerpc64le"))]
 fn target() {
     assert_eq!(-1000isize as usize >> 3_usize, 2305843009213693827_usize);
 }
