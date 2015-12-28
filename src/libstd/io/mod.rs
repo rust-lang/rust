@@ -249,6 +249,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use char;
 use cmp;
 use rustc_unicode::str as core_str;
 use error as std_error;
@@ -710,9 +711,6 @@ pub trait Read {
     /// `Result<char, E>` where `E` may contain information about what I/O error
     /// occurred or where decoding failed.
     ///
-    /// Currently this adaptor will discard intermediate data read, and should
-    /// be avoided if this is not desired.
-    ///
     /// # Examples
     ///
     /// [`File`][file]s implement `Read`:
@@ -739,7 +737,7 @@ pub trait Read {
                                          unclear and may change",
                issue = "27802")]
     fn chars(self) -> Chars<Self> where Self: Sized {
-        Chars { inner: self }
+        Chars { inner: self, buffer: None }
     }
 
     /// Creates an adaptor which will chain this stream with another.
@@ -1557,6 +1555,7 @@ impl<R: Read> Iterator for Bytes<R> {
            issue = "27802")]
 pub struct Chars<R> {
     inner: R,
+    buffer: Option<u8>,
 }
 
 /// An enumeration of possible errors that can be generated from the `Chars`
@@ -1580,29 +1579,75 @@ impl<R: Read> Iterator for Chars<R> {
 
     fn next(&mut self) -> Option<result::Result<char, CharsError>> {
         let mut buf = [0];
-        let first_byte = match self.inner.read(&mut buf) {
-            Ok(0) => return None,
-            Ok(..) => buf[0],
-            Err(e) => return Some(Err(CharsError::Other(e))),
-        };
-        let width = core_str::utf8_char_width(first_byte);
-        if width == 1 { return Some(Ok(first_byte as char)) }
-        if width == 0 { return Some(Err(CharsError::NotUtf8)) }
-        let mut buf = [first_byte, 0, 0, 0];
-        {
-            let mut start = 1;
-            while start < width {
-                match self.inner.read(&mut buf[start..width]) {
-                    Ok(0) => return Some(Err(CharsError::NotUtf8)),
-                    Ok(n) => start += n,
-                    Err(e) => return Some(Err(CharsError::Other(e))),
+        macro_rules! read_byte {
+            (EOF => $on_eof: expr) => {
+                {
+                    loop {
+                        match self.inner.read(&mut buf) {
+                            Ok(0) => $on_eof,
+                            Ok(..) => break,
+                            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                            Err(e) => return Some(Err(CharsError::Other(e))),
+                        }
+                    }
+                    buf[0]
                 }
             }
         }
-        Some(match str::from_utf8(&buf[..width]).ok() {
-            Some(s) => Ok(s.chars().next().unwrap()),
-            None => Err(CharsError::NotUtf8),
-        })
+
+        let first = match self.buffer.take() {
+            Some(byte) => byte,
+            None => read_byte!(EOF => return None),
+        };
+
+        macro_rules! continuation_byte {
+            ($range: pat) => {
+                {
+                    match read_byte!(EOF => return Some(Err(CharsError::NotUtf8))) {
+                        byte @ $range => (byte & 0b0011_1111) as u32,
+                        byte => {
+                            self.buffer = Some(byte);
+                            return Some(Err(CharsError::NotUtf8))
+                        }
+                    }
+                }
+            }
+        }
+
+        // Ranges can be checked against https://tools.ietf.org/html/rfc3629#section-4
+        let code_point = match core_str::utf8_char_width(first) {
+            1 => return Some(Ok(first as char)),
+            2 => {
+                let second = continuation_byte!(0x80...0xBF);
+                ((first & 0b0001_1111) as u32) << 6 | second
+            }
+            3 => {
+                let second = match first {
+                    0xE0        => continuation_byte!(0xA0...0xBF),
+                    0xE1...0xEC => continuation_byte!(0x80...0xBF),
+                    0xED        => continuation_byte!(0x80...0x9F),
+                    0xEE...0xEF => continuation_byte!(0x80...0xBF),
+                    _ => unreachable!(),
+                };
+                let third = continuation_byte!(0x80...0xBF);
+                ((first & 0b0000_1111) as u32) << 12 | second << 6 | third
+            }
+            4 => {
+                let second = match first {
+                    0xF0        => continuation_byte!(0x90...0xBF),
+                    0xF0...0xF3 => continuation_byte!(0x80...0xBF),
+                    0xF4        => continuation_byte!(0x80...0x8F),
+                    _ => unreachable!(),
+                };
+                let third = continuation_byte!(0x80...0xBF);
+                let fourth = continuation_byte!(0x80...0xBF);
+                ((first & 0b0000_0111) as u32) << 18 | second << 12 | third << 6 | fourth
+            }
+            _ => return Some(Err(CharsError::NotUtf8))
+        };
+        unsafe {
+            Some(Ok(char::from_u32_unchecked(code_point)))
+        }
     }
 }
 
@@ -1706,9 +1751,29 @@ mod tests {
     use prelude::v1::*;
     use io::prelude::*;
     use io;
+    use super::CharsError;
     use super::Cursor;
     use test;
     use super::repeat;
+
+    fn chars_lossy(bytes: &[u8]) -> String {
+        // Follow Unicode Standard §5.22 "Best Practice for U+FFFD Substitution"
+        // http://www.unicode.org/versions/Unicode8.0.0/ch05.pdf#G40630
+        Cursor::new(bytes).chars().map(|result| match result {
+            Ok(c) => c,
+            Err(CharsError::NotUtf8) => '\u{FFFD}',
+            Err(CharsError::Other(e)) => panic!("{}", e),
+        }).collect()
+    }
+
+    #[test]
+    fn chars() {
+        assert_eq!(chars_lossy(b"\xf0\x9fabc"), "�abc");
+        assert_eq!(chars_lossy(b"\xed\xa0\x80a"), "���a");
+        assert_eq!(chars_lossy(b"\xed\xa0a"), "��a");
+        assert_eq!(chars_lossy(b"\xeda"), "�a");
+        assert_eq!(chars_lossy("ศไทย中华Việt Nam 🌠©".as_bytes()), "ศไทย中华Việt Nam 🌠©");
+    }
 
     #[test]
     fn read_until() {
