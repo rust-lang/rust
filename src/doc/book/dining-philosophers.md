@@ -704,8 +704,10 @@ You’ll notice we can introduce a new binding to `table` here, and it will
 shadow the old one. This is often used so that you don’t need to come up with
 two unique names.
 
-With this, our program works! Only two philosophers can eat at any one time,
-and so you’ll get some output like this:
+With this, our program works! No more than two philosophers can eat at any one
+time, and so you’ll get some output like this (due to the arbitrary order of
+execution of spawned threads, your output may be different -- and may be
+different each time you run your program):
 
 ```text
 Gilles Deleuze is eating.
