@@ -1,7 +1,8 @@
 #![feature(plugin)]
-
 #![plugin(clippy)]
+
 #![deny(clippy)]
+#![allow(boxed_local)]
 
 pub fn test(foo: Box<Vec<bool>>) { //~ ERROR you seem to be trying to use `Box<Vec<T>>`
     println!("{:?}", foo.get(0))
