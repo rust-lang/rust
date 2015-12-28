@@ -22,7 +22,8 @@ pub use self::duration::Duration;
 
 mod duration;
 
-/// A measurement of a monotonically increasing clock.
+/// A measurement of a monotonically increasing clock,
+/// only meaningful within one process.
 ///
 /// Instants are always guaranteed to be greater than any previously measured
 /// instant when created, and are often useful for tasks such as measuring
@@ -42,8 +43,8 @@ mod duration;
 #[unstable(feature = "time2", reason = "recently added", issue = "29866")]
 pub struct Instant(time::Instant);
 
-/// A measurement of the system clock appropriate for timestamps such as those
-/// on files on the filesystem.
+/// A measurement of the system clock appropriate for timestamps meaningful
+/// outside one process, such as those on files on the filesystem.
 ///
 /// Distinct from the `Instant` type, this time measurement **is not
 /// monotonic**. This means that you can save a file to the file system, then
