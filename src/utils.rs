@@ -8,9 +8,12 @@ use rustc::middle::ty;
 use std::borrow::Cow;
 use syntax::ast::Lit_::*;
 use syntax::ast;
+use syntax::ptr::P;
 
 use rustc::session::Session;
 use std::str::FromStr;
+
+pub type MethodArgs = HirVec<P<Expr>>;
 
 // module DefPaths for certain structs/enums we check for
 pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];
@@ -136,6 +139,7 @@ pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
         false
     }
 }
+
 /// check if method call given in "expr" belongs to given trait
 pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
     let method_call = ty::MethodCall::expr(expr.id);
@@ -162,6 +166,31 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
     path.segments.iter().rev().zip(segments.iter().rev()).all(
         |(a, b)| a.identifier.name.as_str() == *b)
 }
+
+/// match an Expr against a chain of methods, and return the matched Exprs. For example, if `expr`
+/// represents the `.baz()` in `foo.bar().baz()`, `matched_method_chain(expr, &["bar", "baz"])`
+/// will return a Vec containing the Exprs for `.bar()` and `.baz()`
+pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a MethodArgs>> {
+    let mut current = expr;
+    let mut matched = Vec::with_capacity(methods.len());
+    for method_name in methods.iter().rev() { // method chains are stored last -> first
+        if let ExprMethodCall(ref name, _, ref args) = current.node {
+            if name.node.as_str() == *method_name {
+                matched.push(args); // build up `matched` backwards
+                current = &args[0] // go to parent expression
+            }
+            else {
+                return None;
+            }
+        }
+        else {
+            return None;
+        }
+    }
+    matched.reverse(); // reverse `matched`, so that it is in the same order as `methods`
+    Some(matched)
+}
+
 
 /// get the name of the item the expression is in, if available
 pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
