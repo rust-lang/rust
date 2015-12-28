@@ -2187,15 +2187,19 @@ fn auto_ref<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let referent_ty = lv_datum.ty;
     let ptr_ty = bcx.tcx().mk_imm_ref(bcx.tcx().mk_region(ty::ReStatic), referent_ty);
 
+    // Construct the resulting datum. The right datum to return here would be an Lvalue datum,
+    // because there is cleanup scheduled and the datum doesn't own the data, but for thin pointers
+    // we microoptimize it to be an Rvalue datum to avoid the extra alloca and level of
+    // indirection and for thin pointers, this has no ill effects.
+    let kind  = if type_is_sized(bcx.tcx(), referent_ty) {
+        RvalueExpr(Rvalue::new(ByValue))
+    } else {
+        LvalueExpr(lv_datum.kind)
+    };
+
     // Get the pointer.
     let llref = lv_datum.to_llref();
-
-    // Construct the resulting datum, using what was the "by ref"
-    // ValueRef of type `referent_ty` to be the "by value" ValueRef
-    // of type `&referent_ty`.
-    // Pointers to DST types are non-immediate, and therefore still use ByRef.
-    let kind  = if type_is_sized(bcx.tcx(), referent_ty) { ByValue } else { ByRef };
-    DatumBlock::new(bcx, Datum::new(llref, ptr_ty, RvalueExpr(Rvalue::new(kind))))
+    DatumBlock::new(bcx, Datum::new(llref, ptr_ty, kind))
 }
 
 fn deref_multiple<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
