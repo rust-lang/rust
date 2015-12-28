@@ -38,6 +38,7 @@ pub fn write_all_files(file_map: &FileMap,
         try!(write_file(&file_map[filename], filename, mode, config));
     }
 
+    // Output trailers for write mode.
     Ok(())
 }
 
@@ -141,6 +142,19 @@ pub fn write_file(text: &StringBuffer,
         }
         WriteMode::Default => {
             unreachable!("The WriteMode should NEVER Be default at this point!");
+        }
+        WriteMode::Checkstyle => {
+            // Generate the diff for the current file.
+            // Output the XML tags for the lines that are different.
+            // Use the new text as 'should be X'.
+        }
+        WriteMode::Return => {
+            // io::Write is not implemented for String, working around with
+            // Vec<u8>
+            let mut v = Vec::new();
+            try!(write_system_newlines(&mut v, text, config));
+            // won't panic, we are writing correct utf8
+            return Ok(Some(String::from_utf8(v).unwrap()));
         }
     }
 

@@ -90,7 +90,7 @@ fn execute() -> i32 {
     opts.optopt("",
                 "write-mode",
                 "mode to write in (not usable when piping from stdin)",
-                "[replace|overwrite|display|diff|coverage]");
+                "[replace|overwrite|display|diff|coverage|checkstyle]");
     opts.optflag("", "skip-children", "don't reformat child modules");
 
     opts.optflag("",

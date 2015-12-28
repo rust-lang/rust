@@ -136,6 +136,8 @@ configuration_option_enum! { WriteMode:
     Coverage,
     // Unfancy stdout
     Plain,
+    // Output a checkstyle XML file.
+    Checkstyle,
 }
 
 // This trait and the following impl blocks are there so that we an use
