@@ -102,7 +102,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     mir::AggregateKind::Adt(adt_def, index, _)
                     if adt_def.variants[index].kind() == ty::VariantKind::Unit => {
                         let repr = adt::represent_type(bcx.ccx(), dest.ty.to_ty(bcx.tcx()));
-                        adt::trans_set_discr(bcx, &*repr, dest.llval, 0);
+                        let disr = adt_def.variants[index].disr_val;
+                        adt::trans_set_discr(bcx, &*repr, dest.llval, disr);
                     },
                     _ => {
                         for (i, operand) in operands.iter().enumerate() {
