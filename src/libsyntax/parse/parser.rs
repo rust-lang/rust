@@ -67,7 +67,7 @@ use parse::classify;
 use parse::common::{SeqSep, seq_sep_none, seq_sep_trailing_allowed};
 use parse::lexer::{Reader, TokenAndSpan};
 use parse::obsolete::{ParserObsoleteMethods, ObsoleteSyntax};
-use parse::token::{self, MatchNt, SubstNt, SpecialVarNt, InternedString};
+use parse::token::{self, intern, MatchNt, SubstNt, SpecialVarNt, InternedString};
 use parse::token::{keywords, special_idents, SpecialMacroVar};
 use parse::{new_sub_parser_from_file, ParseSess};
 use util::parser::{AssocOp, Fixity};
@@ -4612,10 +4612,20 @@ impl<'a> Parser<'a> {
     fn complain_if_pub_macro(&mut self, visa: Visibility, span: Span) {
         match visa {
             Public => {
-                self.diagnostic().struct_span_err(span, "can't qualify macro invocation with `pub`")
-                                 .fileline_help(span, "try adjusting the macro to put `pub` inside \
-                                                       the invocation")
-                                 .emit();
+                let is_macro_rules :bool = match self.token {
+                    token::Ident(sid, _) => sid.name == intern("macro_rules"),
+                    _ => false,
+                };
+                if is_macro_rules {
+                    self.diagnostic().struct_span_err(span, "can't qualify macro_rules invocation with `pub`")
+                                     .fileline_help(span, "did you mean #[macro_export]?")
+                                     .emit();
+                } else {
+                    self.diagnostic().struct_span_err(span, "can't qualify macro invocation with `pub`")
+                                     .fileline_help(span, "try adjusting the macro to put `pub` \
+                                                           inside the invocation")
+                                     .emit();
+                }
             }
             Inherited => (),
         }
