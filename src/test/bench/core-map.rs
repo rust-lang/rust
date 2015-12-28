@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(std_misc, rand, duration, duration_span)]
+#![feature(std_misc, rand, time2)]
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
 use std::__rand::{Rng, thread_rng};
-use std::time::Duration;
+use std::time::Instant;
 
-fn timed<F>(label: &str, f: F) where F: FnMut() {
-    println!("  {}: {:?}", label, Duration::span(f));
+fn timed<F>(label: &str, mut f: F) where F: FnMut() {
+    let start = Instant::now();
+    f();
+    println!("  {}: {:?}", label, start.elapsed());
 }
 
 trait MutableMap {

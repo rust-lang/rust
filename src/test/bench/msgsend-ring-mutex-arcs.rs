@@ -17,11 +17,11 @@
 
 // no-pretty-expanded FIXME #15189
 
-#![feature(duration_span)]
+#![feature(time2)]
 
 use std::env;
 use std::sync::{Arc, Mutex, Condvar};
-use std::time::Duration;
+use std::time::Instant;
 use std::thread;
 
 // A poor man's pipe.
@@ -80,7 +80,8 @@ fn main() {
     let (num_chan, num_port) = init();
 
     let mut p = Some((num_chan, num_port));
-    let dur = Duration::span(|| {
+    let start = Instant::now();
+    {
         let (mut num_chan, num_port) = p.take().unwrap();
 
         // create the ring
@@ -104,7 +105,8 @@ fn main() {
         for f in futures {
             f.join().unwrap()
         }
-    });
+    }
+    let dur = start.elapsed();
 
     // all done, report stats.
     let num_msgs = num_tasks * msg_per_task;

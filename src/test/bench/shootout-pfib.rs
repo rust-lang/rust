@@ -18,7 +18,7 @@
 
 */
 
-#![feature(duration, duration_span, rustc_private)]
+#![feature(time2, rustc_private)]
 
 extern crate getopts;
 
@@ -26,7 +26,7 @@ use std::sync::mpsc::{channel, Sender};
 use std::env;
 use std::result::Result::{Ok, Err};
 use std::thread;
-use std::time::Duration;
+use std::time::Instant;
 
 fn fib(n: isize) -> isize {
     fn pfib(tx: &Sender<isize>, n: isize) {
@@ -110,9 +110,9 @@ fn main() {
 
         for n in 1..max + 1 {
             for _ in 0..num_trials {
-                let mut fibn = None;
-                let dur = Duration::span(|| fibn = Some(fib(n)));
-                let fibn = fibn.unwrap();
+                let start = Instant::now();
+                let fibn = fib(n);
+                let dur = start.elapsed();
 
                 println!("{}\t{}\t{:?}", n, fibn, dur);
             }

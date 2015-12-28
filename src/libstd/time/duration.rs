@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use ops::{Add, Sub, Mul, Div};
-use time::Instant;
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
@@ -57,21 +56,6 @@ impl Duration {
         let secs = secs + (nanos / NANOS_PER_SEC) as u64;
         let nanos = nanos % NANOS_PER_SEC;
         Duration { secs: secs, nanos: nanos }
-    }
-
-    /// Runs a closure, returning the duration of time it took to run the
-    /// closure.
-    #[unstable(feature = "duration_span",
-               reason = "unsure if this is the right API or whether it should \
-                         wait for a more general \"moment in time\" \
-                         abstraction",
-               issue = "27799")]
-    #[rustc_deprecated(reason = "use std::time::Instant instead",
-                       since = "1.6.0")]
-    pub fn span<F>(f: F) -> Duration where F: FnOnce() {
-        let start = Instant::now();
-        f();
-        start.elapsed()
     }
 
     /// Creates a new `Duration` from the specified number of seconds.

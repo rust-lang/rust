@@ -10,13 +10,13 @@
 
 // Microbenchmarks for various functions in std and extra
 
-#![feature(rand, vec_push_all, duration, duration_span)]
+#![feature(rand, vec_push_all, time2)]
 
 use std::mem::swap;
 use std::env;
 use std::__rand::{thread_rng, Rng};
 use std::str;
-use std::time::Duration;
+use std::time::Instant;
 
 fn main() {
     let argv: Vec<String> = env::args().collect();
@@ -49,7 +49,9 @@ fn maybe_run_test<F>(argv: &[String], name: String, test: F) where F: FnOnce() {
         return
     }
 
-    let dur = Duration::span(test);
+    let start = Instant::now();
+    test();
+    let dur = start.elapsed();
 
     println!("{}:\t\t{:?}", name, dur);
 }
