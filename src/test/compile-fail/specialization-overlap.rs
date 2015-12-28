@@ -9,24 +9,15 @@
 // except according to those terms.
 
 trait Foo {}
-
-impl<T> Foo for T {} //~ ERROR conflicting implementations of trait `Foo`:
-impl<U> Foo for U {}
+impl<T: Clone> Foo for T {}
+impl<T> Foo for Vec<T> {} //~ ERROR E0119
 
 trait Bar {}
+impl<T> Bar for (T, u8) {}
+impl<T> Bar for (u8, T) {} //~ ERROR E0119
 
-impl<T> Bar for (T, u8) {} //~ ERROR conflicting implementations of trait `Bar` for type `(u8, u8)`:
-impl<T> Bar for (u8, T) {}
-
-trait Baz<T> {}
-
-impl<T> Baz<u8> for T {} //~ ERROR conflicting implementations of trait `Baz<u8>` for type `u8`:
+trait Baz<U> {}
 impl<T> Baz<T> for u8 {}
-
-trait Quux<U, V> {}
-
-impl<T, U, V> Quux<U, V> for T {} //~ ERROR conflicting implementations of trait `Quux<_, _>`:
-impl<T, U> Quux<U, U> for T {}
-impl<T, V> Quux<T, V> for T {}
+impl<T> Baz<u8> for T {} //~ ERROR E0119
 
 fn main() {}
