@@ -9,11 +9,14 @@
 // except according to those terms.
 
 use back::abi;
+use llvm::ValueRef;
+use middle::subst::Substs;
 use middle::ty::{Ty, HasTypeFlags};
 use rustc::middle::const_eval::ConstVal;
 use rustc::mir::repr as mir;
-use trans::consts;
-use trans::common::{self, Block};
+use trans::common::{self, Block, C_bool, C_bytes, C_floating_f64, C_integral, C_str_slice};
+use trans::consts::{self, TrueConst};
+use trans::{type_of, expr};
 
 
 use super::operand::{OperandRef, OperandValue};
@@ -27,7 +30,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                           -> OperandRef<'tcx>
     {
         let ccx = bcx.ccx();
-        let val = consts::trans_constval(bcx, cv, ty, bcx.fcx.param_substs);
+        let val = self.trans_constval_inner(bcx, cv, ty, bcx.fcx.param_substs);
         let val = if common::type_is_immediate(ccx, ty) {
             OperandValue::Immediate(val)
         } else if common::type_is_fat_ptr(bcx.tcx(), ty) {
@@ -43,6 +46,39 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         OperandRef {
             ty: ty,
             val: val
+        }
+    }
+
+    /// Translate ConstVal into a bare LLVM ValueRef.
+    fn trans_constval_inner(&mut self,
+                            bcx: common::Block<'bcx, 'tcx>,
+                            cv: &ConstVal,
+                            ty: Ty<'tcx>,
+                            param_substs: &'tcx Substs<'tcx>)
+                            -> ValueRef
+    {
+        let ccx = bcx.ccx();
+        let llty = type_of::type_of(ccx, ty);
+        match *cv {
+            ConstVal::Float(v) => C_floating_f64(v, llty),
+            ConstVal::Bool(v) => C_bool(ccx, v),
+            ConstVal::Int(v) => C_integral(llty, v as u64, true),
+            ConstVal::Uint(v) => C_integral(llty, v, false),
+            ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
+            ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
+            ConstVal::Struct(id) | ConstVal::Tuple(id) => {
+                let expr = bcx.tcx().map.expect_expr(id);
+                match consts::const_expr(ccx, expr, param_substs, None, TrueConst::Yes) {
+                    Ok((val, _)) => val,
+                    Err(e) => panic!("const eval failure: {}", e.description()),
+                }
+            },
+            ConstVal::Array(id, _) | ConstVal::Repeat(id, _) => {
+                let expr = bcx.tcx().map.expect_expr(id);
+                expr::trans(bcx, expr).datum.val
+            },
+            ConstVal::Function(did) =>
+                self.trans_fn_ref(bcx, ty, param_substs, did).immediate()
         }
     }
 

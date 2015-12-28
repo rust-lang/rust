@@ -68,6 +68,7 @@ enum CEnum {
 const C: u8 = 84;
 const C2: [u8; 5] = [42; 5];
 const C3: [u8; 3] = [42, 41, 40];
+const C4: fn(u8) -> S = S;
 
 fn regular() -> u8 {
     21
@@ -198,6 +199,11 @@ fn t23() -> (CEnum, CEnum) {
     (CEnum::A, CEnum::B)
 }
 
+#[rustc_mir]
+fn t24() -> fn(u8) -> S {
+    C4
+}
+
 fn main(){
     unsafe {
         assert_eq!(t1()(), regular());
@@ -240,5 +246,6 @@ fn main(){
         assert_eq!(t21(), Unit);
         assert_eq!(t22(), None);
         assert_eq!(t23(), (CEnum::A, CEnum::B));
+        assert_eq!(t24(), C4);
     }
 }
