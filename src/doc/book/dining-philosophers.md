@@ -704,19 +704,19 @@ You’ll notice we can introduce a new binding to `table` here, and it will
 shadow the old one. This is often used so that you don’t need to come up with
 two unique names.
 
-With this, our program works! Only one philosopher can eat at a time, and so
-you’ll get some output like this:
+With this, our program works! Only two philosophers can eat at any one time,
+and so you’ll get some output like this:
 
 ```text
+Gilles Deleuze is eating.
 Emma Goldman is eating.
 Emma Goldman is done eating.
-Karl Marx is eating.
-Karl Marx is done eating.
-Gilles Deleuze is eating.
 Gilles Deleuze is done eating.
 Judith Butler is eating.
+Karl Marx is eating.
 Judith Butler is done eating.
 Michel Foucault is eating.
+Karl Marx is done eating.
 Michel Foucault is done eating.
 ```
 
