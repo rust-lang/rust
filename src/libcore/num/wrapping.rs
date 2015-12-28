@@ -157,10 +157,105 @@ macro_rules! wrapping_impl {
                 Wrapping(self.0 & other.0)
             }
         }
+
+        impl AddAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn add_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self + other;
+            }
+        }
+
+        impl SubAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn sub_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self - other;
+            }
+        }
+
+        impl MulAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn mul_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self * other;
+            }
+        }
+
+        impl DivAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn div_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self / other;
+            }
+        }
+
+        /*
+        impl RemAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn rem_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self % other;
+            }
+        }
+        */
+
+        impl BitAndAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn bitand_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self & other;
+            }
+        }
+
+        impl BitOrAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn bitor_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self | other;
+            }
+        }
+
+        impl BitXorAssign for Wrapping<$t> {
+            #[inline(always)]
+            fn bitxor_assign(&mut self, other: Wrapping<$t>) {
+                *self = *self ^ other;
+            }
+        }
     )*)
 }
 
 wrapping_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+
+macro_rules! wrapping_sh_impl {
+    ($($t:ty, $f:ty)*) => ($(
+        impl ShlAssign<$f> for Wrapping<$t> {
+            #[inline(always)]
+            fn shl_assign(&mut self, other: $f) {
+                *self = *self << other;
+            }
+        }
+
+        impl ShrAssign<$f> for Wrapping<$t> {
+            #[inline(always)]
+            fn shr_assign(&mut self, other: $f) {
+                *self = *self >> other;
+            }
+        }
+    )*)
+}
+
+// FIXME (#23545): uncomment the remaining impls
+macro_rules! wrapping_sh_impl_all {
+    ($($t:ty)*) => ($(
+        // wrapping_sh_impl! { $t, u8 }
+        // wrapping_sh_impl! { $t, u16 }
+        // wrapping_sh_impl! { $t, u32 }
+        // wrapping_sh_impl! { $t, u64 }
+        wrapping_sh_impl! { $t, usize }
+
+        // wrapping_sh_impl! { $t, i8 }
+        // wrapping_sh_impl! { $t, i16 }
+        // wrapping_sh_impl! { $t, i32 }
+        // wrapping_sh_impl! { $t, i64 }
+        // wrapping_sh_impl! { $t, isize }
+    )*)
+}
+
+wrapping_sh_impl_all! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
 mod shift_max {
     #![allow(non_upper_case_globals)]
