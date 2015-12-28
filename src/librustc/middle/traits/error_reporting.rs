@@ -234,38 +234,29 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             if let Some(s) = custom_note {
                                 err.fileline_note(obligation.cause.span, &s);
                             } else {
-                                infcx.tcx.populate_implementations_for_trait_if_necessary(
-                                    trait_ref.def_id());
-
+                                let simp = fast_reject::simplify_type(infcx.tcx,
+                                                                      trait_ref.self_ty(),
+                                                                      true);
+                                let mut impl_candidates = Vec::new();
                                 let trait_def = infcx.tcx.lookup_trait_def(trait_ref.def_id());
-                                let blanket_impls = trait_def.blanket_impls.borrow();
-                                let impl_iter = blanket_impls.iter()
-                                                             .filter_map(|&id|
-                                                                     infcx.tcx.impl_trait_ref(id));
 
-                                let nonblanket = trait_def.nonblanket_impls.borrow();
-                                let nonblanket_iter = nonblanket.values()
-                                                            .flat_map(|ids|
-                                                                ids.iter().filter_map(|&id|
-                                                                    infcx.tcx.impl_trait_ref(id)));
-
-                                let simp = fast_reject::simplify_type(infcx.tcx, trait_ref.self_ty(), true);
-                                let nonblanket_iter = nonblanket_iter.filter(|def| {
+                                trait_def.for_each_impl(infcx.tcx, |def_id| {
+                                    let imp = infcx.tcx.impl_trait_ref(def_id).unwrap();
                                     if let Some(simp) = simp {
-                                        let imp_simp = fast_reject::simplify_type(infcx.tcx, def.self_ty(), true);
+                                        let imp_simp = fast_reject::simplify_type(infcx.tcx,
+                                                                                  imp.self_ty(),
+                                                                                  true);
                                         if let Some(imp_simp) = imp_simp {
-                                            simp == imp_simp
+                                            if simp == imp_simp {
+                                                impl_candidates.push(imp);
+                                            }
                                         } else {
-                                            false
+                                            impl_candidates.push(imp);
                                         }
                                     } else {
-                                        true
+                                        impl_candidates.push(imp);
                                     }
                                 });
-
-                                let impl_candidates = impl_iter.chain(nonblanket_iter)
-                                                               .map(|imp| format!("  {}", imp))
-                                                               .take(5).collect::<Vec<_>>();
 
                                 if impl_candidates.len() > 0 {
                                     err.fileline_help(
