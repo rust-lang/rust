@@ -283,6 +283,12 @@ impl OsStr {
         self.to_bytes().and_then(|b| CString::new(b).ok())
     }
 
+    /// Checks if the string is empty.
+    #[unstable(feature = "os_extras", reason = "recently added", issue = "30259")]
+    pub fn is_empty(&self) -> bool {
+        self.inner.inner.is_empty()
+    }
+
     /// Gets the underlying byte representation.
     ///
     /// Note: it is *crucial* that this API is private, to avoid

@@ -16,6 +16,7 @@ use syntax::ast;
 use syntax::parse::token::InternedString;
 use util::nodemap::NodeMap;
 
+/// A definition
 #[derive(Clone)]
 pub struct Definitions {
     data: Vec<DefData>,
@@ -66,36 +67,53 @@ pub type DefPath = Vec<DisambiguatedDefPathData>;
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
     // they are treated specially by the `def_path` function.
+    /// The crate root (marker)
     CrateRoot,
+    /// An inlined root
     InlinedRoot(DefPath),
 
     // Catch-all for random DefId things like DUMMY_NODE_ID
     Misc,
 
     // Different kinds of items and item-like things:
+    /// An implementation
     Impl(ast::Name),
+    /// A type (struct, enum, etc.)
     Type(ast::Name),
+    /// A module declaration
     Mod(ast::Name),
+    /// A value
     Value(ast::Name),
+    /// A macro rule
     MacroDef(ast::Name),
+    /// A closure expression
     ClosureExpr,
 
     // Subportions of items
+    /// A type parameter (generic parameter)
     TypeParam(ast::Name),
+    /// A lifetime definition
     LifetimeDef(ast::Name),
+    /// A variant of a enum
     EnumVariant(ast::Name),
+    /// A positional field, for example a tuple field
     PositionalField,
+    /// A struct field
     Field(hir::StructFieldKind),
-    StructCtor, // implicit ctor for a tuple-like struct
-    Initializer, // initializer for a const
-    Binding(ast::Name), // pattern binding
+    /// Implicit ctor for a tuple-like struct
+    StructCtor,
+    /// Initializer for a constant
+    Initializer,
+    /// A pattern binding
+    Binding(ast::Name),
 
-    // An external crate that does not have an `extern crate` in this
-    // crate.
+    /// An external crate that does not have an `extern crate` in this
+    /// crate.
     DetachedCrate(ast::Name),
 }
 
 impl Definitions {
+    /// Create new empty definition map
     pub fn new() -> Definitions {
         Definitions {
             data: vec![],
@@ -104,6 +122,7 @@ impl Definitions {
         }
     }
 
+    /// Get the number of definitions
     pub fn len(&self) -> usize {
         self.data.len()
     }
@@ -138,6 +157,7 @@ impl Definitions {
         }
     }
 
+    /// Add a definition with a parrent definition
     pub fn create_def_with_parent(&mut self,
                                   parent: Option<DefIndex>,
                                   node_id: ast::NodeId,

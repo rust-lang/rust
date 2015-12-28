@@ -537,4 +537,94 @@ impl Iterator for EscapeDefault {
             EscapeDefaultState::Done => (0, Some(0)),
         }
     }
+
+    fn count(self) -> usize {
+        match self.state {
+            EscapeDefaultState::Char(_)       => 1,
+            EscapeDefaultState::Unicode(iter) => iter.count(),
+            EscapeDefaultState::Done          => 0,
+            EscapeDefaultState::Backslash(_)  => 2,
+        }
+    }
+
+    fn nth(&mut self, n: usize) -> Option<char> {
+        let ch = match self.state {
+            EscapeDefaultState::Backslash(c)       => c,
+            EscapeDefaultState::Char(c)            => c,
+            EscapeDefaultState::Done               => return None,
+            EscapeDefaultState::Unicode(ref mut i) => return i.nth(n),
+        };
+
+        let start = if let Some(x) = self.get_offset() {
+            x
+        } else {
+            return None;
+        };
+        let idx = start + n;
+
+        // Update state
+        self.state = match idx {
+            0 => EscapeDefaultState::Char(ch),
+            _ => EscapeDefaultState::Done,
+        };
+
+        match idx {
+            0 => Some('\\'),
+            1 => Some(ch),
+            _ => None,
+        }
+    }
+
+    fn last(self) -> Option<char> {
+        match self.state {
+            EscapeDefaultState::Unicode(iter)                              => iter.last(),
+            EscapeDefaultState::Done                                       => None,
+            EscapeDefaultState::Backslash(c) | EscapeDefaultState::Char(c) => Some(c),
+        }
+    }
+}
+
+#[test]
+fn ed_iterator_specializations() {
+    use super::EscapeDefault;
+
+    // Check counting
+    assert_eq!('\n'.escape_default().count(), 2);
+    assert_eq!('c'.escape_default().count(), 1);
+    assert_eq!(' '.escape_default().count(), 1);
+    assert_eq!('\\'.escape_default().count(), 2);
+    assert_eq!('\''.escape_default().count(), 2);
+
+    // Check nth
+
+    // Check that OoB is handled correctly
+    assert_eq!('\n'.escape_default().nth(2), None);
+    assert_eq!('c'.escape_default().nth(1), None);
+    assert_eq!(' '.escape_default().nth(1), None);
+    assert_eq!('\\'.escape_default().nth(2), None);
+    assert_eq!('\''.escape_default().nth(2), None);
+
+    // Check the first char
+    assert_eq!('\n'.escape_default().nth(0), Some('\\'));
+    assert_eq!('c'.escape_default().nth(0), Some('c'));
+    assert_eq!(' '.escape_default().nth(0), Some(' '));
+    assert_eq!('\\'.escape_default().nth(0), Some('\\'));
+    assert_eq!('\''.escape_default().nth(0), Some('\\'));
+
+    // Check the second char
+    assert_eq!('\n'.escape_default().nth(1), Some('n'));
+    assert_eq!('\\'.escape_default().nth(1), Some('\\'));
+    assert_eq!('\''.escape_default().nth(1), Some('\''));
+}
+
+
+impl EscapeDefault {
+    fn get_offset(&self) -> Option<usize> {
+        match self.state {
+            EscapeDefaultState::Backslash(_) => Some(0),
+            EscapeDefaultState::Char(_)      => Some(1),
+            EscapeDefaultState::Done         => None,
+            EscapeDefaultState::Unicode(_)   => None,
+        }
+    }
 }
