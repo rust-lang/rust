@@ -640,7 +640,7 @@ impl str {
     /// Value, and may not match your idea of what a 'character' is. Iteration
     /// over grapheme clusters may be what you actually want.
     ///
-    /// [`char`]: ../primitive.char.html
+    /// [`char`]: primitive.char.html
     ///
     /// # Examples
     ///
@@ -1551,7 +1551,7 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that determines
     /// if a character matches.
     ///
-    /// [`char`]: primtive.char.html
+    /// [`char`]: primitive.char.html
     ///
     /// # Examples
     ///
@@ -1643,7 +1643,7 @@ impl str {
     ///
     /// `parse()` can parse any type that implements the [`FromStr`] trait.
     ///
-    /// [`FromStr`]: trait.FromStr.html
+    /// [`FromStr`]: str/trait.FromStr.html
     ///
     /// # Failure
     ///
