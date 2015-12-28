@@ -32,10 +32,6 @@ mod imp {
                   target_arch = "aarch64",
                   target_arch = "powerpc")))]
     fn getrandom(buf: &mut [u8]) -> libc::c_long {
-        extern "C" {
-            fn syscall(number: libc::c_long, ...) -> libc::c_long;
-        }
-
         #[cfg(target_arch = "x86_64")]
         const NR_GETRANDOM: libc::c_long = 318;
         #[cfg(target_arch = "x86")]
@@ -46,7 +42,7 @@ mod imp {
         const NR_GETRANDOM: libc::c_long = 278;
 
         unsafe {
-            syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), 0)
+            libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), 0)
         }
     }
 
