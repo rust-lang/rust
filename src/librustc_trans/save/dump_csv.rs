@@ -682,7 +682,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             def::DefMethod(did) => {
                 let ti = self.tcx.impl_or_trait_item(did);
                 if let ty::MethodTraitItem(m) = ti {
-                    if m.explicit_self == ty::StaticExplicitSelfCategory {
+                    if m.explicit_self == ty::ExplicitSelfCategory::Static {
                         self.write_sub_path_trait_truncated(path);
                     }
                 }

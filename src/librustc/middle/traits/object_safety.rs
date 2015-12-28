@@ -254,13 +254,13 @@ fn virtual_call_violation_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // autorefs) to `&self`. For now, we only accept `self`, `&self`
     // and `Box<Self>`.
     match method.explicit_self {
-        ty::StaticExplicitSelfCategory => {
+        ty::ExplicitSelfCategory::Static => {
             return Some(MethodViolationCode::StaticMethod);
         }
 
-        ty::ByValueExplicitSelfCategory |
-        ty::ByReferenceExplicitSelfCategory(..) |
-        ty::ByBoxExplicitSelfCategory => {
+        ty::ExplicitSelfCategory::ByValue |
+        ty::ExplicitSelfCategory::ByReference(..) |
+        ty::ExplicitSelfCategory::ByBox => {
         }
     }
 

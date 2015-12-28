@@ -1815,7 +1815,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
     // reference) in the arguments, then any anonymous regions in the output
     // have that lifetime.
     let implied_output_region = match explicit_self_category {
-        Some(ty::ByReferenceExplicitSelfCategory(region, _)) => Ok(region),
+        Some(ty::ExplicitSelfCategory::ByReference(region, _)) => Ok(region),
         _ => find_implied_output_region(this.tcx(), &arg_tys, arg_pats)
     };
 
@@ -1846,9 +1846,9 @@ fn determine_self_type<'a, 'tcx>(this: &AstConv<'tcx>,
 {
     let self_ty = self_info.untransformed_self_ty;
     return match self_info.explicit_self.node {
-        hir::SelfStatic => (None, Some(ty::StaticExplicitSelfCategory)),
+        hir::SelfStatic => (None, Some(ty::ExplicitSelfCategory::Static)),
         hir::SelfValue(_) => {
-            (Some(self_ty), Some(ty::ByValueExplicitSelfCategory))
+            (Some(self_ty), Some(ty::ExplicitSelfCategory::ByValue))
         }
         hir::SelfRegion(ref lifetime, mutability, _) => {
             let region =
@@ -1862,7 +1862,7 @@ fn determine_self_type<'a, 'tcx>(this: &AstConv<'tcx>,
                     ty: self_ty,
                     mutbl: mutability
                 })),
-             Some(ty::ByReferenceExplicitSelfCategory(region, mutability)))
+             Some(ty::ExplicitSelfCategory::ByReference(region, mutability)))
         }
         hir::SelfExplicit(ref ast_type, _) => {
             let explicit_type = ast_ty_to_ty(this, rscope, &**ast_type);
@@ -1878,12 +1878,12 @@ fn determine_self_type<'a, 'tcx>(this: &AstConv<'tcx>,
             // ```
             // impl Foo for &T {
             //     // Legal declarations:
-            //     fn method1(self: &&T); // ByReferenceExplicitSelfCategory
-            //     fn method2(self: &T); // ByValueExplicitSelfCategory
-            //     fn method3(self: Box<&T>); // ByBoxExplicitSelfCategory
+            //     fn method1(self: &&T); // ExplicitSelfCategory::ByReference
+            //     fn method2(self: &T); // ExplicitSelfCategory::ByValue
+            //     fn method3(self: Box<&T>); // ExplicitSelfCategory::ByBox
             //
             //     // Invalid cases will be caught later by `check_method_self_type`:
-            //     fn method_err1(self: &mut T); // ByReferenceExplicitSelfCategory
+            //     fn method_err1(self: &mut T); // ExplicitSelfCategory::ByReference
             // }
             // ```
             //
@@ -1894,7 +1894,7 @@ fn determine_self_type<'a, 'tcx>(this: &AstConv<'tcx>,
             // call it by-ref, by-box as appropriate. For method1, for
             // example, the impl type has one modifier, but the method
             // type has two, so we end up with
-            // ByReferenceExplicitSelfCategory.
+            // ExplicitSelfCategory::ByReference.
 
             let impl_modifiers = count_modifiers(self_info.untransformed_self_ty);
             let method_modifiers = count_modifiers(explicit_type);
@@ -1908,12 +1908,12 @@ fn determine_self_type<'a, 'tcx>(this: &AstConv<'tcx>,
                    method_modifiers);
 
             let category = if impl_modifiers >= method_modifiers {
-                ty::ByValueExplicitSelfCategory
+                ty::ExplicitSelfCategory::ByValue
             } else {
                 match explicit_type.sty {
-                    ty::TyRef(r, mt) => ty::ByReferenceExplicitSelfCategory(*r, mt.mutbl),
-                    ty::TyBox(_) => ty::ByBoxExplicitSelfCategory,
-                    _ => ty::ByValueExplicitSelfCategory,
+                    ty::TyRef(r, mt) => ty::ExplicitSelfCategory::ByReference(*r, mt.mutbl),
+                    ty::TyBox(_) => ty::ExplicitSelfCategory::ByBox,
+                    _ => ty::ExplicitSelfCategory::ByValue,
                 }
             };
 

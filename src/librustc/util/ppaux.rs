@@ -919,13 +919,13 @@ impl fmt::Display for ty::InferTy {
 impl fmt::Display for ty::ExplicitSelfCategory {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match *self {
-            ty::StaticExplicitSelfCategory => "static",
-            ty::ByValueExplicitSelfCategory => "self",
-            ty::ByReferenceExplicitSelfCategory(_, hir::MutMutable) => {
+            ty::ExplicitSelfCategory::Static => "static",
+            ty::ExplicitSelfCategory::ByValue => "self",
+            ty::ExplicitSelfCategory::ByReference(_, hir::MutMutable) => {
                 "&mut self"
             }
-            ty::ByReferenceExplicitSelfCategory(_, hir::MutImmutable) => "&self",
-            ty::ByBoxExplicitSelfCategory => "Box<self>",
+            ty::ExplicitSelfCategory::ByReference(_, hir::MutImmutable) => "&self",
+            ty::ExplicitSelfCategory::ByBox => "Box<self>",
         })
     }
 }

@@ -12,7 +12,6 @@ pub use self::ImplOrTraitItemId::*;
 pub use self::ClosureKind::*;
 pub use self::Variance::*;
 pub use self::DtorKind::*;
-pub use self::ExplicitSelfCategory::*;
 pub use self::ImplOrTraitItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::ImplOrTraitItem::*;
@@ -2733,10 +2732,10 @@ impl<'tcx> ctxt<'tcx> {
 /// The category of explicit self.
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum ExplicitSelfCategory {
-    StaticExplicitSelfCategory,
-    ByValueExplicitSelfCategory,
-    ByReferenceExplicitSelfCategory(Region, hir::Mutability),
-    ByBoxExplicitSelfCategory,
+    Static,
+    ByValue,
+    ByReference(Region, hir::Mutability),
+    ByBox,
 }
 
 /// A free variable referred to in a function.
