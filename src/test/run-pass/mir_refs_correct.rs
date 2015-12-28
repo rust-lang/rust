@@ -59,6 +59,12 @@ enum E {
     U(u8)
 }
 
+#[derive(PartialEq, Debug, Eq)]
+enum CEnum {
+    A = 0x321,
+    B = 0x123
+}
+
 const C: u8 = 84;
 const C2: [u8; 5] = [42; 5];
 const C3: [u8; 3] = [42, 41, 40];
@@ -187,6 +193,11 @@ fn t22() -> Option<u8> {
     None
 }
 
+#[rustc_mir]
+fn t23() -> (CEnum, CEnum) {
+    (CEnum::A, CEnum::B)
+}
+
 fn main(){
     unsafe {
         assert_eq!(t1()(), regular());
@@ -228,5 +239,6 @@ fn main(){
         assert_eq!(t20()(123u64, 38u32), <u32 as T<_, _>>::staticmeth(123, 38));
         assert_eq!(t21(), Unit);
         assert_eq!(t22(), None);
+        assert_eq!(t23(), (CEnum::A, CEnum::B));
     }
 }
