@@ -47,11 +47,11 @@ extern {
     fn integer(a: i32x4, b: i32x4) -> i32x4;
 
     // vmaxq_s32
-    #[cfg(any(target_arch = "arm"))]
+    #[cfg(target_arch = "arm")]
     #[link_name = "llvm.arm.neon.vmaxs.v4i32"]
     fn integer(a: i32x4, b: i32x4) -> i32x4;
     // vmaxq_s32
-    #[cfg(any(target_arch = "aarch64"))]
+    #[cfg(target_arch = "aarch64")]
     #[link_name = "llvm.aarch64.neon.maxs.v4i32"]
     fn integer(a: i32x4, b: i32x4) -> i32x4;
 
