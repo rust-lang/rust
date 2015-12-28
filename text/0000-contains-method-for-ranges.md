@@ -57,7 +57,7 @@ Lacks of generics (see Alternatives).
 
 This trait provides the method `.contains()` and implements it for all the Range types.
 
-## Add a `.contains(item: Self::Item)` iterator method
+## Add a `.contains<I: PartialEq<Self::Item>>(i: I)` iterator method
 
 This method returns a boolean, telling if the iterator contains the item given as parameter. Using method specialization, this can achieve the same performance as the method suggested in this RFC.
 
