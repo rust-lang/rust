@@ -1629,7 +1629,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // i.e. EvaluatedToOk:
                 if other.evaluation == EvaluatedToOk {
                     if let ImplCandidate(victim_def) = victim.candidate {
-                        return traits::specializes(self.infcx(), other_def, victim_def);
+                        return traits::specializes(self.tcx(), other_def, victim_def);
                     }
                 }
 
