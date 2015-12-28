@@ -2,12 +2,14 @@ use std::collections::VecDeque;
 use diff;
 use term;
 
+#[derive(Debug, PartialEq)]
 pub enum DiffLine {
     Context(String),
     Expected(String),
     Resulting(String),
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Mismatch {
     pub line_number: u32,
     pub lines: Vec<DiffLine>,
