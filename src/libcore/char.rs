@@ -69,7 +69,7 @@ const MAX_THREE_B: u32 =  0x10000;
 /// Point], but only ones within a certain range. `MAX` is the highest valid
 /// code point that's a valid [Unicode Scalar Value].
 ///
-/// [`char`]: primitive.char.html
+/// [`char`]: ../primitive.char.html
 /// [Unicode Scalar Value]: http://www.unicode.org/glossary/#unicode_scalar_value
 /// [Code Point]: http://www.unicode.org/glossary/#code_point
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -91,9 +91,9 @@ pub const MAX: char = '\u{10ffff}';
 /// [`char`]s. `from_u32()` will return `None` if the input is not a valid value
 /// for a [`char`].
 ///
-/// [`char`]: primitive.char.html
-/// [`u32`]: primitive.u32.html
-/// [`as`]: ../book/casting-between-types.html#as
+/// [`char`]: ../primitive.char.html
+/// [`u32`]: ../primitive.u32.html
+/// [`as`]: ../../book/casting-between-types.html#as
 ///
 /// For an unsafe version of this function which ignores these checks, see
 /// [`from_u32_unchecked()`].
@@ -148,9 +148,9 @@ pub fn from_u32(i: u32) -> Option<char> {
 /// [`char`]s. `from_u32_unchecked()` will ignore this, and blindly cast to
 /// [`char`], possibly creating an invalid one.
 ///
-/// [`char`]: primitive.char.html
-/// [`u32`]: primitive.u32.html
-/// [`as`]: ../book/casting-between-types.html#as
+/// [`char`]: ../primitive.char.html
+/// [`u32`]: ../primitive.u32.html
+/// [`as`]: ../../book/casting-between-types.html#as
 ///
 /// # Safety
 ///
@@ -414,8 +414,8 @@ pub fn encode_utf16_raw(mut ch: u32, dst: &mut [u16]) -> Option<usize> {
 /// This `struct` is created by the [`escape_unicode()`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`escape_unicode()`]: primitive.char.html#method.escape_unicode
-/// [`char`]: primitive.char.html
+/// [`escape_unicode()`]: ../primitive.char.html#method.escape_unicode
+/// [`char`]: ../primitive.char.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeUnicode {
@@ -494,8 +494,8 @@ impl Iterator for EscapeUnicode {
 /// This `struct` is created by the [`escape_default()`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`escape_default()`]: primitive.char.html#method.escape_default
-/// [`char`]: primitive.char.html
+/// [`escape_default()`]: ../primitive.char.html#method.escape_default
+/// [`char`]: ../primitive.char.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeDefault {
