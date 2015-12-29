@@ -356,7 +356,7 @@ impl<'a> Display for Arguments<'a> {
 /// `Debug` implementations using either `derive` or the debug builder API
 /// on `Formatter` support pretty printing using the alternate flag: `{:#?}`.
 ///
-/// [debug_struct]: ../std/fmt/struct.Formatter.html#method.debug_struct
+/// [debug_struct]: ../../std/fmt/struct.Formatter.html#method.debug_struct
 ///
 /// Pretty printing with `#?`:
 ///
