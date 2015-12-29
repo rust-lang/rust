@@ -451,6 +451,14 @@ fn encode_constness(rbml_w: &mut Encoder, constness: hir::Constness) {
     rbml_w.end_tag();
 }
 
+fn encode_defaultness(rbml_w: &mut Encoder, defaultness: hir::Defaultness) {
+    let ch = match defaultness {
+        hir::Defaultness::Default => 'd',
+        hir::Defaultness::Final => 'f',
+    };
+    rbml_w.wr_tagged_u8(tag_items_data_item_defaultness, ch as u8);
+}
+
 fn encode_explicit_self(rbml_w: &mut Encoder,
                         explicit_self: &ty::ExplicitSelfCategory) {
     let tag = tag_item_trait_method_explicit_self;
@@ -674,6 +682,7 @@ fn encode_info_for_associated_const<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
     if let Some(ii) = impl_item_opt {
         encode_attributes(rbml_w, &ii.attrs);
+        encode_defaultness(rbml_w, ii.defaultness);
         encode_inlined_item(ecx,
                             rbml_w,
                             InlinedItemRef::ImplItem(ecx.tcx.map.local_def_id(parent_id),
@@ -725,6 +734,7 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                                              impl_item));
             }
             encode_constness(rbml_w, sig.constness);
+            encode_defaultness(rbml_w, impl_item.defaultness);
             if !any_types {
                 let m_id = ecx.local_id(m.def_id);
                 encode_symbol(ecx, rbml_w, m_id);
@@ -767,6 +777,7 @@ fn encode_info_for_associated_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
     if let Some(ii) = impl_item_opt {
         encode_attributes(rbml_w, &ii.attrs);
+        encode_defaultness(rbml_w, ii.defaultness);
     } else {
         encode_predicates(rbml_w, ecx, index,
                           &ecx.tcx.lookup_predicates(associated_type.def_id),
