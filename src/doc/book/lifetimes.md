@@ -103,7 +103,7 @@ Then in our parameter list, we use the lifetimes we’ve named:
 ...(x: &'a i32)
 ```
 
-If we wanted an `&mut` reference, we’d do this:
+If we wanted a `&mut` reference, we’d do this:
 
 ```rust,ignore
 ...(x: &'a mut i32)
