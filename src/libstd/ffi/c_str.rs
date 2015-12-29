@@ -436,6 +436,57 @@ impl CStr {
         mem::transmute(slice::from_raw_parts(ptr, len as usize + 1))
     }
 
+    /// Creates a C string wrapper from a byte slice.
+    ///
+    /// This function will cast the provided `bytes` to a `CStr` wrapper after
+    /// ensuring that it is null terminated but does not contain any interior
+    /// nul bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(cstr_from_bytes)]
+    /// use std::ffi::CStr;
+    ///
+    /// # fn main() {
+    /// let cstr = CStr::from_bytes(b"hello\0");
+    /// assert!(cstr.is_some());
+    /// # }
+    /// ```
+    #[unstable(feature = "cstr_from_bytes", reason = "recently added", issue = "0")]
+    pub fn from_bytes<'a>(bytes: &'a [u8]) -> Option<&'a CStr> {
+        if bytes.is_empty() || memchr::memchr(0, &bytes) != Some(bytes.len() - 1) {
+            None
+        } else {
+            Some(unsafe { Self::from_bytes_unchecked(bytes) })
+        }
+    }
+
+    /// Unsafely creates a C string wrapper from a byte slice.
+    ///
+    /// This function will cast the provided `bytes` to a `CStr` wrapper without
+    /// performing any sanity checks. The provided slice must be null terminated
+    /// and not contain any interior nul bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(cstr_from_bytes)]
+    /// use std::ffi::{CStr, CString};
+    ///
+    /// # fn main() {
+    /// unsafe {
+    ///     let cstring = CString::new("hello").unwrap();
+    ///     let cstr = CStr::from_bytes_unchecked(cstring.to_bytes_with_nul());
+    ///     assert_eq!(cstr, &*cstring);
+    /// }
+    /// # }
+    /// ```
+    #[unstable(feature = "cstr_from_bytes", reason = "recently added", issue = "0")]
+    pub unsafe fn from_bytes_unchecked<'a>(bytes: &'a [u8]) -> &'a CStr {
+        mem::transmute(bytes)
+    }
+
     /// Returns the inner pointer to this C string.
     ///
     /// The returned pointer will be valid for as long as `self` is and points
