@@ -431,6 +431,7 @@ impl Target {
             armv7_unknown_linux_gnueabihf,
             aarch64_unknown_linux_gnu,
             x86_64_unknown_linux_musl,
+            i686_unknown_linux_musl,
             mips_unknown_linux_musl,
             mipsel_unknown_linux_musl,
 

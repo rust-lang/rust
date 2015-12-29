@@ -168,7 +168,7 @@ impl Drop for Thread {
     }
 }
 
-#[cfg(all(not(target_os = "linux"),
+#[cfg(all(not(all(target_os = "linux", not(target_env = "musl"))),
           not(target_os = "macos"),
           not(target_os = "bitrig"),
           not(all(target_os = "netbsd", not(target_vendor = "rumprun"))),
@@ -181,7 +181,7 @@ pub mod guard {
 }
 
 
-#[cfg(any(target_os = "linux",
+#[cfg(any(all(target_os = "linux", not(target_env = "musl")),
           target_os = "macos",
           target_os = "bitrig",
           all(target_os = "netbsd", not(target_vendor = "rumprun")),
