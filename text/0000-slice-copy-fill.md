@@ -1,4 +1,4 @@
-- Feature Name: std::slice::copy, slice::fill
+- Feature Name: slice\_copy\_fill
 - Start Date: (fill me in with today's date, YYYY-MM-DD)
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -37,7 +37,7 @@ memset in all possible cases. It is defined behavior to call `fill` on a slice
 which has uninitialized members, and `self` is guaranteed to be fully filled
 afterwards.
 
-`copy` panics if `src.len() != self.len()`, then `memcpy`s the members into 
+`copy_from` panics if `src.len() != self.len()`, then `memcpy`s the members into 
 `self` from `src`. Calling `copy_from` is semantically equivalent to a `memcpy`;
 `self` can have uninitialized members, and `self` is guaranteed to be fully filled
 afterwards. This means, for example, that the following is fully defined:
@@ -64,12 +64,6 @@ points.fill(1.0); // This is not lowered to a memset (However, it is lowered to
                        // a simd loop, which is what a memset is, in reality)
 ```
 
-Also, `copy_from` has it's arguments in a different order from it's most similar
-`unsafe` alternative, `std::ptr::copy_nonoverlapping`. This is due to an
-unfortunate error that cannot be solved with the now stable
-`copy_nonoverlapping`, and the design decision should not be extended to
-`copy_from`.
-
 # Alternatives
 [alternatives]: #alternatives
 
@@ -77,21 +71,16 @@ We could name these functions something else. `fill`, for example, could be
 called `set`, `fill_from`, or `fill_with`.
 
 `copy_from` could be called `copy_to`, and have the order of the arguments
-switched around. This is a bad idea, as `copy_from` has a natural connection to
-`dst = src` syntax.
+switched around. This would follow `ptr::copy_nonoverlapping` ordering, and not
+`dst = src` or `.clone_from()` ordering.
 
-`memcpy` is also pretty weird, here. Panicking if the lengths differ is
-different from what came before; I believe it to be the safest path, because I
-think I'd want to know, personally, if I'm passing the wrong lengths to copy.
-However, `std::slice::bytes::copy_memory`, the function I'm basing this on, only
-panics if `dst.len() < src.len()`. So... room for discussion, here.
+`copy_from` could panic only if `dst.len() < src.len()`. This would be the same
+as what came before, but we would also lose the guarantee that an uninitialized
+slice would be fully initialized.
 
 `fill` and `copy_from` could both be free functions, and were in the
 original draft of this document. However, overwhelming support for these as
 methods has meant that these have become methods.
-
-These are necessary, in my opinion. Much unsafe code has been written because
-these do not exist.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
