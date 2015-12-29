@@ -1053,22 +1053,22 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     missing_items.push(trait_method.name);
                 }
             }
-            ty::TypeTraitItem(ref associated_type) => {
-                let is_implemented = impl_items.iter().any(|ii| {
-                    match ii.node {
-                        hir::ImplItemKind::Type(_) => {
-                            ii.name == associated_type.name
+            ty::TypeTraitItem(ref trait_assoc_ty) => {
+                let search_result = traits::get_impl_item_or_default(tcx, impl_id, |cand| {
+                    if let &ty::TypeTraitItem(ref assoc_ty) = cand {
+                        if assoc_ty.name == trait_assoc_ty.name && assoc_ty.ty.is_some() {
+                            return Some(());
                         }
-                        _ => false,
                     }
+                    None
                 });
-                let is_provided = associated_type.ty.is_some();
-                if !is_implemented {
-                    if !is_provided {
-                        missing_items.push(associated_type.name);
-                    } else if associated_type_overridden {
-                        invalidated_items.push(associated_type.name);
+
+                if let Some((_, source)) = search_result {
+                    if source.is_from_trait() && associated_type_overridden {
+                        invalidated_items.push(trait_assoc_ty.name);
                     }
+                } else {
+                    missing_items.push(trait_assoc_ty.name);
                 }
             }
         }
