@@ -281,6 +281,7 @@ pub struct Method<'tcx> {
     pub fty: BareFnTy<'tcx>,
     pub explicit_self: ExplicitSelfCategory,
     pub vis: hir::Visibility,
+    pub defaultness: hir::Defaultness,
     pub def_id: DefId,
     pub container: ImplOrTraitItemContainer,
 }
@@ -292,16 +293,18 @@ impl<'tcx> Method<'tcx> {
                fty: BareFnTy<'tcx>,
                explicit_self: ExplicitSelfCategory,
                vis: hir::Visibility,
+               defaultness: hir::Defaultness,
                def_id: DefId,
                container: ImplOrTraitItemContainer)
                -> Method<'tcx> {
-       Method {
+        Method {
             name: name,
             generics: generics,
             predicates: predicates,
             fty: fty,
             explicit_self: explicit_self,
             vis: vis,
+            defaultness: defaultness,
             def_id: def_id,
             container: container,
         }
@@ -334,6 +337,7 @@ pub struct AssociatedConst<'tcx> {
     pub name: Name,
     pub ty: Ty<'tcx>,
     pub vis: hir::Visibility,
+    pub defaultness: hir::Defaultness,
     pub def_id: DefId,
     pub container: ImplOrTraitItemContainer,
     pub has_value: bool
@@ -344,6 +348,7 @@ pub struct AssociatedType<'tcx> {
     pub name: Name,
     pub ty: Option<Ty<'tcx>>,
     pub vis: hir::Visibility,
+    pub defaultness: hir::Defaultness,
     pub def_id: DefId,
     pub container: ImplOrTraitItemContainer,
 }
