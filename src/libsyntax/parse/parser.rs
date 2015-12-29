@@ -4612,7 +4612,7 @@ impl<'a> Parser<'a> {
     fn complain_if_pub_macro(&mut self, visa: Visibility, span: Span) {
         match visa {
             Public => {
-                let is_macro_rules :bool = match self.token {
+                let is_macro_rules: bool = match self.token {
                     token::Ident(sid, _) => sid.name == intern("macro_rules"),
                     _ => false,
                 };
