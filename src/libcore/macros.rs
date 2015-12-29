@@ -135,10 +135,10 @@ macro_rules! debug_assert {
     ($($arg:tt)*) => (if cfg!(debug_assertions) { assert!($($arg)*); })
 }
 
-/// Asserts that two expressions are equal to each other, testing equality in
-/// both directions.
+/// Asserts that two expressions are equal to each other.
 ///
-/// On panic, this macro will print the values of the expressions.
+/// On panic, this macro will print the values of the expressions with their
+/// debug representations.
 ///
 /// Unlike `assert_eq!`, `debug_assert_eq!` statements are only enabled in non
 /// optimized builds by default. An optimized build will omit all
