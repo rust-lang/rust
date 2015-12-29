@@ -28,7 +28,7 @@ pub struct NodeCollector<'ast> {
     pub map: Vec<MapEntry<'ast>>,
     /// The definitions, used for name resolution
     pub definitions: Definitions,
-    /// The parrent of this node
+    /// The parent of this node
     pub parent_node: NodeId,
 }
 
