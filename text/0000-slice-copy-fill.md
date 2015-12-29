@@ -32,10 +32,11 @@ impl<T> [T] where T: Copy {
 }
 ```
 
-`fill` loops through slice, setting each member to value. This will lower to a
-memset in all possible cases. It is defined behavior to call `fill` on a slice
-which has uninitialized members, and `self` is guaranteed to be fully filled
-afterwards.
+`fill` loops through slice, setting each member to value. This will usually
+lower to a memset in optimized builds. It is likely that this is only the
+initial implementation, and will be optimized later to be almost as fast as, or
+as fast as, memset. It is defined behavior to call `fill` on a slice which has
+uninitialized members, and `self` is guaranteed to be fully filled afterwards.
 
 `copy_from` panics if `src.len() != self.len()`, then `memcpy`s the members into 
 `self` from `src`. Calling `copy_from` is semantically equivalent to a `memcpy`;
@@ -56,13 +57,7 @@ And the program will print 16 '8's.
 [drawbacks]: #drawbacks
 
 Two new methods on `slice`. `[T]::fill` *will not* be lowered to a `memset` in
-any case where the bytes of `value` are not all the same, as in
-
-```rust
-// let points: [f32; 16];
-points.fill(1.0); // This is not lowered to a memset (However, it is lowered to
-                       // a simd loop, which is what a memset is, in reality)
-```
+all cases.
 
 # Alternatives
 [alternatives]: #alternatives
