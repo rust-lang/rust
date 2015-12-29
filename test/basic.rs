@@ -94,6 +94,34 @@ fn match_int() -> i32 {
     }
 }
 
+#[miri_run(expected = "Int(1)")]
+fn one_line_ref() -> i32 {
+    *&1
+}
+
+#[miri_run(expected = "Int(1)")]
+fn basic_ref() -> i32 {
+    let x = &1;
+    *x
+}
+
+#[miri_run(expected = "Int(3)")]
+fn basic_ref_mut() -> i32 {
+    let x = &mut 1;
+    *x += 2;
+    *x
+}
+
+#[miri_run(expected = "Int(3)")]
+fn basic_ref_mut_var() -> i32 {
+    let mut a = 1;
+    {
+        let x = &mut a;
+        *x += 2;
+    }
+    a
+}
+
 // #[miri_run(expected = "Int(4)")]
 // fn match_int_range() -> i32 {
 //     let n = 42;

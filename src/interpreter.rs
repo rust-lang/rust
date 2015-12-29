@@ -14,6 +14,7 @@ enum Value {
     Uninit,
     Bool(bool),
     Int(i64), // FIXME(tsion): Should be bit-width aware.
+    Pointer(Pointer),
     Adt { variant: usize, data_ptr: Pointer },
     Func(def_id::DefId),
 }
@@ -247,18 +248,23 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
                     mir::ProjectionElem::Downcast(_, variant) => {
                         let adt_val = self.read_pointer(base_ptr);
-
-                        match adt_val {
-                            Value::Adt { variant: actual_variant, data_ptr } => {
-                                debug_assert_eq!(variant, actual_variant);
-                                data_ptr
-                            }
-
-                            _ => panic!("Downcast attempted on non-Adt: {:?}", adt_val),
+                        if let Value::Adt { variant: actual_variant, data_ptr } = adt_val {
+                            debug_assert_eq!(variant, actual_variant);
+                            data_ptr
+                        } else {
+                            panic!("Downcast attempted on non-ADT: {:?}", adt_val)
                         }
                     }
 
-                    mir::ProjectionElem::Deref => unimplemented!(),
+                    mir::ProjectionElem::Deref => {
+                        let ptr_val = self.read_pointer(base_ptr);
+                        if let Value::Pointer(ptr) = ptr_val {
+                            ptr
+                        } else {
+                            panic!("Deref attempted on non-pointer: {:?}", ptr_val)
+                        }
+                    }
+
                     mir::ProjectionElem::Index(ref _operand) => unimplemented!(),
                     mir::ProjectionElem::ConstantIndex { .. } => unimplemented!(),
                 }
@@ -311,6 +317,10 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     (mir::UnOp::Neg, Value::Int(n)) => Value::Int(-n),
                     _ => unimplemented!(),
                 }
+            }
+
+            mir::Rvalue::Ref(_region, _kind, ref lvalue) => {
+                Value::Pointer(self.eval_lvalue(lvalue))
             }
 
             mir::Rvalue::Aggregate(mir::AggregateKind::Adt(ref adt_def, variant, _substs),
