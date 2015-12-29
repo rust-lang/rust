@@ -1,10 +1,14 @@
 % Guessing Game
 
-For our first project, we’ll implement a classic beginner programming problem:
-the guessing game. Here’s how it works: Our program will generate a random
-integer between one and a hundred. It will then prompt us to enter a guess.
-Upon entering our guess, it will tell us if we’re too low or too high. Once we
-guess correctly, it will congratulate us. Sounds good?
+Let’s learn some Rust! For our first project, we’ll implement a classic
+beginner programming problem: the guessing game. Here’s how it works: Our
+program will generate a random integer between one and a hundred. It will then
+prompt us to enter a guess. Upon entering our guess, it will tell us if we’re
+too low or too high. Once we guess correctly, it will congratulate us. Sounds
+good?
+
+Along the way, we’ll learn a little bit about Rust. The next section, ‘Syntax
+and Semantics’, will dive deeper into each part.
 
 # Set up
 
