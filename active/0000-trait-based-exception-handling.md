@@ -132,9 +132,8 @@ constructs, and is independently useful.
 The capability can be exposed either by generalizing `break` to take an optional
 value argument and break out of any block (not just loops), or by generalizing
 `return` to take an optional lifetime argument and return from any block, not
-just the outermost block of the function. This feature is independently useful
-and I believe it should be added, but as it is only used here in this RFC as an
-explanatory device, and implementing the RFC does not require exposing it, I am
+just the outermost block of the function. This feature is only used in this RFC as an
+explanatory device, and implementing the RFC does not require exposing it, so I am
 going to arbitrarily choose the `break` syntax for the following and won't
 discuss the question further.
 
@@ -160,6 +159,8 @@ Here if we don't have a thing, we escape from the block early with `None`.
 
 If no value is specified, it defaults to `()`: in other words, the current behavior.
 We can also imagine there is a magical lifetime `'fn` which refers to the lifetime of the whole function: in this case, `break 'fn` is equivalent to `return`.
+
+Again, this RFC does not propose generalizing `break` in this way at this time: it is only used as a way to explain the meaning of the constructs it does propose.
 
 
 ## Definition of constructs
@@ -317,6 +318,10 @@ Without any attempt at completeness, here are some things which should be true:
 
 
 # Future possibilities
+
+## Expose a generalized form of `break` or `return` as described
+
+This RFC doesn't propose doing so at this time, but as it would be an independently useful feature, it could be added as well.
 
 ## An additional `catch` form to bind the caught exception irrefutably
 
