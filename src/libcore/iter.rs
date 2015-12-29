@@ -604,7 +604,7 @@ pub trait Iterator {
     /// iterators, returning a tuple where the first element comes from the
     /// first iterator, and the second element comes from the second iterator.
     ///
-    /// In other words, it zips two iterators together, into a single one. 🤐
+    /// In other words, it zips two iterators together, into a single one.
     ///
     /// When either iterator returns `None`, all further calls to `next()`
     /// will return `None`.
