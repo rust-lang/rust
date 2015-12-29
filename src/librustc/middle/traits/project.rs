@@ -11,6 +11,7 @@
 //! Code for projecting associated types out of trait references.
 
 use super::elaborate_predicates;
+use super::get_impl_item_or_default;
 use super::report_overflow_error;
 use super::Obligation;
 use super::ObligationCause;
@@ -23,8 +24,9 @@ use super::util;
 
 use middle::infer::{self, TypeOrigin};
 use middle::subst::Subst;
-use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
+use middle::ty::{self, ToPredicate, RegionEscape, HasTypeFlags, ToPolyTraitRef, Ty, TyCtxt};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_front::hir;
 use syntax::parse::token;
 use util::common::FN_OUTPUT_NAME;
 
@@ -742,6 +744,28 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
 
     match vtable {
         super::VtableImpl(data) => {
+            if data.substs.types.needs_infer() {
+                let assoc_ty_opt = get_impl_item_or_default(selcx.tcx(), data.impl_def_id, |cand| {
+                    if let &ty::TypeTraitItem(ref assoc_ty) = cand {
+                        if assoc_ty.name == obligation.predicate.item_name {
+                            return Some(assoc_ty.defaultness);
+                        }
+                    }
+                    None
+                });
+
+                if let Some((defaultness, source)) = assoc_ty_opt {
+                    if !source.is_from_trait() && defaultness == hir::Defaultness::Default {
+                        // FIXME: is it OK to not mark as ambiguous?
+                        return Ok(());
+                    }
+                } else {
+                    selcx.tcx().sess.span_bug(obligation.cause.span,
+                                              &format!("No associated type for {:?}",
+                                                       obligation_trait_ref));
+                }
+            }
+
             debug!("assemble_candidates_from_impls: impl candidate {:?}",
                    data);
 
@@ -941,43 +965,31 @@ fn confirm_impl_candidate<'cx,'tcx>(
     impl_vtable: VtableImplData<'tcx, PredicateObligation<'tcx>>)
     -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
 {
-    // there don't seem to be nicer accessors to these:
-    let impl_or_trait_items_map = selcx.tcx().impl_or_trait_items.borrow();
+    let VtableImplData { substs, nested, impl_def_id } = impl_vtable;
 
-    // Look for the associated type in the impl
-    for impl_item in &selcx.tcx().impl_items.borrow()[&impl_vtable.impl_def_id] {
-        if let ty::TypeTraitItem(ref assoc_ty) = impl_or_trait_items_map[&impl_item.def_id()] {
-            if assoc_ty.name == obligation.predicate.item_name {
-                return (assoc_ty.ty.unwrap().subst(selcx.tcx(), impl_vtable.substs),
-                        impl_vtable.nested);
-            }
-        }
-    }
-
-    // It is not in the impl - get the default from the trait.
-    let trait_ref = obligation.predicate.trait_ref;
-    for trait_item in selcx.tcx().trait_items(trait_ref.def_id).iter() {
-        if let &ty::TypeTraitItem(ref assoc_ty) = trait_item {
+    get_impl_item_or_default(selcx.tcx(), impl_def_id, |cand| {
+        if let &ty::TypeTraitItem(ref assoc_ty) = cand {
             if assoc_ty.name == obligation.predicate.item_name {
                 if let Some(ty) = assoc_ty.ty {
-                    return (ty.subst(selcx.tcx(), trait_ref.substs),
-                            impl_vtable.nested);
+                    return Some(ty)
                 } else {
-                    // This means that the impl is missing a
-                    // definition for the associated type. This error
-                    // ought to be reported by the type checker method
-                    // `check_impl_items_against_trait`, so here we
-                    // just return TyError.
+                    // This means that the impl is missing a definition for the
+                    // associated type. This error will be reported by the type
+                    // checker method `check_impl_items_against_trait`, so here
+                    // we just return TyError.
                     debug!("confirm_impl_candidate: no associated type {:?} for {:?}",
                            assoc_ty.name,
-                           trait_ref);
-                    return (selcx.tcx().types.err, vec!());
+                           obligation.predicate.trait_ref);
+                    return Some(selcx.tcx().types.err);
                 }
             }
         }
-    }
-
-    selcx.tcx().sess.span_bug(obligation.cause.span,
-                              &format!("No associated type for {:?}",
-                                       trait_ref));
+        None
+    }).map(|(ty, source)| {
+        (ty.subst(selcx.tcx(), &source.translate_substs(selcx.tcx(), substs)), nested)
+    }).unwrap_or_else(|| {
+        selcx.tcx().sess.span_bug(obligation.cause.span,
+                                  &format!("No associated type for {:?}",
+                                           obligation.predicate.trait_ref));
+    })
 }
