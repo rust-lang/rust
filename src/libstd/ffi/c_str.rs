@@ -20,7 +20,7 @@ use iter::Iterator;
 use libc;
 use mem;
 use memchr;
-use ops::Deref;
+use ops;
 use option::Option::{self, Some, None};
 use os::raw::c_char;
 use result::Result::{self, Ok, Err};
@@ -282,7 +282,7 @@ impl CString {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Deref for CString {
+impl ops::Deref for CString {
     type Target = CStr;
 
     fn deref(&self) -> &CStr {
@@ -519,6 +519,37 @@ impl ToOwned for CStr {
 
     fn to_owned(&self) -> CString {
         unsafe { CString::from_vec_unchecked(self.to_bytes().to_vec()) }
+    }
+}
+
+#[unstable(feature = "cstring_asref", reason = "recently added", issue = "0")]
+impl ops::Index<ops::RangeFull> for CString {
+    type Output = CStr;
+
+    #[inline]
+    fn index(&self, _index: ops::RangeFull) -> &CStr {
+        self
+    }
+}
+
+#[unstable(feature = "cstring_asref", reason = "recently added", issue = "0")]
+impl<'a, T: ?Sized + AsRef<CStr>> From<&'a T> for CString {
+    fn from(s: &'a T) -> CString {
+        s.as_ref().to_owned()
+    }
+}
+
+#[unstable(feature = "cstring_asref", reason = "recently added", issue = "0")]
+impl AsRef<CStr> for CStr {
+    fn as_ref(&self) -> &CStr {
+        self
+    }
+}
+
+#[unstable(feature = "cstring_asref", reason = "recently added", issue = "0")]
+impl AsRef<CStr> for CString {
+    fn as_ref(&self) -> &CStr {
+        self
     }
 }
 
