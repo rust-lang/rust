@@ -137,6 +137,10 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         let impl_did = tcx.map.local_def_id(item.id);
         let self_type = tcx.lookup_item_type(impl_did);
 
+        if let ty::TyError = self_type.ty.sty {
+            return;
+        }
+
         // If there are no traits, then this implementation must have a
         // base type.
 
