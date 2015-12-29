@@ -83,6 +83,39 @@ fn option_methods() {
 
 }
 
+/// Struct to generate false positive for FILTER_NEXT lint
+struct FilterNextTest {
+    _foo: u32,
+}
+
+impl FilterNextTest {
+    fn filter(self) -> FilterNextTest {
+        self
+    }
+    fn next(self) -> FilterNextTest {
+        self
+    }
+}
+
+/// Checks implementation of FILTER_NEXT lint
+fn filter_next() {
+    let v = vec![3, 2, 1, 0, -1, -2, -3];
+
+    // check single-line case
+    let _ = v.iter().filter(|&x| *x < 0).next(); //~ERROR called `filter(p).next()` on an Iterator.
+                                                 //~| NOTE replace this
+
+    // check multi-line case
+    let _ = v.iter().filter(|&x| { //~ERROR called `filter(p).next()` on an Iterator.
+                                *x < 0
+                            }
+                   ).next();
+
+    // check that we don't lint if the caller is not an Iterator
+    let foo = FilterNextTest { _foo: 0 };
+    let _ = foo.filter().next();
+}
+
 fn main() {
     use std::io;
 
