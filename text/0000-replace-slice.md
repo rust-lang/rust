@@ -220,3 +220,7 @@ not every program needs it, and standard library growth has a maintainance cost.
 * If coherence rules and backward-compatibility allow it,
   this functionality could be added to `Vec::insert` and `String::insert`
   by overloading them / making them more generic.
+  This would probably require implementing `RangeArgument` for `usize`
+  representing an empty range,
+  though a range of length 1 would maybe make more sense for `Vec::drain`
+  (another user of `RangeArgument`).
