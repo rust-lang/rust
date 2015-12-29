@@ -274,7 +274,7 @@ https://doc.rust-lang.org/reference.html#use-declarations
 "##,
 
 E0401: r##"
-Inner functions do not inherit type parameters from the functions they are
+Inner items do not inherit type parameters from the functions they are
 embedded in. For example, this will not compile:
 
 ```
@@ -286,12 +286,32 @@ fn foo<T>(x: T) {
 }
 ```
 
-Functions inside functions are basically just like top-level functions, except
-that they can only be called from the function they are in.
+nor will this:
+
+```
+fn foo<T>(x: T) {
+    type MaybeT = Option<T>;
+    // ...
+}
+```
+
+or this:
+
+```
+fn foo<T>(x: T) {
+    struct Foo {
+        x: T,
+    }
+    // ...
+}
+```
+
+Items inside functions are basically just like top-level items, except
+that they can only be used from the function they are in.
 
 There are a couple of solutions for this.
 
-You can use a closure:
+If the item is a function, you may use a closure:
 
 ```
 fn foo<T>(x: T) {
@@ -302,7 +322,7 @@ fn foo<T>(x: T) {
 }
 ```
 
-or copy over the parameters:
+For a generic item, you can copy over the parameters:
 
 ```
 fn foo<T>(x: T) {
@@ -310,6 +330,12 @@ fn foo<T>(x: T) {
         // ..
     }
     bar(x);
+}
+```
+
+```
+fn foo<T>(x: T) {
+    type MaybeT<T> = Option<T>;
 }
 ```
 
@@ -324,10 +350,18 @@ fn foo<T: Copy>(x: T) {
 }
 ```
 
+```
+fn foo<T: Copy>(x: T) {
+    struct Foo<T: Copy> {
+        x: T,
+    }
+}
+```
+
 This may require additional type hints in the function body.
 
-In case the function is in an `impl`, defining a private helper function might
-be easier:
+In case the item is a function inside an `impl`, defining a private helper
+function might be easier:
 
 ```
 impl<T> Foo<T> {
