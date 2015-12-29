@@ -82,30 +82,32 @@ impl<T> ReplaceVecSlice<T> for Vec<T> {
         let free_space_start = range_end;
         let free_space_end = free_space_start + iter_len;
 
-        // FIXME: merge the reallocating case with the first ptr::copy below?
-        self.reserve(iter_len);
+        if iter_len > 0 {
+            // FIXME: merge the reallocating case with the first ptr::copy below?
+            self.reserve(iter_len);
 
-        let p = self.as_mut_ptr();
-        unsafe {
-            // In case iter.next() panics, leak some elements rather than risk double-freeing them.
-            self.set_len(free_space_start);
-            // Shift everything over to make space (duplicating some elements).
-            ptr::copy(p.offset(free_space_start as isize),
-                      p.offset(free_space_end as isize),
-                      elements_after);
-            for i in free_space_start..free_space_end {
-                if let Some(new_element) = iter.next() {
-                    *self.get_unchecked_mut(i) = new_element
-                } else {
-                    // Iterator shorter than its ExactSizeIterator::len()
-                    ptr::copy(p.offset(free_space_end as isize),
-                              p.offset(i as isize),
-                              elements_after);
-                    self.set_len(i + elements_after);
-                    return
+            let p = self.as_mut_ptr();
+            unsafe {
+                // In case iter.next() panics, leak some elements rather than risk double-freeing them.
+                self.set_len(free_space_start);
+                // Shift everything over to make space (duplicating some elements).
+                ptr::copy(p.offset(free_space_start as isize),
+                          p.offset(free_space_end as isize),
+                          elements_after);
+                for i in free_space_start..free_space_end {
+                    if let Some(new_element) = iter.next() {
+                        *self.get_unchecked_mut(i) = new_element
+                    } else {
+                        // Iterator shorter than its ExactSizeIterator::len()
+                        ptr::copy(p.offset(free_space_end as isize),
+                                  p.offset(i as isize),
+                                  elements_after);
+                        self.set_len(i + elements_after);
+                        return
+                    }
                 }
+                self.set_len(free_space_end + elements_after);
             }
-            self.set_len(free_space_end + elements_after);
         }
         // Iterator longer than its ExactSizeIterator::len(), degenerate to quadratic time
         for (new_element, i) in iter.zip(free_space_end..) {
@@ -207,3 +209,10 @@ not every program needs it, and standard library growth has a maintainance cost.
 * Naming.
   I accidentally typed `replace_range` instead of `replace_slice` several times
   while typing up this RFC.
+  Update: I’m told `splice` is how this operation is called.
+
+* The method could return an iterator of the replaced elements.
+  Nothing would happen when the method is called,
+  only when the returned iterator is advanced or dropped.
+  There’s is precedent of this in `Vec::drain`,
+  though the input iterator being lazily consumed could be surprising.
