@@ -2670,13 +2670,22 @@ impl<'tcx> TyCtxt<'tcx> {
         Some(self.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
     }
 
-
     pub fn visit_all_items_in_krate<V,F>(&self,
                                          dep_node_fn: F,
                                          visitor: &mut V)
         where F: FnMut(DefId) -> DepNode, V: Visitor<'tcx>
     {
         dep_graph::visit_all_items_in_krate(self, dep_node_fn, visitor);
+    }
+    /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`
+    /// with the name of the crate containing the impl.
+    pub fn span_of_impl(&self, impl_did: DefId) -> Result<Span, String> {
+        if impl_did.is_local() {
+            let node_id = self.map.as_local_node_id(impl_did).unwrap();
+            Ok(self.map.span(node_id))
+        } else {
+            Err(self.sess.cstore.crate_name(impl_did.krate))
+        }
     }
 }
 

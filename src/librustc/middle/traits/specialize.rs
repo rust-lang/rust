@@ -299,6 +299,26 @@ pub fn get_impl_item_or_default<'tcx, I, F>(tcx: &ty::ctxt<'tcx>,
     None
 }
 
+/// Convenience function for locating an item defined in a specialization parent, if any.
+pub fn get_parent_impl_item<'tcx, I, F>(tcx: &ty::ctxt<'tcx>,
+                                        child_impl: DefId,
+                                        f: F)
+                                        -> Option<(I, DefId)>
+    where F: for<'a> FnMut(&ImplOrTraitItem<'tcx>) -> Option<I>
+{
+    let trait_def_id = tcx.trait_id_of_impl(child_impl).unwrap();
+    let trait_def = tcx.lookup_trait_def(trait_def_id);
+
+    trait_def.parent_of_impl(child_impl)
+             .and_then(|parent_impl| get_impl_item_or_default(tcx, parent_impl, f))
+             .and_then(|(item, source)| {
+                 match source {
+                     ItemSource::Trait { .. } => None,
+                     ItemSource::Impl { actual_impl, .. } => Some((item, actual_impl)),
+                 }
+             })
+}
+
 fn skolemizing_subst_for_impl<'a>(tcx: &ty::ctxt<'a>, impl_def_id: DefId) -> Substs<'a> {
     let impl_generics = tcx.lookup_item_type(impl_def_id).generics;
 

@@ -127,7 +127,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 
 use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
-use rustc_front::hir::{Visibility, PatKind};
+use rustc_front::hir::{Visibility, PatKind, Defaultness};
 use rustc_front::print::pprust;
 use rustc_back::slice;
 
@@ -864,6 +864,33 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     check_bare_fn(ccx, &sig.decl, body, id, span, fty, param_env);
 }
 
+fn check_specialization_validity<'tcx, F>(tcx: &ty::ctxt<'tcx>,
+                                          impl_id: DefId,
+                                          impl_item: &hir::ImplItem,
+                                          f: F)
+    where F: FnMut(&ty::ImplOrTraitItem<'tcx>) -> Option<hir::Defaultness>
+{
+    let parent_item_opt = traits::get_parent_impl_item(tcx, impl_id, f);
+    if let Some((Defaultness::Final, parent_impl)) = parent_item_opt {
+        span_err!(tcx.sess, impl_item.span, E0520,
+                  "item `{}` is provided by an implementation that \
+                   specializes another, but the item in the parent \
+                   implementations is not marked `default` and so it \
+                   cannot be specialized.",
+                  impl_item.name);
+
+        match tcx.span_of_impl(parent_impl) {
+            Ok(span) => {
+                span_note!(tcx.sess, span, "parent implementation is here:");
+            }
+            Err(cname) => {
+                tcx.sess.note(&format!("parent implementation is in crate `{}`",
+                                       cname));
+            }
+        }
+    }
+}
+
 fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             impl_span: Span,
                                             impl_id: DefId,
@@ -903,6 +930,15 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   impl_const.name,
                                   impl_trait_ref)
                     }
+
+                    check_specialization_validity(ccx.tcx, impl_id, impl_item, |cand| {
+                        if let &ty::ConstTraitItem(ref trait_const) = cand {
+                            if trait_const.name == impl_item.name {
+                                return Some(trait_const.defaultness);
+                            }
+                        }
+                        None
+                    });
                 }
                 hir::ImplItemKind::Method(ref sig, ref body) => {
                     check_trait_fn_not_const(ccx, impl_item.span, sig.constness);
@@ -926,6 +962,15 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   impl_method.name,
                                   impl_trait_ref)
                     }
+
+                    check_specialization_validity(ccx.tcx, impl_id, impl_item, |cand| {
+                        if let &ty::MethodTraitItem(ref meth) = cand {
+                            if meth.name == impl_method.name {
+                                return Some(meth.defaultness);
+                            }
+                        }
+                        None
+                    });
                 }
                 hir::ImplItemKind::Type(_) => {
                     let impl_type = match ty_impl_item {
@@ -944,6 +989,15 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   impl_type.name,
                                   impl_trait_ref)
                     }
+
+                    check_specialization_validity(ccx.tcx, impl_id, impl_item, |cand| {
+                        if let &ty::TypeTraitItem(ref at) = cand {
+                            if at.name == impl_item.name {
+                                return Some(at.defaultness);
+                            }
+                        }
+                        None
+                    });
                 }
             }
         }
