@@ -75,37 +75,17 @@ mod imp {
     use libc;
     use MIN_ALIGN;
 
-    extern "C" {
-        // Apparently android doesn't have posix_memalign
-        #[cfg(target_os = "android")]
-        fn memalign(align: libc::size_t, size: libc::size_t) -> *mut libc::c_void;
-
-        #[cfg(not(target_os = "android"))]
-        fn posix_memalign(memptr: *mut *mut libc::c_void,
-                          align: libc::size_t,
-                          size: libc::size_t)
-                          -> libc::c_int;
-    }
-
     pub unsafe fn allocate(size: usize, align: usize) -> *mut u8 {
         if align <= MIN_ALIGN {
             libc::malloc(size as libc::size_t) as *mut u8
         } else {
-            #[cfg(target_os = "android")]
-            unsafe fn more_aligned_malloc(size: usize, align: usize) -> *mut u8 {
-                memalign(align as libc::size_t, size as libc::size_t) as *mut u8
+            let mut out = ptr::null_mut();
+            let ret = libc::posix_memalign(&mut out, align as libc::size_t, size as libc::size_t);
+            if ret != 0 {
+                ptr::null_mut()
+            } else {
+                out as *mut u8
             }
-            #[cfg(not(target_os = "android"))]
-            unsafe fn more_aligned_malloc(size: usize, align: usize) -> *mut u8 {
-                let mut out = ptr::null_mut();
-                let ret = posix_memalign(&mut out, align as libc::size_t, size as libc::size_t);
-                if ret != 0 {
-                    ptr::null_mut()
-                } else {
-                    out as *mut u8
-                }
-            }
-            more_aligned_malloc(size, align)
         }
     }
 
