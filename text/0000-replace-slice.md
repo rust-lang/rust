@@ -216,3 +216,7 @@ not every program needs it, and standard library growth has a maintainance cost.
   only when the returned iterator is advanced or dropped.
   There’s is precedent of this in `Vec::drain`,
   though the input iterator being lazily consumed could be surprising.
+
+* If coherence rules and backward-compatibility allow it,
+  this functionality could be added to `Vec::insert` and `String::insert`
+  by overloading them / making them more generic.
