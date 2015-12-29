@@ -61,16 +61,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // assemble a list of candidates: there is one candidate per
         // pattern, which means there may be more than one candidate
         // *per arm*. These candidates are kept sorted such that the
-        // highest priority candidate comes last in the list. This the
-        // reverse of the order in which candidates are written in the
-        // source.
+        // highest priority candidate comes first in the list.
+        // (i.e. same order as in source)
         let candidates: Vec<_> =
             arms.iter()
                 .enumerate()
-                .rev() // highest priority comes last
                 .flat_map(|(arm_index, arm)| {
                     arm.patterns.iter()
-                                .rev()
                                 .map(move |pat| (arm_index, pat, arm.guard.clone()))
                 })
                 .map(|(arm_index, pattern, guard)| {
@@ -290,9 +287,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// The main match algorithm. It begins with a set of candidates
     /// `candidates` and has the job of generating code to determine
     /// which of these candidates, if any, is the correct one. The
-    /// candidates are sorted in inverse priority -- so the last item
-    /// in the list has highest priority. When a candidate is found to
-    /// match the value, we will generate a branch to the appropriate
+    /// candidates are sorted such that the first item in the list
+    /// has the highest priority. When a candidate is found to match
+    /// the value, we will generate a branch to the appropriate
     /// block found in `arm_blocks`.
     ///
     /// The return value is a list of "otherwise" blocks. These are
@@ -324,17 +321,17 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             unpack!(block = self.simplify_candidate(block, candidate));
         }
 
-        // The candidates are inversely sorted by priority. Check to
-        // see whether the candidates in the front of the queue (and
-        // hence back of the vec) have satisfied all their match
+        // The candidates are sorted by priority. Check to see
+        // whether the higher priority candidates (and hence at
+        // the front of the vec) have satisfied all their match
         // pairs.
         let fully_matched =
-            candidates.iter().rev().take_while(|c| c.match_pairs.is_empty()).count();
+            candidates.iter().take_while(|c| c.match_pairs.is_empty()).count();
         debug!("match_candidates: {:?} candidates fully matched", fully_matched);
-        for _ in 0..fully_matched {
+        let mut unmatched_candidates = candidates.split_off(fully_matched);
+        for candidate in candidates {
             // If so, apply any bindings, test the guard (if any), and
             // branch to the arm.
-            let candidate = candidates.pop().unwrap();
             if let Some(b) = self.bind_and_guard_matched_candidate(block, arm_blocks, candidate) {
                 block = b;
             } else {
@@ -346,13 +343,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
         // If there are no candidates that still need testing, we're done.
         // Since all matches are exhaustive, execution should never reach this point.
-        if candidates.is_empty() {
+        if unmatched_candidates.is_empty() {
             return vec![block];
         }
 
         // Test candidates where possible.
         let (otherwise, tested_candidates) =
-            self.test_candidates(span, arm_blocks, &candidates, block);
+            self.test_candidates(span, arm_blocks, &unmatched_candidates, block);
 
         // If the target candidates were exhaustive, then we are done.
         if otherwise.is_empty() {
@@ -361,15 +358,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
         // If all candidates were sorted into `target_candidates` somewhere, then
         // the initial set was inexhaustive.
-        let untested_candidates = candidates.len() - tested_candidates;
-        if untested_candidates == 0 {
+        let untested_candidates = unmatched_candidates.split_off(tested_candidates);
+        if untested_candidates.len() == 0 {
             return otherwise;
         }
 
         // Otherwise, let's process those remaining candidates.
         let join_block = self.join_otherwise_blocks(otherwise);
-        candidates.truncate(untested_candidates);
-        self.match_candidates(span, arm_blocks, candidates, join_block)
+        self.match_candidates(span, arm_blocks, untested_candidates, join_block)
     }
 
     fn join_otherwise_blocks(&mut self,
@@ -461,7 +457,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                              -> (Vec<BasicBlock>, usize)
     {
         // extract the match-pair from the highest priority candidate
-        let match_pair = &candidates.last().unwrap().match_pairs[0];
+        let match_pair = &candidates.first().unwrap().match_pairs[0];
         let mut test = self.test(match_pair);
 
         // most of the time, the test to perform is simply a function
@@ -470,7 +466,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // available
         match test.kind {
             TestKind::SwitchInt { switch_ty, ref mut options, ref mut indices } => {
-                for candidate in candidates.iter().rev() {
+                for candidate in candidates.iter() {
                     if !self.add_cases_to_switch(&match_pair.lvalue,
                                                  candidate,
                                                  switch_ty,
@@ -497,7 +493,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // that point, we stop sorting.
         let tested_candidates =
             candidates.iter()
-                      .rev()
                       .take_while(|c| self.sort_candidate(&match_pair.lvalue,
                                                           &test,
                                                           c,
@@ -512,10 +507,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let otherwise: Vec<_> =
             target_blocks.into_iter()
                          .zip(target_candidates)
-                         .flat_map(|(target_block, mut target_candidates)| {
-                             // We need to preserve the fact that the candidates
-                             // are in the reversed order compared to the source.
-                             target_candidates.reverse();
+                         .flat_map(|(target_block, target_candidates)| {
                              self.match_candidates(span,
                                                    arm_blocks,
                                                    target_candidates,
