@@ -88,6 +88,16 @@ impl SpecializationGraph {
                 let overlap = traits::overlapping_impls(&infcx, possible_sibling, impl_def_id);
 
                 if let Some(trait_ref) = overlap {
+                    if !tcx.sess.features.borrow().specialization {
+                        // if specialization is not turned on, all overlaps
+                        // should immediately trigger an error
+
+                        return Err(Overlap {
+                            with_impl: possible_sibling,
+                            on_trait_ref: trait_ref,
+                        });
+                    }
+
                     let le = specializes(tcx, impl_def_id, possible_sibling);
                     let ge = specializes(tcx, possible_sibling, impl_def_id);
 
