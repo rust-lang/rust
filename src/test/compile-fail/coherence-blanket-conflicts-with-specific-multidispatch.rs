@@ -18,7 +18,7 @@ trait MyTrait<T> {
     fn get(&self) -> T;
 }
 
-impl<T> MyTrait<T> for T { //~ ERROR E0119
+impl<T> MyTrait<T> for T {
     fn get(&self) -> T {
         panic!()
     }
@@ -29,7 +29,7 @@ struct MyType {
     dummy: usize
 }
 
-impl MyTrait<MyType> for MyType {
+impl MyTrait<MyType> for MyType { //~ ERROR E0119
     fn get(&self) -> usize { (*self).clone() }
 }
 

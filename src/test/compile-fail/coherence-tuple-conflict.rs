@@ -18,11 +18,11 @@ trait MyTrait {
     fn get(&self) -> usize;
 }
 
-impl<T> MyTrait for (T,T) { //~ ERROR E0119
+impl<T> MyTrait for (T,T) {
     fn get(&self) -> usize { 0 }
 }
 
-impl<A,B> MyTrait for (A,B) {
+impl<A,B> MyTrait for (A,B) { //~ ERROR E0119
     fn get(&self) -> usize { self.dummy }
 }
 
