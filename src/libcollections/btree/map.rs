@@ -1435,7 +1435,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
 
         // Handle underflow
         let mut cur_node = small_leaf.forget_type();
-        while cur_node.len() < cur_node.capacity() / 2 {
+        while cur_node.len() < node::CAPACITY / 2 {
             match handle_underfull_node(cur_node) {
                 AtRoot => break,
                 EmptyParent(_) => unreachable!(),

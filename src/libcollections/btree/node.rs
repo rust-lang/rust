@@ -41,10 +41,11 @@ use core::slice;
 use boxed::Box;
 
 const B: usize = 6;
+pub const CAPACITY: usize = 2 * B - 1;
 
 struct LeafNode<K, V> {
-    keys: [K; 2 * B - 1],
-    vals: [V; 2 * B - 1],
+    keys: [K; CAPACITY],
+    vals: [V; CAPACITY],
     parent: *mut InternalNode<K, V>,
     parent_idx: u16,
     len: u16,
@@ -277,10 +278,6 @@ impl<Lifetime, K, V, Mutability, Type> NodeRef<Lifetime, K, V, Mutability, Type>
         self.as_leaf().len as usize
     }
 
-    pub fn capacity(&self) -> usize {
-        2 * B - 1
-    }
-
     pub fn forget_type(self) -> NodeRef<Lifetime, K, V, Mutability, marker::LeafOrInternal> {
         NodeRef {
             height: self.height,
@@ -474,7 +471,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Borrowed<'a>, K, V, marker::Mut, Ty
 impl<Lifetime, K, V> NodeRef<Lifetime, K, V, marker::Mut, marker::Leaf> {
     pub fn push(&mut self, key: K, val: V) {
         // Necessary for correctness, but this is an internal module
-        debug_assert!(self.len() < self.capacity());
+        debug_assert!(self.len() < CAPACITY);
 
         let idx = self.len();
 
@@ -488,7 +485,7 @@ impl<Lifetime, K, V> NodeRef<Lifetime, K, V, marker::Mut, marker::Leaf> {
 
     pub fn push_front(&mut self, key: K, val: V) {
         // Necessary for correctness, but this is an internal module
-        debug_assert!(self.len() < self.capacity());
+        debug_assert!(self.len() < CAPACITY);
 
         unsafe {
             slice_insert(self.keys_mut(), 0, key);
@@ -503,7 +500,7 @@ impl<Lifetime, K, V> NodeRef<Lifetime, K, V, marker::Mut, marker::Internal> {
     pub fn push(&mut self, key: K, val: V, edge: Root<K, V>) {
         // Necessary for correctness, but this is an internal module
         debug_assert!(edge.height == self.height - 1);
-        debug_assert!(self.len() < self.capacity());
+        debug_assert!(self.len() < CAPACITY);
 
         let idx = self.len();
 
@@ -521,7 +518,7 @@ impl<Lifetime, K, V> NodeRef<Lifetime, K, V, marker::Mut, marker::Internal> {
     pub fn push_front(&mut self, key: K, val: V, edge: Root<K, V>) {
         // Necessary for correctness, but this is an internal module
         debug_assert!(edge.height == self.height - 1);
-        debug_assert!(self.len() < self.capacity());
+        debug_assert!(self.len() < CAPACITY);
 
         unsafe {
             slice_insert(self.keys_mut(), 0, key);
@@ -548,7 +545,7 @@ impl<Lifetime, K, V> NodeRef<Lifetime, K, V, marker::Mut, marker::Internal> {
 impl<Lifetime, K, V> NodeRef<Lifetime, K, V, marker::Mut, marker::LeafOrInternal> {
     pub fn pop(&mut self) -> (K, V, Option<Root<K, V>>) {
         // Necessary for correctness, but this is an internal module
-        debug_assert!(self.len() > self.capacity()/2);
+        debug_assert!(self.len() > 0);
 
         let idx = self.len() - 1;
 
@@ -572,7 +569,7 @@ impl<Lifetime, K, V> NodeRef<Lifetime, K, V, marker::Mut, marker::LeafOrInternal
 
     pub fn pop_front(&mut self) -> (K, V, Option<Root<K, V>>) {
         // Necessary for correctness, but this is an internal module
-        debug_assert!(self.len() > self.capacity()/2);
+        debug_assert!(self.len() > 0);
 
         let old_len = self.len();
 
@@ -737,7 +734,7 @@ impl<Lifetime, K, V> Handle<NodeRef<Lifetime, K, V, marker::Mut, marker::Leaf>, 
     pub fn insert(mut self, key: K, val: V)
             -> (InsertResult<Lifetime, K, V, marker::Leaf>, *mut V) {
 
-        if self.node.len() < self.node.capacity() {
+        if self.node.len() < CAPACITY {
             unsafe {
                 let ptr = self.insert_unchecked(key, val);
                 (InsertResult::Fit(Handle::new(self.node, self.idx)), ptr)
@@ -800,7 +797,7 @@ impl<Lifetime, K, V> Handle<NodeRef<Lifetime, K, V, marker::Mut, marker::Interna
         // Necessary for correctness, but this is an internal module
         debug_assert!(edge.height == self.node.height - 1);
 
-        if self.node.len() < self.node.capacity() {
+        if self.node.len() < CAPACITY {
             unsafe {
                 self.insert_unchecked(key, val, edge);
                 InsertResult::Fit(Handle::new(self.node, self.idx))
@@ -975,7 +972,7 @@ impl<Lifetime, K, V> Handle<NodeRef<Lifetime, K, V, marker::Mut, marker::Interna
                 .descend()
                 .len()
           + 1
-        ) <= self.node.capacity()
+        ) <= CAPACITY
     }
 
     pub fn merge(mut self)
@@ -988,7 +985,7 @@ impl<Lifetime, K, V> Handle<NodeRef<Lifetime, K, V, marker::Mut, marker::Interna
         let right_len = right_node.len();
 
         // necessary for correctness, but in a private module
-        debug_assert!(left_len + right_len + 1 <= left_node.capacity());
+        debug_assert!(left_len + right_len + 1 <= CAPACITY);
 
         unsafe {
             ptr::write(left_node.keys_mut().get_unchecked_mut(left_len),
