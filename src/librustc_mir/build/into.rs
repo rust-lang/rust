@@ -14,7 +14,7 @@
 //! wrapped up as expressions (e.g. blocks). To make this ergonomic, we use this
 //! latter `EvalInto` trait.
 
-use build::{BlockAnd, BlockAndExtension, Builder};
+use build::{BlockAnd, Builder};
 use hair::*;
 use rustc::mir::repr::*;
 
@@ -56,18 +56,5 @@ impl<'tcx> EvalInto<'tcx> for Expr<'tcx> {
                      block: BasicBlock)
                      -> BlockAnd<()> {
         builder.into_expr(destination, block, self)
-    }
-}
-
-impl<'tcx> EvalInto<'tcx> for Option<ExprRef<'tcx>> {
-    fn eval_into<'a>(self,
-                     builder: &mut Builder<'a, 'tcx>,
-                     destination: &Lvalue<'tcx>,
-                     block: BasicBlock)
-                     -> BlockAnd<()> {
-        match self {
-            Some(expr) => builder.into(destination, block, expr),
-            None => block.unit(),
-        }
     }
 }
