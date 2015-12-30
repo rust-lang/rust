@@ -10,6 +10,8 @@
 
 // aux-build:specialization_cross_crate.rs
 
+#![feature(specialization)]
+
 extern crate specialization_cross_crate;
 
 use specialization_cross_crate::*;

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(specialization)]
+
 trait Foo {}
 impl<T: Clone> Foo for T {}
 impl<T> Foo for Vec<T> {} //~ ERROR E0119

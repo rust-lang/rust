@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(specialization)]
+
 // Test that you can specialize via an explicit trait hierarchy
 
 // FIXME: this doesn't work yet...

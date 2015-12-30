@@ -8,36 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(specialization)]
-
 trait Foo {
     fn foo(&self);
-    fn bar(&self);
 }
 
 impl<T> Foo for T {
-    fn foo(&self) {}
-    fn bar(&self) {}
-}
-
-impl Foo for u8 {}
-impl Foo for u16 {
-    fn foo(&self) {} //~ ERROR E0520
-}
-impl Foo for u32 {
-    fn bar(&self) {} //~ ERROR E0520
-}
-
-trait Bar {
-    type T;
-}
-
-impl<T> Bar for T {
-    type T = u8;
-}
-
-impl Bar for u8 {
-    type T = (); //~ ERROR E0520
+    default fn foo(&self) {} //~ ERROR
 }
 
 fn main() {}

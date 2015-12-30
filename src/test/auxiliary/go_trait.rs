@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(specialization)]
+
 // Common code used for tests that model the Fn/FnMut/FnOnce hierarchy.
 
 pub trait Go {
