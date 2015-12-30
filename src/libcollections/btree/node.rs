@@ -17,10 +17,10 @@
 // }
 //
 // struct Node<K, V, height: usize> {
-//     keys: [K; 2 * T - 1],
-//     vals: [V; 2 * T - 1],
+//     keys: [K; 2 * B - 1],
+//     vals: [V; 2 * B - 1],
 //     edges: if height > 0 {
-//         [Box<Node<K, V, height - 1>>; 2 * T]
+//         [Box<Node<K, V, height - 1>>; 2 * B]
 //     } else { () },
 //     parent: *mut Node<K, V, height + 1>,
 //     parent_idx: u16,
@@ -40,11 +40,11 @@ use core::slice;
 
 use boxed::Box;
 
-const T: usize = 6;
+const B: usize = 6;
 
 struct LeafNode<K, V> {
-    keys: [K; 2 * T - 1],
-    vals: [V; 2 * T - 1],
+    keys: [K; 2 * B - 1],
+    vals: [V; 2 * B - 1],
     parent: *mut InternalNode<K, V>,
     parent_idx: u16,
     len: u16,
@@ -67,7 +67,7 @@ impl<K, V> LeafNode<K, V> {
 #[repr(C)]
 struct InternalNode<K, V> {
     data: LeafNode<K, V>,
-    edges: [BoxedNode<K, V>; 2 * T],
+    edges: [BoxedNode<K, V>; 2 * B],
 }
 
 impl<K, V> InternalNode<K, V> {
@@ -278,7 +278,7 @@ impl<Lifetime, K, V, Mutability, Type> NodeRef<Lifetime, K, V, Mutability, Type>
     }
 
     pub fn capacity(&self) -> usize {
-        2 * T - 1
+        2 * B - 1
     }
 
     pub fn forget_type(self) -> NodeRef<Lifetime, K, V, Mutability, marker::LeafOrInternal> {
@@ -743,9 +743,9 @@ impl<Lifetime, K, V> Handle<NodeRef<Lifetime, K, V, marker::Mut, marker::Leaf>, 
                 (InsertResult::Fit(Handle::new(self.node, self.idx)), ptr)
             }
         } else {
-            let middle = unsafe { Handle::new(self.node, T) };
+            let middle = unsafe { Handle::new(self.node, B) };
             let (mut left, k, v, mut right) = middle.split();
-            let ptr = if self.idx <= T {
+            let ptr = if self.idx <= B {
                 unsafe {
                     Handle::new(left.reborrow_mut(), self.idx).insert_unchecked(key, val)
                 }
@@ -753,7 +753,7 @@ impl<Lifetime, K, V> Handle<NodeRef<Lifetime, K, V, marker::Mut, marker::Leaf>, 
                 unsafe {
                     Handle::new(
                         right.as_mut().cast_unchecked::<marker::Leaf>(),
-                        self.idx - T - 1
+                        self.idx - B - 1
                     ).insert_unchecked(key, val)
                 }
             };
@@ -806,9 +806,9 @@ impl<Lifetime, K, V> Handle<NodeRef<Lifetime, K, V, marker::Mut, marker::Interna
                 InsertResult::Fit(Handle::new(self.node, self.idx))
             }
         } else {
-            let middle = unsafe { Handle::new(self.node, T) };
+            let middle = unsafe { Handle::new(self.node, B) };
             let (mut left, k, v, mut right) = middle.split();
-            if self.idx <= T {
+            if self.idx <= B {
                 unsafe {
                     Handle::new(left.reborrow_mut(), self.idx).insert_unchecked(key, val, edge);
                 }
@@ -816,7 +816,7 @@ impl<Lifetime, K, V> Handle<NodeRef<Lifetime, K, V, marker::Mut, marker::Interna
                 unsafe {
                     Handle::new(
                         right.as_mut().cast_unchecked::<marker::Internal>(),
-                        self.idx - T - 1
+                        self.idx - B - 1
                     ).insert_unchecked(key, val, edge);
                 }
             }
