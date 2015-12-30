@@ -539,6 +539,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "explicitly enable the cfg(debug_assertions) directive"),
     inline_threshold: Option<usize> = (None, parse_opt_uint,
         "set the inlining threshold for"),
+    disable_gold: bool = (false, parse_bool,
+        "disable use of the ld.gold linker"),
 }
 
 
