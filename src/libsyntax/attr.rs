@@ -305,8 +305,10 @@ pub fn find_export_name_attr(diag: &Handler, attrs: &[Attribute]) -> Option<Inte
             if let s@Some(_) = attr.value_str() {
                 s
             } else {
-                diag.span_err(attr.span, "export_name attribute has invalid format");
-                diag.help("use #[export_name=\"*\"]");
+                diag.struct_span_err(attr.span,
+                                     "export_name attribute has invalid format")
+                    .help("use #[export_name=\"*\"]")
+                    .emit();
                 None
             }
         } else {

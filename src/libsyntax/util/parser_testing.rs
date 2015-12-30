@@ -30,10 +30,9 @@ pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a>
                                source_str)
 }
 
-fn with_error_checking_parse<T, F>(s: String, f: F) -> T where
-    F: FnOnce(&mut Parser) -> PResult<T>,
+fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T where
+    F: FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
 {
-    let ps = ParseSess::new();
     let mut p = string_to_parser(&ps, s);
     let x = panictry!(f(&mut p));
     p.abort_if_errors();
@@ -42,28 +41,32 @@ fn with_error_checking_parse<T, F>(s: String, f: F) -> T where
 
 /// Parse a string, return a crate.
 pub fn string_to_crate (source_str : String) -> ast::Crate {
-    with_error_checking_parse(source_str, |p| {
+    let ps = ParseSess::new();
+    with_error_checking_parse(source_str, &ps, |p| {
         p.parse_crate_mod()
     })
 }
 
 /// Parse a string, return an expr
 pub fn string_to_expr (source_str : String) -> P<ast::Expr> {
-    with_error_checking_parse(source_str, |p| {
+    let ps = ParseSess::new();
+    with_error_checking_parse(source_str, &ps, |p| {
         p.parse_expr()
     })
 }
 
 /// Parse a string, return an item
 pub fn string_to_item (source_str : String) -> Option<P<ast::Item>> {
-    with_error_checking_parse(source_str, |p| {
+    let ps = ParseSess::new();
+    with_error_checking_parse(source_str, &ps, |p| {
         p.parse_item()
     })
 }
 
 /// Parse a string, return a stmt
 pub fn string_to_stmt(source_str : String) -> Option<P<ast::Stmt>> {
-    with_error_checking_parse(source_str, |p| {
+    let ps = ParseSess::new();
+    with_error_checking_parse(source_str, &ps, |p| {
         p.parse_stmt()
     })
 }
@@ -71,7 +74,8 @@ pub fn string_to_stmt(source_str : String) -> Option<P<ast::Stmt>> {
 /// Parse a string, return a pat. Uses "irrefutable"... which doesn't
 /// (currently) affect parsing.
 pub fn string_to_pat(source_str: String) -> P<ast::Pat> {
-    with_error_checking_parse(source_str, |p| {
+    let ps = ParseSess::new();
+    with_error_checking_parse(source_str, &ps, |p| {
         p.parse_pat()
     })
 }

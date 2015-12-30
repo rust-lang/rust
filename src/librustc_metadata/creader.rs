@@ -35,6 +35,7 @@ use syntax::codemap::{self, Span, mk_sp, Pos};
 use syntax::parse;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
+use syntax::errors::FatalError;
 use syntax::parse::token::InternedString;
 use syntax::util::small_vector::SmallVector;
 use rustc_front::intravisit::Visitor;
@@ -504,7 +505,10 @@ impl<'a> CrateReader<'a> {
                 let lo = p.span.lo;
                 let body = match p.parse_all_token_trees() {
                     Ok(body) => body,
-                    Err(err) => panic!(err),
+                    Err(mut err) => {
+                        err.emit();
+                        panic!(FatalError);
+                    }
                 };
                 let span = mk_sp(lo, p.last_span.hi);
                 p.abort_if_errors();

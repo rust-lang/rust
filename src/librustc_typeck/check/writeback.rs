@@ -129,13 +129,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                             !self.fcx.expr_ty(lhs).references_error() &&
                             !self.fcx.expr_ty(rhs).references_error()
                         {
-                            tcx.sess.span_err(
-                                e.span,
-                                "overloaded augmented assignments are not stable");
-                            fileline_help!(
-                                tcx.sess, e.span,
-                                "add #![feature(augmented_assignments)] to the crate root \
-                                 to enable");
+                            tcx.sess.struct_span_err(e.span,
+                                                     "overloaded augmented assignments \
+                                                      are not stable")
+                                .fileline_help(e.span,
+                                               "add #![feature(augmented_assignments)] to the \
+                                                crate root to enable")
+                                .emit()
                         }
                     }
                 }

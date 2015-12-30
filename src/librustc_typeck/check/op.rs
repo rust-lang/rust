@@ -187,10 +187,10 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               hir_util::binop_to_string(op.node),
                               lhs_ty);
                 } else {
-                    span_err!(fcx.tcx().sess, lhs_expr.span, E0369,
-                              "binary operation `{}` cannot be applied to type `{}`",
-                              hir_util::binop_to_string(op.node),
-                              lhs_ty);
+                    let mut err = struct_span_err!(fcx.tcx().sess, lhs_expr.span, E0369,
+                        "binary operation `{}` cannot be applied to type `{}`",
+                        hir_util::binop_to_string(op.node),
+                        lhs_ty);
                     let missing_trait = match op.node {
                         hir::BiAdd    => Some("std::ops::Add"),
                         hir::BiSub    => Some("std::ops::Sub"),
@@ -208,10 +208,11 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     };
 
                     if let Some(missing_trait) = missing_trait {
-                        span_note!(fcx.tcx().sess, lhs_expr.span,
+                        span_note!(&mut err, lhs_expr.span,
                                    "an implementation of `{}` might be missing for `{}`",
                                     missing_trait, lhs_ty);
                     }
+                    err.emit();
                 }
             }
             fcx.tcx().types.err

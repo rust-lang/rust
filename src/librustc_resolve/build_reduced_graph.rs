@@ -24,7 +24,7 @@ use {names_to_string, module_to_string};
 use ParentLink::{self, ModuleParentLink, BlockParentLink};
 use Resolver;
 use resolve_imports::Shadowable;
-use {resolve_error, ResolutionError};
+use {resolve_error, resolve_struct_error, ResolutionError};
 
 use self::DuplicateCheckingMode::*;
 
@@ -137,12 +137,16 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 // Record an error here by looking up the namespace that had the duplicate
                 let ns_str = match ns { TypeNS => "type or module", ValueNS => "value" };
-                resolve_error(self, sp, ResolutionError::DuplicateDefinition(ns_str, name));
+                let mut err = resolve_struct_error(self,
+                                                   sp,
+                                                   ResolutionError::DuplicateDefinition(ns_str,
+                                                                                        name));
 
                 if let Some(sp) = child[ns].span() {
                     let note = format!("first definition of {} `{}` here", ns_str, name);
-                    self.session.span_note(sp, &note);
+                    err.span_note(sp, &note);
                 }
+                err.emit();
                 child
             }
         }
@@ -253,13 +257,13 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                     })
                                                     .collect::<Vec<Span>>();
                         if mod_spans.len() > 1 {
-                            resolve_error(self,
+                            let mut e = resolve_struct_error(self,
                                           mod_spans[0],
                                           ResolutionError::SelfImportCanOnlyAppearOnceInTheList);
                             for other_span in mod_spans.iter().skip(1) {
-                                self.session
-                                    .span_note(*other_span, "another `self` import appears here");
+                                e.span_note(*other_span, "another `self` import appears here");
                             }
+                            e.emit();
                         }
 
                         for source_item in source_items {

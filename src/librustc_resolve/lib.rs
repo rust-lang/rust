@@ -63,8 +63,9 @@ use syntax::ast;
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
 use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64, TyF64, TyF32};
 use syntax::attr::AttrMetaMethods;
-use syntax::parse::token::{self, special_names, special_idents};
 use syntax::codemap::{self, Span, Pos};
+use syntax::errors::DiagnosticBuilder;
+use syntax::parse::token::{self, special_names, special_idents};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use rustc_front::intravisit::{self, FnKind, Visitor};
@@ -215,210 +216,221 @@ pub enum UnresolvedNameContext {
 fn resolve_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                                        span: syntax::codemap::Span,
                                        resolution_error: ResolutionError<'b>) {
+    resolve_struct_error(resolver, span, resolution_error).emit();
+}
+
+fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
+                                              span: syntax::codemap::Span,
+                                              resolution_error: ResolutionError<'b>)
+                                              -> DiagnosticBuilder<'a> {
     if !resolver.emit_errors {
-        return;
+        return resolver.session.diagnostic().struct_dummy();
     }
+
     match resolution_error {
         ResolutionError::TypeParametersFromOuterFunction => {
-            span_err!(resolver.session,
-                      span,
-                      E0401,
-                      "can't use type parameters from outer function; try using a local type \
-                       parameter instead");
+            struct_span_err!(resolver.session,
+                             span,
+                             E0401,
+                             "can't use type parameters from outer function; try using a local \
+                              type parameter instead")
         }
         ResolutionError::OuterTypeParameterContext => {
-            span_err!(resolver.session,
-                      span,
-                      E0402,
-                      "cannot use an outer type parameter in this context");
+            struct_span_err!(resolver.session,
+                             span,
+                             E0402,
+                             "cannot use an outer type parameter in this context")
         }
         ResolutionError::NameAlreadyUsedInTypeParameterList(name) => {
-            span_err!(resolver.session,
-                      span,
-                      E0403,
-                      "the name `{}` is already used for a type parameter in this type parameter \
-                       list",
-                      name);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0403,
+                             "the name `{}` is already used for a type parameter in this type \
+                              parameter list",
+                             name)
         }
         ResolutionError::IsNotATrait(name) => {
-            span_err!(resolver.session, span, E0404, "`{}` is not a trait", name);
+            struct_span_err!(resolver.session, span, E0404, "`{}` is not a trait", name)
         }
         ResolutionError::UndeclaredTraitName(name) => {
-            span_err!(resolver.session,
-                      span,
-                      E0405,
-                      "use of undeclared trait name `{}`",
-                      name);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0405,
+                             "use of undeclared trait name `{}`",
+                             name)
         }
         ResolutionError::UndeclaredAssociatedType => {
-            span_err!(resolver.session, span, E0406, "undeclared associated type");
+            struct_span_err!(resolver.session, span, E0406, "undeclared associated type")
         }
         ResolutionError::MethodNotMemberOfTrait(method, trait_) => {
-            span_err!(resolver.session,
-                      span,
-                      E0407,
-                      "method `{}` is not a member of trait `{}`",
-                      method,
-                      trait_);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0407,
+                             "method `{}` is not a member of trait `{}`",
+                             method,
+                             trait_)
         }
         ResolutionError::TypeNotMemberOfTrait(type_, trait_) => {
-            span_err!(resolver.session,
-                      span,
-                      E0437,
-                      "type `{}` is not a member of trait `{}`",
-                      type_,
-                      trait_);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0437,
+                             "type `{}` is not a member of trait `{}`",
+                             type_,
+                             trait_)
         }
         ResolutionError::ConstNotMemberOfTrait(const_, trait_) => {
-            span_err!(resolver.session,
-                      span,
-                      E0438,
-                      "const `{}` is not a member of trait `{}`",
-                      const_,
-                      trait_);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0438,
+                             "const `{}` is not a member of trait `{}`",
+                             const_,
+                             trait_)
         }
         ResolutionError::VariableNotBoundInPattern(variable_name, pattern_number) => {
-            span_err!(resolver.session,
-                      span,
-                      E0408,
-                      "variable `{}` from pattern #1 is not bound in pattern #{}",
-                      variable_name,
-                      pattern_number);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0408,
+                             "variable `{}` from pattern #1 is not bound in pattern #{}",
+                             variable_name,
+                             pattern_number)
         }
         ResolutionError::VariableBoundWithDifferentMode(variable_name, pattern_number) => {
-            span_err!(resolver.session,
-                      span,
-                      E0409,
-                      "variable `{}` is bound with different mode in pattern #{} than in pattern \
-                       #1",
-                      variable_name,
-                      pattern_number);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0409,
+                             "variable `{}` is bound with different mode in pattern #{} than in \
+                              pattern #1",
+                             variable_name,
+                             pattern_number)
         }
         ResolutionError::VariableNotBoundInParentPattern(variable_name, pattern_number) => {
-            span_err!(resolver.session,
-                      span,
-                      E0410,
-                      "variable `{}` from pattern #{} is not bound in pattern #1",
-                      variable_name,
-                      pattern_number);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0410,
+                             "variable `{}` from pattern #{} is not bound in pattern #1",
+                             variable_name,
+                             pattern_number)
         }
         ResolutionError::SelfUsedOutsideImplOrTrait => {
-            span_err!(resolver.session,
-                      span,
-                      E0411,
-                      "use of `Self` outside of an impl or trait");
+            struct_span_err!(resolver.session,
+                             span,
+                             E0411,
+                             "use of `Self` outside of an impl or trait")
         }
         ResolutionError::UseOfUndeclared(kind, name) => {
-            span_err!(resolver.session,
-                      span,
-                      E0412,
-                      "use of undeclared {} `{}`",
-                      kind,
-                      name);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0412,
+                             "use of undeclared {} `{}`",
+                             kind,
+                             name)
         }
         ResolutionError::DeclarationShadowsEnumVariantOrUnitLikeStruct(name) => {
-            span_err!(resolver.session,
-                      span,
-                      E0413,
-                      "declaration of `{}` shadows an enum variant or unit-like struct in scope",
-                      name);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0413,
+                             "declaration of `{}` shadows an enum variant \
+                              or unit-like struct in scope",
+                             name)
         }
         ResolutionError::OnlyIrrefutablePatternsAllowedHere(did, name) => {
-            span_err!(resolver.session,
-                      span,
-                      E0414,
-                      "only irrefutable patterns allowed here");
-            resolver.session.span_note(span,
-                                       "there already is a constant in scope sharing the same \
-                                        name as this pattern");
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0414,
+                                           "only irrefutable patterns allowed here");
+            err.span_note(span,
+                          "there already is a constant in scope sharing the same \
+                           name as this pattern");
             if let Some(sp) = resolver.ast_map.span_if_local(did) {
-                resolver.session.span_note(sp, "constant defined here");
+                err.span_note(sp, "constant defined here");
             }
             if let Some(directive) = resolver.current_module
                                              .import_resolutions
                                              .borrow()
                                              .get(&name) {
                 let item = resolver.ast_map.expect_item(directive.value_ns.id);
-                resolver.session.span_note(item.span, "constant imported here");
+                err.span_note(item.span, "constant imported here");
             }
+            err
         }
         ResolutionError::IdentifierBoundMoreThanOnceInParameterList(identifier) => {
-            span_err!(resolver.session,
-                      span,
-                      E0415,
-                      "identifier `{}` is bound more than once in this parameter list",
-                      identifier);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0415,
+                             "identifier `{}` is bound more than once in this parameter list",
+                             identifier)
         }
         ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(identifier) => {
-            span_err!(resolver.session,
-                      span,
-                      E0416,
-                      "identifier `{}` is bound more than once in the same pattern",
-                      identifier);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0416,
+                             "identifier `{}` is bound more than once in the same pattern",
+                             identifier)
         }
         ResolutionError::StaticVariableReference => {
-            span_err!(resolver.session,
-                      span,
-                      E0417,
-                      "static variables cannot be referenced in a pattern, use a `const` instead");
+            struct_span_err!(resolver.session,
+                             span,
+                             E0417,
+                             "static variables cannot be referenced in a pattern, use a \
+                              `const` instead")
         }
         ResolutionError::NotAnEnumVariantStructOrConst(name) => {
-            span_err!(resolver.session,
-                      span,
-                      E0418,
-                      "`{}` is not an enum variant, struct or const",
-                      name);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0418,
+                             "`{}` is not an enum variant, struct or const",
+                             name)
         }
         ResolutionError::UnresolvedEnumVariantStructOrConst(name) => {
-            span_err!(resolver.session,
-                      span,
-                      E0419,
-                      "unresolved enum variant, struct or const `{}`",
-                      name);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0419,
+                             "unresolved enum variant, struct or const `{}`",
+                             name)
         }
         ResolutionError::NotAnAssociatedConst(name) => {
-            span_err!(resolver.session,
-                      span,
-                      E0420,
-                      "`{}` is not an associated const",
-                      name);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0420,
+                             "`{}` is not an associated const",
+                             name)
         }
         ResolutionError::UnresolvedAssociatedConst(name) => {
-            span_err!(resolver.session,
-                      span,
-                      E0421,
-                      "unresolved associated const `{}`",
-                      name);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0421,
+                             "unresolved associated const `{}`",
+                             name)
         }
         ResolutionError::DoesNotNameAStruct(name) => {
-            span_err!(resolver.session,
-                      span,
-                      E0422,
-                      "`{}` does not name a structure",
-                      name);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0422,
+                             "`{}` does not name a structure",
+                             name)
         }
         ResolutionError::StructVariantUsedAsFunction(path_name) => {
-            span_err!(resolver.session,
-                      span,
-                      E0423,
-                      "`{}` is the name of a struct or struct variant, but this expression uses \
-                       it like a function name",
-                      path_name);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0423,
+                             "`{}` is the name of a struct or struct variant, but this expression \
+                             uses it like a function name",
+                             path_name)
         }
         ResolutionError::SelfNotAvailableInStaticMethod => {
-            span_err!(resolver.session,
-                      span,
-                      E0424,
-                      "`self` is not available in a static method. Maybe a `self` argument is \
-                       missing?");
+            struct_span_err!(resolver.session,
+                             span,
+                             E0424,
+                             "`self` is not available in a static method. Maybe a `self` \
+                             argument is missing?")
         }
         ResolutionError::UnresolvedName(path, msg, context) => {
-            span_err!(resolver.session,
-                      span,
-                      E0425,
-                      "unresolved name `{}`{}",
-                      path,
-                      msg);
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0425,
+                                           "unresolved name `{}`{}",
+                                           path,
+                                           msg);
 
             match context {
                 UnresolvedNameContext::Other => {} // no help available
@@ -448,75 +460,77 @@ fn resolve_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                     }
 
                     if !help_msg.is_empty() {
-                        resolver.session.fileline_help(span, &help_msg);
+                        err.fileline_help(span, &help_msg);
                     }
                 }
             }
+            err
         }
         ResolutionError::UndeclaredLabel(name) => {
-            span_err!(resolver.session,
-                      span,
-                      E0426,
-                      "use of undeclared label `{}`",
-                      name);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0426,
+                             "use of undeclared label `{}`",
+                             name)
         }
         ResolutionError::CannotUseRefBindingModeWith(descr) => {
-            span_err!(resolver.session,
-                      span,
-                      E0427,
-                      "cannot use `ref` binding mode with {}",
-                      descr);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0427,
+                             "cannot use `ref` binding mode with {}",
+                             descr)
         }
         ResolutionError::DuplicateDefinition(namespace, name) => {
-            span_err!(resolver.session,
-                      span,
-                      E0428,
-                      "duplicate definition of {} `{}`",
-                      namespace,
-                      name);
+            struct_span_err!(resolver.session,
+                             span,
+                             E0428,
+                             "duplicate definition of {} `{}`",
+                             namespace,
+                             name)
         }
         ResolutionError::SelfImportsOnlyAllowedWithin => {
-            span_err!(resolver.session,
-                      span,
-                      E0429,
-                      "{}",
-                      "`self` imports are only allowed within a { } list");
+            struct_span_err!(resolver.session,
+                             span,
+                             E0429,
+                             "{}",
+                             "`self` imports are only allowed within a { } list")
         }
         ResolutionError::SelfImportCanOnlyAppearOnceInTheList => {
-            span_err!(resolver.session,
-                      span,
-                      E0430,
-                      "`self` import can only appear once in the list");
+            struct_span_err!(resolver.session,
+                             span,
+                             E0430,
+                             "`self` import can only appear once in the list")
         }
         ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix => {
-            span_err!(resolver.session,
-                      span,
-                      E0431,
-                      "`self` import can only appear in an import list with a non-empty prefix");
+            struct_span_err!(resolver.session,
+                             span,
+                             E0431,
+                             "`self` import can only appear in an import list with a \
+                              non-empty prefix")
         }
         ResolutionError::UnresolvedImport(name) => {
             let msg = match name {
                 Some((n, p)) => format!("unresolved import `{}`{}", n, p),
                 None => "unresolved import".to_owned(),
             };
-            span_err!(resolver.session, span, E0432, "{}", msg);
+            struct_span_err!(resolver.session, span, E0432, "{}", msg)
         }
         ResolutionError::FailedToResolve(msg) => {
-            span_err!(resolver.session, span, E0433, "failed to resolve. {}", msg);
+            struct_span_err!(resolver.session, span, E0433, "failed to resolve. {}", msg)
         }
         ResolutionError::CannotCaptureDynamicEnvironmentInFnItem => {
-            span_err!(resolver.session,
-                      span,
-                      E0434,
-                      "{}",
-                      "can't capture dynamic environment in a fn item; use the || { ... } \
-                       closure form instead");
+            struct_span_err!(resolver.session,
+                             span,
+                             E0434,
+                             "{}",
+                             "can't capture dynamic environment in a fn item; use the || { ... } \
+                              closure form instead")
         }
         ResolutionError::AttemptToUseNonConstantValueInConstant => {
-            span_err!(resolver.session,
-                      span,
-                      E0435,
-                      "attempt to use a non-constant value in a constant");
+            struct_span_err!(resolver.session,
+                             span,
+                             E0435,
+                             "attempt to use a non-constant value in a constant")
         }
     }
 }
@@ -2180,16 +2194,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 debug!("(resolving trait) found trait def: {:?}", path_res);
                 Ok(path_res)
             } else {
-                resolve_error(self,
-                              trait_path.span,
-                              ResolutionError::IsNotATrait(&*path_names_to_string(trait_path,
-                                                                                  path_depth)));
+                let mut err =
+                    resolve_struct_error(self,
+                                  trait_path.span,
+                                  ResolutionError::IsNotATrait(&*path_names_to_string(trait_path,
+                                                                                      path_depth)));
 
                 // If it's a typedef, give a note
                 if let DefTy(..) = path_res.base_def {
-                    self.session
-                        .span_note(trait_path.span, "`type` aliases cannot be used for traits");
+                    err.span_note(trait_path.span,
+                                  "`type` aliases cannot be used for traits");
                 }
+                err.emit();
                 Err(())
             }
         } else {
@@ -3470,17 +3486,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if let DefVariant(_, _, true) = path_res.base_def {
                         let path_name = path_names_to_string(path, 0);
 
-                        resolve_error(self,
-                                      expr.span,
-                                      ResolutionError::StructVariantUsedAsFunction(&*path_name));
+                        let mut err = resolve_struct_error(self,
+                                        expr.span,
+                                        ResolutionError::StructVariantUsedAsFunction(&*path_name));
 
                         let msg = format!("did you mean to write: `{} {{ /* fields */ }}`?",
                                           path_name);
                         if self.emit_errors {
-                            self.session.fileline_help(expr.span, &msg);
+                            err.fileline_help(expr.span, &msg);
                         } else {
-                            self.session.span_help(expr.span, &msg);
+                            err.span_help(expr.span, &msg);
                         }
+                        err.emit();
                         self.record_def(expr.id, err_path_resolution());
                     } else {
                         // Write the result into the def map.
@@ -3510,20 +3527,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.record_def(expr.id, err_path_resolution());
                     match type_res.map(|r| r.base_def) {
                         Some(DefTy(struct_id, _)) if self.structs.contains_key(&struct_id) => {
-                            resolve_error(
-                                    self,
-                                    expr.span,
-                                    ResolutionError::StructVariantUsedAsFunction(
-                                        &*path_name)
-                                );
+                            let mut err = resolve_struct_error(self,
+                                expr.span,
+                                ResolutionError::StructVariantUsedAsFunction(&*path_name));
 
                             let msg = format!("did you mean to write: `{} {{ /* fields */ }}`?",
                                               path_name);
                             if self.emit_errors {
-                                self.session.fileline_help(expr.span, &msg);
+                                err.fileline_help(expr.span, &msg);
                             } else {
-                                self.session.span_help(expr.span, &msg);
+                                err.span_help(expr.span, &msg);
                             }
+                            err.emit();
                         }
                         _ => {
                             // Keep reporting some errors even if they're ignored above.

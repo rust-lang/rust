@@ -345,25 +345,25 @@ impl ShadowKind {
     }
 }
 
-fn signal_shadowing_problem(
-    sess: &Session, name: ast::Name, orig: Original, shadower: Shadower) {
-    if let (ShadowKind::Lifetime, ShadowKind::Lifetime) = (orig.kind, shadower.kind) {
+fn signal_shadowing_problem(sess: &Session, name: ast::Name, orig: Original, shadower: Shadower) {
+    let mut err = if let (ShadowKind::Lifetime, ShadowKind::Lifetime) = (orig.kind, shadower.kind) {
         // lifetime/lifetime shadowing is an error
-        span_err!(sess, shadower.span, E0496,
-                  "{} name `{}` shadows a \
-                   {} name that is already in scope",
-                  shadower.kind.desc(), name, orig.kind.desc());
+        struct_span_err!(sess, shadower.span, E0496,
+                         "{} name `{}` shadows a \
+                          {} name that is already in scope",
+                         shadower.kind.desc(), name, orig.kind.desc())
     } else {
         // shadowing involving a label is only a warning, due to issues with
         // labels and lifetimes not being macro-hygienic.
-        sess.span_warn(shadower.span,
-                      &format!("{} name `{}` shadows a \
-                                {} name that is already in scope",
-                               shadower.kind.desc(), name, orig.kind.desc()));
-    }
-    sess.span_note(orig.span,
-                   &format!("shadowed {} `{}` declared here",
-                            orig.kind.desc(), name));
+        sess.struct_span_warn(shadower.span,
+                              &format!("{} name `{}` shadows a \
+                                        {} name that is already in scope",
+                                       shadower.kind.desc(), name, orig.kind.desc()))
+    };
+    err.span_note(orig.span,
+                  &format!("shadowed {} `{}` declared here",
+                           orig.kind.desc(), name));
+    err.emit();
 }
 
 // Adds all labels in `b` to `ctxt.labels_in_fn`, signalling a warning

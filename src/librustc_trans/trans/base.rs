@@ -2181,17 +2181,20 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &hir::EnumDef, sp: Span,
             }
     );
 
+    // FIXME(#30505) Should use logging for this.
     if print_info {
         let llty = type_of::sizing_type_of(ccx, ty);
 
         let sess = &ccx.tcx().sess;
-        sess.span_note(sp, &*format!("total size: {} bytes", llsize_of_real(ccx, llty)));
+        sess.span_note_without_error(sp,
+                                     &*format!("total size: {} bytes", llsize_of_real(ccx, llty)));
         match *avar {
             adt::General(..) => {
                 for (i, var) in enum_def.variants.iter().enumerate() {
                     ccx.tcx()
                        .sess
-                       .span_note(var.span, &*format!("variant data: {} bytes", sizes[i]));
+                       .span_note_without_error(var.span,
+                                                &*format!("variant data: {} bytes", sizes[i]));
                 }
             }
             _ => {}
@@ -2203,16 +2206,16 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &hir::EnumDef, sp: Span,
     if !is_allow && largest > slargest * 3 && slargest > 0 {
         // Use lint::raw_emit_lint rather than sess.add_lint because the lint-printing
         // pass for the latter already ran.
-        lint::raw_emit_lint(&ccx.tcx().sess,
-                            lint::builtin::VARIANT_SIZE_DIFFERENCES,
-                            *lvlsrc.unwrap(),
-                            Some(sp),
-                            &format!("enum variant is more than three times larger ({} bytes) \
-                                      than the next largest (ignoring padding)",
-                                     largest));
-
-        ccx.sess().span_note(enum_def.variants[largest_index].span,
-                             "this variant is the largest");
+        lint::raw_struct_lint(&ccx.tcx().sess,
+                              lint::builtin::VARIANT_SIZE_DIFFERENCES,
+                              *lvlsrc.unwrap(),
+                              Some(sp),
+                              &format!("enum variant is more than three times larger ({} bytes) \
+                                        than the next largest (ignoring padding)",
+                                       largest))
+            .span_note(enum_def.variants[largest_index].span,
+                       "this variant is the largest")
+            .emit();
     }
 }
 
@@ -2489,9 +2492,10 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
         let llfty = Type::func(&[ccx.int_type(), Type::i8p(ccx).ptr_to()], &ccx.int_type());
 
         let llfn = declare::define_cfn(ccx, "main", llfty, ccx.tcx().mk_nil()).unwrap_or_else(|| {
-            ccx.sess().span_err(sp, "entry symbol `main` defined multiple times");
             // FIXME: We should be smart and show a better diagnostic here.
-            ccx.sess().help("did you use #[no_mangle] on `fn main`? Use #[start] instead");
+            ccx.sess().struct_span_err(sp, "entry symbol `main` defined multiple times")
+                      .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
+                      .emit();
             ccx.sess().abort_if_errors();
             panic!();
         });

@@ -394,17 +394,19 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 // This is an 'unmarked' API, which should not exist
                 // in the standard library.
                 if self.tcx.sess.features.borrow().unmarked_api {
-                    self.tcx.sess.span_warn(span, "use of unmarked library feature");
-                    self.tcx.sess.span_note(span, "this is either a bug in the library you are \
+                    self.tcx.sess.struct_span_warn(span, "use of unmarked library feature")
+                                 .span_note(span, "this is either a bug in the library you are \
                                                    using or a bug in the compiler - please \
-                                                   report it in both places");
+                                                   report it in both places")
+                                 .emit()
                 } else {
-                    self.tcx.sess.span_err(span, "use of unmarked library feature");
-                    self.tcx.sess.span_note(span, "this is either a bug in the library you are \
+                    self.tcx.sess.struct_span_err(span, "use of unmarked library feature")
+                                 .span_note(span, "this is either a bug in the library you are \
                                                    using or a bug in the compiler - please \
-                                                   report it in both places");
-                    self.tcx.sess.span_note(span, "use #![feature(unmarked_api)] in the \
-                                                   crate attributes to override this");
+                                                   report it in both places")
+                                 .span_note(span, "use #![feature(unmarked_api)] in the \
+                                                   crate attributes to override this")
+                                 .emit()
                 }
             }
         }
