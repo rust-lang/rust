@@ -11,7 +11,7 @@
 use core::cmp::Ordering;
 use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
-use core::iter::{FromIterator, Map};
+use core::iter::FromIterator;
 use core::ops::Index;
 use core::{fmt, intrinsics, mem, ptr};
 
@@ -199,13 +199,13 @@ pub struct IntoIter<K, V> {
 /// An iterator over a BTreeMap's keys.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
-    inner: Map<Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>,
+    inner: Iter<'a, K, V>,
 }
 
 /// An iterator over a BTreeMap's values.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
-    inner: Map<Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>,
+    inner: Iter<'a, K, V>,
 }
 
 /// An iterator over a sub-range of BTreeMap's entries.
@@ -808,7 +808,7 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
     type Item = &'a K;
 
     fn next(&mut self) -> Option<&'a K> {
-        self.inner.next()
+        self.inner.next().map(|(k, _)| k)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -818,7 +818,7 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
 
 impl<'a, K, V> DoubleEndedIterator for Keys<'a, K, V> {
     fn next_back(&mut self) -> Option<&'a K> {
-        self.inner.next_back()
+        self.inner.next_back().map(|(k, _)| k)
     }
 }
 
@@ -840,7 +840,7 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
 
     fn next(&mut self) -> Option<&'a V> {
-        self.inner.next()
+        self.inner.next().map(|(_, v)| v)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -850,7 +850,7 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
 
 impl<'a, K, V> DoubleEndedIterator for Values<'a, K, V> {
     fn next_back(&mut self) -> Option<&'a V> {
-        self.inner.next_back()
+        self.inner.next_back().map(|(_, v)| v)
     }
 }
 
@@ -1246,12 +1246,7 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
-        fn first<A, B>((a, _): (A, B)) -> A {
-            a
-        }
-        let first: fn((&'a K, &'a V)) -> &'a K = first; // coerce to fn pointer
-
-        Keys { inner: self.iter().map(first) }
+        Keys { inner: self.iter() }
     }
 
     /// Gets an iterator over the values of the map.
@@ -1270,12 +1265,7 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
-        fn second<A, B>((_, b): (A, B)) -> B {
-            b
-        }
-        let second: fn((&'a K, &'a V)) -> &'a V = second; // coerce to fn pointer
-
-        Values { inner: self.iter().map(second) }
+        Values { inner: self.iter() }
     }
 
     /// Returns the number of elements in the map.
