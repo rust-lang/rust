@@ -39,7 +39,7 @@ impl<'a> Parser<'a> {
                   return Err(self.fatal("expected outer comment"));
                 }
                 attrs.push(attr);
-                try!(self.bump());
+                self.bump();
               }
               _ => break
             }
@@ -57,11 +57,11 @@ impl<'a> Parser<'a> {
         let (span, value, mut style) = match self.token {
             token::Pound => {
                 let lo = self.span.lo;
-                try!(self.bump());
+                self.bump();
 
                 if permit_inner { self.expected_tokens.push(TokenType::Token(token::Not)); }
                 let style = if self.token == token::Not {
-                    try!(self.bump());
+                    self.bump();
                     if !permit_inner {
                         let span = self.span;
                         self.diagnostic().struct_span_err(span,
@@ -91,7 +91,7 @@ impl<'a> Parser<'a> {
         };
 
         if permit_inner && self.token == token::Semi {
-            try!(self.bump());
+            self.bump();
             self.span_warn(span, "this inner attribute syntax is deprecated. \
                            The new syntax is `#![foo]`, with a bang and no semicolon");
             style = ast::AttrStyle::Inner;
@@ -134,7 +134,7 @@ impl<'a> Parser<'a> {
                     let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), str, lo, hi);
                     if attr.node.style == ast::AttrStyle::Inner {
                         attrs.push(attr);
-                        try!(self.bump());
+                        self.bump();
                     } else {
                         break;
                     }
@@ -158,7 +158,7 @@ impl<'a> Parser<'a> {
 
         match nt_meta {
             Some(meta) => {
-                try!(self.bump());
+                self.bump();
                 return Ok(meta);
             }
             None => {}
@@ -169,7 +169,7 @@ impl<'a> Parser<'a> {
         let name = self.id_to_interned_str(ident);
         match self.token {
             token::Eq => {
-                try!(self.bump());
+                self.bump();
                 let lit = try!(self.parse_lit());
                 // FIXME #623 Non-string meta items are not serialized correctly;
                 // just forbid them for now
