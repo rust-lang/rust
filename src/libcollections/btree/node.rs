@@ -737,34 +737,39 @@ impl<BorrowType, K, V, NodeType>
 }
 
 impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge> {
-    unsafe fn insert_unchecked(&mut self, key: K, val: V) -> *mut V {
-        slice_insert(self.node.keys_mut(), self.idx, key);
-        slice_insert(self.node.vals_mut(), self.idx, val);
+    fn insert_fit(&mut self, key: K, val: V) -> *mut V {
+        // Necessary for correctness, but in a private module
+        debug_assert!(self.node.len() < CAPACITY);
 
-        self.node.as_leaf_mut().len += 1;
+        unsafe {
+            slice_insert(self.node.keys_mut(), self.idx, key);
+            slice_insert(self.node.vals_mut(), self.idx, val);
 
-        self.node.vals_mut().get_unchecked_mut(self.idx)
+            self.node.as_leaf_mut().len += 1;
+
+            self.node.vals_mut().get_unchecked_mut(self.idx)
+        }
     }
 
     pub fn insert(mut self, key: K, val: V)
             -> (InsertResult<'a, K, V, marker::Leaf>, *mut V) {
 
         if self.node.len() < CAPACITY {
-            let ptr = unsafe { self.insert_unchecked(key, val) };
+            let ptr = self.insert_fit(key, val);
             (InsertResult::Fit(Handle::new_kv(self.node, self.idx)), ptr)
         } else {
             let middle = Handle::new_kv(self.node, B);
             let (mut left, k, v, mut right) = middle.split();
             let ptr = if self.idx <= B {
                 unsafe {
-                    Handle::new_edge(left.reborrow_mut(), self.idx).insert_unchecked(key, val)
+                    Handle::new_edge(left.reborrow_mut(), self.idx).insert_fit(key, val)
                 }
             } else {
                 unsafe {
                     Handle::new_edge(
                         right.as_mut().cast_unchecked::<marker::Leaf>(),
                         self.idx - (B + 1)
-                    ).insert_unchecked(key, val)
+                    ).insert_fit(key, val)
                 }
             };
             (InsertResult::Split(left, k, v, right), ptr)
@@ -787,20 +792,26 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         Handle::new_edge(self.node.cast_unchecked(), self.idx)
     }
 
-    unsafe fn insert_unchecked(&mut self, key: K, val: V, edge: Root<K, V>) {
-        self.cast_unchecked::<marker::Leaf>().insert_unchecked(key, val);
+    fn insert_fit(&mut self, key: K, val: V, edge: Root<K, V>) {
+        // Necessary for correctness, but in an internal module
+        debug_assert!(self.node.len() < CAPACITY);
+        debug_assert!(edge.height == self.node.height - 1);
 
-        slice_insert(
-            slice::from_raw_parts_mut(
-                self.node.as_internal_mut().edges.as_mut_ptr(),
-                self.node.len()
-            ),
-            self.idx + 1,
-            edge.node
-        );
+        unsafe {
+            self.cast_unchecked::<marker::Leaf>().insert_fit(key, val);
 
-        for i in (self.idx+1)..(self.node.len()+1) {
-            Handle::new_edge(self.node.reborrow_mut(), i).correct_parent_link();
+            slice_insert(
+                slice::from_raw_parts_mut(
+                    self.node.as_internal_mut().edges.as_mut_ptr(),
+                    self.node.len()
+                ),
+                self.idx + 1,
+                edge.node
+            );
+
+            for i in (self.idx+1)..(self.node.len()+1) {
+                Handle::new_edge(self.node.reborrow_mut(), i).correct_parent_link();
+            }
         }
     }
 
@@ -811,23 +822,21 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         debug_assert!(edge.height == self.node.height - 1);
 
         if self.node.len() < CAPACITY {
-            unsafe {
-                self.insert_unchecked(key, val, edge);
-                InsertResult::Fit(Handle::new_kv(self.node, self.idx))
-            }
+            self.insert_fit(key, val, edge);
+            InsertResult::Fit(Handle::new_kv(self.node, self.idx))
         } else {
             let middle = Handle::new_kv(self.node, B);
             let (mut left, k, v, mut right) = middle.split();
             if self.idx <= B {
                 unsafe {
-                    Handle::new_edge(left.reborrow_mut(), self.idx).insert_unchecked(key, val, edge);
+                    Handle::new_edge(left.reborrow_mut(), self.idx).insert_fit(key, val, edge);
                 }
             } else {
                 unsafe {
                     Handle::new_edge(
                         right.as_mut().cast_unchecked::<marker::Internal>(),
                         self.idx - (B + 1)
-                    ).insert_unchecked(key, val, edge);
+                    ).insert_fit(key, val, edge);
                 }
             }
             InsertResult::Split(left, k, v, right)
