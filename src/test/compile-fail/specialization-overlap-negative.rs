@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(optin_builtin_traits)]
+#![feature(specialization)]
 
 trait MyTrait {}
 

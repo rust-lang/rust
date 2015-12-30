@@ -10,6 +10,8 @@
 
 // aux-build:go_trait.rs
 
+#![feature(specialization)]
+
 extern crate go_trait;
 
 use go_trait::{Go,GoMut};

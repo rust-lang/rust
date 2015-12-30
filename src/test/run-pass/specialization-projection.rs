@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(specialization)]
+
 // Make sure we *can* project non-defaulted associated types
 // cf compile-fail/specialization-default-projection.rs
 

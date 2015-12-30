@@ -12,6 +12,8 @@
 // associated type in the impl defining it -- otherwise, what happens
 // if it's overridden?
 
+#![feature(specialization)]
+
 trait Example {
     type Output;
     fn generate(self) -> Self::Output;
