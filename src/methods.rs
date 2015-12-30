@@ -327,7 +327,8 @@ fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr, map_args: &MethodArgs,
         if same_span && !multiline {
             span_note_and_lint(
                 cx, OPTION_MAP_UNWRAP_OR, expr.span, msg, expr.span,
-                &format!("replace this with map_or({1}, {0})", map_snippet, unwrap_snippet)
+                &format!("replace `map({0}).unwrap_or({1})` with `map_or({1}, {0})`", map_snippet,
+                         unwrap_snippet)
             );
         }
         else if same_span && multiline {
@@ -356,7 +357,8 @@ fn lint_map_unwrap_or_else(cx: &LateContext, expr: &Expr, map_args: &MethodArgs,
         if same_span && !multiline {
             span_note_and_lint(
                 cx, OPTION_MAP_UNWRAP_OR_ELSE, expr.span, msg, expr.span,
-                &format!("replace this with map_or_else({1}, {0})", map_snippet, unwrap_snippet)
+                &format!("replace `map({0}).unwrap_or_else({1})` with `with map_or_else({1}, {0})`",
+                          map_snippet, unwrap_snippet)
             );
         }
         else if same_span && multiline {
@@ -375,7 +377,7 @@ fn lint_filter_next(cx: &LateContext, expr: &Expr, filter_args: &MethodArgs) {
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 { // add note if not multi-line
             span_note_and_lint(cx, FILTER_NEXT, expr.span, msg, expr.span,
-                               &format!("replace this with `find({})`)", filter_snippet));
+                &format!("replace `filter({0}).next()` with `find({0})`", filter_snippet));
         }
         else {
             span_lint(cx, FILTER_NEXT, expr.span, msg);
@@ -394,7 +396,8 @@ fn lint_search_is_some(cx: &LateContext, expr: &Expr, search_method: &str, searc
         let search_snippet = snippet(cx, search_args[1].span, "..");
         if search_snippet.lines().count() <= 1 { // add note if not multi-line
             span_note_and_lint(cx, SEARCH_IS_SOME, expr.span, &msg, expr.span,
-                               &format!("replace this with `any({})`)", search_snippet));
+                &format!("replace `{0}({1}).is_some()` with `any({1})`", search_method,
+                         search_snippet));
         }
         else {
             span_lint(cx, SEARCH_IS_SOME, expr.span, &msg);
