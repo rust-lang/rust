@@ -22,13 +22,7 @@
             issue = "0")]
 #![doc(hidden)]
 
-use borrow::ToOwned;
-use mem;
-use panic;
-use sys;
-use sys_common::thread_info::{self, NewThread};
-use sys_common;
-use thread::Thread;
+
 
 // Reexport some of our utilities which are expected by other crates.
 pub use sys_common::unwind::{begin_unwind, begin_unwind_fmt};
@@ -41,6 +35,14 @@ pub use sys_common::unwind::imp::eh_frame_registry::*;
 #[cfg(not(test))]
 #[lang = "start"]
 fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
+    use borrow::ToOwned;
+    use mem;
+    use panic;
+    use sys;
+    use sys_common;
+    use sys_common::thread_info::{self, NewThread};
+    use thread::Thread;
+
     sys::init();
 
     let failed = unsafe {

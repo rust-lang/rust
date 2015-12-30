@@ -462,8 +462,7 @@ mod tests {
     use mem;
     use ptr;
     use libc;
-    use slice;
-    use sys::{self, cvt, pipe};
+    use sys::{self, cvt};
 
     macro_rules! t {
         ($e:expr) => {
@@ -482,6 +481,8 @@ mod tests {
 
     #[cfg(target_os = "android")]
     unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
+        use slice;
+
         let raw = slice::from_raw_parts_mut(set as *mut u8, mem::size_of::<libc::sigset_t>());
         let bit = (signum - 1) as usize;
         raw[bit / 8] |= 1 << (bit % 8);

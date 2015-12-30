@@ -167,7 +167,6 @@ mod tests {
     use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
     use cell::RefCell;
     use sync::Arc;
-    use boxed;
     use thread;
 
     #[test]
@@ -208,13 +207,13 @@ mod tests {
     fn trylock_works() {
         let m = Arc::new(ReentrantMutex::new(()));
         let m2 = m.clone();
-        let lock = m.try_lock().unwrap();
-        let lock2 = m.try_lock().unwrap();
+        let _lock = m.try_lock().unwrap();
+        let _lock2 = m.try_lock().unwrap();
         thread::spawn(move || {
             let lock = m2.try_lock();
             assert!(lock.is_err());
         }).join().unwrap();
-        let lock3 = m.try_lock().unwrap();
+        let _lock3 = m.try_lock().unwrap();
     }
 
     pub struct Answer<'a>(pub ReentrantMutexGuard<'a, RefCell<u32>>);
@@ -233,9 +232,8 @@ mod tests {
             *lock.borrow_mut() = 1;
             let lock2 = mc.lock().unwrap();
             *lock.borrow_mut() = 2;
-            let answer = Answer(lock2);
+            let _answer = Answer(lock2);
             panic!("What the answer to my lifetimes dilemma is?");
-            drop(answer);
         }).join();
         assert!(result.is_err());
         let r = m.lock().err().unwrap().into_inner();

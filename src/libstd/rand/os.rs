@@ -377,8 +377,6 @@ mod imp {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use sync::mpsc::channel;
     use rand::Rng;
     use super::OsRng;

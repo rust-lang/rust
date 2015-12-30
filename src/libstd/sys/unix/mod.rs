@@ -45,7 +45,7 @@ pub mod thread_local;
 pub mod time;
 pub mod stdio;
 
-#[cfg(not(target_os = "nacl"))]
+#[cfg(not(any(target_os = "nacl", test)))]
 pub fn init() {
     use libc::signal;
     // By default, some platforms will send a *signal* when an EPIPE error
@@ -59,7 +59,8 @@ pub fn init() {
         assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != !0);
     }
 }
-#[cfg(target_os = "nacl")]
+
+#[cfg(all(target_os = "nacl", not(test)))]
 pub fn init() { }
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
