@@ -25,7 +25,7 @@ Read ["Installing Rust"] from [The Book].
 2. Clone the [source] with `git`:
 
    ```sh
-   $ git clone https://github.com/rust-lang/rust.git
+   $ git clone --depth=1 https://github.com/rust-lang/rust.git
    $ cd rust
    ```
 
