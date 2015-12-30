@@ -126,7 +126,7 @@ the thing `y` points at. You’ll notice that `x` had to be marked `mut` as well
 If it wasn’t, we couldn’t take a mutable borrow to an immutable value.
 
 You'll also notice we added an asterisk (`*`) in front of `y`, making it `*y`,
-this is because `y` is an `&mut` reference. You'll also need to use them for
+this is because `y` is a `&mut` reference. You'll also need to use them for
 accessing the contents of a reference as well.
 
 Otherwise, `&mut` references are just like references. There _is_ a large
