@@ -1113,16 +1113,22 @@ pub trait Iterator {
         Take{iter: self, n: n}
     }
 
-    /// An iterator similar to `fold()`, with internal state.
-    ///
-    /// `scan()` accumulates a final value, similar to [`fold()`], but instead
-    /// of passing along an accumulator, it maintains the accumulator internally.
+    /// An iterator adaptor similar to [`fold()`] that holds internal state and
+    /// produces a new iterator.
     ///
     /// [`fold()`]: #method.fold
     ///
-    /// On each iteraton of `scan()`, you can assign to the internal state, and
-    /// a mutable reference to the state is passed as the first argument to the
-    /// closure, allowing you to modify it on each iteration.
+    /// `scan()` takes two arguments: an initial value which seeds the internal
+    /// state, and a closure with two arguments, the first being a mutable
+    /// reference to the internal state and the second an iterator element.
+    /// The closure can assign to the internal state to share state between
+    /// iterations.
+    ///
+    /// On iteration, the closure will be applied to each element of the
+    /// iterator and the return value from the closure, an [`Option`], is
+    /// yielded by the iterator.
+    ///
+    /// [`Option`]: ../option/enum.Option.html
     ///
     /// # Examples
     ///
