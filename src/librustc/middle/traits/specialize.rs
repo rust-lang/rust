@@ -13,6 +13,9 @@
 //
 // At the moment, this implementation support only the simple "chain" rule:
 // If any two impls overlap, one must be a strict subset of the other.
+//
+// See traits/README.md for a bit more detail on how specialization
+// fits together with the rest of the trait machinery.
 
 use super::util;
 use super::SelectionContext;
