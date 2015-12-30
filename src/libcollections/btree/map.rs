@@ -277,6 +277,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
+        // FIXME(gereeter) .clear() allocates
         *self = BTreeMap::new();
     }
 
