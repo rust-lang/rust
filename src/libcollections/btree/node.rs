@@ -22,7 +22,7 @@
 //     edges: if height > 0 {
 //         [Box<Node<K, V, height - 1>>; 2 * B]
 //     } else { () },
-//     parent: *mut Node<K, V, height + 1>,
+//     parent: *const Node<K, V, height + 1>,
 //     parent_idx: u16,
 //     len: u16,
 // }
@@ -46,7 +46,7 @@ pub const CAPACITY: usize = 2 * B - 1;
 struct LeafNode<K, V> {
     keys: [K; CAPACITY],
     vals: [V; CAPACITY],
-    parent: *mut InternalNode<K, V>,
+    parent: *const InternalNode<K, V>,
     parent_idx: u16,
     len: u16,
 }
@@ -56,7 +56,7 @@ impl<K, V> LeafNode<K, V> {
         LeafNode {
             keys: mem::uninitialized(),
             vals: mem::uninitialized(),
-            parent: ptr::null_mut(),
+            parent: ptr::null(),
             parent_idx: mem::uninitialized(),
             len: 0
         }
@@ -197,7 +197,7 @@ impl<K, V> Root<K, V> {
                                     .node)
         };
         self.height -= 1;
-        self.as_mut().as_leaf_mut().parent = ptr::null_mut();
+        self.as_mut().as_leaf_mut().parent = ptr::null();
 
         unsafe {
             heap::deallocate(
@@ -557,7 +557,7 @@ impl<Lifetime, K, V> NodeRef<Lifetime, K, V, marker::Mut, marker::LeafOrInternal
                 ForceResult::Internal(internal) => {
                     let edge = ptr::read(internal.as_internal().edges.get_unchecked(idx + 1));
                     let mut new_root = Root { node: edge, height: internal.height - 1 };
-                    new_root.as_mut().as_leaf_mut().parent = ptr::null_mut();
+                    new_root.as_mut().as_leaf_mut().parent = ptr::null();
                     Some(new_root)
                 }
             };
@@ -588,7 +588,7 @@ impl<Lifetime, K, V> NodeRef<Lifetime, K, V, marker::Mut, marker::LeafOrInternal
                     );
 
                     let mut new_root = Root { node: edge, height: internal.height - 1 };
-                    new_root.as_mut().as_leaf_mut().parent = ptr::null_mut();
+                    new_root.as_mut().as_leaf_mut().parent = ptr::null();
 
                     for i in 0..old_len {
                         Handle::new(internal.reborrow_mut(), i).correct_parent_link();
