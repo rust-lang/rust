@@ -41,8 +41,7 @@ programs is entirely unaffected.
 
 The most important additions are a postfix `?` operator for propagating
 "exceptions" and a `try`..`catch` block for catching and handling them. By an
-"exception", we essentially just mean the `Err` variant of a `Result`. (See the
-"Detailed design" section for more precision.)
+"exception", for now, we essentially just mean the `Err` variant of a `Result`.
 
 
 ## `?` operator
@@ -106,7 +105,7 @@ error types which may be propagated:
 Here `io::Error` and `json::Error` can be thought of as subtypes of `MyError`,
 with a clear and direct embedding into the supertype.
 
-The `?` operator should therefore perform such an implicit conversion in the
+The `?` operator should therefore perform such an implicit conversion, in the
 nature of a subtype-to-supertype coercion. The present RFC uses the
 `std::convert::Into` trait for this purpose (which has a blanket `impl`
 forwarding from `From`). The precise requirements for a conversion to be "like"
@@ -150,8 +149,8 @@ There are two variations on this theme:
         }
 
     Here the `catch` performs a `match` on the caught exception directly, using
-    any number of refutable patterns. This form is convenient for checking and
-    handling the caught exception directly.
+    any number of refutable patterns. This form is convenient for handling the
+    exception in-place.
 
 
 # Detailed design
@@ -274,12 +273,12 @@ are merely one way.
 
    Deep:
 
-        match 'here: {
+        match ('here: {
             Ok(match foo() {
                 Ok(a) => a,
                 Err(e) => break 'here Err(e.into())
             }.bar())
-        } {
+        }) {
             Ok(a) => a,
             Err(e) => match e {
                 A(a) => baz(a),
@@ -342,7 +341,7 @@ Among the considerations:
  * Simplicity. Brevity.
 
  * Following precedent from existing, popular languages, and familiarity with
-   respect to analogous constructs in them.
+   respect to their analogous constructs.
 
  * Fidelity to the constructs' actual behavior. For instance, the first clause
    always catches the "exception"; the second only branches on it.
@@ -370,7 +369,7 @@ Two obvious, minimal requirements are:
 The other requirements for an implicit conversion to be well-behaved in the
 context of this feature should be thought through with care.
 
-Some further thoughts and possibilities on this matter:
+Some further thoughts and possibilities on this matter, only as brainstorming:
 
  * It should be "like a coercion from subtype to supertype", as described
    earlier. The precise meaning of this is not obvious.
@@ -379,11 +378,6 @@ Some further thoughts and possibilities on this matter:
    compound-coerce to go from `A` to `Z` indirectly along multiple different
    paths, they should all have the same end result.
 
- * It should be unambiguous, or preserve the meaning of the input:
-   `impl From<u8> for u32` as `x as u32` feels right; as `(x as u32) * 12345`
-   feels wrong, even though this is perfectly pure, total, and injective. What
-   this means precisely in the general case is unclear.
-
  * It should be lossless, or in other words, injective: it should map each
    observably-different element of the input type to observably-different
    elements of the output type. (Observably-different means that it is possible
@@ -391,8 +385,13 @@ Some further thoughts and possibilities on this matter:
    modulo things that "shouldn't count" like observing execution time or
    resource usage.)
 
+ * It should be unambiguous, or preserve the meaning of the input:
+   `impl From<u8> for u32` as `x as u32` feels right; as `(x as u32) * 12345`
+   feels wrong, even though this is perfectly pure, total, and injective. What
+   this means precisely in the general case is unclear.
+
  * The types converted between should the "same kind of thing": for instance,
-   the *existing* `impl From<u32> for Ipv4Addr` is pretty suspect on this count.
+   the *existing* `impl From<u32> for Ipv4Addr` feels suspect on this count.
    (This perhaps ties into the subtyping angle: `Ipv4Addr` is clearly not a
    supertype of `u32`.)
 
@@ -566,8 +565,8 @@ below.)
 The `translate` method says that it should be possible to translate to any
 *other* `ResultCarrier` type which has the same `Normal` and `Exception` types.
 This may not appear to be very useful, but in fact, this is what can be used to
-inspect the result, by translating it to a concrete type such as `Result<Normal,
-Exception>` and then, for example, pattern matching on it.
+inspect the result, by translating it to a concrete, known type such as
+`Result<Normal, Exception>` and then, for example, pattern matching on it.
 
 Laws:
 
