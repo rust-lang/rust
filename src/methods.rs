@@ -158,6 +158,18 @@ declare_lint!(pub OPTION_MAP_UNWRAP_OR_ELSE, Warn,
 declare_lint!(pub FILTER_NEXT, Warn,
               "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`");
 
+/// **What it does:** This lint `Warn`s on an iterator search (such as `find()`, `position()`, or
+/// `rposition()`) followed by a call to `is_some()`.
+///
+/// **Why is this bad?** Readability, this can be written more concisely as `_.any(_)`.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `iter.find(|x| x == 0).is_some()`
+declare_lint!(pub SEARCH_IS_SOME, Warn,
+              "using an iterator search followed by `is_some()`, which is more succinctly \
+               expressed as a call to `any()`");
+
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(OPTION_UNWRAP_USED, RESULT_UNWRAP_USED, STR_TO_STRING, STRING_TO_STRING,
@@ -186,6 +198,15 @@ impl LateLintPass for MethodsPass {
             }
             else if let Some(arglists) = method_chain_args(expr, &["filter", "next"]) {
                 lint_filter_next(cx, expr, arglists[0]);
+            }
+            else if let Some(arglists) = method_chain_args(expr, &["find", "is_some"]) {
+                lint_search_is_some(cx, expr, "find", arglists[0], arglists[1]);
+            }
+            else if let Some(arglists) = method_chain_args(expr, &["position", "is_some"]) {
+                lint_search_is_some(cx, expr, "position", arglists[0], arglists[1]);
+            }
+            else if let Some(arglists) = method_chain_args(expr, &["rposition", "is_some"]) {
+                lint_search_is_some(cx, expr, "rposition", arglists[0], arglists[1]);
             }
         }
     }
@@ -358,6 +379,25 @@ fn lint_filter_next(cx: &LateContext, expr: &Expr, filter_args: &MethodArgs) {
         }
         else {
             span_lint(cx, FILTER_NEXT, expr.span, msg);
+        }
+    }
+}
+
+#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
+/// lint searching an Iterator followed by `is_some()`
+fn lint_search_is_some(cx: &LateContext, expr: &Expr, search_method: &str, search_args: &MethodArgs,
+                       is_some_args: &MethodArgs) {
+    // lint if caller of search is an Iterator
+    if match_trait_method(cx, &*is_some_args[0], &["core", "iter", "Iterator"]) {
+        let msg = format!("called `is_some()` after searching an iterator with {}. This is more \
+                           succinctly expressed by calling `any()`.", search_method);
+        let search_snippet = snippet(cx, search_args[1].span, "..");
+        if search_snippet.lines().count() <= 1 { // add note if not multi-line
+            span_note_and_lint(cx, SEARCH_IS_SOME, expr.span, &msg, expr.span,
+                               &format!("replace this with `any({})`)", search_snippet));
+        }
+        else {
+            span_lint(cx, SEARCH_IS_SOME, expr.span, &msg);
         }
     }
 }

@@ -83,17 +83,31 @@ fn option_methods() {
 
 }
 
-/// Struct to generate false positive for FILTER_NEXT lint
-struct FilterNextTest {
-    _foo: u32,
+/// Struct to generate false positive for Iterator-based lints
+#[derive(Copy, Clone)]
+struct IteratorFalsePositives {
+    foo: u32,
 }
 
-impl FilterNextTest {
-    fn filter(self) -> FilterNextTest {
+impl IteratorFalsePositives {
+    fn filter(self) -> IteratorFalsePositives {
         self
     }
-    fn next(self) -> FilterNextTest {
+
+    fn next(self) -> IteratorFalsePositives {
         self
+    }
+
+    fn find(self) -> Option<u32> {
+        Some(self.foo)
+    }
+
+    fn position(self) -> Option<u32> {
+        Some(self.foo)
+    }
+
+    fn rposition(self) -> Option<u32> {
+        Some(self.foo)
     }
 }
 
@@ -112,8 +126,46 @@ fn filter_next() {
                    ).next();
 
     // check that we don't lint if the caller is not an Iterator
-    let foo = FilterNextTest { _foo: 0 };
+    let foo = IteratorFalsePositives { foo: 0 };
     let _ = foo.filter().next();
+}
+
+/// Checks implementation of SEARCH_IS_SOME lint
+fn search_is_some() {
+    let v = vec![3, 2, 1, 0, -1, -2, -3];
+
+    // check `find().is_some()`, single-line
+    let _ = v.iter().find(|&x| *x < 0).is_some(); //~ERROR called `is_some()` after searching
+                                                  //~| NOTE replace this
+    // check `find().is_some()`, multi-line
+    let _ = v.iter().find(|&x| { //~ERROR called `is_some()` after searching
+                              *x < 0
+                          }
+                   ).is_some();
+
+    // check `position().is_some()`, single-line
+    let _ = v.iter().position(|&x| x < 0).is_some(); //~ERROR called `is_some()` after searching
+                                                     //~| NOTE replace this
+    // check `position().is_some()`, multi-line
+    let _ = v.iter().position(|&x| { //~ERROR called `is_some()` after searching
+                                  x < 0
+                              }
+                   ).is_some();
+
+    // check `rposition().is_some()`, single-line
+    let _ = v.iter().rposition(|&x| x < 0).is_some(); //~ERROR called `is_some()` after searching
+                                                      //~| NOTE replace this
+    // check `rposition().is_some()`, multi-line
+    let _ = v.iter().rposition(|&x| { //~ERROR called `is_some()` after searching
+                                   x < 0
+                               }
+                   ).is_some();
+
+    // check that we don't lint if the caller is not an Iterator
+    let foo = IteratorFalsePositives { foo: 0 };
+    let _ = foo.find().is_some();
+    let _ = foo.position().is_some();
+    let _ = foo.rposition().is_some();
 }
 
 fn main() {
