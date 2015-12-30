@@ -29,8 +29,8 @@ extern crate rustc_back;
 extern crate syntax;
 
 pub mod build;
-pub mod mir_map;
+pub mod graphviz;
 mod hair;
-mod graphviz;
+pub mod mir_map;
+pub mod pretty;
 pub mod transform;
-
