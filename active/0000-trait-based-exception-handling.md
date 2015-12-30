@@ -53,8 +53,8 @@ chaining method calls which may each "throw an exception":
 
     foo()?.bar()?.baz()
 
-(Naturally, in this case the types of the "exceptions thrown by" `foo()` and
-`bar()` must unify.)
+Naturally, in this case the types of the "exceptions thrown by" `foo()` and
+`bar()` must unify. Like the current `try!()` macro, the `?` operator will also perform an implicit "upcast" on the exception type.
 
 When used outside of a `try` block, the `?` operator propagates the exception to
 the caller of the current function, just like the current `try!` macro does. (If
@@ -78,6 +78,23 @@ behavior changes, which is a good thing. Finally, because exceptions are
 tracked in the type system, and there is no silent propagation of exceptions, and
 all points where an exception may be thrown are readily apparent visually, this
 also means that we do not have to worry very much about "exception safety".
+
+### Exception type upcasting
+
+In a language with checked exceptions and subtyping, it is clear that if a function is declared as throwing a particular type, its body should also be able to throw any of its subtypes. Similarly, in a language with structural sum types (a.k.a. anonymous `enum`s, polymorphic variants), one should be able to throw a type with fewer cases in a function declaring that it may throw a superset of those cases. This is essentially what is achieved by the common Rust practice of declaring a custom error `enum` with `From` `impl`s for each of the upstream error types which may be propagated:
+
+    enum MyError {
+        IoError(io::Error),
+        JsonError(json::Error),
+        OtherError(...)
+    }
+
+    impl From<io::Error> for MyError { ... }
+    impl From<json::Error> for MyError { ... }
+
+Here `io::Error` and `json::Error` can be thought of as subtypes of `MyError`, with a clear and direct embedding into the supertype.
+
+The `?` operator should therefore perform such an implicit conversion in the nature of a subtype-to-supertype coercion. The present RFC uses the `std::convert::Into` trait for this purpose (which has a blanket `impl` forwarding from `From`). The precise requirements for a conversion to be "like" a subtyping coercion are an open question; see the "Unresolved questions" section.
 
 
 ## `try`..`catch`
@@ -183,7 +200,7 @@ are merely one way.
 
         match EXPR {
             Ok(a)  => a,
-            Err(e) => break 'here Err(e)
+            Err(e) => break 'here Err(e.into())
         }
 
    Where `'here` refers to the innermost enclosing `try` block, or to `'fn` if
@@ -208,7 +225,7 @@ are merely one way.
         'here: {
             Ok(match foo() {
                 Ok(a) => a,
-                Err(e) => break 'here Err(e)
+                Err(e) => break 'here Err(e.into())
             }.bar())
         }
 
@@ -238,7 +255,7 @@ are merely one way.
         match 'here: {
             Ok(match foo() {
                 Ok(a) => a,
-                Err(e) => break 'here Err(e)
+                Err(e) => break 'here Err(e.into())
             }.bar())
         } {
             Ok(a) => a,
@@ -263,15 +280,18 @@ a source-to-source translation in this manner, they need not necessarily be
 
 Without any attempt at completeness, here are some things which should be true:
 
- * `try { foo()      }                   ` = `Ok(foo())`
- * `try { Err(e)?    }                   ` = `Err(e)`
- * `try { foo()?     }                   ` = `foo()`
- * `try { foo()      } catch e {     e  }` = `foo()`
- * `try { Err(e)?    } catch e {     e  }` = `e`
- * `try { Ok(foo()?) } catch e { Err(e) }` = `foo()`
+ * `try { foo()          }                      ` = `Ok(foo())`
+ * `try { Err(e)?        }                      ` = `Err(e.into())`
+ * `try { try_foo()?     }                      ` = `try_foo().map_err(Into::into)`
+ * `try { Err(e)?        } catch { e => e      }` = `e.into()`
+ * `try { Ok(try_foo()?) } catch { e => Err(e) }` = `try_foo().map_err(Into::into)`
+
+(In the above, `foo()` is a function returning any type, and `try_foo()` is a function returning a `Result`.)
 
 
 # Unresolved questions
+
+These questions should be satisfactorally resolved before stabilizing the relevant features, at the latest.
 
 ## Choice of keywords
 
@@ -300,6 +320,36 @@ Among the considerations:
  * Consistency with the existing `try!()` macro. If the first clause is called `try`, then `try { }` and `try!()` would have essentially inverse meanings.
 
  * Language-level backwards compatibility when adding new keywords. I'm not sure how this could or should be handled.
+
+
+## Semantics for "upcasting"
+
+What should the contract for a `From`/`Into` `impl` be? Are these even the right `trait`s to use for this feature?
+
+Two obvious, minimal requirements are:
+
+ * It should be pure: no side effects, and no observation of side effects. (The result should depend *only* on the argument.)
+
+ * It should be total: no panics or other divergence, except perhaps in the case of resource exhaustion (OOM, stack overflow).
+
+The other requirements for an implicit conversion to be well-behaved in the context of this feature should be thought through with care.
+
+Some further thoughts and possibilities on this matter:
+
+ * It should be "like a coercion from subtype to supertype", as described earlier. The precise meaning of this is not obvious.
+
+ * A common condition on subtyping coercions is coherence: if you can compound-coerce to go from `A` to `Z` indirectly along multiple different paths, they should all have the same end result.
+
+ * It should be unambiguous, or preserve the meaning of the input: `impl From<u8> for u32` as `x as u32` feels right; as `(x as u32) * 12345` feels wrong, even though this is perfectly pure, total, and injective. What this means precisely in the general case is unclear.
+
+ * It should be lossless, or in other words, injective: it should map each observably-different element of the input type to observably-different elements of the output type. (Observably-different means that it is possible to write a program which behaves differently depending on which one it gets, modulo things that "shouldn't count" like observing execution time or resource usage.)
+
+ * The types converted between should the "same kind of thing": for instance, the *existing* `impl From<u32> for Ipv4Addr` is pretty suspect on this count. (This perhaps ties into the subtyping angle: `Ipv4Addr` is clearly not a supertype of `u32`.)
+
+
+## Forwards-compatibility
+
+If we later want to generalize this feature to other types such as `Option`, as described below, will we be able to do so while maintaining backwards-compatibility?
 
 
 # Drawbacks
