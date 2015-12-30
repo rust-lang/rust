@@ -4617,11 +4617,13 @@ impl<'a> Parser<'a> {
                     _ => false,
                 };
                 if is_macro_rules {
-                    self.diagnostic().struct_span_err(span, "can't qualify macro_rules invocation with `pub`")
+                    self.diagnostic().struct_span_err(span, "can't qualify macro_rules \
+                                                             invocation with `pub`")
                                      .fileline_help(span, "did you mean #[macro_export]?")
                                      .emit();
                 } else {
-                    self.diagnostic().struct_span_err(span, "can't qualify macro invocation with `pub`")
+                    self.diagnostic().struct_span_err(span, "can't qualify macro \
+                                                             invocation with `pub`")
                                      .fileline_help(span, "try adjusting the macro to put `pub` \
                                                            inside the invocation")
                                      .emit();
