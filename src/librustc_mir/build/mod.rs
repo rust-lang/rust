@@ -23,7 +23,6 @@ pub struct Builder<'a, 'tcx: 'a> {
     cfg: CFG<'tcx>,
     scopes: Vec<scope::Scope<'tcx>>,
     loop_scopes: Vec<scope::LoopScope>,
-    unit_temp: Lvalue<'tcx>,
     var_decls: Vec<VarDecl<'tcx>>,
     var_indices: FnvHashMap<ast::NodeId, u32>,
     temp_decls: Vec<TempDecl<'tcx>>,
@@ -79,7 +78,7 @@ macro_rules! unpack {
 ///////////////////////////////////////////////////////////////////////////
 // construct() -- the main entry point for building MIR for a function
 
-pub fn construct<'a,'tcx>(mut hir: Cx<'a,'tcx>,
+pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
                           _span: Span,
                           implicit_arguments: Vec<Ty<'tcx>>,
                           explicit_arguments: Vec<(Ty<'tcx>, &'tcx hir::Pat)>,
@@ -89,20 +88,14 @@ pub fn construct<'a,'tcx>(mut hir: Cx<'a,'tcx>,
                           -> Mir<'tcx> {
     let cfg = CFG { basic_blocks: vec![] };
 
-    // it's handy to have a temporary of type `()` sometimes, so make
-    // one from the start and keep it available
-    let temp_decls = vec![TempDecl::<'tcx> { ty: hir.unit_ty() }];
-    let unit_temp = Lvalue::Temp(0);
-
     let mut builder = Builder {
         hir: hir,
         cfg: cfg,
         scopes: vec![],
         loop_scopes: vec![],
-        temp_decls: temp_decls,
+        temp_decls: vec![],
         var_decls: vec![],
         var_indices: FnvHashMap(),
-        unit_temp: unit_temp,
     };
 
     assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
