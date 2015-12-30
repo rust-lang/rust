@@ -319,9 +319,9 @@ pub fn lower_path_parameters(lctx: &LoweringContext,
                              path_parameters: &PathParameters)
                              -> hir::PathParameters {
     match *path_parameters {
-        AngleBracketedParameters(ref data) =>
+        PathParameters::AngleBracketed(ref data) =>
             hir::AngleBracketedParameters(lower_angle_bracketed_parameter_data(lctx, data)),
-        ParenthesizedParameters(ref data) =>
+        PathParameters::Parenthesized(ref data) =>
             hir::ParenthesizedParameters(lower_parenthesized_parameter_data(lctx, data)),
     }
 }

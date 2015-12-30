@@ -1697,7 +1697,7 @@ impl<'a> Parser<'a> {
             let parameters = if try!(self.eat_lt() ){
                 let (lifetimes, types, bindings) = try!(self.parse_generic_values_after_lt());
 
-                ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
+                ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
                     lifetimes: lifetimes,
                     types: P::from_vec(types),
                     bindings: P::from_vec(bindings),
@@ -1718,7 +1718,7 @@ impl<'a> Parser<'a> {
 
                 let hi = self.last_span.hi;
 
-                ast::ParenthesizedParameters(ast::ParenthesizedParameterData {
+                ast::PathParameters::Parenthesized(ast::ParenthesizedParameterData {
                     span: mk_sp(lo, hi),
                     inputs: inputs,
                     output: output_ty,
@@ -1759,13 +1759,14 @@ impl<'a> Parser<'a> {
             if try!(self.eat_lt() ){
                 // Consumed `a::b::<`, go look for types
                 let (lifetimes, types, bindings) = try!(self.parse_generic_values_after_lt());
+                let parameters = ast::AngleBracketedParameterData {
+                    lifetimes: lifetimes,
+                    types: P::from_vec(types),
+                    bindings: P::from_vec(bindings),
+                };
                 segments.push(ast::PathSegment {
                     identifier: identifier,
-                    parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
-                        lifetimes: lifetimes,
-                        types: P::from_vec(types),
-                        bindings: P::from_vec(bindings),
-                    }),
+                    parameters: ast::PathParameters::AngleBracketed(parameters),
                 });
 
                 // Consumed `a::b::<T,U>`, check for `::` before proceeding
