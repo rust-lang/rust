@@ -259,7 +259,7 @@ enum TestKind<'tcx> {
 
     // test for equality
     Eq {
-        value: Literal<'tcx>,
+        value: ConstVal,
         ty: Ty<'tcx>,
     },
 
