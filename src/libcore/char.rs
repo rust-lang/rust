@@ -470,6 +470,11 @@ impl Iterator for EscapeUnicode {
         (n, Some(n))
     }
 
+    #[inline]
+    fn count(self) -> usize {
+        self.len()
+    }
+
     fn last(self) -> Option<char> {
         match self.state {
             EscapeUnicodeState::Done => None,
@@ -535,13 +540,9 @@ impl Iterator for EscapeDefault {
         }
     }
 
+    #[inline]
     fn count(self) -> usize {
-        match self.state {
-            EscapeDefaultState::Char(_) => 1,
-            EscapeDefaultState::Unicode(iter) => iter.count(),
-            EscapeDefaultState::Done => 0,
-            EscapeDefaultState::Backslash(_) => 2,
-        }
+        self.len()
     }
 
     fn nth(&mut self, n: usize) -> Option<char> {
