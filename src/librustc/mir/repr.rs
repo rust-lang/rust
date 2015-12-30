@@ -546,11 +546,11 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 
         match *self {
             Var(id) =>
-                write!(fmt,"v{:?}", id),
+                write!(fmt,"var{:?}", id),
             Arg(id) =>
-                write!(fmt,"a{:?}", id),
+                write!(fmt,"arg{:?}", id),
             Temp(id) =>
-                write!(fmt,"t{:?}", id),
+                write!(fmt,"tmp{:?}", id),
             Static(id) =>
                 write!(fmt,"Static({:?})", id),
             ReturnPointer =>
