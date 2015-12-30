@@ -157,8 +157,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     }
 
                     // execute the body, branching back to the test
-                    let unit_temp = this.unit_temp.clone();
-                    let body_block_end = unpack!(this.into(&unit_temp, body_block, body));
+                    // FIXME(#30636): this should not create or request any sort of destination at
+                    // all.
+                    let body_block_end = unpack!(this.into(destination, body_block, body));
                     this.cfg.terminate(body_block_end, Terminator::Goto { target: loop_block });
 
                     // final point is exit_block
