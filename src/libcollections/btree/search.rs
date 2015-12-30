@@ -50,10 +50,10 @@ pub fn search_node<BorrowType, K, V, Type, Q: ?Sized>(
 
     match search_linear(&node, key) {
         (idx, true) => Found(
-            unsafe { Handle::new(node, idx) }
+            Handle::new_kv(node, idx)
         ),
         (idx, false) => SearchResult::GoDown(
-            unsafe { Handle::new(node, idx) }
+            Handle::new_edge(node, idx)
         )
     }
 }

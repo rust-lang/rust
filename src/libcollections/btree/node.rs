@@ -338,12 +338,12 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     }
 
     pub fn first_edge(self) -> Handle<Self, marker::Edge> {
-        unsafe { Handle::new(self, 0) }
+        Handle::new_edge(self, 0)
     }
 
     pub fn last_edge(self) -> Handle<Self, marker::Edge> {
         let len = self.len();
-        unsafe { Handle::new(self, len) }
+        Handle::new_edge(self, len)
     }
 }
 
@@ -504,7 +504,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
             ptr::write(self.vals_mut().get_unchecked_mut(idx), val);
             ptr::write(self.as_internal_mut().edges.get_unchecked_mut(idx + 1), edge.node);
 
-            Handle::new(self.reborrow_mut(), idx + 1).correct_parent_link();
+            Handle::new_edge(self.reborrow_mut(), idx + 1).correct_parent_link();
         }
 
         self.as_leaf_mut().len += 1;
@@ -530,7 +530,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
             self.as_leaf_mut().len += 1;
 
             for i in 0..self.len()+1 {
-                Handle::new(self.reborrow_mut(), i).correct_parent_link();
+                Handle::new_edge(self.reborrow_mut(), i).correct_parent_link();
             }
         }
 
@@ -586,7 +586,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                     new_root.as_mut().as_leaf_mut().parent = ptr::null();
 
                     for i in 0..old_len {
-                        Handle::new(internal.reborrow_mut(), i).correct_parent_link();
+                        Handle::new_edge(internal.reborrow_mut(), i).correct_parent_link();
                     }
 
                     Some(new_root)
@@ -637,7 +637,16 @@ impl<Node: Copy, Type> Clone for Handle<Node, Type> {
 }
 
 impl<Node, Type> Handle<Node, Type> {
-    pub unsafe fn new(node: Node, idx: usize) -> Self {
+    pub fn into_node(self) -> Node {
+        self.node
+    }
+}
+
+impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV> {
+    pub fn new_kv(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {
+        // Necessary for correctness, but in a private module
+        debug_assert!(idx < node.len());
+
         Handle {
             node: node,
             idx: idx,
@@ -645,18 +654,12 @@ impl<Node, Type> Handle<Node, Type> {
         }
     }
 
-    pub fn into_node(self) -> Node {
-        self.node
-    }
-}
-
-impl<Node> Handle<Node, marker::KV> {
-    pub fn left_edge(self) -> Handle<Node, marker::Edge> {
-        unsafe { Handle::new(self.node, self.idx) }
+    pub fn left_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
+        Handle::new_edge(self.node, self.idx)
     }
 
-    pub fn right_edge(self) -> Handle<Node, marker::Edge> {
-        unsafe { Handle::new(self.node, self.idx + 1) }
+    pub fn right_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
+        Handle::new_edge(self.node, self.idx + 1)
     }
 }
 
@@ -674,7 +677,12 @@ impl<BorrowType, K, V, NodeType, HandleType>
     pub fn reborrow(&self)
             -> Handle<NodeRef<marker::Immut, K, V, NodeType>, HandleType> {
 
-        unsafe { Handle::new(self.node.reborrow(), self.idx) }
+        // We can't use Handle::new_kv or Handle::new_edge because we don't know our type
+        Handle {
+            node: self.node.reborrow(),
+            idx: self.idx,
+            _marker: PhantomData
+        }
     }
 }
 
@@ -684,20 +692,34 @@ impl<'a, K, V, NodeType, HandleType>
     pub unsafe fn reborrow_mut(&mut self)
             -> Handle<NodeRef<marker::Mut, K, V, NodeType>, HandleType> {
 
-        Handle::new(self.node.reborrow_mut(), self.idx)
+        // We can't use Handle::new_kv or Handle::new_edge because we don't know our type
+        Handle {
+            node: self.node.reborrow_mut(),
+            idx: self.idx,
+            _marker: PhantomData
+        }
     }
 }
 
 impl<BorrowType, K, V, NodeType>
         Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
 
+    pub fn new_edge(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {
+        // Necessary for correctness, but in a private module
+        debug_assert!(idx <= node.len());
+
+        Handle {
+            node: node,
+            idx: idx,
+            _marker: PhantomData
+        }
+    }
+
     pub fn left_kv(self)
             -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {
 
         if self.idx > 0 {
-            unsafe {
-                Ok(Handle::new(self.node, self.idx - 1))
-            }
+            Ok(Handle::new_kv(self.node, self.idx - 1))
         } else {
             Err(self)
         }
@@ -707,9 +729,7 @@ impl<BorrowType, K, V, NodeType>
             -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {
 
         if self.idx < self.node.len() {
-            unsafe {
-                Ok(Handle::new(self.node, self.idx))
-            }
+            Ok(Handle::new_kv(self.node, self.idx))
         } else {
             Err(self)
         }
@@ -730,20 +750,18 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
             -> (InsertResult<'a, K, V, marker::Leaf>, *mut V) {
 
         if self.node.len() < CAPACITY {
-            unsafe {
-                let ptr = self.insert_unchecked(key, val);
-                (InsertResult::Fit(Handle::new(self.node, self.idx)), ptr)
-            }
+            let ptr = unsafe { self.insert_unchecked(key, val) };
+            (InsertResult::Fit(Handle::new_kv(self.node, self.idx)), ptr)
         } else {
-            let middle = unsafe { Handle::new(self.node, B) };
+            let middle = Handle::new_kv(self.node, B);
             let (mut left, k, v, mut right) = middle.split();
             let ptr = if self.idx <= B {
                 unsafe {
-                    Handle::new(left.reborrow_mut(), self.idx).insert_unchecked(key, val)
+                    Handle::new_edge(left.reborrow_mut(), self.idx).insert_unchecked(key, val)
                 }
             } else {
                 unsafe {
-                    Handle::new(
+                    Handle::new_edge(
                         right.as_mut().cast_unchecked::<marker::Leaf>(),
                         self.idx - B - 1
                     ).insert_unchecked(key, val)
@@ -766,7 +784,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
     unsafe fn cast_unchecked<NewType>(&mut self)
             -> Handle<NodeRef<marker::Mut, K, V, NewType>, marker::Edge> {
 
-        Handle::new(self.node.cast_unchecked(), self.idx)
+        Handle::new_edge(self.node.cast_unchecked(), self.idx)
     }
 
     unsafe fn insert_unchecked(&mut self, key: K, val: V, edge: Root<K, V>) {
@@ -782,7 +800,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         );
 
         for i in (self.idx+1)..(self.node.len()+1) {
-            Handle::new(self.node.reborrow_mut(), i).correct_parent_link();
+            Handle::new_edge(self.node.reborrow_mut(), i).correct_parent_link();
         }
     }
 
@@ -795,18 +813,18 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         if self.node.len() < CAPACITY {
             unsafe {
                 self.insert_unchecked(key, val, edge);
-                InsertResult::Fit(Handle::new(self.node, self.idx))
+                InsertResult::Fit(Handle::new_kv(self.node, self.idx))
             }
         } else {
-            let middle = unsafe { Handle::new(self.node, B) };
+            let middle = Handle::new_kv(self.node, B);
             let (mut left, k, v, mut right) = middle.split();
             if self.idx <= B {
                 unsafe {
-                    Handle::new(left.reborrow_mut(), self.idx).insert_unchecked(key, val, edge);
+                    Handle::new_edge(left.reborrow_mut(), self.idx).insert_unchecked(key, val, edge);
                 }
             } else {
                 unsafe {
-                    Handle::new(
+                    Handle::new_edge(
                         right.as_mut().cast_unchecked::<marker::Internal>(),
                         self.idx - B - 1
                     ).insert_unchecked(key, val, edge);
@@ -945,7 +963,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             };
 
             for i in 0..(new_len+1) {
-                Handle::new(new_root.as_mut().cast_unchecked(), i).correct_parent_link();
+                Handle::new_edge(new_root.as_mut().cast_unchecked(), i).correct_parent_link();
             }
 
             (
@@ -1000,7 +1018,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
             slice_remove(&mut self.node.as_internal_mut().edges, self.idx + 1);
             for i in self.idx+1..self.node.len() {
-                Handle::new(self.node.reborrow_mut(), i).correct_parent_link();
+                Handle::new_edge(self.node.reborrow_mut(), i).correct_parent_link();
             }
             self.node.as_leaf_mut().len -= 1;
 
@@ -1016,7 +1034,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 );
 
                 for i in left_len+1..left_len+right_len+2 {
-                    Handle::new(left_node.cast_unchecked().reborrow_mut(), i).correct_parent_link();
+                    Handle::new_edge(left_node.cast_unchecked().reborrow_mut(), i).correct_parent_link();
                 }
 
                 heap::deallocate(
@@ -1034,7 +1052,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
             left_node.as_leaf_mut().len += right_len as u16 + 1;
 
-            Handle::new(self.node, self.idx)
+            Handle::new_edge(self.node, self.idx)
         }
     }
 }
