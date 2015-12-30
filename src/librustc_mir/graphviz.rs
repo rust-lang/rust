@@ -92,7 +92,7 @@ fn write_graph_label<W: Write>(mir: &Mir, w: &mut W) -> io::Result<()> {
         if i > 0 {
             try!(write!(w, ", "));
         }
-        try!(write!(w, "a{}: {}", i, escape(&arg.ty)));
+        try!(write!(w, "{:?}: {}", Lvalue::Arg(i as u32), escape(&arg.ty)));
     }
 
     try!(write!(w, ") -&gt; "));
@@ -111,12 +111,14 @@ fn write_graph_label<W: Write>(mir: &Mir, w: &mut W) -> io::Result<()> {
         if var.mutability == Mutability::Mut {
             try!(write!(w, "mut "));
         }
-        try!(write!(w, r#"v{}: {}; // {}<br align="left"/>"#, i, escape(&var.ty), var.name));
+        try!(write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
+                    Lvalue::Var(i as u32), escape(&var.ty), var.name));
     }
 
     // Compiler-introduced temporary types.
     for (i, temp) in mir.temp_decls.iter().enumerate() {
-        try!(write!(w, r#"let t{}: {};<br align="left"/>"#, i, escape(&temp.ty)));
+        try!(write!(w, r#"let {:?}: {};<br align="left"/>"#,
+                    Lvalue::Temp(i as u32), escape(&temp.ty)));
     }
 
     writeln!(w, ">;")
