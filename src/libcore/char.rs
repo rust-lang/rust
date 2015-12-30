@@ -491,6 +491,11 @@ impl Iterator for EscapeUnicode {
         let n = n + self.offset;
         (n, Some(n))
     }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.len()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.7.0")]
@@ -545,13 +550,9 @@ impl Iterator for EscapeDefault {
         }
     }
 
+    #[inline]
     fn count(self) -> usize {
-        match self.state {
-            EscapeDefaultState::Char(_) => 1,
-            EscapeDefaultState::Unicode(iter) => iter.count(),
-            EscapeDefaultState::Done => 0,
-            EscapeDefaultState::Backslash(_) => 2,
-        }
+        self.len()
     }
 
     fn nth(&mut self, n: usize) -> Option<char> {
