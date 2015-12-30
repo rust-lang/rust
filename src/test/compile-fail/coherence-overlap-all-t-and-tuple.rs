@@ -19,10 +19,10 @@
 trait From<U> {
 }
 
-impl <T> From<T> for T { //~ ERROR E0119
+impl <T> From<T> for T {
 }
 
-impl <T11, U11> From<(U11,)> for (T11,) {
+impl <T11, U11> From<(U11,)> for (T11,) { //~ ERROR E0119
 }
 
 fn main() { }
