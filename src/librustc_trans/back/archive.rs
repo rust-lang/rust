@@ -406,11 +406,12 @@ impl<'a> ArchiveBuilder<'a> {
             Ok(prog) => {
                 let o = prog.wait_with_output().unwrap();
                 if !o.status.success() {
-                    sess.err(&format!("{:?} failed with: {}", cmd, o.status));
-                    sess.note(&format!("stdout ---\n{}",
-                                       str::from_utf8(&o.stdout).unwrap()));
-                    sess.note(&format!("stderr ---\n{}",
-                                       str::from_utf8(&o.stderr).unwrap()));
+                    sess.struct_err(&format!("{:?} failed with: {}", cmd, o.status))
+                        .note(&format!("stdout ---\n{}",
+                                       str::from_utf8(&o.stdout).unwrap()))
+                        .note(&format!("stderr ---\n{}",
+                                       str::from_utf8(&o.stderr).unwrap()))
+                        .emit();
                     sess.abort_if_errors();
                 }
                 o

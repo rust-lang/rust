@@ -460,12 +460,13 @@ fn gate_simd_ffi(tcx: &ty::ctxt, decl: &hir::FnDecl, ty: &ty::BareFnTy) {
     if !tcx.sess.features.borrow().simd_ffi {
         let check = |ast_ty: &hir::Ty, ty: ty::Ty| {
             if ty.is_simd() {
-                tcx.sess.span_err(ast_ty.span,
+                tcx.sess.struct_span_err(ast_ty.span,
                               &format!("use of SIMD type `{}` in FFI is highly experimental and \
                                         may result in invalid code",
-                                       pprust::ty_to_string(ast_ty)));
-                tcx.sess.fileline_help(ast_ty.span,
-                                   "add #![feature(simd_ffi)] to the crate attributes to enable");
+                                       pprust::ty_to_string(ast_ty)))
+                    .fileline_help(ast_ty.span,
+                                   "add #![feature(simd_ffi)] to the crate attributes to enable")
+                    .emit();
             }
         };
         let sig = &ty.sig.0;

@@ -225,24 +225,24 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
         assert!(!cycle.is_empty());
         let tcx = self.tcx;
 
-        span_err!(tcx.sess, span, E0391,
+        let mut err = struct_span_err!(tcx.sess, span, E0391,
             "unsupported cyclic reference between types/traits detected");
 
         match cycle[0] {
             AstConvRequest::GetItemTypeScheme(def_id) |
             AstConvRequest::GetTraitDef(def_id) => {
-                tcx.sess.note(
+                err.note(
                     &format!("the cycle begins when processing `{}`...",
                              tcx.item_path_str(def_id)));
             }
             AstConvRequest::EnsureSuperPredicates(def_id) => {
-                tcx.sess.note(
+                err.note(
                     &format!("the cycle begins when computing the supertraits of `{}`...",
                              tcx.item_path_str(def_id)));
             }
             AstConvRequest::GetTypeParameterBounds(id) => {
                 let def = tcx.type_parameter_def(id);
-                tcx.sess.note(
+                err.note(
                     &format!("the cycle begins when computing the bounds \
                               for type parameter `{}`...",
                              def.name));
@@ -253,18 +253,18 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
             match *request {
                 AstConvRequest::GetItemTypeScheme(def_id) |
                 AstConvRequest::GetTraitDef(def_id) => {
-                    tcx.sess.note(
+                    err.note(
                         &format!("...which then requires processing `{}`...",
                                  tcx.item_path_str(def_id)));
                 }
                 AstConvRequest::EnsureSuperPredicates(def_id) => {
-                    tcx.sess.note(
+                    err.note(
                         &format!("...which then requires computing the supertraits of `{}`...",
                                  tcx.item_path_str(def_id)));
                 }
                 AstConvRequest::GetTypeParameterBounds(id) => {
                     let def = tcx.type_parameter_def(id);
-                    tcx.sess.note(
+                    err.note(
                         &format!("...which then requires computing the bounds \
                                   for type parameter `{}`...",
                                  def.name));
@@ -275,24 +275,25 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
         match cycle[0] {
             AstConvRequest::GetItemTypeScheme(def_id) |
             AstConvRequest::GetTraitDef(def_id) => {
-                tcx.sess.note(
+                err.note(
                     &format!("...which then again requires processing `{}`, completing the cycle.",
                              tcx.item_path_str(def_id)));
             }
             AstConvRequest::EnsureSuperPredicates(def_id) => {
-                tcx.sess.note(
+                err.note(
                     &format!("...which then again requires computing the supertraits of `{}`, \
                               completing the cycle.",
                              tcx.item_path_str(def_id)));
             }
             AstConvRequest::GetTypeParameterBounds(id) => {
                 let def = tcx.type_parameter_def(id);
-                tcx.sess.note(
+                err.note(
                     &format!("...which then again requires computing the bounds \
                               for type parameter `{}`, completing the cycle.",
                              def.name));
             }
         }
+        err.emit();
     }
 
     /// Loads the trait def for a given trait, returning ErrorReported if a cycle arises.
@@ -1012,10 +1013,11 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
             hir::NamedField(name, vis) => {
                 let dup_span = seen_fields.get(&name).cloned();
                 if let Some(prev_span) = dup_span {
-                    span_err!(tcx.sess, f.span, E0124,
-                              "field `{}` is already declared",
-                              name);
-                    span_note!(tcx.sess, prev_span, "previously declared here");
+                    let mut err = struct_span_err!(tcx.sess, f.span, E0124,
+                                                   "field `{}` is already declared",
+                                                   name);
+                    span_note!(&mut err, prev_span, "previously declared here");
+                    err.emit();
                 } else {
                     seen_fields.insert(name, f.span);
                 }
@@ -1080,12 +1082,13 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
                 None
             },
             Err(err) => {
-                span_err!(tcx.sess, err.span, E0080,
-                          "constant evaluation error: {}",
-                          err.description());
+                let mut diag = struct_span_err!(tcx.sess, err.span, E0080,
+                                                "constant evaluation error: {}",
+                                                err.description());
                 if !e.span.contains(err.span) {
-                    tcx.sess.span_note(e.span, "for enum discriminant here");
+                    diag.span_note(e.span, "for enum discriminant here");
                 }
+                diag.emit();
                 None
             }
         }
@@ -1254,13 +1257,14 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let paren_sugar = tcx.has_attr(def_id, "rustc_paren_sugar");
     if paren_sugar && !ccx.tcx.sess.features.borrow().unboxed_closures {
-        ccx.tcx.sess.span_err(
+        let mut err = ccx.tcx.sess.struct_span_err(
             it.span,
             "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling \
              which traits can use parenthetical notation");
-        fileline_help!(ccx.tcx.sess, it.span,
+        fileline_help!(&mut err, it.span,
                    "add `#![feature(unboxed_closures)]` to \
                     the crate attributes to use it");
+        err.emit();
     }
 
     let substs = ccx.tcx.mk_substs(mk_trait_substs(ccx, generics));

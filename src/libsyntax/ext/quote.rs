@@ -802,7 +802,7 @@ fn parse_arguments_to_quote(cx: &ExtCtxt, tts: &[TokenTree])
 
     let cx_expr = panictry!(p.parse_expr());
     if !panictry!(p.eat(&token::Comma)) {
-        panic!(p.fatal("expected token `,`"));
+        let _ = p.diagnostic().fatal("expected token `,`");
     }
 
     let tts = panictry!(p.parse_all_token_trees());

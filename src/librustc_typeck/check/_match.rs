@@ -700,7 +700,9 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 if !is_special_case {
                     return
                 } else {
-                    span_note!(tcx.sess, pat.span,
+                    // Boo! Too painful to attach this to the actual warning,
+                    // it should go away at some point though.
+                    tcx.sess.span_note_without_error(pat.span,
                         "this warning will become a HARD ERROR in a future release. \
                         See RFC 218 for details.");
                 }
@@ -786,12 +788,13 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     for &Spanned { node: ref field, span } in fields {
         let field_ty = match used_fields.entry(field.name) {
             Occupied(occupied) => {
-                span_err!(tcx.sess, span, E0025,
-                    "field `{}` bound multiple times in the pattern",
-                    field.name);
-                span_note!(tcx.sess, *occupied.get(),
-                    "field `{}` previously bound here",
-                    field.name);
+                let mut err = struct_span_err!(tcx.sess, span, E0025,
+                                               "field `{}` bound multiple times in the pattern",
+                                               field.name);
+                span_note!(&mut err, *occupied.get(),
+                           "field `{}` previously bound here",
+                           field.name);
+                err.emit();
                 tcx.types.err
             }
             Vacant(vacant) => {

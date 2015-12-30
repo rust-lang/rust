@@ -119,6 +119,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Span, Spanned};
+use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::{self, InternedString};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -702,11 +703,12 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
             for item in &m.items {
                 let pty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(item.id));
                 if !pty.generics.types.is_empty() {
-                    span_err!(ccx.tcx.sess, item.span, E0044,
+                    let mut err = struct_span_err!(ccx.tcx.sess, item.span, E0044,
                         "foreign items may not have type parameters");
-                    span_help!(ccx.tcx.sess, item.span,
+                    span_help!(&mut err, item.span,
                         "consider using specialization instead of \
                         type parameters");
+                    err.emit();
                 }
 
                 if let hir::ForeignItemFn(ref fn_decl, _) = item.node {
@@ -1037,7 +1039,7 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          t_expr: Ty<'tcx>,
                                          id: ast::NodeId) {
     let tstr = fcx.infcx().ty_to_string(t_cast);
-    fcx.type_error_message(span, |actual| {
+    let mut err = fcx.type_error_struct(span, |actual| {
         format!("cast to unsized type: `{}` as `{}`", actual, tstr)
     }, t_expr, None);
     match t_expr.sty {
@@ -1049,16 +1051,16 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             if t_cast.is_trait() {
                 match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
                     Ok(s) => {
-                        fcx.tcx().sess.span_suggestion(t_span,
-                                                       "try casting to a reference instead:",
-                                                       format!("&{}{}", mtstr, s));
+                        err.span_suggestion(t_span,
+                                            "try casting to a reference instead:",
+                                            format!("&{}{}", mtstr, s));
                     },
                     Err(_) =>
-                        span_help!(fcx.tcx().sess, t_span,
+                        span_help!(err, t_span,
                                    "did you mean `&{}{}`?", mtstr, tstr),
                 }
             } else {
-                span_help!(fcx.tcx().sess, span,
+                span_help!(err, span,
                            "consider using an implicit coercion to `&{}{}` instead",
                            mtstr, tstr);
             }
@@ -1066,19 +1068,20 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         ty::TyBox(..) => {
             match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
                 Ok(s) => {
-                    fcx.tcx().sess.span_suggestion(t_span,
-                                                   "try casting to a `Box` instead:",
-                                                   format!("Box<{}>", s));
+                    err.span_suggestion(t_span,
+                                                          "try casting to a `Box` instead:",
+                                                           format!("Box<{}>", s));
                 },
                 Err(_) =>
-                    span_help!(fcx.tcx().sess, t_span, "did you mean `Box<{}>`?", tstr),
+                    span_help!(err, t_span, "did you mean `Box<{}>`?", tstr),
             }
         }
         _ => {
-            span_help!(fcx.tcx().sess, e_span,
+            span_help!(err, e_span,
                        "consider using a box or reference as appropriate");
         }
     }
+    err.emit();
     fcx.write_error(id);
 }
 
@@ -1443,10 +1446,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some((adt, variant))
         } else if var_kind == ty::VariantKind::Unit {
             if !self.tcx().sess.features.borrow().braced_empty_structs {
-                self.tcx().sess.span_err(span, "empty structs and enum variants \
-                                                with braces are unstable");
-                fileline_help!(self.tcx().sess, span, "add #![feature(braced_empty_structs)] to \
-                                                       the crate features to enable");
+                let mut err = self.tcx().sess.struct_span_err(span,
+                                                              "empty structs and enum variants \
+                                                               with braces are unstable");
+                fileline_help!(&mut err, span, "add #![feature(braced_empty_structs)] to \
+                                                the crate features to enable");
+                err.emit();
             }
 
              Some((adt, variant))
@@ -1614,10 +1619,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                  sp: Span,
                                  mk_msg: M,
                                  actual_ty: Ty<'tcx>,
-                                 err: Option<&TypeError<'tcx>>) where
-        M: FnOnce(String) -> String,
+                                 err: Option<&TypeError<'tcx>>)
+        where M: FnOnce(String) -> String,
     {
         self.infcx().type_error_message(sp, mk_msg, actual_ty, err);
+    }
+
+    pub fn type_error_struct<M>(&self,
+                                sp: Span,
+                                mk_msg: M,
+                                actual_ty: Ty<'tcx>,
+                                err: Option<&TypeError<'tcx>>)
+                                -> DiagnosticBuilder<'tcx>
+        where M: FnOnce(String) -> String,
+    {
+        self.infcx().type_error_struct(sp, mk_msg, actual_ty, err)
     }
 
     pub fn report_mismatched_types(&self,
@@ -2913,7 +2929,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                             lvalue_pref: LvaluePreference,
                             base: &'tcx hir::Expr,
                             field: &Spanned<ast::Name>) {
-        let tcx = fcx.ccx.tcx;
         check_expr_with_lvalue_pref(fcx, base, lvalue_pref);
         let expr_t = structurally_resolved_type(fcx, expr.span,
                                                 fcx.expr_ty(base));
@@ -2945,19 +2960,18 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         if method::exists(fcx, field.span, field.node, expr_t, expr.id) {
-            fcx.type_error_message(
-                field.span,
-                |actual| {
-                    format!("attempted to take value of method `{}` on type \
-                            `{}`", field.node, actual)
-                },
-                expr_t, None);
-
-            tcx.sess.fileline_help(field.span,
+            fcx.type_error_struct(field.span,
+                                  |actual| {
+                                       format!("attempted to take value of method `{}` on type \
+                                               `{}`", field.node, actual)
+                                   },
+                                   expr_t, None)
+                .fileline_help(field.span,
                                "maybe a `()` to call it is missing? \
-                               If not, try an anonymous function");
+                               If not, try an anonymous function")
+                .emit();
         } else {
-            fcx.type_error_message(
+            let mut err = fcx.type_error_struct(
                 expr.span,
                 |actual| {
                     format!("attempted access of field `{}` on \
@@ -2968,17 +2982,18 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 },
                 expr_t, None);
             if let ty::TyStruct(def, _) = expr_t.sty {
-                suggest_field_names(def.struct_variant(), field, tcx, vec![]);
+                suggest_field_names(&mut err, def.struct_variant(), field, vec![]);
             }
+            err.emit();
         }
 
         fcx.write_error(expr.id);
     }
 
     // displays hints about the closest matches in field names
-    fn suggest_field_names<'tcx>(variant: ty::VariantDef<'tcx>,
+    fn suggest_field_names<'tcx>(err: &mut DiagnosticBuilder,
+                                 variant: ty::VariantDef<'tcx>,
                                  field: &Spanned<ast::Name>,
-                                 tcx: &ty::ctxt<'tcx>,
                                  skip : Vec<InternedString>) {
         let name = field.node.as_str();
         let names = variant.fields
@@ -2995,8 +3010,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         // only find fits with at least one matching letter
         if let Some(name) = find_best_match_for_name(names, &name, Some(name.len())) {
-            tcx.sess.span_help(field.span,
-                &format!("did you mean `{}`?", name));
+            err.span_help(field.span,
+                          &format!("did you mean `{}`?", name));
         }
     }
 
@@ -3071,7 +3086,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                       variant: ty::VariantDef<'tcx>,
                                       field: &hir::Field,
                                       skip_fields: &[hir::Field]) {
-        fcx.type_error_message(
+        let mut err = fcx.type_error_struct(
             field.name.span,
             |actual| if let ty::TyEnum(..) = ty.sty {
                 format!("struct variant `{}::{}` has no field named `{}`",
@@ -3084,7 +3099,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             None);
         // prevent all specified fields from being suggested
         let skip_fields = skip_fields.iter().map(|ref x| x.name.node.as_str());
-        suggest_field_names(variant, &field.name, fcx.tcx(), skip_fields.collect());
+        suggest_field_names(&mut err, variant, &field.name, skip_fields.collect());
+        err.emit();
     }
 
     fn check_expr_struct_fields<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -4146,9 +4162,9 @@ pub fn check_representable(tcx: &ty::ctxt,
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
         Representability::SelfRecursive => {
-            span_err!(tcx.sess, sp, E0072, "invalid recursive {} type", designation);
-            tcx.sess.fileline_help(
-                sp, "wrap the inner value in a box to make it representable");
+            struct_span_err!(tcx.sess, sp, E0072, "invalid recursive {} type", designation)
+                .fileline_help(sp, "wrap the inner value in a box to make it representable")
+                .emit();
             return false
         }
         Representability::Representable | Representability::ContainsRecursive => (),
@@ -4245,11 +4261,12 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             // Check for duplicate discriminant values
             match disr_vals.iter().position(|&x| x == current_disr_val) {
                 Some(i) => {
-                    span_err!(ccx.tcx.sess, v.span, E0081,
+                    let mut err = struct_span_err!(ccx.tcx.sess, v.span, E0081,
                         "discriminant value `{}` already exists", disr_vals[i]);
                     let variant_i_node_id = ccx.tcx.map.as_local_node_id(variants[i].did).unwrap();
-                    span_note!(ccx.tcx.sess, ccx.tcx.map.span(variant_i_node_id),
-                        "conflicting discriminant here")
+                    span_note!(&mut err, ccx.tcx.map.span(variant_i_node_id),
+                        "conflicting discriminant here");
+                    err.emit();
                 }
                 None => {}
             }
@@ -4258,10 +4275,11 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 attr::ReprAny | attr::ReprExtern => (),
                 attr::ReprInt(sp, ity) => {
                     if !disr_in_range(ccx, ity, current_disr_val) {
-                        span_err!(ccx.tcx.sess, v.span, E0082,
+                        let mut err = struct_span_err!(ccx.tcx.sess, v.span, E0082,
                             "discriminant value outside specified type");
-                        span_note!(ccx.tcx.sess, sp,
+                        span_note!(&mut err, sp,
                             "discriminant type specified here");
+                        err.emit();
                     }
                 }
                 attr::ReprSimd => {

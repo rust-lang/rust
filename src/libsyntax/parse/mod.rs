@@ -12,7 +12,7 @@
 
 use ast;
 use codemap::{self, Span, CodeMap, FileMap};
-use errors::{Handler, ColorConfig, FatalError};
+use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use parse::parser::Parser;
 use parse::token::InternedString;
 use ptr::P;
@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str;
 
-pub type PResult<T> = Result<T, FatalError>;
+pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 
 #[macro_use]
 pub mod parser;
@@ -76,8 +76,8 @@ pub fn parse_crate_from_file(
     cfg: ast::CrateConfig,
     sess: &ParseSess
 ) -> ast::Crate {
-    panictry!(new_parser_from_file(sess, cfg, input).parse_crate_mod())
-    // why is there no p.abort_if_errors here?
+    let mut parser = new_parser_from_file(sess, cfg, input);
+    abort_if_errors(parser.parse_crate_mod(), &parser)
 }
 
 pub fn parse_crate_attrs_from_file(
@@ -85,8 +85,8 @@ pub fn parse_crate_attrs_from_file(
     cfg: ast::CrateConfig,
     sess: &ParseSess
 ) -> Vec<ast::Attribute> {
-    // FIXME: maybe_aborted?
-    panictry!(new_parser_from_file(sess, cfg, input).parse_inner_attributes())
+    let mut parser = new_parser_from_file(sess, cfg, input);
+    abort_if_errors(parser.parse_inner_attributes(), &parser)
 }
 
 pub fn parse_crate_from_source_str(name: String,
@@ -271,6 +271,20 @@ pub fn maybe_aborted<T>(result: T, p: Parser) -> T {
     result
 }
 
+fn abort_if_errors<'a, T>(result: PResult<'a, T>, p: &Parser) -> T {
+    match result {
+        Ok(c) => {
+            p.abort_if_errors();
+            c
+        }
+        Err(mut e) => {
+            e.emit();
+            p.abort_if_errors();
+            unreachable!();
+        }
+    }
+}
+
 /// Parse a string representing a character literal into its final form.
 /// Rather than just accepting/rejecting a given literal, unescapes it as
 /// well. Can take any slice prefixed by a character escape. Returns the
@@ -449,11 +463,13 @@ fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
         Some(suf) => {
             if suf.len() >= 2 && looks_like_width_suffix(&['f'], suf) {
                 // if it looks like a width, lets try to be helpful.
-                sd.span_err(sp, &format!("invalid width `{}` for float literal", &suf[1..]));
-                sd.fileline_help(sp, "valid widths are 32 and 64");
+                sd.struct_span_err(sp, &format!("invalid width `{}` for float literal", &suf[1..]))
+                 .fileline_help(sp, "valid widths are 32 and 64")
+                 .emit();
             } else {
-                sd.span_err(sp, &format!("invalid suffix `{}` for float literal", suf));
-                sd.fileline_help(sp, "valid suffixes are `f32` and `f64`");
+                sd.struct_span_err(sp, &format!("invalid suffix `{}` for float literal", suf))
+                  .fileline_help(sp, "valid suffixes are `f32` and `f64`")
+                  .emit();
             }
 
             ast::LitFloatUnsuffixed(data)
@@ -622,13 +638,15 @@ pub fn integer_lit(s: &str,
                 // i<digits> and u<digits> look like widths, so lets
                 // give an error message along those lines
                 if looks_like_width_suffix(&['i', 'u'], suf) {
-                    sd.span_err(sp, &format!("invalid width `{}` for integer literal",
-                                             &suf[1..]));
-                    sd.fileline_help(sp, "valid widths are 8, 16, 32 and 64");
+                    sd.struct_span_err(sp, &format!("invalid width `{}` for integer literal",
+                                             &suf[1..]))
+                      .fileline_help(sp, "valid widths are 8, 16, 32 and 64")
+                      .emit();
                 } else {
-                    sd.span_err(sp, &format!("invalid suffix `{}` for numeric literal", suf));
-                    sd.fileline_help(sp, "the suffix must be one of the integral types \
-                                      (`u32`, `isize`, etc)");
+                    sd.struct_span_err(sp, &format!("invalid suffix `{}` for numeric literal", suf))
+                      .fileline_help(sp, "the suffix must be one of the integral types \
+                                      (`u32`, `isize`, etc)")
+                      .emit();
                 }
 
                 ty

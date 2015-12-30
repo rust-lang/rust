@@ -201,11 +201,12 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac,
     let extname = pth.segments[0].identifier.name;
     match fld.cx.syntax_env.find(extname) {
         None => {
-            fld.cx.span_err(
+            let mut err = fld.cx.struct_span_err(
                 pth.span,
                 &format!("macro undefined: '{}!'",
                         &extname));
-            fld.cx.suggest_macro_name(&extname.as_str(), pth.span);
+            fld.cx.suggest_macro_name(&extname.as_str(), pth.span, &mut err);
+            err.emit();
 
             // let compilation continue
             None
@@ -334,11 +335,15 @@ fn contains_macro_use(fld: &mut MacroExpander, attrs: &[ast::Attribute]) -> bool
     for attr in attrs {
         let mut is_use = attr.check_name("macro_use");
         if attr.check_name("macro_escape") {
-            fld.cx.span_warn(attr.span, "macro_escape is a deprecated synonym for macro_use");
+            let mut err =
+                fld.cx.struct_span_warn(attr.span,
+                                        "macro_escape is a deprecated synonym for macro_use");
             is_use = true;
             if let ast::AttrStyle::Inner = attr.node.style {
-                fld.cx.fileline_help(attr.span, "consider an outer attribute, \
-                                             #[macro_use] mod ...");
+                err.fileline_help(attr.span, "consider an outer attribute, \
+                                              #[macro_use] mod ...").emit();
+            } else {
+                err.emit();
             }
         };
 

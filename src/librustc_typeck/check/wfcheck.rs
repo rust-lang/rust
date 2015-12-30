@@ -23,6 +23,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::codemap::{Span};
+use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::{special_idents};
 use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
@@ -496,12 +497,12 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                          span: Span,
                          param_name: ast::Name)
     {
-        error_392(self.tcx(), span, param_name);
+        let mut err = error_392(self.tcx(), span, param_name);
 
         let suggested_marker_id = self.tcx().lang_items.phantom_data();
         match suggested_marker_id {
             Some(def_id) => {
-                self.tcx().sess.fileline_help(
+                err.fileline_help(
                     span,
                     &format!("consider removing `{}` or using a marker such as `{}`",
                              param_name,
@@ -511,6 +512,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 // no lang items, no help!
             }
         }
+        err.emit();
     }
 }
 
@@ -621,9 +623,10 @@ pub fn error_380<'ccx,'tcx>(ccx: &'ccx CrateCtxt<'ccx, 'tcx>, span: Span) {
                Trait for ..`) must have no methods or associated items")
 }
 
-pub fn error_392<'tcx>(tcx: &ty::ctxt<'tcx>, span: Span, param_name: ast::Name)  {
-    span_err!(tcx.sess, span, E0392,
-              "parameter `{}` is never used", param_name);
+pub fn error_392<'tcx>(tcx: &ty::ctxt<'tcx>, span: Span, param_name: ast::Name)
+                       -> DiagnosticBuilder<'tcx> {
+    struct_span_err!(tcx.sess, span, E0392,
+                     "parameter `{}` is never used", param_name)
 }
 
 pub fn error_194<'tcx>(tcx: &ty::ctxt<'tcx>, span: Span, name: ast::Name) {

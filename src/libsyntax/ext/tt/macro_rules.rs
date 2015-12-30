@@ -55,12 +55,12 @@ impl<'a> ParserAnyMacro<'a> {
                                following",
                               token_str);
             let span = parser.span;
-            parser.span_err(span, &msg[..]);
-
+            let mut err = parser.diagnostic().struct_span_err(span, &msg[..]);
             let msg = format!("caused by the macro expansion here; the usage \
                                of `{}!` is likely invalid in {} context",
                                self.macro_ident, context);
-            parser.span_note(self.site_span, &msg[..]);
+            err.span_note(self.site_span, &msg[..])
+               .emit();
         }
     }
 }
@@ -111,7 +111,10 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
                         Some(stmt) => ret.push(stmt),
                         None => (),
                     },
-                    Err(_) => break,
+                    Err(mut e) => {
+                        e.emit();
+                        break;
+                    }
                 }
             }
         }

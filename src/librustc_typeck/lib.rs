@@ -203,8 +203,9 @@ fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
     match result {
         Ok(_) => true,
         Err(ref terr) => {
-            span_err!(tcx.sess, span, E0211, "{}: {}", msg(), terr);
-            tcx.note_and_explain_type_err(terr, span);
+            let mut err = struct_span_err!(tcx.sess, span, E0211, "{}: {}", msg(), terr);
+            tcx.note_and_explain_type_err(&mut err, terr, span);
+            err.emit();
             false
         }
     }

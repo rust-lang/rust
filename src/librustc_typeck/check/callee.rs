@@ -61,11 +61,12 @@ pub fn check_legal_trait_for_method_call(ccx: &CrateCtxt, span: Span, trait_id: 
             return // not a closure method, everything is OK.
         };
 
-        span_err!(tcx.sess, span, E0174,
-                  "explicit use of unboxed closure method `{}` is experimental",
-                  method);
-        fileline_help!(tcx.sess, span,
-                   "add `#![feature(unboxed_closures)]` to the crate attributes to enable");
+        struct_span_err!(tcx.sess, span, E0174,
+                         "explicit use of unboxed closure method `{}` is experimental",
+                         method)
+            .fileline_help(span, "add `#![feature(unboxed_closures)]` to the crate \
+                                  attributes to enable")
+            .emit();
     }
 }
 
@@ -228,7 +229,7 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             sig
         }
         _ => {
-            fcx.type_error_message(call_expr.span, |actual| {
+            let mut err = fcx.type_error_struct(call_expr.span, |actual| {
                 format!("expected function, found `{}`", actual)
             }, callee_ty, None);
 
@@ -237,11 +238,13 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                 if let Some(pr) = tcx.def_map.borrow().get(&expr.id) {
                     if pr.depth == 0 && pr.base_def != def::DefErr {
                         if let Some(span) = tcx.map.span_if_local(pr.def_id()) {
-                            tcx.sess.span_note(span, "defined here")
+                            err.span_note(span, "defined here");
                         }
                     }
                 }
             }
+
+            err.emit();
 
             // This is the "default" function signature, used in case of error.
             // In that case, we check each argument against "error" in order to

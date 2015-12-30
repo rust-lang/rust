@@ -19,7 +19,7 @@ use ptr::P;
 
 impl<'a> Parser<'a> {
     /// Parse attributes that appear before an item
-    pub fn parse_outer_attributes(&mut self) -> PResult<Vec<ast::Attribute>> {
+    pub fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         loop {
             debug!("parse_outer_attributes: self.token={:?}",
@@ -51,7 +51,7 @@ impl<'a> Parser<'a> {
     ///
     /// If permit_inner is true, then a leading `!` indicates an inner
     /// attribute
-    pub fn parse_attribute(&mut self, permit_inner: bool) -> PResult<ast::Attribute> {
+    pub fn parse_attribute(&mut self, permit_inner: bool) -> PResult<'a, ast::Attribute> {
         debug!("parse_attributes: permit_inner={:?} self.token={:?}",
                permit_inner, self.token);
         let (span, value, mut style) = match self.token {
@@ -64,11 +64,13 @@ impl<'a> Parser<'a> {
                     try!(self.bump());
                     if !permit_inner {
                         let span = self.span;
-                        self.span_err(span,
-                                      "an inner attribute is not permitted in \
-                                       this context");
-                        self.fileline_help(span,
-                                       "place inner attribute at the top of the module or block");
+                        self.diagnostic().struct_span_err(span,
+                                                          "an inner attribute is not permitted in \
+                                                           this context")
+                                         .fileline_help(span,
+                                                        "place inner attribute at the top of \
+                                                         the module or block")
+                                         .emit()
                     }
                     ast::AttrStyle::Inner
                 } else {
@@ -111,7 +113,7 @@ impl<'a> Parser<'a> {
     /// terminated by a semicolon.
 
     /// matches inner_attrs*
-    pub fn parse_inner_attributes(&mut self) -> PResult<Vec<ast::Attribute>> {
+    pub fn parse_inner_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = vec![];
         loop {
             match self.token {
@@ -146,7 +148,7 @@ impl<'a> Parser<'a> {
     /// matches meta_item = IDENT
     /// | IDENT = lit
     /// | IDENT meta_seq
-    pub fn parse_meta_item(&mut self) -> PResult<P<ast::MetaItem>> {
+    pub fn parse_meta_item(&mut self) -> PResult<'a, P<ast::MetaItem>> {
         let nt_meta = match self.token {
             token::Interpolated(token::NtMeta(ref e)) => {
                 Some(e.clone())
@@ -195,10 +197,10 @@ impl<'a> Parser<'a> {
     }
 
     /// matches meta_seq = ( COMMASEP(meta_item) )
-    fn parse_meta_seq(&mut self) -> PResult<Vec<P<ast::MetaItem>>> {
+    fn parse_meta_seq(&mut self) -> PResult<'a, Vec<P<ast::MetaItem>>> {
         self.parse_unspanned_seq(&token::OpenDelim(token::Paren),
                                  &token::CloseDelim(token::Paren),
                                  seq_sep_trailing_allowed(token::Comma),
-                                 |p| p.parse_meta_item())
+                                 |p: &mut Parser<'a>| p.parse_meta_item())
     }
 }

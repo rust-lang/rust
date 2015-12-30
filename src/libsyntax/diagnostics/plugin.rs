@@ -62,10 +62,10 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
         match diagnostics.get_mut(&code.name) {
             // Previously used errors.
             Some(&mut ErrorInfo { description: _, use_site: Some(previous_span) }) => {
-                ecx.span_warn(span, &format!(
+                ecx.struct_span_warn(span, &format!(
                     "diagnostic code {} already used", code
-                ));
-                ecx.span_note(previous_span, "previous invocation");
+                )).span_note(previous_span, "previous invocation")
+                  .emit();
             }
             // Newly used errors.
             Some(ref mut info) => {
