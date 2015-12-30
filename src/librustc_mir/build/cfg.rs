@@ -37,14 +37,6 @@ impl<'tcx> CFG<'tcx> {
         self.block_data_mut(block).statements.push(statement);
     }
 
-    pub fn push_assign_constant(&mut self,
-                                block: BasicBlock,
-                                span: Span,
-                                temp: &Lvalue<'tcx>,
-                                constant: Constant<'tcx>) {
-        self.push_assign(block, span, temp, Rvalue::Use(Operand::Constant(constant)));
-    }
-
     pub fn push_drop(&mut self, block: BasicBlock, span: Span,
                      kind: DropKind, lvalue: &Lvalue<'tcx>) {
         self.push(block, Statement {
@@ -62,6 +54,23 @@ impl<'tcx> CFG<'tcx> {
             span: span,
             kind: StatementKind::Assign(lvalue.clone(), rvalue)
         });
+    }
+
+    pub fn push_assign_constant(&mut self,
+                                block: BasicBlock,
+                                span: Span,
+                                temp: &Lvalue<'tcx>,
+                                constant: Constant<'tcx>) {
+        self.push_assign(block, span, temp, Rvalue::Use(Operand::Constant(constant)));
+    }
+
+    pub fn push_assign_unit(&mut self,
+                            block: BasicBlock,
+                            span: Span,
+                            lvalue: &Lvalue<'tcx>) {
+        self.push_assign(block, span, lvalue, Rvalue::Aggregate(
+            AggregateKind::Tuple, vec![]
+        ));
     }
 
     pub fn terminate(&mut self,
