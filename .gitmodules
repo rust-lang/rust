@@ -13,7 +13,7 @@
 	url = https://github.com/rust-lang/jemalloc.git
 [submodule "src/rust-installer"]
 	path = src/rust-installer
-	url = https://github.com/rust-lang/rust-installer
+	url = https://github.com/rust-lang/rust-installer.git
 [submodule "src/liblibc"]
 	path = src/liblibc
-	url = https://github.com/rust-lang/libc
+	url = https://github.com/rust-lang-nursery/libc.git

@@ -340,11 +340,11 @@ With the former, the `RefCell<T>` is wrapping the `Vec<T>`, so the `Vec<T>` in i
 mutable. At the same time, there can only be one mutable borrow of the whole `Vec` at a given time.
 This means that your code cannot simultaneously work on different elements of the vector from
 different `Rc` handles. However, we are able to push and pop from the `Vec<T>` at will. This is
-similar to an `&mut Vec<T>` with the borrow checking done at runtime.
+similar to a `&mut Vec<T>` with the borrow checking done at runtime.
 
 With the latter, the borrowing is of individual elements, but the overall vector is immutable. Thus,
 we can independently borrow separate elements, but we cannot push or pop from the vector. This is
-similar to an `&mut [T]`[^3], but, again, the borrow checking is at runtime.
+similar to a `&mut [T]`[^3], but, again, the borrow checking is at runtime.
 
 In concurrent programs, we have a similar situation with `Arc<Mutex<T>>`, which provides shared
 mutability and ownership.
