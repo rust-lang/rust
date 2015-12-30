@@ -483,6 +483,9 @@ impl Iterator for EscapeUnicode {
     }
 }
 
+#[stable(feature = "exact_size_escape", since = "1.11.0")]
+impl ExactSizeIterator for EscapeUnicode { }
+
 /// An iterator that yields the literal escape code of a `char`.
 ///
 /// This `struct` is created by the [`escape_default()`] method on [`char`]. See
@@ -577,6 +580,9 @@ impl Iterator for EscapeDefault {
         }
     }
 }
+
+#[stable(feature = "exact_size_escape", since = "1.11.0")]
+impl ExactSizeIterator for EscapeDefault { }
 
 /// An iterator over `u8` entries represending the UTF-8 encoding of a `char`
 /// value.
