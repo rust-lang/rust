@@ -290,6 +290,7 @@ impl char {
     /// languages. The exact rules are:
     ///
     /// * Tab is escaped as `\t`.
+    /// * ESC is escaped as `\e`.
     /// * Carriage return is escaped as `\r`.
     /// * Line feed is escaped as `\n`.
     /// * Single quote is escaped as `\'`.

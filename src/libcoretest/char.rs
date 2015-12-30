@@ -34,6 +34,7 @@ fn test_is_whitespace() {
     assert!('\n'.is_whitespace());
     assert!(!'a'.is_whitespace());
     assert!(!'_'.is_whitespace());
+    assert!(!'\e'.is_whitespace());
     assert!(!'\u{0}'.is_whitespace());
 }
 

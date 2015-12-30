@@ -688,6 +688,8 @@ fn test_escape_default() {
     assert_eq!("abc".escape_default(), "abc");
     assert_eq!("a c".escape_default(), "a c");
     assert_eq!("\r\n\t".escape_default(), "\\r\\n\\t");
+    assert_eq!("\r\n\e".escape_default(), "\\r\\n\\e");
+    assert_eq!("\r\e\e".escape_default(), "\\r\\e\\e");
     assert_eq!("'\"\\".escape_default(), "\\'\\\"\\\\");
     assert_eq!("\u{100}\u{ffff}".escape_default(), "\\u{100}\\u{ffff}");
     assert_eq!("\u{10000}\u{10ffff}".escape_default(), "\\u{10000}\\u{10ffff}");
