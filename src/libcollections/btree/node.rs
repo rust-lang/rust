@@ -763,7 +763,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
                 unsafe {
                     Handle::new_edge(
                         right.as_mut().cast_unchecked::<marker::Leaf>(),
-                        self.idx - B - 1
+                        self.idx - (B + 1)
                     ).insert_unchecked(key, val)
                 }
             };
@@ -826,7 +826,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 unsafe {
                     Handle::new_edge(
                         right.as_mut().cast_unchecked::<marker::Internal>(),
-                        self.idx - B - 1
+                        self.idx - (B + 1)
                     ).insert_unchecked(key, val, edge);
                 }
             }
