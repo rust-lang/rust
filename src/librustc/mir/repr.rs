@@ -184,7 +184,7 @@ impl BasicBlock {
 
 impl Debug for BasicBlock {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "BB({})", self.0)
+        write!(fmt, "bb{}", self.0)
     }
 }
 
