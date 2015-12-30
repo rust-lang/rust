@@ -299,7 +299,15 @@ impl CharExt for char {
 
     #[inline]
     fn escape_unicode(self) -> EscapeUnicode {
-        EscapeUnicode { c: self, state: EscapeUnicodeState::Backslash }
+        let mut n = 0;
+        while (self as u32) >> (4 * (n + 1)) != 0 {
+            n += 1;
+        }
+        EscapeUnicode {
+            c: self,
+            state: EscapeUnicodeState::Backslash,
+            offset: n,
+        }
     }
 
     #[inline]
@@ -420,7 +428,8 @@ pub fn encode_utf16_raw(mut ch: u32, dst: &mut [u16]) -> Option<usize> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeUnicode {
     c: char,
-    state: EscapeUnicodeState
+    state: EscapeUnicodeState,
+    offset: usize,
 }
 
 #[derive(Clone)]
@@ -428,7 +437,7 @@ enum EscapeUnicodeState {
     Backslash,
     Type,
     LeftBrace,
-    Value(usize),
+    Value,
     RightBrace,
     Done,
 }
@@ -448,19 +457,15 @@ impl Iterator for EscapeUnicode {
                 Some('u')
             }
             EscapeUnicodeState::LeftBrace => {
-                let mut n = 0;
-                while (self.c as u32) >> (4 * (n + 1)) != 0 {
-                    n += 1;
-                }
-                self.state = EscapeUnicodeState::Value(n);
+                self.state = EscapeUnicodeState::Value;
                 Some('{')
             }
-            EscapeUnicodeState::Value(offset) => {
-                let c = from_digit(((self.c as u32) >> (offset * 4)) & 0xf, 16).unwrap();
-                if offset == 0 {
+            EscapeUnicodeState::Value => {
+                let c = from_digit(((self.c as u32) >> (self.offset * 4)) & 0xf, 16).unwrap();
+                if self.offset == 0 {
                     self.state = EscapeUnicodeState::RightBrace;
                 } else {
-                    self.state = EscapeUnicodeState::Value(offset - 1);
+                    self.offset -= 1;
                 }
                 Some(c)
             }
@@ -473,18 +478,15 @@ impl Iterator for EscapeUnicode {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let mut n = 0;
-        while (self.c as usize) >> (4 * (n + 1)) != 0 {
-            n += 1;
-        }
         let n = match self.state {
-            EscapeUnicodeState::Backslash => n + 5,
-            EscapeUnicodeState::Type => n + 4,
-            EscapeUnicodeState::LeftBrace => n + 3,
-            EscapeUnicodeState::Value(offset) => offset + 2,
+            EscapeUnicodeState::Backslash => 5,
+            EscapeUnicodeState::Type => 4,
+            EscapeUnicodeState::LeftBrace => 3,
+            EscapeUnicodeState::Value => 2,
             EscapeUnicodeState::RightBrace => 1,
             EscapeUnicodeState::Done => 0,
         };
+        let n = n + self.offset;
         (n, Some(n))
     }
 }
