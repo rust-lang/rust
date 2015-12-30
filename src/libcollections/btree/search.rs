@@ -17,15 +17,15 @@ use super::node::{Handle, NodeRef, marker};
 use super::node::ForceResult::*;
 use self::SearchResult::*;
 
-pub enum SearchResult<Lifetime, K, V, FoundType, GoDownType> {
-    Found(Handle<NodeRef<Lifetime, K, V, FoundType>, marker::KV>),
-    GoDown(Handle<NodeRef<Lifetime, K, V, GoDownType>, marker::Edge>)
+pub enum SearchResult<BorrowType, K, V, FoundType, GoDownType> {
+    Found(Handle<NodeRef<BorrowType, K, V, FoundType>, marker::KV>),
+    GoDown(Handle<NodeRef<BorrowType, K, V, GoDownType>, marker::Edge>)
 }
 
-pub fn search_tree<Lifetime, K, V, Q: ?Sized>(
-    mut node: NodeRef<Lifetime, K, V, marker::LeafOrInternal>,
+pub fn search_tree<BorrowType, K, V, Q: ?Sized>(
+    mut node: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     key: &Q
-) -> SearchResult<Lifetime, K, V, marker::LeafOrInternal, marker::Leaf>
+) -> SearchResult<BorrowType, K, V, marker::LeafOrInternal, marker::Leaf>
         where Q: Ord, K: Borrow<Q> {
 
     loop {
@@ -42,10 +42,10 @@ pub fn search_tree<Lifetime, K, V, Q: ?Sized>(
     }
 }
 
-pub fn search_node<Lifetime, K, V, Type, Q: ?Sized>(
-    node: NodeRef<Lifetime, K, V, Type>,
+pub fn search_node<BorrowType, K, V, Type, Q: ?Sized>(
+    node: NodeRef<BorrowType, K, V, Type>,
     key: &Q
-) -> SearchResult<Lifetime, K, V, Type, Type>
+) -> SearchResult<BorrowType, K, V, Type, Type>
         where Q: Ord, K: Borrow<Q> {
 
     match search_linear(&node, key) {
@@ -58,8 +58,8 @@ pub fn search_node<Lifetime, K, V, Type, Q: ?Sized>(
     }
 }
 
-fn search_linear<Lifetime, K, V, Type, Q: ?Sized>(
-    node: &NodeRef<Lifetime, K, V, Type>,
+fn search_linear<BorrowType, K, V, Type, Q: ?Sized>(
+    node: &NodeRef<BorrowType, K, V, Type>,
     key: &Q
 ) -> (usize, bool)
         where Q: Ord, K: Borrow<Q> {

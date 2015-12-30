@@ -1126,11 +1126,11 @@ impl<'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for BTreeMap<K, V>
     }
 }
 
-fn first_leaf_edge<Lifetime, K, V>(
-        mut node: NodeRef<Lifetime,
+fn first_leaf_edge<BorrowType, K, V>(
+        mut node: NodeRef<BorrowType,
                           K, V,
                           marker::LeafOrInternal>
-        ) -> Handle<NodeRef<Lifetime, K, V, marker::Leaf>, marker::Edge> {
+        ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
     loop {
         match node.force() {
             Leaf(leaf) => return leaf.first_edge(),
@@ -1141,11 +1141,11 @@ fn first_leaf_edge<Lifetime, K, V>(
     }
 }
 
-fn last_leaf_edge<Lifetime, K, V>(
-        mut node: NodeRef<Lifetime,
+fn last_leaf_edge<BorrowType, K, V>(
+        mut node: NodeRef<BorrowType,
                           K, V,
                           marker::LeafOrInternal>
-        ) -> Handle<NodeRef<Lifetime, K, V, marker::Leaf>, marker::Edge> {
+        ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
     loop {
         match node.force() {
             Leaf(leaf) => return leaf.last_edge(),

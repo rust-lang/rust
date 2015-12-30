@@ -212,7 +212,7 @@ impl<K, V> Root<K, V> {
 /// A reference to a node.
 ///
 /// This type has a number of paramaters that controls how it acts:
-/// - `Lifetime`: This can be `Immut<'a>` or `Mut<'a>` for some `'a` or `Owned`.
+/// - `BorrowType`: This can be `Immut<'a>` or `Mut<'a>` for some `'a` or `Owned`.
 ///    When this is `Immut<'a>`, the `NodeRef` acts roughly like `&'a Node`,
 ///    when this is `Mut<'a>`, the `NodeRef` acts roughly like `&'a mut Node`,
 ///    and when this is `Owned`, the `NodeRef` acts roughly like `Box<Node>`.
@@ -221,11 +221,11 @@ impl<K, V> Root<K, V> {
 ///   `Leaf`, the `NodeRef` points to a leaf node, when this is `Internal` the
 ///   `NodeRef` points to an internal node, and when this is `LeafOrInternal` the
 ///   `NodeRef` could be pointing to either type of node.
-pub struct NodeRef<Lifetime, K, V, Type> {
+pub struct NodeRef<BorrowType, K, V, Type> {
     height: usize,
     node: NonZero<*mut LeafNode<K, V>>,
     root: *mut Root<K, V>,
-    _marker: PhantomData<(Lifetime, Type)>
+    _marker: PhantomData<(BorrowType, Type)>
 }
 
 impl<'a, K: 'a, V: 'a, Type> Copy for NodeRef<marker::Immut<'a>, K, V, Type> { }
@@ -235,8 +235,8 @@ impl<'a, K: 'a, V: 'a, Type> Clone for NodeRef<marker::Immut<'a>, K, V, Type> {
     }
 }
 
-unsafe impl<Lifetime, K: Sync, V: Sync, Type> Sync
-    for NodeRef<Lifetime, K, V, Type> { }
+unsafe impl<BorrowType, K: Sync, V: Sync, Type> Sync
+    for NodeRef<BorrowType, K, V, Type> { }
 
 unsafe impl<'a, K: Sync + 'a, V: Sync + 'a, Type> Send
    for NodeRef<marker::Immut<'a>, K, V, Type> { }
@@ -245,7 +245,7 @@ unsafe impl<'a, K: Send + 'a, V: Send + 'a, Type> Send
 unsafe impl<K: Send, V: Send, Type> Send
    for NodeRef<marker::Owned, K, V, Type> { }
 
-impl<Lifetime, K, V> NodeRef<Lifetime, K, V, marker::Internal> {
+impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
     fn as_internal(&self) -> &InternalNode<K, V> {
         unsafe {
             &*(*self.node as *const InternalNode<K, V>)
@@ -262,7 +262,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
 }
 
 
-impl<Lifetime, K, V, Type> NodeRef<Lifetime, K, V, Type> {
+impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     pub fn height(&self) -> usize {
         self.height
     }
@@ -276,7 +276,7 @@ impl<Lifetime, K, V, Type> NodeRef<Lifetime, K, V, Type> {
         self.as_leaf().len as usize
     }
 
-    pub fn forget_type(self) -> NodeRef<Lifetime, K, V, marker::LeafOrInternal> {
+    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
         NodeRef {
             height: self.height,
             node: self.node,
@@ -311,7 +311,7 @@ impl<Lifetime, K, V, Type> NodeRef<Lifetime, K, V, Type> {
     pub fn ascend(self) -> Result<
         Handle<
             NodeRef<
-                Lifetime,
+                BorrowType,
                 K, V,
                 marker::Internal
             >,
@@ -600,10 +600,10 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     }
 }
 
-impl<Lifetime, K, V> NodeRef<Lifetime, K, V, marker::LeafOrInternal> {
+impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     pub fn force(self) -> ForceResult<
-        NodeRef<Lifetime, K, V, marker::Leaf>,
-        NodeRef<Lifetime, K, V, marker::Internal>
+        NodeRef<BorrowType, K, V, marker::Leaf>,
+        NodeRef<BorrowType, K, V, marker::Internal>
     > {
         if self.height == 0 {
             ForceResult::Leaf(NodeRef {
@@ -660,16 +660,16 @@ impl<Node> Handle<Node, marker::KV> {
     }
 }
 
-impl<Lifetime, K, V, NodeType, HandleType> PartialEq
-        for Handle<NodeRef<Lifetime, K, V, NodeType>, HandleType> {
+impl<BorrowType, K, V, NodeType, HandleType> PartialEq
+        for Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType> {
 
     fn eq(&self, other: &Self) -> bool {
         self.node.node == other.node.node && self.idx == other.idx
     }
 }
 
-impl<Lifetime, K, V, NodeType, HandleType>
-        Handle<NodeRef<Lifetime, K, V, NodeType>, HandleType> {
+impl<BorrowType, K, V, NodeType, HandleType>
+        Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType> {
 
     pub fn reborrow(&self)
             -> Handle<NodeRef<marker::Immut, K, V, NodeType>, HandleType> {
@@ -688,11 +688,11 @@ impl<'a, K, V, NodeType, HandleType>
     }
 }
 
-impl<Lifetime, K, V, NodeType>
-        Handle<NodeRef<Lifetime, K, V, NodeType>, marker::Edge> {
+impl<BorrowType, K, V, NodeType>
+        Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
 
     pub fn left_kv(self)
-            -> Result<Handle<NodeRef<Lifetime, K, V, NodeType>, marker::KV>, Self> {
+            -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {
 
         if self.idx > 0 {
             unsafe {
@@ -704,7 +704,7 @@ impl<Lifetime, K, V, NodeType>
     }
 
     pub fn right_kv(self)
-            -> Result<Handle<NodeRef<Lifetime, K, V, NodeType>, marker::KV>, Self> {
+            -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {
 
         if self.idx < self.node.len() {
             unsafe {
@@ -817,10 +817,10 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
     }
 }
 
-impl<Lifetime, K, V>
-        Handle<NodeRef<Lifetime, K, V, marker::Internal>, marker::Edge> {
+impl<BorrowType, K, V>
+        Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge> {
 
-    pub fn descend(self) -> NodeRef<Lifetime, K, V, marker::LeafOrInternal> {
+    pub fn descend(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
         NodeRef {
             height: self.node.height - 1,
             node: unsafe { self.node.as_internal().edges.get_unchecked(self.idx).as_ptr() },
@@ -1039,12 +1039,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
     }
 }
 
-impl<Lifetime, K, V, HandleType>
-        Handle<NodeRef<Lifetime, K, V, marker::LeafOrInternal>, HandleType> {
+impl<BorrowType, K, V, HandleType>
+        Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, HandleType> {
 
     pub fn force(self) -> ForceResult<
-        Handle<NodeRef<Lifetime, K, V, marker::Leaf>, HandleType>,
-        Handle<NodeRef<Lifetime, K, V, marker::Internal>, HandleType>
+        Handle<NodeRef<BorrowType, K, V, marker::Leaf>, HandleType>,
+        Handle<NodeRef<BorrowType, K, V, marker::Internal>, HandleType>
     > {
         match self.node.force() {
             ForceResult::Leaf(node) => ForceResult::Leaf(Handle {
