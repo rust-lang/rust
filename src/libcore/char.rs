@@ -299,14 +299,16 @@ impl CharExt for char {
 
     #[inline]
     fn escape_unicode(self) -> EscapeUnicode {
-        let mut n = 0;
-        while (self as u32) >> (4 * (n + 1)) != 0 {
-            n += 1;
-        }
+        let c = self as u32;
+        // or-ing 1 ensures that for c==0 the code computes that one
+        // digit should be printed and (which is the same) avoids the
+        // (31 - 32) underflow
+        let msb = 31 - (c | 1).leading_zeros();
+        let msdigit = msb / 4;
         EscapeUnicode {
             c: self,
             state: EscapeUnicodeState::Backslash,
-            offset: n,
+            offset: msdigit as usize,
         }
     }
 
