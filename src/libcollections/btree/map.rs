@@ -191,8 +191,8 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 /// An owning iterator over a BTreeMap's entries.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
-    front: Handle<NodeRef<marker::Owned, K, V, marker::Mut, marker::Leaf>, marker::Edge>,
-    back: Handle<NodeRef<marker::Owned, K, V, marker::Mut, marker::Leaf>, marker::Edge>,
+    front: Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge>,
+    back: Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge>,
     length: usize
 }
 
@@ -210,14 +210,14 @@ pub struct Values<'a, K: 'a, V: 'a> {
 
 /// An iterator over a sub-range of BTreeMap's entries.
 pub struct Range<'a, K: 'a, V: 'a> {
-    front: Handle<NodeRef<marker::Borrowed<'a>, K, V, marker::Immut, marker::Leaf>, marker::Edge>,
-    back: Handle<NodeRef<marker::Borrowed<'a>, K, V, marker::Immut, marker::Leaf>, marker::Edge>
+    front: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
+    back: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>
 }
 
 /// A mutable iterator over a sub-range of BTreeMap's entries.
 pub struct RangeMut<'a, K: 'a, V: 'a> {
-    front: Handle<NodeRef<marker::Borrowed<'a>, K, V, marker::Mut, marker::Leaf>, marker::Edge>,
-    back: Handle<NodeRef<marker::Borrowed<'a>, K, V, marker::Mut, marker::Leaf>, marker::Edge>
+    front: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
+    back: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
@@ -236,7 +236,7 @@ pub enum Entry<'a, K: 'a, V: 'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VacantEntry<'a, K: 'a, V: 'a> {
     key: K,
-    handle: Handle<NodeRef<marker::Borrowed<'a>, K, V, marker::Mut, marker::Leaf>, marker::Edge>,
+    handle: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
     length: &'a mut usize
 }
 
@@ -244,9 +244,8 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     handle: Handle<NodeRef<
-        marker::Borrowed<'a>,
+        marker::Mut<'a>,
         K, V,
-        marker::Mut,
         marker::LeafOrInternal
     >, marker::KV>,
 
@@ -1127,12 +1126,11 @@ impl<'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for BTreeMap<K, V>
     }
 }
 
-fn first_leaf_edge<Lifetime, K, V, Mutability>(
+fn first_leaf_edge<Lifetime, K, V>(
         mut node: NodeRef<Lifetime,
                           K, V,
-                          Mutability,
                           marker::LeafOrInternal>
-        ) -> Handle<NodeRef<Lifetime, K, V, Mutability, marker::Leaf>, marker::Edge> {
+        ) -> Handle<NodeRef<Lifetime, K, V, marker::Leaf>, marker::Edge> {
     loop {
         match node.force() {
             Leaf(leaf) => return leaf.first_edge(),
@@ -1143,12 +1141,11 @@ fn first_leaf_edge<Lifetime, K, V, Mutability>(
     }
 }
 
-fn last_leaf_edge<Lifetime, K, V, Mutability>(
+fn last_leaf_edge<Lifetime, K, V>(
         mut node: NodeRef<Lifetime,
                           K, V,
-                          Mutability,
                           marker::LeafOrInternal>
-        ) -> Handle<NodeRef<Lifetime, K, V, Mutability, marker::Leaf>, marker::Edge> {
+        ) -> Handle<NodeRef<Lifetime, K, V, marker::Leaf>, marker::Edge> {
     loop {
         match node.force() {
             Leaf(leaf) => return leaf.last_edge(),
@@ -1457,14 +1454,13 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
 
 enum UnderflowResult<'a, K, V> {
     AtRoot,
-    EmptyParent(NodeRef<marker::Borrowed<'a>, K, V, marker::Mut, marker::Internal>),
-    Merged(NodeRef<marker::Borrowed<'a>, K, V, marker::Mut, marker::Internal>),
-    Stole(NodeRef<marker::Borrowed<'a>, K, V, marker::Mut, marker::Internal>)
+    EmptyParent(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
+    Merged(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
+    Stole(NodeRef<marker::Mut<'a>, K, V, marker::Internal>)
 }
 
-fn handle_underfull_node<'a, K, V>(node: NodeRef<marker::Borrowed<'a>,
+fn handle_underfull_node<'a, K, V>(node: NodeRef<marker::Mut<'a>,
                                                  K, V,
-                                                 marker::Mut,
                                                  marker::LeafOrInternal>)
                                                  -> UnderflowResult<'a, K, V> {
     let parent = if let Ok(parent) = node.ascend() {
