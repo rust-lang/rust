@@ -826,7 +826,7 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
     let mut es = Vec::new();
     while p.token != token::Eof {
         es.push(cx.expander().fold_expr(panictry!(p.parse_expr())));
-        if panictry!(p.eat(&token::Comma)){
+        if p.eat(&token::Comma) {
             continue;
         }
         if p.token != token::Eof {
