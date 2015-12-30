@@ -15,7 +15,7 @@
 #![allow(non_snake_case)]
 #![stable(feature = "core_char", since = "1.2.0")]
 
-use iter::Iterator;
+use iter::{Iterator, ExactSizeIterator};
 use mem::transmute;
 use option::Option::{None, Some};
 use option::Option;
@@ -493,6 +493,9 @@ impl Iterator for EscapeUnicode {
     }
 }
 
+#[stable(feature = "rust1", since = "1.7.0")]
+impl ExactSizeIterator for EscapeUnicode { }
+
 /// An iterator that yields the literal escape code of a `char`.
 ///
 /// This `struct` is created by the [`escape_default()`] method on [`char`]. See
@@ -587,3 +590,6 @@ impl Iterator for EscapeDefault {
         }
     }
 }
+
+#[stable(feature = "rust1", since = "1.7.0")]
+impl ExactSizeIterator for EscapeDefault { }
