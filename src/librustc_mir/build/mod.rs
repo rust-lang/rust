@@ -139,6 +139,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     {
         self.in_scope(argument_extent, block, |this| {
             let arg_decls = {
+                let num_implicit_args = implicit_arguments.len();
                 let implicit_arg_decls = implicit_arguments.into_iter()
                                                            .map(|ty| ArgDecl { ty: ty });
 
@@ -149,7 +150,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     .into_iter()
                     .enumerate()
                     .map(|(index, (ty, pattern))| {
-                        let lvalue = Lvalue::Arg(index as u32);
+                        let lvalue = Lvalue::Arg((num_implicit_args + index) as u32);
                         let pattern = this.hir.irrefutable_pat(pattern);
                         unpack!(block = this.lvalue_into_pattern(block,
                                                                  argument_extent,
