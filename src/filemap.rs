@@ -18,7 +18,7 @@ use std::fs::{self, File};
 use std::io::{self, Write, Read, stdout, BufWriter};
 
 use config::{NewlineStyle, Config, WriteMode};
-use rustfmt_diff::{make_diff, print_diff};
+use rustfmt_diff::{make_diff, print_diff, Mismatch, DiffLine};
 
 // A map of the files of a crate, with their new content
 pub type FileMap = HashMap<String, StringBuffer>;
@@ -34,11 +34,70 @@ pub fn write_all_files(file_map: &FileMap,
                        mode: WriteMode,
                        config: &Config)
                        -> Result<(), io::Error> {
+    output_heading(&file_map, mode).ok();
     for filename in file_map.keys() {
         try!(write_file(&file_map[filename], filename, mode, config));
     }
+    output_trailing(&file_map, mode).ok();
 
-    // Output trailers for write mode.
+    Ok(())
+}
+
+pub fn output_heading(file_map: &FileMap,
+                      mode: WriteMode) -> Result<(), io::Error> {
+    let stdout = stdout();
+    let mut stdout = stdout.lock();
+    match mode {
+        WriteMode::Checkstyle => {
+            let mut xml_heading = String::new();
+            xml_heading.push_str("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+            xml_heading.push_str("\n");
+            xml_heading.push_str("<checkstyle version=\"4.3\">");
+            try!(write!(stdout, "{}", xml_heading));
+            Ok(())
+        }
+        _ => {
+            Ok(())
+        }
+    }
+}
+
+pub fn output_trailing(file_map: &FileMap,
+                       mode: WriteMode) -> Result<(), io::Error> {
+    let stdout = stdout();
+    let mut stdout = stdout.lock();
+    match mode {
+        WriteMode::Checkstyle => {
+            let mut xml_tail = String::new();
+            xml_tail.push_str("</checkstyle>");
+            try!(write!(stdout, "{}", xml_tail));
+            Ok(())
+        }
+        _ => {
+            Ok(())
+        }
+    }
+}
+
+pub fn output_checkstyle_file<T>(mut writer: T,
+                                 filename: &str,
+                                 diff: Vec<Mismatch>) -> Result<(), io::Error>
+    where T: Write
+{
+    try!(write!(writer, "<file name=\"{}\">", filename));
+    for mismatch in diff {
+        for line in mismatch.lines {
+            match line {
+                DiffLine::Expected(ref str) => {
+                    try!(write!(writer, "<error line=\"{}\" severity=\"error\" message=\"Should be `{}`\" />", mismatch.line_number, str));
+                }
+                _ => {
+                    // Do nothing with context and expected.
+                }
+            }
+        }
+    }
+    try!(write!(writer, "</file>"));
     Ok(())
 }
 
@@ -144,9 +203,18 @@ pub fn write_file(text: &StringBuffer,
             unreachable!("The WriteMode should NEVER Be default at this point!");
         }
         WriteMode::Checkstyle => {
+            let stdout = stdout();
+            let stdout = stdout.lock();
             // Generate the diff for the current file.
+            let mut f = try!(File::open(filename));
+            let mut ori_text = String::new();
+            try!(f.read_to_string(&mut ori_text));
+            let mut v = Vec::new();
+            try!(write_system_newlines(&mut v, text, config));
+            let fmt_text = String::from_utf8(v).unwrap();
+            let diff = make_diff(&ori_text, &fmt_text, 3);
             // Output the XML tags for the lines that are different.
-            // Use the new text as 'should be X'.
+            output_checkstyle_file(stdout, filename, diff).unwrap();
         }
         WriteMode::Return => {
             // io::Write is not implemented for String, working around with
