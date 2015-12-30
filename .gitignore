@@ -1,3 +1,5 @@
 /target
 /doc
 *.dot
+*.mir
+*.png
