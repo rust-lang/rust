@@ -991,15 +991,15 @@ impl<Lifetime, K, V> Handle<NodeRef<Lifetime, K, V, marker::Mut, marker::Interna
         debug_assert!(left_len + right_len + 1 <= left_node.capacity());
 
         unsafe {
-            *left_node.keys_mut().get_unchecked_mut(left_len)
-                = slice_remove(self.node.keys_mut(), self.idx);
+            ptr::write(left_node.keys_mut().get_unchecked_mut(left_len),
+                       slice_remove(self.node.keys_mut(), self.idx));
             ptr::copy_nonoverlapping(
                 right_node.keys().as_ptr(),
                 left_node.keys_mut().as_mut_ptr().offset(left_len as isize + 1),
                 right_len
             );
-            *left_node.vals_mut().get_unchecked_mut(left_len)
-                = slice_remove(self.node.vals_mut(), self.idx);
+            ptr::write(left_node.vals_mut().get_unchecked_mut(left_len),
+                       slice_remove(self.node.vals_mut(), self.idx));
             ptr::copy_nonoverlapping(
                 right_node.vals().as_ptr(),
                 left_node.vals_mut().as_mut_ptr().offset(left_len as isize + 1),
