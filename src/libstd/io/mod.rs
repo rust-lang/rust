@@ -1983,7 +1983,7 @@ mod tests {
         b.iter(|| {
             let mut lr = repeat(1).take(10000000);
             let mut vec = Vec::with_capacity(1024);
-            super::read_to_end(&mut lr, &mut vec);
+            super::read_to_end(&mut lr, &mut vec)
         });
     }
 }

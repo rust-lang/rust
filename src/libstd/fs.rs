@@ -1281,7 +1281,6 @@ mod tests {
     use io::{ErrorKind, SeekFrom};
     use path::PathBuf;
     use path::Path as Path2;
-    use os;
     use rand::{self, StdRng, Rng};
     use str;
 
@@ -1410,8 +1409,8 @@ mod tests {
         let message = "ten-four";
         let mut read_mem = [0; 4];
         let set_cursor = 4 as u64;
-        let mut tell_pos_pre_read;
-        let mut tell_pos_post_read;
+        let tell_pos_pre_read;
+        let tell_pos_post_read;
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_rt_io_file_test_seeking.txt");
         {

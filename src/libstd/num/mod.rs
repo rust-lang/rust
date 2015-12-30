@@ -47,11 +47,6 @@ pub fn test_num<T>(ten: T, two: T) where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use i8;
-    use i16;
-    use i32;
-    use i64;
-    use isize;
     use u8;
     use u16;
     use u32;

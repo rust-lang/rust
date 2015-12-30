@@ -133,7 +133,7 @@ mod tests {
         b.iter(|| {
             let mut lr = repeat(1).take(10000000);
             let mut vec = Vec::with_capacity(1024);
-            unsafe { read_to_end_uninitialized(&mut lr, &mut vec) };
+            unsafe { read_to_end_uninitialized(&mut lr, &mut vec) }
         });
     }
 }

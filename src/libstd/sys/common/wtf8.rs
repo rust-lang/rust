@@ -1067,7 +1067,7 @@ mod tests {
     #[test]
     fn wtf8buf_show_str() {
         let text = "a\té 💩\r";
-        let mut string = Wtf8Buf::from_str(text);
+        let string = Wtf8Buf::from_str(text);
         assert_eq!(format!("{:?}", text), format!("{:?}", string));
     }
 
