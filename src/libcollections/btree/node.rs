@@ -156,8 +156,8 @@ impl<K, V> Root<K, V> {
     }
 
     /// Add a new internal node with a single edge, pointing to the previous root, and make that
-    /// new node the root. This increases the height by 1 and is the opposite of `shrink`.
-    pub fn enlarge(&mut self)
+    /// new node the root. This increases the height by 1 and is the opposite of `pop_level`.
+    pub fn push_level(&mut self)
             -> NodeRef<marker::Borrowed, K, V, marker::Mut, marker::Internal> {
         let mut new_node = Box::new(unsafe { InternalNode::new() });
         new_node.edges[0] = unsafe { BoxedNode::from_ptr(self.node.as_ptr()) };
@@ -182,8 +182,8 @@ impl<K, V> Root<K, V> {
     /// Remove the root node, using its first child as the new root. This cannot be called when
     /// the tree consists only of a leaf node. As it is intended only to be called when the root
     /// has only one edge, no cleanup is done on any of the other children are elements of the root.
-    /// This decreases the height by 1 and is the opposite of `enlarge`.
-    pub fn shrink(&mut self) {
+    /// This decreases the height by 1 and is the opposite of `push_level`.
+    pub fn pop_level(&mut self) {
         debug_assert!(self.height > 0);
 
         let top = *self.node.ptr as *mut u8;

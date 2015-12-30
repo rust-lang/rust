@@ -76,7 +76,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
         fn create_chain<K, V>(height: usize) -> node::Root<K, V> {
             let mut ret = node::Root::new_leaf();
             for _ in 0..height {
-                ret.enlarge();
+                ret.push_level();
             }
             ret
         }
@@ -1370,7 +1370,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
                     }
                 },
                 Err(root) => {
-                    root.enlarge().push(ins_k, ins_v, ins_edge);
+                    root.push_level().push(ins_k, ins_v, ins_edge);
                     return unsafe { &mut *out_ptr };
                 }
             }
@@ -1441,7 +1441,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
                 EmptyParent(_) => unreachable!(),
                 Merged(parent) => if parent.len() == 0 {
                     // We must be at the root
-                    parent.into_root_mut().shrink();
+                    parent.into_root_mut().pop_level();
                     break;
                 } else {
                     cur_node = parent.forget_type();
