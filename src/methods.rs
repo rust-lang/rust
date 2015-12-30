@@ -309,8 +309,8 @@ fn lint_ok_expect(cx: &LateContext, expr: &Expr, ok_args: &MethodArgs) {
 
 #[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
 /// lint use of `map().unwrap_or()` for `Option`s
-fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs,
-                      map_args: &MethodArgs) {
+fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr, map_args: &MethodArgs,
+                      unwrap_args: &MethodArgs) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tcx.expr_ty(&map_args[0]), &OPTION_PATH) {
         // lint message
@@ -338,8 +338,8 @@ fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs,
 
 #[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
 /// lint use of `map().unwrap_or_else()` for `Option`s
-fn lint_map_unwrap_or_else(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs,
-                           map_args: &MethodArgs) {
+fn lint_map_unwrap_or_else(cx: &LateContext, expr: &Expr, map_args: &MethodArgs,
+                           unwrap_args: &MethodArgs) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tcx.expr_ty(&map_args[0]), &OPTION_PATH) {
         // lint message
