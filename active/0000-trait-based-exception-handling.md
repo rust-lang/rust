@@ -146,7 +146,7 @@ that block). This works for any block, not only loops.
 A completely artificial example:
 
     'a: {
-        let my_thing = if have_thing {
+        let my_thing = if have_thing() {
             get_thing()
         } else {
             break 'a None
@@ -271,6 +271,37 @@ Without any attempt at completeness, here are some things which should be true:
  * `try { Ok(foo()?) } catch e { Err(e) }` = `foo()`
 
 
+# Unresolved questions
+
+## Choice of keywords
+
+The RFC to this point uses the keywords `try`..`catch`, but there are a number of other possibilities, each with different advantages and drawbacks:
+
+ * `try { ... } catch { ... }`
+
+ * `try { ... } match { ... }`
+
+ * `try { ... } handle { ... }`
+
+ * `catch { ... } match { ... }`
+
+ * `catch { ... } handle { ... }`
+
+ * `catch ...` (without braces or a second clause)
+
+Among the considerations:
+
+ * Simplicity. Brevity.
+
+ * Following precedent from existing, popular languages, and familiarity with respect to analogous constructs in them.
+
+ * Fidelity to the constructs' actual behavior. For instance, the first clause always catches the "exception"; the second only branches on it.
+
+ * Consistency with the existing `try!()` macro. If the first clause is called `try`, then `try { }` and `try!()` would have essentially inverse meanings.
+
+ * Language-level backwards compatibility when adding new keywords. I'm not sure how this could or should be handled.
+
+
 # Drawbacks
 
  * Increases the syntactic surface area of the language.
@@ -291,7 +322,9 @@ Without any attempt at completeness, here are some things which should be true:
 
  * Don't.
 
- * Only add the `?` operator, but not `try`..`catch`.
+ * Only add the `?` operator, but not `try` and `try`..`catch`.
+
+ * Only add `?` and `try`, but not `try`..`catch`.
 
  * Instead of a built-in `try`..`catch` construct, attempt to define one using
    macros. However, this is likely to be awkward because, at least, macros may
@@ -312,9 +345,9 @@ Without any attempt at completeness, here are some things which should be true:
    serious an issue this would actually be in practice, I don't know - there's
    reason to believe that it would be much less of one than in C++.
 
-[notes]: https://github.com/glaebhoerl/rust-notes/blob/268266e8fbbbfd91098d3bea784098e918b42322/my_rfcs/Exceptions.txt
-
  * Wait (and hope) for HKTs and generic monad sugar.
+
+[notes]: https://github.com/glaebhoerl/rust-notes/blob/268266e8fbbbfd91098d3bea784098e918b42322/my_rfcs/Exceptions.txt
 
 
 # Future possibilities
@@ -377,7 +410,6 @@ This `match e` is quite redundant and unfortunate.
 Therefore, neither form can be considered strictly superior to the other, and it
 may be preferable to simply provide both.
 
-
 ## `throw` and `throws`
 
 It is possible to carry the exception handling analogy further and also add
@@ -398,11 +430,10 @@ both "normal" and "throwing" code paths and (apart from `?` to propagate
 exceptions) matches what code might look like in a language with native
 exceptions.
 
-
 ## Generalize over `Result`, `Option`, and other result-carrying types
 
 `Option<T>` is completely equivalent to `Result<T, ()>` modulo names, and many common APIs
-use the `Option` type, so it would make sense to extend all of the above syntax to `Option`,
+use the `Option` type, so it would be useful to extend all of the above syntax to `Option`,
 and other (potentially user-defined) equivalent-to-`Result` types, as well.
 
 This can be done by specifying a trait for types which can be used to "carry" either a normal
